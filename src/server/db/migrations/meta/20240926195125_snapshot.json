@@ -1,0 +1,1328 @@
+{
+  "id": "2914536f-dc20-4bf3-bacc-90763156fc82",
+  "prevId": "00000000-0000-0000-0000-000000000000",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.mito-deutsche_chat": {
+      "name": "mito-deutsche_chat",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "identity": {
+            "type": "always",
+            "name": "mito-deutsche_chat_id_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1000",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "cache": "1",
+            "cycle": false
+          }
+        },
+        "send_date": {
+          "name": "send_date",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "CURRENT_TIMESTAMP"
+        },
+        "is_read": {
+          "name": "is_read",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    },
+    "public.mito-deutsche_messages": {
+      "name": "mito-deutsche_messages",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "identity": {
+            "type": "always",
+            "name": "mito-deutsche_messages_id_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "10000",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "cache": "1",
+            "cycle": false
+          }
+        },
+        "operator_id": {
+          "name": "operator_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "chat_id": {
+          "name": "chat_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "send_date": {
+          "name": "send_date",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "CURRENT_TIMESTAMP"
+        },
+        "notify_date": {
+          "name": "notify_date",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "content": {
+          "name": "content",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "message_chatId_idx": {
+          "name": "message_chatId_idx",
+          "columns": [
+            {
+              "expression": "chat_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    },
+    "public.mito-deutsche_customers": {
+      "name": "mito-deutsche_customers",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "'sDch0YehFZjFYwXd7eTsn'"
+        },
+        "fullname": {
+          "name": "fullname",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sede": {
+          "name": "sede",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "surname": {
+          "name": "surname",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fiscal_code": {
+          "name": "fiscal_code",
+          "type": "char(16)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "vat_code": {
+          "name": "vat_code",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "email": {
+          "name": "email",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "birthday_date": {
+          "name": "birthday_date",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "age": {
+          "name": "age",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "phone_number": {
+          "name": "phone_number",
+          "type": "varchar(20)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "address": {
+          "name": "address",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cap": {
+          "name": "cap",
+          "type": "varchar(5)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "blacklist_status": {
+          "name": "blacklist_status",
+          "type": "blacklist_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'whitelisted'"
+        },
+        "comune": {
+          "name": "comune",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "provincia": {
+          "name": "provincia",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "temp_id": {
+          "name": "temp_id",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "file_name": {
+          "name": "file_name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "unique_hash": {
+          "name": "unique_hash",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "reddito": {
+          "name": "reddito",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "occupazione": {
+          "name": "occupazione",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ambito_lavorativo": {
+          "name": "ambito_lavorativo",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tipo_contratto": {
+          "name": "tipo_contratto",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "CURRENT_TIMESTAMP"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'2024-09-26T19:51:25.695Z'"
+        },
+        "last_import_update": {
+          "name": "last_import_update",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "CURRENT_TIMESTAMP"
+        },
+        "chat_id": {
+          "name": "chat_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "operator_id": {
+          "name": "operator_id",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "source": {
+          "name": "source",
+          "type": "source_value",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "mito-deutsche_customers_chat_id_mito-deutsche_chat_id_fk": {
+          "name": "mito-deutsche_customers_chat_id_mito-deutsche_chat_id_fk",
+          "tableFrom": "mito-deutsche_customers",
+          "tableTo": "mito-deutsche_chat",
+          "columnsFrom": [
+            "chat_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "mito-deutsche_customers_operator_id_mito-deutsche_operator_id_fk": {
+          "name": "mito-deutsche_customers_operator_id_mito-deutsche_operator_id_fk",
+          "tableFrom": "mito-deutsche_customers",
+          "tableTo": "mito-deutsche_operator",
+          "columnsFrom": [
+            "operator_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "mito-deutsche_customers_temp_id_unique": {
+          "name": "mito-deutsche_customers_temp_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "temp_id"
+          ]
+        },
+        "mito-deutsche_customers_unique_hash_unique": {
+          "name": "mito-deutsche_customers_unique_hash_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "unique_hash"
+          ]
+        }
+      }
+    },
+    "public.mito-deutsche_practices": {
+      "name": "mito-deutsche_practices",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "identity": {
+            "type": "always",
+            "name": "mito-deutsche_practices_id_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1000",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "cache": "1",
+            "cycle": false
+          }
+        },
+        "pratica_id": {
+          "name": "pratica_id",
+          "type": "varchar(255)",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "region": {
+          "name": "region",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "des_punto_vendita": {
+          "name": "des_punto_vendita",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "des_convenzionato": {
+          "name": "des_convenzionato",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "subagente": {
+          "name": "subagente",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "importo_finanziato": {
+          "name": "importo_finanziato",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "importo_erogato": {
+          "name": "importo_erogato",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "rate_totali": {
+          "name": "rate_totali",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "importo_rata": {
+          "name": "importo_rata",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "rate_pagate": {
+          "name": "rate_pagate",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "debito_residuo": {
+          "name": "debito_residuo",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "data_liquidazione": {
+          "name": "data_liquidazione",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "data_estinzione": {
+          "name": "data_estinzione",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "importo_richiesto": {
+          "name": "importo_richiesto",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "payment_method": {
+          "name": "payment_method",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tasso_pratica": {
+          "name": "tasso_pratica",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "state": {
+          "name": "state",
+          "type": "State",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "is_wave": {
+          "name": "is_wave",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "file_name": {
+          "name": "file_name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "CURRENT_TIMESTAMP"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'2024-09-26T19:51:25.698Z'"
+        },
+        "last_import_update": {
+          "name": "last_import_update",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "CURRENT_TIMESTAMP"
+        },
+        "product_id": {
+          "name": "product_id",
+          "type": "char(2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "operator_id": {
+          "name": "operator_id",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "chat_id": {
+          "name": "chat_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "mito-deutsche_practices_operator_id_mito-deutsche_operator_id_fk": {
+          "name": "mito-deutsche_practices_operator_id_mito-deutsche_operator_id_fk",
+          "tableFrom": "mito-deutsche_practices",
+          "tableTo": "mito-deutsche_operator",
+          "columnsFrom": [
+            "operator_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "mito-deutsche_practices_chat_id_mito-deutsche_chat_id_fk": {
+          "name": "mito-deutsche_practices_chat_id_mito-deutsche_chat_id_fk",
+          "tableFrom": "mito-deutsche_practices",
+          "tableTo": "mito-deutsche_chat",
+          "columnsFrom": [
+            "chat_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    },
+    "public.mito-deutsche_account": {
+      "name": "mito-deutsche_account",
+      "schema": "",
+      "columns": {
+        "userId": {
+          "name": "userId",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "type": {
+          "name": "type",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "provider": {
+          "name": "provider",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "providerAccountId": {
+          "name": "providerAccountId",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "refresh_token": {
+          "name": "refresh_token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "access_token": {
+          "name": "access_token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "token_type": {
+          "name": "token_type",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "scope": {
+          "name": "scope",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "id_token": {
+          "name": "id_token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "session_state": {
+          "name": "session_state",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "account_userId_idx": {
+          "name": "account_userId_idx",
+          "columns": [
+            {
+              "expression": "userId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "mito-deutsche_account_userId_mito-deutsche_user_id_fk": {
+          "name": "mito-deutsche_account_userId_mito-deutsche_user_id_fk",
+          "tableFrom": "mito-deutsche_account",
+          "tableTo": "mito-deutsche_user",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "mito-deutsche_account_provider_providerAccountId_pk": {
+          "name": "mito-deutsche_account_provider_providerAccountId_pk",
+          "columns": [
+            "provider",
+            "providerAccountId"
+          ]
+        }
+      },
+      "uniqueConstraints": {}
+    },
+    "public.mito-deutsche_session": {
+      "name": "mito-deutsche_session",
+      "schema": "",
+      "columns": {
+        "sessionToken": {
+          "name": "sessionToken",
+          "type": "varchar(255)",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "userId": {
+          "name": "userId",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "expires": {
+          "name": "expires",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "session_userId_idx": {
+          "name": "session_userId_idx",
+          "columns": [
+            {
+              "expression": "userId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "mito-deutsche_session_userId_mito-deutsche_user_id_fk": {
+          "name": "mito-deutsche_session_userId_mito-deutsche_user_id_fk",
+          "tableFrom": "mito-deutsche_session",
+          "tableTo": "mito-deutsche_user",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    },
+    "public.mito-deutsche_user": {
+      "name": "mito-deutsche_user",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar(255)",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "email": {
+          "name": "email",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "emailVerified": {
+          "name": "emailVerified",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "CURRENT_TIMESTAMP"
+        },
+        "role": {
+          "name": "role",
+          "type": "UserRole",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'ADMIN'"
+        },
+        "image": {
+          "name": "image",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "preferences": {
+          "name": "preferences",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    },
+    "public.mito-deutsche_verificationToken": {
+      "name": "mito-deutsche_verificationToken",
+      "schema": "",
+      "columns": {
+        "identifier": {
+          "name": "identifier",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "token": {
+          "name": "token",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "expires": {
+          "name": "expires",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "mito-deutsche_verificationToken_identifier_token_pk": {
+          "name": "mito-deutsche_verificationToken_identifier_token_pk",
+          "columns": [
+            "identifier",
+            "token"
+          ]
+        }
+      },
+      "uniqueConstraints": {}
+    },
+    "public.mito-deutsche_products": {
+      "name": "mito-deutsche_products",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "identity": {
+            "type": "always",
+            "name": "mito-deutsche_products_id_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1000",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "cache": "1",
+            "cycle": false
+          }
+        },
+        "product_code": {
+          "name": "product_code",
+          "type": "char(2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "product_label": {
+          "name": "product_label",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "product_type": {
+          "name": "product_type",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "CURRENT_TIMESTAMP"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    },
+    "public.mito-deutsche_operator": {
+      "name": "mito-deutsche_operator",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "identity": {
+            "type": "always",
+            "name": "mito-deutsche_operator_id_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1000",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "cache": "1",
+            "cycle": false
+          }
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "surname": {
+          "name": "surname",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "CURRENT_TIMESTAMP"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "mito-deutsche_operator_user_id_unique": {
+          "name": "mito-deutsche_operator_user_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "user_id"
+          ]
+        }
+      }
+    },
+    "public.mito-deutsche_alert": {
+      "name": "mito-deutsche_alert",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "identity": {
+            "type": "always",
+            "name": "mito-deutsche_alert_id_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1000",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "cache": "1",
+            "cycle": false
+          }
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "CURRENT_TIMESTAMP"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "CURRENT_TIMESTAMP"
+        },
+        "deadline": {
+          "name": "deadline",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "task_id": {
+          "name": "task_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "message": {
+          "name": "message",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    },
+    "public.mito-deutsche_task": {
+      "name": "mito-deutsche_task",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "identity": {
+            "type": "always",
+            "name": "mito-deutsche_task_id_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1000",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "cache": "1",
+            "cycle": false
+          }
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "CURRENT_TIMESTAMP"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "CURRENT_TIMESTAMP"
+        },
+        "state": {
+          "name": "state",
+          "type": "task_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'nessuno'"
+        },
+        "closed_at": {
+          "name": "closed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "customer_id": {
+          "name": "customer_id",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "operator_id": {
+          "name": "operator_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "alert_id": {
+          "name": "alert_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "priority": {
+          "name": "priority",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "default": 0
+        },
+        "custom_priority": {
+          "name": "custom_priority",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "is_active": {
+          "name": "is_active",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "mito-deutsche_task_customer_id_mito-deutsche_customers_id_fk": {
+          "name": "mito-deutsche_task_customer_id_mito-deutsche_customers_id_fk",
+          "tableFrom": "mito-deutsche_task",
+          "tableTo": "mito-deutsche_customers",
+          "columnsFrom": [
+            "customer_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "mito-deutsche_task_operator_id_mito-deutsche_operator_id_fk": {
+          "name": "mito-deutsche_task_operator_id_mito-deutsche_operator_id_fk",
+          "tableFrom": "mito-deutsche_task",
+          "tableTo": "mito-deutsche_operator",
+          "columnsFrom": [
+            "operator_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "mito-deutsche_task_alert_id_mito-deutsche_alert_id_fk": {
+          "name": "mito-deutsche_task_alert_id_mito-deutsche_alert_id_fk",
+          "tableFrom": "mito-deutsche_task",
+          "tableTo": "mito-deutsche_alert",
+          "columnsFrom": [
+            "alert_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    },
+    "public.customers_to_pratiche": {
+      "name": "customers_to_pratiche",
+      "schema": "",
+      "columns": {
+        "customer_id": {
+          "name": "customer_id",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "pratica_id": {
+          "name": "pratica_id",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "customer_role": {
+          "name": "customer_role",
+          "type": "CustomerRole",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "customers_to_pratiche_customer_id_mito-deutsche_customers_id_fk": {
+          "name": "customers_to_pratiche_customer_id_mito-deutsche_customers_id_fk",
+          "tableFrom": "customers_to_pratiche",
+          "tableTo": "mito-deutsche_customers",
+          "columnsFrom": [
+            "customer_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "customers_to_pratiche_pratica_id_mito-deutsche_practices_pratica_id_fk": {
+          "name": "customers_to_pratiche_pratica_id_mito-deutsche_practices_pratica_id_fk",
+          "tableFrom": "customers_to_pratiche",
+          "tableTo": "mito-deutsche_practices",
+          "columnsFrom": [
+            "pratica_id"
+          ],
+          "columnsTo": [
+            "pratica_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "customers_to_pratiche_customer_id_pratica_id_pk": {
+          "name": "customers_to_pratiche_customer_id_pratica_id_pk",
+          "columns": [
+            "customer_id",
+            "pratica_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {}
+    },
+    "public.chat_to_operator": {
+      "name": "chat_to_operator",
+      "schema": "",
+      "columns": {
+        "chat_id": {
+          "name": "chat_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "operator_id": {
+          "name": "operator_id",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "chat_to_operator_chat_id_mito-deutsche_chat_id_fk": {
+          "name": "chat_to_operator_chat_id_mito-deutsche_chat_id_fk",
+          "tableFrom": "chat_to_operator",
+          "tableTo": "mito-deutsche_chat",
+          "columnsFrom": [
+            "chat_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "chat_to_operator_operator_id_mito-deutsche_operator_id_fk": {
+          "name": "chat_to_operator_operator_id_mito-deutsche_operator_id_fk",
+          "tableFrom": "chat_to_operator",
+          "tableTo": "mito-deutsche_operator",
+          "columnsFrom": [
+            "operator_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "chat_to_operator_chat_id_operator_id_pk": {
+          "name": "chat_to_operator_chat_id_operator_id_pk",
+          "columns": [
+            "chat_id",
+            "operator_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {}
+    }
+  },
+  "enums": {
+    "public.blacklist_status": {
+      "name": "blacklist_status",
+      "schema": "public",
+      "values": [
+        "blacklisted",
+        "whitelisted",
+        "review"
+      ]
+    },
+    "public.source_value": {
+      "name": "source_value",
+      "schema": "public",
+      "values": [
+        "spontaneo",
+        "passaparola",
+        "inbound",
+        "outbound",
+        "call center",
+        "post vendita",
+        "digital",
+        "banca",
+        "mito",
+        "wave",
+        "internal"
+      ]
+    },
+    "public.State": {
+      "name": "State",
+      "schema": "public",
+      "values": [
+        "Liquidata",
+        "Rifiutata",
+        "Chiusa",
+        "Estinta anticipata",
+        "Rinunciata",
+        "Stornata"
+      ]
+    },
+    "public.UserRole": {
+      "name": "UserRole",
+      "schema": "public",
+      "values": [
+        "ADMIN",
+        "OPERATORE"
+      ]
+    },
+    "public.CustomerRole": {
+      "name": "CustomerRole",
+      "schema": "public",
+      "values": [
+        "Intestatario",
+        "Coobbligato",
+        "Garante"
+      ]
+    }
+  },
+  "schemas": {},
+  "sequences": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

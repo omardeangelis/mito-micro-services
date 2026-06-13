@@ -1,0 +1,23 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended"
+  ],
+  "major": {
+    "dependencyDashboardApproval": true
+  },
+  "lockFileMaintenance": {
+    "enabled": true,
+    "recreateWhen": "always",
+    "rebaseStalePrs": true,
+    "branchTopic": "lock-file-maintenance",
+    "commitMessageAction": "Lock file maintenance",
+    "commitMessageTopic": "dependency {{depName}}",
+    "schedule": [
+      "before 4am on monday"
+    ],
+    "prBodyDefinitions": {
+      "Change": "All locks refreshed"
+    }
+  }
+}

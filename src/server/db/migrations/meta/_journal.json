@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1727380285713,
+      "tag": "20240926195125_lucky_roughhouse",
+      "breakpoints": true
+    }
+  ]
+}

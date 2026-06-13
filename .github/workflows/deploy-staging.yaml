@@ -1,0 +1,30 @@
+name: Deploy Platform to Dev
+env:
+  VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+  VERCEL_PROJECT_ID: ${{ secrets.VERCEL_STAGING_PROJECT_ID }}
+on:
+  push:
+    branches:
+      - dev
+jobs:
+  Vercel-Deploy-Dev:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+          run_install: false
+      - uses: actions/checkout@v4
+      - name: Override git author for Vercel
+        run: |
+          git config user.email "omardeangelis.business@gmail.com"
+          git config user.name "Omar De Angelis"
+          git commit --amend --no-edit --reset-author
+      - name: Install Vercel CLI
+        run: pnpm add --global vercel
+      - name: Pull Vercel Environment Information
+        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+      - name: Build Project Artifacts
+        run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+      - name: Deploy Project Artifacts to Vercel
+        run: vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
