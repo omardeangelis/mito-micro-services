@@ -96,12 +96,12 @@ export const PopoverDateFilter = ({
     (id: string) => {
       setActiveFilter((prev) => prev.filter((f) => f.id !== id))
     },
-    [setActiveFilter]
+    []
   )
 
   const clearAllFilters = useCallback(() => {
     setActiveFilter([])
-  }, [setActiveFilter])
+  }, [])
 
   const [errorsField, setErrorFields] = useState<
     Array<{ id: string; error: string }>
@@ -168,7 +168,7 @@ export const PopoverDateFilter = ({
       filterMap,
       errorsField,
     }),
-    [activeFilter, setActiveFilter, removeFilter, filterMap, errorsField]
+    [activeFilter, removeFilter, filterMap, errorsField]
   )
 
   return (

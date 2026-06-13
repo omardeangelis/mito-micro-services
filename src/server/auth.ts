@@ -4,7 +4,7 @@ import {
   type DefaultSession,
   type NextAuthOptions,
 } from "next-auth"
-import { type Adapter } from "next-auth/adapters"
+import { type AdapterUser, type Adapter } from "next-auth/adapters"
 import DiscordProvider from "next-auth/providers/discord"
 import AzureADProvider from "next-auth/providers/azure-ad"
 import Email from "next-auth/providers/email"
@@ -92,7 +92,7 @@ export const authOptions: NextAuthOptions = {
   },
   adapter: {
     ...DBAdapter,
-    createUser: async (user) => {
+    createUser: async (user: AdapterUser) => {
       // Rimuove l'immagine prima della creazione dell'utente
       const userWithoutImage = { ...user, image: null }
 
