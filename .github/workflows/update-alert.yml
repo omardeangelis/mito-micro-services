@@ -8,9 +8,9 @@ env:
   
 on:
   workflow_dispatch:
-  schedule:
-    # Esecuzione alle 00:00 UTC (01:00 CET) ogni giorno
-    - cron: "0 3 * * *"
+  # schedule:  # disabilitato su ambiente di test
+  #   # Esecuzione alle 00:00 UTC (01:00 CET) ogni giorno
+  #   - cron: "0 3 * * *"
 
 jobs:
   delete-supabase-storage:
