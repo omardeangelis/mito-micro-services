@@ -1,0 +1,920 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MITO CRM — Cessioni e lavorazioni coesistenti · Handover tecnico</title>
+<style>
+  :root {
+    --bg: #fbfaf9;
+    --surface: #ffffff;
+    --surface-2: #f4f2f0;
+    --text: #1c1b1a;
+    --text-dim: #6b6764;
+    --border: #e3dfdb;
+    --accent: #b8543a;
+    --accent-soft: #fdf2ef;
+    --danger: #c0392b;
+    --danger-soft: #fdf0ee;
+    --warn: #b07800;
+    --warn-soft: #fdf7e8;
+    --ok: #2f7a4d;
+    --ok-soft: #eef7f1;
+    --code-bg: #f4f2f0;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #161514;
+      --surface: #1d1c1b;
+      --surface-2: #232120;
+      --text: #eae7e4;
+      --text-dim: #9b9490;
+      --border: #322f2d;
+      --accent: #e08066;
+      --accent-soft: #2a1f1c;
+      --danger: #e8776a;
+      --danger-soft: #2c1c1a;
+      --warn: #e0ac4a;
+      --warn-soft: #2a2317;
+      --ok: #6fbd8c;
+      --ok-soft: #1a2620;
+      --code-bg: #232120;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; scroll-padding-top: 1.5rem; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-size: 16px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 0 1.25rem; }
+  .layout { display: block; }
+  @media (min-width: 1040px) {
+    .layout { display: grid; grid-template-columns: 220px minmax(0,1fr); gap: 3rem; align-items: start; }
+    nav.toc { position: sticky; top: 1.5rem; max-height: calc(100vh - 3rem); overflow-y: auto; }
+  }
+
+  /* ---- header ---- */
+  header.hero {
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    padding: 2.75rem 0 2.25rem;
+    margin-bottom: 2.5rem;
+  }
+  .eyebrow {
+    font-size: .72rem; letter-spacing: .12em; text-transform: uppercase;
+    color: var(--accent); font-weight: 600; margin: 0 0 .6rem;
+  }
+  h1 { font-size: clamp(1.7rem, 4vw, 2.35rem); line-height: 1.2; margin: 0 0 .75rem; letter-spacing: -.02em; }
+  .lede { font-size: 1.05rem; color: var(--text-dim); margin: 0; max-width: 62ch; }
+  .meta { margin-top: 1.5rem; display: flex; flex-wrap: wrap; gap: .5rem 1.5rem; font-size: .82rem; color: var(--text-dim); }
+  .meta b { color: var(--text); font-weight: 600; }
+
+  /* ---- toc ---- */
+  nav.toc { font-size: .85rem; }
+  nav.toc p { font-size: .7rem; letter-spacing: .1em; text-transform: uppercase; color: var(--text-dim); margin: 0 0 .7rem; font-weight: 600; }
+  nav.toc ol { list-style: none; margin: 0; padding: 0; counter-reset: toc; }
+  nav.toc li { counter-increment: toc; margin-bottom: .3rem; }
+  nav.toc a {
+    display: block; padding: .28rem .55rem .28rem 1.9rem; position: relative;
+    color: var(--text-dim); text-decoration: none; border-radius: 5px;
+  }
+  nav.toc a::before {
+    content: counter(toc); position: absolute; left: .55rem;
+    font-variant-numeric: tabular-nums; color: var(--accent); font-weight: 600; opacity: .75;
+  }
+  nav.toc a:hover { background: var(--surface-2); color: var(--text); }
+  @media (max-width: 1039px) {
+    nav.toc { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1rem 1.1rem; margin-bottom: 2.5rem; }
+  }
+
+  /* ---- sections ---- */
+  section { margin-bottom: 3.25rem; scroll-margin-top: 1.5rem; }
+  h2 {
+    font-size: 1.35rem; letter-spacing: -.015em; margin: 0 0 1.1rem;
+    padding-bottom: .55rem; border-bottom: 2px solid var(--border);
+  }
+  h2 .num { color: var(--accent); font-variant-numeric: tabular-nums; margin-right: .55rem; }
+  h3 { font-size: 1.02rem; margin: 2rem 0 .7rem; letter-spacing: -.01em; }
+  p { margin: 0 0 1rem; }
+  ul, ol { margin: 0 0 1rem; padding-left: 1.35rem; }
+  li { margin-bottom: .45rem; }
+  a { color: var(--accent); }
+  strong { font-weight: 650; }
+  hr { border: 0; border-top: 1px solid var(--border); margin: 2.5rem 0; }
+
+  /* ---- code ---- */
+  code {
+    font-family: var(--mono); font-size: .855em;
+    background: var(--code-bg); padding: .12em .38em; border-radius: 4px;
+    border: 1px solid var(--border);
+  }
+  pre {
+    background: var(--code-bg); border: 1px solid var(--border); border-radius: 8px;
+    padding: .95rem 1.1rem; overflow-x: auto; margin: 0 0 1.25rem;
+    font-size: .84rem; line-height: 1.6;
+  }
+  pre code { background: none; border: 0; padding: 0; font-size: inherit; }
+  .cm { color: var(--text-dim); font-style: italic; }
+  .kw { color: var(--accent); font-weight: 600; }
+
+  /* ---- tables ---- */
+  .tw { overflow-x: auto; margin: 0 0 1.4rem; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); }
+  table { border-collapse: collapse; width: 100%; font-size: .875rem; }
+  th, td { text-align: left; padding: .6rem .8rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { background: var(--surface-2); font-weight: 600; font-size: .78rem; letter-spacing: .03em; text-transform: uppercase; color: var(--text-dim); white-space: nowrap; }
+  tbody tr:last-child td { border-bottom: 0; }
+  td code { font-size: .82em; }
+  .num-col { font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  /* ---- callouts ---- */
+  .box {
+    border: 1px solid var(--border); border-left-width: 3px; border-radius: 6px;
+    padding: .9rem 1.1rem; margin: 0 0 1.4rem; background: var(--surface);
+  }
+  .box > :last-child { margin-bottom: 0; }
+  .box .lbl { display: block; font-size: .7rem; letter-spacing: .1em; text-transform: uppercase; font-weight: 700; margin-bottom: .4rem; }
+  .box.danger { border-left-color: var(--danger); background: var(--danger-soft); }
+  .box.danger .lbl { color: var(--danger); }
+  .box.warn { border-left-color: var(--warn); background: var(--warn-soft); }
+  .box.warn .lbl { color: var(--warn); }
+  .box.ok { border-left-color: var(--ok); background: var(--ok-soft); }
+  .box.ok .lbl { color: var(--ok); }
+  .box.info { border-left-color: var(--accent); background: var(--accent-soft); }
+  .box.info .lbl { color: var(--accent); }
+
+  .tag {
+    display: inline-block; font-size: .68rem; font-weight: 700; letter-spacing: .04em;
+    padding: .12em .45em; border-radius: 4px; vertical-align: middle; white-space: nowrap;
+  }
+  .tag.red { background: var(--danger-soft); color: var(--danger); border: 1px solid var(--danger); }
+  .tag.amber { background: var(--warn-soft); color: var(--warn); border: 1px solid var(--warn); }
+  .tag.green { background: var(--ok-soft); color: var(--ok); border: 1px solid var(--ok); }
+
+  .file { font-family: var(--mono); font-size: .8rem; color: var(--text-dim); }
+
+  /* ---- two column compare ---- */
+  .cmp { display: grid; gap: 1rem; margin-bottom: 1.4rem; }
+  @media (min-width: 720px) { .cmp { grid-template-columns: 1fr 1fr; } }
+  .cmp > div { border: 1px solid var(--border); border-radius: 8px; padding: .9rem 1.05rem; background: var(--surface); }
+  .cmp h4 { margin: 0 0 .6rem; font-size: .78rem; letter-spacing: .08em; text-transform: uppercase; color: var(--text-dim); }
+  .cmp > div > :last-child { margin-bottom: 0; }
+  .cmp pre { margin-bottom: 0; font-size: .78rem; }
+
+  footer { border-top: 1px solid var(--border); margin-top: 4rem; padding: 2rem 0 3rem; color: var(--text-dim); font-size: .85rem; }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <p class="eyebrow">MITO CustomCRM · Handover tecnico</p>
+    <h1>Cessioni, lavorazioni coesistenti<br>e riordino della macchina task</h1>
+    <p class="lede">Contesto e specifica delle modifiche in arrivo sul CRM: cosa cambia nel modello dati, quali punti di codice vanno toccati, quali bug preesistenti emergono, e in che ordine conviene lavorare.</p>
+    <div class="meta">
+      <span><b>Versione</b> 1.0</span>
+      <span><b>Data</b> 4 agosto 2026</span>
+      <span><b>Stato</b> specifica approvata, implementazione da avviare</span>
+      <span><b>Stima</b> 35–43 gg uomo</span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+<div class="layout">
+
+<nav class="toc">
+  <p>Indice</p>
+  <ol>
+    <li><a href="#s1">Perché stiamo facendo questo</a></li>
+    <li><a href="#s2">Il tracciato: campi e formati</a></li>
+    <li><a href="#s3">La decisione centrale</a></li>
+    <li><a href="#s4">Modello dati: <code>task.kind</code></a></li>
+    <li><a href="#s5">Chi possiede il cliente</a></li>
+    <li><a href="#s6">Identità della lavorazione</a></li>
+    <li><a href="#s7">Conteggio chiamate ed export</a></li>
+    <li><a href="#s8">Task e pratiche: cosa NON fare</a></li>
+    <li><a href="#s9">Frontend a verticali</a></li>
+    <li><a href="#s10">Bug preesistenti</a></li>
+    <li><a href="#s11">Inventario dei punti di codice</a></li>
+    <li><a href="#s12">Piano di lavoro</a></li>
+    <li><a href="#s13">Domande aperte</a></li>
+  </ol>
+</nav>
+
+<main>
+
+<!-- ============ 1 ============ -->
+<section id="s1">
+  <h2><span class="num">1</span>Perché stiamo facendo questo</h2>
+
+  <p>Oggi il CRM riceve le pratiche via <strong>import CSV/XLSX</strong> orchestrato dal browser. Sta per cambiare la fonte: un fornitore esterno parserà degli <strong>XML</strong>, li tradurrà in JSON e li invierà a una nostra <strong>API di ingestion</strong>. Non dobbiamo occuparci del parsing XML.</p>
+
+  <p>Il tracciato in arrivo porta due novità:</p>
+
+  <ol>
+    <li><strong>16 campi anagrafici nuovi</strong> sui clienti, più un cambio di formato su 8 campi esistenti e la sparizione della chiave cliente attuale. Elenco completo in <a href="#s2">§2</a>.</li>
+    <li><strong>Nuovi codici prodotto che rappresentano le cessioni.</strong> Fino a oggi il CRM conosce una sola famiglia di prodotto — i prestiti. Da ora ce ne sono due, e questa è la parte strutturale.</li>
+  </ol>
+
+  <p>Tra prestiti e cessioni cambiano principalmente i codici prodotto e alcuni stati ammessi. Il resto dei campi è identico. Quindi <strong>non</strong> serve una seconda tabella pratiche: serve un discriminante di famiglia.</p>
+
+  <div class="box info">
+    <span class="lbl">Il punto non ovvio</span>
+    <p>La parte costosa non sono le pratiche — sono <strong>le task</strong>. L'intera macchina di lavorazione (assegnazione, alert, priorità, export) è costruita sull'assunto implicito <em>"un cliente = una lavorazione"</em>. Quell'assunto salta.</p>
+  </div>
+</section>
+
+<!-- ============ 2 ============ -->
+<section id="s2">
+  <h2><span class="num">2</span>Il tracciato: cosa arriva e cosa cambia</h2>
+
+  <p>Il tracciato è definito nel file <code>MITO CustomCRM v2.0.xlsx</code>, con una legenda a colori (righe 70–74):</p>
+
+  <div class="tw">
+  <table>
+    <thead><tr><th>Colore</th><th>Significato</th><th>Righe del tracciato</th></tr></thead>
+    <tbody>
+      <tr><td>bianco</td><td>dato invariato rispetto al CSV</td><td class="num-col">4, 17, 18, 33, 38, 42, 43, 44</td></tr>
+      <tr><td>grigio</td><td>dato <strong>non più gestito</strong></td><td class="num-col">5–10, 12, 13, 14, 16, 27, 34</td></tr>
+      <tr><td>verde</td><td>dato confermato ma <strong>con formato diverso</strong></td><td class="num-col">11, 15, 26, 28, 29, 32, 35, 41</td></tr>
+      <tr><td>azzurro</td><td><strong>nuovo dato</strong> non presente nel CSV</td><td class="num-col">51–66</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="box danger">
+    <span class="lbl">Sparisce la chiave cliente</span>
+    <p>Tra i campi non più gestiti c'è <code>CLIENTE</code>, che oggi popola <code>customers.temp_id</code> (<code>NOT NULL UNIQUE</code>, <span class="file">standardFile.ts:88</span>). <strong>Senza un sostituto l'import non parte proprio.</strong> Il sostituto naturale è il nuovo <code>opNDGDati</code> (riga 52), che è già il campo usato dal flusso Wave come <code>Codice NDG</code>.</p>
+    <p>Spariscono anche <code>AGENTE</code>, <code>PUNTO_VENDITA</code>, <code>CONVENZIONATO</code>, i <code>DES_*</code> e <code>DATA_CARICAMENTO</code> — vedi più sotto.</p>
+  </div>
+
+  <h3>2.1 I 7 campi che <em>non</em> richiedono colonne nuove</h3>
+
+  <p>Delle 16 righe azzurre, sette alimentano campi che <strong>esistono già</strong> su <code>customers</code> e che oggi restano <code>null</code> per tutte le pratiche importate da CSV Standard (<span class="file">standardFile.ts:96-100</span>):</p>
+
+  <div class="tw">
+  <table>
+    <thead><tr><th>Campo XML</th><th>Campo CRM esistente</th></tr></thead>
+    <tbody>
+      <tr><td><code>opDataN</code></td><td><code>customers.birthday_date</code></td></tr>
+      <tr><td><code>opTel2</code></td><td><code>customers.phone_number</code></td></tr>
+      <tr><td><code>opEmail</code></td><td><code>customers.email</code></td></tr>
+      <tr><td><code>opRevenue</code></td><td><code>customers.reddito</code></td></tr>
+      <tr><td><code>opCateg</code></td><td><code>customers.occupazione</code></td></tr>
+      <tr><td><code>opContractType</code></td><td><code>customers.tipo_contratto</code></td></tr>
+      <tr><td><code>opRules</code></td><td><code>customers_to_pratiche.customer_role</code></td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="box ok">
+    <span class="lbl">Il vero valore del cambio</span>
+    <p>Oggi email, telefono e data di nascita esistono <strong>solo per i clienti Wave</strong>. Da domani li avremo su tutto il flusso principale. Tutta la macchina di task/alert/priorità — che serve a <em>chiamare</em> i clienti — oggi lavora su anagrafiche mutilate.</p>
+  </div>
+
+  <div class="box warn">
+    <span class="lbl">Attenzione al formato telefono</span>
+    <p><code>phone_number</code> è <code>varchar(20)</code>: <code>0039 3273672188</code> ci sta, <code>+39 327 3672188 int. 2</code> no. Va normalizzato in ingresso o allargata la colonna.</p>
+  </div>
+
+  <h3>2.2 <code>customers</code> — 8 colonne nuove + 1 chiave</h3>
+
+<pre><code><span class="cm">// src/server/db/schema/customers.ts</span>
+ndg:                       varchar("ndg", { length: 32 }),                <span class="cm">// opNDGDati — vedi sotto</span>
+statoCivile:               varchar("stato_civile", { length: 50 }),       <span class="cm">// opStatoCivile</span>
+nazionalita:               varchar("nazionalita", { length: 100 }),       <span class="cm">// opNaz</span>
+cittadinoEu:               boolean("cittadino_eu"),                       <span class="cm">// opCittEU ('S'/'N')</span>
+permessoSoggiorno:         varchar("permesso_soggiorno", { length: 100 }),<span class="cm">// opPSogg       ⚠️ dato delicato</span>
+scadenzaPermessoSoggiorno: timestamp("scadenza_permesso_soggiorno", { withTimezone: true }), <span class="cm">// opScadPSogg ⚠️</span>
+datoreLavoro:              varchar("datore_lavoro", { length: 255 }),     <span class="cm">// opEmployeeAt</span>
+anzianitaProfessionale:    timestamp("anzianita_professionale", { withTimezone: true }),     <span class="cm">// opSenProf ('01/2025' → primo del mese)</span>
+cfDatoreLavoro:            varchar("cf_datore_lavoro", { length: 16 }),   <span class="cm">// op_CF_Azienda — NON è customers.vat_code</span></code></pre>
+
+  <p>Nessuna di queste è strutturalmente complicata: sono attributi scalari sul cliente.</p>
+
+  <div class="box danger">
+    <span class="lbl">Dati personali di categoria delicata</span>
+    <p><code>opPSogg</code> / <code>opScadPSogg</code> (permesso di soggiorno) e <code>opNaz</code> (nazionalità) vanno trattati come tali: <strong>fuori dagli export di default, non esposti in tabella</strong>. Prima ancora, va chiesto se servono davvero al processo commerciale — se la risposta è no, la cosa più economica e più sicura è <strong>non salvarli</strong>.</p>
+  </div>
+
+  <h4 style="margin:1.5rem 0 .5rem;font-size:.95rem;">Sulla chiave cliente (<code>ndg</code>)</h4>
+
+  <p>Due strade possibili:</p>
+  <ol>
+    <li><strong>Riusare <code>temp_id</code></strong> scrivendoci l'NDG — zero migrazioni, ma continuiamo a chiamare "temp" una chiave permanente e mescoliamo due spazi di identificatori (codici cliente CSV storici + NDG).</li>
+    <li><strong>Aggiungere <code>ndg</code></strong> con indice unico parziale, lasciando <code>temp_id</code> al passato e deprecandolo. <span class="tag green">RACCOMANDATA</span></li>
+  </ol>
+
+  <div class="box warn">
+    <span class="lbl">Da sistemare nella stessa occasione</span>
+    <p><code>unique_hash</code> è calcolato come <code>md5(tempID + nanoid())</code> (<span class="file">utils/index.ts:189</span>): essendo il <code>nanoid</code> generato a ogni riga, l'hash è <strong>unico per costruzione</strong> e non deduplica nulla. La dedup reale avviene su codice fiscale / partita IVA in <span class="file">updateCustomers.ts:28</span>. Va documentato o rimosso, non lasciato lì come falsa garanzia.</p>
+  </div>
+
+  <h3>2.3 <code>practices</code> — 4 colonne nuove</h3>
+
+<pre><code><span class="cm">// src/server/db/schema/pratiche.ts</span>
+ocsPracticeId: varchar("ocs_practice_id", { length: 64 }),  <span class="cm">// riga 2 del tracciato</span>
+sourceXmlHash: varchar("source_xml_hash", { length: 64 }),  <span class="cm">// riga 3 — idempotenza dei delta</span>
+brandId:       char("brand_id", { length: 3 }),             <span class="cm">// riga 6 ('DBE') — oggi inglobato in region</span>
+kind:          practiceKind("kind").notNull().default("prestito"),</code></pre>
+
+  <p><code>source_xml_hash</code> è il campo che rende l'ingestion <strong>idempotente</strong>: il consumer esterno manda delta giornalieri e fa retry. Se l'hash del payload non è cambiato si salta la riga <em>senza toccare</em> <code>updated_at</code> / <code>last_import_update</code> — che oggi guidano la dashboard "ultimi aggiornamenti" e la priorità delle task.</p>
+
+  <div class="box warn">
+    <span class="lbl">Campi che restano ma perdono la sorgente</span>
+    <p><code>des_punto_vendita</code>, <code>des_convenzionato</code> e <code>subagente</code>. L'XML manda solo <code>opUser</code> (es. <code>009086794</code>) e la nota nel tracciato dice esplicitamente <em>"Decodifica in carico al CRM"</em>. Serve quindi una <strong>tabella di decodifica</strong> <code>subagente → (des_subagente, punto_vendita, sede)</code>, oggi inesistente: il valore è ricavato per stringa da <code>DES_SUBAGENTE</code> con <code>standardizeSede()</code> (<span class="file">import/_utils/index.ts:260</span>).</p>
+    <p>Senza quella tabella <code>customers.sede</code> resta vuoto e <strong>il filtro "Sede" della lista clienti smette di funzionare sui nuovi record</strong>. È il blocco C del piano.</p>
+  </div>
+
+  <h3>2.4 <code>products</code> — da tabella morta a catalogo reale</h3>
+
+  <p><code>mito-deutsche_products</code> esiste, viene popolata dai seed e <strong>non è letta da nessuna query dell'applicazione</strong> (verificato: zero import fuori da schema e seed). La verità è la <code>Map</code> hardcoded in <code>src/lib/constants/productMap.ts</code>, referenziata da <strong>16 file</strong>. In più la relation Drizzle è rotta: <code>practices.product_id</code> è <code>char(2)</code> (<code>"01"</code>) mentre punta a <code>products.id</code>, che è un <code>integer</code> identity da 1000 — non farà mai match.</p>
+
+  <p>Siccome le cessioni <em>sono</em> nuovi codici prodotto, è il momento giusto per sistemarlo:</p>
+
+<pre><code>productCode:   char("product_code", { length: 2 }).notNull().unique(),
+productFamily: productFamily("product_family").notNull(),  <span class="cm">// 'prestito' | 'cessione'</span>
+isActive:      boolean("is_active").notNull().default(true),</code></pre>
+
+  <p>e far puntare <code>practices.product_id → products.product_code</code> con una FK vera. Da lì <code>product_family</code> diventa la fonte di verità che pilota tutta la separazione Prestiti/Cessioni, e aggiungere un prodotto diventa una riga di tabella invece di un deploy.</p>
+
+  <div class="box info">
+    <span class="lbl">Sulla type safety che sembra di perdere</span>
+    <p><code>ProductMapKey</code> è una union di 30 literal, ma <strong>ogni singolo call site la ottiene con un cast</strong> (<code>product?.toString() as ProductMapKey</code> — verificato in tutti e 7 i punti di lookup). La garanzia è già fittizia. Passare a <code>string</code> + validazione contro il catalogo al confine non perde nulla di reale e aggiunge un controllo che oggi manca: un codice prodotto sconosciuto oggi passa l'import in silenzio e in UI diventa un badge vuoto.</p>
+  </div>
+
+  <h3>2.5 Le tre correzioni di parsing bloccanti</h3>
+
+  <p>Indipendenti dalle cessioni, ma vanno per prime perché <strong>possono corrompere dati già in produzione</strong>:</p>
+
+  <div class="tw">
+  <table>
+    <thead><tr><th></th><th>Problema</th><th>Effetto</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><span class="tag red">1</span></td>
+        <td><strong>Decimali in formato italiano.</strong> <code>invertCommaAndDot</code> (<span class="file">import/_utils/index.ts:241</span>) su <code>"8557,00"</code> produce <code>"8557@00"</code> → <code>"8557.00"</code> → poi elimina i punti → <code>"855700"</code></td>
+        <td>Importi moltiplicati per 100</td>
+      </tr>
+      <tr>
+        <td><span class="tag red">2</span></td>
+        <td><strong>Date <code>dd-MM-yyyy HH:mm</code>.</strong> <code>parseDateInput</code> (<span class="file">lib/utils/index.ts:80</span>) gestisce seriale Excel, <code>YYYYMMDD</code>, <code>M/D/YY</code> e <code>ddMMMyyyy</code>, ma non questo formato: ritorna <code>null</code></td>
+        <td>Il chiamante sostituisce con <code>new Date()</code>: la data di liquidazione diventa <strong>oggi</strong></td>
+      </tr>
+      <tr>
+        <td><span class="tag red">3</span></td>
+        <td><strong>Stati testuali.</strong> Arriva <code>LIQUIDATA</code> invece di <code>40 Erogata</code>; <code>mergePraticaState</code> ha un fallback silenzioso (<code>rateTotali === ratePagate ? "Chiusa" : "Liquidata"</code>)</td>
+        <td>Stati inventati senza alcun errore visibile</td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+
+  <p>Vanno affrontate anche le codifiche con <strong>zeri iniziali</strong> (<code>009086794</code>, <code>01</code>, <code>072</code>): vanno lette come stringhe, non come numeri.</p>
+
+  <div class="box warn">
+    <span class="lbl">Un campo resta senza sorgente</span>
+    <p><code>customers.ambito_lavorativo</code> è marcato come necessario nel tracciato (riga 48) ma <strong>non ha un path XML</strong>. <code>opCateg</code> mappa su <code>occupazione</code>, non su <code>ambito</code>. È una domanda aperta per il fornitore (<a href="#s13">§13</a>).</p>
+  </div>
+</section>
+
+<!-- ============ 3 ============ -->
+<section id="s3">
+  <h2><span class="num">3</span>La decisione centrale</h2>
+
+  <div class="box ok">
+    <span class="lbl">Decisione presa</span>
+    <p>Un cliente può avere <strong>contemporaneamente</strong> una lavorazione prestito e una lavorazione cessione, con stati diversi e operatori diversi.</p>
+  </div>
+
+  <p>È lo scenario più complesso dei due possibili, ed è stato scelto deliberatamente: l'alternativa (una lavorazione alla volta, si sceglie la famiglia) sarebbe costata meno ma avrebbe impedito di lavorare commercialmente lo stesso cliente su due fronti — che è precisamente il motivo per cui si aggiungono le cessioni.</p>
+
+  <p>Da questa decisione discende tutto il resto del documento.</p>
+</section>
+
+<!-- ============ 3 ============ -->
+<section id="s4">
+  <h2><span class="num">4</span>Modello dati: <code>task.kind</code> + invariante a DB</h2>
+
+<pre><code><span class="kw">ALTER TABLE</span> "mito-deutsche_task"
+  <span class="kw">ADD COLUMN</span> kind practice_kind <span class="kw">NOT NULL DEFAULT</span> 'prestito';
+
+<span class="cm">-- una sola lavorazione attiva per (cliente, famiglia)</span>
+<span class="kw">CREATE UNIQUE INDEX</span> task_one_active_per_customer_kind
+  <span class="kw">ON</span> "mito-deutsche_task" (customer_id, kind) <span class="kw">WHERE</span> is_active;</code></pre>
+
+  <p>Il <code>DEFAULT 'prestito'</code> fa sì che tutte le task esistenti diventino prestiti senza script di backfill.</p>
+
+  <h3>Come si legge l'indice unico parziale</h3>
+
+  <p>«Non possono esistere due righe con la stessa coppia <code>(customer_id, kind)</code> <strong>tra quelle con <code>is_active = true</code></strong>». Il <code>WHERE</code> è la parte "parziale": Postgres indicizza solo le righe attive e ignora le altre — fondamentale, perché un cliente accumula decine di task chiuse nello storico.</p>
+
+  <div class="tw">
+  <table>
+    <thead><tr><th>Cliente</th><th>kind</th><th>is_active</th><th>Ammesso?</th></tr></thead>
+    <tbody>
+      <tr><td>Rossi</td><td>prestito</td><td>✅</td><td>sì</td></tr>
+      <tr><td>Rossi</td><td>cessione</td><td>✅</td><td><strong>sì</strong> — è la coesistenza che vogliamo</td></tr>
+      <tr><td>Rossi</td><td>prestito</td><td>✅</td><td>❌ <strong>il DB rifiuta l'INSERT</strong></td></tr>
+      <tr><td>Rossi</td><td>prestito</td><td>❌ (chiusa)</td><td>sì, quante ne vuoi</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3>Perché l'indice è il pezzo che vale davvero</h3>
+
+  <p>La regola "una task attiva per cliente" <strong>oggi non è applicata da nessuna parte</strong>: non c'è vincolo né check, solo tre o quattro punti applicativi che provano a rispettarla facendo <code>update … set isActive = false</code> prima di inserire. È già rotta, e sta scritto nel codice:</p>
+
+<pre><code><span class="cm">// NB: un cliente può avere più task con isActive=true (bug noto sui duplicati)</span></code></pre>
+  <p class="file">src/server/api/routers/task/GET/index.ts:142</p>
+
+  <p>Il workaround è ordinare per <code>GREATEST(updatedAt, createdAt)</code> e prendere la prima riga — cioè «se ce ne sono due tengo la più recente e spero sia quella giusta». Funziona quasi sempre <em>finché entrambe sono prestiti</em>.</p>
+
+  <div class="box danger">
+    <span class="lbl">Perché il workaround muore</span>
+    <p>Con la coesistenza le due righe possono essere un prestito e una cessione. «La più recente» restituisce una delle due a caso — quella toccata per ultima. La schermata del prestito mostrerebbe lo stato della cessione. Il cerotto su un bug raro diventa un errore sistematico.</p>
+  </div>
+
+  <div class="box warn">
+    <span class="lbl">Ordine obbligato della migrazione</span>
+    <p>Postgres non crea un indice unico se i dati lo violano già. Quindi: <strong>1)</strong> conta i duplicati con <code>SELECT customer_id FROM task WHERE is_active GROUP BY customer_id HAVING count(*) &gt; 1</code>; <strong>2)</strong> disattiva tutti tranne il più recente per cliente, usando <em>lo stesso criterio</em> che l'app applica già a runtime (così la migrazione congela il comportamento attuale invece di reinterpretarlo); <strong>3)</strong> solo ora crea l'indice.</p>
+  </div>
+</section>
+
+<!-- ============ 4 ============ -->
+<section id="s5">
+  <h2><span class="num">5</span>Chi possiede il cliente</h2>
+
+  <p>Esistono già due campi operatore: <code>customers.operator_id</code> e <code>task.operator_id</code>. Oggi il codice li tiene forzatamente uguali — cambiando il referente dell'anagrafica si riassegna anche la task (<span class="file">updateCustomer.ts:60-68</span>). Siccome coincidono sempre, nessuno ha mai dovuto decidere quale significhi cosa, e i controlli di permesso leggono l'uno o l'altro a caso:</p>
+
+  <div class="tw">
+  <table>
+    <thead><tr><th>Punto</th><th>Legge</th></tr></thead>
+    <tbody>
+      <tr><td><span class="file">CustomerForm.tsx:139</span> — <code>canEdit</code></td><td><code>customers.operatorId</code></td></tr>
+      <tr><td><span class="file">CustomerColumns.tsx:531</span> — cambio stato task</td><td>confronta <code>customers.operatorId !== task.operatorId</code></td></tr>
+      <tr><td><span class="file">customer/GET:222</span> — filtro "solo i miei"</td><td><code>customers.operatorId</code></td></tr>
+      <tr><td><span class="file">cron/alert:73</span> — operatore della followup</td><td><code>customers.operatorId</code></td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <p>Il secondo è il più istruttivo: non chiede «sei tu il proprietario?» ma «il proprietario del cliente e quello della task coincidono?». Va in errore nell'istante in cui divergono, e blocca proprio l'operatore che la lavorazione ce l'ha davvero.</p>
+
+  <p>Con la coesistenza la divergenza è la normalità: Anna lavora il prestito di Rossi, Luca la cessione. I due campi non possono più essere uguali.</p>
+
+  <h3>Separazione decisa</h3>
+
+  <div class="tw">
+  <table>
+    <thead><tr><th>Concetto</th><th>Campo</th><th>Chi lo cambia</th></tr></thead>
+    <tbody>
+      <tr><td>Proprietario della <strong>lavorazione</strong></td><td><code>task.operator_id</code></td><td>"Assegna Chiamate", presa in carico, riassegnazione</td></tr>
+      <tr><td><strong>Referente</strong> dell'anagrafica</td><td><code>customers.operator_id</code></td><td>solo "Assegna Clienti"</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <p>Ogni domanda va posta al campo giusto:</p>
+
+  <div class="tw">
+  <table>
+    <thead><tr><th>Domanda</th><th>Risponde</th></tr></thead>
+    <tbody>
+      <tr><td>Chi può cambiare lo stato di questa task?</td><td><code>task.operator_id</code></td></tr>
+      <tr><td>Chi la vede in "Attività → solo le mie"?</td><td><code>task.operator_id</code></td></tr>
+      <tr><td>A chi va la followup del cron?</td><td><code>task.operator_id</code></td></tr>
+      <tr><td>Chi può modificare CF / reddito / recapiti?</td><td><code>customers.operator_id</code></td></tr>
+      <tr><td>Chi vede il cliente in "Clienti → solo i miei"?</td><td><code>customers.operator_id</code></td></tr>
+      <tr><td>Operatore di default di una nuova lavorazione?</td><td><code>customers.operator_id</code></td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="box warn">
+    <span class="lbl">Unico cambiamento visibile agli utenti</span>
+    <p><code>updateCustomer.ts:60</code> smette di propagare: cambiare il referente dell'anagrafica <strong>non riassegna più</strong> le lavorazioni aperte. Per riassegnare una lavorazione si va su Attività. Da concordare con il business prima del rilascio.</p>
+  </div>
+
+  <p>Non è un'invenzione: la distinzione è già implicita nei due bottoni "Assegna Chiamate" / "Assegna Clienti". La stiamo solo rendendo esplicita nel modello.</p>
+</section>
+
+<!-- ============ 5 ============ -->
+<section id="s6">
+  <h2><span class="num">6</span>Identità della lavorazione</h2>
+
+  <p>La "lavorazione" — che nasce quando il cliente diventa contattabile e muore quando è erogata o rifiutata — <strong>non ha un'identità nel database</strong>. Nel percorso lineare la riga <code>task</code> viene aggiornata in place, ma in tre punti viene invece <em>sostituita</em> da una riga nuova:</p>
+
+  <div class="tw">
+  <table>
+    <thead><tr><th>Punto</th><th>Cosa fa oggi</th></tr></thead>
+    <tbody>
+      <tr><td><span class="file">cron/alert:79</span></td><td>INSERT <code>followup</code> + disattiva la precedente, copiando <code>closedAt</code></td></tr>
+      <tr><td><span class="file">taskStatusAction:38</span> — riapertura</td><td>INSERT + disattiva, copiando <code>closedAt</code></td></tr>
+      <tr><td><span class="file">task/POST:349</span> — bulk</td><td>INSERT + <code>set isActive=false WHERE customer_id = …</code></td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <p>Più <code>createTask</code> (<span class="file">task/POST:25</span>) che <strong>inserisce senza disattivare la precedente</strong>: è la sorgente più probabile dei duplicati attivi noti.</p>
+
+  <div class="box danger">
+    <span class="lbl">La cicatrice nel codice</span>
+    <p><em>«La nuova task attiva non deve nascere agganciata all'alert che stiamo risolvendo qui sotto: altrimenti getActiveAlerts lo ripesca e lo mostra in "Attivo" come scaduto, duplicandolo con lo Storico.»</em> — <span class="file">cron/alert:74</span></p>
+    <p>Quell'alert punta a una riga che viene <strong>sostituita</strong> invece che aggiornata. Il commento non descrive una regola di business: descrive il modello che combatte contro sé stesso.</p>
+  </div>
+
+  <h3>La modifica: UPDATE in place</h3>
+
+  <p><strong>Nessuna tabella nuova, nessuna rinominata.</strong> <code>task</code> <em>diventa</em> la lavorazione perché smette di essere sostituita. La storia va tutta su <code>task_event_log</code>, che <strong>esiste già</strong> ed è append-only con actor, source e from/to state.</p>
+
+  <p>E la colonna <code>task_id</code> del log (<span class="file">taskEventLog.ts:52</span>) — che oggi punta a righe destinate a essere sostituite, quindi non è un thread — diventa <strong>un thread id stabile, a costo zero</strong>.</p>
+
+  <h3>Esempio completo: Mario Rossi</h3>
+
+  <p>Import della pratica <code>PR-88431</code> (prestito, 60 rate, 30 pagate). Nasce il cliente; <strong>nessuna task</strong>, l'import non ne crea.</p>
+
+  <div class="cmp">
+    <div>
+      <h4>Oggi</h4>
+      <p><strong>02/09</strong> — Admin assegna ad Anna (bulk): <code>task #4501</code> chiamare, attiva.</p>
+      <p><strong>03/09</strong> — Anna chiama, non risponde → richiamare. UPDATE #4501, <code>closed_at=03/09</code>. Crea <code>alert #77</code> per il 10/09.</p>
+      <p><strong>05/09</strong> — Anna richiama, non risponde, resta <code>richiamare</code>. <strong>Niente</strong>: né riga, né log, né timestamp.</p>
+      <p><strong>10/09</strong> — Anna in ferie, scatta il cron: <code>task #4502</code> followup con <code>closed_at=03/09</code> <em>copiato</em>; #4501 disattivata; <code>alert #77</code> resta agganciato alla riga morta.</p>
+      <p><strong>12–25/09</strong> — app.to → caricato → erogata su #4502.</p>
+      <p><strong>~09/10</strong> — l'import porta <code>PR-91002</code>, l'esito: <strong>nessun legame</strong> con #4501 o #4502.</p>
+    </div>
+    <div>
+      <h4>Con la modifica</h4>
+      <p>Identico fino all'alert. Poi:</p>
+<pre><code>10/09  cron →  UPDATE #4501 state=followup
+               alert #77 is_resolved=true
+               log: richiamare → followup
+                    source=cron_alert</code></pre>
+      <p>Alla fine <strong>una riga sola</strong>:</p>
+<pre><code>task #4501  kind=prestito  state=erogata
+            operator=Anna
+            opened_at=02/09 closed_at=25/09</code></pre>
+      <p>e 8 righe di log con <code>task_id = 4501</code>, che raccontano tutto.</p>
+    </div>
+  </div>
+
+  <p>Con la cessione in parallelo:</p>
+
+<pre><code>task #4501  Rossi  kind=prestito  state=erogata  operator=Anna  is_active=false
+task #4700  Rossi  kind=cessione  state=app.to   operator=Luca  is_active=true</code></pre>
+
+  <h3>Riepilogo delle modifiche</h3>
+
+  <div class="tw">
+  <table>
+    <thead><tr><th>Punto</th><th>Oggi</th><th>Domani</th></tr></thead>
+    <tbody>
+      <tr><td>Cron alert</td><td>INSERT followup + deactivate</td><td>UPDATE state + risolvi alert</td></tr>
+      <tr><td>Riapertura</td><td>INSERT + deactivate</td><td>UPDATE state, <code>closed_at = NULL</code></td></tr>
+      <tr><td>Bulk</td><td>INSERT + deactivate tutte</td><td>UPDATE se esiste, INSERT se assente — filtrata per <code>kind</code></td></tr>
+      <tr><td><code>createTask</code></td><td>INSERT senza disattivare</td><td>INSERT solo se non c'è lavorazione aperta di quel <code>kind</code></td></tr>
+      <tr><td><code>getActiveTask</code></td><td><code>ORDER BY GREATEST(...) LIMIT 1</code></td><td><code>WHERE customer_id AND kind AND is_active</code></td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="box ok">
+    <span class="lbl">Il contratto verso gli operatori non cambia</span>
+    <p>La guida all'assegnazione massiva promette che «il vecchio esito non viene perso, resta nello storico»: resta vero. Lo storico si legge da <code>task_event_log</code> invece che dalle righe disattivate, ed è <em>più</em> completo di prima (include riassegnazioni e attore). I 4 casi documentati restano gli stessi, applicati alla coppia (cliente, famiglia).</p>
+  </div>
+</section>
+
+<!-- ============ 6 ============ -->
+<section id="s7">
+  <h2><span class="num">7</span>Conteggio chiamate ed export</h2>
+
+  <p>Obiezione legittima: se collassiamo la catena di righe, come si contano le chiamate fatte da un operatore? Risposta: si contano righe come prima, ma su <code>task_event_log</code>. Prima però va detto <strong>cosa conta l'export oggi</strong>, perché non è quello che sembra.</p>
+
+  <h3>Cosa misura oggi</h3>
+
+  <p><code>fetchTasks</code> (<span class="file">export/utils:123</span>) prende le righe <code>task</code> con <code>closed_at</code> nell'intervallo. E <code>closed_at</code> si scrive <strong>solo</strong> nella transizione <code>open → close</code>, dove:</p>
+
+<pre><code>open:  ["chiamare", "followup"]
+close: ["app.to", "caricato", "erogata", "non interessato", "richiamare"]</code></pre>
+
+  <p>Quindi non si contano chiamate: si contano <strong>transizioni da "da chiamare" a "chiamato con esito"</strong>. Tre conseguenze:</p>
+
+  <div class="tw">
+  <table>
+    <thead><tr><th>Problema</th><th>Causa</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><span class="tag red">SOTTOSTIMA</span> le richiamate ripetute spariscono</td>
+        <td><code>close → close</code> = <code>persist</code> → <code>isClosed=false</code>, <code>closed_at</code> non si aggiorna. E riselezionando lo stesso stato la UI esce prima della mutation (<span class="file">CustomerColumns.tsx:539</span>). Zero traccia.</td>
+      </tr>
+      <tr>
+        <td><span class="tag red">SOVRASTIMA</span> alcune chiamate contate due volte</td>
+        <td>Il cron copia <code>closed_at</code> sulla riga nuova (<span class="file">cron/alert:81</span>) e lascia la vecchia in tabella; <code>fetchTasks</code> <strong>non filtra <code>is_active</code></strong>. Ogni cliente in <code>followup</code> al momento dell'export porta due righe con lo stesso <code>closed_at</code>. Nella riapertura il doppione è permanente.</td>
+      </tr>
+      <tr>
+        <td><span class="tag amber">ATTRIBUZIONE</span> conta l'assegnatario, non chi ha chiamato</td>
+        <td>Il filtro è <code>task.operator_id</code>: se dopo la chiamata di Anna il cliente passa a Luca, quella chiamata compare nell'export di Luca.</td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+
+  <p>Da notare: il doppio conteggio nasce <em>esattamente</em> dal meccanismo di duplicazione righe che stiamo rimuovendo.</p>
+
+  <h3>Come si conta dopo</h3>
+
+<pre><code><span class="kw">SELECT</span> o.surname, <span class="kw">count</span>(*) <span class="kw">AS</span> chiamate
+<span class="kw">FROM</span> "mito-deutsche_task_event_log" e
+<span class="kw">JOIN</span> "mito-deutsche_operators" o <span class="kw">ON</span> o.id = e.actor_operator_id
+<span class="kw">WHERE</span> e.action <span class="kw">IN</span> ('state_change', 'contact')
+  <span class="kw">AND</span> e.source &lt;&gt; 'cron_alert'
+  <span class="kw">AND</span> e.created_at <span class="kw">BETWEEN</span> :from <span class="kw">AND</span> :to
+<span class="kw">GROUP BY</span> o.id;</code></pre>
+
+  <div class="tw">
+  <table>
+    <thead><tr><th></th><th>Oggi</th><th>Con il log</th></tr></thead>
+    <tbody>
+      <tr><td>Attribuzione</td><td>assegnatario attuale</td><td>chi ha fatto l'azione (<code>actor_operator_id</code>)</td></tr>
+      <tr><td>Azioni del cron</td><td>mischiate a quelle umane</td><td><code>source = 'cron_alert'</code>, filtrabili</td></tr>
+      <tr><td>Esito della chiamata</td><td>solo lo stato finale</td><td><code>from_state → to_state</code> per ogni evento</td></tr>
+      <tr><td>Doppioni</td><td>sì (followup, riaperture)</td><td>impossibili: una riga = un fatto</td></tr>
+      <tr><td>Filtro prestiti/cessioni</td><td>non esiste</td><td><code>t.kind</code></td></tr>
+      <tr><td>Riassegnazioni</td><td>invisibili</td><td><code>action = 'operator_reassign'</code></td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3>Due cose da aggiungere</h3>
+
+  <p><strong>1. L'azione <code>contact</code></strong> — anche il log scrive solo se lo stato cambia (<span class="file">task/PUT:41</span>). Per contare chiamate e non transizioni:</p>
+
+<pre><code>export const taskEventAction = [
+  "state_change",
+  "operator_reassign",
+  "alert_resolved",
+  "contact",          <span class="cm">// ← chiamata senza cambio stato</span>
+] as const</code></pre>
+
+  <p>più la rimozione del return anticipato in <code>CustomerColumns</code> e la scrittura di una riga <code>contact</code> alla riconferma dello stesso stato.</p>
+
+  <p><strong>2. Il backfill</strong> — il log non copre il passato. Vanno travasate le righe <code>task</code> storiche come eventi sintetici: una riga per ogni task con <code>closed_at</code> valorizzato, <code>actor_operator_id = task.operator_id</code>, <code>to_state = task.state</code>, <code>created_at = closed_at</code>. I doppioni del cron si deduplicano proprio lì: stesso <code>customer_id</code> + stesso <code>closed_at</code> = un evento solo.</p>
+
+  <div class="box warn">
+    <span class="lbl">Da comunicare prima del rilascio</span>
+    <p>I numeri dell'export <strong>cambiano in entrambe le direzioni</strong>: salgono perché smettono di mancare le richiamate, scendono dove c'erano doppioni. Chi confronta settembre con ottobre senza saperlo penserà a un bug.</p>
+  </div>
+</section>
+
+<!-- ============ 7 ============ -->
+<section id="s8">
+  <h2><span class="num">8</span>Task e pratiche: cosa NON fare</h2>
+
+  <p>Domanda ricorrente: non conviene legare la task alla pratica? <strong>No</strong>, non in ingresso. Le due entità vivono in tempi diversi:</p>
+
+  <div class="tw">
+  <table>
+    <thead><tr><th></th><th><code>practices</code></th><th><code>task</code></th></tr></thead>
+    <tbody>
+      <tr><td>Rappresenta</td><td>un contratto <strong>già avvenuto</strong></td><td>una <strong>trattativa in corso</strong></td></tr>
+      <tr><td>Chi scrive</td><td>l'import (fonte esterna)</td><td>l'operatore</td></tr>
+      <tr><td>Relazione col cliente</td><td><strong>M:N con ruolo</strong> (Intestatario/Coobbligato/Garante)</td><td>1:1</td></tr>
+      <tr><td>Stati</td><td>esiti chiusi: Liquidata, Estinta anticipata…</td><td>fasi di vendita: chiamare → … → erogata</td></tr>
+      <tr><td>Tempo</td><td>passato</td><td>presente</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <p>In <code>stateEnum</code> non esiste <strong>nessuno</strong> stato "in lavorazione": una pratica non è mai una trattativa, è il verbale di una trattativa finita. E <code>erogata</code> è precisamente l'evento che <em>fa nascere</em> una nuova pratica, che arriverà via import settimane dopo con un ID mai visto dal CRM.</p>
+
+  <p>Tre ragioni contro la FK in ingresso:</p>
+  <ol>
+    <li><strong>Cardinalità sbagliata</strong> — la trattativa punta alla <em>posizione</em> del cliente, non a un contratto: un rinnovo può consolidare tre prestiti.</li>
+    <li><strong>La pratica bersaglio non esiste ancora</strong> quando la lavorazione si apre.</li>
+    <li><strong>M:N con ruoli</strong> — una pratica appartiene fino a tre persone, una task a una sola.</li>
+  </ol>
+
+  <h3>Il legame che invece serve: l'esito</h3>
+
+  <p>Va messo <strong>dal lato della pratica</strong>, ed è quello che rende misurabile la conversione:</p>
+
+<pre><code><span class="kw">ALTER TABLE</span> "mito-deutsche_practices"
+  <span class="kw">ADD COLUMN</span> origin_task_id integer <span class="kw">REFERENCES</span> "mito-deutsche_task"(id);</code></pre>
+
+  <p>Non è deterministico: la pratica arriva con un <code>pratica_id</code> bancario e va riconciliata per cliente + famiglia + finestra temporale rispetto alle task <code>erogata</code>. È un <strong>job di riconciliazione</strong>, non una FK riempita in modo sincrono.</p>
+
+  <div class="box info">
+    <span class="lbl">Fuori dal primo rilascio</span>
+    <p>Ha senso quando il business chiede i numeri di conversione. Stima 1,5–2 gg, non inclusa nel totale.</p>
+  </div>
+</section>
+
+<!-- ============ 8 ============ -->
+<section id="s9">
+  <h2><span class="num">9</span>Frontend a verticali</h2>
+
+  <p>La lista clienti oggi joina le task e <strong>deduplica in JavaScript dopo il <code>LIMIT</code></strong> (<span class="file">customer/GET:284-410</span>): <code>limit(perPage)</code> → dedup in <code>Map</code> → <code>.slice(0, perPage)</code>. Con più task attive per cliente la pagina restituisce <em>meno righe di perPage</em>, il <code>total</code> sovrastima, e gli ordinamenti per priorità e "contattato il" vengono rifatti in JS sulla sola pagina corrente.</p>
+
+  <p>Scorporare le Attività <strong>elimina la join</strong> e sistema la paginazione come effetto collaterale.</p>
+
+<pre><code>/dashboard/attivita          tabella Attività — ?kind=&amp;stato=&amp;operatore=&amp;scadenza=
+/dashboard/attivita/[id]     dettaglio lavorazione (task + alert + storico)
+/dashboard/prestiti          pratiche kind=prestito
+/dashboard/prestiti/[id]
+/dashboard/cessioni          pratiche kind=cessione
+/dashboard/cessioni/[id]
+/dashboard/customers         anagrafiche (senza colonne task)
+/dashboard/customers/[id]    scheda 360°: anagrafica + attività + pratiche + chat
+/dashboard/pratiche          → redirect permanente a /dashboard/prestiti</code></pre>
+
+  <p>Il redirect serve: sidebar, <code>useHistoryBack("/dashboard/pratiche")</code> e i link salvati dagli operatori puntano tutti lì.</p>
+
+  <div class="box info">
+    <span class="lbl">Tre vincoli implementativi</span>
+    <p><strong>1.</strong> Prestiti e Cessioni: due route, <strong>un</strong> componente parametrico. Le colonne coincidono al 95% e due gemelli divergono entro un trimestre — è già successo (<code>defaultExport</code> esiste in due copie, <code>LastUpdatedTableColumns</code> è un clone parziale di <code>TableColumn</code>).</p>
+    <p><strong>2.</strong> La tabella Clienti tiene <strong>una</strong> colonna riassuntiva — badge "2 attività" che linka ad Attività filtrata. Stato, priorità, contattato il e l'assegnazione massiva <em>chiamate</em> si spostano; l'assegnazione massiva <em>clienti</em> resta.</p>
+    <p><strong>3.</strong> La scheda <code>/customers/[id]</code> resta la vista di contesto: tutte le attività (N, non 1) e tutte le pratiche di entrambe le famiglie.</p>
+  </div>
+</section>
+
+<!-- ============ 9 ============ -->
+<section id="s10">
+  <h2><span class="num">10</span>Bug preesistenti emersi dall'analisi</h2>
+
+  <p>Non introdotti da questo lavoro, ma da conoscere prima di toccare quei file. I primi due <strong>diventano attivi il giorno del rilascio</strong> se non sistemati.</p>
+
+  <div class="tw">
+  <table>
+    <thead><tr><th></th><th>Punto</th><th>Descrizione</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><span class="tag red">BLOCCA</span></td>
+        <td><span class="file">task/POST:349</span></td>
+        <td><code>set isActive=false WHERE customer_id = …</code> disattiva <strong>tutte</strong> le task del cliente. Oggi corretto (ce n'è una); con la coesistenza un'assegnazione massiva sui prestiti spegne le cessioni aperte.</td>
+      </tr>
+      <tr>
+        <td><span class="tag red">BLOCCA</span></td>
+        <td><span class="file">cron/alert:79</span></td>
+        <td>L'insert della followup non passa <code>kind</code>: prenderebbe il default <code>'prestito'</code>, quindi una cessione scaduta genererebbe una followup sul prestito.</td>
+      </tr>
+      <tr>
+        <td><span class="tag amber">LATENTE</span></td>
+        <td><span class="file">cron/alert:73</span></td>
+        <td>Assegna la followup all'operatore letto da <code>customers.operator_id</code> invece che dalla task che sta chiudendo. Già sbagliato oggi se il cliente viene riassegnato mentre l'alert è pendente.</td>
+      </tr>
+      <tr>
+        <td><span class="tag red">DATI</span></td>
+        <td><span class="file">cron/priority:97-113</span></td>
+        <td>Nel ramo senza <code>id</code>, <code>tasks</code> sono <em>tutte</em> le task attive del sistema, ma la query legge le pratiche di <code>tasks[0]</code> soltanto e applica quella <code>dataLiquidazione</code> a ogni task in circolazione.</td>
+      </tr>
+      <tr>
+        <td><span class="tag red">DATI</span></td>
+        <td><span class="file">priority.ts:26-40</span></td>
+        <td>Precedenza operatori: <code>Date.now() - Date.parse(x) / 86400000</code> divide solo il secondo termine. <code>daysSinceLastCall</code> ≈ 1,7×10¹² → <code>Math.min(30, …)</code> è <strong>sempre 30</strong>; <code>Math.max(0, 20 - …)</code> è <strong>sempre 0</strong>. La <code>dataLiquidazione</code> non contribuisce mai alla priorità — ed è il motivo per cui il bug sopra è invisibile.</td>
+      </tr>
+      <tr>
+        <td><span class="tag amber">EXPORT</span></td>
+        <td><span class="file">export/utils:123</span></td>
+        <td><code>fetchTasks</code> non filtra <code>is_active</code>: vedi <a href="#s7">§7</a>.</td>
+      </tr>
+      <tr>
+        <td><span class="tag amber">PERF</span></td>
+        <td><span class="file">customer/GET:284</span></td>
+        <td>Paginazione rotta dalla dedup in JS dopo il <code>LIMIT</code>: vedi <a href="#s9">§9</a>.</td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+
+  <p>A questi si aggiungono i <strong>tre bug di parsing dell'import</strong> descritti in <a href="#s2">§2.5</a> (decimali italiani moltiplicati per 100, date non riconosciute che diventano <code>new Date()</code>, fallback silenzioso sugli stati). Sono i più urgenti dell'intero elenco: sono gli unici che <strong>corrompono dati anziché mostrarli male</strong>, e agiscono già oggi sul flusso CSV.</p>
+</section>
+
+<!-- ============ 10 ============ -->
+<section id="s11">
+  <h2><span class="num">11</span>Inventario dei punti di codice</h2>
+
+  <p>Ogni punto che oggi ragiona su <code>(customer_id, is_active)</code> diventa <code>(customer_id, kind, is_active)</code>.</p>
+
+  <div class="tw">
+  <table>
+    <thead><tr><th class="num-col">#</th><th>Punto</th><th>File</th><th>Nota</th></tr></thead>
+    <tbody>
+      <tr><td class="num-col">1</td><td><code>getActiveTask</code></td><td class="file">task/GET:138</td><td>oggi <code>limit(1)</code>; diventa "una per famiglia" (ritorna N righe)</td></tr>
+      <tr><td class="num-col">2</td><td><code>createTask</code></td><td class="file">task/POST:28</td><td>il <code>fromState</code> dell'event log deve venire dalla stessa famiglia</td></tr>
+      <tr><td class="num-col">3</td><td><code>bulkHandleTask</code></td><td class="file">task/POST:77</td><td>250 righe, 4 rami: il pezzo più grosso</td></tr>
+      <tr><td class="num-col">4</td><td><code>bulkCreateTask</code></td><td class="file">task/POST:349</td><td><span class="tag red">BLOCCA</span> vedi §10</td></tr>
+      <tr><td class="num-col">5</td><td><code>getCustomersWithActiveAlerts</code></td><td class="file">task/GET:108</td><td>l'avviso "ha un alert pendente" va riferito alla famiglia giusta</td></tr>
+      <tr><td class="num-col">6</td><td>Lista clienti</td><td class="file">customer/GET:284-435</td><td><strong>il join task va rimosso del tutto</strong> — vedi §9</td></tr>
+      <tr><td class="num-col">7</td><td>Cron alert</td><td class="file">cron/alert:79</td><td>la followup deve ereditare il <code>kind</code> di quella risolta</td></tr>
+      <tr><td class="num-col">8</td><td>Cron priority</td><td class="file">cron/priority:97</td><td>due bug preesistenti; la <code>dataLiquidazione</code> va presa dalle pratiche della stessa famiglia</td></tr>
+      <tr><td class="num-col">9</td><td><code>taskEventLog</code></td><td>schema ok</td><td>le query "storico attività" vanno filtrate per famiglia via join su <code>task</code></td></tr>
+      <tr><td class="num-col">10</td><td>Componenti FE</td><td class="file">CustomerTaskManager, CustomerAlertCreator, CustomerActivities, CustomerColumns, CustomerBulkDialog</td><td>tutti assumono una task sola</td></tr>
+      <tr><td class="num-col">11</td><td>Riapertura</td><td class="file">taskStatusAction:34-48</td><td>doppione permanente nell'export chiamate — vedi §7</td></tr>
+      <tr><td class="num-col">12</td><td><code>fetchTasks</code></td><td class="file">export/utils:123</td><td>non filtra <code>is_active</code>; va anche filtrato per <code>kind</code></td></tr>
+      <tr><td class="num-col">13</td><td><code>getAllDoneTasksInLastMonth</code></td><td class="file">analytics/GET:176</td><td>conta righe <code>task</code> per stato: con la coesistenza raddoppia i totali per cliente</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="box info">
+    <span class="lbl">Sul punto 3</span>
+    <p>La logica dell'assegnazione massiva è <strong>documentata e concordata con gli operatori</strong> (4 casi + gestione alert pendenti). Non va riscritta, va <strong>riparametrizzata</strong>: gli stessi 4 casi, applicati alla coppia (cliente, famiglia) invece che al cliente. Se la selezione avviene nella tabella Attività, l'input diventa naturalmente una lista di lavorazioni e la logica si semplifica invece di complicarsi.</p>
+  </div>
+</section>
+
+<!-- ============ 11 ============ -->
+<section id="s12">
+  <h2><span class="num">12</span>Piano di lavoro</h2>
+
+  <div class="tw">
+  <table>
+    <thead><tr><th class="num-col">Blocco</th><th>Contenuto</th><th class="num-col">Stima</th></tr></thead>
+    <tbody>
+      <tr><td class="num-col">A</td><td>Anagrafiche: 8 colonne nuove + chiave <code>ndg</code> + i 7 campi già esistenti da popolare (<a href="#s2">§2.1–2.2</a>)</td><td class="num-col">4–5 gg</td></tr>
+      <tr><td class="num-col">B</td><td>Endpoint ingestion JSON</td><td class="num-col">6–8 gg</td></tr>
+      <tr><td class="num-col">B-bis</td><td>Fix parsing bloccanti: decimali IT, date, stati, zeri iniziali (<a href="#s2">§2.5</a>)</td><td class="num-col">1,5–2 gg</td></tr>
+      <tr><td class="num-col">C</td><td>Tabella di decodifica subagente → punto vendita / sede (<a href="#s2">§2.3</a>)</td><td class="num-col">1,5–2 gg</td></tr>
+      <tr><td class="num-col">D</td><td>Prestiti/Cessioni — dati e backend, incluse le 4 colonne su <code>practices</code> (<a href="#s2">§2.3</a>)</td><td class="num-col">5–6 gg</td></tr>
+      <tr><td class="num-col">E1</td><td><code>task.kind</code> + indice unico + migrazione pulizia duplicati</td><td class="num-col">1,5 gg</td></tr>
+      <tr><td class="num-col">E2</td><td>Riscrittura assegnazione massiva su (cliente, famiglia)</td><td class="num-col">2,5–3 gg</td></tr>
+      <tr><td class="num-col">E3</td><td>Separazione referente/proprietario + permessi + fix cron alert</td><td class="num-col">1,5–2 gg</td></tr>
+      <tr><td class="num-col">E4</td><td>Cron priority/alert per famiglia + fix <code>calculatePriority</code></td><td class="num-col">1–1,5 gg</td></tr>
+      <tr><td class="num-col">E5</td><td>Identità stabile: UPDATE in place nei 3 punti che inseriscono</td><td class="num-col">1–1,5 gg</td></tr>
+      <tr><td class="num-col">E6</td><td>Conteggio chiamate: <code>contact</code> + backfill log + export</td><td class="num-col">1 gg</td></tr>
+      <tr><td class="num-col">F1</td><td>Tabella Attività: route, colonne, filtri, bulk</td><td class="num-col">3–4 gg</td></tr>
+      <tr><td class="num-col">F2</td><td>Verticali Prestiti/Cessioni (1 componente + 2 config + redirect)</td><td class="num-col">2 gg</td></tr>
+      <tr><td class="num-col">F3</td><td>Alleggerimento tabella Clienti + fix paginazione</td><td class="num-col">1–1,5 gg</td></tr>
+      <tr><td class="num-col">F4</td><td>Scheda cliente con attività multiple</td><td class="num-col">1 gg</td></tr>
+      <tr><td class="num-col">G</td><td>Catalogo prodotti da mappa a tabella, senza CRUD admin (<a href="#s2">§2.4</a>)</td><td class="num-col">+0,5 gg</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <p><strong>Totale: 35–43 gg</strong> (~7–9 settimane uomo). Fuori totale, rimandabili senza rifare nulla: <code>practices.origin_task_id</code> + riconciliazione (1,5–2 gg) e CRUD admin del catalogo prodotti (2 gg).</p>
+
+  <h3>Ordine consigliato</h3>
+
+  <ol>
+    <li><strong>B-bis</strong> — fix parsing: sono gli unici che possono corrompere dati <em>già in produzione</em></li>
+    <li><strong>E1</strong> — <code>task.kind</code> + indice: chiude il bug duplicati <em>prima</em> che diventi strutturale</li>
+    <li><strong>A, D, G</strong> — colonne, catalogo, discriminante: tutto additivo, deployabile a pezzi</li>
+    <li><strong>E5–E6</strong> — identità stabile e conteggio, <em>prima</em> di E2 perché E2 riscrive gli stessi write path</li>
+    <li><strong>E2–E4</strong> — la macchina attività</li>
+    <li><strong>F1–F4</strong> — i verticali</li>
+    <li><strong>B, C</strong> — ingestion, quando il fornitore ha risposto alle domande aperte</li>
+  </ol>
+
+  <div class="box ok">
+    <span class="lbl">Rilasciabilità</span>
+    <p>I passi 1–3 sono retro-compatibili e vanno in produzione uno alla volta senza aspettare il resto. Dal passo 4 in poi si entra nella macchina task e conviene procedere a blocchi chiusi.</p>
+  </div>
+
+  <p>Nota di coordinamento: la ristrutturazione a verticali <strong>assorbe</strong> le fasi 1 e 3 del piano di riordino frontend redatto separatamente. Di quel piano (16 gg) restano fuori solo i filtri tipizzati (4 gg — da fare comunque, c'è una falla SQL da chiudere), il dettaglio pratica (3 gg), l'import monitor (2 gg) e la pulizia (1 gg): <strong>10 gg invece di 16</strong>.</p>
+</section>
+
+<!-- ============ 12 ============ -->
+<section id="s13">
+  <h2><span class="num">13</span>Domande aperte</h2>
+
+  <p>Da chiudere con il business prima di partire con i blocchi corrispondenti:</p>
+
+  <div class="tw">
+  <table>
+    <thead><tr><th>Domanda</th><th>Blocca</th></tr></thead>
+    <tbody>
+      <tr><td>Un operatore che lavora solo la cessione può modificare l'anagrafica del cliente? <em>Proposta: sì sui dati operativi (telefono, email, disponibilità); la riassegnazione del referente resta ad admin e referente corrente.</em></td><td>E3</td></tr>
+      <tr><td>Cambiare il referente dell'anagrafica non riassegna più le lavorazioni aperte: confermato?</td><td>E3</td></tr>
+      <tr><td>Le cessioni hanno stati task propri, o gli stessi 8 dei prestiti?</td><td>D, E1</td></tr>
+      <tr><td>Elenco definitivo dei codici prodotto della famiglia cessioni</td><td>D, G</td></tr>
+      <tr><td>I numeri storici dell'export chiamate vanno ricalcolati o si riparte da zero?</td><td>E6</td></tr>
+      <tr><td><strong>Al fornitore:</strong> qual è la sorgente di <code>ambito_lavorativo</code>? Il tracciato lo marca come necessario (riga 48) ma senza path XML; <code>opCateg</code> mappa su <code>occupazione</code></td><td>A</td></tr>
+      <tr><td><strong>Al fornitore:</strong> serve la tabella di decodifica <code>opUser → (des_subagente, punto_vendita, sede)</code>, oggi inesistente. Senza, il filtro "Sede" si spegne sui nuovi record</td><td>C</td></tr>
+      <tr><td><strong>Privacy:</strong> permesso di soggiorno e nazionalità servono davvero al processo commerciale? Se no, non li salviamo</td><td>A</td></tr>
+      <tr><td>Chiave cliente: aggiungiamo <code>ndg</code> deprecando <code>temp_id</code> (raccomandato) o riusiamo <code>temp_id</code>?</td><td>A, B</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <p>Le domande sull'ingestion (idempotenza, chiave di deduplica, volumi, gestione degli errori) sono tracciate a parte nel documento di analisi dell'import.</p>
+</section>
+
+<footer>
+  <div>Documento derivato da: <code>docs/analisi-import-xml-v2.md</code>, <code>docs/design-lavorazioni-e-verticali.md</code>, <code>docs/report-frontend-riorganizzazione.md</code>. I riferimenti <span class="file">file:riga</span> sono allo stato del repository al 4 agosto 2026 — verificare prima di intervenire.</div>
+</footer>
+
+</main>
+</div>
+</div>
+
+</body>
+</html>

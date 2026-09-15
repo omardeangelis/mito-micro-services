@@ -1,9 +1,9 @@
-// richiamo del cron job che elimina i file di export
+// richiamo del cron job che pulisce il task_event_log piu vecchio della retention
 import jwt from "jsonwebtoken"
 import dotenv from "dotenv"
 dotenv.config()
 
-async function fetchDeleteExportFiles() {
+async function fetchCleanupTaskEventLog() {
   const baseUrl =
     process.env.NODE_ENV === "development"
       ? "http://localhost:3000"
@@ -22,32 +22,31 @@ async function fetchDeleteExportFiles() {
     { expiresIn: "5m" } // Scadenza breve
   )
 
-  const response = await fetch(`${baseUrl}/api/cron/delete`, {
+  const response = await fetch(`${baseUrl}/api/cron/cleanupTaskEventLog`, {
     method: "GET",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
     },
   })
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 
   if (!response.ok) {
     const body = await response.text().catch(() => "")
     throw new Error(
-      `Request to /api/cron/delete failed: HTTP ${response.status} ${body}`
+      `Request to /api/cron/cleanupTaskEventLog failed: HTTP ${response.status} ${body}`
     )
   }
 
   return response
 }
 
-const deleteExportFiles = async () => {
+const cleanupTaskEventLog = async () => {
   try {
-    await fetchDeleteExportFiles()
+    await fetchCleanupTaskEventLog()
   } catch (error) {
-    console.error("Error deleting export files:", error)
+    console.error("Error cleaning up task_event_log:", error)
     process.exit(1)
   }
 }
 
-await deleteExportFiles()
+await cleanupTaskEventLog()

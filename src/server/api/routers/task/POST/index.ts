@@ -5,21 +5,35 @@ import {
   type Task,
 } from "@/lib/types/schemas"
 import { alert, task, taskStatus } from "@/server/db/schema/task"
+import { taskEventLog, taskEventSource } from "@/server/db/schema/taskEventLog"
 import { z } from "zod"
 import { updateCustomerUpdatedAt } from "@/server/shared/updateAt"
 import { and, eq, inArray, isNotNull, max, not } from "drizzle-orm"
 import { customers } from "@/server/db/schema/customers"
 
-const insertTaskInput = insertTaskSchema.pick({
-  customerId: true,
-  operatorId: true,
-  state: true,
-  closedAt: true,
-})
+const insertTaskInput = insertTaskSchema
+  .pick({
+    customerId: true,
+    operatorId: true,
+    state: true,
+    closedAt: true,
+  })
+  .extend({
+    source: z.enum(taskEventSource),
+  })
 
 export const createTask = operatorProcedure
   .input(insertTaskInput)
   .mutation(async ({ ctx, input }) => {
+    const [previousActive] = await ctx.db
+      .select({ state: task.state })
+      .from(task)
+      .where(
+        and(eq(task.customerId, input.customerId!), eq(task.isActive, true))
+      )
+
+    const toState = input.state ?? "chiamare"
+
     const res = await ctx.db
       .insert(task)
       .values({
@@ -27,12 +41,22 @@ export const createTask = operatorProcedure
         operatorId: input.operatorId,
         // Rispetta lo stato richiesto invece di forzare sempre "chiamare":
         // così una "riapertura" verso uno stato specifico non viene azzerata.
-        state: input.state ?? "chiamare",
+        state: toState,
         closedAt: input.closedAt,
         priority: 120,
         isActive: true,
       })
       .returning()
+
+    await ctx.db.insert(taskEventLog).values({
+      customerId: input.customerId!,
+      taskId: res[0]!.id,
+      actorOperatorId: ctx.operator.id,
+      action: "state_change",
+      source: input.source,
+      fromState: previousActive?.state ?? null,
+      toState,
+    })
 
     return res[0]
   })
@@ -43,9 +67,24 @@ const bulkCreateTaskSchema = z.object({
   state: z.enum(taskStatus).default("chiamare"),
 })
 
+// bulkHandleTask accetta, in più, l'elenco dei clienti per cui l'operatore ha
+// confermato esplicitamente la rimozione dell'alert pendente. Per tutti gli altri
+// l'alert/callback viene preservato.
+const bulkHandleTaskSchema = bulkCreateTaskSchema.extend({
+  resolveAlertCustomerIds: z.array(z.string()).optional().default([]),
+})
+
 export const bulkHandleTask = operatorProcedure
-  .input(bulkCreateTaskSchema)
+  .input(bulkHandleTaskSchema)
   .mutation(async ({ ctx, input }) => {
+    const customersBeforeUpdate = await ctx.db
+      .select({ id: customers.id, operatorId: customers.operatorId })
+      .from(customers)
+      .where(inArray(customers.id, input.customerIds))
+    const customerOperatorBeforeMap = new Map(
+      customersBeforeUpdate.map((c) => [c.id, c.operatorId])
+    )
+
     const customersActiveTasks = await ctx.db
       .select()
       .from(task)
@@ -84,53 +123,137 @@ export const bulkHandleTask = operatorProcedure
       )
     }
 
+    const resolveAlertSet = new Set(input.resolveAlertCustomerIds)
+
     for (const customerId of input.customerIds) {
       if (!customersWithOnlyLastTaskMap.has(customerId)) {
-        await ctx.db.insert(task).values({
-          customerId,
-          operatorId: input.operatorId,
-          state: input.state,
-          priority: 120,
-          closedAt: null,
-          isActive: true,
-        })
+        const [insertedTask] = await ctx.db
+          .insert(task)
+          .values({
+            customerId,
+            operatorId: input.operatorId,
+            state: input.state,
+            priority: 120,
+            closedAt: null,
+            isActive: true,
+          })
+          .returning({ id: task.id })
 
         await ctx.db
           .update(customers)
           .set({ operatorId: input.operatorId })
           .where(eq(customers.id, customerId))
+
+        const fromOperatorId = customerOperatorBeforeMap.get(customerId) ?? null
+        const logRows: (typeof taskEventLog.$inferInsert)[] = [
+          {
+            customerId,
+            taskId: insertedTask!.id,
+            actorOperatorId: ctx.operator.id,
+            action: "state_change",
+            source: "bulk",
+            fromState: null,
+            toState: input.state,
+          },
+        ]
+        if (fromOperatorId !== input.operatorId) {
+          logRows.push({
+            customerId,
+            taskId: insertedTask!.id,
+            actorOperatorId: ctx.operator.id,
+            action: "operator_reassign",
+            source: "bulk",
+            fromOperatorId,
+            toOperatorId: input.operatorId,
+          })
+        }
+        await ctx.db.insert(taskEventLog).values(logRows)
       } else {
         const customerTask = customersWithOnlyLastTaskMap.get(customerId)!
-        if (
+
+        if (customerTask.alertId && resolveAlertSet.has(customerId)) {
+          // L'operatore ha confermato la rimozione dell'alert per questo cliente:
+          // lo risolviamo in modo NON distruttivo (isResolved=true, record conservato,
+          // il cron non lo riattiva) e creiamo una nuova chiamata con lo stato richiesto.
+          await ctx.db
+            .update(alert)
+            .set({ isResolved: true, resolvedBy: ctx.operator.id })
+            .where(eq(alert.id, customerTask.alertId))
+
+          await ctx.db
+            .update(task)
+            .set({ alertId: null, isActive: false })
+            .where(eq(task.id, customerTask.id))
+
+          const [reopenedTask] = await ctx.db
+            .insert(task)
+            .values({
+              customerId,
+              operatorId: input.operatorId,
+              state: input.state,
+              priority: 120,
+              closedAt: customerTask.closedAt,
+              isActive: true,
+            })
+            .returning({ id: task.id })
+
+          await ctx.db
+            .update(customers)
+            .set({ operatorId: input.operatorId })
+            .where(eq(customers.id, customerId))
+
+          const logRows: (typeof taskEventLog.$inferInsert)[] = [
+            {
+              customerId,
+              taskId: customerTask.id,
+              alertId: customerTask.alertId,
+              actorOperatorId: ctx.operator.id,
+              action: "alert_resolved",
+              source: "bulk",
+            },
+          ]
+          if (input.state !== customerTask.state) {
+            logRows.push({
+              customerId,
+              taskId: reopenedTask!.id,
+              actorOperatorId: ctx.operator.id,
+              action: "state_change",
+              source: "bulk",
+              fromState: customerTask.state,
+              toState: input.state,
+            })
+          }
+          if (customerTask.operatorId !== input.operatorId) {
+            logRows.push({
+              customerId,
+              taskId: reopenedTask!.id,
+              actorOperatorId: ctx.operator.id,
+              action: "operator_reassign",
+              source: "bulk",
+              fromOperatorId: customerTask.operatorId,
+              toOperatorId: input.operatorId,
+            })
+          }
+          await ctx.db.insert(taskEventLog).values(logRows)
+        } else if (
           customerTask.state !== "chiamare" &&
           customerTask.state !== "followup" &&
-          // Non distruggere chi ha un alert pendente (callback pianificato):
-          // per questi clienti riassegniamo solo l'operatore, preservando task e alert.
+          // Non distruggere chi ha un alert pendente (callback pianificato): per
+          // questi clienti riassegniamo solo l'operatore, preservando task e alert.
+          // La rimozione avviene solo su conferma esplicita (ramo sopra).
           !customerTask.alertId
         ) {
-          const t = await ctx.db
-            .update(task)
-            .set({
-              alertId: null,
+          const [newTask] = await ctx.db
+            .insert(task)
+            .values({
+              customerId,
+              operatorId: input.operatorId,
+              state: input.state,
+              priority: 120,
+              closedAt: customerTask.closedAt,
+              isActive: true,
             })
-            .where(eq(task.id, customerTask.id))
-            .returning({
-              alertId: task.alertId,
-              operatorId: task.operatorId,
-            })
-
-          if (t[0]?.alertId) {
-            await ctx.db.delete(alert).where(eq(alert.id, t[0]?.alertId))
-          }
-
-          await ctx.db.insert(task).values({
-            customerId,
-            operatorId: input.operatorId,
-            state: input.state,
-            priority: 120,
-            closedAt: customerTask.closedAt,
-            isActive: true,
-          })
+            .returning({ id: task.id })
 
           await ctx.db
             .update(task)
@@ -141,6 +264,33 @@ export const bulkHandleTask = operatorProcedure
             .update(customers)
             .set({ operatorId: input.operatorId })
             .where(eq(customers.id, customerId))
+
+          const logRows: (typeof taskEventLog.$inferInsert)[] = []
+          if (input.state !== customerTask.state) {
+            logRows.push({
+              customerId,
+              taskId: newTask!.id,
+              actorOperatorId: ctx.operator.id,
+              action: "state_change",
+              source: "bulk",
+              fromState: customerTask.state,
+              toState: input.state,
+            })
+          }
+          if (customerTask.operatorId !== input.operatorId) {
+            logRows.push({
+              customerId,
+              taskId: newTask!.id,
+              actorOperatorId: ctx.operator.id,
+              action: "operator_reassign",
+              source: "bulk",
+              fromOperatorId: customerTask.operatorId,
+              toOperatorId: input.operatorId,
+            })
+          }
+          if (logRows.length > 0) {
+            await ctx.db.insert(taskEventLog).values(logRows)
+          }
         } else {
           await ctx.db
             .update(task)
@@ -153,6 +303,18 @@ export const bulkHandleTask = operatorProcedure
             .update(customers)
             .set({ operatorId: input.operatorId })
             .where(eq(customers.id, customerId))
+
+          if (customerTask.operatorId !== input.operatorId) {
+            await ctx.db.insert(taskEventLog).values({
+              customerId,
+              taskId: customerTask.id,
+              actorOperatorId: ctx.operator.id,
+              action: "operator_reassign",
+              source: "bulk",
+              fromOperatorId: customerTask.operatorId,
+              toOperatorId: input.operatorId,
+            })
+          }
         }
       }
     }

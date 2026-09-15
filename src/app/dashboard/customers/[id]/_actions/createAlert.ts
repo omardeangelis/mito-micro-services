@@ -21,7 +21,7 @@ export async function createAlertAction(props: ActionProps) {
 }
 
 export async function deleteAlertAction(id: number) {
-  await api.task.deleteAlerts.mutate({ id })
+  await api.task.resolveAlerts.mutate({ id, source: "detail" })
   revalidateTag("task")
   revalidatePath("/dashboard/customers", "page")
   revalidatePath("/dashboard/customers/[id]", "page")

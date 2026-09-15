@@ -5,6 +5,7 @@ import { insertCustomerSchema } from "@/lib/types/schemas"
 import { z } from "zod"
 import { updateCustomerUpdatedAt } from "@/server/shared/updateAt"
 import { task } from "@/server/db/schema/task"
+import { taskEventLog } from "@/server/db/schema/taskEventLog"
 
 export const updateCustomer = protectedProcedure
   .input(insertCustomerSchema)
@@ -38,13 +39,35 @@ const updateCustomerFromDashboardSchema = insertCustomerSchema.pick({
 
 export const updateCustomerFromDashboard = operatorProcedure
   .input(updateCustomerFromDashboardSchema)
-  .mutation(({ ctx, input }) => {
+  .mutation(async ({ ctx, input }) => {
     const { db } = ctx
-    return db
+
+    const [before] = await db
+      .select({ operatorId: customers.operatorId })
+      .from(customers)
+      .where(eq(customers.id, input.id!))
+
+    const res = await db
       .update(customers)
       .set(input)
       .where(eq(customers.id, input.id!))
       .returning({ id: customers.id })
+
+    if (
+      input.operatorId !== undefined &&
+      input.operatorId !== before?.operatorId
+    ) {
+      await db.insert(taskEventLog).values({
+        customerId: input.id!,
+        actorOperatorId: ctx.operator.id,
+        action: "operator_reassign",
+        source: "detail",
+        fromOperatorId: before?.operatorId ?? null,
+        toOperatorId: input.operatorId,
+      })
+    }
+
+    return res
   })
 
 const bulkAssignCustomerSchema = z.object({
@@ -56,11 +79,30 @@ export const bulkUpdateCustomers = operatorProcedure
   .mutation(async ({ input, ctx }) => {
     const { db } = ctx
 
+    const customersBeforeUpdate = await db
+      .select({ id: customers.id, operatorId: customers.operatorId })
+      .from(customers)
+      .where(inArray(customers.id, input.customerIds))
+
     const updateCustomer = await db
       .update(customers)
       .set({ operatorId: input.operatorId })
       .where(inArray(customers.id, input.customerIds))
       .returning({ id: customers.id })
+
+    const logRows = customersBeforeUpdate
+      .filter((c) => c.operatorId !== input.operatorId)
+      .map((c) => ({
+        customerId: c.id,
+        actorOperatorId: ctx.operator.id,
+        action: "operator_reassign" as const,
+        source: "bulk" as const,
+        fromOperatorId: c.operatorId,
+        toOperatorId: input.operatorId,
+      }))
+    if (logRows.length > 0) {
+      await db.insert(taskEventLog).values(logRows)
+    }
 
     const taskPromises = []
 
@@ -112,10 +154,29 @@ export const assignToYourself = operatorProcedure
   .input(z.object({ id: z.string() }))
   .mutation(async ({ ctx, input }) => {
     const { db, operator } = ctx
-    return await db
+
+    const [before] = await db
+      .select({ operatorId: customers.operatorId })
+      .from(customers)
+      .where(eq(customers.id, input.id))
+
+    const res = await db
       .update(customers)
       .set({ operatorId: operator.id })
       .where(eq(customers.id, input.id))
+
+    if (before?.operatorId !== operator.id) {
+      await db.insert(taskEventLog).values({
+        customerId: input.id,
+        actorOperatorId: operator.id,
+        action: "operator_reassign",
+        source: "self_assign",
+        fromOperatorId: before?.operatorId ?? null,
+        toOperatorId: operator.id,
+      })
+    }
+
+    return res
   })
 
 const updateLastEditInput = insertCustomerSchema.pick({

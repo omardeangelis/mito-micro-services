@@ -9,6 +9,7 @@ import {
   decimal,
   char,
   smallint,
+  index,
 } from "drizzle-orm/pg-core"
 import { customerToPratica } from "./relations/customerToPratica"
 import { products } from "./products"
@@ -26,43 +27,53 @@ export const stateEnum = [
 ] as const
 export const state = pgEnum("State", stateEnum)
 
-export const practices = createTable("practices", {
-  id: integer("id").generatedAlwaysAsIdentity({ startWith: 1000 }).notNull(),
-  praticaId: varchar("pratica_id", { length: 255 }).notNull().primaryKey(),
-  region: varchar("region", { length: 100 }),
-  desPuntoVendita: varchar("des_punto_vendita", { length: 255 }),
-  desConvenzionato: varchar("des_convenzionato", { length: 255 }),
-  subagente: varchar("subagente", { length: 255 }),
-  importoFinanziato: decimal("importo_finanziato").notNull(),
-  importoErogato: decimal("importo_erogato").notNull(),
-  rateTotali: integer("rate_totali").notNull(),
-  importoRata: decimal("importo_rata").notNull(),
-  ratePagate: integer("rate_pagate").notNull(),
-  debitoResiduo: decimal("debito_residuo"),
-  dataLiquidazione: timestamp("data_liquidazione", {
-    withTimezone: true,
-  }).notNull(),
-  dataEstinzione: timestamp("data_estinzione", { withTimezone: true }),
-  importoRichiesto: decimal("importo_richiesto"),
-  paymentMethod: varchar("payment_method", { length: 255 }),
-  tassoPratica: decimal("tasso_pratica"),
-  state: state("state").notNull(),
-  isWave: boolean("is_wave"),
-  fileName: varchar("file_name", { length: 255 }),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .default(sql`CURRENT_TIMESTAMP`)
-    .notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true })
-    .default(new Date())
-    .$onUpdate(() => new Date())
-    .notNull(),
-  lastImportUpdate: timestamp("last_import_update", { withTimezone: true })
-    .default(sql`CURRENT_TIMESTAMP`)
-    .notNull(),
-  productId: char("product_id", { length: 2 }),
-  operatorId: smallint("operator_id").references(() => operators.id),
-  chatId: integer("chat_id").references(() => chat.id),
-})
+export const practices = createTable(
+  "practices",
+  {
+    id: integer("id").generatedAlwaysAsIdentity({ startWith: 1000 }).notNull(),
+    praticaId: varchar("pratica_id", { length: 255 }).notNull().primaryKey(),
+    region: varchar("region", { length: 100 }),
+    desPuntoVendita: varchar("des_punto_vendita", { length: 255 }),
+    desConvenzionato: varchar("des_convenzionato", { length: 255 }),
+    subagente: varchar("subagente", { length: 255 }),
+    importoFinanziato: decimal("importo_finanziato").notNull(),
+    importoErogato: decimal("importo_erogato").notNull(),
+    rateTotali: integer("rate_totali").notNull(),
+    importoRata: decimal("importo_rata").notNull(),
+    ratePagate: integer("rate_pagate").notNull(),
+    debitoResiduo: decimal("debito_residuo"),
+    dataLiquidazione: timestamp("data_liquidazione", {
+      withTimezone: true,
+    }).notNull(),
+    dataEstinzione: timestamp("data_estinzione", { withTimezone: true }),
+    importoRichiesto: decimal("importo_richiesto"),
+    paymentMethod: varchar("payment_method", { length: 255 }),
+    tassoPratica: decimal("tasso_pratica"),
+    state: state("state").notNull(),
+    isWave: boolean("is_wave"),
+    fileName: varchar("file_name", { length: 255 }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .$onUpdate(() => new Date())
+      .notNull(),
+    lastImportUpdate: timestamp("last_import_update", { withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    productId: char("product_id", { length: 2 }),
+    operatorId: smallint("operator_id").references(() => operators.id),
+    chatId: integer("chat_id").references(() => chat.id),
+  },
+  (table) => ({
+    // Vedi customers_file_name_idx: stessa query (getAllFileName) su practices.
+    fileNameIdx: index("practices_file_name_idx").on(
+      table.fileName,
+      table.lastImportUpdate.desc()
+    ),
+  })
+)
 
 export const praticheRelations = relations(practices, ({ one, many }) => ({
   customerToPratica: many(customerToPratica),

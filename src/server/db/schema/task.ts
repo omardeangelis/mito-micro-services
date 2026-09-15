@@ -21,7 +21,7 @@ export const taskStatus = [
   "followup",
 ] as const
 
-const taskStatusEnum = pgEnum("task_status", taskStatus)
+export const taskStatusEnum = pgEnum("task_status", taskStatus)
 
 const createTable = pgTableCreator((name) => `mito-deutsche_${name}`)
 
@@ -41,6 +41,9 @@ export const alert = createTable("alert", {
   taskId: integer("task_id").notNull(),
   message: varchar("message"),
   isResolved: boolean("is_resolved").default(false).notNull(),
+  // Operatore che ha risolto l'alert: operatore reale per le azioni manuali,
+  // operatore di sistema (vedi src/lib/constants/operator.ts) per il cron.
+  resolvedBy: integer("resolved_by").references(() => operators.id),
 })
 
 export const task = createTable("task", {
@@ -52,7 +55,7 @@ export const task = createTable("task", {
     .default(sql`CURRENT_TIMESTAMP`)
     .notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true })
-    .default(new Date())
+    .default(sql`CURRENT_TIMESTAMP`)
     .notNull()
     .$onUpdate(() => new Date()),
   state: taskStatusEnum("state").default("nessuno"),

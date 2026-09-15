@@ -30,6 +30,13 @@ async function fetchUpdateCustomers() {
     },
   })
 
+  if (!response.ok) {
+    const body = await response.text().catch(() => "")
+    throw new Error(
+      `Request to /api/cron/update failed: HTTP ${response.status} ${body}`
+    )
+  }
+
   return response
 }
 
@@ -38,6 +45,7 @@ const updateCustomers = async () => {
     await fetchUpdateCustomers()
   } catch (error) {
     console.error("Error updating", error)
+    process.exit(1)
   }
 }
 

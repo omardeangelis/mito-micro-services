@@ -504,7 +504,7 @@ function StateSelector(props: {
 }) {
   const [open, setOpen] = React.useState(false)
   const { role } = useUserPreferenceContext((state) => state)
-  const deleteAlert = api.task.deleteAlerts.useMutation()
+  const resolveAlert = api.task.resolveAlerts.useMutation()
   const [optimisticState, setOptimisticState] = useOptimistic(
     props.tasks?.state,
     (_, newState: TaskStatus) => newState
@@ -542,7 +542,7 @@ function StateSelector(props: {
         return toast({
           title: "Richiesta Conferma",
           description:
-            "Modificando lo stato del task verrà eliminata l'alert associato",
+            "Modificando lo stato del task verrà risolta l'alert associato",
           variant: "info",
           closeManually: true,
           action: (
@@ -551,7 +551,10 @@ function StateSelector(props: {
                 onClick={async () => {
                   setOptimisticState(value)
                   setOpen(false)
-                  await deleteAlert.mutateAsync({ id: props.tasks!.alertId! })
+                  await resolveAlert.mutateAsync({
+                    id: props.tasks!.alertId!,
+                    source: "list",
+                  })
                   await taskStatusAction({
                     customerId: props.customerId,
                     newState: value,
@@ -587,7 +590,7 @@ function StateSelector(props: {
       toast,
       role,
       setOptimisticState,
-      deleteAlert,
+      resolveAlert,
     ]
   )
 

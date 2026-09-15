@@ -27,11 +27,15 @@
     "update:pratices:dev": "NODE_ENV=development node src/app/api/cron/scheduled/update.js",
     "update:alert:dev": "NODE_ENV=development node src/app/api/cron/scheduled/alert.js",
     "update:priority:dev": "NODE_ENV=development node src/app/api/cron/scheduled/priority.js",
+    "clean:task-event-log:dev": "NODE_ENV=development node src/app/api/cron/scheduled/cleanupTaskEventLog.js",
+    "create:system-operator:dev": "cross-env NODE_ENV=development pnpm tsx src/server/db/scripts/createSystemOperator.ts",
+    "create:system-operator": "cross-env NODE_ENV=production pnpm tsx src/server/db/scripts/createSystemOperator.ts",
     "update:customers": "NODE_ENV=production node src/app/api/cron/scheduled/update.js",
     "delete:export": "NODE_ENV=production node src/app/api/cron/scheduled/delete.js",
     "update:pratices": "NODE_ENV=production node src/app/api/cron/scheduled/update.js",
     "update:alert": "NODE_ENV=production node src/app/api/cron/scheduled/alert.js",
     "update:priority": "NODE_ENV=production node src/app/api/cron/scheduled/priority.js",
+    "clean:task-event-log": "NODE_ENV=production node src/app/api/cron/scheduled/cleanupTaskEventLog.js",
     "lint": "eslint --fix ."
   },
   "dependencies": {

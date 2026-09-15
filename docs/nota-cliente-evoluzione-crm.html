@@ -1,0 +1,441 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Evoluzione del gestionale — cosa cambia e perché</title>
+<style>
+  :root{
+    --bg:#ffffff; --fg:#1b1d21; --muted:#5f6672; --line:#e3e6ea;
+    --soft:#f6f7f9; --accent:#1d4ed8; --accent-soft:#eef2ff;
+    --warn-bd:#f0c36d; --warn-bg:#fdf6e7;
+    --ok-bd:#7fc79a;   --ok-bg:#eef8f1;
+    --key-bd:#9aa9d8;  --key-bg:#eef1fb;
+    --radius:10px;
+    --maxw:860px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#15171a; --fg:#e6e8ea; --muted:#9aa1ac; --line:#2b2f35;
+      --soft:#1c1f23; --accent:#8ab0ff; --accent-soft:#1b2233;
+      --warn-bd:#8a6d2f; --warn-bg:#241f14;
+      --ok-bd:#3f7a55;  --ok-bg:#15211a;
+      --key-bd:#4a5788; --key-bg:#181d2b;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#15171a; --fg:#e6e8ea; --muted:#9aa1ac; --line:#2b2f35;
+    --soft:#1c1f23; --accent:#8ab0ff; --accent-soft:#1b2233;
+    --warn-bd:#8a6d2f; --warn-bg:#241f14;
+    --ok-bd:#3f7a55;  --ok-bg:#15211a;
+    --key-bd:#4a5788; --key-bg:#181d2b;
+  }
+  :root[data-theme="light"]{
+    --bg:#ffffff; --fg:#1b1d21; --muted:#5f6672; --line:#e3e6ea;
+    --soft:#f6f7f9; --accent:#1d4ed8; --accent-soft:#eef2ff;
+    --warn-bd:#f0c36d; --warn-bg:#fdf6e7;
+    --ok-bd:#7fc79a;  --ok-bg:#eef8f1;
+    --key-bd:#9aa9d8; --key-bg:#eef1fb;
+  }
+
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font:16.5px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,Helvetica,Arial,sans-serif;
+  }
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:44px 22px 90px}
+
+  header.doc{border-bottom:1px solid var(--line); padding-bottom:26px; margin-bottom:34px}
+  header.doc .kicker{
+    text-transform:uppercase; letter-spacing:.09em; font-size:11.5px;
+    color:var(--muted); font-weight:600; margin:0 0 10px
+  }
+  h1{font-size:31px; line-height:1.25; margin:0 0 12px; letter-spacing:-.015em}
+  header.doc p.sub{margin:0; color:var(--muted); font-size:15.5px}
+
+  h2{
+    font-size:22px; line-height:1.3; margin:52px 0 14px; letter-spacing:-.01em;
+    padding-top:4px;
+  }
+  h2 .n{
+    display:inline-block; min-width:1.55em; color:var(--accent); font-weight:700;
+  }
+  h3{font-size:17px; margin:30px 0 8px; letter-spacing:-.005em}
+  p{margin:0 0 14px}
+  ul,ol{margin:0 0 16px; padding-left:22px}
+  li{margin:0 0 8px}
+  strong{font-weight:650}
+  a{color:var(--accent)}
+
+  .lead{font-size:17.5px; color:var(--fg)}
+
+  .box{
+    border:1px solid var(--line); border-left-width:4px; background:var(--soft);
+    border-radius:var(--radius); padding:16px 18px; margin:22px 0;
+  }
+  .box p:last-child{margin-bottom:0}
+  .box .t{font-weight:650; margin:0 0 8px}
+  .box.key{border-left-color:var(--key-bd); background:var(--key-bg)}
+  .box.warn{border-left-color:var(--warn-bd); background:var(--warn-bg)}
+  .box.ok{border-left-color:var(--ok-bd); background:var(--ok-bg)}
+
+  .tw{overflow-x:auto; margin:20px 0; border:1px solid var(--line); border-radius:var(--radius)}
+  table{border-collapse:collapse; width:100%; font-size:15px; min-width:520px}
+  th,td{text-align:left; padding:11px 14px; border-bottom:1px solid var(--line); vertical-align:top}
+  thead th{background:var(--soft); font-weight:650; font-size:13.5px; letter-spacing:.01em}
+  tbody tr:last-child td{border-bottom:none}
+  td.num{white-space:nowrap; font-variant-numeric:tabular-nums}
+
+  .cards{display:grid; gap:14px; margin:22px 0}
+  @media (min-width:720px){ .cards{grid-template-columns:1fr 1fr} }
+  .card{
+    border:1px solid var(--line); border-radius:var(--radius); padding:16px 18px; background:var(--soft);
+  }
+  .card h4{margin:0 0 8px; font-size:16px; display:flex; gap:9px; align-items:baseline}
+  .card h4 .i{
+    color:var(--accent); font-weight:700; font-size:13px; letter-spacing:.02em;
+  }
+  .card p{margin:0 0 10px; font-size:15px}
+  .card p:last-child{margin-bottom:0}
+  .card .why{color:var(--muted); font-size:14.5px}
+
+  .steps{counter-reset:s; list-style:none; padding:0; margin:22px 0}
+  .steps li{
+    counter-increment:s; position:relative; padding-left:44px; margin-bottom:18px;
+  }
+  .steps li::before{
+    content:counter(s); position:absolute; left:0; top:1px;
+    width:28px; height:28px; border-radius:50%; background:var(--accent-soft);
+    color:var(--accent); font-weight:700; font-size:14px;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .steps li b{display:block; margin-bottom:2px}
+
+  .toc{
+    border:1px solid var(--line); border-radius:var(--radius); padding:16px 20px;
+    background:var(--soft); margin:0 0 10px;
+  }
+  .toc p{font-weight:650; margin:0 0 10px; font-size:14px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted)}
+  .toc ol{margin:0; padding-left:20px; font-size:15px}
+  .toc li{margin:0 0 5px}
+  .toc a{text-decoration:none}
+  .toc a:hover{text-decoration:underline}
+
+  .ba{display:grid; gap:12px; margin:20px 0}
+  @media (min-width:720px){ .ba{grid-template-columns:1fr 1fr} }
+  .ba > div{border:1px solid var(--line); border-radius:var(--radius); padding:14px 16px}
+  .ba .h{font-weight:650; font-size:13px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin:0 0 8px}
+  .ba ul{margin:0; padding-left:18px; font-size:15px}
+
+  hr{border:none; border-top:1px solid var(--line); margin:46px 0}
+
+  footer.doc{
+    margin-top:56px; padding-top:22px; border-top:1px solid var(--line);
+    color:var(--muted); font-size:14px;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="doc">
+  <p class="kicker">Nota di progetto · documento non tecnico</p>
+  <h1>Evoluzione del gestionale: nuove anagrafiche e cessioni</h1>
+  <p class="sub">Cosa cambia, perché non è solo un'aggiunta di campi, e come si semplifica il lavoro quotidiano. &nbsp;·&nbsp; 4 agosto 2026</p>
+</header>
+
+<div class="toc">
+  <p>Indice</p>
+  <ol>
+    <li><a href="#s1">In breve</a></li>
+    <li><a href="#s2">Cosa fa oggi il gestionale</a></li>
+    <li><a href="#s3">Perché non è "solo aggiungere campi"</a></li>
+    <li><a href="#s4">Le integrazioni principali</a></li>
+    <li><a href="#s5">Le chiamate: il cuore del lavoro</a></li>
+    <li><a href="#s6">Le pagine: quante e quali</a></li>
+    <li><a href="#s7">Le semplificazioni</a></li>
+    <li><a href="#s8">Come procederemo</a></li>
+    <li><a href="#s9">Cosa ci serve da voi</a></li>
+  </ol>
+</div>
+
+<h2 id="s1"><span class="n">1</span>In breve</h2>
+
+<p class="lead">I dati che il fornitore inizierà a inviarci portano due novità: <strong>anagrafiche molto più complete</strong> e <strong>una nuova tipologia di prodotto da gestire, le cessioni</strong>. Per accoglierle non basta aggiungere i campi nuovi alla scheda del cliente.</p>
+
+<p>Il gestionale usa i dati che riceve: decide chi chiamare per primo, fa scattare i promemoria, calcola quanto ha prodotto ciascun operatore. Un dato nuovo non resta fermo nella scheda del cliente, entra in questi meccanismi — ed è lì che va fatto funzionare.</p>
+
+<div class="box key">
+  <p class="t">In sintesi</p>
+  <p>La parte più consistente del lavoro non è aggiungere i campi nuovi, ma <strong>farli convivere con quello che il gestionale già garantisce</strong>: un cliente in una sola lista, un promemoria che non si perde, un export su cui si può contare.</p>
+</div>
+
+<h2 id="s2"><span class="n">2</span>Cosa fa oggi il gestionale</h2>
+
+<p>Queste sono le funzioni che devono continuare a funzionare anche dopo il cambiamento:</p>
+
+<ul>
+  <li><strong>Tiene insieme clienti e pratiche</strong>, anche quando una pratica coinvolge più persone con ruoli diversi (intestatario, coobbligato, garante).</li>
+  <li><strong>Decide l'ordine delle chiamate.</strong> Ogni cliente da contattare ha una priorità calcolata automaticamente, che tiene conto di quanto tempo è passato dall'ultimo contatto e della sua situazione.</li>
+  <li><strong>Non lascia cadere i promemoria.</strong> Se un operatore fissa un richiamo e poi è assente, il sistema riporta comunque il cliente in lista al momento giusto.</li>
+  <li><strong>Distribuisce il lavoro.</strong> Un responsabile assegna centinaia di clienti agli operatori in un'unica operazione, con regole precise su cosa succede a chi era già in trattativa.</li>
+  <li><strong>Registra gli esiti e produce gli export</strong> su cui si misura l'attività.</li>
+</ul>
+
+<p>Tutte e cinque, oggi, si occupano di un prodotto solo: <strong>di ogni cliente il gestionale segue esclusivamente il prestito</strong>, perché finora non c'era altro da lavorare. In concreto:</p>
+
+<ul>
+  <li>quando il gestionale dice "questo cliente è da chiamare", intende <em>da chiamare per un prestito</em>;</li>
+  <li>la priorità con cui quel cliente risale in cima alla lista è calcolata sulle sue pratiche di prestito;</li>
+  <li>il promemoria che scatta riporta in lista la trattativa sul prestito;</li>
+  <li>l'assegnazione massiva distribuisce agli operatori il lavoro sui prestiti;</li>
+  <li>e l'export di fine mese misura l'attività svolta sui prestiti.</li>
+</ul>
+
+<p>Perché le cessioni siano <strong>lavorabili</strong>, e non solo visibili in un elenco, devono entrare in <strong>tutte e cinque</strong> queste funzioni: una cessione deve avere una sua priorità di chiamata, un suo promemoria, un suo operatore assegnato, un suo esito e un suo conteggio negli export. E deve averli <strong>senza prendere il posto del prestito</strong> sullo stesso cliente.</p>
+
+<div class="box key">
+  <p class="t">Il nocciolo del progetto</p>
+  <p>Non basta affiancare al gestionale un elenco di cessioni da consultare. Le cessioni devono entrare <strong>dentro</strong> i meccanismi che oggi funzionano solo per i prestiti — chiamate, priorità, promemoria, assegnazioni, export — e convivere con i prestiti sullo stesso cliente. Da qui arriva la maggior parte del lavoro descritto nel documento.</p>
+</div>
+
+<h2 id="s3"><span class="n">3</span>Perché non è "solo aggiungere campi"</h2>
+
+<p>Due esempi concreti, presi dall'analisi del sistema attuale.</p>
+
+<h3>Esempio 1 — Due prodotti da proporre allo stesso cliente</h3>
+
+<p>Oggi il gestionale dà per scontato che su un cliente ci sia <strong>una sola trattativa aperta</strong>. Quando un responsabile assegna un cliente a un operatore, il sistema chiude quello che quel cliente aveva in corso e apre la trattativa nuova.</p>
+
+<p>Se aggiungessimo le cessioni senza toccare questo meccanismo, il primo giorno di utilizzo accadrebbe questo: il responsabile assegna a Luca la cessione del signor Rossi, e <strong>la trattativa sul prestito che Anna stava portando avanti sparisce dalla sua lista</strong>. Non compare nessun errore e nessun avviso: la trattativa sparisce e basta.</p>
+
+<p>Per questo la parte più consistente del lavoro non sta nelle cessioni in sé, ma nel rendere il sistema capace di gestire <strong>due trattative parallele sullo stesso cliente</strong> senza che si disturbino: assegnazioni, promemoria, priorità, avvisi, filtri.</p>
+
+<h3>Esempio 2 — Export e Analytics devono distinguere prodotti da cessioni</h3>
+
+<p>Anche i conteggi sono costruiti su un prodotto solo: l'attività si misura sul cliente, senza specificare <em>su cosa</em> è stata svolta. Con un prodotto solo non serviva.</p>
+
+<p>Con due tipologie serve. Se il conteggio resta com'è, un cliente che ha in corso sia un prestito sia una cessione porta con sé <strong>due trattative parallele che l'export non sa separare</strong>: la stessa persona comparirebbe due volte nello stesso conteggio, e non ci sarebbe modo di dire quante chiamate del mese sono state fatte sui prestiti e quante sulle cessioni.</p>
+
+<p>Per questo l'intervento sugli export fa parte del progetto: serve a far sì che ogni attività registrata porti con sé la tipologia a cui appartiene, e che i totali si possano leggere <strong>sia insieme sia separati</strong> — per operatore, per tipologia, per periodo. Senza, i numeri delle cessioni sarebbero indistinguibili da quelli dei prestiti.</p>
+
+<h2 id="s4"><span class="n">4</span>Le integrazioni principali</h2>
+
+<p>Il progetto si compone di otto interventi. I primi tre riguardano la <em>qualità e l'arrivo</em> dei dati, gli altri cinque il modo in cui il gestionale li usa.</p>
+
+<div class="cards">
+
+  <div class="card">
+    <h4><span class="i">01</span> Correzioni sulla lettura dei dati</h4>
+    <p>Date, importi e stati vengono riconosciuti nei formati nuovi; quello che non è riconosciuto viene <strong>scartato con un motivo</strong>, non indovinato.</p>
+    <p class="why">Perché serve: è l'unico intervento che tocca dati che entrano già oggi. Va per primo.</p>
+  </div>
+
+  <div class="card">
+    <h4><span class="i">02</span> Anagrafiche complete</h4>
+    <p>Sedici informazioni nuove sul cliente. Di queste, <strong>sette riempiono caselle che il gestionale ha già</strong> e che oggi restano vuote: telefono, email, data di nascita, reddito, occupazione, tipo di contratto, ruolo nella pratica.</p>
+    <p class="why">Perché serve: oggi la lista delle chiamate lavora su anagrafiche che spesso non hanno il numero di telefono. È il guadagno più immediato del progetto.</p>
+  </div>
+
+  <div class="card">
+    <h4><span class="i">03</span> Canale di ricezione automatica</h4>
+    <p>Un canale diretto e protetto su cui il fornitore invia gli aggiornamenti giornalieri, al posto del caricamento manuale dei file. Con due caratteristiche: un <strong>rinvio non crea duplicati</strong>, e la risposta dice riga per riga cosa è stato accettato e cosa no.</p>
+    <p class="why">Perché serve: gli aggiornamenti arrivano ogni giorno senza che nessuno debba caricare i file a mano, e si può controllare cosa è entrato.</p>
+  </div>
+
+  <div class="card">
+    <h4><span class="i">04</span> Catalogo prodotti</h4>
+    <p>L'elenco dei prodotti diventa una tabella gestita nel sistema, non più un elenco scritto dentro il software. Ogni prodotto dichiara a quale tipologia appartiene — prestito o cessione.</p>
+    <p class="why">Perché serve: è ciò che permette al gestionale di sapere <em>da solo</em> se una pratica è un prestito o una cessione. E aggiungere un prodotto smette di richiedere un rilascio del software.</p>
+  </div>
+
+  <div class="card">
+    <h4><span class="i">05</span> Prestiti e cessioni come due tipologie</h4>
+    <p>Le pratiche restano in un unico archivio, ma ognuna sa a quale tipologia appartiene. Ognuna ha i propri stati ammessi, i propri filtri e le proprie liste.</p>
+    <p class="why">Perché serve: tenere due archivi separati costa a ogni modifica futura, separare solo le viste si paga una volta sola — e per chi lavora il risultato è lo stesso.</p>
+  </div>
+
+  <div class="card">
+    <h4><span class="i">06</span> Le chiamate su entrambe le tipologie</h4>
+    <p>Il punto centrale, descritto per esteso al capitolo 5: un cliente può avere <strong>contemporaneamente</strong> una trattativa sul prestito e una sulla cessione, con operatori, promemoria e priorità indipendenti.</p>
+    <p class="why">Perché serve: è la condizione perché le cessioni siano lavorabili e non solo visibili.</p>
+  </div>
+
+  <div class="card">
+    <h4><span class="i">07</span> Export e conteggi</h4>
+    <p>Ogni attività registrata porta con sé <strong>la tipologia a cui si riferisce e chi l'ha svolta</strong>, e le azioni automatiche del sistema restano distinguibili da quelle delle persone.</p>
+    <p class="why">Perché serve: è il modo in cui si misura il lavoro, e deve poter separare prestiti e cessioni.</p>
+  </div>
+
+  <div class="card">
+    <h4><span class="i">08</span> Traduzione dei codici agente</h4>
+    <p>D'ora in poi arriva il <strong>codice</strong> dell'agente al posto della descrizione per esteso. Serve una tabella che traduca quel codice in agenzia, punto vendita e sede.</p>
+    <p class="why">Perché serve: senza, il filtro "Sede" smette di funzionare su tutto ciò che arriva d'ora in poi. La tabella di traduzione deve fornircela il fornitore.</p>
+  </div>
+
+</div>
+
+<h2 id="s5"><span class="n">5</span>Le chiamate: il cuore del lavoro</h2>
+
+<div class="box">
+  <p><strong>Nota di terminologia.</strong> In questo documento chiamiamo <strong>"chiamate"</strong> quelle che nel gestionale compaiono oggi come attività sul cliente: la riga che dice "questo cliente è da chiamare / da richiamare / ha un appuntamento / è stato erogato". È il modo in cui il gestionale tiene traccia di una <strong>trattativa</strong> in corso.</p>
+</div>
+
+<p>Oggi ogni cliente ha <strong>una</strong> di queste righe. Domani ne avrà <strong>fino a due</strong>: una per il prestito e una per la cessione. È la modifica che tocca il maggior numero di meccanismi, perché quasi ogni funzione del gestionale è scritta dando per scontato che la riga sia una sola.</p>
+
+<p>Le tre cose che devono funzionare insieme:</p>
+
+<ol class="steps">
+  <li>
+    <b>Ogni chiamata sa a quale tipologia appartiene.</b>
+    Il sistema deve poter dire "questa è la trattativa sul prestito del signor Rossi" e "questa è la sua cessione", e impedire che sullo stesso cliente esistano due trattative della stessa tipologia.
+  </li>
+  <li>
+    <b>Le due trattative non si disturbano.</b>
+    Assegnare la cessione a Luca non deve chiudere il prestito di Anna. Un promemoria sul prestito non deve comparire sulla cessione. L'ordine con cui si chiama sui prestiti si calcola sulle pratiche di prestito, e lo stesso vale per le cessioni. E l'assegnazione massiva — quella già documentata e concordata con gli operatori — mantiene <strong>esattamente le stesse regole</strong>, applicate alla coppia cliente + tipologia invece che al solo cliente.
+  </li>
+  <li>
+    <b>Gli export raccontano entrambe.</b>
+    Quante chiamate ha fatto un operatore nel mese, quante sui prestiti e quante sulle cessioni, con quali esiti. Perché il totale resti leggibile serve che ogni attività registrata porti con sé la tipologia a cui appartiene: è la condizione perché i numeri delle due tipologie si possano confrontare, invece di sommarsi in un unico dato.
+  </li>
+</ol>
+
+<h2 id="s6"><span class="n">6</span>Le pagine: quante e quali</h2>
+
+<p>La struttura passa da un'unica tabella che fa tutto a <strong>tre aree distinte</strong>, ciascuna con il proprio elenco e la propria scheda di dettaglio.</p>
+
+<div class="tw">
+<table>
+  <thead>
+    <tr><th>Area</th><th>A cosa serve</th><th class="num">Pagine</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Chiamate</strong><br><span style="color:var(--muted);font-size:14px">nuova</span></td>
+      <td>La lista di lavoro quotidiana. Chi chiamare, con che priorità, con quale esito, su quale tipologia. È qui che si assegnano le chiamate agli operatori.</td>
+      <td class="num">2</td>
+    </tr>
+    <tr>
+      <td><strong>Prestiti</strong><br><span style="color:var(--muted);font-size:14px">nuova</span></td>
+      <td>L'elenco delle pratiche di prestito, con i filtri e gli stati propri di questa tipologia. È l'attuale sezione "Pratiche", ripulita.</td>
+      <td class="num">2</td>
+    </tr>
+    <tr>
+      <td><strong>Cessioni</strong><br><span style="color:var(--muted);font-size:14px">nuova</span></td>
+      <td>Lo stesso, per le cessioni: filtri e stati propri, numeri separati.</td>
+      <td class="num">2</td>
+    </tr>
+    <tr>
+      <td><strong>Clienti</strong><br><span style="color:var(--muted);font-size:14px">ripensata</span></td>
+      <td>Torna a essere l'anagrafica: chi è il cliente, i suoi recapiti, chi ne è referente. Con un rimando alle sue chiamate e alle sue pratiche.</td>
+      <td class="num">2</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<p><strong>In totale: 3 aree nuove, 6 pagine nuove, 2 pagine ripensate.</strong> Chi ha salvato il vecchio indirizzo delle Pratiche non deve fare nulla: viene portato automaticamente sui Prestiti.</p>
+
+<h3>Perché tre aree e non una tabella sola</h3>
+
+<p>Oggi la tabella Clienti mostra insieme l'anagrafica, lo stato della trattativa e le pratiche. Sembra comodo, ma ha un costo che si vede già: <strong>ogni riga deve rappresentare una cosa sola</strong>, e quando un cliente ha più trattative aperte la tabella non sa più cosa mostrare. Da questo nascono conteggi imprecisi e pagine che mostrano meno risultati di quanti dovrebbero.</p>
+
+<p>Separando le aree ogni elenco torna a essere corretto, filtrabile e veloce. Si sistema anche un difetto di paginazione della lista clienti che esiste già oggi.</p>
+
+<h2 id="s7"><span class="n">7</span>Le semplificazioni</h2>
+
+<p>Cosa diventa più semplice, in concreto:</p>
+
+<div class="ba">
+  <div>
+    <p class="h">Oggi</p>
+    <ul>
+      <li>Una tabella sola che fa da anagrafica, da lista di lavoro e da elenco pratiche.</li>
+      <li>Due pulsanti di assegnazione da distinguere leggendo una guida.</li>
+      <li>Nessun modo di guardare prestiti e cessioni separatamente.</li>
+      <li>Conteggi ed export pensati per un'unica tipologia di prodotto.</li>
+      <li>Un prodotto nuovo richiede un rilascio del software.</li>
+      <li>Anagrafiche senza telefono ed email sulla maggior parte dei clienti.</li>
+    </ul>
+  </div>
+  <div>
+    <p class="h">Dopo</p>
+    <ul>
+      <li>Un'area per ogni cosa: Chiamate per lavorare, Prestiti e Cessioni per consultare, Clienti per l'anagrafica.</li>
+      <li>L'ambiguità sparisce: assegni le chiamate dalle Chiamate, i clienti dai Clienti.</li>
+      <li>Filtri, elenchi e numeri separati per prestiti e cessioni.</li>
+      <li>Conteggi ed export leggibili per operatore, per tipologia e per periodo, insieme o separati.</li>
+      <li>Un prodotto nuovo è una riga in tabella.</li>
+      <li>Recapiti completi su tutto il portafoglio.</li>
+    </ul>
+  </div>
+</div>
+
+<div class="box key">
+  <p class="t">Una nota sul rapporto costi/benefici</p>
+  <p>La riorganizzazione in aree <strong>assorbe buona parte di un riordino delle pagine</strong> già previsto, che sarebbe stato comunque necessario. Farla adesso, insieme alle cessioni, costa meno che farla dopo: gran parte dei punti da modificare sono gli stessi, e affrontarli due volte significherebbe collaudarli due volte.</p>
+</div>
+
+<h2 id="s8"><span class="n">8</span>Come procederemo</h2>
+
+<p>Le prime fasi sono <strong>rilasciabili una alla volta</strong>, senza aspettare le successive e senza cambiare nulla per chi usa il gestionale ogni giorno.</p>
+
+<ol class="steps">
+  <li>
+    <b>Correzioni sulla lettura dei dati</b>
+    Per prime, perché riguardano informazioni che entrano già oggi. Non si vede nulla a schermo, ma è quello che evita di sporcare i dati già presenti.
+  </li>
+  <li>
+    <b>Fondamenta invisibili</b>
+    I campi anagrafici nuovi, il catalogo prodotti, la distinzione tra le due tipologie, e la garanzia che impedisce le trattative duplicate. Sono tutte aggiunte: il gestionale continua a funzionare esattamente come oggi.
+  </li>
+  <li>
+    <b>La gestione delle chiamate</b>
+    Convivenza delle due trattative, separazione tra chi è referente del cliente e chi porta avanti la singola trattativa, conteggi ed export distinti per tipologia. È la fase più consistente ed è quella che cambia il modo di leggere i numeri: va accompagnata da una comunicazione agli utenti.
+  </li>
+  <li>
+    <b>Le nuove pagine</b>
+    Chiamate, Prestiti, Cessioni, e l'alleggerimento della lista Clienti. È il momento in cui il cambiamento diventa visibile.
+  </li>
+  <li>
+    <b>Il canale di ricezione automatica</b>
+    Per ultimo, perché dipende dalle risposte del fornitore sui punti del capitolo 9.
+  </li>
+</ol>
+
+<p>La pianificazione di dettaglio, con la stima per singolo blocco, è nel documento tecnico che accompagna questa nota.</p>
+
+<h2 id="s9"><span class="n">9</span>Cosa ci serve da voi</h2>
+
+<p>Due informazioni non sono ricavabili dai dati che riceveremo e vanno richieste al fornitore per poter procedere.</p>
+
+<div class="tw">
+<table>
+  <thead>
+    <tr><th style="width:52%">Cosa ci serve</th><th>Cosa blocca</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Quali codici prodotto identificano le cessioni</strong>, e l'elenco completo degli stati che una cessione può assumere.</td>
+      <td>La distinzione tra le due tipologie: senza, il gestionale non può sapere da solo se una pratica è un prestito o una cessione, e i filtri delle liste non hanno valori su cui lavorare.</td>
+    </tr>
+    <tr>
+      <td><strong>La tabella che traduce i codici agente</strong> (codice → agenzia, punto vendita, sede).</td>
+      <td>Il filtro "Sede": d'ora in poi arriva il codice al posto della descrizione, quindi senza una tabella di traduzione il filtro resterebbe vuoto su tutto ciò che entra da qui in avanti.</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<hr>
+
+<p class="lead">I nuovi dati portano anagrafiche complete e una tipologia di prodotto in più da gestire. Non si fermano però alla scheda del cliente: entrano nell'ordine delle chiamate, nei promemoria, nelle assegnazioni e nei numeri di fine mese. Il progetto serve a farli funzionare lì dentro senza perdere quello che il gestionale già garantisce, e a semplificare dove si può il lavoro di ogni giorno.</p>
+
+<footer class="doc">
+  Documento di sintesi non tecnico. I dettagli implementativi, l'inventario completo dei campi e la stima per blocco sono nei documenti tecnici allegati.
+</footer>
+
+</div>
+</body>
+</html>

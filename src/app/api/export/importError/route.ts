@@ -14,7 +14,6 @@ import {
 import { NextResponse, type NextRequest } from "next/server"
 import { parseReadableStream } from "@/lib/utils/api"
 import { authCheck } from "../../_utils/auth"
-import { type WithImplicitCoercion } from "buffer"
 
 async function handler(req: NextRequest) {
   // auth check

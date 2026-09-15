@@ -30,6 +30,13 @@ async function updatePriority() {
     },
   })
 
+  if (!response.ok) {
+    const body = await response.text().catch(() => "")
+    throw new Error(
+      `Request to /api/cron/priority failed: HTTP ${response.status} ${body}`
+    )
+  }
+
   return response
 }
 
@@ -37,7 +44,8 @@ const updateTaskPriority = async () => {
   try {
     await updatePriority()
   } catch (error) {
-    console.error("Error deleting export files:", error)
+    console.error("Error updating task priority:", error)
+    process.exit(1)
   }
 }
 
