@@ -46,7 +46,8 @@ async function handler(req: NextRequest) {
           and(
             eq(task.id, Number(id)),
             not(and(eq(task.state, "chiamare"), eq(task.priority, 120))!),
-            eq(task.customPriority, false)
+            eq(task.customPriority, false),
+            eq(task.isActive, true)
           )
         )
       await updateTaskPriority(tasks as TaskPriority[])
@@ -65,7 +66,8 @@ async function handler(req: NextRequest) {
         .where(
           and(
             not(and(eq(task.state, "chiamare"), eq(task.priority, 120))!),
-            eq(task.customPriority, false)
+            eq(task.customPriority, false),
+            eq(task.isActive, true)
           )
         )
 

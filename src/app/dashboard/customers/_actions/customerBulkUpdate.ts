@@ -10,6 +10,8 @@ const bulkAssignCustomersSchema = z
     customerIds: z.string(),
     type: z.enum(["chiamate", "clienti"]).default("chiamate"),
     callType: z.enum(taskStatus).optional(),
+    // CSV dei clienti per cui l'operatore ha confermato la rimozione dell'alert.
+    resolveAlertCustomerIds: z.string().optional(),
   })
   .refine((data) => {
     if (data.type === "chiamate") {
@@ -26,14 +28,24 @@ export async function customerBulkUpdateAction(formData: FormData) {
       error: unRefinedData.error.message,
     }
   }
-  const { operatorId, customerIds, type, callType } = unRefinedData.data
+  const { operatorId, customerIds, type, callType, resolveAlertCustomerIds } =
+    unRefinedData.data
 
   const customerIdsArray = customerIds.split(",")
   if (type === "chiamate") {
+    // L'elenco completo arriva uguale a ogni chunk: lo restringiamo ai soli
+    // clienti presenti in questo chunk per non passare ID estranei.
+    const resolveAlertForChunk = resolveAlertCustomerIds
+      ? resolveAlertCustomerIds
+          .split(",")
+          .filter((id) => id && customerIdsArray.includes(id))
+      : []
+
     await api.task.bulkHandleTask.mutate({
       operatorId: Number(operatorId),
       customerIds: customerIdsArray,
       state: callType,
+      resolveAlertCustomerIds: resolveAlertForChunk,
     })
 
     revalidatePath("/dashboard/customers", "layout")

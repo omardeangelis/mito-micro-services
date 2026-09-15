@@ -78,7 +78,7 @@ export const PopoverDateFilter = ({
       ...prev,
       {
         id: nanoid(),
-        name: filterMap.keys().next().value!,
+        name: filterMap.keys().next().value as string,
         value: "",
         operator: "eq",
       },
@@ -92,13 +92,16 @@ export const PopoverDateFilter = ({
     [filterMap]
   )
 
-  const removeFilter = useCallback((id: string) => {
-    setActiveFilter((prev) => prev.filter((f) => f.id !== id))
-  }, [])
+  const removeFilter = useCallback(
+    (id: string) => {
+      setActiveFilter((prev) => prev.filter((f) => f.id !== id))
+    },
+    [setActiveFilter]
+  )
 
   const clearAllFilters = useCallback(() => {
     setActiveFilter([])
-  }, [])
+  }, [setActiveFilter])
 
   const [errorsField, setErrorFields] = useState<
     Array<{ id: string; error: string }>
@@ -165,7 +168,7 @@ export const PopoverDateFilter = ({
       filterMap,
       errorsField,
     }),
-    [activeFilter, removeFilter, filterMap, errorsField]
+    [activeFilter, setActiveFilter, removeFilter, filterMap, errorsField]
   )
 
   return (

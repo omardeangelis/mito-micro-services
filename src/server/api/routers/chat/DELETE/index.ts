@@ -35,11 +35,7 @@ export const deleteMessage = operatorProcedure
         total: count(),
       })
       .from(messages)
-      .where(
-        eq(messages.chatId, chatId).if(
-          eq(messages.operatorId, input.operatorId)
-        )
-      )
+      .where(eq(messages.chatId, chatId))
 
     const totalMessages = operatorChatMessages[0]?.total ?? 0
 

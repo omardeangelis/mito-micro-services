@@ -67,6 +67,7 @@ export const CustomerAlertCreator = (props: Props) => {
           createdAt: new Date(),
           updatedAt: new Date(),
           isResolved: false,
+          resolvedBy: null,
         })
         await createAlertAction({
           deadline: values.deadline,
@@ -108,8 +109,7 @@ export const CustomerAlertCreator = (props: Props) => {
               </AlertTitle>
             ) : (
               <AlertTitle>
-                Scade{" "}
-                {getTimeDifferenceFromNowAsDD(optimisticAlert.deadline)}{" "}
+                Scade {getTimeDifferenceFromNowAsDD(optimisticAlert.deadline)}{" "}
               </AlertTitle>
             )}
             {optimisticAlert.message ? (

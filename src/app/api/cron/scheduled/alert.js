@@ -31,6 +31,13 @@ async function fetchAlerts() {
     },
   })
 
+  if (!response.ok) {
+    const body = await response.text().catch(() => "")
+    throw new Error(
+      `Request to /api/cron/alert failed: HTTP ${response.status} ${body}`
+    )
+  }
+
   // LOG su telegram
   // await sendTelegramMessage(
   //   `RESPONSE: ${JSON.stringify(response)} || TOKEN: ${token} || SECRET: ${secret} || BASEURL: ${baseUrl} || NODE_ENV: ${process.env.NODE_ENV}`
@@ -43,6 +50,7 @@ const updateAlert = async () => {
     await fetchAlerts()
   } catch (error) {
     console.error("Error updating alerts:", error)
+    process.exit(1)
   }
 }
 

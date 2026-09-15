@@ -1,6 +1,7 @@
 import { type Customer } from "@/lib/types/schemas"
 import { api } from "@/trpc/server"
 import { CustomerAlertCreator } from "./CustomerAlertCreator"
+import { CustomerAlertHistory } from "./CustomerAlertHistory"
 import { getTaskStatusCategory } from "../../_utils"
 
 type Props = {
@@ -23,16 +24,20 @@ export const CustomerActivities = async (props: Props) => {
   })
   const creatable = taskCategory === "close" || taskCategory === "idle"
 
+  const customerAlerts = await api.task.getCustomerAlerts.query({
+    id: props.customer.id,
+  })
+  const pastAlerts = customerAlerts.filter((a) => a.isResolved)
+
   return (
     <section className="relative rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-      <div className="flex items-baseline gap-1">
-        <h2 className="mb-2 text-lg font-medium">Alerts</h2>
-        {alerts?.isResolved ? (
-          <p className="text-sm italic text-gray-500">
-            (Per creare nuovi alert elimina quello scaduto)
-          </p>
-        ) : null}
-      </div>
+      <h2 className="text-lg font-medium">Alerts</h2>
+      <p className="mb-3 text-sm text-gray-500">
+        Imposta una scadenza per ricordarti di richiamare il cliente. Allo
+        scadere l&apos;alert si risolve da solo, finisce nello storico e il
+        cliente torna tra i follow-up.
+      </p>
+      <p className="mb-2 text-sm font-medium text-gray-600">Attivo</p>
       <CustomerAlertCreator
         task={{
           id: task[0]!.id,
@@ -41,6 +46,10 @@ export const CustomerActivities = async (props: Props) => {
         lastAlertId={lastAlertId}
         creatable={creatable}
       />
+      <p className="mb-2 mt-4 text-sm font-medium text-gray-600">
+        Storico {pastAlerts.length > 0 ? `(${pastAlerts.length})` : ""}
+      </p>
+      <CustomerAlertHistory alerts={pastAlerts} />
     </section>
   )
 }

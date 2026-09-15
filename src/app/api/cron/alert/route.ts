@@ -4,6 +4,9 @@ import { and, eq, sql } from "drizzle-orm"
 import { db } from "@/server/db"
 import { alert as alerts, task as tasks } from "@/server/db/schema/task"
 import { customers } from "@/server/db/schema/customers"
+import { operators } from "@/server/db/schema/operators"
+import { taskEventLog } from "@/server/db/schema/taskEventLog"
+import { SYSTEM_OPERATOR_USER_ID } from "@/lib/constants/operator"
 import { authCheck } from "../../_utils/auth"
 
 loadEnv()
@@ -17,6 +20,12 @@ export async function GET(request: Request) {
   if (authResponse) return authResponse
 
   try {
+    const [systemOperator] = await db
+      .select({ id: operators.id })
+      .from(operators)
+      .where(eq(operators.userId, SYSTEM_OPERATOR_USER_ID))
+    const systemOperatorId = systemOperator!.id
+
     const today = new Date()
     today.setHours(0, 0, 0, 0)
     const todayFormatted = formatDate(today)
@@ -63,12 +72,16 @@ export async function GET(request: Request) {
           .where(eq(customers.id, task!.customerId!))
         const updatedOperatorId = customer[0]!.operatorId
 
+        // La nuova task attiva non deve nascere agganciata all'alert che stiamo
+        // risolvendo qui sotto: altrimenti getActiveAlerts lo ripesca e lo mostra
+        // in "Attivo" come scaduto, duplicandolo con lo Storico. L'alert resta
+        // collegato (via alert.taskId) alla vecchia task per lo storico.
         await db.insert(tasks).values({
           state: "followup",
           closedAt: task?.closedAt,
           customerId: task?.customerId,
           operatorId: updatedOperatorId,
-          alertId: alert.id,
+          alertId: null,
           priority: 150,
           customPriority: false,
           isActive: true,
@@ -81,10 +94,30 @@ export async function GET(request: Request) {
 
         await db
           .update(alerts)
-          .set({ isResolved: true })
+          .set({ isResolved: true, resolvedBy: systemOperatorId })
           .where(eq(alerts.id, alert.id))
 
         // await db.delete(alerts).where(eq(alerts.id, alert.id))
+
+        await db.insert(taskEventLog).values([
+          {
+            customerId: task!.customerId!,
+            taskId: task!.id,
+            alertId: alert.id,
+            actorOperatorId: systemOperatorId,
+            action: "alert_resolved",
+            source: "cron_alert",
+          },
+          {
+            customerId: task!.customerId!,
+            taskId: task!.id,
+            actorOperatorId: systemOperatorId,
+            action: "state_change",
+            source: "cron_alert",
+            fromState: task!.state,
+            toState: "followup",
+          },
+        ])
       } else {
         await db
           .update(tasks)
@@ -95,8 +128,17 @@ export async function GET(request: Request) {
         // await db.delete(alerts).where(eq(alerts.id, alert.id))
         await db
           .update(alerts)
-          .set({ isResolved: true })
+          .set({ isResolved: true, resolvedBy: systemOperatorId })
           .where(eq(alerts.id, alert.id))
+
+        await db.insert(taskEventLog).values({
+          customerId: task!.customerId!,
+          taskId: task!.id,
+          alertId: alert.id,
+          actorOperatorId: systemOperatorId,
+          action: "alert_resolved",
+          source: "cron_alert",
+        })
       }
     }
 

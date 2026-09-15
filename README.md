@@ -39,4 +39,3 @@ pnpm seed:clearTables
 pnpm seed:pratiche
 pnpm seed:customers
 pnpm seed:customerToPratica
-# mito-micro-services

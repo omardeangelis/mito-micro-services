@@ -13,6 +13,7 @@ import {
   countDistinct,
   or,
   isNull,
+  max,
 } from "drizzle-orm"
 import { z } from "zod"
 import { TRPCError } from "@trpc/server"
@@ -355,7 +356,13 @@ export const getAllCustomers = operatorProcedure
           eq(task.isActive, true)
         )
       )
-      .orderBy(task.updatedAt)
+      // Stesso criterio di getActiveTask (task/GET): la più recente per
+      // GREATEST(updatedAt, createdAt), così lista e dettaglio mostrano la
+      // stessa task quando un cliente ha più righe isActive=true.
+      .orderBy(
+        desc(sql`GREATEST(${task.updatedAt}, ${task.createdAt})`),
+        desc(task.id)
+      )
 
     const newCustomers = allCustomers.map((c) => {
       const activeTasks = tasks.filter((t) => t.customerId === c.id).length ?? 0
@@ -479,22 +486,22 @@ export const getAllFileName = protectedProcedure
   .query(async ({ ctx, input }) => {
     const table = input === "customers" ? customers : practices
     const { db } = ctx
+    // Nessun LIMIT: l'aggregazione scansiona comunque tutta la tabella, quindi
+    // un limite non fa risparmiare nulla lato DB e il payload è irrisorio
+    // (~9 KB per 270 nomi). In passato il limite tagliava in ordine alfabetico
+    // e faceva sparire dal filtro i file appena caricati.
     const fileNames = await db
-      .selectDistinctOn([table.fileName], {
+      .select({
         fileName: table.fileName,
-        lastImportUpdate: table.lastImportUpdate,
+        lastImportUpdate: max(table.lastImportUpdate),
       })
       .from(table)
       .where(
         sql`${table.fileName} IS NOT NULL AND ${table.fileName} != 'Nessuno'`
       )
-      .orderBy(table.fileName, desc(table.lastImportUpdate))
-      .limit(200)
-    // Riordina per data dopo aver ottenuto i distinct (più recenti prima)
-    const sortedByDate = fileNames.sort(
-      (a, b) => b.lastImportUpdate.getTime() - a.lastImportUpdate.getTime()
-    )
-    return sortedByDate.map((f) => ({ fileName: f.fileName }))
+      .groupBy(table.fileName)
+      .orderBy(desc(max(table.lastImportUpdate)))
+    return fileNames.map((f) => ({ fileName: f.fileName }))
   })
 
 export const getCustomerUnderReview = protectedProcedure.query(

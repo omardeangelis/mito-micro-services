@@ -107,6 +107,7 @@ export const CustomerTaskManager = (props: TaskManager) => {
         operatorId: task?.operatorId,
         state: values.state,
         closedAt: task?.closedAt,
+        source: "detail",
       })
       await updateTask({
         id: activeTask?.[0]?.id,
@@ -131,6 +132,7 @@ export const CustomerTaskManager = (props: TaskManager) => {
       // recuperabile invece di essere cancellato per sempre dal DB.
       await resolveAlerts({
         id: task.alertId,
+        source: "detail",
       })
     }
     router.refresh()

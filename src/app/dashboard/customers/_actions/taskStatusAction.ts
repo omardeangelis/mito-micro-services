@@ -28,6 +28,7 @@ export const taskStatusAction = async ({
       customerId,
       operatorId,
       state: "chiamare",
+      source: "list",
     })
   } else {
     if (direction === "reopen") {
@@ -39,6 +40,7 @@ export const taskStatusAction = async ({
         operatorId,
         state: "chiamare",
         closedAt: lastUpdate,
+        source: "list",
       })
       await api.task.updateTaskFromDashboard.mutate({
         id: taskId,

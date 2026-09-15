@@ -1,7 +1,10 @@
 import { operatorProcedure } from "@/server/api/trpc"
 import { alert, task } from "@/server/db/schema/task"
-import { desc, eq, and, sql } from "drizzle-orm"
+import { customers } from "@/server/db/schema/customers"
+import { operators } from "@/server/db/schema/operators"
+import { desc, eq, and, sql, inArray } from "drizzle-orm"
 import { selectCustomerSchema, selectTaskSchema } from "@/lib/types/schemas"
+import { z } from "zod"
 
 const taskInput = selectTaskSchema.pick({
   id: true,
@@ -67,6 +70,65 @@ export const getActiveAlerts = operatorProcedure
       alerts: alerts[0],
       lastAlertId: lastAlertId[0]?.id ?? 0,
     }
+  })
+
+const getCustomerAlertsInput = selectCustomerSchema.pick({ id: true })
+
+// Storico completo degli alert di un cliente (attivi e risolti), su tutte le
+// sue task passate e presenti, con il nome dell'operatore che ha risolto
+// ciascun alert risolto. Usato dalla sezione "Alerts" nel dettaglio cliente.
+export const getCustomerAlerts = operatorProcedure
+  .input(getCustomerAlertsInput)
+  .query(async ({ ctx, input }) => {
+    return await ctx.db
+      .select({
+        id: alert.id,
+        deadline: alert.deadline,
+        message: alert.message,
+        isResolved: alert.isResolved,
+        updatedAt: alert.updatedAt,
+        resolvedByName: operators.name,
+        resolvedBySurname: operators.surname,
+      })
+      .from(alert)
+      .innerJoin(task, eq(task.id, alert.taskId))
+      .leftJoin(operators, eq(operators.id, alert.resolvedBy))
+      .where(eq(task.customerId, input.id))
+      .orderBy(desc(alert.deadline))
+  })
+
+const getCustomersWithActiveAlertsInput = z.object({
+  customerIds: z.array(z.string()),
+})
+
+// Dato un insieme di clienti, restituisce SOLO quelli che hanno un alert attivo
+// (callback pianificato non ancora risolto) sulla loro task attiva. Serve al
+// dialog di assegnazione massiva per avvertire l'operatore e chiedere conferma
+// prima di sovrascrivere lo stato con una nuova chiamata.
+export const getCustomersWithActiveAlerts = operatorProcedure
+  .input(getCustomersWithActiveAlertsInput)
+  .query(async ({ ctx, input }) => {
+    if (input.customerIds.length === 0) return []
+    return await ctx.db
+      .select({
+        customerId: task.customerId,
+        name: customers.name,
+        surname: customers.surname,
+        alertId: alert.id,
+        deadline: alert.deadline,
+        message: alert.message,
+        state: task.state,
+      })
+      .from(alert)
+      .innerJoin(task, eq(task.alertId, alert.id))
+      .innerJoin(customers, eq(customers.id, task.customerId))
+      .where(
+        and(
+          inArray(task.customerId, input.customerIds),
+          eq(alert.isResolved, false),
+          eq(task.isActive, true)
+        )
+      )
   })
 
 const getActiveTaskInput = selectCustomerSchema.pick({
