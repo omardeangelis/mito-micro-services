@@ -83,6 +83,40 @@ describe("task.createTask", () => {
     ])
   })
 
+  it("la nuova task resta la più recente del cliente, e Assegna Clienti riassegna quella", async () => {
+    const operator = await createOperator()
+    const laterOperator = await createOperator({ name: "Successivo" })
+    const admin = await createOperator({ role: "ADMIN" })
+    const customer = await createCustomer({ operatorId: operator.id })
+    const previous = await createTask({
+      customerId: customer.id,
+      operatorId: operator.id,
+      state: "non interessato",
+    })
+
+    const created = await createTestCaller(operator).task.createTask({
+      customerId: customer.id,
+      operatorId: operator.id,
+      state: "chiamare",
+      closedAt: CLOSED_AT,
+      source: "detail",
+    })
+
+    // As before T1.7, when the insert was the only write
+    const [old, current] = await tasksOf(customer.id)
+    expect(current!.updatedAt.getTime()).toBeGreaterThan(
+      old!.updatedAt.getTime()
+    )
+    await createTestCaller(admin).customer.bulkUpdateCustomers({
+      operatorId: laterOperator.id,
+      customerIds: [customer.id],
+    })
+    expect(await tasksOf(customer.id)).toEqual([
+      expect.objectContaining({ id: previous.id, operatorId: operator.id }),
+      expect.objectContaining({ id: created.id, operatorId: laterOperator.id }),
+    ])
+  })
+
   it("senza cliente risponde BAD_REQUEST e non scrive nulla", async () => {
     const operator = await createOperator()
 

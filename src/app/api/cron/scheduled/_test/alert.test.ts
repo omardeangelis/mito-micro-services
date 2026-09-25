@@ -73,28 +73,31 @@ describe("alert.js", () => {
   it.each([
     [
       "se un alert fallisce",
-      json({
+      {
         message: "Cron job ran",
         found: 2,
         processed: 1,
         skipped: 0,
         failed: 1,
-      }),
+      },
     ],
     [
       "se fallisce l'intera esecuzione",
-      json({
+      {
         message: "Error exporting data",
         filePath: null,
         error: "Error exporting data",
-      }),
+      },
     ],
-    [
-      "se la route non risponde 200",
-      new Response("Unauthorized", { status: 401 }),
-    ],
-  ])("esce con 1 %s", async (_, response) => {
-    await runScript(response)
+  ])("esce con 1 %s, e stampa la risposta", async (_, body) => {
+    await runScript(json(body))
+
+    expect(exit).toHaveBeenCalledWith(1)
+    expect(log).toHaveBeenCalledWith(JSON.stringify(body))
+  })
+
+  it("esce con 1 se la route non risponde 200", async () => {
+    await runScript(new Response("Unauthorized", { status: 401 }))
 
     expect(exit).toHaveBeenCalledWith(1)
   })

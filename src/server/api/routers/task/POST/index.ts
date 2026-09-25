@@ -57,6 +57,8 @@ export const createTask = operatorProcedure
               closedAt: input.closedAt,
               priority: 120,
             },
+            // As at base, where the insert was the only write
+            mostRecent: true,
           })
           yield* query((client) =>
             client.insert(taskEventLog).values({

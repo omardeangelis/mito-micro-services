@@ -403,6 +403,48 @@ describe("cron alert: ogni alert in una transazione sua", () => {
     )
   })
 
+  it("un alert di un giorno precedente che un'altra esecuzione risolve dopo la lettura dell'elenco è contato fra gli skipped e lascia la task com'era", async () => {
+    const { customer } = await seedContactWithAlert(
+      new Date("2026-09-23T08:00:00.000Z")
+    )
+    const other = await createCustomer()
+    const otherTask = await createTask({
+      customerId: other.id,
+      state: "richiamare",
+    })
+    await createAlert({
+      taskId: otherTask.id,
+      deadline: new Date("2026-09-23T08:00:00.000Z"),
+    })
+    // While the first alert is written, an overlapping run resolves the other
+    await afterNextWriteTo(
+      taskEventLog,
+      "INSERT",
+      `UPDATE "${getTableName(alerts)}" SET is_resolved = true WHERE is_resolved = false`
+    )
+
+    const body = await runCron()
+
+    expect(body).toMatchObject({
+      found: 2,
+      processed: 1,
+      skipped: 1,
+      failed: 0,
+    })
+    const outcome = await Promise.all(
+      [customer.id, other.id].map(async (id) => {
+        const [row] = await tasksOf(id)
+        return { linked: row!.alertId !== null, log: (await logOf(id)).length }
+      })
+    )
+    expect(outcome).toEqual(
+      expect.arrayContaining([
+        { linked: false, log: 1 },
+        { linked: true, log: 0 },
+      ])
+    )
+  })
+
   it("un alert di un giorno precedente stacca dalla task solo sé stesso, non un alert agganciato nel frattempo", async () => {
     const { customerOperator, customer, previous, alert } =
       await seedContactWithAlert(new Date("2026-09-23T08:00:00.000Z"))
