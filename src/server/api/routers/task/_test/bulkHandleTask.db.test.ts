@@ -1,4 +1,12 @@
-import { beforeAll, beforeEach, describe, expect, it } from "vitest"
+import {
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest"
 import { asc, eq } from "drizzle-orm"
 import { task } from "@/server/db/schema/task"
 import { taskEventLog } from "@/server/db/schema/taskEventLog"
@@ -10,6 +18,7 @@ import {
   createOperator,
   createTask,
 } from "@/test/factories"
+import { failNextInsertInto } from "@/test/failpoint"
 
 // The four cases of the operators' guide (brain/chore/crm/guida-assegnazione-
 // massiva-e-alert.md). The UI offers the bulk assignment to admins only.
@@ -38,6 +47,10 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   await resetDb()
+})
+
+afterEach(() => {
+  vi.restoreAllMocks()
 })
 
 async function seed() {
@@ -330,5 +343,60 @@ describe("task.bulkHandleTask (comportamento attuale)", () => {
     const [firstTask] = await tasksOf(first.id)
     const [secondTask] = await tasksOf(second.id)
     expect(firstTask!.id).toBeLessThan(secondTask!.id)
+  })
+
+  it("un errore durante l'elaborazione di un cliente non lascia né la nuova task né la disattivazione della precedente", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined)
+    const { previousOperator, nextOperator, caller } = await seed()
+    const first = await createCustomer({ operatorId: previousOperator.id })
+    const second = await createCustomer({ operatorId: previousOperator.id })
+    const firstPrevious = await createTask({
+      customerId: first.id,
+      operatorId: previousOperator.id,
+      state: "app.to",
+    })
+    const secondPrevious = await createTask({
+      customerId: second.id,
+      operatorId: previousOperator.id,
+      state: "app.to",
+    })
+    await failNextInsertInto(taskEventLog, { customer_id: second.id })
+
+    await expect(
+      caller.task.bulkHandleTask({
+        operatorId: nextOperator.id,
+        customerIds: [first.id, second.id],
+        state: "chiamare",
+      })
+    ).rejects.toMatchObject({ code: "INTERNAL_SERVER_ERROR" })
+
+    // The first customer stays processed
+    const [firstActive] = await caller.task.getActiveTask({ id: first.id })
+    expect(firstActive).toMatchObject({
+      state: "chiamare",
+      operatorId: nextOperator.id,
+    })
+    expect(await tasksOf(first.id)).toHaveLength(2)
+    expect(await logOf(first.id)).toHaveLength(2)
+    // The second one is as it was
+    expect(await tasksOf(second.id)).toEqual([secondPrevious])
+    expect(
+      await caller.customer.getCustomerById({ id: second.id })
+    ).toMatchObject({ operatorId: previousOperator.id })
+    expect(await logOf(second.id)).toEqual([])
+    expect(firstPrevious.id).not.toBe(firstActive!.id)
+  })
+
+  it("un cliente inesistente risponde BAD_REQUEST senza scrivere nulla per lui", async () => {
+    const { nextOperator, caller } = await seed()
+
+    await expect(
+      caller.task.bulkHandleTask({
+        operatorId: nextOperator.id,
+        customerIds: ["missing-customer"],
+        state: "chiamare",
+      })
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" })
+    expect(await testDb.select().from(task)).toEqual([])
   })
 })

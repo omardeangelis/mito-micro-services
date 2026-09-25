@@ -34,6 +34,7 @@ updated: 2026-09-25
 - **T1.4 — `ErrorReporter` nei test.** Il cron costruisce `ServerLive` da sé, quindi un layer di test non si può passare dal chiamante: il setup sostituisce `SentryReporterLive` con un layer che registra in `reportedErrors` (`src/test/errorReporter.ts`), come già fa con `@/server/db`. Nessun test chiama Sentry.
 - **T1.5 — lo script del cron esce con 1 anche con `error` nella risposta.** Il piano diceva solo `failed > 0`. Ma un'esecuzione fallita per intero (DB irraggiungibile, operatore di sistema mancante) risponde 200 con `error` e senza `failed`: senza questo controllo il job su GitHub Actions resterebbe verde, e G1 non se ne accorgerebbe.
 - **T1.5 — `lockCustomer` anche nel ramo "altro giorno".** Il piano lo chiedeva "se la task ha un cliente". Chiamarlo sempre non cambia nessun caso che oggi funziona: con `customer_id` NULL il ramo scriveva task e alert e poi falliva sulla riga di log (`customer_id` NOT NULL). Ora fallisce con `CustomerMissing` prima di scrivere.
+- **T1.6 — un cliente inesistente nella massiva risponde `BAD_REQUEST`.** Oggi falliva con una violazione di FK sull'insert della task (`INTERNAL_SERVER_ERROR`, dopo aver elaborato i clienti precedenti). Ora `lockCustomer` fallisce con `CustomerMissing` prima di scrivere, e `runTrpc` richiede di tradurlo: `BAD_REQUEST`, come `createTask` in T1.7. Non diventa una issue Sentry. I clienti precedenti restano elaborati come oggi.
 
 ## Surprises and Decisions
 

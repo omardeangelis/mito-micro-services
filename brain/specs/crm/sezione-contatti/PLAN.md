@@ -395,9 +395,9 @@ Branch suggerito: `contatti/pr1-creazione-sicura`. Nessun cambiamento visibile, 
   - I casi 1, 2 e 3 creano la task con `replaceActiveContact`, che disattiva prima di inserire. Il caso 4 resta invariato, ma dentro la transazione.
   - Campi, log e aggiornamento di `customers.operatorId` restano identici.
 - **validation**: i test di T1.3 restano verdi senza cambiare le asserzioni, salvo quella sul duplicato già marcata "destinata a cambiare": ora anche il duplicato più vecchio non è più attivo. Nuovo test: con `failNextInsertInto(task_event_log)` su un cliente, per quel cliente non restano dati parziali e i clienti precedenti restano elaborati.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-09-25 — RED: il test con il guasto sul log del secondo cliente (dati parziali). GREEN con `assignCustomer` in un `transaction` per cliente e `Effect.forEach` sequenziale; i test di T1.3 restano verdi, cambia solo l'asserzione marcata sul duplicato. La scelta della task più recente (reduce con sort su `updatedAt`) è copiata tale e quale, per non cambiare i pareggi. Nel caso 2 la disattivazione la fa `replaceActiveContact`, poi `alertId = null` sulla task precedente e la risoluzione dell'alert, nell'ordine cliente → task → alert. Un cliente inesistente fallisce con `CustomerMissing` prima di scrivere e risponde `BAD_REQUEST` (oggi: violazione di FK, `INTERNAL_SERVER_ERROR`), con un test.
+- **files edited/created**: `src/server/api/routers/task/POST/index.ts`, `src/server/api/routers/task/_test/bulkHandleTask.db.test.ts`, `src/server/api/routers/task/_test/bulkHandleTask.legacy.db.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a (D6)

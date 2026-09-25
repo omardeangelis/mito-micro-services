@@ -24,7 +24,7 @@ beforeEach(async () => {
 })
 
 describe("task.bulkHandleTask su un cliente con due task attive", () => {
-  it("usa la task aggiornata più di recente, e oggi l'altra resta attiva", async () => {
+  it("usa la task aggiornata più di recente e disattiva anche l'altra", async () => {
     const admin = await createOperator({ role: "ADMIN" })
     const operator = await createOperator()
     const customer = await createCustomer({ operatorId: operator.id })
@@ -59,10 +59,9 @@ describe("task.bulkHandleTask su un cliente con due task attive", () => {
     expect(rows.find((row) => row.id === newer.id)).toMatchObject({
       isActive: false,
     })
-    // DESTINATA A CAMBIARE IN T1.6: oggi il duplicato più vecchio resta
-    // attivo; con replaceActiveContact si disattivano tutte
+    // Changed in T1.6: before replaceActiveContact the older one stayed active
     expect(rows.find((row) => row.id === older.id)).toMatchObject({
-      isActive: true,
+      isActive: false,
     })
   })
 })
