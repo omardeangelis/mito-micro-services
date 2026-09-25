@@ -128,10 +128,16 @@ export const transaction = <A, E, R>(
     return yield* committed
   })
 
-/** A customer row locked by the transaction in progress. */
+declare const locked: unique symbol
+
+/**
+ * A customer row locked by the transaction in progress. Only `lockCustomer`
+ * makes one.
+ */
 export type LockedCustomer = {
   readonly id: string
   readonly operatorId: number | null
+  readonly [locked]: true
 }
 
 /**
@@ -155,5 +161,5 @@ export const lockCustomer = (
         .for("update")
     )
     if (!customer) return yield* new CustomerMissing({ customerId })
-    return customer
+    return customer as LockedCustomer
   })

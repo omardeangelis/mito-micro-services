@@ -177,6 +177,41 @@ describe("task.bulkHandleTask (comportamento attuale)", () => {
     ])
   })
 
+  it("caso 2: la nuova task resta la più recente del cliente, e Assegna Clienti riassegna quella", async () => {
+    const { previousOperator, nextOperator, customer, caller } = await seed()
+    const laterOperator = await createOperator({ name: "Successivo" })
+    const previous = await createTask({
+      customerId: customer.id,
+      operatorId: previousOperator.id,
+      state: "richiamare",
+    })
+    await createAlert({
+      taskId: previous.id,
+      deadline: new Date("2026-10-01T08:00:00.000Z"),
+    })
+    await caller.task.bulkHandleTask({
+      operatorId: nextOperator.id,
+      customerIds: [customer.id],
+      state: "chiamare",
+      resolveAlertCustomerIds: [customer.id],
+    })
+
+    await caller.customer.bulkUpdateCustomers({
+      operatorId: laterOperator.id,
+      customerIds: [customer.id],
+    })
+
+    const [active] = await caller.task.getActiveTask({ id: customer.id })
+    expect(active).toMatchObject({ operatorId: laterOperator.id })
+    expect(await tasksOf(customer.id)).toEqual([
+      expect.objectContaining({
+        id: previous.id,
+        operatorId: previousOperator.id,
+      }),
+      expect.objectContaining({ id: active!.id }),
+    ])
+  })
+
   it("caso 3: un contatto app.to senza alert diventa una nuova task attiva nello stato richiesto che eredita closedAt, e la precedente non è più attiva", async () => {
     const { admin, previousOperator, nextOperator, customer, caller } =
       await seed()

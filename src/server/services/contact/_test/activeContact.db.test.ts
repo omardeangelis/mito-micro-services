@@ -1,7 +1,11 @@
 import { beforeAll, beforeEach, describe, expect, it } from "vitest"
 import { Effect } from "effect"
 import { task } from "@/server/db/schema/task"
-import { lockCustomer, transaction } from "@/server/effect/db"
+import {
+  type LockedCustomer,
+  lockCustomer,
+  transaction,
+} from "@/server/effect/db"
 import { replaceActiveContact } from "@/server/services/contact/activeContact"
 import { activeTasksOf, migrateUpTo, resetDb, tasksOf, testDb } from "@/test/db"
 import { createTestCaller } from "@/test/caller"
@@ -98,5 +102,21 @@ describe("replaceActiveContact", () => {
 
     expect(failureTag(exit)).toBe("DbError")
     expect(await tasksOf(customer.id)).toEqual([existing])
+  })
+
+  // Checked by `tsc --noEmit`: the calls never run
+  it("si chiama solo con un cliente bloccato da lockCustomer, dentro transaction()", () => {
+    const values = { state: "chiamare" as const }
+    const unlocked = { id: "customer", operatorId: null }
+    const locked = {} as LockedCustomer
+
+    const misuses = [
+      // @ts-expect-error: only lockCustomer makes a LockedCustomer
+      () => replaceActiveContact({ customer: unlocked, values }),
+      // @ts-expect-error: only transaction() provides Tx
+      () => runServer(replaceActiveContact({ customer: locked, values })),
+    ]
+
+    expect(misuses).toHaveLength(2)
   })
 })

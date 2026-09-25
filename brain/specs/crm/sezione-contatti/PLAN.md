@@ -540,7 +540,8 @@ Branch suggerito: `contatti/pr2-vincolo-db`. Contiene solo migrazioni e uno scri
   5. fuori orario, **rieseguire l'estrazione**: se è cambiata rispetto a quella approvata, condividere la differenza prima di proseguire. Poi lanciare a mano `pnpm db:migrate:prod` (mai da un agente);
   6. verificare in prod: la query dei duplicati restituisce 0 righe e l'estrazione non trova più alert da chiudere;
   7. avvisare gli operatori che hanno avuto alert chiusi dal sistema: li ritrovano nello Storico;
-  8. controllare l'esecuzione successiva del cron alert (`failed: 0`).
+  8. controllare l'esecuzione successiva del cron alert (`failed: 0`);
+  9. fino al rilascio di PR3, controllare su Sentry gli errori `duplicate key` (23505) su `task.updateTask` e `task.updateTaskFromDashboard`, e sul cron alert e la massiva: sono i contatti riattivati dalla lista (vedi §13).
 
   **Da qui PR1 non si può più annullare con un semplice revert** (vedi §12).
 - **validation**: checklist spuntata nella PR; la query dei duplicati in prod restituisce 0 righe.
@@ -1581,6 +1582,7 @@ Il lavoro di più PR può procedere in parallelo sui branch, ma i **merge** segu
 | D2 aggirata assegnandosi clienti o via massiva | P4 chiude `assignToYourself` e il form; P7 porta le massive ad `adminProcedure` e rimuove `customer.updateCustomer` |
 | Il cron alert in prod non gira dove si pensa, e G1 non dimostra nulla | Finding 14: G1 comincia accertando lo scheduler. Gli errori arrivano su `console.error` (`ServerLive`) e su Sentry (`ErrorReporter`, P9), lo script stampa il JSON ed esce con 1 se `failed > 0` (T1.5), il runbook dice dove guardare (T1.8) |
 | Revert di PR1 dopo G2 → cron fermo | Regola di rollback in §12 |
+| Tra G2 e PR3, `updateTask` e `updateTaskFromDashboard` riattivano un contatto già sostituito: scrivono `isActive` preso dal client, senza lock (preesistente, review di PR1 F3). Con l'indice unico la riga risponde 500; se succede a metà di un cron o di una massiva, fallisce quell'alert o quel cliente | Finestra G2 → PR3 breve; passo 9 del runbook G2; T3.13 rimuove le due mutation |
 | Deadlock tra transazioni concorrenti | Ordine unico dei lock `customers` → `task` → `alert`, con `lockCustomer` all'inizio di ogni transazione che scrive (T1.4, T1.5, T1.6, T3.2). PGlite non può rilevarli: la regola si controlla in review |
 | Tra PR3 e PR5 un admin non può riassegnare un singolo contatto con esito | Rilasci ravvicinati (G4); nel frattempo resta l'assegnazione massiva |
 | Lock della tabella durante `CREATE UNIQUE INDEX` | Migrazione fuori orario (G2); `task` di dimensioni contenute |

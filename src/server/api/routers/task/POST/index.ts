@@ -189,6 +189,14 @@ const assignCustomer = ({
         // La rimozione avviene solo su conferma esplicita.
         !customerTask.alertId)
     ) {
+      if (alertId !== null) {
+        yield* query((client) =>
+          client
+            .update(task)
+            .set({ alertId: null })
+            .where(eq(task.id, customerTask.id))
+        )
+      }
       const { created } = yield* replaceActiveContact({
         customer,
         values: {
@@ -197,16 +205,12 @@ const assignCustomer = ({
           priority: 120,
           closedAt: customerTask.closedAt,
         },
+        // As at base, where the previous task was written first
+        mostRecent: alertId !== null,
       })
       if (alertId !== null) {
         // Risolto in modo NON distruttivo: isResolved=true, record conservato,
         // il cron non lo riattiva
-        yield* query((client) =>
-          client
-            .update(task)
-            .set({ alertId: null })
-            .where(eq(task.id, customerTask.id))
-        )
         yield* query((client) =>
           client
             .update(alert)

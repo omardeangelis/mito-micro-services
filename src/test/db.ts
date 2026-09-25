@@ -76,7 +76,9 @@ function migrationsFolderUpTo(last: number) {
  */
 export async function migrateUpTo(tag?: string) {
   const last = tag ? indexOfTag(tag) : journal.entries.length - 1
-  // Same session time zone as the Supabase database
+  // The session time zone decides DATE() of a timestamptz, as in the alert
+  // cron's query. UTC is an assumption about production, checked in G1: the
+  // development database runs in Europe/Rome
   await testClient.exec(`SET TIME ZONE 'UTC'`)
 
   // The migrator skips the migrations already applied
