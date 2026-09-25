@@ -18,6 +18,13 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 - Concepts written: <count>
 -->
 
+## [2026-09-24] spec | Sezione Contatti e tabella Clienti semplificata
+- Created spec: [[specs/crm/sezione-contatti/SPEC]]
+- Flow: [[specs/crm/sezione-contatti/FLOW]]
+- Domain: crm
+- Status: Draft
+- Source: [[chore/crm/design-contatti]]
+
 ## [2026-09-24] migration | docs/ → brain/
 - Moved 5 CRM design/analysis docs → `chore/crm/`; `migration_plan.md` + `migration/` (15 files) → `chore/`; 2 HTML deliverables → `raw/assets/`
 - Rewrote `docs/…` path references; added `domain:` frontmatter (`crm`, `platform`); `docs/` removed

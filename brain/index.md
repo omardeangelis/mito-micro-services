@@ -16,7 +16,7 @@ Migrated from `docs/` on 2026-09-24. Source material for future `create-spec` ru
 
 ### CRM (`chore/crm/`)
 
-- [[chore/crm/design-contatti|design-contatti]] — Contatti section + simplified Clienti table (draft, active)
+- [[chore/crm/design-contatti|design-contatti]] — Contatti section + simplified Clienti table (draft; promoted to [[specs/crm/sezione-contatti/SPEC|spec]])
 - [[chore/crm/design-lavorazioni-e-verticali|design-lavorazioni-e-verticali]] — coexisting lavorazioni, Prestiti/Cessioni/Attività verticals (draft)
 - [[chore/crm/analisi-import-xml-v2|analisi-import-xml-v2]] — XML v2.0 import analysis (draft, partly superseded by the design above)
 - [[chore/crm/report-frontend-riorganizzazione|report-frontend-riorganizzazione]] — frontend reorganization report (draft)
@@ -40,7 +40,11 @@ _empty_
 
 ## Specs (per domain)
 
-_empty_
+| Domain | Spec | Status |
+|---|---|---|
+| crm | [[specs/crm/sezione-contatti/SPEC]] | Draft |
+
+- [[specs/crm/crm-specs|crm-specs]] — CRM spec page map
 
 ## Tech debt
 
