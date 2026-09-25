@@ -31,7 +31,7 @@ updated: 2026-09-25
   - cron alert ([route.ts:79](../../../../src/app/api/cron/alert/route.ts)) e `bulkHandleTask` caso 3 ([POST:246](../../../../src/server/api/routers/task/POST/index.ts)) inseriscono prima;
   - `createTask` non disattiva.
 - `task` e `alert` non hanno indici.
-- Test: solo vitest sull'import (`src/app/api/import/**/_test`). Il CI (`node.js.yml`) non ha database.
+- Test: solo vitest sull'import (`src/app/api/import/**/_test`). La CI (`.github/workflows/ci.yml`) non ha database.
 - Deploy: `deploy-production.yaml` fa solo `vercel build/deploy` su push a `main`. **Le migrazioni non partono dal deploy**: si applicano a mano (`db:migrate:prod`, vietato agli agenti).
 - Effect: `effect` 3.22 è installato, ma nessun file lo usa ancora. La regola in `AGENTS.md` (§ Effect) chiede che ogni refactor porti su Effect il codice che tocca, dove ha senso.
 - Sentry (`@sentry/nextjs` 8.20): configurato, ma fino al 2026-09-25 non riceveva quasi nessun errore del server, perché tRPC e i `catch` dei route li intercettavano. Da quella data, prima di PR1:
@@ -122,7 +122,7 @@ Serve una sezione **Contatti** (lista e dettaglio) sulle `task`. Le regole di mo
   - nessun `sql.raw` nei filtri Contatti;
   - nessuno script `NODE_ENV=production` durante lo sviluppo;
   - interfaccia in italiano;
-  - gate CI: `pnpm lint`, `pnpm test --run`, `pnpm build` (con `SKIP_ENV_VALIDATION=true`).
+  - gate CI: quelli di `AGENTS.md`, eseguiti da `.github/workflows/ci.yml` (comandi in §9).
 - **Vincolo di progetto:** la regola Effect di `AGENTS.md`, con i confini di D9 e P8. Il passaggio a Effect non deve cambiare le asserzioni dei test di caratterizzazione (T1.2, T1.3).
 
 ## 6. Findings dal codice
@@ -206,7 +206,10 @@ Convenzioni valide per tutte le PR:
 - i test stanno in cartelle `_test/` accanto al codice;
 - i test d'integrazione sul DB hanno il suffisso `.db.test.ts` e girano in ambiente `node`;
 - `backlog_item_id` e `backlog_item_url` sono n/a (D6);
-- ogni PR chiude con i gate CI: `pnpm lint`, `pnpm test --run`, `SKIP_ENV_VALIDATION=true pnpm build`.
+- ogni PR chiude con i gate CI di `AGENTS.md`. Sono gli stessi di `.github/workflows/ci.yml` e dei controlli che `next build` fa su Vercel prima del deploy:
+  - lint: `SKIP_ENV_VALIDATION=true pnpm exec next lint` e `pnpm exec tsc --noEmit`. Non `pnpm lint`: il suo `--fix` corregge gli errori di formattazione che su Vercel bloccano il build;
+  - test: `pnpm run test --run`. `pnpm test --run` non funziona: pnpm legge `--run` come opzione propria;
+  - build: `SKIP_ENV_VALIDATION=true pnpm build`, con `NEXT_PUBLIC_SUPABASE_URL` e `SUPABASE_KEY` fittizi se mancano le credenziali.
 
 ### PR1 — Percorsi di creazione sicuri
 
@@ -230,7 +233,7 @@ Branch suggerito: `contatti/pr1-creazione-sicura`. Nessun cambiamento visibile, 
   - **`src/test/factories.ts`:** user/operator (compreso l'operatore di sistema con `userId = "system"`), customer, task, alert, `customerToPratica`.
   - **`src/test/failpoint.ts`:** `failNextInsertInto(table)` installa un trigger plpgsql di test che fa fallire il prossimo `INSERT` sulla tabella. Serve a iniettare guasti al confine del DB senza mock interni. Se plpgsql non è disponibile in PGlite, si ripiega su `vi.spyOn` del modulo di log.
   - **vitest:** ambiente `node` per `**/*.db.test.ts` (`environmentMatchGlobs`); `env: { TZ: "UTC", SKIP_ENV_VALIDATION: "true" }`.
-- **validation**: `pnpm test --run` esegue lo smoke test:
+- **validation**: `pnpm run test --run` esegue lo smoke test:
   - le migrazioni si applicano su un PGlite vuoto;
   - un caller `OPERATORE` legge via `task.getActiveTask` la task creata dalla factory;
   - un utente senza operatore riceve `BAD_REQUEST`;
@@ -1436,7 +1439,7 @@ Branch suggerito: `contatti/pr6-clienti`. Il merge si fa solo dopo G5.
 - **depends_on**: [T6.2, T6.4]
 - **location**: `CustomerTaskManager.tsx`, `CustomerActivities.tsx`, `CustomerAlertCreator.tsx`, `TaskStatusSelector`, `task.getAllAvaibleTaskStatus` se non ha chiamanti, re-export in `customers/_utils`
 - **description**: Eliminare i componenti e le action che dopo T6.2 e T6.4 non sono più usati, verificando i chiamanti con `grep`.
-- **validation**: `pnpm lint` e `pnpm build` verdi.
+- **validation**: lint (`next lint` e `tsc --noEmit`) e `pnpm build` verdi.
 - **status**: Planned
 - **log**:
 - **files edited/created**:

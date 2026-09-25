@@ -9,7 +9,7 @@ links:
   - "[[chore/crm/guida-assegnazione-massiva-e-alert]]"
   - "[[chore/crm/report-frontend-riorganizzazione]]"
 created: 2026-09-24
-updated: 2026-09-24
+updated: 2026-09-25
 ---
 
 # Spec: Sezione Contatti e tabella Clienti semplificata
@@ -215,7 +215,7 @@ Gli stati "da chiamare" sono `chiamare` e `followup`; gli stati con esito sono `
   | 2 | Contatti affiancato a Clienti, e "Vedi contatti" nel menu della riga cliente | AC1–AC52, AC62 |
   | 3 | Note nel dettaglio del contatto | AC53–AC57 |
   | 4 | Semplificazione di Clienti e della scheda cliente, guida operatori | AC58–AC61, AC63–AC68, AC74 |
-- **Gate CI**: `pnpm lint`, `pnpm test --run`, `pnpm build`.
+- **Gate CI**: quelli di `AGENTS.md`, eseguiti da `.github/workflows/ci.yml`: lint (`next lint` e `tsc --noEmit`), `pnpm run test --run`, `pnpm build`.
 - L'interfaccia è in italiano.
 
 ---
