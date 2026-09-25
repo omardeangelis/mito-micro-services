@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/nextjs"
 import { type DateRangePickerValue } from "@tremor/react"
 import { fetchTasks } from "../../utils"
 import { NextResponse, type NextRequest } from "next/server"
@@ -29,6 +30,7 @@ async function handler(req: NextRequest) {
     })
   } catch (error) {
     console.error("copy error", error)
+    Sentry.captureException(error)
     return NextResponse.json({
       error: "Error exporting data",
       filePath: null,

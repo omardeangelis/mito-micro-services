@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/nextjs"
 import { type NextRequest, NextResponse } from "next/server"
 import { loadEnv } from "@/lib/global/env"
 import { and, eq, not } from "drizzle-orm"
@@ -77,6 +78,7 @@ async function handler(req: NextRequest) {
     return NextResponse.json({ message: "Cron job ran" })
   } catch (error) {
     console.error("Error deleting export files", error)
+    Sentry.captureException(error)
     return NextResponse.json({
       message: "Error exporting data",
       filePath: null,

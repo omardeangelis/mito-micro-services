@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/nextjs"
 import * as XLSX from "xlsx"
 import { api } from "@/trpc/server"
 import { NextResponse, type NextRequest } from "next/server"
@@ -42,6 +43,7 @@ async function handler(req: NextRequest) {
     return NextResponse.json({ message: "Exporting data", filePath: filePath })
   } catch (error) {
     console.error("copy error", error)
+    Sentry.captureException(error)
     return NextResponse.json({
       message: null,
       filePath: null,

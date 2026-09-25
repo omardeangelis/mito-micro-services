@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/nextjs"
 import { db } from "@/server/db"
 import { customers } from "@/server/db/schema/customers"
 import { practices } from "@/server/db/schema/pratiche"
@@ -59,6 +60,7 @@ async function handler(req: NextRequest) {
     }) as NextResponse<FetchDefaultResponse>
   } catch (error) {
     console.error("copy error", error)
+    Sentry.captureException(error)
     return NextResponse.json({
       message: null,
       filePath: null,

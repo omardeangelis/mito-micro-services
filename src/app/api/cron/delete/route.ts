@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/nextjs"
 import { NextResponse } from "next/server"
 import { loadEnv } from "@/lib/global/env"
 import { createClient } from "@supabase/supabase-js"
@@ -56,6 +57,7 @@ export async function GET(request: Request) {
     })
   } catch (error) {
     console.error(`Error cleaning up the export folder:`, error)
+    Sentry.captureException(error)
     return NextResponse.json({
       message: "Error exporting data",
       filePath: null,

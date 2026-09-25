@@ -61,8 +61,25 @@ const config = {
 }
 
 const sentryWebpackPluginOptions = {
+  org: "spatalo-b9",
+  project: "javascript-nextjs",
   authToken: env.SENTRY_AUTH_TOKEN,
-  silent: true,
+  // Build output only in CI (Vercel sets CI), so a failed source map upload shows in the build log
+  silent: !process.env.CI,
+  // Upload more client files for readable client stack traces
+  widenClientFileUpload: true,
+  // Don't expose source maps to the browser; Sentry still gets them
+  hideSourceMaps: true,
+  // Send browser events through /monitoring so ad-blockers don't drop them
+  tunnelRoute: "/monitoring",
+  disableLogger: true,
+  unstable_sentryWebpackPluginOptions: {
+    // A failed release or source map upload (e.g. a token from another Sentry org) warns instead of failing the deploy
+    /** @param {Error} err */
+    errorHandler: (err) => {
+      console.warn("[@sentry/nextjs] Source map upload failed:", err.message)
+    },
+  },
 }
 
 export default withSentryConfig(config, sentryWebpackPluginOptions)
