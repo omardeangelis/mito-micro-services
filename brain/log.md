@@ -3,7 +3,7 @@ domain: _root
 type: index
 links: []
 created: 2026-09-24
-updated: 2026-09-24
+updated: 2026-09-25
 ---
 
 # Brain — Log
@@ -17,6 +17,13 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 - Flows written: <count>
 - Concepts written: <count>
 -->
+
+## [2026-09-25] review | Sezione Contatti — PR1 "Percorsi di creazione sicuri"
+- Report: [[specs/crm/sezione-contatti/REPORT]]
+- Scope: spec
+- Verdict: DO NOT SHIP
+- Impact: critical
+- Verifiers: 7 (1 blockers, 4 major)
 
 ## [2026-09-24] spec | Sezione Contatti e tabella Clienti semplificata
 - Created spec: [[specs/crm/sezione-contatti/SPEC]]
