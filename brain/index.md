@@ -54,7 +54,7 @@ _empty_
 
 > `adversarial-review` writes SHIP/DO-NOT-SHIP reports here. Standalone reviews land under `review/<slug>/`; spec-implementation reviews live inside the spec folder (`specs/<domain>/<spec>/REPORT.md`).
 
-- [[specs/crm/sezione-contatti/REPORT|crm/sezione-contatti]] — spec · do-not-ship · critical · 2026-09-25
+- [[specs/crm/sezione-contatti/REPORT|crm/sezione-contatti]] — spec · ship (seconda verifica; prima do-not-ship) · critical · 2026-09-25
 
 ## Log
 

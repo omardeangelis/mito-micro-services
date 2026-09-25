@@ -92,4 +92,4 @@ Nessuno. Il RUBRIC è coerente con le regole di validazione: ogni passaggio ha u
 | v6 | Errori ai bordi e osservabilità (Sentry una volta sola, exit code dello script) | high | strongest (Opus) |
 | v7 | Gate CI e solidità dell'harness di test | medium | balanced (Sonnet) |
 
-> **Stato:** classificazione e verifica completate il 2026-09-25. Tutti e 7 i passaggi sono stati eseguiti; il verdetto è in [[specs/crm/sezione-contatti/REPORT]] (DO NOT SHIP).
+> **Stato:** classificazione e verifica completate il 2026-09-25. Tutti e 7 i passaggi sono stati eseguiti; il verdetto è in [[specs/crm/sezione-contatti/REPORT]]: DO NOT SHIP su `09de3e8`, SHIP su `87ff79e` dopo aver rieseguito v1, v2 e v3.

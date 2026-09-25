@@ -18,6 +18,13 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 - Concepts written: <count>
 -->
 
+## [2026-09-25] review | Sezione Contatti — PR1, seconda verifica
+- Report: [[specs/crm/sezione-contatti/REPORT]]
+- Scope: spec
+- Verdict: SHIP (prima: DO NOT SHIP)
+- Impact: critical
+- Verifiers: 3 rieseguiti (v1, v2, v3) su `87ff79e`; 0 blockers, 0 major, 5 minor
+
 ## [2026-09-25] review | Sezione Contatti — PR1 "Percorsi di creazione sicuri"
 - Report: [[specs/crm/sezione-contatti/REPORT]]
 - Scope: spec

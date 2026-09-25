@@ -20,8 +20,10 @@ import {
  * The new task's `updatedAt` is the start of the transaction, so the tasks
  * written before it in the transaction, the deactivated ones included, are
  * more recent. With `mostRecent` it is later than every task of the customer
- * instead. "Assegna Clienti" (`customer.bulkUpdateCustomers`) picks the most
- * recent task, so each caller keeps the order it had.
+ * written before the insert (not than the writers that don't lock the
+ * customer and commit after it). "Assegna Clienti"
+ * (`customer.bulkUpdateCustomers`) picks the most recent task, so each caller
+ * keeps the order it had.
  *
  * `previous` is the most recent of the deactivated tasks, as the UI shows it
  * (`task.getActiveTask`), or null.

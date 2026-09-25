@@ -5,8 +5,8 @@ scope: spec
 spec: sezione-contatti
 review_target: "branch contatti/pr1-creazione-sicura — PR1 (T1.1–T1.7)"
 base_ref: 88b01718b6e9deafef1913cef489268a16518312
-head_ref: 09de3e83fa1d0f5b2542ede509cba558eeb60f6a
-verdict: do-not-ship
+head_ref: 87ff79e077763b5a443b689a663a4e30987622a3
+verdict: ship
 review_impact: critical
 human_in_loop: true
 links:
@@ -25,9 +25,9 @@ updated: 2026-09-25
 
 ## Verdict
 
-**DO NOT SHIP** · impact: critical
+**SHIP** · impact: critical · dopo le correzioni di `87ff79e`, rieseguendo v1, v2 e v3 (vedi "Seconda verifica"). La checklist umana resta obbligatoria.
 
-Obiezione bloccante (v3, confermata sul codice): nella massiva, nel caso "alert confermato" ("Risolvi alert" spuntato), dopo PR1 la task più recente per `updated_at` è la vecchia, ormai inattiva; prima era la nuova. "Assegna Clienti" (`customer.bulkUpdateCustomers`, codice invariato) sceglie proprio la task con `updated_at` più recente, attiva o no, e quindi dopo la massiva si comporta diversamente da oggi. È un cambio di comportamento della massiva non documentato, contro i non-goal della SPEC.
+Prima verifica, su `09de3e8`: **DO NOT SHIP**. Obiezione bloccante (v3, confermata sul codice): nella massiva, nel caso "alert confermato" ("Risolvi alert" spuntato), dopo PR1 la task più recente per `updated_at` è la vecchia, ormai inattiva; prima era la nuova. "Assegna Clienti" (`customer.bulkUpdateCustomers`, codice invariato) sceglie proprio la task con `updated_at` più recente, attiva o no, e quindi dopo la massiva si comporta diversamente da oggi. È un cambio di comportamento della massiva non documentato, contro i non-goal della SPEC.
 
 ## Coverage
 
@@ -36,7 +36,35 @@ Obiezione bloccante (v3, confermata sul codice): nella massiva, nel caso "alert 
 - v3 ha confrontato il codice della base, copiato alla lettera, con quello nuovo sugli stessi dati PGlite: 479 confronti uguali, 12 diversi, tutti spiegati nei finding. v1 ha scritto sonde di tipo e di runtime. Tutte le prove stanno nella scratchpad della sessione, fuori dal repo; il working tree non è stato toccato.
 - Tutti e sette hanno eseguito i gate in locale: lint e `tsc` puliti, 67/67 test verdi. v7 ha eseguito anche `pnpm build` con l'env di CI: verde.
 
+## Seconda verifica (dopo le correzioni)
+
+Il commit `87ff79e` corregge F1 e F2, porta F3 nel runbook G2 e nei rischi di PLAN.md, riformula il commento di F4 e registra F5 nel tech-debt. Poi sono stati rieseguiti i tre passaggi toccati dalle correzioni, con le stesse charter ristrette al commit, su Opus:
+
+| Pass | Verdict | Esito |
+|------|---------|-------|
+| v3 — parità della massiva | SHIP | F1 risolto. Nel caso "alert confermato" la nuova task è sempre in cima, qualunque sia la risoluzione o lo sfasamento degli orologi: 25/25 senza latenza, 12/12 con 2 ms per query, con l'orologio dell'app avanti o indietro di 5 s. Negli altri casi, in `createTask` e nel cron l'ordine resta quello della base. Righe identiche alla base in 4 scenari × 5 esecuzioni. Il test di regressione fallisce 60/60 senza la correzione e passa 300/300 con. |
+| v1 — atomicità | SHIP | F2 risolto: fuori da `transaction()`, o con un cliente che non viene da `lockCustomer`, `replaceActiveContact` non compila; ciascun `@ts-expect-error` fallisce se si toglie la sua protezione (mutazioni). Con errori iniettati nel caso "alert confermato" e in `createTask` il DB resta com'era. |
+| v2 — lock | SHIP | Lo spostamento dell'UPDATE e la sottoquery non introducono deadlock, aggiornamenti persi o un secondo contatto attivo fra i percorsi di PR1. La sottoquery usa un parametro e gestisce il NULL. |
+
+Gate: lint e `tsc` puliti, 69/69 test verdi, `pnpm build` verde con l'env di CI.
+
+Rilievi nuovi, nessuno sopra MINOR:
+
+| # | Severity | Da | Problema | Stato |
+|---|----------|----|----------|-------|
+| R1 | MINOR | v3 | Il test di regressione di F1 prende l'annullamento completo della correzione, non una metà sola: con il solo riordino annullato passa 96/100, con il solo `statement_timestamp()` 57/100. La prima asserzione passa anche senza correzione, per il `.where(undefined)` di "Assegna Clienti". | Da decidere: un failpoint che rallenta l'insert. |
+| R2 | MINOR | v3 | Sui dati sporchi due ordini cambiano rispetto alla base (da T1.5/T1.6, non da F1): pareggio in cima nel caso "esito senza alert" con due task attive; nel cron su un alert agganciato a una task inattiva va in cima la task prima attiva. | Documentato in IMPLEMENTATION-NOTES. |
+| R3 | MINOR | v2 | La nuova task è più recente di quelle scritte prima dell'insert, non di quelle scritte dopo da mutation che non bloccano il cliente (`updateTask`, `updateTaskFromDashboard`, `createAlert`). Probabilità bassa; lo stesso esito arriva già da F3. | Commento di `replaceActiveContact` corretto. |
+| R4 | MINOR | v1, v2 | Il brand prova che il cliente è stato bloccato, non che il lock sia della stessa transazione: un `LockedCustomer` riusato in un'altra `transaction`, o copiato con lo spread cambiando `id`, compila. Nessun chiamante lo fa. | Commento di `LockedCustomer`, note e tech-debt corretti; resta una regola di review. |
+| R5 | MINOR | v2 | F12 ancora aperto: la regola dei lock in `lockCustomer` e in PLAN.md §13 non corrisponde al codice. | Da decidere. |
+| R6 | NIT | v2 | Su dati sporchi, un deadlock (40P01) fra la massiva e l'"Assegna Clienti" col `.where(undefined)`: Postgres ne annulla una, senza dati rotti. | Sparisce con PR2. |
+| R7 | NIT | v2 | La massiva azzera `alert_id` senza la condizione `alert_id = A` (stessa classe di F13). | Da decidere con F13. |
+| R8 | NIT | v1 | Un `Tx` fornito a mano compila e riproduce una scrittura a metà; nessun codice lo fa. Togliere solo `yield* Tx` lascia verdi i test (lo protegge il tipo). | — |
+| R9 | NIT | v3 | Con l'orologio dell'app avanti rispetto al DB la nuova task va in cima anche dove la base avrebbe messo la vecchia (è l'intento). Una scansione di `task` in più per cliente nel caso "alert confermato": ~16 ms su 200.000 task senza indice, 0,2 ms con l'indice di PR2. | Documentato in IMPLEMENTATION-NOTES. |
+
 ## Findings
+
+Prima verifica, su `09de3e8`. F1–F5 sono chiusi o registrati dalla seconda verifica (sopra).
 
 I casi della massiva sono indicati per contenuto, perché la guida operatori e il codice li numerano in modo diverso (v3, NIT).
 
@@ -96,9 +124,9 @@ I casi della massiva sono indicati per contenuto, perché la guida operatori e i
 
 | Pass | Charter | Verdict | Rationale |
 |------|---------|---------|-----------|
-| v1 | Atomicità del wrapper di transazione (AC39) | SHIP | Nessun percorso attuale lascia scritture a metà. F2 va corretto prima di PR3. |
-| v2 | Concorrenza, lock, un solo contatto attivo (AC71) | SHIP | AC71 regge a livello di codice sui percorsi di PR1. Restano F2 e il rischio preesistente F3, da mettere nel runbook di PR2. |
-| v3 | Parità della massiva (AC72) | **DO NOT SHIP** | F1: il caso "alert confermato" cambia quale task è più recente e quindi il comportamento successivo di "Assegna Clienti". Non è documentato. |
+| v1 | Atomicità del wrapper di transazione (AC39) | SHIP | Nessun percorso attuale lascia scritture a metà. Seconda verifica: F2 chiuso. |
+| v2 | Concorrenza, lock, un solo contatto attivo (AC71) | SHIP | AC71 regge a livello di codice sui percorsi di PR1. F3 è nel runbook G2. Seconda verifica: nessun rischio nuovo dalle correzioni. |
+| v3 | Parità della massiva (AC72) | SHIP (seconda verifica) | Prima verifica DO NOT SHIP per F1; dopo `87ff79e` la nuova task resta in cima come nella base. |
 | v4 | Parità del cron alert (AC72) | SHIP | I risultati sono uguali per gli alert che vanno a buon fine. F6, F7 e F8 vanno documentati o misurati in G1. |
 | v5 | `createTask` e i chiamanti dell'interfaccia | SHIP | Il cambio voluto è corretto, senza effetti collaterali. Manca solo un test (F11). |
 | v6 | Errori ai bordi e osservabilità (P9) | SHIP | Ogni errore arriva una volta sola, nessun dato personale oltre agli id, l'exit code è corretto. Mancano dei test (F11). |
@@ -108,8 +136,8 @@ I casi della massiva sono indicati per contenuto, perché la guida operatori e i
 
 Da completare in ordine, da una persona, prima del merge verso `dev`.
 
-1. **Correggere F1** nel codice di PR1, con un test di regressione. Poi rieseguire il solo verificatore v3; anche v1 e v2 se la correzione tocca `activeContact.ts` o `db.ts`. Va bene quando v3 dà SHIP.
-2. **Decidere F2** (una riga), e per ogni MAJOR e MINOR scegliere se entra in PR1 o va in `brain/tech-debt/crm/sezione-contatti.md`. I finding marcati "sì" nella colonna Durable? vanno nel tech-debt.
+1. ~~**Correggere F1** nel codice di PR1, con un test di regressione. Poi rieseguire il solo verificatore v3; anche v1 e v2 se la correzione tocca `activeContact.ts` o `db.ts`. Va bene quando v3 dà SHIP.~~ Fatto: `87ff79e`, v1, v2 e v3 SHIP.
+2. ~~**Decidere F2** (una riga)~~ (fatto), e per ogni MAJOR e MINOR scegliere se entra in PR1 o va in `brain/tech-debt/crm/sezione-contatti.md`. I finding marcati "sì" nella colonna Durable? vanno nel tech-debt.
 3. **Gate locali**, tutti con exit 0:
    - `SKIP_ENV_VALIDATION=true pnpm exec next lint`
    - `pnpm exec tsc --noEmit`
@@ -139,8 +167,8 @@ Da completare in ordine, da una persona, prima del merge verso `dev`.
 | AC39: il cambio avviene per intero o per niente (percorsi di creazione di PR1) | Met | v1. La garanzia per i chiamanti futuri dipende da F2. |
 | AC71: un solo contatto attivo, parte codice, percorsi di PR1 | Met, con riserva | v2 e v5. Il tipo non impone il lock (F2). `updateTask` può riattivare un contatto sostituito (F3, preesistente, chiuso in PR3). |
 | AC72: cron alert con gli stessi risultati; un fallimento non ferma gli altri | Met | v4 e v6. Deviazioni da documentare: F6, F7. Rischio di timeout: F8. |
-| AC72: quattro casi della massiva con gli stessi risultati | **Unmet** | F1: nel caso "alert confermato" le righe scritte sono uguali, ma cambia quale task è più recente, e "Assegna Clienti" si comporta diversamente. |
-| Non-goal: comportamento della massiva invariato | **Unmet** | F1. |
+| AC72: quattro casi della massiva con gli stessi risultati | Met (seconda verifica) | Prima verifica Unmet per F1. Dopo `87ff79e` righe e task in cima uguali alla base in tutti e quattro i casi (v3). Sui dati sporchi cambia l'ordine in cima (R2), fuori da AC72. |
+| Non-goal: comportamento della massiva invariato | Met (seconda verifica) | Come sopra. |
 | Non-goal: l'export chiamate conta come oggi | Met, con riserva | Le righe prodotte dalla massiva sono identiche (v3). Dopo F1, un successivo "Assegna Clienti" attribuisce la nuova riga a un altro operatore rispetto a oggi. |
 | Non-goal: comportamento del cron invariato | Met | v4. L'unico cambio è la disattivazione di tutte le task attive (F7), consentita da AC71 e AC72. |
 | D9, P8, P9 (Effect, errori, Sentry una volta sola) | Met | v1, v6. |
@@ -149,5 +177,5 @@ Da completare in ordine, da una persona, prima del merge verso `dev`.
 
 ## Notes for docs-maintenance
 
-- Finding durevoli da portare in `brain/tech-debt/crm/sezione-contatti.md`: F3, F5, F7, F14, F15, F18, e il `.where(undefined)` di `bulkUpdateCustomers`. Aggiungere quelli "da decidere" che non entrano in PR1.
+- Finding durevoli da portare in `brain/tech-debt/crm/sezione-contatti.md`: F3 (già nel runbook G2 e nei rischi), F5 (già registrato), F7, F14, F15, F18, R4, e il `.where(undefined)` di `bulkUpdateCustomers`. Aggiungere quelli "da decidere" che non entrano in PR1.
 - Pagine di dominio che dovrebbero rimandare a questa review: n/a, perché `brain/domains/` è vuoto.

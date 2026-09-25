@@ -131,8 +131,8 @@ export const transaction = <A, E, R>(
 declare const locked: unique symbol
 
 /**
- * A customer row locked by the transaction in progress. Only `lockCustomer`
- * makes one.
+ * A customer row locked by a transaction. Only `lockCustomer` makes one; using
+ * it in that same transaction is up to the caller.
  */
 export type LockedCustomer = {
   readonly id: string
