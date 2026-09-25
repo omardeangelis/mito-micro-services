@@ -1,9 +1,13 @@
 import { beforeAll, beforeEach, describe, expect, it } from "vitest"
-import { and, eq } from "drizzle-orm"
-import { task } from "@/server/db/schema/task"
-import { transaction } from "@/server/effect/db"
+import { Effect } from "effect"
+import { lockCustomer, transaction } from "@/server/effect/db"
 import { replaceActiveContact } from "@/server/services/contact/activeContact"
-import { LEGACY_SCHEMA_TAG, migrateUpTo, resetDb, testDb } from "@/test/db"
+import {
+  activeTasksOf,
+  LEGACY_SCHEMA_TAG,
+  migrateUpTo,
+  resetDb,
+} from "@/test/db"
 import { createCustomer, createOperator, createTask } from "@/test/factories"
 import { runServer } from "@/test/effect"
 
@@ -37,21 +41,18 @@ describe("replaceActiveContact su un cliente con due task attive", () => {
 
     const exit = await runServer(
       transaction(
-        replaceActiveContact({
-          customerId: customer.id,
-          values: { state: "chiamare", operatorId: operator.id },
-        })
+        Effect.flatMap(lockCustomer(customer.id), (locked) =>
+          replaceActiveContact({
+            customer: locked,
+            values: { state: "chiamare", operatorId: operator.id },
+          })
+        )
       )
     )
     if (exit._tag === "Failure") throw new Error("replaceActiveContact failed")
     const { created, previous } = exit.value
 
     expect(previous).toMatchObject({ id: newer.id, state: "richiamare" })
-    expect(
-      await testDb
-        .select()
-        .from(task)
-        .where(and(eq(task.customerId, customer.id), eq(task.isActive, true)))
-    ).toEqual([created])
+    expect(await activeTasksOf(customer.id)).toEqual([created])
   })
 })

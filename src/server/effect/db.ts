@@ -1,14 +1,5 @@
 import "server-only"
-import {
-  Context,
-  Data,
-  Effect,
-  Either,
-  Exit,
-  Layer,
-  Option,
-  Runtime,
-} from "effect"
+import { Context, Data, Effect, Exit, Layer, Option, Runtime } from "effect"
 import { eq, type ExtractTablesWithRelations } from "drizzle-orm"
 import { type PgDatabase } from "drizzle-orm/pg-core"
 import { type PostgresJsQueryResultHKT } from "drizzle-orm/postgres-js"
@@ -17,7 +8,7 @@ import { customers } from "@/server/db/schema/customers"
 import type * as schema from "@/server/db/schema/index"
 
 /** The Drizzle client, or the transaction in progress: both run queries. */
-export type DbClient = PgDatabase<
+type DbClient = PgDatabase<
   PostgresJsQueryResultHKT,
   typeof schema,
   ExtractTablesWithRelations<typeof schema>
@@ -26,7 +17,7 @@ export type DbClient = PgDatabase<
 /** The Drizzle client of `@/server/db`. */
 export class Db extends Context.Tag("Db")<Db, DbClient>() {}
 
-export const DbLive = Layer.sync(Db, () => db)
+export const DbLive = Layer.succeed(Db, db)
 
 /**
  * The transaction `transaction` opened. `failed` records a query that failed
@@ -67,20 +58,19 @@ export const query = <A>(
   f: (client: DbClient) => Promise<A>
 ): Effect.Effect<A, DbError, Db> =>
   Effect.gen(function* () {
-    const tx = yield* Effect.serviceOption(Tx)
-    const client = Option.isSome(tx) ? tx.value.client : yield* Db
-    return yield* Effect.tryPromise({ try: () => f(client), catch: toDbError })
-  }).pipe(
-    Effect.tapError(() =>
-      Effect.serviceOption(Tx).pipe(
-        Effect.map(
-          Option.map((tx) => {
-            tx.failed = true
-          })
-        )
+    const tx = Option.getOrUndefined(yield* Effect.serviceOption(Tx))
+    const client = tx ? tx.client : yield* Db
+    return yield* Effect.tryPromise({
+      try: () => f(client),
+      catch: toDbError,
+    }).pipe(
+      Effect.tapError(() =>
+        Effect.sync(() => {
+          if (tx) tx.failed = true
+        })
       )
     )
-  )
+  })
 
 /** Makes Drizzle roll back; never leaves `transaction`. */
 class Rollback extends Error {}
@@ -92,7 +82,8 @@ class Rollback extends Error {}
  *   same `Cause`.
  * - A failure to commit becomes a `DbError`.
  * - A `DbError` from a query inside can be mapped to another error, never
- *   recovered into a success: the transaction is aborted by then.
+ *   recovered into a success: Postgres has aborted the transaction by then,
+ *   and its COMMIT would roll back without an error. Doing so is a defect.
  * - Calling it inside another transaction is a defect: pass the work to the
  *   outer one instead.
  * - Don't use timeouts or interruption inside: stopping the fiber doesn't
@@ -128,36 +119,41 @@ export const transaction = <A, E, R>(
             if (Exit.isFailure(exit)) throw new Rollback()
             return exit.value
           }),
-        catch: (error) => error,
+        catch: toDbError,
       })
     )
 
     if (exit && Exit.isFailure(exit)) return yield* Effect.failCause(exit.cause)
-    // Only a failure of the transaction itself (BEGIN, COMMIT) gets here
-    if (Either.isLeft(committed))
-      return yield* Effect.fail(toDbError(committed.left))
-    return committed.right
+    // Otherwise only a failure of the transaction itself (BEGIN, COMMIT)
+    return yield* committed
   })
 
+/** A customer row locked by the transaction in progress. */
+export type LockedCustomer = {
+  readonly id: string
+  readonly operatorId: number | null
+}
+
 /**
- * Locks the customer's row until the transaction ends, and returns its id.
- * Every transaction that writes a contact starts here, then touches `task`,
- * then `alert`: one lock order for all the code, so concurrent transactions
- * don't deadlock.
+ * Locks the customer's row until the transaction ends, and returns it. Every
+ * transaction that writes a contact starts here. Once the customer is locked,
+ * its tasks and alerts need no other lock, because every writer goes through
+ * the customer first: one lock order for all the code, so concurrent
+ * transactions don't deadlock.
  */
 export const lockCustomer = (
   customerId: string | null
-): Effect.Effect<string, DbError | CustomerMissing, Db | Tx> =>
+): Effect.Effect<LockedCustomer, DbError | CustomerMissing, Db | Tx> =>
   Effect.gen(function* () {
     yield* Tx
     if (!customerId) return yield* new CustomerMissing({ customerId })
-    const rows = yield* query((client) =>
+    const [customer] = yield* query((client) =>
       client
-        .select({ id: customers.id })
+        .select({ id: customers.id, operatorId: customers.operatorId })
         .from(customers)
         .where(eq(customers.id, customerId))
         .for("update")
     )
-    if (rows.length === 0) return yield* new CustomerMissing({ customerId })
-    return customerId
+    if (!customer) return yield* new CustomerMissing({ customerId })
+    return customer
   })

@@ -7,10 +7,9 @@ import {
   it,
   vi,
 } from "vitest"
-import { asc, eq } from "drizzle-orm"
 import { task } from "@/server/db/schema/task"
 import { taskEventLog } from "@/server/db/schema/taskEventLog"
-import { migrateUpTo, resetDb, testDb } from "@/test/db"
+import { logOf, migrateUpTo, resetDb, tasksOf, testDb } from "@/test/db"
 import { createTestCaller } from "@/test/caller"
 import {
   createAlert,
@@ -22,22 +21,6 @@ import { failNextInsertInto } from "@/test/failpoint"
 
 // The four cases of the operators' guide (brain/chore/crm/guida-assegnazione-
 // massiva-e-alert.md). The UI offers the bulk assignment to admins only.
-
-// Inactive task rows and the event log are what the calls export reads: no
-// public query returns them
-const tasksOf = (customerId: string) =>
-  testDb
-    .select()
-    .from(task)
-    .where(eq(task.customerId, customerId))
-    .orderBy(asc(task.id))
-
-const logOf = (customerId: string) =>
-  testDb
-    .select()
-    .from(taskEventLog)
-    .where(eq(taskEventLog.customerId, customerId))
-    .orderBy(asc(taskEventLog.id))
 
 const CLOSED_AT = new Date("2026-09-20T09:30:00.000Z")
 

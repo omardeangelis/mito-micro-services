@@ -1,34 +1,24 @@
 import { beforeAll, beforeEach, describe, expect, it } from "vitest"
-import { and, asc, eq } from "drizzle-orm"
+import { Effect } from "effect"
 import { task } from "@/server/db/schema/task"
-import { transaction } from "@/server/effect/db"
+import { lockCustomer, transaction } from "@/server/effect/db"
 import { replaceActiveContact } from "@/server/services/contact/activeContact"
-import { migrateUpTo, resetDb, testDb } from "@/test/db"
+import { activeTasksOf, migrateUpTo, resetDb, tasksOf, testDb } from "@/test/db"
 import { createTestCaller } from "@/test/caller"
 import { createCustomer, createOperator, createTask } from "@/test/factories"
 import { failNextInsertInto } from "@/test/failpoint"
 import { failureTag, runServer } from "@/test/effect"
 
-const activeTasksOf = (customerId: string) =>
-  testDb
-    .select()
-    .from(task)
-    .where(and(eq(task.customerId, customerId), eq(task.isActive, true)))
-
-const tasksOf = (customerId: string) =>
-  testDb
-    .select()
-    .from(task)
-    .where(eq(task.customerId, customerId))
-    .orderBy(asc(task.id))
-
+// As the callers do: lock the customer, then replace its contact
 const replaceExit = (customerId: string, operatorId?: number) =>
   runServer(
     transaction(
-      replaceActiveContact({
-        customerId,
-        values: { state: "chiamare", operatorId, priority: 120 },
-      })
+      Effect.flatMap(lockCustomer(customerId), (customer) =>
+        replaceActiveContact({
+          customer,
+          values: { state: "chiamare", operatorId, priority: 120 },
+        })
+      )
     )
   )
 

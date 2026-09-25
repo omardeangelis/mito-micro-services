@@ -8,10 +8,17 @@ import {
   it,
   vi,
 } from "vitest"
-import { and, asc, eq } from "drizzle-orm"
+import { eq } from "drizzle-orm"
 import { task } from "@/server/db/schema/task"
 import { taskEventLog } from "@/server/db/schema/taskEventLog"
-import { migrateUpTo, resetDb, testDb } from "@/test/db"
+import {
+  activeTasksOf,
+  logOf,
+  migrateUpTo,
+  resetDb,
+  tasksOf,
+  testDb,
+} from "@/test/db"
 import { createTestCaller } from "@/test/caller"
 import { causeTag } from "@/test/effect"
 import { reportedErrors } from "@/test/errorReporter"
@@ -35,22 +42,6 @@ async function runCron() {
   return (await response.json()) as Record<string, unknown>
 }
 
-// Inactive task rows and the event log are what the calls export reads: no
-// public query returns them
-const tasksOf = (customerId: string) =>
-  testDb
-    .select()
-    .from(task)
-    .where(eq(task.customerId, customerId))
-    .orderBy(asc(task.id))
-
-const logOf = (customerId: string) =>
-  testDb
-    .select()
-    .from(taskEventLog)
-    .where(eq(taskEventLog.customerId, customerId))
-    .orderBy(asc(taskEventLog.id))
-
 beforeAll(async () => {
   await migrateUpTo()
   // Only Date: the in-memory database needs real timers
@@ -64,7 +55,6 @@ afterAll(() => {
 
 beforeEach(async () => {
   await resetDb()
-  reportedErrors.length = 0
 })
 
 afterEach(() => {
@@ -313,10 +303,7 @@ describe("cron alert: ogni alert in una transazione sua", () => {
 
     await runCron()
 
-    const active = await testDb
-      .select()
-      .from(task)
-      .where(and(eq(task.customerId, customer.id), eq(task.isActive, true)))
+    const active = await activeTasksOf(customer.id)
     expect(active).toEqual([expect.objectContaining({ state: "followup" })])
     expect(active[0]!.id).not.toBe(current.id)
   })

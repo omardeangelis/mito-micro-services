@@ -4,6 +4,7 @@ import path from "path"
 import { PGlite } from "@electric-sql/pglite"
 import { drizzle } from "drizzle-orm/pglite"
 import { migrate } from "drizzle-orm/pglite/migrator"
+import { and, asc, eq } from "drizzle-orm"
 import * as schema from "@/server/db/schema/index"
 
 const MIGRATIONS_FOLDER = path.resolve(__dirname, "../server/db/migrations")
@@ -82,7 +83,9 @@ export async function migrateUpTo(tag?: string) {
   let applied = -1
   const migrateTo = async (index: number) => {
     if (index <= applied) return
-    await migrate(testDb, { migrationsFolder: migrationsFolderUpTo(index) })
+    const folder = migrationsFolderUpTo(index)
+    await migrate(testDb, { migrationsFolder: folder })
+    fs.rmSync(folder, { recursive: true })
     applied = index
   }
   for (const piece of PUSHED_SCHEMA) {
@@ -110,3 +113,35 @@ export async function resetDb() {
     `TRUNCATE ${tables.join(", ")} RESTART IDENTITY CASCADE`
   )
 }
+
+// Inactive task rows and the event log are what the calls export reads: no
+// public query returns them, so tests read the tables
+
+/** Every task of the customer, oldest first. */
+export const tasksOf = (customerId: string) =>
+  testDb
+    .select()
+    .from(schema.task)
+    .where(eq(schema.task.customerId, customerId))
+    .orderBy(asc(schema.task.id))
+
+/** The customer's active tasks, oldest first. */
+export const activeTasksOf = (customerId: string) =>
+  testDb
+    .select()
+    .from(schema.task)
+    .where(
+      and(
+        eq(schema.task.customerId, customerId),
+        eq(schema.task.isActive, true)
+      )
+    )
+    .orderBy(asc(schema.task.id))
+
+/** The customer's event log, in order. */
+export const logOf = (customerId: string) =>
+  testDb
+    .select()
+    .from(schema.taskEventLog)
+    .where(eq(schema.taskEventLog.customerId, customerId))
+    .orderBy(asc(schema.taskEventLog.id))

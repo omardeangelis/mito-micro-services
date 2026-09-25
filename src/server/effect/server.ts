@@ -16,3 +16,6 @@ export const ServerLive = Layer.mergeAll(
     Logger.withLeveledConsole(Logger.logfmtLogger)
   )
 )
+
+/** The services `ServerLive` provides. */
+export type ServerContext = Layer.Layer.Success<typeof ServerLive>

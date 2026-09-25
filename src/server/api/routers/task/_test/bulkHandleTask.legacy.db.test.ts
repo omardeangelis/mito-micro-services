@@ -1,19 +1,10 @@
 import { beforeAll, beforeEach, describe, expect, it } from "vitest"
-import { asc, eq } from "drizzle-orm"
-import { task } from "@/server/db/schema/task"
-import { LEGACY_SCHEMA_TAG, migrateUpTo, resetDb, testDb } from "@/test/db"
+import { LEGACY_SCHEMA_TAG, migrateUpTo, resetDb, tasksOf } from "@/test/db"
 import { createTestCaller } from "@/test/caller"
 import { createCustomer, createOperator, createTask } from "@/test/factories"
 
 // Customers with more than one active task: the data PR2 cleans up. The schema
 // stops before the unique index that forbids them.
-
-const tasksOf = (customerId: string) =>
-  testDb
-    .select()
-    .from(task)
-    .where(eq(task.customerId, customerId))
-    .orderBy(asc(task.id))
 
 beforeAll(async () => {
   await migrateUpTo(LEGACY_SCHEMA_TAG)

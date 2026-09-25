@@ -35,7 +35,6 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   await resetDb()
-  reportedErrors.length = 0
 })
 
 afterEach(() => {

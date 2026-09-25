@@ -1,4 +1,4 @@
-import { vi } from "vitest"
+import { beforeEach, vi } from "vitest"
 import type * as ErrorReporterModule from "@/server/effect/errorReporter"
 
 // Boundaries of the server code under test. The factories are lazy: a test
@@ -34,4 +34,9 @@ vi.mock("@/server/effect/errorReporter", async (importOriginal) => {
         }),
     }),
   }
+})
+
+beforeEach(async () => {
+  const { reportedErrors } = await import("@/test/errorReporter")
+  reportedErrors.length = 0
 })

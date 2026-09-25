@@ -1,41 +1,38 @@
 import "server-only"
 import { Effect } from "effect"
 import { and, desc, eq, sql } from "drizzle-orm"
+import { type Task } from "@/lib/types/schemas"
 import { task } from "@/server/db/schema/task"
 import {
-  type CustomerMissing,
   type Db,
   type DbError,
-  lockCustomer,
+  type LockedCustomer,
   query,
-  type Tx,
 } from "@/server/effect/db"
-
-type Task = typeof task.$inferSelect
 
 /**
  * Gives the customer a new active contact: deactivates all its active tasks,
- * then inserts one with `values`. Runs in the caller's transaction. Every path
- * that creates a contact goes through here; the fields are the caller's call.
+ * then inserts one with `values`. Runs in the transaction that locked
+ * `customer` (`lockCustomer`). Every path that creates a contact goes through
+ * here; the fields are the caller's call.
  *
  * `previous` is the most recent of the deactivated tasks, as the UI shows it
  * (`task.getActiveTask`), or null.
  */
 export const replaceActiveContact = ({
-  customerId,
+  customer,
   values,
 }: {
-  customerId: string | null
+  customer: LockedCustomer
   values: Omit<typeof task.$inferInsert, "id" | "customerId" | "isActive">
 }): Effect.Effect<
-  { created: Task; previous: Task | null },
-  DbError | CustomerMissing,
-  Db | Tx
+  { created: Task & { customerId: string }; previous: Task | null },
+  DbError,
+  Db
 > =>
   Effect.gen(function* () {
-    const id = yield* lockCustomer(customerId)
     const isActiveOfCustomer = and(
-      eq(task.customerId, id),
+      eq(task.customerId, customer.id),
       eq(task.isActive, true)
     )
 
@@ -61,12 +58,12 @@ export const replaceActiveContact = ({
     const [created] = yield* query((client) =>
       client
         .insert(task)
-        .values({ ...values, customerId: id, isActive: true })
+        .values({ ...values, customerId: customer.id, isActive: true })
         .returning()
     )
 
     return {
-      created: created!,
+      created: { ...created!, customerId: customer.id },
       previous: deactivated.find((row) => row.id === mostRecent?.id) ?? null,
     }
   })

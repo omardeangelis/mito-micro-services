@@ -2,12 +2,12 @@ import "server-only"
 import { Data, Effect } from "effect"
 import { and, eq, sql } from "drizzle-orm"
 import { SYSTEM_OPERATOR_USER_ID } from "@/lib/constants/operator"
-import { customers } from "@/server/db/schema/customers"
+import { type Alert, type Task } from "@/lib/types/schemas"
 import { operators } from "@/server/db/schema/operators"
 import { alert as alerts, task as tasks } from "@/server/db/schema/task"
 import { taskEventLog } from "@/server/db/schema/taskEventLog"
 import {
-  CustomerMissing,
+  type CustomerMissing,
   type Db,
   type DbError,
   lockCustomer,
@@ -26,10 +26,7 @@ export class SystemOperatorMissing extends Data.TaggedError(
   "SystemOperatorMissing"
 )<Record<never, never>> {}
 
-type DueAlert = {
-  task: typeof tasks.$inferSelect
-  alert: typeof alerts.$inferSelect
-}
+type DueAlert = { task: Task; alert: Alert }
 
 // Dates are compared in the server's time zone (UTC on Vercel), as always
 
@@ -62,25 +59,20 @@ const processAlert = (
   systemOperatorId: number
 ): Effect.Effect<"processed" | "skipped", DbError | CustomerMissing, Db | Tx> =>
   Effect.gen(function* () {
-    // Lock order: customer, then its tasks and alerts
-    const customerId = yield* lockCustomer(task.customerId)
-    const [current] = yield* query((client) =>
-      client
-        .select({ isResolved: alerts.isResolved })
-        .from(alerts)
-        .where(eq(alerts.id, alert.id))
-        .for("update")
-    )
-    if (!current || current.isResolved) return "skipped"
-
-    const resolveAlert = query((client) =>
+    const customer = yield* lockCustomer(task.customerId)
+    // Resolves the alert only if still open: an overlapping run may have
+    // resolved it since the list was read
+    const resolved = yield* query((client) =>
       client
         .update(alerts)
         .set({ isResolved: true, resolvedBy: systemOperatorId })
-        .where(eq(alerts.id, alert.id))
+        .where(and(eq(alerts.id, alert.id), eq(alerts.isResolved, false)))
+        .returning({ id: alerts.id })
     )
+    if (resolved.length === 0) return "skipped"
+
     const alertResolvedLog = {
-      customerId,
+      customerId: customer.id,
       taskId: task.id,
       alertId: alert.id,
       actorOperatorId: systemOperatorId,
@@ -89,20 +81,12 @@ const processAlert = (
     } as const
 
     if (isDueToday(alert.deadline, today)) {
-      const [customer] = yield* query((client) =>
-        client
-          .select({ operatorId: customers.operatorId })
-          .from(customers)
-          .where(eq(customers.id, customerId))
-      )
-      if (!customer) return yield* new CustomerMissing({ customerId })
-
       // La nuova task attiva non deve nascere agganciata all'alert che stiamo
-      // risolvendo qui sotto: altrimenti getActiveAlerts lo ripesca e lo mostra
+      // risolvendo: altrimenti getActiveAlerts lo ripesca e lo mostra
       // in "Attivo" come scaduto, duplicandolo con lo Storico. L'alert resta
       // collegato (via alert.taskId) alla vecchia task per lo storico.
       yield* replaceActiveContact({
-        customerId,
+        customer,
         values: {
           state: "followup",
           closedAt: task.closedAt,
@@ -112,12 +96,11 @@ const processAlert = (
           customPriority: false,
         },
       })
-      yield* resolveAlert
       yield* query((client) =>
         client.insert(taskEventLog).values([
           alertResolvedLog,
           {
-            customerId,
+            customerId: customer.id,
             taskId: task.id,
             actorOperatorId: systemOperatorId,
             action: "state_change",
@@ -131,7 +114,6 @@ const processAlert = (
       yield* query((client) =>
         client.update(tasks).set({ alertId: null }).where(eq(tasks.id, task.id))
       )
-      yield* resolveAlert
       yield* query((client) =>
         client.insert(taskEventLog).values(alertResolvedLog)
       )
@@ -168,7 +150,7 @@ export const processDueAlerts = (
       client
         .select({ task: tasks, alert: alerts })
         .from(alerts)
-        .leftJoin(tasks, eq(alerts.id, tasks.alertId))
+        .innerJoin(tasks, eq(alerts.id, tasks.alertId))
         .where(
           and(
             eq(alerts.isResolved, false),
@@ -178,13 +160,8 @@ export const processDueAlerts = (
           )
         )
     )
-    // The WHERE clause makes it an inner join
-    const dueAlerts = rows.flatMap(({ task, alert }) =>
-      task ? [{ task, alert }] : []
-    )
-
     const { succeeded, failed } = yield* forEachIsolated(
-      dueAlerts,
+      rows,
       (row) => transaction(processAlert(row, today, systemOperator.id)),
       ({ task, alert }) => ({ alertId: alert.id, customerId: task.customerId })
     )

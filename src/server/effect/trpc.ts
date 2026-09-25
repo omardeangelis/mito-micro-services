@@ -1,15 +1,15 @@
 import "server-only"
 import { TRPCError } from "@trpc/server"
-import { Cause, Effect, Exit, type Layer, Option } from "effect"
+import { Cause, Effect, Exit, Option } from "effect"
 import { DbError } from "./db"
-import { ServerLive } from "./server"
+import { type ServerContext, ServerLive } from "./server"
 
-type ServerContext = Layer.Layer.Success<typeof ServerLive>
-
-const isExpected = (cause: Cause.Cause<unknown>) => {
-  const failure = Cause.failureOption(cause)
-  return Option.isSome(failure) && !(failure.value instanceof DbError)
-}
+/** The typed error in `cause` that `mapError` translates, if any. */
+const expectedFailure = (cause: Cause.Cause<unknown>) =>
+  Option.filter(
+    Cause.failureOption(cause),
+    (error) => !(error instanceof DbError)
+  )
 
 /**
  * The edge of a tRPC procedure written in Effect: runs `program` with
@@ -30,7 +30,7 @@ export async function runTrpc<A, E>(
   const exit = await Effect.runPromiseExit(
     program.pipe(
       Effect.tapErrorCause((cause) =>
-        isExpected(cause)
+        Option.isSome(expectedFailure(cause))
           ? Effect.void
           : Effect.logError("tRPC procedure failed", Cause.pretty(cause))
       ),
@@ -39,8 +39,8 @@ export async function runTrpc<A, E>(
   )
   if (Exit.isSuccess(exit)) return exit.value
 
-  const failure = Cause.failureOption(exit.cause)
-  if (mapError && isExpected(exit.cause) && Option.isSome(failure)) {
+  const failure = expectedFailure(exit.cause)
+  if (mapError && Option.isSome(failure)) {
     throw mapError(failure.value as Exclude<E, DbError>)
   }
   const error = Cause.squash(exit.cause)
