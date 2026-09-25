@@ -7,6 +7,7 @@
  * need to use are documented accordingly near the end.
  */
 
+import * as Sentry from "@sentry/nextjs"
 import { initTRPC, TRPCError } from "@trpc/server"
 import superjson from "superjson"
 import { ZodError } from "zod"
@@ -78,13 +79,20 @@ const t = initTRPC.context<typeof createTRPCContext>().create({
 export const createTRPCRouter = t.router
 
 /**
+ * Traces every procedure call and reports its failure to Sentry, for calls over HTTP and from
+ * React Server Components alike. Client errors (UNAUTHORIZED, BAD_REQUEST, …) are dropped by
+ * `dropExpectedTrpcErrors`, so only server faults become Sentry issues.
+ */
+const sentryMiddleware = t.middleware(Sentry.trpcMiddleware())
+
+/**
  * Public (unauthenticated) procedure
  *
  * This is the base piece you use to build new queries and mutations on your tRPC API. It does not
  * guarantee that a user querying is authorized, but you can still access user session data if they
  * are logged in.
  */
-export const publicProcedure = t.procedure
+export const publicProcedure = t.procedure.use(sentryMiddleware)
 
 /**
  * Protected (authenticated) procedure
@@ -94,7 +102,7 @@ export const publicProcedure = t.procedure
  *
  * @see https://trpc.io/docs/procedures
  */
-export const protectedProcedure = t.procedure.use(async ({ ctx, next }) => {
+export const protectedProcedure = publicProcedure.use(async ({ ctx, next }) => {
   if (!ctx.session || !ctx.session.user) {
     throw new TRPCError({ code: "UNAUTHORIZED" })
   }

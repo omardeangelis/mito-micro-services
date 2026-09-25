@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/nextjs"
 import { getServerAuthSession } from "@/server/auth"
 import { db } from "@/server/db"
 import { operators } from "@/server/db/schema/operators"
@@ -24,6 +25,7 @@ async function handler() {
     return NextResponse.json({ operator, isAdmin })
   } catch (error) {
     console.error("Error getting user: ", error)
+    Sentry.captureException(error)
     return NextResponse.json({ error: "Internal Server Error" })
   }
 }
