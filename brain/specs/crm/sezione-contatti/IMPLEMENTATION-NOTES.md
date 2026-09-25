@@ -27,6 +27,7 @@ updated: 2026-09-25
 - **T1.1 — `createTestCaller(actor)`** riceve l'operatore (o l'utente) creato dalla factory invece di `{ role, operatorId }`: il ruolo sta nella riga `users` e il middleware lo legge da lì.
 - **T1.1 — `failNextInsertInto(table, where?)`** accetta una condizione facoltativa sulle colonne della riga, necessaria per il test di T1.6 ("i clienti precedenti restano elaborati").
 - **T1.1 — nessuna factory `customerToPratica`**: nessun test di PR1 la usa.
+- **Dati sporchi in file `*.legacy.db.test.ts`.** I test con più contatti attivi per cliente (T1.3, T1.4) stanno in file propri migrati fino a `LEGACY_SCHEMA_TAG`, invece di migrare così tutto il file: gli altri test restano sullo schema completo anche quando PR2 aggiunge l'indice unico.
 
 ## Surprises and Decisions
 
