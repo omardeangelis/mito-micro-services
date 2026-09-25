@@ -12,7 +12,9 @@ spec-driven skill suite live under `brain/` — start with `create-spec`, and re
 
 ## Project guidelines
 
-Package manager is **pnpm 9.9.0** on **Node 20.x**. Every change must pass the same gates CI runs on PRs:
+Package manager is **pnpm 9.9.0** on **Node 22.x**. The Node version is set once, in `engines.node` of `package.json`: Vercel builds and runs the functions on it, and every workflow reads it (`node-version-file: package.json`).
+
+Every change must pass the same gates CI runs on PRs:
 
 - **Lint** — `pnpm lint` (`eslint --fix .`). CI: `.github/workflows/linter.yml`, PRs to `main` and `dev`.
 - **Test** — `pnpm test --run` (vitest, `NODE_ENV=test`, jsdom). CI: `.github/workflows/node.js.yml`, PRs to `main`. Tests live next to the code in `_test/` folders.
