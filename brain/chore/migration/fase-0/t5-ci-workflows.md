@@ -6,14 +6,14 @@ title: Adeguare la CI esistente al monorepo
 status: not_started
 completed: false
 depends_on: ["F0.T2"]
-last_updated: 2026-06-11
+last_updated: 2026-09-25
 ---
 
 # F0.T5 — CI / GitHub Actions
 
 ## Obiettivo
 
-Adeguare i 13 workflow esistenti in `.github/workflows/` al layout monorepo e aggiungere una pipeline turbo per i futuri package. **Scoperta rilevante**: i cron di produzione girano qui, su GitHub Actions — non su uno scheduler esterno sconosciuto.
+Adeguare i workflow esistenti in `.github/workflows/` al layout monorepo e aggiungere una pipeline turbo per i futuri package. **Scoperta rilevante**: i cron di produzione girano qui, su GitHub Actions — non su uno scheduler esterno sconosciuto.
 
 ## Inventario workflow attuali
 
@@ -37,22 +37,20 @@ Adeguare i 13 workflow esistenti in `.github/workflows/` al layout monorepo e ag
 | Workflow | Cosa fa |
 |---|---|
 | `deploy-production.yaml`, `deploy-staging.yaml` | `vercel pull/build/deploy --prod` |
-| `deploy-preview.yml` | `vercel deploy` preview |
-| `linter.yml` | `pnpm run lint` |
-| `node.js.yml` | `pnpm test` |
+| `ci.yml` | Su PR a `dev` e `main`: lint (`next lint`, `tsc --noEmit`), poi test e build (`next build`). Dal 2026-09-25 sostituisce `linter.yml`, `node.js.yml` e `deploy-preview.yml` |
 
 ## Step operativi
 
 1. **Workflow cron (8 file)**: gli script npm si sono spostati in `apps/web-legacy/package.json` → sostituire `run: pnpm <script>` con `run: pnpm --filter web-legacy <script>` (oppure `working-directory: apps/web-legacy` sullo step — preferire `--filter`, non richiede di toccare gli step di install). Nota: `loadEnv` carica `.env.${NODE_ENV}.local` dalla cwd; nei runner CI le env arrivano da secrets (non da file), quindi `--filter` è sicuro.
-2. **`linter.yml` / `node.js.yml`**: stesso trattamento (`pnpm --filter web-legacy run lint` / `test`). In alternativa passare subito a `pnpm turbo lint test` — equivalente finché c'è un solo package.
-3. **Deploy Vercel (3 file)**: nessun cambio comando necessario se la Root Directory del progetto Vercel è stata aggiornata (F0.T2). Verificare con un run manuale (`workflow_dispatch` se previsto, o PR di prova per il preview).
-4. **Nuovo workflow `ci.yml`**: trigger su PR; steps: checkout, pnpm/action-setup, setup-node 20 con cache pnpm, `pnpm install`, `pnpm turbo lint build test` con `SKIP_ENV_VALIDATION=true` per la build Next. Aggiungere cache turbo (`.turbo`) con actions/cache.
+2. **`ci.yml`**: stesso trattamento per i tre job (`pnpm --filter web-legacy exec next lint`, `exec tsc --noEmit`, `run test --run`, `run build`). In alternativa passare subito a `pnpm turbo` — equivalente finché c'è un solo package.
+3. **Deploy Vercel**: nessun cambio comando necessario se la Root Directory del progetto Vercel è stata aggiornata (F0.T2). Verificare con un run manuale (`workflow_dispatch` se previsto, o PR di prova per il preview).
+4. **`ci.yml` con turbo**: quando arrivano i nuovi package, far girare lint, test e build con `pnpm turbo` e aggiungere la cache turbo (`.turbo`) con actions/cache. `SKIP_ENV_VALIDATION=true` e i placeholder Supabase della build restano.
 5. Igiene (opzionale ma consigliato): rinominare i file con spazi (`delete-storage prod.yml` → `delete-storage-prod.yml`, `update-alert prod.yml` → `update-alert-prod.yml`, `update-customer-practices prod.yml` → `update-customer-practices-prod.yml`).
 
 ## Verifica
 
 - [ ] Run manuale di un workflow cron dev (`workflow_dispatch`) verde dopo le modifiche.
-- [ ] `linter.yml`, `node.js.yml`, `ci.yml` verdi su un PR di prova.
+- [ ] `ci.yml` verde su un PR di prova.
 - [ ] Deploy preview Vercel verde.
 - [ ] Tabella schedule qui sopra confermata/corretta rispetto ai file reali.
 

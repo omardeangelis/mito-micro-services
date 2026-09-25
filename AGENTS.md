@@ -14,11 +14,11 @@ spec-driven skill suite live under `brain/` — start with `create-spec`, and re
 
 Package manager is **pnpm 9.9.0** on **Node 22.x**. The Node version is set once, in `engines.node` of `package.json`: Vercel builds and runs the functions on it, and every workflow reads it (`node-version-file: package.json`).
 
-Every change must pass the same gates CI runs on PRs:
+Every change must pass the gates CI runs on PRs to `dev` and `main` (`.github/workflows/ci.yml`, in this order; build runs alongside test). They are the checks `next build` runs on Vercel before a deploy:
 
-- **Lint** — `pnpm lint` (`eslint --fix .`). CI: `.github/workflows/linter.yml`, PRs to `main` and `dev`.
-- **Test** — `pnpm test --run` (vitest, `NODE_ENV=test`, jsdom). CI: `.github/workflows/node.js.yml`, PRs to `main`. Tests live next to the code in `_test/` folders.
-- **Build** — `pnpm build` (`next build`). Needs the env from `src/env.js`; set `SKIP_ENV_VALIDATION=true` to build without real credentials.
+- **Lint** — `SKIP_ENV_VALIDATION=true pnpm exec next lint` (ESLint on `src/`, no `--fix`) and `pnpm exec tsc --noEmit`. `pnpm lint:dev` fixes what `next lint` reports. `pnpm lint` (`eslint --fix .`) also lints the root config files, but its `--fix` hides formatting errors that fail the Vercel build.
+- **Test** — `pnpm run test --run` (vitest, `NODE_ENV=test`, jsdom); `pnpm test --run` fails because pnpm reads `--run` as its own option. Tests live next to the code in `_test/` folders.
+- **Build** — `pnpm build` (`next build`). Needs the env from `src/env.js`; to build without real credentials set `SKIP_ENV_VALIDATION=true` plus placeholder `NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_KEY`, as CI does.
 
 Database contract chain:
 

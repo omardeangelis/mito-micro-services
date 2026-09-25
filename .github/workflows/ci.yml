@@ -1,0 +1,84 @@
+# Checks every PR with the same steps Vercel runs before a deploy.
+# Vercel runs `pnpm run build` (next build): it compiles, then lints src/ with
+# ESLint (errors fail, warnings don't, nothing is auto-fixed) and type-checks
+# with tsconfig.json. Lint repeats those two checks so they fail fast, test runs
+# after lint, and build runs next build itself.
+name: CI
+
+on:
+  pull_request:
+    branches: [dev, main]
+
+# A new push to the PR cancels the run still in progress
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  # Credentials live on Vercel; lint, tests and build don't need them
+  SKIP_ENV_VALIDATION: "true"
+  NEXT_TELEMETRY_DISABLED: "1"
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: package.json
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      # Same ESLint run as next build; `pnpm lint:dev` fixes what it reports
+      - name: ESLint
+        run: pnpm exec next lint
+      - name: Type check
+        run: pnpm exec tsc --noEmit
+
+  test:
+    name: Test
+    needs: lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: package.json
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      # `pnpm test --run` fails: pnpm reads --run as its own option
+      - name: Vitest
+        run: pnpm run test --run
+
+  build:
+    name: Build
+    needs: lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: package.json
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      # Without SENTRY_AUTH_TOKEN no source maps are uploaded
+      - name: Next build
+        run: pnpm build
+        env:
+          # Two route modules create the Supabase client on import, and the
+          # build imports them; nothing connects
+          NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:54321
+          SUPABASE_KEY: ci-placeholder
