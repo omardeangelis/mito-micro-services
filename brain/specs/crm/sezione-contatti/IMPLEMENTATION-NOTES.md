@@ -31,6 +31,8 @@ updated: 2026-09-25
 ## Surprises and Decisions
 
 - **Le migrazioni del repo non si applicano su un Postgres vuoto.** `20240926195125_lucky_roughhouse` crea `mito-deutsche_task` con il tipo `task_status`, che nasce solo in `20260619152227_same_hemingway`. Il DB di produzione aveva già il tipo (creato con `db:push` prima delle migrazioni), e la terza migrazione lo salta se esiste. L'harness crea il tipo prima di migrare; le migrazioni non si toccano (già applicate in prod). Vale anche per chi volesse creare un DB nuovo con `pnpm db:migrate`.
+- **`alert.is_resolved` non ha una migrazione.** La colonna (`boolean DEFAULT false NOT NULL`) è negli snapshot da `20260615235953_brown_madelyne_pryor` ma in nessun file SQL: in prod arriva da `db:push`, e `db:generate` non la emetterà mai perché lo snapshot ce l'ha già. Un confronto tra lo schema prodotto dalle migrazioni e l'ultimo snapshot (colonne, indici, enum) non trova altri scarti. L'harness applica i due pezzi "pushati" nel punto della storia in cui prod li ha ricevuti (`PUSHED_SCHEMA` in `src/test/db.ts`). **Per PR2 (T2.2):** la migrazione di pulizia usa `is_resolved`; in prod c'è, nei test c'è grazie all'harness.
+- **La riga `state_change` del followup del cron ha il `taskId` della task precedente**, non del followup (codice di oggi). T1.2 la fissa così e T1.5 non la cambia.
 
 ## Sanity Checks
 

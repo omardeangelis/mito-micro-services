@@ -21,13 +21,37 @@ export const testDb = drizzle(testClient, { schema })
 
 type Journal = { entries: { tag: string }[] }
 
-function migrationsUpTo(tag: string) {
-  const journal = JSON.parse(
-    fs.readFileSync(`${MIGRATIONS_FOLDER}/meta/_journal.json`, "utf8")
-  ) as Journal
-  const last = journal.entries.findIndex((entry) => entry.tag === tag)
-  if (last === -1) throw new Error(`Unknown migration tag: ${tag}`)
+const journal = JSON.parse(
+  fs.readFileSync(`${MIGRATIONS_FOLDER}/meta/_journal.json`, "utf8")
+) as Journal
 
+const indexOfTag = (tag: string) => {
+  const index = journal.entries.findIndex((entry) => entry.tag === tag)
+  if (index === -1) throw new Error(`Unknown migration tag: ${tag}`)
+  return index
+}
+
+/**
+ * Schema the production database got from `drizzle-kit push`, which no
+ * migration creates. The snapshots already include it, so `db:generate` never
+ * emits it. Each piece is applied after the migration it came with.
+ */
+const PUSHED_SCHEMA: { after: string | null; sql: string }[] = [
+  {
+    // The first migration creates the task table with this type, which the
+    // third one creates only when it doesn't exist yet
+    after: null,
+    sql: `CREATE TYPE "public"."task_status" AS ENUM('chiamare', 'non interessato', 'app.to', 'caricato', 'richiamare', 'erogata', 'nessuno', 'followup')`,
+  },
+  {
+    // In the snapshots since this migration, in none of the SQL files
+    after: "20260615235953_brown_madelyne_pryor",
+    sql: `ALTER TABLE "mito-deutsche_alert" ADD COLUMN "is_resolved" boolean DEFAULT false NOT NULL`,
+  },
+]
+
+/** A copy of the migrations folder whose journal stops at entry `last`. */
+function migrationsFolderUpTo(last: number) {
   const folder = fs.mkdtempSync(path.join(os.tmpdir(), "migrations-"))
   fs.mkdirSync(path.join(folder, "meta"))
   const entries = journal.entries.slice(0, last + 1)
@@ -45,22 +69,29 @@ function migrationsUpTo(tag: string) {
 }
 
 /**
- * Applies the repo migrations to the test database: all of them, or only up to
- * `tag`. Call it once per test file, in `beforeAll`.
+ * Applies the repo migrations to the test database, together with the pushed
+ * schema production has: all of them, or only up to `tag`. Call it once per
+ * test file, in `beforeAll`.
  */
 export async function migrateUpTo(tag?: string) {
+  const last = tag ? indexOfTag(tag) : journal.entries.length - 1
   // Same session time zone as the Supabase database
   await testClient.exec(`SET TIME ZONE 'UTC'`)
-  // The first migration creates the task table with the `task_status` type,
-  // which the third migration creates. The production database already had
-  // the type (it was pushed before migrations existed); the third migration
-  // skips it when it exists.
-  await testClient.exec(`
-    CREATE TYPE "public"."task_status" AS ENUM('chiamare', 'non interessato', 'app.to', 'caricato', 'richiamare', 'erogata', 'nessuno', 'followup');
-  `)
-  await migrate(testDb, {
-    migrationsFolder: tag ? migrationsUpTo(tag) : MIGRATIONS_FOLDER,
-  })
+
+  // The migrator skips the migrations already applied
+  let applied = -1
+  const migrateTo = async (index: number) => {
+    if (index <= applied) return
+    await migrate(testDb, { migrationsFolder: migrationsFolderUpTo(index) })
+    applied = index
+  }
+  for (const piece of PUSHED_SCHEMA) {
+    const after = piece.after ? indexOfTag(piece.after) : -1
+    if (after > last) break
+    await migrateTo(after)
+    await testClient.exec(piece.sql)
+  }
+  await migrateTo(last)
 }
 
 /** Where `failNextInsertInto` (src/test/failpoint.ts) keeps its objects. */

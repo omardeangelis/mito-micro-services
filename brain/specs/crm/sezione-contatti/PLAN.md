@@ -266,9 +266,9 @@ Branch suggerito: `contatti/pr1-creazione-sicura`. Nessun cambiamento visibile, 
 
   Le asserzioni sul body della risposta usano `toMatchObject` sul `message`, così i campi che T1.5 aggiunge non le cambiano.
 - **validation**: i test passano sul codice attuale, prima di T1.5, senza modificarlo.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-09-25 — Quattro scenari verdi sul codice attuale, senza modificarlo. Primo run rosso per un difetto dell'harness, non del cron: la colonna `alert.is_resolved` è negli snapshot ma in nessuna migrazione (in prod arriva da `db:push`). `migrateUpTo` ora riproduce lo schema "pushato" dopo la migrazione a cui appartiene (`PUSHED_SCHEMA` in `src/test/db.ts`); un confronto tra lo schema migrato e l'ultimo snapshot non trova altri scarti. Il followup scrive la riga `state_change` con il `taskId` della task **precedente**: fissato così dal test. Solo `Date` è finto (`toFake: ["Date"]`), perché PGlite usa i timer veri.
+- **files edited/created**: `src/app/api/cron/alert/_test/alert.db.test.ts`, `src/test/db.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a (D6)
