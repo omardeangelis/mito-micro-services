@@ -416,9 +416,9 @@ Branch suggerito: `contatti/pr1-creazione-sicura`. Nessun cambiamento visibile, 
 - **validation**:
   - il test "destinato a cambiare" di T1.3 si aggiorna: dopo `createTask` il cliente ha un solo contatto attivo;
   - `task.bulkCreateTask` non esiste più (errore via caller).
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-09-25 — RED: l'asserzione marcata (dopo `createTask` un solo contatto attivo), cliente mancante o inesistente → `BAD_REQUEST` senza scritture, `bulkCreateTask` assente. GREEN con `createTask` in un `transaction` con `replaceActiveContact` e la riga di log. `fromState` è ora lo stato della task precedente più recente (oggi la prima riga di una select senza ordine: diverso solo con i duplicati). Via `createCaller` una procedura inesistente lancia un `TypeError` (via HTTP tRPC risponde `NOT_FOUND`): il test verifica che la chiamata fallisca senza scrivere. `createTask` restituisce `Task` invece di `Task | undefined`. Tolti `bulkCreateTaskSchema` (lo schema della massiva è scritto per intero), `max` e `updateCustomerUpdatedAt`, che usava solo `bulkCreateTask`. I chiamanti di oggi (`taskStatusAction`, `CustomerTaskManager`) fanno `createTask` e poi disattivano la vecchia task per id: la seconda chiamata non cambia più nulla.
+- **files edited/created**: `src/server/api/routers/task/POST/index.ts`, `src/server/api/routers/task/index.ts`, `src/server/api/routers/task/_test/createTask.db.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a (D6)

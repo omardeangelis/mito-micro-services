@@ -57,7 +57,7 @@ describe("task.createTask", () => {
       expect.objectContaining({
         action: "state_change",
         source: "detail",
-        taskId: created!.id,
+        taskId: created.id,
         actorOperatorId: operator.id,
         fromState: null,
         toState: "chiamare",
@@ -65,7 +65,7 @@ describe("task.createTask", () => {
     ])
   })
 
-  it("su un cliente che ha già un contatto attivo registra il cambio dallo stato precedente", async () => {
+  it("su un cliente che ha già un contatto attivo lascia attivo solo il nuovo e registra il cambio dallo stato precedente", async () => {
     const operator = await createOperator()
     const customer = await createCustomer({ operatorId: operator.id })
     const previous = await createTask({
@@ -86,16 +86,57 @@ describe("task.createTask", () => {
     expect(await logOf(customer.id)).toEqual([
       expect.objectContaining({
         action: "state_change",
-        taskId: created!.id,
+        taskId: created.id,
         fromState: "non interessato",
         toState: "chiamare",
       }),
     ])
-    // DESTINATA A CAMBIARE IN T1.7: oggi restano attive tutte e due; dopo
-    // resta attiva solo quella nuova
+    // Changed in T1.7: before, both stayed active
     expect(await tasksOf(customer.id)).toEqual([
-      expect.objectContaining({ id: previous.id, isActive: true }),
-      expect.objectContaining({ id: created!.id, isActive: true }),
+      expect.objectContaining({ id: previous.id, isActive: false }),
+      expect.objectContaining({ id: created.id, isActive: true }),
     ])
+  })
+
+  it("senza cliente risponde BAD_REQUEST e non scrive nulla", async () => {
+    const operator = await createOperator()
+
+    await expect(
+      createTestCaller(operator).task.createTask({
+        operatorId: operator.id,
+        state: "chiamare",
+        source: "detail",
+      })
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" })
+    await expect(
+      createTestCaller(operator).task.createTask({
+        customerId: "missing-customer",
+        operatorId: operator.id,
+        state: "chiamare",
+        source: "detail",
+      })
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" })
+    expect(await testDb.select().from(task)).toEqual([])
+    expect(await testDb.select().from(taskEventLog)).toEqual([])
+  })
+})
+
+describe("task.bulkCreateTask", () => {
+  it("non esiste più", async () => {
+    const admin = await createOperator({ role: "ADMIN" })
+    const customer = await createCustomer()
+    const procedures = createTestCaller(admin).task as unknown as Record<
+      string,
+      ((input: unknown) => Promise<unknown>) | undefined
+    >
+
+    // Over HTTP tRPC answers NOT_FOUND; the server-side caller just throws
+    await expect(async () =>
+      procedures.bulkCreateTask!({
+        operatorId: admin.id,
+        customerIds: [customer.id],
+      })
+    ).rejects.toThrow()
+    expect(await testDb.select().from(task)).toEqual([])
   })
 })

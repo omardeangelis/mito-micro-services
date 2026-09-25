@@ -9,8 +9,7 @@ import {
 import { alert, task, taskStatus } from "@/server/db/schema/task"
 import { taskEventLog, taskEventSource } from "@/server/db/schema/taskEventLog"
 import { z } from "zod"
-import { updateCustomerUpdatedAt } from "@/server/shared/updateAt"
-import { and, eq, inArray, isNotNull, max, not } from "drizzle-orm"
+import { and, eq, inArray, isNotNull, not } from "drizzle-orm"
 import { customers } from "@/server/db/schema/customers"
 import { lockCustomer, query, transaction } from "@/server/effect/db"
 import { runTrpc } from "@/server/effect/trpc"
@@ -29,53 +28,52 @@ const insertTaskInput = insertTaskSchema
 
 export const createTask = operatorProcedure
   .input(insertTaskInput)
-  .mutation(async ({ ctx, input }) => {
-    const [previousActive] = await ctx.db
-      .select({ state: task.state })
-      .from(task)
-      .where(
-        and(eq(task.customerId, input.customerId!), eq(task.isActive, true))
-      )
+  .mutation(({ ctx, input }) =>
+    runTrpc(
+      transaction(
+        Effect.gen(function* () {
+          const toState = input.state ?? "chiamare"
+          // Deactivates the customer's active task: a customer never keeps two
+          const { created, previous } = yield* replaceActiveContact({
+            customerId: input.customerId ?? null,
+            values: {
+              operatorId: input.operatorId,
+              // Rispetta lo stato richiesto invece di forzare sempre "chiamare":
+              // così una "riapertura" verso uno stato specifico non viene azzerata.
+              state: toState,
+              closedAt: input.closedAt,
+              priority: 120,
+            },
+          })
+          yield* query((client) =>
+            client.insert(taskEventLog).values({
+              customerId: created.customerId!,
+              taskId: created.id,
+              actorOperatorId: ctx.operator.id,
+              action: "state_change",
+              source: input.source,
+              fromState: previous?.state ?? null,
+              toState,
+            })
+          )
+          return created
+        })
+      ),
+      (error) =>
+        new TRPCError({
+          code: "BAD_REQUEST",
+          message: `Cliente non trovato: ${error.customerId}`,
+        })
+    )
+  )
 
-    const toState = input.state ?? "chiamare"
-
-    const res = await ctx.db
-      .insert(task)
-      .values({
-        customerId: input.customerId,
-        operatorId: input.operatorId,
-        // Rispetta lo stato richiesto invece di forzare sempre "chiamare":
-        // così una "riapertura" verso uno stato specifico non viene azzerata.
-        state: toState,
-        closedAt: input.closedAt,
-        priority: 120,
-        isActive: true,
-      })
-      .returning()
-
-    await ctx.db.insert(taskEventLog).values({
-      customerId: input.customerId!,
-      taskId: res[0]!.id,
-      actorOperatorId: ctx.operator.id,
-      action: "state_change",
-      source: input.source,
-      fromState: previousActive?.state ?? null,
-      toState,
-    })
-
-    return res[0]
-  })
-
-const bulkCreateTaskSchema = z.object({
+// resolveAlertCustomerIds: l'elenco dei clienti per cui l'operatore ha
+// confermato esplicitamente la rimozione dell'alert pendente. Per tutti gli altri
+// l'alert/callback viene preservato.
+const bulkHandleTaskSchema = z.object({
   operatorId: z.number(),
   customerIds: z.array(z.string()),
   state: z.enum(taskStatus).default("chiamare"),
-})
-
-// bulkHandleTask accetta, in più, l'elenco dei clienti per cui l'operatore ha
-// confermato esplicitamente la rimozione dell'alert pendente. Per tutti gli altri
-// l'alert/callback viene preservato.
-const bulkHandleTaskSchema = bulkCreateTaskSchema.extend({
   resolveAlertCustomerIds: z.array(z.string()).optional().default([]),
 })
 
@@ -306,47 +304,6 @@ export const bulkHandleTask = operatorProcedure
         })
     )
   )
-
-export const bulkCreateTask = operatorProcedure
-  .input(bulkCreateTaskSchema)
-  .mutation(async ({ ctx, input }) => {
-    const customersActiveTasks = await ctx.db
-      .select({
-        customerId: task.customerId,
-        lastDate: max(task.closedAt),
-      })
-      .from(task)
-      .where(
-        and(
-          inArray(task.customerId, input.customerIds),
-          eq(task.isActive, true)
-        )
-      )
-      .groupBy(task.customerId)
-    const valuesToInsert = input.customerIds.map((customerId) => ({
-      customerId,
-      operatorId: input.operatorId,
-      state: input.state,
-      closedAt:
-        customersActiveTasks.find((tempC) => tempC.customerId === customerId)
-          ?.lastDate ?? null,
-      isActive: true,
-    }))
-
-    for (const activeTask of customersActiveTasks) {
-      await ctx.db
-        .update(task)
-        .set({ isActive: false })
-        .where(eq(task.customerId, activeTask.customerId!))
-    }
-
-    const res = await ctx.db.insert(task).values(valuesToInsert).returning()
-    for (const customerId of input.customerIds) {
-      await updateCustomerUpdatedAt({ id: customerId, db: ctx.db })
-    }
-
-    return res
-  })
 
 const insertAlertInput = insertAlertSchema.pick({
   taskId: true,
