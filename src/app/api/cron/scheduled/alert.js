@@ -47,7 +47,14 @@ async function fetchAlerts() {
 
 const updateAlert = async () => {
   try {
-    await fetchAlerts()
+    const response = await fetchAlerts()
+    /** @type {{ failed?: number, error?: string }} */
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+    const body = await response.json()
+    // Printed in the GitHub Actions log: found, processed, skipped, failed
+    console.log(JSON.stringify(body))
+    // A run with failed alerts, or that failed as a whole, turns the job red
+    if (body.error !== undefined || (body.failed ?? 0) > 0) process.exit(1)
   } catch (error) {
     console.error("Error updating alerts:", error)
     process.exit(1)

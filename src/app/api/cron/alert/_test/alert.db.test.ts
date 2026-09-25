@@ -1,5 +1,6 @@
 import {
   afterAll,
+  afterEach,
   beforeAll,
   beforeEach,
   describe,
@@ -7,11 +8,14 @@ import {
   it,
   vi,
 } from "vitest"
-import { asc, eq } from "drizzle-orm"
+import { and, asc, eq } from "drizzle-orm"
 import { task } from "@/server/db/schema/task"
 import { taskEventLog } from "@/server/db/schema/taskEventLog"
 import { migrateUpTo, resetDb, testDb } from "@/test/db"
 import { createTestCaller } from "@/test/caller"
+import { causeTag } from "@/test/effect"
+import { reportedErrors } from "@/test/errorReporter"
+import { failNextInsertInto } from "@/test/failpoint"
 import {
   createAlert,
   createCustomer,
@@ -60,6 +64,11 @@ afterAll(() => {
 
 beforeEach(async () => {
   await resetDb()
+  reportedErrors.length = 0
+})
+
+afterEach(() => {
+  vi.restoreAllMocks()
 })
 
 async function seedContactWithAlert(deadline: Date) {
@@ -217,5 +226,119 @@ describe("cron alert (comportamento attuale)", () => {
     const body = await runCron()
 
     expect(body).toMatchObject({ message: "No alerts to process" })
+  })
+})
+
+describe("cron alert: ogni alert in una transazione sua", () => {
+  it("se l'elaborazione di un alert fallisce, gli alert degli altri clienti della stessa esecuzione vengono comunque elaborati", async () => {
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined)
+    await createSystemOperator()
+    // First, so today's loop would stop on it before the other alert
+    const orphan = await createTask({ customerId: null, state: "richiamare" })
+    const orphanAlert = await createAlert({
+      taskId: orphan.id,
+      deadline: new Date("2026-09-25T08:00:00.000Z"),
+    })
+    const operator = await createOperator()
+    const customer = await createCustomer({ operatorId: operator.id })
+    const previous = await createTask({
+      customerId: customer.id,
+      state: "richiamare",
+    })
+    await createAlert({
+      taskId: previous.id,
+      deadline: new Date("2026-09-25T08:00:00.000Z"),
+    })
+
+    const body = await runCron()
+
+    expect(body).toMatchObject({
+      message: "Cron job ran",
+      found: 2,
+      processed: 1,
+      skipped: 0,
+      failed: 1,
+    })
+    const [active] = await createTestCaller(operator).task.getActiveTask({
+      id: customer.id,
+    })
+    expect(active).toMatchObject({ state: "followup" })
+    expect(reportedErrors).toHaveLength(1)
+    expect(causeTag(reportedErrors[0]!.cause)).toBe("CustomerMissing")
+    expect(reportedErrors[0]!.data).toMatchObject({
+      alertId: orphanAlert.id,
+      customerId: null,
+    })
+    // Vercel shows console.error lines as errors
+    expect(consoleError).toHaveBeenCalledWith(
+      expect.stringContaining("failed=1")
+    )
+  })
+
+  it("se una scrittura fallisce non restano né il followup né la task precedente disattivata", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined)
+    const { customerOperator, customer, previous, alert } =
+      await seedContactWithAlert(new Date("2026-09-25T08:00:00.000Z"))
+    await failNextInsertInto(taskEventLog)
+
+    const body = await runCron()
+
+    expect(body).toMatchObject({ found: 1, processed: 0, failed: 1 })
+    expect(await tasksOf(customer.id)).toEqual([
+      { ...previous, alertId: alert.id },
+    ])
+    const alerts = await createTestCaller(
+      customerOperator
+    ).task.getCustomerAlerts({ id: customer.id })
+    expect(alerts).toEqual([
+      expect.objectContaining({ id: alert.id, isResolved: false }),
+    ])
+    expect(await logOf(customer.id)).toEqual([])
+  })
+
+  it("un alert aperto su una task non attiva lascia al cliente un solo contatto attivo: il followup", async () => {
+    const { customer, previous } = await seedContactWithAlert(
+      new Date("2026-09-25T08:00:00.000Z")
+    )
+    await testDb
+      .update(task)
+      .set({ isActive: false })
+      .where(eq(task.id, previous.id))
+    const current = await createTask({
+      customerId: customer.id,
+      state: "app.to",
+    })
+
+    await runCron()
+
+    const active = await testDb
+      .select()
+      .from(task)
+      .where(and(eq(task.customerId, customer.id), eq(task.isActive, true)))
+    expect(active).toEqual([expect.objectContaining({ state: "followup" })])
+    expect(active[0]!.id).not.toBe(current.id)
+  })
+
+  it("se l'intera esecuzione fallisce risponde come oggi e lo segnala una volta", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined)
+    const operator = await createOperator()
+    const customer = await createCustomer({ operatorId: operator.id })
+    const previous = await createTask({ customerId: customer.id })
+    await createAlert({
+      taskId: previous.id,
+      deadline: new Date("2026-09-25T08:00:00.000Z"),
+    })
+
+    // No system operator: the cron can't act as anyone
+    const body = await runCron()
+
+    expect(body).toMatchObject({
+      message: "Error exporting data",
+      error: "Error exporting data",
+    })
+    expect(reportedErrors).toHaveLength(1)
+    expect(causeTag(reportedErrors[0]!.cause)).toBe("SystemOperatorMissing")
   })
 })

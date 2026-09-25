@@ -32,6 +32,8 @@ updated: 2026-09-25
 - **T1.4 — `ServerLive` in `src/server/effect/server.ts`**, non in `trpc.ts`: lo usa anche il cron, che non è tRPC.
 - **T1.4 — tipi.** `query` richiede `Db` anche dentro una transazione (il tipo non può dire "`Db` oppure `Tx`"); `lockCustomer` richiede `Tx` e restituisce l'id del cliente, così i chiamanti non usano `!`. Quindi `replaceActiveContact` è `Effect<…, DbError | CustomerMissing, Db | Tx>` invece di `…, Tx>`. `forEachIsolated` restituisce `{ succeeded: B[], failed: number }`: i risultati servono a T1.5 per distinguere elaborati e saltati.
 - **T1.4 — `ErrorReporter` nei test.** Il cron costruisce `ServerLive` da sé, quindi un layer di test non si può passare dal chiamante: il setup sostituisce `SentryReporterLive` con un layer che registra in `reportedErrors` (`src/test/errorReporter.ts`), come già fa con `@/server/db`. Nessun test chiama Sentry.
+- **T1.5 — lo script del cron esce con 1 anche con `error` nella risposta.** Il piano diceva solo `failed > 0`. Ma un'esecuzione fallita per intero (DB irraggiungibile, operatore di sistema mancante) risponde 200 con `error` e senza `failed`: senza questo controllo il job su GitHub Actions resterebbe verde, e G1 non se ne accorgerebbe.
+- **T1.5 — `lockCustomer` anche nel ramo "altro giorno".** Il piano lo chiedeva "se la task ha un cliente". Chiamarlo sempre non cambia nessun caso che oggi funziona: con `customer_id` NULL il ramo scriveva task e alert e poi falliva sulla riga di log (`customer_id` NOT NULL). Ora fallisce con `CustomerMissing` prima di scrivere.
 
 ## Surprises and Decisions
 
