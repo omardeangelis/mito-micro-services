@@ -17,7 +17,7 @@ import {
   createOperator,
   createTask,
 } from "@/test/factories"
-import { failNextInsertInto } from "@/test/failpoint"
+import { failNextInsertInto, slowWritesTo } from "@/test/failpoint"
 
 // The four cases of the operators' guide (brain/chore/crm/guida-assegnazione-
 // massiva-e-alert.md). The UI offers the bulk assignment to admins only.
@@ -189,6 +189,9 @@ describe("task.bulkHandleTask (comportamento attuale)", () => {
       taskId: previous.id,
       deadline: new Date("2026-10-01T08:00:00.000Z"),
     })
+    // Every write moves the clock on: a write on the previous task after the
+    // insert, or an insert stamped before those writes, would come out on top
+    await slowWritesTo(task, 5)
     await caller.task.bulkHandleTask({
       operatorId: nextOperator.id,
       customerIds: [customer.id],

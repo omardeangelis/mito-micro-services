@@ -14,7 +14,7 @@ import { users } from "@/server/db/schema/users"
 import { query, transaction } from "@/server/effect/db"
 import { forEachIsolated } from "@/server/effect/errorReporter"
 import { runTrpc } from "@/server/effect/trpc"
-import { migrateUpTo, resetDb, testDb } from "@/test/db"
+import { migrateUpTo, resetDb, testClient, testDb } from "@/test/db"
 import { failureTag, isDefect, runServer } from "@/test/effect"
 import { reportedErrors } from "@/test/errorReporter"
 
@@ -112,6 +112,28 @@ describe("transaction", () => {
     expect(await testDb.select({ id: users.id }).from(users)).toEqual([
       { id: "u1" },
     ])
+  })
+
+  it("gira in read committed anche se il database ha un altro livello di default", async () => {
+    await testDb.insert(users).values({ id: "u1", email: "u1@t.it" })
+    await testClient.exec(`SET default_transaction_isolation TO 'serializable'`)
+    try {
+      const exit = await runServer(
+        transaction(
+          query((client) =>
+            client
+              .select({
+                level: sql<string>`current_setting('transaction_isolation')`,
+              })
+              .from(users)
+          )
+        )
+      )
+
+      expect(exit).toEqual(Exit.succeed([{ level: "read committed" }]))
+    } finally {
+      await testClient.exec(`RESET default_transaction_isolation`)
+    }
   })
 })
 

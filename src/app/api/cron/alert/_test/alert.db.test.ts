@@ -8,8 +8,8 @@ import {
   it,
   vi,
 } from "vitest"
-import { eq } from "drizzle-orm"
-import { task } from "@/server/db/schema/task"
+import { eq, getTableName } from "drizzle-orm"
+import { alert as alerts, task } from "@/server/db/schema/task"
 import { taskEventLog } from "@/server/db/schema/taskEventLog"
 import {
   activeTasksOf,
@@ -22,7 +22,7 @@ import {
 import { createTestCaller } from "@/test/caller"
 import { causeTag } from "@/test/effect"
 import { reportedErrors } from "@/test/errorReporter"
-import { failNextInsertInto } from "@/test/failpoint"
+import { afterNextWriteTo, failNextInsertInto } from "@/test/failpoint"
 import {
   createAlert,
   createCustomer,
@@ -37,8 +37,10 @@ vi.mock("@/app/api/_utils/auth", () => ({ authCheck: vi.fn(async () => null) }))
 
 const NOW = new Date("2026-09-25T06:00:00.000Z")
 
+const cronResponse = () => GET(new Request("http://localhost/api/cron/alert"))
+
 async function runCron() {
-  const response = await GET(new Request("http://localhost/api/cron/alert"))
+  const response = await cronResponse()
   return (await response.json()) as Record<string, unknown>
 }
 
@@ -319,13 +321,116 @@ describe("cron alert: ogni alert in una transazione sua", () => {
     })
 
     // No system operator: the cron can't act as anyone
-    const body = await runCron()
+    const response = await cronResponse()
 
-    expect(body).toMatchObject({
+    // alert.js reads the body: a 5xx would print no counts
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({
       message: "Error exporting data",
       error: "Error exporting data",
     })
     expect(reportedErrors).toHaveLength(1)
     expect(causeTag(reportedErrors[0]!.cause)).toBe("SystemOperatorMissing")
+  })
+
+  it("un alert di un giorno precedente su una task senza cliente fallisce a ogni esecuzione e resta aperto", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined)
+    await createSystemOperator()
+    const orphan = await createTask({ customerId: null, state: "richiamare" })
+    const orphanAlert = await createAlert({
+      taskId: orphan.id,
+      deadline: new Date("2026-09-23T08:00:00.000Z"),
+    })
+
+    const first = await runCron()
+    const second = await runCron()
+
+    expect(first).toMatchObject({ found: 1, processed: 0, failed: 1 })
+    expect(second).toEqual(first)
+    expect(reportedErrors.map(({ cause }) => causeTag(cause))).toEqual([
+      "CustomerMissing",
+      "CustomerMissing",
+    ])
+    const [open] = await testDb
+      .select()
+      .from(alerts)
+      .where(eq(alerts.id, orphanAlert.id))
+    expect(open).toMatchObject({ isResolved: false })
+    expect(await testDb.select().from(task)).toEqual([
+      expect.objectContaining({ id: orphan.id, alertId: orphanAlert.id }),
+    ])
+  })
+
+  it("un alert che un'altra esecuzione risolve dopo la lettura dell'elenco è contato fra gli skipped e non scrive nulla", async () => {
+    const { customer } = await seedContactWithAlert(
+      new Date("2026-09-25T08:00:00.000Z")
+    )
+    const other = await createCustomer()
+    const otherTask = await createTask({
+      customerId: other.id,
+      state: "richiamare",
+    })
+    await createAlert({
+      taskId: otherTask.id,
+      deadline: new Date("2026-09-25T08:00:00.000Z"),
+    })
+    // While the first alert is written, an overlapping run resolves the other
+    await afterNextWriteTo(
+      taskEventLog,
+      "INSERT",
+      `UPDATE "${getTableName(alerts)}" SET is_resolved = true WHERE is_resolved = false`
+    )
+
+    const body = await runCron()
+
+    expect(body).toMatchObject({
+      found: 2,
+      processed: 1,
+      skipped: 1,
+      failed: 0,
+    })
+    const written = await Promise.all(
+      [customer.id, other.id].map(async (id) => ({
+        tasks: (await tasksOf(id)).length,
+        log: (await logOf(id)).length,
+      }))
+    )
+    expect(written).toEqual(
+      expect.arrayContaining([
+        { tasks: 2, log: 2 },
+        { tasks: 1, log: 0 },
+      ])
+    )
+  })
+
+  it("un alert di un giorno precedente stacca dalla task solo sé stesso, non un alert agganciato nel frattempo", async () => {
+    const { customerOperator, customer, previous, alert } =
+      await seedContactWithAlert(new Date("2026-09-23T08:00:00.000Z"))
+    // An operator schedules a new callback on the same task (createAlert)
+    // while the cron resolves the due alert
+    await afterNextWriteTo(
+      alerts,
+      "UPDATE",
+      `WITH created AS (
+        INSERT INTO "${getTableName(alerts)}" (task_id, deadline)
+        VALUES (${previous.id}, '2026-10-01T08:00:00Z') RETURNING id
+      )
+      UPDATE "${getTableName(task)}" SET alert_id = (SELECT id FROM created)
+      WHERE id = ${previous.id}`
+    )
+
+    await runCron()
+
+    const caller = createTestCaller(customerOperator)
+    const [active] = await caller.task.getActiveTask({ id: customer.id })
+    expect(active).toMatchObject({ id: previous.id, isActive: true })
+    expect(active!.alertId).not.toBeNull()
+    expect(active!.alertId).not.toBe(alert.id)
+    expect(await caller.task.getCustomerAlerts({ id: customer.id })).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: alert.id, isResolved: true }),
+        expect.objectContaining({ id: active!.alertId, isResolved: false }),
+      ])
+    )
   })
 })

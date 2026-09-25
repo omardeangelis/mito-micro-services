@@ -111,8 +111,13 @@ const processAlert = (
         ])
       )
     } else {
+      // Only if the task still points at this alert: createAlert doesn't lock
+      // the customer, and may have linked a new one since the list was read
       yield* query((client) =>
-        client.update(tasks).set({ alertId: null }).where(eq(tasks.id, task.id))
+        client
+          .update(tasks)
+          .set({ alertId: null })
+          .where(and(eq(tasks.id, task.id), eq(tasks.alertId, alert.id)))
       )
       yield* query((client) =>
         client.insert(taskEventLog).values(alertResolvedLog)

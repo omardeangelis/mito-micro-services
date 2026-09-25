@@ -322,7 +322,7 @@ Branch suggerito: `contatti/pr1-creazione-sicura`. Nessun cambiamento visibile, 
       - successo → il valore;
       - errori tipizzati diversi da `DbError` → `TRPCError` tramite `mapError`. Gli overload rendono `mapError` **obbligatorio** quando `Exclude<E, DbError>` non è `never`, così un errore senza traduzione non compila;
       - `DbError` e difetti → `Effect.logError` e `INTERNAL_SERVER_ERROR` con `cause: Cause.squash(cause)` e lo stesso messaggio che tRPC mostra oggi, cioè quello dell'errore originale. Non chiama `ErrorReporter`: a Sentry li segnala il middleware tRPC (P9).
-  - **Ordine dei lock, unico per tutto il codice:** `customers` → `task` → `alert`. Ogni transazione che scrive su un contatto comincia con `lockCustomer`, poi blocca o aggiorna le task, poi gli alert. Una volta bloccato il cliente, le righe `task` e `alert` si aggiornano senza altri lock espliciti, perché ogni scrittore passa prima dal cliente. Vale per PR1 (T1.5, T1.6, T1.7) e PR3 (T3.2). PGlite ha una sola connessione e non può rilevare un deadlock: la garanzia sta nella regola e nella review.
+  - **Regola dei lock, unica per tutto il codice:** ogni `transaction` che scrive task o alert di un cliente chiama per prima `lockCustomer`, poi tocca solo le righe di quel cliente. Due transazioni sullo stesso cliente si mettono in coda sul cliente invece di andare in deadlock; l'ordine fra task e alert, dopo il cliente, non conta. Gli scrittori fuori da `transaction` (`updateTask`, `createAlert`, `resolveAlerts` e gli altri che sposta PR3) non bloccano il cliente: chi li porta in una `transaction` chiama per prima `lockCustomer`. Vale per PR1 (T1.5, T1.6, T1.7) e PR3 (T3.2). PGlite ha una sola connessione e non può rilevare un deadlock: la garanzia sta nella regola e nella review. *(Riscritta dopo la review di PR1, F12: la versione precedente, "`customers` → `task` → `alert` per tutti gli scrittori", non corrispondeva al codice.)*
   - **`replaceActiveContact({ customerId, values })`** restituisce `Effect<{ created, previous }, DbError | CustomerMissing, Tx>` e lavora dentro la transazione del chiamante:
     1. `lockCustomer(customerId)`, che è idempotente se il chiamante l'ha già fatto;
     2. disattiva **tutte** le task attive del cliente;
@@ -560,7 +560,7 @@ Branch suggerito: `contatti/pr3-regole-server`. Da qui valgono AC73, D2 e P4.
 
 **Forma comune delle mutation di PR3 (D9):**
 - ogni mutation è un servizio Effect in `src/server/services/contact/`, che fa tutto in un solo `transaction` (T1.4) e fallisce con gli errori tipizzati di T3.2;
-- ogni transazione rispetta l'ordine dei lock `customers` → `task` → `alert` (T1.4);
+- ogni transazione rispetta la regola dei lock di T1.4: prima `lockCustomer`, poi solo le righe di quel cliente;
 - la procedura chiama `runTrpc(program, contactErrorToTrpc)`;
 - le regole vengono dal modulo di dominio puro di T3.1.
 
@@ -1583,7 +1583,7 @@ Il lavoro di più PR può procedere in parallelo sui branch, ma i **merge** segu
 | Il cron alert in prod non gira dove si pensa, e G1 non dimostra nulla | Finding 14: G1 comincia accertando lo scheduler. Gli errori arrivano su `console.error` (`ServerLive`) e su Sentry (`ErrorReporter`, P9), lo script stampa il JSON ed esce con 1 se `failed > 0` (T1.5), il runbook dice dove guardare (T1.8) |
 | Revert di PR1 dopo G2 → cron fermo | Regola di rollback in §12 |
 | Tra G2 e PR3, `updateTask` e `updateTaskFromDashboard` riattivano un contatto già sostituito: scrivono `isActive` preso dal client, senza lock (preesistente, review di PR1 F3). Con l'indice unico la riga risponde 500; se succede a metà di un cron o di una massiva, fallisce quell'alert o quel cliente | Finestra G2 → PR3 breve; passo 9 del runbook G2; T3.13 rimuove le due mutation |
-| Deadlock tra transazioni concorrenti | Ordine unico dei lock `customers` → `task` → `alert`, con `lockCustomer` all'inizio di ogni transazione che scrive (T1.4, T1.5, T1.6, T3.2). PGlite non può rilevarli: la regola si controlla in review |
+| Deadlock tra transazioni concorrenti | Regola dei lock di T1.4: ogni `transaction` che scrive task o alert chiama per prima `lockCustomer`, poi tocca solo le righe di quel cliente (T1.5, T1.6, T1.7, T3.2). PGlite non può rilevarli: la regola si controlla in review |
 | Tra PR3 e PR5 un admin non può riassegnare un singolo contatto con esito | Rilasci ravvicinati (G4); nel frattempo resta l'assegnazione massiva |
 | Lock della tabella durante `CREATE UNIQUE INDEX` | Migrazione fuori orario (G2); `task` di dimensioni contenute |
 | La pulizia sceglie il contatto "sbagliato" | Stesso criterio già usato dall'interfaccia (`getActiveTask`); elenco approvato prima; nessuna cancellazione |

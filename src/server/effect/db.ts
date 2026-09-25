@@ -88,6 +88,8 @@ class Rollback extends Error {}
  *   outer one instead.
  * - Don't use timeouts or interruption inside: stopping the fiber doesn't
  *   stop the Drizzle transaction.
+ * - It runs in READ COMMITTED, whatever the database default: each statement
+ *   sees the rows committed before it, which the customer lock relies on.
  */
 export const transaction = <A, E, R>(
   program: Effect.Effect<A, E, R>
@@ -105,20 +107,23 @@ export const transaction = <A, E, R>(
     const committed = yield* Effect.either(
       Effect.tryPromise({
         try: () =>
-          client.transaction(async (txClient) => {
-            const tx = { client: txClient, failed: false }
-            exit = await Runtime.runPromiseExit(runtime)(
-              program.pipe(
-                Effect.provideService(Tx, tx),
-                Effect.filterOrDieMessage(
-                  () => !tx.failed,
-                  "A DbError was recovered inside transaction(): map it to an error instead"
+          client.transaction(
+            async (txClient) => {
+              const tx = { client: txClient, failed: false }
+              exit = await Runtime.runPromiseExit(runtime)(
+                program.pipe(
+                  Effect.provideService(Tx, tx),
+                  Effect.filterOrDieMessage(
+                    () => !tx.failed,
+                    "A DbError was recovered inside transaction(): map it to an error instead"
+                  )
                 )
               )
-            )
-            if (Exit.isFailure(exit)) throw new Rollback()
-            return exit.value
-          }),
+              if (Exit.isFailure(exit)) throw new Rollback()
+              return exit.value
+            },
+            { isolationLevel: "read committed" }
+          ),
         catch: toDbError,
       })
     )
@@ -141,11 +146,14 @@ export type LockedCustomer = {
 }
 
 /**
- * Locks the customer's row until the transaction ends, and returns it. Every
- * transaction that writes a contact starts here. Once the customer is locked,
- * its tasks and alerts need no other lock, because every writer goes through
- * the customer first: one lock order for all the code, so concurrent
- * transactions don't deadlock.
+ * Locks the customer's row until the transaction ends, and returns it.
+ *
+ * The lock rule: every `transaction` that writes a customer's tasks or alerts
+ * calls this first, then touches only that customer's rows. Two such
+ * transactions on the same customer wait for each other instead of
+ * deadlocking. The writers outside `transaction` (`updateTask`, `createAlert`,
+ * `resolveAlerts` and the others PR3 moves) don't lock the customer: moving
+ * one into a `transaction` means calling this first.
  */
 export const lockCustomer = (
   customerId: string | null
