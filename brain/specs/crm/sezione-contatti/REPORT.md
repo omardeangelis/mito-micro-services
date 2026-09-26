@@ -5,7 +5,7 @@ scope: spec
 spec: sezione-contatti
 review_target: "branch contatti/pr1-creazione-sicura — PR1 (T1.1–T1.7)"
 base_ref: 88b01718b6e9deafef1913cef489268a16518312
-head_ref: 87ff79e077763b5a443b689a663a4e30987622a3
+head_ref: db92e2cd99416c0eee09d303e231f2d18b0a8c87
 verdict: ship
 review_impact: critical
 human_in_loop: true
@@ -18,14 +18,14 @@ links:
 ingested: false
 last_ingested: null
 created: 2026-09-25
-updated: 2026-09-25
+updated: 2026-09-26
 ---
 
 # Review Report: Sezione Contatti — PR1 "Percorsi di creazione sicuri"
 
 ## Verdict
 
-**SHIP** · impact: critical · dopo le correzioni di `87ff79e`, rieseguendo v1, v2 e v3 (vedi "Seconda verifica"). La checklist umana resta obbligatoria.
+**SHIP** · impact: critical · dopo le correzioni di `87ff79e`, rieseguendo v1, v2 e v3 (vedi "Seconda verifica"), e dopo la terza verifica su "Assegna Clienti" e i minor urgenti (v4 SHIP). Il cron a tempo, aggiunto dopo lo smoke, non è passato da un verificatore: lo coprono test e mutazioni (vedi "Smoke"). La checklist umana resta obbligatoria.
 
 Prima verifica, su `09de3e8`: **DO NOT SHIP**. Obiezione bloccante (v3, confermata sul codice): nella massiva, nel caso "alert confermato" ("Risolvi alert" spuntato), dopo PR1 la task più recente per `updated_at` è la vecchia, ormai inattiva; prima era la nuova. "Assegna Clienti" (`customer.bulkUpdateCustomers`, codice invariato) sceglie proprio la task con `updated_at` più recente, attiva o no, e quindi dopo la massiva si comporta diversamente da oggi. È un cambio di comportamento della massiva non documentato, contro i non-goal della SPEC.
 
@@ -62,9 +62,50 @@ Rilievi nuovi, nessuno sopra MINOR:
 | R8 | NIT | v1 | Un `Tx` fornito a mano compila e riproduce una scrittura a metà; nessun codice lo fa. Togliere solo `yield* Tx` lascia verdi i test (lo protegge il tipo). | — |
 | R9 | NIT | v3 | Con l'orologio dell'app avanti rispetto al DB la nuova task va in cima anche dove la base avrebbe messo la vecchia (è l'intento). Una scansione di `task` in più per cliente nel caso "alert confermato": ~16 ms su 200.000 task senza indice, 0,2 ms con l'indice di PR2. | Documentato in IMPLEMENTATION-NOTES. |
 
+## Terza verifica (minor urgenti e "Assegna Clienti")
+
+Piano validato in chat il 2026-09-25: correggere "Assegna Clienti" in questo branch e i minor urgenti. Commit `7145af5` ("Assegna Clienti"), `710548c` (F12, F13, isolamento, test di F6, F11 e R1), più le correzioni successive (test da v4, `createTask`). Due passaggi nuovi su Opus, con charter ristrette ai commit:
+
+| Pass | Verdict | Esito |
+|------|---------|-------|
+| v4 — cron e `transaction` | SHIP | F13 dà righe identiche alla base in 4 stati di dati (anche sporchi), due esecuzioni ciascuno; diverge solo nella corsa con `createAlert`, dove ora l'alert agganciato non resta orfano. `read committed` esce come comando senza parametri, valido con `prepare: false` e col pooler in transaction mode; il test lo prende se tolto. Ogni test nuovo fallisce se si toglie il comportamento che nomina (9 mutazioni). La regola dei lock vale per tutte e tre le `transaction` del repo. |
+| vA — "Assegna Clienti" e strumenti di test | interrotto | Il verificatore si è fermato prima del report (stallo). Risultati parziali sul test di F1 con `slowWritesTo`: correzione verde 30/30; ciascuna metà annullata presa 10/10; variante con solo `statement_timestamp()` non presa (0/10), come atteso: protegge dallo sfasamento degli orologi, che PGlite non può simulare. La sua scansione dei `WHERE` che possono diventare indefiniti ha trovato lo stesso schema negli update dell'import (fuori perimetro, segnalato come attività separata). |
+
+Rilievi nuovi:
+
+| # | Severity | Da | Problema | Stato |
+|---|----------|----|----------|-------|
+| R10 | MAJOR | orchestratore, dopo la seconda verifica | `createTask`: con T1.7 la vecchia task viene disattivata nella stessa transazione e risulta più recente della nuova; nella base in cima c'era la nuova. "Assegna Clienti" non spostava più il contatto riaperto. La seconda verifica di v3 dava l'ordine di `createTask` come invariato: non lo era. | Corretto (`mostRecent: true`), test rosso 5/5 prima e verde 20/20 dopo. |
+| R11 | MINOR | v4 | Il livello di isolamento costa un giro al DB in più per transazione, cioè per alert; con `prepare: false` ogni comando con parametri ne costa due. Un alert di un giorno precedente fa circa 11 giri, uno di oggi circa 15. Misurato nello smoke: circa 7 giri ad alert, uno per comando, non 11; circa 2,3 volte la base. Chiuso con il cron a tempo. |
+| R12 | MINOR | v4 | I test del cron restavano verdi con l'azzeramento incondizionato di `alert_id` spostato prima della guardia `is_resolved` (M10). | Corretto: test "skipped" nel ramo "giorno precedente"; la mutazione ora fallisce. |
+| R13 | MINOR | v4 | La deviazione di F13 e il cambio di isolamento non erano documentati; in più, nella corsa con `createAlert` l'alert agganciato scatta in un'esecuzione successiva con followup e log (una riga in più nell'export rispetto alla base). | Documentato in IMPLEMENTATION-NOTES. |
+| R14 | NIT | v4 | `alert.test.ts` non controllava la stampa della risposta nei casi di fallimento. | Corretto. |
+| R15 | NIT | v4 | In `update-alert prod.yml` il messaggio Telegram parte solo se il job è verde: con la nuova regola di uscita un'esecuzione con alert falliti non manda messaggi. | Nel runbook G1. |
+| R16 | NIT | v4 | `afterNextWriteTo` esegue la scrittura "concorrente" dentro la transazione del cron: i test non esercitano la visibilità di READ COMMITTED. | Già nel tech-debt (F5). |
+
+## Smoke su sviluppo e cron a tempo
+
+Smoke di T1.8 sul DB di sviluppo il 2026-09-25, con ok in chat; mai prod. Il server locale gira in `TZ=UTC`: su un server in `Europe/Rome` il limite delle date del cron cade un giorno prima (preesistente, nel tech-debt).
+
+- **Percorsi:** riapertura, massiva nei 4 casi e "Assegna Clienti" senza regressioni; dopo ogni passo un solo contatto attivo.
+- **Cron, 815 alert scaduti** (814 di giorni precedenti, 1 di oggi):
+  - 808 risolti dall'operatore di sistema e un followup con i campi giusti;
+  - log coerente: 808 `alert_resolved` e 1 `state_change`;
+  - clienti con più task attive: 7 prima e 7 dopo.
+- **8 fallimenti per `ECONNRESET`** dopo blocchi di circa 16 minuti della connessione, isolati come previsto da AC72: la risposta diceva `failed: 8` e gli altri alert sono andati avanti. Uno (alert 4100) era già scritto quando la connessione è caduta: contato fra i falliti, risolto davvero. I 7 rimasti sono aperti per il prossimo run.
+- **Durata:** 799 alert in 172 s di lavoro, circa 0,2 s ad alert con 30 ms di latenza. Sono circa 7 giri, uno per comando (R11 ne stimava 11). La base faceva 3 comandi: per alert il cron è circa 2,3 volte più lento.
+
+Con `maxDuration = 60` il cron si sarebbe fermato a metà con un arretrato di qualche centinaio di alert, o con la funzione Vercel lontana dal DB (circa 70 alert per chiamata se la region è `iad1`). In quel caso gli alert di oggi potevano restare fuori e il giorno dopo venire solo chiusi, senza followup. Deciso in chat il 2026-09-26: batch in PR1.
+
+- `processDueAlerts` prende prima gli alert di oggi e dopo `budgetMs` (40 s dalla route) non ne prende di nuovi, ma prende sempre il primo. Gli altri li conta in `remaining`.
+- `alert.js` richiama finché `remaining` è 0, al massimo 20 volte, ed esce con 1 se una chiamata ha alert falliti, se l'esecuzione fallisce per intero o se ne restano dopo 20 chiamate.
+- Test: il servizio con tempo esaurito (una chiamata elabora un alert, la seconda l'altro), l'ordine (quello di oggi prima di uno di un giorno precedente creato prima), `remaining` nella risposta della route, e le tre regole di `alert.js`. Ogni test nuovo è rosso senza il comportamento che nomina: le due mutazioni di `alert.js` (accumulo dei falliti, tetto delle chiamate) falliscono.
+
 ## Findings
 
 Prima verifica, su `09de3e8`. F1–F5 sono chiusi o registrati dalla seconda verifica (sopra).
+
+Dopo la terza verifica e lo smoke: F6 ha il test e entra nella pulizia di PR2; F8 è misurato e chiuso dal cron a tempo; F11 è coperto per il cron e `alert.js`, il resto è nel tech-debt; F12 e F13 sono corretti.
 
 I casi della massiva sono indicati per contenuto, perché la guida operatori e il codice li numerano in modo diverso (v3, NIT).
 
@@ -138,23 +179,23 @@ Da completare in ordine, da una persona, prima del merge verso `dev`.
 
 1. ~~**Correggere F1** nel codice di PR1, con un test di regressione. Poi rieseguire il solo verificatore v3; anche v1 e v2 se la correzione tocca `activeContact.ts` o `db.ts`. Va bene quando v3 dà SHIP.~~ Fatto: `87ff79e`, v1, v2 e v3 SHIP.
 2. ~~**Decidere F2** (una riga)~~ (fatto), e per ogni MAJOR e MINOR scegliere se entra in PR1 o va in `brain/tech-debt/crm/sezione-contatti.md`. I finding marcati "sì" nella colonna Durable? vanno nel tech-debt.
-3. **Gate locali**, tutti con exit 0:
+3. ~~**Gate locali**, tutti con exit 0~~ (fatto, dopo il cron a tempo: 87/87 test):
    - `SKIP_ENV_VALIDATION=true pnpm exec next lint`
    - `pnpm exec tsc --noEmit`
    - `pnpm run test --run`
    - `SKIP_ENV_VALIDATION=true NEXT_PUBLIC_SUPABASE_URL=… SUPABASE_KEY=… pnpm build`
-4. **Smoke solo sul DB di sviluppo.** Mai uno script con `NODE_ENV=production`. `pnpm update:alert:dev` risolverebbe gli 814 alert scaduti presenti sul DB di sviluppo: serve un ok esplicito prima di lanciarlo.
+4. ~~**Smoke solo sul DB di sviluppo.** Mai uno script con `NODE_ENV=production`. `pnpm update:alert:dev` risolverebbe gli 814 alert scaduti presenti sul DB di sviluppo: serve un ok esplicito prima di lanciarlo.~~ Fatto con l'ok in chat (vedi "Smoke").
 5. **PR verso `dev`** con la CI verde (Lint, Test, Build). Nella descrizione: il runbook G1, e i comportamenti nuovi F7 e F15.
 6. **Prima di G1, query in sola lettura su prod**, lanciate da Omar:
    - `SHOW TIME ZONE` (F4);
    - `SHOW default_transaction_isolation` (NIT di v2);
    - alert aperti su task con `customer_id` NULL o con un cliente inesistente (F6);
-   - numero di alert scaduti e dimensione di `task` (F8);
+   - numero di alert scaduti e dimensione di `task` (F8): secondo Omar il cron su prod gira già ogni giorno, quindi ci si aspetta un numero vicino a zero;
    - clienti con almeno 2 task attive, e quanti hanno lo stesso millisecondo (F7, F16).
 7. **G1, dopo il deploy in produzione.** Omar lancia `update-alert prod.yml` con `workflow_dispatch`. Va bene se:
-   - il job è verde;
-   - il JSON nel log di GitHub Actions ha `failed: 0` e `found = processed + skipped + failed`;
-   - la durata sta sotto i 60 s;
+   - il job è verde (il messaggio Telegram parte solo in quel caso, R15);
+   - nel log di GitHub Actions c'è un JSON per chiamata, ciascuno con `failed: 0` e `found = processed + skipped + failed + remaining`, e l'ultimo ha `remaining: 0`;
+   - nei log Vercel ogni chiamata dura meno di 60 s;
    - nei log Vercel di `/api/cron/alert` non ci sono errori inattesi;
    - su Sentry prod c'è un evento per ogni alert fallito e nessun doppione.
 8. **PR1 deve essere in produzione prima dell'indice unico di PR2.** Aggiungere F3 al runbook G2.
@@ -166,7 +207,7 @@ Da completare in ordine, da una persona, prima del merge verso `dev`.
 |-----------|-----------------------|-------|
 | AC39: il cambio avviene per intero o per niente (percorsi di creazione di PR1) | Met | v1. La garanzia per i chiamanti futuri dipende da F2. |
 | AC71: un solo contatto attivo, parte codice, percorsi di PR1 | Met, con riserva | v2 e v5. Il tipo non impone il lock (F2). `updateTask` può riattivare un contatto sostituito (F3, preesistente, chiuso in PR3). |
-| AC72: cron alert con gli stessi risultati; un fallimento non ferma gli altri | Met | v4 e v6. Deviazioni da documentare: F6, F7. Rischio di timeout: F8. |
+| AC72: cron alert con gli stessi risultati; un fallimento non ferma gli altri | Met | v4 e v6, e lo smoke (8 fallimenti isolati). Deviazioni documentate: F6, F7. Rischio di timeout (F8): chiuso dal cron a tempo. |
 | AC72: quattro casi della massiva con gli stessi risultati | Met (seconda verifica) | Prima verifica Unmet per F1. Dopo `87ff79e` righe e task in cima uguali alla base in tutti e quattro i casi (v3). Sui dati sporchi cambia l'ordine in cima (R2), fuori da AC72. |
 | Non-goal: comportamento della massiva invariato | Met (seconda verifica) | Come sopra. |
 | Non-goal: l'export chiamate conta come oggi | Met, con riserva | Le righe prodotte dalla massiva sono identiche (v3). Dopo F1, un successivo "Assegna Clienti" attribuisce la nuova riga a un altro operatore rispetto a oggi. |

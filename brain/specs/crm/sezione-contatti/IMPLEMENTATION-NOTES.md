@@ -8,7 +8,7 @@ links:
 ingested: false
 last_ingested: null
 created: 2026-09-25
-updated: 2026-09-25
+updated: 2026-09-26
 ---
 
 # Implementation Notes
@@ -56,6 +56,28 @@ updated: 2026-09-25
   - **F4 — il fuso dei test** è dichiarato come assunzione su prod da verificare in G1: il DB di sviluppo è in `Europe/Rome`.
   - **F3** va nel runbook G2 e nei rischi (§13 di PLAN.md); **F5** nel tech-debt.
 
+- **Dopo la seconda verifica: "Assegna Clienti" e minor urgenti** (piano validato in chat il 2026-09-25).
+  - **"Assegna Clienti" non riassegna più tutte le task della tabella.** Se nessun cliente scelto ha in cima una task `chiamare`, `customer.bulkUpdateCustomers` faceva l'update delle task con un `WHERE` indefinito. Ora lo salta. È fuori dal perimetro del piano (A7 e P8 la lasciavano invariata), ma è un bug che cancella gli operatori di tutte le task, e la correzione è una guardia: nessuna conversione a Effect, nessun'altra logica. Sul DB di sviluppo c'è una traccia compatibile (19/06/2026: 66.273 task su 66.548 con lo stesso `updated_at` e lo stesso operatore); su prod serve la query nella descrizione della PR. La scelta della task (la più recente anche se inattiva) resta com'è: vedi il tech-debt.
+  - **`createTask`: la nuova task torna la più recente del cliente** (stessa famiglia di F1, trovata dopo la seconda verifica). Nella base la riapertura inseriva e basta, quindi in cima c'era la nuova task. Con T1.7 la vecchia viene disattivata nella stessa transazione e prende un `updated_at` successivo all'insert: "Assegna Clienti" non spostava più il contatto riaperto. Ora `createTask` passa `mostRecent: true` a `replaceActiveContact`, con un test.
+  - **F13 — il cron stacca l'alert dalla task solo se la task punta ancora a quell'alert** (`WHERE id = T AND alert_id = A`). `createAlert` non blocca il cliente e può agganciare un nuovo alert nel frattempo: prima il cron lo lasciava aperto e scollegato per sempre. Deviazione da AC72, solo in quella corsa: l'alert agganciato resta sulla task e scatta in un'esecuzione successiva, con il suo followup e le sue righe `alert_resolved` e `state_change` (una riga in più nell'export chiamate rispetto alla base). I conteggi e il log dell'esecuzione in cui avviene la corsa sono quelli della base. La stessa condizione nella massiva (R7) non c'è: non ha un punto in cui un test possa inserire la scrittura concorrente, e la chiude PR3 insieme a F14.
+  - **`transaction` gira in `read committed`** a prescindere dal default del DB. AC71 e il lock del cliente contano su quel livello. Drizzle 0.33 lo manda come comando separato dopo `BEGIN`: un giro in più per transazione, cioè per alert nel cron (vedi F8).
+  - **F12 — la regola dei lock** in `lockCustomer` e nel piano (T1.4, §13) ora dice cosa fa il codice: ogni `transaction` che scrive task o alert chiama per prima `lockCustomer`, poi tocca solo le righe di quel cliente.
+  - **Test aggiunti:** il ramo "giorno precedente" su una task senza cliente, che fallisce a ogni esecuzione (F6); il conteggio `skipped`; lo status 200 con un'esecuzione fallita; la regola di uscita di `alert.js` (F11); il livello di isolamento.
+  - **R1 — il test di F1 prende ciascuna metà della correzione.** `slowWritesTo(task, 5)` allunga ogni scrittura su `task`, così il riordino tolto (azzeramento di `alert_id` dopo l'insert) e il timestamp tolto (insert con `CURRENT_TIMESTAMP`) falliscono 10 volte su 10. Non prende la variante con `statement_timestamp()` senza `GREATEST(…, max + 1 ms)`: quella parte protegge dallo sfasamento fra l'orologio dell'app e quello del DB, e PGlite legge l'orologio di JS, quindi lo sfasamento non si può simulare.
+  - **Strumenti di test:** `src/test/failpoint.ts` ha `afterNextWriteTo` (una scrittura concorrente simulata dentro la transazione) e `slowWritesTo`, costruiti con `failNextInsertInto` su un solo helper privato.
+
+- **Smoke di T1.8 sul DB di sviluppo** (2026-09-25, ok in chat; server locale in `TZ=UTC`, vedi il tech-debt sul fuso).
+  - **Percorsi:** riapertura, massiva nei 4 casi e "Assegna Clienti" senza regressioni; dopo ogni passo un solo contatto attivo.
+  - **Cron:** 815 alert scaduti (814 di giorni precedenti, 1 di oggi). 808 risolti dall'operatore di sistema, un followup con i campi giusti, log coerente (808 `alert_resolved`, 1 `state_change`), clienti con più task attive invariati (7).
+  - **8 fallimenti per `ECONNRESET`**, dopo blocchi di circa 16 minuti della connessione. Gli altri alert sono andati avanti, e la risposta diceva `failed: 8`. Sette sono tornati indietro e restano aperti per il prossimo run; uno (alert 4100) era già stato scritto quando la connessione è caduta. Durante i reset `postgres.js` ha lanciato un'eccezione non gestita: nel tech-debt.
+  - **Durata:** 799 alert in 172 s di lavoro, circa 0,2 s ad alert con 30 ms di latenza: circa 7 giri, uno per comando (non 11 come stimato in R11). La base ne faceva 3: il cron è circa 2,3 volte più lento per alert.
+- **Cron a tempo** (deciso in chat il 2026-09-26, dopo la misura). Con 60 s di limite su Vercel, un arretrato o una region lontana dal DB fermavano il cron a metà; e gli alert di oggi lasciati fuori il giorno dopo contano come "giorno precedente" e non creano il followup.
+  - `processDueAlerts` prende prima gli alert di oggi (`deadline DESC, id`).
+  - Dopo `budgetMs` non prende alert nuovi, ma prende sempre il primo, così ogni chiamata avanza. Gli altri li conta in `remaining` e restano aperti. La route passa 40 s.
+  - `alert.js` richiama finché `remaining` è 0, al massimo 20 volte. Esce con 1 se una chiamata ha avuto alert falliti (dopo aver finito gli altri), se l'esecuzione fallisce per intero o se dopo 20 chiamate ne restano.
+  - Gli alert dei giorni precedenti restano solo chiusi, come nella base (deciso in chat).
+  - `forEachIsolated` passa l'indice alla funzione.
+
 ## Surprises and Decisions
 
 - **Le migrazioni del repo non si applicano su un Postgres vuoto.** `20240926195125_lucky_roughhouse` crea `mito-deutsche_task` con il tipo `task_status`, che nasce solo in `20260619152227_same_hemingway`. Il DB di produzione aveva già il tipo (creato con `db:push` prima delle migrazioni), e la terza migrazione lo salta se esiste. L'harness crea il tipo prima di migrare; le migrazioni non si toccano (già applicate in prod). Vale anche per chi volesse creare un DB nuovo con `pnpm db:migrate`.
@@ -80,3 +102,5 @@ updated: 2026-09-25
 | Date | Feedback | Changes |
 |------|----------|---------|
 | 2026-09-25 | Solo PR1, sequential, PR verso `dev`; smoke solo su DB di sviluppo; runbook G1 nella PR con `workflow_dispatch` di `update-alert prod.yml` lanciato da Omar | Perimetro del run limitato a T1.1–T1.8 |
+| 2026-09-25 | Dopo la review: correggere blocker e major; poi "Assegna Clienti" in questo branch, minor urgenti B1–B7, smoke su sviluppo | F1–F5 corretti; guardia in `bulkUpdateCustomers`; F6, F11 (cron), F12, F13, isolamento, R1; gli altri minor nel tech-debt |
+| 2026-09-26 | Batch del cron in PR1; gli alert scaduti nei giorni precedenti solo chiusi come oggi; su prod il cron gira già ogni giorno, quindi non ci si aspetta arretrato | Cron a tempo (40 s per chiamata, prima quelli di oggi) e `alert.js` che richiama; la query sull'arretrato resta nel runbook come controllo |

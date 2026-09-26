@@ -7,7 +7,7 @@ links:
   - "[[chore/crm/design-contatti]]"
   - "[[chore/crm/guida-assegnazione-massiva-e-alert]]"
 created: 2026-09-24
-updated: 2026-09-25
+updated: 2026-09-26
 ---
 
 # Plan: Sezione Contatti e tabella Clienti semplificata
@@ -115,7 +115,7 @@ Serve una sezione **Contatti** (lista e dettaglio) sulle `task`. Le regole di mo
   - non tocca `task.alert_id`;
   - non scrive in `task_event_log` (AC70);
   - ignora le task con `customer_id` NULL.
-- **A7:** `bulkHandleTask` e `bulkUpdateCustomers` ("Assegna Clienti") mantengono la logica e i risultati di oggi (non-goal). Cambia solo chi può chiamarle: gli admin, come già nell'interfaccia (P7).
+- **A7:** `bulkHandleTask` e `bulkUpdateCustomers` ("Assegna Clienti") mantengono la logica e i risultati di oggi (non-goal). Cambia solo chi può chiamarle: gli admin, come già nell'interfaccia (P7). Unica eccezione, in PR1 dopo la review: `bulkUpdateCustomers` non aggiorna più tutte le task della tabella quando nessun cliente scelto ha in cima una task `chiamare` (update con `WHERE` indefinito).
 - **A8:** la mutation `deleteTasks` è fuori perimetro e va segnalata nei rischi. Cancella tutte le task di un cliente e nessuna parte del codice la chiama.
 - **Vincoli dalla spec:**
   - migrazioni solo additive, generate con `pnpm db:generate`;
@@ -434,18 +434,19 @@ Branch suggerito: `contatti/pr1-creazione-sicura`. Nessun cambiamento visibile, 
     - riapertura dalla riga Clienti e dalla scheda cliente: dopo, un solo contatto attivo;
     - `pnpm update:alert:dev` su un alert che scade oggi;
     - assegnazione massiva nei 4 casi.
-  - `pnpm update:alert:dev` stampa il JSON della risposta con `found`, `processed`, `skipped` e `failed`.
+  - `pnpm update:alert:dev` stampa il JSON della risposta con `found`, `processed`, `skipped`, `failed` e `remaining`.
+  - **Cron a tempo** (aggiunto dopo la misura dello smoke, deciso in chat il 2026-09-26): ogni chiamata prende prima gli alert di oggi e dopo 40 s non ne prende di nuovi; `alert.js` richiama finché `remaining` è 0, al massimo 20 volte.
   - La descrizione della PR contiene il runbook di G1:
     1. accertare dove gira il cron alert in produzione (finding 14);
     2. dopo il deploy, un'esecuzione schedulata o lanciata a mano (`workflow_dispatch` di `update-alert prod.yml`);
-    3. controllare **tre** posti: il log dell'esecuzione su GitHub Actions, che deve essere verde e mostrare il JSON con `failed: 0`; i log Vercel di `/api/cron/alert` filtrati per livello **error**, che devono essere vuoti; Sentry, environment `production`, dove non devono comparire issue nuove da `/api/cron/alert` dopo l'esecuzione.
+    3. controllare **tre** posti: il log dell'esecuzione su GitHub Actions, che deve essere verde e mostrare un JSON per chiamata, con `failed: 0` e l'ultimo con `remaining: 0`; i log Vercel di `/api/cron/alert` filtrati per livello **error**, che devono essere vuoti; Sentry, environment `production`, dove non devono comparire issue nuove da `/api/cron/alert` dopo l'esecuzione.
 - **validation**:
   - gate verdi;
   - smoke senza regressioni;
-  - dopo il deploy, almeno un'esecuzione del cron alert in prod con `failed: 0` nel JSON stampato, nessun errore nei log Vercel e nessuna issue nuova in Sentry (G1).
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+  - dopo il deploy, almeno un'esecuzione del cron alert in prod con `failed: 0` in ogni JSON stampato e `remaining: 0` nell'ultimo, nessun errore nei log Vercel e nessuna issue nuova in Sentry (G1).
+- **status**: Smoke fatto; G1 dopo il deploy (Omar)
+- **log**: Smoke sul DB di sviluppo il 2026-09-25: percorsi senza regressioni; cron con 815 alert, 808 risolti, 8 fallimenti per connessione caduta (isolati, riportati in `failed`), 0,2 s ad alert. La misura ha portato al cron a tempo (IMPLEMENTATION-NOTES).
+- **files edited/created**: `src/server/services/contact/processDueAlerts.ts`, `src/app/api/cron/alert/route.ts`, `src/app/api/cron/scheduled/alert.js`, `src/server/effect/errorReporter.ts`, test in `src/server/services/contact/_test/processDueAlerts.db.test.ts` e `src/app/api/cron/scheduled/_test/alert.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a (D6)
@@ -465,7 +466,7 @@ Branch suggerito: `contatti/pr2-vincolo-db`. Contiene solo migrazioni e uno scri
     - id e nome del cliente;
     - il contatto che resta attivo (criterio `GREATEST(updated_at, created_at) DESC, id DESC`);
     - i contatti che verranno disattivati, con stato, operatore e "Contattato il".
-  - **(b)** **tutti** gli alert aperti che la migrazione chiuderà, con cliente (se c'è), scadenza, messaggio e operatore. Sono quelli sui contatti che verranno disattivati e quelli su qualunque contatto già non attivo, comprese le task con `customer_id` NULL. L'elenco coincide con quello che chiude il passo 2 di T2.2.
+  - **(b)** **tutti** gli alert aperti che la migrazione chiuderà, con cliente (se c'è), scadenza, messaggio e operatore. Sono quelli sui contatti che verranno disattivati, quelli su qualunque contatto già non attivo, e quelli su task con `customer_id` NULL anche attive (review di PR1, F6). L'elenco coincide con quello che chiude il passo 2 di T2.2.
 
   La parte (a) esclude le task con `customer_id` NULL, che la pulizia non disattiva.
 - **validation**: un test DB (su `LEGACY_SCHEMA_TAG`) esegue il file su un dataset seminato e confronta le righe attese. Il dataset contiene duplicati, pari merito su `GREATEST`, alert aperti su task non attive e task con `customer_id` NULL. Un secondo test verifica che gli alert elencati in (b) siano esattamente quelli chiusi dalla migrazione di T2.2.
@@ -483,7 +484,7 @@ Branch suggerito: `contatti/pr2-vincolo-db`. Contiene solo migrazioni e uno scri
 - **location**: `src/server/db/migrations/<timestamp>_contatti_cleanup.sql` (via `pnpm drizzle-kit generate --custom --name=contatti_cleanup`), `src/server/db/migrations/_test/contattiCleanup.db.test.ts`
 - **description**: SQL della migrazione:
   1. disattiva le task attive che non sono la superstite del proprio cliente (stesso criterio di T2.1, `customer_id IS NOT NULL`);
-  2. chiude gli alert aperti su task non attive: `is_resolved = true`, `resolved_by` = operatore con `user_id = 'system'`, `updated_at = now()`, così lo Storico mostra la data di chiusura (finding 15).
+  2. chiude gli alert aperti su task non attive e su task con `customer_id` NULL, anche attive: `is_resolved = true`, `resolved_by` = operatore con `user_id = 'system'`, `updated_at = now()`, così lo Storico mostra la data di chiusura (finding 15). Sulle task senza cliente, dopo PR1, il cron fallisce a ogni esecuzione (review di PR1, F6).
 
   Le istruzioni sono separate da `--> statement-breakpoint` (finding 16). Niente `DELETE`, niente righe in `task_event_log`, `task.updated_at` invariato (A6). L'esistenza dell'operatore di sistema è un prerequisito verificato nel runbook (T2.4).
 - **validation**: test in due fasi con `migrateUpTo`: migrazioni fino alla precedente, poi seed con dati sporchi, poi migrazione completa. Asserzioni:
@@ -1557,7 +1558,7 @@ Il lavoro di più PR può procedere in parallelo sui branch, ma i **merge** segu
 
 | Gate | Quando | Condizione | Chi |
 |---|---|---|---|
-| G1 | Dopo il deploy di PR1 | Almeno un'esecuzione del cron alert in prod con il JSON `failed: 0` nel log di GitHub Actions (esecuzione verde) nessuna riga di livello error nei log Vercel di `/api/cron/alert` e nessuna issue nuova in Sentry da quel route (runbook T1.8); assegnazione massiva usata senza problemi | Persona |
+| G1 | Dopo il deploy di PR1 | Almeno un'esecuzione del cron alert in prod con `failed: 0` in ogni JSON del log di GitHub Actions e `remaining: 0` nell'ultimo (esecuzione verde) nessuna riga di livello error nei log Vercel di `/api/cron/alert` e nessuna issue nuova in Sentry da quel route (runbook T1.8); assegnazione massiva usata senza problemi | Persona |
 | G2 | Prima di applicare PR2 | Estrazione eseguita in sola lettura, condivisa con gli admin e approvata esplicitamente. `pnpm db:migrate:prod` lanciato a mano fuori orario. Query dei duplicati = 0. Operatori con alert chiusi dal sistema avvisati | Persona |
 | G3 | Prima del deploy di PR3 | Operatori e admin informati con il testo di T3.14 | Persona |
 | G4 | Prima del deploy di PR5 | G2 fatto (AC69); `EXPLAIN ANALYZE` ≤ 500 ms; guida T5.11 rivista; PR3 in prod da poco (per il vuoto di riassegnazione singola); Contatti annunciato agli operatori | Persona |
