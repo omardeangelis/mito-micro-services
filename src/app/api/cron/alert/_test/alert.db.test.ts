@@ -252,6 +252,8 @@ describe("cron alert: ogni alert in una transazione sua", () => {
       processed: 1,
       skipped: 0,
       failed: 1,
+      // alert.js calls again while some are left
+      remaining: 0,
     })
     const [active] = await createTestCaller(operator).task.getActiveTask({
       id: customer.id,

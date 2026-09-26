@@ -1,6 +1,6 @@
 import "server-only"
-import { Data, Effect } from "effect"
-import { and, eq, sql } from "drizzle-orm"
+import { Clock, Data, Effect } from "effect"
+import { and, asc, desc, eq, sql } from "drizzle-orm"
 import { SYSTEM_OPERATOR_USER_ID } from "@/lib/constants/operator"
 import { type Alert, type Task } from "@/lib/types/schemas"
 import { operators } from "@/server/db/schema/operators"
@@ -127,18 +127,30 @@ const processAlert = (
   })
 
 /**
- * The alert cron: resolves every open alert due today or earlier, each in its
+ * The alert cron: resolves the open alerts due today or earlier, each in its
  * own transaction. An alert that fails is counted in `failed`, logged and
  * reported, and the others go on.
+ *
+ * Once `budgetMs` has passed since the start it takes no new alert, but always
+ * takes the first: the ones left are counted in `remaining` and stay open for
+ * the next call.
  */
 export const processDueAlerts = (
-  now: Date
+  now: Date,
+  { budgetMs }: { budgetMs: number }
 ): Effect.Effect<
-  { found: number; processed: number; skipped: number; failed: number },
+  {
+    found: number
+    processed: number
+    skipped: number
+    failed: number
+    remaining: number
+  },
   DbError | SystemOperatorMissing,
   Db | ErrorReporter
 > =>
   Effect.gen(function* () {
+    const start = yield* Clock.currentTimeMillis
     const [systemOperator] = yield* query((client) =>
       client
         .select({ id: operators.id })
@@ -164,17 +176,27 @@ export const processDueAlerts = (
             sql`DATE(${alerts.deadline}) <= ${todayFormatted}`
           )
         )
+        // Today's first: taken on a later day, an alert counts as earlier-day
+        // and gets no followup
+        .orderBy(desc(alerts.deadline), asc(alerts.id))
     )
     const { succeeded, failed } = yield* forEachIsolated(
       rows,
-      (row) => transaction(processAlert(row, today, systemOperator.id)),
+      (row, index) =>
+        Effect.gen(function* () {
+          const elapsed = (yield* Clock.currentTimeMillis) - start
+          if (index > 0 && elapsed >= budgetMs) return "remaining" as const
+          return yield* transaction(processAlert(row, today, systemOperator.id))
+        }),
       ({ task, alert }) => ({ alertId: alert.id, customerId: task.customerId })
     )
-    const skipped = succeeded.filter((outcome) => outcome === "skipped").length
+    const count = (outcome: (typeof succeeded)[number]) =>
+      succeeded.filter((each) => each === outcome).length
     return {
       found: rows.length,
-      processed: succeeded.length - skipped,
-      skipped,
+      processed: count("processed"),
+      skipped: count("skipped"),
       failed,
+      remaining: count("remaining"),
     }
   })

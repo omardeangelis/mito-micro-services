@@ -27,13 +27,13 @@ export const SentryReporterLive = Layer.succeed(ErrorReporter, {
 })
 
 /**
- * Runs `f` on each item in order, and keeps going when one fails: an error, a
- * defect (a thrown exception) or an interruption. Each failure is logged and
- * reported with `describe(item)`.
+ * Runs `f` on each item in order, with its index, and keeps going when one
+ * fails: an error, a defect (a thrown exception) or an interruption. Each
+ * failure is logged and reported with `describe(item)`.
  */
 export const forEachIsolated = <A, B, E, R>(
   items: Iterable<A>,
-  f: (item: A) => Effect.Effect<B, E, R>,
+  f: (item: A, index: number) => Effect.Effect<B, E, R>,
   describe: (item: A) => Record<string, unknown>
 ): Effect.Effect<
   { succeeded: B[]; failed: number },
@@ -44,9 +44,10 @@ export const forEachIsolated = <A, B, E, R>(
     const reporter = yield* ErrorReporter
     const succeeded: B[] = []
     let failed = 0
+    let index = 0
     for (const item of items) {
       // Effect.exit, not Effect.either: defects must not stop the loop
-      const exit = yield* Effect.exit(f(item))
+      const exit = yield* Effect.exit(f(item, index++))
       if (Exit.isSuccess(exit)) {
         succeeded.push(exit.value)
         continue

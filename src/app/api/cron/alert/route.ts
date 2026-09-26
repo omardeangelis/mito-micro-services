@@ -11,13 +11,17 @@ loadEnv()
 export const dynamic = "force-dynamic"
 export const maxDuration = 60
 
+// Takes no new alert after 40 s, so the call ends within maxDuration:
+// alert.js calls again for the ones left
+const BUDGET_MS = 40_000
+
 export async function GET(request: Request) {
   // auth check
   const authResponse = await authCheck(request)
   if (authResponse) return authResponse
 
   const exit = await Effect.runPromiseExit(
-    processDueAlerts(new Date()).pipe(
+    processDueAlerts(new Date(), { budgetMs: BUDGET_MS }).pipe(
       Effect.tap(({ found, failed }) =>
         failed > 0
           ? Effect.logError("Alert cron: some alerts failed").pipe(

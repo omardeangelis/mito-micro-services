@@ -45,16 +45,32 @@ async function fetchAlerts() {
   return response
 }
 
+// Each call stops taking alerts before Vercel's time limit: the script calls
+// again while some are left, up to this many calls
+const MAX_CALLS = 20
+
 const updateAlert = async () => {
   try {
-    const response = await fetchAlerts()
-    /** @type {{ failed?: number, error?: string }} */
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-    const body = await response.json()
-    // Printed in the GitHub Actions log: found, processed, skipped, failed
-    console.log(JSON.stringify(body))
-    // A run with failed alerts, or that failed as a whole, turns the job red
-    if (body.error !== undefined || (body.failed ?? 0) > 0) process.exit(1)
+    let failed = false
+    for (let call = 1; call <= MAX_CALLS; call++) {
+      const response = await fetchAlerts()
+      /** @type {{ failed?: number, remaining?: number, error?: string }} */
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+      const body = await response.json()
+      // Printed in the GitHub Actions log: found, processed, skipped, failed,
+      // remaining
+      console.log(JSON.stringify(body))
+      // A run that failed as a whole turns the job red
+      if (body.error !== undefined) return process.exit(1)
+      failed ||= (body.failed ?? 0) > 0
+      if ((body.remaining ?? 0) === 0) {
+        // So does a run with failed alerts, once the others are done
+        if (failed) process.exit(1)
+        return
+      }
+    }
+    console.error(`Alerts still left after ${MAX_CALLS} calls`)
+    process.exit(1)
   } catch (error) {
     console.error("Error updating alerts:", error)
     process.exit(1)

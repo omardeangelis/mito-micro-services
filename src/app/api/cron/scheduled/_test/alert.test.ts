@@ -22,15 +22,15 @@ vi.spyOn(console, "error").mockImplementation(() => undefined)
 
 /**
  * Runs the script, which runs on import, against a route that answers
- * `response`.
+ * `responses` in order. Returns the route's `fetch`.
  */
-async function runScript(response: Response) {
-  vi.stubGlobal(
-    "fetch",
-    vi.fn(async () => response)
-  )
+async function runScript(...responses: Response[]) {
+  const fetch = vi.fn<[], Promise<Response>>()
+  for (const response of responses) fetch.mockResolvedValueOnce(response)
+  vi.stubGlobal("fetch", fetch)
   vi.resetModules()
   await import("../alert.js")
+  return fetch
 }
 
 const json = (body: unknown) => new Response(JSON.stringify(body))
@@ -94,6 +94,57 @@ describe("alert.js", () => {
 
     expect(exit).toHaveBeenCalledWith(1)
     expect(log).toHaveBeenCalledWith(JSON.stringify(body))
+  })
+
+  it("richiama la route finché restano alert, e stampa ogni risposta", async () => {
+    const bodies = [
+      {
+        message: "Cron job ran",
+        found: 3,
+        processed: 2,
+        skipped: 0,
+        failed: 0,
+        remaining: 1,
+      },
+      {
+        message: "Cron job ran",
+        found: 1,
+        processed: 1,
+        skipped: 0,
+        failed: 0,
+        remaining: 0,
+      },
+    ]
+
+    const fetch = await runScript(...bodies.map(json))
+
+    expect(fetch).toHaveBeenCalledTimes(2)
+    expect(exit).not.toHaveBeenCalled()
+    for (const body of bodies) {
+      expect(log).toHaveBeenCalledWith(JSON.stringify(body))
+    }
+  })
+
+  it("se un alert fallisce richiama comunque per quelli rimasti, poi esce con 1 anche se la chiamata dopo va a buon fine", async () => {
+    const fetch = await runScript(
+      json({ found: 3, processed: 1, skipped: 0, failed: 1, remaining: 1 }),
+      // The failed alert is still open: the next call takes it again
+      json({ found: 2, processed: 2, skipped: 0, failed: 0, remaining: 0 })
+    )
+
+    expect(fetch).toHaveBeenCalledTimes(2)
+    expect(exit).toHaveBeenCalledOnce()
+    expect(exit).toHaveBeenCalledWith(1)
+  })
+
+  it("esce con 1 se dopo 20 chiamate restano ancora alert", async () => {
+    const leftOver = { found: 9, processed: 1, skipped: 0, failed: 0 }
+    const fetch = await runScript(
+      ...Array.from({ length: 25 }, () => json({ ...leftOver, remaining: 8 }))
+    )
+
+    expect(fetch).toHaveBeenCalledTimes(20)
+    expect(exit).toHaveBeenCalledWith(1)
   })
 
   it("esce con 1 se la route non risponde 200", async () => {
