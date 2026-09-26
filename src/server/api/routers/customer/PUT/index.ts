@@ -123,14 +123,13 @@ export const bulkUpdateCustomers = operatorProcedure
       .filter((task) => task[0]?.id && task[0].state === "chiamare")
       .map((task) => task[0]?.id)
 
-    await ctx.db
-      .update(task)
-      .set({ operatorId: input.operatorId })
-      .where(
-        taskIds && taskIds.length > 0
-          ? inArray(task.id, taskIds as number[])
-          : undefined
-      )
+    // Without a WHERE the update would reach every task in the table
+    if (taskIds.length > 0) {
+      await ctx.db
+        .update(task)
+        .set({ operatorId: input.operatorId })
+        .where(inArray(task.id, taskIds as number[]))
+    }
 
     return updateCustomer
   })

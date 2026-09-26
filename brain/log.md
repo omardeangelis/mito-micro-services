@@ -3,7 +3,7 @@ domain: _root
 type: index
 links: []
 created: 2026-09-24
-updated: 2026-09-24
+updated: 2026-09-26
 ---
 
 # Brain — Log
@@ -17,6 +17,27 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 - Flows written: <count>
 - Concepts written: <count>
 -->
+
+## [2026-09-26] review | Sezione Contatti — PR1, terza verifica e smoke
+- Report: [[specs/crm/sezione-contatti/REPORT]]
+- Scope: spec
+- Verdict: SHIP
+- Impact: critical
+- Verifiers: v4 SHIP su "Assegna Clienti" e minor urgenti (vA interrotto); smoke sul DB di sviluppo (815 alert, 8 fallimenti di connessione isolati); cron a tempo aggiunto dopo la misura; poi `alert.js` che ripete dopo 10 s le chiamate che non arrivano in fondo (504, 5xx, rete, esecuzione fallita), non verificato
+
+## [2026-09-25] review | Sezione Contatti — PR1, seconda verifica
+- Report: [[specs/crm/sezione-contatti/REPORT]]
+- Scope: spec
+- Verdict: SHIP (prima: DO NOT SHIP)
+- Impact: critical
+- Verifiers: 3 rieseguiti (v1, v2, v3) su `87ff79e`; 0 blockers, 0 major, 5 minor
+
+## [2026-09-25] review | Sezione Contatti — PR1 "Percorsi di creazione sicuri"
+- Report: [[specs/crm/sezione-contatti/REPORT]]
+- Scope: spec
+- Verdict: DO NOT SHIP
+- Impact: critical
+- Verifiers: 7 (1 blockers, 4 major)
 
 ## [2026-09-24] spec | Sezione Contatti e tabella Clienti semplificata
 - Created spec: [[specs/crm/sezione-contatti/SPEC]]
