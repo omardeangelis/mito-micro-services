@@ -1,6 +1,7 @@
-import { eq, inArray, or } from "drizzle-orm"
+import { inArray, or } from "drizzle-orm"
 import { customers as customersSchema } from "@/server/db/schema/customers"
 import { db } from "@/server/db"
+import { updateImportedCustomer } from "@/server/shared/updateImportedCustomer"
 import { cleanObject } from "@/lib/utils"
 import { type CustomerWriteWithInternalSort } from "../../process/_services/type"
 export type HandleCustomerUpdateResponse = Promise<{
@@ -94,25 +95,14 @@ export async function handleCustomerUpdate(
         _internal_sort: _internal_sort,
         ...rest
       } = updateCustomer
-      return db
-        .update(customersSchema)
-        .set({
+      return updateImportedCustomer({
+        db,
+        identifiers: updateCustomer,
+        values: {
           ...rest,
           lastImportUpdate: new Date(), // Aggiorna lastImportUpdate quando un customer viene aggiornato durante l'import
-        })
-        .where(
-          or(
-            updateCustomer.tempID
-              ? eq(customersSchema.tempID, updateCustomer.tempID)
-              : undefined,
-            updateCustomer.fiscalCode
-              ? eq(customersSchema.fiscalCode, updateCustomer.fiscalCode)
-              : undefined,
-            updateCustomer.vatCode
-              ? eq(customersSchema.vatCode, updateCustomer.vatCode)
-              : undefined
-          )
-        )
+        },
+      })
     })
 
     await Promise.all(updatePromises)
