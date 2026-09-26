@@ -98,8 +98,9 @@ Smoke di T1.8 sul DB di sviluppo il 2026-09-25, con ok in chat; mai prod. Il ser
 Con `maxDuration = 60` il cron si sarebbe fermato a metà con un arretrato di qualche centinaio di alert, o con la funzione Vercel lontana dal DB (circa 70 alert per chiamata se la region è `iad1`). In quel caso gli alert di oggi potevano restare fuori e il giorno dopo venire solo chiusi, senza followup. Deciso in chat il 2026-09-26: batch in PR1.
 
 - `processDueAlerts` prende prima gli alert di oggi e dopo `budgetMs` (40 s dalla route) non ne prende di nuovi, ma prende sempre il primo. Gli altri li conta in `remaining`.
-- `alert.js` richiama finché `remaining` è 0, al massimo 20 volte, ed esce con 1 se una chiamata ha alert falliti, se l'esecuzione fallisce per intero o se ne restano dopo 20 chiamate.
-- Test: il servizio con tempo esaurito (una chiamata elabora un alert, la seconda l'altro), l'ordine (quello di oggi prima di uno di un giorno precedente creato prima), `remaining` nella risposta della route, e le tre regole di `alert.js`. Ogni test nuovo è rosso senza il comportamento che nomina: le due mutazioni di `alert.js` (accumulo dei falliti, tetto delle chiamate) falliscono.
+- `alert.js` richiama finché `remaining` è 0, al massimo 20 volte, ed esce con 1 se una chiamata ha alert falliti o se dopo 20 chiamate non ha finito.
+- Dopo, deciso in chat il 2026-09-26 (un followup non va mai perso): `alert.js` ripete dopo 10 s una chiamata che non arriva in fondo, cioè un 504 per il limite di tempo di Vercel, un altro 5xx, un errore di rete o un'esecuzione fallita per intero. Un 4xx esce subito. Non è passato dai verificatori.
+- Test: il servizio con tempo esaurito (una chiamata elabora un alert, la seconda l'altro), l'ordine (quello di oggi prima di uno di un giorno precedente creato prima), `remaining` nella risposta della route, e le regole di `alert.js`, compresa la ripetizione dopo una chiamata che non arriva in fondo. Ogni test nuovo è rosso senza il comportamento che nomina: le due mutazioni di `alert.js` (accumulo dei falliti, tetto delle chiamate) falliscono.
 
 ## Findings
 
@@ -194,7 +195,7 @@ Da completare in ordine, da una persona, prima del merge verso `dev`.
    - clienti con almeno 2 task attive, e quanti hanno lo stesso millisecondo (F7, F16).
 7. **G1, dopo il deploy in produzione.** Omar lancia `update-alert prod.yml` con `workflow_dispatch`. Va bene se:
    - il job è verde (il messaggio Telegram parte solo in quel caso, R15);
-   - nel log di GitHub Actions c'è un JSON per chiamata, ciascuno con `failed: 0` e `found = processed + skipped + failed + remaining`, e l'ultimo ha `remaining: 0`;
+   - nel log di GitHub Actions c'è un JSON per ogni chiamata arrivata in fondo, ciascuno con `failed: 0` e `found = processed + skipped + failed + remaining`, e l'ultimo ha `remaining: 0`; una riga `Request to /api/cron/alert failed` è una chiamata ripetuta dopo 10 s, da capire con i log Vercel;
    - nei log Vercel ogni chiamata dura meno di 60 s;
    - nei log Vercel di `/api/cron/alert` non ci sono errori inattesi;
    - su Sentry prod c'è un evento per ogni alert fallito e nessun doppione.

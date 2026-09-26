@@ -1,21 +1,18 @@
 // // richiamo del cron job degli alert
 
+import { setTimeout } from "node:timers/promises"
 import jwt from "jsonwebtoken"
 import dotenv from "dotenv"
 dotenv.config()
 
-async function fetchAlerts() {
+/** @param {string} secret */
+async function fetchAlerts(secret) {
   const baseUrl =
     process.env.NODE_ENV === "development"
       ? "http://localhost:3000"
       : "https://mito-deutsche.vercel.app"
 
   // Genera il token JWT al volo
-  const secret = process.env.CRON_SECRET_KEY
-  if (!secret) {
-    throw new Error("Missing CRON_SECRET_KEY environment variable")
-  }
-
   // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
   const token = jwt.sign(
     { role: "cronjob", timestamp: Date.now() }, // Payload minimo
@@ -23,48 +20,76 @@ async function fetchAlerts() {
     { expiresIn: "5m" } // Scadenza breve
   )
 
-  const response = await fetch(`${baseUrl}/api/cron/alert`, {
+  // LOG su telegram
+  // await sendTelegramMessage(
+  //   `RESPONSE: ${JSON.stringify(response)} || TOKEN: ${token} || SECRET: ${secret} || BASEURL: ${baseUrl} || NODE_ENV: ${process.env.NODE_ENV}`
+  // )
+  return fetch(`${baseUrl}/api/cron/alert`, {
     method: "GET",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`, // Aggiunge il JWT nell'header
     },
   })
+}
 
-  if (!response.ok) {
-    const body = await response.text().catch(() => "")
-    throw new Error(
-      `Request to /api/cron/alert failed: HTTP ${response.status} ${body}`
-    )
+/**
+ * Calls the route once. Returns its body, or `undefined` when the call didn't
+ * get through the alerts: Vercel's time limit (504), another server error, a
+ * network error, or a run that failed as a whole.
+ *
+ * @param {string} secret
+ * @returns {Promise<{ failed?: number, remaining?: number } | undefined>}
+ */
+async function callRoute(secret) {
+  let response
+  try {
+    response = await fetchAlerts(secret)
+  } catch (error) {
+    console.error("Request to /api/cron/alert failed:", error)
+    return undefined
   }
-
-  // LOG su telegram
-  // await sendTelegramMessage(
-  //   `RESPONSE: ${JSON.stringify(response)} || TOKEN: ${token} || SECRET: ${secret} || BASEURL: ${baseUrl} || NODE_ENV: ${process.env.NODE_ENV}`
-  // )
-  return response
+  if (!response.ok) {
+    const text = await response.text().catch(() => "")
+    const message = `Request to /api/cron/alert failed: HTTP ${response.status} ${text}`
+    // A wrong secret or URL fails the same way on every call
+    if (response.status < 500) throw new Error(message)
+    console.error(message)
+    return undefined
+  }
+  /** @type {{ failed?: number, remaining?: number, error?: string }} */
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+  const body = await response.json()
+  // Printed in the GitHub Actions log: found, processed, skipped, failed,
+  // remaining
+  console.log(JSON.stringify(body))
+  return body.error === undefined ? body : undefined
 }
 
 // Each call stops taking alerts before Vercel's time limit: the script calls
 // again while some are left, up to this many calls
 const MAX_CALLS = 20
+// After a call that didn't get through the alerts, the ones it left are still
+// open: the script waits this long and calls again, so today's get their
+// followup today
+const RETRY_DELAY_MS = 10_000
 
 const updateAlert = async () => {
   try {
+    const secret = process.env.CRON_SECRET_KEY
+    if (!secret) {
+      throw new Error("Missing CRON_SECRET_KEY environment variable")
+    }
     let failed = false
     for (let call = 1; call <= MAX_CALLS; call++) {
-      const response = await fetchAlerts()
-      /** @type {{ failed?: number, remaining?: number, error?: string }} */
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-      const body = await response.json()
-      // Printed in the GitHub Actions log: found, processed, skipped, failed,
-      // remaining
-      console.log(JSON.stringify(body))
-      // A run that failed as a whole turns the job red
-      if (body.error !== undefined) return process.exit(1)
+      const body = await callRoute(secret)
+      if (body === undefined) {
+        await setTimeout(RETRY_DELAY_MS)
+        continue
+      }
       failed ||= (body.failed ?? 0) > 0
       if ((body.remaining ?? 0) === 0) {
-        // So does a run with failed alerts, once the others are done
+        // Failed alerts turn the job red, once the others are done
         if (failed) process.exit(1)
         return
       }

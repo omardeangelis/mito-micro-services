@@ -74,7 +74,7 @@ updated: 2026-09-26
 - **Cron a tempo** (deciso in chat il 2026-09-26, dopo la misura). Con 60 s di limite su Vercel, un arretrato o una region lontana dal DB fermavano il cron a metà; e gli alert di oggi lasciati fuori il giorno dopo contano come "giorno precedente" e non creano il followup.
   - `processDueAlerts` prende prima gli alert di oggi (`deadline DESC, id`).
   - Dopo `budgetMs` non prende alert nuovi, ma prende sempre il primo, così ogni chiamata avanza. Gli altri li conta in `remaining` e restano aperti. La route passa 40 s.
-  - `alert.js` richiama finché `remaining` è 0, al massimo 20 volte. Esce con 1 se una chiamata ha avuto alert falliti (dopo aver finito gli altri), se l'esecuzione fallisce per intero o se dopo 20 chiamate ne restano.
+  - `alert.js` richiama finché `remaining` è 0, al massimo 20 volte. Una chiamata che non arriva in fondo (504 per il limite di tempo di Vercel, un altro errore 5xx, un errore di rete o un'esecuzione fallita per intero) la ripete dopo 10 s, dentro le stesse 20 chiamate: gli alert che non ha elaborato sono ancora aperti, e quelli di oggi devono avere il followup oggi. Un 4xx (segreto o URL sbagliati) esce subito. Esce con 1 se una chiamata ha avuto alert falliti (dopo aver finito gli altri) o se dopo 20 chiamate non ha finito.
   - Gli alert dei giorni precedenti restano solo chiusi, come nella base (deciso in chat).
   - `forEachIsolated` passa l'indice alla funzione.
 
@@ -104,3 +104,4 @@ updated: 2026-09-26
 | 2026-09-25 | Solo PR1, sequential, PR verso `dev`; smoke solo su DB di sviluppo; runbook G1 nella PR con `workflow_dispatch` di `update-alert prod.yml` lanciato da Omar | Perimetro del run limitato a T1.1–T1.8 |
 | 2026-09-25 | Dopo la review: correggere blocker e major; poi "Assegna Clienti" in questo branch, minor urgenti B1–B7, smoke su sviluppo | F1–F5 corretti; guardia in `bulkUpdateCustomers`; F6, F11 (cron), F12, F13, isolamento, R1; gli altri minor nel tech-debt |
 | 2026-09-26 | Batch del cron in PR1; gli alert scaduti nei giorni precedenti solo chiusi come oggi; su prod il cron gira già ogni giorno, quindi non ci si aspetta arretrato | Cron a tempo (40 s per chiamata, prima quelli di oggi) e `alert.js` che richiama; la query sull'arretrato resta nel runbook come controllo |
+| 2026-09-26 | Un followup non va mai perso, perché dice agli agenti chi richiamare: `alert.js` ritenta dopo un 504 | Ripete dopo 10 s ogni chiamata che non arriva in fondo (5xx, errore di rete, esecuzione fallita per intero); un 4xx esce subito |

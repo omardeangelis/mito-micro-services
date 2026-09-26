@@ -435,11 +435,11 @@ Branch suggerito: `contatti/pr1-creazione-sicura`. Nessun cambiamento visibile, 
     - `pnpm update:alert:dev` su un alert che scade oggi;
     - assegnazione massiva nei 4 casi.
   - `pnpm update:alert:dev` stampa il JSON della risposta con `found`, `processed`, `skipped`, `failed` e `remaining`.
-  - **Cron a tempo** (aggiunto dopo la misura dello smoke, deciso in chat il 2026-09-26): ogni chiamata prende prima gli alert di oggi e dopo 40 s non ne prende di nuovi; `alert.js` richiama finché `remaining` è 0, al massimo 20 volte.
+  - **Cron a tempo** (aggiunto dopo la misura dello smoke, deciso in chat il 2026-09-26): ogni chiamata prende prima gli alert di oggi e dopo 40 s non ne prende di nuovi; `alert.js` richiama finché `remaining` è 0, al massimo 20 volte, e ripete dopo 10 s una chiamata che non arriva in fondo (504, un altro 5xx, un errore di rete, un'esecuzione fallita per intero).
   - La descrizione della PR contiene il runbook di G1:
     1. accertare dove gira il cron alert in produzione (finding 14);
     2. dopo il deploy, un'esecuzione schedulata o lanciata a mano (`workflow_dispatch` di `update-alert prod.yml`);
-    3. controllare **tre** posti: il log dell'esecuzione su GitHub Actions, che deve essere verde e mostrare un JSON per chiamata, con `failed: 0` e l'ultimo con `remaining: 0`; i log Vercel di `/api/cron/alert` filtrati per livello **error**, che devono essere vuoti; Sentry, environment `production`, dove non devono comparire issue nuove da `/api/cron/alert` dopo l'esecuzione.
+    3. controllare **tre** posti: il log dell'esecuzione su GitHub Actions, che deve essere verde e mostrare un JSON per ogni chiamata arrivata in fondo, con `failed: 0` e l'ultimo con `remaining: 0` (una riga `Request to /api/cron/alert failed` è una chiamata ripetuta: gli alert li ha presi la chiamata dopo, la causa va cercata nei log Vercel); i log Vercel di `/api/cron/alert` filtrati per livello **error**, che devono essere vuoti; Sentry, environment `production`, dove non devono comparire issue nuove da `/api/cron/alert` dopo l'esecuzione.
 - **validation**:
   - gate verdi;
   - smoke senza regressioni;

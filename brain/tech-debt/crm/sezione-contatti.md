@@ -106,9 +106,10 @@ Scoperto nella review di PR1 (F11). La parte sul cron è coperta da PR1.
 Scoperto nello smoke di PR1 sul DB di sviluppo (2026-09-25), preesistente.
 
 - **`postgres.js` 3.4.4 lancia un'eccezione non gestita** (`TypeError: Cannot redefine property: query`, `connection.js:403`) quando la connessione cade con `ECONNRESET`. In sviluppo Next.js l'ha solo loggata; su Vercel un'eccezione non gestita può chiudere l'invocazione. Stessa versione su `dev`.
-- **Una query su una connessione morta resta appesa** finché il sistema operativo non rinuncia: nello smoke, 8 blocchi di circa 16 minuti, ciascuno finito con `ECONNRESET`. Il client non ha un timeout per query. Su Vercel una query appesa consuma i 60 s: gli alert già chiusi restano chiusi, gli altri li prende la chiamata successiva di `alert.js`.
+- **Una query su una connessione morta resta appesa** finché il sistema operativo non rinuncia: nello smoke, 8 blocchi di circa 16 minuti, ciascuno finito con `ECONNRESET`. Il client non ha un timeout per query. Su Vercel una query appesa consuma i 60 s e la chiamata finisce con un 504: gli alert già chiusi restano chiusi, `alert.js` ripete la chiamata dopo 10 s e quella prende gli altri.
 - **Un alert può risultare fallito anche se è stato scritto:** se la connessione cade dopo il COMMIT ma prima della risposta (alert 4100 nello smoke). È innocuo: alla chiamata successiva è già risolto e non compare più.
 - **Un alert che fallisce sempre viene segnalato a ogni chiamata** della stessa esecuzione, non una volta per esecuzione (con il batch di PR1 le chiamate possono essere più di una).
+- **Un alert fallito nell'ultima chiamata resta aperto fino all'esecuzione successiva.** Se fallisce in una chiamata con `remaining` > 0, lo riprende la chiamata dopo; se fallisce nell'ultima, `alert.js` non richiama. Con il cron una volta al giorno, un alert di oggi ripreso il giorno dopo conta come "giorno precedente" e perde il followup.
 
 **Effetto oggi:** nessun dato rotto; il job diventa rosso.
 

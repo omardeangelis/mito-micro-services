@@ -23,7 +23,7 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 - Scope: spec
 - Verdict: SHIP
 - Impact: critical
-- Verifiers: v4 SHIP su "Assegna Clienti" e minor urgenti (vA interrotto); smoke sul DB di sviluppo (815 alert, 8 fallimenti di connessione isolati); cron a tempo aggiunto dopo la misura
+- Verifiers: v4 SHIP su "Assegna Clienti" e minor urgenti (vA interrotto); smoke sul DB di sviluppo (815 alert, 8 fallimenti di connessione isolati); cron a tempo aggiunto dopo la misura; poi `alert.js` che ripete dopo 10 s le chiamate che non arrivano in fondo (504, 5xx, rete, esecuzione fallita), non verificato
 
 ## [2026-09-25] review | Sezione Contatti — PR1, seconda verifica
 - Report: [[specs/crm/sezione-contatti/REPORT]]
