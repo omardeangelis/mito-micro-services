@@ -105,11 +105,14 @@ updated: 2026-09-28
 
 - **Alert falliti nell'ultima chiamata del cron:** `alert.js` non li ripete in PR1. Nota da smarcare all'avvio di PR2, in [[specs/crm/sezione-contatti/PLAN]] (§9, PR2).
 - **Indice unico e `task.kind`:** deciso di tenere l'indice per cliente in PR2; il passaggio a (cliente, tipo) arriva con il `kind`. Dopo PR2 resta da aggiornare il blocco E1 di [[chore/crm/design-lavorazioni-e-verticali]] (§9). Dettagli nella nota di PR2 del PLAN (§9).
-- **G1 sospeso.** Prima di lanciare Update Alerts PROD:
-  - decidere cosa fare dei 1.853 alert scaduti: un cron li chiuderebbe tutti senza followup;
-  - creare l'operatore di sistema in prod (`pnpm create:system-operator`, da Omar);
-  - poi aggiornare il runbook nella descrizione della PR.
-- **Riallineamento degli operatori delle task:** dopo PR2, nota nel PLAN (§9, PR2).
+- **G1 rivisto (2026-09-28):**
+  - operatore di sistema da creare in prod (`pnpm create:system-operator`, da Omar);
+  - PR1 in prod per almeno due giorni lavorativi senza errori;
+  - il cron in prod non si lancia prima di G2. Gli alert scaduti si chiudono tutti con la prima esecuzione dopo la migrazione di PR2 (T2.4, passo 8).
+
+  Runbook aggiornato in T1.8, §12 e nella descrizione della PR.
+- **Riallineamento degli operatori delle task:** terza migrazione di PR2 (T2.5).
+- **Da decidere prima di G2:** chi lancia il cron alert ogni notte dopo la prima esecuzione (PLAN §15).
 
 ## Steering
 
@@ -123,3 +126,4 @@ updated: 2026-09-28
 | 2026-09-28 | L'indice unico di PR2 va collegato a `task.kind`: in futuro al massimo un contatto attivo per tipo (prestito, cessione, assicurazione), non uno in assoluto | Nota da smarcare all'avvio di PR2, nel PLAN e in Remaining Work; proposta: in PR2 indice per cliente, poi (cliente, tipo) con il `kind` |
 | 2026-09-28 | In PR2 l'indice unico resta per cliente | Nota di PR2 smarcata nel PLAN; T2.3 invariato |
 | 2026-09-28 | Dopo PR2 riallineare l'operatore di tutte le task a quello del cliente e spiegarlo al cliente | Nota nel PLAN (PR2) con le misure su prod; resta da decidere se è una migrazione di PR2 o un passo a sé |
+| 2026-09-28 | Il riallineamento è la terza migrazione di PR2; gli alert scaduti si chiudono tutti dopo la migrazione di PR2 | Nuovo T2.5 ed estrazione T2.1 (c). Runbook G2 (T2.4) con la prima esecuzione del cron in prod al passo 8. G1 rivisto: operatore di sistema, due giorni lavorativi senza errori, nessun cron prima di G2. Aggiornati §12, §13, §15 e la descrizione della PR |
