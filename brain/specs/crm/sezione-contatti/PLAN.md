@@ -464,6 +464,15 @@ Branch suggerito: `contatti/pr2-vincolo-db`. Contiene solo migrazioni e uno scri
   - **Proposta:** `alert.js` richiama anche quando una chiamata ha alert falliti, come dopo un 504, e si ferma quando una chiamata ripetuta non chiude nessun alert.
   - **Da verificare:** dopo la pulizia di T2.2 gli alert F6, che falliscono sempre, non ci sono più. Resta da capire se possono nascerne di nuovi.
   - **Da decidere:** se la modifica entra in PR2, che per ora contiene solo migrazioni e uno script di sola lettura, o in una PR a sé.
+- [ ] **Indice unico per tipo di contatto** (2026-09-28).
+  - **Idea:** un cliente potrà avere un contatto per tipo, per esempio prestito, cessione e assicurazione. Il vincolo giusto diventa "al massimo un contatto attivo per tipo", non "uno in assoluto". È il `task.kind` di [[chore/crm/design-lavorazioni-e-verticali]] (§1), con `UNIQUE (customer_id, kind) WHERE is_active`. Nella SPEC è un non-goal.
+  - **Proposta:** T2.3 resta per cliente (`task_customer_active_uidx`). Il passaggio a (cliente, tipo) arriva con il `kind` ed è un allentamento:
+    - con `kind NOT NULL DEFAULT 'prestito'` tutte le righe esistenti hanno lo stesso tipo; un cliente con al massimo un contatto attivo ne ha al massimo uno per tipo;
+    - la migrazione del tipo aggiunge la colonna, fa `DROP INDEX task_customer_active_uidx` e crea l'indice su `(customer_id, kind)`, senza pulizia dei dati. La pulizia di T2.2 vale anche per il nuovo indice.
+  - **Nel codice:** tutti i percorsi che creano un contatto passano da `replaceActiveContact` (PR1), che disattiva i contatti attivi del cliente con un solo filtro. Con il tipo, quel filtro diventa (cliente, tipo), in un solo punto. Le letture di "il contatto attivo del cliente" sono nell'inventario della bozza (§2).
+  - **Ordine:** l'indice per (cliente, tipo) va in prod prima del codice che crea un contatto di un secondo tipo; altrimenti l'indice per cliente rifiuta l'inserimento con `23505`.
+  - **Da decidere:** se aggiungere `kind` già in PR2. Con un solo valore l'indice per (cliente, tipo) vincola quanto quello per cliente. PR2 però dovrebbe fissare adesso i valori del tipo, e aggiungerebbe una colonna che nessuno scrive né legge. Nella bozza i valori sono `prestito` e `cessione`, legati alle famiglie prodotto delle pratiche; l'assicurazione non c'è.
+  - **Dopo PR2:** aggiornare il blocco E1 della bozza (§9); pulizia e vincolo ci sono già.
 
 #### T2.1: Estrazione di sola lettura per gli admin
 - **depends_on**: [T1.1]
