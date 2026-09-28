@@ -473,6 +473,17 @@ Branch suggerito: `contatti/pr2-vincolo-db`. Contiene solo migrazioni e uno scri
   - **Ordine:** l'indice per (cliente, tipo) va in prod prima del codice che crea un contatto di un secondo tipo; altrimenti l'indice per cliente rifiuta l'inserimento con `23505`.
   - **Deciso (2026-09-28):** `kind` non entra in PR2. Con un solo valore l'indice per (cliente, tipo) vincolerebbe quanto quello per cliente, ma PR2 dovrebbe fissare adesso i valori del tipo e aggiungerebbe una colonna che nessuno scrive né legge. Nella bozza i valori sono `prestito` e `cessione`, legati alle famiglie prodotto delle pratiche; l'assicurazione non c'è.
   - **Dopo PR2:** aggiornare il blocco E1 della bozza (§9); pulizia e vincolo ci sono già.
+- [ ] **Riallineamento degli operatori delle task** (2026-09-28). Deciso: dopo la pulizia di PR2 ogni task prende l'operatore del suo cliente, e lo si spiega al cliente.
+  - **Perché:** il 28/09/2026 alle 15:53 UTC un "Assegna Clienti" in prod ha fatto l'update senza `WHERE` (corretto in PR1). 75.637 task su 75.641 hanno ora `operator_id = 1020` e lo stesso `updated_at`. Sul DB di sviluppo c'è la stessa traccia al 19/06/2026. L'operatore della task non si vede in Clienti, che mostra quello del cliente, ma decide l'export chiamate e i contatori "fatte / da fare".
+  - **Cosa fa:** `task.operator_id = customers.operator_id` per tutte le task, attive e no. Come T2.2: niente righe in `task_event_log`, `updated_at` invariato. Misurato su prod in sola lettura (28/09):
+    - cambiano 57.049 task attive su 62.921 e 11.815 inattive su 12.720;
+    - tutte hanno un cliente con operatore, quindi nessuna esce dall'export.
+  - **Da spiegare al cliente:** l'export attribuisce anche lo storico (34.483 chiamate da novembre 2024) all'operatore attuale del cliente, non a quello assegnato allora.
+  - **Ordine:** dopo che la guardia di PR1 è in prod; prima, un "Assegna Clienti" lo annullerebbe.
+  - **Da sapere:**
+    - l'allineamento non si mantiene da solo: "Assegna Clienti" sposta la task solo se in cima c'è `chiamare` (logica invariata, A7), quindi dopo una riassegnazione le task in altri stati restano al vecchio operatore;
+    - `updated_at` resta uguale per tutte le task finché non vengono riscritte, e "Assegna Clienti" le considera a pari merito quando cerca la più recente.
+  - **Da decidere:** se è una terza migrazione di PR2 (stessa finestra e stesso runbook G2, con anteprima nell'estrazione di T2.1) o un passo a sé subito dopo.
 
 #### T2.1: Estrazione di sola lettura per gli admin
 - **depends_on**: [T1.1]

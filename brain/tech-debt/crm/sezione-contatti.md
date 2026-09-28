@@ -41,7 +41,7 @@ Scoperto nella review di PR1 (F1, seconda verifica), preesistente.
 - `customer.bulkUpdateCustomers` prende, per ogni cliente, la task con `updated_at` più recente fra tutte, attive o no, e la riassegna solo se è `chiamare`.
 - Dopo un followup del cron la più recente è la vecchia task, ora inattiva: il nuovo contatto attivo non cambia operatore. Lo stesso dopo il caso 3 della massiva (esito senza alert). Succedeva già nella base.
 
-**Effetto oggi:** il cliente passa al nuovo operatore, il suo contatto attivo no. La guardia sul `WHERE` indefinito (PR1) evita solo che l'update tocchi tutta la tabella.
+**Effetto oggi:** il cliente passa al nuovo operatore, il suo contatto attivo no. La guardia sul `WHERE` indefinito (PR1) evita solo che l'update tocchi tutta la tabella. In prod l'update su tutta la tabella è successo il 28/09/2026: tutte le task a un solo operatore. Il riallineamento all'operatore del cliente è deciso dopo PR2 ([[specs/crm/sezione-contatti/PLAN]], §9, PR2); questa logica poi lo fa divergere di nuovo.
 
 **Da fare fuori da questa spec:** A7 lascia la logica invariata (non-goal). Un seguito può riassegnare la task attiva del cliente, con un criterio di spareggio.
 

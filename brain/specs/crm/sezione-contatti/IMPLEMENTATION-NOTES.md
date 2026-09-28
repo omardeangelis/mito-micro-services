@@ -84,6 +84,12 @@ updated: 2026-09-28
 - **`alert.is_resolved` non ha una migrazione.** La colonna (`boolean DEFAULT false NOT NULL`) è negli snapshot da `20260615235953_brown_madelyne_pryor` ma in nessun file SQL: in prod arriva da `db:push`, e `db:generate` non la emetterà mai perché lo snapshot ce l'ha già. Un confronto tra lo schema prodotto dalle migrazioni e l'ultimo snapshot (colonne, indici, enum) non trova altri scarti. L'harness applica i due pezzi "pushati" nel punto della storia in cui prod li ha ricevuti (`PUSHED_SCHEMA` in `src/test/db.ts`). **Per PR2 (T2.2):** la migrazione di pulizia usa `is_resolved`; in prod c'è, nei test c'è grazie all'harness.
 - **Regola "un `DbError` non si recupera in un successo" applicata a runtime.** Il piano la dava come regola di review. `Tx` registra ogni query fallita, e se il programma riesce lo stesso `transaction` muore con un difetto esplicito, quindi fa rollback. Motivo verificato: su PGlite, come su Postgres, il COMMIT di una transazione abortita fa rollback senza errore, tanto che il test di `replaceActiveContact` con `failNextInsertInto` passa anche togliendo il rollback esplicito. Il rollback lo dimostrano i test con errore tipizzato ed eccezione di `db.db.test.ts` (verifica per mutazione: 4 test rossi).
 - **La riga `state_change` del followup del cron ha il `taskId` della task precedente**, non del followup (codice di oggi). T1.2 la fissa così e T1.5 non la cambia.
+- **Passo 1 di G1 su prod (28/09/2026, lanciato da un agente su richiesta di Omar, transazione `READ ONLY`).**
+  - **Fuso** della sessione `Europe/Rome` (F4); isolamento `read committed`.
+  - **"Assegna Clienti":** alle 15:53:40 UTC l'update senza `WHERE` è successo in prod: 75.637 task su 75.641 con operatore 1020 e lo stesso `updated_at`, 61 ms dopo la riga `operator_reassign` (un cliente, verso 1020). Operatori dei clienti e `closed_at` intatti. Riallineamento deciso dopo PR2 (nota nel PLAN, §9).
+  - **F6:** nessun alert aperto senza cliente.
+  - **F8, il cron di prod non gira:** 1.853 alert scaduti aperti, da giugno, più 18 di oggi. Negli ultimi 21 giorni gli alert li hanno chiusi solo gli operatori. **L'operatore di sistema in prod non esiste:** il cron di `main` va in errore su `systemOperator!.id`, quello di PR1 con `SystemOperatorMissing`. L'ipotesi "il cron gira già ogni giorno" non regge.
+  - **F7, F16:** 7 clienti con più contatti attivi, tutti con lo stesso millisecondo, per via dell'update delle 15:53.
 
 ## Sanity Checks
 
@@ -99,6 +105,11 @@ updated: 2026-09-28
 
 - **Alert falliti nell'ultima chiamata del cron:** `alert.js` non li ripete in PR1. Nota da smarcare all'avvio di PR2, in [[specs/crm/sezione-contatti/PLAN]] (§9, PR2).
 - **Indice unico e `task.kind`:** deciso di tenere l'indice per cliente in PR2; il passaggio a (cliente, tipo) arriva con il `kind`. Dopo PR2 resta da aggiornare il blocco E1 di [[chore/crm/design-lavorazioni-e-verticali]] (§9). Dettagli nella nota di PR2 del PLAN (§9).
+- **G1 sospeso.** Prima di lanciare Update Alerts PROD:
+  - decidere cosa fare dei 1.853 alert scaduti: un cron li chiuderebbe tutti senza followup;
+  - creare l'operatore di sistema in prod (`pnpm create:system-operator`, da Omar);
+  - poi aggiornare il runbook nella descrizione della PR.
+- **Riallineamento degli operatori delle task:** dopo PR2, nota nel PLAN (§9, PR2).
 
 ## Steering
 
@@ -111,3 +122,4 @@ updated: 2026-09-28
 | 2026-09-28 | Gli alert falliti nell'ultima chiamata non si ripetono in PR1: nota da smarcare all'avvio di PR2 | Nota nel PLAN (PR2), in Remaining Work e nel tech-debt |
 | 2026-09-28 | L'indice unico di PR2 va collegato a `task.kind`: in futuro al massimo un contatto attivo per tipo (prestito, cessione, assicurazione), non uno in assoluto | Nota da smarcare all'avvio di PR2, nel PLAN e in Remaining Work; proposta: in PR2 indice per cliente, poi (cliente, tipo) con il `kind` |
 | 2026-09-28 | In PR2 l'indice unico resta per cliente | Nota di PR2 smarcata nel PLAN; T2.3 invariato |
+| 2026-09-28 | Dopo PR2 riallineare l'operatore di tutte le task a quello del cliente e spiegarlo al cliente | Nota nel PLAN (PR2) con le misure su prod; resta da decidere se è una migrazione di PR2 o un passo a sé |
