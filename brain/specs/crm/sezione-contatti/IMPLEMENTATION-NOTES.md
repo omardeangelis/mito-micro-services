@@ -98,7 +98,7 @@ updated: 2026-09-28
 ## Remaining Work
 
 - **Alert falliti nell'ultima chiamata del cron:** `alert.js` non li ripete in PR1. Nota da smarcare all'avvio di PR2, in [[specs/crm/sezione-contatti/PLAN]] (§9, PR2).
-- **Indice unico e `task.kind`:** al massimo un contatto attivo per tipo, non in assoluto. Nota da smarcare all'avvio di PR2, nello stesso punto del PLAN.
+- **Indice unico e `task.kind`:** deciso di tenere l'indice per cliente in PR2; il passaggio a (cliente, tipo) arriva con il `kind`. Dopo PR2 resta da aggiornare il blocco E1 di [[chore/crm/design-lavorazioni-e-verticali]] (§9). Dettagli nella nota di PR2 del PLAN (§9).
 
 ## Steering
 
@@ -110,3 +110,4 @@ updated: 2026-09-28
 | 2026-09-26 | Un followup non va mai perso, perché dice agli agenti chi richiamare: `alert.js` ritenta dopo un 504 | Ripete dopo 10 s ogni chiamata che non arriva in fondo (5xx, errore di rete, esecuzione fallita per intero); un 4xx esce subito |
 | 2026-09-28 | Gli alert falliti nell'ultima chiamata non si ripetono in PR1: nota da smarcare all'avvio di PR2 | Nota nel PLAN (PR2), in Remaining Work e nel tech-debt |
 | 2026-09-28 | L'indice unico di PR2 va collegato a `task.kind`: in futuro al massimo un contatto attivo per tipo (prestito, cessione, assicurazione), non uno in assoluto | Nota da smarcare all'avvio di PR2, nel PLAN e in Remaining Work; proposta: in PR2 indice per cliente, poi (cliente, tipo) con il `kind` |
+| 2026-09-28 | In PR2 l'indice unico resta per cliente | Nota di PR2 smarcata nel PLAN; T2.3 invariato |
