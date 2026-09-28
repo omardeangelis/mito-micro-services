@@ -8,7 +8,7 @@ links:
 ingested: false
 last_ingested: null
 created: 2026-09-25
-updated: 2026-09-26
+updated: 2026-09-28
 ---
 
 # Implementation Notes
@@ -97,6 +97,8 @@ updated: 2026-09-26
 
 ## Remaining Work
 
+- **Alert falliti nell'ultima chiamata del cron:** `alert.js` non li ripete in PR1. Nota da smarcare all'avvio di PR2, in [[specs/crm/sezione-contatti/PLAN]] (§9, PR2).
+
 ## Steering
 
 | Date | Feedback | Changes |
@@ -105,3 +107,4 @@ updated: 2026-09-26
 | 2026-09-25 | Dopo la review: correggere blocker e major; poi "Assegna Clienti" in questo branch, minor urgenti B1–B7, smoke su sviluppo | F1–F5 corretti; guardia in `bulkUpdateCustomers`; F6, F11 (cron), F12, F13, isolamento, R1; gli altri minor nel tech-debt |
 | 2026-09-26 | Batch del cron in PR1; gli alert scaduti nei giorni precedenti solo chiusi come oggi; su prod il cron gira già ogni giorno, quindi non ci si aspetta arretrato | Cron a tempo (40 s per chiamata, prima quelli di oggi) e `alert.js` che richiama; la query sull'arretrato resta nel runbook come controllo |
 | 2026-09-26 | Un followup non va mai perso, perché dice agli agenti chi richiamare: `alert.js` ritenta dopo un 504 | Ripete dopo 10 s ogni chiamata che non arriva in fondo (5xx, errore di rete, esecuzione fallita per intero); un 4xx esce subito |
+| 2026-09-28 | Gli alert falliti nell'ultima chiamata non si ripetono in PR1: nota da smarcare all'avvio di PR2 | Nota nel PLAN (PR2), in Remaining Work e nel tech-debt |

@@ -7,7 +7,7 @@ links:
   - "[[chore/crm/design-contatti]]"
   - "[[chore/crm/guida-assegnazione-massiva-e-alert]]"
 created: 2026-09-24
-updated: 2026-09-26
+updated: 2026-09-28
 ---
 
 # Plan: Sezione Contatti e tabella Clienti semplificata
@@ -457,6 +457,13 @@ Branch suggerito: `contatti/pr1-creazione-sicura`. Nessun cambiamento visibile, 
 ### PR2 — Pulizia e vincolo DB
 
 Branch suggerito: `contatti/pr2-vincolo-db`. Contiene solo migrazioni e uno script di sola lettura. Il merge si fa dopo G1; l'applicazione in prod è manuale (G2).
+
+**Da smarcare all'avvio di PR2:**
+- [ ] **Alert falliti nell'ultima chiamata del cron** (da PR1, 2026-09-28).
+  - **Problema:** se un alert fallisce nell'ultima chiamata di un'esecuzione, per esempio per la connessione caduta, `alert.js` non richiama. L'alert resta aperto fino all'esecuzione dopo; se scadeva oggi, il giorno dopo viene solo chiuso, senza followup (vedi il tech-debt).
+  - **Proposta:** `alert.js` richiama anche quando una chiamata ha alert falliti, come dopo un 504, e si ferma quando una chiamata ripetuta non chiude nessun alert.
+  - **Da verificare:** dopo la pulizia di T2.2 gli alert F6, che falliscono sempre, non ci sono più. Resta da capire se possono nascerne di nuovi.
+  - **Da decidere:** se la modifica entra in PR2, che per ora contiene solo migrazioni e uno script di sola lettura, o in una PR a sé.
 
 #### T2.1: Estrazione di sola lettura per gli admin
 - **depends_on**: [T1.1]
