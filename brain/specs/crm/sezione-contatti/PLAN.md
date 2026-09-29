@@ -7,7 +7,7 @@ links:
   - "[[chore/crm/design-contatti]]"
   - "[[chore/crm/guida-assegnazione-massiva-e-alert]]"
 created: 2026-09-24
-updated: 2026-09-25
+updated: 2026-09-29
 ---
 
 # Plan: Sezione Contatti e tabella Clienti semplificata
@@ -115,7 +115,7 @@ Serve una sezione **Contatti** (lista e dettaglio) sulle `task`. Le regole di mo
   - non tocca `task.alert_id`;
   - non scrive in `task_event_log` (AC70);
   - ignora le task con `customer_id` NULL.
-- **A7:** `bulkHandleTask` e `bulkUpdateCustomers` ("Assegna Clienti") mantengono la logica e i risultati di oggi (non-goal). Cambia solo chi può chiamarle: gli admin, come già nell'interfaccia (P7).
+- **A7:** `bulkHandleTask` e `bulkUpdateCustomers` ("Assegna Clienti") mantengono la logica e i risultati di oggi (non-goal). Cambia solo chi può chiamarle: gli admin, come già nell'interfaccia (P7). Unica eccezione, in PR1 dopo la review: `bulkUpdateCustomers` non aggiorna più tutte le task della tabella quando nessun cliente scelto ha in cima una task `chiamare` (update con `WHERE` indefinito).
 - **A8:** la mutation `deleteTasks` è fuori perimetro e va segnalata nei rischi. Cancella tutte le task di un cliente e nessuna parte del codice la chiama.
 - **Vincoli dalla spec:**
   - migrazioni solo additive, generate con `pnpm db:generate`;
@@ -146,7 +146,7 @@ Serve una sezione **Contatti** (lista e dettaglio) sulle `task`. Le regole di mo
     - in `.github/workflows/update-alert prod.yml` lo `schedule` è commentato ("disabilitato su ambiente di test"), quindi c'è solo `workflow_dispatch`;
     - `vercel.json` ha `"crons": []`.
 
-    G1 deve prima accertare da dove parte l'esecuzione notturna (vedi §15).
+    G1 deve prima accertare da dove parte l'esecuzione notturna (vedi §15). Accertato il 2026-09-28: in prod non parte da nessuna parte. Da PR2 la lancia lo `schedule` di GitHub Actions (T2.6).
 15. **Data di chiusura nello Storico.** `CustomerAlertHistory` mostra `alert.updatedAt` come data di chiusura: ogni chiusura, compresa la pulizia di PR2, deve aggiornarlo (A6).
 16. **Formato delle migrazioni custom.** PGlite esegue una sola istruzione per `query`, e il migrator divide i file sul marcatore `--> statement-breakpoint`: le istruzioni della migrazione custom vanno separate così.
 
@@ -176,7 +176,8 @@ PR1  T1.1 ─┬─ T1.2 ───────────────┐
                     └─ T1.6 ─ T1.7 ────────┘
                        (T1.6 e T1.7 in sequenza: stesso file task/POST)
 
-PR2  T1.1 ─ T2.1 ─ T2.2 ─ T2.3 ─ T2.4 (dopo T1.8)          [G2]
+PR2  T1.1 ─ T2.1 ─ T2.2 ─ T2.3 ─ T2.5 ─┬─ T2.4 (dopo T1.8)   [G2]
+                                 T2.6 ─┘   (T2.6 ← T1.5)
 
 PR3  T3.1 ─┬─ T3.2 ─┬─ T3.3 ────────┬─ T3.10 ─┐
 T1.4 ──────┘        ├─ T3.4 ────────┤         │
@@ -240,9 +241,9 @@ Branch suggerito: `contatti/pr1-creazione-sicura`. Nessun cambiamento visibile, 
   - `failNextInsertInto` fa fallire un insert.
 
   I test d'import esistenti restano verdi.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-09-25 — PGlite 0.2.17 funziona con drizzle 0.33. Le migrazioni del repo non si applicano su un DB vuoto (la prima usa il tipo `task_status`, che crea la terza): `migrateUpTo` crea il tipo prima di migrare. Mock dei confini in un `setupFiles` unico con factory pigre, invece che in ogni file. `failNextInsertInto(table, where?)`: il guasto si arma con una sequenza (sopravvive al rollback) e può colpire solo le righe che soddisfano `where`, come serve a T1.6. Factory `customerToPratica` non aggiunta: nessun test di PR1 la usa. Gate: 27 test verdi, `next lint` e `tsc` puliti.
+- **files edited/created**: `package.json`, `pnpm-lock.yaml`, `vitest.config.ts`, `src/test/setup.ts`, `src/test/db.ts`, `src/test/factories.ts`, `src/test/caller.ts`, `src/test/failpoint.ts`, `src/test/_test/harness.db.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a (D6)
@@ -266,9 +267,9 @@ Branch suggerito: `contatti/pr1-creazione-sicura`. Nessun cambiamento visibile, 
 
   Le asserzioni sul body della risposta usano `toMatchObject` sul `message`, così i campi che T1.5 aggiunge non le cambiano.
 - **validation**: i test passano sul codice attuale, prima di T1.5, senza modificarlo.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-09-25 — Quattro scenari verdi sul codice attuale, senza modificarlo. Primo run rosso per un difetto dell'harness, non del cron: la colonna `alert.is_resolved` è negli snapshot ma in nessuna migrazione (in prod arriva da `db:push`). `migrateUpTo` ora riproduce lo schema "pushato" dopo la migrazione a cui appartiene (`PUSHED_SCHEMA` in `src/test/db.ts`); un confronto tra lo schema migrato e l'ultimo snapshot non trova altri scarti. Il followup scrive la riga `state_change` con il `taskId` della task **precedente**: fissato così dal test. Solo `Date` è finto (`toFake: ["Date"]`), perché PGlite usa i timer veri.
+- **files edited/created**: `src/app/api/cron/alert/_test/alert.db.test.ts`, `src/test/db.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a (D6)
@@ -290,9 +291,9 @@ Branch suggerito: `contatti/pr1-creazione-sicura`. Nessun cambiamento visibile, 
 
   Il caller è un `ADMIN`, perché nell'interfaccia la massiva è solo per admin e da PR3 lo sarà anche sul server (P7).
 - **validation**: tutti i test passano sul codice attuale. Per ogni caso lo stato finale di `task`, `alert`, `customers` e `task_event_log` è esplicito.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-09-25 — 10 test verdi sul codice attuale, senza modificarlo: i quattro casi (il caso 1 anche senza cambio di operatore, il caso 4 sia per `followup` sia per l'alert non confermato), l'ordine di elaborazione dei clienti, `createTask` con e senza contatto attivo. Il duplicato attivo sta in un file a parte, `bulkHandleTask.legacy.db.test.ts`, migrato fino a `LEGACY_SCHEMA_TAG`: così gli altri test della massiva girano sullo schema completo anche dopo l'indice unico di PR2. `customers.operatorId` si legge con `customer.getCustomerById`.
+- **files edited/created**: `src/server/api/routers/task/_test/bulkHandleTask.db.test.ts`, `src/server/api/routers/task/_test/bulkHandleTask.legacy.db.test.ts`, `src/server/api/routers/task/_test/createTask.db.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a (D6)
@@ -322,7 +323,7 @@ Branch suggerito: `contatti/pr1-creazione-sicura`. Nessun cambiamento visibile, 
       - successo → il valore;
       - errori tipizzati diversi da `DbError` → `TRPCError` tramite `mapError`. Gli overload rendono `mapError` **obbligatorio** quando `Exclude<E, DbError>` non è `never`, così un errore senza traduzione non compila;
       - `DbError` e difetti → `Effect.logError` e `INTERNAL_SERVER_ERROR` con `cause: Cause.squash(cause)` e lo stesso messaggio che tRPC mostra oggi, cioè quello dell'errore originale. Non chiama `ErrorReporter`: a Sentry li segnala il middleware tRPC (P9).
-  - **Ordine dei lock, unico per tutto il codice:** `customers` → `task` → `alert`. Ogni transazione che scrive su un contatto comincia con `lockCustomer`, poi blocca o aggiorna le task, poi gli alert. Una volta bloccato il cliente, le righe `task` e `alert` si aggiornano senza altri lock espliciti, perché ogni scrittore passa prima dal cliente. Vale per PR1 (T1.5, T1.6, T1.7) e PR3 (T3.2). PGlite ha una sola connessione e non può rilevare un deadlock: la garanzia sta nella regola e nella review.
+  - **Regola dei lock, unica per tutto il codice:** ogni `transaction` che scrive task o alert di un cliente chiama per prima `lockCustomer`, poi tocca solo le righe di quel cliente. Due transazioni sullo stesso cliente si mettono in coda sul cliente invece di andare in deadlock; l'ordine fra task e alert, dopo il cliente, non conta. Gli scrittori fuori da `transaction` (`updateTask`, `createAlert`, `resolveAlerts` e gli altri che sposta PR3) non bloccano il cliente: chi li porta in una `transaction` chiama per prima `lockCustomer`. Vale per PR1 (T1.5, T1.6, T1.7) e PR3 (T3.2). PGlite ha una sola connessione e non può rilevare un deadlock: la garanzia sta nella regola e nella review. *(Riscritta dopo la review di PR1, F12: la versione precedente, "`customers` → `task` → `alert` per tutti gli scrittori", non corrispondeva al codice.)*
   - **`replaceActiveContact({ customerId, values })`** restituisce `Effect<{ created, previous }, DbError | CustomerMissing, Tx>` e lavora dentro la transazione del chiamante:
     1. `lockCustomer(customerId)`, che è idempotente se il chiamante l'ha già fatto;
     2. disattiva **tutte** le task attive del cliente;
@@ -345,9 +346,9 @@ Branch suggerito: `contatti/pr1-creazione-sicura`. Nessun cambiamento visibile, 
     - cliente con due task attive (dato sporco, su `LEGACY_SCHEMA_TAG`) → entrambe disattivate, `previous` è la più recente;
     - cliente inesistente → `CustomerMissing`, nessuna scrittura;
     - con `failNextInsertInto(task)` il DB resta invariato e il chiamante riceve un `DbError`.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-09-25 — Tracer: `replaceActiveContact` su un cliente senza task, poi gli altri comportamenti. 18 test (13 d'infrastruttura, 5 del servizio), più di quelli elencati: `DbError` recuperato dentro `transaction`, successo che resta, codice SQLSTATE, `runTrpc` con valore, `mapError` e difetto. Una verifica per mutazione (rollback tolto, `Effect.either` al posto di `Effect.exit`) fa fallire 4 test. `ServerLive` sta in un file suo (`server.ts`). La regola "un `DbError` non si recupera in un successo" è applicata a runtime: `Tx` registra le query fallite e `transaction` muore se il programma riesce lo stesso. `lockCustomer` richiede `Tx` e restituisce l'id. `query` richiede `Db` anche dentro una transazione, quindi `replaceActiveContact` ha tipo `Effect<…, DbError | CustomerMissing, Db | Tx>`. Nei test `SentryReporterLive` è sostituito nel setup da un layer che registra in `reportedErrors`. **Dopo `/simplify`:** `lockCustomer` restituisce la riga bloccata (`LockedCustomer`: id e operatore) e `replaceActiveContact({ customer, values })` la riceve al posto di `customerId`, senza bloccare di nuovo; il tipo è `Effect<{ created, previous }, DbError, Db>` (`Db | Tx` dalla correzione di F2 della review) e `created.customerId` è `string`.
+- **files edited/created**: `src/server/effect/db.ts`, `src/server/effect/errorReporter.ts`, `src/server/effect/server.ts`, `src/server/effect/trpc.ts`, `src/server/effect/_test/db.db.test.ts`, `src/server/services/contact/activeContact.ts`, `src/server/services/contact/_test/activeContact.db.test.ts`, `src/server/services/contact/_test/activeContact.legacy.db.test.ts`, `src/test/setup.ts`, `src/test/effect.ts`, `src/test/errorReporter.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a (D6)
@@ -376,9 +377,9 @@ Branch suggerito: `contatti/pr1-creazione-sicura`. Nessun cambiamento visibile, 
   - **(a)** un alert su una task con `customer_id` NULL fallisce con `CustomerMissing`, ma gli altri alert della stessa esecuzione vengono elaborati, la risposta riporta `failed: 1` e `ErrorReporter` riceve una sola segnalazione, con l'id di quell'alert (AC72);
   - **(b)** con `failNextInsertInto(task_event_log)` non restano né il followup né la task precedente disattivata (AC39, AC71);
   - **(c)** un alert aperto su una task non attiva, con il cliente che ha già un contatto attivo: dopo il cron il cliente ha un solo contatto attivo, il followup (A5).
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-09-25 — RED: i tre test (a)–(c) più un quarto (esecuzione intera fallita: senza operatore di sistema la risposta resta quella del `catch` di oggi e c'è una sola segnalazione `SystemOperatorMissing`). GREEN con `processDueAlerts` e il route ridotto a guscio; i 4 test di T1.2 restano verdi con le asserzioni invariate. Verifica per mutazione: senza la transazione per alert fallisce il test (b). `lockCustomer` si chiama per ogni alert, anche nel ramo "altro giorno": con `customer_id` NULL oggi quel ramo scriveva task e alert e poi falliva sul log (`customer_id` NOT NULL), ora fallisce con `CustomerMissing` senza scrivere. La riga di riepilogo con `failed > 0` è un `Effect.logError` annotato con `found` e `failed`, che `ServerLive` manda su `console.error`. Tolti i `console.log` di debug delle date. Lo script esce con 1 anche quando la risposta ha `error` (esecuzione intera fallita), non solo con `failed > 0`.
+- **files edited/created**: `src/app/api/cron/alert/route.ts`, `src/server/services/contact/processDueAlerts.ts`, `src/app/api/cron/scheduled/alert.js`, `src/app/api/cron/alert/_test/alert.db.test.ts`, `src/test/effect.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a (D6)
@@ -395,9 +396,9 @@ Branch suggerito: `contatti/pr1-creazione-sicura`. Nessun cambiamento visibile, 
   - I casi 1, 2 e 3 creano la task con `replaceActiveContact`, che disattiva prima di inserire. Il caso 4 resta invariato, ma dentro la transazione.
   - Campi, log e aggiornamento di `customers.operatorId` restano identici.
 - **validation**: i test di T1.3 restano verdi senza cambiare le asserzioni, salvo quella sul duplicato già marcata "destinata a cambiare": ora anche il duplicato più vecchio non è più attivo. Nuovo test: con `failNextInsertInto(task_event_log)` su un cliente, per quel cliente non restano dati parziali e i clienti precedenti restano elaborati.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-09-25 — RED: il test con il guasto sul log del secondo cliente (dati parziali). GREEN con `assignCustomer` in un `transaction` per cliente e `Effect.forEach` sequenziale; i test di T1.3 restano verdi, cambia solo l'asserzione marcata sul duplicato. **Dopo `/simplify`:** ogni transazione legge la task attiva del cliente dopo `lockCustomer` (niente più letture iniziali fuori dalle transazioni, che facevano decidere il caso su dati vecchi) e la sceglie in SQL con `updated_at DESC, id DESC`; i casi 2 e 3 stanno in un solo ramo. Nel caso 2 la disattivazione la fa `replaceActiveContact`, poi `alertId = null` sulla task precedente e la risoluzione dell'alert, nell'ordine cliente → task → alert. Un cliente inesistente fallisce con `CustomerMissing` prima di scrivere e risponde `BAD_REQUEST` (oggi: violazione di FK, `INTERNAL_SERVER_ERROR`), con un test.
+- **files edited/created**: `src/server/api/routers/task/POST/index.ts`, `src/server/api/routers/task/_test/bulkHandleTask.db.test.ts`, `src/server/api/routers/task/_test/bulkHandleTask.legacy.db.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a (D6)
@@ -416,9 +417,9 @@ Branch suggerito: `contatti/pr1-creazione-sicura`. Nessun cambiamento visibile, 
 - **validation**:
   - il test "destinato a cambiare" di T1.3 si aggiorna: dopo `createTask` il cliente ha un solo contatto attivo;
   - `task.bulkCreateTask` non esiste più (errore via caller).
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-09-25 — RED: l'asserzione marcata (dopo `createTask` un solo contatto attivo), cliente mancante o inesistente → `BAD_REQUEST` senza scritture, `bulkCreateTask` assente. GREEN con `createTask` in un `transaction` con `replaceActiveContact` e la riga di log. `fromState` è ora lo stato della task precedente più recente (oggi la prima riga di una select senza ordine: diverso solo con i duplicati). Via `createCaller` una procedura inesistente lancia un `TypeError` (via HTTP tRPC risponde `NOT_FOUND`): il test verifica che la chiamata fallisca senza scrivere. `createTask` restituisce `Task` invece di `Task | undefined`. Tolti `bulkCreateTaskSchema` (lo schema della massiva è scritto per intero), `max` e `updateCustomerUpdatedAt`, che usava solo `bulkCreateTask`. I chiamanti di oggi (`taskStatusAction`, `CustomerTaskManager`) fanno `createTask` e poi disattivano la vecchia task per id: la seconda chiamata non cambia più nulla.
+- **files edited/created**: `src/server/api/routers/task/POST/index.ts`, `src/server/api/routers/task/index.ts`, `src/server/api/routers/task/_test/createTask.db.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a (D6)
@@ -434,18 +435,21 @@ Branch suggerito: `contatti/pr1-creazione-sicura`. Nessun cambiamento visibile, 
     - riapertura dalla riga Clienti e dalla scheda cliente: dopo, un solo contatto attivo;
     - `pnpm update:alert:dev` su un alert che scade oggi;
     - assegnazione massiva nei 4 casi.
-  - `pnpm update:alert:dev` stampa il JSON della risposta con `found`, `processed`, `skipped` e `failed`.
-  - La descrizione della PR contiene il runbook di G1:
-    1. accertare dove gira il cron alert in produzione (finding 14);
-    2. dopo il deploy, un'esecuzione schedulata o lanciata a mano (`workflow_dispatch` di `update-alert prod.yml`);
-    3. controllare **tre** posti: il log dell'esecuzione su GitHub Actions, che deve essere verde e mostrare il JSON con `failed: 0`; i log Vercel di `/api/cron/alert` filtrati per livello **error**, che devono essere vuoti; Sentry, environment `production`, dove non devono comparire issue nuove da `/api/cron/alert` dopo l'esecuzione.
+  - `pnpm update:alert:dev` stampa il JSON della risposta con `found`, `processed`, `skipped`, `failed` e `remaining`.
+  - **Cron a tempo** (aggiunto dopo la misura dello smoke, deciso in chat il 2026-09-26): ogni chiamata prende prima gli alert di oggi e dopo 40 s non ne prende di nuovi; `alert.js` richiama finché `remaining` è 0, al massimo 20 volte, e ripete dopo 10 s una chiamata che non arriva in fondo (504, un altro 5xx, un errore di rete, un'esecuzione fallita per intero).
+  - La descrizione della PR contiene il runbook di G1. **Rivisto il 2026-09-28** dopo le query in sola lettura su prod: il cron di prod non gira, ci sono 1.853 alert scaduti aperti e l'operatore di sistema non esiste (IMPLEMENTATION-NOTES). Il runbook:
+    1. query in sola lettura su prod (fatte il 28/09);
+    2. creare l'operatore di sistema in prod (`pnpm create:system-operator`, da Omar, mai da un agente); senza, ogni chiamata del cron di PR1 fallisce con `SystemOperatorMissing`;
+    3. deploy di PR1 (merge `dev` → `main`);
+    4. **non lanciare il cron alert in prod**: chiuderebbe gli alert scaduti prima di PR2. La prima esecuzione è il passo 8 del runbook G2 (T2.4);
+    5. per almeno due giorni lavorativi di uso normale (riapertura, assegnazione massiva, "Assegna Clienti"), nessuna riga di livello error nei log Vercel e nessuna issue nuova in Sentry `production`.
 - **validation**:
   - gate verdi;
   - smoke senza regressioni;
-  - dopo il deploy, almeno un'esecuzione del cron alert in prod con `failed: 0` nel JSON stampato, nessun errore nei log Vercel e nessuna issue nuova in Sentry (G1).
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+  - G1: PR1 in prod per almeno due giorni lavorativi senza errori nei log Vercel né issue nuove in Sentry, e operatore di sistema presente. La prova del cron in prod si sposta dopo la migrazione di PR2 (T2.4, passo 8).
+- **status**: Smoke fatto; G1 dopo il deploy (Omar)
+- **log**: Smoke sul DB di sviluppo il 2026-09-25: percorsi senza regressioni; cron con 815 alert, 808 risolti, 8 fallimenti per connessione caduta (isolati, riportati in `failed`), 0,2 s ad alert. La misura ha portato al cron a tempo (IMPLEMENTATION-NOTES).
+- **files edited/created**: `src/server/services/contact/processDueAlerts.ts`, `src/app/api/cron/alert/route.ts`, `src/app/api/cron/scheduled/alert.js`, `src/server/effect/errorReporter.ts`, test in `src/server/services/contact/_test/processDueAlerts.db.test.ts` e `src/app/api/cron/scheduled/_test/alert.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a (D6)
@@ -455,7 +459,39 @@ Branch suggerito: `contatti/pr1-creazione-sicura`. Nessun cambiamento visibile, 
 
 ### PR2 — Pulizia e vincolo DB
 
-Branch suggerito: `contatti/pr2-vincolo-db`. Contiene solo migrazioni e uno script di sola lettura. Il merge si fa dopo G1; l'applicazione in prod è manuale (G2).
+Branch suggerito: `contatti/pr2-vincolo-db`. Contiene migrazioni, uno script di sola lettura e lo `schedule` del cron alert in prod (T2.6), nessun codice dell'app. Il merge si fa dopo G1; l'applicazione in prod è manuale (G2). Le migrazioni sono tre: pulizia (T2.2), indici (T2.3), riallineamento degli operatori (T2.5). Dopo la migrazione, la prima esecuzione del cron in prod chiude gli alert scaduti (T2.4); da lì il cron gira ogni notte (T2.6).
+
+**Da smarcare all'avvio di PR2:**
+- [ ] **Alert falliti nell'ultima chiamata del cron** (da PR1, 2026-09-28).
+  - **Problema:** se un alert fallisce nell'ultima chiamata di un'esecuzione, per esempio per la connessione caduta, `alert.js` non richiama. L'alert resta aperto fino all'esecuzione dopo; se scadeva oggi, il giorno dopo viene solo chiuso, senza followup (vedi il tech-debt).
+  - **Proposta:** `alert.js` richiama anche quando una chiamata ha alert falliti, come dopo un 504, e si ferma quando una chiamata ripetuta non chiude nessun alert.
+  - **Da verificare:** dopo la pulizia di T2.2 gli alert F6, che falliscono sempre, non ci sono più. Resta da capire se possono nascerne di nuovi.
+  - **Da decidere:** se la modifica entra in PR2, che per ora contiene migrazioni, uno script di sola lettura e lo `schedule` del cron (T2.6), o in una PR a sé.
+- [x] **Indice unico per tipo di contatto** (2026-09-28). Deciso: in PR2 l'indice resta per cliente.
+  - **Idea:** un cliente potrà avere un contatto per tipo, per esempio prestito, cessione e assicurazione. Il vincolo giusto diventa "al massimo un contatto attivo per tipo", non "uno in assoluto". È il `task.kind` di [[chore/crm/design-lavorazioni-e-verticali]] (§1), con `UNIQUE (customer_id, kind) WHERE is_active`. Nella SPEC è un non-goal.
+  - **Proposta:** T2.3 resta per cliente (`task_customer_active_uidx`). Il passaggio a (cliente, tipo) arriva con il `kind` ed è un allentamento:
+    - con `kind NOT NULL DEFAULT 'prestito'` tutte le righe esistenti hanno lo stesso tipo; un cliente con al massimo un contatto attivo ne ha al massimo uno per tipo;
+    - la migrazione del tipo aggiunge la colonna, fa `DROP INDEX task_customer_active_uidx` e crea l'indice su `(customer_id, kind)`, senza pulizia dei dati. La pulizia di T2.2 vale anche per il nuovo indice.
+  - **Nel codice:** tutti i percorsi che creano un contatto passano da `replaceActiveContact` (PR1), che disattiva i contatti attivi del cliente con un solo filtro. Con il tipo, quel filtro diventa (cliente, tipo), in un solo punto. Le letture di "il contatto attivo del cliente" sono nell'inventario della bozza (§2).
+  - **Ordine:** l'indice per (cliente, tipo) va in prod prima del codice che crea un contatto di un secondo tipo; altrimenti l'indice per cliente rifiuta l'inserimento con `23505`.
+  - **Deciso (2026-09-28):** `kind` non entra in PR2. Con un solo valore l'indice per (cliente, tipo) vincolerebbe quanto quello per cliente, ma PR2 dovrebbe fissare adesso i valori del tipo e aggiungerebbe una colonna che nessuno scrive né legge. Nella bozza i valori sono `prestito` e `cessione`, legati alle famiglie prodotto delle pratiche; l'assicurazione non c'è.
+  - **Dopo PR2:** aggiornare il blocco E1 della bozza (§9); pulizia e vincolo ci sono già.
+- [x] **Riallineamento degli operatori delle task** (2026-09-28). Deciso: ogni task prende l'operatore del suo cliente con la terza migrazione di PR2 (T2.5), e lo si spiega al cliente.
+  - **Perché:** il 28/09/2026 alle 15:53 UTC un "Assegna Clienti" in prod ha fatto l'update senza `WHERE` (corretto in PR1). 75.637 task su 75.641 hanno ora `operator_id = 1020` e lo stesso `updated_at`. Sul DB di sviluppo c'è la stessa traccia al 19/06/2026. L'operatore della task non si vede in Clienti, che mostra quello del cliente, ma decide l'export chiamate e i contatori "fatte / da fare".
+  - **Cosa fa:** `task.operator_id = customers.operator_id` per tutte le task, attive e no. Come T2.2: niente righe in `task_event_log`, `updated_at` invariato. Misurato su prod in sola lettura (28/09):
+    - cambiano 57.049 task attive su 62.921 e 11.815 inattive su 12.720;
+    - tutte hanno un cliente con operatore, quindi nessuna esce dall'export.
+  - **Da spiegare al cliente:** l'export attribuisce anche lo storico (34.483 chiamate da novembre 2024) all'operatore attuale del cliente, non a quello assegnato allora.
+  - **Ordine:** dopo che la guardia di PR1 è in prod; prima, un "Assegna Clienti" lo annullerebbe.
+  - **Da sapere:**
+    - l'allineamento non si mantiene da solo: "Assegna Clienti" sposta la task solo se in cima c'è `chiamare` (logica invariata, A7), quindi dopo una riassegnazione le task in altri stati restano al vecchio operatore;
+    - `updated_at` resta uguale per tutte le task finché non vengono riscritte, e "Assegna Clienti" le considera a pari merito quando cerca la più recente.
+  - **Deciso (2026-09-28):** terza migrazione di PR2 (T2.5): stessa finestra e stesso runbook G2, con anteprima nell'estrazione di T2.1.
+- [x] **Alert scaduti in prod** (2026-09-28). Deciso: si chiudono tutti dopo la migrazione di PR2, con la prima esecuzione del cron in prod (passo 8 di T2.4).
+  - **Perché:** il cron alert in prod non gira. Il 28/09 c'erano 1.853 alert scaduti aperti, da giugno, più 18 del giorno; li chiudevano solo gli operatori, a mano. L'operatore di sistema in prod non esiste, quindi il cron di `main` va in errore su `systemOperator!.id` (IMPLEMENTATION-NOTES).
+  - **Cosa succede:** la prima esecuzione chiude gli alert dei giorni precedenti senza followup e crea il followup per quelli del giorno, come fa PR1. Li risolve l'operatore di sistema e restano visibili nello Storico.
+  - **Effetto su G1:** prima di G2 il cron in prod non si lancia. G1 diventa PR1 in prod con l'uso normale di Clienti (§12).
+  - **Dopo G2 (deciso il 2026-09-29):** il cron gira ogni notte con lo `schedule` di `update-alert prod.yml`, riattivato in PR2 (T2.6, §15). Senza un'esecuzione automatica gli alert tornerebbero ad accumularsi e i followup non nascerebbero.
 
 #### T2.1: Estrazione di sola lettura per gli admin
 - **depends_on**: [T1.1]
@@ -465,10 +501,12 @@ Branch suggerito: `contatti/pr2-vincolo-db`. Contiene solo migrazioni e uno scri
     - id e nome del cliente;
     - il contatto che resta attivo (criterio `GREATEST(updated_at, created_at) DESC, id DESC`);
     - i contatti che verranno disattivati, con stato, operatore e "Contattato il".
-  - **(b)** **tutti** gli alert aperti che la migrazione chiuderà, con cliente (se c'è), scadenza, messaggio e operatore. Sono quelli sui contatti che verranno disattivati e quelli su qualunque contatto già non attivo, comprese le task con `customer_id` NULL. L'elenco coincide con quello che chiude il passo 2 di T2.2.
+  - **(b)** **tutti** gli alert aperti che la migrazione chiuderà, con cliente (se c'è), scadenza, messaggio e operatore. Sono quelli sui contatti che verranno disattivati, quelli su qualunque contatto già non attivo, e quelli su task con `customer_id` NULL anche attive (review di PR1, F6). L'elenco coincide con quello che chiude il passo 2 di T2.2.
+
+  - **(c)** il riallineamento di T2.5: per ogni coppia (operatore attuale della task, operatore del cliente), quante task cambiano, attive e non attive.
 
   La parte (a) esclude le task con `customer_id` NULL, che la pulizia non disattiva.
-- **validation**: un test DB (su `LEGACY_SCHEMA_TAG`) esegue il file su un dataset seminato e confronta le righe attese. Il dataset contiene duplicati, pari merito su `GREATEST`, alert aperti su task non attive e task con `customer_id` NULL. Un secondo test verifica che gli alert elencati in (b) siano esattamente quelli chiusi dalla migrazione di T2.2.
+- **validation**: un test DB (su `LEGACY_SCHEMA_TAG`) esegue il file su un dataset seminato e confronta le righe attese. Il dataset contiene duplicati, pari merito su `GREATEST`, alert aperti su task non attive, task con `customer_id` NULL e task con un operatore diverso da quello del cliente. Un secondo test verifica che gli alert elencati in (b) siano esattamente quelli chiusi dalla migrazione di T2.2, e che i conteggi di (c) coincidano con le task cambiate da T2.5.
 - **status**: Planned
 - **log**:
 - **files edited/created**:
@@ -483,7 +521,7 @@ Branch suggerito: `contatti/pr2-vincolo-db`. Contiene solo migrazioni e uno scri
 - **location**: `src/server/db/migrations/<timestamp>_contatti_cleanup.sql` (via `pnpm drizzle-kit generate --custom --name=contatti_cleanup`), `src/server/db/migrations/_test/contattiCleanup.db.test.ts`
 - **description**: SQL della migrazione:
   1. disattiva le task attive che non sono la superstite del proprio cliente (stesso criterio di T2.1, `customer_id IS NOT NULL`);
-  2. chiude gli alert aperti su task non attive: `is_resolved = true`, `resolved_by` = operatore con `user_id = 'system'`, `updated_at = now()`, così lo Storico mostra la data di chiusura (finding 15).
+  2. chiude gli alert aperti su task non attive e su task con `customer_id` NULL, anche attive: `is_resolved = true`, `resolved_by` = operatore con `user_id = 'system'`, `updated_at = now()`, così lo Storico mostra la data di chiusura (finding 15). Sulle task senza cliente, dopo PR1, il cron fallisce a ogni esecuzione (review di PR1, F6).
 
   Le istruzioni sono separate da `--> statement-breakpoint` (finding 16). Niente `DELETE`, niente righe in `task_event_log`, `task.updated_at` invariato (A6). L'esistenza dell'operatore di sistema è un prerequisito verificato nel runbook (T2.4).
 - **validation**: test in due fasi con `migrateUpTo`: migrazioni fino alla precedente, poi seed con dati sporchi, poi migrazione completa. Asserzioni:
@@ -528,22 +566,46 @@ Branch suggerito: `contatti/pr2-vincolo-db`. Contiene solo migrazioni e uno scri
 - **review_mode**: cli
 
 #### T2.4: Runbook di rilascio PR2 (gate G2)
-- **depends_on**: [T2.3, T1.8]
+- **depends_on**: [T2.3, T2.5, T2.6, T1.8]
 - **location**: descrizione della PR; §12 di questo piano
-- **description**: Runbook eseguito da una persona:
+- **description**: Runbook eseguito da una persona.
+
+  **Prima della sessione:**
+
   1. verificare che G1 sia soddisfatto;
   2. verificare in prod, in sola lettura, due prerequisiti:
-     - esiste l'operatore di sistema (`operators` con `user_id = 'system'`);
+     - esiste l'operatore di sistema (`operators` con `user_id = 'system'`), creato in G1;
      - `drizzle.__drizzle_migrations` contiene tutte le migrazioni del journal fino a `LEGACY_SCHEMA_TAG`, e nessuna successiva;
-  3. eseguire `contatti-cleanup-preview.sql` in sola lettura sul DB di produzione (SQL editor Supabase), condividere l'elenco con gli admin e **ottenere il loro via libera esplicito**;
-  4. fare il merge di PR2 (il deploy non cambia codice);
-  5. fuori orario, **rieseguire l'estrazione**: se è cambiata rispetto a quella approvata, condividere la differenza prima di proseguire. Poi lanciare a mano `pnpm db:migrate:prod` (mai da un agente);
-  6. verificare in prod: la query dei duplicati restituisce 0 righe e l'estrazione non trova più alert da chiudere;
-  7. avvisare gli operatori che hanno avuto alert chiusi dal sistema: li ritrovano nello Storico;
-  8. controllare l'esecuzione successiva del cron alert (`failed: 0`).
+  3. eseguire `contatti-cleanup-preview.sql` in sola lettura sul DB di produzione (SQL editor Supabase), condividere l'elenco con gli admin e **ottenere il loro via libera esplicito**.
+
+  **Sessione fuori orario** (passi 4–8 di seguito, la stessa sera, deciso il 2026-09-29). Fuori orario perché finché la migrazione non finisce le scritture sulle task restano in attesa (§13), e perché l'estrazione rieseguita deve trovare i dati approvati:
+
+  4. **disattivare il workflow Update Alerts PROD** su GitHub (Actions → Update Alerts PROD → Disable workflow, oppure `gh workflow disable "update-alert prod.yml"`): lo `schedule` di T2.6 arriva su `main` con PR2 e resta spento fino al passo 8. Poi portare PR2 su `main` (merge `dev` → `main`) e aggiornare `main` in locale (`git checkout main && git pull`), perché `db:migrate:prod` applica i file di migrazione della cartella locale. Non serve aspettare il deploy: PR2 non cambia il codice dell'app;
+  5. **rieseguire l'estrazione** e confrontarla con quella approvata. Poi lanciare a mano `pnpm db:migrate:prod` (mai da un agente);
+  6. verificare in prod:
+     - la query dei duplicati restituisce 0 righe;
+     - l'estrazione non trova più alert da chiudere né task da riallineare;
+  7. contare gli alert scaduti ancora aperti, divisi fra giorni precedenti e oggi (query F8 del runbook G1, T1.8): servono per l'avviso agli operatori;
+  8. **chiudere gli alert scaduti** con la prima esecuzione del cron in prod (deciso il 2026-09-28):
+     - riattivare il workflow (Enable workflow, oppure `gh workflow enable "update-alert prod.yml"`) e lanciare a mano **Update Alerts PROD** (`workflow_dispatch`); da qui il cron gira anche da solo ogni notte (T2.6);
+     - controllare i tre posti del vecchio runbook G1 (T1.8): il log di GitHub Actions (un JSON per ogni chiamata arrivata in fondo, con `failed: 0`, e l'ultimo con `remaining: 0`), i log Vercel di `/api/cron/alert` senza errori e sotto i 60 s, e Sentry `production` senza issue nuove;
+     - se l'esecuzione finisce con `Alerts still left after 20 calls`, rilanciarla: gli alert del giorno li hanno già presi le prime chiamate;
+     - a fine sessione, avvisare:
+       - gli operatori che hanno avuto alert chiusi dal sistema, dalla pulizia o dal cron: li ritrovano nello Storico, e quelli dei giorni precedenti sono chiusi senza followup;
+       - il cliente, sul riallineamento: l'export attribuisce anche lo storico all'operatore attuale del cliente (T2.5).
+
+  **Se la sessione si ferma prima del passo 8**, il workflow resta disattivato e in un'altra sera si riparte dal passo 5. PR2 resta su `main` senza effetti, perché il codice dell'app non cambia. Succede se:
+  - l'estrazione è cambiata rispetto a quella approvata: si condivide la differenza con gli admin e si aspetta il via libera;
+  - `db:migrate:prod` fallisce: le tre migrazioni sono in una sola transazione, quindi il DB resta com'era. Si capisce la causa prima di riprovare.
+
+  **Dopo la sessione:**
+
+  9. controllare:
+     - la mattina dopo, su GitHub Actions, l'esecuzione di Update Alerts PROD con evento `schedule`: verde, con l'ultimo JSON a `remaining: 0`, e il messaggio Telegram arrivato;
+     - fino al rilascio di PR3, su Sentry, gli errori `duplicate key` (23505) su `task.updateTask` e `task.updateTaskFromDashboard`, e sul cron alert e la massiva: sono i contatti riattivati dalla lista (vedi §13).
 
   **Da qui PR1 non si può più annullare con un semplice revert** (vedi §12).
-- **validation**: checklist spuntata nella PR; la query dei duplicati in prod restituisce 0 righe.
+- **validation**: checklist spuntata nella PR; la query dei duplicati in prod restituisce 0 righe; la prima esecuzione pianificata del cron è verde.
 - **status**: Planned
 - **log**:
 - **files edited/created**:
@@ -553,13 +615,61 @@ Branch suggerito: `contatti/pr2-vincolo-db`. Contiene solo migrazioni e uno scri
 - **tdd_target**: n/a (gate)
 - **review_mode**: cli
 
+#### T2.5: Migrazione custom di riallineamento degli operatori
+- **depends_on**: [T2.3]
+- **location**: `src/server/db/migrations/<timestamp>_contatti_operator_realign.sql` (via `pnpm drizzle-kit generate --custom --name=contatti_operator_realign`), `src/server/db/migrations/_test/contattiCleanup.db.test.ts`
+- **description**: deciso il 2026-09-28 dopo l'update senza `WHERE` di "Assegna Clienti" in prod (nota "Riallineamento" sopra). Terza migrazione di PR2: il timestamp è successivo a quello di T2.3, e il migrator la applica nella stessa transazione (finding 3). L'SQL:
+  - per ogni task con un cliente che ha un operatore, `task.operator_id = customers.operator_id`, attive e non attive;
+  - le task senza cliente e quelle di clienti senza operatore restano come sono: nessuna task perde l'operatore, quindi nessuna esce dall'export (su prod, il 28/09, non ce n'erano);
+  - niente righe in `task_event_log`, `task.updated_at` invariato (A6).
+- **validation**: nello stesso test in due fasi di T2.2 (`migrateUpTo`, seed, migrazione completa):
+  - ogni task con un cliente che ha un operatore ha l'operatore del cliente, attive e non attive;
+  - le task senza cliente e quelle di clienti senza operatore mantengono il loro operatore;
+  - numero di righe `task`, `task.updated_at` e `task_event_log` invariati.
+- **status**: Planned
+- **log**:
+- **files edited/created**:
+- **backlog_item_id**: n/a
+- **backlog_item_url**: n/a
+- **relation_mode**: n/a (D6)
+- **tdd_target**: "dopo la migrazione ogni task ha l'operatore del proprio cliente, e nessuna task perde l'operatore".
+- **review_mode**: cli
+
+#### T2.6: Esecuzione notturna del cron alert in prod
+- **depends_on**: [T1.5]
+- **location**: `.github/workflows/update-alert prod.yml`
+- **description**: deciso il 2026-09-29 (§15). In `on:` si toglie il commento allo `schedule`; `workflow_dispatch` resta per i lanci a mano:
+  ```yaml
+  on:
+    workflow_dispatch:
+    schedule:
+      # Ogni giorno alle 02:17 UTC: 04:17 in Italia d'estate, 03:17 d'inverno
+      - cron: "17 2 * * *"
+  ```
+  - **Perché GitHub Actions e non il cron di Vercel:** il workflow esegue `alert.js`, che richiama finché `remaining` è 0 e ripete le chiamate che non arrivano in fondo (T1.5). Il job diventa rosso se un alert fallisce, e il messaggio Telegram parte solo con il job verde. Il cron di Vercel (`crons` in `vercel.json`) invece:
+    - manda il segreto in chiaro (`Bearer <CRON_SECRET>`), che `authCheck` rifiuta perché vuole il JWT firmato da `alert.js`;
+    - fa una sola chiamata e non la ripete se fallisce;
+    - vede riuscita ogni chiamata, perché la route risponde 200 anche quando fallisce: gli errori restano solo nei log e in Sentry.
+  - **Orario:** 02:17 UTC. A quell'ora la data è la stessa in UTC, dove la route calcola il limite degli alert, e in Italia. Il minuto 17 evita l'inizio dell'ora, quando GitHub è più carico e ritarda gli `schedule`. Il commento di oggi ("00:00 UTC (01:00 CET)" per `0 2 * * *`) era sbagliato.
+  - **Quando parte:** GitHub usa il file su `main`, quindi lo `schedule` è attivo da quando PR2 arriva su `main`. Il runbook G2 disattiva il workflow all'inizio della sessione, prima che PR2 arrivi su `main`, e lo riattiva al passo 8, dopo la migrazione: la prima esecuzione resta quella a mano (T2.4).
+  - Restano manuali `update-alert.yml` (sviluppo, fallisce sempre: vedi il tech-debt) e i workflow di prod fuori da questa spec (`priority-prod.yml`, `delete-storage prod.yml`, `update-customer-practices prod.yml`).
+- **validation**: nessun test automatico, è configurazione. Nel runbook G2 (T2.4, passo 9): la mattina dopo la sessione, su GitHub Actions c'è un'esecuzione di Update Alerts PROD con evento `schedule`, verde, con l'ultimo JSON a `remaining: 0`, e il messaggio Telegram è arrivato.
+- **status**: Planned
+- **log**:
+- **files edited/created**:
+- **backlog_item_id**: n/a
+- **backlog_item_url**: n/a
+- **relation_mode**: n/a (D6)
+- **tdd_target**: n/a (configurazione)
+- **review_mode**: cli
+
 ### PR3 — Regole del contatto sul server, usate da Clienti
 
 Branch suggerito: `contatti/pr3-regole-server`. Da qui valgono AC73, D2 e P4.
 
 **Forma comune delle mutation di PR3 (D9):**
 - ogni mutation è un servizio Effect in `src/server/services/contact/`, che fa tutto in un solo `transaction` (T1.4) e fallisce con gli errori tipizzati di T3.2;
-- ogni transazione rispetta l'ordine dei lock `customers` → `task` → `alert` (T1.4);
+- ogni transazione rispetta la regola dei lock di T1.4: prima `lockCustomer`, poi solo le righe di quel cliente;
 - la procedura chiama `runTrpc(program, contactErrorToTrpc)`;
 - le regole vengono dal modulo di dominio puro di T3.1.
 
@@ -1492,7 +1602,7 @@ Branch suggerito: `contatti/pr6-clienti`. Il merge si fa solo dopo G5.
 | 2 | T1.2, T1.3, T1.4, T2.1, T5.3 | T1.1 (T3.1 per T5.3) |
 | 3 | T1.5, T1.6, T2.2, T3.2 | Wave 2 (T1.4 per T3.2) |
 | 4 | T1.7 · T2.3 · T3.9 · T4.2 → **merge PR4** quando serve · T5.1, T5.2 | Wave 3 |
-| 5 | T1.8 → **merge PR1** · T3.3–T3.8, dalla testa di PR1 | Wave 4 (T1.7) |
+| 5 | T1.8 → **merge PR1** · T2.5, T2.6 · T3.3–T3.8, dalla testa di PR1 | Wave 4 (T1.7; T2.3 per T2.5) |
 | 6 | T2.4 (**G1 → G2**, manuale) · T3.10, T3.11, T3.12 | PR1 in prod · T3.3–T3.9 |
 | 7 | T3.13 → T3.14 → **merge PR3** (G3) | Wave 6 |
 | 8 | T5.4 → T5.5, T5.6 → T5.7, T5.8 → T5.9 → T5.10, T5.11 → T5.12 → T5.13 → **merge PR5** (G4) | PR3 e PR4 in main, G2 fatto |
@@ -1556,8 +1666,8 @@ Il lavoro di più PR può procedere in parallelo sui branch, ma i **merge** segu
 
 | Gate | Quando | Condizione | Chi |
 |---|---|---|---|
-| G1 | Dopo il deploy di PR1 | Almeno un'esecuzione del cron alert in prod con il JSON `failed: 0` nel log di GitHub Actions (esecuzione verde) nessuna riga di livello error nei log Vercel di `/api/cron/alert` e nessuna issue nuova in Sentry da quel route (runbook T1.8); assegnazione massiva usata senza problemi | Persona |
-| G2 | Prima di applicare PR2 | Estrazione eseguita in sola lettura, condivisa con gli admin e approvata esplicitamente. `pnpm db:migrate:prod` lanciato a mano fuori orario. Query dei duplicati = 0. Operatori con alert chiusi dal sistema avvisati | Persona |
+| G1 | Dopo il deploy di PR1 | Rivisto il 2026-09-28 (il cron di prod non gira): operatore di sistema creato in prod; PR1 in prod per almeno due giorni lavorativi di uso normale (riapertura, massiva, "Assegna Clienti") senza righe di livello error nei log Vercel né issue nuove in Sentry. Il cron alert in prod non si lancia prima di G2 (runbook T1.8) | Persona |
+| G2 | Prima di applicare PR2 | Estrazione eseguita in sola lettura, condivisa con gli admin e approvata esplicitamente. Poi un'unica sessione fuori orario: workflow Update Alerts PROD disattivato (T2.6), PR2 su `main`, estrazione rieseguita e uguale a quella approvata, `pnpm db:migrate:prod` lanciato a mano, query dei duplicati = 0 e nessuna task da riallineare, workflow riattivato e prima esecuzione del cron lanciata a mano, che chiude gli alert scaduti, verde e controllata su GitHub Actions, Vercel e Sentry. A fine sessione operatori e cliente (riallineamento) avvisati. La notte dopo, la prima esecuzione pianificata è verde (T2.4) | Persona |
 | G3 | Prima del deploy di PR3 | Operatori e admin informati con il testo di T3.14 | Persona |
 | G4 | Prima del deploy di PR5 | G2 fatto (AC69); `EXPLAIN ANALYZE` ≤ 500 ms; guida T5.11 rivista; PR3 in prod da poco (per il vuoto di riassegnazione singola); Contatti annunciato agli operatori | Persona |
 | G5 | Prima del merge di PR6 | Checklist scritta di un admin: giorni d'uso di Contatti, nessun blocco segnalato (A2) | Persona |
@@ -1566,7 +1676,7 @@ Il lavoro di più PR può procedere in parallelo sui branch, ma i **merge** segu
 - PR1: revert del merge **solo prima di G2**. Dopo che l'indice unico è in prod, il revert riporterebbe il "prima inserisci, poi disattiva" nel cron e nella massiva: l'indice li rifiuterebbe (`23505`) e il vecchio `try/catch` unico fermerebbe l'intero cron. Dopo G2 PR1 si corregge solo in avanti, oppure si fa prima `DROP INDEX task_customer_active_uidx`.
 - PR4–PR6: revert del merge.
 - PR3: il revert ripristina le mutation rimosse ma lascia i dati coerenti, perché l'indice di PR2 resta in vigore.
-- PR2: `DROP INDEX task_customer_active_uidx` riapre la possibilità di duplicati. La pulizia si annulla riattivando gli id dell'estrazione, perché nessuna riga è stata cancellata.
+- PR2: `DROP INDEX task_customer_active_uidx` riapre la possibilità di duplicati. La pulizia si annulla riattivando gli id dell'estrazione, perché nessuna riga è stata cancellata. Il riallineamento di T2.5 non si annulla: gli operatori di prima erano già persi dall'update del 28/09. Lo `schedule` di T2.6 si ferma disattivando il workflow su GitHub, senza revert.
 
 ## 13. Rischi e mitigazioni
 
@@ -1579,9 +1689,12 @@ Il lavoro di più PR può procedere in parallelo sui branch, ma i **merge** segu
 | `trpc.ts` carica auth, Supabase ed env all'import, e i test non partono | `vi.mock` dei moduli in T1.1; `SKIP_ENV_VALIDATION=true` nell'env di vitest |
 | Operatori bloccati dalla nuova regola dei permessi | D2 è più permissiva di AC49 stretto; sola lettura con motivo prima del clic (P5); annuncio G3 |
 | D2 aggirata assegnandosi clienti o via massiva | P4 chiude `assignToYourself` e il form; P7 porta le massive ad `adminProcedure` e rimuove `customer.updateCustomer` |
-| Il cron alert in prod non gira dove si pensa, e G1 non dimostra nulla | Finding 14: G1 comincia accertando lo scheduler. Gli errori arrivano su `console.error` (`ServerLive`) e su Sentry (`ErrorReporter`, P9), lo script stampa il JSON ed esce con 1 se `failed > 0` (T1.5), il runbook dice dove guardare (T1.8) |
+| Il cron alert in prod non gira dove si pensa, e G1 non dimostra nulla | Verificato il 2026-09-28: non gira. La prova del cron in prod si sposta dopo la migrazione di PR2 (T2.4, passo 8). Finding 14: G1 comincia accertando lo scheduler. Gli errori arrivano su `console.error` (`ServerLive`) e su Sentry (`ErrorReporter`, P9), lo script stampa il JSON ed esce con 1 se `failed > 0` (T1.5), il runbook dice dove guardare (T1.8) |
 | Revert di PR1 dopo G2 → cron fermo | Regola di rollback in §12 |
-| Deadlock tra transazioni concorrenti | Ordine unico dei lock `customers` → `task` → `alert`, con `lockCustomer` all'inizio di ogni transazione che scrive (T1.4, T1.5, T1.6, T3.2). PGlite non può rilevarli: la regola si controlla in review |
+| Lo `schedule` di T2.6 fa partire il cron prima della migrazione di PR2 | Merge e migrazione nella stessa sessione; workflow disattivato prima che PR2 arrivi su `main` e riattivato solo al passo 8, dopo la migrazione. Se la sessione si ferma resta disattivato (T2.4) |
+| L'esecuzione notturna non parte: GitHub ritarda o salta gli `schedule` quando è carico, e in un repo pubblico, come questo, li disattiva dopo 60 giorni senza attività. Gli alert del giorno, ripresi il giorno dopo, perdono il followup | Il messaggio Telegram di ogni notte fa da segnale: se manca, rilanciare a mano Update Alerts PROD in giornata e, se il workflow è stato disattivato, riattivarlo. Orario lontano dall'inizio dell'ora (T2.6) |
+| Tra G2 e PR3, `updateTask` e `updateTaskFromDashboard` riattivano un contatto già sostituito: scrivono `isActive` preso dal client, senza lock (preesistente, review di PR1 F3). Con l'indice unico la riga risponde 500; se succede a metà di un cron o di una massiva, fallisce quell'alert o quel cliente | Finestra G2 → PR3 breve; passo 9 del runbook G2; T3.13 rimuove le due mutation |
+| Deadlock tra transazioni concorrenti | Regola dei lock di T1.4: ogni `transaction` che scrive task o alert chiama per prima `lockCustomer`, poi tocca solo le righe di quel cliente (T1.5, T1.6, T1.7, T3.2). PGlite non può rilevarli: la regola si controlla in review |
 | Tra PR3 e PR5 un admin non può riassegnare un singolo contatto con esito | Rilasci ravvicinati (G4); nel frattempo resta l'assegnazione massiva |
 | Lock della tabella durante `CREATE UNIQUE INDEX` | Migrazione fuori orario (G2); `task` di dimensioni contenute |
 | La pulizia sceglie il contatto "sbagliato" | Stesso criterio già usato dall'interfaccia (`getActiveTask`); elenco approvato prima; nessuna cancellazione |
@@ -1634,6 +1747,12 @@ Il lavoro di più PR può procedere in parallelo sui branch, ma i **merge** segu
 ## 15. Domande aperte
 
 **Da chiarire prima di G1 (non blocca lo sviluppo di PR1):** dove gira in produzione il cron alert? Nel repo lo `schedule` di `update-alert prod.yml` è commentato e `vercel.json` non ha cron (finding 14). Se oggi non gira in modo automatico, G1 si fa con un'esecuzione lanciata a mano.
+
+**Risposta (2026-09-28):** non gira. Il 28/09 c'erano 1.853 alert scaduti aperti, da giugno, e l'operatore di sistema in prod non esiste. G1 e T2.4 sono stati rivisti di conseguenza.
+
+**Da decidere prima di G2:** chi lancia il cron alert ogni notte dopo la prima esecuzione del passo 8 di T2.4? Senza un'esecuzione automatica gli alert tornano ad accumularsi e i followup non nascono. Un'opzione è riattivare lo `schedule` di `update-alert prod.yml`.
+
+**Risposta (2026-09-29):** lo `schedule` di `update-alert prod.yml`, riattivato in PR2 (T2.6). Il cron di Vercel è scartato: rifiutato da `authCheck`, una sola chiamata senza ripetizioni, nessun segnale quando fallisce (dettagli in T2.6).
 
 Tre punti restano assunzioni esplicite, che Omar può ribaltare prima della PR interessata:
 
