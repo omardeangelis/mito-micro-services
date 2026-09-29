@@ -671,9 +671,9 @@ Branch suggerito: `contatti/pr2-vincolo-db`. Contiene migrazioni, uno script di 
   - **Quando parte:** GitHub usa il file su `main`, quindi lo `schedule` è attivo da quando PR2 arriva su `main`. Il runbook G2 disattiva il workflow all'inizio della sessione, prima che PR2 arrivi su `main`, e lo riattiva al passo 8, dopo la migrazione: la prima esecuzione resta quella a mano (T2.4).
   - Restano manuali `update-alert.yml` (sviluppo, fallisce sempre: vedi il tech-debt) e i workflow di prod fuori da questa spec (`priority-prod.yml`, `delete-storage prod.yml`, `update-customer-practices prod.yml`).
 - **validation**: nessun test automatico, è configurazione. Nel runbook G2 (T2.4, passo 9): la mattina dopo la sessione, su GitHub Actions c'è un'esecuzione di Update Alerts PROD con evento `schedule`, verde, con l'ultimo JSON a `remaining: 0`, e il messaggio Telegram è arrivato.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done (la verifica è il passo 9 del runbook G2)
+- **log**: 2026-09-29 — `schedule` riattivato con `cron: "17 2 * * *"` e il commento corretto; `workflow_dispatch` resta. Il file si legge come YAML valido (`on` = `workflow_dispatch` + `schedule`). Nessun test automatico: è configurazione. Nome del job (`delete-supabase-storage`) e dello step invariati, fuori perimetro.
+- **files edited/created**: `.github/workflows/update-alert prod.yml`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a (D6)
