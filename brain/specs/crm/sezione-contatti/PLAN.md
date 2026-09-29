@@ -587,14 +587,14 @@ Branch suggerito: `contatti/pr2-vincolo-db`. Contiene migrazioni, uno script di 
   1. verificare G1 (§12) e le decisioni aperte:
      - operatore di sistema creato, e PR1 in prod da almeno due giorni lavorativi senza errori;
      - la guardia di "Assegna Clienti" è nel codice in produzione. Senza, un "Assegna Clienti" annullerebbe il riallineamento (T2.5), e il cron di prima fallirebbe sull'indice:
-       - `gh run list --workflow "Deploy Platform to Production" -L 1 --json status,conclusion,headSha`: l'ultima esecuzione è `completed` e `success`. Se è fallita o in corso, fermarsi: non si ripiega su un'esecuzione più vecchia;
-       - in Vercel la deployment di produzione attuale è quella di quell'esecuzione (commit `headSha`), senza rollback o promote successivi;
-       - `git fetch && git merge-base --is-ancestor 7145af5 <headSha> && echo OK` stampa `OK`, e `git show "<headSha>:src/server/api/routers/customer/PUT/index.ts" | grep -nF "if (taskIds.length > 0)"` trova la riga. Il pattern più corto `taskIds.length > 0` c'è anche nel codice senza guardia: non basta;
+       - `gh run list --workflow "Deploy Platform to Production" -L 1 --json databaseId,status,conclusion,headSha`: l'ultima esecuzione è `completed` e `success`. Se è fallita o in corso, fermarsi: non si ripiega su un'esecuzione più vecchia;
+       - `git fetch`, poi `git merge-base --is-ancestor 3ebd720 <headSha> && echo OK` stampa `OK` (`3ebd720` è il merge di PR1, compresa la guardia `7145af5`), e `git show "<headSha>:src/server/api/routers/customer/PUT/index.ts" | grep -nF "if (taskIds.length > 0)"` trova la riga. Il pattern più corto `taskIds.length > 0` c'è anche nel codice senza guardia: non basta;
+       - la deployment in produzione è quella di questa esecuzione. Il workflow fa `git commit --amend` prima del deploy, quindi Vercel mostra un altro SHA: la deployment si riconosce dall'URL. `gh run view <databaseId> --log | grep -E "Production +https"` dà `https://mito-micro-services-<id>-spatalos-projects.vercel.app`. In Vercel, Deployments, quella deployment è la "Current" di produzione, senza Instant Rollback attivo. `https://mito-deutsche.vercel.app`, il dominio che `alert.js` chiama in prod, e `https://mito-micro-services.vercel.app` sono domini di questo progetto e servono quella deployment;
        - in Vercel, il Build Command del progetto è quello di default (`next build`), senza migrazioni;
      - PR2 è su `dev`, con la CI verde;
      - decisione su `isDueToday` in ora legale (§13, tech-debt): corretto prima della sessione, oppure accettato con l'avviso del passo 8;
   2. in prod, in sola lettura (SQL editor di Supabase, oppure una transazione `READ ONLY`):
-     - fuso della sessione: `SHOW TIME ZONE` → `Europe/Rome`. Il taglio delle date del cron e quanto dice il runbook sull'ora legale valgono con questo fuso;
+     - fuso del database: `SELECT setting, source FROM pg_settings WHERE name = 'TimeZone'` → `Europe/Rome`, con `source` diverso da `client` (un client esterno può imporre il proprio fuso). Il taglio delle date del cron e quanto dice il runbook sull'ora legale valgono con questo fuso;
      - operatore di sistema: `SELECT id FROM "mito-deutsche_operator" WHERE user_id = 'system'` → una riga;
      - migrazioni:
        - `SELECT max(created_at) FROM drizzle.__drizzle_migrations` → `1788372880766`, il `when` di `20260902181440_nebulous_susan_delgado` (`LEGACY_SCHEMA_TAG`);
@@ -607,6 +607,7 @@ Branch suggerito: `contatti/pr2-vincolo-db`. Contiene migrazioni, uno script di 
        - `SELECT * FROM pg_rules WHERE tablename IN ('mito-deutsche_task', 'mito-deutsche_alert', 'mito-deutsche_customers')` → 0 righe;
        - se `SELECT 1 FROM pg_extension WHERE extname = 'pg_cron'` restituisce una riga, `SELECT jobname, command FROM cron.job` non ha job su queste tabelle;
      - variabile del repository `ALERT_CRON_ENABLED` assente: `gh variable list` non la mostra. Senza, lo `schedule` di T2.6 salta il job, anche con PR2 su `main`. Se c'è, Omar la cancella subito (`gh variable delete ALERT_CRON_ENABLED`) e si capisce chi l'ha impostata;
+     - nessuna esecuzione pianificata del cron è girata: `gh run list --workflow "Update Alerts PROD" --event schedule --json conclusion,createdAt` non mostra esecuzioni con `conclusion` diverso da `skipped`. Se ce n'è una, il cron ha chiuso alert prima della pulizia: fermarsi e rivedere con gli admin;
   3. eseguire `contatti-cleanup-preview.sql` in prod, in sola lettura: nell'SQL editor di Supabase una `SELECT` alla volta.
      - Esportare le tre liste in CSV e annotare `SELECT now()` accanto all'export, con il fuso: è l'"ora dell'export" del passo 4.
      - Condividerle con gli admin e **ottenere il loro via libera esplicito**. (a) e (b) sono elenchi da approvare. (c) mostra l'effetto di una regola (ogni task all'operatore del cliente), e si approva la regola.
@@ -623,9 +624,9 @@ Branch suggerito: `contatti/pr2-vincolo-db`. Contiene migrazioni, uno script di 
        - (c) è informativa: i totali si annotano e cambiano con le riassegnazioni della giornata;
        - se (a) è cambiata, o una delle due query di (b) restituisce righe, la sessione finisce qui. Nulla è cambiato: si condividono le differenze con gli admin. Le righe nuove di (b) che passano il controllo si elencano nell'avviso del passo 8;
      - annotare l'ora e l'impronta di `task.updated_at`: `SELECT now(), md5(string_agg(id || ':' || updated_at::text, ',' ORDER BY id)) FROM "mito-deutsche_task"`;
-     - nessuna transazione aperta dell'app: `SELECT pid, state, xact_start, left(query, 80) FROM pg_stat_activity WHERE backend_type = 'client backend' AND state <> 'idle' AND pid <> pg_backend_pid()` non mostra transazioni iniziate da più di un minuto né `idle in transaction`. Se ce ne sono, aspettare qualche minuto e ripetere; se restano, fermarsi;
+     - nessuna transazione aperta dell'app: `SELECT pid, state, now() - xact_start AS durata, left(query, 80) FROM pg_stat_activity WHERE backend_type = 'client backend' AND state <> 'idle' AND pid <> pg_backend_pid()` non mostra `durata` oltre un minuto né `idle in transaction`. Se ce ne sono, aspettare qualche minuto e ripetere; se restano, fermarsi;
   5. merge e migrazione. **Da qui PR1 non si annulla più con un revert, solo con correzioni in avanti, e il riallineamento di T2.5 non si annulla** (§12).
-     - `git fetch && git merge-base --is-ancestor <sha del merge di PR2 su dev> origin/main && echo GIA_SU_MAIN || echo DA_FARE`. Con `GIA_SU_MAIN` si salta il merge. Con `DA_FARE`:
+     - `git fetch`, poi `git cat-file -e <sha del merge di PR2 su dev>^{commit} && echo SHA_OK` (lo SHA esiste), poi `git merge-base --is-ancestor <sha> origin/main && echo GIA_SU_MAIN || echo DA_FARE`. Con `GIA_SU_MAIN` si salta il merge. Con `DA_FARE`:
        - `git log --first-parent --oneline origin/main..origin/dev` mostra il merge di PR2, ed eventualmente commit che toccano solo `brain/`;
        - `git diff --stat origin/main...origin/dev -- . ':(exclude)brain'` elenca solo i file di PR2.
 
@@ -634,11 +635,11 @@ Branch suggerito: `contatti/pr2-vincolo-db`. Contiene migrazioni, uno script di 
        - `git status --porcelain` è vuoto;
        - `git rev-parse HEAD` è uguale a `git rev-parse origin/main`;
        - `src/server/db/migrations/meta/_journal.json` finisce con `20260929062408_contatti_operator_realign`;
-       - `grep -cE '^(SUPABASE_DB_CONNECTION_STRING|SUPABASE_MITO_PSW)=' .env` → 0, e `env | grep -cE '^(SUPABASE_DB_CONNECTION_STRING|SUPABASE_MITO_PSW)='` → 0: drizzle-kit carica `.env` e l'ambiente della shell prima di `.env.production.local`, che non li sovrascrive.
+       - `grep -cE '^\s*(export\s+)?(SUPABASE_DB_CONNECTION_STRING|SUPABASE_MITO_PSW)\s*[=:]' .env` → 0, e `env | grep -cE '^(SUPABASE_DB_CONNECTION_STRING|SUPABASE_MITO_PSW)='` → 0: drizzle-kit carica `.env` e l'ambiente della shell prima di `.env.production.local`, che non li sovrascrive.
 
        Non serve aspettare il deploy: PR2 non cambia il codice dell'app, e lo `schedule` è inerte senza la variabile;
-     - `pnpm db:migrate:prod` (Omar). Dura circa 10 s (7 s sul DB di sviluppo, con 66.000 task). Se dopo un minuto non ha finito, è in attesa di un lock:
-       - dall'SQL editor, `SELECT pid, pg_blocking_pids(pid) AS bloccata_da, xact_start, left(query, 80) FROM pg_stat_activity WHERE cardinality(pg_blocking_pids(pid)) > 0 ORDER BY xact_start`. La migrazione è la prima riga, quella con `xact_start` più vecchio: è bloccata da un'altra sessione, e il suo `pid` compare in `bloccata_da` delle query dell'app in coda dietro di lei. Il testo della query può cominciare con un commento;
+     - annotare `SELECT now()` ("ora della migrazione"), poi `pnpm db:migrate:prod` (Omar). Dura circa 10 s (7 s sul DB di sviluppo, con 66.000 task). Se dopo un minuto non ha finito, è in attesa di un lock:
+       - dall'SQL editor, `SELECT pid, pg_blocking_pids(pid) AS bloccata_da, usename, client_addr, application_name, xact_start, left(query, 80) FROM pg_stat_activity WHERE cardinality(pg_blocking_pids(pid)) > 0 ORDER BY xact_start`. La migrazione è la connessione aperta da `pnpm db:migrate:prod` dalla macchina di Omar (il suo `client_addr`, con l'utente di `.env.production.local`), non quelle dell'app. Il testo della query può cominciare con un commento;
        - `SELECT pg_cancel_backend(<pid della migrazione>)`: la transazione si annulla e il DB resta com'era. Vedi "Se la sessione si ferma";
   6. verificare in prod, in sola lettura. Due gruppi di controlli.
 
@@ -656,7 +657,8 @@ Branch suggerito: `contatti/pr2-vincolo-db`. Contiene migrazioni, uno script di 
 
      **Solo la stessa sera**, subito dopo la migrazione (in una ripresa non valgono più, perché l'uso dell'app li cambia):
      - i contatti "disattivato" di (a), dall'export del passo 4, non sono attivi: `SELECT id FROM "mito-deutsche_task" WHERE id IN (<disattivato>) AND is_active` → 0 righe. Se no, ci si ferma come sopra;
-     - (b) e (c) dell'estrazione sono vuote. Se no, ogni riga deve riguardare un cliente con una task creata dopo la migrazione (`created_at` dopo l'ora del passo 5), cioè l'uso dell'app. Altrimenti ci si ferma come sopra;
+     - (b) dell'estrazione è vuota. Se no, con i suoi `alert_id`: `SELECT a.id FROM "mito-deutsche_alert" a JOIN "mito-deutsche_task" t ON t.id = a.task_id WHERE a.id IN (<alert_id>) AND NOT EXISTS (SELECT 1 FROM "mito-deutsche_task" n WHERE n.customer_id = t.customer_id AND n.created_at > '<ora della migrazione>')` → 0 righe: sono contatti sostituiti dall'app dopo la migrazione. Altrimenti ci si ferma come sopra;
+     - (c) è informativa: dopo la migrazione cambia solo con le riassegnazioni dell'app;
      - impronta di `task.updated_at` uguale a quella del passo 4. Se è diversa, `SELECT count(*), min(updated_at), max(updated_at) FROM "mito-deutsche_task" WHERE updated_at >= '<ora del passo 4>'`:
        - poche righe, a orari diversi: è l'uso dell'app, e si va avanti;
        - decine di migliaia allo stesso istante: la migrazione ha toccato `updated_at`. Ci si ferma come sopra;
