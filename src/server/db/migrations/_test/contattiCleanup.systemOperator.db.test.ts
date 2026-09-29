@@ -17,6 +17,13 @@ beforeAll(async () => {
   await migrateUpTo(LEGACY_SCHEMA_TAG)
 })
 
+const appliedMigrations = async () => {
+  const { rows } = await testClient.query<{ count: number }>(
+    `SELECT count(*)::int AS "count" FROM drizzle.__drizzle_migrations`
+  )
+  return rows[0]!.count
+}
+
 describe("contatti_cleanup senza operatore di sistema", () => {
   it("con alert da chiudere la migrazione si ferma, e il database resta com'era", async () => {
     const customer = await createCustomer()
@@ -30,9 +37,7 @@ describe("contatti_cleanup senza operatore di sistema", () => {
       taskId: inactive.id,
       deadline: new Date("2026-09-20T09:00:00.000Z"),
     })
-    const migrationsBefore = await testClient.query(
-      `SELECT count(*)::int AS "count" FROM drizzle.__drizzle_migrations`
-    )
+    const migrationsBefore = await appliedMigrations()
 
     await expect(migrateUpTo()).rejects.toThrow(/system operator/)
 
@@ -41,10 +46,6 @@ describe("contatti_cleanup senza operatore di sistema", () => {
     expect(row).toMatchObject({ isResolved: false, resolvedBy: null })
     // The migrator runs every pending migration in one transaction: none of
     // PR2's is recorded
-    expect(
-      await testClient.query(
-        `SELECT count(*)::int AS "count" FROM drizzle.__drizzle_migrations`
-      )
-    ).toMatchObject({ rows: migrationsBefore.rows })
+    expect(await appliedMigrations()).toBe(migrationsBefore)
   })
 })

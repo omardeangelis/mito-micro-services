@@ -1,32 +1,16 @@
-import fs from "fs"
-import path from "path"
 import { beforeAll, beforeEach, describe, expect, it } from "vitest"
-import {
-  LEGACY_SCHEMA_TAG,
-  migrateUpTo,
-  queryReadOnly,
-  resetDb,
-} from "@/test/db"
+import { LEGACY_SCHEMA_TAG, migrateUpTo, resetDb } from "@/test/db"
 import {
   createAlert,
   createCustomer,
   createOperator,
   createTask,
 } from "@/test/factories"
+import { runCleanupPreview } from "./runCleanupPreview"
 
 // The list the admins approve before the PR2 migration. The data it lists
 // (more than one active contact per customer) only fits the schema before the
 // unique index.
-
-const PREVIEW_FILE = path.resolve(__dirname, "../contatti-cleanup-preview.sql")
-
-/** Runs the preview file in a read-only transaction: a write would fail it. */
-async function runPreview() {
-  const [duplicates, alerts, realign] = await queryReadOnly(
-    fs.readFileSync(PREVIEW_FILE, "utf8")
-  )
-  return { duplicates: duplicates!, alerts: alerts!, realign: realign! }
-}
 
 const at = (day: string) => new Date(`2026-09-${day}T09:00:00.000Z`)
 
@@ -77,7 +61,7 @@ describe("contatti-cleanup-preview.sql", () => {
     await createTask({ customerId: null })
     await createTask({ customerId: null })
 
-    const { duplicates } = await runPreview()
+    const { duplicates } = await runCleanupPreview()
 
     expect(new Set(duplicates.map((row) => row.cliente_id))).toEqual(
       new Set([moreRecent.id, tie.id])
@@ -152,7 +136,7 @@ describe("contatti-cleanup-preview.sql", () => {
       deadline: at("12"),
     })
 
-    const { alerts } = await runPreview()
+    const { alerts } = await runCleanupPreview()
 
     expect(alerts).toEqual([
       expect.objectContaining({
@@ -222,7 +206,7 @@ describe("contatti-cleanup-preview.sql", () => {
     await createTask({ customerId: unassigned.id, operatorId: previous.id })
     await createTask({ customerId: null, operatorId: previous.id })
 
-    const { realign } = await runPreview()
+    const { realign } = await runCleanupPreview()
 
     expect(realign).toHaveLength(3)
     expect(realign).toEqual(

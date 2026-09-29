@@ -1,13 +1,11 @@
-import fs from "fs"
-import path from "path"
 import { beforeAll, describe, expect, it } from "vitest"
 import { asc } from "drizzle-orm"
 import { alert, task } from "@/server/db/schema/task"
 import { taskEventLog } from "@/server/db/schema/taskEventLog"
 import {
+  activeTasksOf,
   LEGACY_SCHEMA_TAG,
   migrateUpTo,
-  queryReadOnly,
   testDb,
 } from "@/test/db"
 import {
@@ -17,6 +15,7 @@ import {
   createSystemOperator,
   createTask,
 } from "@/test/factories"
+import { runCleanupPreview } from "../../scripts/_test/runCleanupPreview"
 
 // The PR2 migrations on a database already in use, as `db:migrate:prod` will
 // run them: migrated up to the last migration before PR2, seeded with the data
@@ -170,22 +169,9 @@ const allAlerts = () => testDb.select().from(alert).orderBy(asc(alert.id))
 const allEvents = () =>
   testDb.select().from(taskEventLog).orderBy(asc(taskEventLog.id))
 
-const PREVIEW_FILE = path.resolve(
-  __dirname,
-  "../../scripts/contatti-cleanup-preview.sql"
-)
-
 let seed: Awaited<ReturnType<typeof seedDirtyData>>
 /** What the preview listed right before the migration. */
-let preview: {
-  alerts: { alert_id: number }[]
-  realign: {
-    operatore_attuale_id: number | null
-    operatore_cliente_id: number
-    attive: number
-    non_attive: number
-  }[]
-}
+let preview: Awaited<ReturnType<typeof runCleanupPreview>>
 let before: {
   tasks: Awaited<ReturnType<typeof allTasks>>
   alerts: Awaited<ReturnType<typeof allAlerts>>
@@ -200,32 +186,18 @@ beforeAll(async () => {
     alerts: await allAlerts(),
     events: await allEvents(),
   }
-  const [, alerts, realign] = await queryReadOnly(
-    fs.readFileSync(PREVIEW_FILE, "utf8")
-  )
-  preview = {
-    alerts: alerts as typeof preview.alerts,
-    realign: realign as typeof preview.realign,
-  }
+  preview = await runCleanupPreview()
   await migrateUpTo()
 })
 
 describe("contatti_cleanup", () => {
   it("dopo la migrazione nessun cliente ha più di un contatto attivo e nessuna riga è stata cancellata", async () => {
-    const tasks = await allTasks()
-
-    const activeByCustomer = new Map<string, number>()
-    for (const { customerId, isActive } of tasks) {
-      if (!customerId || !isActive) continue
-      activeByCustomer.set(
-        customerId,
-        (activeByCustomer.get(customerId) ?? 0) + 1
-      )
+    for (const customer of Object.values(seed.customers)) {
+      expect(await activeTasksOf(customer.id)).toHaveLength(1)
     }
-    expect([...activeByCustomer.values()].every((count) => count === 1)).toBe(
-      true
+    expect((await allTasks()).map(({ id }) => id)).toEqual(
+      before.tasks.map(({ id }) => id)
     )
-    expect(tasks.map(({ id }) => id)).toEqual(before.tasks.map(({ id }) => id))
     expect((await allAlerts()).map(({ id }) => id)).toEqual(
       before.alerts.map(({ id }) => id)
     )
@@ -291,14 +263,14 @@ describe("contatti_cleanup", () => {
 
     expect(closed).toHaveLength(3)
     expect(closed).toEqual(
-      preview.alerts.map((row) => row.alert_id).sort((a, b) => a - b)
+      preview.alerts.map((row) => row.alert_id as number).sort((a, b) => a - b)
     )
   })
 })
 
 describe("contatti_operator_realign", () => {
   it("dopo la migrazione ogni task ha l'operatore del proprio cliente, e nessuna task perde l'operatore", async () => {
-    const { operators, customers, tasks } = seed
+    const { operators, tasks } = seed
     const after = new Map((await allTasks()).map((row) => [row.id, row]))
 
     // Active and inactive, whatever operator they had
@@ -321,46 +293,29 @@ describe("contatti_operator_realign", () => {
     ]) {
       expect(after.get(kept.id)!.operatorId).toBe(operators.previous.id)
     }
-    expect(customers.unassigned.operatorId).toBeNull()
   })
 
   it("sposta esattamente le task che l'estrazione conta in (c)", async () => {
-    const counts = new Map<string, (typeof preview.realign)[number]>()
+    // Moved tasks by (operator before, operator after), active and not
+    const moved: Record<string, { attive: number; non_attive: number }> = {}
     for (const row of await allTasks()) {
       const old = before.tasks.find(({ id }) => id === row.id)!
       if (old.operatorId === row.operatorId) continue
-      const key = `${old.operatorId}->${row.operatorId}`
-      const count = counts.get(key) ?? {
-        operatore_attuale_id: old.operatorId,
-        operatore_cliente_id: row.operatorId!,
+      const count = (moved[`${old.operatorId}->${row.operatorId}`] ??= {
         attive: 0,
         non_attive: 0,
-      }
+      })
       if (row.isActive) count.attive++
       else count.non_attive++
-      counts.set(key, count)
     }
-    const pick = ({
-      operatore_attuale_id,
-      operatore_cliente_id,
-      attive,
-      non_attive,
-    }: (typeof preview.realign)[number]) => ({
-      operatore_attuale_id,
-      operatore_cliente_id,
-      attive,
-      non_attive,
-    })
-    const byPair = (
-      a: (typeof preview.realign)[number],
-      b: (typeof preview.realign)[number]
-    ) =>
-      (a.operatore_attuale_id ?? 0) - (b.operatore_attuale_id ?? 0) ||
-      a.operatore_cliente_id - b.operatore_cliente_id
-
-    expect(counts.size).toBeGreaterThan(1)
-    expect([...counts.values()].sort(byPair)).toEqual(
-      preview.realign.map(pick).sort(byPair)
+    const listed = Object.fromEntries(
+      preview.realign.map((row) => [
+        `${String(row.operatore_attuale_id)}->${String(row.operatore_cliente_id)}`,
+        { attive: row.attive, non_attive: row.non_attive },
+      ])
     )
+
+    expect(Object.keys(moved).length).toBeGreaterThan(1)
+    expect(moved).toEqual(listed)
   })
 })

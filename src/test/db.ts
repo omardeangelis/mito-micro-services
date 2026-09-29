@@ -35,19 +35,23 @@ const indexOfTag = (tag: string) => {
 /**
  * Schema the production database got from `drizzle-kit push`, which no
  * migration creates. The snapshots already include it, so `db:generate` never
- * emits it. Each piece is applied after the migration it came with.
+ * emits it. Each piece is applied after the migration it came with, and does
+ * nothing if already there.
  */
 const PUSHED_SCHEMA: { after: string | null; sql: string }[] = [
   {
     // The first migration creates the task table with this type, which the
     // third one creates only when it doesn't exist yet
     after: null,
-    sql: `CREATE TYPE "public"."task_status" AS ENUM('chiamare', 'non interessato', 'app.to', 'caricato', 'richiamare', 'erogata', 'nessuno', 'followup')`,
+    sql: `DO $$ BEGIN
+      CREATE TYPE "public"."task_status" AS ENUM('chiamare', 'non interessato', 'app.to', 'caricato', 'richiamare', 'erogata', 'nessuno', 'followup');
+    EXCEPTION WHEN duplicate_object THEN NULL;
+    END $$`,
   },
   {
     // In the snapshots since this migration, in none of the SQL files
     after: "20260615235953_brown_madelyne_pryor",
-    sql: `ALTER TABLE "mito-deutsche_alert" ADD COLUMN "is_resolved" boolean DEFAULT false NOT NULL`,
+    sql: `ALTER TABLE "mito-deutsche_alert" ADD COLUMN IF NOT EXISTS "is_resolved" boolean DEFAULT false NOT NULL`,
   },
 ]
 
@@ -69,11 +73,6 @@ function migrationsFolderUpTo(last: number) {
   return folder
 }
 
-// What the test database already has: the last journal entry applied, and how
-// many pieces of PUSHED_SCHEMA
-let appliedEntry = -1
-let appliedPieces = 0
-
 /**
  * Applies the repo migrations to the test database, together with the pushed
  * schema production has: all of them, or only up to `tag`. Call it once per
@@ -88,23 +87,24 @@ export async function migrateUpTo(tag?: string) {
   // development database runs in Europe/Rome
   await testClient.exec(`SET TIME ZONE 'UTC'`)
 
-  // The migrator applies the pending migrations in one transaction
+  // The migrator skips the migrations already applied, and applies the
+  // pending ones in one transaction
+  let applied = -1
   const migrateTo = async (index: number) => {
-    if (index <= appliedEntry) return
+    if (index <= applied) return
     const folder = migrationsFolderUpTo(index)
     try {
       await migrate(testDb, { migrationsFolder: folder })
     } finally {
       fs.rmSync(folder, { recursive: true })
     }
-    appliedEntry = index
+    applied = index
   }
-  for (const piece of PUSHED_SCHEMA.slice(appliedPieces)) {
+  for (const piece of PUSHED_SCHEMA) {
     const after = piece.after ? indexOfTag(piece.after) : -1
     if (after > last) break
     await migrateTo(after)
     await testClient.exec(piece.sql)
-    appliedPieces++
   }
   await migrateTo(last)
 }

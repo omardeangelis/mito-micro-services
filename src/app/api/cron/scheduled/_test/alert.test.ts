@@ -154,7 +154,7 @@ describe("alert.js", () => {
     const fetch = await runScript(
       json({ found: 2, processed: 1, skipped: 0, failed: 1, remaining: 0 }),
       // The failed alert is still open: the retry takes it again
-      json({ found: 1, processed: 1, skipped: 0, failed: 0, remaining: 0 })
+      json(done)
     )
 
     expect(fetch).toHaveBeenCalledTimes(2)
@@ -167,7 +167,7 @@ describe("alert.js", () => {
     const fetch = await runScript(
       json({ found: 4, processed: 2, skipped: 0, failed: 2, remaining: 0 }),
       json({ found: 2, processed: 1, skipped: 0, failed: 1, remaining: 0 }),
-      json({ found: 1, processed: 1, skipped: 0, failed: 0, remaining: 0 })
+      json(done)
     )
 
     expect(fetch).toHaveBeenCalledTimes(3)

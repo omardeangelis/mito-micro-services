@@ -91,6 +91,21 @@ updated: 2026-09-29
 
 - **Run 2 — T2.7, colore del job del cron** (deciso da Omar il 2026-09-29). Rosso solo se alla fine restano alert falliti. In PR1 bastava una chiamata qualsiasi con `failed > 0`: ora un fallimento recuperato da una chiamata successiva lascia il job verde, come un 504 recuperato. Resta visibile nel JSON di quella chiamata e in Sentry. Cambia un test di PR1 (F11) e il controllo del passo 8 del runbook G2.
 
+- **Run 2 — `/simplify` dopo T2.7 (4 revisori: riuso, semplificazione, efficienza, altitudine).** Applicati, solo nei test e nell'harness:
+  - un solo `runCleanupPreview()` per i due file che eseguono l'estrazione;
+  - `rejects.toMatchObject({ code: "23505" })` al posto di un helper fatto a mano;
+  - tolto il test di `replaceActiveContact` in `activeContactIndex.db.test.ts`, doppione di `activeContact.db.test.ts`, che gira già con l'indice;
+  - `activeTasksOf` per contare i contatti attivi e un confronto per chiave nel test di (c);
+  - tolta un'asserzione sul seed;
+  - `json(done)` in `alert.test.ts`;
+  - `migrateUpTo` senza stato del modulo: i due pezzi di `PUSHED_SCHEMA` sono idempotenti, e il migrator salta le migrazioni già applicate.
+- **`/simplify`, rilievi non applicati:**
+  - guardia e `UPDATE` degli alert in un solo blocco `DO`: l'SQL di `contatti_cleanup` è già stato applicato al DB di sviluppo, e quello di prod deve restare identico;
+  - riallineamento prima degli indici, che risparmierebbe 1–3 s di manutenzione degli indici: l'ordine pulizia < indici < riallineamento l'ha fissato Omar;
+  - togliere `task_operator_active_idx` e `task_priority_active_idx`, che nessuna query di oggi usa: servono a `getContacts` di PR5 (contatti attivi, filtro per operatore, ordine per priorità);
+  - una sola regola di progresso in `alert.js` (`failed + remaining` che non scende): cambierebbe il percorso con `remaining > 0` e un test di PR1;
+  - creare l'operatore di sistema nella migrazione: cambia G1 (`create:system-operator`, da Omar).
+
 ## Surprises and Decisions
 
 - **Le migrazioni del repo non si applicano su un Postgres vuoto.** `20240926195125_lucky_roughhouse` crea `mito-deutsche_task` con il tipo `task_status`, che nasce solo in `20260619152227_same_hemingway`. Il DB di produzione aveva già il tipo (creato con `db:push` prima delle migrazioni), e la terza migrazione lo salta se esiste. L'harness crea il tipo prima di migrare; le migrazioni non si toccano (già applicate in prod). Vale anche per chi volesse creare un DB nuovo con `pnpm db:migrate`.
