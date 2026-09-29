@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/nextjs"
 import { NextResponse, type NextRequest } from "next/server"
 import { db } from "@/server/db"
 import { messages } from "@/server/db/schema/chat"
@@ -29,6 +30,7 @@ async function handler(req: NextRequest) {
     })
   } catch (error) {
     console.error("copy error", error)
+    Sentry.captureException(error)
     return NextResponse.json({
       error: "Error exporting messages",
       filePath: null,

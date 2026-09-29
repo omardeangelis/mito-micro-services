@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/nextjs"
 import { NextResponse } from "next/server"
 import { updatePractices } from "./updatePractices"
 import { updateCustomerAge } from "./updateCustomer"
@@ -27,6 +28,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ message: "Cron job ran" })
   } catch (error) {
     console.error("Error deleting export files", error)
+    Sentry.captureException(error)
     return NextResponse.json({
       message: "Error exporting data",
       filePath: null,

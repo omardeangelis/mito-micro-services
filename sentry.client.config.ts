@@ -3,6 +3,7 @@
 // https://docs.sentry.io/platforms/javascript/guides/nextjs/
 
 import { env } from "@/env"
+import { dropExpectedTrpcErrors } from "@/lib/utils/sentry"
 import * as Sentry from "@sentry/nextjs"
 
 Sentry.init({
@@ -10,10 +11,12 @@ Sentry.init({
     process.env.NODE_ENV === "production"
       ? env.NEXT_PUBLIC_SENTRY_DSN
       : undefined,
-  environment: process.env.NODE_ENV,
+  environment: process.env.NEXT_PUBLIC_VERCEL_ENV ?? process.env.NODE_ENV,
 
   // Adjust this value in production, or use tracesSampler for greater control
   tracesSampleRate: 1,
+
+  beforeSend: dropExpectedTrpcErrors,
 
   // Setting this option to true will print useful information to the console while you're setting up Sentry.
   debug: false,

@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/nextjs"
 import { NextResponse } from "next/server"
 import { loadEnv } from "@/lib/global/env"
 import { lt } from "drizzle-orm"
@@ -32,6 +33,7 @@ export async function GET(request: Request) {
     })
   } catch (error) {
     console.error("Error cleaning up task_event_log", error)
+    Sentry.captureException(error)
     return NextResponse.json({
       message: "Error cleaning up task_event_log",
       error: "Error cleaning up task_event_log",

@@ -5,9 +5,9 @@ import {
 } from "@/lib/types/schemas"
 import { cleanObject } from "@/lib/utils"
 import { db } from "@/server/db"
-import { eq, or } from "drizzle-orm"
-import { customers as customersSchema } from "@/server/db/schema/customers"
+import { eq } from "drizzle-orm"
 import { practices } from "@/server/db/schema/pratiche"
+import { updateImportedCustomer } from "@/server/shared/updateImportedCustomer"
 
 export type HandleCustomerUpdateResponse = Promise<{
   customersToCreate: CustomerWrite[]
@@ -71,23 +71,14 @@ export async function updateExistingCustomers(
     const { id, updatedAt, operatorId, uniqueHash, tempID, ...rest } =
       updateCustomer
 
-    await db
-      .update(customersSchema)
-      .set({
+    await updateImportedCustomer({
+      db,
+      identifiers: updateCustomer,
+      values: {
         ...rest,
         lastImportUpdate: new Date(), // Aggiorna lastImportUpdate quando un customer viene aggiornato durante l'import
-      })
-      .where(
-        or(
-          tempID ? eq(customersSchema.tempID, tempID) : undefined,
-          updateCustomer.fiscalCode
-            ? eq(customersSchema.fiscalCode, updateCustomer.fiscalCode)
-            : undefined,
-          updateCustomer.vatCode
-            ? eq(customersSchema.vatCode, updateCustomer.vatCode)
-            : undefined
-        )
-      )
+      },
+    })
   }
 }
 

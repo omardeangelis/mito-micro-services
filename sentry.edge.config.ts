@@ -11,7 +11,9 @@ Sentry.init({
     process.env.NODE_ENV === "production" && !env.CUSTOM_ACCESS
       ? env.NEXT_PUBLIC_SENTRY_DSN
       : undefined,
-  environment: env.CUSTOM_ACCESS ? "test" : process.env.NODE_ENV,
+  environment: env.CUSTOM_ACCESS
+    ? "test"
+    : (process.env.VERCEL_ENV ?? process.env.NODE_ENV),
 
   // Adjust this value in production, or use tracesSampler for greater control
   tracesSampleRate: 1,

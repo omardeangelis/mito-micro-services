@@ -4,6 +4,7 @@ import { eq, inArray, or } from "drizzle-orm"
 import { z } from "zod"
 import { insertCustomerSchema, insertPracticeSchema } from "@/lib/types/schemas"
 import { customers as customersSchema } from "@/server/db/schema/customers"
+import { updateImportedCustomer } from "@/server/shared/updateImportedCustomer"
 
 export const getExistingPractices = protectedProcedure
   .input(
@@ -96,20 +97,11 @@ export const updateExistingCustomers = protectedProcedure
       const { id, updatedAt, operatorId, uniqueHash, tempID, ...rest } =
         updateCustomer
 
-      await ctx.db
-        .update(customersSchema)
-        .set(rest)
-        .where(
-          or(
-            tempID ? eq(customersSchema.tempID, tempID) : undefined,
-            updateCustomer.fiscalCode
-              ? eq(customersSchema.fiscalCode, updateCustomer.fiscalCode)
-              : undefined,
-            updateCustomer.vatCode
-              ? eq(customersSchema.vatCode, updateCustomer.vatCode)
-              : undefined
-          )
-        )
+      await updateImportedCustomer({
+        db: ctx.db,
+        identifiers: updateCustomer,
+        values: rest,
+      })
     }
   })
 
