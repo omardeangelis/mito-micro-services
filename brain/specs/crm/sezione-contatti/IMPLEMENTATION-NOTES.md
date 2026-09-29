@@ -144,11 +144,18 @@ updated: 2026-09-29
 | Run 2 — DB di sviluppo, sola lettura prima di PR2 | OK | `__drizzle_migrations` arriva a `LEGACY_SCHEMA_TAG`; 0 task senza cliente; 7 clienti con duplicati |
 | Run 2 — `pnpm db:migrate` sul DB di sviluppo | OK | Tre migrazioni in una esecuzione, circa 7 s; dopo: estrazione vuota, 0 duplicati, 1.183 alert chiusi dal sistema, 0 task da riallineare, impronte di `updated_at`/`alert_id`/`task_event_log` invariate (dettagli in T2.5) |
 | Run 2 — controllo strutturale su prod, sola lettura | OK | Nessun trigger né regola su `task`/`alert`/`customers`; solo le chiavi primarie su `task`/`alert` |
+| Run 2 — gate CI su `d803504` | OK | `next lint` e `tsc --noEmit` puliti; `pnpm run test --run` 21 file, 112 test; `pnpm build` con le variabili di CI in un worktree pulito (senza `.env*`) |
+| Run 2 — `indexdef` sul DB di sviluppo, sola lettura | OK | Le cinque definizioni coincidono con `activeContactIndex.db.test.ts` (Postgres 15.6); `task_customer_active_uidx` valido e unico |
+| Run 2 — prova del cron sul DB di sviluppo | Non fatta | La porta 3000, chiamata da `alert.js` in sviluppo, è occupata dal container di un altro progetto |
 
 ## Acceptance Criteria Status
 
 | Criterion | Status | Notes |
 |-----------|--------|-------|
+| AC69 (PR2) | Met nel codice; in prod dopo G2 | Pulizia provata su PGlite e sul DB di sviluppo (7 clienti con duplicati → 0) |
+| AC70 (PR2) | Met nel codice; in prod dopo G2 | 1.183 alert chiusi dal sistema sul DB di sviluppo; nessuna riga in `task_event_log` |
+| AC71, parte DB (PR2) | Met nel codice; in prod dopo G2 | Indice unico parziale; definizione ricontrollata in prod al passo 6 del runbook |
+| AC72 (PR2) | Met | Cron e massiva invariati. `isDueToday` in ora legale è preesistente (tech-debt) |
 
 ## Remaining Work
 

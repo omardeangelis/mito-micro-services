@@ -242,6 +242,22 @@ Obiezione bloccante più forte (v9, confermata): oggi niente impedisce che lo `s
 
 Secondo BLOCKER (v8, confermato): in `alert.js` il flag `retryingFailed` non si azzera dopo una chiamata con `remaining > 0`. Un alert nuovo che fallisce in fondo a una chiamata successiva manda il job in rosso senza il nuovo tentativo che il piano promette.
 
+### Verifiche successive (dopo le correzioni)
+
+Correzioni in `d803504`, `98f04f8`, `44588ba` e `3bfdd99`. La SQL delle tre migrazioni è invariata: è quella applicata al DB di sviluppo.
+
+| Verifica | Passaggi | Esito | Cosa è emerso | Corretto in |
+|---|---|---|---|---|
+| Seconda, su `d803504` | v8, v2 (modello forte), v9 (modello forte) | v8 SHIP · v2 SHIP · v9 DO NOT SHIP | BLOCKER chiusi: la guardia `ALERT_CRON_ENABLED` rende lo `schedule` inerte qualunque cosa arrivi su `main`, e `retryingFailed` si azzera. v9: due MAJOR sul runbook (dopo il COMMIT la ripresa portava a controlli che l'uso del CRM fa fallire, senza un ramo prima del passo 8; nessuna regola per confrontare (b) e (c)). v2: gli indici per Contatti vanno ricontrollati in PR5 | `98f04f8` |
+| Terza, v9 su `98f04f8` | v9 (modello forte) | DO NOT SHIP | BLOCKER: il controllo del deploy di PR1 (`grep "taskIds.length > 0"`) passava anche sul codice senza guardia, cioè su quello che oggi è in prod (`ed8eb05`). MAJOR: vari controlli prima del passo 8 senza ramo, e il caso di una `ALERT_CRON_ENABLED` rimasta impostata | `44588ba` |
+| Mirata, v9 su `44588ba` | v9 (modello forte) | DO NOT SHIP | Il BLOCKER è chiuso: provato con i comandi esatti, fallisce su `ed8eb05` e passa su `3ebd720`. MAJOR nuovo, che fallisce in modo sicuro: il workflow di deploy fa `commit --amend`, quindi Vercel non mostra `headSha` e la deployment va riconosciuta dall'URL | `3bfdd99` |
+| Mirata, v9 su `3bfdd99` | v9 (Sonnet) | ESITO_ULTIMA | ULTIMA_NOTA | — |
+
+Rilievi MINOR e NIT delle verifiche successive, tutti sul testo e corretti salvo dove indicato:
+- v8: un alert che fallisce per la prima volta alla ventesima chiamata aspetta 10 s e il job va in rosso senza un altro tentativo. Accettato, come dopo un 504 alla ventesima chiamata;
+- v2: `task_operator_active_idx` messo accanto a `task_priority_active_idx` in T5.1, T5.13 e nel tech-debt; ramo di correzione in avanti al passo 6; commento dello schema che rimanda a `replaceActiveContact`;
+- v9: `SHOW TIME ZONE` sostituita da `pg_settings`; controllo delle esecuzioni pianificate già partite; identificazione della migrazione per connessione; regex di `.env` per tutte le forme di dotenv; §12 allineato al passo 8; rollback con SQL eseguibile; query F8 nel runbook.
+
 ### Coverage
 
 - Passaggi eseguiti: 9/9. v1, v2, v3, v4, v5 e v9 sul modello più forte (ereditato); v6, v7 e v8 su Sonnet.
