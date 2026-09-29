@@ -109,6 +109,9 @@ updated: 2026-09-29
 
 | Check | Result | Notes |
 |------|--------|-------|
+| Run 2 — DB di sviluppo, sola lettura prima di PR2 | OK | `__drizzle_migrations` arriva a `LEGACY_SCHEMA_TAG`; 0 task senza cliente; 7 clienti con duplicati |
+| Run 2 — `pnpm db:migrate` sul DB di sviluppo | OK | Tre migrazioni in una esecuzione, circa 7 s; dopo: estrazione vuota, 0 duplicati, 1.183 alert chiusi dal sistema, 0 task da riallineare, impronte di `updated_at`/`alert_id`/`task_event_log` invariate (dettagli in T2.5) |
+| Run 2 — controllo strutturale su prod, sola lettura | OK | Nessun trigger né regola su `task`/`alert`/`customers`; solo le chiavi primarie su `task`/`alert` |
 
 ## Acceptance Criteria Status
 

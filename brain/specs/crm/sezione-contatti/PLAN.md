@@ -561,8 +561,8 @@ Branch suggerito: `contatti/pr2-vincolo-db`. Contiene migrazioni, uno script di 
   - `replaceActiveContact` continua a funzionare.
 
   `pnpm db:migrate` sul DB di sviluppo va a buon fine.
-- **status**: Codice fatto; `pnpm db:migrate` sul DB di sviluppo insieme a T2.5
-- **log**: 2026-09-29 — RED: una seconda task attiva per lo stesso cliente veniva accettata. GREEN con gli indici nello schema e la migrazione `20260929062133_organic_multiple_man` di `pnpm db:generate`, con timestamp successivo alla pulizia. **Riga tolta a mano dall'SQL generato:** `ALTER TABLE "mito-deutsche_customers" ALTER COLUMN "id" SET DEFAULT '<letterale>'`. `db:generate` la emette a ogni esecuzione, perché `customers.id` ha `.default(nanoid())` valutato al caricamento dello schema. Non riguarda PR2, e `20260902181440_nebulous_susan_delgado` era già stata ripulita allo stesso modo (tech-debt). Test in un file a parte (`activeContactIndex.db.test.ts`), su un DB migrato fino in fondo e svuotato a ogni test: nello stesso file del test in due fasi avrebbero dipeso dall'ordine di esecuzione. Casi: seconda task attiva → `23505`; riattivazione di un contatto superato → `23505` (F3, passo 9 del runbook); più task attive senza cliente e più task non attive per cliente ammesse; `replaceActiveContact` funziona; indici di prestazione presenti. Verifica per mutazione: senza `WHERE is_active` cadono 3 test, senza l'indice unico 2. Controllo strutturale in sola lettura, su sviluppo e prod: nessun trigger né regola su `task`, `alert` e `customers` (A6 regge), e su `task` e `alert` solo le chiavi primarie, quindi nessun indice di PR2 viene saltato da `IF NOT EXISTS`. Il `db:migrate` sul DB di sviluppo si fa dopo T2.5, con le tre migrazioni in una sola esecuzione come in prod.
+- **status**: Done
+- **log**: 2026-09-29 — RED: una seconda task attiva per lo stesso cliente veniva accettata. GREEN con gli indici nello schema e la migrazione `20260929062133_organic_multiple_man` di `pnpm db:generate`, con timestamp successivo alla pulizia. **Riga tolta a mano dall'SQL generato:** `ALTER TABLE "mito-deutsche_customers" ALTER COLUMN "id" SET DEFAULT '<letterale>'`. `db:generate` la emette a ogni esecuzione, perché `customers.id` ha `.default(nanoid())` valutato al caricamento dello schema. Non riguarda PR2, e `20260902181440_nebulous_susan_delgado` era già stata ripulita allo stesso modo (tech-debt). Test in un file a parte (`activeContactIndex.db.test.ts`), su un DB migrato fino in fondo e svuotato a ogni test: nello stesso file del test in due fasi avrebbero dipeso dall'ordine di esecuzione. Casi: seconda task attiva → `23505`; riattivazione di un contatto superato → `23505` (F3, passo 9 del runbook); più task attive senza cliente e più task non attive per cliente ammesse; `replaceActiveContact` funziona; indici di prestazione presenti. Verifica per mutazione: senza `WHERE is_active` cadono 3 test, senza l'indice unico 2. Controllo strutturale in sola lettura, su sviluppo e prod: nessun trigger né regola su `task`, `alert` e `customers` (A6 regge), e su `task` e `alert` solo le chiavi primarie, quindi nessun indice di PR2 viene saltato da `IF NOT EXISTS`. Il `db:migrate` sul DB di sviluppo si fa dopo T2.5, con le tre migrazioni in una sola esecuzione come in prod: esito sotto T2.5.
 - **files edited/created**: `src/server/db/schema/task.ts`, `src/server/db/migrations/20260929062133_organic_multiple_man.sql`, `src/server/db/migrations/meta/_journal.json`, `src/server/db/migrations/meta/20260929062133_snapshot.json`, `src/server/db/migrations/_test/activeContactIndex.db.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
@@ -631,8 +631,20 @@ Branch suggerito: `contatti/pr2-vincolo-db`. Contiene migrazioni, uno script di 
   - ogni task con un cliente che ha un operatore ha l'operatore del cliente, attive e non attive;
   - le task senza cliente e quelle di clienti senza operatore mantengono il loro operatore;
   - numero di righe `task`, `task.updated_at` e `task_event_log` invariati.
-- **status**: Codice fatto; `pnpm db:migrate` sul DB di sviluppo da fare (con conferma)
+- **status**: Done
 - **log**: 2026-09-29 — Migrazione `20260929062408_contatti_operator_realign`, generata con `drizzle-kit generate --custom`, timestamp successivo a quello degli indici. RED nel test in due fasi di T2.2, esteso: ogni task di un cliente con operatore prende l'operatore del cliente, attive e non attive; le task senza cliente e quelle di un cliente senza operatore restano come sono; le task spostate sono esattamente quelle che conta l'estrazione (c), per coppia di operatori e fra attive e non attive dopo la pulizia. Righe `task`, `task.updated_at` e `task_event_log` invariati: li verifica il test di T2.2, che ora gira dopo tutte e tre le migrazioni. Verifica per mutazione: senza `c.operator_id IS NOT NULL`, solo sulle attive, o con (c) contata prima della pulizia, cade almeno un test.
+  **`pnpm db:migrate` sul DB di sviluppo** (29/09, confermato da Omar; convalida anche T2.2 e T2.3). Prima c'era `LEGACY_SCHEMA_TAG` come ultima migrazione; le tre si applicano in una sola esecuzione, in circa 7 s. L'estrazione prima della migrazione trovava:
+  - (a) 7 clienti, 7 contatti da disattivare;
+  - (b) 1.183 alert, tutti su contatti già non attivi;
+  - (c) 62.145 task da riallineare (50.703 attive, 11.442 non attive), in 16 coppie di operatori.
+
+  Dopo la migrazione, in sola lettura:
+  - l'estrazione è vuota e 0 clienti hanno più di un contatto attivo;
+  - i 7 superstiti sono attivi e i 7 duplicati no;
+  - i 1.183 alert sono chiusi dall'operatore di sistema, con `updated_at` all'ora della migrazione (gli alert aperti passano da 5.180 a 3.997);
+  - righe `task` (66.558) e `alert` (12.439) invariate;
+  - l'impronta (md5) di `task.updated_at`, `task.alert_id`, `task.customer_id`, di `task_event_log` e del contenuto degli alert è invariata;
+  - ci sono i cinque indici, e `__drizzle_migrations` ha 10 righe.
 - **files edited/created**: `src/server/db/migrations/20260929062408_contatti_operator_realign.sql`, `src/server/db/migrations/meta/_journal.json`, `src/server/db/migrations/meta/20260929062408_snapshot.json`, `src/server/db/migrations/_test/contattiCleanup.db.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
