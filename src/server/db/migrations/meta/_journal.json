@@ -43,6 +43,13 @@
       "when": 1790662893266,
       "tag": "20260929062133_organic_multiple_man",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1790663048864,
+      "tag": "20260929062408_contatti_operator_realign",
+      "breakpoints": true
     }
   ]
 }

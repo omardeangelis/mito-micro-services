@@ -631,9 +631,9 @@ Branch suggerito: `contatti/pr2-vincolo-db`. Contiene migrazioni, uno script di 
   - ogni task con un cliente che ha un operatore ha l'operatore del cliente, attive e non attive;
   - le task senza cliente e quelle di clienti senza operatore mantengono il loro operatore;
   - numero di righe `task`, `task.updated_at` e `task_event_log` invariati.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Codice fatto; `pnpm db:migrate` sul DB di sviluppo da fare (con conferma)
+- **log**: 2026-09-29 — Migrazione `20260929062408_contatti_operator_realign`, generata con `drizzle-kit generate --custom`, timestamp successivo a quello degli indici. RED nel test in due fasi di T2.2, esteso: ogni task di un cliente con operatore prende l'operatore del cliente, attive e non attive; le task senza cliente e quelle di un cliente senza operatore restano come sono; le task spostate sono esattamente quelle che conta l'estrazione (c), per coppia di operatori e fra attive e non attive dopo la pulizia. Righe `task`, `task.updated_at` e `task_event_log` invariati: li verifica il test di T2.2, che ora gira dopo tutte e tre le migrazioni. Verifica per mutazione: senza `c.operator_id IS NOT NULL`, solo sulle attive, o con (c) contata prima della pulizia, cade almeno un test.
+- **files edited/created**: `src/server/db/migrations/20260929062408_contatti_operator_realign.sql`, `src/server/db/migrations/meta/_journal.json`, `src/server/db/migrations/meta/20260929062408_snapshot.json`, `src/server/db/migrations/_test/contattiCleanup.db.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a (D6)

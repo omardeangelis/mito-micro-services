@@ -73,6 +73,12 @@ async function seedDirtyData() {
     operatorId: previous.id,
     isActive: false,
   })
+  // Keep their operator: a customer without operator, no customer at all
+  const unassigned = await createCustomer({ operatorId: null })
+  const unassignedActive = await createTask({
+    customerId: unassigned.id,
+    operatorId: previous.id,
+  })
   // Without a customer: never deactivated
   const orphan = await createTask({ customerId: null, operatorId: previous.id })
   const otherOrphan = await createTask({
@@ -140,7 +146,8 @@ async function seedDirtyData() {
 
   return {
     system,
-    customers: { duplicated, tied, clean },
+    operators: { owner, previous },
+    customers: { duplicated, tied, clean, unassigned },
     tasks: {
       oldest,
       updatedLater,
@@ -149,6 +156,7 @@ async function seedDirtyData() {
       tieHigher,
       cleanActive,
       cleanInactive,
+      unassignedActive,
       orphan,
       otherOrphan,
     },
@@ -171,6 +179,12 @@ let seed: Awaited<ReturnType<typeof seedDirtyData>>
 /** What the preview listed right before the migration. */
 let preview: {
   alerts: { alert_id: number }[]
+  realign: {
+    operatore_attuale_id: number | null
+    operatore_cliente_id: number
+    attive: number
+    non_attive: number
+  }[]
 }
 let before: {
   tasks: Awaited<ReturnType<typeof allTasks>>
@@ -186,8 +200,13 @@ beforeAll(async () => {
     alerts: await allAlerts(),
     events: await allEvents(),
   }
-  const [, alerts] = await queryReadOnly(fs.readFileSync(PREVIEW_FILE, "utf8"))
-  preview = { alerts: alerts as typeof preview.alerts }
+  const [, alerts, realign] = await queryReadOnly(
+    fs.readFileSync(PREVIEW_FILE, "utf8")
+  )
+  preview = {
+    alerts: alerts as typeof preview.alerts,
+    realign: realign as typeof preview.realign,
+  }
   await migrateUpTo()
 })
 
@@ -222,6 +241,7 @@ describe("contatti_cleanup", () => {
       tasks.createdLater.id,
       tasks.tieHigher.id,
       tasks.cleanActive.id,
+      tasks.unassignedActive.id,
       tasks.orphan.id,
       tasks.otherOrphan.id,
     ])
@@ -272,6 +292,75 @@ describe("contatti_cleanup", () => {
     expect(closed).toHaveLength(3)
     expect(closed).toEqual(
       preview.alerts.map((row) => row.alert_id).sort((a, b) => a - b)
+    )
+  })
+})
+
+describe("contatti_operator_realign", () => {
+  it("dopo la migrazione ogni task ha l'operatore del proprio cliente, e nessuna task perde l'operatore", async () => {
+    const { operators, customers, tasks } = seed
+    const after = new Map((await allTasks()).map((row) => [row.id, row]))
+
+    // Active and inactive, whatever operator they had
+    for (const moved of [
+      tasks.oldest,
+      tasks.updatedLater,
+      tasks.createdLater,
+      tasks.tieLower,
+      tasks.tieHigher,
+      tasks.cleanActive,
+      tasks.cleanInactive,
+    ]) {
+      expect(after.get(moved.id)!.operatorId).toBe(operators.owner.id)
+    }
+    // No customer, or a customer without operator: as before
+    for (const kept of [
+      tasks.unassignedActive,
+      tasks.orphan,
+      tasks.otherOrphan,
+    ]) {
+      expect(after.get(kept.id)!.operatorId).toBe(operators.previous.id)
+    }
+    expect(customers.unassigned.operatorId).toBeNull()
+  })
+
+  it("sposta esattamente le task che l'estrazione conta in (c)", async () => {
+    const counts = new Map<string, (typeof preview.realign)[number]>()
+    for (const row of await allTasks()) {
+      const old = before.tasks.find(({ id }) => id === row.id)!
+      if (old.operatorId === row.operatorId) continue
+      const key = `${old.operatorId}->${row.operatorId}`
+      const count = counts.get(key) ?? {
+        operatore_attuale_id: old.operatorId,
+        operatore_cliente_id: row.operatorId!,
+        attive: 0,
+        non_attive: 0,
+      }
+      if (row.isActive) count.attive++
+      else count.non_attive++
+      counts.set(key, count)
+    }
+    const pick = ({
+      operatore_attuale_id,
+      operatore_cliente_id,
+      attive,
+      non_attive,
+    }: (typeof preview.realign)[number]) => ({
+      operatore_attuale_id,
+      operatore_cliente_id,
+      attive,
+      non_attive,
+    })
+    const byPair = (
+      a: (typeof preview.realign)[number],
+      b: (typeof preview.realign)[number]
+    ) =>
+      (a.operatore_attuale_id ?? 0) - (b.operatore_attuale_id ?? 0) ||
+      a.operatore_cliente_id - b.operatore_cliente_id
+
+    expect(counts.size).toBeGreaterThan(1)
+    expect([...counts.values()].sort(byPair)).toEqual(
+      preview.realign.map(pick).sort(byPair)
     )
   })
 })
