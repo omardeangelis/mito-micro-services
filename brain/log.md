@@ -64,3 +64,10 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 - Verdict: SHIP (dopo le correzioni)
 - Impact: critical
 - Verifiers: 3 nella seconda verifica, poi 4 su v9 (0 blocker aperti)
+
+## [2026-09-29] review | Sezione Contatti — PR2, runbook G2 senza via libera degli admin
+- Report: [[specs/crm/sezione-contatti/REPORT]] (round PR2, Verifiche successive)
+- Scope: spec
+- Verdict: SHIP (dopo le correzioni)
+- Impact: critical
+- Verifiers: 1, in due passate (2 major, poi 0)

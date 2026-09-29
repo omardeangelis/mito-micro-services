@@ -255,6 +255,7 @@ Correzioni in `d803504`, `98f04f8`, `44588ba` e `3bfdd99`. La SQL delle tre migr
 | Mirata, v9 su `44588ba` | v9 (modello forte) | DO NOT SHIP | Il BLOCKER è chiuso: provato con i comandi esatti, fallisce su `ed8eb05` e passa su `3ebd720`. MAJOR nuovo, che fallisce in modo sicuro: il workflow di deploy fa `commit --amend`, quindi Vercel non mostra `headSha` e la deployment va riconosciuta dall'URL | `3bfdd99` |
 | Mirata, v9 su `3bfdd99` | v9 (Sonnet) | DO NOT SHIP | Confermati i comandi del deploy, `pg_settings`, il controllo delle esecuzioni pianificate, `git cat-file`, la regex di `.env` e le query di (b). Due MAJOR di precisione. Il dominio che chiamano i cron (`mito-deutsche.vercel.app`) era affermato, non verificato: il log del deploy mostra solo `mito-micro-services.vercel.app`. E la migrazione in attesa di un lock veniva riconosciuta da `client_addr`/`usename`, che con il pooler di Supabase sono uguali per app e migrazione | `f25d8d6` |
 | Ristretta, su `f25d8d6` | v9 (Sonnet) | SHIP | Il dominio dei cron è un controllo esplicito con un ramo di stop. Tutti e nove i pezzi delle migrazioni, divisi come fa Drizzle, si riconoscono dal testo della query, e nessuna query dell'app ci somiglia. MINOR: una condizione di stop non verificabile, e le query del migrator su `__drizzle_migrations` non coperte | corretti nel commit successivo |
+| Runbook senza via libera degli admin (2026-09-29), sul working tree dopo `b5d7662` | un verifier sul runbook (modello forte), due passate | DO NOT SHIP, poi SHIP | Prima passata, 2 MAJOR. L'avviso del passo 8 prendeva gli operatori da (b), che ha l'operatore della task prima del riallineamento (quasi sempre 1020). E gli export, ora unica traccia e lista del rollback, non avevano un controllo di completezza né un ramo di stop. MINOR: riferimenti rimasti (§13, Decision Log della SPEC, Remaining Work, questa checklist), dati personali negli export, ripresa la stessa sera. Seconda passata: SHIP, 6 NIT, corretti | il commit di questo aggiornamento |
 
 Rilievi MINOR e NIT delle verifiche successive, tutti sul testo e corretti salvo dove indicato:
 - v8: un alert che fallisce per la prima volta alla ventesima chiamata aspetta 10 s e il job va in rosso senza un altro tentativo. Accettato, come dopo un 504 alla ventesima chiamata;
@@ -331,6 +332,11 @@ Obbligatoria (`review_impact: critical`). Da seguire prima del merge di PR2 su `
 4. Leggere il runbook G2 (T2.4) aggiornato nella descrizione della PR e verificare che copra: controllo di `max(created_at)`, nomi degli indici liberi, trigger, `7145af5` in prod, estrazione confrontata prima del merge, merge limitato a PR2, procedura se il lock resta in attesa, controllo degli indici dopo la migrazione.
 5. Decidere sull'`isDueToday` in ora legale (MAJOR preesistente): prima della sessione G2, oppure accettare che la prima esecuzione e le notti fino al 25/10 chiudano senza followup anche gli alert del giorno, e avvisarne gli operatori.
 6. Dopo G2, seguire i passi 6–9 del runbook: indici presenti con la definizione giusta, estrazione vuota, cron verde, la notte dopo l'esecuzione `schedule` verde.
+
+> **Aggiornamento del 2026-09-29, dopo questa review:** niente via libera degli admin sull'estrazione (deciso da Omar).
+> - Il punto 3 è superato dall'ordine dei merge: PR2 entra in `dev` solo dopo che PR1 è su `main`. La guardia `ALERT_CRON_ENABLED` resta.
+> - Nel punto 4, al posto di "estrazione confrontata prima del merge" il runbook deve coprire l'estrazione eseguita dopo il merge e subito prima della migrazione (T2.4, passo 5), con il controllo di completezza e il ramo di stop.
+> - La verifica di questa modifica è in "Verifiche successive".
 
 ### Acceptance criteria check (case B)
 

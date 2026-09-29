@@ -1,8 +1,9 @@
 -- What the PR2 migrations change, listed before they run (read only).
 --
 -- Three independent SELECTs, one per list. In the Supabase SQL editor run one
--- at a time (select it, then Run) and export the result to share it with the
--- admins. Nothing here writes.
+-- at a time (select it, then Run) and export the result: run right before the
+-- migration, the exports are the cleanup's trace and the lists that undo it
+-- (runbook G2, step 5). Nothing here writes.
 --
 -- The contact that stays active is the one the UI shows today: the most
 -- recent by GREATEST(updated_at, created_at), then by the higher id. The

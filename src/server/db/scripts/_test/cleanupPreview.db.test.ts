@@ -8,9 +8,9 @@ import {
 } from "@/test/factories"
 import { runCleanupPreview } from "./runCleanupPreview"
 
-// The list the admins approve before the PR2 migration. The data it lists
-// (more than one active contact per customer) only fits the schema before the
-// unique index.
+// The lists saved right before the PR2 migration, as its trace. The data they
+// list (more than one active contact per customer) only fits the schema before
+// the unique index.
 
 const at = (day: string) => new Date(`2026-09-${day}T09:00:00.000Z`)
 

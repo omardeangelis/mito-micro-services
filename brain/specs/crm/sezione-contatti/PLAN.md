@@ -61,7 +61,7 @@ Serve una sezione **Contatti** (lista e dettaglio) sulle `task`. Le regole di mo
 | PR | Passo spec | Outcome verificabile | AC |
 |---|---|---|---|
 | **PR1** Percorsi di creazione sicuri | 1 | Cron alert e 4 casi della massiva danno gli stessi risultati (i test di caratterizzazione sono verdi prima e dopo). Ogni operazione è atomica. Un errore su un cliente non ferma il cron. `createTask` non lascia due contatti attivi | AC71 (codice), AC72 |
-| **PR2** Pulizia e vincolo DB | 1 | Nessun duplicato attivo. Il DB rifiuta un secondo contatto attivo. Nessun alert aperto su contatti non attivi. Elenco condiviso con gli admin prima della pulizia | AC69, AC70, AC71 (DB) |
+| **PR2** Pulizia e vincolo DB | 1 | Nessun duplicato attivo. Il DB rifiuta un secondo contatto attivo. Nessun alert aperto su contatti non attivi. Elenco dei contatti disattivati e degli alert chiusi estratto subito prima della pulizia, come traccia | AC69, AC70, AC71 (DB) |
 | **PR3** Regole sul server, usate da Clienti | 1 (+ AC66–AC67 anticipati, P1) | Da Clienti e dalla scheda cliente: cambio di stato atomico, modale di conferma per l'alert, operatore invariato, sola lettura con motivo. I permessi D2 li rifiuta il server anche fuori dall'interfaccia. "Crea contatto" nella scheda cliente | regole server di AC27, AC30–AC52; AC66, AC67; AC73 |
 | **PR4** Chat con proprietario esplicito | prerequisito del passo 3 (P2) | Nessun cambiamento visibile: note di Pratiche e scheda cliente identiche; la chat non deduce più dall'URL cosa aggiornare | AC55 (base) |
 | **PR5** Sezione Contatti con note | 2 + 3 (P2) | Lista, filtri, URL, dettaglio, modifiche, note del cliente, "Vedi contatti", guida operatori per Contatti | AC1–AC57, AC62, AC74 (parte Contatti) |
@@ -69,7 +69,7 @@ Serve una sezione **Contatti** (lista e dettaglio) sulle `task`. Le regole di mo
 
 **Ordine vincolante:**
 1. PR1 in prod, poi almeno una notte di cron senza errori.
-2. Estrazione condivisa e via libera degli admin, poi la migrazione di PR2 applicata a mano.
+2. La migrazione di PR2 applicata a mano, con l'estrazione conservata subito prima come traccia (T2.4). PR2 entra in `dev` solo dopo che PR1 è su `main`.
 3. PR3 (con l'annuncio agli operatori).
 4. PR4.
 5. PR5, solo dopo che PR2 è applicata (AC69), e a breve distanza da PR3.
@@ -498,7 +498,7 @@ Branch suggerito: `contatti/pr2-vincolo-db`. Contiene migrazioni, uno script di 
   - **Effetto su G1:** prima di G2 il cron in prod non si lancia. G1 diventa PR1 in prod con l'uso normale di Clienti (§12).
   - **Dopo G2 (deciso il 2026-09-29):** il cron gira ogni notte con lo `schedule` di `update-alert prod.yml`, riattivato in PR2 (T2.6, §15). Senza un'esecuzione automatica gli alert tornerebbero ad accumularsi e i followup non nascerebbero.
 
-#### T2.1: Estrazione di sola lettura per gli admin
+#### T2.1: Estrazione di sola lettura, traccia della pulizia
 - **depends_on**: [T1.1]
 - **location**: `src/server/db/scripts/contatti-cleanup-preview.sql`, `src/server/db/scripts/_test/cleanupPreview.db.test.ts`
 - **description**: Query `SELECT`, senza scritture, che elenca:
@@ -511,6 +511,8 @@ Branch suggerito: `contatti/pr2-vincolo-db`. Contiene migrazioni, uno script di 
   - **(c)** il riallineamento di T2.5: per ogni coppia (operatore attuale della task, operatore del cliente), quante task cambiano, attive e non attive.
 
   La parte (a) esclude le task con `customer_id` NULL, che la pulizia non disattiva.
+
+  Si esegue nella sessione G2, dopo il merge e subito prima della migrazione (T2.4, passo 5). I CSV sono la traccia della pulizia e gli id per annullarla (§12). Nessuno li approva (deciso da Omar il 2026-09-29).
 - **validation**: un test DB (su `LEGACY_SCHEMA_TAG`) esegue il file su un dataset seminato e confronta le righe attese. Il dataset contiene duplicati, pari merito su `GREATEST`, alert aperti su task non attive, task con `customer_id` NULL e task con un operatore diverso da quello del cliente. Un secondo test verifica che gli alert elencati in (b) siano esattamente quelli chiusi dalla migrazione di T2.2, e che i conteggi di (c) coincidano con le task cambiate da T2.5.
 - **status**: Done
 - **log**: 2026-09-29 — Tre cicli RED → GREEN, uno per parte: (a) superstite per `GREATEST(updated_at, created_at)` e spareggio sull'id maggiore, (b) alert aperti con il motivo (contatto disattivato dalla pulizia, non attivo, senza cliente), (c) coppie di operatori con attive e non attive **dopo la pulizia**: i duplicati che T2.2 disattiva contano fra le non attive, perché T2.5 gira dopo T2.2 nella stessa transazione. Il file ha tre `SELECT` indipendenti: nell'SQL editor di Supabase si lanciano una alla volta. Il test esegue il file in una transazione `READ ONLY`, quindi una scrittura lo farebbe fallire. Verifica per mutazione: con l'ordine solo per `updated_at`, o con lo spareggio sull'id minore, cade il test (a). Il confronto fra l'estrazione e ciò che cambiano le migrazioni sta nel test in due fasi di T2.2 e T2.5, che fa la migrazione completa dopo il seed.
@@ -573,14 +575,16 @@ Branch suggerito: `contatti/pr2-vincolo-db`. Contiene migrazioni, uno script di 
 #### T2.4: Runbook di rilascio PR2 (gate G2)
 - **depends_on**: [T2.3, T2.5, T2.6, T2.7, T1.8]
 - **location**: descrizione della PR; §12 di questo piano
-- **description**: Runbook eseguito da Omar. Nessun passo si fa da un agente. Riscritto il 2026-09-29 dopo le due verifiche della review di PR2:
+- **description**: Runbook eseguito da Omar. Nessun passo si fa da un agente. Riscritto il 2026-09-29 dopo le due verifiche della review di PR2, poi senza il via libera degli admin (deciso da Omar lo stesso giorno):
   - lo `schedule` è inerte finché non si imposta la variabile `ALERT_CRON_ENABLED` (T2.6);
-  - l'estrazione si confronta prima del merge, con una regola;
+  - l'estrazione si esegue nella sessione, dopo il merge e subito prima della migrazione. Nessuno la approva: si conserva, perché è la traccia della pulizia (AC70) e la lista per annullarla (§12);
   - ogni controllo ha la sua query e dice cosa fare se non passa.
 
-  **Regola generale:** se un controllo dei passi 1–5 non passa, la sessione non comincia, o finisce lì, e nulla è cambiato. Fanno eccezione i casi scritti accanto al controllo.
+  **Ordine dei merge:** PR2 entra in `dev` solo dopo che PR1 è su `main` (G1). Il deploy in prod si fa con il merge `dev` → `main`, che porta tutto quello che c'è su `dev`: con PR2 già lì, le sue migrazioni starebbero su `main` per tutti i giorni di G1.
 
-  **Fino al passo 5 di G2 nessuno lancia `db:migrate:prod` né `db:push:prod`, per nessun motivo.** Con PR2 su `main` applicherebbero le sue migrazioni fuori dalla sessione, senza il via libera.
+  **Regola generale:** se un controllo dei passi 1–5 non passa, la sessione non comincia, o finisce lì, e i dati non cambiano. Dal passo 4 PR2 può essere già su `main`: senza migrazione e senza variabile non ha effetti (vedi "Se la sessione si ferma"). Fanno eccezione i casi scritti accanto al controllo.
+
+  **Fino al passo 5 di G2 nessuno lancia `db:migrate:prod` né `db:push:prod`, per nessun motivo.** Con PR2 su `main` applicherebbero le sue migrazioni fuori dalla sessione, senza i controlli e senza l'estrazione che ne è la traccia.
 
   **Prima della sessione:**
 
@@ -592,7 +596,7 @@ Branch suggerito: `contatti/pr2-vincolo-db`. Contiene migrazioni, uno script di 
        - la deployment in produzione è quella di questa esecuzione. Il workflow fa `git commit --amend` prima del deploy, quindi Vercel mostra un altro SHA: la deployment si riconosce dall'URL. `gh run view <databaseId> --log | grep -E "Production +https"` dà `https://mito-micro-services-<id>-spatalos-projects.vercel.app`. In Vercel, Deployments, quella deployment è la "Current" di produzione, senza Instant Rollback attivo;
        - in Vercel, nella pagina della deployment "Current", fra i Domains c'è `mito-deutsche.vercel.app`: è il dominio che `alert.js` e gli altri script dei cron chiamano in prod. Il log del deploy mostra solo l'alias `mito-micro-services.vercel.app`, quindi va guardato qui. Se `mito-deutsche.vercel.app` non c'è, fermarsi: il cron di prod chiamerebbe un'altra app;
        - in Vercel, il Build Command del progetto è quello di default (`next build`), senza migrazioni;
-     - PR2 è su `dev`, con la CI verde;
+     - PR2 è su `dev`, con la CI verde. Se è già anche su `main` (`git merge-base --is-ancestor <sha del merge di PR2 su dev> origin/main`), è arrivata su `main` prima della sessione: ordine dei merge non rispettato, oppure un hotfix o PR4 portati da `dev` (T2.6). Non è un blocco: senza migrazione e senza variabile non ha effetti, il passo 2 controlla che non sia partito niente, e al passo 4 si prende il ramo `GIA_SU_MAIN`;
      - decisione su `isDueToday` in ora legale (§13, tech-debt): corretto prima della sessione, oppure accettato con l'avviso del passo 8;
   2. in prod, in sola lettura (SQL editor di Supabase, oppure una transazione `READ ONLY`):
      - fuso del database: `SELECT setting, source FROM pg_settings WHERE name = 'TimeZone'` → `Europe/Rome`, con `source` diverso da `client` (un client esterno può imporre il proprio fuso). Il taglio delle date del cron e quanto dice il runbook sull'ora legale valgono con questo fuso;
@@ -608,25 +612,12 @@ Branch suggerito: `contatti/pr2-vincolo-db`. Contiene migrazioni, uno script di 
        - `SELECT * FROM pg_rules WHERE tablename IN ('mito-deutsche_task', 'mito-deutsche_alert', 'mito-deutsche_customers')` → 0 righe;
        - se `SELECT 1 FROM pg_extension WHERE extname = 'pg_cron'` restituisce una riga, `SELECT jobname, command FROM cron.job` non ha job su queste tabelle;
      - variabile del repository `ALERT_CRON_ENABLED` assente: `gh variable list` non la mostra. Senza, lo `schedule` di T2.6 salta il job, anche con PR2 su `main`. Se c'è, Omar la cancella subito (`gh variable delete ALERT_CRON_ENABLED`) e si capisce chi l'ha impostata;
-     - nessuna esecuzione pianificata del cron è girata: `gh run list --workflow "Update Alerts PROD" --event schedule --json conclusion,createdAt` non mostra esecuzioni con `conclusion` diverso da `skipped`. Se ce n'è una, il cron ha chiuso alert prima della pulizia: fermarsi e rivedere con gli admin;
-  3. eseguire `contatti-cleanup-preview.sql` in prod, in sola lettura: nell'SQL editor di Supabase una `SELECT` alla volta.
-     - Esportare le tre liste in CSV e annotare `SELECT now()` accanto all'export, con il fuso: è l'"ora dell'export" del passo 4.
-     - Condividerle con gli admin e **ottenere il loro via libera esplicito**. (a) e (b) sono elenchi da approvare. (c) mostra l'effetto di una regola (ogni task all'operatore del cliente), e si approva la regola.
-     - Conservare gli export: sono la traccia della pulizia.
+     - nessuna esecuzione pianificata del cron è girata: `gh run list --workflow "Update Alerts PROD" --event schedule --json conclusion,createdAt` non mostra esecuzioni con `conclusion` diverso da `skipped`. Se ce n'è una, il cron ha chiuso alert prima della pulizia: fermarsi e capire quali alert ha chiuso e quali followup ha creato, prima di andare avanti.
 
-  **Sessione fuori orario** (passi 4–8, la stessa sera, deciso il 2026-09-29). Fuori orario perché dall'inizio della migrazione al COMMIT le scritture su `task` e `alert` restano in attesa (§13), e perché l'estrazione rieseguita deve trovare i dati approvati:
+  **Sessione fuori orario** (passi 3–8, la stessa sera, deciso il 2026-09-29). Fuori orario perché dall'inizio della migrazione al COMMIT le scritture su `task` e `alert` restano in attesa (§13), e perché l'estrazione, fatta subito prima, deve descrivere quello che la migrazione cambia: di sera l'app quasi non scrive.
 
-  4. prima del merge:
-     - ripetere il controllo del deploy del passo 1 e tutti i controlli del passo 2, compresa `gh variable list`;
-     - rieseguire l'estrazione, con lo stesso strumento, esportarla e confrontarla con quella approvata:
-       - (a) deve essere uguale per `cliente_id`, `contatto_id` ed `esito`;
-       - (b), righe nuove: ognuna deve venire da un contatto sostituito dopo l'export del passo 3. Con gli `alert_id` nuovi: `SELECT a.id FROM "mito-deutsche_alert" a JOIN "mito-deutsche_task" t ON t.id = a.task_id WHERE a.id IN (<nuovi>) AND NOT EXISTS (SELECT 1 FROM "mito-deutsche_task" n WHERE n.customer_id = t.customer_id AND n.created_at > '<now() del passo 3>')` → 0 righe;
-       - (b), righe sparite: ognuna deve essere stata chiusa nel frattempo. Con gli `alert_id` spariti: `SELECT id FROM "mito-deutsche_alert" WHERE id IN (<spariti>) AND NOT is_resolved` → 0 righe;
-       - (c) è informativa: i totali si annotano e cambiano con le riassegnazioni della giornata;
-       - se (a) è cambiata, o una delle due query di (b) restituisce righe, la sessione finisce qui. Nulla è cambiato: si condividono le differenze con gli admin. Le righe nuove di (b) che passano il controllo si elencano nell'avviso del passo 8;
-     - annotare l'ora e l'impronta di `task.updated_at`: `SELECT now(), md5(string_agg(id || ':' || updated_at::text, ',' ORDER BY id)) FROM "mito-deutsche_task"`;
-     - nessuna transazione aperta dell'app: `SELECT pid, state, now() - xact_start AS durata, left(query, 80) FROM pg_stat_activity WHERE backend_type = 'client backend' AND state <> 'idle' AND pid <> pg_backend_pid()` non mostra `durata` oltre un minuto né `idle in transaction`. Se ce ne sono, aspettare qualche minuto e ripetere; se restano, fermarsi;
-  5. merge e migrazione. **Da qui PR1 non si annulla più con un revert, solo con correzioni in avanti, e il riallineamento di T2.5 non si annulla** (§12).
+  3. prima del merge: ripetere il controllo del deploy del passo 1 e tutti i controlli del passo 2, compresa `gh variable list`;
+  4. merge. Se la sessione si ferma da qui in poi senza migrazione, PR2 resta su `main` senza effetti:
      - `git fetch`, poi `git cat-file -e <sha del merge di PR2 su dev>^{commit} && echo SHA_OK` (lo SHA esiste), poi `git merge-base --is-ancestor <sha> origin/main && echo GIA_SU_MAIN || echo DA_FARE`. Con `GIA_SU_MAIN` si salta il merge. Con `DA_FARE`:
        - `git log --first-parent --oneline origin/main..origin/dev` mostra il merge di PR2, ed eventualmente commit che toccano solo `brain/`;
        - `git diff --stat origin/main...origin/dev -- . ':(exclude)brain'` elenca solo i file di PR2.
@@ -639,7 +630,15 @@ Branch suggerito: `contatti/pr2-vincolo-db`. Contiene migrazioni, uno script di 
        - `grep -cE '^\s*(export\s+)?(SUPABASE_DB_CONNECTION_STRING|SUPABASE_MITO_PSW)\s*[=:]' .env` → 0, e `env | grep -cE '^(SUPABASE_DB_CONNECTION_STRING|SUPABASE_MITO_PSW)='` → 0: drizzle-kit carica `.env` e l'ambiente della shell prima di `.env.production.local`, che non li sovrascrive.
 
        Non serve aspettare il deploy: PR2 non cambia il codice dell'app, e lo `schedule` è inerte senza la variabile;
-     - annotare `SELECT now()` ("ora della migrazione"), poi `pnpm db:migrate:prod` (Omar). Dura circa 10 s (7 s sul DB di sviluppo, con 66.000 task). Se dopo un minuto non ha finito, è in attesa di un lock:
+  5. estrazione e migrazione, di seguito:
+     - nessuna transazione aperta dell'app: `SELECT pid, state, now() - xact_start AS durata, left(query, 80) FROM pg_stat_activity WHERE backend_type = 'client backend' AND state <> 'idle' AND pid <> pg_backend_pid()` non mostra `durata` oltre un minuto né `idle in transaction`. Se ce ne sono, aspettare qualche minuto e ripetere; se restano, fermarsi;
+     - annotare l'ora e l'impronta di `task.updated_at`: `SELECT now(), md5(string_agg(id || ':' || updated_at::text, ',' ORDER BY id)) FROM "mito-deutsche_task"`. Si prende prima dell'estrazione: se al passo 6 è uguale, nessuna task è cambiata dall'estrazione in poi, e (a) descrive esattamente i contatti che la migrazione ha disattivato. Per (b) l'impronta non basta: un alert chiuso a mano nel frattempo non cambia sempre la task. Il rollback di §12 riapre comunque solo quelli chiusi dal sistema;
+     - eseguire `contatti-cleanup-preview.sql` in prod, in sola lettura: nell'SQL editor di Supabase una `SELECT` alla volta, ed esportare le tre liste in CSV. Nessuno le approva, ma si conservano:
+       - (a) e (b) sono la traccia della pulizia, che non scrive righe di log (AC70), e gli id da ripristinare se si annulla PR2 (§12). La loro colonna operatore è quella della task prima del riallineamento, quasi sempre 1020: per l'avviso del passo 8 non serve;
+       - (c) mostra l'effetto della regola del riallineamento: i totali servono all'avviso al cliente;
+       - contengono nomi di clienti e operatori e i testi degli alert: vanno in una cartella privata, **mai nel repo né nella PR** (il repo è pubblico);
+     - controllare che gli export siano completi, perché dopo la migrazione (a) non si ricostruisce più: ogni `SELECT` si riesegue avvolta in `SELECT count(*) FROM (<la SELECT, senza il punto e virgola finale>) AS x`, e il CSV corrispondente ha quel numero di righe di dati, più l'intestazione. Se un CSV è più corto perché l'editor limita le righe dei risultati, togliere il limite e riesportare. Se un export manca o ancora non torna, la migrazione non si lancia: la sessione finisce qui e i dati non sono cambiati;
+     - **da qui PR1 non si annulla più con un revert, solo con correzioni in avanti, e il riallineamento di T2.5 non si annulla** (§12). Annotare `SELECT now()` ("ora della migrazione") e salvarla accanto agli export, con l'ora dell'impronta: servono ai passi 6 e 8, anche in una ripresa. Poi `pnpm db:migrate:prod` (Omar). Dura circa 10 s (7 s sul DB di sviluppo, con 66.000 task). Se dopo un minuto non ha finito, è in attesa di un lock:
        - dall'SQL editor, trovare la migrazione dal testo della sua query. App e migrazione passano dallo stesso pooler con lo stesso utente, quindi `usename` e `client_addr` non le distinguono. `SELECT pid, pg_blocking_pids(pid) AS bloccata_da, now() - xact_start AS durata, left(query, 60) FROM pg_stat_activity WHERE pid <> pg_backend_pid() AND (query LIKE '%(PR2, T2.%' OR query LIKE '%The open alerts on inactive contacts%' OR query LIKE '%IF NOT EXISTS%' OR query LIKE '%UPDATE "mito-deutsche_alert" AS a%' OR query LIKE '%__drizzle_migrations%')`. Prendono le istruzioni dei file di PR2 e quelle del migrator su `drizzle.__drizzle_migrations`; le query dell'app, scritte da Drizzle, sono in minuscolo, senza alias, e non toccano quella tabella. Se non compare nessuna riga, non annullare niente e aspettare;
        - `SELECT pg_cancel_backend(<pid della migrazione>)`: la transazione si annulla e il DB resta com'era. Vedi "Se la sessione si ferma";
   6. verificare in prod, in sola lettura. Due gruppi di controlli.
@@ -657,11 +656,11 @@ Branch suggerito: `contatti/pr2-vincolo-db`. Contiene migrazioni, uno script di 
      - Fino ad allora il vincolo di AC71 regge solo sul codice.
 
      **Solo la stessa sera**, subito dopo la migrazione (in una ripresa non valgono più, perché l'uso dell'app li cambia):
-     - i contatti "disattivato" di (a), dall'export del passo 4, non sono attivi: `SELECT id FROM "mito-deutsche_task" WHERE id IN (<disattivato>) AND is_active` → 0 righe. Se no, ci si ferma come sopra;
+     - i contatti "disattivato" di (a), dall'export del passo 5, non sono attivi: `SELECT id FROM "mito-deutsche_task" WHERE id IN (<disattivato>) AND is_active` → 0 righe. Se no, ci si ferma come sopra;
      - (b) dell'estrazione è vuota. Se no, con i suoi `alert_id`: `SELECT a.id FROM "mito-deutsche_alert" a JOIN "mito-deutsche_task" t ON t.id = a.task_id WHERE a.id IN (<alert_id>) AND NOT EXISTS (SELECT 1 FROM "mito-deutsche_task" n WHERE n.customer_id = t.customer_id AND n.created_at > '<ora della migrazione>')` → 0 righe: sono contatti sostituiti dall'app dopo la migrazione. Altrimenti ci si ferma come sopra;
      - (c) è informativa: dopo la migrazione cambia solo con le riassegnazioni dell'app;
-     - impronta di `task.updated_at` uguale a quella del passo 4. Se è diversa, `SELECT count(*), min(updated_at), max(updated_at) FROM "mito-deutsche_task" WHERE updated_at >= '<ora del passo 4>'`:
-       - poche righe, a orari diversi: è l'uso dell'app, e si va avanti;
+     - impronta di `task.updated_at` uguale a quella del passo 5. Se è diversa, `SELECT count(*), min(updated_at), max(updated_at) FROM "mito-deutsche_task" WHERE updated_at >= '<ora dell'impronta, passo 5>'`:
+       - poche righe, a orari diversi: è l'uso dell'app, e si va avanti. Prima si salva accanto agli export il risultato di `SELECT id, customer_id, updated_at FROM "mito-deutsche_task" WHERE updated_at >= '<ora dell'impronta, passo 5>' ORDER BY updated_at`: per quei clienti (a) può non essere esatta;
        - decine di migliaia allo stesso istante: la migrazione ha toccato `updated_at`. Ci si ferma come sopra;
   7. contare gli alert scaduti ancora aperti, divisi fra giorni precedenti e oggi: servono per l'avviso agli operatori (query F8 di G1). `current_date` è la data italiana della sessione, mentre il cron usa quella UTC: i numeri sono indicativi:
      ```sql
@@ -681,15 +680,25 @@ Branch suggerito: `contatti/pr2-vincolo-db`. Contiene migrazioni, uno script di 
      - se finisce rossa perché alcuni alert falliscono a ogni tentativo, gli altri sono chiusi. Leggere l'errore e gli id in Sentry, poi rilanciare una volta. Se resta rossa, non impostare la variabile e capire la causa: il cron notturno parte solo dopo un'esecuzione verde;
      - con l'esecuzione verde, impostare la **variabile del repository** (non dell'environment) `ALERT_CRON_ENABLED` a `true`: Settings → Secrets and variables → Actions → Variables → Repository variables, oppure `gh variable set ALERT_CRON_ENABLED --body true`. Da qui il cron gira da solo ogni notte (T2.6);
      - a fine sessione, avvisare:
-       - gli operatori che hanno avuto alert chiusi dal sistema, dalla pulizia o dal cron: li ritrovano nello Storico, compresi quelli nuovi di (b) accettati al passo 4. Quelli dei giorni precedenti sono chiusi senza followup;
+       - gli operatori che hanno avuto alert chiusi dal sistema, dalla pulizia o dal cron: li ritrovano nello Storico. Quelli dei giorni precedenti sono chiusi senza followup. Chi avvisare, con l'operatore del cliente (quello che Clienti mostra):
+         ```sql
+         SELECT c.operator_id, count(*)
+         FROM "mito-deutsche_alert" a
+         JOIN "mito-deutsche_task" t ON t.id = a.task_id
+         LEFT JOIN "mito-deutsche_customers" c ON c.id = t.customer_id
+         WHERE a.resolved_by = (SELECT id FROM "mito-deutsche_operator" WHERE user_id = 'system')
+           AND a.updated_at >= '<ora della migrazione>'
+         GROUP BY 1;
+         ```
+         Una riga con `operator_id` NULL raccoglie i clienti senza operatore, o le task senza cliente: quegli alert li guarda un admin;
        - **in ora legale (fino al 25/10/2026), se `isDueToday` non è stato corretto:** stasera e ogni notte fino al 25/10 anche gli alert del giorno creati dall'interfaccia si chiudono senza followup. Gli operatori richiamano quei clienti dallo Storico;
        - il cliente, sul riallineamento: l'export attribuisce anche lo storico all'operatore attuale del cliente (T2.5).
 
   **Se la sessione si ferma**, decide `SELECT max(created_at) FROM drizzle.__drizzle_migrations` in prod:
-  - `1788372880766`: la migrazione non c'è. In un'altra sera si riparte dal passo 4. Se PR2 è già su `main`, non ha effetti: il codice dell'app non cambia, e lo `schedule` salta il job finché la variabile non esiste. Fino ad allora non impostarla, non lanciare il cron a mano, e niente `db:migrate:prod` o `db:push:prod` fuori dal passo 5. Succede se:
-    - l'estrazione è cambiata (passo 4): si condividono le differenze con gli admin e si aspetta il via libera;
+  - `1788372880766`: la migrazione non c'è. Si riparte dal passo 3, la stessa sera o un'altra, e il passo 5 si rifà per intero (impronta, estrazione con i conteggi, ora della migrazione). Gli export di prima si scartano: dopo una migrazione annullata, le scritture rimaste in attesa li hanno già resi vecchi. Se PR2 è già su `main`, non ha effetti: il codice dell'app non cambia, e lo `schedule` salta il job finché la variabile non esiste. Fino ad allora non impostarla, non lanciare il cron a mano, e niente `db:migrate:prod` o `db:push:prod` fuori dal passo 5. Succede se:
+    - un controllo dei passi 3–5 non passa, compresi gli export incompleti;
     - `db:migrate:prod` fallisce o viene annullata: le tre migrazioni sono in una sola transazione, quindi il DB resta com'era. Si capisce la causa prima di riprovare. Se la connessione cade durante il COMMIT, questa query dice com'è andata;
-  - `1790663048864`: la migrazione c'è. Si riparte dai controlli **sempre validi** del passo 6, poi 7 e 8;
+  - `1790663048864`: la migrazione c'è, e la sua traccia è l'estrazione del passo 5 di quella sera. Si riparte dai controlli **sempre validi** del passo 6, poi 7 e 8;
   - qualunque altro valore: fermarsi e capire, senza toccare niente.
 
   **Dopo la sessione:**
@@ -713,7 +722,9 @@ Branch suggerito: `contatti/pr2-vincolo-db`. Contiene migrazioni, uno script di 
   - il passo 6 è diviso in controlli sempre validi e controlli della stessa sera;
   - la ripresa si decide con `max(created_at)`, e ogni controllo prima del passo 8 ha un ramo di stop;
   - la migrazione in attesa di un lock si riconosce dal testo della query.
-- **files edited/created**: PLAN.md (§9 T2.4, T2.6, T5.1, T5.13, §12, §13); descrizione della PR
+
+  2026-09-29 — Senza il via libera degli admin (deciso da Omar). Tolti il passo 3 (estrazione approvata) e il confronto con l'estrazione approvata. La sessione diventa passi 3–8: controlli ripetuti (3), merge (4), estrazione e migrazione di seguito (5). I numeri dei passi 6–9 restano quelli di prima. L'impronta di `updated_at` si prende prima dell'estrazione, così al passo 6 dice anche se (a) descrive esattamente i contatti disattivati. Nuova regola sull'ordine dei merge: PR2 entra in `dev` solo dopo che PR1 è su `main`. Dopo una verifica (Verifiche successive in [[specs/crm/sezione-contatti/REPORT]], 2 MAJOR): gli export hanno un controllo di completezza con i conteggi e un ramo di stop, e vanno in una cartella privata, mai nel repo; gli operatori da avvisare al passo 8 si prendono dopo la migrazione, dall'operatore del cliente, perché la colonna operatore di (b) è quella di prima del riallineamento; con l'impronta diversa si salvano le task cambiate; una ripresa rifà il passo 5 per intero.
+- **files edited/created**: PLAN.md (§3, §9 T2.1, T2.4, T2.6, T5.1, T5.13, §12, §13); SPEC.md (AC70, Constraints, Decision Log); IMPLEMENTATION-NOTES.md; commenti di `contatti-cleanup-preview.sql` e `cleanupPreview.db.test.ts`; descrizione della PR
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a (D6)
@@ -768,7 +779,7 @@ Branch suggerito: `contatti/pr2-vincolo-db`. Contiene migrazioni, uno script di 
     - fa una sola chiamata e non la ripete se fallisce;
     - vede riuscita ogni chiamata, perché la route risponde 200 anche quando fallisce: gli errori restano solo nei log e in Sentry.
   - **Orario:** 02:17 UTC. A quell'ora la data è la stessa in UTC, dove la route calcola il limite degli alert, e in Italia. Il minuto 17 evita l'inizio dell'ora, quando GitHub è più carico e ritarda gli `schedule`. Il commento di oggi ("00:00 UTC (01:00 CET)" per `0 2 * * *`) era sbagliato.
-  - **Quando parte (rivisto dopo la review di PR2, 2026-09-29):** GitHub usa il file su `main`. Qualunque merge `dev` → `main` dopo il merge di PR2 su `dev` lo porterebbe lì, anche prima della sessione G2 (il deploy di PR1 in G1, un hotfix, PR4). Per questo il job ha una guardia: un'esecuzione `schedule` parte solo se la variabile del repository `ALERT_CRON_ENABLED` vale `true`.
+  - **Quando parte (rivisto dopo la review di PR2, 2026-09-29):** GitHub usa il file su `main`. Qualunque merge `dev` → `main` dopo il merge di PR2 su `dev` lo porterebbe lì, anche prima della sessione G2 (un hotfix, PR4, o il deploy di PR1 se PR2 entrasse in `dev` prima, contro l'ordine dei merge di T2.4). Per questo il job ha una guardia: un'esecuzione `schedule` parte solo se la variabile del repository `ALERT_CRON_ENABLED` vale `true`.
     ```yaml
     if: github.event_name != 'schedule' || vars.ALERT_CRON_ENABLED == 'true'
     ```
@@ -1818,7 +1829,7 @@ Il lavoro di più PR può procedere in parallelo sui branch, ma i **merge** segu
 | Gate | Quando | Condizione | Chi |
 |---|---|---|---|
 | G1 | Dopo il deploy di PR1 | Rivisto il 2026-09-28 (il cron di prod non gira): operatore di sistema creato in prod; PR1 in prod per almeno due giorni lavorativi di uso normale (riapertura, massiva, "Assegna Clienti") senza righe di livello error nei log Vercel né issue nuove in Sentry. Il cron alert in prod non si lancia prima di G2 (runbook T1.8) | Persona |
-| G2 | Prima di applicare PR2 | Guardia di PR1 nel deploy di prod; prerequisiti in sola lettura (operatore di sistema, `max(created_at)` delle migrazioni, nomi degli indici liberi, nessun trigger, `ALERT_CRON_ENABLED` assente); estrazione eseguita in sola lettura, condivisa con gli admin e approvata esplicitamente. Poi un'unica sessione fuori orario: estrazione rieseguita e confrontata prima del merge, merge `dev` → `main` limitato a PR2, `pnpm db:migrate:prod` lanciato a mano, duplicati = 0, estrazione vuota, indici con la definizione attesa, impronta di `task.updated_at` invariata; poi prima esecuzione del cron lanciata a mano, che chiude gli alert scaduti, verde e controllata su GitHub Actions, Vercel e Sentry, e solo dopo `ALERT_CRON_ENABLED = true`. A fine sessione operatori e cliente (riallineamento) avvisati. La notte dopo, la prima esecuzione pianificata è verde (T2.4) | Omar |
+| G2 | Prima di applicare PR2 | Guardia di PR1 nel deploy di prod; prerequisiti in sola lettura (operatore di sistema, `max(created_at)` delle migrazioni, nomi degli indici liberi, nessun trigger, `ALERT_CRON_ENABLED` assente). Poi un'unica sessione fuori orario: controlli ripetuti, merge `dev` → `main` limitato a PR2, estrazione in sola lettura conservata come traccia (senza via libera degli admin, deciso il 2026-09-29), `pnpm db:migrate:prod` lanciato a mano, duplicati = 0, estrazione vuota, indici con la definizione attesa, impronta di `task.updated_at` invariata; poi prima esecuzione del cron lanciata a mano, che chiude gli alert scaduti, verde e controllata su GitHub Actions, Vercel e Sentry, e solo dopo `ALERT_CRON_ENABLED = true`. A fine sessione operatori e cliente (riallineamento) avvisati. La notte dopo, la prima esecuzione pianificata è verde (T2.4) | Omar |
 | G3 | Prima del deploy di PR3 | Operatori e admin informati con il testo di T3.14 | Persona |
 | G4 | Prima del deploy di PR5 | G2 fatto (AC69); `EXPLAIN ANALYZE` ≤ 500 ms; guida T5.11 rivista; PR3 in prod da poco (per il vuoto di riassegnazione singola); Contatti annunciato agli operatori | Persona |
 | G5 | Prima del merge di PR6 | Checklist scritta di un admin: giorni d'uso di Contatti, nessun blocco segnalato (A2) | Persona |
@@ -1829,8 +1840,8 @@ Il lavoro di più PR può procedere in parallelo sui branch, ma i **merge** segu
 - PR3: il revert ripristina le mutation rimosse ma lascia i dati coerenti, perché l'indice di PR2 resta in vigore.
 - PR2 (Omar, in prod, nell'ordine):
   1. `DROP INDEX task_customer_active_uidx`, che riapre la possibilità di duplicati;
-  2. riattivare i contatti disattivati dalla pulizia: gli id "disattivato" di (a) nell'export del passo 4 del runbook G2, con `UPDATE "mito-deutsche_task" SET is_active = true WHERE id IN (...)`. Nessuna riga è stata cancellata;
-  3. se serve, riaprire gli alert chiusi dalla pulizia: `UPDATE "mito-deutsche_alert" SET is_resolved = false, resolved_by = NULL WHERE id IN (<alert_id di (b) nell'export del passo 4 della sera della migrazione>) AND resolved_by = (SELECT id FROM "mito-deutsche_operator" WHERE user_id = 'system')`. Il vecchio `updated_at` è perso.
+  2. riattivare i contatti disattivati dalla pulizia: gli id "disattivato" di (a) nell'export del passo 5 del runbook G2, della sera della migrazione, con `UPDATE "mito-deutsche_task" SET is_active = true WHERE id IN (...)`. Nessuna riga è stata cancellata. Se al passo 6 è stata salvata la lista delle task cambiate, per quei clienti si controlla prima a mano quale contatto riattivare;
+  3. se serve, riaprire gli alert chiusi dalla pulizia: `UPDATE "mito-deutsche_alert" SET is_resolved = false, resolved_by = NULL WHERE id IN (<alert_id di (b) nell'export del passo 5 della sera della migrazione>) AND resolved_by = (SELECT id FROM "mito-deutsche_operator" WHERE user_id = 'system')`. Il vecchio `updated_at` è perso.
 
   Il riallineamento di T2.5 non si annulla: gli operatori di prima erano già persi dall'update del 28/09. Lo `schedule` di T2.6 si ferma cancellando la variabile `ALERT_CRON_ENABLED`, oppure disattivando il workflow, senza revert.
 
@@ -1853,8 +1864,8 @@ Il lavoro di più PR può procedere in parallelo sui branch, ma i **merge** segu
 | Tra G2 e PR3, `updateTask` e `updateTaskFromDashboard` riattivano un contatto già sostituito: scrivono `isActive` preso dal client, senza lock (preesistente, review di PR1 F3). Con l'indice unico la riga risponde 500. Se succede a metà di un cron, fallisce quell'alert, e `alert.js` lo ritenta. Se succede a metà di una massiva, fallisce quel cliente e il blocco si ferma lì: i clienti successivi dello stesso blocco restano non assegnati (review di PR2, v3; raggiungibile solo con una chiamata tRPC diretta) | Finestra G2 → PR3 breve; passo 9 del runbook G2 (l'admin rilancia l'assegnazione); T3.13 rimuove le due mutation |
 | Deadlock tra transazioni concorrenti | Regola dei lock di T1.4: ogni `transaction` che scrive task o alert chiama per prima `lockCustomer`, poi tocca solo le righe di quel cliente (T1.5, T1.6, T1.7, T3.2). PGlite non può rilevarli: la regola si controlla in review |
 | Tra PR3 e PR5 un admin non può riassegnare un singolo contatto con esito | Rilasci ravvicinati (G4); nel frattempo resta l'assegnazione massiva |
-| Lock su `task` e `alert` dalla creazione degli indici fino al COMMIT: le scritture aspettano per tutta la migrazione (circa 10 s; 7 s sul DB di sviluppo). Una transazione aperta su `task` la fa restare in attesa | Migrazione fuori orario (G2); controllo di `pg_stat_activity` prima e `pg_cancel_backend` se resta in attesa più di un minuto: la transazione si annulla (T2.4, passi 4 e 5) |
-| La pulizia sceglie il contatto "sbagliato" | Stesso criterio già usato dall'interfaccia (`getActiveTask`); elenco approvato prima; nessuna cancellazione |
+| Lock su `task` e `alert` dalla creazione degli indici fino al COMMIT: le scritture aspettano per tutta la migrazione (circa 10 s; 7 s sul DB di sviluppo). Una transazione aperta su `task` la fa restare in attesa | Migrazione fuori orario (G2); controllo di `pg_stat_activity` prima e `pg_cancel_backend` se resta in attesa più di un minuto: la transazione si annulla (T2.4, passo 5) |
+| La pulizia sceglie il contatto "sbagliato" | Stesso criterio già usato dall'interfaccia (`getActiveTask`); nessuna cancellazione; l'elenco estratto subito prima ha gli id per riattivarlo (§12) |
 | Link salvati di Clienti con filtri su `task` producono SQL non valido dopo PR6 | T6.2 scarta i parametri prima di `sql.raw` (finding 7) |
 | Il refactor della chat rompe Pratiche | PR4 separata, senza cambiamenti visibili, con regressione browser |
 | Fuso orario (server in UTC, utenti in Italia) | Helper `Europe/Rome` testato sui cambi d'ora (A4); il cron alert resta com'è (non-goal) |

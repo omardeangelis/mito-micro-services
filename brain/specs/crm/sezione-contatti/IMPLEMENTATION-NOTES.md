@@ -168,7 +168,7 @@ updated: 2026-09-29
 
   Runbook aggiornato in T1.8, §12 e nella descrizione della PR.
 - **Riallineamento degli operatori delle task:** terza migrazione di PR2 (T2.5).
-- **Esecuzione notturna del cron alert:** lo `schedule` di `update-alert prod.yml`, riattivato in PR2 (T2.6, 02:17 UTC), parte solo con la variabile `ALERT_CRON_ENABLED = true`. Il runbook G2 è un'unica sessione fuori orario: confronta l'estrazione, porta PR2 su `main`, applica la migrazione e imposta la variabile al passo 8.
+- **Esecuzione notturna del cron alert:** lo `schedule` di `update-alert prod.yml`, riattivato in PR2 (T2.6, 02:17 UTC), parte solo con la variabile `ALERT_CRON_ENABLED = true`. Il runbook G2 è un'unica sessione fuori orario: porta PR2 su `main` (passo 4), estrae l'elenco come traccia e applica la migrazione (passo 5), e imposta la variabile al passo 8.
 - **Cron in ora legale (da decidere con Omar):** `isDueToday` non riconosce gli alert di oggi da fine marzo al 25 ottobre, e li chiude senza followup. Preesistente, fuori perimetro di PR2 (tech-debt). O una PR a sé prima di G2, o l'avviso agli operatori al passo 8.
 - **`task_priority_active_idx`:** da ridisegnare in PR5 (T5.1) sulla query vera.
 
@@ -190,3 +190,4 @@ updated: 2026-09-29
 | 2026-09-29 | Avvio di PR2: solo PR2, sequential, PR verso `dev`; prod solo in lettura dentro `READ ONLY`, `db:migrate` sul DB di sviluppo solo con conferma | Run 2, T2.1 → T2.6 |
 | 2026-09-29 | Alert falliti nell'ultima chiamata: la modifica di `alert.js` entra in PR2; il job resta verde se un nuovo tentativo chiude gli alert falliti | Nota di PR2 smarcata (dopo T2.2 non nascono nuovi alert F6); nuovo T2.7 |
 | 2026-09-29 | Dopo l'adversarial review di PR2: risolvere i BLOCKER | Guardia `ALERT_CRON_ENABLED` sullo `schedule` (al posto di disattiva/riattiva), `retryingFailed` azzerato, runbook G2 riscritto, test rinforzati; `isDueToday` in ora legale e indice di priorità nel tech-debt |
+| 2026-09-29 | Niente via libera degli admin sull'estrazione; PR2 in `dev` solo dopo PR1 su `main` | SPEC (AC70, Constraints: "Pulizia tracciata"); runbook G2 (T2.4): l'estrazione si esegue nella sessione, dopo il merge e subito prima della migrazione, e si conserva come traccia e lista per il rollback; sessione ai passi 3–8, numeri 6–9 invariati |
