@@ -86,6 +86,9 @@ updated: 2026-09-29
 - **Run 2 — T2.2, guardia sull'operatore di sistema.** Il piano lasciava il prerequisito al runbook (T2.4, passo 2). La migrazione ora si ferma con un errore se deve chiudere alert e l'operatore di sistema non c'è: altrimenti li chiuderebbe con `resolved_by` NULL, e lo Storico non direbbe chi li ha chiusi. Il migrator annulla le tre migrazioni insieme. Senza alert da chiudere passa, così un DB nuovo o di preview senza operatore di sistema si migra lo stesso.
 - **Run 2 — harness.** `migrateUpTo` si può chiamare una seconda volta nello stesso file e applica solo ciò che manca (prima rieseguiva il `CREATE TYPE` di `PUSHED_SCHEMA` e falliva). Serve al test in due fasi. `queryReadOnly` esegue uno o più statement in una transazione `READ ONLY`.
 
+- **Run 2 — T2.3, test dell'indice in un file a parte** (`src/server/db/migrations/_test/activeContactIndex.db.test.ts`), non nel test in due fasi: quello ha un solo seed e una sola migrazione per file, e dei test che aggiungono righe lì dipenderebbero dall'ordine.
+- **Run 2 — T2.3, `pnpm db:migrate` sul DB di sviluppo dopo T2.5.** Le tre migrazioni si applicano in una sola esecuzione, quindi in una sola transazione, come faranno in prod con `db:migrate:prod`.
+
 ## Surprises and Decisions
 
 - **Le migrazioni del repo non si applicano su un Postgres vuoto.** `20240926195125_lucky_roughhouse` crea `mito-deutsche_task` con il tipo `task_status`, che nasce solo in `20260619152227_same_hemingway`. Il DB di produzione aveva già il tipo (creato con `db:push` prima delle migrazioni), e la terza migrazione lo salta se esiste. L'harness crea il tipo prima di migrare; le migrazioni non si toccano (già applicate in prod). Vale anche per chi volesse creare un DB nuovo con `pnpm db:migrate`.
@@ -98,6 +101,9 @@ updated: 2026-09-29
   - **F6:** nessun alert aperto senza cliente.
   - **F8, il cron di prod non gira:** 1.853 alert scaduti aperti, da giugno, più 18 di oggi. Negli ultimi 21 giorni gli alert li hanno chiusi solo gli operatori. **L'operatore di sistema in prod non esiste:** il cron di `main` va in errore su `systemOperator!.id`, quello di PR1 con `SystemOperatorMissing`. L'ipotesi "il cron gira già ogni giorno" non regge.
   - **F7, F16:** 7 clienti con più contatti attivi, tutti con lo stesso millisecondo, per via dell'update delle 15:53.
+
+- **Run 2 — `db:generate` cambia il default di `customers.id`.** Ogni esecuzione emette `ALTER TABLE "mito-deutsche_customers" ALTER COLUMN "id" SET DEFAULT '<letterale casuale>'`, perché lo schema usa `.default(nanoid())`, che si valuta una volta al caricamento. Tolta a mano dall'SQL di T2.3, come era già stato fatto in `20260902181440_nebulous_susan_delgado` (lo snapshot cambia letterale, l'SQL no). Nel tech-debt.
+- **Run 2 — controllo strutturale su prod e sviluppo** (29/09, sola lettura, transazione `READ ONLY`): nessun trigger né regola su `task`, `alert` e `customers`; su `task` e `alert` solo le chiavi primarie. Dimensioni: `task` 97 MB in prod, 95 MB in sviluppo.
 
 ## Sanity Checks
 

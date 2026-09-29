@@ -5,7 +5,7 @@ links:
   - "[[specs/crm/sezione-contatti/SPEC]]"
   - "[[specs/crm/sezione-contatti/IMPLEMENTATION-NOTES]]"
 created: 2026-09-25
-updated: 2026-09-28
+updated: 2026-09-29
 ---
 
 # Tech debt: Sezione Contatti
@@ -136,3 +136,14 @@ Misurata nello smoke di PR1.
 **Effetto oggi:** con il batch di PR1 il cron non si ferma a metà; la latenza decide solo quante chiamate servono.
 
 **Da fare:** controllare la region nelle impostazioni del progetto Vercel; se è lontana dal DB, spostarla su `fra1` (decisione a parte, tocca tutta l'app). Il `SET TRANSACTION ISOLATION` separato è un giro su 7: si può togliere se il default del DB è già `read committed`.
+
+## `db:generate` cambia ogni volta il default di `customers.id`
+
+Scoperto in T2.3 (PR2), preesistente.
+
+- `customers.id` ha `.default(nanoid())`: il valore si calcola una volta, quando si carica lo schema. `drizzle-kit` lo vede come un default letterale diverso a ogni esecuzione e aggiunge `ALTER TABLE "mito-deutsche_customers" ALTER COLUMN "id" SET DEFAULT '<letterale>'` a ogni migrazione generata.
+- Le migrazioni `20260615235953` e `20260619152227` l'hanno applicato. In `20260902181440` e in quella di T2.3 la riga è stata tolta a mano; lo snapshot invece registra il nuovo letterale.
+
+**Effetto oggi:** nessuno sui dati, finché gli insert di `customers` passano l'id. Un insert senza id prenderebbe il letterale fisso, e il secondo fallirebbe per chiave duplicata.
+
+**Da fare fuori da questa spec:** `$defaultFn(() => nanoid())` al posto di `.default(nanoid())`, che genera l'id in JavaScript e non tocca il DB; poi una migrazione che toglie il default letterale.
