@@ -568,27 +568,41 @@ Branch suggerito: `contatti/pr2-vincolo-db`. Contiene migrazioni, uno script di 
 #### T2.4: Runbook di rilascio PR2 (gate G2)
 - **depends_on**: [T2.3, T2.5, T2.6, T1.8]
 - **location**: descrizione della PR; §12 di questo piano
-- **description**: Runbook eseguito da una persona:
+- **description**: Runbook eseguito da una persona.
+
+  **Prima della sessione:**
+
   1. verificare che G1 sia soddisfatto;
   2. verificare in prod, in sola lettura, due prerequisiti:
      - esiste l'operatore di sistema (`operators` con `user_id = 'system'`), creato in G1;
      - `drizzle.__drizzle_migrations` contiene tutte le migrazioni del journal fino a `LEGACY_SCHEMA_TAG`, e nessuna successiva;
-  3. eseguire `contatti-cleanup-preview.sql` in sola lettura sul DB di produzione (SQL editor Supabase), condividere l'elenco con gli admin e **ottenere il loro via libera esplicito**;
-  4. **disattivare il workflow Update Alerts PROD** su GitHub (Actions → Update Alerts PROD → Disable workflow, oppure `gh workflow disable "update-alert prod.yml"`). Con il merge lo `schedule` di T2.6 arriva su `main`, e il cron partirebbe di notte prima della migrazione o prima del passo 8. Se G2 si ferma dopo il merge, il workflow resta disattivato fino al passo 8. Poi fare il merge di PR2 (il deploy non cambia il codice dell'app);
-  5. fuori orario, **rieseguire l'estrazione**: se è cambiata rispetto a quella approvata, condividere la differenza prima di proseguire. Poi lanciare a mano `pnpm db:migrate:prod` (mai da un agente);
+  3. eseguire `contatti-cleanup-preview.sql` in sola lettura sul DB di produzione (SQL editor Supabase), condividere l'elenco con gli admin e **ottenere il loro via libera esplicito**.
+
+  **Sessione fuori orario** (passi 4–8 di seguito, la stessa sera, deciso il 2026-09-29). Fuori orario perché finché la migrazione non finisce le scritture sulle task restano in attesa (§13), e perché l'estrazione rieseguita deve trovare i dati approvati:
+
+  4. **disattivare il workflow Update Alerts PROD** su GitHub (Actions → Update Alerts PROD → Disable workflow, oppure `gh workflow disable "update-alert prod.yml"`): lo `schedule` di T2.6 arriva su `main` con PR2 e resta spento fino al passo 8. Poi portare PR2 su `main` (merge `dev` → `main`) e aggiornare `main` in locale (`git checkout main && git pull`), perché `db:migrate:prod` applica i file di migrazione della cartella locale. Non serve aspettare il deploy: PR2 non cambia il codice dell'app;
+  5. **rieseguire l'estrazione** e confrontarla con quella approvata. Poi lanciare a mano `pnpm db:migrate:prod` (mai da un agente);
   6. verificare in prod:
      - la query dei duplicati restituisce 0 righe;
      - l'estrazione non trova più alert da chiudere né task da riallineare;
-  7. avvisare:
-     - gli operatori che hanno avuto alert chiusi dal sistema: li ritrovano nello Storico;
-     - il cliente, sul riallineamento: l'export attribuisce anche lo storico all'operatore attuale del cliente (T2.5);
+  7. contare gli alert scaduti ancora aperti, divisi fra giorni precedenti e oggi (query F8 del runbook G1, T1.8): servono per l'avviso agli operatori;
   8. **chiudere gli alert scaduti** con la prima esecuzione del cron in prod (deciso il 2026-09-28):
-     - prima, contare gli alert scaduti ancora aperti e avvisare gli operatori: quelli dei giorni precedenti si chiudono senza followup e restano nello Storico;
-     - riattivare il workflow (Enable workflow, oppure `gh workflow enable "update-alert prod.yml"`) e lanciare a mano **Update Alerts PROD** (`workflow_dispatch`);
+     - riattivare il workflow (Enable workflow, oppure `gh workflow enable "update-alert prod.yml"`) e lanciare a mano **Update Alerts PROD** (`workflow_dispatch`); da qui il cron gira anche da solo ogni notte (T2.6);
      - controllare i tre posti del vecchio runbook G1 (T1.8): il log di GitHub Actions (un JSON per ogni chiamata arrivata in fondo, con `failed: 0`, e l'ultimo con `remaining: 0`), i log Vercel di `/api/cron/alert` senza errori e sotto i 60 s, e Sentry `production` senza issue nuove;
      - se l'esecuzione finisce con `Alerts still left after 20 calls`, rilanciarla: gli alert del giorno li hanno già presi le prime chiamate;
-     - da qui il cron gira da solo ogni notte (T2.6). La mattina dopo, controllare su GitHub Actions l'esecuzione con evento `schedule`: verde, con l'ultimo JSON a `remaining: 0`, e il messaggio Telegram arrivato;
-  9. fino al rilascio di PR3, controllare su Sentry gli errori `duplicate key` (23505) su `task.updateTask` e `task.updateTaskFromDashboard`, e sul cron alert e la massiva: sono i contatti riattivati dalla lista (vedi §13).
+     - a fine sessione, avvisare:
+       - gli operatori che hanno avuto alert chiusi dal sistema, dalla pulizia o dal cron: li ritrovano nello Storico, e quelli dei giorni precedenti sono chiusi senza followup;
+       - il cliente, sul riallineamento: l'export attribuisce anche lo storico all'operatore attuale del cliente (T2.5).
+
+  **Se la sessione si ferma prima del passo 8**, il workflow resta disattivato e in un'altra sera si riparte dal passo 5. PR2 resta su `main` senza effetti, perché il codice dell'app non cambia. Succede se:
+  - l'estrazione è cambiata rispetto a quella approvata: si condivide la differenza con gli admin e si aspetta il via libera;
+  - `db:migrate:prod` fallisce: le tre migrazioni sono in una sola transazione, quindi il DB resta com'era. Si capisce la causa prima di riprovare.
+
+  **Dopo la sessione:**
+
+  9. controllare:
+     - la mattina dopo, su GitHub Actions, l'esecuzione di Update Alerts PROD con evento `schedule`: verde, con l'ultimo JSON a `remaining: 0`, e il messaggio Telegram arrivato;
+     - fino al rilascio di PR3, su Sentry, gli errori `duplicate key` (23505) su `task.updateTask` e `task.updateTaskFromDashboard`, e sul cron alert e la massiva: sono i contatti riattivati dalla lista (vedi §13).
 
   **Da qui PR1 non si può più annullare con un semplice revert** (vedi §12).
 - **validation**: checklist spuntata nella PR; la query dei duplicati in prod restituisce 0 righe; la prima esecuzione pianificata del cron è verde.
@@ -637,9 +651,9 @@ Branch suggerito: `contatti/pr2-vincolo-db`. Contiene migrazioni, uno script di 
     - fa una sola chiamata e non la ripete se fallisce;
     - vede riuscita ogni chiamata, perché la route risponde 200 anche quando fallisce: gli errori restano solo nei log e in Sentry.
   - **Orario:** 02:17 UTC. A quell'ora la data è la stessa in UTC, dove la route calcola il limite degli alert, e in Italia. Il minuto 17 evita l'inizio dell'ora, quando GitHub è più carico e ritarda gli `schedule`. Il commento di oggi ("00:00 UTC (01:00 CET)" per `0 2 * * *`) era sbagliato.
-  - **Quando parte:** GitHub usa il file su `main`, quindi lo `schedule` è attivo dal merge di PR2. Il runbook G2 disattiva il workflow prima del merge e lo riattiva al passo 8, così la prima esecuzione resta quella a mano dopo la migrazione (T2.4).
+  - **Quando parte:** GitHub usa il file su `main`, quindi lo `schedule` è attivo da quando PR2 arriva su `main`. Il runbook G2 disattiva il workflow all'inizio della sessione, prima che PR2 arrivi su `main`, e lo riattiva al passo 8, dopo la migrazione: la prima esecuzione resta quella a mano (T2.4).
   - Restano manuali `update-alert.yml` (sviluppo, fallisce sempre: vedi il tech-debt) e i workflow di prod fuori da questa spec (`priority-prod.yml`, `delete-storage prod.yml`, `update-customer-practices prod.yml`).
-- **validation**: nessun test automatico, è configurazione. Nel runbook G2 (T2.4, passo 8): la mattina dopo il passo 8, su GitHub Actions c'è un'esecuzione di Update Alerts PROD con evento `schedule`, verde, con l'ultimo JSON a `remaining: 0`, e il messaggio Telegram è arrivato.
+- **validation**: nessun test automatico, è configurazione. Nel runbook G2 (T2.4, passo 9): la mattina dopo la sessione, su GitHub Actions c'è un'esecuzione di Update Alerts PROD con evento `schedule`, verde, con l'ultimo JSON a `remaining: 0`, e il messaggio Telegram è arrivato.
 - **status**: Planned
 - **log**:
 - **files edited/created**:
@@ -1653,7 +1667,7 @@ Il lavoro di più PR può procedere in parallelo sui branch, ma i **merge** segu
 | Gate | Quando | Condizione | Chi |
 |---|---|---|---|
 | G1 | Dopo il deploy di PR1 | Rivisto il 2026-09-28 (il cron di prod non gira): operatore di sistema creato in prod; PR1 in prod per almeno due giorni lavorativi di uso normale (riapertura, massiva, "Assegna Clienti") senza righe di livello error nei log Vercel né issue nuove in Sentry. Il cron alert in prod non si lancia prima di G2 (runbook T1.8) | Persona |
-| G2 | Prima di applicare PR2 | Estrazione eseguita in sola lettura, condivisa con gli admin e approvata esplicitamente. Workflow Update Alerts PROD disattivato prima del merge (T2.6). `pnpm db:migrate:prod` lanciato a mano fuori orario. Query dei duplicati = 0 e nessuna task da riallineare. Operatori con alert chiusi dal sistema e cliente (riallineamento) avvisati. Poi workflow riattivato e prima esecuzione del cron in prod, lanciata a mano, che chiude gli alert scaduti, verde e controllata su GitHub Actions, Vercel e Sentry. La notte dopo, la prima esecuzione pianificata è verde (T2.4) | Persona |
+| G2 | Prima di applicare PR2 | Estrazione eseguita in sola lettura, condivisa con gli admin e approvata esplicitamente. Poi un'unica sessione fuori orario: workflow Update Alerts PROD disattivato (T2.6), PR2 su `main`, estrazione rieseguita e uguale a quella approvata, `pnpm db:migrate:prod` lanciato a mano, query dei duplicati = 0 e nessuna task da riallineare, workflow riattivato e prima esecuzione del cron lanciata a mano, che chiude gli alert scaduti, verde e controllata su GitHub Actions, Vercel e Sentry. A fine sessione operatori e cliente (riallineamento) avvisati. La notte dopo, la prima esecuzione pianificata è verde (T2.4) | Persona |
 | G3 | Prima del deploy di PR3 | Operatori e admin informati con il testo di T3.14 | Persona |
 | G4 | Prima del deploy di PR5 | G2 fatto (AC69); `EXPLAIN ANALYZE` ≤ 500 ms; guida T5.11 rivista; PR3 in prod da poco (per il vuoto di riassegnazione singola); Contatti annunciato agli operatori | Persona |
 | G5 | Prima del merge di PR6 | Checklist scritta di un admin: giorni d'uso di Contatti, nessun blocco segnalato (A2) | Persona |
@@ -1677,7 +1691,7 @@ Il lavoro di più PR può procedere in parallelo sui branch, ma i **merge** segu
 | D2 aggirata assegnandosi clienti o via massiva | P4 chiude `assignToYourself` e il form; P7 porta le massive ad `adminProcedure` e rimuove `customer.updateCustomer` |
 | Il cron alert in prod non gira dove si pensa, e G1 non dimostra nulla | Verificato il 2026-09-28: non gira. La prova del cron in prod si sposta dopo la migrazione di PR2 (T2.4, passo 8). Finding 14: G1 comincia accertando lo scheduler. Gli errori arrivano su `console.error` (`ServerLive`) e su Sentry (`ErrorReporter`, P9), lo script stampa il JSON ed esce con 1 se `failed > 0` (T1.5), il runbook dice dove guardare (T1.8) |
 | Revert di PR1 dopo G2 → cron fermo | Regola di rollback in §12 |
-| Lo `schedule` di T2.6 fa partire il cron prima della migrazione di PR2 o prima del passo 8 | Workflow disattivato prima del merge di PR2 e riattivato al passo 8 (T2.4) |
+| Lo `schedule` di T2.6 fa partire il cron prima della migrazione di PR2 | Merge e migrazione nella stessa sessione; workflow disattivato prima che PR2 arrivi su `main` e riattivato solo al passo 8, dopo la migrazione. Se la sessione si ferma resta disattivato (T2.4) |
 | L'esecuzione notturna non parte: GitHub ritarda o salta gli `schedule` quando è carico, e in un repo pubblico, come questo, li disattiva dopo 60 giorni senza attività. Gli alert del giorno, ripresi il giorno dopo, perdono il followup | Il messaggio Telegram di ogni notte fa da segnale: se manca, rilanciare a mano Update Alerts PROD in giornata e, se il workflow è stato disattivato, riattivarlo. Orario lontano dall'inizio dell'ora (T2.6) |
 | Tra G2 e PR3, `updateTask` e `updateTaskFromDashboard` riattivano un contatto già sostituito: scrivono `isActive` preso dal client, senza lock (preesistente, review di PR1 F3). Con l'indice unico la riga risponde 500; se succede a metà di un cron o di una massiva, fallisce quell'alert o quel cliente | Finestra G2 → PR3 breve; passo 9 del runbook G2; T3.13 rimuove le due mutation |
 | Deadlock tra transazioni concorrenti | Regola dei lock di T1.4: ogni `transaction` che scrive task o alert chiama per prima `lockCustomer`, poi tocca solo le righe di quel cliente (T1.5, T1.6, T1.7, T3.2). PGlite non può rilevarli: la regola si controlla in review |

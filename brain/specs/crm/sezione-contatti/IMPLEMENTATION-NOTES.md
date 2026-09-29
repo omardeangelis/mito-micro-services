@@ -112,7 +112,7 @@ updated: 2026-09-29
 
   Runbook aggiornato in T1.8, §12 e nella descrizione della PR.
 - **Riallineamento degli operatori delle task:** terza migrazione di PR2 (T2.5).
-- **Esecuzione notturna del cron alert:** lo `schedule` di `update-alert prod.yml`, riattivato in PR2 (T2.6, 02:17 UTC). Il runbook G2 disattiva il workflow prima del merge e lo riattiva al passo 8.
+- **Esecuzione notturna del cron alert:** lo `schedule` di `update-alert prod.yml`, riattivato in PR2 (T2.6, 02:17 UTC). Il runbook G2 è un'unica sessione fuori orario: disattiva il workflow, porta PR2 su `main`, applica la migrazione e riattiva il workflow al passo 8.
 
 ## Steering
 
@@ -128,3 +128,4 @@ updated: 2026-09-29
 | 2026-09-28 | Dopo PR2 riallineare l'operatore di tutte le task a quello del cliente e spiegarlo al cliente | Nota nel PLAN (PR2) con le misure su prod; resta da decidere se è una migrazione di PR2 o un passo a sé |
 | 2026-09-28 | Il riallineamento è la terza migrazione di PR2; gli alert scaduti si chiudono tutti dopo la migrazione di PR2 | Nuovo T2.5 ed estrazione T2.1 (c). Runbook G2 (T2.4) con la prima esecuzione del cron in prod al passo 8. G1 rivisto: operatore di sistema, due giorni lavorativi senza errori, nessun cron prima di G2. Aggiornati §12, §13, §15 e la descrizione della PR |
 | 2026-09-29 | Lo schedule del cron alert si riattiva in PR2, su GitHub Actions e non con il cron di Vercel | Nuovo T2.6 (02:17 UTC); runbook G2 (T2.4) con il workflow disattivato prima del merge e riattivato al passo 8; aggiornati §6, §8, §10, §12, §13, §15 |
+| 2026-09-29 | Merge e migrazione di PR2 nella stessa sessione, non in due momenti | Runbook G2 (T2.4) riscritto: prima della sessione (passi 1–3), sessione fuori orario (4–8) con cosa fare se si ferma, dopo la sessione (9); aggiornati T2.6, §12, §13 |
