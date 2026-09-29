@@ -87,7 +87,12 @@ const updateAlert = async () => {
         await setTimeout(RETRY_DELAY_MS)
         continue
       }
-      if ((body.remaining ?? 0) > 0) continue
+      if ((body.remaining ?? 0) > 0) {
+        // The next call takes the ones left, failed ones included: it is not a
+        // retry of failed alerts
+        retryingFailed = false
+        continue
+      }
       // A call that gets through the alerts takes again the ones failed before
       if ((body.failed ?? 0) === 0) return
       // Failed alerts turn the job red once retrying them closes none

@@ -28,8 +28,9 @@ async function seedDirtyData() {
   const owner = await createOperator({ name: "Carla" })
   const previous = await createOperator({ name: "Luca" })
 
-  // Three active contacts. By updated_at alone `updatedLater` would stay: the
-  // later creation wins
+  // Three active contacts. The alerts linked below go through the factory's
+  // update, whose $onUpdate rewrites updated_at: `laterCreation` is the case
+  // that tells GREATEST(updated_at, created_at) from updated_at alone
   const duplicated = await createCustomer({ operatorId: owner.id })
   const oldest = await createTask({
     customerId: duplicated.id,
@@ -46,6 +47,20 @@ async function seedDirtyData() {
   const createdLater = await createTask({
     customerId: duplicated.id,
     operatorId: owner.id,
+    createdAt: at("20"),
+    updatedAt: at("10"),
+  })
+  // By updated_at alone `laterUpdate` would stay: `laterCreate` wins
+  const laterCreation = await createCustomer({ operatorId: owner.id })
+  const laterUpdate = await createTask({
+    customerId: laterCreation.id,
+    operatorId: previous.id,
+    createdAt: at("01"),
+    updatedAt: at("15"),
+  })
+  const laterCreate = await createTask({
+    customerId: laterCreation.id,
+    operatorId: previous.id,
     createdAt: at("20"),
     updatedAt: at("10"),
   })
@@ -146,9 +161,11 @@ async function seedDirtyData() {
   return {
     system,
     operators: { owner, previous },
-    customers: { duplicated, tied, clean, unassigned },
+    customers: { duplicated, laterCreation, tied, clean, unassigned },
     tasks: {
       oldest,
+      laterUpdate,
+      laterCreate,
       updatedLater,
       createdLater,
       tieLower,
@@ -211,6 +228,7 @@ describe("contatti_cleanup", () => {
     const { tasks } = seed
     expect(active).toEqual([
       tasks.createdLater.id,
+      tasks.laterCreate.id,
       tasks.tieHigher.id,
       tasks.cleanActive.id,
       tasks.unassignedActive.id,

@@ -41,7 +41,7 @@ Scoperto nella review di PR1 (F1, seconda verifica), preesistente.
 - `customer.bulkUpdateCustomers` prende, per ogni cliente, la task con `updated_at` più recente fra tutte, attive o no, e la riassegna solo se è `chiamare`.
 - Dopo un followup del cron la più recente è la vecchia task, ora inattiva: il nuovo contatto attivo non cambia operatore. Lo stesso dopo il caso 3 della massiva (esito senza alert). Succedeva già nella base.
 
-**Effetto oggi:** il cliente passa al nuovo operatore, il suo contatto attivo no. La guardia sul `WHERE` indefinito (PR1) evita solo che l'update tocchi tutta la tabella. In prod l'update su tutta la tabella è successo il 28/09/2026: tutte le task a un solo operatore. Il riallineamento all'operatore del cliente è deciso dopo PR2 ([[specs/crm/sezione-contatti/PLAN]], §9, PR2); questa logica poi lo fa divergere di nuovo.
+**Effetto oggi:** il cliente passa al nuovo operatore, il suo contatto attivo no. La guardia sul `WHERE` indefinito (PR1) evita solo che l'update tocchi tutta la tabella. In prod l'update su tutta la tabella è successo il 28/09/2026: tutte le task a un solo operatore. Il riallineamento all'operatore del cliente è in PR2 (T2.5) ([[specs/crm/sezione-contatti/PLAN]], §9, PR2); questa logica poi lo fa divergere di nuovo.
 
 **Da fare fuori da questa spec:** A7 lascia la logica invariata (non-goal). Un seguito può riassegnare la task attiva del cliente, con un criterio di spareggio.
 
@@ -147,3 +147,33 @@ Scoperto in T2.3 (PR2), preesistente.
 **Effetto oggi:** nessuno sui dati, finché gli insert di `customers` passano l'id. Un insert senza id prenderebbe il letterale fisso, e il secondo fallirebbe per chiave duplicata.
 
 **Da fare fuori da questa spec:** `$defaultFn(() => nanoid())` al posto di `.default(nanoid())`, che genera l'id in JavaScript e non tocca il DB; poi una migrazione che toglie il default letterale.
+
+## Il cron non riconosce gli alert di oggi in ora legale
+
+Scoperto nella review di PR2 (v9), preesistente: le formule di data sono quelle della base.
+
+- Le scadenze scelte dall'interfaccia (date picker, `CustomerAlertCreator`) sono la mezzanotte del browser: 22:00 UTC del giorno prima in ora legale, 23:00 UTC in ora solare. Sul DB di sviluppo: 5.710 scadenze alle 22:00 UTC, 6.727 alle 23:00 UTC, 2 ad altre ore.
+- La query prende l'alert il giorno giusto (`DATE(deadline)` nella sessione `Europe/Rome`), ma `isDueToday` (`src/server/services/contact/processDueAlerts.ts`) aggiunge un'ora sola alla scadenza e confronta le date in UTC. In ora legale un alert di oggi risulta "giorno precedente": viene chiuso senza followup.
+
+**Effetto oggi:** da fine marzo al 25 ottobre il cron non crea followup per gli alert creati dall'interfaccia. Il runbook G2 (passo 8) lo dice agli operatori, se la sessione è in ora legale.
+
+**Da fare fuori da PR2 (decisione di Omar):** confrontare le date nel fuso `Europe/Rome`, per esempio con l'helper di A4, con un test sui due cambi d'ora. Cambia il comportamento del cron, che nella SPEC è un non-goal: serve una decisione esplicita.
+
+## `task_priority_active_idx` non serve l'ordine di Contatti
+
+Scoperto nella review di PR2 (v2).
+
+- L'indice è `priority DESC NULLS LAST WHERE is_active`. La lista Contatti (T5.1) ordina per `priority IS NULL, priority <dir>, id <dir>`, un ordine che nessun indice su `priority` da solo può servire. Anche con `priority DESC NULLS LAST` coprirebbe solo il verso decrescente. Nessuna query di oggi lo usa.
+- Costo: gli update di `priority` non sono più HOT (poco, con 75.000 task).
+
+**Effetto oggi:** nessuno sui risultati.
+
+**Da fare:** in PR5 (T5.1), sulla query vera e con l'`EXPLAIN ANALYZE` di G4, con una migrazione che lo sostituisce.
+
+## Il ramo che fallisce della guardia di `contatti_cleanup` è provato solo su PGlite
+
+Scoperto nella review di PR2 (v7).
+
+- La guardia (operatore di sistema mancante con alert da chiudere) e l'annullamento delle tre migrazioni sono testati su PGlite. La prova sul DB di sviluppo copre solo il ramo riuscito.
+
+**Effetto oggi:** nessuno. Il passo 2 del runbook G2 verifica l'operatore di sistema prima della migrazione.

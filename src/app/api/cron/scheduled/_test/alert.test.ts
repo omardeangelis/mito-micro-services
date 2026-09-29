@@ -175,6 +175,20 @@ describe("alert.js", () => {
     expect(exit).not.toHaveBeenCalled()
   })
 
+  it("un alert che fallisce per la prima volta dopo una chiamata con alert rimasti ha anche lui il suo nuovo tentativo", async () => {
+    const fetch = await runScript(
+      json({ found: 2, processed: 1, skipped: 0, failed: 1, remaining: 0 }),
+      // The retry closes it, and the budget leaves some for the next call
+      json({ found: 5, processed: 2, skipped: 0, failed: 0, remaining: 3 }),
+      // Another alert fails for the first time: it gets its retry too
+      json({ found: 3, processed: 0, skipped: 0, failed: 1, remaining: 0 }),
+      json(done)
+    )
+
+    expect(fetch).toHaveBeenCalledTimes(4)
+    expect(exit).not.toHaveBeenCalled()
+  })
+
   it("esce con successo se al nuovo tentativo l'alert fallito risulta già chiuso", async () => {
     // Written before the connection dropped, reported as failed anyway
     const fetch = await runScript(

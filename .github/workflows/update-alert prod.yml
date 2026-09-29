@@ -14,6 +14,11 @@ on:
 
 jobs:
   delete-supabase-storage:
+    # L'esecuzione notturna parte solo con la variabile del repository
+    # ALERT_CRON_ENABLED = true, che si imposta dopo la migrazione di PR2
+    # (runbook G2, passo 8). Senza, lo schedule salta il job anche se il file
+    # arriva su main prima della migrazione. Il lancio a mano funziona sempre.
+    if: github.event_name != 'schedule' || vars.ALERT_CRON_ENABLED == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

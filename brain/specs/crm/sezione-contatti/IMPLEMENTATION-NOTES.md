@@ -106,6 +106,21 @@ updated: 2026-09-29
   - una sola regola di progresso in `alert.js` (`failed + remaining` che non scende): cambierebbe il percorso con `remaining > 0` e un test di PR1;
   - creare l'operatore di sistema nella migrazione: cambia G1 (`create:system-operator`, da Omar).
 
+- **Run 2 — correzioni dopo l'adversarial review di PR2** (round PR2 di [[specs/crm/sezione-contatti/REPORT]], prima verifica DO NOT SHIP):
+  - **BLOCKER di v9, lo `schedule` poteva partire prima della migrazione.** Il workflow è attivo, e qualunque merge `dev` → `main` dopo PR2 lo avrebbe portato su `main` prima della sessione G2. Ora il job ha una guardia: un'esecuzione `schedule` parte solo con la variabile del repository `ALERT_CRON_ENABLED = true`, che si imposta al passo 8. **Scostamento dal runbook deciso il 2026-09-29:** al posto di "disattivare il workflow al passo 4 e riattivarlo al passo 8" c'è un'azione sola, che non dipende da quando avviene il merge.
+  - **BLOCKER di v8, `alert.js`.** `retryingFailed` si azzera dopo una chiamata con `remaining > 0`, con il test dell'intreccio.
+  - **Runbook G2 riscritto** (T2.4), con i MAJOR e i MINOR di v1, v2, v3, v4, v5 e v9:
+    - la guardia di PR1 va verificata nel deploy di prod (`7145af5`);
+    - `max(created_at)` al posto del conteggio delle migrazioni, nomi degli indici liberi, trigger;
+    - l'estrazione si confronta prima del merge, con la regola del confronto;
+    - il merge è limitato a PR2;
+    - `pg_stat_activity` prima della migrazione e `pg_cancel_backend` se resta in attesa di un lock;
+    - dopo la migrazione, `indexdef` e `indisvalid`/`indisunique`, e l'impronta prima e dopo;
+    - la ripresa si decide con `max(created_at)`, e i punti di non ritorno sono segnati;
+    - `23505` sulla massiva e job rosso al passo 8.
+  - **Test:** un cliente con duplicati senza alert nel test in due fasi (la factory `createAlert` riscriveva `updated_at`); la definizione completa degli indici.
+  - **Non corretti in PR2:** `task_priority_active_idx` (si ridisegna in PR5: l'SQL resta quello provato sul DB di sviluppo); `isDueToday` in ora legale (preesistente, decisione di Omar). Entrambi nel tech-debt.
+
 ## Surprises and Decisions
 
 - **Le migrazioni del repo non si applicano su un Postgres vuoto.** `20240926195125_lucky_roughhouse` crea `mito-deutsche_task` con il tipo `task_status`, che nasce solo in `20260619152227_same_hemingway`. Il DB di produzione aveva già il tipo (creato con `db:push` prima delle migrazioni), e la terza migrazione lo salta se esiste. L'harness crea il tipo prima di migrare; le migrazioni non si toccano (già applicate in prod). Vale anche per chi volesse creare un DB nuovo con `pnpm db:migrate`.
@@ -146,7 +161,9 @@ updated: 2026-09-29
 
   Runbook aggiornato in T1.8, §12 e nella descrizione della PR.
 - **Riallineamento degli operatori delle task:** terza migrazione di PR2 (T2.5).
-- **Esecuzione notturna del cron alert:** lo `schedule` di `update-alert prod.yml`, riattivato in PR2 (T2.6, 02:17 UTC). Il runbook G2 è un'unica sessione fuori orario: disattiva il workflow, porta PR2 su `main`, applica la migrazione e riattiva il workflow al passo 8.
+- **Esecuzione notturna del cron alert:** lo `schedule` di `update-alert prod.yml`, riattivato in PR2 (T2.6, 02:17 UTC), parte solo con la variabile `ALERT_CRON_ENABLED = true`. Il runbook G2 è un'unica sessione fuori orario: confronta l'estrazione, porta PR2 su `main`, applica la migrazione e imposta la variabile al passo 8.
+- **Cron in ora legale (da decidere con Omar):** `isDueToday` non riconosce gli alert di oggi da fine marzo al 25 ottobre, e li chiude senza followup. Preesistente, fuori perimetro di PR2 (tech-debt). O una PR a sé prima di G2, o l'avviso agli operatori al passo 8.
+- **`task_priority_active_idx`:** da ridisegnare in PR5 (T5.1) sulla query vera.
 
 ## Steering
 
@@ -165,3 +182,4 @@ updated: 2026-09-29
 | 2026-09-29 | Merge e migrazione di PR2 nella stessa sessione, non in due momenti | Runbook G2 (T2.4) riscritto: prima della sessione (passi 1–3), sessione fuori orario (4–8) con cosa fare se si ferma, dopo la sessione (9); aggiornati T2.6, §12, §13 |
 | 2026-09-29 | Avvio di PR2: solo PR2, sequential, PR verso `dev`; prod solo in lettura dentro `READ ONLY`, `db:migrate` sul DB di sviluppo solo con conferma | Run 2, T2.1 → T2.6 |
 | 2026-09-29 | Alert falliti nell'ultima chiamata: la modifica di `alert.js` entra in PR2; il job resta verde se un nuovo tentativo chiude gli alert falliti | Nota di PR2 smarcata (dopo T2.2 non nascono nuovi alert F6); nuovo T2.7 |
+| 2026-09-29 | Dopo l'adversarial review di PR2: risolvere i BLOCKER | Guardia `ALERT_CRON_ENABLED` sullo `schedule` (al posto di disattiva/riattiva), `retryingFailed` azzerato, runbook G2 riscritto, test rinforzati; `isDueToday` in ora legale e indice di priorità nel tech-debt |
