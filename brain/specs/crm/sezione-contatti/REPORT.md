@@ -6,7 +6,7 @@ spec: sezione-contatti
 review_target: "branch contatti/pr2-vincolo-db — PR2 (T2.1–T2.7); round di PR1 (contatti/pr1-creazione-sicura, verdetto ship) più sotto"
 base_ref: 3ebd72093b6ab5012a3679e4b4c4fca504025fff
 head_ref: 4b5ef3ae49f9c02a918a68220f116baca4f4507c
-verdict: do-not-ship
+verdict: ship
 review_impact: critical
 human_in_loop: true
 links:
@@ -233,7 +233,9 @@ Round aggiunto: il report di PR1 sopra resta com'è. Rubric: round PR2 di [[spec
 
 ### Verdict
 
-**DO NOT SHIP** · impact: critical (prima verifica, su `4b5ef3a`).
+**SHIP** · impact: critical, dopo le correzioni e le verifiche successive (sotto). Nessun BLOCKER aperto. La SQL delle migrazioni è quella provata sul DB di sviluppo. La checklist umana (runbook G2) resta obbligatoria.
+
+Prima verifica, su `4b5ef3a`: **DO NOT SHIP**.
 
 Obiezione bloccante più forte (v9, confermata): oggi niente impedisce che lo `schedule` di T2.6 parta su prod prima della migrazione.
 - Il ramo di default è `main` e il workflow Update Alerts PROD è attivo.
@@ -251,7 +253,8 @@ Correzioni in `d803504`, `98f04f8`, `44588ba` e `3bfdd99`. La SQL delle tre migr
 | Seconda, su `d803504` | v8, v2 (modello forte), v9 (modello forte) | v8 SHIP · v2 SHIP · v9 DO NOT SHIP | BLOCKER chiusi: la guardia `ALERT_CRON_ENABLED` rende lo `schedule` inerte qualunque cosa arrivi su `main`, e `retryingFailed` si azzera. v9: due MAJOR sul runbook (dopo il COMMIT la ripresa portava a controlli che l'uso del CRM fa fallire, senza un ramo prima del passo 8; nessuna regola per confrontare (b) e (c)). v2: gli indici per Contatti vanno ricontrollati in PR5 | `98f04f8` |
 | Terza, v9 su `98f04f8` | v9 (modello forte) | DO NOT SHIP | BLOCKER: il controllo del deploy di PR1 (`grep "taskIds.length > 0"`) passava anche sul codice senza guardia, cioè su quello che oggi è in prod (`ed8eb05`). MAJOR: vari controlli prima del passo 8 senza ramo, e il caso di una `ALERT_CRON_ENABLED` rimasta impostata | `44588ba` |
 | Mirata, v9 su `44588ba` | v9 (modello forte) | DO NOT SHIP | Il BLOCKER è chiuso: provato con i comandi esatti, fallisce su `ed8eb05` e passa su `3ebd720`. MAJOR nuovo, che fallisce in modo sicuro: il workflow di deploy fa `commit --amend`, quindi Vercel non mostra `headSha` e la deployment va riconosciuta dall'URL | `3bfdd99` |
-| Mirata, v9 su `3bfdd99` | v9 (Sonnet) | ESITO_ULTIMA | ULTIMA_NOTA | — |
+| Mirata, v9 su `3bfdd99` | v9 (Sonnet) | DO NOT SHIP | Confermati i comandi del deploy, `pg_settings`, il controllo delle esecuzioni pianificate, `git cat-file`, la regex di `.env` e le query di (b). Due MAJOR di precisione. Il dominio che chiamano i cron (`mito-deutsche.vercel.app`) era affermato, non verificato: il log del deploy mostra solo `mito-micro-services.vercel.app`. E la migrazione in attesa di un lock veniva riconosciuta da `client_addr`/`usename`, che con il pooler di Supabase sono uguali per app e migrazione | `f25d8d6` |
+| Ristretta, su `f25d8d6` | v9 (Sonnet) | SHIP | Il dominio dei cron è un controllo esplicito con un ramo di stop. Tutti e nove i pezzi delle migrazioni, divisi come fa Drizzle, si riconoscono dal testo della query, e nessuna query dell'app ci somiglia. MINOR: una condizione di stop non verificabile, e le query del migrator su `__drizzle_migrations` non coperte | corretti nel commit successivo |
 
 Rilievi MINOR e NIT delle verifiche successive, tutti sul testo e corretti salvo dove indicato:
 - v8: un alert che fallisce per la prima volta alla ventesima chiamata aspetta 10 s e il job va in rosso senza un altro tentativo. Accettato, come dopo un 504 alla ventesima chiamata;

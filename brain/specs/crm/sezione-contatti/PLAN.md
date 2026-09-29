@@ -590,7 +590,7 @@ Branch suggerito: `contatti/pr2-vincolo-db`. Contiene migrazioni, uno script di 
        - `gh run list --workflow "Deploy Platform to Production" -L 1 --json databaseId,status,conclusion,headSha`: l'ultima esecuzione è `completed` e `success`. Se è fallita o in corso, fermarsi: non si ripiega su un'esecuzione più vecchia;
        - `git fetch`, poi `git merge-base --is-ancestor 3ebd720 <headSha> && echo OK` stampa `OK` (`3ebd720` è il merge di PR1, compresa la guardia `7145af5`), e `git show "<headSha>:src/server/api/routers/customer/PUT/index.ts" | grep -nF "if (taskIds.length > 0)"` trova la riga. Il pattern più corto `taskIds.length > 0` c'è anche nel codice senza guardia: non basta;
        - la deployment in produzione è quella di questa esecuzione. Il workflow fa `git commit --amend` prima del deploy, quindi Vercel mostra un altro SHA: la deployment si riconosce dall'URL. `gh run view <databaseId> --log | grep -E "Production +https"` dà `https://mito-micro-services-<id>-spatalos-projects.vercel.app`. In Vercel, Deployments, quella deployment è la "Current" di produzione, senza Instant Rollback attivo;
-       - in Vercel, nella pagina della deployment "Current", fra i Domains c'è `mito-deutsche.vercel.app`: è il dominio che `alert.js` e gli altri script dei cron chiamano in prod. Il log del deploy mostra solo l'alias `mito-micro-services.vercel.app`, quindi va guardato qui. Se `mito-deutsche.vercel.app` non c'è, o porta a un altro progetto, fermarsi: il cron di prod chiamerebbe un'altra app;
+       - in Vercel, nella pagina della deployment "Current", fra i Domains c'è `mito-deutsche.vercel.app`: è il dominio che `alert.js` e gli altri script dei cron chiamano in prod. Il log del deploy mostra solo l'alias `mito-micro-services.vercel.app`, quindi va guardato qui. Se `mito-deutsche.vercel.app` non c'è, fermarsi: il cron di prod chiamerebbe un'altra app;
        - in Vercel, il Build Command del progetto è quello di default (`next build`), senza migrazioni;
      - PR2 è su `dev`, con la CI verde;
      - decisione su `isDueToday` in ora legale (§13, tech-debt): corretto prima della sessione, oppure accettato con l'avviso del passo 8;
@@ -640,7 +640,7 @@ Branch suggerito: `contatti/pr2-vincolo-db`. Contiene migrazioni, uno script di 
 
        Non serve aspettare il deploy: PR2 non cambia il codice dell'app, e lo `schedule` è inerte senza la variabile;
      - annotare `SELECT now()` ("ora della migrazione"), poi `pnpm db:migrate:prod` (Omar). Dura circa 10 s (7 s sul DB di sviluppo, con 66.000 task). Se dopo un minuto non ha finito, è in attesa di un lock:
-       - dall'SQL editor, trovare la migrazione dal testo della sua query. App e migrazione passano dallo stesso pooler con lo stesso utente, quindi `usename` e `client_addr` non le distinguono. `SELECT pid, pg_blocking_pids(pid) AS bloccata_da, now() - xact_start AS durata, left(query, 60) FROM pg_stat_activity WHERE pid <> pg_backend_pid() AND (query LIKE '%(PR2, T2.%' OR query LIKE '%The open alerts on inactive contacts%' OR query LIKE '%IF NOT EXISTS%' OR query LIKE '%UPDATE "mito-deutsche_alert" AS a%')`. Queste stringhe stanno solo nei file di PR2: le query dell'app, scritte da Drizzle, sono in minuscolo e senza alias. Se non compare nessuna riga, non annullare niente e aspettare;
+       - dall'SQL editor, trovare la migrazione dal testo della sua query. App e migrazione passano dallo stesso pooler con lo stesso utente, quindi `usename` e `client_addr` non le distinguono. `SELECT pid, pg_blocking_pids(pid) AS bloccata_da, now() - xact_start AS durata, left(query, 60) FROM pg_stat_activity WHERE pid <> pg_backend_pid() AND (query LIKE '%(PR2, T2.%' OR query LIKE '%The open alerts on inactive contacts%' OR query LIKE '%IF NOT EXISTS%' OR query LIKE '%UPDATE "mito-deutsche_alert" AS a%' OR query LIKE '%__drizzle_migrations%')`. Prendono le istruzioni dei file di PR2 e quelle del migrator su `drizzle.__drizzle_migrations`; le query dell'app, scritte da Drizzle, sono in minuscolo, senza alias, e non toccano quella tabella. Se non compare nessuna riga, non annullare niente e aspettare;
        - `SELECT pg_cancel_backend(<pid della migrazione>)`: la transazione si annulla e il DB resta com'era. Vedi "Se la sessione si ferma";
   6. verificare in prod, in sola lettura. Due gruppi di controlli.
 
@@ -703,9 +703,17 @@ Branch suggerito: `contatti/pr2-vincolo-db`. Contiene migrazioni, uno script di 
        Se manca, Omar la rilancia a mano in giornata e controlla che `ALERT_CRON_ENABLED` sia `true` e che il workflow sia attivo (§13);
      - fino al rilascio di PR3, su Sentry, gli errori `duplicate key` (23505) su `task.updateTask` e `task.updateTaskFromDashboard`: sono i contatti riattivati dalla lista (F3, §13). Con il cron notturno è normale vederne qualcuno la mattina, sui clienti che il cron ha appena aggiornato. Un `23505` su `task.bulkHandleTask` lascia non assegnati anche i clienti successivi dello stesso blocco: l'admin rilancia l'assegnazione su quella selezione.
 - **validation**: checklist spuntata nella PR; in prod la query dei duplicati restituisce 0 righe, i cinque indici hanno la definizione attesa e quello unico è valido; la prima esecuzione pianificata del cron è verde.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Pronto; lo esegue Omar dopo G1 (checklist nella descrizione della PR)
+- **log**: 2026-09-29 — Riscritto tre volte sulle verifiche della review di PR2 (round PR2 di [[specs/crm/sezione-contatti/REPORT]]). Cosa è cambiato:
+  - lo `schedule` è inerte senza `ALERT_CRON_ENABLED`, che si imposta dopo una prima esecuzione a mano verde;
+  - l'estrazione si confronta prima del merge, con query per le righe nuove e sparite di (b);
+  - `max(created_at)` al posto del conteggio delle migrazioni;
+  - la guardia di PR1 si verifica sul codice in produzione. Il `grep` di prima passava anche sul codice senza guardia, oggi in prod;
+  - la deployment si riconosce dall'URL, per via dell'amend nel workflow di deploy, e si controlla il dominio dei cron;
+  - il passo 6 è diviso in controlli sempre validi e controlli della stessa sera;
+  - la ripresa si decide con `max(created_at)`, e ogni controllo prima del passo 8 ha un ramo di stop;
+  - la migrazione in attesa di un lock si riconosce dal testo della query.
+- **files edited/created**: PLAN.md (§9 T2.4, T2.6, T5.1, T5.13, §12, §13); descrizione della PR
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a (D6)
