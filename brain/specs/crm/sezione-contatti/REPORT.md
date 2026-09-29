@@ -3,9 +3,9 @@ domain: crm
 type: review
 scope: spec
 spec: sezione-contatti
-review_target: "branch contatti/pr1-creazione-sicura — PR1 (T1.1–T1.7)"
-base_ref: 88b01718b6e9deafef1913cef489268a16518312
-head_ref: db92e2cd99416c0eee09d303e231f2d18b0a8c87
+review_target: "branch contatti/pr2-vincolo-db — PR2 (T2.1–T2.7); round di PR1 (contatti/pr1-creazione-sicura, verdetto ship) più sotto"
+base_ref: 3ebd72093b6ab5012a3679e4b4c4fca504025fff
+head_ref: 4b5ef3ae49f9c02a918a68220f116baca4f4507c
 verdict: ship
 review_impact: critical
 human_in_loop: true
@@ -18,7 +18,7 @@ links:
 ingested: false
 last_ingested: null
 created: 2026-09-25
-updated: 2026-09-26
+updated: 2026-09-29
 ---
 
 # Review Report: Sezione Contatti — PR1 "Percorsi di creazione sicuri"
@@ -221,3 +221,133 @@ Da completare in ordine, da una persona, prima del merge verso `dev`.
 
 - Finding durevoli da portare in `brain/tech-debt/crm/sezione-contatti.md`: F3 (già nel runbook G2 e nei rischi), F5 (già registrato), F7, F14, F15, F18, R4, e il `.where(undefined)` di `bulkUpdateCustomers`. Aggiungere quelli "da decidere" che non entrano in PR1.
 - Pagine di dominio che dovrebbero rimandare a questa review: n/a, perché `brain/domains/` è vuoto.
+
+---
+
+## [Round: 2026-09-29] PR2 — "Pulizia e vincolo DB"
+
+Round aggiunto: il report di PR1 sopra resta com'è. Rubric: round PR2 di [[specs/crm/sezione-contatti/RUBRIC]].
+
+- **Target:** branch `contatti/pr2-vincolo-db` (PR verso `dev`), T2.1, T2.2, T2.3, T2.5, T2.6, T2.7; T2.4 è il runbook G2 in PLAN.md.
+- **Compared:** `3ebd720` (merge base con `origin/dev`) → `4b5ef3a`.
+
+### Verdict
+
+**SHIP** · impact: critical, dopo le correzioni e le verifiche successive (sotto). Nessun BLOCKER aperto. La SQL delle migrazioni è quella provata sul DB di sviluppo. La checklist umana (runbook G2) resta obbligatoria.
+
+Prima verifica, su `4b5ef3a`: **DO NOT SHIP**.
+
+Obiezione bloccante più forte (v9, confermata): oggi niente impedisce che lo `schedule` di T2.6 parta su prod prima della migrazione.
+- Il ramo di default è `main` e il workflow Update Alerts PROD è attivo.
+- La PR di PR2 va su `dev`, e il runbook lega al runbook solo il merge `dev` → `main` della sessione G2. Qualunque promozione `dev` → `main` fatta prima (il deploy di PR1 in G1, un hotfix, PR4 "quando serve") porterebbe lo `schedule` su `main` con il workflow attivo.
+- Alle 02:17 UTC il cron chiuderebbe gli alert scaduti prima della pulizia. L'estrazione approvata non sarebbe più valida, e il danno non si annulla.
+
+Secondo BLOCKER (v8, confermato): in `alert.js` il flag `retryingFailed` non si azzera dopo una chiamata con `remaining > 0`. Un alert nuovo che fallisce in fondo a una chiamata successiva manda il job in rosso senza il nuovo tentativo che il piano promette.
+
+### Verifiche successive (dopo le correzioni)
+
+Correzioni in `d803504`, `98f04f8`, `44588ba` e `3bfdd99`. La SQL delle tre migrazioni è invariata: è quella applicata al DB di sviluppo.
+
+| Verifica | Passaggi | Esito | Cosa è emerso | Corretto in |
+|---|---|---|---|---|
+| Seconda, su `d803504` | v8, v2 (modello forte), v9 (modello forte) | v8 SHIP · v2 SHIP · v9 DO NOT SHIP | BLOCKER chiusi: la guardia `ALERT_CRON_ENABLED` rende lo `schedule` inerte qualunque cosa arrivi su `main`, e `retryingFailed` si azzera. v9: due MAJOR sul runbook (dopo il COMMIT la ripresa portava a controlli che l'uso del CRM fa fallire, senza un ramo prima del passo 8; nessuna regola per confrontare (b) e (c)). v2: gli indici per Contatti vanno ricontrollati in PR5 | `98f04f8` |
+| Terza, v9 su `98f04f8` | v9 (modello forte) | DO NOT SHIP | BLOCKER: il controllo del deploy di PR1 (`grep "taskIds.length > 0"`) passava anche sul codice senza guardia, cioè su quello che oggi è in prod (`ed8eb05`). MAJOR: vari controlli prima del passo 8 senza ramo, e il caso di una `ALERT_CRON_ENABLED` rimasta impostata | `44588ba` |
+| Mirata, v9 su `44588ba` | v9 (modello forte) | DO NOT SHIP | Il BLOCKER è chiuso: provato con i comandi esatti, fallisce su `ed8eb05` e passa su `3ebd720`. MAJOR nuovo, che fallisce in modo sicuro: il workflow di deploy fa `commit --amend`, quindi Vercel non mostra `headSha` e la deployment va riconosciuta dall'URL | `3bfdd99` |
+| Mirata, v9 su `3bfdd99` | v9 (Sonnet) | DO NOT SHIP | Confermati i comandi del deploy, `pg_settings`, il controllo delle esecuzioni pianificate, `git cat-file`, la regex di `.env` e le query di (b). Due MAJOR di precisione. Il dominio che chiamano i cron (`mito-deutsche.vercel.app`) era affermato, non verificato: il log del deploy mostra solo `mito-micro-services.vercel.app`. E la migrazione in attesa di un lock veniva riconosciuta da `client_addr`/`usename`, che con il pooler di Supabase sono uguali per app e migrazione | `f25d8d6` |
+| Ristretta, su `f25d8d6` | v9 (Sonnet) | SHIP | Il dominio dei cron è un controllo esplicito con un ramo di stop. Tutti e nove i pezzi delle migrazioni, divisi come fa Drizzle, si riconoscono dal testo della query, e nessuna query dell'app ci somiglia. MINOR: una condizione di stop non verificabile, e le query del migrator su `__drizzle_migrations` non coperte | corretti nel commit successivo |
+| Runbook senza via libera degli admin (2026-09-29), sul working tree dopo `b5d7662` | un verifier sul runbook (modello forte), due passate | DO NOT SHIP, poi SHIP | Prima passata, 2 MAJOR. L'avviso del passo 8 prendeva gli operatori da (b), che ha l'operatore della task prima del riallineamento (quasi sempre 1020). E gli export, ora unica traccia e lista del rollback, non avevano un controllo di completezza né un ramo di stop. MINOR: riferimenti rimasti (§13, Decision Log della SPEC, Remaining Work, questa checklist), dati personali negli export, ripresa la stessa sera. Seconda passata: SHIP, 6 NIT, corretti | il commit di questo aggiornamento |
+
+Rilievi MINOR e NIT delle verifiche successive, tutti sul testo e corretti salvo dove indicato:
+- v8: un alert che fallisce per la prima volta alla ventesima chiamata aspetta 10 s e il job va in rosso senza un altro tentativo. Accettato, come dopo un 504 alla ventesima chiamata;
+- v2: `task_operator_active_idx` messo accanto a `task_priority_active_idx` in T5.1, T5.13 e nel tech-debt; ramo di correzione in avanti al passo 6; commento dello schema che rimanda a `replaceActiveContact`;
+- v9: `SHOW TIME ZONE` sostituita da `pg_settings`; controllo delle esecuzioni pianificate già partite; identificazione della migrazione per connessione; regex di `.env` per tutte le forme di dotenv; §12 allineato al passo 8; rollback con SQL eseguibile; query F8 nel runbook.
+
+### Coverage
+
+- Passaggi eseguiti: 9/9. v1, v2, v3, v4, v5 e v9 sul modello più forte (ereditato); v6, v7 e v8 su Sonnet.
+- Passaggi saltati o falliti: nessuno.
+- Tutti in sola lettura: nessuna connessione a un DB, nessuno script `db:*`, `update:*` o `NODE_ENV=production`. v1 ha scritto una sonda PGlite nella scratchpad della sessione. v5 ha ricostruito lo snapshot dallo schema con l'API di drizzle-kit, in memoria. v9 ha usato `gh` in sola lettura.
+- Test rieseguiti dai verificatori: i file delle migrazioni e dell'estrazione (15/15), il cron (15/15), la suite completa (111/111), `tsc` e `next lint` puliti.
+
+### Findings
+
+| Severity | Concern (verifier) | Location | Problem | Required fix / evidence | Durable? |
+|----------|--------------------|----------|---------|-------------------------|----------|
+| BLOCKER | v9 — ordine del rilascio | `.github/workflows/update-alert prod.yml:9-13`; PLAN.md T2.4 passo 4 | Il workflow è attivo oggi e PR2 va su `dev`: qualunque merge `dev` → `main` prima della sessione G2 arma lo `schedule` contro il DB non migrato. L'unica barriera è il "Disable workflow" del passo 4, dentro la sessione | Rendere lo `schedule` inerte finché non è abilitato in modo esplicito (guardia nel job), oppure spostarlo in una PR a sé al passo 8, oppure disattivare subito il workflow e controllarlo prima di ogni merge su `main` | no |
+| BLOCKER | v8 — `alert.js` | `src/app/api/cron/scheduled/alert.js:83-99` | `retryingFailed` non si azzera quando una chiamata ha `remaining > 0`: un fallimento nuovo in fondo a una chiamata successiva esce con 1 senza il nuovo tentativo | Azzerare il flag su `remaining > 0` e aggiungere il test dell'intreccio | no |
+| MAJOR | v2 — indici | PLAN.md T2.4 passi 2 e 6 | `IF NOT EXISTS` salta in silenzio se in `public` c'è una relazione qualsiasi con lo stesso nome. Il controllo del 29/09 guardava solo gli indici di `task`/`alert`, e il runbook non ricontrolla; il controllo dopo la migrazione ("duplicati = 0") passa anche senza indice | Passo 2: nessuna relazione con i cinque nomi in `pg_class`. Passo 6: `indexdef` dei cinque indici e `indisvalid`/`indisunique` dell'indice unico | no |
+| MAJOR | v2 — indici | `src/server/db/schema/task.ts:90-92`; SQL `20260929062133` riga 5 | `task_priority_active_idx` (`priority DESC NULLS LAST`) non serve l'ordine di T5.1 (`priority IS NULL, priority <dir>, id <dir>`), né `ASC NULLS LAST`; nessuna query di oggi lo usa | Ridisegnarlo in PR5 sulla query vera, con l'`EXPLAIN ANALYZE` di G4 (migrazione che lo sostituisce) | sì |
+| MAJOR | v9 — ordine del rilascio | PLAN.md §13 (riga "L'esecuzione notturna non parte") | Dice di riattivare il workflow se manca il messaggio Telegram, senza limitarlo a dopo G2: con PR2 su `main` e la sessione ferma prima della migrazione riarmerebbe il cron | Limitare la regola a dopo il passo 8, e dirlo nel blocco "se la sessione si ferma" | no |
+| MAJOR | v9 — ordine del rilascio | PLAN.md T2.4 passi 4–5; §12 G2 | Il merge (passo 4) viene prima del confronto dell'estrazione (passo 5), e "uguale a quella approvata" non è definito: l'uso di giornata cambia (b) e (c), quindi la sessione si ferma con PR2 su `main` | Rieseguire e confrontare prima del merge; definire il confronto ((a) identica per `contatto_id`, (b) e (c) spiegabili dall'uso del giorno) | no |
+| MAJOR | v9 — ordine del rilascio | PLAN.md T2.4 passo 2 | Il controllo di `drizzle.__drizzle_migrations` non dice come si fa: la tabella non ha i tag, e il migrator guarda solo `max(created_at)`. Contare le righe inganna (sviluppo ne ha 3 in più) | `SELECT max(created_at)` = `1788372880766`, nessuna riga ≥ `1790662684995`; ripeterlo prima del passo 5 e a ogni ripresa | no |
+| MAJOR | v9 — ordine del rilascio | PLAN.md T2.4 passo 4 | "merge `dev` → `main`" non è limitato a PR2: con PR3 o PR4 già su `dev` la sessione porterebbe codice dell'app (PR3 senza G3) | Prima del merge, `git log --first-parent origin/main..origin/dev` mostra solo il merge di PR2 | no |
+| MAJOR | v9 — ordine del rilascio (preesistente) | `src/server/services/contact/processDueAlerts.ts:41-49` | In ora legale gli alert creati dall'interfaccia (scadenza alla mezzanotte locale, 22:00 UTC) non risultano "di oggi": `isDueToday` compensa solo un'ora. Vengono chiusi senza followup. Confermato sul DB di sviluppo: 5.710 scadenze alle 22:00 UTC, 6.727 alle 23:00 UTC. Preesistente (formule invariate da PR1), ma rende falsi il passo 8 del runbook ("il followup per quelli del giorno") e T2.6 per una sessione prima del 25/10 | Fuori perimetro di PR2 (non-goal: comportamento del cron): tech-debt, runbook corretto, decisione di Omar su una PR a sé | sì |
+| MAJOR | v8 — `alert.js` | `src/app/api/cron/scheduled/_test/alert.test.ts` | Riscritti due test di PR1, mentre la validation di T2.7 ne ammetteva uno solo ("gli altri test di PR1 restano invariati"). Il secondo passava per il motivo sbagliato ed è diventato più stretto, non più largo | Allineare la validation di T2.7 a ciò che è stato fatto | no |
+| MINOR | v1 — pulizia | `src/server/db/migrations/_test/contattiCleanup.db.test.ts:31-100` | `createAlert` della factory aggiorna la task e `$onUpdate` riscrive `updated_at`: nel seed `GREATEST` non si distingue più da `updated_at`, e nessun test protegge l'ordine della migrazione (il commento dice il contrario) | Un cliente con duplicati senza alert, con `created_at > updated_at` sul superstite; correggere il commento | no |
+| MINOR | v1 — pulizia | PLAN.md T2.4 | Il runbook non ricontrolla trigger e regole in prod, né prende un'impronta prima/dopo di `task.updated_at`/`task_event_log` come sul DB di sviluppo | Query su `pg_trigger`/`pg_rules` al passo 2; conteggio e md5 prima e dopo la migrazione | no |
+| MINOR | v2 — indici | `activeContactIndex.db.test.ts:65-80` | Gli indici di prestazione sono controllati solo per nome | Asserire `indexdef` dei cinque indici | no |
+| MINOR | v3 — percorsi di scrittura | PLAN.md §13 (riga F3) e T2.4 passo 9 | Con l'indice, un `23505` da F3 in `bulkHandleTask` ferma anche i clienti successivi dello stesso blocco, non solo "quel cliente" (raggiungibile solo con una chiamata tRPC diretta) | Dirlo in §13 e al passo 9: l'admin rilancia l'assegnazione | no |
+| MINOR | v4 — riallineamento | PLAN.md T2.4 passo 1 | La precondizione "guardia di PR1 in prod" non ha un controllo concreto: oggi `origin/main` non contiene `7145af5` | Verificare che il deploy di produzione contenga `7145af5` | no |
+| MINOR | v5 — migrator | PLAN.md T2.4 passo 5; §13 | L'attesa del lock non ha limite né procedura di interruzione; §13 nomina solo `task`, ma il lock tiene anche `alert` fino al COMMIT | Controllo di `pg_stat_activity` prima; se resta ferma, `pg_cancel_backend` (rollback); §13 con le due tabelle | no |
+| MINOR | v6 — estrazione | `contatti-cleanup-preview.sql:95-110` | (c) è solo un conteggio: al passo 5 uno scambio di task a conteggi uguali non si vede. Le date mostrate dipendono dal fuso della sessione dell'editor | Dirlo nel confronto del passo 5; stesso strumento per le due esecuzioni | no |
+| MINOR | v7 — test | `contattiCleanup.systemOperator.db.test.ts` | Il ramo che fallisce della guardia è provato solo su PGlite; la prova sul DB di sviluppo copre solo il ramo riuscito | Accettato: il passo 2 del runbook verifica l'operatore di sistema | no |
+| MINOR | v9 — ordine del rilascio | PLAN.md T2.4 | Ripresa senza un criterio (dopo il COMMIT si riparte dal passo 6, non dal 5); punti di non ritorno non segnalati ai passi 5 e 8; passi 4 e 8 senza "(Omar, mai da un agente)"; ambiguità: "query dei duplicati" non indicata, tabella `mito-deutsche_operator`, "No alerts to process" come esito verde, job rosso al passo 8 | Correzioni al testo del runbook | no |
+| NIT | v1, v2, v3, v4, v5, v6, v7 | vari | Finestre di concorrenza durante la migrazione (mitigate dall'orario); alert senza task non toccati; unicità controllata riga per riga (commento nello schema); concorrenza non testata; F3 più frequente con il cron notturno; fino a 4 task che entrano nell'export; FK di `customers.operator_id` data per scontata; `created_at` NULL in `__drizzle_migrations`; COMMIT perso per la connessione; default di `customers.id` in prod non letto; `queryReadOnly` senza un test di scrittura rifiutata; formulazione del tech-debt (riga 44) | Nessuna azione obbligatoria | — |
+
+### What passed
+
+| Concern (verifier) | Evidence |
+|--------------------|----------|
+| v1 — pulizia | Criterio del superstite identico a `getActiveTask`, `replaceActiveContact` e alla lista Clienti, compresi pareggi e NULL; nessun `DELETE`; task senza cliente mai disattivate; il passo 2 chiude esattamente (b); guardia e rollback; nessun effetto su `updated_at`, `alert_id`, `task_event_log`; file invariato da `1261d86`, quindi lo stesso SQL provato sul DB di sviluppo |
+| v2 — indici | L'indice unico parziale vincola davvero un solo attivo per cliente, anche in concorrenza; NULL distinti; con `prepare: false` il predicato è usabile; `task_customer_id_idx`, `task_operator_active_idx` e `alert_task_id_idx` servono query reali o pianificate; schema, SQL e snapshot coincidono |
+| v3 — percorsi di scrittura | Chi scrive bloccando il cliente (cron, massiva, `createTask`) non può produrre `23505`; nel cron un fallimento resta nel suo alert; la riapertura scrive solo `isActive: false`; router, import, seed e script non riattivano; l'unico `23505` rimasto è F3, già accettato |
+| v4 — riallineamento | Tipi e FK compatibili; nessuna task a NULL; commuta con la pulizia; nessun effetto su `updated_at` e `task_event_log`; nessun altro scrittore massivo di `task.operator_id` oltre a quello protetto dalla guardia di PR1 |
+| v5 — migrator | Journal monotono, catena degli snapshot corretta e uguale allo schema; la riga tolta a mano segue il precedente e non rompe il prossimo `db:generate`; solo aggiunte; `drizzle-kit migrate` (driver `pg`, `max: 1`) applica tutte le migrazioni pendenti in una transazione, nell'ordine del journal; il blocco `DO` si divide bene |
+| v6 — estrazione | CTE di ordinamento identica alla migrazione; (c) contata dopo la pulizia e provata dal test in due fasi; sola lettura; ordinamenti totali; id stabili in (a) e (b); colonne sufficienti per gli admin |
+| v7 — test | Il test in due fasi riproduce il migrator di prod (una transazione); `PUSHED_SCHEMA` idempotente non nasconde differenze; i casi limite richiesti ci sono; niente dipendenze dall'ordine; la prova sul DB di sviluppo è concreta |
+| v8 — `alert.js` | Termina sempre entro 20 chiamate; `exit(1)` seguito da `return`; i casi a un solo tentativo sono giusti e testati; tipi JSDoc allineati |
+| v9 — ordine del rilascio | Dentro la sessione l'ordine è giusto; alle 02:17 UTC la data è la stessa in UTC, in Italia e nella sessione del DB tutto l'anno; il merge non migra niente; migrazioni atomiche; `db:migrate:prod` solo da Omar |
+
+### Per-concern verdicts
+
+| Pass | Charter | Verdict | Rationale |
+|------|---------|---------|-----------|
+| v1 | Migrazione di pulizia T2.2 | SHIP | L'SQL rispetta AC69, AC70 e A6; restano la debolezza del seed e i controlli del runbook (MINOR) |
+| v2 | Definizione degli indici T2.3 | DO NOT SHIP | L'indice unico è corretto, ma `IF NOT EXISTS` non viene ricontrollato al rilascio, e un indice non serve la query per cui esiste |
+| v3 | Indice unico e percorsi di scrittura | SHIP | Unico `23505` rimasto: F3, accettato; da documentare l'effetto sul blocco della massiva |
+| v4 | Riallineamento T2.5 | SHIP | Fa esattamente ciò che dice il contratto; manca un controllo concreto della precondizione |
+| v5 | Catena e migrator | SHIP | Catena coerente, una sola transazione; restano lock e controlli del runbook |
+| v6 | Estrazione T2.1 | SHIP | Coincide con le migrazioni, per prova; (c) è solo un conteggio |
+| v7 | Affidabilità dei test | SHIP | I test modellano il migrator di prod; il ramo che fallisce della guardia è provato solo su PGlite |
+| v8 | `alert.js` (T2.7) | DO NOT SHIP | Il flag che non si azzera nega il nuovo tentativo a un fallimento nuovo |
+| v9 | Ordine del rilascio | DO NOT SHIP | Lo `schedule` può arrivare su `main` prima della sessione con il workflow attivo |
+
+### Human Review Checklist
+
+Obbligatoria (`review_impact: critical`). Da seguire prima del merge di PR2 su `main` e prima di G2:
+
+1. Verificare che i due BLOCKER siano chiusi e che una seconda verifica (v8, v9 e v2) li abbia confermati.
+2. Eseguire i gate di `AGENTS.md` sulla testa della PR: `SKIP_ENV_VALIDATION=true pnpm exec next lint`, `pnpm exec tsc --noEmit`, `pnpm run test --run`, `pnpm build`; CI verde.
+3. Prima di qualunque merge `dev` → `main` successivo al merge di PR2 su `dev` (compreso il deploy di PR1 in G1), controllare che lo `schedule` non possa partire (la guardia scelta per il BLOCKER di v9).
+4. Leggere il runbook G2 (T2.4) aggiornato nella descrizione della PR e verificare che copra: controllo di `max(created_at)`, nomi degli indici liberi, trigger, `7145af5` in prod, estrazione confrontata prima del merge, merge limitato a PR2, procedura se il lock resta in attesa, controllo degli indici dopo la migrazione.
+5. Decidere sull'`isDueToday` in ora legale (MAJOR preesistente): prima della sessione G2, oppure accettare che la prima esecuzione e le notti fino al 25/10 chiudano senza followup anche gli alert del giorno, e avvisarne gli operatori.
+6. Dopo G2, seguire i passi 6–9 del runbook: indici presenti con la definizione giusta, estrazione vuota, cron verde, la notte dopo l'esecuzione `schedule` verde.
+
+> **Aggiornamento del 2026-09-29, dopo questa review:** niente via libera degli admin sull'estrazione (deciso da Omar).
+> - Il punto 3 è superato dall'ordine dei merge: PR2 entra in `dev` solo dopo che PR1 è su `main`. La guardia `ALERT_CRON_ENABLED` resta.
+> - Nel punto 4, al posto di "estrazione confrontata prima del merge" il runbook deve coprire l'estrazione eseguita dopo il merge e subito prima della migrazione (T2.4, passo 5), con il controllo di completezza e il ramo di stop.
+> - La verifica di questa modifica è in "Verifiche successive".
+
+### Acceptance criteria check (case B)
+
+| Criterion | Met / Unmet / Blocked | Notes |
+|-----------|-----------------------|-------|
+| AC69 | Met (codice); in prod dopo G2 | Pulizia provata su PGlite e sul DB di sviluppo (7 duplicati → 0) |
+| AC70 | Met (codice); in prod dopo G2 | 1.183 alert chiusi dal sistema sul DB di sviluppo, nessuna riga in `task_event_log` |
+| AC71 (parte DB) | Met (codice); in prod dopo G2 | Indice unico parziale; da ricontrollare in prod dopo la migrazione (MAJOR di v2) |
+| AC72 | Met | Cron e massiva invariati; il fallimento resta nel suo alert. L'`isDueToday` in ora legale è preesistente e uguale alla base |
+
+### Notes for docs-maintenance
+
+- Durable findings da portare in `tech-debt/crm/sezione-contatti.md`: `task_priority_active_idx` da ridisegnare in PR5; `isDueToday` in ora legale (alert di oggi senza followup); ramo che fallisce della guardia provato solo su PGlite.
+- Domain pages che dovrebbero rimandare a questa review: nessuna (manca ancora `brain/domains/crm/`).

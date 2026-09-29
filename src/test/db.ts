@@ -35,19 +35,23 @@ const indexOfTag = (tag: string) => {
 /**
  * Schema the production database got from `drizzle-kit push`, which no
  * migration creates. The snapshots already include it, so `db:generate` never
- * emits it. Each piece is applied after the migration it came with.
+ * emits it. Each piece is applied after the migration it came with, and does
+ * nothing if already there.
  */
 const PUSHED_SCHEMA: { after: string | null; sql: string }[] = [
   {
     // The first migration creates the task table with this type, which the
     // third one creates only when it doesn't exist yet
     after: null,
-    sql: `CREATE TYPE "public"."task_status" AS ENUM('chiamare', 'non interessato', 'app.to', 'caricato', 'richiamare', 'erogata', 'nessuno', 'followup')`,
+    sql: `DO $$ BEGIN
+      CREATE TYPE "public"."task_status" AS ENUM('chiamare', 'non interessato', 'app.to', 'caricato', 'richiamare', 'erogata', 'nessuno', 'followup');
+    EXCEPTION WHEN duplicate_object THEN NULL;
+    END $$`,
   },
   {
     // In the snapshots since this migration, in none of the SQL files
     after: "20260615235953_brown_madelyne_pryor",
-    sql: `ALTER TABLE "mito-deutsche_alert" ADD COLUMN "is_resolved" boolean DEFAULT false NOT NULL`,
+    sql: `ALTER TABLE "mito-deutsche_alert" ADD COLUMN IF NOT EXISTS "is_resolved" boolean DEFAULT false NOT NULL`,
   },
 ]
 
@@ -72,7 +76,9 @@ function migrationsFolderUpTo(last: number) {
 /**
  * Applies the repo migrations to the test database, together with the pushed
  * schema production has: all of them, or only up to `tag`. Call it once per
- * test file, in `beforeAll`.
+ * test file, in `beforeAll`; a later call applies only what is missing, as a
+ * migration of a database already in use (seed with `migrateUpTo(previous)`,
+ * then `migrateUpTo()`).
  */
 export async function migrateUpTo(tag?: string) {
   const last = tag ? indexOfTag(tag) : journal.entries.length - 1
@@ -81,13 +87,17 @@ export async function migrateUpTo(tag?: string) {
   // development database runs in Europe/Rome
   await testClient.exec(`SET TIME ZONE 'UTC'`)
 
-  // The migrator skips the migrations already applied
+  // The migrator skips the migrations already applied, and applies the
+  // pending ones in one transaction
   let applied = -1
   const migrateTo = async (index: number) => {
     if (index <= applied) return
     const folder = migrationsFolderUpTo(index)
-    await migrate(testDb, { migrationsFolder: folder })
-    fs.rmSync(folder, { recursive: true })
+    try {
+      await migrate(testDb, { migrationsFolder: folder })
+    } finally {
+      fs.rmSync(folder, { recursive: true })
+    }
     applied = index
   }
   for (const piece of PUSHED_SCHEMA) {
@@ -97,6 +107,18 @@ export async function migrateUpTo(tag?: string) {
     await testClient.exec(piece.sql)
   }
   await migrateTo(last)
+}
+
+/**
+ * Runs `sql`, one or more statements, in a read-only transaction: a write
+ * fails it. Returns the rows of each statement.
+ */
+export async function queryReadOnly(sql: string) {
+  const results = await testClient.transaction(async (tx) => {
+    await tx.exec("SET TRANSACTION READ ONLY")
+    return tx.exec(sql)
+  })
+  return results.map(({ rows }) => rows as Record<string, unknown>[])
 }
 
 /** Where `failNextInsertInto` (src/test/failpoint.ts) keeps its objects. */

@@ -9,7 +9,7 @@ links:
   - "[[chore/crm/guida-assegnazione-massiva-e-alert]]"
   - "[[chore/crm/report-frontend-riorganizzazione]]"
 created: 2026-09-24
-updated: 2026-09-25
+updated: 2026-09-29
 ---
 
 # Spec: Sezione Contatti e tabella Clienti semplificata
@@ -187,7 +187,7 @@ Gli stati "da chiamare" sono `chiamare` e `followup`; gli stati con esito sono `
 ### Dati
 
 - **AC69** — Prima che Contatti sia in uso, nessun cliente ha più di un contatto attivo. Dove ce n'era più di uno resta attivo quello che l'interfaccia mostra oggi (il più recente per ultima modifica o creazione, poi per id), e gli altri vengono disattivati, non cancellati.
-- **AC70** — Dopo la pulizia nessun contatto non attivo ha un alert aperto: gli alert aperti sui contatti disattivati passano nello Storico come chiusi dal sistema. Nessun alert viene cancellato. La pulizia non scrive righe in `task_event_log`: la sua traccia è l'elenco condiviso prima (vedi Constraints).
+- **AC70** — Dopo la pulizia nessun contatto non attivo ha un alert aperto: gli alert aperti sui contatti disattivati passano nello Storico come chiusi dal sistema. Nessun alert viene cancellato. La pulizia non scrive righe in `task_event_log`: la sua traccia è l'elenco estratto subito prima (vedi Constraints).
 - **AC71** — Dopo la pulizia, nessun percorso (creazione singola, "Crea contatto", assegnazione massiva, riapertura, cron alert) può lasciare un cliente con due contatti attivi, nemmeno per errore o per due richieste contemporanee.
 - **AC72** — Con la regola di AC71 in vigore, il cron alert e i quattro casi dell'assegnazione massiva producono gli stessi risultati di oggi. Il fallimento su un cliente non impedisce al cron di elaborare gli alert degli altri clienti.
 
@@ -205,7 +205,7 @@ Gli stati "da chiamare" sono `chiamare` e `followup`; gli stati con esito sono `
 - **Nessun SQL costruito dal client.** I filtri di Contatti arrivano al server come valori tipizzati e validati; nessun frammento SQL passa dall'URL o dal browser.
 - **Un solo contatto attivo per cliente garantito dal database** (AC71), non solo dal codice.
 - **Migrazioni dello schema solo additive**, generate con `pnpm db:generate`. La pulizia di AC69 aggiorna righe esistenti ma non cancella nulla. Durante lo sviluppo non si esegue nessuno script che punta alla produzione (`NODE_ENV=production`).
-- **Pulizia concordata.** Prima della pulizia si estrae l'elenco dei clienti coinvolti e degli alert che verranno chiusi (AC70), e lo si condivide con gli amministratori.
+- **Pulizia tracciata.** Subito prima della pulizia si estrae l'elenco dei clienti coinvolti, dei contatti che verranno disattivati e degli alert che verranno chiusi (AC70), e lo si conserva. Non serve il via libera degli amministratori (deciso da Omar il 2026-09-29).
 - **Prestazioni.** Le liste Contatti e Clienti restano utilizzabili con i volumi di produzione; va verificato su dati di dimensione reale prima del rilascio (soglia: domanda 7).
 - **Rilascio in quattro passi**, ognuno rilasciabile da solo, in quest'ordine. Il passo 4 va per ultimo, dopo qualche giorno di uso di Contatti da parte degli operatori.
 
@@ -269,7 +269,7 @@ La proposta di implementazione completa (query, indici, struttura dei file, stim
 | La scheda cliente mostra solo un riepilogo del contatto (decisione 2 della bozza). | Un solo punto di modifica e un solo comportamento da spiegare agli operatori. |
 | Ogni cambio di stato con alert aperto chiude l'alert, previa conferma (decisione 3 della bozza). | Una sola regola per lista e dettaglio; la conferma evita di chiudere un richiamo per sbaglio. |
 | Duplicati attivi: pulizia più vincolo a database (decisione 4 della bozza). Il vincolo richiede di correggere l'ordine delle operazioni anche nel cron alert e nell'assegnazione massiva, senza cambiarne i risultati. | In Contatti ogni contatto attivo è una riga: un duplicato mostrerebbe lo stesso cliente due volte. |
-| Nella pulizia resta attivo il contatto che l'interfaccia mostra oggi; gli alert aperti sui contatti disattivati si chiudono nello Storico, senza righe di log. | Gli operatori ritrovano lo stesso contatto di prima. Spostare l'alert sul contatto che resta potrebbe metterlo su uno stato che non lo ammette (AC46), e lasciarlo aperto farebbe fallire il cron. L'elenco viene condiviso prima. |
+| Nella pulizia resta attivo il contatto che l'interfaccia mostra oggi; gli alert aperti sui contatti disattivati si chiudono nello Storico, senza righe di log. | Gli operatori ritrovano lo stesso contatto di prima. Spostare l'alert sul contatto che resta potrebbe metterlo su uno stato che non lo ammette (AC46), e lasciarlo aperto farebbe fallire il cron. L'elenco si estrae subito prima e si conserva (Constraints). |
 | Vista di default: solo contatti attivi, con un interruttore per i precedenti (decisione 5 della bozza). | Raccomandazione della bozza, adottata. |
 | Note: solo la chat del cliente, niente `messages.task_id` (decisione 6 della bozza). Chiunque apra il contatto può scrivere. | Il legame nota → task si romperebbe a ogni nuova riga `task`; si ricostruisce con il nuovo export chiamate. La chat è del cliente, e oggi è scrivibile da tutti nella scheda cliente. |
 | La riapertura crea un nuovo contatto che eredita "Contattato il". | Aggiornare la stessa riga, o svuotare la data, cambierebbe i numeri dell'export chiamate. |

@@ -16,10 +16,12 @@ updated: 2026-09-29
 ## Summary
 
 - Run 1 (2026-09-25): solo **PR1 — Percorsi di creazione sicuri** (T1.1 → T1.8), branch `contatti/pr1-creazione-sicura` da `dev`, PR verso `dev`. PR2–PR6 non iniziate.
+- Run 2 (2026-09-29): solo **PR2 — Pulizia e vincolo DB** (T2.1, T2.2, T2.3, T2.5, T2.6, T2.7), branch `contatti/pr2-vincolo-db` da `dev`, PR verso `dev`. T2.4 è il runbook G2: va nella descrizione della PR, lo esegue Omar.
 
 ## Execution Mode
 
 - `sequential` (richiesto dall'utente): un task alla volta nell'ordine T1.1 → T1.2 → T1.3 → T1.4 → T1.5 → T1.6 → T1.7 → T1.8, nessun worker.
+- Run 2, `sequential` (richiesto dall'utente): T2.1 → T2.2 → T2.3 → T2.5 → T2.6 → T2.7, nessun worker.
 
 ## Deviations From the Plan
 
@@ -78,6 +80,47 @@ updated: 2026-09-29
   - Gli alert dei giorni precedenti restano solo chiusi, come nella base (deciso in chat).
   - `forEachIsolated` passa l'indice alla funzione.
 
+- **Run 2 — T2.1, dove sta il confronto con le migrazioni.** Il piano metteva nel file dell'estrazione anche il test "gli alert di (b) sono quelli che chiude T2.2, i conteggi di (c) sono le task che cambia T2.5". Quel test ha bisogno della migrazione completa dopo il seed, quindi sta nel test in due fasi delle migrazioni (`src/server/db/migrations/_test/contattiCleanup.db.test.ts`). Il file dell'estrazione resta su `LEGACY_SCHEMA_TAG`.
+- **Run 2 — T2.1, conteggi di (c) dopo la pulizia.** "Attive" e "non attive" sono contate come saranno dopo T2.2: un duplicato che la pulizia disattiva conta fra le non attive. Così (c) coincide con ciò che fa T2.5, che gira dopo T2.2 nella stessa transazione.
+
+- **Run 2 — T2.2, guardia sull'operatore di sistema.** Il piano lasciava il prerequisito al runbook (T2.4, passo 2). La migrazione ora si ferma con un errore se deve chiudere alert e l'operatore di sistema non c'è: altrimenti li chiuderebbe con `resolved_by` NULL, e lo Storico non direbbe chi li ha chiusi. Il migrator annulla le tre migrazioni insieme. Senza alert da chiudere passa, così un DB nuovo o di preview senza operatore di sistema si migra lo stesso.
+- **Run 2 — harness.** `migrateUpTo` si può chiamare una seconda volta nello stesso file e applica solo ciò che manca (prima rieseguiva il `CREATE TYPE` di `PUSHED_SCHEMA` e falliva). Serve al test in due fasi. `queryReadOnly` esegue uno o più statement in una transazione `READ ONLY`.
+
+- **Run 2 — T2.3, test dell'indice in un file a parte** (`src/server/db/migrations/_test/activeContactIndex.db.test.ts`), non nel test in due fasi: quello ha un solo seed e una sola migrazione per file, e dei test che aggiungono righe lì dipenderebbero dall'ordine.
+- **Run 2 — T2.3, `pnpm db:migrate` sul DB di sviluppo dopo T2.5.** Le tre migrazioni si applicano in una sola esecuzione, quindi in una sola transazione, come faranno in prod con `db:migrate:prod`.
+
+- **Run 2 — T2.7, colore del job del cron** (deciso da Omar il 2026-09-29). Rosso solo se alla fine restano alert falliti. In PR1 bastava una chiamata qualsiasi con `failed > 0`: ora un fallimento recuperato da una chiamata successiva lascia il job verde, come un 504 recuperato. Resta visibile nel JSON di quella chiamata e in Sentry. Cambia un test di PR1 (F11) e il controllo del passo 8 del runbook G2.
+
+- **Run 2 — `/simplify` dopo T2.7 (4 revisori: riuso, semplificazione, efficienza, altitudine).** Applicati, solo nei test e nell'harness:
+  - un solo `runCleanupPreview()` per i due file che eseguono l'estrazione;
+  - `rejects.toMatchObject({ code: "23505" })` al posto di un helper fatto a mano;
+  - tolto il test di `replaceActiveContact` in `activeContactIndex.db.test.ts`, doppione di `activeContact.db.test.ts`, che gira già con l'indice;
+  - `activeTasksOf` per contare i contatti attivi e un confronto per chiave nel test di (c);
+  - tolta un'asserzione sul seed;
+  - `json(done)` in `alert.test.ts`;
+  - `migrateUpTo` senza stato del modulo: i due pezzi di `PUSHED_SCHEMA` sono idempotenti, e il migrator salta le migrazioni già applicate.
+- **`/simplify`, rilievi non applicati:**
+  - guardia e `UPDATE` degli alert in un solo blocco `DO`: l'SQL di `contatti_cleanup` è già stato applicato al DB di sviluppo, e quello di prod deve restare identico;
+  - riallineamento prima degli indici, che risparmierebbe 1–3 s di manutenzione degli indici: l'ordine pulizia < indici < riallineamento l'ha fissato Omar;
+  - togliere `task_operator_active_idx` e `task_priority_active_idx`, che nessuna query di oggi usa: servono a `getContacts` di PR5 (contatti attivi, filtro per operatore, ordine per priorità);
+  - una sola regola di progresso in `alert.js` (`failed + remaining` che non scende): cambierebbe il percorso con `remaining > 0` e un test di PR1;
+  - creare l'operatore di sistema nella migrazione: cambia G1 (`create:system-operator`, da Omar).
+
+- **Run 2 — correzioni dopo l'adversarial review di PR2** (round PR2 di [[specs/crm/sezione-contatti/REPORT]], prima verifica DO NOT SHIP):
+  - **BLOCKER di v9, lo `schedule` poteva partire prima della migrazione.** Il workflow è attivo, e qualunque merge `dev` → `main` dopo PR2 lo avrebbe portato su `main` prima della sessione G2. Ora il job ha una guardia: un'esecuzione `schedule` parte solo con la variabile del repository `ALERT_CRON_ENABLED = true`, che si imposta al passo 8. **Scostamento dal runbook deciso il 2026-09-29:** al posto di "disattivare il workflow al passo 4 e riattivarlo al passo 8" c'è un'azione sola, che non dipende da quando avviene il merge.
+  - **BLOCKER di v8, `alert.js`.** `retryingFailed` si azzera dopo una chiamata con `remaining > 0`, con il test dell'intreccio.
+  - **Runbook G2 riscritto** (T2.4), con i MAJOR e i MINOR di v1, v2, v3, v4, v5 e v9:
+    - la guardia di PR1 va verificata nel deploy di prod (`7145af5`);
+    - `max(created_at)` al posto del conteggio delle migrazioni, nomi degli indici liberi, trigger;
+    - l'estrazione si confronta prima del merge, con la regola del confronto;
+    - il merge è limitato a PR2;
+    - `pg_stat_activity` prima della migrazione e `pg_cancel_backend` se resta in attesa di un lock;
+    - dopo la migrazione, `indexdef` e `indisvalid`/`indisunique`, e l'impronta prima e dopo;
+    - la ripresa si decide con `max(created_at)`, e i punti di non ritorno sono segnati;
+    - `23505` sulla massiva e job rosso al passo 8.
+  - **Test:** un cliente con duplicati senza alert nel test in due fasi (la factory `createAlert` riscriveva `updated_at`); la definizione completa degli indici.
+  - **Non corretti in PR2:** `task_priority_active_idx` (si ridisegna in PR5: l'SQL resta quello provato sul DB di sviluppo); `isDueToday` in ora legale (preesistente, decisione di Omar). Entrambi nel tech-debt.
+
 ## Surprises and Decisions
 
 - **Le migrazioni del repo non si applicano su un Postgres vuoto.** `20240926195125_lucky_roughhouse` crea `mito-deutsche_task` con il tipo `task_status`, che nasce solo in `20260619152227_same_hemingway`. Il DB di produzione aveva già il tipo (creato con `db:push` prima delle migrazioni), e la terza migrazione lo salta se esiste. L'harness crea il tipo prima di migrare; le migrazioni non si toccano (già applicate in prod). Vale anche per chi volesse creare un DB nuovo con `pnpm db:migrate`.
@@ -91,28 +134,43 @@ updated: 2026-09-29
   - **F8, il cron di prod non gira:** 1.853 alert scaduti aperti, da giugno, più 18 di oggi. Negli ultimi 21 giorni gli alert li hanno chiusi solo gli operatori. **L'operatore di sistema in prod non esiste:** il cron di `main` va in errore su `systemOperator!.id`, quello di PR1 con `SystemOperatorMissing`. L'ipotesi "il cron gira già ogni giorno" non regge.
   - **F7, F16:** 7 clienti con più contatti attivi, tutti con lo stesso millisecondo, per via dell'update delle 15:53.
 
+- **Run 2 — `db:generate` cambia il default di `customers.id`.** Ogni esecuzione emette `ALTER TABLE "mito-deutsche_customers" ALTER COLUMN "id" SET DEFAULT '<letterale casuale>'`, perché lo schema usa `.default(nanoid())`, che si valuta una volta al caricamento. Tolta a mano dall'SQL di T2.3, come era già stato fatto in `20260902181440_nebulous_susan_delgado` (lo snapshot cambia letterale, l'SQL no). Nel tech-debt.
+- **Run 2 — controllo strutturale su prod e sviluppo** (29/09, sola lettura, transazione `READ ONLY`): nessun trigger né regola su `task`, `alert` e `customers`; su `task` e `alert` solo le chiavi primarie. Dimensioni: `task` 97 MB in prod, 95 MB in sviluppo.
+
 ## Sanity Checks
 
 | Check | Result | Notes |
 |------|--------|-------|
+| Run 2 — DB di sviluppo, sola lettura prima di PR2 | OK | `__drizzle_migrations` arriva a `LEGACY_SCHEMA_TAG`; 0 task senza cliente; 7 clienti con duplicati |
+| Run 2 — `pnpm db:migrate` sul DB di sviluppo | OK | Tre migrazioni in una esecuzione, circa 7 s; dopo: estrazione vuota, 0 duplicati, 1.183 alert chiusi dal sistema, 0 task da riallineare, impronte di `updated_at`/`alert_id`/`task_event_log` invariate (dettagli in T2.5) |
+| Run 2 — controllo strutturale su prod, sola lettura | OK | Nessun trigger né regola su `task`/`alert`/`customers`; solo le chiavi primarie su `task`/`alert` |
+| Run 2 — gate CI su `d803504` | OK | `next lint` e `tsc --noEmit` puliti; `pnpm run test --run` 21 file, 112 test; `pnpm build` con le variabili di CI in un worktree pulito (senza `.env*`) |
+| Run 2 — `indexdef` sul DB di sviluppo, sola lettura | OK | Le cinque definizioni coincidono con `activeContactIndex.db.test.ts` (Postgres 15.6); `task_customer_active_uidx` valido e unico |
+| Run 2 — prova del cron sul DB di sviluppo | Non fatta | La porta 3000, chiamata da `alert.js` in sviluppo, è occupata dal container di un altro progetto |
 
 ## Acceptance Criteria Status
 
 | Criterion | Status | Notes |
 |-----------|--------|-------|
+| AC69 (PR2) | Met nel codice; in prod dopo G2 | Pulizia provata su PGlite e sul DB di sviluppo (7 clienti con duplicati → 0) |
+| AC70 (PR2) | Met nel codice; in prod dopo G2 | 1.183 alert chiusi dal sistema sul DB di sviluppo; nessuna riga in `task_event_log` |
+| AC71, parte DB (PR2) | Met nel codice; in prod dopo G2 | Indice unico parziale; definizione ricontrollata in prod al passo 6 del runbook |
+| AC72 (PR2) | Met | Cron e massiva invariati. `isDueToday` in ora legale è preesistente (tech-debt) |
 
 ## Remaining Work
 
-- **Alert falliti nell'ultima chiamata del cron:** `alert.js` non li ripete in PR1. Nota da smarcare all'avvio di PR2, in [[specs/crm/sezione-contatti/PLAN]] (§9, PR2).
+- ~~**Alert falliti nell'ultima chiamata del cron.**~~ Fatto in PR2 (T2.7).
 - **Indice unico e `task.kind`:** deciso di tenere l'indice per cliente in PR2; il passaggio a (cliente, tipo) arriva con il `kind`. Dopo PR2 resta da aggiornare il blocco E1 di [[chore/crm/design-lavorazioni-e-verticali]] (§9). Dettagli nella nota di PR2 del PLAN (§9).
 - **G1 rivisto (2026-09-28):**
-  - operatore di sistema da creare in prod (`pnpm create:system-operator`, da Omar);
-  - PR1 in prod per almeno due giorni lavorativi senza errori;
+  - ~~operatore di sistema da creare in prod~~: creato da Omar il 2026-09-29, id 1021;
+  - PR1 in prod dal 2026-09-29 (PR #7, `75a92e3`), per almeno due giorni lavorativi senza errori: fino a giovedì 1/10 compreso;
   - il cron in prod non si lancia prima di G2. Gli alert scaduti si chiudono tutti con la prima esecuzione dopo la migrazione di PR2 (T2.4, passo 8).
 
   Runbook aggiornato in T1.8, §12 e nella descrizione della PR.
 - **Riallineamento degli operatori delle task:** terza migrazione di PR2 (T2.5).
-- **Esecuzione notturna del cron alert:** lo `schedule` di `update-alert prod.yml`, riattivato in PR2 (T2.6, 02:17 UTC). Il runbook G2 è un'unica sessione fuori orario: disattiva il workflow, porta PR2 su `main`, applica la migrazione e riattiva il workflow al passo 8.
+- **Esecuzione notturna del cron alert:** lo `schedule` di `update-alert prod.yml`, riattivato in PR2 (T2.6, 02:17 UTC), parte solo con la variabile `ALERT_CRON_ENABLED = true`. Il runbook G2 è un'unica sessione fuori orario: porta PR2 su `main` (passo 4), estrae l'elenco come traccia e applica la migrazione (passo 5), e imposta la variabile al passo 8.
+- **Cron in ora legale (da decidere con Omar):** `isDueToday` non riconosce gli alert di oggi da fine marzo al 25 ottobre, e li chiude senza followup. Preesistente, fuori perimetro di PR2 (tech-debt). O una PR a sé prima di G2, o l'avviso agli operatori al passo 8.
+- **`task_priority_active_idx`:** da ridisegnare in PR5 (T5.1) sulla query vera.
 
 ## Steering
 
@@ -129,3 +187,7 @@ updated: 2026-09-29
 | 2026-09-28 | Il riallineamento è la terza migrazione di PR2; gli alert scaduti si chiudono tutti dopo la migrazione di PR2 | Nuovo T2.5 ed estrazione T2.1 (c). Runbook G2 (T2.4) con la prima esecuzione del cron in prod al passo 8. G1 rivisto: operatore di sistema, due giorni lavorativi senza errori, nessun cron prima di G2. Aggiornati §12, §13, §15 e la descrizione della PR |
 | 2026-09-29 | Lo schedule del cron alert si riattiva in PR2, su GitHub Actions e non con il cron di Vercel | Nuovo T2.6 (02:17 UTC); runbook G2 (T2.4) con il workflow disattivato prima del merge e riattivato al passo 8; aggiornati §6, §8, §10, §12, §13, §15 |
 | 2026-09-29 | Merge e migrazione di PR2 nella stessa sessione, non in due momenti | Runbook G2 (T2.4) riscritto: prima della sessione (passi 1–3), sessione fuori orario (4–8) con cosa fare se si ferma, dopo la sessione (9); aggiornati T2.6, §12, §13 |
+| 2026-09-29 | Avvio di PR2: solo PR2, sequential, PR verso `dev`; prod solo in lettura dentro `READ ONLY`, `db:migrate` sul DB di sviluppo solo con conferma | Run 2, T2.1 → T2.6 |
+| 2026-09-29 | Alert falliti nell'ultima chiamata: la modifica di `alert.js` entra in PR2; il job resta verde se un nuovo tentativo chiude gli alert falliti | Nota di PR2 smarcata (dopo T2.2 non nascono nuovi alert F6); nuovo T2.7 |
+| 2026-09-29 | Dopo l'adversarial review di PR2: risolvere i BLOCKER | Guardia `ALERT_CRON_ENABLED` sullo `schedule` (al posto di disattiva/riattiva), `retryingFailed` azzerato, runbook G2 riscritto, test rinforzati; `isDueToday` in ora legale e indice di priorità nel tech-debt |
+| 2026-09-29 | Niente via libera degli admin sull'estrazione; PR2 in `dev` solo dopo PR1 su `main` | SPEC (AC70, Constraints: "Pulizia tracciata"); runbook G2 (T2.4): l'estrazione si esegue nella sessione, dopo il merge e subito prima della migrazione, e si conserva come traccia e lista per il rollback; sessione ai passi 3–8, numeri 6–9 invariati |
