@@ -89,6 +89,8 @@ updated: 2026-09-29
 - **Run 2 — T2.3, test dell'indice in un file a parte** (`src/server/db/migrations/_test/activeContactIndex.db.test.ts`), non nel test in due fasi: quello ha un solo seed e una sola migrazione per file, e dei test che aggiungono righe lì dipenderebbero dall'ordine.
 - **Run 2 — T2.3, `pnpm db:migrate` sul DB di sviluppo dopo T2.5.** Le tre migrazioni si applicano in una sola esecuzione, quindi in una sola transazione, come faranno in prod con `db:migrate:prod`.
 
+- **Run 2 — T2.7, colore del job del cron** (deciso da Omar il 2026-09-29). Rosso solo se alla fine restano alert falliti. In PR1 bastava una chiamata qualsiasi con `failed > 0`: ora un fallimento recuperato da una chiamata successiva lascia il job verde, come un 504 recuperato. Resta visibile nel JSON di quella chiamata e in Sentry. Cambia un test di PR1 (F11) e il controllo del passo 8 del runbook G2.
+
 ## Surprises and Decisions
 
 - **Le migrazioni del repo non si applicano su un Postgres vuoto.** `20240926195125_lucky_roughhouse` crea `mito-deutsche_task` con il tipo `task_status`, che nasce solo in `20260619152227_same_hemingway`. Il DB di produzione aveva già il tipo (creato con `db:push` prima delle migrazioni), e la terza migrazione lo salta se esiste. L'harness crea il tipo prima di migrare; le migrazioni non si toccano (già applicate in prod). Vale anche per chi volesse creare un DB nuovo con `pnpm db:migrate`.
@@ -120,7 +122,7 @@ updated: 2026-09-29
 
 ## Remaining Work
 
-- **Alert falliti nell'ultima chiamata del cron:** `alert.js` non li ripete in PR1. Nota da smarcare all'avvio di PR2, in [[specs/crm/sezione-contatti/PLAN]] (§9, PR2).
+- ~~**Alert falliti nell'ultima chiamata del cron.**~~ Fatto in PR2 (T2.7).
 - **Indice unico e `task.kind`:** deciso di tenere l'indice per cliente in PR2; il passaggio a (cliente, tipo) arriva con il `kind`. Dopo PR2 resta da aggiornare il blocco E1 di [[chore/crm/design-lavorazioni-e-verticali]] (§9). Dettagli nella nota di PR2 del PLAN (§9).
 - **G1 rivisto (2026-09-28):**
   - operatore di sistema da creare in prod (`pnpm create:system-operator`, da Omar);

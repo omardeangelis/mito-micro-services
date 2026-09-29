@@ -593,7 +593,10 @@ Branch suggerito: `contatti/pr2-vincolo-db`. Contiene migrazioni, uno script di 
   7. contare gli alert scaduti ancora aperti, divisi fra giorni precedenti e oggi (query F8 del runbook G1, T1.8): servono per l'avviso agli operatori;
   8. **chiudere gli alert scaduti** con la prima esecuzione del cron in prod (deciso il 2026-09-28):
      - riattivare il workflow (Enable workflow, oppure `gh workflow enable "update-alert prod.yml"`) e lanciare a mano **Update Alerts PROD** (`workflow_dispatch`); da qui il cron gira anche da solo ogni notte (T2.6);
-     - controllare i tre posti del vecchio runbook G1 (T1.8): il log di GitHub Actions (un JSON per ogni chiamata arrivata in fondo, con `failed: 0`, e l'ultimo con `remaining: 0`), i log Vercel di `/api/cron/alert` senza errori e sotto i 60 s, e Sentry `production` senza issue nuove;
+     - controllare i tre posti del vecchio runbook G1 (T1.8):
+       - GitHub Actions: il job verde, con l'ultimo JSON a `failed: 0` e `remaining: 0`. Un JSON intermedio con `failed` > 0 seguito da una chiamata che chiude quegli alert è un fallimento temporaneo già recuperato (T2.7): non ferma la sessione;
+       - i log Vercel di `/api/cron/alert`: nessun errore oltre a quelli dei fallimenti recuperati, e ogni chiamata sotto i 60 s;
+       - Sentry `production`: nessuna issue nuova oltre a quelle dei fallimenti recuperati. Anche quelle vanno lette, per capire cosa è fallito;
      - se l'esecuzione finisce con `Alerts still left after 20 calls`, rilanciarla: gli alert del giorno li hanno già presi le prime chiamate;
      - a fine sessione, avvisare:
        - gli operatori che hanno avuto alert chiusi dal sistema, dalla pulizia o dal cron: li ritrovano nello Storico, e quelli dei giorni precedenti sono chiusi senza followup;
@@ -694,9 +697,9 @@ Branch suggerito: `contatti/pr2-vincolo-db`. Contiene migrazioni, uno script di 
   - se il nuovo tentativo ne chiude una parte, richiama ancora;
   - un alert fallito in una chiamata intermedia e chiuso da una successiva lascia il job verde (il test di PR1 che chiedeva il rosso cambia);
   - gli altri test di PR1 restano invariati.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-09-29 — RED: un alert fallito nell'ultima chiamata non veniva ripreso (una sola chiamata). GREEN: dopo una chiamata con `remaining: 0` e `failed > 0`, `alert.js` aspetta 10 s e richiama; si ferma con 1 quando un nuovo tentativo non chiude nessun alert, e finisce verde quando una chiamata arriva in fondo con `failed: 0`. Il test di PR1 che chiedeva il rosso anche quando la chiamata dopo chiudeva l'alert ora chiede il verde, come deciso. Il test "esce con 1 se un alert fallisce", con una sola risposta, passava per il motivo sbagliato: il nuovo tentativo riceveva `undefined` da `fetch` e lo script usciva dal `catch`. Ora ha due risposte esplicite. Aggiunti: più tentativi finché chiudono qualche alert; alert fallito ma già scritto (al nuovo tentativo "No alerts to process") → verde. Verifica per mutazione: con lo stop al primo `processed: 0` senza aver ritentato, o senza `return` dopo `exit(1)`, cade un test. Controllo del passo 8 del runbook G2 (T2.4) aggiornato.
+- **files edited/created**: `src/app/api/cron/scheduled/alert.js`, `src/app/api/cron/scheduled/_test/alert.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a (D6)

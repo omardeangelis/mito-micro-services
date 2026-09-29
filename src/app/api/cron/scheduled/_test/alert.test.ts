@@ -80,9 +80,8 @@ describe("alert.js", () => {
     expect(log).toHaveBeenCalledWith(JSON.stringify(body))
   })
 
-  it.each([
-    [
-      "se un alert fallisce",
+  it("esce con 1 se un alert fallisce anche al nuovo tentativo, e stampa le risposte", async () => {
+    const bodies = [
       {
         message: "Cron job ran",
         found: 2,
@@ -90,12 +89,24 @@ describe("alert.js", () => {
         skipped: 0,
         failed: 1,
       },
-    ],
-  ])("esce con 1 %s, e stampa la risposta", async (_, body) => {
-    await runScript(json(body))
+      // The retry closes none: it would fail again at every call
+      {
+        message: "Cron job ran",
+        found: 1,
+        processed: 0,
+        skipped: 0,
+        failed: 1,
+      },
+    ]
 
+    const fetch = await runScript(...bodies.map(json))
+
+    expect(fetch).toHaveBeenCalledTimes(2)
+    expect(exit).toHaveBeenCalledOnce()
     expect(exit).toHaveBeenCalledWith(1)
-    expect(log).toHaveBeenCalledWith(JSON.stringify(body))
+    for (const body of bodies) {
+      expect(log).toHaveBeenCalledWith(JSON.stringify(body))
+    }
   })
 
   it("richiama la route finché restano alert, e stampa ogni risposta", async () => {
@@ -127,7 +138,7 @@ describe("alert.js", () => {
     }
   })
 
-  it("se un alert fallisce richiama comunque per quelli rimasti, poi esce con 1 anche se la chiamata dopo va a buon fine", async () => {
+  it("se un alert fallisce richiama comunque per quelli rimasti, ed esce con successo se la chiamata dopo lo chiude", async () => {
     const fetch = await runScript(
       json({ found: 3, processed: 1, skipped: 0, failed: 1, remaining: 1 }),
       // The failed alert is still open: the next call takes it again
@@ -135,8 +146,44 @@ describe("alert.js", () => {
     )
 
     expect(fetch).toHaveBeenCalledTimes(2)
-    expect(exit).toHaveBeenCalledOnce()
-    expect(exit).toHaveBeenCalledWith(1)
+    expect(pause).not.toHaveBeenCalled()
+    expect(exit).not.toHaveBeenCalled()
+  })
+
+  it("se un alert fallisce nell'ultima chiamata aspetta 10 s e richiama: se il nuovo tentativo lo chiude, esce con successo", async () => {
+    const fetch = await runScript(
+      json({ found: 2, processed: 1, skipped: 0, failed: 1, remaining: 0 }),
+      // The failed alert is still open: the retry takes it again
+      json({ found: 1, processed: 1, skipped: 0, failed: 0, remaining: 0 })
+    )
+
+    expect(fetch).toHaveBeenCalledTimes(2)
+    expect(pause).toHaveBeenCalledOnce()
+    expect(pause).toHaveBeenCalledWith(10_000)
+    expect(exit).not.toHaveBeenCalled()
+  })
+
+  it("richiama finché il nuovo tentativo chiude qualche alert", async () => {
+    const fetch = await runScript(
+      json({ found: 4, processed: 2, skipped: 0, failed: 2, remaining: 0 }),
+      json({ found: 2, processed: 1, skipped: 0, failed: 1, remaining: 0 }),
+      json({ found: 1, processed: 1, skipped: 0, failed: 0, remaining: 0 })
+    )
+
+    expect(fetch).toHaveBeenCalledTimes(3)
+    expect(pause).toHaveBeenCalledTimes(2)
+    expect(exit).not.toHaveBeenCalled()
+  })
+
+  it("esce con successo se al nuovo tentativo l'alert fallito risulta già chiuso", async () => {
+    // Written before the connection dropped, reported as failed anyway
+    const fetch = await runScript(
+      json({ found: 1, processed: 0, skipped: 0, failed: 1, remaining: 0 }),
+      json({ message: "No alerts to process" })
+    )
+
+    expect(fetch).toHaveBeenCalledTimes(2)
+    expect(exit).not.toHaveBeenCalled()
   })
 
   it("esce con 1 se dopo 20 chiamate restano ancora alert", async () => {
