@@ -80,7 +80,8 @@ export const task = createTable(
   (table) => ({
     // Al massimo un contatto attivo per cliente (AC71). Le task senza cliente
     // non hanno vincoli. Il vincolo si controlla riga per riga: per sostituire
-    // il contatto attivo si disattiva e poi si attiva, in due istruzioni.
+    // il contatto attivo si usa replaceActiveContact, che nella stessa
+    // transazione, dopo lockCustomer, disattiva e poi inserisce.
     customerActiveUidx: uniqueIndex("task_customer_active_uidx")
       .on(table.customerId)
       .where(sql`is_active`),

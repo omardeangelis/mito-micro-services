@@ -159,16 +159,17 @@ Scoperto nella review di PR2 (v9), preesistente: le formule di data sono quelle 
 
 **Da fare fuori da PR2 (decisione di Omar):** confrontare le date nel fuso `Europe/Rome`, per esempio con l'helper di A4, con un test sui due cambi d'ora. Cambia il comportamento del cron, che nella SPEC è un non-goal: serve una decisione esplicita.
 
-## `task_priority_active_idx` non serve l'ordine di Contatti
+## Gli indici di PR2 per Contatti non servono ancora nessuna query
 
-Scoperto nella review di PR2 (v2).
+Scoperto nella review di PR2 (v2, prima e seconda verifica). Riguarda `task_priority_active_idx` e `task_operator_active_idx`.
 
 - L'indice è `priority DESC NULLS LAST WHERE is_active`. La lista Contatti (T5.1) ordina per `priority IS NULL, priority <dir>, id <dir>`, un ordine che nessun indice su `priority` da solo può servire. Anche con `priority DESC NULLS LAST` coprirebbe solo il verso decrescente. Nessuna query di oggi lo usa.
-- Costo: gli update di `priority` non sono più HOT (poco, con 75.000 task).
+- `task_operator_active_idx` (`operator_id WHERE is_active`): le query di oggi che filtrano per operatore (export chiamate, `getTasksToExport`, contatori) non filtrano `is_active`, quindi non lo usano. In T5.1 servirebbe solo il filtro `operatorIds` sui contatti attivi, non "Solo i miei" (D8).
+- Costo: gli update di `priority` e di `operator_id` non sono più HOT (poco, con 75.000 task).
 
 **Effetto oggi:** nessuno sui risultati.
 
-**Da fare:** in PR5 (T5.1), sulla query vera e con l'`EXPLAIN ANALYZE` di G4, con una migrazione che lo sostituisce.
+**Da fare:** in PR5 (T5.1). Misurare con `EXPLAIN ANALYZE` una pagina di default, una filtrata per operatore e una "Solo i miei". Poi tenere, ridisegnare o togliere i due indici, con una sola migrazione. T5.13 lo controlla.
 
 ## Il ramo che fallisce della guardia di `contatti_cleanup` è provato solo su PGlite
 

@@ -93,7 +93,8 @@ const updateAlert = async () => {
         retryingFailed = false
         continue
       }
-      // A call that gets through the alerts takes again the ones failed before
+      // Every call takes all the open alerts again: one that gets through them
+      // with none failed leaves none behind
       if ((body.failed ?? 0) === 0) return
       // Failed alerts turn the job red once retrying them closes none
       if (retryingFailed && (body.processed ?? 0) === 0) {
