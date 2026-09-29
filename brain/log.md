@@ -50,3 +50,10 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 - Moved 5 CRM design/analysis docs → `chore/crm/`; `migration_plan.md` + `migration/` (15 files) → `chore/`; 2 HTML deliverables → `raw/assets/`
 - Rewrote `docs/…` path references; added `domain:` frontmatter (`crm`, `platform`); `docs/` removed
 - Nothing ingested into `domains/` yet — run `create-spec` from a `chore/crm/` draft, then `docs-maintenance`
+
+## [2026-09-29] review | Sezione Contatti — PR2 "Pulizia e vincolo DB"
+- Report: [[specs/crm/sezione-contatti/REPORT]] (round PR2)
+- Scope: spec
+- Verdict: DO NOT SHIP (prima verifica)
+- Impact: critical
+- Verifiers: 9 (2 blockers, 8 major)
