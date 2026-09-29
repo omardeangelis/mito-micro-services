@@ -468,7 +468,7 @@ Branch suggerito: `contatti/pr2-vincolo-db`. Contiene migrazioni, uno script di 
   - **Verificato (2026-09-29): dopo T2.2 non nascono nuovi alert F6.** Un alert F6 sta su una task con `customer_id` NULL:
     - task così non ce ne sono: 0 sul DB di sviluppo il 29/09, 0 in prod il 28/09 (tutte le 75.641 task hanno un cliente con operatore);
     - nessun percorso ne crea: da PR1 l'unico insert su `task` dell'app è `replaceActiveContact`, che parte da un cliente bloccato. Nessun update azzera `customer_id`, e la FK impedisce di cancellare un cliente con task;
-    - `createAlert` accetta qualunque `taskId`, ma l'unico chiamante (la scheda cliente) passa la task del cliente. Resta solo una chiamata tRPC diretta, e T3.13 rimuove `createAlert`.
+    - `createAlert` accetta qualunque `taskId`, ma da solo non crea un alert F6: gli servirebbe una task senza cliente, e per i due punti sopra non ce ne sono, nemmeno con una chiamata tRPC diretta. Qui però la garanzia viene dai dati, non dal codice: `customer_id` ammette NULL, e se una task senza cliente ricomparisse, per esempio con un insert SQL a mano, `createAlert` ci aggancerebbe un alert. T3.13 rimuove `createAlert`.
 
     Dopo la pulizia restano solo i fallimenti temporanei, come gli `ECONNRESET` dello smoke di PR1.
   - **Perché in PR2:** il problema conta quando il cron gira da solo ogni notte (T2.6). Un'esecuzione normale sta in una sola chiamata, che è anche l'ultima: un alert di oggi che fallisce lì perde il followup. `alert.js` gira su GitHub Actions, non su Vercel: PR2 continua a non cambiare il codice dell'app.
