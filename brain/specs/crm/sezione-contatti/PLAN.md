@@ -535,9 +535,9 @@ Branch suggerito: `contatti/pr2-vincolo-db`. Contiene migrazioni, uno script di 
   - il numero di righe `task` e `alert` non cambia;
   - nessun alert aperto su task non attive, `resolved_by` = sistema e `alert.updated_at` aggiornato;
   - `task_event_log` e `task.updated_at` invariati.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-09-29 — Migrazione `20260929061804_contatti_cleanup`, generata con `drizzle-kit generate --custom`. Tracer: il test in due fasi (migrazioni fino a `LEGACY_SCHEMA_TAG`, seed con dati sporchi, migrazione completa) rosso sui duplicati, verde con il passo 1; poi il test sugli alert, verde con il passo 2. Asserzioni in più rispetto alla validation: `task.alert_id` invariato (A6), gli alert ancora aperti su contatti attivi e quelli già risolti restano identici, e gli alert chiusi sono esattamente quelli dell'estrazione (b) di T2.1, eseguita sullo stesso seed subito prima della migrazione. **Guardia in più:** senza operatore di sistema, e con alert da chiudere, la migrazione si ferma con un errore invece di chiuderli con `resolved_by` NULL; il migrator annulla tutte le migrazioni della stessa esecuzione (test a parte). Senza alert da chiudere passa: lo dimostrano gli altri file di test, che migrano un DB vuoto. Verifica per mutazione: senza il ramo `customer_id IS NULL`, senza `updated_at = now()`, senza la guardia, o con l'estrazione (b) senza i duplicati disattivati, cade almeno un test. Harness: `migrateUpTo` si può chiamare di nuovo nello stesso file e applica solo ciò che manca; `queryReadOnly` esegue un file SQL in una transazione `READ ONLY`.
+- **files edited/created**: `src/server/db/migrations/20260929061804_contatti_cleanup.sql`, `src/server/db/migrations/meta/_journal.json`, `src/server/db/migrations/meta/20260929061804_snapshot.json`, `src/server/db/migrations/_test/contattiCleanup.db.test.ts`, `src/server/db/migrations/_test/contattiCleanup.systemOperator.db.test.ts`, `src/test/db.ts`, `src/server/db/scripts/_test/cleanupPreview.db.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a (D6)

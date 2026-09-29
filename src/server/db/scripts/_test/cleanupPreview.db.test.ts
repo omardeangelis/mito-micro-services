@@ -4,8 +4,8 @@ import { beforeAll, beforeEach, describe, expect, it } from "vitest"
 import {
   LEGACY_SCHEMA_TAG,
   migrateUpTo,
+  queryReadOnly,
   resetDb,
-  testClient,
 } from "@/test/db"
 import {
   createAlert,
@@ -18,21 +18,13 @@ import {
 // (more than one active contact per customer) only fits the schema before the
 // unique index.
 
-const PREVIEW_FILE = path.resolve(
-  __dirname,
-  "../contatti-cleanup-preview.sql"
-)
-
-type Row = Record<string, unknown>
+const PREVIEW_FILE = path.resolve(__dirname, "../contatti-cleanup-preview.sql")
 
 /** Runs the preview file in a read-only transaction: a write would fail it. */
 async function runPreview() {
-  const sql = fs.readFileSync(PREVIEW_FILE, "utf8")
-  const results = await testClient.transaction(async (tx) => {
-    await tx.exec("SET TRANSACTION READ ONLY")
-    return tx.exec(sql)
-  })
-  const [duplicates, alerts, realign] = results.map(({ rows }) => rows as Row[])
+  const [duplicates, alerts, realign] = await queryReadOnly(
+    fs.readFileSync(PREVIEW_FILE, "utf8")
+  )
   return { duplicates: duplicates!, alerts: alerts!, realign: realign! }
 }
 
@@ -90,26 +82,26 @@ describe("contatti-cleanup-preview.sql", () => {
     expect(new Set(duplicates.map((row) => row.cliente_id))).toEqual(
       new Set([moreRecent.id, tie.id])
     )
-    expect(duplicates.filter((row) => row.cliente_id === moreRecent.id)).toEqual(
-      [
-        expect.objectContaining({
-          cliente: `Anna ${moreRecent.surname}`,
-          esito: "resta attivo",
-          contatto_id: createdLater.id,
-          stato: "richiamare",
-          operatore_id: operator.id,
-          operatore: `Mario ${operator.surname}`,
-          contattato_il: null,
-        }),
-        expect.objectContaining({
-          esito: "disattivato",
-          contatto_id: updatedLater.id,
-          stato: "app.to",
-          operatore_id: operator.id,
-          contattato_il: at("14"),
-        }),
-      ]
-    )
+    expect(
+      duplicates.filter((row) => row.cliente_id === moreRecent.id)
+    ).toEqual([
+      expect.objectContaining({
+        cliente: `Anna ${moreRecent.surname}`,
+        esito: "resta attivo",
+        contatto_id: createdLater.id,
+        stato: "richiamare",
+        operatore_id: operator.id,
+        operatore: `Mario ${operator.surname}`,
+        contattato_il: null,
+      }),
+      expect.objectContaining({
+        esito: "disattivato",
+        contatto_id: updatedLater.id,
+        stato: "app.to",
+        operatore_id: operator.id,
+        contattato_il: at("14"),
+      }),
+    ])
     expect(
       duplicates
         .filter((row) => row.cliente_id === tie.id)
@@ -155,7 +147,10 @@ describe("contatti-cleanup-preview.sql", () => {
     })
     // Also active: the cron fails on it at every run (review of PR1, F6)
     const orphan = await createTask({ customerId: null })
-    const onOrphan = await createAlert({ taskId: orphan.id, deadline: at("12") })
+    const onOrphan = await createAlert({
+      taskId: orphan.id,
+      deadline: at("12"),
+    })
 
     const { alerts } = await runPreview()
 
