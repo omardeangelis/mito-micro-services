@@ -177,7 +177,8 @@ PR1  T1.1 ─┬─ T1.2 ───────────────┐
                        (T1.6 e T1.7 in sequenza: stesso file task/POST)
 
 PR2  T1.1 ─ T2.1 ─ T2.2 ─ T2.3 ─ T2.5 ─┬─ T2.4 (dopo T1.8)   [G2]
-                                 T2.6 ─┘   (T2.6 ← T1.5)
+                                 T2.6 ─┤   (T2.6 ← T1.5)
+                                 T2.7 ─┘   (T2.7 ← T1.5)
 
 PR3  T3.1 ─┬─ T3.2 ─┬─ T3.3 ────────┬─ T3.10 ─┐
 T1.4 ──────┘        ├─ T3.4 ────────┤         │
@@ -459,14 +460,18 @@ Branch suggerito: `contatti/pr1-creazione-sicura`. Nessun cambiamento visibile, 
 
 ### PR2 — Pulizia e vincolo DB
 
-Branch suggerito: `contatti/pr2-vincolo-db`. Contiene migrazioni, uno script di sola lettura e lo `schedule` del cron alert in prod (T2.6), nessun codice dell'app. Il merge si fa dopo G1; l'applicazione in prod è manuale (G2). Le migrazioni sono tre: pulizia (T2.2), indici (T2.3), riallineamento degli operatori (T2.5). Dopo la migrazione, la prima esecuzione del cron in prod chiude gli alert scaduti (T2.4); da lì il cron gira ogni notte (T2.6).
+Branch suggerito: `contatti/pr2-vincolo-db`. Contiene migrazioni, uno script di sola lettura, lo `schedule` del cron alert in prod (T2.6) e i nuovi tentativi di `alert.js` (T2.7), nessun codice dell'app. Il merge si fa dopo G1; l'applicazione in prod è manuale (G2). Le migrazioni sono tre: pulizia (T2.2), indici (T2.3), riallineamento degli operatori (T2.5). Dopo la migrazione, la prima esecuzione del cron in prod chiude gli alert scaduti (T2.4); da lì il cron gira ogni notte (T2.6).
 
 **Da smarcare all'avvio di PR2:**
-- [ ] **Alert falliti nell'ultima chiamata del cron** (da PR1, 2026-09-28).
+- [x] **Alert falliti nell'ultima chiamata del cron** (da PR1, 2026-09-28). Deciso il 2026-09-29: la modifica entra in PR2 (T2.7), e il job resta verde se un nuovo tentativo chiude gli alert falliti.
   - **Problema:** se un alert fallisce nell'ultima chiamata di un'esecuzione, per esempio per la connessione caduta, `alert.js` non richiama. L'alert resta aperto fino all'esecuzione dopo; se scadeva oggi, il giorno dopo viene solo chiuso, senza followup (vedi il tech-debt).
-  - **Proposta:** `alert.js` richiama anche quando una chiamata ha alert falliti, come dopo un 504, e si ferma quando una chiamata ripetuta non chiude nessun alert.
-  - **Da verificare:** dopo la pulizia di T2.2 gli alert F6, che falliscono sempre, non ci sono più. Resta da capire se possono nascerne di nuovi.
-  - **Da decidere:** se la modifica entra in PR2, che per ora contiene migrazioni, uno script di sola lettura e lo `schedule` del cron (T2.6), o in una PR a sé.
+  - **Verificato (2026-09-29): dopo T2.2 non nascono nuovi alert F6.** Un alert F6 sta su una task con `customer_id` NULL:
+    - task così non ce ne sono: 0 sul DB di sviluppo il 29/09, 0 in prod il 28/09 (tutte le 75.641 task hanno un cliente con operatore);
+    - nessun percorso ne crea: da PR1 l'unico insert su `task` dell'app è `replaceActiveContact`, che parte da un cliente bloccato. Nessun update azzera `customer_id`, e la FK impedisce di cancellare un cliente con task;
+    - `createAlert` accetta qualunque `taskId`, ma l'unico chiamante (la scheda cliente) passa la task del cliente. Resta solo una chiamata tRPC diretta, e T3.13 rimuove `createAlert`.
+
+    Dopo la pulizia restano solo i fallimenti temporanei, come gli `ECONNRESET` dello smoke di PR1.
+  - **Perché in PR2:** il problema conta quando il cron gira da solo ogni notte (T2.6). Un'esecuzione normale sta in una sola chiamata, che è anche l'ultima: un alert di oggi che fallisce lì perde il followup. `alert.js` gira su GitHub Actions, non su Vercel: PR2 continua a non cambiare il codice dell'app.
 - [x] **Indice unico per tipo di contatto** (2026-09-28). Deciso: in PR2 l'indice resta per cliente.
   - **Idea:** un cliente potrà avere un contatto per tipo, per esempio prestito, cessione e assicurazione. Il vincolo giusto diventa "al massimo un contatto attivo per tipo", non "uno in assoluto". È il `task.kind` di [[chore/crm/design-lavorazioni-e-verticali]] (§1), con `UNIQUE (customer_id, kind) WHERE is_active`. Nella SPEC è un non-goal.
   - **Proposta:** T2.3 resta per cliente (`task_customer_active_uidx`). Il passaggio a (cliente, tipo) arriva con il `kind` ed è un allentamento:
@@ -507,9 +512,9 @@ Branch suggerito: `contatti/pr2-vincolo-db`. Contiene migrazioni, uno script di 
 
   La parte (a) esclude le task con `customer_id` NULL, che la pulizia non disattiva.
 - **validation**: un test DB (su `LEGACY_SCHEMA_TAG`) esegue il file su un dataset seminato e confronta le righe attese. Il dataset contiene duplicati, pari merito su `GREATEST`, alert aperti su task non attive, task con `customer_id` NULL e task con un operatore diverso da quello del cliente. Un secondo test verifica che gli alert elencati in (b) siano esattamente quelli chiusi dalla migrazione di T2.2, e che i conteggi di (c) coincidano con le task cambiate da T2.5.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-09-29 — Tre cicli RED → GREEN, uno per parte: (a) superstite per `GREATEST(updated_at, created_at)` e spareggio sull'id maggiore, (b) alert aperti con il motivo (contatto disattivato dalla pulizia, non attivo, senza cliente), (c) coppie di operatori con attive e non attive **dopo la pulizia**: i duplicati che T2.2 disattiva contano fra le non attive, perché T2.5 gira dopo T2.2 nella stessa transazione. Il file ha tre `SELECT` indipendenti: nell'SQL editor di Supabase si lanciano una alla volta. Il test esegue il file in una transazione `READ ONLY`, quindi una scrittura lo farebbe fallire. Verifica per mutazione: con l'ordine solo per `updated_at`, o con lo spareggio sull'id minore, cade il test (a). Il confronto fra l'estrazione e ciò che cambiano le migrazioni sta nel test in due fasi di T2.2 e T2.5, che fa la migrazione completa dopo il seed.
+- **files edited/created**: `src/server/db/scripts/contatti-cleanup-preview.sql`, `src/server/db/scripts/_test/cleanupPreview.db.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a (D6)
@@ -566,7 +571,7 @@ Branch suggerito: `contatti/pr2-vincolo-db`. Contiene migrazioni, uno script di 
 - **review_mode**: cli
 
 #### T2.4: Runbook di rilascio PR2 (gate G2)
-- **depends_on**: [T2.3, T2.5, T2.6, T1.8]
+- **depends_on**: [T2.3, T2.5, T2.6, T2.7, T1.8]
 - **location**: descrizione della PR; §12 di questo piano
 - **description**: Runbook eseguito da una persona.
 
@@ -661,6 +666,29 @@ Branch suggerito: `contatti/pr2-vincolo-db`. Contiene migrazioni, uno script di 
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a (D6)
 - **tdd_target**: n/a (configurazione)
+- **review_mode**: cli
+
+#### T2.7: `alert.js` ritenta gli alert falliti nell'ultima chiamata
+- **depends_on**: [T1.5]
+- **location**: `src/app/api/cron/scheduled/alert.js`, `src/app/api/cron/scheduled/_test/alert.test.ts`
+- **description**: deciso il 2026-09-29 (nota "Alert falliti nell'ultima chiamata" sopra).
+  - Dopo una chiamata che arriva in fondo agli alert (`remaining: 0`) con `failed > 0`, `alert.js` aspetta 10 s e richiama, come dopo un 504, dentro le stesse 20 chiamate. Gli alert falliti sono ancora aperti, e la chiamata dopo li riprende.
+  - Si ferma quando una di queste chiamate non chiude nessun alert (`processed: 0`): gli alert che restano falliscono a ogni tentativo, e richiamare li segnalerebbe di nuovo a Sentry senza chiuderli.
+  - **Colore del job (deciso il 2026-09-29):** rosso solo se alla fine restano alert falliti, cioè se l'ultima chiamata ha `failed > 0`, oppure dopo 20 chiamate. Un alert fallito e poi chiuso da una chiamata successiva lascia il job verde, come già succede dopo un 504 recuperato. **Cambiamento voluto:** in PR1 il job era rosso se una chiamata qualsiasi aveva `failed > 0`.
+  - Il fallimento recuperato resta visibile nel JSON di quella chiamata, nel log di GitHub Actions, e in Sentry (`ErrorReporter`, P9). Il runbook G2 (T2.4, passo 8) si aggiorna di conseguenza.
+- **validation**: test di `alert.js`:
+  - un alert fallito nell'ultima chiamata viene ripreso dopo 10 s; se il nuovo tentativo lo chiude il job è verde;
+  - se il nuovo tentativo non chiude nessun alert, il job si ferma lì ed è rosso;
+  - se il nuovo tentativo ne chiude una parte, richiama ancora;
+  - un alert fallito in una chiamata intermedia e chiuso da una successiva lascia il job verde (il test di PR1 che chiedeva il rosso cambia);
+  - gli altri test di PR1 restano invariati.
+- **status**: Planned
+- **log**:
+- **files edited/created**:
+- **backlog_item_id**: n/a
+- **backlog_item_url**: n/a
+- **relation_mode**: n/a (D6)
+- **tdd_target**: "un alert fallito nell'ultima chiamata viene ripreso da una nuova chiamata, e se questa lo chiude il job finisce verde".
 - **review_mode**: cli
 
 ### PR3 — Regole del contatto sul server, usate da Clienti
@@ -1602,7 +1630,7 @@ Branch suggerito: `contatti/pr6-clienti`. Il merge si fa solo dopo G5.
 | 2 | T1.2, T1.3, T1.4, T2.1, T5.3 | T1.1 (T3.1 per T5.3) |
 | 3 | T1.5, T1.6, T2.2, T3.2 | Wave 2 (T1.4 per T3.2) |
 | 4 | T1.7 · T2.3 · T3.9 · T4.2 → **merge PR4** quando serve · T5.1, T5.2 | Wave 3 |
-| 5 | T1.8 → **merge PR1** · T2.5, T2.6 · T3.3–T3.8, dalla testa di PR1 | Wave 4 (T1.7; T2.3 per T2.5) |
+| 5 | T1.8 → **merge PR1** · T2.5, T2.6, T2.7 · T3.3–T3.8, dalla testa di PR1 | Wave 4 (T1.7; T2.3 per T2.5) |
 | 6 | T2.4 (**G1 → G2**, manuale) · T3.10, T3.11, T3.12 | PR1 in prod · T3.3–T3.9 |
 | 7 | T3.13 → T3.14 → **merge PR3** (G3) | Wave 6 |
 | 8 | T5.4 → T5.5, T5.6 → T5.7, T5.8 → T5.9 → T5.10, T5.11 → T5.12 → T5.13 → **merge PR5** (G4) | PR3 e PR4 in main, G2 fatto |

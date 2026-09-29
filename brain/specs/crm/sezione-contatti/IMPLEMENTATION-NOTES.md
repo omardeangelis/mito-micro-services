@@ -16,10 +16,12 @@ updated: 2026-09-29
 ## Summary
 
 - Run 1 (2026-09-25): solo **PR1 — Percorsi di creazione sicuri** (T1.1 → T1.8), branch `contatti/pr1-creazione-sicura` da `dev`, PR verso `dev`. PR2–PR6 non iniziate.
+- Run 2 (2026-09-29): solo **PR2 — Pulizia e vincolo DB** (T2.1, T2.2, T2.3, T2.5, T2.6, T2.7), branch `contatti/pr2-vincolo-db` da `dev`, PR verso `dev`. T2.4 è il runbook G2: va nella descrizione della PR, lo esegue Omar.
 
 ## Execution Mode
 
 - `sequential` (richiesto dall'utente): un task alla volta nell'ordine T1.1 → T1.2 → T1.3 → T1.4 → T1.5 → T1.6 → T1.7 → T1.8, nessun worker.
+- Run 2, `sequential` (richiesto dall'utente): T2.1 → T2.2 → T2.3 → T2.5 → T2.6 → T2.7, nessun worker.
 
 ## Deviations From the Plan
 
@@ -78,6 +80,9 @@ updated: 2026-09-29
   - Gli alert dei giorni precedenti restano solo chiusi, come nella base (deciso in chat).
   - `forEachIsolated` passa l'indice alla funzione.
 
+- **Run 2 — T2.1, dove sta il confronto con le migrazioni.** Il piano metteva nel file dell'estrazione anche il test "gli alert di (b) sono quelli che chiude T2.2, i conteggi di (c) sono le task che cambia T2.5". Quel test ha bisogno della migrazione completa dopo il seed, quindi sta nel test in due fasi delle migrazioni (`src/server/db/migrations/_test/contattiCleanup.db.test.ts`). Il file dell'estrazione resta su `LEGACY_SCHEMA_TAG`.
+- **Run 2 — T2.1, conteggi di (c) dopo la pulizia.** "Attive" e "non attive" sono contate come saranno dopo T2.2: un duplicato che la pulizia disattiva conta fra le non attive. Così (c) coincide con ciò che fa T2.5, che gira dopo T2.2 nella stessa transazione.
+
 ## Surprises and Decisions
 
 - **Le migrazioni del repo non si applicano su un Postgres vuoto.** `20240926195125_lucky_roughhouse` crea `mito-deutsche_task` con il tipo `task_status`, che nasce solo in `20260619152227_same_hemingway`. Il DB di produzione aveva già il tipo (creato con `db:push` prima delle migrazioni), e la terza migrazione lo salta se esiste. L'harness crea il tipo prima di migrare; le migrazioni non si toccano (già applicate in prod). Vale anche per chi volesse creare un DB nuovo con `pnpm db:migrate`.
@@ -129,3 +134,5 @@ updated: 2026-09-29
 | 2026-09-28 | Il riallineamento è la terza migrazione di PR2; gli alert scaduti si chiudono tutti dopo la migrazione di PR2 | Nuovo T2.5 ed estrazione T2.1 (c). Runbook G2 (T2.4) con la prima esecuzione del cron in prod al passo 8. G1 rivisto: operatore di sistema, due giorni lavorativi senza errori, nessun cron prima di G2. Aggiornati §12, §13, §15 e la descrizione della PR |
 | 2026-09-29 | Lo schedule del cron alert si riattiva in PR2, su GitHub Actions e non con il cron di Vercel | Nuovo T2.6 (02:17 UTC); runbook G2 (T2.4) con il workflow disattivato prima del merge e riattivato al passo 8; aggiornati §6, §8, §10, §12, §13, §15 |
 | 2026-09-29 | Merge e migrazione di PR2 nella stessa sessione, non in due momenti | Runbook G2 (T2.4) riscritto: prima della sessione (passi 1–3), sessione fuori orario (4–8) con cosa fare se si ferma, dopo la sessione (9); aggiornati T2.6, §12, §13 |
+| 2026-09-29 | Avvio di PR2: solo PR2, sequential, PR verso `dev`; prod solo in lettura dentro `READ ONLY`, `db:migrate` sul DB di sviluppo solo con conferma | Run 2, T2.1 → T2.6 |
+| 2026-09-29 | Alert falliti nell'ultima chiamata: la modifica di `alert.js` entra in PR2; il job resta verde se un nuovo tentativo chiude gli alert falliti | Nota di PR2 smarcata (dopo T2.2 non nascono nuovi alert F6); nuovo T2.7 |
