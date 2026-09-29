@@ -8,7 +8,7 @@ links:
 ingested: false
 last_ingested: null
 created: 2026-09-25
-updated: 2026-09-28
+updated: 2026-09-29
 ---
 
 # Implementation Notes
@@ -112,7 +112,7 @@ updated: 2026-09-28
 
   Runbook aggiornato in T1.8, §12 e nella descrizione della PR.
 - **Riallineamento degli operatori delle task:** terza migrazione di PR2 (T2.5).
-- **Da decidere prima di G2:** chi lancia il cron alert ogni notte dopo la prima esecuzione (PLAN §15).
+- **Esecuzione notturna del cron alert:** lo `schedule` di `update-alert prod.yml`, riattivato in PR2 (T2.6, 02:17 UTC). Il runbook G2 disattiva il workflow prima del merge e lo riattiva al passo 8.
 
 ## Steering
 
@@ -127,3 +127,4 @@ updated: 2026-09-28
 | 2026-09-28 | In PR2 l'indice unico resta per cliente | Nota di PR2 smarcata nel PLAN; T2.3 invariato |
 | 2026-09-28 | Dopo PR2 riallineare l'operatore di tutte le task a quello del cliente e spiegarlo al cliente | Nota nel PLAN (PR2) con le misure su prod; resta da decidere se è una migrazione di PR2 o un passo a sé |
 | 2026-09-28 | Il riallineamento è la terza migrazione di PR2; gli alert scaduti si chiudono tutti dopo la migrazione di PR2 | Nuovo T2.5 ed estrazione T2.1 (c). Runbook G2 (T2.4) con la prima esecuzione del cron in prod al passo 8. G1 rivisto: operatore di sistema, due giorni lavorativi senza errori, nessun cron prima di G2. Aggiornati §12, §13, §15 e la descrizione della PR |
+| 2026-09-29 | Lo schedule del cron alert si riattiva in PR2, su GitHub Actions e non con il cron di Vercel | Nuovo T2.6 (02:17 UTC); runbook G2 (T2.4) con il workflow disattivato prima del merge e riattivato al passo 8; aggiornati §6, §8, §10, §12, §13, §15 |
