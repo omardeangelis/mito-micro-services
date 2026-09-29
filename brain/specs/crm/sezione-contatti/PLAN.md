@@ -448,8 +448,12 @@ Branch suggerito: `contatti/pr1-creazione-sicura`. Nessun cambiamento visibile, 
   - gate verdi;
   - smoke senza regressioni;
   - G1: PR1 in prod per almeno due giorni lavorativi senza errori nei log Vercel né issue nuove in Sentry, e operatore di sistema presente. La prova del cron in prod si sposta dopo la migrazione di PR2 (T2.4, passo 8).
-- **status**: Smoke fatto; G1 dopo il deploy (Omar)
+- **status**: In prod dal 2026-09-29; G1 in corso fino a giovedì 1/10 compreso (Omar)
 - **log**: Smoke sul DB di sviluppo il 2026-09-25: percorsi senza regressioni; cron con 815 alert, 808 risolti, 8 fallimenti per connessione caduta (isolati, riportati in `failed`), 0,2 s ad alert. La misura ha portato al cron a tempo (IMPLEMENTATION-NOTES).
+  - **Deploy (2026-09-29):**
+    - passo 2: operatore di sistema creato in prod da Omar alle 13:48 UTC, **id 1021**, verificato in una transazione `READ ONLY`. Mancava dal 19/06: la migrazione di quel giorno ha aggiunto `resolved_by` e il log degli eventi, e con loro il cron che registra come autore l'operatore di sistema, mai creato in prod. L'ultimo blocco di alert chiusi dal cron è del 19/06 e nel log degli eventi non c'è nessuna riga del cron: probabilmente il cron si è fermato per questo (non dimostrato);
+    - passo 3: merge `dev` → `main` con la PR #7 (`75a92e3`), che porta anche #2 (Sentry, Effect) e #4 (import). Deploy di produzione verde alle 14:06 UTC, source map caricate su Sentry per server, edge e client. Variabili Sentry su Vercel impostate da Omar prima del merge;
+    - passo 5: G1 conta due giorni lavorativi pieni, quindi fino a giovedì 1/10 compreso.
 - **files edited/created**: `src/server/services/contact/processDueAlerts.ts`, `src/app/api/cron/alert/route.ts`, `src/app/api/cron/scheduled/alert.js`, `src/server/effect/errorReporter.ts`, test in `src/server/services/contact/_test/processDueAlerts.db.test.ts` e `src/app/api/cron/scheduled/_test/alert.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a

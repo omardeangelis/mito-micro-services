@@ -162,8 +162,8 @@ updated: 2026-09-29
 - ~~**Alert falliti nell'ultima chiamata del cron.**~~ Fatto in PR2 (T2.7).
 - **Indice unico e `task.kind`:** deciso di tenere l'indice per cliente in PR2; il passaggio a (cliente, tipo) arriva con il `kind`. Dopo PR2 resta da aggiornare il blocco E1 di [[chore/crm/design-lavorazioni-e-verticali]] (§9). Dettagli nella nota di PR2 del PLAN (§9).
 - **G1 rivisto (2026-09-28):**
-  - operatore di sistema da creare in prod (`pnpm create:system-operator`, da Omar);
-  - PR1 in prod per almeno due giorni lavorativi senza errori;
+  - ~~operatore di sistema da creare in prod~~: creato da Omar il 2026-09-29, id 1021;
+  - PR1 in prod dal 2026-09-29 (PR #7, `75a92e3`), per almeno due giorni lavorativi senza errori: fino a giovedì 1/10 compreso;
   - il cron in prod non si lancia prima di G2. Gli alert scaduti si chiudono tutti con la prima esecuzione dopo la migrazione di PR2 (T2.4, passo 8).
 
   Runbook aggiornato in T1.8, §12 e nella descrizione della PR.
