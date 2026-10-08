@@ -1,6 +1,10 @@
 import { createEnv } from "@t3-oss/env-nextjs"
 import { z } from "zod"
 
+// The production deployment. Staging is a preview deployment, and VERCEL_ENV
+// isn't set locally
+const isProduction = process.env.VERCEL_ENV === "production"
+
 export const env = createEnv({
   /**
    * Specify your server-side environment variables schema here. This way you can ensure the app
@@ -27,20 +31,22 @@ export const env = createEnv({
       // VERCEL_URL doesn't include `https` so it cant be validated as a URL
       process.env.VERCEL ? z.string() : z.string().url()
     ),
-    DISCORD_CLIENT_ID: z.string(),
-    DISCORD_CLIENT_SECRET: z.string(),
-    AZURE_AD_CLIENT_ID: z.string(),
-    AZURE_AD_CLIENT_SECRET: z.string(),
-    AZURE_AD_TENANT_ID: z.string(),
+    // The only login in production; elsewhere one of the logins
+    AZURE_AD_CLIENT_ID: isProduction ? z.string() : z.string().optional(),
+    AZURE_AD_CLIENT_SECRET: isProduction ? z.string() : z.string().optional(),
+    AZURE_AD_TENANT_ID: isProduction ? z.string() : z.string().optional(),
     NEXT_RUNTIME: z.enum(["nodejs", "edge"]).default("nodejs"),
     SENTRY_AUTH_TOKEN: z.string(),
+    SUPABASE_MITO_PSW: z.string(),
     SUPABASE_KEY: z.string(),
-    SENDGRID_API_KEY: z.string(),
-    SENDGRID_USERNAME: z.string(),
-    SENDGRID_SERVER: z.string(),
-    SENDGRID_PORT: z.string(),
-    PREVIEW_DB_CONNECTION_STRING: z.string().optional(),
-    CUSTOM_ACCESS: z.boolean().optional(),
+    // The email login outside production; `next dev` prints the link instead
+    SENDGRID_API_KEY: z.string().optional(),
+    SENDGRID_USERNAME: z.string().optional(),
+    SENDGRID_SERVER: z.string().optional(),
+    SENDGRID_PORT: z.string().optional(),
+    // Who signs in outside production besides the users already in the
+    // database: comma-separated addresses
+    AUTH_ALLOWED_EMAILS: z.string().optional(),
     CRON_SECRET_KEY: z.string().optional(),
     TELEGRAM_BOT_TOKEN: z.string().optional(),
     TELEGRAM_CHAT_ID: z.string().optional(),
@@ -52,10 +58,13 @@ export const env = createEnv({
    * `NEXT_PUBLIC_`.
    */
   client: {
-    NEXT_PUBLIC_BASE_URL: z.string().url(),
     NEXT_PUBLIC_SENTRY_DSN: z.string(),
     NEXT_PUBLIC_SUPABASE_URL: z.string(),
-    NEXT_PUBLIC_CUSTOM_ACCESS: z.boolean().optional(),
+    // VERCEL_ENV at build time (next.config.js): "production" only on the
+    // production deployment
+    NEXT_PUBLIC_VERCEL_ENV: z
+      .enum(["production", "preview", "development"])
+      .optional(),
   },
   /**
    * You can't destruct `process.env` as a regular object in the Next.js edge runtimes (e.g.
@@ -66,24 +75,21 @@ export const env = createEnv({
     NODE_ENV: process.env.NODE_ENV,
     NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET,
     NEXTAUTH_URL: process.env.NEXTAUTH_URL,
-    DISCORD_CLIENT_ID: process.env.DISCORD_CLIENT_ID,
-    DISCORD_CLIENT_SECRET: process.env.DISCORD_CLIENT_SECRET,
     AZURE_AD_CLIENT_ID: process.env.AZURE_AD_CLIENT_ID,
     AZURE_AD_CLIENT_SECRET: process.env.AZURE_AD_CLIENT_SECRET,
     AZURE_AD_TENANT_ID: process.env.AZURE_AD_TENANT_ID,
-    NEXT_PUBLIC_BASE_URL: process.env.NEXT_PUBLIC_BASE_URL,
     NEXT_RUNTIME: process.env.NEXT_RUNTIME,
     NEXT_PUBLIC_SENTRY_DSN: process.env.NEXT_PUBLIC_SENTRY_DSN,
     SENTRY_AUTH_TOKEN: process.env.SENTRY_AUTH_TOKEN,
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
+    SUPABASE_MITO_PSW: process.env.SUPABASE_MITO_PSW,
     SUPABASE_KEY: process.env.SUPABASE_KEY,
     SENDGRID_API_KEY: process.env.SENDGRID_API_KEY,
     SENDGRID_USERNAME: process.env.SENDGRID_USERNAME,
     SENDGRID_SERVER: process.env.SENDGRID_SERVER,
     SENDGRID_PORT: process.env.SENDGRID_PORT,
-    PREVIEW_DB_CONNECTION_STRING: process.env.PREVIEW_DB,
-    NEXT_PUBLIC_CUSTOM_ACCESS: !!process.env.CUSTOM_ACCESS,
-    CUSTOM_ACCESS: !!process.env.CUSTOM_ACCESS,
+    AUTH_ALLOWED_EMAILS: process.env.AUTH_ALLOWED_EMAILS,
+    NEXT_PUBLIC_VERCEL_ENV: process.env.NEXT_PUBLIC_VERCEL_ENV,
     CRON_SECRET_KEY: process.env.CRON_SECRET_KEY,
     TELEGRAM_BOT_TOKEN: process.env.TELEGRAM_BOT_TOKEN,
     TELEGRAM_CHAT_ID: process.env.TELEGRAM_CHAT_ID,

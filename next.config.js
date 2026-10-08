@@ -10,6 +10,12 @@ import { env } from "./src/env.js"
 const config = {
   reactStrictMode: true,
   swcMinify: true,
+  env: {
+    // Vercel adds NEXT_PUBLIC_VERCEL_ENV only when it runs the build itself.
+    // The deploy workflows run `vercel build`, which gets VERCEL_ENV from
+    // `vercel pull`. Unset locally
+    NEXT_PUBLIC_VERCEL_ENV: process.env.VERCEL_ENV,
+  },
   async headers() {
     return [
       {

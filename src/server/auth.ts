@@ -1,43 +1,84 @@
 import { DrizzleAdapter } from "@auth/drizzle-adapter"
+import { Cause, Effect, Exit } from "effect"
 import {
   getServerSession,
   type DefaultSession,
   type NextAuthOptions,
 } from "next-auth"
 import { type Adapter } from "next-auth/adapters"
-import DiscordProvider from "next-auth/providers/discord"
 import AzureADProvider from "next-auth/providers/azure-ad"
 import Email from "next-auth/providers/email"
 import { type Provider } from "next-auth/providers/index"
 import { env } from "@/env"
 import { db } from "@/server/db"
+import { type Db, DbLive } from "@/server/effect/db"
+import {
+  createUserWithOperator,
+  isExistingUser,
+} from "@/server/services/auth/users"
 import { pgTableCreator } from "drizzle-orm/pg-core"
 
-const providers: Provider[] = [
-  AzureADProvider({
-    clientId: `${env.AZURE_AD_CLIENT_ID}`,
-    clientSecret: `${env.AZURE_AD_CLIENT_SECRET}`,
-    tenantId: `${env.AZURE_AD_TENANT_ID}`,
-    authorization: {
-      params: { scope: "openid email profile User.Read  offline_access" },
-    },
-    httpOptions: { timeout: 10000 },
-  }),
-]
+// In production only Azure, and anyone the tenant lets in. Elsewhere the
+// providers whose env vars are set, for the users already in the database and
+// the addresses in AUTH_ALLOWED_EMAILS
+const isProduction = env.NEXT_PUBLIC_VERCEL_ENV === "production"
 
-if (env.NODE_ENV !== "production" || env.CUSTOM_ACCESS) {
+const providers: Provider[] = []
+
+if (
+  env.AZURE_AD_CLIENT_ID &&
+  env.AZURE_AD_CLIENT_SECRET &&
+  env.AZURE_AD_TENANT_ID
+) {
   providers.push(
-    DiscordProvider({
-      clientId: env.DISCORD_CLIENT_ID,
-      clientSecret: env.DISCORD_CLIENT_SECRET,
+    AzureADProvider({
+      clientId: env.AZURE_AD_CLIENT_ID,
+      clientSecret: env.AZURE_AD_CLIENT_SECRET,
+      tenantId: env.AZURE_AD_TENANT_ID,
+      authorization: {
+        params: { scope: "openid email profile User.Read  offline_access" },
+      },
+      httpOptions: { timeout: 10000 },
     })
   )
+}
+
+if (!isProduction && env.NODE_ENV === "development") {
+  // `next dev` prints the sign-in link instead of sending it
+  providers.push(
+    Email({
+      sendVerificationRequest: ({ identifier, url }) => {
+        console.log(`Sign-in link for ${identifier}: ${url}`)
+      },
+    })
+  )
+} else if (
+  !isProduction &&
+  env.SENDGRID_USERNAME &&
+  env.SENDGRID_API_KEY &&
+  env.SENDGRID_SERVER &&
+  env.SENDGRID_PORT
+) {
   providers.push(
     Email({
       from: "hpv4learning@gmail.com",
       server: `smtp://${env.SENDGRID_USERNAME}:${env.SENDGRID_API_KEY}@${env.SENDGRID_SERVER}:${env.SENDGRID_PORT}`,
     })
   )
+}
+
+const allowedEmails = new Set(
+  (env.AUTH_ALLOWED_EMAILS ?? "")
+    .split(",")
+    .map((email) => email.trim().toLowerCase())
+    .filter(Boolean)
+)
+
+/** Runs a database program for NextAuth, which expects failures thrown. */
+async function runAuth<A, E>(program: Effect.Effect<A, E, Db>): Promise<A> {
+  const exit = await Effect.runPromiseExit(program.pipe(Effect.provide(DbLive)))
+  if (Exit.isSuccess(exit)) return exit.value
+  throw Cause.squash(exit.cause)
 }
 
 const createTable = pgTableCreator((name) => `mito-deutsche_${name}`)
@@ -72,6 +113,13 @@ declare module "next-auth" {
 const DBAdapter = DrizzleAdapter(db, createTable) as Adapter
 export const authOptions: NextAuthOptions = {
   callbacks: {
+    // Also called before the email login sends its link
+    signIn: async ({ user }) => {
+      if (isProduction) return true
+      const email = user.email?.toLowerCase()
+      if (!email) return false
+      return allowedEmails.has(email) || runAuth(isExistingUser(email))
+    },
     session: ({ session, user }) => ({
       ...session,
       user: {
@@ -92,22 +140,7 @@ export const authOptions: NextAuthOptions = {
   },
   adapter: {
     ...DBAdapter,
-    createUser: async (user) => {
-      // Rimuove l'immagine prima della creazione dell'utente
-      const userWithoutImage = { ...user, image: null }
-
-      const createdUser = await DBAdapter.createUser!(userWithoutImage)
-
-      await fetch(env.NEXT_PUBLIC_BASE_URL + "/api/operator/create", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(createdUser),
-      })
-
-      return createdUser
-    },
+    createUser: (user) => runAuth(createUserWithOperator(user)),
   },
   providers,
   /**
