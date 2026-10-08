@@ -1,10 +1,7 @@
 import * as Sentry from "@sentry/nextjs"
 import { NextResponse } from "next/server"
-import { loadEnv } from "@/lib/global/env"
 import { createClient } from "@supabase/supabase-js"
 import { authCheck } from "../../_utils/auth"
-
-loadEnv()
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseKey = process.env.SUPABASE_KEY!

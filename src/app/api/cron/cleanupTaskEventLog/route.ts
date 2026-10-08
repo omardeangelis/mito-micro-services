@@ -1,13 +1,10 @@
 import * as Sentry from "@sentry/nextjs"
 import { NextResponse } from "next/server"
-import { loadEnv } from "@/lib/global/env"
 import { lt } from "drizzle-orm"
 import { subMonths } from "date-fns"
 import { db } from "@/server/db"
 import { taskEventLog } from "@/server/db/schema/taskEventLog"
 import { authCheck } from "../../_utils/auth"
-
-loadEnv()
 
 export const dynamic = "force-dynamic"
 export const maxDuration = 60

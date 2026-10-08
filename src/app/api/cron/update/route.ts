@@ -3,10 +3,7 @@ import { NextResponse } from "next/server"
 import { updatePractices } from "./updatePractices"
 import { updateCustomerAge } from "./updateCustomer"
 import { format } from "date-fns"
-import { loadEnv } from "@/lib/global/env"
 import { authCheck } from "../../_utils/auth"
-
-loadEnv()
 
 export const dynamic = "force-dynamic"
 export const maxDuration = 60

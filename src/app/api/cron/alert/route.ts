@@ -1,12 +1,9 @@
 import { NextResponse } from "next/server"
 import { Cause, Effect, Exit } from "effect"
-import { loadEnv } from "@/lib/global/env"
 import { ErrorReporter } from "@/server/effect/errorReporter"
 import { ServerLive } from "@/server/effect/server"
 import { processDueAlerts } from "@/server/services/contact/processDueAlerts"
 import { authCheck } from "../../_utils/auth"
-
-loadEnv()
 
 export const dynamic = "force-dynamic"
 export const maxDuration = 60
