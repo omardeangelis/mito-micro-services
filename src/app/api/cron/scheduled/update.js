@@ -1,13 +1,11 @@
 // richiamo del cron che aggiorno i customer e le pratiche
 import jwt from "jsonwebtoken"
 import dotenv from "dotenv"
+import { cronBaseUrl, cronHeaders } from "./cronRequest.js"
 dotenv.config()
 
 async function fetchUpdateCustomers() {
-  const baseUrl =
-    process.env.NODE_ENV === "development"
-      ? "http://localhost:3000"
-      : "https://mito-deutsche.vercel.app"
+  const baseUrl = cronBaseUrl()
 
   // Genera il token JWT al volo
   const secret = process.env.CRON_SECRET_KEY
@@ -24,10 +22,7 @@ async function fetchUpdateCustomers() {
 
   const response = await fetch(`${baseUrl}/api/cron/update`, {
     method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
+    headers: cronHeaders(token),
   })
 
   if (!response.ok) {

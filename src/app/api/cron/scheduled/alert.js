@@ -3,15 +3,14 @@
 import { setTimeout } from "node:timers/promises"
 import jwt from "jsonwebtoken"
 import dotenv from "dotenv"
+import { cronBaseUrl, cronHeaders } from "./cronRequest.js"
 dotenv.config()
 
-/** @param {string} secret */
-async function fetchAlerts(secret) {
-  const baseUrl =
-    process.env.NODE_ENV === "development"
-      ? "http://localhost:3000"
-      : "https://mito-deutsche.vercel.app"
-
+/**
+ * @param {string} baseUrl
+ * @param {string} secret
+ */
+async function fetchAlerts(baseUrl, secret) {
   // Genera il token JWT al volo
   // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
   const token = jwt.sign(
@@ -26,10 +25,7 @@ async function fetchAlerts(secret) {
   // )
   return fetch(`${baseUrl}/api/cron/alert`, {
     method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`, // Aggiunge il JWT nell'header
-    },
+    headers: cronHeaders(token),
   })
 }
 
@@ -38,13 +34,14 @@ async function fetchAlerts(secret) {
  * get through the alerts: Vercel's time limit (504), another server error, a
  * network error, or a run that failed as a whole.
  *
+ * @param {string} baseUrl
  * @param {string} secret
  * @returns {Promise<{ processed?: number, failed?: number, remaining?: number } | undefined>}
  */
-async function callRoute(secret) {
+async function callRoute(baseUrl, secret) {
   let response
   try {
-    response = await fetchAlerts(secret)
+    response = await fetchAlerts(baseUrl, secret)
   } catch (error) {
     console.error("Request to /api/cron/alert failed:", error)
     return undefined
@@ -76,13 +73,14 @@ const RETRY_DELAY_MS = 10_000
 
 const updateAlert = async () => {
   try {
+    const baseUrl = cronBaseUrl()
     const secret = process.env.CRON_SECRET_KEY
     if (!secret) {
       throw new Error("Missing CRON_SECRET_KEY environment variable")
     }
     let retryingFailed = false
     for (let call = 1; call <= MAX_CALLS; call++) {
-      const body = await callRoute(secret)
+      const body = await callRoute(baseUrl, secret)
       if (body === undefined) {
         await setTimeout(RETRY_DELAY_MS)
         continue

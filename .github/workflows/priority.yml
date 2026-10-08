@@ -4,7 +4,10 @@ run-name: Update Priority
 env:
   NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
   SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
-  CRON_SECRET_KEY: ${{ secrets.CRON_SECRET_KEY }}  
+  # Staging: its own secret, and the bypass of Vercel's protection
+  CRON_SECRET_KEY: ${{ secrets.STAGING_CRON_SECRET_KEY }}
+  CRON_BASE_URL: https://mito-micro-services-staging.vercel.app
+  VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
 
 
 on:

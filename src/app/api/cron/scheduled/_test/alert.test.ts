@@ -46,6 +46,7 @@ const done = { found: 1, processed: 1, skipped: 0, failed: 0, remaining: 0 }
 
 beforeEach(() => {
   vi.stubEnv("CRON_SECRET_KEY", "test-secret")
+  vi.stubEnv("CRON_BASE_URL", "https://staging.example")
   exit.mockClear()
   log.mockClear()
   pause.mockClear()
@@ -258,5 +259,48 @@ describe("alert.js", () => {
 
     expect(fetch).toHaveBeenCalledOnce()
     expect(exit).toHaveBeenCalledWith(1)
+  })
+})
+
+/** The URL and the headers of the route's first call. */
+function firstCall(fetch: Awaited<ReturnType<typeof runScript>>) {
+  const [url, init] = fetch.mock.calls[0] as unknown as [
+    string,
+    { headers: Record<string, string> },
+  ]
+  return { url, headers: init.headers }
+}
+
+describe("alert.js: the app it calls", () => {
+  it("chiama la route di CRON_BASE_URL con il token, senza bypass se manca il segreto", async () => {
+    vi.stubEnv("CRON_BASE_URL", "https://staging.example/")
+    const { url, headers } = firstCall(await runScript(json(done)))
+
+    expect(url).toBe("https://staging.example/api/cron/alert")
+    expect(headers.Authorization).toMatch(/^Bearer /)
+    expect(headers).not.toHaveProperty("x-vercel-protection-bypass")
+  })
+
+  it("aggiunge il bypass della protezione di Vercel quando c'è il segreto", async () => {
+    vi.stubEnv("VERCEL_AUTOMATION_BYPASS_SECRET", "bypass-secret")
+    const { headers } = firstCall(await runScript(json(done)))
+
+    expect(headers["x-vercel-protection-bypass"]).toBe("bypass-secret")
+  })
+
+  it("senza CRON_BASE_URL esce con 1 senza chiamare nessuna app", async () => {
+    vi.stubEnv("CRON_BASE_URL", "")
+    const fetch = await runScript(json(done))
+
+    expect(fetch).not.toHaveBeenCalled()
+    expect(exit).toHaveBeenCalledWith(1)
+  })
+
+  it("con gli script :dev e senza CRON_BASE_URL chiama il server locale", async () => {
+    vi.stubEnv("CRON_BASE_URL", "")
+    vi.stubEnv("NODE_ENV", "development")
+    const { url } = firstCall(await runScript(json(done)))
+
+    expect(url).toBe("http://localhost:3000/api/cron/alert")
   })
 })
