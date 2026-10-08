@@ -1,0 +1,42 @@
+name: Deploy Platform to Staging
+env:
+  VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+  VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+  # The fixed address of staging: Azure has its callback registered
+  STAGING_DOMAIN: mito-micro-services-staging.vercel.app
+on:
+  push:
+    branches:
+      - dev
+# One deploy at a time, so the alias ends on the last push
+concurrency: deploy-staging
+jobs:
+  Vercel-Deploy-Staging:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+          run_install: false
+      - uses: actions/checkout@v4
+      # Build on the Node version the functions run on (engines.node in package.json)
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: package.json
+      - name: Override git author for Vercel
+        run: |
+          git config user.email "omardeangelis.business@gmail.com"
+          git config user.name "Omar De Angelis"
+          git commit --amend --no-edit --reset-author
+      - name: Install Vercel CLI
+        run: pnpm add --global vercel
+      # Staging is a preview deployment: it takes the Preview env vars
+      - name: Pull Vercel Environment Information
+        run: vercel pull --yes --environment=preview --git-branch=dev --token=${{ secrets.VERCEL_TOKEN }}
+      - name: Build Project Artifacts
+        run: vercel build --token=${{ secrets.VERCEL_TOKEN }}
+      - name: Deploy Project Artifacts to Vercel
+        id: deploy
+        run: echo "url=$(vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }})" >> "$GITHUB_OUTPUT"
+      - name: Point the staging domain to the deployment
+        run: vercel alias set "${{ steps.deploy.outputs.url }}" "$STAGING_DOMAIN" --token=${{ secrets.VERCEL_TOKEN }}

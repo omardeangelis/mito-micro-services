@@ -42,7 +42,8 @@ export const env = createEnv({
     AZURE_AD_CLIENT_SECRET: isProduction ? z.string() : z.string().optional(),
     AZURE_AD_TENANT_ID: isProduction ? z.string() : z.string().optional(),
     NEXT_RUNTIME: z.enum(["nodejs", "edge"]).default("nodejs"),
-    SENTRY_AUTH_TOKEN: z.string(),
+    // Sentry reports and gets source maps only from production
+    SENTRY_AUTH_TOKEN: isProduction ? z.string() : z.string().optional(),
     SUPABASE_MITO_PSW: z.string(),
     SUPABASE_KEY: z.string(),
     // The email login outside production; `next dev` prints the link instead
@@ -64,7 +65,7 @@ export const env = createEnv({
    * `NEXT_PUBLIC_`.
    */
   client: {
-    NEXT_PUBLIC_SENTRY_DSN: z.string(),
+    NEXT_PUBLIC_SENTRY_DSN: isProduction ? z.string() : z.string().optional(),
     NEXT_PUBLIC_SUPABASE_URL: z.string(),
     // VERCEL_ENV at build time (next.config.js): "production" only on the
     // production deployment

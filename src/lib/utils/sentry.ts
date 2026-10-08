@@ -1,4 +1,14 @@
 import type { ErrorEvent, EventHint } from "@sentry/nextjs"
+import { env } from "@/env"
+
+/**
+ * The DSN of the production deployment, the only one that reports. Locally
+ * and on staging `Sentry.init` gets none, so the SDK sends nothing.
+ */
+export const sentryDsn =
+  env.NEXT_PUBLIC_VERCEL_ENV === "production"
+    ? env.NEXT_PUBLIC_SENTRY_DSN
+    : undefined
 
 /**
  * tRPC failures are reported once, where the procedure fails (`sentryMiddleware`

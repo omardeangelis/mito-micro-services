@@ -93,10 +93,17 @@ const config = {
   },
 }
 
+// Only the production build talks to Sentry: staging and local builds upload
+// no source maps, create no release and send no plugin telemetry
+const isProduction = process.env.VERCEL_ENV === "production"
+
 const sentryWebpackPluginOptions = {
   org: "spatalo-b9",
   project: "javascript-nextjs",
   authToken: env.SENTRY_AUTH_TOKEN,
+  sourcemaps: { disable: !isProduction },
+  release: { create: isProduction, finalize: isProduction },
+  telemetry: isProduction,
   // Build output only in CI (Vercel sets CI), so a failed source map upload shows in the build log
   silent: !process.env.CI,
   // Upload more client files for readable client stack traces
