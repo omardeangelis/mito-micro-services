@@ -55,16 +55,18 @@ describe("auth in production", () => {
 })
 
 describe("auth on staging", () => {
-  it("senza SendGrid offre solo Azure", async () => {
+  it("con SendGrid offre anche il link via email, che la produzione toglie", async () => {
     const authOptions = await loadAuthOptions({
       NEXT_PUBLIC_VERCEL_ENV: "production",
       NEXT_PUBLIC_APP_ENV: "staging",
       NODE_ENV: "production",
       ...AZURE,
+      ...SENDGRID,
     })
 
     expect(authOptions.providers.map((provider) => provider.id)).toEqual([
       "azure-ad",
+      "email",
     ])
   })
 })

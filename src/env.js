@@ -3,10 +3,12 @@ import { z } from "zod"
 
 /**
  * The production deployment, as the build saw it: next.config.js reads
- * VERCEL_ENV and APP_ENV and passes them to the bundle as
- * NEXT_PUBLIC_VERCEL_ENV and NEXT_PUBLIC_APP_ENV, so the config and the app
- * modules decide alike. Staging is a production deployment of its own Vercel
- * project, with APP_ENV=staging. Locally neither is set.
+ * VERCEL_ENV and APP_ENV and writes them into the bundles as
+ * NEXT_PUBLIC_VERCEL_ENV and NEXT_PUBLIC_APP_ENV, "none" when unset, so the
+ * config, the server and the browser decide alike. Staging is a production
+ * deployment of its own Vercel project, with APP_ENV=staging. Locally neither
+ * is set. Outside a Next.js bundle (next.config.js itself, the tests) the
+ * NEXT_PUBLIC_ ones are unset, and VERCEL_ENV and APP_ENV decide.
  */
 export const isProduction =
   (process.env.NEXT_PUBLIC_VERCEL_ENV ?? process.env.VERCEL_ENV) ===
@@ -70,13 +72,13 @@ export const env = createEnv({
     NEXT_PUBLIC_SENTRY_DSN: isProduction ? z.string() : z.string().optional(),
     NEXT_PUBLIC_SUPABASE_URL: z.string(),
     // VERCEL_ENV at build time (next.config.js): "production" on the
-    // production deployments of both projects
+    // production deployments of both projects, "none" off Vercel
     NEXT_PUBLIC_VERCEL_ENV: z
-      .enum(["production", "preview", "development"])
+      .enum(["production", "preview", "development", "none"])
       .optional(),
     // APP_ENV at build time (next.config.js): "staging" only on the staging
-    // project
-    NEXT_PUBLIC_APP_ENV: z.enum(["staging"]).optional(),
+    // project, "none" elsewhere
+    NEXT_PUBLIC_APP_ENV: z.enum(["staging", "none"]).optional(),
   },
   /**
    * You can't destruct `process.env` as a regular object in the Next.js edge runtimes (e.g.

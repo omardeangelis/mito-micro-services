@@ -42,16 +42,19 @@ jobs:
       # Before anything reaches Vercel. The staging project isn't the
       # production one; it protects every deployment, its production domain
       # included, with Vercel Authentication (Standard Protection would leave
-      # that domain public); it isn't connected to Git, so only this workflow,
-      # with its checks, deploys there; and it owns the staging domain, verified,
-      # on its Production environment, without a redirect
+      # that domain public); it isn't connected to Git, so no push deploys
+      # there without these checks; and it owns the staging domain, verified,
+      # on its Production environment, without a redirect, as its only domain
+      # outside *.vercel.app: a production deployment takes all of them.
+      # Deploys by hand or through the API, with a token, skip the checks
+      # (brain/chore/staging-vercel.md)
       - name: Check the staging project
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           PRODUCTION_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
         run: |
           api() {
-            curl -fsS --max-time 30 -H "Authorization: Bearer $VERCEL_TOKEN" "https://api.vercel.com$1?teamId=$VERCEL_ORG_ID"
+            curl -fsS --max-time 30 -H "Authorization: Bearer $VERCEL_TOKEN" "https://api.vercel.com$1?teamId=$VERCEL_ORG_ID${2:+&$2}"
           }
           if [ -z "$VERCEL_PROJECT_ID" ] || [ "$VERCEL_PROJECT_ID" = "$PRODUCTION_PROJECT_ID" ]; then
             echo "::error::VERCEL_STAGING_PROJECT_ID must be set and differ from VERCEL_PROJECT_ID"
@@ -70,14 +73,14 @@ jobs:
             exit 1
           fi
           if ! jq -e '.link == null' <<< "$project" > /dev/null; then
-            echo "::error::Disconnect the staging project from Git (Settings → Git): only this workflow deploys staging"
+            echo "::error::Disconnect the staging project from Git (Settings → Git): a deploy from Git would skip these checks"
             exit 1
           fi
           if ! domain="$(api "/v9/projects/$VERCEL_PROJECT_ID/domains/$STAGING_DOMAIN")" || ! jq -e --arg d "$STAGING_DOMAIN" 'type == "object" and .name == $d' <<< "$domain" > /dev/null; then
             echo "::error::$STAGING_DOMAIN is not a domain of the staging project, or the Vercel API didn't answer"
             exit 1
           fi
-          if ! jq -e '(.redirect // "") == "" and (.gitBranch // "") == ""' <<< "$domain" > /dev/null; then
+          if ! jq -e '(.redirect // "") == "" and (.gitBranch // "") == "" and .customEnvironmentId == null' <<< "$domain" > /dev/null; then
             echo "::error::$STAGING_DOMAIN must be on the Production environment, without a redirect (staging project → Settings → Domains)"
             exit 1
           fi
@@ -85,12 +88,23 @@ jobs:
             echo "::error::$STAGING_DOMAIN is not verified (staging project → Settings → Domains)"
             exit 1
           fi
+          # Up to 100 domains in one page; more fails as an unknown answer
+          if ! domains="$(api "/v9/projects/$VERCEL_PROJECT_ID/domains" "limit=100")" || ! jq -e 'type == "object" and (.domains | type == "array") and .pagination.next == null' <<< "$domains" > /dev/null; then
+            echo "::error::The Vercel API didn't return the domains of the staging project"
+            exit 1
+          fi
+          if ! jq -e --arg d "$STAGING_DOMAIN" '[.domains[].name | select(endswith(".vercel.app") | not)] == [$d]' <<< "$domains" > /dev/null; then
+            echo "::error::The staging project has domains besides $STAGING_DOMAIN and *.vercel.app: remove them (staging project → Settings → Domains), a production deployment would take them"
+            exit 1
+          fi
       # The Production variables of the staging project. A .vercel folder in
       # the commit would be merged into what vercel pull writes
       - name: Pull Vercel Environment Information
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: |
           rm -rf .vercel
-          vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+          vercel pull --yes --environment=production
       # A production deployment of the staging project is staging only with
       # APP_ENV=staging; without it the app would be production
       - name: Check the build is staging
@@ -98,6 +112,10 @@ jobs:
           file=.vercel/.env.production.local
           if ! grep -qx 'VERCEL_ENV="production"' "$file"; then
             echo "::error::vercel pull wrote no VERCEL_ENV=\"production\": turn on Enable access to System Environment Variables in the staging project"
+            exit 1
+          fi
+          if grep -qx 'APP_ENV="\[SENSITIVE\]"' "$file"; then
+            echo "::error::APP_ENV in the staging project is a Secret, so the build can't read it: delete it and create it again as Config"
             exit 1
           fi
           if ! grep -qx 'APP_ENV="staging"' "$file"; then
@@ -120,12 +138,14 @@ jobs:
       # names only, and removes the files it pulls
       - name: Check staging has its own database and storage
         env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           PRODUCTION_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
         run: |
-          dir="$RUNNER_TEMP/staging-env-check"
-          mkdir -p "$dir"
+          dir="$(mktemp -d "$RUNNER_TEMP/staging-env-check.XXXXXX")"
           trap 'rm -rf "$dir"' EXIT
-          VERCEL_PROJECT_ID="$PRODUCTION_PROJECT_ID" vercel env pull "$dir/Production" --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }} > /dev/null
+          # A stop signal waits for the running command, then removes the files
+          trap 'exit 1' TERM INT
+          VERCEL_PROJECT_ID="$PRODUCTION_PROJECT_ID" vercel env pull "$dir/Production" --yes --environment=production > /dev/null
           cp .vercel/.env.production.local "$dir/Staging"
           for view in Production Staging; do
             if [ ! -s "$dir/$view" ]; then
@@ -182,14 +202,28 @@ jobs:
             fi
           done
           exit "$status"
+      # Without the token: the build runs the install scripts and the code of
+      # the branch, and needs only what vercel pull wrote
       - name: Build Project Artifacts
-        run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+        run: vercel build --prod
       - name: Deploy Project Artifacts to Vercel
         id: deploy
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: |
-          url="$(vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }})"
+          url="$(vercel deploy --prebuilt --prod)"
           echo "url=$url" >> "$GITHUB_OUTPUT"
       # A production deployment takes the project's domains by itself, unless
-      # the project turns that off: the alias makes sure
+      # the project turns that off (an Instant Rollback does): the alias makes
+      # sure. `vercel alias set` takes every 409 as done, so the API says where
+      # the domain points
       - name: Point the staging domain to the deployment
-        run: vercel alias set "${{ steps.deploy.outputs.url }}" "$STAGING_DOMAIN" --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          DEPLOYMENT_URL: ${{ steps.deploy.outputs.url }}
+        run: |
+          vercel alias set "$DEPLOYMENT_URL" "$STAGING_DOMAIN"
+          if ! alias="$(curl -fsS --max-time 30 -H "Authorization: Bearer $VERCEL_TOKEN" "https://api.vercel.com/v4/aliases/$STAGING_DOMAIN?teamId=$VERCEL_ORG_ID")" || ! jq -e --arg host "${DEPLOYMENT_URL#https://}" '.deployment.url == $host' <<< "$alias" > /dev/null; then
+            echo "::error::$STAGING_DOMAIN doesn't point to the new deployment"
+            exit 1
+          fi

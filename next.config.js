@@ -9,15 +9,21 @@ import { env, isProduction } from "./src/env.js"
 // `vercel build` sets VERCEL, and VERCEL_ENV only when `vercel pull` writes it,
 // which needs "Enable access to System Environment Variables" on in the
 // project (Settings → Environment Variables). Without it the production build
-// would come out as staging: no filter on sign-in, no required Azure, no Sentry
-if (
-  process.env.VERCEL &&
-  !["production", "preview", "development"].includes(
-    process.env.VERCEL_ENV ?? ""
+// would come out as not production: filter on sign-in, no required Azure, no
+// Sentry
+if (process.env.VERCEL && process.env.VERCEL_ENV === undefined) {
+  throw new Error(
+    "VERCEL_ENV is missing: turn on Enable access to System Environment Variables in the Vercel project settings"
   )
+}
+// Anywhere, Vercel or not: a typo would pass this config and fail only when
+// the app reads it
+if (
+  process.env.VERCEL_ENV !== undefined &&
+  !["production", "preview", "development"].includes(process.env.VERCEL_ENV)
 ) {
   throw new Error(
-    "VERCEL_ENV is missing or invalid: turn on Enable access to System Environment Variables in the Vercel project settings"
+    "VERCEL_ENV is invalid: only Vercel sets it, to production, preview or development"
   )
 }
 
@@ -60,9 +66,12 @@ const config = {
   env: {
     // The same value whether or not Vercel sets NEXT_PUBLIC_VERCEL_ENV too.
     // The deploy workflows run `vercel build`, which gets VERCEL_ENV from
-    // `vercel pull`. Unset locally
-    NEXT_PUBLIC_VERCEL_ENV: process.env.VERCEL_ENV,
-    NEXT_PUBLIC_APP_ENV: process.env.APP_ENV,
+    // `vercel pull`. Always a value, "none" when unset: Next.js writes an
+    // entry into the bundles only when it isn't empty, and without it the
+    // server would read the variables of the running deployment while the
+    // browser keeps what the build saw
+    NEXT_PUBLIC_VERCEL_ENV: process.env.VERCEL_ENV ?? "none",
+    NEXT_PUBLIC_APP_ENV: process.env.APP_ENV ?? "none",
   },
   async headers() {
     return [
