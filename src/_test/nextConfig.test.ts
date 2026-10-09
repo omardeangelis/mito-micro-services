@@ -1,5 +1,15 @@
 // @vitest-environment node
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { existsSync } from "node:fs"
+import type * as Fs from "node:fs"
+
+// next.config.js stops while .env.production.local exists, and the checkout
+// running the tests may still have it
+vi.mock("node:fs", async (importOriginal) => {
+  const fs = await importOriginal<typeof Fs>()
+  const existsSync = vi.fn(() => false)
+  return { ...fs, default: { ...fs, existsSync }, existsSync }
+})
 
 // The options next.config.js passes to Sentry's build plugin, with its config
 vi.mock("@sentry/nextjs", () => ({
@@ -35,6 +45,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.unstubAllEnvs()
+  vi.mocked(existsSync).mockClear()
   for (const key of SIGNALS) {
     const value = saved[key]
     if (value === undefined) delete process.env[key]
@@ -118,5 +129,16 @@ describe("next.config.js", () => {
     ],
   ])("si ferma con %s", async (_, vars, error) => {
     await expect(loadNextConfig(vars)).rejects.toThrow(error)
+  })
+
+  it("si ferma finché c'è .env.production.local nella cartella del progetto", async () => {
+    vi.mocked(existsSync).mockReturnValueOnce(true)
+
+    await expect(loadNextConfig({})).rejects.toThrow(
+      /^Rename \.env\.production\.local to \.env\.prod\.local/
+    )
+    expect(existsSync).toHaveBeenCalledWith(
+      new URL("../../.env.production.local", import.meta.url)
+    )
   })
 })

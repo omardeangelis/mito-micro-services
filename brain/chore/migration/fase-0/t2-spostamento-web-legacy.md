@@ -41,7 +41,7 @@ Spostare l'intera app Next.js in `apps/web-legacy` senza cambiamenti funzionali.
 
 **Non tracciati (gitignored) → `mv` semplice:**
 
-- `.env`, `.env.development.local`, `.env.production.local`, `.env.test.local` → `apps/web-legacy/`. Attenzione: `src/lib/global/loadDbEnv.ts` (`loadEnv`) carica `.env.${NODE_ENV}.local` con path relativo alla **cwd**; gli script (`seed:*`, `update:*:dev`) vanno quindi lanciati da `apps/web-legacy/` — comportamento invariato se si usa `pnpm --filter web-legacy <script>`.
+- `.env`, `.env.development.local`, `.env.prod.local`, `.env.test.local` → `apps/web-legacy/`. Attenzione: `src/lib/global/loadDbEnv.ts` (`loadEnv`) carica `.env.development.local`, `.env.test.local` o, con `NODE_ENV=production`, `.env.prod.local`, con path relativo alla **cwd**; gli script del database (`db:*`, `seed:*`, `create:system-operator*`) vanno quindi lanciati da `apps/web-legacy/`, e così gli script dei cron, che leggono `.env` dalla cwd — comportamento invariato se si usa `pnpm --filter web-legacy <script>`. *(Aggiornato il 2026-10-09: prima `.env.production.local`, che Next.js carica in ogni build.)*
 
 **Da valutare:**
 

@@ -26,10 +26,10 @@ Estrarre il layer database in un package workspace `@mito/db`, consumabile da `w
     // dopo:
     .$type<"oauth" | "oidc" | "email" | "webauthn">()
     ```
-- Client: `src/server/db/index.ts` — singleton `postgres()` con `prepare: false` (richiesto dal pooler Supabase) e fallback `PREVIEW_DB`.
+- Client: `src/server/db/index.ts` — singleton `postgres()` con `prepare: false` (richiesto dal pooler Supabase). *(Il fallback `PREVIEW_DB` è stato tolto il 2026-10-09.)*
 - Config: `drizzle.config.ts` alla root dell'app — dialect `postgresql`, `migrations.prefix: "supabase"`, out `./src/server/db/migrations`.
 - Migrazioni: `20240926195125_lucky_roughhouse.sql` + `meta/{_journal.json, 20240926195125_snapshot.json}` — **da spostare byte-per-byte, mai modificare**.
-- Seeds: `src/server/db/seeds/` (10 file, Faker). Importano `loadEnv` da `@/lib/global/loadDbEnv` (dotenv su `.env.${NODE_ENV}.local`).
+- Seeds: `src/server/db/seeds/` (10 file, Faker). Importano `loadEnv` da `@/lib/global/loadDbEnv` (dotenv su `.env.development.local`, `.env.test.local` o `.env.prod.local`). Solo gli script del database possono importarlo (ESLint `no-restricted-imports`).
 - Prefisso tabelle: `pgTableCreator((name) => \`mito-deutsche_${name}\`)` — definito **due volte** (nei file schema e in `src/server/auth.ts:43` per l'adapter NextAuth).
 
 ## Struttura target

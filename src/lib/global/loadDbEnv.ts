@@ -10,11 +10,14 @@ const PRODUCTION_DB_KEYS = [
 
 /**
  * Loads the env file of the database scripts (drizzle-kit, the seeds, the
- * system operator): `.env.prod.local` with NODE_ENV=production, otherwise
- * `.env.<NODE_ENV>.local`. The app doesn't call it: Next.js loads its own env
- * files, and `.env.prod.local` isn't one of them, so a local `next build` or
- * `next start` gets the production database only if another env file or the
- * shell holds it.
+ * system operator): `.env.prod.local` with NODE_ENV=production,
+ * `.env.development.local` or `.env.test.local` with development or test, and
+ * none without NODE_ENV (`db:generate`, `seed:db`: only `.env`, if drizzle-kit
+ * loads it, and the shell). Any other NODE_ENV stops it: a `prod` or
+ * `Production` typed by hand would otherwise skip the checks below. The app
+ * doesn't call it: Next.js loads its own env files, and `.env.prod.local`
+ * isn't one of them, so a local `next build` or `next start` gets the
+ * production database only if another env file or the shell holds it.
  *
  * With NODE_ENV=production it stops, instead of running on whatever else is
  * loaded, when `.env.prod.local` can't be read, doesn't set both database
@@ -22,9 +25,17 @@ const PRODUCTION_DB_KEYS = [
  * which drizzle-kit loads first, and over the shell.
  */
 export function loadEnv(): void {
-  if (process.env.NODE_ENV !== "production") {
-    config({ path: `.env.${process.env.NODE_ENV}.local` })
+  // Typed as the three Next.js values, but a script can get any string
+  const nodeEnv: string | undefined = process.env.NODE_ENV
+  if (nodeEnv === undefined) return
+  if (nodeEnv === "development" || nodeEnv === "test") {
+    config({ path: `.env.${nodeEnv}.local` })
     return
+  }
+  if (nodeEnv !== "production") {
+    throw new Error(
+      `NODE_ENV is ${nodeEnv}: the database scripts take only development, test or production`
+    )
   }
   if (existsSync(".env.production.local")) {
     throw new Error(
@@ -41,10 +52,4 @@ export function loadEnv(): void {
       `.env.prod.local doesn't set ${missing.join(" and ")}: the production scripts take the database only from this file`
     )
   }
-}
-
-export const env = {
-  isProd: process.env.NODE_ENV === "production",
-  isDev: process.env.NODE_ENV === "development",
-  isTest: process.env.NODE_ENV === "test",
 }

@@ -35,6 +35,34 @@ describe("loadEnv", () => {
     expect(config).toHaveBeenCalledWith({ path })
   })
 
+  it("senza NODE_ENV non carica nessun file", () => {
+    // Typed read-only by Next.js
+    const env = process.env as Record<string, string | undefined>
+    const saved = env.NODE_ENV
+    delete env.NODE_ENV
+    try {
+      loadEnv()
+    } finally {
+      if (saved === undefined) delete env.NODE_ENV
+      else env.NODE_ENV = saved
+    }
+
+    expect(config).not.toHaveBeenCalled()
+  })
+
+  it.each(["prod", "Production", "PRODUCTION", "staging"])(
+    "con NODE_ENV=%s si ferma senza caricare niente",
+    (nodeEnv) => {
+      vi.stubEnv("NODE_ENV", nodeEnv)
+
+      expect(() => loadEnv()).toThrow(
+        new RegExp(`^NODE_ENV is ${nodeEnv}: the database scripts take only`)
+      )
+      expect(config).not.toHaveBeenCalled()
+      expect(existsSync).not.toHaveBeenCalled()
+    }
+  )
+
   it("con NODE_ENV=production carica .env.prod.local, che vince su .env e sulla shell", () => {
     vi.stubEnv("NODE_ENV", "production")
     vi.mocked(config).mockReturnValueOnce(prodFile)
