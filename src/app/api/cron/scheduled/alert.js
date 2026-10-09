@@ -1,4 +1,4 @@
-// // richiamo del cron job degli alert
+// richiamo del cron job degli alert
 
 import { setTimeout } from "node:timers/promises"
 import jwt from "jsonwebtoken"

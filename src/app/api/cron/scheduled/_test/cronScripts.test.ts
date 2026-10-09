@@ -98,6 +98,28 @@ describe.each(Object.keys(SCRIPTS) as (keyof typeof SCRIPTS)[])(
     })
 
     it.each([
+      [
+        "CRON_BASE_URL con spazi e barre finali",
+        "production",
+        " https://staging.example/// ",
+        "https://staging.example",
+      ],
+      [
+        "il server locale agli script :dev senza CRON_BASE_URL",
+        "development",
+        "",
+        "http://localhost:3000",
+      ],
+    ])("chiama l'indirizzo scelto: %s", async (_, nodeEnv, value, origin) => {
+      vi.stubEnv("NODE_ENV", nodeEnv)
+      vi.stubEnv("CRON_BASE_URL", value)
+      const fetch = await runScript(script, new Response("{}"))
+
+      const [url] = fetch.mock.calls[0] as unknown as [string]
+      expect(url).toBe(`${origin}/api/cron/${SCRIPTS[script].route}`)
+    })
+
+    it.each([
       ["dopo una chiamata riuscita", () => new Response("{}")],
       ["dopo un 401", () => new Response("Unauthorized", { status: 401 })],
     ])(

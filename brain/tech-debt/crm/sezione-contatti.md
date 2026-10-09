@@ -80,16 +80,16 @@ Scoperto nella review di PR1 (F16, F17).
 
 ## I workflow dei cron chiamavano l'app sbagliata
 
-Preesistente. Il fallimento dei workflow di sviluppo è F18 della review di PR1; l'indirizzo di quelli di prod è venuto fuori controllando gli alias di Vercel il 2026-10-08 (IMPLEMENTATION-NOTES). Si corregge con `chore/cron-indirizzo` (2026-10-09), quando arriva su `dev` e poi su `main`.
+Preesistente. Il fallimento dei workflow di sviluppo è F18 della review di PR1; l'indirizzo di quelli di prod è venuto fuori controllando gli alias di Vercel (output del 2026-10-09 in IMPLEMENTATION-NOTES). Si corregge con `chore/cron-indirizzo` (2026-10-09), quando arriva su `dev` e poi su `main`.
 
-- **Prima:** i workflow di sviluppo, come `update-alert.yml`, eseguivano gli script `:dev`, che chiamavano `localhost:3000` dal runner di GitHub e fallivano sempre. Quelli di prod chiamavano `mito-deutsche.vercel.app`, che non risulta fra gli alias del team Vercel del progetto: chi lo serva non è verificato.
+- **Prima:** i workflow di sviluppo, come `update-alert.yml`, eseguivano gli script `:dev`, che chiamano `localhost:3000` dal runner di GitHub: fallirebbero sempre. Nessuno degli 8 workflow dei cron risulta mai eseguito (`gh run list`, 0 run, 2026-10-09). Quelli di prod chiamavano `mito-deutsche.vercel.app`, che non risulta fra gli alias del team Vercel del progetto: chi lo serva non è verificato.
 - **Ora:** ogni workflow dei cron chiama l'app in `CRON_BASE_URL`:
   - quelli di prod `https://crm.dbmito.it`, con `CRON_SECRET_KEY`;
-  - quelli di sviluppo chiamano lo staging, `https://staging-crm.dbmito.it`, con `STAGING_CRON_SECRET_KEY` e il bypass della protezione di Vercel.
+  - quelli di sviluppo chiameranno lo staging, `https://staging-crm.dbmito.it`, con `STAGING_CRON_SECRET_KEY` e il bypass della protezione di Vercel, quando lo staging ci sarà (vedi **Resta**).
 
   Fuori da GitHub Actions gli script `:dev` chiamano solo il server locale.
 
-**Resta:** i workflow di sviluppo funzionano solo con lo staging attivo e i suoi segreti su GitHub (la checklist è in `brain/chore/staging-vercel.md`, che arriva con `chore/staging-vercel`). Senza `STAGING_CRON_SECRET_KEY` lo script si ferma prima di chiamare. Senza `VERCEL_AUTOMATION_BYPASS_SECRET` chiama lo staging, la protezione di Vercel lo respinge e il job diventa rosso.
+**Resta:** i workflow di sviluppo funzionano solo con lo staging attivo e i suoi segreti su GitHub (la checklist è in `brain/chore/staging-vercel.md`, che arriva con `chore/staging-vercel`). Senza `STAGING_CRON_SECRET_KEY` lo script si ferma prima di chiamare. Senza `VERCEL_AUTOMATION_BYPASS_SECRET` chiama lo staging, la protezione di Vercel lo respinge e il job diventa rosso: il progetto dello staging protegge tutte le deployment, e `deploy-staging.yaml` si ferma se non è così.
 
 ## Test mancanti sull'infrastruttura Effect
 

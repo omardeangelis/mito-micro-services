@@ -48,11 +48,11 @@ export function cronBaseUrl() {
   }
   const isLocal = LOCAL_HOSTS.includes(url.hostname)
   if (remote) {
-    // The token of a remote run never goes to this machine: no IP address
-    // (the URL parser writes IPv4 as digits and dots, IPv6 in brackets), no
-    // localhost name
+    // The token of a remote run never goes to an IP address (the URL parser
+    // writes IPv4 as digits and dots, IPv6 in brackets) or a localhost name.
+    // The check is on the name only: a name that resolves to this machine passes
     const isIp = /^[\d.]+$/.test(url.hostname) || url.hostname.startsWith("[")
-    const isLocalName = /(^|\.)localhost\.?$/.test(url.hostname)
+    const isLocalName = /(^|\.)localhost\.*$/.test(url.hostname)
     if (url.protocol !== "https:" || isIp || isLocalName) {
       throw new Error("CRON_BASE_URL must be the https address of the app")
     }
@@ -67,18 +67,19 @@ export function cronBaseUrl() {
 
 /**
  * The cron token, and the bypass of Vercel's Deployment Protection when
- * VERCEL_AUTOMATION_BYPASS_SECRET is set: the staging project protects all its
- * deployments, while the production one leaves its domain out (Standard
- * Protection). A redirect isn't followed: the script fails on it instead of
- * taking the headers to another host.
+ * VERCEL_AUTOMATION_BYPASS_SECRET is set. The staging project protects all its
+ * deployments (deploy-staging.yaml stops otherwise), while the production one
+ * leaves its domain out (Standard Protection, as its owner set it). A redirect
+ * isn't followed: the script fails on it instead of taking the headers to
+ * another host.
  *
  * @param {string} token
  * @returns {RequestInit}
  */
 export function cronRequestInit(token) {
   const bypass = process.env.VERCEL_AUTOMATION_BYPASS_SECRET?.trim()
-  // Printable ASCII without spaces. The error doesn't print the value, as an
-  // invalid header would
+  // Printable ASCII without spaces. Unlike the error of an invalid header,
+  // which prints the value, this one doesn't
   if (bypass && !/^[\x21-\x7e]+$/.test(bypass)) {
     throw new Error(
       "VERCEL_AUTOMATION_BYPASS_SECRET is not a valid header value"

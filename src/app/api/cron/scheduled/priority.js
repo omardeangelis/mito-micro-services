@@ -1,4 +1,4 @@
-// richiamo del cron job che elimina i file di export
+// richiamo del cron job che aggiorna la priorità dei task
 import jwt from "jsonwebtoken"
 import dotenv from "dotenv"
 import { cronBaseUrl, cronRequestInit } from "./cronRequest.js"

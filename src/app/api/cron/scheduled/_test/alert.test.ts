@@ -489,11 +489,16 @@ describe("alert.js: the app it calls", () => {
     ["con un percorso", "https://staging.example/api"],
     ["con una query", "https://staging.example/?x=1"],
     ["con utente e password", "https://user:pass@staging.example"],
-    // The token of a remote run never goes to this machine
+    ["con la sola password", "https://:pass@staging.example"],
+    ["con un frammento", "https://staging.example#x"],
+    // The token of a remote run never goes to an IP address or a localhost name
     ["su un altro indirizzo di loopback", "https://127.0.0.2"],
     ["su un indirizzo IPv6", "https://[::1]"],
     ["su 0.0.0.0", "https://0.0.0.0"],
+    ["su un indirizzo IP pubblico", "https://1.2.3.4"],
+    ["sull'indirizzo dei metadati del cloud", "https://169.254.169.254"],
     ["su localhost con il punto finale", "https://localhost."],
+    ["su localhost con due punti finali", "https://localhost.."],
     ["su un sottodominio di localhost", "https://app.localhost"],
   ])(
     "con un CRON_BASE_URL %s esce con 1 senza chiamare nessuna app",
