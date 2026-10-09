@@ -8,7 +8,7 @@ links:
 ingested: false
 last_ingested: null
 created: 2026-09-25
-updated: 2026-09-29
+updated: 2026-10-09
 ---
 
 # Implementation Notes
@@ -135,12 +135,17 @@ updated: 2026-09-29
   - **F7, F16:** 7 clienti con più contatti attivi, tutti con lo stesso millisecondo, per via dell'update delle 15:53.
 
 - **Run 2 — `db:generate` cambia il default di `customers.id`.** Ogni esecuzione emette `ALTER TABLE "mito-deutsche_customers" ALTER COLUMN "id" SET DEFAULT '<letterale casuale>'`, perché lo schema usa `.default(nanoid())`, che si valuta una volta al caricamento. Tolta a mano dall'SQL di T2.3, come era già stato fatto in `20260902181440_nebulous_susan_delgado` (lo snapshot cambia letterale, l'SQL no). Nel tech-debt.
-- **Dominio e segreto dei cron di prod** (2026-10-08 e 2026-10-09, per `chore/cron-indirizzo`; solo nomi, nessun valore letto).
-  - `vercel alias ls` nel team `spatalos-projects`:
-    - `crm.dbmito.it` è un alias della stessa deployment di `mito-micro-services.vercel.app`, la produzione corrente;
-    - `mito-deutsche.vercel.app` non è fra gli alias del team: i cron di prod chiamavano un indirizzo fuori da questo progetto. Chi lo serva da qui non si vede.
-  - `vercel project ls`: la produzione del progetto è `mito-micro-services.vercel.app`.
-  - `gh secret list`: solo `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`, `VERCEL_TOKEN`. `CRON_SECRET_KEY` manca, e mancano anche `TELEGRAM_BOT_TOKEN` e `TELEGRAM_CHAT_ID`.
+- **Dominio e segreto dei cron di prod** (per `chore/cron-indirizzo`; solo nomi, nessun valore letto).
+  - `vercel alias ls` nel team `spatalos-projects`, ripetuto il 2026-10-09 alle 16:50 UTC (CLI 41.6.2). Le righe dei due domini, colonne `source`, `url` e `age`:
+
+    ```
+    mito-micro-services-ij7n4pv4o-spatalos-projects.vercel.app   crm.dbmito.it                    10d
+    mito-micro-services-ij7n4pv4o-spatalos-projects.vercel.app   mito-micro-services.vercel.app   118d
+    ```
+
+    `crm.dbmito.it` è quindi un alias della stessa deployment di `mito-micro-services.vercel.app`. `mito-deutsche` non compare in nessuna riga (`grep -c` → 0): non risulta fra gli alias del team, e chi serva quell'indirizzo non è verificato.
+  - `vercel project ls`, stesso giorno: la riga `mito-micro-services   https://mito-micro-services.vercel.app   10d   22.x` dà la produzione del progetto. C'è anche `staging-mito-micro-services`, il progetto dello staging, creato il 2026-10-09.
+  - `gh secret list`, 2026-10-09 (nomi e date): `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID` e `VERCEL_TOKEN` del 2026-06-13, `VERCEL_STAGING_PROJECT_ID` del 2026-10-09 14:45 UTC. `CRON_SECRET_KEY` manca, e mancano anche `TELEGRAM_BOT_TOKEN` e `TELEGRAM_CHAT_ID`.
   - Le variabili Production di Vercel non si leggono da qui: il checkout non è collegato al progetto, e `vercel env ls` lo richiede. Se c'è `CRON_SECRET_KEY` lo dice la dashboard (passo 1 di G2). Se un `CRON_SECRET_KEY` è mai esistito su GitHub, i cron di prod l'hanno usato per firmare token mandati a `mito-deutsche.vercel.app`: il passo 1 genera comunque un valore nuovo.
   - `gh variable list`: vuoto.
 - **Run 2 — controllo strutturale su prod e sviluppo** (29/09, sola lettura, transazione `READ ONLY`): nessun trigger né regola su `task`, `alert` e `customers`; su `task` e `alert` solo le chiavi primarie. Dimensioni: `task` 97 MB in prod, 95 MB in sviluppo.

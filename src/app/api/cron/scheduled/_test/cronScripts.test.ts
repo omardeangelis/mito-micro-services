@@ -8,18 +8,30 @@ import {
   it,
   vi,
 } from "vitest"
+import { inspect } from "node:util"
+import jwt from "jsonwebtoken"
 
 // The GitHub Actions jobs of the other cron scripts: one call each, and the
 // exit code colors the job
 
-// The scripts read .env on import: the tests give them only the secret
-vi.mock("dotenv", () => ({ default: { config: vi.fn() } }))
+// The scripts read .env on import: the tests give them only the secret, or
+// what a test's .env sets
+const loadDotenv = vi.hoisted(() => vi.fn())
+vi.mock("dotenv", () => ({ default: { config: loadDotenv } }))
 
 const exit = vi
   .spyOn(process, "exit")
   .mockImplementation(() => undefined as never)
-vi.spyOn(console, "log").mockImplementation(() => undefined)
-vi.spyOn(console, "error").mockImplementation(() => undefined)
+const log = vi.spyOn(console, "log").mockImplementation(() => undefined)
+const error = vi.spyOn(console, "error").mockImplementation(() => undefined)
+
+/** Everything the script printed, objects included. */
+function printed() {
+  return [...log.mock.calls, ...error.mock.calls]
+    .flat()
+    .map((value) => (typeof value === "string" ? value : inspect(value)))
+    .join("\n")
+}
 
 const SCRIPTS = {
   "delete.js": { route: "delete", run: () => import("../delete.js") },
@@ -47,7 +59,10 @@ beforeEach(() => {
   vi.stubEnv("CRON_BASE_URL", "https://staging.example")
   vi.stubEnv("VERCEL_AUTOMATION_BYPASS_SECRET", "bypass-secret")
   vi.stubEnv("GITHUB_ACTIONS", "")
+  loadDotenv.mockReset()
   exit.mockClear()
+  log.mockClear()
+  error.mockClear()
 })
 
 afterEach(() => {
@@ -74,10 +89,52 @@ describe.each(Object.keys(SCRIPTS) as (keyof typeof SCRIPTS)[])(
         `https://staging.example/api/cron/${SCRIPTS[script].route}`
       )
       expect(init).toMatchObject({ method: "GET", redirect: "manual" })
-      expect(init.headers.Authorization).toMatch(/^Bearer /)
+      const token = init.headers.Authorization!.replace(/^Bearer /, "")
+      expect(jwt.verify(token, "test-secret")).toMatchObject({
+        role: "cronjob",
+      })
       expect(init.headers["x-vercel-protection-bypass"]).toBe("bypass-secret")
       expect(exit).not.toHaveBeenCalled()
     })
+
+    it.each([
+      ["dopo una chiamata riuscita", () => new Response("{}")],
+      ["dopo un 401", () => new Response("Unauthorized", { status: 401 })],
+    ])(
+      "%s non stampa il token, il segreto né il bypass",
+      async (_, response) => {
+        const fetch = await runScript(script, response())
+        const [, init] = fetch.mock.calls[0] as unknown as [
+          string,
+          { headers: Record<string, string> },
+        ]
+        const token = init.headers.Authorization!.replace(/^Bearer /, "")
+
+        for (const value of [token, "test-secret", "bypass-secret"]) {
+          expect(printed()).not.toContain(value)
+        }
+      }
+    )
+
+    it.each([
+      [
+        "GITHUB_ACTIONS agli script :dev",
+        "development",
+        { GITHUB_ACTIONS: "true" },
+      ],
+      ["NODE_ENV a uno script lanciato senza", "", { NODE_ENV: "production" }],
+    ])(
+      "un .env che dà %s non li manda a un CRON_BASE_URL remoto",
+      async (_, nodeEnv, dotenv) => {
+        vi.stubEnv("NODE_ENV", nodeEnv)
+        loadDotenv.mockImplementation(() => Object.assign(process.env, dotenv))
+        const fetch = await runScript(script, new Response("{}"))
+
+        expect(loadDotenv).toHaveBeenCalled()
+        expect(fetch).not.toHaveBeenCalled()
+        expect(exit).toHaveBeenCalledWith(1)
+      }
+    )
 
     it("senza CRON_BASE_URL esce con 1 senza chiamare nessuna app", async () => {
       vi.stubEnv("CRON_BASE_URL", "")

@@ -80,10 +80,10 @@ Scoperto nella review di PR1 (F16, F17).
 
 ## I workflow dei cron chiamavano l'app sbagliata
 
-Scoperto nella review di PR1 (F18), preesistente. Corretto da `chore/cron-indirizzo` (2026-10-09), per i branch che lo contengono.
+Preesistente. Il fallimento dei workflow di sviluppo è F18 della review di PR1; l'indirizzo di quelli di prod è venuto fuori controllando gli alias di Vercel il 2026-10-08 (IMPLEMENTATION-NOTES). Si corregge con `chore/cron-indirizzo` (2026-10-09), quando arriva su `dev` e poi su `main`.
 
-- **Prima:** i workflow di sviluppo, come `update-alert.yml`, eseguivano gli script `:dev`, che chiamavano `localhost:3000` dal runner di GitHub e fallivano sempre. Quelli di prod chiamavano `mito-deutsche.vercel.app`, che non è fra gli alias del team Vercel del progetto: un indirizzo fuori da questo progetto.
-- **Ora:** ogni workflow chiama l'app in `CRON_BASE_URL`:
+- **Prima:** i workflow di sviluppo, come `update-alert.yml`, eseguivano gli script `:dev`, che chiamavano `localhost:3000` dal runner di GitHub e fallivano sempre. Quelli di prod chiamavano `mito-deutsche.vercel.app`, che non risulta fra gli alias del team Vercel del progetto: chi lo serva non è verificato.
+- **Ora:** ogni workflow dei cron chiama l'app in `CRON_BASE_URL`:
   - quelli di prod `https://crm.dbmito.it`, con `CRON_SECRET_KEY`;
   - quelli di sviluppo chiamano lo staging, `https://staging-crm.dbmito.it`, con `STAGING_CRON_SECRET_KEY` e il bypass della protezione di Vercel.
 

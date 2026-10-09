@@ -9,6 +9,7 @@ import {
   vi,
 } from "vitest"
 import { setTimeout } from "node:timers/promises"
+import { inspect } from "node:util"
 import jwt from "jsonwebtoken"
 
 // The GitHub Actions job of the alert cron: its exit code colors the job
@@ -294,6 +295,14 @@ describe("alert.js", () => {
   })
 })
 
+/** Everything the script printed, objects included. */
+function printed() {
+  return [...log.mock.calls, ...error.mock.calls]
+    .flat()
+    .map((value) => (typeof value === "string" ? value : inspect(value)))
+    .join("\n")
+}
+
 /** The URL and the request of the route's first call. */
 function firstCall(fetch: Awaited<ReturnType<typeof runScript>>) {
   const [url, init] = fetch.mock.calls[0] as unknown as [
@@ -337,11 +346,33 @@ describe("alert.js: the app it calls", () => {
     vi.stubEnv("VERCEL_AUTOMATION_BYPASS_SECRET", "bypass\r\nsecret")
     const fetch = await runScript(json(done))
 
+    // At once, without the retries of a call that didn't get through
     expect(fetch).not.toHaveBeenCalled()
+    expect(pause).not.toHaveBeenCalled()
+    expect(exit).toHaveBeenCalledTimes(1)
     expect(exit).toHaveBeenCalledWith(1)
-    expect(error.mock.calls.flat().map(String).join(" ")).not.toMatch(
-      /bypass\s+secret/
-    )
+    expect(printed()).not.toMatch(/bypass\s+secret/)
+  })
+
+  it.each([
+    ["dopo una chiamata riuscita", json(done)],
+    ["dopo un 401", new Response("Unauthorized", { status: 401 })],
+    [
+      "dopo un redirect",
+      new Response("", {
+        status: 302,
+        headers: { Location: "https://other.example/" },
+      }),
+    ],
+    ["dopo un errore di rete", new TypeError("fetch failed")],
+  ])("%s non stampa il token, il segreto né il bypass", async (_, response) => {
+    vi.stubEnv("VERCEL_AUTOMATION_BYPASS_SECRET", "bypass-secret-value")
+    const { headers } = firstCall(await runScript(response, json(done)))
+    const token = headers.Authorization!.replace(/^Bearer /, "")
+
+    for (const value of [token, "test-secret", "bypass-secret-value"]) {
+      expect(printed()).not.toContain(value)
+    }
   })
 
   it("senza CRON_BASE_URL esce con 1 senza chiamare nessuna app", async () => {
@@ -423,6 +454,14 @@ describe("alert.js: the app it calls", () => {
     }
   )
 
+  it("con gli script :dev e un CRON_BASE_URL di soli spazi chiama il server locale", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("CRON_BASE_URL", "   ")
+    const { url } = firstCall(await runScript(json(done)))
+
+    expect(url).toBe("http://localhost:3000/api/cron/alert")
+  })
+
   it("con gli script :dev non prende per locale un host che contiene localhost", async () => {
     vi.stubEnv("NODE_ENV", "development")
     vi.stubEnv("CRON_BASE_URL", "http://localhost.staging.example")
@@ -433,7 +472,7 @@ describe("alert.js: the app it calls", () => {
   })
 
   it.each([
-    ["con spazi e barre finali", " https://staging.example/ "],
+    ["con spazi e barre finali", " https://staging.example/// "],
     ["con un frammento vuoto", "https://staging.example/#"],
   ])("con un CRON_BASE_URL %s chiama la route dell'app", async (_, baseUrl) => {
     vi.stubEnv("CRON_BASE_URL", baseUrl)
@@ -450,6 +489,12 @@ describe("alert.js: the app it calls", () => {
     ["con un percorso", "https://staging.example/api"],
     ["con una query", "https://staging.example/?x=1"],
     ["con utente e password", "https://user:pass@staging.example"],
+    // The token of a remote run never goes to this machine
+    ["su un altro indirizzo di loopback", "https://127.0.0.2"],
+    ["su un indirizzo IPv6", "https://[::1]"],
+    ["su 0.0.0.0", "https://0.0.0.0"],
+    ["su localhost con il punto finale", "https://localhost."],
+    ["su un sottodominio di localhost", "https://app.localhost"],
   ])(
     "con un CRON_BASE_URL %s esce con 1 senza chiamare nessuna app",
     async (_, baseUrl) => {

@@ -3,8 +3,9 @@
 const LOCAL_URL = "http://localhost:3000"
 const LOCAL_HOSTS = ["localhost", "127.0.0.1"]
 
-// Read on import, before the scripts load .env: only the command that starts
-// a script decides whether it may call a remote app, never a value in .env
+// Read on import, before the scripts load .env: whether a script may call a
+// remote app depends only on the command that starts it. Which https app the
+// allowed ones call is CRON_BASE_URL, wherever it is set, .env included
 const NODE_ENV = process.env.NODE_ENV
 const IN_GITHUB_ACTIONS = process.env.GITHUB_ACTIONS === "true"
 
@@ -47,7 +48,12 @@ export function cronBaseUrl() {
   }
   const isLocal = LOCAL_HOSTS.includes(url.hostname)
   if (remote) {
-    if (url.protocol !== "https:" || isLocal) {
+    // The token of a remote run never goes to this machine: no IP address
+    // (the URL parser writes IPv4 as digits and dots, IPv6 in brackets), no
+    // localhost name
+    const isIp = /^[\d.]+$/.test(url.hostname) || url.hostname.startsWith("[")
+    const isLocalName = /(^|\.)localhost\.?$/.test(url.hostname)
+    if (url.protocol !== "https:" || isIp || isLocalName) {
       throw new Error("CRON_BASE_URL must be the https address of the app")
     }
   } else if (!isLocal || !["http:", "https:"].includes(url.protocol)) {
@@ -61,17 +67,18 @@ export function cronBaseUrl() {
 
 /**
  * The cron token, and the bypass of Vercel's Deployment Protection when
- * VERCEL_AUTOMATION_BYPASS_SECRET is set: staging is protected, production
- * isn't. A redirect isn't followed: the script fails on it instead of taking
- * the headers to another host.
+ * VERCEL_AUTOMATION_BYPASS_SECRET is set: the staging project protects all its
+ * deployments, while the production one leaves its domain out (Standard
+ * Protection). A redirect isn't followed: the script fails on it instead of
+ * taking the headers to another host.
  *
  * @param {string} token
  * @returns {RequestInit}
  */
 export function cronRequestInit(token) {
   const bypass = process.env.VERCEL_AUTOMATION_BYPASS_SECRET?.trim()
-  // Printable ASCII only. The error doesn't print the value, as an invalid
-  // header would
+  // Printable ASCII without spaces. The error doesn't print the value, as an
+  // invalid header would
   if (bypass && !/^[\x21-\x7e]+$/.test(bypass)) {
     throw new Error(
       "VERCEL_AUTOMATION_BYPASS_SECRET is not a valid header value"
