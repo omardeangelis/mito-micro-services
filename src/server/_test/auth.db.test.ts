@@ -19,9 +19,11 @@ import { failNextInsertInto } from "@/test/failpoint"
 // The real NextAuth configuration, which the other tests get mocked
 vi.unmock("@/server/auth")
 
-// Staging: a preview deployment with Azure, SendGrid and the allowed addresses
+// Staging: a production deployment of its own project, with APP_ENV=staging,
+// Azure, SendGrid and the allowed addresses
 vi.hoisted(() => {
-  vi.stubEnv("NEXT_PUBLIC_VERCEL_ENV", "preview")
+  vi.stubEnv("NEXT_PUBLIC_VERCEL_ENV", "production")
+  vi.stubEnv("NEXT_PUBLIC_APP_ENV", "staging")
   vi.stubEnv("AZURE_AD_CLIENT_ID", "client-id")
   vi.stubEnv("AZURE_AD_CLIENT_SECRET", "client-secret")
   vi.stubEnv("AZURE_AD_TENANT_ID", "tenant-id")

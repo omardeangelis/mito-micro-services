@@ -48,7 +48,11 @@ describe("sentryDsn", () => {
   })
 
   it.each([
-    ["sullo staging", { NEXT_PUBLIC_VERCEL_ENV: "preview" }],
+    [
+      "sullo staging",
+      { NEXT_PUBLIC_VERCEL_ENV: "production", NEXT_PUBLIC_APP_ENV: "staging" },
+    ],
+    ["su una preview", { NEXT_PUBLIC_VERCEL_ENV: "preview" }],
     ["in locale, anche con un build di produzione", { NODE_ENV: "production" }],
   ])("manca %s, anche con il DSN impostato", async (_, vars) => {
     expect(
@@ -72,7 +76,8 @@ describe.each(Object.keys(CONFIGS) as (keyof typeof CONFIGS)[])(
     it("sullo staging è spento, anche con i DSN impostati", async () => {
       expect(
         await loadSentryInit(config, {
-          NEXT_PUBLIC_VERCEL_ENV: "preview",
+          NEXT_PUBLIC_VERCEL_ENV: "production",
+          NEXT_PUBLIC_APP_ENV: "staging",
           NEXT_PUBLIC_SENTRY_DSN: DSN,
           SENTRY_DSN: DSN,
         })

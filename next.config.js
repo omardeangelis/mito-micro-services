@@ -33,6 +33,26 @@ if (
   )
 }
 
+// Staging is a production deployment of its own Vercel project, and only
+// APP_ENV=staging, set there and nowhere else, keeps it from being production
+// (src/env.js). Any other value would be a typo that makes staging production
+if (process.env.APP_ENV !== undefined && process.env.APP_ENV !== "staging") {
+  throw new Error(
+    'APP_ENV is invalid: set it to "staging" in the staging project only, and nowhere else'
+  )
+}
+
+// Like NEXT_PUBLIC_VERCEL_ENV above: the bundles get NEXT_PUBLIC_APP_ENV from
+// APP_ENV, and src/env.js reads NEXT_PUBLIC_APP_ENV first
+if (
+  process.env.NEXT_PUBLIC_APP_ENV !== undefined &&
+  process.env.NEXT_PUBLIC_APP_ENV !== process.env.APP_ENV
+) {
+  throw new Error(
+    "NEXT_PUBLIC_APP_ENV differs from APP_ENV: remove NEXT_PUBLIC_APP_ENV from the environment variables"
+  )
+}
+
 /** @type {import("next").NextConfig} */
 const config = {
   reactStrictMode: true,
@@ -42,6 +62,7 @@ const config = {
     // The deploy workflows run `vercel build`, which gets VERCEL_ENV from
     // `vercel pull`. Unset locally
     NEXT_PUBLIC_VERCEL_ENV: process.env.VERCEL_ENV,
+    NEXT_PUBLIC_APP_ENV: process.env.APP_ENV,
   },
   async headers() {
     return [

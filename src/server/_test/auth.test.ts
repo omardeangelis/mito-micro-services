@@ -57,7 +57,8 @@ describe("auth in production", () => {
 describe("auth on staging", () => {
   it("senza SendGrid offre solo Azure", async () => {
     const authOptions = await loadAuthOptions({
-      NEXT_PUBLIC_VERCEL_ENV: "preview",
+      NEXT_PUBLIC_VERCEL_ENV: "production",
+      NEXT_PUBLIC_APP_ENV: "staging",
       NODE_ENV: "production",
       ...AZURE,
     })
