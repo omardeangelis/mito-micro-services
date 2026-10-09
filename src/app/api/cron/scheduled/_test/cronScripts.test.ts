@@ -41,6 +41,8 @@ async function runScript(script: keyof typeof SCRIPTS, response: Response) {
 }
 
 beforeEach(() => {
+  // The scripts without :dev
+  vi.stubEnv("NODE_ENV", "production")
   vi.stubEnv("CRON_SECRET_KEY", "test-secret")
   vi.stubEnv("CRON_BASE_URL", "https://staging.example")
   vi.stubEnv("VERCEL_AUTOMATION_BYPASS_SECRET", "bypass-secret")
@@ -71,7 +73,7 @@ describe.each(Object.keys(SCRIPTS) as (keyof typeof SCRIPTS)[])(
       expect(url).toBe(
         `https://staging.example/api/cron/${SCRIPTS[script].route}`
       )
-      expect(init).toMatchObject({ method: "GET", redirect: "error" })
+      expect(init).toMatchObject({ method: "GET", redirect: "manual" })
       expect(init.headers.Authorization).toMatch(/^Bearer /)
       expect(init.headers["x-vercel-protection-bypass"]).toBe("bypass-secret")
       expect(exit).not.toHaveBeenCalled()
@@ -82,6 +84,26 @@ describe.each(Object.keys(SCRIPTS) as (keyof typeof SCRIPTS)[])(
       const fetch = await runScript(script, new Response("{}"))
 
       expect(fetch).not.toHaveBeenCalled()
+      expect(exit).toHaveBeenCalledWith(1)
+    })
+
+    it("senza CRON_SECRET_KEY esce con 1 senza chiamare la route", async () => {
+      vi.stubEnv("CRON_SECRET_KEY", "")
+      const fetch = await runScript(script, new Response("{}"))
+
+      expect(fetch).not.toHaveBeenCalled()
+      expect(exit).toHaveBeenCalledWith(1)
+    })
+
+    it("esce con 1 se la route rimanda altrove", async () => {
+      await runScript(
+        script,
+        new Response("", {
+          status: 302,
+          headers: { Location: "https://other.example/" },
+        })
+      )
+
       expect(exit).toHaveBeenCalledWith(1)
     })
 

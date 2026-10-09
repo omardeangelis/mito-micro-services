@@ -5,7 +5,7 @@ links:
   - "[[specs/crm/sezione-contatti/SPEC]]"
   - "[[specs/crm/sezione-contatti/IMPLEMENTATION-NOTES]]"
 created: 2026-09-25
-updated: 2026-09-29
+updated: 2026-10-09
 ---
 
 # Tech debt: Sezione Contatti
@@ -80,16 +80,16 @@ Scoperto nella review di PR1 (F16, F17).
 
 ## I workflow dei cron chiamavano l'app sbagliata
 
-Scoperto nella review di PR1 (F18), preesistente. Corretto da `chore/cron-indirizzo` (2026-10-09).
+Scoperto nella review di PR1 (F18), preesistente. Corretto da `chore/cron-indirizzo` (2026-10-09), per i branch che lo contengono.
 
-- **Prima:** i workflow di sviluppo, come `update-alert.yml`, eseguivano gli script `:dev`, che chiamavano `localhost:3000` dal runner di GitHub e fallivano sempre. Quelli di prod chiamavano `mito-deutsche.vercel.app`, che non è un alias di questo progetto, cioè un'altra app.
+- **Prima:** i workflow di sviluppo, come `update-alert.yml`, eseguivano gli script `:dev`, che chiamavano `localhost:3000` dal runner di GitHub e fallivano sempre. Quelli di prod chiamavano `mito-deutsche.vercel.app`, che non è fra gli alias del team Vercel del progetto: un indirizzo fuori da questo progetto.
 - **Ora:** ogni workflow chiama l'app in `CRON_BASE_URL`:
   - quelli di prod `https://crm.dbmito.it`, con `CRON_SECRET_KEY`;
-  - quelli di sviluppo lo staging, `https://staging-crm.dbmito.it`, con `STAGING_CRON_SECRET_KEY` e il bypass della protezione di Vercel.
+  - quelli di sviluppo chiamano lo staging, `https://staging-crm.dbmito.it`, con `STAGING_CRON_SECRET_KEY` e il bypass della protezione di Vercel.
 
-  In locale gli script `:dev` chiamano solo il server locale.
+  Fuori da GitHub Actions gli script `:dev` chiamano solo il server locale.
 
-**Resta:** i workflow di sviluppo funzionano solo con lo staging attivo e i suoi segreti su GitHub (`brain/chore/staging-vercel.md`). Senza i segreti lo script si ferma prima di chiamare.
+**Resta:** i workflow di sviluppo funzionano solo con lo staging attivo e i suoi segreti su GitHub (la checklist è in `brain/chore/staging-vercel.md`, che arriva con `chore/staging-vercel`). Senza `STAGING_CRON_SECRET_KEY` lo script si ferma prima di chiamare. Senza `VERCEL_AUTOMATION_BYPASS_SECRET` chiama lo staging, la protezione di Vercel lo respinge e il job diventa rosso.
 
 ## Test mancanti sull'infrastruttura Effect
 

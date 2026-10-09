@@ -24,7 +24,7 @@ Database contract chain:
 
 - Schema is `src/server/db/schema/*` (tables prefixed `mito-deutsche_`). After a schema change run `pnpm db:generate` and commit the generated SQL in `src/server/db/migrations/` (prefix `supabase`); apply locally with `pnpm db:migrate`.
 - Never run scripts that set `NODE_ENV=production` — `db:push:prod`, `db:migrate:prod`, and the variants without `:dev` of `update:*`, `delete:export`, `clean:task-event-log`, `create:system-operator`. They target the production database.
-- The cron scripts (`update:*`, `delete:export`, `clean:task-event-log`) change data through the app at `CRON_BASE_URL`, which the cron workflows set. The variants without `:dev` stop without it. The `:dev` ones call the local server, and take a remote `CRON_BASE_URL` only in GitHub Actions, so a value in `.env` or in the shell can't send them to production.
+- The cron scripts (`update:*`, `delete:export`, `clean:task-event-log`) change data through the app at `CRON_BASE_URL`, which the cron workflows set. The variants without `:dev`, and every script in GitHub Actions, need it to be the https address of the app and stop without it; elsewhere the `:dev` ones call only the local server. They read `NODE_ENV` and `GITHUB_ACTIONS` before loading `.env`, so `.env` can't send them to another app: only the environment of the command that starts them can.
 
 ## Effect
 

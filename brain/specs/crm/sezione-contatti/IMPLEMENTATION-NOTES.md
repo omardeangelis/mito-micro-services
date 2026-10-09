@@ -138,9 +138,10 @@ updated: 2026-09-29
 - **Dominio e segreto dei cron di prod** (2026-10-08 e 2026-10-09, per `chore/cron-indirizzo`; solo nomi, nessun valore letto).
   - `vercel alias ls` nel team `spatalos-projects`:
     - `crm.dbmito.it` è un alias della stessa deployment di `mito-micro-services.vercel.app`, la produzione corrente;
-    - `mito-deutsche.vercel.app` non è fra gli alias, quindi i cron di prod chiamavano un'altra app.
+    - `mito-deutsche.vercel.app` non è fra gli alias del team: i cron di prod chiamavano un indirizzo fuori da questo progetto. Chi lo serva da qui non si vede.
   - `vercel project ls`: la produzione del progetto è `mito-micro-services.vercel.app`.
-  - `gh secret list`: solo `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`, `VERCEL_TOKEN`. `CRON_SECRET_KEY` manca, ed era assente anche fra le variabili Production di Vercel.
+  - `gh secret list`: solo `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`, `VERCEL_TOKEN`. `CRON_SECRET_KEY` manca, e mancano anche `TELEGRAM_BOT_TOKEN` e `TELEGRAM_CHAT_ID`.
+  - Le variabili Production di Vercel non si leggono da qui: il checkout non è collegato al progetto, e `vercel env ls` lo richiede. Se c'è `CRON_SECRET_KEY` lo dice la dashboard (passo 1 di G2). Se un `CRON_SECRET_KEY` è mai esistito su GitHub, i cron di prod l'hanno usato per firmare token mandati a `mito-deutsche.vercel.app`: il passo 1 genera comunque un valore nuovo.
   - `gh variable list`: vuoto.
 - **Run 2 — controllo strutturale su prod e sviluppo** (29/09, sola lettura, transazione `READ ONLY`): nessun trigger né regola su `task`, `alert` e `customers`; su `task` e `alert` solo le chiavi primarie. Dimensioni: `task` 97 MB in prod, 95 MB in sviluppo.
 

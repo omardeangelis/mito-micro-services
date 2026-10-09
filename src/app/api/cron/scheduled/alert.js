@@ -7,19 +7,17 @@ import { cronBaseUrl, cronRequestInit } from "./cronRequest.js"
 dotenv.config()
 
 /**
- * @param {string} baseUrl
  * @param {string} secret
+ * @returns {string}
  */
-async function fetchAlerts(baseUrl, secret) {
+function cronToken(secret) {
   // Genera il token JWT al volo
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-  const token = jwt.sign(
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+  return jwt.sign(
     { role: "cronjob", timestamp: Date.now() }, // Payload minimo
     secret,
     { expiresIn: "5m" } // Scadenza breve
   )
-
-  return fetch(`${baseUrl}/api/cron/alert`, cronRequestInit(token))
 }
 
 /**
@@ -32,9 +30,11 @@ async function fetchAlerts(baseUrl, secret) {
  * @returns {Promise<{ processed?: number, failed?: number, remaining?: number } | undefined>}
  */
 async function callRoute(baseUrl, secret) {
+  // A request the script can't build fails the same way on every call
+  const init = cronRequestInit(cronToken(secret))
   let response
   try {
-    response = await fetchAlerts(baseUrl, secret)
+    response = await fetch(`${baseUrl}/api/cron/alert`, init)
   } catch (error) {
     console.error("Request to /api/cron/alert failed:", error)
     return undefined
