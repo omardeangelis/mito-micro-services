@@ -44,6 +44,21 @@ const config = {
         checksVoidReturn: { attributes: false },
       },
     ],
+    // loadEnv loads the production credentials: never in a module Next.js
+    // bundles, only in the database scripts (overrides below)
+    "no-restricted-imports": [
+      "error",
+      {
+        paths: [
+          {
+            name: "@/lib/global/env",
+            importNames: ["loadEnv"],
+            message:
+              "loadEnv loads the production credentials: only the database scripts call it",
+          },
+        ],
+      },
+    ],
     "prettier/prettier": [
       "error",
       {
@@ -54,6 +69,17 @@ const config = {
       },
     ],
   },
+  overrides: [
+    {
+      files: [
+        "drizzle.config.ts",
+        "src/server/db/seeds/**",
+        "src/server/db/scripts/**",
+        "src/lib/global/**",
+      ],
+      rules: { "no-restricted-imports": "off" },
+    },
+  ],
 }
 
 module.exports = config
