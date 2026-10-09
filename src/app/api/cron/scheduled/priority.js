@@ -1,7 +1,7 @@
 // richiamo del cron job che elimina i file di export
 import jwt from "jsonwebtoken"
 import dotenv from "dotenv"
-import { cronBaseUrl, cronHeaders } from "./cronRequest.js"
+import { cronBaseUrl, cronRequestInit } from "./cronRequest.js"
 dotenv.config()
 
 async function updatePriority() {
@@ -20,10 +20,10 @@ async function updatePriority() {
     { expiresIn: "5m" } // Scadenza breve
   )
 
-  const response = await fetch(`${baseUrl}/api/cron/priority`, {
-    method: "GET",
-    headers: cronHeaders(token),
-  })
+  const response = await fetch(
+    `${baseUrl}/api/cron/priority`,
+    cronRequestInit(token)
+  )
 
   if (!response.ok) {
     const body = await response.text().catch(() => "")

@@ -4,10 +4,6 @@ run-name: Update Customers and Pratices
 env:
   NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
   SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
-  # Staging: its own secret, and the bypass of Vercel's protection
-  CRON_SECRET_KEY: ${{ secrets.STAGING_CRON_SECRET_KEY }}
-  CRON_BASE_URL: https://mito-micro-services-staging.vercel.app
-  VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
   
 on:
   workflow_dispatch:
@@ -30,6 +26,12 @@ jobs:
       - name: Install dependencies
         run: pnpm install
       - name: Run update customers and practices script
+        # Staging: its own secret, and the bypass of Vercel's protection. Only
+        # this step gets them
+        env:
+          CRON_SECRET_KEY: ${{ secrets.STAGING_CRON_SECRET_KEY }}
+          CRON_BASE_URL: https://staging-crm.dbmito.it
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
         run: pnpm update:pratices:dev
       - name: Send Telegram notification
         env:

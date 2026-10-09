@@ -135,6 +135,13 @@ updated: 2026-09-29
   - **F7, F16:** 7 clienti con più contatti attivi, tutti con lo stesso millisecondo, per via dell'update delle 15:53.
 
 - **Run 2 — `db:generate` cambia il default di `customers.id`.** Ogni esecuzione emette `ALTER TABLE "mito-deutsche_customers" ALTER COLUMN "id" SET DEFAULT '<letterale casuale>'`, perché lo schema usa `.default(nanoid())`, che si valuta una volta al caricamento. Tolta a mano dall'SQL di T2.3, come era già stato fatto in `20260902181440_nebulous_susan_delgado` (lo snapshot cambia letterale, l'SQL no). Nel tech-debt.
+- **Dominio e segreto dei cron di prod** (2026-10-08 e 2026-10-09, per `chore/cron-indirizzo`; solo nomi, nessun valore letto).
+  - `vercel alias ls` nel team `spatalos-projects`:
+    - `crm.dbmito.it` è un alias della stessa deployment di `mito-micro-services.vercel.app`, la produzione corrente;
+    - `mito-deutsche.vercel.app` non è fra gli alias, quindi i cron di prod chiamavano un'altra app.
+  - `vercel project ls`: la produzione del progetto è `mito-micro-services.vercel.app`.
+  - `gh secret list`: solo `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`, `VERCEL_TOKEN`. `CRON_SECRET_KEY` manca, ed era assente anche fra le variabili Production di Vercel.
+  - `gh variable list`: vuoto.
 - **Run 2 — controllo strutturale su prod e sviluppo** (29/09, sola lettura, transazione `READ ONLY`): nessun trigger né regola su `task`, `alert` e `customers`; su `task` e `alert` solo le chiavi primarie. Dimensioni: `task` 97 MB in prod, 95 MB in sviluppo.
 
 ## Sanity Checks

@@ -3,7 +3,7 @@
 import { setTimeout } from "node:timers/promises"
 import jwt from "jsonwebtoken"
 import dotenv from "dotenv"
-import { cronBaseUrl, cronHeaders } from "./cronRequest.js"
+import { cronBaseUrl, cronRequestInit } from "./cronRequest.js"
 dotenv.config()
 
 /**
@@ -19,14 +19,7 @@ async function fetchAlerts(baseUrl, secret) {
     { expiresIn: "5m" } // Scadenza breve
   )
 
-  // LOG su telegram
-  // await sendTelegramMessage(
-  //   `RESPONSE: ${JSON.stringify(response)} || TOKEN: ${token} || SECRET: ${secret} || BASEURL: ${baseUrl} || NODE_ENV: ${process.env.NODE_ENV}`
-  // )
-  return fetch(`${baseUrl}/api/cron/alert`, {
-    method: "GET",
-    headers: cronHeaders(token),
-  })
+  return fetch(`${baseUrl}/api/cron/alert`, cronRequestInit(token))
 }
 
 /**
@@ -111,36 +104,3 @@ const updateAlert = async () => {
 }
 
 await updateAlert()
-
-/**
- * @param {string} message
- */
-// async function sendTelegramMessage(message) {
-//   const botToken = process.env.TELEGRAM_BOT_TOKEN
-//   const chatId = process.env.TELEGRAM_CHAT_ID
-
-//   if (!botToken || !chatId) {
-//     console.error("Telegram bot token or chat ID is missing")
-//     return
-//   }
-
-//   const url = `https://api.telegram.org/bot${botToken}/sendMessage`
-
-//   try {
-//     const response = await fetch(url, {
-//       method: "POST",
-//       headers: { "Content-Type": "application/json" },
-//       body: JSON.stringify({
-//         chat_id: chatId,
-//         text: message,
-//       }),
-//     })
-
-//     if (!response.ok) {
-//       const errorResponse = await response.text()
-//       console.error("Error sending Telegram message:", errorResponse)
-//     }
-//   } catch (error) {
-//     console.error("Error in sendTelegramMessage:", error)
-//   }
-// }

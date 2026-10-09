@@ -4,9 +4,6 @@ run-name: Delete Supabase Storage PROD
 env:
   NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL_PROD }}
   SUPABASE_KEY: ${{ secrets.SUPABASE_KEY_PROD }}
-  CRON_SECRET_KEY: ${{ secrets.CRON_SECRET_KEY }}
-  # The domain of the current production deployment
-  CRON_BASE_URL: https://crm.dbmito.it
 
 on:
   workflow_dispatch:
@@ -29,6 +26,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install
       - name: Run delete export files script
+        # The domain of the current production deployment. Only this step gets
+        # the secret
+        env:
+          CRON_SECRET_KEY: ${{ secrets.CRON_SECRET_KEY }}
+          CRON_BASE_URL: https://crm.dbmito.it
         run: pnpm delete:export
       - name: Send Telegram notification
         env:

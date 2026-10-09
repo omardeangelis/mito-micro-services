@@ -78,15 +78,18 @@ Scoperto nella review di PR1 (F16, F17).
 
 **Da fare:** una query di sola lettura su prod (clienti con almeno 2 task attive nello stesso millisecondo) prima di PR2; i test mancanti in PR3.
 
-## Il workflow di sviluppo del cron alert fallisce sempre
+## I workflow dei cron chiamavano l'app sbagliata
 
-Scoperto nella review di PR1 (F18), preesistente.
+Scoperto nella review di PR1 (F18), preesistente. Corretto da `chore/cron-indirizzo` (2026-10-09).
 
-- `.github/workflows/update-alert.yml` esegue `update:alert:dev`, che chiama `localhost:3000` dal runner di GitHub: fallisce qualunque cosa faccia il cron. `update-alert prod.yml` invece è corretto.
+- **Prima:** i workflow di sviluppo, come `update-alert.yml`, eseguivano gli script `:dev`, che chiamavano `localhost:3000` dal runner di GitHub e fallivano sempre. Quelli di prod chiamavano `mito-deutsche.vercel.app`, che non è un alias di questo progetto, cioè un'altra app.
+- **Ora:** ogni workflow chiama l'app in `CRON_BASE_URL`:
+  - quelli di prod `https://crm.dbmito.it`, con `CRON_SECRET_KEY`;
+  - quelli di sviluppo lo staging, `https://staging-crm.dbmito.it`, con `STAGING_CRON_SECRET_KEY` e il bypass della protezione di Vercel.
 
-**Effetto oggi:** nessuno, lo schedule è commentato. Lanciato a mano dà un falso rosso.
+  In locale gli script `:dev` chiamano solo il server locale.
 
-**Da fare fuori da questa spec:** puntarlo a un ambiente raggiungibile o toglierlo.
+**Resta:** i workflow di sviluppo funzionano solo con lo staging attivo e i suoi segreti su GitHub (`brain/chore/staging-vercel.md`). Senza i segreti lo script si ferma prima di chiamare.
 
 ## Test mancanti sull'infrastruttura Effect
 

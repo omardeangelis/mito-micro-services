@@ -1,7 +1,7 @@
 // richiamo del cron job che elimina i file di export
 import jwt from "jsonwebtoken"
 import dotenv from "dotenv"
-import { cronBaseUrl, cronHeaders } from "./cronRequest.js"
+import { cronBaseUrl, cronRequestInit } from "./cronRequest.js"
 dotenv.config()
 
 async function fetchDeleteExportFiles() {
@@ -20,10 +20,10 @@ async function fetchDeleteExportFiles() {
     { expiresIn: "5m" } // Scadenza breve
   )
 
-  const response = await fetch(`${baseUrl}/api/cron/delete`, {
-    method: "GET",
-    headers: cronHeaders(token),
-  })
+  const response = await fetch(
+    `${baseUrl}/api/cron/delete`,
+    cronRequestInit(token)
+  )
   // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 
   if (!response.ok) {

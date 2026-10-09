@@ -9,6 +9,7 @@ import {
   vi,
 } from "vitest"
 import { setTimeout } from "node:timers/promises"
+import jwt from "jsonwebtoken"
 
 // The GitHub Actions job of the alert cron: its exit code colors the job
 
@@ -47,6 +48,9 @@ const done = { found: 1, processed: 1, skipped: 0, failed: 0, remaining: 0 }
 beforeEach(() => {
   vi.stubEnv("CRON_SECRET_KEY", "test-secret")
   vi.stubEnv("CRON_BASE_URL", "https://staging.example")
+  // Whatever the shell running the tests exports
+  vi.stubEnv("VERCEL_AUTOMATION_BYPASS_SECRET", "")
+  vi.stubEnv("GITHUB_ACTIONS", "")
   exit.mockClear()
   log.mockClear()
   pause.mockClear()
@@ -262,23 +266,29 @@ describe("alert.js", () => {
   })
 })
 
-/** The URL and the headers of the route's first call. */
+/** The URL and the request of the route's first call. */
 function firstCall(fetch: Awaited<ReturnType<typeof runScript>>) {
   const [url, init] = fetch.mock.calls[0] as unknown as [
     string,
-    { headers: Record<string, string> },
+    { method: string; headers: Record<string, string>; redirect: string },
   ]
-  return { url, headers: init.headers }
+  return { url, init, headers: init.headers }
 }
 
 describe("alert.js: the app it calls", () => {
   it("chiama la route di CRON_BASE_URL con il token, senza bypass se manca il segreto", async () => {
     vi.stubEnv("CRON_BASE_URL", "https://staging.example/")
-    const { url, headers } = firstCall(await runScript(json(done)))
+    const { url, init, headers } = firstCall(await runScript(json(done)))
 
     expect(url).toBe("https://staging.example/api/cron/alert")
-    expect(headers.Authorization).toMatch(/^Bearer /)
+    expect(init).toMatchObject({ method: "GET", redirect: "error" })
+    expect(headers["Content-Type"]).toBe("application/json")
+    const token = headers.Authorization!.replace(/^Bearer /, "")
+    expect(jwt.verify(token, "test-secret")).toMatchObject({
+      role: "cronjob",
+    })
     expect(headers).not.toHaveProperty("x-vercel-protection-bypass")
+    expect(log).toHaveBeenCalledWith("Cron target: https://staging.example")
   })
 
   it("aggiunge il bypass della protezione di Vercel quando c'è il segreto", async () => {
@@ -303,4 +313,43 @@ describe("alert.js: the app it calls", () => {
 
     expect(url).toBe("http://localhost:3000/api/cron/alert")
   })
+
+  it("con gli script :dev in GitHub Actions chiama CRON_BASE_URL, non il server locale", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("GITHUB_ACTIONS", "true")
+    const { url } = firstCall(await runScript(json(done)))
+
+    expect(url).toBe("https://staging.example/api/cron/alert")
+  })
+
+  it("con gli script :dev fuori da GitHub Actions non chiama un CRON_BASE_URL remoto", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    const fetch = await runScript(json(done))
+
+    expect(fetch).not.toHaveBeenCalled()
+    expect(exit).toHaveBeenCalledWith(1)
+  })
+
+  it("con gli script :dev accetta un CRON_BASE_URL locale", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("CRON_BASE_URL", "http://localhost:3001")
+    const { url } = firstCall(await runScript(json(done)))
+
+    expect(url).toBe("http://localhost:3001/api/cron/alert")
+  })
+
+  it.each([
+    ["in http", "http://staging.example"],
+    ["senza schema", "staging.example"],
+    ["fatto solo di barre", "/"],
+  ])(
+    "con un CRON_BASE_URL %s esce con 1 senza chiamare nessuna app",
+    async (_, baseUrl) => {
+      vi.stubEnv("CRON_BASE_URL", baseUrl)
+      const fetch = await runScript(json(done))
+
+      expect(fetch).not.toHaveBeenCalled()
+      expect(exit).toHaveBeenCalledWith(1)
+    }
+  )
 })
