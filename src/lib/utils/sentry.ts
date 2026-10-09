@@ -1,14 +1,23 @@
 import type { ErrorEvent, EventHint } from "@sentry/nextjs"
-import { env } from "@/env"
+import { env, isProduction } from "@/env"
 
 /**
  * The DSN of the production deployment, the only one that reports. Locally
  * and on staging `Sentry.init` gets none, so the SDK sends nothing.
  */
-export const sentryDsn =
-  env.NEXT_PUBLIC_VERCEL_ENV === "production"
-    ? env.NEXT_PUBLIC_SENTRY_DSN
-    : undefined
+export const sentryDsn = isProduction ? env.NEXT_PUBLIC_SENTRY_DSN : undefined
+
+/**
+ * What the three `Sentry.init` share. Without a DSN the SDK is off, even where
+ * it would fall back to SENTRY_DSN (edge). The environment stays
+ * "production", the name the events had before; the SDK default would be
+ * "vercel-production".
+ */
+export const sentryInitOptions = {
+  dsn: sentryDsn,
+  enabled: sentryDsn !== undefined,
+  environment: "production",
+}
 
 /**
  * tRPC failures are reported once, where the procedure fails (`sentryMiddleware`

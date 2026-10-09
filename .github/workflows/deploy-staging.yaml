@@ -2,14 +2,17 @@ name: Deploy Platform to Staging
 env:
   VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
   VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-  # The fixed address of staging: Azure has its callback registered
-  STAGING_DOMAIN: mito-micro-services-staging.vercel.app
+  # The fixed address of staging, in Vercel → Domains on the dev branch
+  # (brain/chore/staging-vercel.md)
+  STAGING_DOMAIN: staging-crm.dbmito.it
 on:
   push:
     branches:
       - dev
 # One deploy at a time, so the alias ends on the last push
 concurrency: deploy-staging
+permissions:
+  contents: read
 jobs:
   Vercel-Deploy-Staging:
     runs-on: ubuntu-latest
@@ -33,10 +36,38 @@ jobs:
       # Staging is a preview deployment: it takes the Preview env vars
       - name: Pull Vercel Environment Information
         run: vercel pull --yes --environment=preview --git-branch=dev --token=${{ secrets.VERCEL_TOKEN }}
+      - name: Check the build is staging
+        run: grep -qx 'VERCEL_ENV="preview"' .vercel/.env.preview.local
+      # The database and the storage staging gets from Preview, with the dev
+      # branch overrides, must be set and differ from Production. Prints names
+      # only, and removes the production file before the build
+      - name: Check staging has its own database and storage
+        run: |
+          prod="$RUNNER_TEMP/production.env"
+          vercel env pull "$prod" --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }} > /dev/null
+          status=0
+          for name in SUPABASE_DB_CONNECTION_STRING SUPABASE_MITO_PSW NEXT_PUBLIC_SUPABASE_URL SUPABASE_KEY NEXT_PUBLIC_SUPABASE_ANON_KEY; do
+            staging_line="$(grep "^$name=" .vercel/.env.preview.local || true)"
+            prod_line="$(grep "^$name=" "$prod" || true)"
+            if [ -z "$staging_line" ] || [ "$staging_line" = "$name=\"\"" ]; then
+              # The anon key is optional: the app falls back to an empty one
+              if [ "$name" != NEXT_PUBLIC_SUPABASE_ANON_KEY ]; then
+                echo "::error::$name is not set in Preview"
+                status=1
+              fi
+            elif [ "$staging_line" = "$prod_line" ]; then
+              echo "::error::$name in Preview is the one of Production"
+              status=1
+            fi
+          done
+          rm -f "$prod"
+          exit "$status"
       - name: Build Project Artifacts
         run: vercel build --token=${{ secrets.VERCEL_TOKEN }}
       - name: Deploy Project Artifacts to Vercel
         id: deploy
-        run: echo "url=$(vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }})" >> "$GITHUB_OUTPUT"
+        run: |
+          url="$(vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }})"
+          echo "url=$url" >> "$GITHUB_OUTPUT"
       - name: Point the staging domain to the deployment
         run: vercel alias set "${{ steps.deploy.outputs.url }}" "$STAGING_DOMAIN" --token=${{ secrets.VERCEL_TOKEN }}

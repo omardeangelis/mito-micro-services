@@ -4,7 +4,7 @@
  */
 await import("./src/env.js")
 import { withSentryConfig } from "@sentry/nextjs"
-import { env } from "./src/env.js"
+import { env, isProduction } from "./src/env.js"
 
 // `vercel build` sets VERCEL, and VERCEL_ENV only when `vercel pull` writes it,
 // which needs "Enable access to System Environment Variables" on in the
@@ -95,8 +95,6 @@ const config = {
 
 // Only the production build talks to Sentry: staging and local builds upload
 // no source maps, create no release and send no plugin telemetry
-const isProduction = process.env.VERCEL_ENV === "production"
-
 const sentryWebpackPluginOptions = {
   org: "spatalo-b9",
   project: "javascript-nextjs",
@@ -110,8 +108,9 @@ const sentryWebpackPluginOptions = {
   widenClientFileUpload: true,
   // Don't expose source maps to the browser; Sentry still gets them
   hideSourceMaps: true,
-  // Send browser events through /monitoring so ad-blockers don't drop them
-  tunnelRoute: "/monitoring",
+  // Send browser events through /monitoring so ad-blockers don't drop them.
+  // Production only: elsewhere the route would relay to any Sentry project
+  tunnelRoute: isProduction ? "/monitoring" : undefined,
   disableLogger: true,
   unstable_sentryWebpackPluginOptions: {
     // A failed release or source map upload (e.g. a token from another Sentry org) warns instead of failing the deploy
