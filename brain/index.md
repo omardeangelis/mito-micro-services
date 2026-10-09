@@ -56,6 +56,8 @@ _empty_
 
 - [[specs/crm/sezione-contatti/REPORT|crm/sezione-contatti]] — spec · ship (terza verifica e smoke; prima do-not-ship) · critical · 2026-09-26
 - [[specs/crm/sezione-contatti/REPORT|crm/sezione-contatti — PR2]] — spec · ship (dopo le correzioni; prima do-not-ship) · critical · 2026-09-29
+- [[review/staging-accesso-sentry/REPORT|staging-accesso-sentry]] — standalone · do-not-ship · critical · 2026-10-09 (sesto giro)
+- [[review/cron-base-url/REPORT|cron-base-url]] — standalone · do-not-ship · critical · 2026-10-09 (sesto giro)
 
 ## Log
 
