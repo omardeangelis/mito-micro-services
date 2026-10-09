@@ -21,12 +21,24 @@ if (
   )
 }
 
+// The bundles get NEXT_PUBLIC_VERCEL_ENV from VERCEL_ENV (env below), while
+// src/env.js reads NEXT_PUBLIC_VERCEL_ENV first: one defined by hand with
+// another value would make this config and the app disagree on production
+if (
+  process.env.NEXT_PUBLIC_VERCEL_ENV !== undefined &&
+  process.env.NEXT_PUBLIC_VERCEL_ENV !== process.env.VERCEL_ENV
+) {
+  throw new Error(
+    "NEXT_PUBLIC_VERCEL_ENV differs from VERCEL_ENV: remove NEXT_PUBLIC_VERCEL_ENV from the environment variables"
+  )
+}
+
 /** @type {import("next").NextConfig} */
 const config = {
   reactStrictMode: true,
   swcMinify: true,
   env: {
-    // Vercel adds NEXT_PUBLIC_VERCEL_ENV only when it runs the build itself.
+    // The same value whether or not Vercel sets NEXT_PUBLIC_VERCEL_ENV too.
     // The deploy workflows run `vercel build`, which gets VERCEL_ENV from
     // `vercel pull`. Unset locally
     NEXT_PUBLIC_VERCEL_ENV: process.env.VERCEL_ENV,

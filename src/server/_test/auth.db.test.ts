@@ -81,6 +81,15 @@ describe("auth outside production", () => {
     })
   })
 
+  it("fa entrare un utente salvato con le maiuscole che arriva con la stessa email", async () => {
+    await testDb.insert(users).values({ id: "u1", email: "Mario.Rossi@x.it" })
+
+    expect(await signIn("Mario.Rossi@x.it")).toBe(true)
+    expect(await adapter.getUserByEmail!("Mario.Rossi@x.it")).toMatchObject({
+      id: "u1",
+    })
+  })
+
   it("rifiuta un utente salvato con altre maiuscole, per cui l'adapter creerebbe un secondo utente", async () => {
     await testDb.insert(users).values([
       { id: "u1", email: "Mario.Rossi@x.it" },

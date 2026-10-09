@@ -45,7 +45,8 @@ export const matchUserEmail = (email: string) =>
     client
       .select({ email: users.email })
       .from(users)
-      .where(sql`lower(${users.email}) = ${email.toLowerCase()}`)
+      // Both sides through Postgres's lower, which can differ from JavaScript's
+      .where(sql`lower(${users.email}) = lower(${email})`)
   ).pipe(
     Effect.map((rows) =>
       rows.some((row) => row.email === email)

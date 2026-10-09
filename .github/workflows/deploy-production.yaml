@@ -29,9 +29,16 @@ jobs:
       - name: Pull Vercel Environment Information
         run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
       # The build is production only with VERCEL_ENV=production (src/env.js),
-      # which `vercel pull` writes when the project exposes the system env vars
+      # which `vercel pull` writes when the project exposes the system env vars.
+      # It stops on a missing production variable only without
+      # SKIP_ENV_VALIDATION
       - name: Check the build is production
-        run: grep -qx 'VERCEL_ENV="production"' .vercel/.env.production.local
+        run: |
+          grep -qx 'VERCEL_ENV="production"' .vercel/.env.production.local
+          if grep -q '^SKIP_ENV_VALIDATION=' .vercel/.env.production.local; then
+            echo "::error::Remove SKIP_ENV_VALIDATION from the Production variables: the build would skip the check of the required ones"
+            exit 1
+          fi
       - name: Build Project Artifacts
         run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
       - name: Deploy Project Artifacts to Vercel
