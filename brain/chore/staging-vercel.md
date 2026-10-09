@@ -83,6 +83,29 @@ Chi non è nel team Vercel non arriva al login, nemmeno con un indirizzo ammesso
 - [ ] Il passo "Check the build is production" è verde.
 - [ ] Gli eventi Sentry arrivano con ambiente `production`.
 
+## Cron dello staging
+
+I quattro workflow non prod partono solo a mano e chiamano `https://staging-crm.dbmito.it`:
+
+- `Update Alerts`;
+- `Delete Supabase Storage`;
+- `Update Priority`;
+- `Update Customers and Pratices`.
+
+Senza i loro segreti si fermano prima di chiamare. I segreti si creano solo dopo un primo deploy dello staging riuscito, cioè passato dal controllo su DB e storage, in quest'ordine:
+
+1. [ ] **Chiave dello staging:** generarla con `openssl rand -base64 32`. Mai la stessa di prod.
+2. [ ] **Vercel → Environment Variables:** `CRON_SECRET_KEY` solo per **Preview**, con quel valore. Quella di prod resta una voce separata, solo Production.
+
+   Poi rifare il deploy dello staging (un push su `dev`, o rilanciare l'ultimo run di `deploy-staging.yaml`): una variabile nuova entra solo nelle deployment successive.
+3. [ ] **GitHub → Settings → Secrets → Actions:** `STAGING_CRON_SECRET_KEY` con lo stesso valore. `gh secret set STAGING_CRON_SECRET_KEY` lo legge da tastiera, senza stamparlo.
+4. [ ] **Vercel → Settings → Deployment Protection → Protection Bypass for Automation:** attivarlo e mettere il segreto in `VERCEL_AUTOMATION_BYPASS_SECRET` su GitHub (`gh secret set VERCEL_AUTOMATION_BYPASS_SECRET`). Apre la protezione di tutte le deployment del progetto: lo conosce solo GitHub.
+5. [ ] **Primo lancio:** `Update Alerts`, a mano.
+   - Nel log compare `Cron target: https://staging-crm.dbmito.it` e il job è verde.
+   - `Delete Supabase Storage` cancella i file di export dello storage dello staging: lanciarlo solo dopo questo controllo.
+
+`crm.dbmito.it` resta senza protezione, perché i cron di prod non mandano il bypass. È un dominio di produzione, e la Standard Protection lo esclude.
+
 ## Variabili tolte
 
 `DISCORD_*`, `CUSTOM_ACCESS`, `NEXT_PUBLIC_BASE_URL` e `PREVIEW_DB*` non servono più.
