@@ -1,4 +1,4 @@
-// richiamo del cron job che pulisce il task_event_log piu vecchio della retention
+// richiamo del cron job che pulisce il task_event_log più vecchio della retention
 import jwt from "jsonwebtoken"
 import dotenv from "dotenv"
 import { cronBaseUrl, cronRequestInit } from "./cronRequest.js"

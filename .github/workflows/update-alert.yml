@@ -12,7 +12,7 @@ on:
   #   - cron: "0 3 * * *"
 
 jobs:
-  delete-supabase-storage:
+  update-alert:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -25,7 +25,7 @@ jobs:
         run: npm install -g pnpm
       - name: Install dependencies
         run: pnpm install
-      - name: Run update customers and practices script
+      - name: Run update alerts script
         # Staging: its own secret, and the bypass of Vercel's protection. Only
         # this step gets them
         env:

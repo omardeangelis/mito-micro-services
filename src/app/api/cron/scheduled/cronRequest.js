@@ -4,8 +4,9 @@ const LOCAL_URL = "http://localhost:3000"
 const LOCAL_HOSTS = ["localhost", "127.0.0.1"]
 
 // Read on import, before the scripts load .env: whether a script may call a
-// remote app depends only on the command that starts it. Which https app the
-// allowed ones call is CRON_BASE_URL, wherever it is set, .env included
+// remote app depends only on the environment of the command that starts it.
+// Which https app the allowed ones call is CRON_BASE_URL, wherever it is set,
+// .env included
 const NODE_ENV = process.env.NODE_ENV
 const IN_GITHUB_ACTIONS = process.env.GITHUB_ACTIONS === "true"
 
@@ -15,8 +16,8 @@ const IN_GITHUB_ACTIONS = process.env.GITHUB_ACTIONS === "true"
  * The scripts without `:dev` (NODE_ENV=production), and every script in
  * GitHub Actions, call CRON_BASE_URL: it must be the https address of the app,
  * and without it they stop instead of guessing which deployment to call.
- * Elsewhere the `:dev` scripts call only the local server, CRON_BASE_URL or
- * `http://localhost:3000`.
+ * Elsewhere the `:dev` scripts call only the local server: CRON_BASE_URL when
+ * it is a localhost address, `http://localhost:3000` when it isn't set.
  *
  * @returns {string}
  */
@@ -67,19 +68,16 @@ export function cronBaseUrl() {
 
 /**
  * The cron token, and the bypass of Vercel's Deployment Protection when
- * VERCEL_AUTOMATION_BYPASS_SECRET is set. The staging project protects all its
- * deployments (deploy-staging.yaml stops otherwise), while the production one
- * leaves its domain out (Standard Protection, as its owner set it). A redirect
- * isn't followed: the script fails on it instead of taking the headers to
- * another host.
+ * VERCEL_AUTOMATION_BYPASS_SECRET is set. A redirect isn't followed: the script
+ * fails on it instead of taking the headers to another host.
  *
  * @param {string} token
  * @returns {RequestInit}
  */
 export function cronRequestInit(token) {
   const bypass = process.env.VERCEL_AUTOMATION_BYPASS_SECRET?.trim()
-  // Printable ASCII without spaces. Unlike the error of an invalid header,
-  // which prints the value, this one doesn't
+  // Printable ASCII without spaces. Unlike the error fetch throws for a CR, LF
+  // or NUL in a header, which prints the value, this one doesn't
   if (bypass && !/^[\x21-\x7e]+$/.test(bypass)) {
     throw new Error(
       "VERCEL_AUTOMATION_BYPASS_SECRET is not a valid header value"

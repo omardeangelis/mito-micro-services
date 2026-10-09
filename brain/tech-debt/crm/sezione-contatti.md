@@ -78,18 +78,32 @@ Scoperto nella review di PR1 (F16, F17).
 
 **Da fare:** una query di sola lettura su prod (clienti con almeno 2 task attive nello stesso millisecondo) prima di PR2; i test mancanti in PR3.
 
-## I workflow dei cron chiamavano l'app sbagliata
+## I workflow dei cron chiamavano indirizzi che non risultano del team
 
-Preesistente. Il fallimento dei workflow di sviluppo è F18 della review di PR1; l'indirizzo di quelli di prod è venuto fuori controllando gli alias di Vercel (output del 2026-10-09 in IMPLEMENTATION-NOTES). Si corregge con `chore/cron-indirizzo` (2026-10-09), quando arriva su `dev` e poi su `main`.
+Preesistente. Il problema dei workflow di sviluppo è F18 della review di PR1; l'indirizzo di quelli di prod è venuto fuori controllando gli alias di Vercel (estratti dei comandi del 2026-10-09 in IMPLEMENTATION-NOTES). Si corregge con `chore/cron-indirizzo` (2026-10-09), quando arriva su `dev` e poi su `main`.
 
-- **Prima:** i workflow di sviluppo, come `update-alert.yml`, eseguivano gli script `:dev`, che chiamano `localhost:3000` dal runner di GitHub: fallirebbero sempre. Nessuno degli 8 workflow dei cron risulta mai eseguito (`gh run list`, 0 run, 2026-10-09). Quelli di prod chiamavano `mito-deutsche.vercel.app`, che non risulta fra gli alias del team Vercel del progetto: chi lo serva non è verificato.
+- **Prima:** i workflow di sviluppo, come `update-alert.yml`, eseguivano gli script `:dev`, che chiamano `localhost:3000` dal runner di GitHub: fallirebbero sempre. Nessuno degli 8 workflow dei cron risulta mai eseguito (`gh run list`, 0 run, 2026-10-09). Quelli di prod chiamavano `mito-deutsche.vercel.app`, che non risulta fra gli alias del team Vercel: chi lo serva non è verificato.
 - **Ora:** ogni workflow dei cron chiama l'app in `CRON_BASE_URL`:
   - quelli di prod `https://crm.dbmito.it`, con `CRON_SECRET_KEY`;
   - quelli di sviluppo chiameranno lo staging, `https://staging-crm.dbmito.it`, con `STAGING_CRON_SECRET_KEY` e il bypass della protezione di Vercel, quando lo staging ci sarà (vedi **Resta**).
 
   Fuori da GitHub Actions gli script `:dev` chiamano solo il server locale.
 
-**Resta:** i workflow di sviluppo funzionano solo con lo staging attivo e i suoi segreti su GitHub (la checklist è in `brain/chore/staging-vercel.md`, che arriva con `chore/staging-vercel`). Senza `STAGING_CRON_SECRET_KEY` lo script si ferma prima di chiamare. Senza `VERCEL_AUTOMATION_BYPASS_SECRET` chiama lo staging, la protezione di Vercel lo respinge e il job diventa rosso: il progetto dello staging protegge tutte le deployment, e `deploy-staging.yaml` si ferma se non è così.
+**Resta:**
+
+- Oggi un lancio dei workflow di prod fallirebbe: su GitHub manca `CRON_SECRET_KEY` (`gh secret list`, 2026-10-09), e gli script si fermano con "Missing CRON_SECRET_KEY" prima di chiamare l'app. Il secret si crea al passo 8 del runbook G2.
+- I workflow di sviluppo funzionano solo con lo staging attivo e i suoi segreti su GitHub. La checklist è in `brain/chore/staging-vercel.md`, che arriva con `chore/staging-vercel`. Senza `STAGING_CRON_SECRET_KEY` lo script si ferma prima di chiamare. Senza `VERCEL_AUTOMATION_BYPASS_SECRET` chiama lo staging, e se il progetto protegge le sue deployment la protezione lo respinge e il job diventa rosso. Che il progetto dello staging le protegga tutte lo controllerà `deploy-staging.yaml`, che arriva con lo stesso branch.
+
+## `CRON_SECRET_KEY` è un secret del repository
+
+Scoperto nella review di `chore/cron-indirizzo` (2026-10-09, v4 sul runbook G2).
+
+- Un secret del repository arriva a ogni workflow lanciato da qualunque ref: `gh workflow run --ref <branch o tag>` esegue i workflow e gli script di quel ref. Un ref con gli script di prima di `chore/cron-indirizzo` firma un token con il segreto di prod e lo manda a `mito-deutsche.vercel.app`.
+- Il runbook G2 toglie quei ref prima di creare il secret (passi 1, 3 e 8). Ma un branch cancellato può tornare: con "Restore branch" su una PR chiusa, o con un `git push` da una copia locale che lo traccia ancora.
+
+**Effetto oggi:** nessuno, il secret non c'è ancora. Dal passo 8 di G2 dipende dal fatto che nessun ref vecchio torni sul remoto.
+
+**Da fare:** `CRON_SECRET_KEY` come secret di un environment GitHub limitato a `main`, con `environment:` sui 4 job di prod, al posto del secret del repository.
 
 ## Test mancanti sull'infrastruttura Effect
 
