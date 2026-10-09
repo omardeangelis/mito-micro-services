@@ -148,9 +148,9 @@ Questi branch arrivano in produzione con il merge `dev` → `main`. Prima, nel p
 
 Con `chore/env-prod-locale` gli script del DB di prod leggono `.env.prod.local`, non più `.env.production.local`, che Next.js carica in ogni build locale. Subito dopo averlo preso:
 
-- [ ] rinominare `.env.production.local` in `.env.prod.local`. Finché c'è il file vecchio, gli script del DB di prod e `next build`, `next start` e `next dev` si fermano;
-- [ ] `.env.prod.local` ha da solo le due chiavi del DB di prod, non vuote: `grep -cE "^\s*(export\s+)?(SUPABASE_DB_CONNECTION_STRING|SUPABASE_MITO_PSW)\s*=\s*[\"']?[^\"'[:space:]]" .env.prod.local` → 2. Senza, gli script si fermano invece di prenderle da `.env` o dalla shell;
-- [ ] `.env` resta il ripiego degli altri file, con i valori di prod (storage e segreti), ma senza le chiavi del DB: `grep -cE '^\s*(export\s+)?(SUPABASE_DB_CONNECTION_STRING|SUPABASE_MITO_PSW)\s*=' .env` → 0 (vero al 2026-10-09). drizzle-kit carica `.env` prima di `.env.development.local`, che non lo sovrascrive: con quelle chiavi in `.env`, `db:push` e `db:migrate` andrebbero sul DB di prod. E Next.js carica `.env` in ogni modalità, quindi `next build` e `next start` in locale usano lo storage di prod: non lanciarli con i file veri.
+- [ ] rinominare `.env.production.local` in `.env.prod.local`. Finché c'è il file vecchio, gli script del DB di prod e `next dev`, `next build`, `next start` e `next lint` si fermano;
+- [ ] `.env.prod.local` ha da solo le due chiavi del DB di prod, non vuote. Lo legge `dotenv`, come lo leggono gli script, e stampa solo lo stato di ogni chiave: `node -e 'const e = require("dotenv").parse(require("fs").readFileSync(".env.prod.local")); for (const k of ["SUPABASE_DB_CONNECTION_STRING", "SUPABASE_MITO_PSW"]) console.log(k, e[k] === undefined ? "assente" : e[k].trim() ? "impostata" : "vuota")'` → `impostata` per tutte e due. Senza, gli script si fermano invece di prenderle da `.env` o dalla shell;
+- [ ] `.env` resta il ripiego degli altri file, con i valori di prod (storage e segreti), ma senza le chiavi del DB: lo stesso comando su `.env` → `assente` per tutte e due (vero al 2026-10-09). drizzle-kit carica `.env` prima di `.env.development.local`, che non lo sovrascrive: con quelle chiavi in `.env`, `db:push` e `db:migrate` andrebbero sul DB di prod. E Next.js carica `.env` in ogni modalità, quindi `next build` e `next start` in locale usano lo storage di prod: non lanciarli con i file veri.
 
 ## Cron dello staging
 

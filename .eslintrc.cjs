@@ -46,13 +46,14 @@ const config = {
     ],
     // loadEnv loads the production credentials: never in a module Next.js
     // bundles, only in the database scripts (overrides below). The pattern
-    // takes the alias, relative and src/ paths; a dynamic import() escapes it
+    // takes every static import of a module named env, by alias, relative or
+    // src/ path; a dynamic import() or a direct dotenv call escapes it
     "no-restricted-imports": [
       "error",
       {
         patterns: [
           {
-            group: ["**/lib/global/env", "**/lib/global/env.*"],
+            group: ["**/env", "**/env.*"],
             importNames: ["loadEnv"],
             message:
               "loadEnv loads the production credentials: only the database scripts call it",

@@ -9,8 +9,9 @@ import { env, isProduction } from "./src/env.js"
 
 // Next.js loads .env.production.local in every `next build` and `next start`:
 // with the production database in it, a local build would reach it. The
-// database scripts read .env.prod.local instead (src/lib/global/env.ts)
-if (existsSync(".env.production.local")) {
+// database scripts read .env.prod.local instead (src/lib/global/env.ts). The
+// path is the project's, whatever the current directory
+if (existsSync(new URL(".env.production.local", import.meta.url))) {
   throw new Error(
     "Rename .env.production.local to .env.prod.local: Next.js loads .env.production.local in every local build"
   )

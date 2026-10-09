@@ -13,7 +13,8 @@ const PRODUCTION_DB_KEYS = [
  * system operator): `.env.prod.local` with NODE_ENV=production, otherwise
  * `.env.<NODE_ENV>.local`. The app doesn't call it: Next.js loads its own env
  * files, and `.env.prod.local` isn't one of them, so a local `next build` or
- * `next start` never gets the production database.
+ * `next start` gets the production database only if another env file or the
+ * shell holds it.
  *
  * With NODE_ENV=production it stops, instead of running on whatever else is
  * loaded, when `.env.prod.local` can't be read, doesn't set both database
