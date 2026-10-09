@@ -54,6 +54,20 @@ describe("auth in production", () => {
   })
 })
 
+describe("auth on staging", () => {
+  it("senza SendGrid offre solo Azure", async () => {
+    const authOptions = await loadAuthOptions({
+      NEXT_PUBLIC_VERCEL_ENV: "preview",
+      NODE_ENV: "production",
+      ...AZURE,
+    })
+
+    expect(authOptions.providers.map((provider) => provider.id)).toEqual([
+      "azure-ad",
+    ])
+  })
+})
+
 describe("auth with next dev", () => {
   it("senza Azure offre il link via email, che compare nel terminale invece di partire", async () => {
     const log = vi.spyOn(console, "log").mockImplementation(() => undefined)

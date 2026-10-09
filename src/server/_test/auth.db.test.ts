@@ -1,5 +1,6 @@
 import {
   afterAll,
+  afterEach,
   beforeAll,
   beforeEach,
   describe,
@@ -13,6 +14,7 @@ import { operators } from "@/server/db/schema/operators"
 import { users } from "@/server/db/schema/users"
 import { authOptions } from "@/server/auth"
 import { migrateUpTo, resetDb, testDb } from "@/test/db"
+import { failNextInsertInto } from "@/test/failpoint"
 
 // The real NextAuth configuration, which the other tests get mocked
 vi.unmock("@/server/auth")
@@ -44,9 +46,23 @@ beforeEach(async () => {
   await resetDb()
 })
 
+afterEach(() => {
+  vi.restoreAllMocks()
+})
+
 afterAll(() => {
   vi.unstubAllEnvs()
 })
+
+const adapter = authOptions.adapter!
+
+const createUser = () =>
+  adapter.createUser!({
+    name: "Ada",
+    email: "ada@x.it",
+    image: "https://example.com/ada.png",
+    emailVerified: new Date("2026-10-01T08:00:00.000Z"),
+  })
 
 describe("auth outside production", () => {
   it("offre l'accesso con Azure e con il link via email", () => {
@@ -56,10 +72,25 @@ describe("auth outside production", () => {
     ])
   })
 
-  it("fa entrare un utente già nel database, con l'email in maiuscolo o minuscolo", async () => {
-    await testDb.insert(users).values({ id: "u1", email: "Mario.Rossi@x.it" })
+  it("fa entrare un utente già nel database, che l'adapter poi ritrova", async () => {
+    await testDb.insert(users).values({ id: "u1", email: "mario.rossi@x.it" })
 
-    expect(await signIn("mario.rossi@X.it")).toBe(true)
+    expect(await signIn("mario.rossi@x.it")).toBe(true)
+    expect(await adapter.getUserByEmail!("mario.rossi@x.it")).toMatchObject({
+      id: "u1",
+    })
+  })
+
+  it("rifiuta un utente salvato con altre maiuscole, per cui l'adapter creerebbe un secondo utente", async () => {
+    await testDb.insert(users).values([
+      { id: "u1", email: "Mario.Rossi@x.it" },
+      { id: "u2", email: "INFO@spatalo.tech" },
+    ])
+
+    expect(await adapter.getUserByEmail!("mario.rossi@x.it")).toBeNull()
+    expect(await signIn("mario.rossi@x.it")).toBe(false)
+    expect(await signIn("info@spatalo.tech")).toBe(false)
+    expect(await testDb.select({ id: users.id }).from(users)).toHaveLength(2)
   })
 
   it("fa entrare gli indirizzi di AUTH_ALLOWED_EMAILS anche senza utente", async () => {
@@ -71,27 +102,60 @@ describe("auth outside production", () => {
     await testDb.insert(users).values({ id: "u1", email: "mario.rossi@x.it" })
 
     expect(await signIn("estraneo@x.it")).toBe(false)
+    expect(await signIn("")).toBe(false)
     expect(await signIn(null)).toBe(false)
   })
 
-  it("crea l'utente senza immagine insieme al suo operatore", async () => {
-    const created = await authOptions.adapter!.createUser!({
-      name: "Ada",
-      email: "ada@x.it",
-      image: "https://example.com/ada.png",
-      emailVerified: null,
+  it("prende l'email alla lettera, senza caratteri jolly", async () => {
+    await testDb.insert(users).values({ id: "u1", email: "mario.rossi@x.it" })
+
+    expect(await signIn("%@x.it")).toBe(false)
+    expect(await signIn("mario.rossi@x.i_")).toBe(false)
+  })
+
+  it("non fa entrare nessuno se il database non risponde, e non mostra l'errore del driver", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined)
+    vi.spyOn(testDb, "select").mockImplementationOnce(() => {
+      throw new Error("connect ECONNREFUSED 10.0.0.1:5432")
     })
 
+    await expect(signIn("mario.rossi@x.it")).rejects.toThrow(/^Sign-in failed$/)
+    expect(console.error).toHaveBeenCalled()
+  })
+
+  it("crea l'utente senza immagine insieme al suo operatore", async () => {
+    const created = await createUser()
+
+    expect(created).toMatchObject({
+      name: "Ada",
+      email: "ada@x.it",
+      image: null,
+      emailVerified: new Date("2026-10-01T08:00:00.000Z"),
+    })
     const [user] = await testDb
       .select()
       .from(users)
       .where(eq(users.id, created.id))
-    expect(user).toMatchObject({ name: "Ada", email: "ada@x.it", image: null })
+    expect(user).toMatchObject({
+      name: "Ada",
+      email: "ada@x.it",
+      image: null,
+      role: "ADMIN",
+    })
     expect(
       await testDb
         .select({ userId: operators.userId })
         .from(operators)
         .where(eq(operators.userId, created.id))
     ).toEqual([{ userId: created.id }])
+  })
+
+  it("se l'operatore non si crea, non lascia nemmeno l'utente", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined)
+    await failNextInsertInto(operators)
+
+    await expect(createUser()).rejects.toThrow(/^Sign-in failed$/)
+    expect(await testDb.select().from(users)).toEqual([])
+    expect(await testDb.select().from(operators)).toEqual([])
   })
 })

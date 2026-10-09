@@ -28,6 +28,10 @@ jobs:
         run: pnpm add --global vercel
       - name: Pull Vercel Environment Information
         run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+      # The build is production only with VERCEL_ENV=production (src/env.js),
+      # which `vercel pull` writes when the project exposes the system env vars
+      - name: Check the build is production
+        run: grep -qx 'VERCEL_ENV="production"' .vercel/.env.production.local
       - name: Build Project Artifacts
         run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
       - name: Deploy Project Artifacts to Vercel

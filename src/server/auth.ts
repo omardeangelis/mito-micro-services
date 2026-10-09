@@ -1,5 +1,5 @@
 import { DrizzleAdapter } from "@auth/drizzle-adapter"
-import { Cause, Effect, Exit } from "effect"
+import { Effect, Exit } from "effect"
 import {
   getServerSession,
   type DefaultSession,
@@ -9,19 +9,19 @@ import { type Adapter } from "next-auth/adapters"
 import AzureADProvider from "next-auth/providers/azure-ad"
 import Email from "next-auth/providers/email"
 import { type Provider } from "next-auth/providers/index"
-import { env } from "@/env"
+import { env, isProduction } from "@/env"
 import { db } from "@/server/db"
-import { type Db, DbLive } from "@/server/effect/db"
+import { type Db } from "@/server/effect/db"
+import { ServerLive } from "@/server/effect/server"
 import {
   createUserWithOperator,
-  isExistingUser,
+  matchUserEmail,
 } from "@/server/services/auth/users"
 import { pgTableCreator } from "drizzle-orm/pg-core"
 
 // In production only Azure, and anyone the tenant lets in. Elsewhere the
 // providers whose env vars are set, for the users already in the database and
 // the addresses in AUTH_ALLOWED_EMAILS
-const isProduction = env.NEXT_PUBLIC_VERCEL_ENV === "production"
 
 const providers: Provider[] = []
 
@@ -74,11 +74,22 @@ const allowedEmails = new Set(
     .filter(Boolean)
 )
 
-/** Runs a database program for NextAuth, which expects failures thrown. */
+/**
+ * Runs a database program for NextAuth, which expects failures thrown. The
+ * failure is logged here and thrown without its message, which NextAuth puts
+ * in the URL of its error page.
+ */
 async function runAuth<A, E>(program: Effect.Effect<A, E, Db>): Promise<A> {
-  const exit = await Effect.runPromiseExit(program.pipe(Effect.provide(DbLive)))
+  const exit = await Effect.runPromiseExit(
+    program.pipe(
+      Effect.tapErrorCause((cause) =>
+        Effect.logError("Sign-in database step failed", cause)
+      ),
+      Effect.provide(ServerLive)
+    )
+  )
   if (Exit.isSuccess(exit)) return exit.value
-  throw Cause.squash(exit.cause)
+  throw new Error("Sign-in failed")
 }
 
 const createTable = pgTableCreator((name) => `mito-deutsche_${name}`)
@@ -116,9 +127,13 @@ export const authOptions: NextAuthOptions = {
     // Also called before the email login sends its link
     signIn: async ({ user }) => {
       if (isProduction) return true
-      const email = user.email?.toLowerCase()
+      const email = user.email
       if (!email) return false
-      return allowedEmails.has(email) || runAuth(isExistingUser(email))
+      // The adapter finds the user by the exact email. Saved in another letter
+      // case, it would sign up a second one, an ADMIN by default
+      const match = await runAuth(matchUserEmail(email))
+      if (match === "exact") return true
+      return match === "none" && allowedEmails.has(email.toLowerCase())
     },
     session: ({ session, user }) => ({
       ...session,
@@ -143,15 +158,6 @@ export const authOptions: NextAuthOptions = {
     createUser: (user) => runAuth(createUserWithOperator(user)),
   },
   providers,
-  /**
-   * ...add more providers here.
-   *
-   * Most other providers require a bit more work than the Discord provider. For example, the
-   * GitHub provider requires you to add the `refresh_token_expires_in` field to the Account
-   * model. Refer to the NextAuth.js docs for the provider you want to use. Example:
-   *
-   * @see https://next-auth.js.org/providers/github
-   */
 }
 
 /**

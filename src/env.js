@@ -1,9 +1,15 @@
 import { createEnv } from "@t3-oss/env-nextjs"
 import { z } from "zod"
 
-// The production deployment. Staging is a preview deployment, and VERCEL_ENV
-// isn't set locally
-const isProduction = process.env.VERCEL_ENV === "production"
+/**
+ * The production deployment, as the build saw it: next.config.js reads
+ * VERCEL_ENV and passes it to the bundle as NEXT_PUBLIC_VERCEL_ENV, so the
+ * config and the app modules decide alike. Staging is a preview deployment, and
+ * neither is set locally.
+ */
+export const isProduction =
+  (process.env.NEXT_PUBLIC_VERCEL_ENV ?? process.env.VERCEL_ENV) ===
+  "production"
 
 export const env = createEnv({
   /**
@@ -25,8 +31,8 @@ export const env = createEnv({
         ? z.string()
         : z.string().optional(),
     NEXTAUTH_URL: z.preprocess(
-      // This makes Vercel deployments not fail if you don't set NEXTAUTH_URL
-      // Since NextAuth.js automatically uses the VERCEL_URL if present.
+      // Locally only. On Vercel NextAuth ignores it and takes the host of the
+      // request (next-auth/utils/detect-origin), so it isn't required there
       (str) => process.env.VERCEL_URL ?? str,
       // VERCEL_URL doesn't include `https` so it cant be validated as a URL
       process.env.VERCEL ? z.string() : z.string().url()

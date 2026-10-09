@@ -9,6 +9,7 @@ import { query, transaction } from "@/server/effect/db"
 /**
  * Creates the user NextAuth signs up, without the provider's picture, and its
  * operator, which every operator procedure requires. Both rows or neither.
+ * Only the provider's fields: the role and the preferences keep their defaults.
  */
 export const createUserWithOperator = (user: Omit<AdapterUser, "id">) =>
   transaction(
@@ -16,7 +17,13 @@ export const createUserWithOperator = (user: Omit<AdapterUser, "id">) =>
       const [created] = yield* query((client) =>
         client
           .insert(users)
-          .values({ ...user, id: crypto.randomUUID(), image: null })
+          .values({
+            id: crypto.randomUUID(),
+            name: user.name,
+            email: user.email,
+            emailVerified: user.emailVerified,
+            image: null,
+          })
           .returning()
       )
       if (!created) return yield* Effect.dieMessage("INSERT returned no user")
@@ -27,12 +34,24 @@ export const createUserWithOperator = (user: Omit<AdapterUser, "id">) =>
     })
   )
 
-/** Whether a user with this email exists, in any letter case. */
-export const isExistingUser = (email: string) =>
+/**
+ * How the users in the database match this email: with the same letters
+ * ("exact"), only in another letter case ("other-case"), or not at all. The
+ * NextAuth adapter looks a user up by the exact email, so with "other-case" it
+ * would sign up a second user.
+ */
+export const matchUserEmail = (email: string) =>
   query((client) =>
     client
-      .select({ id: users.id })
+      .select({ email: users.email })
       .from(users)
       .where(sql`lower(${users.email}) = ${email.toLowerCase()}`)
-      .limit(1)
-  ).pipe(Effect.map((rows) => rows.length > 0))
+  ).pipe(
+    Effect.map((rows) =>
+      rows.some((row) => row.email === email)
+        ? ("exact" as const)
+        : rows.length > 0
+          ? ("other-case" as const)
+          : ("none" as const)
+    )
+  )
