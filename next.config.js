@@ -7,9 +7,9 @@ import { withSentryConfig } from "@sentry/nextjs"
 import { env } from "./src/env.js"
 
 // `vercel build` sets VERCEL, and VERCEL_ENV only when `vercel pull` writes it,
-// which needs "Automatically expose System Environment Variables" on in the
-// project. Without it the production build would come out as staging: no
-// filter on sign-in, no required Azure, no Sentry
+// which needs "Enable access to System Environment Variables" on in the
+// project (Settings → Environment Variables). Without it the production build
+// would come out as staging: no filter on sign-in, no required Azure, no Sentry
 if (
   process.env.VERCEL &&
   !["production", "preview", "development"].includes(
@@ -17,7 +17,7 @@ if (
   )
 ) {
   throw new Error(
-    "VERCEL_ENV is not set: turn on Automatically expose System Environment Variables in the Vercel project settings"
+    "VERCEL_ENV is missing or invalid: turn on Enable access to System Environment Variables in the Vercel project settings"
   )
 }
 
