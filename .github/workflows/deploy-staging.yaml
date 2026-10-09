@@ -31,36 +31,94 @@ jobs:
           git config user.email "omardeangelis.business@gmail.com"
           git config user.name "Omar De Angelis"
           git commit --amend --no-edit --reset-author
+      # One version: how `vercel env pull` writes Sensitive variables changes
+      # from one to another, and the checks below read its files
       - name: Install Vercel CLI
-        run: pnpm add --global vercel
+        run: pnpm add --global vercel@61.0.0
+      # A domain without a branch is a production domain: it follows the
+      # deploys of main and is outside the Deployment Protection
+      - name: Check the staging domain is on the dev branch
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          if ! domain="$(curl -fsS -H "Authorization: Bearer $VERCEL_TOKEN" "https://api.vercel.com/v9/projects/$VERCEL_PROJECT_ID/domains/$STAGING_DOMAIN?teamId=$VERCEL_ORG_ID")"; then
+            echo "::error::$STAGING_DOMAIN is not a domain of the Vercel project"
+            exit 1
+          fi
+          if [ "$(jq -r '.gitBranch // ""' <<< "$domain")" != dev ] || [ -n "$(jq -r '.redirect // ""' <<< "$domain")" ]; then
+            echo "::error::$STAGING_DOMAIN must be on the dev branch, without a redirect, in Vercel → Settings → Domains"
+            exit 1
+          fi
       # Staging is a preview deployment: it takes the Preview env vars
       - name: Pull Vercel Environment Information
         run: vercel pull --yes --environment=preview --git-branch=dev --token=${{ secrets.VERCEL_TOKEN }}
       - name: Check the build is staging
-        run: grep -qx 'VERCEL_ENV="preview"' .vercel/.env.preview.local
-      # The database and the storage staging gets from Preview, with the dev
-      # branch overrides, must be set and differ from Production. Prints names
-      # only, and removes the production file before the build
+        run: |
+          grep -qx 'VERCEL_ENV="preview"' .vercel/.env.preview.local
+          if grep -q '^SKIP_ENV_VALIDATION=' .vercel/.env.preview.local; then
+            echo "::error::Remove SKIP_ENV_VALIDATION from the Preview variables: the build would skip the check of the required ones"
+            exit 1
+          fi
+      # Staging must not reach the production database or storage. Each
+      # environment keeps both in one Supabase project, whose ref is the host
+      # of NEXT_PUBLIC_SUPABASE_URL (https://<ref>.supabase.co) and is also in
+      # the connection string. Preview is read twice, with the dev branch
+      # overrides and without: the deployment runs on one or the other. Prints
+      # names only, and removes the files it pulls
       - name: Check staging has its own database and storage
         run: |
-          prod="$RUNNER_TEMP/production.env"
-          vercel env pull "$prod" --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }} > /dev/null
-          status=0
-          for name in SUPABASE_DB_CONNECTION_STRING SUPABASE_MITO_PSW NEXT_PUBLIC_SUPABASE_URL SUPABASE_KEY NEXT_PUBLIC_SUPABASE_ANON_KEY; do
-            staging_line="$(grep "^$name=" .vercel/.env.preview.local || true)"
-            prod_line="$(grep "^$name=" "$prod" || true)"
-            if [ -z "$staging_line" ] || [ "$staging_line" = "$name=\"\"" ]; then
-              # The anon key is optional: the app falls back to an empty one
-              if [ "$name" != NEXT_PUBLIC_SUPABASE_ANON_KEY ]; then
-                echo "::error::$name is not set in Preview"
-                status=1
-              fi
-            elif [ "$staging_line" = "$prod_line" ]; then
-              echo "::error::$name in Preview is the one of Production"
-              status=1
+          dir="$RUNNER_TEMP/staging-env-check"
+          mkdir -p "$dir"
+          trap 'rm -rf "$dir"' EXIT
+          vercel env pull "$dir/Production" --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }} > /dev/null
+          vercel env pull "$dir/Preview" --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }} > /dev/null
+          cp .vercel/.env.preview.local "$dir/Preview-dev"
+          for view in Production Preview Preview-dev; do
+            if [ ! -s "$dir/$view" ]; then
+              echo "::error::Vercel gave no $view variables"
+              exit 1
             fi
           done
-          rm -f "$prod"
+          project_ref() {
+            sed -nE 's#^NEXT_PUBLIC_SUPABASE_URL="https://([a-z0-9]+)\.supabase\.co/?"$#\1#p' "$1"
+          }
+          prod_ref="$(project_ref "$dir/Production")"
+          if [ -z "$prod_ref" ]; then
+            echo "::error::NEXT_PUBLIC_SUPABASE_URL in Production is not https://<project>.supabase.co: the check can't tell the projects apart"
+            exit 1
+          fi
+          status=0
+          for view in Preview Preview-dev; do
+            file="$dir/$view"
+            staging_ref="$(project_ref "$file")"
+            if [ -z "$staging_ref" ]; then
+              echo "::error::NEXT_PUBLIC_SUPABASE_URL in $view is not https://<project>.supabase.co"
+              status=1
+              continue
+            fi
+            if [ "$staging_ref" = "$prod_ref" ]; then
+              echo "::error::The storage in $view is the production one"
+              status=1
+            fi
+            connection="$(grep '^SUPABASE_DB_CONNECTION_STRING=' "$file" || true)"
+            if [ -z "$connection" ] || [ "$connection" = 'SUPABASE_DB_CONNECTION_STRING=""' ]; then
+              echo "::error::SUPABASE_DB_CONNECTION_STRING is not set in $view"
+              status=1
+            elif [ "$connection" = 'SUPABASE_DB_CONNECTION_STRING="[SENSITIVE]"' ]; then
+              echo "::error::SUPABASE_DB_CONNECTION_STRING in $view is Sensitive, so the check can't read it: save it as a plain variable"
+              status=1
+            elif [[ "$connection" == *"$prod_ref"* ]] || [[ "$connection" != *"$staging_ref"* ]]; then
+              echo "::error::SUPABASE_DB_CONNECTION_STRING in $view is not the database of the project of its NEXT_PUBLIC_SUPABASE_URL, or is the production one"
+              status=1
+            fi
+            for name in SUPABASE_MITO_PSW SUPABASE_KEY; do
+              line="$(grep "^$name=" "$file" || true)"
+              if [ -z "$line" ] || [ "$line" = "$name=\"\"" ]; then
+                echo "::error::$name is not set in $view"
+                status=1
+              fi
+            done
+          done
           exit "$status"
       - name: Build Project Artifacts
         run: vercel build --token=${{ secrets.VERCEL_TOKEN }}
