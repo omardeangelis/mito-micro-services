@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { existsSync } from "fs"
 import { config } from "dotenv"
-import { loadEnv } from "@/lib/global/env"
+import { loadEnv } from "@/lib/global/loadDbEnv"
 
 // .env.prod.local with both database keys
 const prodFile = {

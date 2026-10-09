@@ -3,7 +3,7 @@ import type * as schema from "../schema/index"
 import { products } from "../schema/index"
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js"
 import { productMap } from "../../../lib/constants/productMap"
-import { loadEnv } from "@/lib/global/env"
+import { loadEnv } from "@/lib/global/loadDbEnv"
 
 loadEnv()
 type Product = {

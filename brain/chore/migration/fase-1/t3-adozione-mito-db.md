@@ -29,7 +29,7 @@ Mantenere il modulo `@/server/db` come **facade locale** così i 62 consumer del
 ```ts
 // apps/web-legacy/src/server/db/index.ts  (nuovo contenuto)
 import { createDb } from "@mito/db"
-import { loadEnv } from "@/lib/global/env"
+import { loadEnv } from "@/lib/global/loadDbEnv"
 
 loadEnv()
 

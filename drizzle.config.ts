@@ -1,6 +1,6 @@
 /* eslint-disable prettier/prettier */
 import {  defineConfig } from "drizzle-kit"
-import { loadEnv } from "@/lib/global/env"
+import { loadEnv } from "@/lib/global/loadDbEnv"
 
 loadEnv()
 

@@ -4,7 +4,7 @@ import * as schema from "../schema/index"
 import { chat, operators, practices } from "../schema/index"
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js"
 import { asc, eq } from "drizzle-orm"
-import { loadEnv } from "@/lib/global/env"
+import { loadEnv } from "@/lib/global/loadDbEnv"
 
 loadEnv()
 
