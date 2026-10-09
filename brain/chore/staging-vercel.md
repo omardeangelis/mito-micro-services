@@ -144,6 +144,14 @@ Questi branch arrivano in produzione con il merge `dev` → `main`. Prima, nel p
 - [ ] **Progetto di prod → Production:** cancellare `SENDGRID_*`, `DISCORD_*` e `NEXT_PUBLIC_BASE_URL`, se presenti. Solo ora: il codice di prima li richiedeva, e un suo deploy fallirebbe senza. Il login via email in produzione non c'è. `CUSTOM_ACCESS` e `PREVIEW_DB*` si tolgono come deciso prima del merge.
 - [ ] **Progetto di prod → Preview:** non serve più allo staging. Le variabili che vi sono state messe per lo staging si possono togliere.
 
+## In locale
+
+Con `chore/env-prod-locale` gli script del DB di prod leggono `.env.prod.local`, non più `.env.production.local`, che Next.js carica in ogni build locale. Subito dopo averlo preso:
+
+- [ ] rinominare `.env.production.local` in `.env.prod.local`. Finché c'è il file vecchio, gli script del DB di prod e `next build`, `next start` e `next dev` si fermano;
+- [ ] `.env.prod.local` ha da solo le due chiavi del DB di prod, non vuote: `grep -cE "^\s*(export\s+)?(SUPABASE_DB_CONNECTION_STRING|SUPABASE_MITO_PSW)\s*=\s*[\"']?[^\"'[:space:]]" .env.prod.local` → 2. Senza, gli script si fermano invece di prenderle da `.env` o dalla shell;
+- [ ] `.env` resta il ripiego degli altri file, con i valori di prod (storage e segreti), ma senza le chiavi del DB: `grep -cE '^\s*(export\s+)?(SUPABASE_DB_CONNECTION_STRING|SUPABASE_MITO_PSW)\s*=' .env` → 0 (vero al 2026-10-09). drizzle-kit carica `.env` prima di `.env.development.local`, che non lo sovrascrive: con quelle chiavi in `.env`, `db:push` e `db:migrate` andrebbero sul DB di prod. E Next.js carica `.env` in ogni modalità, quindi `next build` e `next start` in locale usano lo storage di prod: non lanciarli con i file veri.
+
 ## Cron dello staging
 
 I quattro workflow non prod partono solo a mano e chiamano `https://staging-crm.dbmito.it`:

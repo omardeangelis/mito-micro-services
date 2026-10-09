@@ -3,8 +3,18 @@
  * for Docker builds.
  */
 await import("./src/env.js")
+import { existsSync } from "node:fs"
 import { withSentryConfig } from "@sentry/nextjs"
 import { env, isProduction } from "./src/env.js"
+
+// Next.js loads .env.production.local in every `next build` and `next start`:
+// with the production database in it, a local build would reach it. The
+// database scripts read .env.prod.local instead (src/lib/global/env.ts)
+if (existsSync(".env.production.local")) {
+  throw new Error(
+    "Rename .env.production.local to .env.prod.local: Next.js loads .env.production.local in every local build"
+  )
+}
 
 // `vercel build` sets VERCEL, and VERCEL_ENV only when `vercel pull` writes it,
 // which needs "Enable access to System Environment Variables" on in the

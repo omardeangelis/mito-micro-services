@@ -45,13 +45,14 @@ const config = {
       },
     ],
     // loadEnv loads the production credentials: never in a module Next.js
-    // bundles, only in the database scripts (overrides below)
+    // bundles, only in the database scripts (overrides below). The pattern
+    // takes the alias, relative and src/ paths; a dynamic import() escapes it
     "no-restricted-imports": [
       "error",
       {
-        paths: [
+        patterns: [
           {
-            name: "@/lib/global/env",
+            group: ["**/lib/global/env", "**/lib/global/env.*"],
             importNames: ["loadEnv"],
             message:
               "loadEnv loads the production credentials: only the database scripts call it",
@@ -75,7 +76,7 @@ const config = {
         "drizzle.config.ts",
         "src/server/db/seeds/**",
         "src/server/db/scripts/**",
-        "src/lib/global/**",
+        "src/lib/global/_test/**",
       ],
       rules: { "no-restricted-imports": "off" },
     },

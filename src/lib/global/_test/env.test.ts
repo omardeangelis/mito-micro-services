@@ -3,6 +3,14 @@ import { existsSync } from "fs"
 import { config } from "dotenv"
 import { loadEnv } from "@/lib/global/env"
 
+// .env.prod.local with both database keys
+const prodFile = {
+  parsed: {
+    SUPABASE_DB_CONNECTION_STRING: "postgres://db.example/postgres",
+    SUPABASE_MITO_PSW: "password",
+  },
+}
+
 vi.mock("dotenv", () => ({ config: vi.fn(() => ({})) }))
 vi.mock("fs", () => {
   const existsSync = vi.fn(() => false)
@@ -29,6 +37,7 @@ describe("loadEnv", () => {
 
   it("con NODE_ENV=production carica .env.prod.local, che vince su .env e sulla shell", () => {
     vi.stubEnv("NODE_ENV", "production")
+    vi.mocked(config).mockReturnValueOnce(prodFile)
 
     loadEnv()
 
@@ -46,6 +55,24 @@ describe("loadEnv", () => {
 
     expect(() => loadEnv()).toThrow(/^Cannot read \.env\.prod\.local/)
   })
+
+  it.each([
+    ["non c'è", "SUPABASE_MITO_PSW", undefined],
+    ["è vuota", "SUPABASE_DB_CONNECTION_STRING", " "],
+  ])(
+    "con NODE_ENV=production si ferma se in .env.prod.local una chiave del database %s, anche se la shell la dà",
+    (_, key, value) => {
+      vi.stubEnv("NODE_ENV", "production")
+      vi.stubEnv(key, "from-the-shell")
+      vi.mocked(config).mockReturnValueOnce({
+        parsed: { ...prodFile.parsed, [key]: value },
+      })
+
+      expect(() => loadEnv()).toThrow(
+        new RegExp(`^\\.env\\.prod\\.local doesn't set ${key}:`)
+      )
+    }
+  )
 
   it("con NODE_ENV=production si ferma se c'è ancora .env.production.local", () => {
     vi.stubEnv("NODE_ENV", "production")
