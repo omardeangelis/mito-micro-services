@@ -60,8 +60,8 @@ describe("authCheck", () => {
   it.each([
     ["senza header", undefined],
     ["con un altro schema", `Basic ${cronToken()}`],
-    ["con il token vuoto", "Bearer "],
-    ["con due spazi e niente token", "Bearer  "],
+    // Headers drops the trailing spaces: it arrives as "Bearer"
+    ["con lo schema e basta", "Bearer "],
     ["con due spazi prima di una parola", "Bearer  x"],
     ["con due spazi prima di un token valido", `Bearer  ${cronToken()}`],
     ["con un token che non è un JWT", "Bearer x"],
