@@ -1,8 +1,10 @@
 name: Deploy Platform to Staging
 env:
   VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-  VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-  # The fixed address of staging, in Vercel → Domains on the dev branch
+  # Staging is its own Vercel project, staging-mito-micro-services: a preview
+  # deployment there, with that project's Preview variables
+  VERCEL_PROJECT_ID: ${{ secrets.VERCEL_STAGING_PROJECT_ID }}
+  # The fixed address of staging, a domain of the staging project
   # (brain/chore/staging-vercel.md)
   STAGING_DOMAIN: staging-crm.dbmito.it
 on:
@@ -16,6 +18,7 @@ permissions:
 jobs:
   Vercel-Deploy-Staging:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: pnpm/action-setup@v4
         with:
@@ -31,22 +34,45 @@ jobs:
           git config user.email "omardeangelis.business@gmail.com"
           git config user.name "Omar De Angelis"
           git commit --amend --no-edit --reset-author
-      # One version: how `vercel env pull` writes Sensitive variables changes
-      # from one to another, and the checks below read its files
+      # One version: how `vercel env pull` writes Secret (Sensitive) variables
+      # changes from one to another, and the checks below read its files
       - name: Install Vercel CLI
         run: pnpm add --global vercel@61.0.0
-      # A domain without a branch is a production domain: it follows the
-      # deploys of main and is outside the Deployment Protection
-      - name: Check the staging domain is on the dev branch
+      # Before anything reaches Vercel. The staging project isn't the
+      # production one; it protects every deployment, its domain included,
+      # with Vercel Authentication; it isn't connected to Git, so only this
+      # workflow, with its checks, deploys there; and it owns the staging
+      # domain, without a redirect
+      - name: Check the staging project
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          PRODUCTION_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
         run: |
-          if ! domain="$(curl -fsS -H "Authorization: Bearer $VERCEL_TOKEN" "https://api.vercel.com/v9/projects/$VERCEL_PROJECT_ID/domains/$STAGING_DOMAIN?teamId=$VERCEL_ORG_ID")"; then
-            echo "::error::$STAGING_DOMAIN is not a domain of the Vercel project"
+          api() {
+            curl -fsS --max-time 30 -H "Authorization: Bearer $VERCEL_TOKEN" "https://api.vercel.com$1?teamId=$VERCEL_ORG_ID"
+          }
+          if [ -z "$VERCEL_PROJECT_ID" ] || [ "$VERCEL_PROJECT_ID" = "$PRODUCTION_PROJECT_ID" ]; then
+            echo "::error::VERCEL_STAGING_PROJECT_ID must be set and differ from VERCEL_PROJECT_ID"
             exit 1
           fi
-          if [ "$(jq -r '.gitBranch // ""' <<< "$domain")" != dev ] || [ -n "$(jq -r '.redirect // ""' <<< "$domain")" ]; then
-            echo "::error::$STAGING_DOMAIN must be on the dev branch, without a redirect, in Vercel → Settings → Domains"
+          if ! project="$(api "/v9/projects/$VERCEL_PROJECT_ID")"; then
+            echo "::error::The Vercel API didn't return the staging project"
+            exit 1
+          fi
+          if ! jq -e '.ssoProtection.deploymentType == "all"' <<< "$project" > /dev/null; then
+            echo "::error::The staging project must protect All Deployments with Vercel Authentication (Settings → Deployment Protection)"
+            exit 1
+          fi
+          if ! jq -e '.link == null' <<< "$project" > /dev/null; then
+            echo "::error::Disconnect the staging project from Git (Settings → Git): only this workflow deploys staging"
+            exit 1
+          fi
+          if ! domain="$(api "/v9/projects/$VERCEL_PROJECT_ID/domains/$STAGING_DOMAIN")"; then
+            echo "::error::$STAGING_DOMAIN is not a domain of the staging project, or the Vercel API didn't answer"
+            exit 1
+          fi
+          if ! jq -e '(.redirect // "") == ""' <<< "$domain" > /dev/null; then
+            echo "::error::$STAGING_DOMAIN must not redirect (staging project → Settings → Domains)"
             exit 1
           fi
       # Staging is a preview deployment: it takes the Preview env vars
@@ -54,7 +80,10 @@ jobs:
         run: vercel pull --yes --environment=preview --git-branch=dev --token=${{ secrets.VERCEL_TOKEN }}
       - name: Check the build is staging
         run: |
-          grep -qx 'VERCEL_ENV="preview"' .vercel/.env.preview.local
+          if ! grep -qx 'VERCEL_ENV="preview"' .vercel/.env.preview.local; then
+            echo "::error::vercel pull wrote no VERCEL_ENV=\"preview\": turn on Enable access to System Environment Variables in the staging project"
+            exit 1
+          fi
           if grep -q '^SKIP_ENV_VALIDATION=' .vercel/.env.preview.local; then
             echo "::error::Remove SKIP_ENV_VALIDATION from the Preview variables: the build would skip the check of the required ones"
             exit 1
@@ -62,15 +91,19 @@ jobs:
       # Staging must not reach the production database or storage. Each
       # environment keeps both in one Supabase project, whose ref is the host
       # of NEXT_PUBLIC_SUPABASE_URL (https://<ref>.supabase.co) and is also in
-      # the connection string. Preview is read twice, with the dev branch
-      # overrides and without: the deployment runs on one or the other. Prints
-      # names only, and removes the files it pulls
+      # the connection string, as the host (db.<ref>.supabase.co) or the
+      # pooler user (postgres.<ref>). Production is read from the production
+      # project; Preview twice, with the dev branch overrides and without, as
+      # the deployment runs on one or the other. Prints names only, and
+      # removes the files it pulls
       - name: Check staging has its own database and storage
+        env:
+          PRODUCTION_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
         run: |
           dir="$RUNNER_TEMP/staging-env-check"
           mkdir -p "$dir"
           trap 'rm -rf "$dir"' EXIT
-          vercel env pull "$dir/Production" --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }} > /dev/null
+          VERCEL_PROJECT_ID="$PRODUCTION_PROJECT_ID" vercel env pull "$dir/Production" --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }} > /dev/null
           vercel env pull "$dir/Preview" --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }} > /dev/null
           cp .vercel/.env.preview.local "$dir/Preview-dev"
           for view in Production Preview Preview-dev; do
@@ -82,17 +115,26 @@ jobs:
           project_ref() {
             sed -nE 's#^NEXT_PUBLIC_SUPABASE_URL="https://([a-z0-9]+)\.supabase\.co/?"$#\1#p' "$1"
           }
+          # Set, and not only spaces or escaped line breaks
+          has_value() {
+            local value="${1#*=}"
+            value="${value#\"}"
+            value="${value%\"}"
+            value="${value//\\n/}"
+            value="${value//\\r/}"
+            [ -n "${value//[[:space:]]/}" ]
+          }
           prod_ref="$(project_ref "$dir/Production")"
-          if [ -z "$prod_ref" ]; then
-            echo "::error::NEXT_PUBLIC_SUPABASE_URL in Production is not https://<project>.supabase.co: the check can't tell the projects apart"
+          if ! [[ "$prod_ref" =~ ^[a-z0-9]+$ ]]; then
+            echo "::error::NEXT_PUBLIC_SUPABASE_URL in Production is not one https://<project>.supabase.co: the check can't tell the projects apart"
             exit 1
           fi
           status=0
           for view in Preview Preview-dev; do
             file="$dir/$view"
             staging_ref="$(project_ref "$file")"
-            if [ -z "$staging_ref" ]; then
-              echo "::error::NEXT_PUBLIC_SUPABASE_URL in $view is not https://<project>.supabase.co"
+            if ! [[ "$staging_ref" =~ ^[a-z0-9]+$ ]]; then
+              echo "::error::NEXT_PUBLIC_SUPABASE_URL in $view is not one https://<project>.supabase.co"
               status=1
               continue
             fi
@@ -101,19 +143,21 @@ jobs:
               status=1
             fi
             connection="$(grep '^SUPABASE_DB_CONNECTION_STRING=' "$file" || true)"
-            if [ -z "$connection" ] || [ "$connection" = 'SUPABASE_DB_CONNECTION_STRING=""' ]; then
+            if ! has_value "$connection"; then
               echo "::error::SUPABASE_DB_CONNECTION_STRING is not set in $view"
               status=1
             elif [ "$connection" = 'SUPABASE_DB_CONNECTION_STRING="[SENSITIVE]"' ]; then
-              echo "::error::SUPABASE_DB_CONNECTION_STRING in $view is Sensitive, so the check can't read it: save it as a plain variable"
+              echo "::error::SUPABASE_DB_CONNECTION_STRING in $view is a Secret, so the check can't read it: save it as Config"
               status=1
-            elif [[ "$connection" == *"$prod_ref"* ]] || [[ "$connection" != *"$staging_ref"* ]]; then
-              echo "::error::SUPABASE_DB_CONNECTION_STRING in $view is not the database of the project of its NEXT_PUBLIC_SUPABASE_URL, or is the production one"
-              status=1
+            else
+              connection="${connection,,}"
+              if [[ "$connection" == *"$prod_ref"* ]] || ! [[ "$connection" =~ (@db\.${staging_ref}\.supabase\.co[:/]|://postgres\.${staging_ref}[:@]) ]]; then
+                echo "::error::SUPABASE_DB_CONNECTION_STRING in $view is not the database of the project of its NEXT_PUBLIC_SUPABASE_URL, or is the production one"
+                status=1
+              fi
             fi
             for name in SUPABASE_MITO_PSW SUPABASE_KEY; do
-              line="$(grep "^$name=" "$file" || true)"
-              if [ -z "$line" ] || [ "$line" = "$name=\"\"" ]; then
+              if ! has_value "$(grep "^$name=" "$file" || true)"; then
                 echo "::error::$name is not set in $view"
                 status=1
               fi
