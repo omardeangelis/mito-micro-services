@@ -4,7 +4,6 @@ run-name: Update Alerts PROD
 env:
   NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL_PROD }}
   SUPABASE_KEY: ${{ secrets.SUPABASE_KEY_PROD }}
-  CRON_SECRET_KEY: ${{ secrets.CRON_SECRET_KEY }}
 
 on:
   workflow_dispatch:
@@ -13,11 +12,12 @@ on:
     - cron: "17 2 * * *"
 
 jobs:
-  delete-supabase-storage:
+  update-alert:
     # L'esecuzione notturna parte solo con la variabile del repository
-    # ALERT_CRON_ENABLED = true, che si imposta dopo la migrazione di PR2
-    # (runbook G2, passo 8). Senza, lo schedule salta il job anche se il file
-    # arriva su main prima della migrazione. Il lancio a mano funziona sempre.
+    # ALERT_CRON_ENABLED = true, che si imposta dopo la migrazione di PR2 e
+    # dopo una prima esecuzione a mano verde (runbook G2, passo 8). Senza, lo
+    # schedule salta il job anche se il file arriva su main prima della
+    # migrazione. Il lancio a mano non dipende dalla variabile.
     if: github.event_name != 'schedule' || vars.ALERT_CRON_ENABLED == 'true'
     runs-on: ubuntu-latest
     steps:
@@ -31,7 +31,12 @@ jobs:
         run: npm install -g pnpm
       - name: Install dependencies
         run: pnpm install
-      - name: Run update customers and practices script
+      - name: Run update alerts script
+        # The domain of the current production deployment. Only this step gets
+        # the secret
+        env:
+          CRON_SECRET_KEY: ${{ secrets.CRON_SECRET_KEY }}
+          CRON_BASE_URL: https://crm.dbmito.it
         run: pnpm update:alert
       - name: Send Telegram notification
         env:

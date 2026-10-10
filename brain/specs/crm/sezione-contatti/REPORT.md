@@ -18,7 +18,7 @@ links:
 ingested: false
 last_ingested: null
 created: 2026-09-25
-updated: 2026-09-29
+updated: 2026-10-09
 ---
 
 # Review Report: Sezione Contatti — PR1 "Percorsi di creazione sicuri"
@@ -129,7 +129,7 @@ I casi della massiva sono indicati per contenuto, perché la guida operatori e i
 | F15 | MINOR | v2 — lock | `createTask` (`src/server/api/routers/task/POST/index.ts`) | **Comportamento nuovo.** Una riapertura da una pagina caricata prima sostituisce in silenzio un contatto più recente, per esempio il followup del cron. Prima nasceva un duplicato visibile. AC71 regge; la guardia "contatto superato" arriva in PR3 (AC67). | Scriverlo nella descrizione della PR. | sì |
 | F16 | MINOR | v3 — massiva | `src/server/api/routers/task/POST/index.ts:113-120` | Quando due task attive hanno lo stesso `updated_at`, la scelta cambia. La base ordinava in JS al millisecondo e, a parità, seguiva l'ordine fisico delle righe; ora l'ordine è in SQL al microsecondo, poi `id DESC`. Succede solo con duplicati legacy. È documentato. | Una query in sola lettura su prod: clienti con almeno 2 task attive e lo stesso millisecondo. | da decidere |
 | F17 | MINOR | v3 — massiva | `src/server/api/routers/task/_test/bulkHandleTask.db.test.ts` | Nessun test fissa l'ordine per `updated_at` né i pareggi, e mancano i casi 3 e 4 con lo stesso stato o lo stesso operatore, dove le righe di log non si scrivono. | Aggiungere questi test. | da decidere |
-| F18 | MINOR | v6 — errori | `.github/workflows/update-alert.yml` | **Preesistente.** Il workflow di sviluppo esegue `update:alert:dev`, che chiama `localhost:3000` dal runner di GitHub: fallisce sempre, qualunque cosa faccia il cron. G1 usa `update-alert prod.yml`, che invece è corretto. | Follow-up. | sì |
+| F18 | MINOR | v6 — errori | `.github/workflows/update-alert.yml` | **Preesistente.** Il workflow di sviluppo esegue `update:alert:dev`, che chiama `localhost:3000` dal runner di GitHub: ~~fallisce sempre, qualunque cosa faccia il cron. G1 usa `update-alert prod.yml`, che invece è corretto.~~ *Superato il 2026-10-09: per il codice fallirebbe sempre, ma nessuno degli 8 workflow dei cron risulta mai eseguito (`gh run list`, 0 run). Vale per tutti i workflow di sviluppo, non solo per questo. Quelli di prod, compreso `update-alert prod.yml`, chiamavano `mito-deutsche.vercel.app`, che non risulta fra gli alias del team Vercel (tech-debt, "I workflow dei cron chiamavano indirizzi che non risultano del team").* | Follow-up. | sì |
 
 **NIT**, facoltativi:
 - v1: se il ROLLBACK stesso fallisce, l'errore si perde senza traccia (`db.ts:126`).

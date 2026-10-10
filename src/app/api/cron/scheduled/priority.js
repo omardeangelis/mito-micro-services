@@ -1,13 +1,11 @@
-// richiamo del cron job che elimina i file di export
+// richiamo del cron job che aggiorna la priorità dei task
 import jwt from "jsonwebtoken"
 import dotenv from "dotenv"
+import { cronBaseUrl, cronRequestInit } from "./cronRequest.js"
 dotenv.config()
 
 async function updatePriority() {
-  const baseUrl =
-    process.env.NODE_ENV === "development"
-      ? "http://localhost:3000"
-      : "https://mito-deutsche.vercel.app"
+  const baseUrl = cronBaseUrl()
 
   // Genera il token JWT al volo
   const secret = process.env.CRON_SECRET_KEY
@@ -22,13 +20,10 @@ async function updatePriority() {
     { expiresIn: "5m" } // Scadenza breve
   )
 
-  const response = await fetch(`${baseUrl}/api/cron/priority`, {
-    method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-  })
+  const response = await fetch(
+    `${baseUrl}/api/cron/priority`,
+    cronRequestInit(token)
+  )
 
   if (!response.ok) {
     const body = await response.text().catch(() => "")

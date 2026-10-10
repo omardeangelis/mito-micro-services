@@ -4,7 +4,6 @@ run-name: Update Priority PROD
 env:
   NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL_PROD }}
   SUPABASE_KEY: ${{ secrets.SUPABASE_KEY_PROD }}
-  CRON_SECRET_KEY: ${{ secrets.CRON_SECRET_KEY }}
 
 on:
   workflow_dispatch:
@@ -13,7 +12,7 @@ on:
   #   - cron: "30 1 * * *"
 
 jobs:
-  delete-supabase-storage:
+  update-priority:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -27,6 +26,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install
       - name: Run update priority script
+        # The domain of the current production deployment. Only this step gets
+        # the secret
+        env:
+          CRON_SECRET_KEY: ${{ secrets.CRON_SECRET_KEY }}
+          CRON_BASE_URL: https://crm.dbmito.it
         run: pnpm update:priority
       - name: Send Telegram notification
         env:
