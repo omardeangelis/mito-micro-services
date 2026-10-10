@@ -12,7 +12,7 @@ import {
 import { ne } from "drizzle-orm"
 import { createChatAndMessages } from "./chat"
 import { createTasks } from "./task"
-import { loadEnv } from "@/lib/global/env"
+import { loadEnv } from "@/lib/global/loadDbEnv"
 import postgres from "postgres"
 
 loadEnv()

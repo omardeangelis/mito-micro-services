@@ -41,7 +41,7 @@ Adeguare i workflow esistenti in `.github/workflows/` al layout monorepo e aggiu
 
 ## Step operativi
 
-1. **Workflow cron (8 file)**: gli script npm si sono spostati in `apps/web-legacy/package.json` → sostituire `run: pnpm <script>` con `run: pnpm --filter web-legacy <script>` (oppure `working-directory: apps/web-legacy` sullo step — preferire `--filter`, non richiede di toccare gli step di install). Nota: `loadEnv` carica `.env.${NODE_ENV}.local` dalla cwd; nei runner CI le env arrivano da secrets (non da file), quindi `--filter` è sicuro.
+1. **Workflow cron (8 file)**: gli script npm si sono spostati in `apps/web-legacy/package.json` → sostituire `run: pnpm <script>` con `run: pnpm --filter web-legacy <script>` (oppure `working-directory: apps/web-legacy` sullo step — preferire `--filter`, non richiede di toccare gli step di install). Nota: gli script dei cron leggono `.env` dalla cwd (`dotenv`), e `loadEnv` i file del database; nei runner CI le env arrivano dai secrets (non da file), quindi `--filter` è sicuro.
 2. **`ci.yml`**: stesso trattamento per i tre job (`pnpm --filter web-legacy exec next lint`, `exec tsc --noEmit`, `run test --run`, `run build`). In alternativa passare subito a `pnpm turbo` — equivalente finché c'è un solo package.
 3. **Deploy Vercel**: nessun cambio comando necessario se la Root Directory del progetto Vercel è stata aggiornata (F0.T2). Verificare con un run manuale (`workflow_dispatch` se previsto, o PR di prova per il preview).
 4. **`ci.yml` con turbo**: quando arrivano i nuovi package, far girare lint, test e build con `pnpm turbo` e aggiungere la cache turbo (`.turbo`) con actions/cache. `SKIP_ENV_VALIDATION=true` e i placeholder Supabase della build restano.

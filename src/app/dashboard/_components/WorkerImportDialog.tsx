@@ -13,7 +13,6 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useUserPreferenceContext } from "@/store/context/useUserPreferenceContext"
 import { useImportWorkerContext } from "@/app/_context/ImportWorker"
-import { env } from "@/env"
 import { type ProcessAPIResponse } from "@/app/api/import/_types"
 import { isHeaderError, type HeadersErrorCodes } from "@/lib/types/errors"
 import { type Nullable } from "@/lib/types"
@@ -25,8 +24,6 @@ const errorMap = {
   all: "Tutte le pratiche hanno errori, controlla il file",
   size: "Il file non può essere più grande di 4.4MB",
 } satisfies Record<HeadersErrorCodes | "size", string>
-
-const _baseUrl = env.NEXT_PUBLIC_BASE_URL
 
 export const WorkerImportDialog = () => {
   const baseUrl = window?.location.origin

@@ -2,17 +2,11 @@
 // The config you add here will be used whenever the server handles a request.
 // https://docs.sentry.io/platforms/javascript/guides/nextjs/
 
-import { env } from "@/env"
-import { dropExpectedTrpcErrors } from "@/lib/utils/sentry"
+import { dropExpectedTrpcErrors, sentryInitOptions } from "@/lib/utils/sentry"
 import * as Sentry from "@sentry/nextjs"
 
 Sentry.init({
-  dsn:
-    process.env.NODE_ENV === "production"
-      ? env.NEXT_PUBLIC_SENTRY_DSN
-      : undefined,
-  // "production" or "preview" on Vercel, so preview deployments don't mix with production issues
-  environment: process.env.VERCEL_ENV ?? process.env.NODE_ENV,
+  ...sentryInitOptions,
 
   // Adjust this value in production, or use tracesSampler for greater control
   tracesSampleRate: 1,

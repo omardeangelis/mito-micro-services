@@ -4,7 +4,7 @@ import type * as schema from "../schema/index"
 import { customers } from "../schema/index"
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js"
 import { nanoid } from "nanoid"
-import { loadEnv } from "@/lib/global/env"
+import { loadEnv } from "@/lib/global/loadDbEnv"
 
 loadEnv()
 

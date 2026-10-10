@@ -6,9 +6,15 @@ on:
   push:
     branches:
       - main
+# One deploy at a time, in push order. The last one takes the production
+# domain, unless an Instant Rollback is active in the project
+concurrency: deploy-production
+permissions:
+  contents: read
 jobs:
   Vercel-Deploy-Production:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: pnpm/action-setup@v4
         with:
@@ -24,11 +30,41 @@ jobs:
           git config user.email "omardeangelis.business@gmail.com"
           git config user.name "Omar De Angelis"
           git commit --amend --no-edit --reset-author
+      # The version of the last production deploys, as the staging workflow
       - name: Install Vercel CLI
-        run: pnpm add --global vercel
+        run: pnpm add --global vercel@61.0.0
+      # A .vercel folder in the commit would be merged into what vercel pull
+      # writes
       - name: Pull Vercel Environment Information
-        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          rm -rf .vercel
+          vercel pull --yes --environment=production
+      # The build is production only with VERCEL_ENV=production and without
+      # APP_ENV (src/env.js). `vercel pull` writes VERCEL_ENV when the project
+      # exposes the system env vars. The build stops on a missing production
+      # variable only without SKIP_ENV_VALIDATION
+      - name: Check the build is production
+        run: |
+          file=.vercel/.env.production.local
+          if ! grep -qx 'VERCEL_ENV="production"' "$file"; then
+            echo "::error::vercel pull wrote no VERCEL_ENV=\"production\": turn on Enable access to System Environment Variables in the production project"
+            exit 1
+          fi
+          if grep -q '^APP_ENV=' "$file"; then
+            echo "::error::Remove APP_ENV from the Production variables: it belongs to the staging project, and makes the build staging"
+            exit 1
+          fi
+          if grep -q '^SKIP_ENV_VALIDATION=' "$file"; then
+            echo "::error::Remove SKIP_ENV_VALIDATION from the Production variables: the build would skip the check of the required ones"
+            exit 1
+          fi
+      # Without the token: the build runs the install scripts and the code of
+      # the branch, and needs only what vercel pull wrote
       - name: Build Project Artifacts
-        run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+        run: vercel build --prod
       - name: Deploy Project Artifacts to Vercel
-        run: vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }} 
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: vercel deploy --prebuilt --prod

@@ -10,7 +10,7 @@ import {
 } from "../schema/index"
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js"
 import { eq } from "drizzle-orm"
-import { loadEnv } from "@/lib/global/env"
+import { loadEnv } from "@/lib/global/loadDbEnv"
 
 loadEnv()
 export const createUsersAndOperators = async function seed(

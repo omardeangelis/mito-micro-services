@@ -3,7 +3,7 @@ import type * as schema from "../schema/index"
 import { task, operators, customers } from "../schema/index"
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js"
 import { faker } from "@faker-js/faker"
-import { loadEnv } from "@/lib/global/env"
+import { loadEnv } from "@/lib/global/loadDbEnv"
 
 loadEnv()
 export const createTasks = async function seed(
