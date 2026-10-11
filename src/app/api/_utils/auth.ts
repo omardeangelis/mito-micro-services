@@ -15,8 +15,8 @@ const unauthorized = () =>
  */
 export async function authCheck(request?: Request) {
   const session = await getServerAuthSession()
-  // controllo prima che ci sia la sessione
-  if (session?.user.name) return null
+  // controllo prima che ci sia la sessione: il nome può mancare (login via email)
+  if (session?.user) return null
 
   // controllo che il JWT sia nell'header: tutto quello che segue "Bearer "
   const authHeader = request?.headers.get("Authorization") ?? ""

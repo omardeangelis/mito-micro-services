@@ -1,11 +1,5 @@
 import type * as XLSX from "xlsx"
 import { type Message } from "@/lib/types/schemas"
-import { db } from "@/server/db"
-import { task } from "@/server/db/schema/task"
-import { operators } from "@/server/db/schema/operators"
-import { customers } from "@/server/db/schema/customers"
-import { between, ne, eq, and, isNotNull } from "drizzle-orm"
-import { type DateRangePickerValue } from "@tremor/react"
 import { type ZodIssue } from "zod"
 import { type StandardImportFile, type WaveFile } from "../../import/_types"
 
@@ -48,7 +42,7 @@ export const callSheetHeader = [
   "Numero di telefono",
   "Codice fiscale",
   "Importo finanziato",
-  "Asseganto a",
+  "Assegnato a",
   "Stato chiamate",
   "Data chiamata",
   "Note",
@@ -116,33 +110,6 @@ export const formatFileNameDate = (fileName: string) => {
   const year = date.getFullYear()
   const formattedDate = `${day}-${month}-${year}`
   return `${fileName}-${formattedDate}.xlsx`
-}
-
-export type FetchTask = Awaited<ReturnType<typeof fetchTasks>>
-
-export async function fetchTasks(
-  isAdmin: boolean,
-  operatorId: number | undefined,
-  interval: DateRangePickerValue
-) {
-  const baseQuery = db
-    .select()
-    .from(task)
-    .innerJoin(operators, eq(task.operatorId, operators.id))
-    .innerJoin(customers, eq(task.customerId, customers.id))
-    .orderBy(operators.surname)
-
-  const conditions = [
-    ne(task.state, "nessuno"),
-    isNotNull(task.closedAt),
-    between(task.closedAt, new Date(interval.from!), new Date(interval.to!)),
-  ]
-
-  if (!isAdmin && operatorId) {
-    conditions.push(eq(task.operatorId, operatorId))
-  }
-
-  return await baseQuery.where(and(...conditions))
 }
 
 const concatErrorMessages = (errors: ZodIssue[]): string => {

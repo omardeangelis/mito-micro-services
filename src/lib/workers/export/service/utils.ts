@@ -3,7 +3,7 @@ import type * as XLSX from "xlsx"
 import { type DateRange } from "react-day-picker"
 import { type ZodIssue } from "zod"
 import { type StandardImportFile, type WaveFile } from "./types"
-import { type fetchTasks } from "@/app/api/export/utils"
+import { type ClosedCall } from "@/server/services/export/calls"
 
 const formatFileName = (filename: string, name: string) => {
   if (name === "") return filename
@@ -98,7 +98,7 @@ export const callSheetHeader = [
   "Numero di telefono",
   "Codice fiscale",
   "Importo finanziato",
-  "Asseganto a",
+  "Assegnato a",
   "Stato chiamate",
   "Data assegnazione",
   "Data chiamata",
@@ -124,7 +124,6 @@ export const formatMessages = (messages: Message[]) => {
 }
 
 export const formatTaskClosedAt = (date: Date) => {
-  console.log("date", date)
   const { formattedDate, formattedTime } = formatDates(date)
   return `${formattedDate} ${formattedTime}`
 }
@@ -170,7 +169,19 @@ export const formatFileNameDate = (fileName: string) => {
   return `${fileName}-${formattedDate}.xlsx`
 }
 
-export type FetchTask = Awaited<ReturnType<typeof fetchTasks>>
+/** The rows fetchCall answers with. */
+export type FetchTask = ClosedCall[]
+
+/**
+ * The JSON of the response of the route `name`. A route that refused or
+ * failed (401, 500) throws, instead of handing over a body without the data.
+ */
+export async function readJson<T>(response: Response, name: string) {
+  if (!response.ok) {
+    throw new Error(`${name} answered ${response.status}`)
+  }
+  return (await response.json()) as T
+}
 
 const concatErrorMessages = (errors: ZodIssue[]): string => {
   return errors.map((obj) => obj.message).join(", ")
