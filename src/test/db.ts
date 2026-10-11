@@ -16,6 +16,13 @@ const MIGRATIONS_FOLDER = path.resolve(__dirname, "../server/db/migrations")
  */
 export const LEGACY_SCHEMA_TAG = "20260902181440_nebulous_susan_delgado"
 
+/**
+ * Last of the PR2 migrations (cleanup, unique index, operator realignment).
+ * Their tests migrate from `LEGACY_SCHEMA_TAG` up to here, as `db:migrate:prod`
+ * ran them: a later migration may change the rows they compare.
+ */
+export const CONTATTI_SCHEMA_TAG = "20260929062408_contatti_operator_realign"
+
 /** In-memory Postgres standing in for `@/server/db` in `*.db.test.ts` files. */
 export const testClient = new PGlite()
 export const testDb = drizzle(testClient, { schema })

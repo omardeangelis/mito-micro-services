@@ -4,6 +4,7 @@ import { alert, task } from "@/server/db/schema/task"
 import { taskEventLog } from "@/server/db/schema/taskEventLog"
 import {
   activeTasksOf,
+  CONTATTI_SCHEMA_TAG,
   LEGACY_SCHEMA_TAG,
   migrateUpTo,
   testDb,
@@ -19,7 +20,7 @@ import { runCleanupPreview } from "../../scripts/_test/runCleanupPreview"
 
 // The PR2 migrations on a database already in use, as `db:migrate:prod` will
 // run them: migrated up to the last migration before PR2, seeded with the data
-// they clean up, then migrated to the end in one go.
+// they clean up, then migrated to the last of them in one go.
 
 const at = (day: string) => new Date(`2026-09-${day}T09:00:00.000Z`)
 
@@ -204,7 +205,7 @@ beforeAll(async () => {
     events: await allEvents(),
   }
   preview = await runCleanupPreview()
-  await migrateUpTo()
+  await migrateUpTo(CONTATTI_SCHEMA_TAG)
 })
 
 describe("contatti_cleanup", () => {
