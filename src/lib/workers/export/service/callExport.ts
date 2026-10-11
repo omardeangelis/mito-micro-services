@@ -6,6 +6,7 @@ import {
   formatMessages,
   formatTaskClosedAt,
   getChatIds,
+  readJson,
 } from "./utils"
 import { type Message } from "@/lib/types/schemas"
 import { type DateRangePickerValue } from "@tremor/react"
@@ -19,28 +20,6 @@ export const generateCallWorkbook = async (
 
   const callData = [callSheetHeader]
 
-  const chatIds = getChatIds(result)
-
-  // console.log("callData", callData)
-  const totalMessagesResponse = await fetch(
-    `${baseUrl}/api/export/export/getMessages`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        chatIds,
-      }),
-    }
-  )
-
-  const totalMessages = (await totalMessagesResponse.json()) as {
-    result: Message[]
-  }
-
-  // console.log("result", result)
-
   if (result.length === 0) {
     //se non trovo chiamate nel range specificato, ritorno il workbook con solo gli headers
     const callSheet = XLSX.utils.aoa_to_sheet(callData)
@@ -48,16 +27,20 @@ export const generateCallWorkbook = async (
     return workbook
   }
 
+  const chatIds = getChatIds(result)
+
+  // Customers without a chat have no notes to ask for
+  const totalMessages =
+    chatIds.length > 0 ? await fetchMessages(baseUrl, chatIds) : []
+
   for (const row of result) {
     const customer = row.customers
     const operator = row.operator
     const task = row.task
 
-    const customerMessages = totalMessages.result.filter(
+    const customerMessages = totalMessages.filter(
       (message) => message.chatId === customer.chatId
     )
-
-    console.log("customerMessages", customerMessages)
 
     const formattedCustomerMessages = formatMessages(customerMessages)
 
@@ -82,4 +65,21 @@ export const generateCallWorkbook = async (
   // console.log(" call workbook", workbook)
 
   return workbook
+}
+
+async function fetchMessages(baseUrl: string, chatIds: number[]) {
+  const response = await fetch(`${baseUrl}/api/export/export/getMessages`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      chatIds,
+    }),
+  })
+  const { result } = await readJson<{ result: Message[] }>(
+    response,
+    "getMessages"
+  )
+  return result
 }

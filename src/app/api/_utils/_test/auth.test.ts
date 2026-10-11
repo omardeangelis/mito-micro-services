@@ -53,6 +53,16 @@ describe("authCheck", () => {
     expect(await check(requestWith())).toBe("authorized")
   })
 
+  it("fa passare una sessione il cui utente non ha un nome", async () => {
+    // Who signs in by email has no name until they fill in the profile
+    vi.mocked(getServerAuthSession).mockResolvedValueOnce({
+      user: { id: "u1", name: null, email: "u1@test.local" },
+      expires: "2099-01-01T00:00:00.000Z",
+    } as Session)
+
+    expect(await check()).toBe("authorized")
+  })
+
   it("fa passare il token dei cron firmato con CRON_SECRET_KEY", async () => {
     expect(await check(requestWith(`Bearer ${cronToken()}`))).toBe("authorized")
   })
