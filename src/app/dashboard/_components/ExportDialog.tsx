@@ -35,6 +35,7 @@ import {
   adjustFromAndTo,
   createFilePath,
   type FetchTask,
+  readJson,
 } from "@/lib/workers/export/service/utils"
 import { type FetchDefaultResponse } from "@/app/api/export/[export]/fetchDefault/route"
 import { generateDefaultWorkbook } from "@/lib/workers/export/service/defaultExport"
@@ -283,91 +284,64 @@ export const CompleteDialog = () => {
 
     // setta le ore del from alle 7.00 e le ore del to alle 23.59
     adjustFromAndTo(dateRange)
-    console.log("dateRange", dateRange)
 
-    // console.log("Fetch user info")
-    const userInfoResponse = await fetch(`${baseUrl}/api/auth/user`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    })
-    const userInfo = (await userInfoResponse.json()) as {
-      user: User
-      operator: Operator
-      isAdmin: boolean
-    }
+    const post = (path: string) =>
+      fetch(`${baseUrl}${path}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          interval: dateRange,
+        }),
+      })
 
-    // console.log("userInfo", userInfo)
-
-    const filePath = createFilePath(
-      tabsValue,
-      dateRange,
-      userInfo.isAdmin,
-      userInfo.operator?.surname ?? ""
-    )
-    setStoredFilePath(filePath)
-
-    // console.log("filePath", filePath)
-
+    let filePath: string
     let workbook
+    // Una route che rifiuta o fallisce (401, 500) finisce nel catch
+    try {
+      const userInfoResponse = await fetch(`${baseUrl}/api/auth/user`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      })
+      const userInfo = await readJson<{
+        user: User
+        operator: Operator
+        isAdmin: boolean
+      }>(userInfoResponse, "user")
 
-    if (tabsValue === "default") {
-      // console.log("fetching default")
-      try {
-        const res = await fetch(`${baseUrl}/api/export/export/fetchDefault`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            filePath: filePath,
-            interval: dateRange,
-            tabValue: tabsValue,
-          }),
-        })
+      filePath = createFilePath(
+        tabsValue,
+        dateRange,
+        userInfo.isAdmin,
+        userInfo.operator?.surname ?? ""
+      )
+      setStoredFilePath(filePath)
 
-        const response = (await res.json()) as FetchDefaultResponse
-        const { dbCustomers, dbPractices } = response
-        // console.log("dbCustomers", dbCustomers)
-        console.log("dbPractices", dbPractices)
+      if (tabsValue === "default") {
+        const { dbCustomers, dbPractices } =
+          await readJson<FetchDefaultResponse>(
+            await post("/api/export/export/fetchDefault"),
+            "fetchDefault"
+          )
 
         workbook = generateDefaultWorkbook(dbCustomers, dbPractices)
-        // console.log("workbook", workbook)
-      } catch (error) {
-        console.error("Error fetching default", error)
-        setIsLoading(false)
-        setError("Errore nell'esportazione dei dati")
-        return
-      }
-    } else {
-      // console.log("fetching call")
-      try {
-        const res = await fetch(`${baseUrl}/api/export/export/fetchCall`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            filePath: filePath,
-            interval: dateRange,
-            tabValue: tabsValue,
-          }),
-        })
+      } else {
+        // Di chi sono le chiamate lo decide il server dalla sessione
+        const { result } = await readJson<{ result: FetchTask }>(
+          await post("/api/export/export/fetchCall"),
+          "fetchCall"
+        )
 
-        const response = (await res.json()) as {
-          result: FetchTask
-        }
-        const result = response.result
-
-        // console.log("responsedidio", result)
         workbook = await generateCallWorkbook(baseUrl, result, dateRange)
-      } catch (error) {
-        console.error("Error fetching call", error)
-        setIsLoading(false)
-        setError("Errore nell'esportazione dei dati")
-        return
       }
+    } catch (error) {
+      console.error("Error exporting data", error)
+      setIsLoading(false)
+      setError("Errore nell'esportazione dei dati")
+      return
     }
 
     const saveFileResponse = await saveExport(filePath, workbook)

@@ -5,7 +5,7 @@ links:
   - "[[specs/crm/sezione-contatti/SPEC]]"
   - "[[specs/crm/sezione-contatti/IMPLEMENTATION-NOTES]]"
 created: 2026-09-25
-updated: 2026-09-28
+updated: 2026-10-13
 ---
 
 # Tech debt: Sezione Contatti
@@ -41,7 +41,7 @@ Scoperto nella review di PR1 (F1, seconda verifica), preesistente.
 - `customer.bulkUpdateCustomers` prende, per ogni cliente, la task con `updated_at` più recente fra tutte, attive o no, e la riassegna solo se è `chiamare`.
 - Dopo un followup del cron la più recente è la vecchia task, ora inattiva: il nuovo contatto attivo non cambia operatore. Lo stesso dopo il caso 3 della massiva (esito senza alert). Succedeva già nella base.
 
-**Effetto oggi:** il cliente passa al nuovo operatore, il suo contatto attivo no. La guardia sul `WHERE` indefinito (PR1) evita solo che l'update tocchi tutta la tabella. In prod l'update su tutta la tabella è successo il 28/09/2026: tutte le task a un solo operatore. Il riallineamento all'operatore del cliente è deciso dopo PR2 ([[specs/crm/sezione-contatti/PLAN]], §9, PR2); questa logica poi lo fa divergere di nuovo.
+**Effetto oggi:** il cliente passa al nuovo operatore, il suo contatto attivo no. La guardia sul `WHERE` indefinito (PR1) evita solo che l'update tocchi tutta la tabella. In prod l'update su tutta la tabella è successo il 28/09/2026: tutte le task a un solo operatore. Il riallineamento all'operatore del cliente è in PR2 (T2.5) ([[specs/crm/sezione-contatti/PLAN]], §9, PR2); questa logica poi lo fa divergere di nuovo.
 
 **Da fare fuori da questa spec:** A7 lascia la logica invariata (non-goal). Un seguito può riassegnare la task attiva del cliente, con un criterio di spareggio.
 
@@ -78,15 +78,32 @@ Scoperto nella review di PR1 (F16, F17).
 
 **Da fare:** una query di sola lettura su prod (clienti con almeno 2 task attive nello stesso millisecondo) prima di PR2; i test mancanti in PR3.
 
-## Il workflow di sviluppo del cron alert fallisce sempre
+## I workflow dei cron chiamavano indirizzi che non risultano del team
 
-Scoperto nella review di PR1 (F18), preesistente.
+Preesistente. Il problema dei workflow di sviluppo è F18 della review di PR1; l'indirizzo di quelli di prod è venuto fuori controllando gli alias di Vercel (estratti dei comandi del 2026-10-09 in IMPLEMENTATION-NOTES). Si corregge con `chore/cron-indirizzo` (2026-10-09), quando arriva su `dev` e poi su `main`.
 
-- `.github/workflows/update-alert.yml` esegue `update:alert:dev`, che chiama `localhost:3000` dal runner di GitHub: fallisce qualunque cosa faccia il cron. `update-alert prod.yml` invece è corretto.
+- **Prima:** i workflow di sviluppo, come `update-alert.yml`, eseguivano gli script `:dev`, che chiamano `localhost:3000` dal runner di GitHub: fallirebbero sempre. Nessuno degli 8 workflow dei cron risulta mai eseguito (`gh run list`, 0 run, 2026-10-09). Quelli di prod chiamavano `mito-deutsche.vercel.app`, che non risulta fra gli alias del team Vercel: chi lo serva non è verificato.
+- **Ora:** ogni workflow dei cron chiama l'app in `CRON_BASE_URL`:
+  - quelli di prod `https://crm.dbmito.it`, con `CRON_SECRET_KEY`;
+  - quelli di sviluppo chiameranno lo staging, `https://staging-crm.dbmito.it`, con `STAGING_CRON_SECRET_KEY` e il bypass della protezione di Vercel, quando lo staging ci sarà (vedi **Resta**).
 
-**Effetto oggi:** nessuno, lo schedule è commentato. Lanciato a mano dà un falso rosso.
+  Fuori da GitHub Actions gli script `:dev` chiamano solo il server locale.
 
-**Da fare fuori da questa spec:** puntarlo a un ambiente raggiungibile o toglierlo.
+**Resta:**
+
+- Oggi un lancio dei workflow di prod fallirebbe: su GitHub manca `CRON_SECRET_KEY` (`gh secret list`, 2026-10-09), e gli script si fermano con "Missing CRON_SECRET_KEY" prima di chiamare l'app. Il secret si crea al passo 8 del runbook G2.
+- I workflow di sviluppo funzionano solo con lo staging attivo e i suoi segreti su GitHub. La checklist è in `brain/chore/staging-vercel.md`, che arriva con `chore/staging-vercel`. Senza `STAGING_CRON_SECRET_KEY` lo script si ferma prima di chiamare. Senza `VERCEL_AUTOMATION_BYPASS_SECRET` chiama lo staging, e se il progetto protegge le sue deployment la protezione lo respinge e il job diventa rosso. Che il progetto dello staging le protegga tutte lo controllerà `deploy-staging.yaml`, che arriva con lo stesso branch.
+
+## `CRON_SECRET_KEY` è un secret del repository
+
+Scoperto nella review di `chore/cron-indirizzo` (2026-10-09, v4 sul runbook G2).
+
+- Un secret del repository arriva a ogni workflow lanciato da qualunque ref: `gh workflow run --ref <branch o tag>` esegue i workflow e gli script di quel ref. Un ref con gli script di prima di `chore/cron-indirizzo` firma un token con il segreto di prod e lo manda a `mito-deutsche.vercel.app`.
+- Il runbook G2 toglie quei ref prima di creare il secret (passi 1, 3 e 8). Ma un branch cancellato può tornare: con "Restore branch" su una PR chiusa, o con un `git push` da una copia locale che lo traccia ancora.
+
+**Effetto oggi:** nessuno, il secret non c'è ancora. Dal passo 8 di G2 dipende dal fatto che nessun ref vecchio torni sul remoto.
+
+**Da fare:** `CRON_SECRET_KEY` come secret di un environment GitHub limitato a `main`, con `environment:` sui 4 job di prod, al posto del secret del repository.
 
 ## Test mancanti sull'infrastruttura Effect
 
@@ -108,14 +125,16 @@ Scoperto nello smoke di PR1 sul DB di sviluppo (2026-09-25), preesistente.
 - **`postgres.js` 3.4.4 lancia un'eccezione non gestita** (`TypeError: Cannot redefine property: query`, `connection.js:403`) quando la connessione cade con `ECONNRESET`. In sviluppo Next.js l'ha solo loggata; su Vercel un'eccezione non gestita può chiudere l'invocazione. Stessa versione su `dev`.
 - **Una query su una connessione morta resta appesa** finché il sistema operativo non rinuncia: nello smoke, 8 blocchi di circa 16 minuti, ciascuno finito con `ECONNRESET`. Il client non ha un timeout per query. Su Vercel una query appesa consuma i 60 s e la chiamata finisce con un 504: gli alert già chiusi restano chiusi, `alert.js` ripete la chiamata dopo 10 s e quella prende gli altri.
 - **Un alert può risultare fallito anche se è stato scritto:** se la connessione cade dopo il COMMIT ma prima della risposta (alert 4100 nello smoke). È innocuo: alla chiamata successiva è già risolto e non compare più.
-- **Un alert che fallisce sempre viene segnalato a ogni chiamata** della stessa esecuzione, non una volta per esecuzione (con il batch di PR1 le chiamate possono essere più di una).
-- **Un alert fallito nell'ultima chiamata resta aperto fino all'esecuzione successiva.** Se fallisce in una chiamata con `remaining` > 0, lo riprende la chiamata dopo; se fallisce nell'ultima, `alert.js` non richiama. Con il cron una volta al giorno, un alert di oggi ripreso il giorno dopo conta come "giorno precedente" e perde il followup. Da decidere all'avvio di PR2: nota in [[specs/crm/sezione-contatti/PLAN]] (§9, PR2).
+- **Un alert che fallisce sempre viene segnalato a ogni chiamata** della stessa esecuzione, non una volta per esecuzione (con il batch di PR1 le chiamate possono essere più di una; con T2.7 c'è al massimo un nuovo tentativo senza progressi). Dopo la pulizia di PR2 non ce ne sono: gli unici erano gli alert su task senza cliente (F6), e nessun percorso ne crea di nuovi (nota di PR2 nel PLAN).
+- ~~**Un alert fallito nell'ultima chiamata resta aperto fino all'esecuzione successiva.**~~ Risolto in PR2 (T2.7): `alert.js` richiama dopo 10 s finché un nuovo tentativo chiude qualche alert.
 
 **Effetto oggi:** nessun dato rotto; il job diventa rosso.
 
 **Da fare fuori da questa spec:** aggiornare `postgres` e verificare l'eccezione; valutare un timeout lato client.
 
 ## Il taglio delle date del cron dipende dal fuso del server
+
+**Risolto il 2026-10-13**, insieme a "Il cron non riconosce gli alert di oggi in ora legale": il limite è il giorno italiano di `now`, passato come `YYYY-MM-DD`, e la query taglia la scadenza con `AT TIME ZONE 'Europe/Rome'`. Non dipende più dal fuso del processo né da quello della sessione del DB. Provato in sola lettura sul DB di sviluppo, con `drizzle` e `postgres.js` come nell'app e il processo in `Europe/Rome`, `UTC`, `America/New_York` e `Asia/Tokyo`: le stesse 34 righe della query di prima. In quella prova nemmeno il limite nel formato di prima (`'YYYY-MM-DD 00:00:00'`) è stato convertito: la conversione descritta qui sotto non si è ripetuta.
 
 Scoperto nello smoke di PR1, preesistente (uguale nella base).
 
@@ -136,3 +155,49 @@ Misurata nello smoke di PR1.
 **Effetto oggi:** con il batch di PR1 il cron non si ferma a metà; la latenza decide solo quante chiamate servono.
 
 **Da fare:** controllare la region nelle impostazioni del progetto Vercel; se è lontana dal DB, spostarla su `fra1` (decisione a parte, tocca tutta l'app). Il `SET TRANSACTION ISOLATION` separato è un giro su 7: si può togliere se il default del DB è già `read committed`.
+
+## `db:generate` cambia ogni volta il default di `customers.id`
+
+Scoperto in T2.3 (PR2), preesistente.
+
+- `customers.id` ha `.default(nanoid())`: il valore si calcola una volta, quando si carica lo schema. `drizzle-kit` lo vede come un default letterale diverso a ogni esecuzione e aggiunge `ALTER TABLE "mito-deutsche_customers" ALTER COLUMN "id" SET DEFAULT '<letterale>'` a ogni migrazione generata.
+- Le migrazioni `20260615235953` e `20260619152227` l'hanno applicato. In `20260902181440` e in quella di T2.3 la riga è stata tolta a mano; lo snapshot invece registra il nuovo letterale.
+
+**Effetto oggi:** nessuno sui dati, finché gli insert di `customers` passano l'id. Un insert senza id prenderebbe il letterale fisso, e il secondo fallirebbe per chiave duplicata.
+
+**Da fare fuori da questa spec:** `$defaultFn(() => nanoid())` al posto di `.default(nanoid())`, che genera l'id in JavaScript e non tocca il DB; poi una migrazione che toglie il default letterale.
+
+## Il cron non riconosce gli alert di oggi in ora legale
+
+**Risolto il 2026-10-13 (deciso da Leonardo).** `processDueAlerts` confronta i giorni in `Europe/Rome`: "oggi" è il giorno italiano di `now`, e un alert è di oggi se la sua scadenza cade in quel giorno. Anche la query taglia la scadenza in `Europe/Rome`, senza appoggiarsi al fuso della sessione. `isDueToday` e `formatDate` non ci sono più. Test in `processDueAlerts.db.test.ts`: ora legale, ora solare, i due giorni del cambio (25/10/2026 e 28/03/2027), una scadenza a un'ora qualsiasi, e un'esecuzione di sera, quando in Italia è già il giorno dopo quello UTC. Passano con il processo in quattro fusi diversi; con il codice di prima, in UTC, ne fallivano quattro. Sul DB di sviluppo, il 13/10: 23 alert del giorno riconosciuti, 0 con la regola di prima su un server in UTC.
+
+Non ripara il passato: gli alert del giorno chiusi senza followup fino al deploy restano chiusi (in prod 316 al 2026-10-11, di cui 236 su contatti attivi rimasti senza alert).
+
+Scoperto nella review di PR2 (v9), preesistente: le formule di data sono quelle della base.
+
+- Le scadenze scelte dall'interfaccia (date picker, `CustomerAlertCreator`) sono la mezzanotte del browser: 22:00 UTC del giorno prima in ora legale, 23:00 UTC in ora solare. Sul DB di sviluppo: 5.710 scadenze alle 22:00 UTC, 6.727 alle 23:00 UTC, 2 ad altre ore.
+- La query prende l'alert il giorno giusto (`DATE(deadline)` nella sessione `Europe/Rome`), ma `isDueToday` (`src/server/services/contact/processDueAlerts.ts`) aggiunge un'ora sola alla scadenza e confronta le date in UTC. In ora legale un alert di oggi risulta "giorno precedente": viene chiuso senza followup.
+
+**Effetto fino al deploy della correzione:** da fine marzo al 25 ottobre il cron non crea followup per gli alert creati dall'interfaccia.
+
+~~**Da fare fuori da PR2 (decisione di Omar):** confrontare le date nel fuso `Europe/Rome`, per esempio con l'helper di A4, con un test sui due cambi d'ora. Cambia il comportamento del cron, che nella SPEC è un non-goal: serve una decisione esplicita.~~ Fatto. Il giorno italiano si calcola dentro `processDueAlerts.ts`: quando T3.1 crea `time.ts` (A4), il cron può prenderlo da lì.
+
+## Gli indici di PR2 per Contatti non servono ancora nessuna query
+
+Scoperto nella review di PR2 (v2, prima e seconda verifica). Riguarda `task_priority_active_idx` e `task_operator_active_idx`.
+
+- L'indice è `priority DESC NULLS LAST WHERE is_active`. La lista Contatti (T5.1) ordina per `priority IS NULL, priority <dir>, id <dir>`, un ordine che nessun indice su `priority` da solo può servire. Anche con `priority DESC NULLS LAST` coprirebbe solo il verso decrescente. Nessuna query di oggi lo usa.
+- `task_operator_active_idx` (`operator_id WHERE is_active`): le query di oggi che filtrano per operatore (export chiamate, `getTasksToExport`, contatori) non filtrano `is_active`, quindi non lo usano. In T5.1 servirebbe solo il filtro `operatorIds` sui contatti attivi, non "Solo i miei" (D8).
+- Costo: gli update di `priority` e di `operator_id` non sono più HOT (poco, con 75.000 task).
+
+**Effetto oggi:** nessuno sui risultati.
+
+**Da fare:** in PR5 (T5.1). Misurare con `EXPLAIN ANALYZE` una pagina di default, una filtrata per operatore e una "Solo i miei". Poi tenere, ridisegnare o togliere i due indici, con una sola migrazione. T5.13 lo controlla.
+
+## Il ramo che fallisce della guardia di `contatti_cleanup` è provato solo su PGlite
+
+Scoperto nella review di PR2 (v7).
+
+- La guardia (operatore di sistema mancante con alert da chiudere) e l'annullamento delle tre migrazioni sono testati su PGlite. La prova sul DB di sviluppo copre solo il ramo riuscito.
+
+**Effetto oggi:** nessuno. Il passo 2 del runbook G2 verifica l'operatore di sistema prima della migrazione.

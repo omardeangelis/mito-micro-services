@@ -1,13 +1,11 @@
-// richiamo del cron job che pulisce il task_event_log piu vecchio della retention
+// richiamo del cron job che pulisce il task_event_log più vecchio della retention
 import jwt from "jsonwebtoken"
 import dotenv from "dotenv"
+import { cronBaseUrl, cronRequestInit } from "./cronRequest.js"
 dotenv.config()
 
 async function fetchCleanupTaskEventLog() {
-  const baseUrl =
-    process.env.NODE_ENV === "development"
-      ? "http://localhost:3000"
-      : "https://mito-deutsche.vercel.app"
+  const baseUrl = cronBaseUrl()
 
   // Genera il token JWT al volo
   const secret = process.env.CRON_SECRET_KEY
@@ -22,13 +20,10 @@ async function fetchCleanupTaskEventLog() {
     { expiresIn: "5m" } // Scadenza breve
   )
 
-  const response = await fetch(`${baseUrl}/api/cron/cleanupTaskEventLog`, {
-    method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-  })
+  const response = await fetch(
+    `${baseUrl}/api/cron/cleanupTaskEventLog`,
+    cronRequestInit(token)
+  )
 
   if (!response.ok) {
     const body = await response.text().catch(() => "")

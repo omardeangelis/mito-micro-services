@@ -44,6 +44,29 @@ const config = {
         checksVoidReturn: { attributes: false },
       },
     ],
+    // loadEnv loads the production credentials: never in a module Next.js
+    // bundles, only in the database scripts (overrides below). The patterns
+    // take every static import of its module, loadDbEnv, and of the seeds and
+    // database scripts, which call it on import, by alias, relative or src/
+    // path; a dynamic import() or a direct dotenv call escapes them. `next
+    // lint` checks src/ only
+    "no-restricted-imports": [
+      "error",
+      {
+        patterns: [
+          {
+            group: ["**/loadDbEnv", "**/loadDbEnv.*"],
+            message:
+              "loadDbEnv loads the production credentials: only the database scripts import it",
+          },
+          {
+            group: ["**/seeds", "**/seeds/**", "**/db/scripts/**"],
+            message:
+              "The seeds and the database scripts load the production credentials on import: the app never imports them",
+          },
+        ],
+      },
+    ],
     "prettier/prettier": [
       "error",
       {
@@ -54,6 +77,17 @@ const config = {
       },
     ],
   },
+  overrides: [
+    {
+      files: [
+        "drizzle.config.ts",
+        "src/server/db/seeds/**",
+        "src/server/db/scripts/**",
+        "src/lib/global/_test/loadDbEnv.test.ts",
+      ],
+      rules: { "no-restricted-imports": "off" },
+    },
+  ],
 }
 
 module.exports = config

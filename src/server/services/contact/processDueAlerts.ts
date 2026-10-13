@@ -28,25 +28,27 @@ export class SystemOperatorMissing extends Data.TaggedError(
 
 type DueAlert = { task: Task; alert: Alert }
 
-// Dates are compared in the server's time zone (UTC on Vercel), as always
+// The cron's days are the days in Italy. The app saves a deadline as midnight
+// there, 22:00 or 23:00 UTC of the day before: in the time zone of the server
+// (UTC on Vercel) or of the database session it can fall on another day.
 
-function formatDate(date: Date) {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, "0") // Mesi partono da 0
-  const day = String(date.getDate()).padStart(2, "0")
-  return `${year}-${month}-${day} 00:00:00`
+const italianDayFormat = new Intl.DateTimeFormat("en-US", {
+  timeZone: "Europe/Rome",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+})
+
+/** The day `date` falls on in Italy, as `YYYY-MM-DD`. */
+function italianDay(date: Date) {
+  const parts = italianDayFormat.formatToParts(date)
+  const part = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((each) => each.type === type)?.value
+  return `${part("year")}-${part("month")}-${part("day")}`
 }
 
-/** Whether the alert falls due today, rather than on an earlier day. */
-function isDueToday(deadline: Date, today: Date) {
-  // Set both dates to 10 AM, adding 1 hour to deadline first
-  const normalizedToday = new Date(today)
-  normalizedToday.setHours(10, 0, 0, 0)
-  const normalizedDeadline = new Date(deadline)
-  normalizedDeadline.setHours(normalizedDeadline.getHours() + 1)
-  normalizedDeadline.setHours(10, 0, 0, 0)
-  return normalizedToday.getTime() === normalizedDeadline.getTime()
-}
+/** The day an alert falls due in Italy, whatever the session's time zone. */
+const deadlineDay = sql`DATE(${alerts.deadline} AT TIME ZONE 'Europe/Rome')`
 
 /**
  * Resolves one alert. Due today, the customer gets a `followup` contact for
@@ -55,7 +57,7 @@ function isDueToday(deadline: Date, today: Date) {
  */
 const processAlert = (
   { task, alert }: DueAlert,
-  today: Date,
+  today: string,
   systemOperatorId: number
 ): Effect.Effect<"processed" | "skipped", DbError | CustomerMissing, Db | Tx> =>
   Effect.gen(function* () {
@@ -80,7 +82,7 @@ const processAlert = (
       source: "cron_alert",
     } as const
 
-    if (isDueToday(alert.deadline, today)) {
+    if (italianDay(alert.deadline) === today) {
       // La nuova task attiva non deve nascere agganciata all'alert che stiamo
       // risolvendo: altrimenti getActiveAlerts lo ripesca e lo mostra
       // in "Attivo" come scaduto, duplicandolo con lo Storico. L'alert resta
@@ -159,9 +161,7 @@ export const processDueAlerts = (
     )
     if (!systemOperator) return yield* new SystemOperatorMissing()
 
-    const today = new Date(now)
-    today.setHours(0, 0, 0, 0)
-    const todayFormatted = formatDate(today)
+    const today = italianDay(now)
 
     const rows = yield* query((client) =>
       client
@@ -173,7 +173,7 @@ export const processDueAlerts = (
             eq(alerts.isResolved, false),
             eq(alerts.taskId, tasks.id),
             sql`${alerts.id} IS NOT NULL`,
-            sql`DATE(${alerts.deadline}) <= ${todayFormatted}`
+            sql`${deadlineDay} <= ${today}`
           )
         )
         // Today's first: taken on a later day, an alert counts as earlier-day

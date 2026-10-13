@@ -2,7 +2,7 @@
 import * as schema from "../schema/index"
 import { customerToPratica, customers, practices } from "../schema/index"
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js"
-import { loadEnv } from "@/lib/global/env"
+import { loadEnv } from "@/lib/global/loadDbEnv"
 
 loadEnv()
 

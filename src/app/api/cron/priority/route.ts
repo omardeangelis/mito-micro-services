@@ -1,6 +1,5 @@
 import * as Sentry from "@sentry/nextjs"
 import { type NextRequest, NextResponse } from "next/server"
-import { loadEnv } from "@/lib/global/env"
 import { and, eq, not } from "drizzle-orm"
 import { db } from "@/server/db"
 import { alert as alerts, task } from "@/server/db/schema/task"
@@ -9,8 +8,6 @@ import { customerToPratica } from "@/server/db/schema/relations/customerToPratic
 import { calculatePriority, type TaskPriority } from "@/lib/utils/priority"
 import { splitArray } from "../../import/_utils"
 import { authCheck } from "../../_utils/auth"
-
-loadEnv()
 
 export const dynamic = "force-dynamic"
 export const maxDuration = 60

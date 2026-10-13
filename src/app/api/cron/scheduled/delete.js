@@ -1,13 +1,11 @@
 // richiamo del cron job che elimina i file di export
 import jwt from "jsonwebtoken"
 import dotenv from "dotenv"
+import { cronBaseUrl, cronRequestInit } from "./cronRequest.js"
 dotenv.config()
 
 async function fetchDeleteExportFiles() {
-  const baseUrl =
-    process.env.NODE_ENV === "development"
-      ? "http://localhost:3000"
-      : "https://mito-deutsche.vercel.app"
+  const baseUrl = cronBaseUrl()
 
   // Genera il token JWT al volo
   const secret = process.env.CRON_SECRET_KEY
@@ -22,13 +20,10 @@ async function fetchDeleteExportFiles() {
     { expiresIn: "5m" } // Scadenza breve
   )
 
-  const response = await fetch(`${baseUrl}/api/cron/delete`, {
-    method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-  })
+  const response = await fetch(
+    `${baseUrl}/api/cron/delete`,
+    cronRequestInit(token)
+  )
   // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 
   if (!response.ok) {

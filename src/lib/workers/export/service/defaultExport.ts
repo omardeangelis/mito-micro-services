@@ -1,6 +1,7 @@
 import { getProductLabel, type ProductMapKey } from "@/lib/constants/productMap"
 import { type Customer, type Practice } from "@/lib/types/schemas"
 import * as XLSX from "xlsx"
+import { amountCell, dateCell, numberCell } from "./cells"
 
 export const generateDefaultWorkbook = (
   dbCustomers: Customer[],
@@ -19,12 +20,12 @@ export const generateDefaultWorkbook = (
             item.age,
             item.email,
             item.phoneNumber,
-            item.birthdayDate,
+            dateCell(item.birthdayDate),
             item.address,
             item.cap,
             item.comune,
             item.provincia,
-            item.reddito,
+            amountCell(item.reddito),
             item.occupazione,
             item.ambitoLavorativo,
           ]),
@@ -41,16 +42,17 @@ export const generateDefaultWorkbook = (
           ...dbPractices.map((item) => {
             const product = getProductLabel(item.productId as ProductMapKey)
             return [
+              // In the order of practicesSheetHeader
               item.praticaId,
-              item.importoErogato,
-              item.importoFinanziato,
+              amountCell(item.importoFinanziato),
+              amountCell(item.importoErogato),
               item.rateTotali,
               item.ratePagate,
-              item.importoRata,
-              item.debitoResiduo,
-              item.dataLiquidazione,
-              item.importoRichiesto,
-              item.tassoPratica,
+              amountCell(item.importoRata),
+              amountCell(item.debitoResiduo),
+              dateCell(item.dataLiquidazione),
+              amountCell(item.importoRichiesto),
+              numberCell(item.tassoPratica),
               item.paymentMethod,
               item.state,
               product,

@@ -5,7 +5,7 @@ import { practices } from "../schema/index"
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js"
 import { generateRandomProductKey } from "../../../lib/constants/productMap"
 import { stateEnum } from "../schema/pratiche"
-import { loadEnv } from "@/lib/global/env"
+import { loadEnv } from "@/lib/global/loadDbEnv"
 
 loadEnv()
 

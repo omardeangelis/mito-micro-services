@@ -50,3 +50,108 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 - Moved 5 CRM design/analysis docs → `chore/crm/`; `migration_plan.md` + `migration/` (15 files) → `chore/`; 2 HTML deliverables → `raw/assets/`
 - Rewrote `docs/…` path references; added `domain:` frontmatter (`crm`, `platform`); `docs/` removed
 - Nothing ingested into `domains/` yet — run `create-spec` from a `chore/crm/` draft, then `docs-maintenance`
+
+## [2026-09-29] review | Sezione Contatti — PR2 "Pulizia e vincolo DB"
+- Report: [[specs/crm/sezione-contatti/REPORT]] (round PR2)
+- Scope: spec
+- Verdict: DO NOT SHIP (prima verifica)
+- Impact: critical
+- Verifiers: 9 (2 blockers, 8 major)
+
+## [2026-09-29] review | Sezione Contatti — PR2, verifiche successive
+- Report: [[specs/crm/sezione-contatti/REPORT]] (round PR2)
+- Scope: spec
+- Verdict: SHIP (dopo le correzioni)
+- Impact: critical
+- Verifiers: 3 nella seconda verifica, poi 4 su v9 (0 blocker aperti)
+
+## [2026-09-29] review | Sezione Contatti — PR2, runbook G2 senza via libera degli admin
+- Report: [[specs/crm/sezione-contatti/REPORT]] (round PR2, Verifiche successive)
+- Scope: spec
+- Verdict: SHIP (dopo le correzioni)
+- Impact: critical
+- Verifiers: 1, in due passate (2 major, poi 0)
+
+## [2026-10-09] review | Staging su Vercel, accesso fuori produzione, Sentry solo in prod
+- Report: [[review/staging-accesso-sentry/REPORT]]
+- Scope: standalone
+- Verdict: DO NOT SHIP
+- Impact: critical
+- Verifiers: 7 (2 blocker, 6 major)
+
+## [2026-10-09] review | Indirizzo dei cron da `CRON_BASE_URL`
+- Report: [[review/cron-base-url/REPORT]]
+- Scope: standalone
+- Verdict: DO NOT SHIP
+- Impact: critical
+- Verifiers: 6 (1 blocker, 8 major, più 1 major già presente in `authCheck`)
+
+## [2026-10-09] review | Staging su Vercel, accesso fuori produzione, Sentry solo in prod — secondo giro
+- Report: [[review/staging-accesso-sentry/REPORT]] (secondo giro)
+- Scope: standalone
+- Verdict: DO NOT SHIP
+- Impact: critical
+- Verifiers: 9 (3 blocker, 3 major)
+
+## [2026-10-09] review | Indirizzo dei cron da `CRON_BASE_URL` — secondo giro
+- Report: [[review/cron-base-url/REPORT]] (secondo giro)
+- Scope: standalone
+- Verdict: DO NOT SHIP
+- Impact: critical
+- Verifiers: 6 (1 blocker, 2 major); più 1 verificatore sulla correzione di `authCheck` (SHIP)
+
+## [2026-10-09] review | Indirizzo dei cron da `CRON_BASE_URL` — terzo giro
+- Report: [[review/cron-base-url/REPORT]] (terzo giro)
+- Scope: standalone
+- Verdict: DO NOT SHIP
+- Impact: critical
+- Verifiers: 5 rilanciati su 6 (1 blocker, 1 major)
+
+## [2026-10-09] review | Staging su Vercel, accesso fuori produzione, Sentry solo in prod — terzo giro
+- Report: [[review/staging-accesso-sentry/REPORT]] (terzo giro)
+- Scope: standalone
+- Verdict: DO NOT SHIP
+- Impact: critical
+- Verifiers: 6 rilanciati su 9 (3 major); durante il giro il proprietario sposta lo staging sul progetto Vercel `staging-mito-micro-services`
+
+## [2026-10-09] review | Indirizzo dei cron da `CRON_BASE_URL` — quarto giro
+- Report: [[review/cron-base-url/REPORT]] (quarto giro)
+- Scope: standalone
+- Verdict: DO NOT SHIP
+- Impact: critical
+- Verifiers: 3 rilanciati su 6 (2 major, tutte e due nei testi)
+
+## [2026-10-09] review | Staging su Vercel, accesso fuori produzione, Sentry solo in prod — quarto giro
+- Report: [[review/staging-accesso-sentry/REPORT]] (quarto giro)
+- Scope: standalone
+- Verdict: DO NOT SHIP
+- Impact: critical
+- Verifiers: 4 rilanciati su 9 (1 major); durante il giro il proprietario porta lo staging sull'ambiente Production del suo progetto, distinto con `APP_ENV=staging`
+
+## [2026-10-09] review | Indirizzo dei cron da `CRON_BASE_URL` — quinto giro
+- Report: [[review/cron-base-url/REPORT]] (quinto giro)
+- Scope: standalone
+- Verdict: DO NOT SHIP
+- Impact: critical
+- Verifiers: 2 rilanciati su 6 (2 major, tutte e due nei testi: protezione dei progetti senza fonte, indirizzo "sbagliato" non provato)
+
+## [2026-10-09] review | Staging su Vercel, accesso fuori produzione, Sentry solo in prod — quinto giro
+- Report: [[review/staging-accesso-sentry/REPORT]] (quinto giro)
+- Scope: standalone
+- Verdict: SHIP (prima: DO NOT SHIP)
+- Impact: critical
+- Verifiers: 5 rilanciati su 9 sul deploy `--prod` con `APP_ENV=staging` (0 blocker, 0 major); arriva su `dev` dopo `chore/cron-indirizzo` e dopo G2
+
+## [2026-10-09] review | Indirizzo dei cron da `CRON_BASE_URL` — sesto giro
+- Report: [[review/cron-base-url/REPORT]] (sesto giro)
+- Scope: standalone
+- Verdict: DO NOT SHIP
+- Impact: critical
+- Verifiers: 3 rilanciati su 6 (v3 e v4 SHIP; v6 con 2 major, tutte e due nella voce di tech-debt sul secret del repository: titolo al presente, premesse senza fonte)
+
+## [2026-10-09] review | Staging su Vercel, accesso fuori produzione, Sentry solo in prod — sesto giro
+- Report: [[review/staging-accesso-sentry/REPORT]] (sesto giro)
+- Scope: standalone
+- Verdict: DO NOT SHIP (prima: SHIP)
+- Impact: critical
+- Verifiers: 5 rilanciati su 9 (v3, v4, v5, v6 SHIP; v8 con 1 major nella checklist: il controllo di `/monitoring` non può fallire)

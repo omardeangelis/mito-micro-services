@@ -20,7 +20,7 @@ last_updated: 2026-06-11
 - **62 file** in `src/` importano da `@/server/db` (instance `db` e/o file di schema). I principali gruppi: router tRPC (`src/server/api/routers/**`), route API (`src/app/api/{import,export,cron,operator,auth}/**`), server actions e componenti (`src/app/dashboard/**`), seeds/test.
 - `src/server/db/index.ts` (singleton) e `src/server/db/schema/` sono stati spostati via in F1.T2 — questo task ripara tutti i consumer.
 - `src/server/auth.ts:43` ha la copia locale del `pgTableCreator`.
-- `src/env.js` valida `SUPABASE_DB_CONNECTION_STRING` ma **non** `SUPABASE_MITO_PSW` né `PREVIEW_DB_PSW` (letti raw in `src/server/db/index.ts` e `drizzle.config.ts`).
+- `src/env.js` valida `SUPABASE_DB_CONNECTION_STRING` e `SUPABASE_MITO_PSW`, letti raw in `src/server/db/index.ts` e `drizzle.config.ts`. *(Al 2026-10-09; prima `SUPABASE_MITO_PSW` non era validata, e c'era `PREVIEW_DB_PSW`.)*
 
 ## Strategia di sostituzione
 
@@ -28,17 +28,16 @@ Mantenere il modulo `@/server/db` come **facade locale** così i 62 consumer del
 
 ```ts
 // apps/web-legacy/src/server/db/index.ts  (nuovo contenuto)
+// Senza loadEnv: l'app usa le variabili che Next.js carica, e solo gli script
+// del database possono importarlo (ESLint no-restricted-imports)
 import { createDb } from "@mito/db"
-import { loadEnv } from "@/lib/global/env"
-
-loadEnv()
 
 // Fallback temporaneo: rimosso in F1.T5/T6 a cutover avvenuto
 const url =
   process.env.DATABASE_URL ??
   withPassword(
-    process.env.PREVIEW_DB ?? process.env.SUPABASE_DB_CONNECTION_STRING!,
-    process.env.PREVIEW_DB_PSW ?? process.env.SUPABASE_MITO_PSW!
+    process.env.SUPABASE_DB_CONNECTION_STRING!,
+    process.env.SUPABASE_MITO_PSW!
   )
 
 export const db = createDb(url, {

@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 import * as schema from "../schema/index"
 import { drizzle } from "drizzle-orm/postgres-js"
-import { loadEnv } from "@/lib/global/env"
+import { loadEnv } from "@/lib/global/loadDbEnv"
 import postgres from "postgres"
 
 loadEnv()

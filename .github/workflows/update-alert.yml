@@ -4,7 +4,6 @@ run-name: Update Alerts
 env:
   NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
   SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
-  CRON_SECRET_KEY: ${{ secrets.CRON_SECRET_KEY }}
   
 on:
   workflow_dispatch:
@@ -13,7 +12,7 @@ on:
   #   - cron: "0 3 * * *"
 
 jobs:
-  delete-supabase-storage:
+  update-alert:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -26,7 +25,13 @@ jobs:
         run: npm install -g pnpm
       - name: Install dependencies
         run: pnpm install
-      - name: Run update customers and practices script
+      - name: Run update alerts script
+        # Staging: its own secret, and the bypass of Vercel's protection. Only
+        # this step gets them
+        env:
+          CRON_SECRET_KEY: ${{ secrets.STAGING_CRON_SECRET_KEY }}
+          CRON_BASE_URL: https://staging-crm.dbmito.it
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
         run: pnpm update:alert:dev
       - name: Send Telegram notification
         env:

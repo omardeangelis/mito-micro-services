@@ -16,6 +16,9 @@ async function handler(req: NextRequest) {
       chatIds: number[]
     }>(req.body)
 
+    // inArray rejects an empty list
+    if (request.chatIds.length === 0) return NextResponse.json({ result: [] })
+
     // console.log("request: ", req.body)
     // query that extracts every message present in the chatIds array
     const totalMessages = await db
@@ -31,11 +34,10 @@ async function handler(req: NextRequest) {
   } catch (error) {
     console.error("copy error", error)
     Sentry.captureException(error)
-    return NextResponse.json({
-      error: "Error exporting messages",
-      filePath: null,
-      message: null,
-    })
+    return NextResponse.json(
+      { error: "Error exporting messages", filePath: null, message: null },
+      { status: 500 }
+    )
   }
 }
 

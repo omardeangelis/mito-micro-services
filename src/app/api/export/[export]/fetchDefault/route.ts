@@ -7,6 +7,7 @@ import { between } from "drizzle-orm"
 import { type Practice, type Customer } from "@/lib/types/schemas"
 import { type NextRequest, NextResponse } from "next/server"
 import { parseReadableStream } from "@/lib/utils/api"
+import { authCheck } from "@/app/api/_utils/auth"
 
 // export async function handleDefaultExport(
 //   interval: DateRangePickerValue,
@@ -19,6 +20,10 @@ export type FetchDefaultResponse = {
 }
 
 async function handler(req: NextRequest) {
+  // auth check
+  const authResponse = await authCheck()
+  if (authResponse) return authResponse
+
   try {
     const { request } = await parseReadableStream<{
       interval: DateRangePickerValue
@@ -61,11 +66,10 @@ async function handler(req: NextRequest) {
   } catch (error) {
     console.error("copy error", error)
     Sentry.captureException(error)
-    return NextResponse.json({
-      message: null,
-      filePath: null,
-      error: "Error exporting data",
-    })
+    return NextResponse.json(
+      { message: null, filePath: null, error: "Error exporting data" },
+      { status: 500 }
+    )
   }
 }
 

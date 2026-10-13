@@ -4,16 +4,22 @@ run-name: Update Customers and Pratices PROD
 env:
   NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL_PROD }}
   SUPABASE_KEY: ${{ secrets.SUPABASE_KEY_PROD }}
-  CRON_SECRET_KEY: ${{ secrets.CRON_SECRET_KEY }}
 
 on:
   workflow_dispatch:
-  # schedule:  # disabilitato su ambiente di test
-  #   # Esecuzione alle 00:00 UTC (01:00 CET) ogni giorno
-  #   - cron: "0 0 * * *"
+  schedule:
+    # Ogni giorno alle 00:17 UTC: 02:17 in Italia d'estate, 01:17 d'inverno.
+    # Terzo dei cron di prod. Non prima delle 00:00 UTC: la route prende il
+    # giorno dal server, in UTC, che fino ad allora è quello prima di quello
+    # italiano
+    - cron: "17 0 * * *"
 
 jobs:
-  delete-supabase-storage:
+  update-customer-practices:
+    # Come il cron degli alert, l'esecuzione notturna parte solo con la variabile
+    # del repository ALERT_CRON_ENABLED = true (runbook G2, passo 8): prima,
+    # lo schedule salta il job. Il lancio a mano non dipende dalla variabile.
+    if: github.event_name != 'schedule' || vars.ALERT_CRON_ENABLED == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -27,6 +33,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install
       - name: Run update customers and practices script
+        # The domain of the current production deployment. Only this step gets
+        # the secret
+        env:
+          CRON_SECRET_KEY: ${{ secrets.CRON_SECRET_KEY }}
+          CRON_BASE_URL: https://crm.dbmito.it
         run: pnpm update:pratices
       - name: Send Telegram notification
         env:

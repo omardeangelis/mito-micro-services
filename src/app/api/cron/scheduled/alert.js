@@ -1,36 +1,23 @@
-// // richiamo del cron job degli alert
+// richiamo del cron job degli alert
 
 import { setTimeout } from "node:timers/promises"
 import jwt from "jsonwebtoken"
 import dotenv from "dotenv"
+import { cronBaseUrl, cronRequestInit } from "./cronRequest.js"
 dotenv.config()
 
-/** @param {string} secret */
-async function fetchAlerts(secret) {
-  const baseUrl =
-    process.env.NODE_ENV === "development"
-      ? "http://localhost:3000"
-      : "https://mito-deutsche.vercel.app"
-
+/**
+ * @param {string} secret
+ * @returns {string}
+ */
+function cronToken(secret) {
   // Genera il token JWT al volo
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-  const token = jwt.sign(
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+  return jwt.sign(
     { role: "cronjob", timestamp: Date.now() }, // Payload minimo
     secret,
     { expiresIn: "5m" } // Scadenza breve
   )
-
-  // LOG su telegram
-  // await sendTelegramMessage(
-  //   `RESPONSE: ${JSON.stringify(response)} || TOKEN: ${token} || SECRET: ${secret} || BASEURL: ${baseUrl} || NODE_ENV: ${process.env.NODE_ENV}`
-  // )
-  return fetch(`${baseUrl}/api/cron/alert`, {
-    method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`, // Aggiunge il JWT nell'header
-    },
-  })
 }
 
 /**
@@ -38,13 +25,16 @@ async function fetchAlerts(secret) {
  * get through the alerts: Vercel's time limit (504), another server error, a
  * network error, or a run that failed as a whole.
  *
+ * @param {string} baseUrl
  * @param {string} secret
- * @returns {Promise<{ failed?: number, remaining?: number } | undefined>}
+ * @returns {Promise<{ processed?: number, failed?: number, remaining?: number } | undefined>}
  */
-async function callRoute(secret) {
+async function callRoute(baseUrl, secret) {
+  // A request the script can't build fails the same way on every call
+  const init = cronRequestInit(cronToken(secret))
   let response
   try {
-    response = await fetchAlerts(secret)
+    response = await fetch(`${baseUrl}/api/cron/alert`, init)
   } catch (error) {
     console.error("Request to /api/cron/alert failed:", error)
     return undefined
@@ -57,7 +47,7 @@ async function callRoute(secret) {
     console.error(message)
     return undefined
   }
-  /** @type {{ failed?: number, remaining?: number, error?: string }} */
+  /** @type {{ processed?: number, failed?: number, remaining?: number, error?: string }} */
   // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
   const body = await response.json()
   // Printed in the GitHub Actions log: found, processed, skipped, failed,
@@ -69,30 +59,41 @@ async function callRoute(secret) {
 // Each call stops taking alerts before Vercel's time limit: the script calls
 // again while some are left, up to this many calls
 const MAX_CALLS = 20
-// After a call that didn't get through the alerts, the ones it left are still
-// open: the script waits this long and calls again, so today's get their
-// followup today
+// After a call that didn't get through the alerts, or that got through with some
+// failed, the ones left are still open: the script waits this long and calls
+// again, so today's get their followup today
 const RETRY_DELAY_MS = 10_000
 
 const updateAlert = async () => {
   try {
+    const baseUrl = cronBaseUrl()
     const secret = process.env.CRON_SECRET_KEY
     if (!secret) {
       throw new Error("Missing CRON_SECRET_KEY environment variable")
     }
-    let failed = false
+    let retryingFailed = false
     for (let call = 1; call <= MAX_CALLS; call++) {
-      const body = await callRoute(secret)
+      const body = await callRoute(baseUrl, secret)
       if (body === undefined) {
         await setTimeout(RETRY_DELAY_MS)
         continue
       }
-      failed ||= (body.failed ?? 0) > 0
-      if ((body.remaining ?? 0) === 0) {
-        // Failed alerts turn the job red, once the others are done
-        if (failed) process.exit(1)
+      if ((body.remaining ?? 0) > 0) {
+        // The next call takes the ones left, failed ones included: it is not a
+        // retry of failed alerts
+        retryingFailed = false
+        continue
+      }
+      // Every call takes all the open alerts again: one that gets through them
+      // with none failed leaves none behind
+      if ((body.failed ?? 0) === 0) return
+      // Failed alerts turn the job red once retrying them closes none
+      if (retryingFailed && (body.processed ?? 0) === 0) {
+        process.exit(1)
         return
       }
+      retryingFailed = true
+      await setTimeout(RETRY_DELAY_MS)
     }
     console.error(`Alerts still left after ${MAX_CALLS} calls`)
     process.exit(1)
@@ -103,36 +104,3 @@ const updateAlert = async () => {
 }
 
 await updateAlert()
-
-/**
- * @param {string} message
- */
-// async function sendTelegramMessage(message) {
-//   const botToken = process.env.TELEGRAM_BOT_TOKEN
-//   const chatId = process.env.TELEGRAM_CHAT_ID
-
-//   if (!botToken || !chatId) {
-//     console.error("Telegram bot token or chat ID is missing")
-//     return
-//   }
-
-//   const url = `https://api.telegram.org/bot${botToken}/sendMessage`
-
-//   try {
-//     const response = await fetch(url, {
-//       method: "POST",
-//       headers: { "Content-Type": "application/json" },
-//       body: JSON.stringify({
-//         chat_id: chatId,
-//         text: message,
-//       }),
-//     })
-
-//     if (!response.ok) {
-//       const errorResponse = await response.text()
-//       console.error("Error sending Telegram message:", errorResponse)
-//     }
-//   } catch (error) {
-//     console.error("Error in sendTelegramMessage:", error)
-//   }
-// }

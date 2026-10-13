@@ -3,7 +3,7 @@ import * as schema from "../schema/index"
 import { drizzle } from "drizzle-orm/postgres-js"
 
 import { createUsersAndOperators } from "./users"
-import { loadEnv } from "@/lib/global/env"
+import { loadEnv } from "@/lib/global/loadDbEnv"
 import postgres from "postgres"
 
 loadEnv()
