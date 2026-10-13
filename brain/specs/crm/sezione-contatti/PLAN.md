@@ -691,7 +691,7 @@ Branch suggerito: `contatti/pr2-vincolo-db`. Contiene migrazioni, uno script di 
      - impronta di `task.updated_at` uguale a quella del passo 5, presa allo stesso modo (senza le task ridatate, se ce n'erano). Se è diversa, `SELECT count(*), min(updated_at), max(updated_at) FROM "mito-deutsche_task" WHERE updated_at >= '<ora dell'impronta, passo 5>'`:
        - poche righe, a orari diversi: è l'uso dell'app, e si va avanti. Prima si salva accanto agli export il risultato di `SELECT id, customer_id, updated_at FROM "mito-deutsche_task" WHERE updated_at >= '<ora dell'impronta, passo 5>' ORDER BY updated_at`: per quei clienti (a) può non essere esatta;
        - decine di migliaia allo stesso istante: la migrazione ha toccato `updated_at`. Ci si ferma come sopra;
-  7. contare gli alert scaduti ancora aperti, divisi fra giorni precedenti e oggi: servono per l'avviso agli operatori (query F8 di G1). `current_date` è la data italiana della sessione, mentre il cron usa quella UTC: i numeri sono indicativi:
+  7. contare gli alert scaduti ancora aperti, divisi fra giorni precedenti e oggi: servono per l'avviso agli operatori (query F8 di G1). `current_date` è la data italiana della sessione, la stessa che usa il cron dal 2026-10-13:
      ```sql
      SELECT count(*) FILTER (WHERE a.deadline::date < current_date) AS earlier_days,
             count(*) FILTER (WHERE a.deadline::date = current_date) AS today
@@ -810,14 +810,20 @@ Branch suggerito: `contatti/pr2-vincolo-db`. Contiene migrazioni, uno script di 
   on:
     workflow_dispatch:
     schedule:
-      # Ogni giorno alle 02:17 UTC: 04:17 in Italia d'estate, 03:17 d'inverno
-      - cron: "17 2 * * *"
+      # Ogni giorno alle 23:17 UTC: 01:17 in Italia d'estate, 00:17 d'inverno.
+      # Non prima: il cron lavora per il giorno in cui gira in Italia, e prima
+      # della mezzanotte italiana (23:00 UTC d'inverno) sarebbe quello che finisce
+      - cron: "17 23 * * *"
   ```
   - **Perché GitHub Actions e non il cron di Vercel:** il workflow esegue `alert.js`, che richiama finché `remaining` è 0 e ripete le chiamate che non arrivano in fondo (T1.5). Il job diventa rosso se un alert fallisce, e il messaggio Telegram parte solo con il job verde (e solo con i suoi secret, vedi il passo 9 di T2.4). Il cron di Vercel (`crons` in `vercel.json`) invece:
     - manda il segreto in chiaro (`Bearer <CRON_SECRET>`), che `authCheck` rifiuta perché vuole il JWT firmato da `alert.js`;
     - fa una sola chiamata e non la ripete se fallisce;
     - vede riuscita ogni chiamata, perché la route risponde 200 anche quando fallisce: gli errori restano solo nei log e in Sentry.
-  - **Orario:** 02:17 UTC. A quell'ora la data è la stessa in UTC, dove la route calcola il limite degli alert, e in Italia. Il minuto 17 evita l'inizio dell'ora, quando GitHub è più carico e ritarda gli `schedule`. Il commento di oggi ("00:00 UTC (01:00 CET)" per `0 2 * * *`) era sbagliato.
+  - **Orario:** 23:17 UTC, cioè 01:17 in Italia d'estate e 00:17 d'inverno. Deciso da Leonardo il 2026-10-13: dopo la mezzanotte italiana, ma prima delle 02:17 UTC scelte il 29/09 (04:17 e 03:17 in Italia).
+    - È l'ora più presto che cade dopo la mezzanotte italiana tutto l'anno: d'inverno la mezzanotte è alle 23:00 UTC. Il cron lavora per il giorno in cui gira in Italia. Un'ora prima, d'inverno, sarebbe ancora il giorno che finisce: gli alert del giorno dopo resterebbero aperti fino alla notte seguente, e il followup arriverebbe agli operatori con un giorno di ritardo.
+    - A quell'ora il giorno in UTC è quello prima di quello italiano. L'orario regge solo con il confronto dei giorni in `Europe/Rome` (2026-10-13, T2.4), che arriva su `main` con lo stesso merge.
+    - GitHub fa partire uno `schedule` all'ora scritta o più tardi, mai prima: un ritardo non lo porta sul giorno sbagliato.
+    - Il minuto 17 evita l'inizio dell'ora, quando GitHub è più carico e ritarda gli `schedule`. Il commento di oggi ("00:00 UTC (01:00 CET)" per `0 2 * * *`) era sbagliato.
   - **Quando parte (rivisto dopo la review di PR2, 2026-09-29):** GitHub usa il file su `main`. Qualunque merge `dev` → `main` dopo il merge di PR2 su `dev` lo porterebbe lì, anche prima della sessione G2 (un hotfix, PR4, o il deploy di PR1 se PR2 entrasse in `dev` prima, contro l'ordine dei merge di T2.4). Per questo il job ha una guardia: un'esecuzione `schedule` parte solo se la variabile del repository `ALERT_CRON_ENABLED` vale `true`.
     ```yaml
     if: github.event_name != 'schedule' || vars.ALERT_CRON_ENABLED == 'true'
@@ -826,8 +832,8 @@ Branch suggerito: `contatti/pr2-vincolo-db`. Contiene migrazioni, uno script di 
   - Restano manuali `update-alert.yml` (chiama lo staging, `staging-crm.dbmito.it`, e funziona solo con lo staging attivo e i suoi segreti: vedi il tech-debt) e i workflow di prod fuori da questa spec (`priority-prod.yml`, `delete-storage prod.yml`, `update-customer-practices prod.yml`). Con `chore/cron-indirizzo` tutti chiamano l'app in `CRON_BASE_URL`.
 - **validation**: nessun test automatico, è configurazione. Nel runbook G2 (T2.4, passo 9): la mattina dopo la sessione, su GitHub Actions c'è un'esecuzione di Update Alerts PROD con evento `schedule`, verde, con l'ultimo JSON a `remaining: 0`, e il messaggio Telegram è arrivato se ci sono i suoi secret.
 - **status**: Done (la verifica è il passo 9 del runbook G2)
-- **log**: 2026-09-29 — `schedule` riattivato con `cron: "17 2 * * *"` e il commento corretto; `workflow_dispatch` resta. Il file si legge come YAML valido (`on` = `workflow_dispatch` + `schedule`). Nessun test automatico: è configurazione. Nome del job (`delete-supabase-storage`) e dello step invariati, fuori perimetro. *Corretti il 2026-10-09 con `chore/cron-indirizzo`, insieme a quelli degli altri workflow dei cron: job `update-alert`, step "Run update alerts script".* **Dopo la review (BLOCKER di v9):** guardia `ALERT_CRON_ENABLED` sul job. Il ramo di default è `main`, il workflow è attivo, e la variabile oggi non esiste (`gh variable list` vuoto).
-- **files edited/created**: `.github/workflows/update-alert prod.yml`
+- **log**: 2026-09-29 — `schedule` riattivato con `cron: "17 2 * * *"` e il commento corretto; `workflow_dispatch` resta. Il file si legge come YAML valido (`on` = `workflow_dispatch` + `schedule`). Nessun test automatico: è configurazione. Nome del job (`delete-supabase-storage`) e dello step invariati, fuori perimetro. *Corretti il 2026-10-09 con `chore/cron-indirizzo`, insieme a quelli degli altri workflow dei cron: job `update-alert`, step "Run update alerts script".* **Dopo la review (BLOCKER di v9):** guardia `ALERT_CRON_ENABLED` sul job. Il ramo di default è `main`, il workflow è attivo, e la variabile oggi non esiste (`gh variable list` vuoto). **2026-10-13 — orario spostato** da `17 2 * * *` a `17 23 * * *`, deciso da Leonardo. I test di `processDueAlerts` girano all'ora dello `schedule` (23:17 UTC) in ora legale, in ora solare e nei due cambi d'ora, con un caso a un'ora prima in ora solare, dove l'alert del giorno dopo resta aperto. Gli altri workflow dei cron restano senza `schedule`.
+- **files edited/created**: `.github/workflows/update-alert prod.yml`, `src/server/services/contact/_test/processDueAlerts.db.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a (D6)
