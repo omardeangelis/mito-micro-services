@@ -28,10 +28,11 @@ jobs:
         with:
           node-version-file: package.json
           cache: "pnpm"
-      - name: Install pnpm
-        run: npm install -g pnpm
+      # pnpm is the one of packageManager, from pnpm/action-setup. The cron
+      # scripts need only plain JavaScript packages: no install scripts, so
+      # nothing native is built
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --frozen-lockfile --ignore-scripts
       - name: Run update customers and practices script
         # The domain of the current production deployment. Only this step gets
         # the secret
@@ -43,5 +44,6 @@ jobs:
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        # The response names the bot and the chat: only its status is logged
         run: |
-          curl -s -X POST https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage -d chat_id=${{ secrets.TELEGRAM_CHAT_ID }} -d text="PROD: Cron job ran and updated customers and practices."
+          curl -s -o /dev/null -w "Telegram: HTTP %{http_code}\n" -X POST https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage -d chat_id=${{ secrets.TELEGRAM_CHAT_ID }} -d text="PROD: Cron job ran and updated customers and practices."
