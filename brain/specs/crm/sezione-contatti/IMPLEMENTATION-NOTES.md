@@ -8,7 +8,7 @@ links:
 ingested: false
 last_ingested: null
 created: 2026-09-25
-updated: 2026-10-09
+updated: 2026-10-13
 ---
 
 # Implementation Notes
@@ -169,7 +169,7 @@ updated: 2026-10-09
 | AC69 (PR2) | Met nel codice; in prod dopo G2 | Pulizia provata su PGlite e sul DB di sviluppo (7 clienti con duplicati → 0) |
 | AC70 (PR2) | Met nel codice; in prod dopo G2 | 1.183 alert chiusi dal sistema sul DB di sviluppo; nessuna riga in `task_event_log` |
 | AC71, parte DB (PR2) | Met nel codice; in prod dopo G2 | Indice unico parziale; definizione ricontrollata in prod al passo 6 del runbook |
-| AC72 (PR2) | Met | Cron e massiva invariati. `isDueToday` in ora legale è preesistente (tech-debt) |
+| AC72 (PR2) | Met | Cron e massiva invariati in PR2. `isDueToday` in ora legale era preesistente: corretto a parte il 2026-10-13 (Steering) |
 
 ## Remaining Work
 
@@ -183,7 +183,7 @@ updated: 2026-10-09
   Runbook aggiornato in T1.8, §12 e nella descrizione della PR.
 - **Riallineamento degli operatori delle task:** terza migrazione di PR2 (T2.5).
 - **Esecuzione notturna del cron alert:** lo `schedule` di `update-alert prod.yml`, riattivato in PR2 (T2.6, 02:17 UTC), parte solo con la variabile `ALERT_CRON_ENABLED = true`. Il runbook G2 è un'unica sessione fuori orario: porta PR2 su `main` (passo 4), estrae l'elenco come traccia e applica la migrazione (passo 5), e imposta la variabile al passo 8.
-- **Cron in ora legale (da decidere con Omar):** `isDueToday` non riconosce gli alert di oggi da fine marzo al 25 ottobre, e li chiude senza followup. Preesistente, fuori perimetro di PR2 (tech-debt). O una PR a sé prima di G2, o l'avviso agli operatori al passo 8.
+- ~~**Cron in ora legale (da decidere con Omar):** `isDueToday` non riconosce gli alert di oggi da fine marzo al 25 ottobre, e li chiude senza followup. Preesistente, fuori perimetro di PR2 (tech-debt). O una PR a sé prima di G2, o l'avviso agli operatori al passo 8.~~ Corretto il 2026-10-13, deciso da Leonardo: il cron confronta i giorni in `Europe/Rome` (tech-debt). Resta da decidere cosa fare degli alert del giorno già chiusi senza followup.
 - **`task_priority_active_idx`:** da ridisegnare in PR5 (T5.1) sulla query vera.
 
 ## Steering
@@ -205,3 +205,4 @@ updated: 2026-10-09
 | 2026-09-29 | Alert falliti nell'ultima chiamata: la modifica di `alert.js` entra in PR2; il job resta verde se un nuovo tentativo chiude gli alert falliti | Nota di PR2 smarcata (dopo T2.2 non nascono nuovi alert F6); nuovo T2.7 |
 | 2026-09-29 | Dopo l'adversarial review di PR2: risolvere i BLOCKER | Guardia `ALERT_CRON_ENABLED` sullo `schedule` (al posto di disattiva/riattiva), `retryingFailed` azzerato, runbook G2 riscritto, test rinforzati; `isDueToday` in ora legale e indice di priorità nel tech-debt |
 | 2026-09-29 | Niente via libera degli admin sull'estrazione; PR2 in `dev` solo dopo PR1 su `main` | SPEC (AC70, Constraints: "Pulizia tracciata"); runbook G2 (T2.4): l'estrazione si esegue nella sessione, dopo il merge e subito prima della migrazione, e si conserva come traccia e lista per il rollback; sessione ai passi 3–8, numeri 6–9 invariati |
+| 2026-10-13 | Correggere `isDueToday` adesso, prima di G2 (Leonardo) | `processDueAlerts` confronta i giorni in `Europe/Rome`, nel codice e nella query; test sull'ora legale, sull'ora solare e sui due cambi d'ora. Aggiornati il runbook G2 (T2.4: passi 1, 2 e 8), §13 e il tech-debt (due voci risolte) |
