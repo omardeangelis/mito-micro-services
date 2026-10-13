@@ -7,12 +7,17 @@ env:
 
 on:
   workflow_dispatch:
-  # schedule:  # disabilitato su ambiente di test
-  #   # Esecuzione alle 00:00 UTC (01:00 CET) ogni giorno
-  #   - cron: "30 0 * * *"
+  schedule:
+    # Ogni giorno alle 00:47 UTC: 02:47 in Italia d'estate, 01:47 d'inverno.
+    # Ultimo dei cron di prod
+    - cron: "47 0 * * *"
 
 jobs:
   delete-supabase-storage:
+    # Come il cron degli alert, l'esecuzione notturna parte solo con la variabile
+    # del repository ALERT_CRON_ENABLED = true (runbook G2, passo 8): prima,
+    # lo schedule salta il job. Il lancio a mano non dipende dalla variabile.
+    if: github.event_name != 'schedule' || vars.ALERT_CRON_ENABLED == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

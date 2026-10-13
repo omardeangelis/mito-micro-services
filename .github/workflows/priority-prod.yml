@@ -7,12 +7,18 @@ env:
 
 on:
   workflow_dispatch:
-  # schedule:  # disabilitato su ambiente di test
-  #   # Esecuzione alle 00:00 UTC (01:00 CET) ogni giorno
-  #   - cron: "30 1 * * *"
+  schedule:
+    # Ogni giorno alle 23:17 UTC: 01:17 in Italia d'estate, 00:17 d'inverno.
+    # Primo dei cron di prod, mezz'ora prima di quello degli alert: dopo,
+    # porterebbe a 1 la priorità dei followup appena creati
+    - cron: "17 23 * * *"
 
 jobs:
   update-priority:
+    # Come il cron degli alert, l'esecuzione notturna parte solo con la variabile
+    # del repository ALERT_CRON_ENABLED = true (runbook G2, passo 8): prima,
+    # lo schedule salta il job. Il lancio a mano non dipende dalla variabile.
+    if: github.event_name != 'schedule' || vars.ALERT_CRON_ENABLED == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

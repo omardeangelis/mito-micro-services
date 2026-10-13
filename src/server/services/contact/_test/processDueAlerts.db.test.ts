@@ -91,7 +91,7 @@ describe("processDueAlerts a tempo", () => {
 })
 
 // The app saves a deadline as midnight in Italy: 22:00 UTC of the day before
-// in summer time, 23:00 UTC in winter time. The schedule runs at 23:17 UTC,
+// in summer time, 23:00 UTC in winter time. The schedule runs at 23:47 UTC,
 // past midnight in Italy all year, when the UTC day is still the one before
 describe("processDueAlerts: il giorno è quello italiano", () => {
   const BUDGET_MS = 60_000
@@ -107,22 +107,22 @@ describe("processDueAlerts: il giorno è quello italiano", () => {
   }
 
   it.each([
-    ["in ora legale", "2026-10-11T22:00:00.000Z", "2026-10-11T23:17:00.000Z"],
-    ["in ora solare", "2026-11-09T23:00:00.000Z", "2026-11-09T23:17:00.000Z"],
+    ["in ora legale", "2026-10-11T22:00:00.000Z", "2026-10-11T23:47:00.000Z"],
+    ["in ora solare", "2026-11-09T23:00:00.000Z", "2026-11-09T23:47:00.000Z"],
     [
       "il giorno in cui torna l'ora solare",
       "2026-10-24T22:00:00.000Z",
-      "2026-10-24T23:17:00.000Z",
+      "2026-10-24T23:47:00.000Z",
     ],
     [
       "il giorno in cui torna l'ora legale",
       "2027-03-27T23:00:00.000Z",
-      "2027-03-27T23:17:00.000Z",
+      "2027-03-27T23:47:00.000Z",
     ],
     [
       "a un'ora qualsiasi della giornata",
       "2026-10-12T21:59:00.000Z",
-      "2026-10-11T23:17:00.000Z",
+      "2026-10-11T23:47:00.000Z",
     ],
     [
       "lanciato a mano di giorno",
@@ -144,8 +144,8 @@ describe("processDueAlerts: il giorno è quello italiano", () => {
   )
 
   it.each([
-    ["in ora legale", "2026-10-10T22:00:00.000Z", "2026-10-11T23:17:00.000Z"],
-    ["in ora solare", "2026-11-08T23:00:00.000Z", "2026-11-09T23:17:00.000Z"],
+    ["in ora legale", "2026-10-10T22:00:00.000Z", "2026-10-11T23:47:00.000Z"],
+    ["in ora solare", "2026-11-08T23:00:00.000Z", "2026-11-09T23:47:00.000Z"],
     [
       "lanciato a mano di giorno",
       "2026-10-10T22:00:00.000Z",
@@ -169,14 +169,14 @@ describe("processDueAlerts: il giorno è quello italiano", () => {
   )
 
   it.each([
-    ["in ora legale", "2026-10-12T22:00:00.000Z", "2026-10-11T23:17:00.000Z"],
-    ["in ora solare", "2026-11-10T23:00:00.000Z", "2026-11-09T23:17:00.000Z"],
+    ["in ora legale", "2026-10-12T22:00:00.000Z", "2026-10-11T23:47:00.000Z"],
+    ["in ora solare", "2026-11-10T23:00:00.000Z", "2026-11-09T23:47:00.000Z"],
     // Why the schedule isn't an hour earlier: in winter time Italy would still
     // be on the day that is ending
     [
       "un'ora prima dello schedule, in ora solare",
       "2026-11-09T23:00:00.000Z",
-      "2026-11-09T22:17:00.000Z",
+      "2026-11-09T22:47:00.000Z",
     ],
   ])("un alert che scade domani resta aperto %s", async (_, deadline, now) => {
     const seeded = await seedAlert(new Date(deadline))
