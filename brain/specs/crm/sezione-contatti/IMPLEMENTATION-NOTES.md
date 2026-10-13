@@ -17,6 +17,7 @@ updated: 2026-10-13
 
 - Run 1 (2026-09-25): solo **PR1 — Percorsi di creazione sicuri** (T1.1 → T1.8), branch `contatti/pr1-creazione-sicura` da `dev`, PR verso `dev`. PR2–PR6 non iniziate.
 - Run 2 (2026-09-29): solo **PR2 — Pulizia e vincolo DB** (T2.1, T2.2, T2.3, T2.5, T2.6, T2.7), branch `contatti/pr2-vincolo-db` da `dev`, PR verso `dev`. T2.4 è il runbook G2: va nella descrizione della PR, lo esegue Omar.
+- **Stato al 2026-10-13:** PR1 e PR2 fatte e in prod (PR1 dal 29/09; PR2 su `main` e migrazioni applicate il 13/10, log di T2.4 nel PLAN). PR3–PR6 da fare: nessun task iniziato.
 
 ## Execution Mode
 
@@ -177,7 +178,7 @@ updated: 2026-10-13
 - **Indice unico e `task.kind`:** deciso di tenere l'indice per cliente in PR2; il passaggio a (cliente, tipo) arriva con il `kind`. Dopo PR2 resta da aggiornare il blocco E1 di [[chore/crm/design-lavorazioni-e-verticali]] (§9). Dettagli nella nota di PR2 del PLAN (§9).
 - **G1 rivisto (2026-09-28):**
   - ~~operatore di sistema da creare in prod~~: creato da Omar il 2026-09-29, id 1021;
-  - PR1 in prod dal 2026-09-29 (PR #7, `75a92e3`), per almeno due giorni lavorativi senza errori: fino a giovedì 1/10 compreso;
+  - PR1 in prod dal 2026-09-29 (PR #7, `75a92e3`), per almeno due giorni lavorativi senza errori: fino a giovedì 1/10 compreso. **Chiuso il 2026-10-13** con la sessione G2; i log di Vercel e Sentry di quel periodo non sono stati letti nella sessione;
   - il cron in prod non si lancia prima di G2. Gli alert scaduti si chiudono tutti con la prima esecuzione dopo la migrazione di PR2 (T2.4, passo 8).
 
   Runbook aggiornato in T1.8, §12 e nella descrizione della PR.

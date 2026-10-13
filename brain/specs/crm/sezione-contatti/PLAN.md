@@ -58,19 +58,19 @@ Serve una sezione **Contatti** (lista e dettaglio) sulle `task`. Le regole di mo
 | Sezione Contatti | Basso sull'esistente | Additiva: nuova route, nuove query di sola lettura | PR5 (una PR) |
 | Clienti semplificata | Medio | Rimozione; va fatta dopo l'adozione | PR6 |
 
-| PR | Passo spec | Outcome verificabile | AC |
-|---|---|---|---|
-| **PR1** Percorsi di creazione sicuri | 1 | Cron alert e 4 casi della massiva danno gli stessi risultati (i test di caratterizzazione sono verdi prima e dopo). Ogni operazione è atomica. Un errore su un cliente non ferma il cron. `createTask` non lascia due contatti attivi | AC71 (codice), AC72 |
-| **PR2** Pulizia e vincolo DB | 1 | Nessun duplicato attivo. Il DB rifiuta un secondo contatto attivo. Nessun alert aperto su contatti non attivi. Elenco dei contatti disattivati e degli alert chiusi estratto subito prima della pulizia, come traccia | AC69, AC70, AC71 (DB) |
-| **PR3** Regole sul server, usate da Clienti | 1 (+ AC66–AC67 anticipati, P1) | Da Clienti e dalla scheda cliente: cambio di stato atomico, modale di conferma per l'alert, operatore invariato, sola lettura con motivo. I permessi D2 li rifiuta il server anche fuori dall'interfaccia. "Crea contatto" nella scheda cliente | regole server di AC27, AC30–AC52; AC66, AC67; AC73 |
-| **PR4** Chat con proprietario esplicito | prerequisito del passo 3 (P2) | Nessun cambiamento visibile: note di Pratiche e scheda cliente identiche; la chat non deduce più dall'URL cosa aggiornare | AC55 (base) |
-| **PR5** Sezione Contatti con note | 2 + 3 (P2) | Lista, filtri, URL, dettaglio, modifiche, note del cliente, "Vedi contatti", guida operatori per Contatti | AC1–AC57, AC62, AC74 (parte Contatti) |
-| **PR6** Clienti semplificata | 4 | Colonne e filtri task rimossi, totale = righe, scheda cliente con riepilogo e "Gestisci contatto", etichette della massiva, guida completata | AC58–AC61, AC63–AC65, AC68, AC74 (parte restante) |
+| PR | Stato | Passo spec | Outcome verificabile | AC |
+|---|---|---|---|---|
+| **PR1** Percorsi di creazione sicuri | **Fatta.** In prod dal 2026-09-29 (PR #5, su `main` con la #7) | 1 | Cron alert e 4 casi della massiva danno gli stessi risultati (i test di caratterizzazione sono verdi prima e dopo). Ogni operazione è atomica. Un errore su un cliente non ferma il cron. `createTask` non lascia due contatti attivi | AC71 (codice), AC72 |
+| **PR2** Pulizia e vincolo DB | **Fatta.** Su `main` e migrazioni applicate in prod il 2026-10-13 (PR #6, su `main` con la #11; G2) | 1 | Nessun duplicato attivo. Il DB rifiuta un secondo contatto attivo. Nessun alert aperto su contatti non attivi. Elenco dei contatti disattivati e degli alert chiusi estratto subito prima della pulizia, come traccia | AC69, AC70, AC71 (DB) |
+| **PR3** Regole sul server, usate da Clienti | Da fare | 1 (+ AC66–AC67 anticipati, P1) | Da Clienti e dalla scheda cliente: cambio di stato atomico, modale di conferma per l'alert, operatore invariato, sola lettura con motivo. I permessi D2 li rifiuta il server anche fuori dall'interfaccia. "Crea contatto" nella scheda cliente | regole server di AC27, AC30–AC52; AC66, AC67; AC73 |
+| **PR4** Chat con proprietario esplicito | Da fare | prerequisito del passo 3 (P2) | Nessun cambiamento visibile: note di Pratiche e scheda cliente identiche; la chat non deduce più dall'URL cosa aggiornare | AC55 (base) |
+| **PR5** Sezione Contatti con note | Da fare | 2 + 3 (P2) | Lista, filtri, URL, dettaglio, modifiche, note del cliente, "Vedi contatti", guida operatori per Contatti | AC1–AC57, AC62, AC74 (parte Contatti) |
+| **PR6** Clienti semplificata | Da fare | 4 | Colonne e filtri task rimossi, totale = righe, scheda cliente con riepilogo e "Gestisci contatto", etichette della massiva, guida completata | AC58–AC61, AC63–AC65, AC68, AC74 (parte restante) |
 
 **Ordine vincolante:**
-1. PR1 in prod, poi almeno una notte di cron senza errori.
-2. La migrazione di PR2 applicata a mano, con l'estrazione conservata subito prima come traccia (T2.4). PR2 entra in `dev` solo dopo che PR1 è su `main`.
-3. PR3 (con l'annuncio agli operatori).
+1. PR1 in prod, poi almeno una notte di cron senza errori. **Fatto:** in prod dal 2026-09-29. La notte di cron è caduta con G1 rivisto il 28/09: il cron di prod non si lanciava prima di G2.
+2. La migrazione di PR2 applicata a mano, con l'estrazione conservata subito prima come traccia (T2.4). PR2 entra in `dev` solo dopo che PR1 è su `main`. **Fatto il 2026-10-13** (log di T2.4).
+3. PR3 (con l'annuncio agli operatori). **È il prossimo passo.**
 4. PR4.
 5. PR5, solo dopo che PR2 è applicata (AC69), e a breve distanza da PR3.
 6. Qualche giorno d'uso, poi PR6.
@@ -214,6 +214,8 @@ Convenzioni valide per tutte le PR:
   - build: `SKIP_ENV_VALIDATION=true pnpm build`, con `NEXT_PUBLIC_SUPABASE_URL` e `SUPABASE_KEY` fittizi se mancano le credenziali.
 
 ### PR1 — Percorsi di creazione sicuri
+
+**Stato: fatta.** In prod dal 2026-09-29; G1 chiuso con la sessione G2 del 2026-10-13 (T1.8).
 
 Branch suggerito: `contatti/pr1-creazione-sicura`. Nessun cambiamento visibile, nessuna migrazione. Introduce l'infrastruttura Effect (T1.4) che usano anche PR3, PR5 e PR6.
 
@@ -448,12 +450,13 @@ Branch suggerito: `contatti/pr1-creazione-sicura`. Nessun cambiamento visibile, 
   - gate verdi;
   - smoke senza regressioni;
   - G1: PR1 in prod per almeno due giorni lavorativi senza errori nei log Vercel né issue nuove in Sentry, e operatore di sistema presente. La prova del cron in prod si sposta dopo la migrazione di PR2 (T2.4, passo 8).
-- **status**: In prod dal 2026-09-29; G1 in corso fino a giovedì 1/10 compreso (Omar)
+- **status**: Done. In prod dal 2026-09-29; G1 chiuso con la sessione G2 del 2026-10-13
 - **log**: Smoke sul DB di sviluppo il 2026-09-25: percorsi senza regressioni; cron con 815 alert, 808 risolti, 8 fallimenti per connessione caduta (isolati, riportati in `failed`), 0,2 s ad alert. La misura ha portato al cron a tempo (IMPLEMENTATION-NOTES).
   - **Deploy (2026-09-29):**
     - passo 2: operatore di sistema creato in prod da Omar alle 13:48 UTC, **id 1021**, verificato in una transazione `READ ONLY`. Mancava dal 19/06: la migrazione di quel giorno ha aggiunto `resolved_by` e il log degli eventi, e con loro il cron che registra come autore l'operatore di sistema, mai creato in prod. L'ultimo blocco di alert chiusi dal cron è del 19/06 e nel log degli eventi non c'è nessuna riga del cron: probabilmente il cron si è fermato per questo (non dimostrato);
     - passo 3: merge `dev` → `main` con la PR #7 (`75a92e3`), che porta anche #2 (Sentry, Effect) e #4 (import). Deploy di produzione verde alle 14:06 UTC, source map caricate su Sentry per server, edge e client. Variabili Sentry su Vercel impostate da Omar prima del merge;
     - passo 5: G1 conta due giorni lavorativi pieni, quindi fino a giovedì 1/10 compreso.
+  - **Chiusura di G1 (2026-10-13):** PR1 è rimasta in prod dal 29/09 al 13/10 e la sessione G2 è stata eseguita (T2.4). Quella sera, in sola lettura: operatore di sistema presente (1021), merge di PR1 (`3ebd720`) nel deploy di produzione. I log di Vercel e le issue di Sentry di quelle due settimane non sono stati letti nella sessione.
 - **files edited/created**: `src/server/services/contact/processDueAlerts.ts`, `src/app/api/cron/alert/route.ts`, `src/app/api/cron/scheduled/alert.js`, `src/server/effect/errorReporter.ts`, test in `src/server/services/contact/_test/processDueAlerts.db.test.ts` e `src/app/api/cron/scheduled/_test/alert.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
@@ -463,6 +466,8 @@ Branch suggerito: `contatti/pr1-creazione-sicura`. Nessun cambiamento visibile, 
 - **assigned_skills**: agent-browser
 
 ### PR2 — Pulizia e vincolo DB
+
+**Stato: fatta.** Su `main` e migrazioni applicate in prod il 2026-10-13, con tutti i controlli del runbook superati (log di T2.4). In coda a T2.4 restano il passo 9, la mattina del 14/10, e gli avvisi a operatori e cliente del passo 8.
 
 Branch suggerito: `contatti/pr2-vincolo-db`. Contiene migrazioni, uno script di sola lettura, lo `schedule` del cron alert in prod (T2.6) e i nuovi tentativi di `alert.js` (T2.7), nessun codice dell'app. Il merge si fa dopo G1; l'applicazione in prod è manuale (G2). Le migrazioni sono tre: pulizia (T2.2), indici (T2.3), riallineamento degli operatori (T2.5). Dopo la migrazione, la prima esecuzione del cron in prod chiude gli alert scaduti (T2.4); da lì il cron gira ogni notte (T2.6).
 
@@ -1840,6 +1845,8 @@ Branch suggerito: `contatti/pr6-clienti`. Il merge si fa solo dopo G5.
 | 8 | T5.4 → T5.5, T5.6 → T5.7, T5.8 → T5.9 → T5.10, T5.11 → T5.12 → T5.13 → **merge PR5** (G4) | PR3 e PR4 in main, G2 fatto |
 | 9 | T6.1–T6.7 → **merge PR6** | G5 |
 
+**Stato al 2026-10-13:** fatti tutti i task di PR1 e PR2 (T1.1–T1.8, T2.1–T2.7), con i due merge e G1 e G2. Delle wave restano i task di PR3–PR6, tutti `Planned`.
+
 Il lavoro di più PR può procedere in parallelo sui branch, ma i **merge** seguono l'ordine vincolante di §3. PR3 e PR5 modificano file che PR1 riscrive (`task/POST/index.ts`) e usano la sua infrastruttura: se partono prima del merge di PR1, si parte dalla **testa del branch di PR1**, non da singoli task. Nei task paralleli di PR3 un solo worker alla volta tocca un dato file di router (`task/*/index.ts`); in alternativa T3.3 → T3.7 si fanno in sequenza.
 
 ## 11. Strategia di test (fase TDD)
@@ -1896,13 +1903,13 @@ Il lavoro di più PR può procedere in parallelo sui branch, ma i **merge** segu
 
 ## 12. Gate di rilascio
 
-| Gate | Quando | Condizione | Chi |
-|---|---|---|---|
-| G1 | Dopo il deploy di PR1 | Rivisto il 2026-09-28 (il cron di prod non gira): operatore di sistema creato in prod; PR1 in prod per almeno due giorni lavorativi di uso normale (riapertura, massiva, "Assegna Clienti") senza righe di livello error nei log Vercel né issue nuove in Sentry. Il cron alert in prod non si lancia prima di G2 (runbook T1.8) | Persona |
-| G2 | Prima di applicare PR2 | Guardia di PR1 nel deploy di prod; prerequisiti in sola lettura (operatore di sistema, `max(created_at)` delle migrazioni, nomi degli indici liberi, nessun trigger, `ALERT_CRON_ENABLED` assente). Poi un'unica sessione fuori orario: controlli ripetuti, merge `dev` → `main` limitato a PR2, estrazione in sola lettura conservata come traccia (senza via libera degli admin, deciso il 2026-09-29), `pnpm db:migrate:prod` lanciato a mano, duplicati = 0, estrazione vuota, indici con la definizione attesa, impronta di `task.updated_at` invariata; poi prima esecuzione del cron lanciata a mano, che chiude gli alert scaduti, verde e controllata su GitHub Actions, Vercel e Sentry, e solo dopo `ALERT_CRON_ENABLED = true`. A fine sessione operatori e cliente (riallineamento) avvisati. La notte dopo, la prima esecuzione pianificata è verde (T2.4) | Omar |
-| G3 | Prima del deploy di PR3 | Operatori e admin informati con il testo di T3.14 | Persona |
-| G4 | Prima del deploy di PR5 | G2 fatto (AC69); `EXPLAIN ANALYZE` ≤ 500 ms; guida T5.11 rivista; PR3 in prod da poco (per il vuoto di riassegnazione singola); Contatti annunciato agli operatori | Persona |
-| G5 | Prima del merge di PR6 | Checklist scritta di un admin: giorni d'uso di Contatti, nessun blocco segnalato (A2) | Persona |
+| Gate | Stato | Quando | Condizione | Chi |
+|---|---|---|---|---|
+| G1 | **Chiuso** il 2026-10-13, con G2 (T1.8) | Dopo il deploy di PR1 | Rivisto il 2026-09-28 (il cron di prod non gira): operatore di sistema creato in prod; PR1 in prod per almeno due giorni lavorativi di uso normale (riapertura, massiva, "Assegna Clienti") senza righe di livello error nei log Vercel né issue nuove in Sentry. Il cron alert in prod non si lancia prima di G2 (runbook T1.8) | Persona |
+| G2 | **Fatto** il 2026-10-13, dalla sessione di Leonardo (T2.4). Restano la prima notte dei cron pianificati, da controllare il 14/10, e gli avvisi | Prima di applicare PR2 | Guardia di PR1 nel deploy di prod; prerequisiti in sola lettura (operatore di sistema, `max(created_at)` delle migrazioni, nomi degli indici liberi, nessun trigger, `ALERT_CRON_ENABLED` assente). Poi un'unica sessione fuori orario: controlli ripetuti, merge `dev` → `main` limitato a PR2, estrazione in sola lettura conservata come traccia (senza via libera degli admin, deciso il 2026-09-29), `pnpm db:migrate:prod` lanciato a mano, duplicati = 0, estrazione vuota, indici con la definizione attesa, impronta di `task.updated_at` invariata; poi prima esecuzione del cron lanciata a mano, che chiude gli alert scaduti, verde e controllata su GitHub Actions, Vercel e Sentry, e solo dopo `ALERT_CRON_ENABLED = true`. A fine sessione operatori e cliente (riallineamento) avvisati. La notte dopo, la prima esecuzione pianificata è verde (T2.4) | Omar |
+| G3 | Aperto | Prima del deploy di PR3 | Operatori e admin informati con il testo di T3.14 | Persona |
+| G4 | Aperto | Prima del deploy di PR5 | G2 fatto (AC69); `EXPLAIN ANALYZE` ≤ 500 ms; guida T5.11 rivista; PR3 in prod da poco (per il vuoto di riassegnazione singola); Contatti annunciato agli operatori | Persona |
+| G5 | Aperto | Prima del merge di PR6 | Checklist scritta di un admin: giorni d'uso di Contatti, nessun blocco segnalato (A2) | Persona |
 
 **Rollback:**
 - PR1: revert del merge **solo prima di G2**. Dopo che l'indice unico è in prod, il revert riporterebbe il "prima inserisci, poi disattiva" nel cron e nella massiva: l'indice li rifiuterebbe (`23505`) e il vecchio `try/catch` unico fermerebbe l'intero cron. Dopo G2 PR1 si corregge solo in avanti, oppure si fa prima `DROP INDEX task_customer_active_uidx`.
