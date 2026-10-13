@@ -21,10 +21,11 @@ jobs:
         with:
           node-version-file: package.json
           cache: "pnpm"
-      - name: Install pnpm
-        run: npm install -g pnpm
+      # pnpm is the one of packageManager, from pnpm/action-setup. The cron
+      # scripts need only plain JavaScript packages: no install scripts, so
+      # nothing native is built
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --frozen-lockfile --ignore-scripts
       - name: Run update customers and practices script
         # Staging: its own secret, and the bypass of Vercel's protection. Only
         # this step gets them

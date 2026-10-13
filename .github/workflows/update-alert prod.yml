@@ -31,10 +31,11 @@ jobs:
         with:
           node-version-file: package.json
           cache: "pnpm"
-      - name: Install pnpm
-        run: npm install -g pnpm
+      # pnpm is the one of packageManager, from pnpm/action-setup. The cron
+      # scripts need only plain JavaScript packages: no install scripts, so
+      # nothing native is built
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --frozen-lockfile --ignore-scripts
       - name: Run update alerts script
         # The domain of the current production deployment. Only this step gets
         # the secret
