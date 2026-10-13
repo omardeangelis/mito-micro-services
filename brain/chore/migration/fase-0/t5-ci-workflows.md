@@ -6,7 +6,7 @@ title: Adeguare la CI esistente al monorepo
 status: not_started
 completed: false
 depends_on: ["F0.T2"]
-last_updated: 2026-09-25
+last_updated: 2026-10-13
 ---
 
 # F0.T5 — CI / GitHub Actions
@@ -21,16 +21,18 @@ Adeguare i workflow esistenti in `.github/workflows/` al layout monorepo e aggiu
 
 | Workflow | Schedule (UTC) | Comando | Ambiente |
 |---|---|---|---|
-| `update-customer-practices prod.yml` | `0 0 * * *` | `pnpm update:pratices` | prod |
-| `delete-storage prod.yml` | `30 0 * * *` | `pnpm delete:export` | prod |
-| `priority-prod.yml` | `30 1 * * *` | `pnpm update:priority` | prod |
-| `update-alert prod.yml` | `0 2 * * *` | `pnpm update:alert` | prod |
+| `priority-prod.yml` | `17 23 * * *` | `pnpm update:priority` | prod |
+| `update-alert prod.yml` | `47 23 * * *` | `pnpm update:alert` | prod |
+| `update-customer-practices prod.yml` | `17 0 * * *` | `pnpm update:pratices` | prod |
+| `delete-storage prod.yml` | `47 0 * * *` | `pnpm delete:export` | prod |
 | `update-customer-practices.yml` | `0 2 * * *` | `pnpm update:pratices:dev` | dev |
 | `delete-storage.yml` | `30 2 * * *` | `pnpm delete:export:dev` | dev |
 | `priority.yml` | `30 3 * * *` | `pnpm update:priority:dev` | dev |
 | `update-alert.yml` | `0 3 * * *` | `pnpm update:alert:dev` | dev |
 
 > Questi schedule sono il riferimento per F2.T6 (cron in-process nel backend Express) e verranno disattivati in F5.T5.
+>
+> Quelli di prod sono del 2026-10-13, in ordine di esecuzione, e partono solo con la variabile del repository `ALERT_CRON_ENABLED`: il perché dell'ordine e degli orari è in T2.6 di `specs/crm/sezione-contatti/PLAN.md`. Quelli di dev (staging) sono commentati nei file: quei workflow si lanciano solo a mano.
 
 ### Deploy e qualità
 
