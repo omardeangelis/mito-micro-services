@@ -8,10 +8,12 @@ env:
 on:
   workflow_dispatch:
   schedule:
-    # Ogni giorno alle 23:17 UTC: 01:17 in Italia d'estate, 00:17 d'inverno.
-    # Non prima: il cron lavora per il giorno in cui gira in Italia, e prima
-    # della mezzanotte italiana (23:00 UTC d'inverno) sarebbe quello che finisce
-    - cron: "17 23 * * *"
+    # Ogni giorno alle 23:47 UTC: 01:47 in Italia d'estate, 00:47 d'inverno.
+    # Dopo la mezzanotte italiana (23:00 UTC d'inverno): il cron lavora per il
+    # giorno in cui gira in Italia, e prima sarebbe quello che finisce.
+    # Secondo dei cron di prod, che girano in fila: priorità (23:17 UTC), alert,
+    # clienti e pratiche (00:17), pulizia degli export (00:47)
+    - cron: "47 23 * * *"
 
 jobs:
   update-alert:
