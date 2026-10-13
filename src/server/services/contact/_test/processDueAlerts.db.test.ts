@@ -14,8 +14,8 @@ import {
 const NOW = new Date("2026-09-25T06:00:00.000Z")
 const EARLIER_DAY = new Date("2026-09-20T08:00:00.000Z")
 
-const run = async (budgetMs: number) => {
-  const exit = await runServer(processDueAlerts(NOW, { budgetMs }))
+const run = async (budgetMs: number, now = NOW) => {
+  const exit = await runServer(processDueAlerts(now, { budgetMs }))
   if (exit._tag === "Failure") throw new Error("processDueAlerts failed")
   return exit.value
 }
@@ -86,6 +86,98 @@ describe("processDueAlerts a tempo", () => {
     expect(active).toMatchObject({ state: "followup" })
     expect(await alertsOf(earlier)).toEqual([
       expect.objectContaining({ id: earlier.alert.id, isResolved: false }),
+    ])
+  })
+})
+
+// The app saves a deadline as midnight in Italy: 22:00 UTC of the day before
+// in summer time, 23:00 UTC in winter time
+describe("processDueAlerts: il giorno è quello italiano", () => {
+  const BUDGET_MS = 60_000
+
+  const stateOf = async ({
+    operator,
+    customer,
+  }: Awaited<ReturnType<typeof seedAlert>>) => {
+    const [active] = await createTestCaller(operator).task.getActiveTask({
+      id: customer.id,
+    })
+    return active?.state
+  }
+
+  it.each([
+    ["in ora legale", "2026-10-11T22:00:00.000Z", "2026-10-12T02:17:00.000Z"],
+    ["in ora solare", "2026-11-09T23:00:00.000Z", "2026-11-10T02:17:00.000Z"],
+    [
+      "il giorno in cui torna l'ora solare",
+      "2026-10-24T22:00:00.000Z",
+      "2026-10-25T02:17:00.000Z",
+    ],
+    [
+      "il giorno in cui torna l'ora legale",
+      "2027-03-27T23:00:00.000Z",
+      "2027-03-28T02:17:00.000Z",
+    ],
+    [
+      "a un'ora qualsiasi della giornata",
+      "2026-10-12T21:59:00.000Z",
+      "2026-10-12T02:17:00.000Z",
+    ],
+    [
+      "quando in Italia è già il giorno dopo quello UTC",
+      "2026-10-12T22:00:00.000Z",
+      "2026-10-12T22:30:00.000Z",
+    ],
+  ])(
+    "un alert che scade oggi crea il followup %s",
+    async (_, deadline, now) => {
+      const seeded = await seedAlert(new Date(deadline))
+
+      expect(await run(BUDGET_MS, new Date(now))).toMatchObject({
+        found: 1,
+        processed: 1,
+      })
+
+      expect(await stateOf(seeded)).toBe("followup")
+    }
+  )
+
+  it.each([
+    ["in ora legale", "2026-10-10T22:00:00.000Z", "2026-10-12T02:17:00.000Z"],
+    ["in ora solare", "2026-11-08T23:00:00.000Z", "2026-11-10T02:17:00.000Z"],
+    [
+      "quando in Italia è già il giorno dopo quello UTC",
+      "2026-10-11T22:00:00.000Z",
+      "2026-10-12T22:30:00.000Z",
+    ],
+  ])(
+    "un alert scaduto ieri si chiude senza followup %s",
+    async (_, deadline, now) => {
+      const seeded = await seedAlert(new Date(deadline))
+
+      expect(await run(BUDGET_MS, new Date(now))).toMatchObject({
+        found: 1,
+        processed: 1,
+      })
+
+      expect(await stateOf(seeded)).toBe("richiamare")
+      expect(await alertsOf(seeded)).toEqual([
+        expect.objectContaining({ id: seeded.alert.id, isResolved: true }),
+      ])
+    }
+  )
+
+  it.each([
+    ["in ora legale", "2026-10-12T22:00:00.000Z", "2026-10-12T02:17:00.000Z"],
+    ["in ora solare", "2026-11-10T23:00:00.000Z", "2026-11-10T02:17:00.000Z"],
+  ])("un alert che scade domani resta aperto %s", async (_, deadline, now) => {
+    const seeded = await seedAlert(new Date(deadline))
+
+    expect(await run(BUDGET_MS, new Date(now))).toMatchObject({ found: 0 })
+
+    expect(await stateOf(seeded)).toBe("richiamare")
+    expect(await alertsOf(seeded)).toEqual([
+      expect.objectContaining({ id: seeded.alert.id, isResolved: false }),
     ])
   })
 })
