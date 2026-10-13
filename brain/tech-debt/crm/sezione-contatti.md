@@ -5,7 +5,7 @@ links:
   - "[[specs/crm/sezione-contatti/SPEC]]"
   - "[[specs/crm/sezione-contatti/IMPLEMENTATION-NOTES]]"
 created: 2026-09-25
-updated: 2026-10-09
+updated: 2026-10-13
 ---
 
 # Tech debt: Sezione Contatti
@@ -134,6 +134,8 @@ Scoperto nello smoke di PR1 sul DB di sviluppo (2026-09-25), preesistente.
 
 ## Il taglio delle date del cron dipende dal fuso del server
 
+**Risolto il 2026-10-13**, insieme a "Il cron non riconosce gli alert di oggi in ora legale": il limite è il giorno italiano di `now`, passato come `YYYY-MM-DD`, e la query taglia la scadenza con `AT TIME ZONE 'Europe/Rome'`. Non dipende più dal fuso del processo né da quello della sessione del DB. Provato in sola lettura sul DB di sviluppo, con `drizzle` e `postgres.js` come nell'app e il processo in `Europe/Rome`, `UTC`, `America/New_York` e `Asia/Tokyo`: le stesse 34 righe della query di prima. In quella prova nemmeno il limite nel formato di prima (`'YYYY-MM-DD 00:00:00'`) è stato convertito: la conversione descritta qui sotto non si è ripetuta.
+
 Scoperto nello smoke di PR1, preesistente (uguale nella base).
 
 - Il cron passa il limite `'YYYY-MM-DD 00:00:00'` come parametro: `postgres.js` lo converte con `new Date(...)` nel fuso del processo. Su un server in `Europe/Rome` diventa `…T22:00:00.000Z` del giorno prima, e il DB lo legge come la data del giorno prima: gli alert di oggi restano fuori.
@@ -167,14 +169,18 @@ Scoperto in T2.3 (PR2), preesistente.
 
 ## Il cron non riconosce gli alert di oggi in ora legale
 
+**Risolto il 2026-10-13 (deciso da Leonardo).** `processDueAlerts` confronta i giorni in `Europe/Rome`: "oggi" è il giorno italiano di `now`, e un alert è di oggi se la sua scadenza cade in quel giorno. Anche la query taglia la scadenza in `Europe/Rome`, senza appoggiarsi al fuso della sessione. `isDueToday` e `formatDate` non ci sono più. Test in `processDueAlerts.db.test.ts`: ora legale, ora solare, i due giorni del cambio (25/10/2026 e 28/03/2027), una scadenza a un'ora qualsiasi, e un'esecuzione di sera, quando in Italia è già il giorno dopo quello UTC. Passano con il processo in quattro fusi diversi; con il codice di prima, in UTC, ne fallivano quattro. Sul DB di sviluppo, il 13/10: 23 alert del giorno riconosciuti, 0 con la regola di prima su un server in UTC.
+
+Non ripara il passato: gli alert del giorno chiusi senza followup fino al deploy restano chiusi (in prod 316 al 2026-10-11, di cui 236 su contatti attivi rimasti senza alert).
+
 Scoperto nella review di PR2 (v9), preesistente: le formule di data sono quelle della base.
 
 - Le scadenze scelte dall'interfaccia (date picker, `CustomerAlertCreator`) sono la mezzanotte del browser: 22:00 UTC del giorno prima in ora legale, 23:00 UTC in ora solare. Sul DB di sviluppo: 5.710 scadenze alle 22:00 UTC, 6.727 alle 23:00 UTC, 2 ad altre ore.
 - La query prende l'alert il giorno giusto (`DATE(deadline)` nella sessione `Europe/Rome`), ma `isDueToday` (`src/server/services/contact/processDueAlerts.ts`) aggiunge un'ora sola alla scadenza e confronta le date in UTC. In ora legale un alert di oggi risulta "giorno precedente": viene chiuso senza followup.
 
-**Effetto oggi:** da fine marzo al 25 ottobre il cron non crea followup per gli alert creati dall'interfaccia. Il runbook G2 (passo 8) lo dice agli operatori, se la sessione è in ora legale.
+**Effetto fino al deploy della correzione:** da fine marzo al 25 ottobre il cron non crea followup per gli alert creati dall'interfaccia.
 
-**Da fare fuori da PR2 (decisione di Omar):** confrontare le date nel fuso `Europe/Rome`, per esempio con l'helper di A4, con un test sui due cambi d'ora. Cambia il comportamento del cron, che nella SPEC è un non-goal: serve una decisione esplicita.
+~~**Da fare fuori da PR2 (decisione di Omar):** confrontare le date nel fuso `Europe/Rome`, per esempio con l'helper di A4, con un test sui due cambi d'ora. Cambia il comportamento del cron, che nella SPEC è un non-goal: serve una decisione esplicita.~~ Fatto. Il giorno italiano si calcola dentro `processDueAlerts.ts`: quando T3.1 crea `time.ts` (A4), il cron può prenderlo da lì.
 
 ## Gli indici di PR2 per Contatti non servono ancora nessuna query
 
