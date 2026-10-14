@@ -66,6 +66,55 @@ export async function failNextInsertInto(
 }
 
 /**
+ * Makes the next UPDATE of a row of `table` fail inside the database, as a
+ * driver error would. With `where` (SQL column → value), only the next row that
+ * matches fails. Later updates go through.
+ */
+export async function failNextUpdateOf(
+  table: PgTable,
+  where: Record<string, string | number> = {}
+) {
+  await addFailpoint({
+    table,
+    when: "BEFORE UPDATE",
+    condition:
+      Object.entries(where)
+        .map(([column, value]) => `NEW."${column}" = ${literal(value)}`)
+        .join(" AND ") || "TRUE",
+    action: `RAISE EXCEPTION 'failpoint: update of % failed', TG_TABLE_NAME;`,
+    once: true,
+  })
+}
+
+/**
+ * Counts the `event` statements on `table` from now on, rows or not: the
+ * returned function reads the count. `resetDb` removes the counter.
+ */
+export async function countStatementsOn(
+  table: PgTable,
+  event: "INSERT" | "UPDATE"
+) {
+  const name = `${FAILPOINT_SCHEMA}.statements_${++count}`
+  await testClient.exec(`
+    CREATE SCHEMA IF NOT EXISTS ${FAILPOINT_SCHEMA};
+    CREATE SEQUENCE ${name}_seq;
+    CREATE FUNCTION ${name}() RETURNS trigger LANGUAGE plpgsql AS $$
+    BEGIN
+      PERFORM nextval('${name}_seq');
+      RETURN NULL;
+    END $$;
+    CREATE TRIGGER statements_${count} AFTER ${event} ON "public"."${getTableName(table)}"
+      FOR EACH STATEMENT EXECUTE FUNCTION ${name}();
+  `)
+  return async () => {
+    const { rows } = await testClient.query<{ n: number }>(
+      `SELECT CASE WHEN is_called THEN last_value ELSE 0 END::int AS n FROM ${name}_seq`
+    )
+    return rows[0]!.n
+  }
+}
+
+/**
  * Runs `statement` (SQL) right after the next `event` on `table`, in its
  * transaction: the statements after it see what a concurrent writer that
  * committed just then would have written.

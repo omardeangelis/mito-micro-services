@@ -1,12 +1,8 @@
-import * as Sentry from "@sentry/nextjs"
 import { type NextRequest, NextResponse } from "next/server"
-import { and, eq, not } from "drizzle-orm"
-import { db } from "@/server/db"
-import { alert as alerts, task } from "@/server/db/schema/task"
-import { practices as practice } from "@/server/db/schema/pratiche"
-import { customerToPratica } from "@/server/db/schema/relations/customerToPratica"
-import { calculatePriority, type TaskPriority } from "@/lib/utils/priority"
-import { splitArray } from "../../import/_utils"
+import { Cause, Effect, Exit } from "effect"
+import { ErrorReporter } from "@/server/effect/errorReporter"
+import { ServerLive } from "@/server/effect/server"
+import { refreshPriorities } from "@/server/services/contact/refreshPriorities"
 import { authCheck } from "../../_utils/auth"
 
 export const dynamic = "force-dynamic"
@@ -21,115 +17,35 @@ async function handler(req: NextRequest) {
   const authResponse = await authCheck(req)
   if (authResponse) return authResponse
 
-  try {
-    let id = null
-    if (req.method === "POST") {
-      const request = (await req.json()) as CronRequest
-      id = request.id
-    }
-
-    if (id) {
-      const tasks = await db
-        .select({
-          id: task.id,
-          state: task.state,
-          deadline: alerts.deadline,
-          customerId: task.customerId,
-          closedAt: task.closedAt,
-          customPriority: task.customPriority,
+  const exit = await Effect.runPromiseExit(
+    Effect.gen(function* () {
+      const id =
+        req.method === "POST"
+          ? (yield* Effect.tryPromise(() => req.json() as Promise<CronRequest>))
+              .id
+          : undefined
+      yield* refreshPriorities(id ? Number(id) : undefined)
+    }).pipe(
+      // The response is a 200 either way: report here, or nobody will
+      Effect.tapErrorCause((cause) =>
+        Effect.gen(function* () {
+          yield* Effect.logError("Priority cron failed", Cause.pretty(cause))
+          const reporter = yield* ErrorReporter
+          yield* reporter.report(cause, { route: "/api/cron/priority" })
         })
-        .from(task)
-        .leftJoin(alerts, eq(task.alertId, alerts.id))
-        .where(
-          and(
-            eq(task.id, Number(id)),
-            not(and(eq(task.state, "chiamare"), eq(task.priority, 120))!),
-            eq(task.customPriority, false),
-            eq(task.isActive, true)
-          )
-        )
-      await updateTaskPriority(tasks as TaskPriority[])
-    } else {
-      const tasks = await db
-        .select({
-          id: task.id,
-          state: task.state,
-          deadline: alerts.deadline,
-          customerId: task.customerId,
-          closedAt: task.closedAt,
-          customPriority: task.customPriority,
-        })
-        .from(task)
-        .leftJoin(alerts, eq(task.alertId, alerts.id))
-        .where(
-          and(
-            not(and(eq(task.state, "chiamare"), eq(task.priority, 120))!),
-            eq(task.customPriority, false),
-            eq(task.isActive, true)
-          )
-        )
+      ),
+      Effect.provide(ServerLive)
+    )
+  )
 
-      await updateTaskPriority(tasks as TaskPriority[])
-    }
-
-    return NextResponse.json({ message: "Cron job ran" })
-  } catch (error) {
-    console.error("Error deleting export files", error)
-    Sentry.captureException(error)
+  if (Exit.isFailure(exit)) {
     return NextResponse.json({
       message: "Error exporting data",
       filePath: null,
       error: "Error exporting data",
     })
   }
-}
-
-// Path: src/app/api/cron.ts
-
-const updateTaskPriority = async (
-  tasks: Omit<TaskPriority[], "dataLiquidazione">
-) => {
-  if (tasks.length === 0) {
-    return NextResponse.error()
-  }
-
-  const practices = await db
-    .select({
-      id: practice.praticaId,
-      dataLiquidazione: practice.dataLiquidazione,
-    })
-    .from(customerToPratica)
-    .leftJoin(practice, eq(customerToPratica.praticaId, practice.praticaId))
-    .where(eq(customerToPratica.customerId, tasks[0]!.customerId))
-    .groupBy(customerToPratica.praticaId, practice.praticaId)
-
-  const newTasks = tasks.map((task) => {
-    let dataLiquidazione = null
-    if (practices.length > 0) {
-      const newPractices = practices.sort((a, b) => {
-        return a.dataLiquidazione! > b.dataLiquidazione! ? -1 : 1
-      })
-      dataLiquidazione = newPractices[0]!.dataLiquidazione
-    }
-    return {
-      ...task,
-      customerId: tasks[0]!.customerId,
-      customPriority: tasks[0]!.customPriority,
-      dataLiquidazione: dataLiquidazione,
-    }
-  })
-
-  const taskPromiseArray = []
-  for (const t of newTasks) {
-    const priority = calculatePriority(t)
-    taskPromiseArray.push(
-      db.update(task).set({ priority }).where(eq(task.id, t.id))
-    )
-  }
-
-  for await (const taskPromise of splitArray(taskPromiseArray, 100)) {
-    await Promise.all(taskPromise)
-  }
+  return NextResponse.json({ message: "Cron job ran" })
 }
 
 async function postHandler(req: NextRequest) {
