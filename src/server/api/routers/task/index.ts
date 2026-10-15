@@ -1,7 +1,7 @@
 import { createTRPCRouter } from "../../trpc"
 import { createTask, createAlert, bulkHandleTask } from "./POST"
 import { updateTask, updateTaskFromDashboard } from "./PUT"
-import { deleteTasks, resolveAlerts } from "./DELETE"
+import { deleteTasks, resolveAlert, resolveAlerts } from "./DELETE"
 import {
   getTasksToExport,
   getActiveAlerts,
@@ -20,6 +20,7 @@ export const taskRouter = createTRPCRouter({
   bulkHandleTask,
   deleteTasks,
   resolveAlerts,
+  resolveAlert,
   getActiveAlerts,
   getCustomerAlerts,
   createAlert,

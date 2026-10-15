@@ -1134,9 +1134,9 @@ Vale per T3.10, T3.11a, T3.11b, T3.12, T5.7 e T5.9. Le letture dai Server Compon
   - R7: con `afterNextWriteTo(alert)` che aggancia alla task un nuovo alert B subito dopo la chiusura di A, B resta aperto e agganciato;
   - rifiuti: contatto superato, operatore senza permesso, alert inesistente; in ogni caso nessuna scrittura;
   - una sorgente diversa da `list` e `detail` è rifiutata dall'input (BAD_REQUEST).
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-10-15, worker sul modello dell'orchestratore, review al primo giro. `resolveOpenAlert({ contact, alertId, actor, source })` riceve l'`EditableContact` della guardia invece di `taskId` (si può chiamare solo dopo la guardia) e chiude solo un alert della task del contatto. `contactErrorToTrpc` accetta anche `CustomerMissing` (BAD_REQUEST senza payload): una sola mappa per tutte le procedure del contatto. `actorOf(ctx.operator)` in `src/server/services/contact/actor.ts`. 9 test via caller: AC29, F14, R7 con `afterNextWriteTo`, rifiuti senza scritture, sorgente `cron_alert` rifiutata dall'input, admin e D2.
+- **files edited/created**: `src/server/services/contact/{alert,resolveAlert,actor}.ts`, `src/server/services/contact/errors.ts`, `src/server/api/routers/task/DELETE/index.ts`, `src/server/api/routers/task/index.ts`, `src/server/services/contact/_test/resolveAlert.db.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a (D6)

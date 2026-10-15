@@ -7,6 +7,7 @@ import {
   type ContactErrorCode,
   type ContactErrorPayload,
 } from "@/lib/domain/contact/errors"
+import { type CustomerMissing } from "@/server/effect/db"
 
 /** The contact doesn't exist. */
 export class ContactNotFound extends Data.TaggedError("ContactNotFound") {}
@@ -152,10 +153,20 @@ const trpcErrors: { readonly [Tag in ContactError["_tag"]]: TrpcEntry } = {
 }
 
 /**
- * The `TRPCError` for a contact error, passed to `runTrpc`. Its `cause` is
- * `{ code, payload }`, the payload being the error's fields.
+ * The `TRPCError` for a contact error, passed to `runTrpc` by every contact
+ * procedure. Its `cause` is `{ code, payload }`, the payload being the error's
+ * fields. `CustomerMissing` (the contact has no customer) is a plain
+ * BAD_REQUEST, as `createTask` reports it.
  */
-export const contactErrorToTrpc = (error: ContactError): TRPCError => {
+export const contactErrorToTrpc = (
+  error: ContactError | CustomerMissing
+): TRPCError => {
+  if (error._tag === "CustomerMissing") {
+    return new TRPCError({
+      code: "BAD_REQUEST",
+      message: `Cliente non trovato: ${error.customerId}`,
+    })
+  }
   const { _tag, ...fields } = error
   const { code, trpc, message } = trpcErrors[_tag]
   // Each class declares its fields as the payload of its code
