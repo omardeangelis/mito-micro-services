@@ -78,7 +78,13 @@ export function ContactStateSelect({
           className="z-50 min-w-[var(--radix-dropdown-menu-trigger-width)] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md"
         >
           <DropdownMenuPrimitive.RadioGroup
-            onValueChange={(state) => onChange(state as TaskStatus)}
+            onValueChange={(state) => {
+              // The wait starts in `onChange`, before Radix closes the menu:
+              // with `pending` the menu already reads closed and Radix calls
+              // no `onOpenChange`, so it would open again when the wait ends
+              setOpen(false)
+              onChange(state as TaskStatus)
+            }}
           >
             {selectableStates(value).map((state) => (
               <DropdownMenuPrimitive.RadioItem

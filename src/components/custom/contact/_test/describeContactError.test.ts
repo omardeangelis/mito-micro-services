@@ -76,7 +76,7 @@ describe("describeContactError, one message per code", () => {
     [
       "CUSTOMER_ASSIGNMENT_FORBIDDEN",
       { code: "CUSTOMER_ASSIGNMENT_FORBIDDEN", payload: {} },
-      "Non puoi passare le consegne di questo cliente",
+      "Non puoi cambiare l'operatore di questo cliente",
     ],
     [
       "HANDOVER_SAME_OPERATOR",

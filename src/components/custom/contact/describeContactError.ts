@@ -32,7 +32,8 @@ export const describeContactError = (error: unknown): string => {
     case "DEADLINE_IN_PAST":
       return "La data del richiamo è già passata"
     case "CUSTOMER_ASSIGNMENT_FORBIDDEN":
-      return "Non puoi passare le consegne di questo cliente"
+      // From "Passaggio di consegne" and from "Assegna a te" alike
+      return "Non puoi cambiare l'operatore di questo cliente"
     case "HANDOVER_SAME_OPERATOR":
       return "Il cliente è già assegnato a questo operatore"
     case "OPERATOR_NOT_FOUND":

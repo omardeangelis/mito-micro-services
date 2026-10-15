@@ -1,4 +1,5 @@
-import { render, screen, within } from "@testing-library/react"
+import { act, render, screen, within } from "@testing-library/react"
+import * as React from "react"
 import userEvent from "@testing-library/user-event"
 import { describe, expect, it, vi } from "vitest"
 import { type TaskStatus } from "@/lib/types/schemas"
@@ -225,6 +226,38 @@ describe("ContactStateSelect", () => {
         />
       )
 
+      expect(menu()).toBeNull()
+    })
+
+    it("scegliendo un'opzione l'attesa comincia subito, e alla fine il menu resta chiuso", async () => {
+      const user = userEvent.setup()
+      // As the table and the customer sheet do: the wait starts inside
+      // onChange, and the saved value arrives when it ends
+      let finish: (() => void) | undefined
+      function Parent() {
+        const [value, setValue] = React.useState<TaskStatus>("chiamare")
+        const [pending, setPending] = React.useState(false)
+        finish = () => {
+          setValue("app.to")
+          setPending(false)
+        }
+        return (
+          <ContactStateSelect
+            value={value}
+            onChange={() => setPending(true)}
+            pending={pending}
+            aria-label="Stato"
+          />
+        )
+      }
+      render(<Parent />)
+
+      await user.click(trigger())
+      await user.click(screen.getByRole("menuitemradio", { name: "app.to" }))
+      expect(menu()).toBeNull()
+      act(() => finish?.())
+
+      expect(trigger().textContent).toBe("app.to")
       expect(menu()).toBeNull()
     })
   })

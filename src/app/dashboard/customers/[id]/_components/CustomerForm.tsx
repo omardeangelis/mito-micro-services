@@ -233,18 +233,31 @@ export const CustomerForm = (props: Props) => {
     target?.focus()
   }, [])
 
+  // Set when the server answered "Assegna a te": the link is gone after the
+  // refresh either way, and the operator text says who has the customer now
+  const focusOperatorAfterRefresh = React.useRef(false)
+
   // The refresh has landed: if the button is gone the focus goes to the
   // operator text
   React.useEffect(() => {
-    if (refreshing || !focusAfterRefresh.current) return
+    if (refreshing) return
+    if (focusOperatorAfterRefresh.current) {
+      focusOperatorAfterRefresh.current = false
+      operatorTextRef.current?.focus()
+    }
+    if (!focusAfterRefresh.current) return
     focusAfterRefresh.current = false
     focusHandoverOrigin()
   }, [refreshing, focusHandoverOrigin])
 
   const assignToYourself = api.customer.assignToYourself.useMutation({
-    onSuccess: () => refresh(),
+    onSuccess: () => {
+      focusOperatorAfterRefresh.current = true
+      refresh()
+    },
     // The toast gives the reason and the refresh shows the current operator
     onError: (error) => {
+      focusOperatorAfterRefresh.current = true
       onContactError(error)
     },
   })

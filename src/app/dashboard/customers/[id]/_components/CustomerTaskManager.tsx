@@ -76,12 +76,19 @@ export const CustomerTaskManager = (props: TaskManager) => {
   // The control the last gesture came from: it gets the focus back if the
   // refresh leaves it on the page
   const lastControl = useRef<React.RefObject<HTMLButtonElement> | null>(null)
+  // Where the focus goes when the refresh removed that control (a colleague
+  // took the contact meanwhile): the heading of the card, always rendered,
+  // while the read-only state may still wait for the operator's name
+  const headingRef = useRef<HTMLHeadingElement>(null)
 
   // From the call until the refreshed contact is rendered
   const { pending, start, fail, awaitRefresh, finishAfterRefresh, refresh } =
     useSavingUntilRefreshed(() => {
-      if (focusIsLost()) lastControl.current?.current?.focus()
+      const control = lastControl.current
       lastControl.current = null
+      if (!control || !focusIsLost()) return
+      const target = control.current ?? headingRef.current
+      target?.focus()
     })
   const { onError } = useContactMutationFeedback({ refresh })
   const changeState = api.task.changeState.useMutation()
@@ -239,7 +246,9 @@ export const CustomerTaskManager = (props: TaskManager) => {
 
   return (
     <div className="mt-8 rounded-md border bg-white p-4">
-      <h2 className="mb-2 text-lg font-medium">Stato del cliente</h2>
+      <h2 ref={headingRef} tabIndex={-1} className="mb-2 text-lg font-medium">
+        Stato del cliente
+      </h2>
       <div className="grid grid-cols-4 items-start gap-4">
         {controls()}
         <div className="flex flex-col items-start gap-1">
