@@ -1101,9 +1101,9 @@ Vale per T3.10, T3.11a, T3.11b, T3.12, T5.7 e T5.9. Le letture dai Server Compon
   - contatto non assegnato su un cliente mio → ammesso; su un cliente non mio → `ContactForbidden` con "Non assegnato" (A1);
   - admin → ammesso;
   - alert collegato ma già risolto → `openAlert` nullo.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-10-15, worker sul modello dell'orchestratore, review al primo giro. 16 test via `runServer(transaction(...))`, più due `@ts-expect-error` fuori da `transaction`. La rilettura bloccata della task filtra anche sul cliente bloccato: una task spostata a un altro cliente nel frattempo dà `ContactNotFound` invece di scrivere su un cliente non bloccato (nessun percorso oggi sposta una task). Verifica per mutazione del worker su `is_resolved`, `activeTaskId` e `touchCustomer`.
+- **files edited/created**: `src/server/services/contact/guard.ts`, `src/server/services/contact/_test/guard.db.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a (D6)
