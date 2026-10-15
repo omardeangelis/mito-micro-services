@@ -1536,9 +1536,9 @@ Vale per T3.10, T3.11a, T3.11b, T3.12, T5.7 e T5.9. Le letture dai Server Compon
 
   Dopo il successo, o dopo "già un contatto attivo", il focus va al trigger del nuovo selettore di stato di `CustomerTaskManager`, senza animazione: per questo viene dopo T3.11a, che costruisce quel selettore.
 - **validation**: browser: i tre esiti; un operatore di un altro cliente non vede il pulsante; un doppio clic manda una sola richiesta.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done (controlli browser in T3.14)
+- **log**: 2026-10-15, worker sonnet, review al primo giro. `CustomerCreateContact` visibile con `canCreateContact`; esiti via `useContactMutationFeedback({ refresh })`. Scostamento motivato: al successo la pagina sostituisce la card con `CustomerTaskManager` nello stesso commit, quindi l'effetto su `refreshing` non gira. Il focus passa al nuovo selettore dallo smontaggio della card, con un `MutationObserver` che aspetta il trigger al massimo 3 s (il selettore compare dopo il caricamento dell'operatore) e mette il focus solo se è su `body`.
+- **files edited/created**: `src/app/dashboard/customers/[id]/_components/CustomerCreateContact.tsx`, `src/app/dashboard/customers/[id]/page.tsx`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a (D6)

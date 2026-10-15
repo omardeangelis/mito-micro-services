@@ -8,6 +8,7 @@ import { CustomerChatSection } from "./_components/CustomerChatSection"
 import { api } from "@/trpc/server"
 import { CustomerActivities } from "./_components/CustomerActivities"
 import { CustomerTaskManager } from "./_components/CustomerTaskManager"
+import { CustomerCreateContact } from "./_components/CustomerCreateContact"
 import type { HandoverActiveContact } from "./_components/CustomerHandoverDialog"
 
 // What the handover modal says about the active contact: its state, operator
@@ -60,7 +61,12 @@ export default async function CustomerHome({
             customerOperatorId={customer!.operatorId}
           />
         </Suspense>
-      ) : null}
+      ) : (
+        <CustomerCreateContact
+          customerId={id}
+          customerOperatorId={customer!.operatorId}
+        />
+      )}
       <Suspense fallback={<Skeleton className="h-56 w-full rounded-md" />}>
         <CustomerPraticaSection id={id} />
       </Suspense>
