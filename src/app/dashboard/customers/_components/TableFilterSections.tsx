@@ -45,13 +45,14 @@ import { cn } from "@/lib/utils"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { PopoverDateFilter } from "@/components/custom/table/PopoverFilter"
 import { CUSTOMER_FILTER_MAP } from "../_constants"
+import { type CustomerSearchBy } from "@/lib/constants/customerSearch"
 
 const schema = z.object({
   id: z.string(),
 })
 
 type FormData = z.infer<typeof schema>
-type FilterBy = "nome" | "surname" | "email" | "telefono" | "fiscalCode"
+type FilterBy = CustomerSearchBy
 type FilterItems = { value: FilterBy; label: string }
 
 type FilterKeys = "operatore" | "ambito" | "sede" | "jobs"

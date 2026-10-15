@@ -20,8 +20,13 @@ import { TRPCError } from "@trpc/server"
 import { practices } from "@/server/db/schema/pratiche"
 import { operators } from "@/server/db/schema/operators"
 import { type SupaBaseDb } from "@/lib/types"
+import { type PgColumn } from "drizzle-orm/pg-core"
 import { task, taskStatus } from "@/server/db/schema/task"
 import { type Task } from "@/lib/types/schemas"
+import {
+  type CustomerSearchBy,
+  customerSearchBy,
+} from "@/lib/constants/customerSearch"
 
 const getCustomerByIdInput = z.object({
   id: z.string().optional(),
@@ -164,10 +169,22 @@ export const getAllCustomerForPratica = protectedProcedure
     }))
   })
 
+// Colonne in cui cerca ogni valore di `search_by`: il codice fiscale cerca
+// anche nella partita IVA
+const customerSearchColumns = {
+  nome: [customers.name],
+  name: [customers.name],
+  surname: [customers.surname],
+  email: [customers.email],
+  telefono: [customers.phoneNumber],
+  phoneNumber: [customers.phoneNumber],
+  fiscalCode: [customers.fiscalCode, customers.vatCode],
+} satisfies Record<CustomerSearchBy, PgColumn[]>
+
 const getAllCustomersInput = z.object({
   page: z.number(),
   perPage: z.number(),
-  searchBy: z.string().optional(),
+  searchBy: customerSearchBy.optional(),
   q: z.string().optional(),
   onlyMe: z.boolean().optional(),
   showDM: z.boolean().optional(),
@@ -202,15 +219,11 @@ export const getAllCustomers = operatorProcedure
 
     const getSearchedBy = () => {
       if (!q || !searchBy) return undefined
-      if (searchBy === "fiscalCode") {
-        return or(
-          ilike(customers.fiscalCode, `%${q}%`),
-          ilike(customers.vatCode, `%${q}%`)
+      return or(
+        ...customerSearchColumns[searchBy].map((column) =>
+          ilike(column, `%${q}%`)
         )
-      } else {
-        // @ts-expect-error searchBy is a string
-        return ilike(customers[searchBy as keyof typeof customers], `%${q}%`)
-      }
+      )
     }
 
     const unassignedFilter = input.filterBy?.operatore === 0
