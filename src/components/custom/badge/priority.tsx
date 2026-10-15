@@ -1,9 +1,15 @@
 import { Badge } from "@/components/ui/badge"
 import { ArrowDown, ArrowUpRight, Equal, ArrowUp } from "lucide-react"
+import {
+  bandOf,
+  bandValue,
+  priorityBands,
+  type PriorityBand,
+} from "@/lib/domain/contact/priority"
 
-type priorityType = "low" | "medium" | "high" | "urgent"
+type priorityType = PriorityBand
 
-export const priorityEnum = ["low", "medium", "high", "urgent"] as const
+export const priorityEnum = priorityBands
 
 const colors: Record<priorityType, string> = {
   low: "blue",
@@ -13,17 +19,10 @@ const colors: Record<priorityType, string> = {
 }
 
 export const priorityRangeMap: Record<priorityType, number> = {
-  low: 20,
-  medium: 60,
-  high: 100,
-  urgent: 120,
-}
-
-const getPriorityByRange = (range: number): priorityType => {
-  if (range <= 20) return "low"
-  if (range <= 60) return "medium"
-  if (range <= 100) return "high"
-  return "urgent"
+  low: bandValue("low"),
+  medium: bandValue("medium"),
+  high: bandValue("high"),
+  urgent: bandValue("urgent"),
 }
 
 const Icon = ({ priority }: { priority: priorityType }) => {
@@ -40,7 +39,7 @@ const Icon = ({ priority }: { priority: priorityType }) => {
 }
 
 export const PriorityBadge: React.FC<{ priority: number }> = ({ priority }) => {
-  const priorityType = getPriorityByRange(priority)
+  const priorityType = bandOf(priority)
   const colorClass = `bg-${colors[priorityType]}-50 text-${colors[priorityType]}-600 border-${colors[priorityType]}-200`
   return (
     <Badge size="xs" className={colorClass}>

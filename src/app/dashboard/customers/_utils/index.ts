@@ -1,3 +1,4 @@
+import { stateCategory } from "@/lib/domain/contact/status"
 import { type TaskCategory, type TaskStatus } from "@/lib/types/schemas"
 
 type TaskMap = Record<TaskCategory, TaskStatus[]>
@@ -8,12 +9,8 @@ export const taskStatusMap = {
   close: ["app.to", "caricato", "erogata", "non interessato", "richiamare"],
 } satisfies TaskMap
 
-export const getTaskStatusCategory = (state: TaskStatus): TaskCategory => {
-  if (taskStatusMap.idle.find((s) => s === state)) return "idle"
-  if (taskStatusMap.open.find((s) => s === state)) return "open"
-  if (taskStatusMap.close.find((s) => s === state)) return "close"
-  return "idle"
-}
+export const getTaskStatusCategory = (state: TaskStatus): TaskCategory =>
+  stateCategory(state)
 
 type StatusDirection = "close" | "persist" | "reopen"
 

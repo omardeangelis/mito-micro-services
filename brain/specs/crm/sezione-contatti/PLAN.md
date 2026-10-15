@@ -984,9 +984,9 @@ Vale per T3.10, T3.11a, T3.11b, T3.12, T5.7 e T5.9. Le letture dai Server Compon
   - i confini delle fasce: 20, 21, 60, 61, 100, 101, 120, 150.
 
   Il badge priorità di Clienti mostra le stesse fasce di prima.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-10-15, worker sonnet, review al primo giro. Tabella 8 × 8 con e senza alert (conferma giusta, sbagliata, assente), stato NULL, confini delle fasce: 240 test. `status.ts` scrive gli stati a mano (`allStates`) invece di importare `taskStatus` dallo schema, per non portare drizzle nel bundle client: un controllo di tipo e un test lo legano all'enum. `isAllowedChange` è condivisa da `selectableStates` e `planStateChange`. Il badge esporta ancora `priorityEnum` e `priorityRangeMap`, costruiti sul modulo (li usa `CustomerTaskManager` fino a T3.11a).
+- **files edited/created**: `src/lib/domain/contact/{status,transition,priority}.ts`, `src/lib/domain/contact/_test/{status,transition,priority}.test.ts`, `src/app/dashboard/customers/_utils/index.ts`, `src/components/custom/badge/priority.tsx`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a (D6)

@@ -8,7 +8,7 @@ links:
 ingested: false
 last_ingested: null
 created: 2026-09-25
-updated: 2026-10-13
+updated: 2026-10-15
 ---
 
 # Implementation Notes
@@ -17,12 +17,14 @@ updated: 2026-10-13
 
 - Run 1 (2026-09-25): solo **PR1 — Percorsi di creazione sicuri** (T1.1 → T1.8), branch `contatti/pr1-creazione-sicura` da `dev`, PR verso `dev`. PR2–PR6 non iniziate.
 - Run 2 (2026-09-29): solo **PR2 — Pulizia e vincolo DB** (T2.1, T2.2, T2.3, T2.5, T2.6, T2.7), branch `contatti/pr2-vincolo-db` da `dev`, PR verso `dev`. T2.4 è il runbook G2: va nella descrizione della PR, lo esegue Omar.
+- Run 3 (2026-10-15): solo **PR3 — Regole del contatto sul server, usate da Clienti** (T3.1a → T3.17, gate T3.14), branch `contatti/pr3-regole-server` da `dev`, PR verso `dev`. Baseline sul branch: 33 file, 302 test verdi.
 - **Stato al 2026-10-13:** PR1 e PR2 fatte e in prod (PR1 dal 29/09; PR2 su `main` e migrazioni applicate il 13/10, log di T2.4 nel PLAN). PR3–PR6 da fare: nessun task iniziato.
 
 ## Execution Mode
 
 - `sequential` (richiesto dall'utente): un task alla volta nell'ordine T1.1 → T1.2 → T1.3 → T1.4 → T1.5 → T1.6 → T1.7 → T1.8, nessun worker.
 - Run 2, `sequential` (richiesto dall'utente): T2.1 → T2.2 → T2.3 → T2.5 → T2.6 → T2.7, nessun worker.
+- Run 3, `sequential` (scelta minima sicura: l'utente non ha indicato la modalità, e i task server sono in catena sugli stessi router), nell'ordine di §10. Delegazione `supervised` (`brain.config.json`): l'orchestratore scrive il test RED di ogni task, un worker sul livello della `complexity` (`low` → haiku, `medium` → sonnet, `high` → modello dell'orchestratore) scrive il codice, l'orchestratore rivede. Escalation: nessuna finora.
 
 ## Deviations From the Plan
 
