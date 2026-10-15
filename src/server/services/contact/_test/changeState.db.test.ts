@@ -187,6 +187,39 @@ describe("task.changeState: transizioni", () => {
     expect(after!.closedAt!.getTime()).toBeLessThanOrEqual(Date.now())
   })
 
+  it("un contatto senza stato passa ad app.to e scrive una state_change con fromState null", async () => {
+    const operator = await createOperator()
+    const customer = await createCustomer({ operatorId: operator.id })
+    const contact = await createTask({
+      customerId: customer.id,
+      operatorId: operator.id,
+      state: null,
+    })
+
+    await expect(
+      createTestCaller(operator).task.changeState({
+        taskId: contact.id,
+        toState: "app.to",
+        source: "detail",
+        confirmedAlertId: null,
+      })
+    ).resolves.toEqual({ taskId: contact.id, reopened: false })
+
+    expect(await tasksOf(customer.id)).toMatchObject([
+      { id: contact.id, state: "app.to", isActive: true },
+    ])
+    expect(await logOf(customer.id)).toMatchObject([
+      {
+        action: "state_change",
+        source: "detail",
+        taskId: contact.id,
+        fromState: null,
+        toState: "app.to",
+        actorOperatorId: operator.id,
+      },
+    ])
+  })
+
   it("passare da un esito a un altro cambia lo stato e lascia 'Contattato il' com'è (AC32)", async () => {
     const operator = await createOperator()
     const contactedAt = new Date("2026-09-01T10:00:00Z")

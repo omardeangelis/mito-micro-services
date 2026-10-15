@@ -1,6 +1,10 @@
 import "server-only"
 import { Effect } from "effect"
-import { type Actor, canCreateContact } from "@/lib/domain/contact/permissions"
+import {
+  type Actor,
+  canCreateContact,
+  operatorDisplayName,
+} from "@/lib/domain/contact/permissions"
 import { bandValue } from "@/lib/domain/contact/priority"
 import { taskEventLog } from "@/server/db/schema/taskEventLog"
 import { type Db, DbError, query, transaction } from "@/server/effect/db"
@@ -12,7 +16,7 @@ import {
   type CustomerNotFound,
   CustomerUnassigned,
 } from "./errors"
-import { lockCustomerOrNotFound, touchCustomer } from "./guard"
+import { loadOperator, lockCustomerOrNotFound, touchCustomer } from "./guard"
 
 /** Postgres `unique_violation`: here, `task_customer_active_uidx`. */
 const UNIQUE_VIOLATION = "23505"
@@ -26,7 +30,7 @@ const UNIQUE_VIOLATION = "23505"
  * - `CustomerUnassigned`: the customer has no operator, for admins too
  *   (AC67);
  * - `ContactForbidden`: an operator on a customer that isn't theirs (D2,
- *   AC49), with no assignee: there is no contact yet;
+ *   AC49), with the customer's operator as assignee (no contact yet);
  * - `ContactAlreadyActive`: the customer has an active contact (AC67, AC71).
  */
 export const createContact = ({
@@ -53,7 +57,10 @@ export const createContact = ({
       const operatorId = customer.operatorId
       if (operatorId === null) return yield* new CustomerUnassigned()
       if (!canCreateContact(actor, customer)) {
-        return yield* new ContactForbidden({ assignee: null })
+        const owner = yield* loadOperator(operatorId)
+        return yield* new ContactForbidden({
+          assignee: owner === null ? null : operatorDisplayName(owner),
+        })
       }
 
       const active = yield* activeTaskIdOf(customer.id)

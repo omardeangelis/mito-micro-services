@@ -1,15 +1,18 @@
 import { beforeAll, beforeEach, describe, expect, it } from "vitest"
+import { Exit } from "effect"
 import { eq } from "drizzle-orm"
 import { readContactError } from "@/lib/domain/contact/errors"
 import { customers } from "@/server/db/schema/customers"
 import { createTestCaller } from "@/test/caller"
 import { logOf, migrateUpTo, resetDb, tasksOf, testDb } from "@/test/db"
+import { runServer } from "@/test/effect"
 import {
   createCustomer,
   createOperator,
   createSystemOperator,
   createTask,
 } from "@/test/factories"
+import { reassign } from "../reassign"
 
 const longAgo = new Date("2026-01-01T00:00:00Z")
 
@@ -110,6 +113,39 @@ describe("task.reassign", () => {
     ])
   })
 
+  it("con il cliente già dell'operatore scelto sposta solo il contatto, con una riga operator_reassign sul contatto", async () => {
+    const admin = await createOperator({ role: "ADMIN" })
+    const owner = await createOperator()
+    const colleague = await createOperator()
+    const customer = await createCustomer({ operatorId: colleague.id })
+    const contact = await createTask({
+      customerId: customer.id,
+      operatorId: owner.id,
+    })
+
+    await createTestCaller(admin).task.reassign({
+      taskId: contact.id,
+      operatorId: colleague.id,
+    })
+
+    expect(await tasksOf(customer.id)).toMatchObject([
+      { id: contact.id, operatorId: colleague.id },
+    ])
+    expect(await customerRow(customer.id)).toMatchObject({
+      operatorId: colleague.id,
+    })
+    expect(await logOf(customer.id)).toEqual([
+      expect.objectContaining({
+        action: "operator_reassign",
+        source: "detail",
+        taskId: contact.id,
+        fromOperatorId: owner.id,
+        toOperatorId: colleague.id,
+        actorOperatorId: admin.id,
+      }),
+    ])
+  })
+
   it("con contatto e cliente già dell'operatore scelto non scrive nulla", async () => {
     const admin = await createOperator({ role: "ADMIN" })
     const owner = await createOperator()
@@ -157,6 +193,38 @@ describe("task.reassign", () => {
     )
 
     expect(error).toMatchObject({ code: "FORBIDDEN" })
+    expect(await tasksOf(customer.id)).toEqual(before)
+    expect(await logOf(customer.id)).toEqual([])
+    expect(await customerRow(customer.id)).toMatchObject({
+      operatorId: owner.id,
+      updatedAt: longAgo,
+    })
+  })
+
+  it("il servizio rifiuta da solo un OPERATORE che è l'operatore del cliente con ContactForbidden e non modifica nulla (AC50)", async () => {
+    const owner = await createOperator({ name: "Anna", surname: "Bianchi" })
+    const colleague = await createOperator()
+    const customer = await createCustomer({
+      operatorId: owner.id,
+      updatedAt: longAgo,
+    })
+    const contact = await createTask({
+      customerId: customer.id,
+      operatorId: owner.id,
+    })
+    const before = await tasksOf(customer.id)
+
+    const exit = await runServer(
+      reassign({
+        taskId: contact.id,
+        operatorId: colleague.id,
+        actor: { operatorId: owner.id, role: "OPERATORE" },
+      })
+    )
+
+    expect(Exit.isFailure(exit) && exit.cause).toMatchObject({
+      error: { _tag: "ContactForbidden", assignee: "Anna Bianchi" },
+    })
     expect(await tasksOf(customer.id)).toEqual(before)
     expect(await logOf(customer.id)).toEqual([])
     expect(await customerRow(customer.id)).toMatchObject({

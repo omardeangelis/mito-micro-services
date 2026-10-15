@@ -6,6 +6,7 @@ import {
   useContactMutationFeedback,
 } from "@/components/custom/contact/useContactMutationFeedback"
 import { useActor } from "@/components/custom/contact/useActor"
+import { focusIsLost } from "@/components/custom/contact/focus"
 import { useSavingUntilRefreshed } from "@/components/custom/contact/useSavingUntilRefreshed"
 import { Button } from "@/components/ui/button"
 import { Form, FormControl, FormField, FormItem } from "@/components/ui/form"
@@ -63,6 +64,8 @@ export const CustomerAlertCreator = (props: Props) => {
   })
 
   const triggerRef = useRef<HTMLButtonElement>(null)
+  // The text shown when there is no alert: the fallback of the focus
+  const noAlertRef = useRef<HTMLParagraphElement>(null)
   // The alert was closed with the "X": the focus goes to the trigger when the
   // refreshed page is on screen
   const focusTriggerAfter = useRef(false)
@@ -72,7 +75,11 @@ export const CustomerAlertCreator = (props: Props) => {
     useSavingUntilRefreshed(() => {
       if (!focusTriggerAfter.current) return
       focusTriggerAfter.current = false
-      triggerRef.current?.focus()
+      if (!focusIsLost()) return
+      // Without the trigger (a state that can't have alerts) the text that
+      // takes the alert's place gets the focus
+      const target = triggerRef.current ?? noAlertRef.current
+      target?.focus()
     })
   const { onError } = useContactMutationFeedback({ refresh })
   const setCallback = api.task.setCallback.useMutation()
@@ -91,21 +98,23 @@ export const CustomerAlertCreator = (props: Props) => {
     if (pending) return
     void form.handleSubmit((values) => {
       start()
-      setCallback.mutate(
-        {
+      // `mutateAsync` settles after an unmount, the per-call callbacks of
+      // `mutate` don't: the toast and the refresh must still run
+      setCallback
+        .mutateAsync({
           taskId: props.task.id,
           deadline: values.deadline,
           message: values.message,
           replacesAlertId: replaced?.id ?? null,
-        },
-        {
-          onSuccess: () => {
+        })
+        .then(
+          () => {
             setOpen(false)
             setReceived(null)
             form.reset({ deadline: undefined, message: "" })
             finishAfterRefresh()
           },
-          onError: (error) => {
+          (error) => {
             const result = onError(error)
             if (result) {
               // Another open alert than the form said (AC44): nothing was
@@ -116,29 +125,25 @@ export const CustomerAlertCreator = (props: Props) => {
             }
             // The toast gives the reason, the refresh shows the saved value
             awaitRefresh()
-          },
-        }
-      )
+          }
+        )
     })(e)
   }
 
   const closeAlert = (alertId: number) => {
     if (pending) return
     start()
-    resolveAlert.mutate(
-      { alertId, source: "detail" },
-      {
-        onSuccess: () => {
-          focusTriggerAfter.current = true
-          setReceived(null)
-          finishAfterRefresh()
-        },
-        onError: (error) => {
-          // The alert stays: the toast gives the reason and the refresh shows
-          // the saved value (`onError` returns null: no confirmation exists)
-          onError(error)
-          awaitRefresh()
-        },
+    resolveAlert.mutateAsync({ alertId, source: "detail" }).then(
+      () => {
+        focusTriggerAfter.current = true
+        setReceived(null)
+        finishAfterRefresh()
+      },
+      (error) => {
+        // The alert stays: the toast gives the reason and the refresh shows
+        // the saved value (`onError` returns null: no confirmation exists)
+        onError(error)
+        awaitRefresh()
       }
     )
   }
@@ -281,12 +286,22 @@ export const CustomerAlertCreator = (props: Props) => {
         </Popover>
       ) : null}
       {!props.alert && editable && !props.creatable ? (
-        <p className="text-sm italic text-gray-500">
+        <p
+          ref={noAlertRef}
+          tabIndex={-1}
+          className="text-sm italic text-gray-500"
+        >
           Solo i clienti che non sono da chiamare possono avere alert.
         </p>
       ) : null}
       {!props.alert && !editable ? (
-        <p className="text-sm italic text-gray-500">Nessun alert attivo.</p>
+        <p
+          ref={noAlertRef}
+          tabIndex={-1}
+          className="text-sm italic text-gray-500"
+        >
+          Nessun alert attivo.
+        </p>
       ) : null}
     </>
   )

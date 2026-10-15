@@ -500,41 +500,35 @@ function StateSelector(props: {
   ) => {
     remember()
     start()
-    changeState.mutate(
-      { taskId, toState: state, source: "list", confirmedAlertId },
-      {
-        onSuccess: finishAfterRefresh,
-        onError: (error) => {
-          const result = onError(error)
-          if (result) {
-            // An open alert to confirm (AC36), maybe set meanwhile by a
-            // colleague (AC37): nothing changed, the modal asks
-            fail()
-            forget()
-            setConfirmation({ state, alert: result.alert })
-            return
-          }
-          // The toast gives the reason, the refresh shows the saved value
-          awaitRefresh()
-        },
-      }
-    )
+    // `mutateAsync`: unlike the per-call callbacks of `mutate`, it settles
+    // after the row unmounted, so the toast and the refresh still run
+    changeState
+      .mutateAsync({ taskId, toState: state, source: "list", confirmedAlertId })
+      .then(finishAfterRefresh, (error) => {
+        const result = onError(error)
+        if (result) {
+          // An open alert to confirm (AC36), maybe set meanwhile by a
+          // colleague (AC37): nothing changed, the modal asks
+          fail()
+          forget()
+          setConfirmation({ state, alert: result.alert })
+          return
+        }
+        // The toast gives the reason, the refresh shows the saved value
+        awaitRefresh()
+      })
   }
 
   const create = () => {
     if (pending) return
     remember()
     start()
-    createContact.mutate(
-      { customerId: props.customerId, source: "list" },
-      {
-        onSuccess: finishAfterRefresh,
-        onError: (error) => {
-          awaitRefresh()
-          onError(error)
-        },
-      }
-    )
+    createContact
+      .mutateAsync({ customerId: props.customerId, source: "list" })
+      .then(finishAfterRefresh, (error) => {
+        awaitRefresh()
+        onError(error)
+      })
   }
 
   const content = () => {

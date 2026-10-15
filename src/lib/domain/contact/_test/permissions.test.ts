@@ -157,13 +157,37 @@ describe("canReassign", () => {
 })
 
 describe("canSelfAssign", () => {
-  it("offers self-assign on an unassigned customer", () => {
-    expect(canSelfAssign({ operatorId: null })).toBe(true)
+  it("refuses self-assign on an assigned customer", () => {
+    expect(canSelfAssign(me, { operatorId: 2 }, null)).toBe(false)
   })
 
-  it("refuses self-assign on an assigned customer", () => {
-    expect(canSelfAssign({ operatorId: 2 })).toBe(false)
+  it("offers self-assign on an unassigned customer with no active contact", () => {
+    expect(canSelfAssign(me, { operatorId: null }, null)).toBe(true)
   })
+
+  it("offers self-assign on an unassigned customer whose contact has no operator", () => {
+    expect(canSelfAssign(me, { operatorId: null }, { operatorId: null })).toBe(
+      true
+    )
+  })
+
+  it("offers self-assign on an unassigned customer whose contact is the actor's", () => {
+    expect(
+      canSelfAssign(me, { operatorId: null }, { operatorId: me.operatorId })
+    ).toBe(true)
+  })
+
+  it.each([
+    ["an operator", me],
+    ["an admin", admin],
+  ] as const)(
+    "refuses %s on an unassigned customer whose contact is a colleague's",
+    (_who, actor) => {
+      expect(
+        canSelfAssign(actor, { operatorId: null }, { operatorId: 2 })
+      ).toBe(false)
+    }
+  )
 })
 
 describe("canHandover", () => {

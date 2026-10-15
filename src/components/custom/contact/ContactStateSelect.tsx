@@ -16,7 +16,6 @@ type ContactStateSelectProps = {
   /** A change is being saved: the trigger stays focusable but opens nothing. */
   pending?: boolean
   triggerRef?: React.Ref<HTMLButtonElement>
-  "aria-label"?: string
 }
 
 /**
@@ -34,7 +33,6 @@ export function ContactStateSelect({
   onChange,
   pending = false,
   triggerRef,
-  "aria-label": ariaLabel,
 }: ContactStateSelectProps) {
   const [open, setOpen] = React.useState(false)
 
@@ -53,7 +51,9 @@ export function ContactStateSelect({
           ref={triggerRef}
           type="button"
           variant="ghost"
-          aria-label={ariaLabel}
+          // The name starts with the visible value (2.5.3) and says what the
+          // button does, so a screen reader announces both
+          aria-label={`${value ?? "nessuno"}, cambia stato`}
           aria-busy={pending}
           aria-disabled={pending}
           // A table finds the selector of a nearby row through it, when the
@@ -90,7 +90,7 @@ export function ContactStateSelect({
               <DropdownMenuPrimitive.RadioItem
                 key={state}
                 value={state}
-                className="relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50"
+                className="relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none focus:bg-accent focus:text-accent-foreground focus:ring-2 focus:ring-inset focus:ring-ring data-[disabled]:pointer-events-none data-[disabled]:opacity-50"
               >
                 <TaskStatusBadge status={state} />
               </DropdownMenuPrimitive.RadioItem>

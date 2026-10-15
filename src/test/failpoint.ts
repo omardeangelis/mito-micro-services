@@ -47,12 +47,15 @@ async function addFailpoint({
 /**
  * Makes the next INSERT into `table` fail inside the database, as a driver
  * error would. With `where` (SQL column → value), only the next row that
- * matches fails. Later inserts go through.
+ * matches fails; with `sqlstate`, it fails with that code (else P0001). Later
+ * inserts go through.
  */
 export async function failNextInsertInto(
   table: PgTable,
-  where: Record<string, string | number> = {}
+  where: Record<string, string | number> = {},
+  { sqlstate }: { sqlstate?: string } = {}
 ) {
+  const errcode = sqlstate ? ` USING ERRCODE = ${literal(sqlstate)}` : ""
   await addFailpoint({
     table,
     when: "BEFORE INSERT",
@@ -60,7 +63,7 @@ export async function failNextInsertInto(
       Object.entries(where)
         .map(([column, value]) => `NEW."${column}" = ${literal(value)}`)
         .join(" AND ") || "TRUE",
-    action: `RAISE EXCEPTION 'failpoint: insert into % failed', TG_TABLE_NAME;`,
+    action: `RAISE EXCEPTION 'failpoint: insert into % failed', TG_TABLE_NAME${errcode};`,
     once: true,
   })
 }

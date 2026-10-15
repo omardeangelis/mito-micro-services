@@ -35,6 +35,7 @@ import { InputWithCopy } from "@/components/custom/input/InputWithCopy"
 import { api } from "@/trpc/react"
 import { useContactMutationFeedback } from "@/components/custom/contact/useContactMutationFeedback"
 import { useRefreshAfterSave } from "@/components/custom/contact/useRefreshAfterSave"
+import { focusIsLost } from "@/components/custom/contact/focus"
 import {
   canHandover,
   canSelfAssign,
@@ -217,7 +218,10 @@ export const CustomerForm = (props: Props) => {
     role !== undefined &&
     operatorId !== undefined &&
     canHandover({ operatorId, role }, props.customer)
-  const showSelfAssign = canSelfAssign(props.customer)
+  const showSelfAssign =
+    role !== undefined &&
+    operatorId !== undefined &&
+    canSelfAssign({ operatorId, role }, props.customer, props.activeContact)
 
   const operatorTextRef = React.useRef<HTMLParagraphElement>(null)
   const handoverButtonRef = React.useRef<HTMLButtonElement>(null)
@@ -241,13 +245,14 @@ export const CustomerForm = (props: Props) => {
   // operator text
   React.useEffect(() => {
     if (refreshing) return
+    // Only when the focus is lost: the user may have moved it meanwhile
     if (focusOperatorAfterRefresh.current) {
       focusOperatorAfterRefresh.current = false
-      operatorTextRef.current?.focus()
+      if (focusIsLost()) operatorTextRef.current?.focus()
     }
     if (!focusAfterRefresh.current) return
     focusAfterRefresh.current = false
-    focusHandoverOrigin()
+    if (focusIsLost()) focusHandoverOrigin()
   }, [refreshing, focusHandoverOrigin])
 
   const assignToYourself = api.customer.assignToYourself.useMutation({
@@ -552,7 +557,7 @@ export const CustomerForm = (props: Props) => {
                     variant="link"
                     type="button"
                     aria-disabled={assigning}
-                    className="h-auto px-0 text-neutral-400"
+                    className="px-0 text-neutral-600"
                     onClick={() => {
                       if (assigning) return
                       assignToYourself.mutate({ id: props.customer.id })

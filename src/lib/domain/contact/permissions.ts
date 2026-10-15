@@ -91,6 +91,18 @@ export const canReassign = (actor: Actor): boolean => isAdmin(actor)
 export const canHandover = (actor: Actor, customer: CustomerOwner): boolean =>
   isAdmin(actor) || ownsCustomer(actor, customer)
 
-/** Whether "Assegna a te" is available: only on a customer with no operator (P4). */
-export const canSelfAssign = (customer: CustomerOwner): boolean =>
-  customer.operatorId === null
+/**
+ * Whether "Assegna a te" is available (P4): only on a customer with no
+ * operator whose active contact, if any, has no operator or is the actor's.
+ * Taking a customer whose contact is a colleague's would grant edit rights
+ * over it (D2); the same holds for admins, who use "Passaggio di consegne".
+ */
+export const canSelfAssign = (
+  actor: Actor,
+  customer: CustomerOwner,
+  activeContact: { operatorId: number | null } | null
+): boolean => {
+  if (customer.operatorId !== null) return false
+  const contactOperatorId = activeContact?.operatorId ?? null
+  return contactOperatorId === null || contactOperatorId === actor.operatorId
+}

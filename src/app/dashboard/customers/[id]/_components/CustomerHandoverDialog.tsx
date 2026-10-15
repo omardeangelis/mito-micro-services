@@ -125,19 +125,20 @@ export function CustomerHandoverDialog({
   const confirm = () => {
     if (!selected || submitted.current) return
     submitted.current = true
-    handover.mutate(
-      { customerId: customer.id, toOperatorId: selected.id },
-      {
-        onSuccess: () => {
+    // `mutateAsync` settles after an unmount, the per-call callbacks of
+    // `mutate` don't: the toast and the refresh must still run
+    handover
+      .mutateAsync({ customerId: customer.id, toOperatorId: selected.id })
+      .then(
+        () => {
           onClose({ settled: true })
           refresh()
         },
-        onError: (error) => {
+        (error) => {
           onClose({ settled: true })
           onError(error)
-        },
-      }
-    )
+        }
+      )
   }
 
   return (
@@ -159,7 +160,7 @@ export function CustomerHandoverDialog({
       >
         <DialogHeader>
           <DialogTitle>Passaggio di consegne</DialogTitle>
-          <DialogDescription asChild>
+          <DialogDescription asChild className="text-foreground">
             <div className="space-y-2">
               <p>
                 {customerName} passa {to}.

@@ -2,12 +2,6 @@ import { describe, expect, it } from "vitest"
 import { appRouter } from "@/server/api/root"
 
 describe("task router", () => {
-  it("il router task non espone più updateTask", () => {
-    expect(Object.keys(appRouter._def.record.task._def.record)).not.toContain(
-      "updateTask"
-    )
-  })
-
   it.each([
     "updateTask",
     "updateTaskFromDashboard",

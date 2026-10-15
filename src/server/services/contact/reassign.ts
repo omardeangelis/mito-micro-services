@@ -1,7 +1,11 @@
 import "server-only"
 import { Effect } from "effect"
 import { eq } from "drizzle-orm"
-import { type Actor } from "@/lib/domain/contact/permissions"
+import {
+  type Actor,
+  canReassign,
+  operatorDisplayName,
+} from "@/lib/domain/contact/permissions"
 import { customers } from "@/server/db/schema/customers"
 import { task } from "@/server/db/schema/task"
 import { taskEventLog } from "@/server/db/schema/taskEventLog"
@@ -13,7 +17,7 @@ import {
   transaction,
 } from "@/server/effect/db"
 import {
-  type ContactForbidden,
+  ContactForbidden,
   type ContactNotFound,
   type ContactSuperseded,
   type OperatorNotFound,
@@ -22,9 +26,10 @@ import { loadEditableContact, touchCustomer } from "./guard"
 import { findWorkingOperator } from "./operator"
 
 /**
- * Moves an active contact and its customer to `operatorId` (AC47), for the
- * admin procedure (AC50). The contact must still be active (AC27); the target
- * an operator someone can work as (`findWorkingOperator`).
+ * Moves an active contact and its customer to `operatorId` (AC47). Only an
+ * admin may (AC50): any other actor is `ContactForbidden`, with the contact's
+ * operator. The contact must still be active (AC27); the target an operator
+ * someone can work as (`findWorkingOperator`).
  *
  * Each of the two changes only when it isn't the target's already, with one
  * `operator_reassign` row for it: the contact's with its `taskId`, the
@@ -51,10 +56,18 @@ export const reassign = ({
 > =>
   transaction(
     Effect.gen(function* () {
-      const { customer, task: contact } = yield* loadEditableContact(
-        taskId,
-        actor
-      )
+      const {
+        customer,
+        task: contact,
+        taskOperator,
+      } = yield* loadEditableContact(taskId, actor)
+      // AC50 holds here too, not only in the admin procedure
+      if (!canReassign(actor)) {
+        return yield* new ContactForbidden({
+          assignee:
+            taskOperator === null ? null : operatorDisplayName(taskOperator),
+        })
+      }
       const target = yield* findWorkingOperator(operatorId)
 
       const contactChanged = contact.operatorId !== target.id

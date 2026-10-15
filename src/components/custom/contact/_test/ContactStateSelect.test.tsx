@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from "vitest"
 import { type TaskStatus } from "@/lib/types/schemas"
 import { ContactStateSelect } from "../ContactStateSelect"
 
-const trigger = () => screen.getByRole("button", { name: "Stato" })
+const trigger = () => screen.getByRole("button", { name: /, cambia stato$/ })
 const menu = () => screen.queryByRole("menu")
 const optionNames = () =>
   within(screen.getByRole("menu"))
@@ -17,12 +17,7 @@ function renderSelect(
 ) {
   const onChange = vi.fn()
   const view = render(
-    <ContactStateSelect
-      value="chiamare"
-      onChange={onChange}
-      aria-label="Stato"
-      {...props}
-    />
+    <ContactStateSelect value="chiamare" onChange={onChange} {...props} />
   )
   return { onChange, ...view }
 }
@@ -116,21 +111,9 @@ describe("ContactStateSelect", () => {
 
     expect(onChange).toHaveBeenCalledWith("erogata")
     expect(trigger().textContent).toBe("chiamare")
-    rerender(
-      <ContactStateSelect
-        value="chiamare"
-        onChange={onChange}
-        aria-label="Stato"
-      />
-    )
+    rerender(<ContactStateSelect value="chiamare" onChange={onChange} />)
     expect(trigger().textContent).toBe("chiamare")
-    rerender(
-      <ContactStateSelect
-        value="erogata"
-        onChange={onChange}
-        aria-label="Stato"
-      />
-    )
+    rerender(<ContactStateSelect value="erogata" onChange={onChange} />)
     expect(trigger().textContent).toBe("erogata")
   })
 
@@ -145,12 +128,7 @@ describe("ContactStateSelect", () => {
     expect(trigger().className).toContain("w-40")
 
     rerender(
-      <ContactStateSelect
-        value="chiamare"
-        onChange={onChange}
-        pending
-        aria-label="Stato"
-      />
+      <ContactStateSelect value="chiamare" onChange={onChange} pending />
     )
 
     expect(trigger().className).toContain("w-40")
@@ -164,6 +142,47 @@ describe("ContactStateSelect", () => {
 
     const content = screen.getByRole("menu")
     expect(content.className).not.toMatch(/animate-|fade-|zoom-|slide-/)
+  })
+
+  it("le opzioni non hanno transizioni: l'evidenziazione cambia subito", async () => {
+    const user = userEvent.setup()
+    renderSelect()
+
+    await user.click(trigger())
+
+    const options = screen.getAllByRole("menuitemradio")
+    expect(options.length).toBeGreaterThan(0)
+    for (const option of options) {
+      expect(option.className).not.toContain("transition")
+    }
+  })
+
+  it("l'opzione evidenziata ha un anello visibile, non solo lo sfondo", async () => {
+    const user = userEvent.setup()
+    renderSelect()
+
+    await user.click(trigger())
+
+    for (const option of screen.getAllByRole("menuitemradio")) {
+      expect(option.className).toContain("focus:ring-2")
+      expect(option.className).toContain("focus:ring-inset")
+      expect(option.className).toContain("focus:ring-ring")
+    }
+  })
+
+  it("il trigger si chiama come il valore e dice cosa fa: '<stato>, cambia stato'", () => {
+    const { unmount } = render(
+      <ContactStateSelect value="app.to" onChange={vi.fn()} />
+    )
+    expect(
+      screen.getByRole("button", { name: "app.to, cambia stato" })
+    ).not.toBeNull()
+    unmount()
+
+    render(<ContactStateSelect value={null} onChange={vi.fn()} />)
+    expect(
+      screen.getByRole("button", { name: "nessuno, cambia stato" })
+    ).not.toBeNull()
   })
 
   it("passa il ref al trigger", () => {
@@ -218,12 +237,7 @@ describe("ContactStateSelect", () => {
       expect(menu()).not.toBeNull()
 
       rerender(
-        <ContactStateSelect
-          value="chiamare"
-          onChange={onChange}
-          pending
-          aria-label="Stato"
-        />
+        <ContactStateSelect value="chiamare" onChange={onChange} pending />
       )
 
       expect(menu()).toBeNull()
@@ -246,7 +260,6 @@ describe("ContactStateSelect", () => {
             value={value}
             onChange={() => setPending(true)}
             pending={pending}
-            aria-label="Stato"
           />
         )
       }

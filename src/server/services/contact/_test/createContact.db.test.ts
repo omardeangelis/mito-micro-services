@@ -10,6 +10,7 @@ import {
 import { eq } from "drizzle-orm"
 import { readContactError } from "@/lib/domain/contact/errors"
 import { customers } from "@/server/db/schema/customers"
+import { task } from "@/server/db/schema/task"
 import { taskEventLog } from "@/server/db/schema/taskEventLog"
 import { createTestCaller } from "@/test/caller"
 import {
@@ -227,7 +228,7 @@ describe("task.createContact: rifiuti", () => {
 
   it("un operatore non crea un contatto per il cliente di un collega e non modifica nulla (D2, AC49)", async () => {
     const me = await createOperator()
-    const colleague = await createOperator()
+    const colleague = await createOperator({ name: "Luca", surname: "Verdi" })
     const customer = await createCustomer({
       operatorId: colleague.id,
       updatedAt: longAgo,
@@ -242,7 +243,10 @@ describe("task.createContact: rifiuti", () => {
     )
 
     expect(error).toMatchObject({ code: "FORBIDDEN" })
-    expect(readContactError(error)?.code).toBe("CONTACT_FORBIDDEN")
+    expect(readContactError(error)).toEqual({
+      code: "CONTACT_FORBIDDEN",
+      payload: { assignee: "Luca Verdi" },
+    })
     expect(await snapshot(customer.id)).toEqual(before)
   })
 
@@ -282,6 +286,32 @@ describe("task.createContact: tutto o niente", () => {
       })
     ).rejects.toMatchObject({ code: "INTERNAL_SERVER_ERROR" })
 
+    expect(await snapshot(customer.id)).toEqual(before)
+    expect(before.tasks).toEqual([])
+  })
+
+  it("un unique_violation sull'inserimento del contatto senza un altro contatto attivo resta un errore del server e non scrive nulla", async () => {
+    const operator = await createOperator()
+    const customer = await createCustomer({
+      operatorId: operator.id,
+      updatedAt: longAgo,
+    })
+    const before = await snapshot(customer.id)
+    await failNextInsertInto(task, {}, { sqlstate: "23505" })
+    vi.spyOn(console, "error").mockImplementation(() => undefined)
+
+    const error = await failure(
+      createTestCaller(operator).task.createContact({
+        customerId: customer.id,
+        source: "detail",
+      })
+    )
+
+    expect(error).toMatchObject({
+      code: "INTERNAL_SERVER_ERROR",
+      cause: { _tag: "DbError", code: "23505" },
+    })
+    expect(readContactError(error)).toBeNull()
     expect(await snapshot(customer.id)).toEqual(before)
     expect(before.tasks).toEqual([])
   })

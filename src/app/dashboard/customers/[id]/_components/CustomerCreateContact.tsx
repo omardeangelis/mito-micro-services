@@ -104,23 +104,24 @@ export const CustomerCreateContact = (props: CustomerCreateContactProps) => {
     if (pending) return
     rootRef.current = cardRef.current?.closest("[role=dialog]") ?? document
     start()
-    createContact.mutate(
-      { customerId: props.customerId, source: "detail" },
-      {
-        onSuccess: () => {
+    // `mutateAsync` settles after an unmount, the per-call callbacks of
+    // `mutate` don't: the toast and the refresh must still run
+    createContact
+      .mutateAsync({ customerId: props.customerId, source: "detail" })
+      .then(
+        () => {
           handoffFocus.current = true
           finishAfterRefresh()
         },
-        onError: (error) => {
+        (error) => {
           awaitRefresh()
           // A colleague created it meanwhile: the toast says so and the
           // refresh shows the contact
           handoffFocus.current =
             readContactError(error)?.code === "CONTACT_ALREADY_ACTIVE"
           onError(error)
-        },
-      }
-    )
+        }
+      )
   }
 
   return (

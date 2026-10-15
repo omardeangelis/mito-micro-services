@@ -102,42 +102,41 @@ export const CustomerTaskManager = (props: TaskManager) => {
   const submitState = (state: TaskStatus, confirmedAlertId: number | null) => {
     lastControl.current = stateTriggerRef
     start()
-    changeState.mutate(
-      { taskId: task.id, toState: state, source: "detail", confirmedAlertId },
-      {
-        onSuccess: finishAfterRefresh,
-        onError: (error) => {
-          const result = onError(error)
-          if (result) {
-            // An open alert to confirm (AC36), maybe set meanwhile by a
-            // colleague (AC37): nothing changed, the modal asks
-            fail()
-            lastControl.current = null
-            setConfirmation({ state, alert: result.alert })
-            return
-          }
-          // The toast gives the reason, the refresh shows the saved value
-          awaitRefresh()
-        },
-      }
-    )
+    // `mutateAsync`: unlike the per-call callbacks of `mutate`, it settles
+    // after the component unmounted, so the toast and the refresh still run
+    changeState
+      .mutateAsync({
+        taskId: task.id,
+        toState: state,
+        source: "detail",
+        confirmedAlertId,
+      })
+      .then(finishAfterRefresh, (error) => {
+        const result = onError(error)
+        if (result) {
+          // An open alert to confirm (AC36), maybe set meanwhile by a
+          // colleague (AC37): nothing changed, the modal asks
+          fail()
+          lastControl.current = null
+          setConfirmation({ state, alert: result.alert })
+          return
+        }
+        // The toast gives the reason, the refresh shows the saved value
+        awaitRefresh()
+      })
   }
 
   const submitPriority = (priority: PriorityChoice) => {
     lastControl.current = priorityTriggerRef
     start()
-    setPriority.mutate(
-      { taskId: task.id, priority },
-      {
-        onSuccess: finishAfterRefresh,
-        onError: (error) => {
-          // No confirmation exists for the priority (`onError` returns null):
-          // the toast gives the reason and the refresh shows the saved value
-          onError(error)
-          awaitRefresh()
-        },
-      }
-    )
+    setPriority
+      .mutateAsync({ taskId: task.id, priority })
+      .then(finishAfterRefresh, (error) => {
+        // No confirmation exists for the priority (`onError` returns null):
+        // the toast gives the reason and the refresh shows the saved value
+        onError(error)
+        awaitRefresh()
+      })
   }
 
   const priorityBand = bandOf(task.priority ?? 0)
@@ -197,6 +196,7 @@ export const CustomerTaskManager = (props: TaskManager) => {
           <div className="col-span-2 flex flex-col items-start gap-1">
             <span className="text-sm font-medium">Modifica</span>
             <ReadOnlyReason
+              fit
               editability={editability}
               customerUnassigned={props.customerOperatorId === null}
             />
@@ -210,7 +210,6 @@ export const CustomerTaskManager = (props: TaskManager) => {
         <div className="flex flex-col items-start gap-1">
           <span className="text-sm font-medium">Stato</span>
           <ContactStateSelect
-            aria-label="Stato"
             value={task.state}
             pending={pending}
             triggerRef={stateTriggerRef}
@@ -249,7 +248,7 @@ export const CustomerTaskManager = (props: TaskManager) => {
       <h2 ref={headingRef} tabIndex={-1} className="mb-2 text-lg font-medium">
         Stato del cliente
       </h2>
-      <div className="grid grid-cols-4 items-start gap-4">
+      <div className="grid grid-cols-2 items-start gap-4 lg:grid-cols-4">
         {controls()}
         <div className="flex flex-col items-start gap-1">
           <span className="text-sm font-medium">Contattato il</span>

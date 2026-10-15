@@ -112,8 +112,9 @@ export const handover = ({
 
 /**
  * "Assegna a te" (P4): the actor takes a customer with no operator. A
- * customer that already has one is `CustomerAssignmentForbidden`, for admins
- * too: taking it would grant edit rights over a colleague's contact (D2).
+ * customer that already has one, or whose active contact is a colleague's, is
+ * `CustomerAssignmentForbidden`, for admins too: taking it would grant edit
+ * rights over a colleague's contact (D2).
  *
  * Changes only the customer's operator, never its tasks, and writes one
  * `operator_reassign` row with source `self_assign`.
@@ -132,7 +133,14 @@ export const assignToYourself = ({
   transaction(
     Effect.gen(function* () {
       const customer = yield* lockCustomerOrNotFound(customerId)
-      if (!canSelfAssign(customer)) {
+      const [contact] = yield* query((client) =>
+        client
+          .select({ id: task.id, operatorId: task.operatorId })
+          .from(task)
+          .where(and(eq(task.customerId, customer.id), eq(task.isActive, true)))
+          .for("update")
+      )
+      if (!canSelfAssign(actor, customer, contact ?? null)) {
         return yield* new CustomerAssignmentForbidden()
       }
 

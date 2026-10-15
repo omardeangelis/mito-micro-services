@@ -66,14 +66,22 @@ export function AlertCloseConfirmDialog({
       >
         <DialogHeader>
           <DialogTitle>Chiudere il richiamo?</DialogTitle>
-          <DialogDescription>
+          {/* The date is the point of the modal: full text contrast */}
+          <DialogDescription className="text-foreground">
             Cambiando lo stato, il richiamo del{" "}
             {shown ? formatDeadline(shown.deadline) : ""} verrà chiuso e
             spostato nello Storico
           </DialogDescription>
         </DialogHeader>
         {shown?.message ? (
-          <p className="whitespace-pre-wrap break-words rounded-md bg-muted px-3 py-2 text-sm">
+          // Scrolls inside the modal, so a long message never pushes the
+          // buttons out; focusable, so the keyboard can scroll it
+          <p
+            role="region"
+            aria-label="Messaggio del richiamo"
+            tabIndex={0}
+            className="max-h-[40vh] min-w-0 overflow-y-auto whitespace-pre-wrap rounded-md bg-muted px-3 py-2 text-sm [overflow-wrap:anywhere]"
+          >
             {shown.message}
           </p>
         ) : null}

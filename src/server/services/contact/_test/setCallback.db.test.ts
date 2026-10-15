@@ -236,6 +236,40 @@ describe("task.setCallback: stati (AC46)", () => {
       },
     ])
   })
+
+  it.each(["caricato", "erogata", "non interessato"] as const)(
+    "da %s è ammesso: crea l'alert, porta lo stato a richiamare e scrive la state_change",
+    async (state) => {
+      const operator = await createOperator()
+      const { customer, contact } = await seedContact({
+        state,
+        customerOperatorId: operator.id,
+      })
+
+      const { alertId } = await createTestCaller(operator).task.setCallback({
+        taskId: contact.id,
+        deadline: inTwoDays(),
+        message: null,
+        replacesAlertId: null,
+      })
+
+      expect(await tasksOf(customer.id)).toMatchObject([
+        { id: contact.id, state: "richiamare", alertId },
+      ])
+      expect(await testDb.select().from(alert)).toMatchObject([
+        { id: alertId, taskId: contact.id, isResolved: false },
+      ])
+      expect(await logOf(customer.id)).toMatchObject([
+        {
+          action: "state_change",
+          source: "detail",
+          taskId: contact.id,
+          fromState: state,
+          toState: "richiamare",
+        },
+      ])
+    }
+  )
 })
 
 describe("task.setCallback: scadenza (AC44, A4)", () => {

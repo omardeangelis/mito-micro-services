@@ -138,7 +138,8 @@ export const touchCustomer = (
     )
   })
 
-const loadOperator = (operatorId: number | null) =>
+/** The operator of `operatorId` as a contact shows it, or null. */
+export const loadOperator = (operatorId: number | null) =>
   Effect.gen(function* () {
     if (operatorId === null) return null
     const [operator] = yield* query((client) =>

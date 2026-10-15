@@ -32,7 +32,10 @@ export class AlertConfirmationRequired extends Data.TaggedError(
   "AlertConfirmationRequired"
 )<ContactErrorPayload<"ALERT_CONFIRMATION_REQUIRED">> {}
 
-/** The alert doesn't exist, or is no longer open (AC29). */
+/**
+ * The alert doesn't exist (AC29). An alert already closed is not an error:
+ * `resolveAlert` returns `{ resolved: false }` (F14).
+ */
 export class AlertNotFound extends Data.TaggedError("AlertNotFound") {}
 
 /** A callback can't be set in the contact's state (AC46). */

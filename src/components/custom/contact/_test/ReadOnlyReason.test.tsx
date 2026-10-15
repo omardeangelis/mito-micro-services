@@ -89,4 +89,56 @@ describe("ReadOnlyReason", () => {
     )
     expect(screen.queryByRole("button")).toBeNull()
   })
+
+  it("il testo ha contrasto sufficiente anche sulla riga evidenziata: text-neutral-600, non text-muted-foreground", () => {
+    render(<ReadOnlyReason editability={{ kind: "superseded" }} />)
+
+    const text = screen.getByText("Superato")
+    const badge = text.closest<HTMLElement>("[title]")!
+
+    expect(badge.className).toContain("text-neutral-600")
+    expect(badge.className).not.toContain("text-muted-foreground")
+  })
+
+  it("anche l'indicazione usa text-neutral-600", () => {
+    render(
+      <ReadOnlyReason
+        editability={{ kind: "not_owner", assignee: null }}
+        customerUnassigned
+        showHint
+      />
+    )
+
+    const hintText = screen.getByText(hint)
+
+    expect(hintText.className).toContain("text-neutral-600")
+    expect(hintText.className).not.toContain("text-muted-foreground")
+  })
+
+  it("con fit non ha larghezza fissa e il testo non è troncato", () => {
+    const { container } = render(
+      <ReadOnlyReason
+        editability={{ kind: "not_owner", assignee: "Martina Viola" }}
+        fit
+      />
+    )
+
+    expect(
+      (container.firstElementChild as HTMLElement).className
+    ).not.toContain("w-40")
+    const text = screen.getByText("Assegnato a Martina Viola")
+    expect(text.closest(".truncate")).toBeNull()
+  })
+
+  it("senza fit il testo si tronca nella larghezza fissa della tabella", () => {
+    render(
+      <ReadOnlyReason
+        editability={{ kind: "not_owner", assignee: "Martina Viola" }}
+      />
+    )
+
+    expect(
+      screen.getByText("Assegnato a Martina Viola").closest(".truncate")
+    ).not.toBeNull()
+  })
 })
