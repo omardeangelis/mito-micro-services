@@ -1,25 +1,18 @@
 import "server-only"
 import { Effect } from "effect"
-import { and, eq } from "drizzle-orm"
 import { type Actor, canCreateContact } from "@/lib/domain/contact/permissions"
-import { task } from "@/server/db/schema/task"
+import { bandValue } from "@/lib/domain/contact/priority"
 import { taskEventLog } from "@/server/db/schema/taskEventLog"
-import {
-  type Db,
-  DbError,
-  lockCustomer,
-  query,
-  transaction,
-} from "@/server/effect/db"
-import { replaceActiveContact } from "./activeContact"
+import { type Db, DbError, query, transaction } from "@/server/effect/db"
+import { activeTaskIdOf, replaceActiveContact } from "./activeContact"
 import { type ContactSource } from "./alert"
 import {
   ContactAlreadyActive,
   ContactForbidden,
-  CustomerNotFound,
+  type CustomerNotFound,
   CustomerUnassigned,
 } from "./errors"
-import { touchCustomer } from "./guard"
+import { lockCustomerOrNotFound, touchCustomer } from "./guard"
 
 /** Postgres `unique_violation`: here, `task_customer_active_uidx`. */
 const UNIQUE_VIOLATION = "23505"
@@ -55,12 +48,7 @@ export const createContact = ({
 > =>
   transaction(
     Effect.gen(function* () {
-      // The customer id comes from the user: a missing one is not a defect
-      const customer = yield* lockCustomer(customerId).pipe(
-        Effect.catchTag("CustomerMissing", () =>
-          Effect.fail(new CustomerNotFound())
-        )
-      )
+      const customer = yield* lockCustomerOrNotFound(customerId)
       // Before the permission: an admin gets "Cliente non assegnato" too
       const operatorId = customer.operatorId
       if (operatorId === null) return yield* new CustomerUnassigned()
@@ -79,7 +67,7 @@ export const createContact = ({
           state: "chiamare",
           operatorId,
           closedAt: null,
-          priority: 120,
+          priority: bandValue("urgent"),
         },
         // "Assegna Clienti" picks the most recent task (F1)
         mostRecent: true,
@@ -114,16 +102,3 @@ export const createContact = ({
         })
     )
   )
-
-/** The id of the customer's active contact, or null. */
-const activeTaskIdOf = (customerId: string) =>
-  Effect.gen(function* () {
-    const [active] = yield* query((client) =>
-      client
-        .select({ id: task.id })
-        .from(task)
-        .where(and(eq(task.customerId, customerId), eq(task.isActive, true)))
-        .limit(1)
-    )
-    return active?.id ?? null
-  })

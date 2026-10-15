@@ -19,10 +19,12 @@ import {
   query,
   Tx,
 } from "@/server/effect/db"
+import { activeTaskIdOf } from "@/server/services/contact/activeContact"
 import {
   ContactForbidden,
   ContactNotFound,
   ContactSuperseded,
+  CustomerNotFound,
 } from "@/server/services/contact/errors"
 
 /**
@@ -90,7 +92,7 @@ export const loadEditableContact = (
     })
     if (editability.kind === "superseded") {
       return yield* new ContactSuperseded({
-        activeTaskId: yield* activeTaskIdOf(customer),
+        activeTaskId: yield* activeTaskIdOf(customer.id),
       })
     }
     if (editability.kind === "not_owner") {
@@ -104,6 +106,19 @@ export const loadEditableContact = (
       openAlert: yield* loadOpenAlert(current.alertId),
     }
   })
+
+/**
+ * `lockCustomer` for a customer id that comes from the user: a missing one is
+ * `CustomerNotFound`, not a defect.
+ */
+export const lockCustomerOrNotFound = (
+  customerId: string
+): Effect.Effect<LockedCustomer, CustomerNotFound | DbError, Db | Tx> =>
+  lockCustomer(customerId).pipe(
+    Effect.catchTag("CustomerMissing", () =>
+      Effect.fail(new CustomerNotFound())
+    )
+  )
 
 /**
  * Marks the customer as just modified (AC39): sets its `updatedAt` as
@@ -150,17 +165,4 @@ const loadOpenAlert = (alertId: number | null) =>
         .where(and(eq(alert.id, alertId), eq(alert.isResolved, false)))
     )
     return open ?? null
-  })
-
-/** The id of the customer's active contact, or null. */
-const activeTaskIdOf = (customer: LockedCustomer) =>
-  Effect.gen(function* () {
-    const [active] = yield* query((client) =>
-      client
-        .select({ id: task.id })
-        .from(task)
-        .where(and(eq(task.customerId, customer.id), eq(task.isActive, true)))
-        .limit(1)
-    )
-    return active?.id ?? null
   })

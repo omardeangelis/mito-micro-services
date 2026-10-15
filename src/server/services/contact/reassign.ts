@@ -104,7 +104,8 @@ export const reassign = ({
         ])
       )
 
-      yield* touchCustomer(customer)
+      // Changing the customer's operator already updates its `updatedAt`
+      if (!customerChanged) yield* touchCustomer(customer)
       return { contactChanged, customerChanged }
     })
   )

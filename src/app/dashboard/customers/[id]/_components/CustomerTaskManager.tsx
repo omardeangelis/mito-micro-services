@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useRef, useState } from "react"
 import { type Task, type TaskStatus } from "@/lib/types/schemas"
 import { PriorityBadge } from "@/components/custom/badge/priority"
 import { TaskStatusBadge } from "@/components/custom/badge/TaskStatusBadge"
@@ -11,7 +11,9 @@ import {
   type PendingAlert,
   useContactMutationFeedback,
 } from "@/components/custom/contact/useContactMutationFeedback"
-import { useRefreshAfterSave } from "@/components/custom/contact/useRefreshAfterSave"
+import { useActor } from "@/components/custom/contact/useActor"
+import { focusIsLost } from "@/components/custom/contact/focus"
+import { useSavingUntilRefreshed } from "@/components/custom/contact/useSavingUntilRefreshed"
 import { LoadingSpinner } from "@/components/custom/loading-spinner"
 import { Label } from "@/components/ui/label"
 import {
@@ -30,7 +32,6 @@ import {
   priorityBands,
 } from "@/lib/domain/contact/priority"
 import { formatDeadline } from "@/lib/utils/format"
-import { useUserPreferenceContext } from "@/store/context/useUserPreferenceContext"
 import { api } from "@/trpc/react"
 
 type TaskManager = {
@@ -61,9 +62,7 @@ const isPriorityChoice = (value: string): value is PriorityChoice =>
  */
 export const CustomerTaskManager = (props: TaskManager) => {
   const task = props.tasks[0]!
-  const { role, operatorId } = useUserPreferenceContext((state) => state)
-  const actor =
-    role !== undefined && operatorId !== undefined ? { role, operatorId } : null
+  const actor = useActor()
   const customer = { operatorId: props.customerOperatorId }
 
   const { data: operator, isInitialLoading: operatorIsLoading } =
@@ -72,11 +71,6 @@ export const CustomerTaskManager = (props: TaskManager) => {
       { enabled: task.operatorId !== null }
     )
 
-  const { refresh, refreshing } = useRefreshAfterSave()
-  const { onError } = useContactMutationFeedback({ refresh })
-  const changeState = api.task.changeState.useMutation()
-  const setPriority = api.task.setPriority.useMutation()
-
   const stateTriggerRef = useRef<HTMLButtonElement>(null)
   const priorityTriggerRef = useRef<HTMLButtonElement>(null)
   // The control the last gesture came from: it gets the focus back if the
@@ -84,53 +78,39 @@ export const CustomerTaskManager = (props: TaskManager) => {
   const lastControl = useRef<React.RefObject<HTMLButtonElement> | null>(null)
 
   // From the call until the refreshed contact is rendered
-  const [saving, setSaving] = useState(false)
-  const pending = saving || refreshing
-  // The server answered and the refresh started: its end closes the wait
-  const awaitingRefresh = useRef(false)
+  const { pending, start, fail, awaitRefresh, finishAfterRefresh, refresh } =
+    useSavingUntilRefreshed(() => {
+      if (focusIsLost()) lastControl.current?.current?.focus()
+      lastControl.current = null
+    })
+  const { onError } = useContactMutationFeedback({ refresh })
+  const changeState = api.task.changeState.useMutation()
+  const setPriority = api.task.setPriority.useMutation()
   // The change waiting for the user to confirm closing the open alert (P10)
   const [confirmation, setConfirmation] = useState<{
     state: TaskStatus
     alert: PendingAlert
   } | null>(null)
 
-  useEffect(() => {
-    if (refreshing || !awaitingRefresh.current) return
-    awaitingRefresh.current = false
-    setSaving(false)
-    const lost =
-      document.activeElement === null ||
-      document.activeElement === document.body
-    if (lost) lastControl.current?.current?.focus()
-    lastControl.current = null
-  }, [refreshing])
-
-  const afterAnswer = () => {
-    awaitingRefresh.current = true
-  }
-
   const submitState = (state: TaskStatus, confirmedAlertId: number | null) => {
     lastControl.current = stateTriggerRef
-    setSaving(true)
+    start()
     changeState.mutate(
       { taskId: task.id, toState: state, source: "detail", confirmedAlertId },
       {
-        onSuccess: () => {
-          afterAnswer()
-          refresh()
-        },
+        onSuccess: finishAfterRefresh,
         onError: (error) => {
           const result = onError(error)
           if (result) {
             // An open alert to confirm (AC36), maybe set meanwhile by a
             // colleague (AC37): nothing changed, the modal asks
-            setSaving(false)
+            fail()
             lastControl.current = null
             setConfirmation({ state, alert: result.alert })
             return
           }
           // The toast gives the reason, the refresh shows the saved value
-          afterAnswer()
+          awaitRefresh()
         },
       }
     )
@@ -138,19 +118,16 @@ export const CustomerTaskManager = (props: TaskManager) => {
 
   const submitPriority = (priority: PriorityChoice) => {
     lastControl.current = priorityTriggerRef
-    setSaving(true)
+    start()
     setPriority.mutate(
       { taskId: task.id, priority },
       {
-        onSuccess: () => {
-          afterAnswer()
-          refresh()
-        },
+        onSuccess: finishAfterRefresh,
         onError: (error) => {
-          // No confirmation exists for the priority: the toast gives the
-          // reason and the refresh shows the saved value
-          if (onError(error)) setSaving(false)
-          else afterAnswer()
+          // No confirmation exists for the priority (`onError` returns null):
+          // the toast gives the reason and the refresh shows the saved value
+          onError(error)
+          awaitRefresh()
         },
       }
     )

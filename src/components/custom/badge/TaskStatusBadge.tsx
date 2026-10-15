@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge"
 import { stateCategory } from "@/lib/domain/contact/status"
 import { type TaskCategory, type TaskStatus } from "@/lib/types/schemas"
 
-export const activeVariants = cva("", {
+const activeVariants = cva("", {
   variants: {
     state: {
       idle: "bg-gray-100 text-grey-800",

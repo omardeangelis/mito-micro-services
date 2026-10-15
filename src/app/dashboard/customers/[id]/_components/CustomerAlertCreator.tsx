@@ -5,7 +5,8 @@ import {
   type PendingAlert,
   useContactMutationFeedback,
 } from "@/components/custom/contact/useContactMutationFeedback"
-import { useRefreshAfterSave } from "@/components/custom/contact/useRefreshAfterSave"
+import { useActor } from "@/components/custom/contact/useActor"
+import { useSavingUntilRefreshed } from "@/components/custom/contact/useSavingUntilRefreshed"
 import { Button } from "@/components/ui/button"
 import { Form, FormControl, FormField, FormItem } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
@@ -20,10 +21,9 @@ import { useForm } from "react-hook-form"
 import { z } from "zod"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { getTimeDifferenceFromNowAsDD } from "@/lib/utils"
-import { type BaseSyntheticEvent, useEffect, useRef, useState } from "react"
+import { type BaseSyntheticEvent, useRef, useState } from "react"
 import { formatDeadline } from "@/lib/utils/format"
 import { contactEditability } from "@/lib/domain/contact/permissions"
-import { useUserPreferenceContext } from "@/store/context/useUserPreferenceContext"
 import { api } from "@/trpc/react"
 
 type Props = {
@@ -54,9 +54,7 @@ type FormValues = z.infer<typeof formSchema>
  * refreshed value is on screen.
  */
 export const CustomerAlertCreator = (props: Props) => {
-  const { role, operatorId } = useUserPreferenceContext((state) => state)
-  const actor =
-    role !== undefined && operatorId !== undefined ? { role, operatorId } : null
+  const actor = useActor()
 
   const form = useForm<FormValues>({
     defaultValues: {
@@ -64,35 +62,26 @@ export const CustomerAlertCreator = (props: Props) => {
     },
   })
 
-  const { refresh, refreshing } = useRefreshAfterSave()
-  const { onError } = useContactMutationFeedback({ refresh })
-  const setCallback = api.task.setCallback.useMutation()
-  const resolveAlert = api.task.resolveAlert.useMutation()
-
   const triggerRef = useRef<HTMLButtonElement>(null)
-  const [open, setOpen] = useState(false)
-  // The open alert the form replaces when the server says it is another one
-  // than the page showed (AC44)
-  const [received, setReceived] = useState<PendingAlert | null>(null)
-
-  // From the call until the refreshed contact is rendered
-  const [saving, setSaving] = useState(false)
-  const pending = saving || refreshing
-  // The server answered and the refresh started: its end closes the wait
-  const awaitingRefresh = useRef(false)
   // The alert was closed with the "X": the focus goes to the trigger when the
   // refreshed page is on screen
   const focusTriggerAfter = useRef(false)
 
-  useEffect(() => {
-    if (refreshing || !awaitingRefresh.current) return
-    awaitingRefresh.current = false
-    setSaving(false)
-    if (focusTriggerAfter.current) {
+  // From the call until the refreshed contact is rendered
+  const { pending, start, awaitRefresh, finishAfterRefresh, refresh } =
+    useSavingUntilRefreshed(() => {
+      if (!focusTriggerAfter.current) return
       focusTriggerAfter.current = false
       triggerRef.current?.focus()
-    }
-  }, [refreshing])
+    })
+  const { onError } = useContactMutationFeedback({ refresh })
+  const setCallback = api.task.setCallback.useMutation()
+  const resolveAlert = api.task.resolveAlert.useMutation()
+
+  const [open, setOpen] = useState(false)
+  // The open alert the form replaces when the server says it is another one
+  // than the page showed (AC44)
+  const [received, setReceived] = useState<PendingAlert | null>(null)
 
   const openAlert = props.alert && !props.alert.isResolved ? props.alert : null
   const replaced: PendingAlert | null = received ?? openAlert
@@ -101,7 +90,7 @@ export const CustomerAlertCreator = (props: Props) => {
     e.preventDefault()
     if (pending) return
     void form.handleSubmit((values) => {
-      setSaving(true)
+      start()
       setCallback.mutate(
         {
           taskId: props.task.id,
@@ -111,11 +100,10 @@ export const CustomerAlertCreator = (props: Props) => {
         },
         {
           onSuccess: () => {
-            awaitingRefresh.current = true
             setOpen(false)
             setReceived(null)
             form.reset({ deadline: undefined, message: "" })
-            refresh()
+            finishAfterRefresh()
           },
           onError: (error) => {
             const result = onError(error)
@@ -123,12 +111,11 @@ export const CustomerAlertCreator = (props: Props) => {
               // Another open alert than the form said (AC44): nothing was
               // saved, the form stays open with the data and names it
               setReceived(result.alert)
-              awaitingRefresh.current = true
-              refresh()
+              finishAfterRefresh()
               return
             }
             // The toast gives the reason, the refresh shows the saved value
-            awaitingRefresh.current = true
+            awaitRefresh()
           },
         }
       )
@@ -137,21 +124,20 @@ export const CustomerAlertCreator = (props: Props) => {
 
   const closeAlert = (alertId: number) => {
     if (pending) return
-    setSaving(true)
+    start()
     resolveAlert.mutate(
       { alertId, source: "detail" },
       {
         onSuccess: () => {
-          awaitingRefresh.current = true
           focusTriggerAfter.current = true
           setReceived(null)
-          refresh()
+          finishAfterRefresh()
         },
         onError: (error) => {
           // The alert stays: the toast gives the reason and the refresh shows
-          // the saved value
-          if (onError(error)) setSaving(false)
-          else awaitingRefresh.current = true
+          // the saved value (`onError` returns null: no confirmation exists)
+          onError(error)
+          awaitRefresh()
         },
       }
     )

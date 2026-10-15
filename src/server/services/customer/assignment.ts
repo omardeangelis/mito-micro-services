@@ -9,18 +9,12 @@ import {
 import { customers } from "@/server/db/schema/customers"
 import { task } from "@/server/db/schema/task"
 import { taskEventLog } from "@/server/db/schema/taskEventLog"
+import { type Db, type DbError, query, transaction } from "@/server/effect/db"
 import {
-  type Db,
-  type DbError,
-  lockCustomer,
-  query,
-  transaction,
-} from "@/server/effect/db"
-import {
-  CustomerNotFound,
+  type CustomerNotFound,
   type OperatorNotFound,
 } from "@/server/services/contact/errors"
-import { touchCustomer } from "@/server/services/contact/guard"
+import { lockCustomerOrNotFound } from "@/server/services/contact/guard"
 import { findWorkingOperator } from "@/server/services/contact/operator"
 import { CustomerAssignmentForbidden, HandoverSameOperator } from "./errors"
 
@@ -56,12 +50,7 @@ export const handover = ({
 > =>
   transaction(
     Effect.gen(function* () {
-      // The customer id comes from the user: a missing one is not a defect
-      const customer = yield* lockCustomer(customerId).pipe(
-        Effect.catchTag("CustomerMissing", () =>
-          Effect.fail(new CustomerNotFound())
-        )
-      )
+      const customer = yield* lockCustomerOrNotFound(customerId)
       if (!canHandover(actor, customer)) {
         return yield* new CustomerAssignmentForbidden()
       }
@@ -117,7 +106,6 @@ export const handover = ({
         ])
       )
 
-      yield* touchCustomer(customer)
       return { contactMoved }
     })
   )
@@ -143,12 +131,7 @@ export const assignToYourself = ({
 > =>
   transaction(
     Effect.gen(function* () {
-      // The customer id comes from the user: a missing one is not a defect
-      const customer = yield* lockCustomer(customerId).pipe(
-        Effect.catchTag("CustomerMissing", () =>
-          Effect.fail(new CustomerNotFound())
-        )
-      )
+      const customer = yield* lockCustomerOrNotFound(customerId)
       if (!canSelfAssign(customer)) {
         return yield* new CustomerAssignmentForbidden()
       }

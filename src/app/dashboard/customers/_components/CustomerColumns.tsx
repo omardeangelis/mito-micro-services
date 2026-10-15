@@ -17,20 +17,14 @@ import { type ColumnDef } from "@tanstack/react-table"
 import React, { useCallback } from "react"
 import { cn, formatDateAsDMY } from "@/lib/utils"
 import { SortableHeader } from "@/components/custom/table/TableHeaders"
-import { Badge } from "@/components/ui/badge"
 import { handleCustomerBlackList } from "../_actions/handleCustomerBlackList"
 import { type Customer, type Task } from "@/lib/types/schemas"
 
 import { type TaskStatus } from "@/lib/types/schemas"
-import { getTaskStatusCategory } from "../_utils"
 import { PlusCircleIcon } from "lucide-react"
-import { useUserPreferenceContext } from "@/store/context/useUserPreferenceContext"
 import { api } from "@/trpc/react"
 import { PriorityBadge } from "@/components/custom/badge/priority"
-import {
-  TaskStatusBadge,
-  activeVariants,
-} from "@/components/custom/badge/TaskStatusBadge"
+import { TaskStatusBadge } from "@/components/custom/badge/TaskStatusBadge"
 import { LoadingSpinner } from "@/components/custom/loading-spinner"
 import { AlertCloseConfirmDialog } from "@/components/custom/contact/AlertCloseConfirmDialog"
 import { ContactStateSelect } from "@/components/custom/contact/ContactStateSelect"
@@ -39,7 +33,8 @@ import {
   type PendingAlert,
   useContactMutationFeedback,
 } from "@/components/custom/contact/useContactMutationFeedback"
-import { useRefreshAfterSave } from "@/components/custom/contact/useRefreshAfterSave"
+import { useActor } from "@/components/custom/contact/useActor"
+import { useSavingUntilRefreshed } from "@/components/custom/contact/useSavingUntilRefreshed"
 import { useRowFocusAfterSave } from "@/components/custom/contact/useRowFocusAfterSave"
 import {
   canCreateContact,
@@ -440,26 +435,6 @@ export const CustomerColumns: ColumnDef<CustomerColumnSelectedProps>[] = [
   },
 ]
 
-type TaskBadgeProps = {
-  tasks: CustomerColumnSelectedProps["tasks"]
-}
-
-export const TaskBadge = React.memo(({ tasks }: TaskBadgeProps) => {
-  return (
-    <Badge
-      variant={"outline"}
-      size={"xs"}
-      className={activeVariants({
-        state: getTaskStatusCategory(tasks?.state ?? "nessuno"),
-      })}
-    >
-      {tasks?.state ?? "nessuno"}
-    </Badge>
-  )
-})
-
-TaskBadge.displayName = "TaskBadge"
-
 const BlackListedDropDown: React.FC<{
   customerId: string
 }> = (props) => {
@@ -497,42 +472,26 @@ function StateSelector(props: {
   customerId: string
   customerOperatorId: number | null
 }) {
-  const { role, operatorId } = useUserPreferenceContext((state) => state)
-  const actor =
-    role !== undefined && operatorId !== undefined ? { role, operatorId } : null
+  const actor = useActor()
   const contact = activeContactOf(props.tasks)
   const customer = { operatorId: props.customerOperatorId }
-
-  const { refresh, refreshing } = useRefreshAfterSave()
-  const { onError } = useContactMutationFeedback({ refresh })
-  const changeState = api.task.changeState.useMutation()
-  const createContact = api.task.createContact.useMutation()
 
   const cellRef = React.useRef<HTMLDivElement>(null)
   const triggerRef = React.useRef<HTMLButtonElement>(null)
   const { remember, forget, settle } = useRowFocusAfterSave(cellRef)
 
   // From the call until the refreshed row is rendered
-  const [saving, setSaving] = React.useState(false)
-  const pending = saving || refreshing
-  // The server answered and the refresh started: its end closes the wait
-  const awaitingRefresh = React.useRef(false)
+  const { pending, start, fail, awaitRefresh, finishAfterRefresh, refresh } =
+    useSavingUntilRefreshed(settle)
+  const { onError } = useContactMutationFeedback({ refresh })
+  const changeState = api.task.changeState.useMutation()
+  const createContact = api.task.createContact.useMutation()
+
   // The change waiting for the user to confirm closing the open alert (P10)
   const [confirmation, setConfirmation] = React.useState<{
     state: TaskStatus
     alert: PendingAlert
   } | null>(null)
-
-  React.useEffect(() => {
-    if (refreshing || !awaitingRefresh.current) return
-    awaitingRefresh.current = false
-    setSaving(false)
-    settle()
-  }, [refreshing, settle])
-
-  const afterAnswer = () => {
-    awaitingRefresh.current = true
-  }
 
   const submitState = (
     taskId: number,
@@ -540,26 +499,23 @@ function StateSelector(props: {
     confirmedAlertId: number | null
   ) => {
     remember()
-    setSaving(true)
+    start()
     changeState.mutate(
       { taskId, toState: state, source: "list", confirmedAlertId },
       {
-        onSuccess: () => {
-          afterAnswer()
-          refresh()
-        },
+        onSuccess: finishAfterRefresh,
         onError: (error) => {
           const result = onError(error)
           if (result) {
             // An open alert to confirm (AC36), maybe set meanwhile by a
             // colleague (AC37): nothing changed, the modal asks
-            setSaving(false)
+            fail()
             forget()
             setConfirmation({ state, alert: result.alert })
             return
           }
           // The toast gives the reason, the refresh shows the saved value
-          afterAnswer()
+          awaitRefresh()
         },
       }
     )
@@ -568,16 +524,13 @@ function StateSelector(props: {
   const create = () => {
     if (pending) return
     remember()
-    setSaving(true)
+    start()
     createContact.mutate(
       { customerId: props.customerId, source: "list" },
       {
-        onSuccess: () => {
-          afterAnswer()
-          refresh()
-        },
+        onSuccess: finishAfterRefresh,
         onError: (error) => {
-          afterAnswer()
+          awaitRefresh()
           onError(error)
         },
       }

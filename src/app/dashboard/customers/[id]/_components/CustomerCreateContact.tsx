@@ -1,13 +1,17 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef } from "react"
 import { LoadingSpinner } from "@/components/custom/loading-spinner"
 import { useContactMutationFeedback } from "@/components/custom/contact/useContactMutationFeedback"
-import { useRefreshAfterSave } from "@/components/custom/contact/useRefreshAfterSave"
+import {
+  focusIsLost,
+  STATE_TRIGGER_SELECTOR,
+} from "@/components/custom/contact/focus"
+import { useActor } from "@/components/custom/contact/useActor"
+import { useSavingUntilRefreshed } from "@/components/custom/contact/useSavingUntilRefreshed"
 import { Button } from "@/components/ui/button"
 import { canCreateContact } from "@/lib/domain/contact/permissions"
 import { readContactError } from "@/lib/domain/contact/errors"
-import { useUserPreferenceContext } from "@/store/context/useUserPreferenceContext"
 import { api } from "@/trpc/react"
 
 type CustomerCreateContactProps = {
@@ -18,14 +22,9 @@ type CustomerCreateContactProps = {
 
 type FocusRoot = Document | Element
 
-const STATE_TRIGGER = "[data-contact-state-trigger]"
-
 // How long the new state selector may take to appear after the refresh (the
 // task card waits for the operator before it shows its controls)
 const FOCUS_WAIT_MS = 3000
-
-const focusIsLost = () =>
-  document.activeElement === null || document.activeElement === document.body
 
 /**
  * Focuses the state selector of the new contact, only if the focus is lost.
@@ -34,7 +33,7 @@ const focusIsLost = () =>
  */
 const focusStateTrigger = (root: FocusRoot): boolean => {
   if (!focusIsLost()) return true
-  const trigger = root.querySelector<HTMLElement>(STATE_TRIGGER)
+  const trigger = root.querySelector<HTMLElement>(STATE_TRIGGER_SELECTOR)
   if (!trigger) return false
   trigger.focus({ preventScroll: true })
   return true
@@ -64,39 +63,27 @@ const focusWhenRendered = (root: FocusRoot) => {
  * page is on screen, where the task card takes this card's place.
  */
 export const CustomerCreateContact = (props: CustomerCreateContactProps) => {
-  const { role, operatorId } = useUserPreferenceContext((state) => state)
-  const actor =
-    role !== undefined && operatorId !== undefined ? { role, operatorId } : null
-
-  const { refresh, refreshing } = useRefreshAfterSave()
-  const { onError } = useContactMutationFeedback({ refresh })
-  const createContact = api.task.createContact.useMutation()
+  const actor = useActor()
 
   const cardRef = useRef<HTMLDivElement>(null)
   // The sheet around the card, kept at click time: after the refresh the card
   // is unmounted and its ref is empty
   const rootRef = useRef<FocusRoot | null>(null)
-
-  // From the call until the refreshed page is rendered
-  const [saving, setSaving] = useState(false)
-  const pending = saving || refreshing
-  // The server answered and the refresh started: its end closes the wait
-  const awaitingRefresh = useRef(false)
   // The customer has an active contact now (created, or already there): the
   // focus goes to its state selector
   const handoffFocus = useRef(false)
 
-  // Runs only while the card stays on screen (an error with no new contact).
-  // When the contact appears the card is unmounted instead: see the cleanup
-  useEffect(() => {
-    if (refreshing || !awaitingRefresh.current) return
-    awaitingRefresh.current = false
-    setSaving(false)
-    if (handoffFocus.current) {
+  // From the call until the refreshed page is rendered. The wait ends here
+  // only while the card stays on screen (an error with no new contact); when
+  // the contact appears the card is unmounted instead: see the cleanup
+  const { pending, start, finishAfterRefresh, awaitRefresh, refresh } =
+    useSavingUntilRefreshed(() => {
+      if (!handoffFocus.current) return
       handoffFocus.current = false
       focusStateTrigger(rootRef.current ?? document)
-    }
-  }, [refreshing])
+    })
+  const { onError } = useContactMutationFeedback({ refresh })
+  const createContact = api.task.createContact.useMutation()
 
   useEffect(
     () => () => {
@@ -116,17 +103,16 @@ export const CustomerCreateContact = (props: CustomerCreateContactProps) => {
   const create = () => {
     if (pending) return
     rootRef.current = cardRef.current?.closest("[role=dialog]") ?? document
-    setSaving(true)
+    start()
     createContact.mutate(
       { customerId: props.customerId, source: "detail" },
       {
         onSuccess: () => {
-          awaitingRefresh.current = true
           handoffFocus.current = true
-          refresh()
+          finishAfterRefresh()
         },
         onError: (error) => {
-          awaitingRefresh.current = true
+          awaitRefresh()
           // A colleague created it meanwhile: the toast says so and the
           // refresh shows the contact
           handoffFocus.current =

@@ -1,18 +1,13 @@
-import { TRPCError } from "@trpc/server"
 import { Effect } from "effect"
 import { adminProcedure, operatorProcedure } from "@/server/api/trpc"
+import { bandValue } from "@/lib/domain/contact/priority"
 import { type Task } from "@/lib/types/schemas"
 import { alert, task, taskStatus } from "@/server/db/schema/task"
 import { taskEventLog } from "@/server/db/schema/taskEventLog"
 import { z } from "zod"
 import { and, desc, eq } from "drizzle-orm"
 import { customers } from "@/server/db/schema/customers"
-import {
-  type CustomerMissing,
-  lockCustomer,
-  query,
-  transaction,
-} from "@/server/effect/db"
+import { lockCustomer, query, transaction } from "@/server/effect/db"
 import { runTrpc } from "@/server/effect/trpc"
 import { replaceActiveContact } from "@/server/services/contact/activeContact"
 import { actorOf } from "@/server/services/contact/actor"
@@ -58,13 +53,6 @@ export const setCallback = operatorProcedure
       contactErrorToTrpc
     )
   )
-
-/** `CustomerMissing` as tRPC reports it: the input names no customer. */
-const customerNotFound = (error: CustomerMissing) =>
-  new TRPCError({
-    code: "BAD_REQUEST",
-    message: `Cliente non trovato: ${error.customerId}`,
-  })
 
 // resolveAlertCustomerIds: l'elenco dei clienti per cui l'operatore ha
 // confermato esplicitamente la rimozione dell'alert pendente. Per tutti gli altri
@@ -155,7 +143,12 @@ const assignCustomer = ({
     if (!customerTask) {
       const { created } = yield* replaceActiveContact({
         customer,
-        values: { operatorId, state, priority: 120, closedAt: null },
+        values: {
+          operatorId,
+          state,
+          priority: bandValue("urgent"),
+          closedAt: null,
+        },
       })
       yield* setCustomerOperator
       yield* insertLogRows([
@@ -192,7 +185,7 @@ const assignCustomer = ({
         values: {
           operatorId,
           state,
-          priority: 120,
+          priority: bandValue("urgent"),
           closedAt: customerTask.closedAt,
         },
         // As at base, where the previous task was written first
@@ -262,6 +255,6 @@ export const bulkHandleTask = adminProcedure
           ),
         { concurrency: 1, discard: true }
       ),
-      customerNotFound
+      contactErrorToTrpc
     )
   })

@@ -3,6 +3,7 @@ import { Effect } from "effect"
 import { eq } from "drizzle-orm"
 import { planStateChange } from "@/lib/domain/contact/transition"
 import { type Actor } from "@/lib/domain/contact/permissions"
+import { bandValue } from "@/lib/domain/contact/priority"
 import { type TaskStatus } from "@/lib/types/schemas"
 import { task } from "@/server/db/schema/task"
 import { taskEventLog } from "@/server/db/schema/taskEventLog"
@@ -97,7 +98,7 @@ export const changeState = ({
             state: "chiamare",
             operatorId: contact.task.operatorId,
             closedAt: contact.task.closedAt,
-            priority: 120,
+            priority: bandValue("urgent"),
             customPriority: false,
             alertId: null,
           },

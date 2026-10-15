@@ -1,28 +1,14 @@
 import { Badge } from "@/components/ui/badge"
 import { ArrowDown, ArrowUpRight, Equal, ArrowUp } from "lucide-react"
-import {
-  bandOf,
-  bandValue,
-  priorityBands,
-  type PriorityBand,
-} from "@/lib/domain/contact/priority"
+import { bandOf, type PriorityBand } from "@/lib/domain/contact/priority"
 
 type priorityType = PriorityBand
-
-export const priorityEnum = priorityBands
 
 const colors: Record<priorityType, string> = {
   low: "blue",
   medium: "yellow",
   high: "orange",
   urgent: "red",
-}
-
-export const priorityRangeMap: Record<priorityType, number> = {
-  low: bandValue("low"),
-  medium: bandValue("medium"),
-  high: bandValue("high"),
-  urgent: bandValue("urgent"),
 }
 
 const Icon = ({ priority }: { priority: priorityType }) => {

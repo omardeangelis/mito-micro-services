@@ -1,9 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useRef } from "react"
-
-/** The trigger of `ContactStateSelect` carries this attribute. */
-const TRIGGER_SELECTOR = "[data-contact-state-trigger]"
+import { focusIsLost, STATE_TRIGGER_SELECTOR } from "./focus"
 
 /** Where the save started: the cell, its row and the row's position. */
 type Origin = {
@@ -12,9 +10,6 @@ type Origin = {
   table: HTMLTableElement
   rowIndex: number
 }
-
-const focusIsLost = () =>
-  document.activeElement === null || document.activeElement === document.body
 
 const bodyRows = (table: HTMLTableElement) =>
   Array.from(table.querySelectorAll<HTMLTableRowElement>(":scope > tbody > tr"))
@@ -32,7 +27,7 @@ const focusNearestRow = (
   const after = rows.slice(next)
   const before = rows.slice(0, Math.max(previous + 1, 0)).reverse()
   for (const row of [...after, ...before]) {
-    const trigger = row.querySelector<HTMLElement>(TRIGGER_SELECTOR)
+    const trigger = row.querySelector<HTMLElement>(STATE_TRIGGER_SELECTOR)
     if (trigger) {
       trigger.focus()
       return
@@ -51,7 +46,7 @@ const restoreFocus = ({ cell, row, table, rowIndex }: Origin) => {
     // The row is still there with a control (the selector, or the "+" that
     // became the selector): the focus stays on the row
     const control = cell.querySelector<HTMLElement>(
-      `${TRIGGER_SELECTOR}, button`
+      `${STATE_TRIGGER_SELECTOR}, button`
     )
     if (control) {
       if (document.activeElement !== control) control.focus()
