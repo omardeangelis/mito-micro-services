@@ -1,5 +1,11 @@
 "use client"
-import { createContext, useRef, type FC, type PropsWithChildren } from "react"
+import {
+  createContext,
+  useEffect,
+  useRef,
+  type FC,
+  type PropsWithChildren,
+} from "react"
 import {
   createUserPreferenceStore,
   type UserPreferenceStoreType,
@@ -18,6 +24,13 @@ export const UserPreferenceProvider: FC<PropsWithChildren> = ({ children }) => {
     operatorId: data?.operatorId,
   })
   const store = useRef(prefStore).current
+  const role = data?.role
+  const operatorId = data?.operatorId
+  // Who the user is comes from the session, never from the browser: another
+  // sign-in in the same browser would leave its role and operator behind
+  useEffect(() => {
+    store.setState({ role, operatorId })
+  }, [store, role, operatorId])
   if (isLoading) return <GenericLoading />
   return (
     <UserPreferenceContext.Provider value={store}>
