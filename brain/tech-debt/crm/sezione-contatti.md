@@ -47,6 +47,8 @@ Scoperto nella review di PR1 (F1, seconda verifica), preesistente.
 
 **Da fare fuori da questa spec:** A7 lascia la logica invariata (non-goal). Un seguito può riassegnare la task attiva del cliente, con un criterio di spareggio.
 
+**Rientra nella spec dal 2026-10-15 (D14, AC75):** in PR6 T6.8 "Assegna Clienti" sposta il contatto attivo del cliente in ogni stato, con il servizio `handover`. Il 2026-10-15 in prod i contatti attivi con un operatore diverso da quello del cliente erano 1 su 69.783 (sola lettura). Si chiude con T6.8.
+
 ## Casi limite di `transaction` con le interruzioni
 
 Scoperto nella review di PR1 (F9, F10).
@@ -239,7 +241,7 @@ Scoperto nel piano (A11, §15), dichiarato in PR3 (T3.15).
 
 **Effetto oggi:** `refreshPriorities` può sovrascrivere una priorità appena salvata da un operatore (l'ultima scrittura vince); "Assegna Clienti" in concorrenza con una mutation del contatto può lasciare il contatto attivo a un operatore diverso da quello del cliente (la stessa divergenza di "Assegna Clienti sceglie la task più recente anche se inattiva"). La pulizia del log non tocca righe recenti.
 
-**Da fare:** `refreshPriorities` con il lock per cliente, o con una condizione sul valore letto, quando PR5 ridisegna le priorità; "Assegna Clienti" quando si riprende A7; massiva e cron su `resolveOpenAlert` (stesso comportamento più `updated_at`); la massiva riceve dalla modale gli id degli alert confermati e li confronta dopo il lock.
+**Da fare:** `refreshPriorities` con il lock per cliente, o con una condizione sul valore letto, quando PR5 ridisegna le priorità; "Assegna Clienti" con T6.8 in PR6 (D14); massiva e cron su `resolveOpenAlert` (stesso comportamento più `updated_at`); la massiva riceve dalla modale gli id degli alert confermati e li confronta dopo il lock.
 
 ## `customer.insertCustomer` accetta l'operatore
 

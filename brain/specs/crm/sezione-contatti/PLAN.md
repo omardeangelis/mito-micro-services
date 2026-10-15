@@ -66,7 +66,7 @@ Serve una sezione **Contatti** (lista e dettaglio) sulle `task`. Le regole di mo
 | **PR3** Regole sul server, usate da Clienti | **Pronta.** Branch `contatti/pr3-regole-server`, review SHIP il 2026-10-15 (dopo le correzioni); PR verso `dev`, poi G3 con l'annuncio agli operatori | 1 (+ AC66–AC67 anticipati, P1) | Da Clienti e dalla scheda cliente: cambio di stato atomico, modale di conferma per l'alert, operatore invariato, sola lettura con motivo, stato e priorità salvati subito nella scheda (D11), "Passaggio di consegne" al posto del cambio di operatore nel form (D13). I permessi D2 li rifiuta il server anche fuori dall'interfaccia. "Crea contatto" nella scheda cliente. Un alert non si chiude due volte e non si stacca per sbaglio (D10). Un test rende rossa la CI se uno degli scrittori di contatti smette di bloccare il cliente (D12) | regole server di AC27, AC30–AC52; AC66, AC67; AC73 |
 | **PR4** Chat con proprietario esplicito | Da fare | prerequisito del passo 3 (P2) | Nessun cambiamento visibile: note di Pratiche e scheda cliente identiche; la chat non deduce più dall'URL cosa aggiornare | AC55 (base) |
 | **PR5** Sezione Contatti con note | Da fare | 2 + 3 (P2) | Lista, filtri, URL, dettaglio, modifiche, note del cliente, "Vedi contatti", guida operatori per Contatti | AC1–AC57, AC62, AC74 (parte Contatti) |
-| **PR6** Clienti semplificata | Da fare | 4 | Colonne e filtri task rimossi, totale = righe, scheda cliente con riepilogo e "Gestisci contatto", etichette della massiva, guida completata | AC58–AC61, AC63–AC65, AC68, AC74 (parte restante) |
+| **PR6** Clienti semplificata | Da fare | 4 | Colonne e filtri task rimossi, totale = righe, scheda cliente con riepilogo e "Gestisci contatto", etichette della massiva, "Assegna Clienti" che sposta cliente e contatto insieme (D14), guida completata | AC58–AC61, AC63–AC65, AC68, AC74 (parte restante), AC75 |
 | **PR7** Test di concorrenza su Postgres vero | Da fare, bassa priorità (D12) | — | La CI prova con due connessioni vere che le transazioni sullo stesso cliente si mettono in coda, che R7 non accade e che non ci sono deadlock | AC71 (concorrenza) |
 
 **Ordine vincolante:**
@@ -99,11 +99,12 @@ Serve una sezione **Contatti** (lista e dettaglio) sulle `task`. Le regole di mo
 | D11 | **Scheda cliente a salvataggio immediato.** Niente più form con "Salva": lo stato si salva quando si sceglie (stesso selettore e stessa modale della riga), la priorità quando si cambia fascia o si sceglie "Automatica". Ogni gesto è una mutation atomica; con un solo "Salva", `changeState` e `setPriority` in sequenza potevano salvare a metà. Vale fino a PR6, che rende la scheda un riepilogo (AC65) | Omar, 2026-10-15, su proposta del `design-engineer` |
 | D12 | **Regola dei lock provata da un test.** Livello 1 in PR3 (T3.15): un trigger di test fa fallire ogni scrittura su `task`, `alert` e `task_event_log` fatta senza aver bloccato il cliente nella stessa transazione, per tutti gli scrittori di contatti di oggi; uno nuovo si aggiunge al test. Livello 2 in PR7, a bassa priorità: test di concorrenza su un Postgres vero in CI | Omar, 2026-10-15 |
 | D13 | **"Passaggio di consegne" al posto del cambio di operatore nel form** (sostituisce D5). La verifica di PR3 ha trovato che D5 + P4 facevano riassegnare un contatto a un non-admin, contro D2 e AC50. Ora:<br>• il form del cliente salva solo l'anagrafica: `updateCustomerFromDashboard` non accetta più `operatorId`, e sparisce il riallineamento silenzioso del contatto a ogni salvataggio;<br>• un'azione separata, "Passaggio di consegne", con una modale che spiega cosa succede, sposta il cliente e il suo contatto attivo **in qualunque stato** a un altro operatore. La usano l'admin (su ogni cliente) e l'operatore del cliente (sui suoi);<br>• le chiamate già registrate sul contatto passano al nuovo operatore nell'export (regola di attribuzione della spec); la modale e l'annuncio G3 lo dicono.<br>• il passaggio cambia sempre l'operatore del cliente: una destinazione uguale a quella attuale è rifiutata, anche per l'admin (Omar, dopo la seconda verifica). Allineare il solo contatto è la riassegnazione dell'admin (`task.reassign`), nell'interfaccia con PR5.<br>È un'eccezione esplicita a D2 ("la riassegnazione è solo ADMIN") e ad AC50, registrata in §15 | Omar, 2026-10-15 |
+| D14 | **Cliente e contatto attivo hanno lo stesso operatore** (AC75, sostituisce A7 per "Assegna Clienti"). Dai test manuali di PR3: la riga di Clienti mostrava "Assegnato a …" accanto a una colonna Operatore che diceva un'altra cosa, e la scheda "Assegna Clienti" dice "Assegna solo il cliente" mentre sposta anche il contatto, ma solo in `chiamare`. Ora:<br>• **in PR6 (T6.8)** "Assegna Clienti" diventa un passaggio di consegne in massa: per ogni cliente usa il servizio `handover` (D13), quindi sposta cliente e contatto attivo in ogni stato, blocca il cliente (esce da A11) e scrive i log. Il testo della scheda lo dice, e i contatti attivi ancora separati si riallineano prima del rilascio;<br>• **subito, in PR3:** la riga di Clienti non nomina l'operatore del contatto. In sola lettura mostra solo lo stato, e "Non assegnato" con l'indicazione di "Assegna a te" quando né il cliente né il contatto hanno un operatore (AC51 rivisto). La scheda cliente resta com'è.<br>Misurato in prod in sola lettura il 2026-10-15: 1 contatto attivo su 69.783 con un operatore diverso da quello del cliente (in `richiamare`); 3 non attivi su 13.397, che restano come sono (storico). Niente colonna "Gestito da": renderebbe ufficiale una separazione che la spec rinvia a `task.kind` | Omar, 2026-10-15 |
 | P1 | **"Crea contatto" nella scheda cliente anticipato a PR3** (spec: passo 4). Senza, tra PR5 e PR6 il percorso della FLOW "cliente senza contatti → [Apri scheda cliente]" arriva a una scheda senza nessuna azione. È solo un'aggiunta: non toglie niente a Clienti | Piano (ux-advisor) |
 | P2 | **Note insieme a Contatti.** Il refactor della chat va in una PR a sé (PR4), prima della sezione; l'integrazione nel dettaglio sta in PR5. Il passo 3 della spec si fonde col passo 2, così il giro chiamate (percorso A della FLOW) è completo dal primo giorno | Piano (ux-advisor) |
 | P3 | **Guida divisa in due.** La sezione su Contatti e il §5 escono con PR5; il cambio di etichetta "Crea/assegna contatti" esce con PR6 | Piano (ux-advisor) |
 | P4 | **Chi può assegnare un cliente, controllato dal server.** Con D2 l'operatore del cliente può modificare il contatto, quindi il server applica le regole che l'interfaccia già impone:<br>• ~~`updateCustomerFromDashboard` cambia `operatorId` solo per un admin o per l'operatore attuale del cliente~~ dal 2026-10-15 l'operatore lo cambia solo `customer.handover`, per un admin o per l'operatore attuale del cliente (D13);<br>• `assignToYourself` funziona solo su clienti non assegnati. **Ristretto il 2026-10-15** (review di PR3, v1): anche il contatto attivo, se c'è, deve essere senza operatore o dell'attore, per ogni ruolo; altrimenti l'operatore otterrebbe con D2 la modifica del contatto di un collega e potrebbe passarlo con D13. Il link non compare in quel caso.<br>Per "Assegna a te" nessun altro cambiamento visibile | Piano (ux-advisor) |
-| P5 | **Sola lettura con motivo anche in Clienti da PR3.** I controlli calcolano i permessi prima del clic con lo stesso modulo del server. Il rifiuto del server resta la rete di sicurezza. Finché Contatti non esiste, il messaggio "contatto superato" non ha il link | Piano (ux-advisor) |
+| P5 | **Sola lettura con motivo anche in Clienti da PR3.** I controlli calcolano i permessi prima del clic con lo stesso modulo del server. Il rifiuto del server resta la rete di sicurezza. Finché Contatti non esiste, il messaggio "contatto superato" non ha il link. **Rivisto il 2026-10-15 (D14):** la riga di Clienti non nomina l'operatore del contatto; il motivo resta solo per "Non assegnato" con l'indicazione di "Assegna a te" | Piano (ux-advisor) |
 | P6 | **Nessuna animazione nuova.** Si riusano i primitivi shadcn esistenti. Vincoli di stabilità e focus in §11. Le lacune dei primitivi (`motion-reduce`, Sheet a 500 ms) vanno in un debito tecnico separato, fuori perimetro, che PR3 scrive (T3.14).<br>**Rivisto il 2026-10-15** (`design-engineer` con la skill `design-engineering`): il menu del selettore di stato si apre senza animazione (azione frequente, aperta da tastiera); spinner nell'attesa, che dura fino al nuovo valore a schermo; nessuna rimozione ottimistica; modale con focus iniziale su [Annulla] e [Cambia stato] non `destructive`; rifiuti in un toast di 8000 ms; il ripiego del focus quando la riga esce dai filtri vale già in PR3, perché Clienti filtra per "Stato" | Piano (design-engineer) |
 | P7 | **Il server allinea ai permessi dell'interfaccia le procedure che oggi li aggirano.** Serve perché AC49 e AC50 ("il server rifiuta") valgano davvero. Per chi usa l'interfaccia non cambia nulla: la selezione massiva è già solo per admin (`CustomersTable.tsx:84`).<br>• `task.bulkHandleTask` e `customer.bulkUpdateCustomers` diventano `adminProcedure`. I quattro casi della massiva danno gli stessi risultati (non-goal rispettato): cambia solo chi può chiamarla.<br>• `customer.updateCustomer` (`protectedProcedure`, accetta anche `operatorId`, nessun chiamante) viene rimossa;<br>• `task.deleteTasks` (`operatorProcedure`, nessun chiamante, cancella tutte le task di un cliente) viene rimossa (aggiunto il 2026-10-15) | Piano (adversarial-verifier) |
 | P8 | **Dove Effect entra e dove no** (D9):<br>• **Drizzle resta lo strato del database**, senza `@effect/sql*` (vedi §7). Le query restano identiche; `query` e `transaction` di T1.4 le avvolgono. Se un giorno Drizzle viene aggiornato, il passaggio a `@effect/sql-drizzle` resterebbe concentrato in quel modulo e nel client del DB (driver `pg`, API di transazione di `@effect/sql`), non nei servizi;<br>• niente Effect nel modulo di dominio `src/lib/domain/contact/` (T3.1a–T3.1c), che è importato anche dai componenti client: resta TypeScript puro, con esiti come union discriminate;<br>• niente Effect nei componenti React, nella chat (PR4) e nell'SQL di PR2;<br>• gli input tRPC restano in Zod, senza `Schema` di Effect;<br>• le procedure che il piano tocca solo di striscio (`bulkUpdateCustomers`, che cambia soltanto il tipo di procedura) non si convertono | Piano |
@@ -123,7 +124,7 @@ Serve una sezione **Contatti** (lista e dettaglio) sulle `task`. Le regole di mo
   - non tocca `task.alert_id`;
   - non scrive in `task_event_log` (AC70);
   - ignora le task con `customer_id` NULL.
-- **A7:** `bulkHandleTask` e `bulkUpdateCustomers` ("Assegna Clienti") mantengono la logica e i risultati di oggi (non-goal). Cambia solo chi può chiamarle: gli admin, come già nell'interfaccia (P7). Unica eccezione, in PR1 dopo la review: `bulkUpdateCustomers` non aggiorna più tutte le task della tabella quando nessun cliente scelto ha in cima una task `chiamare` (update con `WHERE` indefinito).
+- **A7:** `bulkHandleTask` e `bulkUpdateCustomers` ("Assegna Clienti") mantengono la logica e i risultati di oggi (non-goal). Cambia solo chi può chiamarle: gli admin, come già nell'interfaccia (P7). Unica eccezione, in PR1 dopo la review: `bulkUpdateCustomers` non aggiorna più tutte le task della tabella quando nessun cliente scelto ha in cima una task `chiamare` (update con `WHERE` indefinito). **Rivista il 2026-10-15 (D14):** in PR6 `bulkUpdateCustomers` sposta anche il contatto attivo in ogni stato (T6.8, AC75); `bulkHandleTask` resta com'è.
 - **A8:** ~~la mutation `deleteTasks` è fuori perimetro e va segnalata nei rischi.~~ **Rivista il 2026-10-15** dopo la verifica di PR3: `deleteTasks` è un'`operatorProcedure` senza chiamanti che cancella tutte le task di qualunque cliente, quindi aggira AC27 e AC49 sul server. Si rimuove in T3.13, come `customer.updateCustomer` (P7).
 - **A9 (FLOW senza AC):** la FLOW chiede, dopo un cambio di stato nella riga, "una conferma breve con il nome del cliente" e, dopo una riapertura, il pulsante [Apri]. Nessun AC li copre: in PR3 la riga Clienti non mostra conferme nuove (oggi non ne ha), e il nuovo valore salvato fa da conferma. Per la riga di Contatti la scelta va fatta nella pianificazione di PR5.
 - **A10 (FLOW, "Imposta richiamo" con data passata):** la data passata non si seleziona nel date picker, come oggi; il server la rifiuta comunque (AC44, T3.6).
@@ -2129,7 +2130,7 @@ Branch suggerito: `contatti/pr6-clienti`. Il merge si fa solo dopo G5.
 #### T6.3: Etichette dell'assegnazione massiva
 - **depends_on**: []
 - **location**: `src/app/dashboard/customers/_components/CustomerBulkDialog.tsx`
-- **description**: "Assegna chiamate" diventa "Crea/assegna contatti" nel dialogo, nel pulsante, nei passaggi e nel riepilogo (AC63). La logica non cambia.
+- **description**: "Assegna chiamate" diventa "Crea/assegna contatti" nel dialogo, nel pulsante, nei passaggi e nel riepilogo (AC63). La logica non cambia. Il testo della scheda "Assegna Clienti" lo cambia T6.8.
 - **validation**: i test di caratterizzazione di T1.3 restano verdi; browser: le etichette nuove compaiono in entrambe le modalità.
 - **status**: Planned
 - **log**:
@@ -2178,10 +2179,11 @@ Branch suggerito: `contatti/pr6-clienti`. Il merge si fa solo dopo G5.
 - **review_mode**: cli
 
 #### T6.6: Guida operatori — completamento (P3)
-- **depends_on**: [T6.2, T6.3, T6.4]
+- **depends_on**: [T6.2, T6.3, T6.4, T6.8]
 - **location**: `brain/chore/crm/guida-assegnazione-massiva-e-alert.md`
 - **description**:
   - "Assegna chiamate" diventa "Crea/assegna contatti" in tutta la guida.
+  - "Assegna Clienti" sposta cliente e contatto attivo in ogni stato, e le chiamate già registrate passano al nuovo operatore (AC75, T6.8).
   - Clienti senza le colonne di stato; scheda cliente con il riepilogo (AC74).
 - **validation**: Omar rivede il testo.
 - **status**: Planned
@@ -2193,15 +2195,36 @@ Branch suggerito: `contatti/pr6-clienti`. Il merge si fa solo dopo G5.
 - **tdd_target**: n/a (documentazione)
 - **review_mode**: cli
 
+#### T6.8: "Assegna Clienti" sposta cliente e contatto insieme (D14)
+- **depends_on**: [T3.8a]
+- **location**: `src/server/api/routers/customer/PUT/index.ts` (`bulkUpdateCustomers`), `src/server/services/customer/` (`handover`), `src/app/dashboard/customers/_components/CustomerBulkDialog.tsx`, `src/server/api/routers/customer/_test/bulkUpdateCustomers.db.test.ts`, test della regola dei lock (T3.15)
+- **description**:
+  - `bulkUpdateCustomers` diventa un programma Effect (D9) che per ogni cliente scelto applica le regole di `handover`: blocca il cliente, sposta cliente e contatto attivo in ogni stato, scrive le righe `operator_reassign` con sorgente `bulk`. Un cliente già del nuovo operatore con il contatto allineato non cambia (la massiva non rifiuta come il passaggio singolo); uno già suo con il contatto di un altro operatore allinea solo il contatto. Nessun contatto nuovo. Solo admin, come oggi (P7).
+  - Esce dalle eccezioni alla regola dei lock (A11): si toglie dall'elenco di T3.15 e dal tech-debt.
+  - I test di caratterizzazione di "Assegna Clienti" sul caso "solo `chiamare`" cambiano di proposito: un contatto in `richiamare` o `app.to` ora segue il cliente.
+  - Il testo della scheda "Assegna Clienti" dice che si spostano cliente e contatto, e che le chiamate già registrate passano al nuovo operatore nell'export.
+  - Riallineamento prima del rilascio: si contano di nuovo in prod, in sola lettura, i contatti attivi con un operatore diverso da quello del cliente (1 il 2026-10-15). Pochi casi si sistemano dall'interfaccia, con la riassegnazione dell'admin (PR5); se sono tanti, una migrazione come T2.5, solo per i contatti attivi. Lo decide Omar al momento.
+  - Va nell'annuncio di PR6 (T6.7).
+- **validation**: test DB: un cliente con il contatto in `richiamare` passato con "Assegna Clienti" ha cliente e contatto al nuovo operatore, con le righe di log; un cliente con il contatto in `chiamare` come oggi; i contatti non attivi non cambiano; il test della regola dei lock copre `bulkUpdateCustomers`. Browser: il testo nuovo della scheda.
+- **status**: Planned
+- **log**:
+- **files edited/created**:
+- **backlog_item_id**: n/a
+- **backlog_item_url**: n/a
+- **relation_mode**: n/a (D6)
+- **tdd_target**: "con 'Assegna Clienti' un cliente il cui contatto è in `richiamare` passa al nuovo operatore insieme al contatto".
+- **review_mode**: mixed
+- **assigned_skills**: agent-browser
+
 #### T6.7: Gate PR6
-- **depends_on**: [T6.5, T6.6]
+- **depends_on**: [T6.5, T6.6, T6.8]
 - **location**: —
 - **description**:
   - Gate CI.
   - `EXPLAIN ANALYZE` della prima pagina di Clienti su volumi reali, eseguito da una persona (A3).
   - Passata browser su Clienti e scheda cliente.
-  - Annuncio agli operatori della rimozione delle colonne e degli ordinamenti.
-- **validation**: gate verdi; tempo ≤ 500 ms; checklist AC58–AC68 spuntata.
+  - Annuncio agli operatori della rimozione delle colonne e degli ordinamenti, e di "Assegna Clienti" che sposta anche il contatto (T6.8).
+- **validation**: gate verdi; tempo ≤ 500 ms; checklist AC58–AC68 e AC75 spuntata.
 - **status**: Planned
 - **log**:
 - **files edited/created**:
@@ -2306,7 +2329,7 @@ In modo `sequential` l'ordine è: T3.1a, T3.1b, T3.1c, T3.2a, T3.16, T3.2b, T3.9
 |---|---|---|
 | 4 | T4.1 → T4.2 → **merge PR4** | Subito: è indipendente da PR3 e si può fare in parallelo |
 | 5 | T5.1, T5.2, T5.3 → T5.4 → T5.5, T5.6 → T5.7, T5.8 → T5.9 → T5.10, T5.11 → T5.12 → T5.13 → **merge PR5** (G4) | PR3 e PR4 in `main` |
-| 6 | T6.1–T6.7 → **merge PR6** | G5 |
+| 6 | T6.1–T6.8 → **merge PR6** | G5 |
 | 7 | T7.1 → T7.2 → T7.3 → **merge PR7** | Dopo il merge di PR3, quando c'è tempo (bassa priorità) |
 
 I task di PR4–PR6 non hanno ancora una `complexity`: si aggiunge quando quelle PR si ripianificano con `create-plan` 0.8.0 (§15).
@@ -2462,6 +2485,7 @@ I task di PR4–PR6 non hanno ancora una `complexity`: si aggiunge quando quelle
 | AC61 | T6.1 (i sintomi spariscono già con PR2) |
 | AC62 | T5.10 |
 | AC63 | T6.3 |
+| AC75 | T6.8 (D14); in PR3 la riga di Clienti senza il nome (AC51): T3.14 |
 | AC64, AC65, AC68 | T6.4 |
 | AC66, AC67 | T3.1b, T3.4, T3.10 ("+"), T3.12, T6.4 |
 | AC69, AC70 | T2.1, T2.2, T2.4 |
@@ -2489,12 +2513,12 @@ Le assunzioni esplicite, che Omar può ribaltare prima della PR interessata:
 | A3 | Soglia di prestazioni | PR5 | Aperta |
 | A9 | Conferma con il nome del cliente e [Apri] dopo un cambio di stato (FLOW, senza AC) | PR3: nessuna; PR5: da decidere | Aperta per PR5 |
 | A10 | Data passata del richiamo non selezionabile, come oggi | PR3 | Aperta, si verifica in T3.11b |
-| A11 | Scrittori fuori dalla regola dei lock | PR3 | Registrata nel tech-debt il 2026-10-15 (T3.14), con la conferma della massiva legata al cliente (review di PR3); resta aperta per quando si riprende A7 |
+| A11 | Scrittori fuori dalla regola dei lock | PR3 | Registrata nel tech-debt il 2026-10-15 (T3.14), con la conferma della massiva legata al cliente (review di PR3); per "Assegna Clienti" si chiude con T6.8 (D14), per il cron `priority` e la pulizia del log resta aperta |
 
 **Conversioni a Effect rinviate** (regola di `AGENTS.md`: le conversioni più grandi si elencano come seguiti). Non fanno parte di questo piano perché il piano non ne tocca la logica:
 - le server action della chat (PR4 tocca solo il componente client);
 - la route e il router delle preferenze (T5.10 aggiunge solo una chiave);
-- `customer.bulkUpdateCustomers` (T3.8c cambia solo il tipo di procedura). Resta anche fuori dalla regola dei lock (A11), come il cron `priority`: portarli dentro è il seguito naturale di T3.15;
+- ~~`customer.bulkUpdateCustomers` (T3.8c cambia solo il tipo di procedura). Resta anche fuori dalla regola dei lock (A11), come il cron `priority`: portarli dentro è il seguito naturale di T3.15;~~ entra nel piano con T6.8 (D14): passa a Effect e alla regola dei lock. Il cron `priority` resta fuori;
 - le altre procedure di `task` e `customer` che restano dopo T3.13;
 - i cron `priority` ed export;
 - il calcolo del giorno italiano dentro `processDueAlerts.ts`, che potrà usare `time.ts` (T3.1c) quando si toccherà il cron;

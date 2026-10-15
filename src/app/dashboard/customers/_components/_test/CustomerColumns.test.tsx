@@ -70,11 +70,37 @@ const row = {
 } as unknown as CustomerColumnSelectedProps
 
 /** The "Stato Chiamate" cell, which renders the row's `StateSelector`. */
-const stateCell = () => {
+const stateCell = (original: CustomerColumnSelectedProps = row) => {
   const column = CustomerColumns.find((c) => c.id === "Stato Chiamate")!
   const cell = column.cell as (context: unknown) => React.ReactNode
-  return cell({ row: { original: row } })
+  return cell({ row: { original } })
 }
+
+/** A row the signed-in operator (7) can't edit. */
+const readOnlyRow = (
+  customerOperator: { id: number; name: string; surname: string } | null,
+  contactOperator: { id: number; name: string; surname: string } | null
+) =>
+  ({
+    id: "customer-2",
+    operatore: customerOperator,
+    tasks: {
+      id: 654,
+      operatorId: contactOperator?.id ?? null,
+      operatorName: contactOperator?.name ?? null,
+      operatorSurname: contactOperator?.surname ?? null,
+      state: "richiamare",
+    },
+  }) as unknown as CustomerColumnSelectedProps
+
+const giulia = { id: 9, name: "Giulia", surname: "Bianchi" }
+
+const renderCell = (original: CustomerColumnSelectedProps) =>
+  render(
+    <QueryClientProvider client={new QueryClient()}>
+      {stateCell(original)}
+    </QueryClientProvider>
+  )
 
 const rejection = (contactError: ContactErrorData) =>
   TRPCClientError.from({
@@ -131,5 +157,35 @@ describe("la cella Stato Chiamate della lista Clienti", () => {
       })
     )
     expect(mocks.refresh).toHaveBeenCalled()
+  })
+
+  it("in sola lettura mostra solo lo stato, senza a chi è assegnato: lo dice la colonna Operatore", () => {
+    renderCell(readOnlyRow(giulia, giulia))
+
+    expect(screen.getByText("richiamare")).not.toBeNull()
+    expect(screen.queryByText(/Assegnato a/)).toBeNull()
+    expect(document.querySelector("[data-contact-state-trigger]")).toBeNull()
+  })
+
+  it("non nomina il collega nemmeno quando il cliente non ha operatore", () => {
+    renderCell(readOnlyRow(null, giulia))
+
+    expect(screen.getByText("richiamare")).not.toBeNull()
+    expect(screen.queryByText(/Assegnato a/)).toBeNull()
+    expect(screen.queryByText(/Assegna a te/)).toBeNull()
+  })
+
+  it("con cliente e contatto senza operatore indica “Assegna a te”", () => {
+    renderCell(readOnlyRow(null, null))
+
+    expect(screen.getByText("Non assegnato")).not.toBeNull()
+    expect(screen.getByText(/Assegna a te/)).not.toBeNull()
+  })
+
+  it("con un contatto senza operatore di un cliente altrui mostra solo lo stato", () => {
+    renderCell(readOnlyRow(giulia, null))
+
+    expect(screen.getByText("richiamare")).not.toBeNull()
+    expect(screen.queryByText("Non assegnato")).toBeNull()
   })
 })

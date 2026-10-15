@@ -572,18 +572,29 @@ function StateSelector(props: {
             },
       customer,
     })
-    // Read-only: the saved state stays visible, with the reason (AC51)
-    if (editability.kind !== "editable")
+    // Read-only: the saved state stays visible. The row names no colleague:
+    // the contact's operator is the customer's, in the Operatore column
+    // (apart from the contacts "Assegna Clienti" leaves behind, until T6.8).
+    // Only a contact nobody has, of a customer nobody has, gets the reason,
+    // for the "Assegna a te" hint (A1)
+    if (editability.kind !== "editable") {
+      const unclaimed =
+        editability.kind === "not_owner" &&
+        editability.assignee === null &&
+        props.customerOperatorId === null
       return (
         <div className="flex flex-col items-center gap-1">
           <TaskStatusBadge status={contact.state ?? "nessuno"} />
-          <ReadOnlyReason
-            editability={editability}
-            customerUnassigned={props.customerOperatorId === null}
-            showHint
-          />
+          {unclaimed ? (
+            <ReadOnlyReason
+              editability={editability}
+              customerUnassigned
+              showHint
+            />
+          ) : null}
         </div>
       )
+    }
 
     return (
       <>
