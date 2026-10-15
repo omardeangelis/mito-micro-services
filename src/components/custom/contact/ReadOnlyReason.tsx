@@ -21,6 +21,20 @@ const reasonOf = (editability: ReadOnlyEditability): string => {
 }
 
 /**
+ * Neither the contact nor its customer has an operator. Where the customer's
+ * operator is on screen (the Clienti row, the customer card) it is also the
+ * contact's (AC75), so only this case gets the reason, for the "Assegna a te"
+ * hint (A1, D14).
+ */
+export const isUnclaimed = (
+  editability: ReadOnlyEditability,
+  customerOperatorId: number | null
+): boolean =>
+  editability.kind === "not_owner" &&
+  editability.assignee === null &&
+  customerOperatorId === null
+
+/**
  * Why a contact can't be edited here (AC51): plain text in a badge, not a
  * disabled control. Fixed width in the table, so the column doesn't jump
  * between the selector and the reason; `fit` drops it where there is room.

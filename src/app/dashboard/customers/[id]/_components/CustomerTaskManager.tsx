@@ -6,7 +6,10 @@ import { PriorityBadge } from "@/components/custom/badge/priority"
 import { TaskStatusBadge } from "@/components/custom/badge/TaskStatusBadge"
 import { AlertCloseConfirmDialog } from "@/components/custom/contact/AlertCloseConfirmDialog"
 import { ContactStateSelect } from "@/components/custom/contact/ContactStateSelect"
-import { ReadOnlyReason } from "@/components/custom/contact/ReadOnlyReason"
+import {
+  isUnclaimed,
+  ReadOnlyReason,
+} from "@/components/custom/contact/ReadOnlyReason"
 import {
   type PendingAlert,
   useContactMutationFeedback,
@@ -176,8 +179,8 @@ export const CustomerTaskManager = (props: TaskManager) => {
       )
     }
 
-    // Read-only: the saved state and priority stay visible, with the reason
-    // (AC51)
+    // Read-only: the saved state and priority stay visible. The card names no
+    // colleague: the customer's operator is in the form (D14)
     if (editability.kind !== "editable") {
       return (
         <>
@@ -193,15 +196,17 @@ export const CustomerTaskManager = (props: TaskManager) => {
               <span className="text-muted-foreground">{priorityMode}</span>
             </div>
           </div>
-          <div className="col-span-2 flex flex-col items-start gap-1">
-            <span className="text-sm font-medium">Modifica</span>
-            <ReadOnlyReason
-              fit
-              editability={editability}
-              customerUnassigned={props.customerOperatorId === null}
-              showHint
-            />
-          </div>
+          {isUnclaimed(editability, props.customerOperatorId) ? (
+            <div className="col-span-2 flex flex-col items-start gap-1">
+              <span className="text-sm font-medium">Modifica</span>
+              <ReadOnlyReason
+                fit
+                editability={editability}
+                customerUnassigned
+                showHint
+              />
+            </div>
+          ) : null}
         </>
       )
     }

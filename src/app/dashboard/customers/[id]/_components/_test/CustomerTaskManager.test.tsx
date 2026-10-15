@@ -103,14 +103,20 @@ const openAlert = {
   message: "Richiamare dopo le 18",
 }
 
-function renderManager() {
+function renderManager(
+  contact: Task = task,
+  customerOperatorId: number | null = 7
+) {
   // The rejections are expected: react-query would print each one
   const queryClient = new QueryClient({
     logger: { log: console.log, warn: console.warn, error: () => undefined },
   })
   return render(
     <QueryClientProvider client={queryClient}>
-      <CustomerTaskManager tasks={[task]} customerOperatorId={7} />
+      <CustomerTaskManager
+        tasks={[contact]}
+        customerOperatorId={customerOperatorId}
+      />
     </QueryClientProvider>
   )
 }
@@ -200,5 +206,26 @@ describe("CustomerTaskManager, il salvataggio dello stato", () => {
       toState: "erogata",
       confirmedAlertId: 55,
     })
+  })
+})
+
+describe("CustomerTaskManager in sola lettura", () => {
+  it("mostra stato e priorità senza nominare l'operatore: è quello del cliente", () => {
+    mocks.actor = { role: "OPERATORE", operatorId: 8 }
+    renderManager()
+
+    expect(screen.getByText("chiamare")).not.toBeNull()
+    expect(screen.getByText("Priorità")).not.toBeNull()
+    expect(screen.queryByText(/Assegnato a/)).toBeNull()
+    expect(screen.queryByText("Modifica")).toBeNull()
+    expect(document.querySelector("[data-contact-state-trigger]")).toBeNull()
+  })
+
+  it("con cliente e contatto senza operatore indica “Assegna a te”", () => {
+    mocks.actor = { role: "OPERATORE", operatorId: 8 }
+    renderManager({ ...task, operatorId: null } as unknown as Task, null)
+
+    expect(screen.getByText("Non assegnato")).not.toBeNull()
+    expect(screen.getByText(/Assegna a te/)).not.toBeNull()
   })
 })

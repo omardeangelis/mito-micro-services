@@ -28,7 +28,10 @@ import { TaskStatusBadge } from "@/components/custom/badge/TaskStatusBadge"
 import { LoadingSpinner } from "@/components/custom/loading-spinner"
 import { AlertCloseConfirmDialog } from "@/components/custom/contact/AlertCloseConfirmDialog"
 import { ContactStateSelect } from "@/components/custom/contact/ContactStateSelect"
-import { ReadOnlyReason } from "@/components/custom/contact/ReadOnlyReason"
+import {
+  isUnclaimed,
+  ReadOnlyReason,
+} from "@/components/custom/contact/ReadOnlyReason"
 import {
   type PendingAlert,
   useContactMutationFeedback,
@@ -573,19 +576,13 @@ function StateSelector(props: {
       customer,
     })
     // Read-only: the saved state stays visible. The row names no colleague:
-    // the contact's operator is the customer's, in the Operatore column
-    // (apart from the contacts "Assegna Clienti" leaves behind, until T6.8).
-    // Only a contact nobody has, of a customer nobody has, gets the reason,
-    // for the "Assegna a te" hint (A1)
-    if (editability.kind !== "editable") {
-      const unclaimed =
-        editability.kind === "not_owner" &&
-        editability.assignee === null &&
-        props.customerOperatorId === null
+    // the Operatore column already does (apart from the contacts "Assegna
+    // Clienti" leaves behind, until T6.8)
+    if (editability.kind !== "editable")
       return (
         <div className="flex flex-col items-center gap-1">
           <TaskStatusBadge status={contact.state ?? "nessuno"} />
-          {unclaimed ? (
+          {isUnclaimed(editability, props.customerOperatorId) ? (
             <ReadOnlyReason
               editability={editability}
               customerUnassigned
@@ -594,7 +591,6 @@ function StateSelector(props: {
           ) : null}
         </div>
       )
-    }
 
     return (
       <>
