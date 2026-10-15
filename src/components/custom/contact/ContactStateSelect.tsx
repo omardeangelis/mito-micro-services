@@ -56,6 +56,9 @@ export function ContactStateSelect({
           aria-label={ariaLabel}
           aria-busy={pending}
           aria-disabled={pending}
+          // A table finds the selector of a nearby row through it, when the
+          // focused one leaves the page (`useRowFocusAfterSave`)
+          data-contact-state-trigger=""
           className="h-10 w-40 justify-between px-3"
         >
           <TaskStatusBadge status={value ?? "nessuno"} />

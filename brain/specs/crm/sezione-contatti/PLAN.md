@@ -1462,9 +1462,9 @@ Vale per T3.10, T3.11a, T3.11b, T3.12, T5.7 e T5.9. Le letture dai Server Compon
   - **tastiera:** Enter, frecce e Spazio con un alert aperto: la modale si apre e resta aperta;
   - **filtri:** con il filtro "Stato" attivo, se la riga esce dalla lista il focus va al selettore della riga successiva;
   - **AC66 e AC67 dal "+":** cliente assegnato → contatto in `chiamare`; cliente senza operatore → "Cliente non assegnato".
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done (controlli browser in T3.14)
+- **log**: 2026-10-15, worker sul modello dell'orchestratore. Review: un difetto corretto dall'orchestratore, le righe in sola lettura mostravano solo il motivo e nascondevano lo stato: ora badge dello stato e, sotto, `ReadOnlyReason`. Percorso P10 (cambio senza conferma, modale su `ALERT_CONFIRMATION_REQUIRED`, ripetizione con `confirmedAlertId`). L'attesa dura dal clic alla fine di `refreshing` (flag `saving` più `useRefreshAfterSave`). `getAllCustomers` restituisce nome e cognome dell'operatore del contatto nella seconda query (filtri, ordinamenti e pagine invariati). Nuovo `useRowFocusAfterSave`: dopo il refresh il focus resta sul controllo della riga, altrimenti va al selettore della riga successiva, poi della precedente, poi alla tabella (`tabindex=-1` messo da codice). `taskStatusAction.ts` eliminato, e con lui `customer.updateLastEdit` dalla riga. Il "+" ha `aria-label=\"Crea contatto\"`; il selettore ha come nome il testo del badge. Finché `role`/`operatorId` non sono caricati la riga mostra un badge statico.
+- **files edited/created**: `src/app/dashboard/customers/_components/CustomerColumns.tsx`, `src/server/api/routers/customer/GET/index.ts` (`getAllCustomers`: operatore del contatto), `src/components/custom/contact/ContactStateSelect.tsx` (`data-contact-state-trigger`), `src/components/custom/contact/useRowFocusAfterSave.ts`, `src/app/dashboard/customers/_actions/taskStatusAction.ts` (eliminato)
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a (D6)
