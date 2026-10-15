@@ -1,15 +1,11 @@
 import { TRPCError } from "@trpc/server"
 import { Effect } from "effect"
 import { adminProcedure, operatorProcedure } from "@/server/api/trpc"
-import {
-  insertTaskSchema,
-  insertAlertSchema,
-  type Task,
-} from "@/lib/types/schemas"
+import { type Task } from "@/lib/types/schemas"
 import { alert, task, taskStatus } from "@/server/db/schema/task"
-import { taskEventLog, taskEventSource } from "@/server/db/schema/taskEventLog"
+import { taskEventLog } from "@/server/db/schema/taskEventLog"
 import { z } from "zod"
-import { and, desc, eq, inArray, isNotNull, not } from "drizzle-orm"
+import { and, desc, eq } from "drizzle-orm"
 import { customers } from "@/server/db/schema/customers"
 import {
   type CustomerMissing,
@@ -63,63 +59,12 @@ export const setCallback = operatorProcedure
     )
   )
 
-const insertTaskInput = insertTaskSchema
-  .pick({
-    customerId: true,
-    operatorId: true,
-    state: true,
-    closedAt: true,
-  })
-  .extend({
-    source: z.enum(taskEventSource),
-  })
-
 /** `CustomerMissing` as tRPC reports it: the input names no customer. */
 const customerNotFound = (error: CustomerMissing) =>
   new TRPCError({
     code: "BAD_REQUEST",
     message: `Cliente non trovato: ${error.customerId}`,
   })
-
-export const createTask = operatorProcedure
-  .input(insertTaskInput)
-  .mutation(({ ctx, input }) =>
-    runTrpc(
-      transaction(
-        Effect.gen(function* () {
-          const toState = input.state ?? "chiamare"
-          const customer = yield* lockCustomer(input.customerId ?? null)
-          // Deactivates the customer's active task: a customer never keeps two
-          const { created, previous } = yield* replaceActiveContact({
-            customer,
-            values: {
-              operatorId: input.operatorId,
-              // Rispetta lo stato richiesto invece di forzare sempre "chiamare":
-              // così una "riapertura" verso uno stato specifico non viene azzerata.
-              state: toState,
-              closedAt: input.closedAt,
-              priority: 120,
-            },
-            // As at base, where the insert was the only write
-            mostRecent: true,
-          })
-          yield* query((client) =>
-            client.insert(taskEventLog).values({
-              customerId: created.customerId,
-              taskId: created.id,
-              actorOperatorId: ctx.operator.id,
-              action: "state_change",
-              source: input.source,
-              fromState: previous?.state ?? null,
-              toState,
-            })
-          )
-          return created
-        })
-      ),
-      customerNotFound
-    )
-  )
 
 // resolveAlertCustomerIds: l'elenco dei clienti per cui l'operatore ha
 // confermato esplicitamente la rimozione dell'alert pendente. Per tutti gli altri
@@ -319,59 +264,4 @@ export const bulkHandleTask = adminProcedure
       ),
       customerNotFound
     )
-  })
-
-const insertAlertInput = insertAlertSchema.pick({
-  taskId: true,
-  message: true,
-  deadline: true,
-})
-
-export const createAlert = operatorProcedure
-  .input(insertAlertInput)
-  .mutation(async ({ ctx, input }) => {
-    const res = await ctx.db
-      .insert(alert)
-      .values({
-        taskId: input.taskId,
-        message: input.message,
-        deadline: input.deadline,
-      })
-      .returning()
-
-    const customerId = await ctx.db
-      .update(task)
-      .set({ alertId: res[0]!.id, state: "richiamare" })
-      .where(eq(task.id, input.taskId))
-      .returning({ customerID: task.customerId })
-
-    if (customerId.length === 0) {
-      const allCustomersAlert = await ctx.db
-        .select({
-          alertId: task.alertId,
-        })
-        .from(task)
-        .where(
-          and(
-            eq(task.customerId, customerId[0]!.customerID!),
-            isNotNull(task.alertId),
-            not(eq(task.alertId, res[0]!.id))
-          )
-        )
-
-      if (allCustomersAlert.length === 0) {
-        await ctx.db
-          .update(task)
-          .set({ alertId: null, state: "richiamare" })
-          .where(eq(task.customerId, customerId[0]!.customerID!))
-
-        const alertsIds = allCustomersAlert.map(
-          (alert) => alert.alertId
-        ) as number[]
-
-        await ctx.db.delete(alert).where(inArray(alert.id, alertsIds))
-      }
-    }
-
-    return res[0]
   })

@@ -320,6 +320,32 @@ describe("task.changeState: transizioni", () => {
     expect((await customerRow(customer.id)).operatorId).toBe(me.id)
   })
 
+  it("dopo una riapertura Assegna Clienti riassegna il contatto riaperto, non il precedente", async () => {
+    const operator = await createOperator()
+    const laterOperator = await createOperator({ name: "Successivo" })
+    const admin = await createOperator({ role: "ADMIN" })
+    const { customer, contact } = await seedContact({
+      state: "non interessato",
+      customerOperatorId: operator.id,
+    })
+
+    const { taskId } = await createTestCaller(operator).task.changeState({
+      taskId: contact.id,
+      toState: "chiamare",
+      source: "detail",
+      confirmedAlertId: null,
+    })
+    await createTestCaller(admin).customer.bulkUpdateCustomers({
+      operatorId: laterOperator.id,
+      customerIds: [customer.id],
+    })
+
+    expect(await tasksOf(customer.id)).toEqual([
+      expect.objectContaining({ id: contact.id, operatorId: operator.id }),
+      expect.objectContaining({ id: taskId, operatorId: laterOperator.id }),
+    ])
+  })
+
   it.each(["list", "detail"] as const)(
     "la riga state_change porta la sorgente %s (AC38)",
     async (source) => {

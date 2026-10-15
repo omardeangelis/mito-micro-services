@@ -1592,9 +1592,9 @@ Vale per T3.10, T3.11a, T3.11b, T3.12, T5.7 e T5.9. Le letture dai Server Compon
   - `pnpm build` verde, senza riferimenti orfani;
   - un test verifica che le procedure rimosse non esistano più sul router;
   - ogni mutation che modifica stato, priorità, alert o operatore di un contatto passa dalla guardia, oppure è `adminProcedure` (`reassign`, `bulkHandleTask`, `bulkUpdateCustomers`), oppure è `customer.handover`, che blocca il cliente e applica `canHandover` (eccezione D13). Non ne resta nessuna fuori. Che la guardia blocchi il cliente lo verifica T3.15.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-10-15, worker sul modello dell'orchestratore, review al primo giro; l'orchestratore ha aggiornato due commenti di test che citavano `createAlert` e `updateTask`. Rimosse `updateTask`, `updateTaskFromDashboard`, `createTask`, `createAlert`, `resolveAlerts`, `deleteTasks`, e `getTaskStatusDirection`/`taskStatusMap` senza chiamanti. Docstring di `lockCustomer` aggiornato (eccezioni: "Assegna Clienti", cron `priority`, pulizia del log). `createTask.db.test.ts` eliminato: ogni test ha un corrispettivo in `changeState`/`createContact`, e quello su "Assegna Clienti" dopo una riapertura è stato portato su `changeState`. Audit delle mutation di `task` e `customer`: tutte passano dalla guardia, sono `adminProcedure` o sono `handover`/`assignToYourself`; "Assegna Clienti" è l'eccezione dichiarata. Fuori perimetro: `customer.insertCustomer` (`protectedProcedure`) accetta `operatorId` alla creazione del cliente (nel tech-debt). `pnpm build` verde in una copia senza `.env*`.
+- **files edited/created**: `src/server/api/routers/task/{index,POST,PUT,DELETE}/index.ts`, `src/app/dashboard/customers/_utils/index.ts`, `src/server/effect/db.ts` (docstring), `src/server/services/contact/{processDueAlerts,errors}.ts` (commenti), `src/server/api/routers/task/_test/router.db.test.ts`, `src/server/api/routers/task/_test/createTask.db.test.ts` (eliminato), `src/server/services/contact/_test/changeState.db.test.ts`, due commenti in `src/app/api/cron/alert/_test/alert.db.test.ts` e `src/server/db/migrations/_test/activeContactIndex.db.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a (D6)

@@ -156,7 +156,7 @@ const trpcErrors: { readonly [Tag in ContactError["_tag"]]: TrpcEntry } = {
  * The `TRPCError` for a contact error, passed to `runTrpc` by every contact
  * procedure. Its `cause` is `{ code, payload }`, the payload being the error's
  * fields. `CustomerMissing` (the contact has no customer) is a plain
- * BAD_REQUEST, as `createTask` reports it.
+ * BAD_REQUEST, as the bulk assignment reports it.
  */
 export const contactErrorToTrpc = (
   error: ContactError | CustomerMissing
