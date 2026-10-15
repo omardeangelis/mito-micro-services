@@ -1026,9 +1026,9 @@ Vale per T3.10, T3.11a, T3.11b, T3.12, T5.7 e T5.9. Le letture dai Server Compon
 - **location**: `src/lib/domain/contact/time.ts`, `src/lib/domain/contact/_test/time.test.ts`
 - **description**: `romeDayBounds(date)`, `isDueOrOverdue(deadline, now)` e `isPastDay(date, now)` in `Europe/Rome`, con `Intl` e senza dipendenze nuove (A4). In PR3 lo usa solo `setCallback` (T3.6); gli altri due servono a PR5. Il cron alert calcola il giorno italiano per conto suo dentro `processDueAlerts.ts` e **non si tocca** (non-goal); spostarlo su `time.ts` è un seguito (§15).
 - **validation**: unit test sui cambi d'ora del 29/03/2026, del 25/10/2026 e del 28/03/2027, e su una scadenza scelta dal date picker (mezzanotte del browser: 22:00 UTC del giorno prima in ora legale, 23:00 UTC in ora solare).
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-10-15, worker haiku, review al primo giro. 11 test: cambi d'ora del 29/03/2026, 25/10/2026 e 28/03/2027, giorni normali d'estate e d'inverno, scadenze del date picker (22:00 o 23:00 UTC del giorno prima). Passano anche con `TZ=Asia/Tokyo` e `TZ=America/Los_Angeles`.
+- **files edited/created**: `src/lib/domain/contact/time.ts`, `src/lib/domain/contact/_test/time.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a (D6)
