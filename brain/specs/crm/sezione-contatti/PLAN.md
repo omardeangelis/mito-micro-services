@@ -1568,9 +1568,9 @@ Vale per T3.10, T3.11a, T3.11b, T3.12, T5.7 e T5.9. Le letture dai Server Compon
   - Annulla, Esc e overlay non fanno chiamate; un doppio clic su [Passa le consegne] fa una sola chiamata; focus iniziale sul selettore, focus sul pulsante dopo la chiusura;
   - rifiuto forzato (il cliente passato a un altro nel frattempo, in un'altra scheda): toast con il motivo, la modale chiusa, il form mostra l'operatore attuale e il focus è sul testo dell'operatore;
   - "Assegna a te" su un cliente assegnato nel frattempo da un collega: toast con il motivo e operatore attuale a schermo.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done (controlli browser in T3.14)
+- **log**: 2026-10-15, worker sonnet. Prima review fallita: il ripristino del focus dopo il refresh usava un timer di 3 s e un effetto a ogni render. Correzione proposta e applicata al secondo giro: `useRefreshAfterSave` (`router.refresh()` dentro `startTransition`: `refreshing` resta vero finché il nuovo valore non è a schermo), `useContactMutationFeedback({ refresh })`, e il focus torna al pulsante (o al testo dell'operatore, `tabIndex={-1}`) quando `refreshing` torna falso. L'hook serve anche a T3.10–T3.12. "Assegna a te" passa da `useMutation` dal client, la server action `assignToYou.ts` è eliminata. Durante la chiamata la modale non si chiude: la chiude la risposta. Nessun test di componente (la modale chiama tRPC): i controlli della validation sono nella passata browser di T3.14.
+- **files edited/created**: `src/app/dashboard/customers/[id]/_components/{CustomerForm,CustomerFormSection,CustomerHandoverDialog}.tsx`, `src/app/dashboard/customers/[id]/page.tsx`, `src/app/dashboard/customers/[id]/_actions/assignToYou.ts` (eliminato), `src/components/custom/contact/useRefreshAfterSave.ts`, `src/components/custom/contact/useContactMutationFeedback.tsx`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a (D6)

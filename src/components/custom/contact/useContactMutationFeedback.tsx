@@ -21,6 +21,11 @@ export type ContactMutationFeedbackOptions = {
    * offers it (AC52). Absent until the Contatti section exists.
    */
   activeContactHref?: (activeTaskId: number) => string
+  /**
+   * Called instead of `router.refresh()` after the toast, e.g. the `refresh`
+   * of `useRefreshAfterSave`, so the caller knows when the refresh ends.
+   */
+  refresh?: () => void
 }
 
 /**
@@ -29,8 +34,9 @@ export type ContactMutationFeedbackOptions = {
  * `onError(error)` returns:
  * - `{ alert }` for ALERT_CONFIRMATION_REQUIRED: no toast, no refresh, the
  *   caller opens its confirmation modal or updates the callback form;
- * - `null` for every other error: a destructive toast with the reason, and
- *   `router.refresh()` so the control returns to the saved value.
+ * - `null` for every other error: a destructive toast with the reason, and a
+ *   refresh (`options.refresh`, `router.refresh()` by default) so the control
+ *   returns to the saved value.
  */
 export const useContactMutationFeedback = (
   options?: ContactMutationFeedbackOptions
@@ -38,6 +44,7 @@ export const useContactMutationFeedback = (
   const { toast } = useToast()
   const router = useRouter()
   const activeContactHref = options?.activeContactHref
+  const refresh = options?.refresh
 
   const onError = useCallback(
     (error: unknown): { alert: PendingAlert } | null => {
@@ -66,10 +73,11 @@ export const useContactMutationFeedback = (
             }
           : {}),
       })
-      router.refresh()
+      if (refresh) refresh()
+      else router.refresh()
       return null
     },
-    [toast, router, activeContactHref]
+    [toast, router, activeContactHref, refresh]
   )
 
   return { onError }
