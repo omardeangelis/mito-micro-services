@@ -187,7 +187,7 @@ export const CustomerTaskManager = (props: TaskManager) => {
           </div>
           <div className="flex flex-col items-start gap-1">
             <span className="text-sm font-medium">Priorità</span>
-            <div className="flex items-center gap-2 text-sm">
+            <div className="flex flex-wrap items-center gap-2 text-sm">
               <PriorityBadge priority={task.priority ?? 0} />
               <span>{bandLabels[priorityBand]}</span>
               <span className="text-muted-foreground">{priorityMode}</span>
@@ -199,6 +199,7 @@ export const CustomerTaskManager = (props: TaskManager) => {
               fit
               editability={editability}
               customerUnassigned={props.customerOperatorId === null}
+              showHint
             />
           </div>
         </>

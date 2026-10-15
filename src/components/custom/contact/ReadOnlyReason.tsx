@@ -7,7 +7,7 @@ type ReadOnlyReasonProps = {
   editability: ReadOnlyEditability
   /** The customer has no operator, so "Assegna a te" is within reach (A1). */
   customerUnassigned?: boolean
-  /** Add the hint under "Non assegnato"; the table shows it once, not on every row. */
+  /** Add the hint under "Non assegnato" when the customer is unassigned too (A1). */
   showHint?: boolean
   /** Take the room the text needs, untruncated; the table keeps a fixed width. */
   fit?: boolean

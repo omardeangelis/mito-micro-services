@@ -580,6 +580,7 @@ function StateSelector(props: {
           <ReadOnlyReason
             editability={editability}
             customerUnassigned={props.customerOperatorId === null}
+            showHint
           />
         </div>
       )
