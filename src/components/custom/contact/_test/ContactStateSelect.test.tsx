@@ -1,0 +1,231 @@
+import { render, screen, within } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
+import { describe, expect, it, vi } from "vitest"
+import { type TaskStatus } from "@/lib/types/schemas"
+import { ContactStateSelect } from "../ContactStateSelect"
+
+const trigger = () => screen.getByRole("button", { name: "Stato" })
+const menu = () => screen.queryByRole("menu")
+const optionNames = () =>
+  within(screen.getByRole("menu"))
+    .getAllByRole("menuitemradio")
+    .map((option) => option.textContent)
+
+function renderSelect(
+  props: Partial<React.ComponentProps<typeof ContactStateSelect>> = {}
+) {
+  const onChange = vi.fn()
+  const view = render(
+    <ContactStateSelect
+      value="chiamare"
+      onChange={onChange}
+      aria-label="Stato"
+      {...props}
+    />
+  )
+  return { onChange, ...view }
+}
+
+describe("ContactStateSelect", () => {
+  it("followup non è mai tra le opzioni", async () => {
+    const user = userEvent.setup()
+    const states: (TaskStatus | null)[] = [
+      null,
+      "nessuno",
+      "chiamare",
+      "richiamare",
+      "followup",
+    ]
+    for (const value of states) {
+      const { unmount } = renderSelect({ value })
+      await user.click(trigger())
+      expect(optionNames()).not.toContain("followup")
+      unmount()
+    }
+  })
+
+  it("da followup non c'è chiamare", async () => {
+    const user = userEvent.setup()
+    renderSelect({ value: "followup" })
+
+    await user.click(trigger())
+
+    expect(optionNames()).not.toContain("chiamare")
+    expect(optionNames()).toEqual([
+      "non interessato",
+      "app.to",
+      "caricato",
+      "richiamare",
+      "erogata",
+      "nessuno",
+    ])
+  })
+
+  it("lo stato attuale non è tra le opzioni", async () => {
+    const user = userEvent.setup()
+    renderSelect({ value: "richiamare" })
+
+    await user.click(trigger())
+
+    expect(optionNames()).not.toContain("richiamare")
+    expect(optionNames()).toContain("chiamare")
+  })
+
+  it("un contatto senza stato conta come nessuno: nessuno non è un'opzione", async () => {
+    const user = userEvent.setup()
+    renderSelect({ value: null })
+
+    await user.click(trigger())
+
+    expect(optionNames()).not.toContain("nessuno")
+  })
+
+  it("scegliere un'opzione chiama onChange con quello stato, chiude il menu e riporta il focus sul trigger", async () => {
+    const user = userEvent.setup()
+    const { onChange } = renderSelect({ value: "chiamare" })
+    await user.click(trigger())
+
+    await user.click(screen.getByRole("menuitemradio", { name: "erogata" }))
+
+    expect(onChange).toHaveBeenCalledTimes(1)
+    expect(onChange).toHaveBeenCalledWith("erogata")
+    expect(menu()).toBeNull()
+    expect(document.activeElement).toBe(trigger())
+  })
+
+  it("le opzioni si raggiungono e si scelgono da tastiera", async () => {
+    const user = userEvent.setup()
+    const { onChange } = renderSelect({ value: "chiamare" })
+    trigger().focus()
+
+    await user.keyboard("{ArrowDown}")
+    expect(menu()).not.toBeNull()
+    await user.keyboard("{ArrowDown}{Enter}")
+
+    expect(onChange).toHaveBeenCalledWith("app.to")
+    expect(document.activeElement).toBe(trigger())
+  })
+
+  it("mostra il valore che riceve, non quello scelto", async () => {
+    const user = userEvent.setup()
+    const { onChange, rerender } = renderSelect({ value: "chiamare" })
+    await user.click(trigger())
+
+    await user.click(screen.getByRole("menuitemradio", { name: "erogata" }))
+
+    expect(onChange).toHaveBeenCalledWith("erogata")
+    expect(trigger().textContent).toBe("chiamare")
+    rerender(
+      <ContactStateSelect
+        value="chiamare"
+        onChange={onChange}
+        aria-label="Stato"
+      />
+    )
+    expect(trigger().textContent).toBe("chiamare")
+    rerender(
+      <ContactStateSelect
+        value="erogata"
+        onChange={onChange}
+        aria-label="Stato"
+      />
+    )
+    expect(trigger().textContent).toBe("erogata")
+  })
+
+  it("il trigger mostra nessuno quando il valore è null", () => {
+    renderSelect({ value: null })
+
+    expect(trigger().textContent).toBe("nessuno")
+  })
+
+  it("il trigger ha larghezza fissa w-40, anche in attesa", () => {
+    const { rerender, onChange } = renderSelect()
+    expect(trigger().className).toContain("w-40")
+
+    rerender(
+      <ContactStateSelect
+        value="chiamare"
+        onChange={onChange}
+        pending
+        aria-label="Stato"
+      />
+    )
+
+    expect(trigger().className).toContain("w-40")
+  })
+
+  it("il menu non ha classi di animazione", async () => {
+    const user = userEvent.setup()
+    renderSelect()
+
+    await user.click(trigger())
+
+    const content = screen.getByRole("menu")
+    expect(content.className).not.toMatch(/animate-|fade-|zoom-|slide-/)
+  })
+
+  it("passa il ref al trigger", () => {
+    const ref = { current: null as HTMLButtonElement | null }
+    renderSelect({ triggerRef: ref })
+
+    expect(ref.current).toBe(trigger())
+  })
+
+  describe("con pending", () => {
+    it("il trigger è aria-busy e aria-disabled, non disabled, e mostra lo spinner", () => {
+      renderSelect({ pending: true })
+
+      expect(trigger().getAttribute("aria-busy")).toBe("true")
+      expect(trigger().getAttribute("aria-disabled")).toBe("true")
+      expect(trigger().hasAttribute("disabled")).toBe(false)
+      const spinner = trigger().querySelector("svg.animate-spin")
+      expect(spinner).not.toBeNull()
+      expect(spinner?.getAttribute("class")).toContain(
+        "motion-reduce:animate-none"
+      )
+    })
+
+    it("senza pending niente spinner e aria-busy è false", () => {
+      renderSelect()
+
+      expect(trigger().getAttribute("aria-busy")).toBe("false")
+      expect(trigger().querySelector("svg.animate-spin")).toBeNull()
+    })
+
+    it("clic, Enter, Spazio e freccia giù non aprono il menu e il focus resta sul trigger", async () => {
+      const user = userEvent.setup()
+      renderSelect({ pending: true })
+      trigger().focus()
+
+      await user.click(trigger())
+      expect(menu()).toBeNull()
+      await user.keyboard("{Enter}")
+      expect(menu()).toBeNull()
+      await user.keyboard(" ")
+      expect(menu()).toBeNull()
+      await user.keyboard("{ArrowDown}")
+      expect(menu()).toBeNull()
+
+      expect(document.activeElement).toBe(trigger())
+    })
+
+    it("se l'attesa comincia con il menu aperto, il menu si chiude", async () => {
+      const user = userEvent.setup()
+      const { rerender, onChange } = renderSelect()
+      await user.click(trigger())
+      expect(menu()).not.toBeNull()
+
+      rerender(
+        <ContactStateSelect
+          value="chiamare"
+          onChange={onChange}
+          pending
+          aria-label="Stato"
+        />
+      )
+
+      expect(menu()).toBeNull()
+    })
+  })
+})

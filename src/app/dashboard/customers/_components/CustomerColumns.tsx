@@ -18,13 +18,8 @@ import React, { useCallback } from "react"
 import { cn, formatDateAsDMY } from "@/lib/utils"
 import { SortableHeader } from "@/components/custom/table/TableHeaders"
 import { Badge } from "@/components/ui/badge"
-import { cva } from "class-variance-authority"
 import { handleCustomerBlackList } from "../_actions/handleCustomerBlackList"
-import {
-  type TaskCategory,
-  type Customer,
-  type Task,
-} from "@/lib/types/schemas"
+import { type Customer, type Task } from "@/lib/types/schemas"
 
 import { type TaskStatus } from "@/lib/types/schemas"
 import { taskStatus } from "@/server/db/schema/task"
@@ -42,6 +37,10 @@ import { useUserPreferenceContext } from "@/store/context/useUserPreferenceConte
 import { ToastAction } from "@/components/ui/toast"
 import { api } from "@/trpc/react"
 import { PriorityBadge } from "@/components/custom/badge/priority"
+import {
+  TaskStatusBadge,
+  activeVariants,
+} from "@/components/custom/badge/TaskStatusBadge"
 
 export type CustomerColumnSelectedProps = {
   id: string | null
@@ -430,17 +429,6 @@ export const CustomerColumns: ColumnDef<CustomerColumnSelectedProps>[] = [
   },
 ]
 
-const activeVariants = cva("", {
-  variants: {
-    state: {
-      idle: "bg-gray-100 text-grey-800",
-      open: "bg-green-100 text-green-800",
-      close: "bg-blue-100 text-blue-800",
-    } satisfies Record<TaskCategory, string>,
-  },
-  defaultVariants: { state: "idle" },
-})
-
 type TaskBadgeProps = {
   tasks: CustomerColumnSelectedProps["tasks"]
 }
@@ -458,22 +446,6 @@ export const TaskBadge = React.memo(({ tasks }: TaskBadgeProps) => {
     </Badge>
   )
 })
-
-export const TaskBadgeV2 = React.memo(({ status }: { status: TaskStatus }) => {
-  return (
-    <Badge
-      variant={"outline"}
-      size={"xs"}
-      className={activeVariants({
-        state: getTaskStatusCategory(status),
-      })}
-    >
-      {status}
-    </Badge>
-  )
-})
-
-TaskBadgeV2.displayName = "TaskBadgeV2"
 
 TaskBadge.displayName = "TaskBadge"
 
@@ -611,7 +583,7 @@ function StateSelector(props: {
     <Popover onOpenChange={setOpen} open={open}>
       <PopoverTrigger asChild>
         <Button variant="ghost">
-          <TaskBadgeV2 status={optimisticState} />
+          <TaskStatusBadge status={optimisticState} />
         </Button>
       </PopoverTrigger>
       <PopoverContent>

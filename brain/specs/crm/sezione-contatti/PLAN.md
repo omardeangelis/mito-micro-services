@@ -1427,9 +1427,9 @@ Vale per T3.10, T3.11a, T3.11b, T3.12, T5.7 e T5.9. Le letture dai Server Compon
     - il trigger è largo 160 px in ogni stato, attesa compresa;
     - con `prefers-reduced-motion` emulato lo spinner non ha animazioni in corso;
     - dopo ogni chiusura della modale, il clic sul trigger di un'altra riga apre il suo menu (nessun `pointer-events: none` rimasto su `body`).
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done (controlli browser in T3.10)
+- **log**: 2026-10-15, worker sonnet, review al primo giro. Advisor `design-engineer` non richiamato: i valori sono già nel piano (P6 rivisto, §11). Installati dall'orchestratore `@testing-library/user-event` 14.6.1 e `@testing-library/dom` 10.4.0 (peer di Testing Library 16, che mancava). Il menu usa i primitivi Radix direttamente, senza le classi `animate-*`/`fade-*`/`zoom-*`/`slide-*`: `ui/dropdown-menu` non cambia. Con `pending` il menu è controllato (`open && !pending`), senza `disabled`. La modale tiene l'ultimo alert durante l'uscita e chiama `onConfirm` una volta per apertura. 31 test in jsdom; verifica per mutazione del worker sulle due guardie. Restano al browser (T3.10): `getAnimations()` vuoto, 160 px reali, spinner fermo con `prefers-reduced-motion`, nessun `pointer-events: none` su `body`. `formatDeadline` formatta nel fuso del browser (gli utenti sono in Italia).
+- **files edited/created**: `src/components/custom/contact/{ContactStateSelect,AlertCloseConfirmDialog,ReadOnlyReason}.tsx`, `src/components/custom/badge/TaskStatusBadge.tsx`, `src/components/custom/contact/_test/{AlertCloseConfirmDialog,AlertCloseConfirmDialog.behavior,ContactStateSelect,ReadOnlyReason}.test.tsx`, `src/test/setup.ts`, `src/app/dashboard/customers/_components/CustomerColumns.tsx` (import del badge), `package.json`, `pnpm-lock.yaml`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a (D6)
