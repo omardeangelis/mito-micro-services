@@ -1,6 +1,6 @@
 import { TRPCError } from "@trpc/server"
 import { Effect } from "effect"
-import { operatorProcedure } from "@/server/api/trpc"
+import { adminProcedure, operatorProcedure } from "@/server/api/trpc"
 import {
   insertTaskSchema,
   insertAlertSchema,
@@ -296,7 +296,7 @@ const assignCustomer = ({
     )
   })
 
-export const bulkHandleTask = operatorProcedure
+export const bulkHandleTask = adminProcedure
   .input(bulkHandleTaskSchema)
   .mutation(({ ctx, input }) => {
     const resolveAlertSet = new Set(input.resolveAlertCustomerIds)

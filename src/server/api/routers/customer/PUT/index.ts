@@ -1,4 +1,4 @@
-import { operatorProcedure, protectedProcedure } from "@/server/api/trpc"
+import { adminProcedure, operatorProcedure } from "@/server/api/trpc"
 import { customers } from "@/server/db/schema/customers"
 import { eq, inArray, desc } from "drizzle-orm"
 import { insertCustomerSchema } from "@/lib/types/schemas"
@@ -13,17 +13,6 @@ import {
   handover as handoverService,
 } from "@/server/services/customer/assignment"
 import { customerErrorToTrpc } from "@/server/services/customer/errors"
-
-export const updateCustomer = protectedProcedure
-  .input(insertCustomerSchema)
-  .mutation(async ({ input, ctx }) => {
-    const { db } = ctx
-    return await db
-      .update(customers)
-      .set(input)
-      .where(eq(customers.id, input.id!))
-      .returning({ id: customers.id })
-  })
 
 const updateCustomerFromDashboardSchema = insertCustomerSchema.pick({
   id: true,
@@ -81,7 +70,7 @@ const bulkAssignCustomerSchema = z.object({
   operatorId: z.number(),
   customerIds: z.array(z.string()),
 })
-export const bulkUpdateCustomers = operatorProcedure
+export const bulkUpdateCustomers = adminProcedure
   .input(bulkAssignCustomerSchema)
   .mutation(async ({ input, ctx }) => {
     const { db } = ctx

@@ -1359,9 +1359,9 @@ Vale per T3.10, T3.11a, T3.11b, T3.12, T5.7 e T5.9. Le letture dai Server Compon
   - `customer.updateCustomer` non esiste più.
 
   Browser: l'assegnazione massiva, da admin, funziona come oggi.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done (controllo browser in T3.14)
+- **log**: 2026-10-15. Spostato da `high` a `medium` dall'orchestratore: cambia solo il tipo di due procedure e si toglie una procedura senza chiamanti; il resto sono test di caratterizzazione. Worker sonnet, review al primo giro. `bulkHandleTask` e `bulkUpdateCustomers` sono `adminProcedure` senza altri cambiamenti; `customer.updateCustomer` rimossa. Test: FORBIDDEN per un operatore su entrambe, procedura rimossa assente, casi 3 e 4 con lo stesso stato o lo stesso operatore senza le righe di ciò che non cambia (passano sulla logica di oggi). I test esistenti usavano già un admin: asserzioni invariate.
+- **files edited/created**: `src/server/api/routers/task/POST/index.ts`, `src/server/api/routers/customer/PUT/index.ts`, `src/server/api/routers/customer/index.ts`, `src/server/api/routers/task/_test/bulkHandleTask.db.test.ts`, `src/server/api/routers/customer/_test/bulkUpdateCustomers.db.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a (D6)

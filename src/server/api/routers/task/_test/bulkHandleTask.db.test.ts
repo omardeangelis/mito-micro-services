@@ -350,6 +350,98 @@ describe("task.bulkHandleTask (comportamento attuale)", () => {
     ])
   })
 
+  it("caso 3: con lo stesso stato già in corso non scrive state_change, solo operator_reassign", async () => {
+    const { previousOperator, nextOperator, customer, caller } = await seed()
+    const previous = await createTask({
+      customerId: customer.id,
+      operatorId: previousOperator.id,
+      state: "app.to",
+      closedAt: CLOSED_AT,
+    })
+
+    await caller.task.bulkHandleTask({
+      operatorId: nextOperator.id,
+      customerIds: [customer.id],
+      state: "app.to",
+    })
+
+    const [active] = await caller.task.getActiveTask({ id: customer.id })
+    expect(active).toMatchObject({
+      state: "app.to",
+      operatorId: nextOperator.id,
+    })
+    expect(active!.id).not.toBe(previous.id)
+    expect(await logOf(customer.id)).toEqual([
+      expect.objectContaining({
+        action: "operator_reassign",
+        taskId: active!.id,
+        fromOperatorId: previousOperator.id,
+        toOperatorId: nextOperator.id,
+      }),
+    ])
+  })
+
+  it("caso 3: con lo stesso operatore non scrive operator_reassign, solo state_change", async () => {
+    const { previousOperator, customer, caller } = await seed()
+    const previous = await createTask({
+      customerId: customer.id,
+      operatorId: previousOperator.id,
+      state: "app.to",
+      closedAt: CLOSED_AT,
+    })
+
+    await caller.task.bulkHandleTask({
+      operatorId: previousOperator.id,
+      customerIds: [customer.id],
+      state: "chiamare",
+    })
+
+    const [active] = await caller.task.getActiveTask({ id: customer.id })
+    expect(active).toMatchObject({
+      state: "chiamare",
+      operatorId: previousOperator.id,
+    })
+    expect(active!.id).not.toBe(previous.id)
+    expect(await logOf(customer.id)).toEqual([
+      expect.objectContaining({
+        action: "state_change",
+        taskId: active!.id,
+        fromState: "app.to",
+        toState: "chiamare",
+      }),
+    ])
+  })
+
+  it("caso 4: con lo stesso operatore non scrive nessuna riga di log e il contatto resta com'è", async () => {
+    const { previousOperator, customer, caller } = await seed()
+    const previous = await createTask({
+      customerId: customer.id,
+      operatorId: previousOperator.id,
+      state: "followup",
+      closedAt: CLOSED_AT,
+    })
+
+    await caller.task.bulkHandleTask({
+      operatorId: previousOperator.id,
+      customerIds: [customer.id],
+      state: "chiamare",
+    })
+
+    const [active] = await caller.task.getActiveTask({ id: customer.id })
+    expect(active).toMatchObject({
+      id: previous.id,
+      state: "followup",
+      operatorId: previousOperator.id,
+      closedAt: CLOSED_AT,
+      isActive: true,
+    })
+    expect(await tasksOf(customer.id)).toHaveLength(1)
+    expect(
+      await caller.customer.getCustomerById({ id: customer.id })
+    ).toMatchObject({ operatorId: previousOperator.id })
+    expect(await logOf(customer.id)).toEqual([])
+  })
+
   it("elabora più clienti nello stesso ordine della richiesta", async () => {
     const { nextOperator, caller } = await seed()
     const first = await createCustomer()
@@ -419,5 +511,27 @@ describe("task.bulkHandleTask (comportamento attuale)", () => {
       })
     ).rejects.toMatchObject({ code: "BAD_REQUEST" })
     expect(await testDb.select().from(task)).toEqual([])
+  })
+})
+
+describe("task.bulkHandleTask, permessi (P7)", () => {
+  it("un OPERATORE che chiama bulkHandleTask riceve FORBIDDEN e nessun cliente cambia", async () => {
+    const { previousOperator, nextOperator, customer } = await seed()
+    const contact = await createTask({
+      customerId: customer.id,
+      operatorId: previousOperator.id,
+      state: "app.to",
+    })
+
+    await expect(
+      createTestCaller(previousOperator).task.bulkHandleTask({
+        operatorId: nextOperator.id,
+        customerIds: [customer.id],
+        state: "chiamare",
+      })
+    ).rejects.toMatchObject({ code: "FORBIDDEN" })
+
+    expect(await tasksOf(customer.id)).toEqual([contact])
+    expect(await logOf(customer.id)).toEqual([])
   })
 })

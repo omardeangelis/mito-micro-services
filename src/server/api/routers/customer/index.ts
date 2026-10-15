@@ -14,7 +14,6 @@ import {
 } from "./GET"
 import { insertCustomer } from "./POST"
 import {
-  updateCustomer,
   updateCustomerFromDashboard,
   handover,
   bulkUpdateCustomers,
@@ -36,7 +35,6 @@ export const customerRouter = createTRPCRouter({
   getAllAvailableJobs,
   getAllFileName,
   insertCustomer,
-  updateCustomer,
   updateCustomerFromDashboard,
   handover,
   bulkUpdateCustomers,
