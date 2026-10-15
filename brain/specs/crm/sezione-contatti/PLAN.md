@@ -1011,9 +1011,9 @@ Vale per T3.10, T3.11a, T3.11b, T3.12, T5.7 e T5.9. Le letture dai Server Compon
 - **validation**: unit test su tutti i casi:
   - D2 e A1: contatto mio, cliente mio con il contatto di un collega, nessuno dei due, contatto non assegnato con cliente mio, contatto non assegnato con cliente non mio o non assegnato, admin, contatto superato per operatore e per admin.
   - P4 e D13: "Assegna a te" su un cliente non assegnato e su uno assegnato; passaggio di consegne di un admin su un cliente assegnato e su uno non assegnato, di un operatore sul cliente suo, su quello di un collega e su uno non assegnato.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-10-15, worker sul modello dell'orchestratore, review al primo giro. 26 test su D2, A1, AC27, P4, D13. `not_owner` porta `assignee` (nome o null per "Non assegnato"); `operatorDisplayName` (nome e cognome, `Operatore <id>` se vuoti) è esportata per l'interfaccia e i payload degli errori. `canCreateContact` è vera per un admin anche su un cliente senza operatore: il rifiuto "Cliente non assegnato" è del server (T3.4).
+- **files edited/created**: `src/lib/domain/contact/permissions.ts`, `src/lib/domain/contact/_test/permissions.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a (D6)
