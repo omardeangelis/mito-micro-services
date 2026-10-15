@@ -7,10 +7,8 @@ import {
   canSelfAssign,
 } from "@/lib/domain/contact/permissions"
 import { customers } from "@/server/db/schema/customers"
-import { operators } from "@/server/db/schema/operators"
 import { task } from "@/server/db/schema/task"
 import { taskEventLog } from "@/server/db/schema/taskEventLog"
-import { users } from "@/server/db/schema/users"
 import {
   type Db,
   type DbError,
@@ -20,9 +18,10 @@ import {
 } from "@/server/effect/db"
 import {
   CustomerNotFound,
-  OperatorNotFound,
+  type OperatorNotFound,
 } from "@/server/services/contact/errors"
 import { touchCustomer } from "@/server/services/contact/guard"
+import { findWorkingOperator } from "@/server/services/contact/operator"
 import { CustomerAssignmentForbidden, HandoverSameOperator } from "./errors"
 
 /**
@@ -67,14 +66,7 @@ export const handover = ({
         return yield* new CustomerAssignmentForbidden()
       }
 
-      const [target] = yield* query((client) =>
-        client
-          .select({ id: operators.id })
-          .from(operators)
-          .innerJoin(users, eq(operators.userId, users.id))
-          .where(eq(operators.id, toOperatorId))
-      )
-      if (!target) return yield* new OperatorNotFound()
+      const target = yield* findWorkingOperator(toOperatorId)
       if (customer.operatorId === target.id) {
         return yield* new HandoverSameOperator()
       }

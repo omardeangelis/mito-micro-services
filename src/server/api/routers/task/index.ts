@@ -9,6 +9,7 @@ import {
 import {
   changeState,
   setPriority,
+  reassign,
   updateTask,
   updateTaskFromDashboard,
 } from "./PUT"
@@ -30,6 +31,7 @@ export const taskRouter = createTRPCRouter({
   setCallback,
   changeState,
   setPriority,
+  reassign,
   updateTask,
   updateTaskFromDashboard,
   bulkHandleTask,

@@ -1,4 +1,4 @@
-import { operatorProcedure } from "@/server/api/trpc"
+import { adminProcedure, operatorProcedure } from "@/server/api/trpc"
 import { task, taskStatus } from "@/server/db/schema/task"
 import { taskEventLog } from "@/server/db/schema/taskEventLog"
 import { insertTaskSchema } from "@/lib/types/schemas"
@@ -8,6 +8,7 @@ import { runTrpc } from "@/server/effect/trpc"
 import { actorOf } from "@/server/services/contact/actor"
 import { changeState as changeStateService } from "@/server/services/contact/changeState"
 import { contactErrorToTrpc } from "@/server/services/contact/errors"
+import { reassign as reassignService } from "@/server/services/contact/reassign"
 import { setPriority as setPriorityService } from "@/server/services/contact/setPriority"
 import { priorityBands } from "@/lib/domain/contact/priority"
 
@@ -40,6 +41,21 @@ export const setPriority = operatorProcedure
   .mutation(({ ctx, input }) =>
     runTrpc(
       setPriorityService({ ...input, actor: actorOf(ctx.operator) }),
+      contactErrorToTrpc
+    )
+  )
+
+const reassignInput = z.object({
+  taskId: z.number().int(),
+  operatorId: z.number().int(),
+})
+
+/** The operator of a contact and its customer, admins only: see `reassign`. */
+export const reassign = adminProcedure
+  .input(reassignInput)
+  .mutation(({ ctx, input }) =>
+    runTrpc(
+      reassignService({ ...input, actor: actorOf(ctx.operator) }),
       contactErrorToTrpc
     )
   )

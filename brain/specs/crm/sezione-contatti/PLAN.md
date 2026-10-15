@@ -1281,9 +1281,9 @@ Vale per T3.10, T3.11a, T3.11b, T3.12, T5.7 e T5.9. Le letture dai Server Compon
   - un OPERATORE riceve FORBIDDEN, senza modifiche (AC50);
   - operatore di destinazione inesistente, o l'operatore di sistema → BAD_REQUEST;
   - un contatto superato viene rifiutato.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-10-15, worker sul modello dell'orchestratore, review al primo giro. `adminProcedure`. La ricerca dell'operatore di destinazione (con un utente) è estratta in `findWorkingOperator` (`src/server/services/contact/operator.ts`) e la usa anche `handover`. Una riga `operator_reassign` per ogni cosa che cambia; se non cambia niente, nessuna scrittura (nemmeno `touchCustomer`). 9 test via caller.
+- **files edited/created**: `src/server/services/contact/{reassign,operator}.ts`, `src/server/services/customer/assignment.ts`, `src/server/api/routers/task/PUT/index.ts`, `src/server/api/routers/task/index.ts`, `src/server/services/contact/_test/reassign.db.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a (D6)
