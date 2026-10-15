@@ -24,7 +24,7 @@ updated: 2026-10-15
 
 - `sequential` (richiesto dall'utente): un task alla volta nell'ordine T1.1 → T1.2 → T1.3 → T1.4 → T1.5 → T1.6 → T1.7 → T1.8, nessun worker.
 - Run 2, `sequential` (richiesto dall'utente): T2.1 → T2.2 → T2.3 → T2.5 → T2.6 → T2.7, nessun worker.
-- Run 3, `sequential` (scelta minima sicura: l'utente non ha indicato la modalità, e i task server sono in catena sugli stessi router), nell'ordine di §10. Delegazione `supervised` (`brain.config.json`): l'orchestratore scrive il test RED di ogni task, un worker sul livello della `complexity` (`low` → haiku, `medium` → sonnet, `high` → modello dell'orchestratore) scrive il codice, l'orchestratore rivede. Escalation: nessuna finora.
+- Run 3, `sequential` (scelta minima sicura: l'utente non ha indicato la modalità, e i task server sono in catena sugli stessi router), nell'ordine di §10. Delegazione `supervised` (`brain.config.json`): l'orchestratore scrive il test RED di ogni task, un worker sul livello della `complexity` (`low` → haiku, `medium` → sonnet, `high` → modello dell'orchestratore) scrive il codice, l'orchestratore rivede. Escalation: nessun passaggio di livello. Una seconda proposta di correzione allo stesso worker (T3.17, ripristino del focus). Livelli spostati dall'orchestratore prima di partire: T3.5a e T3.8c da `high` a `medium` (motivo nel log del task).
 
 ## Deviations From the Plan
 
@@ -124,6 +124,33 @@ updated: 2026-10-15
   - **Test:** un cliente con duplicati senza alert nel test in due fasi (la factory `createAlert` riscriveva `updated_at`); la definizione completa degli indici.
   - **Non corretti in PR2:** `task_priority_active_idx` (si ridisegna in PR5: l'SQL resta quello provato sul DB di sviluppo); `isDueToday` in ora legale (preesistente, decisione di Omar). Entrambi nel tech-debt.
 
+- **Run 3 — scostamenti per task** (dettagli nei log del PLAN):
+  - **T3.1a:** `status.ts` scrive gli stati a mano (`allStates`), per non portare drizzle nel bundle client; un controllo di tipo e un test lo legano all'enum dello schema.
+  - **T3.2a:** il marcatore dell'errore è la chiave stringa `__contactError`, non un simbolo: tRPC copia le chiavi del `cause` con `for…in`, che salta i simboli.
+  - **T3.2b:** la rilettura bloccata della task filtra anche sul cliente bloccato: una task spostata a un altro cliente nel frattempo dà `ContactNotFound` invece di scrivere su un cliente non bloccato.
+  - **T3.4:** la conversione di `23505` in `ContactAlreadyActive` avvolge `transaction` da fuori (dentro la transazione è già abortita). Un operatore su un cliente non suo riceve `CONTACT_FORBIDDEN` con `assignee: null`: testo impreciso, ma ci arriva solo una richiesta fuori dall'interfaccia.
+  - **T3.5b:** `resolveOpenAlert` riceve il contatto della guardia invece di `taskId`, così si chiama solo dopo la guardia; `contactErrorToTrpc` traduce anche `CustomerMissing`.
+  - **T3.8a:** il permesso si controlla prima della destinazione: un operatore su un cliente non suo riceve FORBIDDEN anche con una destinazione inesistente.
+  - **T3.11b:** "Imposta richiamo" si vede anche con un alert aperto (prima era nascosto, e "Sostituisce…" non era raggiungibile).
+  - **T3.12:** al successo la card di "Crea contatto" è smontata nello stesso commit del refresh: il focus passa al nuovo selettore dallo smontaggio, con un `MutationObserver` che aspetta il trigger al massimo 3 s.
+  - **T3.15:** la regola dei lock si controlla solo con `xmax = pg_current_xact_id()::xid`: con `xmin` `handover` e `assignToYourself` restavano verdi senza `FOR UPDATE`.
+  - **T3.17:** nessun test di componente della modale (chiama tRPC): i controlli sono nella passata browser di T3.14.
+- **Run 3 — `/simplify` (4 revisori).** Applicati:
+  - server: un solo `activeTaskIdOf` (in `activeContact.ts`) e `lockCustomerOrNotFound` (in `guard.ts`) per i tre blocchi uguali; `bandValue("urgent")` al posto di `120`; la massiva traduce `CustomerMissing` con `contactErrorToTrpc` (stesso codice e messaggio); niente `touchCustomer` in `handover`, perché `customers.updated_at` ha `$onUpdate`, e in `reassign` solo se il cliente non cambia;
+  - client: `useSavingUntilRefreshed` riunisce l'attesa "chiamata → refresh" copiata in quattro componenti; `focus.ts` (`focusIsLost`, `STATE_TRIGGER_SELECTOR`) e `useActor` al posto delle copie; tolto un ramo che non poteva girare (`if (onError(error))` dove l'errore di conferma non esiste);
+  - codice morto: `TaskBadge`, `getTaskStatusCategory` (e `_utils/index.ts`), `priorityEnum`, `priorityRangeMap`, l'export di `activeVariants`.
+- **Run 3 — `/simplify`, rilievi non applicati:**
+  - massiva e cron chiudono l'alert con codice proprio invece di `resolveOpenAlert` (niente `alert.updated_at`): codice fuori dal diff, nel tech-debt ("Scrittori fuori dalla regola dei lock");
+  - la regola del date picker è diversa da `isPastDay`: preesistente, cambia il comportamento, nel tech-debt;
+  - `getOperatorById` dal client in `CustomerTaskManager`, `lastAlertId` non usato in `getActiveAlerts`, `SET TRANSACTION ISOLATION` separato: fuori dal diff o infrastruttura di PR1;
+  - export usati dalle PR successive (`bandRange`, `isDueOrOverdue`, `romeDayBounds`, `canReassign`, `activeContactHref`): restano;
+  - helper di test duplicati (`rejectionOf`, i seed): solo test, nessun guadagno sul codice.
+- **Run 3 — correzioni dalla passata browser (T3.14)**, ognuna con un test quando il comportamento si prova in jsdom:
+  - **il menu dello stato si riapriva da solo alla fine del salvataggio.** La scelta di un'opzione fa partire l'attesa dentro `onChange` (Radix la spedisce con `flushSync`), quindi il menu controllato vale già `false` e Radix non chiama `onOpenChange(false)`: `open` restava `true` e il menu ricompariva quando l'attesa finiva. Ora la scelta chiude il menu. Test nuovo in `ContactStateSelect.test.tsx`, rosso senza la correzione; i test di T3.9b non lo prendevano perché il genitore non cambiava `pending`;
+  - **nella scheda cliente il focus non arrivava al nuovo selettore** dopo "Crea contatto": la scheda è una Sheet di Radix, e quando un controllo con il focus sparisce Radix sposta il focus sulla Sheet, non su `body`. `focusIsLost` ora conta anche il focus su un `role="dialog"` (test in `focus.test.tsx`). Vale anche per gli altri ripristini nella scheda;
+  - **scheda cliente, contatto preso da un collega nel frattempo:** dopo il rifiuto il controllo diventa sola lettura e il focus restava sulla Sheet. Ora va al titolo "Stato del cliente" (`tabIndex={-1}`), sempre presente: la sola lettura aspetta il nome dell'operatore prima di comparire;
+  - **"Assegna a te":** dopo la risposta il focus va al testo dell'operatore (prima restava sulla Sheet). Il rifiuto `CUSTOMER_ASSIGNMENT_FORBIDDEN` diceva "Non puoi passare le consegne di questo cliente" anche dopo "Assegna a te": ora "Non puoi cambiare l'operatore di questo cliente", vero per entrambi. Scostamento dal testo del piano (T3.9a).
+
 ## Surprises and Decisions
 
 - **Le migrazioni del repo non si applicano su un Postgres vuoto.** `20240926195125_lucky_roughhouse` crea `mito-deutsche_task` con il tipo `task_status`, che nasce solo in `20260619152227_same_hemingway`. Il DB di produzione aveva già il tipo (creato con `db:push` prima delle migrazioni), e la terza migrazione lo salta se esiste. L'harness crea il tipo prima di migrare; le migrazioni non si toccano (già applicate in prod). Vale anche per chi volesse creare un DB nuovo con `pnpm db:migrate`.
@@ -154,6 +181,10 @@ updated: 2026-10-15
   - `gh variable list`: vuoto.
 - **Run 2 — controllo strutturale su prod e sviluppo** (29/09, sola lettura, transazione `READ ONLY`): nessun trigger né regola su `task`, `alert` e `customers`; su `task` e `alert` solo le chiavi primarie. Dimensioni: `task` 97 MB in prod, 95 MB in sviluppo.
 
+- **Run 3 — la ricerca di Clienti per "Nome" e "Telefono" va in errore** (passata browser, preesistente su `dev`): `customers[searchBy]` con `nome` o `telefono` non è una colonna, e Postgres risponde `syntax error at or near "$2"`. Nel tech-debt e proposta come attività separata; per la passata si è filtrato con `search_by=fullName` dall'URL.
+- **Run 3 — artefatti della passata browser, non difetti dell'app:** nelle sessioni headless di `agent-browser` le animazioni CSS restano ferme finché non si disegna un frame (lo slide-in della Sheet a 0 ms, l'uscita dei popover): uno screenshot le sblocca. Un clic per riferimento su un elemento fuori vista nella Sheet cadeva sull'overlay e chiudeva la scheda. Un clic su un'opzione del `Select` a volte lasciava la lista aperta: il clic successivo sceglieva un'altra opzione. Le conferme sono state rifatte con i clic per coordinate dopo `scrollIntoView`, controllando il valore scelto prima di confermare.
+- **Run 3 — il link magico di `next dev` va aperto dopo la pagina "verify-request":** NextAuth stampa il link mentre salva il token; aperto subito risponde `error=Verification`.
+
 ## Sanity Checks
 
 | Check | Result | Notes |
@@ -164,6 +195,11 @@ updated: 2026-10-15
 | Run 2 — gate CI su `d803504` | OK | `next lint` e `tsc --noEmit` puliti; `pnpm run test --run` 21 file, 112 test; `pnpm build` con le variabili di CI in un worktree pulito (senza `.env*`) |
 | Run 2 — `indexdef` sul DB di sviluppo, sola lettura | OK | Le cinque definizioni coincidono con `activeContactIndex.db.test.ts` (Postgres 15.6); `task_customer_active_uidx` valido e unico |
 | Run 2 — prova del cron sul DB di sviluppo | Non fatta | La porta 3000, chiamata da `alert.js` in sviluppo, è occupata dal container di un altro progetto |
+| Run 3 — gate CI su `e245c11` (dopo `/simplify`) | OK | `next lint` e `tsc --noEmit` puliti; `pnpm run test --run` 54 file, 820 test; `pnpm build` con le variabili di CI in una copia senza `.env*` (solo `.env.example`), poi cancellata |
+| Run 3 — gate CI su `8472c90` (correzioni della passata browser) | OK | `next lint` e `tsc --noEmit` puliti; 55 file, 825 test |
+| Run 3 — utenti per la passata, DB di sviluppo in sola lettura | OK | Transazione `READ ONLY`: due OPERATORE senza clienti (1001, 1003) e l'ADMIN generico (1000) |
+| Run 3 — passata browser sul DB di sviluppo | OK, con 4 correzioni | `next dev` sulla porta 3100 (`NEXTAUTH_URL` sovrascritto), link magico dalla console; 12 clienti di prova `zzpr3-c1…c12` creati con uno script (restano sul DB di sviluppo). Checklist in T3.14 |
+| Run 3 — verifica sul DB di sviluppo dopo la passata, sola lettura | OK | Al più un contatto attivo per cliente; il cambio di stato di un operatore sul contatto di un collega non lo sposta (AC41, nessun `operator_reassign` sulla task); il salvataggio del form con il solo telefono non tocca gli operatori; la riapertura crea un contatto nuovo a 120 |
 
 ## Acceptance Criteria Status
 
@@ -213,3 +249,4 @@ updated: 2026-10-15
 | 2026-10-13 | Il cron alert gira dopo la mezzanotte italiana, ma prima delle 04:17 (Leonardo). Scartata la sera tardi: il cron lavora per il giorno in cui gira, e la sera sarebbe quello che finisce | `schedule` a `47 23 * * *` (T2.6): 01:47 d'estate, 00:47 d'inverno. Test di `processDueAlerts` all'ora dello `schedule`. Regge solo con il confronto dei giorni in `Europe/Rome`, nello stesso rilascio |
 | 2026-10-13 | Riattivare lo `schedule` anche degli altri tre cron di prod, nella sequenza giusta (Leonardo) | Priorità 23:17 UTC, alert 23:47, clienti e pratiche 00:17, pulizia degli export 00:47 (tabella in T2.6). Priorità prima degli alert, perché dà 1 ai followup; clienti e pratiche dopo le 00:00 UTC, perché usa il giorno UTC del server. Stessa guardia `ALERT_CRON_ENABLED`: partono al passo 8 di G2. Runbook G2 aggiornato ai passi 8 e 9 |
 | 2026-10-13 | Rilascio in prod la sera stessa, fatto dall'agente: merge e migrazione (Leonardo) | PR #11 su `main`, deploy verde, `db:migrate:prod` alle 16:46 UTC con tutti i controlli del passo 6 a posto. Il primo cron si fermava all'installazione delle dipendenze: PR #12 sugli otto workflow, poi verde da `main`. Dettagli nel log di T2.4 |
+| 2026-10-15 | Avvio di PR3: solo PR3 (T3.1a–T3.17, gate T3.14), branch da `dev`, PR verso `dev`. Passata browser sul DB di sviluppo con due operatori e un admin scelti dall'agente in sola lettura, clienti di prova creati dall'agente | Run 3; passata browser in T3.14 |
