@@ -19,6 +19,8 @@ describe("parseCustomerSearchBy", () => {
     expect(parseCustomerSearchBy(undefined)).toBe("fiscalCode")
     expect(parseCustomerSearchBy(null)).toBe("fiscalCode")
     expect(parseCustomerSearchBy([])).toBe("fiscalCode")
+    expect(parseCustomerSearchBy("")).toBe("fiscalCode")
+    expect(parseCustomerSearchBy([""])).toBe("fiscalCode")
     expect(parseCustomerSearchBy("address")).toBe("fiscalCode")
     expect(parseCustomerSearchBy("__proto__")).toBe("fiscalCode")
     expect(parseCustomerSearchBy(["comune", "email"])).toBe("fiscalCode")
@@ -32,6 +34,7 @@ describe("parsePraticaSearchBy", () => {
 
   it("assente, sconosciuto o ripetuto cerca per ID pratica", () => {
     expect(parsePraticaSearchBy(undefined)).toBe("praticaId")
+    expect(parsePraticaSearchBy("")).toBe("praticaId")
     expect(parsePraticaSearchBy("region")).toBe("praticaId")
     expect(parsePraticaSearchBy(["praticaId", "region"])).toBe("praticaId")
   })

@@ -19,7 +19,7 @@ export const customerSearchLabels = {
   fiscalCode: "Codice Fiscale",
   name: "Nome",
   surname: "Cognome",
-  email: "email",
+  email: "Email",
   phoneNumber: "Telefono",
   comune: "Comune",
 } satisfies Record<CustomerSearchBy, string>

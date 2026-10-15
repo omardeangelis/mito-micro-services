@@ -77,7 +77,7 @@ export function TableFilterSection<TData>({ allColumns }: Props<TData>) {
 
   console.log(filterableColumns)
 
-  const [searchBy] = React.useState<PraticaSearchBy>("praticaId")
+  const searchBy: PraticaSearchBy = "praticaId"
 
   const form = useForm<FormData>({
     defaultValues: {

@@ -27,6 +27,10 @@ async function seed() {
     praticaId: "PR-2026-0451",
   })
   await createPractice({ customerId: customer.id, praticaId: "PR-2025-0910" })
+  const conSimboli = await createPractice({
+    customerId: customer.id,
+    praticaId: "PR_2024%0077",
+  })
   const search = async (q: string, searchBy?: PraticaSearchBy) => {
     const { data, total } = await caller.pratiche.getAllPratiche({
       page: 1,
@@ -37,7 +41,7 @@ async function seed() {
     })
     return { praticaIds: data.map((p) => p.praticaId), total }
   }
-  return { cercata, search }
+  return { cercata, conSimboli, search }
 }
 
 describe("pratiche.getAllPratiche, ricerca", () => {
@@ -58,14 +62,15 @@ describe("pratiche.getAllPratiche, ricerca", () => {
   })
 
   it("cerca % e _ come testo, non come caratteri jolly", async () => {
-    const { search } = await seed()
+    const { conSimboli, search } = await seed()
+    // Come caratteri jolly troverebbero tutte e tre le pratiche
     expect(await search("%")).toEqual({
-      praticaIds: [],
-      total: [{ total: 0 }],
+      praticaIds: [conSimboli.praticaId],
+      total: [{ total: 1 }],
     })
     expect(await search("PR_")).toEqual({
-      praticaIds: [],
-      total: [{ total: 0 }],
+      praticaIds: [conSimboli.praticaId],
+      total: [{ total: 1 }],
     })
   })
 

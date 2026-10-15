@@ -20,7 +20,7 @@ async function seed() {
   const rossi = await createCustomer({
     name: "Mariangela",
     surname: "Rossignoli",
-    email: "mariangela@example.com",
+    email: "mariangela.nali+off@example.com",
     phoneNumber: "3331112222",
     fiscalCode: "RSSMNG80A41H501Z",
     comune: "Civitavecchia",
@@ -28,12 +28,12 @@ async function seed() {
   const bianchi = await createCustomer({
     name: "Gianluca",
     surname: "Bianchetti",
-    email: "gian_luca@example.org",
+    email: "gian_luca%off@example.org",
     phoneNumber: "3409998888",
     vatCode: "IT01234567890",
     comune: "Sesto San Giovanni",
   })
-  const search = async (searchBy: CustomerSearchBy, q: string) => {
+  const search = async (searchBy: CustomerSearchBy | undefined, q: string) => {
     const { allCustomers, total } = await caller.customer.getAllCustomers({
       page: 1,
       perPage: 10,
@@ -54,6 +54,14 @@ describe("customer.getAllCustomers, ricerca", () => {
     })
     expect(await search("fiscalCode", "01234567")).toEqual({
       ids: [bianchi.id],
+      total: 1,
+    })
+  })
+
+  it("senza search_by cerca per codice fiscale", async () => {
+    const { rossi, search } = await seed()
+    expect(await search(undefined, "rssmng")).toEqual({
+      ids: [rossi.id],
       total: 1,
     })
   })
@@ -102,7 +110,12 @@ describe("customer.getAllCustomers, ricerca", () => {
     const { bianchi, search } = await seed()
     expect(await search("name", "%")).toEqual({ ids: [], total: 0 })
     expect(await search("name", "_")).toEqual({ ids: [], total: 0 })
+    // Come caratteri jolly troverebbero anche "nal" e "+off" di Rossignoli
     expect(await search("email", "n_l")).toEqual({
+      ids: [bianchi.id],
+      total: 1,
+    })
+    expect(await search("email", "%off")).toEqual({
       ids: [bianchi.id],
       total: 1,
     })

@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useCallback, useMemo, useState } from "react"
+import React, { useCallback, useEffect, useMemo } from "react"
 import { Form, FormField, FormItem } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { useForm } from "react-hook-form"
@@ -49,8 +49,8 @@ import {
   type CustomerSearchBy,
   customerSearchBy,
   customerSearchLabels,
-  parseCustomerSearchBy,
 } from "@/lib/constants/customerSearch"
+import { useCustomerSearch } from "@/lib/hooks/useCustomerSearch"
 
 const schema = z.object({
   id: z.string(),
@@ -86,12 +86,7 @@ export function TableFilterSections<TData>({ allColumns }: Props<TData>) {
 
   const router = useRouter()
 
-  // Stessa lettura della pagina, così il badge mostra il campo in cui il
-  // server sta cercando
-  const [searchBy, setSearchBy] = useState<FilterItems>(() => {
-    const value = parseCustomerSearchBy(searchParams.getAll("search_by"))
-    return { value, label: customerSearchLabels[value] }
-  })
+  const { q, active, selected, setSelected } = useCustomerSearch()
 
   const form = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -99,6 +94,12 @@ export function TableFilterSections<TData>({ allColumns }: Props<TData>) {
       id: searchParams.get("q") ?? "",
     }),
   })
+
+  // Back e avanti cambiano `q` senza rimontare il componente
+  const { setValue } = form
+  useEffect(() => {
+    setValue("id", q)
+  }, [q, setValue])
 
   const resetSearchParams = useCallback(() => {
     const url = new URL(window.location.href)
@@ -113,9 +114,9 @@ export function TableFilterSections<TData>({ allColumns }: Props<TData>) {
       const item = searchByItems.find((c) => c.value === value)
       if (!item) return
       resetSearchParams()
-      setSearchBy(item)
+      setSelected(item.value)
     },
-    [resetSearchParams]
+    [resetSearchParams, setSelected]
   )
 
   const { handleFilterUrlChange, removeFilterSingleFilter, arrayFilters } =
@@ -133,7 +134,7 @@ export function TableFilterSections<TData>({ allColumns }: Props<TData>) {
       url.searchParams.delete("search_by")
     } else {
       url.searchParams.set("q", data.id)
-      url.searchParams.set("search_by", searchBy.value)
+      url.searchParams.set("search_by", selected)
     }
 
     router.push(url.toString())
@@ -191,10 +192,10 @@ export function TableFilterSections<TData>({ allColumns }: Props<TData>) {
       <div className="flex w-full items-center gap-2">
         <ToggleGroupDemo />
         <div className={filterClasses.searchClasses}>
-          <Select onValueChange={handleSearchChange} value={searchBy.value}>
+          <Select onValueChange={handleSearchChange} value={selected}>
             <SelectTrigger className="min-w-[150px]">
               <SelectValue>
-                <span>{searchBy.label}</span>
+                <span>{customerSearchLabels[selected]}</span>
               </SelectValue>
             </SelectTrigger>
             <SelectContent>
@@ -222,7 +223,7 @@ export function TableFilterSections<TData>({ allColumns }: Props<TData>) {
                   return (
                     <FormItem className="w-full max-w-sm">
                       <Input
-                        placeholder={`Cerca per ${searchBy.label}`}
+                        placeholder={`Cerca per ${customerSearchLabels[selected]}`}
                         {...field}
                         className="w-full"
                       />
@@ -314,14 +315,14 @@ export function TableFilterSections<TData>({ allColumns }: Props<TData>) {
           </DropdownMenu>
         </div>
       </div>
-      {form.getValues().id ? (
+      {q ? (
         <Badge
           className="badge-with-close mt-2 w-fit"
           variant="secondary"
           onClick={resetSearchParams}
         >
           <div className="flex w-fit items-center">
-            {searchBy.label}: {form.getValues().id}
+            {customerSearchLabels[active]}: {q}
             <span
               data-close
               className="badge-close-icon ml-2 flex items-center justify-center"

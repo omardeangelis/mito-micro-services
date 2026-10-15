@@ -184,7 +184,7 @@ const customerSearchColumns = {
 const getAllCustomersInput = z.object({
   page: z.number(),
   perPage: z.number(),
-  searchBy: customerSearchBy.optional(),
+  searchBy: customerSearchBy.optional().default("fiscalCode"),
   q: z.string().optional(),
   onlyMe: z.boolean().optional(),
   showDM: z.boolean().optional(),
@@ -218,7 +218,7 @@ export const getAllCustomers = operatorProcedure
         : undefined
 
     const getSearchedBy = () => {
-      if (!q || !searchBy) return undefined
+      if (!q) return undefined
       return or(
         ...customerSearchColumns[searchBy].map((column) =>
           ilike(column, containsPattern(q))
