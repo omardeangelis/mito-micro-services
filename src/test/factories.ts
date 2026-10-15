@@ -1,6 +1,8 @@
 import { eq } from "drizzle-orm"
 import { SYSTEM_OPERATOR_USER_ID } from "@/lib/constants/operator"
 import { customers } from "@/server/db/schema/customers"
+import { practices } from "@/server/db/schema/pratiche"
+import { customerToPratica } from "@/server/db/schema/relations/customerToPratica"
 import { operators } from "@/server/db/schema/operators"
 import { alert, task } from "@/server/db/schema/task"
 import { users } from "@/server/db/schema/users"
@@ -63,6 +65,33 @@ export async function createCustomer(
     })
     .returning()
   return customer!
+}
+
+/** A practice of `customerId`, as the practices list joins them. */
+export async function createPractice(
+  values: Partial<typeof practices.$inferInsert> & { customerId: string }
+) {
+  const { customerId, ...rest } = values
+  const [practice] = await testDb
+    .insert(practices)
+    .values({
+      praticaId: nextId("pratica"),
+      importoFinanziato: "10000",
+      importoErogato: "10000",
+      rateTotali: 60,
+      importoRata: "200",
+      ratePagate: 0,
+      dataLiquidazione: new Date("2026-01-15T00:00:00.000Z"),
+      state: "Liquidata",
+      ...rest,
+    })
+    .returning()
+  await testDb.insert(customerToPratica).values({
+    customerId,
+    praticaId: practice!.praticaId,
+    customerRole: "Intestatario",
+  })
+  return practice!
 }
 
 /** An active task, unless `isActive` says otherwise. */

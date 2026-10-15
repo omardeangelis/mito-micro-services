@@ -11,7 +11,7 @@ import {
   SelectLabel,
   SelectTrigger,
 } from "@/components/ui/select"
-import { type SearchBy } from "@/lib/types"
+import { type PraticaSearchBy } from "@/lib/constants/praticaSearch"
 import { X } from "lucide-react"
 import React, { useCallback } from "react"
 import { useForm } from "react-hook-form"
@@ -77,8 +77,7 @@ export function TableFilterSection<TData>({ allColumns }: Props<TData>) {
 
   console.log(filterableColumns)
 
-  const [searchBy] =
-    React.useState<SearchBy<{ praticaId: string }>>("praticaId")
+  const [searchBy] = React.useState<PraticaSearchBy>("praticaId")
 
   const form = useForm<FormData>({
     defaultValues: {

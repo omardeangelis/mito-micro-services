@@ -8,8 +8,12 @@ import { getProductKey } from "@/lib/constants/productMap"
 import { operators } from "@/server/db/schema/operators"
 import { customerToPratica } from "@/server/db/schema/relations/customerToPratica"
 import { customers } from "@/server/db/schema/customers"
-import { union } from "drizzle-orm/pg-core"
+import { type PgColumn, union } from "drizzle-orm/pg-core"
 import { type Customer, type Practice } from "@/lib/types/schemas"
+import {
+  type PraticaSearchBy,
+  praticaSearchBy,
+} from "@/lib/constants/praticaSearch"
 
 export type Result = Record<
   string,
@@ -19,6 +23,11 @@ export type Result = Record<
   }
 >
 
+// Colonna in cui cerca ogni valore di `search_by`
+const praticaSearchColumns = {
+  praticaId: practices.praticaId,
+} satisfies Record<PraticaSearchBy, PgColumn>
+
 const getAllPraticheInput = z.object({
   page: z.number().int(),
   perPage: z.number().int(),
@@ -27,7 +36,7 @@ const getAllPraticheInput = z.object({
     .union([z.literal("asc"), z.literal("desc")])
     .optional()
     .default("asc"),
-  searchBy: z.string().optional().default("id"),
+  searchBy: praticaSearchBy.optional().default("praticaId"),
   filterBy: z
     .object({
       state: z.enum(stateEnum).optional(),
@@ -69,10 +78,7 @@ export const getAllPratiche = operatorProcedure
         ? inArray(practices.productId, productCondition as string[])
         : undefined,
       filterBy?.file ? eq(practices.fileName, filterBy.file) : undefined,
-      q && searchBy
-        ? // @ts-expect-error searchBy is a string
-          ilike(practices[searchBy as keyof typeof practices], `%${q}%`)
-        : undefined,
+      q ? ilike(praticaSearchColumns[searchBy], `%${q}%`) : undefined,
       filterBy?.onlyMe && operator.role === "OPERATORE"
         ? eq(customers.operatorId, operator.id)
         : undefined,

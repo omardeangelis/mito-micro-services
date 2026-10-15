@@ -9,6 +9,7 @@ import { createSQLQuery } from "@/lib/utils/filters"
 import { PRATICA_FILTER_QUERY_MAP } from "../customers/_constants"
 import { getTableName } from "drizzle-orm"
 import { practices } from "@/server/db/schema/pratiche"
+import { praticaSearchBy } from "@/lib/constants/praticaSearch"
 export default async function ParticheHome({
   searchParams,
 }: ServerPageDefaultProps) {
@@ -59,7 +60,9 @@ export default async function ParticheHome({
     orderBy: sortingObj.orderBy ?? "updatedAt",
     sortedBy: sortingObj.sortedBy ?? "asc",
     q: q ? String(q) : undefined,
-    searchBy: search_by ? String(search_by) : undefined,
+    // Un search_by sconosciuto (link modificato a mano) cerca per ID pratica,
+    // invece di far fallire la pagina
+    searchBy: praticaSearchBy.safeParse(search_by).data,
     sqlFilter: sqlQuery,
     filter: filter,
   })
