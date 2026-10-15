@@ -19,8 +19,6 @@ export type DefaultLayoutProps<T> = {
 
 export type SortedBy = "asc" | "desc"
 
-export type SearchBy<T> = keyof T
-
 export type Nullable<T> = T | null
 
 export type NullableAllObjectKeys<T> = {
