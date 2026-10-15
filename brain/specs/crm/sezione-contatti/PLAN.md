@@ -1070,9 +1070,9 @@ Vale per T3.10, T3.11a, T3.11b, T3.12, T5.7 e T5.9. Le letture dai Server Compon
   - via una procedura di prova eseguita con `runTrpc`: per ogni `_tag`, `error.code` e `error.cause` (`{ code, payload }`) sono giusti;
   - via `appRouter.getErrorShape(...)` più un giro di serializzazione e deserializzazione con superjson: `data.contactError` conserva `code` e `payload` (per esempio `activeTaskId` e l'alert); un errore Zod ha ancora `data.zodError` e `data.contactError = null`; un `INTERNAL_SERVER_ERROR` nato da un `DbError` con codice `23505` ha `data.contactError = null`;
   - `readContactError` restituisce lo stesso risultato sulla forma HTTP e su quella in-process.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-10-15, worker sul modello dell'orchestratore, review al primo giro. Marcatore: la chiave stringa `__contactError` (tRPC copia le chiavi del `cause` con `for…in`, che salta i simboli). Il riconoscitore `contactErrorFromCause` sta nel modulo puro e lo usano sia l'`errorFormatter` sia `readContactError`. I `message` fissi dei `TRPCError` sono in italiano. 22 test: ogni `_tag` via `runTrpc`; `getErrorShape` + superjson (alert con `Date`, Zod, `DbError` 23505, causa senza marcatore); `readContactError` sulla forma HTTP e su quella in-process costruita con `callProcedure` + `TRPCClientError.from` come fa `src/trpc/server.ts`. Verifica per mutazione del marcatore fatta dal worker.
+- **files edited/created**: `src/lib/domain/contact/errors.ts`, `src/server/services/contact/errors.ts`, `src/server/api/trpc.ts` (`errorFormatter`), `src/server/services/contact/_test/errors.db.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a (D6)
