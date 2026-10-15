@@ -57,6 +57,18 @@ describe("pratiche.getAllPratiche, ricerca", () => {
     })
   })
 
+  it("cerca % e _ come testo, non come caratteri jolly", async () => {
+    const { search } = await seed()
+    expect(await search("%")).toEqual({
+      praticaIds: [],
+      total: [{ total: 0 }],
+    })
+    expect(await search("PR_")).toEqual({
+      praticaIds: [],
+      total: [{ total: 0 }],
+    })
+  })
+
   it("rifiuta un search_by sconosciuto", async () => {
     const { search } = await seed()
     await expect(

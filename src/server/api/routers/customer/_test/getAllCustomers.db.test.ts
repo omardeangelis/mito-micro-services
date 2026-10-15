@@ -23,13 +23,15 @@ async function seed() {
     email: "mariangela@example.com",
     phoneNumber: "3331112222",
     fiscalCode: "RSSMNG80A41H501Z",
+    comune: "Civitavecchia",
   })
   const bianchi = await createCustomer({
     name: "Gianluca",
     surname: "Bianchetti",
-    email: "gianluca@example.org",
+    email: "gian_luca@example.org",
     phoneNumber: "3409998888",
     vatCode: "IT01234567890",
+    comune: "Sesto San Giovanni",
   })
   const search = async (searchBy: CustomerSearchBy, q: string) => {
     const { allCustomers, total } = await caller.customer.getAllCustomers({
@@ -44,10 +46,22 @@ async function seed() {
 }
 
 describe("customer.getAllCustomers, ricerca", () => {
-  it("cerca per nome", async () => {
-    const { rossi, search } = await seed()
-    expect(await search("nome", "mariang")).toEqual({
+  it("cerca per codice fiscale e per partita IVA", async () => {
+    const { rossi, bianchi, search } = await seed()
+    expect(await search("fiscalCode", "rssmng")).toEqual({
       ids: [rossi.id],
+      total: 1,
+    })
+    expect(await search("fiscalCode", "01234567")).toEqual({
+      ids: [bianchi.id],
+      total: 1,
+    })
+  })
+
+  it("cerca per nome", async () => {
+    const { bianchi, search } = await seed()
+    expect(await search("name", "gianl")).toEqual({
+      ids: [bianchi.id],
       total: 1,
     })
   })
@@ -55,14 +69,6 @@ describe("customer.getAllCustomers, ricerca", () => {
   it("cerca per cognome", async () => {
     const { bianchi, search } = await seed()
     expect(await search("surname", "BIANCH")).toEqual({
-      ids: [bianchi.id],
-      total: 1,
-    })
-  })
-
-  it("cerca per telefono", async () => {
-    const { bianchi, search } = await seed()
-    expect(await search("telefono", "99988")).toEqual({
       ids: [bianchi.id],
       total: 1,
     })
@@ -76,34 +82,38 @@ describe("customer.getAllCustomers, ricerca", () => {
     })
   })
 
-  it("cerca per codice fiscale e per partita IVA", async () => {
-    const { rossi, bianchi, search } = await seed()
-    expect(await search("fiscalCode", "rssmng")).toEqual({
-      ids: [rossi.id],
-      total: 1,
-    })
-    expect(await search("fiscalCode", "01234567")).toEqual({
-      ids: [bianchi.id],
-      total: 1,
-    })
-  })
-
-  it("accetta le chiavi delle colonne che manda il selettore", async () => {
-    const { rossi, bianchi, search } = await seed()
-    expect(await search("name", "gianl")).toEqual({
-      ids: [bianchi.id],
-      total: 1,
-    })
+  it("cerca per telefono", async () => {
+    const { rossi, search } = await seed()
     expect(await search("phoneNumber", "3331")).toEqual({
       ids: [rossi.id],
       total: 1,
     })
   })
 
+  it("cerca per comune", async () => {
+    const { bianchi, search } = await seed()
+    expect(await search("comune", "san giov")).toEqual({
+      ids: [bianchi.id],
+      total: 1,
+    })
+  })
+
+  it("cerca % e _ come testo, non come caratteri jolly", async () => {
+    const { bianchi, search } = await seed()
+    expect(await search("name", "%")).toEqual({ ids: [], total: 0 })
+    expect(await search("name", "_")).toEqual({ ids: [], total: 0 })
+    expect(await search("email", "n_l")).toEqual({
+      ids: [bianchi.id],
+      total: 1,
+    })
+  })
+
   it("rifiuta un search_by sconosciuto", async () => {
     const { search } = await seed()
-    await expect(
-      search("comune" as CustomerSearchBy, "Roma")
-    ).rejects.toMatchObject({ code: "BAD_REQUEST" })
+    for (const searchBy of ["address", "nome", "telefono"]) {
+      await expect(
+        search(searchBy as CustomerSearchBy, "Roma")
+      ).rejects.toMatchObject({ code: "BAD_REQUEST" })
+    }
   })
 })

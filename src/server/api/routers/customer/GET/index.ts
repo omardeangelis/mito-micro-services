@@ -27,6 +27,7 @@ import {
   type CustomerSearchBy,
   customerSearchBy,
 } from "@/lib/constants/customerSearch"
+import { containsPattern } from "../../utils"
 
 const getCustomerByIdInput = z.object({
   id: z.string().optional(),
@@ -172,13 +173,12 @@ export const getAllCustomerForPratica = protectedProcedure
 // Colonne in cui cerca ogni valore di `search_by`: il codice fiscale cerca
 // anche nella partita IVA
 const customerSearchColumns = {
-  nome: [customers.name],
+  fiscalCode: [customers.fiscalCode, customers.vatCode],
   name: [customers.name],
   surname: [customers.surname],
   email: [customers.email],
-  telefono: [customers.phoneNumber],
   phoneNumber: [customers.phoneNumber],
-  fiscalCode: [customers.fiscalCode, customers.vatCode],
+  comune: [customers.comune],
 } satisfies Record<CustomerSearchBy, PgColumn[]>
 
 const getAllCustomersInput = z.object({
@@ -221,7 +221,7 @@ export const getAllCustomers = operatorProcedure
       if (!q || !searchBy) return undefined
       return or(
         ...customerSearchColumns[searchBy].map((column) =>
-          ilike(column, `%${q}%`)
+          ilike(column, containsPattern(q))
         )
       )
     }

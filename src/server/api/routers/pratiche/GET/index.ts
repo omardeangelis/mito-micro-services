@@ -3,7 +3,7 @@ import { z } from "zod"
 import { operatorProcedure, protectedProcedure } from "@/server/api/trpc"
 import { practices, stateEnum } from "@/server/db/schema/pratiche"
 import { eq, count, desc, asc, and, ilike, inArray, sql } from "drizzle-orm"
-import { castAsNumber } from "../../utils"
+import { castAsNumber, containsPattern } from "../../utils"
 import { getProductKey } from "@/lib/constants/productMap"
 import { operators } from "@/server/db/schema/operators"
 import { customerToPratica } from "@/server/db/schema/relations/customerToPratica"
@@ -78,7 +78,7 @@ export const getAllPratiche = operatorProcedure
         ? inArray(practices.productId, productCondition as string[])
         : undefined,
       filterBy?.file ? eq(practices.fileName, filterBy.file) : undefined,
-      q ? ilike(praticaSearchColumns[searchBy], `%${q}%`) : undefined,
+      q ? ilike(praticaSearchColumns[searchBy], containsPattern(q)) : undefined,
       filterBy?.onlyMe && operator.role === "OPERATORE"
         ? eq(customers.operatorId, operator.id)
         : undefined,

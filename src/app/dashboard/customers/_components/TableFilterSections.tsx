@@ -45,15 +45,25 @@ import { cn } from "@/lib/utils"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { PopoverDateFilter } from "@/components/custom/table/PopoverFilter"
 import { CUSTOMER_FILTER_MAP } from "../_constants"
-import { type CustomerSearchBy } from "@/lib/constants/customerSearch"
+import {
+  type CustomerSearchBy,
+  customerSearchBy,
+  customerSearchLabels,
+  parseCustomerSearchBy,
+} from "@/lib/constants/customerSearch"
 
 const schema = z.object({
   id: z.string(),
 })
 
 type FormData = z.infer<typeof schema>
-type FilterBy = CustomerSearchBy
-type FilterItems = { value: FilterBy; label: string }
+type FilterItems = { value: CustomerSearchBy; label: string }
+
+// Le voci di "Cerca per" sono i valori di `search_by` che il server accetta
+const searchByItems = customerSearchBy.options.map<FilterItems>((value) => ({
+  value,
+  label: customerSearchLabels[value],
+}))
 
 type FilterKeys = "operatore" | "ambito" | "sede" | "jobs"
 
@@ -76,23 +86,11 @@ export function TableFilterSections<TData>({ allColumns }: Props<TData>) {
 
   const router = useRouter()
 
-  const filterableColumns = allColumns
-    .filter((column) => column.getCanFilter())
-    .map<FilterItems>((c) => {
-      return {
-        label: c.columnDef.id!,
-        // @ts-expect-error accessorKey is private
-        value: c.columnDef.accessorKey as FilterBy,
-      }
-    })
-
+  // Stessa lettura della pagina, così il badge mostra il campo in cui il
+  // server sta cercando
   const [searchBy, setSearchBy] = useState<FilterItems>(() => {
-    const value = searchParams.get("search_by") as FilterBy
-    const label = filterableColumns.find((c) => c.value === value)?.label
-    if (label && value) {
-      return { label, value }
-    }
-    return { label: "Codice Fiscale", value: "fiscalCode" }
+    const value = parseCustomerSearchBy(searchParams.getAll("search_by"))
+    return { value, label: customerSearchLabels[value] }
   })
 
   const form = useForm<FormData>({
@@ -111,13 +109,13 @@ export function TableFilterSections<TData>({ allColumns }: Props<TData>) {
   }, [router, form])
 
   const handleSearchChange = useCallback(
-    (label: string) => {
-      const item = filterableColumns.find((c) => c.label === label)
+    (value: string) => {
+      const item = searchByItems.find((c) => c.value === value)
       if (!item) return
       resetSearchParams()
       setSearchBy(item)
     },
-    [filterableColumns, resetSearchParams]
+    [resetSearchParams]
   )
 
   const { handleFilterUrlChange, removeFilterSingleFilter, arrayFilters } =
@@ -202,13 +200,10 @@ export function TableFilterSections<TData>({ allColumns }: Props<TData>) {
             <SelectContent>
               <SelectGroup>
                 <SelectLabel>Cerca per</SelectLabel>
-                {filterableColumns.map((column) => {
+                {searchByItems.map((item) => {
                   return (
-                    <SelectItem
-                      value={column.label as FilterBy}
-                      key={column.value}
-                    >
-                      {column.label}
+                    <SelectItem value={item.value} key={item.value}>
+                      {item.label}
                     </SelectItem>
                   )
                 })}

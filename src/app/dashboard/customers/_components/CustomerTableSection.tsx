@@ -9,7 +9,7 @@ import { createSQLQuery } from "@/lib/utils/filters"
 import { CUSTOMER_FILTER_QUERY_MAP } from "../_constants"
 import { getTableName } from "drizzle-orm"
 import { task } from "@/server/db/schema/task"
-import { customerSearchBy } from "@/lib/constants/customerSearch"
+import { parseCustomerSearchBy } from "@/lib/constants/customerSearch"
 
 export async function CustomersTableSection({
   searchParams,
@@ -79,9 +79,7 @@ export async function CustomersTableSection({
     perPage: Number(per_page) || DEFAULT_PER_PAGE,
     orderBy: sortingObj.orderBy ?? "priority",
     sortedBy: sortingObj.sortedBy ?? "desc",
-    // Un search_by sconosciuto (link modificato a mano) non filtra, invece di
-    // far fallire la pagina
-    searchBy: customerSearchBy.safeParse(search_by).data,
+    searchBy: parseCustomerSearchBy(search_by),
     q: q as string | undefined,
     filterBy: filterObj,
     onlyMe: only_me === "true",

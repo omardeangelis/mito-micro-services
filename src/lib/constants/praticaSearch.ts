@@ -5,3 +5,16 @@ import { z } from "zod"
 export const praticaSearchBy = z.enum(["praticaId"])
 
 export type PraticaSearchBy = z.infer<typeof praticaSearchBy>
+
+// `search_by` letto dall'URL. Assente, sconosciuto (link modificato a mano) o
+// ripetuto cerca per ID pratica, invece di far fallire la pagina.
+export function parsePraticaSearchBy(
+  value: string | string[] | null | undefined
+): PraticaSearchBy {
+  const single = Array.isArray(value)
+    ? value.length === 1
+      ? value[0]
+      : undefined
+    : value
+  return praticaSearchBy.safeParse(single).data ?? "praticaId"
+}
