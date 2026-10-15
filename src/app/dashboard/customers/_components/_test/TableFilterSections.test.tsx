@@ -107,6 +107,13 @@ async function mount(href: string) {
       })
       await rerender()
     },
+    clearFromBadge: async () => {
+      fireEvent.click(view.container.querySelector(".badge-with-close")!)
+      await rerender()
+    },
+    canSearch: () =>
+      !(view.getByRole("button", { name: "Cerca" }) as HTMLButtonElement)
+        .disabled,
     shown: () => ({
       badge:
         view.container.querySelector(".badge-with-close")?.textContent ?? null,
@@ -118,7 +125,31 @@ async function mount(href: string) {
 
 describe("TableFilterSections, ricerca", () => {
   it("mostra la ricerca dell'URL", async () => {
+    const consoleError = vi.spyOn(console, "error")
     const page = await mount("/dashboard/customers?q=Roma&search_by=comune")
+    expect(page.shown()).toEqual({
+      badge: "Comune: Roma",
+      trigger: "Comune",
+      input: "Roma",
+    })
+    expect(page.canSearch()).toBe(true)
+    // Nessun warning di React (es. input da non controllato a controllato)
+    expect(consoleError).not.toHaveBeenCalled()
+    consoleError.mockRestore()
+  })
+
+  it("il badge toglie la ricerca", async () => {
+    const page = await mount("/dashboard/customers?q=Roma&search_by=comune")
+    await page.clearFromBadge()
+    expect(nav.params.get("q")).toBeNull()
+    expect(nav.params.get("search_by")).toBeNull()
+    expect(page.shown()).toMatchObject({ badge: null, input: "" })
+  })
+
+  it("scegliere la voce già attiva non toglie la ricerca", async () => {
+    const page = await mount("/dashboard/customers?q=Roma&search_by=comune")
+    await page.pick("Comune")
+    expect(nav.params.get("q")).toBe("Roma")
     expect(page.shown()).toEqual({
       badge: "Comune: Roma",
       trigger: "Comune",
@@ -150,6 +181,7 @@ describe("TableFilterSections, ricerca", () => {
     const page = await mount("/dashboard/customers?q=Roma&search_by=comune")
     await page.pick("Email")
     expect(page.shown()).toEqual({ badge: null, trigger: "Email", input: "" })
+    expect(page.canSearch()).toBe(true)
     await page.submit("rossi@")
     expect(nav.params.get("search_by")).toBe("email")
     expect(page.shown()).toEqual({
