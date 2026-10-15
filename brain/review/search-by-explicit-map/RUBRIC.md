@@ -66,3 +66,39 @@ Le charter complete (con i percorsi esatti e le domande puntuali) sono nell'outp
 | v5 | Qualità dei test | medium | haiku (override) |
 | v6 | Esecuzione dei gate | low | haiku |
 | v7 | Convenzioni di progetto | low | haiku |
+
+## Secondo giro (head `6057e5b`)
+
+Il classifier è stato rilanciato sul cambio dopo le correzioni (diff completo da `659984f` e diff del solo `6057e5b`), con le finding del primo giro da confermare o smentire. Il RUBRIC è rimasto nello scratchpad finché i verificatori non hanno finito.
+
+```json
+{
+  "taskType": "bugfix",
+  "secondaryType": "refactor",
+  "domainsTouched": ["crm"],
+  "adversarialVerifiers": {
+    "count": 8,
+    "passes": [
+      { "id": "v1", "charter": "Gate in un git worktree senza env file: next lint, tsc, pnpm run test --run, pnpm build con i placeholder; contare i test di ricerca. Mai script NODE_ENV=production", "complexity": "low" },
+      { "id": "v2", "charter": "Finding 1 e 4: ogni voce del selettore Clienti è nell'enum e mappa a una colonna testo esistente (comune compreso); commenti accurati; residui di nome/telefono", "complexity": "low" },
+      { "id": "v3", "charter": "Finding 2: aggiungere un valore all'enum senza etichetta o colonna fa fallire tsc? searchByItems solo da customerSearchBy.options; @ts-expect-error e cast rimasti", "complexity": "low" },
+      { "id": "v4", "charter": "Finding 3 e 6: badge e server nominano lo stesso campo con search_by assente, valido, sconosciuto, vuoto, ripetuto; Select e URL usano il valore; fallback testati tramite la stessa funzione; stessa traccia per Pratiche", "complexity": "medium" },
+      { "id": "v5", "charter": "Finding 7: containsPattern fa l'escape di \\, %, _ in un passaggio; ILIKE con escape di default e parametro bound; ogni ilike su q passa da lì; search_by arriva all'SQL solo come chiave delle mappe", "complexity": "medium" },
+      { "id": "v6", "charter": "Finding 5 e contratti ristretti: riferimenti a SearchBy<; chiamanti di getAllCustomers/getAllPratiche; scrittori in-app di search_by fuori dagli enum", "complexity": "low" },
+      { "id": "v7", "charter": "Finding 8: ogni titolo di test è provato dalle sue asserzioni; mutazioni mentali (escape tolto, z.string(), primo elemento dell'array); seed che matchano una sola riga", "complexity": "medium" },
+      { "id": "v8", "charter": "UI pass statico sul selettore e sulle etichette: nome accessibile, coerenza delle etichette, larghezze. Nessun server: claim da misurare come UNVERIFIED", "complexity": "low" }
+    ]
+  },
+  "taskComplexity": "medium",
+  "reviewImpact": "critical",
+  "humanInLoop": true
+}
+```
+
+Le charter complete con i percorsi e le domande puntuali sono state passate verbatim ai verificatori; qui sono riassunte.
+
+### Overrides applied
+
+- **Modello:** tutti i pass su haiku, per richiesta dell'utente (v4, v5, v7 sarebbero andati sul modello di fascia media).
+- **UI pass:** DEGRADED, solo codice. La pagina richiede login e database, e il `.env` del checkout principale contiene valori di produzione.
+- **Giri successivi:** nessun nuovo classifier. Sono stati rilanciati solo i pass con finding aperte o toccati dalle correzioni: terzo giro v1, v4, v6, v7; quarto e quinto giro v1, v4.
