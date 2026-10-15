@@ -1,4 +1,4 @@
-import { act, cleanup, render } from "@testing-library/react"
+import { act, cleanup, fireEvent, render } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { TableFilterSection } from "../TableFilterSection"
 
@@ -31,11 +31,26 @@ async function mount(href: string) {
   navigate(href)
   const view = render(<TableFilterSection allColumns={[]} />)
   await act(async () => undefined)
+  const rerender = async () => {
+    view.rerender(<TableFilterSection allColumns={[]} />)
+    await act(async () => undefined)
+  }
   return {
+    // Back, avanti e i push del router cambiano l'URL senza rimontare
     goTo: async (href: string) => {
       navigate(href)
-      view.rerender(<TableFilterSection allColumns={[]} />)
-      await act(async () => undefined)
+      await rerender()
+    },
+    submit: async (text: string) => {
+      fireEvent.change(view.getByRole("textbox"), { target: { value: text } })
+      await act(async () => {
+        fireEvent.submit(view.container.querySelector("form")!)
+      })
+      await rerender()
+    },
+    clearFromBadge: async () => {
+      fireEvent.click(view.container.querySelector(".badge-with-close")!)
+      await rerender()
     },
     shown: () => ({
       badge:
@@ -52,6 +67,17 @@ describe("TableFilterSection, ricerca", () => {
     await page.goTo("/dashboard/pratiche?q=PR-2&search_by=praticaId")
     expect(page.shown()).toEqual({ badge: "ID Pratica: PR-2", input: "PR-2" })
     await page.goTo("/dashboard/pratiche")
+    expect(page.shown()).toEqual({ badge: null, input: "" })
+  })
+
+  it("cerca dal campo e si toglie dal badge", async () => {
+    const page = await mount("/dashboard/pratiche")
+    await page.submit("PR-7")
+    expect(nav.params.get("q")).toBe("PR-7")
+    expect(nav.params.get("search_by")).toBe("praticaId")
+    expect(page.shown()).toEqual({ badge: "ID Pratica: PR-7", input: "PR-7" })
+    await page.clearFromBadge()
+    expect(nav.params.get("q")).toBeNull()
     expect(page.shown()).toEqual({ badge: null, input: "" })
   })
 })

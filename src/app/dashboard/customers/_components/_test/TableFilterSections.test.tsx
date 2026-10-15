@@ -6,7 +6,11 @@ import { TableFilterSections } from "../TableFilterSections"
 // Il selettore "Cerca per", il campo di ricerca e il badge della pagina
 // Clienti mentre l'URL cambia senza rimontare la pagina
 
-const nav = vi.hoisted(() => ({ params: new URLSearchParams() }))
+const nav = vi.hoisted(() => ({
+  params: new URLSearchParams(),
+  // Una navigazione di Next non ancora arrivata: il push non cambia l'URL
+  holdPush: false,
+}))
 
 function navigate(href: string) {
   window.history.pushState(null, "", href)
@@ -15,7 +19,11 @@ function navigate(href: string) {
 
 vi.mock("next/navigation", () => ({
   useSearchParams: () => nav.params,
-  useRouter: () => ({ push: navigate }),
+  useRouter: () => ({
+    push: (href: string) => {
+      if (!nav.holdPush) navigate(href)
+    },
+  }),
 }))
 
 // Filtri che caricano dati e non c'entrano con la ricerca
@@ -29,17 +37,22 @@ vi.mock("@/components/custom/table/PopoverFilter", () => ({
   PopoverDateFilter: () => null,
 }))
 
-// Il Select di Radix non si apre in jsdom: ogni voce è un bottone
+// Il Select di Radix non si apre in jsdom: ogni voce è un bottone. Come
+// Radix, scegliere la voce già selezionata (`value`) non chiama
+// `onValueChange`.
 vi.mock("@/components/ui/select", async () => {
   const { createContext, useContext } = await import("react")
-  const OnChange = createContext<(value: string) => void>(() => undefined)
+  type Controlled = { value: string; onValueChange: (value: string) => void }
+  const SelectState = createContext<Controlled>({
+    value: "",
+    onValueChange: () => undefined,
+  })
   type Props = { children?: React.ReactNode }
   return {
-    Select: ({
-      onValueChange,
-      children,
-    }: Props & { onValueChange: (value: string) => void }) => (
-      <OnChange.Provider value={onValueChange}>{children}</OnChange.Provider>
+    Select: ({ value, onValueChange, children }: Props & Controlled) => (
+      <SelectState.Provider value={{ value, onValueChange }}>
+        {children}
+      </SelectState.Provider>
     ),
     SelectTrigger: ({ children }: Props) => (
       <div data-testid="trigger">{children}</div>
@@ -49,9 +62,14 @@ vi.mock("@/components/ui/select", async () => {
     SelectGroup: ({ children }: Props) => <>{children}</>,
     SelectLabel: ({ children }: Props) => <>{children}</>,
     SelectItem: ({ value, children }: Props & { value: string }) => {
-      const onValueChange = useContext(OnChange)
+      const select = useContext(SelectState)
       return (
-        <button type="button" onClick={() => onValueChange(value)}>
+        <button
+          type="button"
+          onClick={() => {
+            if (value !== select.value) select.onValueChange(value)
+          }}
+        >
           {children}
         </button>
       )
@@ -59,7 +77,10 @@ vi.mock("@/components/ui/select", async () => {
   }
 })
 
-afterEach(() => cleanup())
+afterEach(() => {
+  cleanup()
+  nav.holdPush = false
+})
 
 async function mount(href: string) {
   navigate(href)
@@ -135,6 +156,34 @@ describe("TableFilterSections, ricerca", () => {
       badge: "Email: rossi@",
       trigger: "Email",
       input: "rossi@",
+    })
+  })
+
+  it("con back e avanti sullo stesso campo segue il testo", async () => {
+    const page = await mount("/dashboard/customers?q=Roma&search_by=comune")
+    await page.goTo("/dashboard/customers?q=Milano&search_by=comune")
+    expect(page.shown()).toEqual({
+      badge: "Comune: Milano",
+      trigger: "Comune",
+      input: "Milano",
+    })
+  })
+
+  it("si possono scegliere due voci di fila", async () => {
+    const page = await mount("/dashboard/customers")
+    await page.pick("Email")
+    expect(page.shown()).toMatchObject({ trigger: "Email" })
+    await page.pick("Codice Fiscale")
+    expect(page.shown()).toMatchObject({ trigger: "Codice Fiscale" })
+  })
+
+  it("finché l'URL non cambia il badge resta sulla ricerca in corso", async () => {
+    const page = await mount("/dashboard/customers?q=Roma&search_by=comune")
+    nav.holdPush = true
+    await page.pick("Email")
+    expect(page.shown()).toMatchObject({
+      badge: "Comune: Roma",
+      trigger: "Email",
     })
   })
 })

@@ -90,9 +90,7 @@ export function TableFilterSections<TData>({ allColumns }: Props<TData>) {
 
   const form = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: async () => ({
-      id: searchParams.get("q") ?? "",
-    }),
+    defaultValues: { id: q },
   })
 
   // Back e avanti cambiano `q` senza rimontare il componente
