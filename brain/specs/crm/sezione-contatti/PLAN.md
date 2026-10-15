@@ -7,14 +7,14 @@ links:
   - "[[chore/crm/design-contatti]]"
   - "[[chore/crm/guida-assegnazione-massiva-e-alert]]"
 created: 2026-09-24
-updated: 2026-10-13
+updated: 2026-10-15
 ---
 
 # Plan: Sezione Contatti e tabella Clienti semplificata
 
 **Spec:** [[specs/crm/sezione-contatti/SPEC]] · **Flow:** [[specs/crm/sezione-contatti/FLOW]] · **Bozza di design:** [[chore/crm/design-contatti]]
 **Generato:** 2026-09-24 con `create-plan`: grill → swarm-plan → ux-advisor + design-engineer → tdd → adversarial-verifier. Nessun codice scritto.
-**Aggiornato:** 2026-09-25, codice server su Effect (D9, P8); errori segnalati a Sentry (P9).
+**Aggiornato:** 2026-09-25, codice server su Effect (D9, P8); errori segnalati a Sentry (P9). 2026-10-15, PR3 riscritta con `create-plan` 0.8.0 (`complexity` per task, FLOW confrontata con gli AC, `design-engineer`, D10–D13, P6 rivisto, P10) e PR7 aggiunta.
 
 ---
 
@@ -25,7 +25,7 @@ updated: 2026-10-13
   1. riga Clienti: `StateSelector` ([CustomerColumns.tsx:500](../../../../src/app/dashboard/customers/_components/CustomerColumns.tsx)) → [taskStatusAction.ts](../../../../src/app/dashboard/customers/_actions/taskStatusAction.ts);
   2. scheda cliente: [CustomerTaskManager.tsx:103](../../../../src/app/dashboard/customers/[id]/_components/CustomerTaskManager.tsx);
   3. scheda cliente: [CustomerAlertCreator](../../../../src/app/dashboard/customers/[id]/_components/CustomerAlertCreator.tsx) → `createAlert`, che porta a `richiamare`;
-  4. form cliente: [updateCustomer.ts:62](../../../../src/app/dashboard/customers/[id]/_actions/updateCustomer.ts), che riassegna la task in `chiamare` quando cambia l'operatore del cliente. La spec non lo cita.
+  4. form cliente: [updateCustomer.ts:62](../../../../src/app/dashboard/customers/[id]/_actions/updateCustomer.ts), che riassegna la task in `chiamare` quando l'operatore scelto nel form è diverso da quello della task, prima di aggiornare il cliente. La spec non lo cita.
 - Nessuna `db.transaction` nel codice. Le mutation `task.*`, `customer.updateCustomerFromDashboard` e `customer.assignToYourself` sono `operatorProcedure` senza controllo di proprietà.
 - I percorsi che creano task inseriscono **prima** di disattivare la precedente, oppure non la disattivano affatto:
   - cron alert ([route.ts:79](../../../../src/app/api/cron/alert/route.ts)) e `bulkHandleTask` caso 3 ([POST:246](../../../../src/server/api/routers/task/POST/index.ts)) inseriscono prima;
@@ -53,19 +53,21 @@ Serve una sezione **Contatti** (lista e dettaglio) sulle `task`. Le regole di mo
 |---|---|---|---|
 | Percorsi di creazione (cron alert, massiva, `createTask`) | Alto | Percorsi critici, notturni e quotidiani; l'export conta le righe `task` | PR1 |
 | Dati di produzione (pulizia + indice unico) | Alto | Modifica righe in prod con una migrazione manuale; l'indice rompe cron e massiva se arriva prima di PR1 | PR2 |
-| Cambio di stato quotidiano da Clienti | Medio-alto | È l'azione più usata; arrivano una regola di permessi nuova (D2) e la fine della riassegnazione silenziosa (AC41) | PR3 |
+| Cambio di stato quotidiano da Clienti | Medio-alto | È l'azione più usata; arrivano una regola di permessi nuova (D2), la fine della riassegnazione silenziosa (AC41) e il salvataggio immediato nella scheda cliente (D11) | PR3 |
 | Chat condivisa con Pratiche e scheda cliente | Medio | Refactor di una funzione esistente | PR4 |
 | Sezione Contatti | Basso sull'esistente | Additiva: nuova route, nuove query di sola lettura | PR5 (una PR) |
 | Clienti semplificata | Medio | Rimozione; va fatta dopo l'adozione | PR6 |
+| Test di concorrenza su Postgres vero | Basso sull'esistente | Solo CI e test; nessun codice dell'app | PR7 (bassa priorità) |
 
 | PR | Stato | Passo spec | Outcome verificabile | AC |
 |---|---|---|---|---|
 | **PR1** Percorsi di creazione sicuri | **Fatta.** In prod dal 2026-09-29 (PR #5, su `main` con la #7) | 1 | Cron alert e 4 casi della massiva danno gli stessi risultati (i test di caratterizzazione sono verdi prima e dopo). Ogni operazione è atomica. Un errore su un cliente non ferma il cron. `createTask` non lascia due contatti attivi | AC71 (codice), AC72 |
 | **PR2** Pulizia e vincolo DB | **Fatta.** Su `main` e migrazioni applicate in prod il 2026-10-13 (PR #6, su `main` con la #11; G2) | 1 | Nessun duplicato attivo. Il DB rifiuta un secondo contatto attivo. Nessun alert aperto su contatti non attivi. Elenco dei contatti disattivati e degli alert chiusi estratto subito prima della pulizia, come traccia | AC69, AC70, AC71 (DB) |
-| **PR3** Regole sul server, usate da Clienti | Da fare | 1 (+ AC66–AC67 anticipati, P1) | Da Clienti e dalla scheda cliente: cambio di stato atomico, modale di conferma per l'alert, operatore invariato, sola lettura con motivo. I permessi D2 li rifiuta il server anche fuori dall'interfaccia. "Crea contatto" nella scheda cliente | regole server di AC27, AC30–AC52; AC66, AC67; AC73 |
+| **PR3** Regole sul server, usate da Clienti | Da fare (piano riscritto il 2026-10-15) | 1 (+ AC66–AC67 anticipati, P1) | Da Clienti e dalla scheda cliente: cambio di stato atomico, modale di conferma per l'alert, operatore invariato, sola lettura con motivo, stato e priorità salvati subito nella scheda (D11), "Passaggio di consegne" al posto del cambio di operatore nel form (D13). I permessi D2 li rifiuta il server anche fuori dall'interfaccia. "Crea contatto" nella scheda cliente. Un alert non si chiude due volte e non si stacca per sbaglio (D10). Un test rende rossa la CI se uno degli scrittori di contatti smette di bloccare il cliente (D12) | regole server di AC27, AC30–AC52; AC66, AC67; AC73 |
 | **PR4** Chat con proprietario esplicito | Da fare | prerequisito del passo 3 (P2) | Nessun cambiamento visibile: note di Pratiche e scheda cliente identiche; la chat non deduce più dall'URL cosa aggiornare | AC55 (base) |
 | **PR5** Sezione Contatti con note | Da fare | 2 + 3 (P2) | Lista, filtri, URL, dettaglio, modifiche, note del cliente, "Vedi contatti", guida operatori per Contatti | AC1–AC57, AC62, AC74 (parte Contatti) |
 | **PR6** Clienti semplificata | Da fare | 4 | Colonne e filtri task rimossi, totale = righe, scheda cliente con riepilogo e "Gestisci contatto", etichette della massiva, guida completata | AC58–AC61, AC63–AC65, AC68, AC74 (parte restante) |
+| **PR7** Test di concorrenza su Postgres vero | Da fare, bassa priorità (D12) | — | La CI prova con due connessioni vere che le transazioni sullo stesso cliente si mettono in coda, che R7 non accade e che non ci sono deadlock | AC71 (concorrenza) |
 
 **Ordine vincolante:**
 1. PR1 in prod, poi almeno una notte di cron senza errori. **Fatto:** in prod dal 2026-09-29. La notte di cron è caduta con G1 rivisto il 28/09: il cron di prod non si lanciava prima di G2.
@@ -74,6 +76,7 @@ Serve una sezione **Contatti** (lista e dettaglio) sulle `task`. Le regole di mo
 4. PR4.
 5. PR5, solo dopo che PR2 è applicata (AC69), e a breve distanza da PR3.
 6. Qualche giorno d'uso, poi PR6.
+7. PR7 in qualunque momento dopo PR3, a bassa priorità: non blocca nessun rilascio.
 
 ## 4. Decision ledger (risolto)
 
@@ -87,24 +90,29 @@ Serve una sezione **Contatti** (lista e dettaglio) sulle `task`. Le regole di mo
 | D2 | **Permessi.** Un `OPERATORE` modifica un contatto (stato, priorità, richiamo, chiusura alert) se `task.operatorId` **oppure** `customers.operatorId` è lui. Può usare "Crea contatto" se il cliente è suo. `ADMIN` modifica tutto. La riassegnazione è solo `ADMIN`. Chiude le domande 1 e 2 della spec; il §2 della guida resta invariato | Grill |
 | D3 | **Priorità.** I contatti nuovi (riapertura, "Crea contatto") nascono a 120 come oggi. Un cambio di stato non tocca la priorità. "Automatica" imposta solo `customPriority=false`. Conseguenza documentata: un `chiamare` "urgente" (120) riportato ad "Automatica" resta a 120, perché il cron `priority` salta i `chiamare` a 120, e cambiarlo è fuori perimetro. Chiude la domanda 4 | Grill |
 | D4 | **Test.** Integrazione vitest su PGlite (`@electric-sql/pglite`; il driver `drizzle-orm/pglite` è già in drizzle 0.33) con le migrazioni reali e le procedure chiamate via `createCaller`. Unit test sulle funzioni pure. Caratterizzazione prima dei refactor | Grill |
-| D5 | **Form cliente.** Il cambio di operatore dal form continua a spostare il contatto in `chiamare`. Lo fa il server, nella stessa transazione dell'aggiornamento del cliente, e scrive una riga `operator_reassign` (sorgente `detail`) | Grill |
+| D5 | ~~**Form cliente.** Il cambio di operatore dal form continua a spostare il contatto in `chiamare`. Lo fa il server, nella stessa transazione dell'aggiornamento del cliente, e scrive una riga `operator_reassign` (sorgente `detail`)~~ **Sostituita da D13** il 2026-10-15 | Grill |
 | D6 | **Backlog:** nessuno; solo questo `PLAN.md` | Grill |
 | D7 | **Blacklist.** Contatti mostra il `BlackListBadge` esistente accanto al nome, nella riga e nell'intestazione del dettaglio, solo se lo stato non è neutro. Nessun filtro nuovo. Chiude la domanda 6 | Grill |
 | D8 | **"Solo i miei"** = contatti con `task.operatorId = me` **oppure** `customers.operatorId = me`, cioè quelli che posso lavorare (D2). **Scostamento da AC10**, che dice "assegnati all'utente collegato" | Grill, dopo ux-advisor |
 | D9 | **Effect.** Il codice server che il piano scrive o rifattorizza usa Effect, come chiede la regola in `AGENTS.md`:<br>• gli errori previsti sono errori tipizzati (`Data.TaggedError`) invece di `throw` e `!`;<br>• ogni operazione che scrive gira in un `transaction` Effect;<br>• le procedure tRPC e i route restano async e traducono gli errori in un solo punto (`runTrpc`).<br>Vale per PR1, PR3, per le query di PR5 e per `getAllCustomers` in PR6. Nessuna regola di prodotto cambia | Omar, 2026-09-25 |
+| D10 | **Tech-debt assegnato a PR3, incluso per intero:**<br>• **F14/R7:** ogni alert si chiude con `resolveOpenAlert` (solo se ancora aperto, e stacca la task solo se punta ancora a lui); con `createAlert` e `resolveAlerts` rimosse, tutti gli scrittori bloccano il cliente, e la massiva non può più staccare un richiamo appena impostato. La logica di `bulkHandleTask` non cambia (A7);<br>• test mancanti della massiva (casi 3 e 4 senza righe di log);<br>• test mancanti dell'infrastruttura Effect (F11) | Omar, 2026-10-15 |
+| D11 | **Scheda cliente a salvataggio immediato.** Niente più form con "Salva": lo stato si salva quando si sceglie (stesso selettore e stessa modale della riga), la priorità quando si cambia fascia o si sceglie "Automatica". Ogni gesto è una mutation atomica; con un solo "Salva", `changeState` e `setPriority` in sequenza potevano salvare a metà. Vale fino a PR6, che rende la scheda un riepilogo (AC65) | Omar, 2026-10-15, su proposta del `design-engineer` |
+| D12 | **Regola dei lock provata da un test.** Livello 1 in PR3 (T3.15): un trigger di test fa fallire ogni scrittura su `task`, `alert` e `task_event_log` fatta senza aver bloccato il cliente nella stessa transazione, per tutti gli scrittori di contatti di oggi; uno nuovo si aggiunge al test. Livello 2 in PR7, a bassa priorità: test di concorrenza su un Postgres vero in CI | Omar, 2026-10-15 |
+| D13 | **"Passaggio di consegne" al posto del cambio di operatore nel form** (sostituisce D5). La verifica di PR3 ha trovato che D5 + P4 facevano riassegnare un contatto a un non-admin, contro D2 e AC50. Ora:<br>• il form del cliente salva solo l'anagrafica: `updateCustomerFromDashboard` non accetta più `operatorId`, e sparisce il riallineamento silenzioso del contatto a ogni salvataggio;<br>• un'azione separata, "Passaggio di consegne", con una modale che spiega cosa succede, sposta il cliente e il suo contatto attivo **in qualunque stato** a un altro operatore. La usano l'admin (su ogni cliente) e l'operatore del cliente (sui suoi);<br>• le chiamate già registrate sul contatto passano al nuovo operatore nell'export (regola di attribuzione della spec); la modale e l'annuncio G3 lo dicono.<br>• il passaggio cambia sempre l'operatore del cliente: una destinazione uguale a quella attuale è rifiutata, anche per l'admin (Omar, dopo la seconda verifica). Allineare il solo contatto è la riassegnazione dell'admin (`task.reassign`), nell'interfaccia con PR5.<br>È un'eccezione esplicita a D2 ("la riassegnazione è solo ADMIN") e ad AC50, registrata in §15 | Omar, 2026-10-15 |
 | P1 | **"Crea contatto" nella scheda cliente anticipato a PR3** (spec: passo 4). Senza, tra PR5 e PR6 il percorso della FLOW "cliente senza contatti → [Apri scheda cliente]" arriva a una scheda senza nessuna azione. È solo un'aggiunta: non toglie niente a Clienti | Piano (ux-advisor) |
 | P2 | **Note insieme a Contatti.** Il refactor della chat va in una PR a sé (PR4), prima della sezione; l'integrazione nel dettaglio sta in PR5. Il passo 3 della spec si fonde col passo 2, così il giro chiamate (percorso A della FLOW) è completo dal primo giorno | Piano (ux-advisor) |
 | P3 | **Guida divisa in due.** La sezione su Contatti e il §5 escono con PR5; il cambio di etichetta "Crea/assegna contatti" esce con PR6 | Piano (ux-advisor) |
-| P4 | **Chi può assegnare un cliente, controllato dal server.** Con D2 l'operatore del cliente può modificare il contatto, quindi il server applica le regole che l'interfaccia già impone:<br>• `updateCustomerFromDashboard` cambia `operatorId` solo per un admin o per l'operatore attuale del cliente;<br>• `assignToYourself` funziona solo su clienti non assegnati.<br>Nessun cambiamento visibile | Piano (ux-advisor) |
+| P4 | **Chi può assegnare un cliente, controllato dal server.** Con D2 l'operatore del cliente può modificare il contatto, quindi il server applica le regole che l'interfaccia già impone:<br>• ~~`updateCustomerFromDashboard` cambia `operatorId` solo per un admin o per l'operatore attuale del cliente~~ dal 2026-10-15 l'operatore lo cambia solo `customer.handover`, per un admin o per l'operatore attuale del cliente (D13);<br>• `assignToYourself` funziona solo su clienti non assegnati.<br>Per "Assegna a te" nessun cambiamento visibile | Piano (ux-advisor) |
 | P5 | **Sola lettura con motivo anche in Clienti da PR3.** I controlli calcolano i permessi prima del clic con lo stesso modulo del server. Il rifiuto del server resta la rete di sicurezza. Finché Contatti non esiste, il messaggio "contatto superato" non ha il link | Piano (ux-advisor) |
-| P6 | **Nessuna animazione nuova.** Si riusano i primitivi shadcn esistenti. Vincoli di stabilità e focus in §11. Le lacune dei primitivi (`motion-reduce`, Sheet a 500 ms) vanno in un debito tecnico separato, fuori perimetro | Piano (design-engineer) |
-| P7 | **Il server allinea ai permessi dell'interfaccia le procedure che oggi li aggirano.** Serve perché AC49 e AC50 ("il server rifiuta") valgano davvero. Per chi usa l'interfaccia non cambia nulla: la selezione massiva è già solo per admin (`CustomersTable.tsx:84`).<br>• `task.bulkHandleTask` e `customer.bulkUpdateCustomers` diventano `adminProcedure`. I quattro casi della massiva danno gli stessi risultati (non-goal rispettato): cambia solo chi può chiamarla.<br>• `customer.updateCustomer` (`protectedProcedure`, accetta anche `operatorId`, nessun chiamante) viene rimossa | Piano (adversarial-verifier) |
-| P8 | **Dove Effect entra e dove no** (D9):<br>• **Drizzle resta lo strato del database**, senza `@effect/sql*` (vedi §7). Le query restano identiche; `query` e `transaction` di T1.4 le avvolgono. Se un giorno Drizzle viene aggiornato, il passaggio a `@effect/sql-drizzle` resterebbe concentrato in quel modulo e nel client del DB (driver `pg`, API di transazione di `@effect/sql`), non nei servizi;<br>• niente Effect nel modulo di dominio `src/lib/domain/contact/` (T3.1), che è importato anche dai componenti client: resta TypeScript puro, con esiti come union discriminate;<br>• niente Effect nei componenti React, nella chat (PR4) e nell'SQL di PR2;<br>• gli input tRPC restano in Zod, senza `Schema` di Effect;<br>• le procedure che il piano tocca solo di striscio (`bulkUpdateCustomers`, che cambia soltanto il tipo di procedura) non si convertono | Piano |
+| P6 | **Nessuna animazione nuova.** Si riusano i primitivi shadcn esistenti. Vincoli di stabilità e focus in §11. Le lacune dei primitivi (`motion-reduce`, Sheet a 500 ms) vanno in un debito tecnico separato, fuori perimetro, che PR3 scrive (T3.14).<br>**Rivisto il 2026-10-15** (`design-engineer` con la skill `design-engineering`): il menu del selettore di stato si apre senza animazione (azione frequente, aperta da tastiera); spinner nell'attesa, che dura fino al nuovo valore a schermo; nessuna rimozione ottimistica; modale con focus iniziale su [Annulla] e [Cambia stato] non `destructive`; rifiuti in un toast di 8000 ms; il ripiego del focus quando la riga esce dai filtri vale già in PR3, perché Clienti filtra per "Stato" | Piano (design-engineer) |
+| P7 | **Il server allinea ai permessi dell'interfaccia le procedure che oggi li aggirano.** Serve perché AC49 e AC50 ("il server rifiuta") valgano davvero. Per chi usa l'interfaccia non cambia nulla: la selezione massiva è già solo per admin (`CustomersTable.tsx:84`).<br>• `task.bulkHandleTask` e `customer.bulkUpdateCustomers` diventano `adminProcedure`. I quattro casi della massiva danno gli stessi risultati (non-goal rispettato): cambia solo chi può chiamarla.<br>• `customer.updateCustomer` (`protectedProcedure`, accetta anche `operatorId`, nessun chiamante) viene rimossa;<br>• `task.deleteTasks` (`operatorProcedure`, nessun chiamante, cancella tutte le task di un cliente) viene rimossa (aggiunto il 2026-10-15) | Piano (adversarial-verifier) |
+| P8 | **Dove Effect entra e dove no** (D9):<br>• **Drizzle resta lo strato del database**, senza `@effect/sql*` (vedi §7). Le query restano identiche; `query` e `transaction` di T1.4 le avvolgono. Se un giorno Drizzle viene aggiornato, il passaggio a `@effect/sql-drizzle` resterebbe concentrato in quel modulo e nel client del DB (driver `pg`, API di transazione di `@effect/sql`), non nei servizi;<br>• niente Effect nel modulo di dominio `src/lib/domain/contact/` (T3.1a–T3.1c), che è importato anche dai componenti client: resta TypeScript puro, con esiti come union discriminate;<br>• niente Effect nei componenti React, nella chat (PR4) e nell'SQL di PR2;<br>• gli input tRPC restano in Zod, senza `Schema` di Effect;<br>• le procedure che il piano tocca solo di striscio (`bulkUpdateCustomers`, che cambia soltanto il tipo di procedura) non si convertono | Piano |
 | P9 | **Ogni errore arriva a Sentry una volta sola, dal bordo dove si perderebbe:**<br>• **procedure tRPC:** il middleware Sentry di `trpc.ts` (§1). `runTrpc` non segnala niente: `DbError` e difetti diventano `INTERNAL_SERVER_ERROR` e li segnala il middleware. Gli errori tipizzati di PR3 hanno codici client (`NOT_FOUND`, `FORBIDDEN`, `CONFLICT`, …) e non diventano issue;<br>• **lavori che isolano i fallimenti** (cron alert): `forEachIsolated` segnala ogni elemento fallito con `ErrorReporter` (T1.4), perché la risposta resta un successo e nessun bordo vedrebbe l'errore;<br>• **route in Effect:** un `Exit` non riuscito dell'intera esecuzione si segnala con `ErrorReporter` prima della risposta d'errore.<br>`ErrorReporter` è un servizio (`Context.Tag`): `ServerLive` fornisce quello che chiama `Sentry.captureException(Cause.squash(cause))`, i test uno che registra le segnalazioni | Piano |
+| P10 | **La modale dell'alert usa i dati del server.** Il client manda il cambio di stato senza conferma; se c'è un alert aperto il server risponde `ALERT_CONFIRMATION_REQUIRED` con data e messaggio, e il client apre la modale. Un solo percorso per AC36 e AC37, e la riga Clienti non deve caricare i dati dell'alert, che `getAllCustomers` non restituisce | Piano, 2026-10-15 |
 
 ## 5. Assunzioni e vincoli
 
-- **A1 (domanda 3):** un contatto non assegnato è in sola lettura per l'operatore, salvo che il cliente sia suo (D2). Il motivo è visibile: "Non assegnato". Se il cliente non è assegnato, il messaggio indica "Assegna a te" nella scheda cliente come via d'uscita. Nessun "prendi in carico".
+- **A1 (domanda 3), confermata da Omar il 2026-10-15:** un contatto non assegnato è in sola lettura per l'operatore, salvo che il cliente sia suo (D2). Il motivo è visibile: "Non assegnato". Se il cliente non è assegnato, il messaggio indica "Assegna a te" nella scheda cliente come via d'uscita. Nessun "prendi in carico".
 - **A2 (domanda 5):** nessun tracciamento dell'adozione nel codice (il progetto non ha analytics). Il via a PR6 è un **gate manuale**: un admin compila una checklist scritta (G5).
 - **A3 (domanda 7):** la prima pagina di Contatti (filtri di default) e di Clienti deve stare sotto i **500 ms** di execution time in `EXPLAIN ANALYZE`, su dati di volume reale. La misura la esegue una persona, mai un agente.
 - **A4:** "oggi" e i confini di giornata (AC7, AC11, data minima del richiamo) si calcolano in `Europe/Rome` con un helper puro basato su `Intl`, senza dipendenze nuove, testato sui cambi d'ora del 29/03 e del 25/10/2026.
@@ -116,7 +124,10 @@ Serve una sezione **Contatti** (lista e dettaglio) sulle `task`. Le regole di mo
   - non scrive in `task_event_log` (AC70);
   - ignora le task con `customer_id` NULL.
 - **A7:** `bulkHandleTask` e `bulkUpdateCustomers` ("Assegna Clienti") mantengono la logica e i risultati di oggi (non-goal). Cambia solo chi può chiamarle: gli admin, come già nell'interfaccia (P7). Unica eccezione, in PR1 dopo la review: `bulkUpdateCustomers` non aggiorna più tutte le task della tabella quando nessun cliente scelto ha in cima una task `chiamare` (update con `WHERE` indefinito).
-- **A8:** la mutation `deleteTasks` è fuori perimetro e va segnalata nei rischi. Cancella tutte le task di un cliente e nessuna parte del codice la chiama.
+- **A8:** ~~la mutation `deleteTasks` è fuori perimetro e va segnalata nei rischi.~~ **Rivista il 2026-10-15** dopo la verifica di PR3: `deleteTasks` è un'`operatorProcedure` senza chiamanti che cancella tutte le task di qualunque cliente, quindi aggira AC27 e AC49 sul server. Si rimuove in T3.13, come `customer.updateCustomer` (P7).
+- **A9 (FLOW senza AC):** la FLOW chiede, dopo un cambio di stato nella riga, "una conferma breve con il nome del cliente" e, dopo una riapertura, il pulsante [Apri]. Nessun AC li copre: in PR3 la riga Clienti non mostra conferme nuove (oggi non ne ha), e il nuovo valore salvato fa da conferma. Per la riga di Contatti la scelta va fatta nella pianificazione di PR5.
+- **A10 (FLOW, "Imposta richiamo" con data passata):** la data passata non si seleziona nel date picker, come oggi; il server la rifiuta comunque (AC44, T3.6).
+- **A11 (scrittori fuori dalla regola dei lock):** `bulkUpdateCustomers` ("Assegna Clienti"), il cron `priority` (`refreshPriorities`) e la pulizia di `task_event_log` scrivono senza bloccare il cliente. Restano così in PR3 (A7, P8); T3.15 li elenca e il tech-debt li registra (T3.14).
 - **Vincoli dalla spec:**
   - migrazioni solo additive, generate con `pnpm db:generate`;
   - nessun `sql.raw` nei filtri Contatti;
@@ -127,7 +138,7 @@ Serve una sezione **Contatti** (lista e dettaglio) sulle `task`. Le regole di mo
 
 ## 6. Findings dal codice
 
-1. **Quarto punto di modifica.** [updateCustomer.ts:62](../../../../src/app/dashboard/customers/[id]/_actions/updateCustomer.ts) chiama `task.updateTask` (vedi D5). Togliere `updateTask` senza spostare questa logica romperebbe il form.
+1. **Quarto punto di modifica.** [updateCustomer.ts:62](../../../../src/app/dashboard/customers/[id]/_actions/updateCustomer.ts) chiama `task.updateTask` (vedi finding 20). Togliere `updateTask` senza togliere anche questa chiamata romperebbe il form: lo fa T3.8a, e il cambio di operatore passa a "Passaggio di consegne" (D13).
 2. **Ordine tra indice e codice.** Con l'indice unico attivo, il cron alert e il caso 3 della massiva fallirebbero per violazione di unicità. PR1 deve essere in prod prima della migrazione di PR2.
 3. **Migrazioni in una sola transazione.** Il migrator di drizzle 0.33 (`pg-core/dialect.js#migrate`) applica tutte le migrazioni pendenti in un'unica transazione. Pulizia e `CREATE UNIQUE INDEX` sono quindi atomiche anche se stanno in due file.
 4. **Middleware tRPC.** `enforceIsActiveOperator` ed `enforceIsAdmin` ([trpc.ts](../../../../src/server/api/trpc.ts)) usano il `db` importato dal modulo, non `ctx.db`; anche i cron importano `db`. Per questo il test harness deve sostituire il modulo `@/server/db` con `vi.mock`.
@@ -149,6 +160,13 @@ Serve una sezione **Contatti** (lista e dettaglio) sulle `task`. Le regole di mo
     G1 deve prima accertare da dove parte l'esecuzione notturna (vedi §15). Accertato il 2026-09-28: in prod non parte da nessuna parte. Da PR2 la lancia lo `schedule` di GitHub Actions (T2.6).
 15. **Data di chiusura nello Storico.** `CustomerAlertHistory` mostra `alert.updatedAt` come data di chiusura: ogni chiusura, compresa la pulizia di PR2, deve aggiornarlo (A6).
 16. **Formato delle migrazioni custom.** PGlite esegue una sola istruzione per `query`, e il migrator divide i file sul marcatore `--> statement-breakpoint`: le istruzioni della migrazione custom vanno separate così.
+17. **Interfacce di PR1 diverse da T1.4** (verificate il 2026-10-15): `lockCustomer` restituisce un `LockedCustomer` con brand e richiede `Tx`; `replaceActiveContact({ customer, values, mostRecent? })` riceve quel valore; `query` richiede `Db` anche dentro una transazione. Le riaperture devono passare `mostRecent: true` (F1). PR3 le usa così (intestazione di PR3).
+18. **`updateCustomerUpdatedAt`** ([updateAt.ts](../../../../src/server/shared/updateAt.ts)) è async e fuori da Effect. Oggi la chiamano `customer.updateLastEdit`, che `taskStatusAction` invoca dopo ogni cambio di stato fuori dalla transazione, e `chat/DELETE/index.ts`. In PR3 lo fa `touchCustomer` (T3.2b) nella transazione.
+19. **La riga Clienti non ha i dati dell'alert:** `getAllCustomers` restituisce `alertId` ma non scadenza e messaggio. Da qui P10.
+20. **Il form del cliente riallinea il contatto a ogni salvataggio.** Invia sempre l'operatore del cliente, in un campo nascosto (`CustomerForm.tsx`), anche se nessuno tocca il selettore; il selettore non ha l'opzione "nessuno". La server action, **prima** di aggiornare il cliente, sposta con `task.updateTask` il contatto in `chiamare` se ha un operatore diverso, senza log e senza lock: basta correggere un telefono dopo "Assegna Clienti" per spostare il contatto. `updateCustomerFromDashboard` scrive una riga `operator_reassign` (sorgente `detail`, `taskId` NULL) solo quando cambia l'operatore del cliente. Da qui D13 e T3.8a.
+21. **La scheda cliente salva stato e priorità con un solo "Salva"** (`CustomerTaskManager.tsx`), con chiamate in sequenza. Da qui D11.
+22. **Nessun test di componenti nel repo:** `@testing-library/react` è installato ma non usato; mancano `@testing-library/user-event` e i polyfill jsdom che Radix richiede (T3.9b).
+23. **La "X" dell'alert e il selettore della riga mostrano valori ottimistici** (`useOptimistic` in `CustomerAlertCreator.tsx` e `CustomerColumns.tsx`): con un rifiuto il valore "torna indietro". PR3 li toglie (P6 rivisto).
 
 ## 7. Ricerca esterna
 
@@ -180,18 +198,24 @@ PR2  T1.1 ─ T2.1 ─ T2.2 ─ T2.3 ─ T2.5 ─┬─ T2.4 (dopo T1.8)   [G2]
                                  T2.6 ─┤   (T2.6 ← T1.5)
                                  T2.7 ─┘   (T2.7 ← T1.5)
 
-PR3  T3.1 ─┬─ T3.2 ─┬─ T3.3 ────────┬─ T3.10 ─┐
-T1.4 ──────┘        ├─ T3.4 ────────┤         │
-                    ├─ T3.5 ─┐      ├─ T3.11 ─┤
-                    ├─ T3.6 ─┴──────┤         ├─ T3.13 ─ T3.14   [G3]
-                    ├─ T3.7         ├─ T3.12 ─┤
-                    └─ T3.9 ────────┘         │
-     T1.7 ─ T3.8 ─────────────────────────────┘
-     (anche T1.7 → T3.3–T3.7 e T3.13: stessi file di router. PR3 parte dalla testa di PR1)
+PR3  (parte da dev: PR1 e PR2 sono già su dev e su main)
+     server, in catena sui router di task:
+       T3.1b, T3.2a ─ T3.2b ─ T3.5b ─ T3.3 ─ T3.4 ─ T3.5a ─ T3.6 ─ T3.7
+       (T3.3 ← T3.1a · T3.5a ← T3.1a · T3.6 ← T3.1a, T3.1c)
+     cliente:       T3.1b, T3.2a, T3.2b ─ T3.8a ─ T3.8b ─ T3.8c (← T3.7)
+                    T3.8a, T3.9a ─ T3.17
+     componenti:    T3.2a ─ T3.9a · T3.1a, T3.1b ─ T3.9b
+     interfaccia:   T3.10  (← T3.3, T3.4, T3.9a, T3.9b)
+                    T3.11a (← T3.3, T3.5a, T3.9a, T3.9b)
+                    T3.11b (← T3.5b, T3.6, T3.9a)
+                    T3.12  (← T3.4, T3.9a, T3.11a)
+     chiusura:      T3.8a, T3.8c, T3.10, T3.11a, T3.11b, T3.12 ─ T3.13 ─ T3.15 (← T3.7, T3.8b)
+                    T3.8c, T3.13, T3.15, T3.16, T3.17 ─ T3.14   [G3]
+     T3.1a, T3.1b, T3.1c, T3.2a e T3.16 non hanno dipendenze.
 
 PR4  T4.1 ─ T4.2
 
-PR5  T5.1 ─┐    (T5.1 ← T1.4, T3.1 · T5.2 ← T3.2 · T5.3 ← T3.1)
+PR5  T5.1 ─┐    (T5.1 ← T1.4, T3.1a–T3.1c · T5.2 ← T3.2a, T3.2b · T5.3 ← T3.1a, T3.1c)
      T5.2 ─┼─ T5.4 ─┬─ T5.5
      T5.3 ─┘        └─ T5.6 ─┬─ T5.7 ─┬─ T5.9 ─┐
                              └─ T5.8 ─┘        ├─ T5.10 ─ T5.12 ─ T5.13   [G4]
@@ -200,6 +224,8 @@ PR5  T5.1 ─┐    (T5.1 ← T1.4, T3.1 · T5.2 ← T3.2 · T5.3 ← T3.1)
 PR6  T6.1 ─ T6.2 ─┐                                      (T6.1 ← T1.4)
      T6.3 ────────┼─ T6.5 ─ T6.6 ─ T6.7                  [G5]
      T6.4 ────────┘
+
+PR7  T7.1 ─ T7.2 ─ T7.3          (dopo il merge di PR3; bassa priorità)
 ```
 
 ## 9. Task
@@ -326,7 +352,7 @@ Branch suggerito: `contatti/pr1-creazione-sicura`. Nessun cambiamento visibile, 
       - successo → il valore;
       - errori tipizzati diversi da `DbError` → `TRPCError` tramite `mapError`. Gli overload rendono `mapError` **obbligatorio** quando `Exclude<E, DbError>` non è `never`, così un errore senza traduzione non compila;
       - `DbError` e difetti → `Effect.logError` e `INTERNAL_SERVER_ERROR` con `cause: Cause.squash(cause)` e lo stesso messaggio che tRPC mostra oggi, cioè quello dell'errore originale. Non chiama `ErrorReporter`: a Sentry li segnala il middleware tRPC (P9).
-  - **Regola dei lock, unica per tutto il codice:** ogni `transaction` che scrive task o alert di un cliente chiama per prima `lockCustomer`, poi tocca solo le righe di quel cliente. Due transazioni sullo stesso cliente si mettono in coda sul cliente invece di andare in deadlock; l'ordine fra task e alert, dopo il cliente, non conta. Gli scrittori fuori da `transaction` (`updateTask`, `createAlert`, `resolveAlerts` e gli altri che sposta PR3) non bloccano il cliente: chi li porta in una `transaction` chiama per prima `lockCustomer`. Vale per PR1 (T1.5, T1.6, T1.7) e PR3 (T3.2). PGlite ha una sola connessione e non può rilevare un deadlock: la garanzia sta nella regola e nella review. *(Riscritta dopo la review di PR1, F12: la versione precedente, "`customers` → `task` → `alert` per tutti gli scrittori", non corrispondeva al codice.)*
+  - **Regola dei lock, unica per tutto il codice:** ogni `transaction` che scrive task o alert di un cliente chiama per prima `lockCustomer`, poi tocca solo le righe di quel cliente. Due transazioni sullo stesso cliente si mettono in coda sul cliente invece di andare in deadlock; l'ordine fra task e alert, dopo il cliente, non conta. Gli scrittori fuori da `transaction` (`updateTask`, `createAlert`, `resolveAlerts` e gli altri che sposta PR3) non bloccano il cliente: chi li porta in una `transaction` chiama per prima `lockCustomer`. Vale per PR1 (T1.5, T1.6, T1.7) e PR3 (T3.2b; test della regola in T3.15). PGlite ha una sola connessione e non può rilevare un deadlock: la garanzia sta nella regola e nella review. *(Riscritta dopo la review di PR1, F12: la versione precedente, "`customers` → `task` → `alert` per tutti gli scrittori", non corrispondeva al codice.)*
   - **`replaceActiveContact({ customerId, values })`** restituisce `Effect<{ created, previous }, DbError | CustomerMissing, Tx>` e lavora dentro la transazione del chiamante:
     1. `lockCustomer(customerId)`, che è idempotente se il chiamante l'ha già fatto;
     2. disattiva **tutte** le task attive del cliente;
@@ -897,47 +923,65 @@ Branch suggerito: `contatti/pr2-vincolo-db`. Contiene migrazioni, uno script di 
 
 ### PR3 — Regole del contatto sul server, usate da Clienti
 
-Branch suggerito: `contatti/pr3-regole-server`. Da qui valgono AC73, D2 e P4.
+**Stato: da fare.** Riscritta il 2026-10-15 con `create-plan` 0.8.0: ogni task ha una `complexity`, i task larghi sono divisi, gli error path della FLOW sono controlli espliciti, le interfacce sono quelle che PR1 ha costruito davvero, e ci sono il `design-engineer` (P6 rivisto) e le decisioni D10–D13. Gli id dei task restano stabili: i task divisi prendono una lettera (T3.1a, T3.1b, …), quelli nuovi proseguono la numerazione (T3.15, T3.16).
 
-**Forma comune delle mutation di PR3 (D9):**
-- ogni mutation è un servizio Effect in `src/server/services/contact/`, che fa tutto in un solo `transaction` (T1.4) e fallisce con gli errori tipizzati di T3.2;
-- ogni transazione rispetta la regola dei lock di T1.4: prima `lockCustomer`, poi solo le righe di quel cliente;
+Branch: `contatti/pr3-regole-server` da `dev` (PR1 e PR2 sono su `dev` e su `main`), PR verso `dev`. Da qui valgono AC73, D2, A1 (confermata il 2026-10-15), P4 e D13.
+
+**Interfacce di PR1 da usare, come sono nel codice** (non come le descriveva T1.4; vedi IMPLEMENTATION-NOTES):
+- `transaction(program)` ([db.ts](../../../../src/server/effect/db.ts)): gira in `read committed`; una `transaction` annidata è un difetto, e un `DbError` recuperato in un successo è un difetto. Dentro non si usano timeout o interruzioni.
+- `lockCustomer(customerId)` restituisce un `LockedCustomer` con brand (`id`, `operatorId`), richiede `Tx` e fallisce con `CustomerMissing`. È il primo comando di ogni transazione che scrive task o alert (regola dei lock di T1.4).
+- `replaceActiveContact({ customer, values, mostRecent? })` ([activeContact.ts](../../../../src/server/services/contact/activeContact.ts)) riceve il `LockedCustomer`, richiede `Tx` e non decide nulla su priorità, operatore e `closedAt`: li passa il chiamante. **`mostRecent: true` in ogni riapertura e in "Crea contatto"**: "Assegna Clienti" sceglie la task con `updated_at` più recente, e senza il flag sceglierebbe la vecchia (F1 della review di PR1, come `createTask` oggi).
+- `query(f)` richiede `Db` anche dentro una transazione: i servizi hanno tipo `Effect<…, …, Db | Tx>` dentro la transazione e `Db` fuori.
+- `runTrpc(program, mapError)` ([trpc.ts](../../../../src/server/effect/trpc.ts)); `CustomerMissing` → `BAD_REQUEST`, come in T1.6 e T1.7.
+- `updateCustomerUpdatedAt` ([updateAt.ts](../../../../src/server/shared/updateAt.ts)) è async e fuori da Effect: i servizi di PR3 aggiornano `customers.updated_at` con `touchCustomer` (T3.2b), dentro la transazione, sulla riga già bloccata.
+- Harness: `createTestCaller(actor)`, le factory di `src/test/factories.ts`, `failNextInsertInto`, `failNextUpdateOf`, `afterNextWriteTo`, `countStatementsOn` (`src/test/failpoint.ts`), `tasksOf`, `activeTasksOf`, `logOf` (`src/test/db.ts`), `runServer`, `failureTag` (`src/test/effect.ts`).
+
+**Forma comune delle mutation (D9):**
+- ogni mutation è un servizio Effect in `src/server/services/contact/<nome>.ts`, con un solo `transaction`, e fallisce con gli errori tipizzati di T3.2a;
+- il primo passo è la guardia `loadEditableContact` (T3.2b), che chiama `lockCustomer`; fa eccezione `createContact`, che non ha ancora un contatto e chiama `lockCustomer` direttamente;
+- le regole vengono dal modulo di dominio puro (T3.1a–T3.1c);
 - la procedura chiama `runTrpc(program, contactErrorToTrpc)`;
-- le regole vengono dal modulo di dominio puro di T3.1.
+- un alert si chiude solo con `resolveOpenAlert` (T3.5b), mai con un `UPDATE` scritto a mano (D10).
 
 **Come l'interfaccia chiama le mutation.** Le mutation che possono restituire errori del contatto si chiamano **dal client**, con `api.task.<proc>.useMutation()` di `@/trpc/react`, che passa dal link HTTP. **Mai da una server action**, per due motivi:
 - in produzione Next nasconde il messaggio degli errori delle server action;
 - il link RSC di `src/trpc/server.ts` crea il `TRPCClientError` senza `data`, quindi `data.contactError` non arriva.
 
-Vale per T3.10, T3.11, T3.12, T5.7 e T5.9. Le letture dai Server Component (T5.4, T5.6) leggono l'errore con `readContactError` (T3.2), che capisce entrambe le forme.
-**Branch:** PR3 parte dalla testa di PR1 (o da `main` dopo il merge di PR1), non da singoli task.
+Vale per T3.10, T3.11a, T3.11b, T3.12, T5.7 e T5.9. Le letture dai Server Component (T5.4, T5.6) leggono l'errore con `readContactError` (T3.2a).
 
-#### T3.1: Modulo di dominio puro del contatto (modulo profondo)
+**Forma comune dei controlli nell'interfaccia (P5, P6 rivisto, P10, D11):**
+- il controllo mostra sempre il valore salvato: niente `useOptimistic`, niente rimozioni ottimistiche (oggi la "X" dell'alert e il selettore della riga lo fanno);
+- l'attesa dura dalla chiamata fino a quando il nuovo valore salvato è a schermo, `router.refresh()` compreso. Durante l'attesa:
+  - lo spinner esistente (`src/components/custom/loading-spinner.tsx`) sta nello spazio della freccia, così la larghezza resta `w-40`, ed è statico con `prefers-reduced-motion` (`motion-reduce:animate-none`);
+  - il trigger ha `aria-busy="true"` e `aria-disabled="true"`, e ignora `pointerdown`, Enter, Spazio e freccia giù. Niente `disabled`, così il focus non si perde;
+- la modale dell'alert si apre con i dati che il server restituisce (P10): il client manda il cambio di stato senza conferma; se c'è un alert aperto, il server risponde `ALERT_CONFIRMATION_REQUIRED` con `{ id, deadline, message }`; il client apre la modale e, alla conferma, ripete la chiamata con `confirmedAlertId`. Lo stesso percorso copre AC36 e AC37, e la riga Clienti non deve caricare i dati dell'alert;
+- un rifiuto del server mostra un toast `destructive` di 8000 ms con il motivo (`useContactMutationFeedback`, T3.9a). Fa eccezione "Imposta richiamo": con `ALERT_CONFIRMATION_REQUIRED` il form resta aperto con i dati inseriti e la riga "Sostituisce il richiamo del <data>" aggiornata, senza toast;
+- il focus non finisce mai su `body`. Se il trigger sparisce (la riga esce dai filtri "Stato" o "Contattato il" di Clienti, oppure il selettore diventa `ReadOnlyReason`), va al selettore della riga successiva, altrimenti a quello della precedente, altrimenti alla tabella.
+
+**Ordine dei file condivisi.** I router di `task` (`GET`, `POST`, `PUT`, `DELETE` e `index.ts`) li tocca un solo task alla volta: i task server di PR3 sono in catena T3.5b → T3.3 → T3.4 → T3.5a → T3.6 → T3.7 → T3.8c, e T3.13 viene dopo. Anche `customer/PUT/index.ts` ha la sua catena: T3.8a → T3.8b → T3.8c.
+
+#### T3.1a: Modulo di dominio — stati, transizioni, fasce di priorità
 - **depends_on**: []
-- **location**: `src/lib/domain/contact/status.ts`, `transition.ts`, `priority.ts`, `permissions.ts`, `time.ts`, `src/lib/domain/contact/_test/*.test.ts`; `src/app/dashboard/customers/_utils/index.ts` (re-export); `src/components/custom/badge/priority.tsx` (importa `priority.ts`)
+- **location**: `src/lib/domain/contact/status.ts`, `transition.ts`, `priority.ts`, `src/lib/domain/contact/_test/{status,transition,priority}.test.ts`; `src/app/dashboard/customers/_utils/index.ts` (re-export di `getTaskStatusCategory`); `src/components/custom/badge/priority.tsx` (importa `priority.ts` al posto di `getPriorityByRange` e `priorityRangeMap`)
 - **description**: Funzioni pure, senza I/O e senza Effect, perché le importano anche i componenti client (P5, P8). Gli esiti sono union discriminate.
   - **`status.ts`:**
     - categorie: "da chiamare" (`chiamare`, `followup`), "esito" (`app.to`, `caricato`, `erogata`, `non interessato`, `richiamare`), `nessuno`;
-    - `selectableStates(current)` (AC30): mai `followup`; da `followup` niente `chiamare`; escluso lo stato attuale.
+    - `selectableStates(current)` (AC30): mai `followup`; da `followup` niente `chiamare`; escluso lo stato attuale;
+    - `canSetCallback(state)` (AC46): vero per gli esiti e per `nessuno`;
+    - `task.state` ammette NULL nello schema: uno stato NULL vale `nessuno`, il default del DB.
   - **`transition.ts`:** `planStateChange({ from, to, openAlertId, confirmedAlertId })` restituisce uno di questi esiti, con `resolveAlert: boolean`:
     - `noop` (AC40);
     - `reject`: transizione vietata (AC30);
     - `needsAlertConfirmation` (AC36, AC37);
     - `persist`: esito → esito (AC32) e da o verso `nessuno` (AC33);
     - `close`: valorizza "Contattato il" (AC31);
-    - `reopen` (AC34).
-  - **`priority.ts`:** fasce bassa ≤ 20, media ≤ 60, alta ≤ 100, urgente > 100; `bandOf(n)`, `bandValue(band)` (20/60/100/120), `bandRange(band)` per il filtro (AC12). Il badge importa da qui.
-  - **`permissions.ts`:**
-    - `contactEditability(actor, { isActive, taskOperator, customer })` restituisce `editable`, `superseded` oppure `not_owner`, con il nome dell'assegnatario o "Non assegnato", secondo D2 e A1;
-    - `canCreateContact(actor, customer)`;
-    - `canReassign(actor)`;
-    - `canChangeCustomerOperator(actor, customer)` e `canSelfAssign(customer)` (P4).
-  - **`time.ts`:** `romeDayBounds(date)`, `isDueOrOverdue(deadline, now)`, `isPastDay(date, now)` in `Europe/Rome` (A4).
+    - `reopen`: esito → `chiamare` (AC34).
+  - **`priority.ts`:** fasce bassa ≤ 20, media ≤ 60, alta ≤ 100, urgente > 100; `bandOf(n)`, `bandValue(band)` (20/60/100/120), `bandRange(band)` per il filtro di PR5 (AC12). Il badge importa da qui, e 150 (followup del cron) resta "urgente" come oggi.
 - **validation**: unit test su:
-  - tutte le combinazioni di `planStateChange`: 8 × 8 stati, con e senza alert, con conferma giusta o sbagliata;
-  - i confini delle fasce: 20, 21, 60, 61, 100, 101;
-  - i casi di D2 e P4: contatto mio, cliente mio, nessuno dei due, admin, non assegnato, superato;
-  - i cambi d'ora del 29/03/2026 e del 25/10/2026.
+  - tutte le combinazioni di `planStateChange`: 8 × 8 stati, con e senza alert, con conferma giusta, sbagliata o assente;
+  - `selectableStates` da `followup`, da `chiamare` e da un esito;
+  - uno stato di partenza NULL si comporta come `nessuno`;
+  - i confini delle fasce: 20, 21, 60, 61, 100, 101, 120, 150.
 
   Il badge priorità di Clienti mostra le stesse fasce di prima.
 - **status**: Planned
@@ -948,68 +992,186 @@ Vale per T3.10, T3.11, T3.12, T5.7 e T5.9. Le letture dai Server Component (T5.4
 - **relation_mode**: n/a (D6)
 - **tdd_target**: "`planStateChange` da `non interessato` a `chiamare` restituisce `reopen`".
 - **review_mode**: cli
+- **complexity**: medium
 
-#### T3.2: Guardia del contatto e contratto degli errori
-- **depends_on**: [T1.1, T1.4, T3.1]
-- **location**: `src/server/services/contact/guard.ts`, `src/server/services/contact/errors.ts`, `src/server/api/trpc.ts` (`errorFormatter`), `src/lib/domain/contact/errors.ts` (codici e `readContactError`, senza Effect), `src/server/services/contact/_test/guard.db.test.ts`, `src/server/services/contact/_test/errors.test.ts`
-- **description**:
-  - **`loadEditableContact(taskId, actor)`** restituisce `Effect<EditableContact, ContactError | DbError, Tx>`:
-    - rispetta l'ordine dei lock di T1.4: legge `task.customer_id` senza lock, blocca la riga `customers` (`FOR UPDATE`), poi la riga `task` (`FOR UPDATE`), e ricontrolla che la task sia ancora quella attesa;
-    - carica task, cliente, operatore e alert aperto.
-  - **Codici** (`src/lib/domain/contact/errors.ts`): le costanti `CONTACT_*`/`CUSTOMER_*` e il tipo del payload stanno qui, in TypeScript puro. Il server le importa da qui, mai il contrario: altrimenti il client si porterebbe dietro `effect`, `@/server/db` e `postgres`.
-  - **Errori del contatto** (`src/server/services/contact/errors.ts`): classi `Data.TaggedError`, raccolte nella union `ContactError`. Ognuna contiene già i dati che servono all'interfaccia. Il codice visto dal client resta quello di sempre:
-    - `ContactNotFound` → `CONTACT_NOT_FOUND` (NOT_FOUND);
-    - `ContactSuperseded` → `CONTACT_SUPERSEDED` (CONFLICT, con `activeTaskId` del cliente se esiste; AC27);
-    - `ContactForbidden` → `CONTACT_FORBIDDEN` (FORBIDDEN, con il nome dell'assegnatario o "Non assegnato"; AC49, AC51);
-    - `AlertConfirmationRequired` → `ALERT_CONFIRMATION_REQUIRED` (PRECONDITION_FAILED, con `{ id, deadline, message }` dell'alert attuale; AC37);
-    - `CustomerNotFound` → `CUSTOMER_NOT_FOUND` (NOT_FOUND; serve a T3.4);
-    - `CustomerUnassigned` → `CUSTOMER_UNASSIGNED`;
-    - `ContactAlreadyActive` → `CONTACT_ALREADY_ACTIVE` (con l'id).
-  - **`contactErrorToTrpc`**: la mappa passata a `runTrpc`. È un `Record` sui `_tag`, quindi un errore nuovo senza voce nella mappa non compila. Produce un `TRPCError` con il codice tRPC, un `message` fisso e, nel `cause`, l'oggetto **annidato** `{ code, payload }`. Con un oggetto piatto, il campo `message` dell'alert sovrascriverebbe il messaggio del `TRPCError`.
-  - **`errorFormatter`**: tRPC trasforma un `cause` che è un oggetto semplice in un `UnknownCauseError` (un `Error` con le chiavi copiate), e superjson serializza un `Error` senza i suoi campi. Il formatter quindi costruisce un **oggetto semplice con chiavi esplicite**, `data.contactError = { code, payload }` oppure `null`, e non espone mai il `cause` così com'è.
-  - **`readContactError(err)`**: unico lettore, usato da client e Server Component. Capisce due forme:
-    - HTTP: `err.data.contactError`;
-    - chiamata in-process da RSC: `err.cause` è il `TRPCError`, e il suo `cause` contiene `{ code, payload }`.
-- **validation**:
-  - test DB della guardia per ogni esito: id inesistente, contatto superato con e senza contatto attivo, operatore non proprietario, operatore del cliente ammesso (D2), admin;
-  - test del bordo, in tre modi, perché `createCaller` non esegue l'`errorFormatter`:
-    - via caller: per ogni `_tag`, `error.code` e `error.cause` (`{ code, payload }`) sono giusti;
-    - via `appRouter.getErrorShape(...)` più un giro di serializzazione e deserializzazione con superjson: `data.contactError` conserva `code` e `payload` (per esempio `activeTaskId` e l'alert);
-    - `readContactError` restituisce lo stesso risultato sulla forma HTTP e su quella in-process.
+#### T3.1b: Modulo di dominio — permessi
+- **depends_on**: []
+- **location**: `src/lib/domain/contact/permissions.ts`, `src/lib/domain/contact/_test/permissions.test.ts`
+- **description**: Funzioni pure che codificano D2, A1, P4 e D13. Le usano la guardia del server (T3.2b), i servizi del cliente (T3.8a, T3.8b) e i componenti, prima del clic (P5): server e client decidono con lo stesso codice.
+  - `contactEditability(actor, { isActive, taskOperator, customer })` restituisce:
+    - `editable`;
+    - `superseded`, se il contatto non è attivo (vale anche per gli admin, AC27);
+    - `not_owner`, con il nome dell'assegnatario ("Nome Cognome") oppure "Non assegnato".
+
+    Un `OPERATORE` modifica se `task.operatorId` **oppure** `customers.operatorId` è lui (D2). Un contatto non assegnato è suo solo se il cliente è suo (A1). Un `ADMIN` modifica ogni contatto attivo.
+  - `canCreateContact(actor, customer)`: admin o operatore del cliente (D2).
+  - `canReassign(actor)`: solo admin.
+  - `canHandover(actor, customer)`: un admin su ogni cliente, un operatore solo sui clienti suoi (D13, P4).
+  - `canSelfAssign(customer)`: solo un cliente non assegnato (P4).
+- **validation**: unit test su tutti i casi:
+  - D2 e A1: contatto mio, cliente mio con il contatto di un collega, nessuno dei due, contatto non assegnato con cliente mio, contatto non assegnato con cliente non mio o non assegnato, admin, contatto superato per operatore e per admin.
+  - P4 e D13: "Assegna a te" su un cliente non assegnato e su uno assegnato; passaggio di consegne di un admin su un cliente assegnato e su uno non assegnato, di un operatore sul cliente suo, su quello di un collega e su uno non assegnato.
 - **status**: Planned
 - **log**:
 - **files edited/created**:
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a (D6)
-- **tdd_target**: "un OPERATORE che non è né l'operatore del contatto né quello del cliente riceve `CONTACT_FORBIDDEN` con il nome dell'assegnatario".
+- **tdd_target**: "per un OPERATORE che non è né l'operatore del contatto né quello del cliente, `contactEditability` restituisce `not_owner` con il nome dell'assegnatario".
 - **review_mode**: cli
+- **complexity**: high
+
+#### T3.1c: Modulo di dominio — giorno di Roma
+- **depends_on**: []
+- **location**: `src/lib/domain/contact/time.ts`, `src/lib/domain/contact/_test/time.test.ts`
+- **description**: `romeDayBounds(date)`, `isDueOrOverdue(deadline, now)` e `isPastDay(date, now)` in `Europe/Rome`, con `Intl` e senza dipendenze nuove (A4). In PR3 lo usa solo `setCallback` (T3.6); gli altri due servono a PR5. Il cron alert calcola il giorno italiano per conto suo dentro `processDueAlerts.ts` e **non si tocca** (non-goal); spostarlo su `time.ts` è un seguito (§15).
+- **validation**: unit test sui cambi d'ora del 29/03/2026, del 25/10/2026 e del 28/03/2027, e su una scadenza scelta dal date picker (mezzanotte del browser: 22:00 UTC del giorno prima in ora legale, 23:00 UTC in ora solare).
+- **status**: Planned
+- **log**:
+- **files edited/created**:
+- **backlog_item_id**: n/a
+- **backlog_item_url**: n/a
+- **relation_mode**: n/a (D6)
+- **tdd_target**: "con `now` = 14/10/2026 22:30 UTC (00:30 del 15 a Roma), `isPastDay` è falso per una scadenza del 15/10 scelta dal date picker (14/10 22:00 UTC) e vero per una del 14/10 (13/10 22:00 UTC)".
+- **review_mode**: cli
+- **complexity**: low
+
+#### T3.2a: Contratto degli errori del contatto
+- **depends_on**: []
+- **location**: `src/lib/domain/contact/errors.ts` (codici, tipo del payload, `readContactError`, senza Effect), `src/server/services/contact/errors.ts`, `src/server/api/trpc.ts` (`errorFormatter`), `src/server/services/contact/_test/errors.db.test.ts` (suffisso `.db`: carica il router e gira in ambiente `node`)
+- **description**:
+  - **Codici** (`src/lib/domain/contact/errors.ts`): le costanti `CONTACT_*`/`CUSTOMER_*`/`ALERT_*` e il tipo del payload stanno qui, in TypeScript puro. Il server le importa da qui, mai il contrario: altrimenti il client si porterebbe dietro `effect`, `@/server/db` e `postgres`.
+  - **Errori del contatto** (`src/server/services/contact/errors.ts`): classi `Data.TaggedError` raccolte nella union `ContactError`. Ognuna contiene già i dati che servono all'interfaccia:
+
+    | Errore | Codice | tRPC | Dati | AC |
+    |---|---|---|---|---|
+    | `ContactNotFound` | `CONTACT_NOT_FOUND` | NOT_FOUND | — | — |
+    | `ContactSuperseded` | `CONTACT_SUPERSEDED` | CONFLICT | `activeTaskId` del cliente, se esiste | AC27 |
+    | `ContactForbidden` | `CONTACT_FORBIDDEN` | FORBIDDEN | nome dell'assegnatario o "Non assegnato" | AC49, AC51 |
+    | `TransitionRejected` | `CONTACT_TRANSITION_REJECTED` | BAD_REQUEST | `from`, `to` | AC30 |
+    | `AlertConfirmationRequired` | `ALERT_CONFIRMATION_REQUIRED` | PRECONDITION_FAILED | `{ id, deadline, message }` dell'alert aperto | AC36, AC37, AC44 |
+    | `AlertNotFound` | `ALERT_NOT_FOUND` | NOT_FOUND | — | AC29 |
+    | `CallbackNotAllowed` | `CALLBACK_NOT_ALLOWED` | BAD_REQUEST | stato attuale | AC46 |
+    | `DeadlineInPast` | `DEADLINE_IN_PAST` | BAD_REQUEST | — | AC44 |
+    | `CustomerNotFound` | `CUSTOMER_NOT_FOUND` | NOT_FOUND | — | — |
+    | `CustomerUnassigned` | `CUSTOMER_UNASSIGNED` | PRECONDITION_FAILED | — | AC67 |
+    | `ContactAlreadyActive` | `CONTACT_ALREADY_ACTIVE` | CONFLICT | id del contatto attivo | AC67 |
+    | `OperatorNotFound` | `OPERATOR_NOT_FOUND` | BAD_REQUEST | — | AC47 |
+
+    Nello stesso file dei codici stanno anche `CUSTOMER_ASSIGNMENT_FORBIDDEN` (FORBIDDEN) e `HANDOVER_SAME_OPERATOR` (BAD_REQUEST), gli errori dei servizi del cliente (`CustomerAssignmentForbidden`, `HandoverSameOperator`; T3.8a e T3.8b), che ha la sua mappa in `src/server/services/customer/errors.ts` ma lo stesso formato `{ code, payload }`, così `readContactError` e `describeContactError` lo leggono come gli altri.
+
+    `TransitionRejected`, `CallbackNotAllowed`, `DeadlineInPast`, `AlertNotFound` e `OperatorNotFound` non c'erano nella prima versione del piano: senza, i rifiuti di AC30, AC44, AC46 e della riassegnazione non avevano un errore tipizzato.
+  - **`contactErrorToTrpc`**: la mappa passata a `runTrpc`. È un `Record` sui `_tag`, quindi un errore nuovo senza voce nella mappa non compila. Produce un `TRPCError` con il codice tRPC, un `message` fisso e, nel `cause`, l'oggetto **annidato** `{ code, payload }`, con un marcatore che lo distingue da ogni altro `cause`. Il marcatore lo mette un helper unico, `contactErrorCause(code, payload)` in `src/server/services/contact/errors.ts`, che usa anche la mappa degli errori del cliente (T3.8a). Annidato, i campi del payload (per esempio il `message` dell'alert) non si mescolano con quelli dell'`Error` che tRPC costruisce dal `cause`.
+  - **`errorFormatter`**: tRPC trasforma un `cause` che è un oggetto semplice in un `UnknownCauseError` (un `Error` con le chiavi copiate), e superjson serializza un `Error` senza i suoi campi. Il formatter quindi costruisce un **oggetto semplice con chiavi esplicite**, `data.contactError = { code, payload }` oppure `null`, e non espone mai il `cause` così com'è. Riconosce solo il `cause` marcato da `contactErrorToTrpc`, non la sola presenza di un campo `code`: anche un `DbError` ha `code` (lo SQLSTATE) e arriva come `cause` degli `INTERNAL_SERVER_ERROR` (`runTrpc`). `data.zodError` resta com'è oggi.
+  - **`readContactError(err)`**: unico lettore, usato da client e Server Component. Capisce due forme:
+    - HTTP: `err.data.contactError`;
+    - chiamata in-process da RSC: `err.cause` è il `TRPCError`, e il suo `cause` contiene `{ code, payload }`.
+- **validation**: test del bordo, in tre modi, perché `createCaller` non esegue l'`errorFormatter`:
+  - via una procedura di prova eseguita con `runTrpc`: per ogni `_tag`, `error.code` e `error.cause` (`{ code, payload }`) sono giusti;
+  - via `appRouter.getErrorShape(...)` più un giro di serializzazione e deserializzazione con superjson: `data.contactError` conserva `code` e `payload` (per esempio `activeTaskId` e l'alert); un errore Zod ha ancora `data.zodError` e `data.contactError = null`; un `INTERNAL_SERVER_ERROR` nato da un `DbError` con codice `23505` ha `data.contactError = null`;
+  - `readContactError` restituisce lo stesso risultato sulla forma HTTP e su quella in-process.
+- **status**: Planned
+- **log**:
+- **files edited/created**:
+- **backlog_item_id**: n/a
+- **backlog_item_url**: n/a
+- **relation_mode**: n/a (D6)
+- **tdd_target**: "via `getErrorShape` e un giro di superjson, un `ContactSuperseded` arriva al client come `data.contactError = { code: 'CONTACT_SUPERSEDED', payload: { activeTaskId } }`".
+- **review_mode**: cli
+- **complexity**: high
+
+#### T3.2b: Guardia del contatto
+- **depends_on**: [T3.1b, T3.2a]
+- **location**: `src/server/services/contact/guard.ts`, `src/server/services/contact/_test/guard.db.test.ts`
+- **description**:
+  - **`loadEditableContact(taskId, actor)`** restituisce `Effect<EditableContact, ContactError | DbError, Db | Tx>`. Si usa solo dentro `transaction`, e rispetta la regola dei lock:
+    1. legge `task.customer_id` senza lock (contatto inesistente → `ContactNotFound`);
+    2. `lockCustomer` (`CustomerMissing` se la task non ha cliente);
+    3. blocca la riga `task` (`FOR UPDATE`) e la rilegge;
+    4. carica l'operatore del contatto, il cliente con il suo operatore (dal `LockedCustomer`) e l'alert aperto, cioè quello di `task.alert_id` se non è risolto;
+    5. decide con `contactEditability` (T3.1b): `superseded` → `ContactSuperseded` con l'id del contatto attivo del cliente, se c'è; `not_owner` → `ContactForbidden`.
+
+    Restituisce `{ customer: LockedCustomer, task, openAlert }`, che i servizi passano a `replaceActiveContact` e a `resolveOpenAlert`.
+  - **`touchCustomer(customer)`**: `UPDATE customers SET updated_at = now()` sulla riga bloccata, dentro la transazione. Sostituisce, nei servizi di PR3, la chiamata a `customer.updateLastEdit` che oggi fa `taskStatusAction` (AC39: "ultima modifica del cliente").
+- **validation**: test DB della guardia (eseguita con `runServer` dentro `transaction`, perché è l'interfaccia pubblica del servizio, §11) per ogni esito:
+  - id inesistente → `ContactNotFound`;
+  - contatto superato con e senza un contatto attivo del cliente → `ContactSuperseded`, con e senza `activeTaskId`, anche per un admin;
+  - operatore né del contatto né del cliente → `ContactForbidden` con il nome;
+  - contatto di un collega su un cliente mio → ammesso (D2);
+  - contatto non assegnato su un cliente mio → ammesso; su un cliente non mio → `ContactForbidden` con "Non assegnato" (A1);
+  - admin → ammesso;
+  - alert collegato ma già risolto → `openAlert` nullo.
+- **status**: Planned
+- **log**:
+- **files edited/created**:
+- **backlog_item_id**: n/a
+- **backlog_item_url**: n/a
+- **relation_mode**: n/a (D6)
+- **tdd_target**: "un OPERATORE che non è né l'operatore del contatto né quello del cliente riceve `ContactForbidden` con il nome dell'assegnatario".
+- **review_mode**: cli
+- **complexity**: high
+
+#### T3.5b: Mutation `task.resolveAlert` e chiusura unica degli alert (F14, R7)
+- **depends_on**: [T3.2b]
+- **location**: `src/server/services/contact/alert.ts` (`resolveOpenAlert`), `src/server/services/contact/resolveAlert.ts`, `src/server/api/routers/task/DELETE/index.ts`, `src/server/api/routers/task/index.ts`, `src/server/services/contact/_test/resolveAlert.db.test.ts`
+- **description**: È il primo servizio sulla guardia e il tracer bullet delle mutation di PR3 (§11).
+  - **`resolveOpenAlert({ alertId, taskId, actor, source })`**: l'unico modo di chiudere un alert nei servizi di PR3 (D10). Dentro la transazione del chiamante, dopo la guardia:
+    - `UPDATE alert SET is_resolved = true, resolved_by = <attore>, updated_at = now() WHERE id = A AND is_resolved = false RETURNING`. Se non torna nessuna riga, l'alert era già chiuso: non scrive nient'altro, né `resolved_by`, né la data, né il log (F14);
+    - `UPDATE task SET alert_id = NULL WHERE id = T AND alert_id = A`: non stacca mai un alert diverso da quello chiuso (R7, come il cron da PR1, F13);
+    - una riga `alert_resolved` con la sorgente data.
+
+    Restituisce `{ resolved: boolean }`.
+  - **`resolveAlert({ alertId, source: "list" | "detail" })`** (procedura `task.resolveAlert`, la "X" dell'alert). Oggi `resolveAlerts` accetta ogni sorgente del log, compresa `cron_alert`: la nuova accetta solo quelle dell'interfaccia (AC38):
+    - alert inesistente → `AlertNotFound`;
+    - guardia sul contatto dell'alert (`alert.task_id`): contatto superato o di un altro → rifiuto (AC27, AC49);
+    - poi `resolveOpenAlert`. Alert già risolto → nessun effetto e nessun errore (F14).
+
+    Non aggiorna `customers.updated_at`, come oggi.
+  - `resolveAlerts` (la procedura di oggi) resta fino a T3.13.
+- **validation**: test DB via caller:
+  - AC29: l'alert passa nello Storico (`getCustomerAlerts`) con `resolvedBy` = attore, la task non ha più `alertId`, c'è una riga `alert_resolved` con la sorgente;
+  - F14: la "X" su un alert già chiuso dal sistema non cambia `resolved_by`, `updated_at` e il numero di righe di log;
+  - R7: con `afterNextWriteTo(alert)` che aggancia alla task un nuovo alert B subito dopo la chiusura di A, B resta aperto e agganciato;
+  - rifiuti: contatto superato, operatore senza permesso, alert inesistente; in ogni caso nessuna scrittura;
+  - una sorgente diversa da `list` e `detail` è rifiutata dall'input (BAD_REQUEST).
+- **status**: Planned
+- **log**:
+- **files edited/created**:
+- **backlog_item_id**: n/a
+- **backlog_item_url**: n/a
+- **relation_mode**: n/a (D6)
+- **tdd_target**: "la 'X' su un alert aperto lo chiude con `resolvedBy` = attore, lo stacca dalla task e scrive una riga `alert_resolved`".
+- **review_mode**: cli
+- **complexity**: high
 
 #### T3.3: Mutation `task.changeState`
-- **depends_on**: [T3.2, T1.4, T1.7]
+- **depends_on**: [T3.1a, T3.5b]
 - **location**: `src/server/services/contact/changeState.ts`, `src/server/api/routers/task/PUT/index.ts`, `src/server/api/routers/task/index.ts`, `src/server/services/contact/_test/changeState.db.test.ts`
-- **description**: Input: `{ taskId, toState, source: "list" | "detail", confirmedAlertId?: number }`. Tutto in un solo `transaction`, con la forma comune di PR3:
-  1. guardia (T3.2), poi `planStateChange`;
-  2. se c'è un alert aperto e la conferma non corrisponde → `ALERT_CONFIRMATION_REQUIRED`;
-  3. `noop` → ritorno senza scritture;
-  4. chiusura dell'alert: `isResolved`, `resolvedBy` = attore, `task.alertId = null`, log `alert_resolved`;
-  5. `persist` o `close` → aggiorna lo stato, con `closedAt = now` solo in `close`. Mai l'operatore (AC41), mai la priorità (D3);
-  6. `reopen` → `replaceActiveContact` con stato `chiamare`, stesso operatore, stesso `closedAt`, priorità 120, `customPriority=false` (D3);
-  7. log `state_change`: in caso di riapertura va sul nuovo id, come fa oggi `createTask`;
-  8. `updateCustomerUpdatedAt(tx)`.
+- **description**: Input: `{ taskId, toState, source: "list" | "detail", confirmedAlertId: number | null }`. Tutto in un solo `transaction`, con la forma comune di PR3:
+  1. guardia (T3.2b), poi `planStateChange` (T3.1a);
+  2. `reject` → `TransitionRejected`;
+  3. `noop` → ritorno senza scritture (AC40);
+  4. alert aperto e conferma diversa dal suo id → `AlertConfirmationRequired` con `{ id, deadline, message }` dell'alert attuale (AC36, AC37, P10);
+  5. alert aperto confermato → `resolveOpenAlert` (sorgente dell'input);
+  6. `persist` o `close` → aggiorna lo stato, con `closedAt = now` solo in `close`. Mai l'operatore (AC41), mai la priorità (D3);
+  7. `reopen` → `replaceActiveContact` con stato `chiamare`, l'operatore del contatto, lo stesso `closedAt`, priorità 120, `customPriority = false`, `alertId = null` e **`mostRecent: true`** (D3, AC34, F1);
+  8. riga `state_change` con stato di partenza, di arrivo e attore. Nella riapertura va sul nuovo id, come fa oggi `createTask`;
+  9. `touchCustomer`.
 
   Ritorna `{ taskId, reopened }`.
-- **validation**: test DB per:
-  - AC30, AC31, AC32, AC33;
-  - AC34: nasce un nuovo contatto, il vecchio non è più attivo, operatore e "Contattato il" sono gli stessi;
+- **validation**: test DB via caller per:
+  - AC30: `followup` e `chiamare` da `followup` rifiutati con `CONTACT_TRANSITION_REJECTED`;
+  - AC31, AC32, AC33;
+  - AC34: nasce un nuovo contatto, il vecchio non è più attivo, operatore e "Contattato il" sono gli stessi, e il nuovo è il più recente del cliente per `updated_at`;
   - AC36: con la conferma giusta l'alert va nello Storico e lo stato cambia;
-  - AC37: un alert comparso dopo blocca la modifica;
-  - AC38: righe di log e sorgenti;
-  - AC39: `failNextInsertInto(task_event_log)` lascia il DB invariato;
+  - AC37: senza conferma, o con la conferma di un alert diverso, `ALERT_CONFIRMATION_REQUIRED` con i dati dell'alert attuale e nessuna scrittura;
+  - AC38: righe di log e sorgenti `list` e `detail`;
+  - AC39: `failNextInsertInto(task_event_log)` lascia il DB invariato, anche nella riapertura e nella chiusura dell'alert; `failNextUpdateOf(customers)` pure;
   - AC40: lo stesso stato non scrive righe;
-  - AC41;
+  - AC41: né l'operatore del contatto né quello del cliente cambiano, anche quando sono diversi;
   - AC27: contatto superato rifiutato;
-  - AC49 e D2.
+  - AC49, D2 e A1: i casi della guardia arrivano al caller con il codice giusto;
+  - `customers.updated_at` aggiornato.
 - **status**: Planned
 - **log**:
 - **files edited/created**:
@@ -1018,22 +1180,25 @@ Vale per T3.10, T3.11, T3.12, T5.7 e T5.9. Le letture dai Server Component (T5.4
 - **relation_mode**: n/a (D6)
 - **tdd_target**: "passare da `chiamare` ad `app.to` valorizza 'Contattato il', scrive una riga `state_change` e non cambia l'operatore".
 - **review_mode**: cli
+- **complexity**: high
 
 #### T3.4: Mutation `task.createContact`
-- **depends_on**: [T3.2, T1.4, T1.7]
-- **location**: `src/server/services/contact/createContact.ts`, `src/server/api/routers/task/POST/index.ts`, `src/server/services/contact/_test/createContact.db.test.ts`
-- **description**: Input: `{ customerId, source: "list" | "detail" }`. Un solo `transaction` con lock del cliente:
-  - cliente inesistente → `CustomerNotFound`;
+- **depends_on**: [T3.2b, T3.3]
+- **location**: `src/server/services/contact/createContact.ts`, `src/server/api/routers/task/POST/index.ts`, `src/server/api/routers/task/index.ts`, `src/server/services/contact/_test/createContact.db.test.ts`
+- **description**: Input: `{ customerId, source: "list" | "detail" }`. Un solo `transaction` che comincia con `lockCustomer`:
+  - cliente inesistente → `CustomerNotFound` (non `CustomerMissing`: qui è un dato dell'utente);
   - cliente senza operatore → `CustomerUnassigned` (AC67);
-  - permesso `canCreateContact`: admin o operatore del cliente (D2), altrimenti `ContactForbidden`;
-  - contatto attivo già presente → `ContactAlreadyActive` (AC67);
-  - altrimenti inserisce un contatto `chiamare`, con l'operatore del cliente, priorità 120 e `closedAt` NULL, e scrive `state_change` (da NULL).
+  - permesso `canCreateContact` (T3.1b): admin o operatore del cliente, altrimenti `ContactForbidden`;
+  - contatto attivo già presente → `ContactAlreadyActive` con il suo id (AC67);
+  - altrimenti `replaceActiveContact` con stato `chiamare`, l'operatore del cliente, priorità 120, `closedAt` NULL e `mostRecent: true`; una riga `state_change` (da NULL) con la sorgente; `touchCustomer`.
 
-  Un `DbError` con codice `23505` dell'indice diventa `ContactAlreadyActive` (`Effect.catchTag`). È una difesa aggiuntiva: con il lock del cliente non si può provocare senza mock interni, quindi non ha un test proprio. La garanzia dal DB è testata in T2.3.
-- **validation**: test DB per:
-  - AC66;
-  - AC67, entrambi i rami;
-  - D2: l'operatore di un altro cliente riceve FORBIDDEN.
+  Un `DbError` con codice `23505` dell'indice diventa `ContactAlreadyActive` (`Effect.catchTag`). È una difesa aggiuntiva: con il lock del cliente non si può provocare senza mock interni, quindi non ha un test proprio. La garanzia dal DB è testata in T2.3; la concorrenza vera in PR7.
+- **validation**: test DB via caller per:
+  - AC66: contatto attivo in `chiamare`, operatore del cliente, riga `state_change` con sorgente `detail`;
+  - AC67, entrambi i rami, senza scritture;
+  - D2: l'operatore di un altro cliente riceve FORBIDDEN;
+  - cliente inesistente → NOT_FOUND;
+  - atomicità con `failNextInsertInto(task_event_log)`.
 - **status**: Planned
 - **log**:
 - **files edited/created**:
@@ -1042,24 +1207,19 @@ Vale per T3.10, T3.11, T3.12, T5.7 e T5.9. Le letture dai Server Component (T5.4
 - **relation_mode**: n/a (D6)
 - **tdd_target**: "'Crea contatto' su un cliente assegnato crea un contatto attivo in `chiamare` assegnato all'operatore del cliente".
 - **review_mode**: cli
+- **complexity**: high
 
-#### T3.5: Mutation `task.setPriority` e `task.resolveAlert`
-- **depends_on**: [T3.2, T1.7]
-- **location**: `src/server/services/contact/setPriority.ts`, `src/server/services/contact/resolveAlert.ts`, `src/server/api/routers/task/PUT/index.ts`, `src/server/api/routers/task/DELETE/index.ts`, `_test/*.db.test.ts`
-- **description**:
-  - **`setPriority({ taskId, priority: "low" | "medium" | "high" | "urgent" | "auto" })`:**
-    - con una fascia: `priority = bandValue`, `customPriority = true` (AC42);
-    - con `auto`: solo `customPriority = false` (AC43, D3).
-  - **`resolveAlert({ alertId, source })`:**
-    - guardia sul contatto dell'alert;
-    - alert già risolto → nessun effetto;
-    - altrimenti chiusura, `task.alertId = null` e log `alert_resolved` (AC29).
+#### T3.5a: Mutation `task.setPriority`
+- **depends_on**: [T3.1a, T3.2b, T3.4]
+- **location**: `src/server/services/contact/setPriority.ts`, `src/server/api/routers/task/PUT/index.ts`, `src/server/api/routers/task/index.ts`, `src/server/services/contact/_test/setPriority.db.test.ts`
+- **description**: Input: `{ taskId, priority: "low" | "medium" | "high" | "urgent" | "auto" }`. Passa dalla guardia (AC27, AC49).
+  - con una fascia: `priority = bandValue(fascia)`, `customPriority = true` (AC42);
+  - con `auto`: solo `customPriority = false`; la priorità resta finché il cron `priority` non la ricalcola (AC43, D3).
 
-  Entrambe passano dalla guardia (AC27, AC49).
-- **validation**: test DB su:
+  Nessuna riga di log (`task_event_log` non ha un'azione per la priorità, e lo schema non cambia) e nessun aggiornamento di `customers.updated_at`, come oggi.
+- **validation**: test DB via caller:
   - fascia manuale e ritorno ad "Automatica";
-  - rifiuto per contatto superato e per permesso;
-  - chiusura dell'alert con `resolvedBy` = attore.
+  - rifiuto per contatto superato e per permesso, senza scritture.
 - **status**: Planned
 - **log**:
 - **files edited/created**:
@@ -1068,29 +1228,32 @@ Vale per T3.10, T3.11, T3.12, T5.7 e T5.9. Le letture dai Server Component (T5.4
 - **relation_mode**: n/a (D6)
 - **tdd_target**: "impostare 'alta' salva priorità 100 con `customPriority=true`".
 - **review_mode**: cli
+- **complexity**: high
 
 #### T3.6: Mutation `task.setCallback` (Imposta richiamo)
-- **depends_on**: [T3.2, T1.7]
-- **location**: `src/server/services/contact/setCallback.ts`, `src/server/api/routers/task/POST/index.ts`, `_test/setCallback.db.test.ts`
-- **description**: Input: `{ taskId, deadline, message?, replacesAlertId: number | null }`.
-  - Passa dalla guardia.
-  - Ammesso solo se lo stato è un esito o `nessuno` (AC46).
-  - `deadline` non può essere nel passato (giorno di Roma, A4).
-  - Se l'alert aperto non è `replacesAlertId` → `ALERT_CONFIRMATION_REQUIRED` con l'alert attuale (AC44).
-  - Altrimenti:
-    - chiude l'alert sostituito (log `alert_resolved`, sorgente `detail`);
+- **depends_on**: [T3.1a, T3.1c, T3.5b, T3.5a]
+- **location**: `src/server/services/contact/setCallback.ts`, `src/server/api/routers/task/POST/index.ts`, `src/server/api/routers/task/index.ts`, `src/server/services/contact/_test/setCallback.db.test.ts`
+- **description**: Input: `{ taskId, deadline, message?, replacesAlertId: number | null }`. Un solo `transaction`:
+  - passa dalla guardia;
+  - lo stato deve ammettere un richiamo (`canSetCallback`, AC46), altrimenti `CallbackNotAllowed`;
+  - `deadline` non può essere in un giorno passato (`isPastDay`, giorno di Roma, A4), altrimenti `DeadlineInPast`;
+  - se c'è un alert aperto e non è `replacesAlertId` → `AlertConfirmationRequired` con l'alert attuale (AC44). Se invece non c'è nessun alert aperto, perché quello da sostituire è stato chiuso nel frattempo (dalla "X" di un collega o dal cron), il richiamo si salva: non c'è niente da sostituire e nessun alert da mostrare;
+  - altrimenti:
+    - chiude l'alert sostituito con `resolveOpenAlert` (sorgente `detail`);
     - crea il nuovo alert e aggiorna `task.alertId`;
-    - porta lo stato a `richiamare`, con log `state_change` solo se lo stato cambia (AC45);
-    - chiama `updateCustomerUpdatedAt`.
+    - porta lo stato a `richiamare`, con una riga `state_change` solo se lo stato cambia (AC45);
+    - `touchCustomer`.
 
-  Sostituisce il ramo morto di `createAlert` ([POST:388](../../../../src/server/api/routers/task/POST/index.ts)).
-- **validation**: test DB:
-  - da `app.to`: stato `richiamare` e una riga `state_change`;
-  - da `richiamare` con alert: l'alert sostituito va nello Storico, nessuna riga `state_change`;
-  - da `chiamare`: rifiuto;
-  - data passata: rifiuto;
-  - `replacesAlertId` non più valido: rifiuto senza modifiche;
-  - atomicità.
+  Sostituisce `createAlert`, che oggi non blocca il cliente, non chiude l'alert precedente, non scrive nel log e ha un ramo morto che lancerebbe un'eccezione ([POST:305](../../../../src/server/api/routers/task/POST/index.ts)).
+- **validation**: test DB via caller:
+  - da `app.to`: alert creato, stato `richiamare` e una riga `state_change` con sorgente `detail`;
+  - da `richiamare` con alert: l'alert sostituito va nello Storico, una riga `alert_resolved`, nessuna riga `state_change`;
+  - da `chiamare`: `CALLBACK_NOT_ALLOWED`;
+  - scadenza di ieri: `DEADLINE_IN_PAST`; scadenza di oggi (giorno di Roma): ammessa;
+  - `replacesAlertId` non più valido perché un collega ha impostato un altro alert: `ALERT_CONFIRMATION_REQUIRED` con l'alert attuale, senza modifiche;
+  - `replacesAlertId` di un alert chiuso nel frattempo, senza altri alert aperti: il richiamo si salva, e l'alert chiuso non cambia (né `resolved_by` né il log);
+  - atomicità con `failNextInsertInto(task_event_log)`;
+  - rifiuti per contatto superato e per permesso.
 - **status**: Planned
 - **log**:
 - **files edited/created**:
@@ -1099,18 +1262,24 @@ Vale per T3.10, T3.11, T3.12, T5.7 e T5.9. Le letture dai Server Component (T5.4
 - **relation_mode**: n/a (D6)
 - **tdd_target**: "'Imposta richiamo' su un contatto `app.to` crea l'alert, porta lo stato a `richiamare` e scrive una riga `state_change` con sorgente `detail`".
 - **review_mode**: cli
+- **complexity**: high
 
 #### T3.7: Mutation `task.reassign` (solo admin)
-- **depends_on**: [T3.2, T1.7]
-- **location**: `src/server/services/contact/reassign.ts`, `src/server/api/routers/task/PUT/index.ts`, `_test/reassign.db.test.ts`
-- **description**: `adminProcedure`. Input: `{ taskId, operatorId }`.
-  - Passa dalla guardia: il contatto deve essere attivo.
-  - Aggiorna `task.operatorId` e `customers.operatorId` (S1, AC47).
-  - Scrive `operator_reassign` (sorgente `detail`) se l'operatore cambia.
-  - Non cambia lo stato.
-- **validation**: test DB:
-  - un admin riassegna: entrambi gli operatori si aggiornano e c'è una riga di log;
+- **depends_on**: [T3.2b, T3.6]
+- **location**: `src/server/services/contact/reassign.ts`, `src/server/api/routers/task/PUT/index.ts`, `src/server/api/routers/task/index.ts`, `src/server/services/contact/_test/reassign.db.test.ts`
+- **description**: `adminProcedure`. Input: `{ taskId, operatorId }`. Un solo `transaction`:
+  - passa dalla guardia: il contatto deve essere attivo;
+  - l'operatore di destinazione deve essere un operatore con un utente (`users`), come chiede `enforceIsActiveOperator` per lavorare; altrimenti `OperatorNotFound`. Lo schema non ha un flag "attivo", e l'operatore di sistema non ha utente: si rifiuta;
+  - aggiorna `task.operatorId` e `customers.operatorId`, ciascuno se è diverso da quello scelto (S1, AC47);
+  - scrive una riga `operator_reassign` (sorgente `detail`) **per ogni cosa che cambia**, come vuole lo schema di `task_event_log` (una riga, un fatto): per il contatto con il suo `taskId` e `fromOperatorId` = operatore del contatto; per il cliente con `taskId` NULL e `fromOperatorId` = operatore del cliente, come oggi il form. La stessa regola vale per `handover` (T3.8a);
+  - non cambia lo stato; `touchCustomer`.
+
+  In PR3 nessuna interfaccia la usa: il comando arriva con il dettaglio di Contatti (T5.7).
+- **validation**: test DB via caller:
+  - un admin riassegna un contatto il cui cliente ha lo stesso operatore: entrambi si aggiornano, due righe di log (contatto e cliente);
+  - contatto già dell'operatore scelto e cliente di un altro: il cliente si allinea, una riga con `taskId` NULL; entrambi già suoi: nessuna scrittura;
   - un OPERATORE riceve FORBIDDEN, senza modifiche (AC50);
+  - operatore di destinazione inesistente, o l'operatore di sistema → BAD_REQUEST;
   - un contatto superato viene rifiutato.
 - **status**: Planned
 - **log**:
@@ -1120,93 +1289,179 @@ Vale per T3.10, T3.11, T3.12, T5.7 e T5.9. Le letture dai Server Component (T5.4
 - **relation_mode**: n/a (D6)
 - **tdd_target**: "un admin che riassegna un contatto aggiorna l'operatore del contatto e del cliente e scrive `operator_reassign`".
 - **review_mode**: cli
+- **complexity**: high
 
-#### T3.8: Assegnazioni di clienti e contatti sul server (D5, P4, P7)
-- **depends_on**: [T1.1, T1.3, T1.4, T1.7, T3.1]
-- **location**: `src/server/api/routers/customer/PUT/index.ts` (`updateCustomerFromDashboard`, `assignToYourself`, `bulkUpdateCustomers`, `updateCustomer`), `src/server/api/routers/customer/index.ts`, `src/server/api/routers/task/POST/index.ts` (`bulkHandleTask`), `src/app/dashboard/customers/[id]/_actions/updateCustomer.ts`, `src/server/services/customer/assignment.ts`, `src/server/api/routers/customer/_test/customerOperator.db.test.ts`
+#### T3.8a: "Passaggio di consegne" sul server e form senza operatore (D13, P4)
+- **depends_on**: [T3.1b, T3.2a, T3.2b]
+- **location**: `src/server/services/customer/assignment.ts`, `src/server/services/customer/errors.ts`, `src/server/api/routers/customer/PUT/index.ts` (`handover` nuova, `updateCustomerFromDashboard`), `src/server/api/routers/customer/index.ts`, `src/app/dashboard/customers/[id]/_actions/updateCustomer.ts`, `src/server/api/routers/customer/_test/customerOperator.db.test.ts`
+- **description**: Il cambio di operatore dalla scheda cliente diventa un'azione separata (D13), e il form salva solo l'anagrafica.
+  - **`customer.handover({ customerId, toOperatorId })`**: servizio Effect in `src/server/services/customer/assignment.ts`, eseguito con `runTrpc` (D9). Un solo `transaction`, che comincia con `lockCustomer`:
+    - cliente inesistente → `CustomerNotFound`;
+    - permesso `canHandover` (T3.1b): un admin su ogni cliente, un operatore solo sui clienti suoi. Altrimenti `CustomerAssignmentForbidden` (FORBIDDEN). Un operatore su un cliente non assegnato usa "Assegna a te" (T3.8b);
+    - l'operatore di destinazione è un operatore con un utente, come in T3.7, altrimenti `OperatorNotFound`;
+    - la destinazione deve essere diversa dall'operatore attuale del cliente, per tutti, admin compresi: il passaggio di consegne cambia sempre il cliente (D13). Altrimenti `HandoverSameOperator` (BAD_REQUEST). Allineare il solo contatto a un cliente che ha già l'operatore giusto è la riassegnazione dell'admin (`task.reassign`, T3.7; nell'interfaccia con T5.7). Così un operatore non può prendersi il contatto di un collega senza che il cliente cambi mani;
+    - aggiorna `customers.operatorId`;
+    - blocca e aggiorna il contatto attivo, se c'è e se ha un operatore diverso dalla destinazione, **in qualunque stato** (D13);
+    - scrive una riga `operator_reassign` (sorgente `detail`) per ogni cosa che cambia, con la regola di T3.7: sempre quella del cliente (`taskId` NULL, `fromOperatorId` = operatore del cliente, come oggi il form) e, se il contatto si sposta, quella del contatto (con il suo `taskId`, `fromOperatorId` = operatore del contatto);
+    - `touchCustomer`.
+  - **`updateCustomerFromDashboard`:** l'input non ha più `operatorId`; Zod scarta la chiave, quindi una richiesta che la contiene non cambia l'operatore. Non scrive più la riga `operator_reassign`, che passa a `handover`. Il resto resta com'è: non si converte a Effect, perché non tocca più task né operatori (P8).
+  - **Action del form:** via `operatorId` dallo schema, la lettura di `getActiveTask` e la chiamata a `task.updateTask`. Sparisce il riallineamento silenzioso di oggi: a ogni salvataggio il form inviava l'operatore del cliente in un campo nascosto, e la action spostava il contatto in `chiamare` se aveva un operatore diverso (finding 20).
+  - I codici `CUSTOMER_ASSIGNMENT_FORBIDDEN`, `HANDOVER_SAME_OPERATOR` e `OPERATOR_NOT_FOUND` stanno nei codici di T3.2a, così `describeContactError` li traduce anche per la modale (T3.17).
+- **validation**: test DB via caller:
+  - l'operatore del cliente passa le consegne di un cliente con contatto `app.to`: cliente e contatto passano al nuovo operatore, "Contattato il" resta, ci sono due righe `operator_reassign`, una del cliente (`taskId` NULL) e una del contatto (con il `taskId`);
+  - contatto di un collega su un cliente mio: passa anche lui, e la riga del contatto ha `fromOperatorId` = collega;
+  - cliente senza contatto attivo: si sposta solo il cliente, una riga con `taskId` NULL;
+  - contatto già dell'operatore di destinazione: si sposta solo il cliente, una riga con `taskId` NULL;
+  - destinazione uguale all'operatore attuale del cliente, con il contatto di un altro: `HANDOVER_SAME_OPERATOR`, nessuna scrittura, per un operatore e per un admin;
+  - un OPERATORE su un cliente non suo, o non assegnato: FORBIDDEN, nessuna modifica; un admin su un cliente non assegnato: ammesso;
+  - destinazione inesistente o operatore di sistema: BAD_REQUEST;
+  - atomicità con `failNextInsertInto(task_event_log)`;
+  - via `getErrorShape` e superjson, un `CustomerAssignmentForbidden` arriva come `data.contactError = { code: 'CUSTOMER_ASSIGNMENT_FORBIDDEN', … }` (marcatore condiviso, T3.2a);
+  - `updateCustomerFromDashboard` con `operatorId` nella richiesta salva l'anagrafica e non cambia né il cliente né il contatto, e non scrive righe di log;
+  - salvare il form di un cliente il cui contatto in `chiamare` ha un altro operatore non sposta più il contatto.
+- **status**: Planned
+- **log**:
+- **files edited/created**:
+- **backlog_item_id**: n/a
+- **backlog_item_url**: n/a
+- **relation_mode**: n/a (D6)
+- **tdd_target**: "il passaggio di consegne di un cliente con contatto `app.to` sposta cliente e contatto sul nuovo operatore e scrive una riga `operator_reassign` per il cliente e una per il contatto".
+- **review_mode**: cli
+- **complexity**: high
+
+#### T3.8b: "Assegna a te" solo sui clienti non assegnati (P4)
+- **depends_on**: [T3.8a]
+- **location**: `src/server/services/customer/assignment.ts`, `src/server/api/routers/customer/PUT/index.ts` (`assignToYourself`), `src/server/api/routers/customer/_test/customerOperator.db.test.ts`
+- **description**: `assignToYourself` diventa un servizio Effect nello stesso modulo, in un `transaction` che comincia con `lockCustomer`. Ammesso solo se il cliente non è assegnato (`canSelfAssign`), altrimenti `CustomerAssignmentForbidden`. Il resto resta come oggi: aggiorna solo il cliente e scrive `operator_reassign` con sorgente `self_assign`. Il link passa da una server action ([assignToYou.ts](../../../../src/app/dashboard/customers/[id]/_actions/assignToYou.ts)) e l'interfaccia lo mostra solo sui clienti non assegnati. Oggi un rifiuto non mostrerebbe nulla: il link aggiorna il valore a schermo prima della risposta e non gestisce l'errore. Lo sistema T3.17, che riscrive quella parte del form.
+- **validation**: test DB via caller: su un cliente non assegnato funziona come oggi; su un cliente già assegnato → FORBIDDEN, nessuna modifica. Browser: "Assegna a te" funziona come oggi.
+- **status**: Planned
+- **log**:
+- **files edited/created**:
+- **backlog_item_id**: n/a
+- **backlog_item_url**: n/a
+- **relation_mode**: n/a (D6)
+- **tdd_target**: "'Assegna a te' su un cliente già assegnato a un altro operatore risponde FORBIDDEN e non cambia l'operatore".
+- **review_mode**: mixed
+- **assigned_skills**: agent-browser
+- **complexity**: high
+
+#### T3.8c: Massive solo per admin e test mancanti della massiva (P7, D10)
+- **depends_on**: [T3.8b, T3.7]
+- **location**: `src/server/api/routers/task/POST/index.ts` (`bulkHandleTask`), `src/server/api/routers/customer/PUT/index.ts` (`bulkUpdateCustomers`, `updateCustomer`), `src/server/api/routers/customer/index.ts`, `src/server/api/routers/task/_test/bulkHandleTask.db.test.ts`, `src/server/api/routers/customer/_test/bulkUpdateCustomers.db.test.ts`
 - **description**:
-  - **Effect (D9):** `updateCustomerFromDashboard` e `assignToYourself` diventano servizi Effect in `src/server/services/customer/assignment.ts`, eseguiti con `runTrpc`. Un rifiuto è un errore tipizzato (`CustomerAssignmentForbidden`) che il bordo traduce in FORBIDDEN. `bulkUpdateCustomers` cambia solo il tipo di procedura e non si converte (P8).
-  - **`updateCustomerFromDashboard`:** tutto dentro un solo `transaction`.
-    - Se `operatorId` cambia, lo ammette solo `canChangeCustomerOperator`: admin oppure operatore attuale del cliente. Le altre modifiche del form restano come oggi.
-    - Se l'operatore cambia e il contatto attivo è in `chiamare`, aggiorna `task.operatorId` e scrive `operator_reassign` (sorgente `detail`, D5).
-  - **`assignToYourself`:** solo se il cliente non è assegnato (`canSelfAssign`); altrimenti FORBIDDEN.
-  - Il form del cliente passa da una server action: un rifiuto mostra l'errore generico di oggi. Va bene così, perché l'interfaccia non offre il cambio a chi non può farlo (P4).
-  - **Action del form:** via la chiamata a `task.updateTask`.
   - **P7:**
-    - `task.bulkHandleTask` e `customer.bulkUpdateCustomers` diventano `adminProcedure`, senza toccarne la logica;
-    - `customer.updateCustomer` si rimuove (nessun chiamante; `grep` per conferma).
-- **validation**: test DB:
-  - un contatto in `chiamare` segue il nuovo operatore, con una riga di log;
-  - un contatto in un altro stato resta invariato;
-  - operatore invariato → nessuna riga;
-  - un OPERATORE che non è l'operatore del cliente non può cambiarlo;
-  - "Assegna a te" su un cliente già assegnato → FORBIDDEN;
-  - un OPERATORE che chiama `bulkHandleTask` o `bulkUpdateCustomers` riceve FORBIDDEN senza modifiche; un ADMIN ottiene i risultati di T1.3;
+    - `task.bulkHandleTask` e `customer.bulkUpdateCustomers` diventano `adminProcedure`, senza toccarne la logica (A7). `bulkUpdateCustomers` non si converte a Effect e resta fuori dalla regola dei lock (P8, §15);
+    - `customer.updateCustomer` (`protectedProcedure`, nessun chiamante) si rimuove.
+  - **Test mancanti della massiva** (tech-debt "Ordine e pareggi nella massiva senza test", D10): i casi 3 e 4 con lo stesso stato o lo stesso operatore, quando le righe `state_change` o `operator_reassign` non si scrivono. I test sui pareggi di `updated_at` non servono più: con l'indice unico di PR2 c'è un solo contatto attivo per cliente.
+- **validation**:
+  - un OPERATORE che chiama `bulkHandleTask` o `bulkUpdateCustomers` riceve FORBIDDEN senza modifiche; un ADMIN ottiene i risultati di T1.3, con le asserzioni invariate;
+  - casi 3 e 4 con lo stesso stato e con lo stesso operatore: nessuna riga di log per ciò che non cambia;
   - `customer.updateCustomer` non esiste più.
 
-  Browser: il form, "Assegna a te" e l'assegnazione massiva (da admin) funzionano come oggi.
+  Browser: l'assegnazione massiva, da admin, funziona come oggi.
 - **status**: Planned
 - **log**:
 - **files edited/created**:
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a (D6)
-- **tdd_target**: "cambiare l'operatore di un cliente con contatto in `chiamare` sposta anche il contatto e scrive `operator_reassign`".
+- **tdd_target**: "un OPERATORE che chiama `bulkHandleTask` riceve FORBIDDEN e nessun cliente cambia".
 - **review_mode**: mixed
 - **assigned_skills**: agent-browser
+- **complexity**: high
 
-#### T3.9: Componenti client condivisi del contatto
-- **depends_on**: [T3.1, T3.2]
-- **location**: `src/components/custom/contact/AlertCloseConfirmDialog.tsx`, `ContactStateSelect.tsx`, `ReadOnlyReason.tsx`, `useContactMutationFeedback.ts`, `src/components/custom/badge/TaskStatusBadge.tsx` (spostato da `CustomerColumns.tsx`), `src/components/custom/contact/_test/*.test.tsx`
-- **description**: I componenti sono **presentazionali**: ricevono valori e callback (`onChange`, `onConfirm`, `pending`) e non chiamano tRPC. Così si testano senza provider e senza mock interni. Il collegamento alle mutation lo fanno T3.10, T3.11 e T5.x, e si verifica nel browser.
-  - **`AlertCloseConfirmDialog`:** modale sulla Dialog Radix esistente.
-    - Mostra data e messaggio dell'alert, con il testo della FLOW "Cambiando lo stato, il richiamo del <data> verrà chiuso e spostato nello Storico", e i pulsanti [Annulla] / [Cambia stato]. Esc equivale ad Annulla.
-    - Si apre da codice, quindi riporta il focus a mano: `onCloseAutoFocus` → `preventDefault()` + focus sul trigger del selettore.
-  - **`ContactStateSelect`:**
-    - le opzioni vengono da `selectableStates` e sono elementi focalizzabili (radio item di `DropdownMenu`);
-    - durante il salvataggio usa `aria-disabled` e ignora i clic, invece di `disabled`, così il focus non si perde;
-    - larghezza fissa `w-40`;
-    - mostra il valore salvato finché il server non conferma; niente valori ottimistici.
-  - **`ReadOnlyReason`:** badge in sola lettura con il motivo ("Assegnato a <Nome Cognome>", "Non assegnato" con l'indicazione "Assegna a te", "Superato").
-  - **`describeContactError(error)`:** funzione pura, testata da sola.
-  - **`useContactMutationFeedback({ activeContactHref? })`:** sottile, usa `describeContactError`:
-    - traduce `data.contactError` nei messaggi della FLOW: permessi con il nome, contatto superato (con [Vai al contatto attivo] solo se c'è un `activeContactHref`: in PR3 no, P5), "Modifica non salvata, riprova" per gli errori generici;
-    - riporta il controllo al valore salvato e ricarica i dati;
-    - con `ALERT_CONFIRMATION_REQUIRED` riapre la modale con l'alert ricevuto (AC37).
-- **validation**: test Testing Library (jsdom), senza tRPC:
-  - Annulla ed Esc non chiamano `onConfirm`;
-  - Conferma la chiama con l'id dell'alert;
-  - `describeContactError` di un FORBIDDEN restituisce il messaggio con il nome;
-  - il selettore torna al valore salvato;
-  - `followup` non è tra le opzioni;
-  - dopo la chiusura della modale il focus torna al trigger.
+#### T3.9a: Messaggi dei rifiuti del server
+- **depends_on**: [T3.2a]
+- **location**: `src/components/custom/contact/describeContactError.ts`, `src/components/custom/contact/useContactMutationFeedback.ts`, `src/components/custom/contact/_test/describeContactError.test.ts`
+- **description**:
+  - **`describeContactError(error)`**: funzione pura che legge l'errore con `readContactError` e restituisce il messaggio della FLOW:
+    - `CONTACT_FORBIDDEN`: "Non puoi modificare questo contatto: è assegnato a <Nome Cognome>", oppure "…: non è assegnato";
+    - `CONTACT_SUPERSEDED`: "Questo contatto è stato sostituito da uno più recente". In PR3 senza [Vai al contatto attivo] (P5): Contatti non esiste ancora;
+    - `CUSTOMER_UNASSIGNED`: "Cliente non assegnato";
+    - `CONTACT_ALREADY_ACTIVE`: "Questo cliente ha già un contatto attivo";
+    - `CONTACT_TRANSITION_REJECTED`, `CALLBACK_NOT_ALLOWED`, `DEADLINE_IN_PAST`: un messaggio con il motivo;
+    - `CUSTOMER_ASSIGNMENT_FORBIDDEN`: "Non puoi passare le consegne di questo cliente"; `HANDOVER_SAME_OPERATOR`: "Il cliente è già assegnato a questo operatore"; `OPERATOR_NOT_FOUND`: "Operatore non valido";
+    - qualunque altro errore, compresi rete e `INTERNAL_SERVER_ERROR`: "Modifica non salvata, riprova".
+  - **`useContactMutationFeedback({ activeContactHref? })`**: sottile, usa `describeContactError`:
+    - mostra il toast `destructive` di 8000 ms (P6 rivisto);
+    - ricarica i dati (`router.refresh()`), così il controllo torna al valore salvato;
+    - con `ALERT_CONFIRMATION_REQUIRED` non mostra toast: passa al chiamante l'alert ricevuto, che apre la modale (riga e scheda) o aggiorna il form (richiamo).
+- **validation**: unit test di `describeContactError` per ogni codice, per un errore HTTP e per uno in-process, e per un errore senza `contactError`.
 - **status**: Planned
 - **log**:
 - **files edited/created**:
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a (D6)
-- **tdd_target**: "con un alert aperto, scegliere un nuovo stato apre la modale e 'Annulla' non invia nessuna modifica".
+- **tdd_target**: "`describeContactError` di un `CONTACT_FORBIDDEN` con assegnatario 'Mario Rossi' restituisce 'Non puoi modificare questo contatto: è assegnato a Mario Rossi'".
+- **review_mode**: cli
+- **complexity**: medium
+
+#### T3.9b: Componenti condivisi del contatto
+- **depends_on**: [T3.1a, T3.1b]
+- **location**: `src/components/custom/contact/ContactStateSelect.tsx`, `AlertCloseConfirmDialog.tsx`, `ReadOnlyReason.tsx`, `src/components/custom/badge/TaskStatusBadge.tsx` (spostato da `TaskBadgeV2` di `CustomerColumns.tsx`), `src/components/custom/contact/_test/*.test.tsx`, `src/test/setup.ts` (polyfill jsdom per Radix), `package.json` e `pnpm-lock.yaml` (`@testing-library/user-event` in devDependencies; la CI installa con `--frozen-lockfile`)
+- **description**: I componenti sono **presentazionali**: ricevono valori e callback (`onChange`, `onConfirm`, `onCancel`, `pending`) e non chiamano tRPC. Così si testano senza provider e senza mock interni. Il collegamento alle mutation lo fanno T3.10, T3.11a e T5.x, e si verifica nel browser. Sono i primi test di componenti del repo: `@testing-library/react` è installato ma nessun test lo usa.
+  - **`ContactStateSelect`:**
+    - `DropdownMenu` con radio item, quindi le opzioni si raggiungono da tastiera (finding 12); le opzioni vengono da `selectableStates`;
+    - **il menu si apre e si chiude senza animazione**, solo in questo componente: è l'azione più usata e si apre da tastiera (P6 rivisto). Il primitivo condiviso non cambia;
+    - larghezza fissa `w-40` in ogni stato, attesa compresa;
+    - mostra il valore salvato che riceve; nessun valore ottimistico;
+    - con `pending`: spinner nello spazio della freccia, `aria-busy` e `aria-disabled`, e `pointerdown`, Enter, Spazio e freccia giù ignorati.
+  - **`AlertCloseConfirmDialog`:** modale sulla Dialog Radix esistente, riusata com'è.
+    - Mostra data e messaggio dell'alert, con il testo della FLOW "Cambiando lo stato, il richiamo del <data> verrà chiuso e spostato nello Storico".
+    - Pulsanti nell'ordine [Annulla] (`outline`) e [Cambia stato] (`default`, non `destructive`: l'alert va nello Storico, non si cancella). Il focus iniziale è su [Annulla].
+    - Si apre solo dopo che il menu si è chiuso e ha restituito il focus al trigger.
+    - Annulla, Esc, il clic sull'overlay e la X chiudono senza chiamare `onConfirm`. [Cambia stato] chiama `onConfirm` una sola volta per apertura.
+    - Si apre da codice, quindi riporta il focus a mano: `onCloseAutoFocus` → `preventDefault()` + focus sul trigger del selettore.
+  - **`ReadOnlyReason`:** badge in sola lettura con il motivo ("Assegnato a <Nome Cognome>", "Non assegnato" con l'indicazione "Assegna a te", "Superato"), calcolato con `contactEditability`.
+  - **Test in jsdom:** Radix ha bisogno di `hasPointerCapture`, `scrollIntoView` e `ResizeObserver`, che jsdom non ha: i polyfill vanno in `src/test/setup.ts`, solo per l'ambiente jsdom. Le interazioni passano da `@testing-library/user-event`.
+- **validation**:
+  - test Testing Library (jsdom), senza tRPC:
+    - Annulla, Esc e il clic sull'overlay non chiamano `onConfirm`; un doppio clic su [Cambia stato] la chiama una volta, con l'id dell'alert;
+    - all'apertura il focus è su [Annulla]; dopo la chiusura torna al trigger;
+    - `followup` non è tra le opzioni; da `followup` non c'è `chiamare`;
+    - con `pending`, clic, Enter, Spazio e freccia giù non aprono il menu e il focus resta sul trigger;
+    - il selettore mostra il valore ricevuto, non quello scelto;
+  - browser (pagina dei componenti nell'app di sviluppo, o la riga Clienti dopo T3.10):
+    - all'apertura, `getAnimations()` sul contenuto del menu è vuoto;
+    - il trigger è largo 160 px in ogni stato, attesa compresa;
+    - con `prefers-reduced-motion` emulato lo spinner non ha animazioni in corso;
+    - dopo ogni chiusura della modale, il clic sul trigger di un'altra riga apre il suo menu (nessun `pointer-events: none` rimasto su `body`).
+- **status**: Planned
+- **log**:
+- **files edited/created**:
+- **backlog_item_id**: n/a
+- **backlog_item_url**: n/a
+- **relation_mode**: n/a (D6)
+- **tdd_target**: "con un alert aperto, 'Annulla' nella modale non chiama `onConfirm` e il focus torna sul trigger del selettore".
 - **review_mode**: mixed
 - **assigned_skills**: agent-browser
+- **complexity**: medium
 
 #### T3.10: Riga Clienti sulle nuove mutation
-- **depends_on**: [T3.3, T3.4, T3.9]
-- **location**: `src/app/dashboard/customers/_components/CustomerColumns.tsx`, `src/app/dashboard/customers/_actions/taskStatusAction.ts` (eliminato)
+- **depends_on**: [T3.3, T3.4, T3.9a, T3.9b]
+- **location**: `src/app/dashboard/customers/_components/CustomerColumns.tsx` (`StateSelector`, colonna stato), `src/app/dashboard/customers/_actions/taskStatusAction.ts` (eliminato), `src/server/api/routers/customer/GET/index.ts` (`getAllCustomers`: nome dell'operatore del contatto)
 - **description**:
-  - `StateSelector` usa `ContactStateSelect`, `AlertCloseConfirmDialog` e `task.changeState` (sorgente `list`), chiamata con `useMutation` dal client (vedi la forma comune di PR3).
-  - Il "+" usa `task.createContact` (sorgente `list`), anche questa con `useMutation`.
-  - Prima del clic, `contactEditability` decide se mostrare il selettore o `ReadOnlyReason` (P5).
-  - Scompaiono il controllo di permesso client di oggi (quello che confronta l'operatore del cliente con quello della task) e il toast di conferma dell'alert.
-  - `taskStatusAction.ts` si elimina. Dopo il successo: `router.refresh()`.
-- **validation**: browser, sul DB di sviluppo, con un OPERATORE e un ADMIN:
-  - cambio di stato semplice;
-  - cambio con alert: modale, poi l'alert è nello Storico;
-  - riapertura da un esito a `chiamare`: un solo contatto attivo;
-  - riga di un collega: sola lettura con "Assegnato a <Nome>";
-  - richiesta forzata da un operatore non proprietario: messaggio del server e valore ripristinato;
-  - "+" su un cliente senza operatore: "Cliente non assegnato";
-  - l'operatore del contatto non cambia (AC41).
+  - `StateSelector` usa `ContactStateSelect`, `AlertCloseConfirmDialog` e `task.changeState` (sorgente `list`), chiamata con `useMutation` dal client e con il percorso di conferma di P10.
+  - Il "+" usa `task.createContact` (sorgente `list`), anche questa con `useMutation`. Si vede agli admin e all'operatore del cliente (`canCreateContact`).
+  - Prima del clic, `contactEditability` decide se mostrare il selettore o `ReadOnlyReason` (P5). Per scrivere "Assegnato a <Nome Cognome>" serve il nome dell'operatore **del contatto**: oggi `getAllCustomers` restituisce solo quello del cliente e l'id dell'operatore della task. Si aggiunge alla select il nome e il cognome dell'operatore della task (join con alias su `operators`). PR6 riscrive comunque la query (T6.1).
+  - Scompaiono `useOptimistic`, il controllo di permesso client di oggi (quello che confronta l'operatore del cliente con quello della task), il toast di conferma dell'alert e la chiamata a `resolveAlerts`.
+  - `taskStatusAction.ts` si elimina, e con lui la chiamata separata a `customer.updateLastEdit`: ora lo fa il server, nella stessa transazione (AC39).
+  - Dopo il successo: `router.refresh()`, con l'attesa e il ripiego del focus della forma comune.
+  - Riscontro del successo: nessun toast nuovo, come oggi. Il nuovo valore salvato fa da conferma (A9).
+- **validation**: browser, sul DB di sviluppo, con due OPERATORI e un ADMIN. Ogni voce è un controllo esplicito:
+  - **percorso felice:** cambio di stato semplice; "Contattato il" si valorizza solo dopo la risposta del server e la cella non cambia larghezza (AC31);
+  - **AC36:** con un alert aperto si apre la modale con data e messaggio; Annulla, Esc e overlay non cambiano nulla; confermando, l'alert è nello Storico della scheda;
+  - **AC37:** con la riga caricata prima che un collega imposti un richiamo, il cambio di stato apre la modale con il nuovo alert;
+  - **AC34:** la riapertura da un esito a `chiamare` lascia un solo contatto attivo, e il focus resta sul selettore di quella riga;
+  - **AC40:** lo stato attuale non è tra le opzioni;
+  - **AC41:** l'operatore del contatto non cambia, anche quando è diverso da quello del cliente;
+  - **AC51 e A1:** riga di un collega in sola lettura con "Assegnato a <Nome>"; con operatore del contatto diverso da quello del cliente (dopo "Assegna Clienti"), un terzo operatore vede il nome dell'operatore del contatto; contatto non assegnato di un cliente non mio con "Non assegnato";
+  - **AC52:** richiesta forzata da un operatore non proprietario (chiamata tRPC diretta con la riga ancora aperta): toast con il nome, visibile 8 s, valore salvato a schermo, focus sul trigger. Contatto superato in un'altra scheda: "Questo contatto è stato sostituito da uno più recente". Rete lenta o bloccata (DevTools): "Modifica non salvata, riprova" e nessun valore non salvato a schermo;
+  - **attesa:** con la rete rallentata il trigger non mostra mai un valore non salvato, e lo spinner resta finché il nuovo valore non è a schermo; un doppio clic non produce due modifiche;
+  - **tastiera:** Enter, frecce e Spazio con un alert aperto: la modale si apre e resta aperta;
+  - **filtri:** con il filtro "Stato" attivo, se la riga esce dalla lista il focus va al selettore della riga successiva;
+  - **AC66 e AC67 dal "+":** cliente assegnato → contatto in `chiamare`; cliente senza operatore → "Cliente non assegnato".
 - **status**: Planned
 - **log**:
 - **files edited/created**:
@@ -1216,25 +1471,50 @@ Vale per T3.10, T3.11, T3.12, T5.7 e T5.9. Le letture dai Server Component (T5.4
 - **tdd_target**: "dalla riga Clienti, cambiare lo stato di un contatto con alert chiede conferma e, confermando, l'alert compare nello Storico".
 - **review_mode**: browser
 - **assigned_skills**: agent-browser
+- **complexity**: high
 
-#### T3.11: Scheda cliente sulle nuove mutation
-- **depends_on**: [T3.3, T3.5, T3.6, T3.9]
-- **location**: `src/app/dashboard/customers/[id]/_components/CustomerTaskManager.tsx`, `CustomerAlertCreator.tsx`, `CustomerActivities.tsx`, `src/app/dashboard/customers/[id]/_actions/createAlert.ts`
+#### T3.11a: Stato e priorità nella scheda cliente, salvati subito (D11)
+- **depends_on**: [T3.3, T3.5a, T3.9a, T3.9b]
+- **location**: `src/app/dashboard/customers/[id]/_components/CustomerTaskManager.tsx`
+- **description**: Il form a bozza con "Salva" sparisce (D11). Ogni gesto è una mutation atomica:
+  - **stato:** `ContactStateSelect` + `AlertCloseConfirmDialog` + `changeState` (sorgente `detail`), con il percorso di conferma di P10. La riapertura mostra il nuovo contatto dopo `router.refresh()`;
+  - **priorità:** un selettore con le quattro fasce più "Automatica", salvato subito con `setPriority`. "Automatica" è selezionata quando `customPriority` è falso (AC42, AC43). Sparisce la casella `customPriority`, e con lei la regola "priorità 120 al salvataggio" (D3);
+  - **sola lettura:** `ReadOnlyReason` al posto dei due controlli quando `contactEditability` non è `editable` (P5);
+  - spariscono `useOptimistic`/stato del form, `createTask`, `updateTaskFromDashboard`, `resolveAlerts` e la query `getActiveTask` usata solo per disattivare la vecchia task.
+
+  Tutte le chiamate usano `useMutation` dal client, come `CustomerTaskManager` fa già oggi.
+- **validation**: browser, con due operatori e un admin:
+  - **percorso felice:** scegliere `app.to` salva subito lo stato e "Contattato il"; scegliere "alta" salva la fascia; "Automatica" toglie la priorità manuale;
+  - **AC34:** la riapertura mostra il nuovo contatto, in `chiamare`, con lo stesso operatore;
+  - **AC36 e AC37:** gli stessi controlli della riga (T3.10), con sorgente `detail`;
+  - **AC51 e AC52:** contatto di un collega in sola lettura con il motivo; rifiuto forzato con toast e valore salvato;
+  - **attesa e tastiera:** gli stessi controlli della riga.
+- **status**: Planned
+- **log**:
+- **files edited/created**:
+- **backlog_item_id**: n/a
+- **backlog_item_url**: n/a
+- **relation_mode**: n/a (D6)
+- **tdd_target**: "dalla scheda cliente, scegliere `app.to` nel selettore salva subito lo stato, senza 'Salva', e 'Contattato il' si valorizza".
+- **review_mode**: browser
+- **assigned_skills**: agent-browser
+- **complexity**: medium
+
+#### T3.11b: Richiamo e chiusura dell'alert nella scheda cliente
+- **depends_on**: [T3.5b, T3.6, T3.9a]
+- **location**: `src/app/dashboard/customers/[id]/_components/CustomerAlertCreator.tsx`, `CustomerActivities.tsx`, `src/app/dashboard/customers/[id]/_actions/createAlert.ts` (eliminato)
 - **description**:
-  - **`CustomerTaskManager`:**
-    - lo stato passa da `changeState` (sorgente `detail`) con la modale;
-    - la priorità passa da `setPriority`: la fascia scelta, oppure `auto` se si toglie la casella `customPriority`;
-    - niente più `priority: 120` al salvataggio (D3);
-    - sola lettura con il motivo (P5).
-  - **`CustomerAlertCreator`:** usa `setCallback` con `replacesAlertId` e mostra "Sostituisce il richiamo del <data>" (AC44).
-  - **La "X" dell'alert:** usa `resolveAlert`.
-  - Tutte le chiamate usano `useMutation` dal client, come `CustomerTaskManager` fa già oggi. La server action `_actions/createAlert.ts` si elimina qui: passando da lì, `ALERT_CONFIRMATION_REQUIRED` con l'alert attuale (AC44) e i messaggi di AC52 non arriverebbero all'interfaccia.
-  - La regola di AC46 resta anche nel client (`CustomerActivities.tsx:25`), ma ora la applica il server.
+  - **"Imposta richiamo"** (`CustomerAlertCreator`): usa `setCallback` con `replacesAlertId` e mostra "Sostituisce il richiamo del <data>" quando c'è un alert aperto (AC44). Con `ALERT_CONFIRMATION_REQUIRED` il form resta aperto, con i dati inseriti, e la riga "Sostituisce…" mostra l'alert ricevuto. "Setta alert" ha `aria-disabled` durante l'attesa. Le date passate non si selezionano, come oggi (A10).
+  - **La "X" dell'alert:** usa `resolveAlert` (sorgente `detail`). Il blocco dell'alert sparisce solo dopo la conferma del server, poi il focus va al trigger di "Imposta richiamo"; con un rifiuto il blocco resta.
+  - Tutte le chiamate usano `useMutation` dal client. La server action `_actions/createAlert.ts` si elimina: passando da lì, `ALERT_CONFIRMATION_REQUIRED` con l'alert attuale (AC44) e i messaggi di AC52 non arriverebbero all'interfaccia.
+  - La regola di AC46 resta anche nel client (`CustomerActivities.tsx`, `creatable`), ma ora la applica il server.
 - **validation**: browser:
-  - la riapertura dalla scheda mostra il nuovo contatto;
-  - il richiamo sostituisce l'alert;
-  - la "X" chiude l'alert;
-  - contatto di un collega: sola lettura con il motivo.
+  - **AC44:** il richiamo sostituisce l'alert, e il precedente è nello Storico; con un alert impostato da un collega dopo il caricamento della pagina, il form resta aperto con i dati e mostra il nuovo alert;
+  - **AC45:** dopo un richiamo da `app.to` lo stato è `richiamare`;
+  - **AC29:** la "X" chiude l'alert, che compare nello Storico con l'utente;
+  - **AC46:** su un contatto in `chiamare` "Imposta richiamo" non c'è;
+  - **AC52:** contatto di un collega: rifiuto con il motivo, il blocco dell'alert resta;
+  - **attesa:** un doppio clic su "Setta alert" manda una sola richiesta.
 - **status**: Planned
 - **log**:
 - **files edited/created**:
@@ -1244,15 +1524,18 @@ Vale per T3.10, T3.11, T3.12, T5.7 e T5.9. Le letture dai Server Component (T5.4
 - **tdd_target**: "dalla scheda cliente, 'Imposta richiamo' con un alert già aperto lo sostituisce e il precedente passa nello Storico".
 - **review_mode**: browser
 - **assigned_skills**: agent-browser
+- **complexity**: medium
 
 #### T3.12: "Crea contatto" nella scheda cliente (P1)
-- **depends_on**: [T3.4, T3.9]
+- **depends_on**: [T3.4, T3.9a, T3.11a]
 - **location**: `src/app/dashboard/customers/[id]/page.tsx`, `src/app/dashboard/customers/[id]/_components/CustomerCreateContact.tsx`
-- **description**: Se il cliente non ha un contatto attivo, la scheda mostra "Crea contatto" agli admin e all'operatore del cliente (`canCreateContact`, D2). Il pulsante chiama `createContact` (sorgente `detail`) con `useMutation` dal client. Esiti:
+- **description**: Oggi la scheda mostra `CustomerTaskManager` solo se c'è un contatto attivo, e altrimenti niente. Se il cliente non ha un contatto attivo, la scheda mostra "Crea contatto" agli admin e all'operatore del cliente (`canCreateContact`, D2). Il pulsante chiama `createContact` (sorgente `detail`) con `useMutation` dal client e ha `aria-disabled` durante l'attesa. Esiti:
   - cliente senza operatore → "Cliente non assegnato";
   - contatto già attivo nel frattempo → "Questo cliente ha già un contatto attivo" e ricarica, che mostra il `CustomerTaskManager`;
   - successo → la scheda mostra il contatto creato (AC66, AC67).
-- **validation**: browser: i tre esiti; un operatore di un altro cliente non vede il pulsante.
+
+  Dopo il successo, o dopo "già un contatto attivo", il focus va al trigger del nuovo selettore di stato di `CustomerTaskManager`, senza animazione: per questo viene dopo T3.11a, che costruisce quel selettore.
+- **validation**: browser: i tre esiti; un operatore di un altro cliente non vede il pulsante; un doppio clic manda una sola richiesta.
 - **status**: Planned
 - **log**:
 - **files edited/created**:
@@ -1262,18 +1545,53 @@ Vale per T3.10, T3.11, T3.12, T5.7 e T5.9. Le letture dai Server Component (T5.4
 - **tdd_target**: "la scheda di un cliente senza contatto attivo mostra 'Crea contatto' al suo operatore e, al clic, mostra il nuovo contatto in `chiamare`".
 - **review_mode**: browser
 - **assigned_skills**: agent-browser
+- **complexity**: medium
+
+#### T3.17: "Passaggio di consegne" nella scheda cliente (D13)
+- **depends_on**: [T3.8a, T3.9a]
+- **location**: `src/app/dashboard/customers/[id]/_components/CustomerForm.tsx`, `CustomerFormSection.tsx` (passa al form i dati della modale), `src/app/dashboard/customers/[id]/_components/CustomerHandoverDialog.tsx`, `src/app/dashboard/customers/[id]/page.tsx` (dati del contatto attivo e del suo alert per la modale)
+- **description**:
+  - **Form:** l'operatore diventa testo in sola lettura. Spariscono il selettore e il campo nascosto `operatorId`. Accanto restano "Assegna a te" sui clienti non assegnati, come oggi (P4), e c'è il pulsante "Passaggio di consegne", visibile all'admin e all'operatore del cliente (`canHandover`). Per l'admin su un cliente non assegnato l'etichetta è "Assegna operatore".
+  - **"Assegna a te":** il valore a schermo cambia solo dopo la risposta del server; un rifiuto (cliente assegnato nel frattempo, T3.8b) mostra il toast con il motivo e ricarica i dati.
+  - **`CustomerHandoverDialog`:** modale sulla Dialog esistente, senza animazioni nuove (P6 rivisto).
+    - Un selettore del nuovo operatore, senza l'operatore attuale; il focus iniziale è lì.
+    - Il testo spiega cosa succede: "<Cliente> passa a <Nuovo>." e, se c'è un contatto attivo, "Anche il contatto attivo (<stato>, prossimo alert <data>, oggi assegnato a <X>) passa a <Nuovo>. Le chiamate già registrate su questo contatto saranno attribuite a <Nuovo> nell'export."
+    - Pulsanti [Annulla] (`outline`) e [Passa le consegne] (`default`), quest'ultimo attivo solo con un operatore scelto. Durante l'attesa ha `aria-disabled` e lo spinner, e parte una sola chiamata per apertura.
+    - Annulla, Esc, l'overlay e la X chiudono senza chiamate e riportano il focus al pulsante.
+    - La modale è montata nel form, fuori dal pulsante che la apre, così non sparisce se dopo un `router.refresh()` il pulsante non c'è più.
+    - Chiama `customer.handover` con `useMutation` dal client. Al successo la modale si chiude, `router.refresh()` mostra il nuovo operatore nel form e nel contatto, e il focus torna al pulsante.
+    - Con un rifiuto la modale si chiude, il toast di `useContactMutationFeedback` dice il motivo e i dati si ricaricano. Il focus va al pulsante se c'è ancora; se no, per esempio perché il cliente è passato a un altro e il pulsante non si vede più, al testo dell'operatore (`tabIndex={-1}`), mai a `body`.
+- **validation**: browser, con due operatori e un admin:
+  - l'operatore del cliente passa le consegne di un cliente con un contatto `app.to` e un alert: la modale mostra stato, prossimo alert, operatore attuale del contatto e l'avviso sull'export; dopo la conferma cliente e contatto sono del nuovo operatore;
+  - un operatore su un cliente di un collega non vede il pulsante; l'admin su un cliente non assegnato vede "Assegna operatore";
+  - salvare il form dopo aver cambiato solo il telefono non cambia l'operatore né del cliente né del contatto;
+  - Annulla, Esc e overlay non fanno chiamate; un doppio clic su [Passa le consegne] fa una sola chiamata; focus iniziale sul selettore, focus sul pulsante dopo la chiusura;
+  - rifiuto forzato (il cliente passato a un altro nel frattempo, in un'altra scheda): toast con il motivo, la modale chiusa, il form mostra l'operatore attuale e il focus è sul testo dell'operatore;
+  - "Assegna a te" su un cliente assegnato nel frattempo da un collega: toast con il motivo e operatore attuale a schermo.
+- **status**: Planned
+- **log**:
+- **files edited/created**:
+- **backlog_item_id**: n/a
+- **backlog_item_url**: n/a
+- **relation_mode**: n/a (D6)
+- **tdd_target**: "dalla scheda cliente, l'operatore del cliente apre 'Passaggio di consegne', sceglie un collega e conferma: il form mostra il collega come operatore e il contatto attivo è suo".
+- **review_mode**: browser
+- **assigned_skills**: agent-browser
+- **complexity**: medium
 
 #### T3.13: Rimozione delle mutation non protette
-- **depends_on**: [T1.7, T3.8, T3.10, T3.11, T3.12]
-- **location**: `src/server/api/routers/task/{index,POST,PUT,DELETE}/index.ts`, `src/server/api/routers/task/_test/router.db.test.ts`
+- **depends_on**: [T3.8a, T3.8c, T3.10, T3.11a, T3.11b, T3.12]
+- **location**: `src/server/api/routers/task/{index,POST,PUT,DELETE}/index.ts`, `src/server/api/routers/task/_test/router.db.test.ts`, `src/server/api/routers/task/_test/createTask.db.test.ts` (eliminato), `src/app/dashboard/customers/_utils/index.ts`
 - **description**:
   - Si rimuovono `updateTask`, `updateTaskFromDashboard`, `createTask`, `createAlert` e `resolveAlerts`, sostituite da T3.3–T3.7.
-  - Restano `bulkHandleTask` (A7), le query di lettura e `deleteTasks` (A8, fuori perimetro).
-  - Con `grep` si verifica che non resti nessun chiamante.
+  - Si rimuove anche `deleteTasks`: nessun chiamante, `operatorProcedure`, cancella tutte le task di qualunque cliente (A8 rivista, P7).
+  - Restano `bulkHandleTask` (A7, ora `adminProcedure`) e le query di lettura.
+  - Con `grep` si verifica che non resti nessun chiamante; `getTaskStatusDirection` si rimuove se non ha più chiamanti.
+  - **I test di `createTask` (T1.7) si eliminano con la procedura.** I loro comportamenti sono coperti dalle mutation che la sostituiscono: un solo contatto attivo dopo la riapertura e il nuovo come più recente (T3.3), un solo contatto attivo e cliente mancante dopo "Crea contatto" (T3.4).
 - **validation**:
   - `pnpm build` verde, senza riferimenti orfani;
   - un test verifica che le procedure rimosse non esistano più sul router;
-  - ogni mutation che modifica stato, priorità, alert o operatore di un contatto passa dalla guardia, oppure è `adminProcedure` (`reassign`, `bulkHandleTask`, `bulkUpdateCustomers`). Resta fuori solo `deleteTasks` (A8).
+  - ogni mutation che modifica stato, priorità, alert o operatore di un contatto passa dalla guardia, oppure è `adminProcedure` (`reassign`, `bulkHandleTask`, `bulkUpdateCustomers`), oppure è `customer.handover`, che blocca il cliente e applica `canHandover` (eccezione D13). Non ne resta nessuna fuori. Che la guardia blocchi il cliente lo verifica T3.15.
 - **status**: Planned
 - **log**:
 - **files edited/created**:
@@ -1282,20 +1600,72 @@ Vale per T3.10, T3.11, T3.12, T5.7 e T5.9. Le letture dai Server Component (T5.4
 - **relation_mode**: n/a (D6)
 - **tdd_target**: "il router `task` non espone più `updateTask`".
 - **review_mode**: cli
+- **complexity**: high
+
+#### T3.15: Test della regola dei lock (D12, livello 1)
+- **depends_on**: [T3.7, T3.8b, T3.13]
+- **location**: `src/test/lockRule.ts`, `src/server/services/contact/_test/lockRule.db.test.ts`, `src/server/effect/db.ts` (docstring di `lockCustomer`)
+- **description**: Trasforma la regola dei lock di T1.4 da controllo in review a test, con la CI di oggi (D12). Prova la parte che dipende dal codice: che ogni scrittura su un contatto avvenga in una transazione che ha già bloccato la riga del cliente. Che Postgres faccia davvero aspettare la seconda transazione lo prova PR7.
+  - **`assertCustomerLockedOnWrite()`** (`src/test/lockRule.ts`, come gli helper di `failpoint.ts`): un trigger di test `BEFORE INSERT OR UPDATE OR DELETE … FOR EACH ROW` su `task`, `alert` e `task_event_log`. Ricava il cliente della riga (`customer_id`; per `alert`, quello della task di `task_id`) e fallisce se la riga di `customers` non è bloccata dalla transazione corrente: `xmax` (lock di `FOR UPDATE`) o `xmin` (riga già aggiornata nella transazione) devono essere l'id della transazione corrente (`pg_current_xact_id()::xid`). Una scrittura fuori da una transazione fallisce anche lei, perché il comando ha una sua transazione che non ha bloccato nulla. `resetDb` lo rimuove.
+  - **Controllo negativo:** con il trigger attivo, una scrittura diretta su `task` senza `lockCustomer` fallisce col messaggio del trigger. Senza questo controllo un trigger che non scatta mai passerebbe tutti i test.
+  - **Copertura:** con il trigger attivo, una chiamata riuscita per ogni scrittore di contatti: `changeState` (persist, close, reopen, con chiusura dell'alert), `createContact`, `setPriority`, `resolveAlert`, `setCallback` (con e senza alert sostituito), `reassign`, `handover` (con il contatto che segue), `assignToYourself`, i quattro casi di `bulkHandleTask` e il cron (`processDueAlerts`, ramo "oggi" e ramo "altro giorno").
+  - **Cosa copre e cosa no:** il test copre gli scrittori elencati. Uno scrittore aggiunto dopo è coperto solo se aggiunge la sua chiamata a questo file: la regola si scrive nel docstring di `lockCustomer`, accanto alla regola dei lock. Attivare il trigger per default in tutti i `.db.test.ts` (con le factory e gli scrittori fuori regola esclusi in modo esplicito) è un seguito (§15).
+  - **Fuori dalla regola, elencati nel test e in §15:** `bulkUpdateCustomers` (P8, A7: non convertita), il cron `priority` (`refreshPriorities`, aggiorna solo `priority` su molte task in un comando) e la pulizia del log (`cleanupTaskEventLog`).
+  - Se PGlite non espone `xmin`/`xmax` come Postgres (non previsto: è Postgres compilato in WASM), il ripiego è una spia al confine sul client PGlite che registra le istruzioni: dentro ogni transazione, la prima istruzione dopo `BEGIN` deve essere il `SELECT … FOR UPDATE` su `customers`.
+- **validation**:
+  - il controllo negativo fallisce come previsto;
+  - tutti gli scrittori elencati passano;
+  - **verifica per mutazione**, scritta nel log: togliendo `.for("update")` da `lockCustomer`, oppure la chiamata a `lockCustomer` da un servizio, il test diventa rosso. Oggi, con le stesse modifiche, tutti i test restano verdi (tech-debt).
+- **status**: Planned
+- **log**:
+- **files edited/created**:
+- **backlog_item_id**: n/a
+- **backlog_item_url**: n/a
+- **relation_mode**: n/a (D6)
+- **tdd_target**: "con la verifica del lock attiva, una scrittura su `task` senza `lockCustomer` fallisce con il messaggio della regola dei lock".
+- **review_mode**: cli
+- **complexity**: high
+
+#### T3.16: Test mancanti dell'infrastruttura Effect (F11, D10)
+- **depends_on**: []
+- **location**: `src/server/effect/_test/db.db.test.ts`, `src/server/effect/_test/trpc.db.test.ts` (suffisso `.db`: carica `ServerLive` e gira in ambiente `node`), `src/test/failpoint.ts` (`failAtCommit`)
+- **description**: Le voci del tech-debt "Test mancanti sull'infrastruttura Effect" che valgono ancora:
+  - **un COMMIT fallito diventa `DbError`:** `failAtCommit(table)` installa un constraint trigger `DEFERRABLE INITIALLY DEFERRED` che fallisce al COMMIT; il chiamante di `transaction` riceve un `DbError` con il codice SQLSTATE e nessuna scrittura resta;
+  - **un'interruzione dentro il programma fa rollback:** `transaction` con una scrittura seguita da `Effect.interrupt` non lascia scritture e il chiamante riceve un'interruzione. Il caso opposto, il chiamante interrotto da fuori, resta un limite noto e vietato dal docstring (tech-debt "Casi limite di `transaction` con le interruzioni");
+  - **`runTrpc` con un errore tipizzato tradotto** (per esempio `BAD_REQUEST`) non scrive su `console.error` (spy sul confine `console`), mentre un `DbError` sì. La parte "non segnala a `ErrorReporter`" della voce di tech-debt non ha bisogno di un test: `runTrpc` non usa `ErrorReporter` in nessun ramo, e un'asserzione su `reportedErrors` vuoto non potrebbe mai fallire.
+
+  La voce sull'atomicità di `createTask` cade: T3.13 rimuove `createTask`, e l'atomicità delle mutation che la sostituiscono è testata in T3.3 e T3.4.
+- **validation**: i tre test passano; per mutazione, togliendo la traduzione dell'errore del COMMIT in `DbError` il primo diventa rosso.
+- **status**: Planned
+- **log**:
+- **files edited/created**:
+- **backlog_item_id**: n/a
+- **backlog_item_url**: n/a
+- **relation_mode**: n/a (D6)
+- **tdd_target**: "un COMMIT che fallisce per un vincolo differito arriva al chiamante di `transaction` come `DbError` con il codice SQLSTATE".
+- **review_mode**: cli
+- **complexity**: medium
 
 #### T3.14: Gate PR3
-- **depends_on**: [T3.7, T3.13]
+- **depends_on**: [T3.8c, T3.13, T3.15, T3.16, T3.17]
 - **location**: —
 - **description**:
   - Gate CI.
-  - Passata browser completa di T3.8 e T3.10–T3.12 sul DB di sviluppo, con due operatori e un admin.
+  - Passata browser completa di T3.8b, T3.8c, T3.9b–T3.12 e T3.17 sul DB di sviluppo, con due operatori e un admin.
+  - `adversarial-review` del branch (`review.mode: total`), con il passaggio UI e quello sul movimento. Prima della review l'orchestratore scrive (sono suoi, non dei worker):
+    - nel tech-debt: chiuse "Alert risolti due volte e `alert_id` azzerato senza condizione nella massiva" (T3.5b, T3.6, T3.13), "Ordine e pareggi nella massiva senza test" (T3.8c) e "Test mancanti sull'infrastruttura Effect" (T3.16); "Nessun test esercita il lock del cliente" aggiornata (livello 1 in T3.15, livello 2 in PR7); nuove "Lacune dei primitivi di movimento" (nessun `motion-reduce` su Dialog, Toast e Sheet; menu senza `transform-origin`; uscita della Dialog lunga quanto l'entrata; Sheet a 500 ms `ease-in-out`; `transition-all` su Toast e `.dashabord-container`) e "Scrittori fuori dalla regola dei lock" (§15);
+    - `brain/chore/motion.md`: il menu dello stato senza animazione (eccezione voluta) e la Dialog senza variante ridotta (rinvio documentato), così il passaggio sul movimento non li segnala come difetti.
   - Nella descrizione della PR c'è il testo dell'annuncio agli operatori (G3):
-    - la regola D2: si lavorano i contatti propri e quelli dei propri clienti;
-    - la conferma quando si cambia stato con un alert aperto;
+    - la regola D2: si lavorano i contatti propri e quelli dei propri clienti; un contatto non assegnato si lavora solo se il cliente è proprio (A1);
+    - la conferma quando si cambia stato con un alert aperto, e il menu dello stato usabile da tastiera;
+    - nella scheda cliente stato e priorità si salvano subito: il pulsante "Salva" non c'è più (D11);
     - "Crea contatto" nella scheda cliente;
     - il cambio di stato dalla riga non sposta più il contatto sull'operatore del cliente, quindi le chiamate restano attribuite all'operatore del contatto nell'export;
-    - anche la riapertura dalla riga ora mantiene l'operatore del contatto (AC34). Prima usava quello del cliente: cambia l'attribuzione nell'export quando i due sono diversi.
-- **validation**: gate verdi; checklist AC73 spuntata.
+    - anche la riapertura dalla riga ora mantiene l'operatore del contatto (AC34). Prima usava quello del cliente: cambia l'attribuzione nell'export quando i due sono diversi;
+    - "Assegna a te" funziona solo sui clienti non assegnati, e le assegnazioni massive solo per gli admin (P4, P7);
+    - l'operatore del cliente non si cambia più dal form: c'è "Passaggio di consegne", per l'admin e per l'operatore del cliente. Sposta cliente e contatto attivo in qualunque stato, e le chiamate già registrate sul contatto passano al nuovo operatore nell'export (D13). Salvare il form non sposta più i contatti;
+    - dopo "Assegna Clienti" un contatto con un esito può restare al vecchio operatore: il nuovo lo lavora, ma le chiamate restano al vecchio finché un admin non riassegna il contatto (dal dettaglio di Contatti, con PR5).
+- **validation**: gate verdi; `REPORT.md` della review SHIP; checklist AC73 spuntata.
 - **status**: Planned
 - **log**:
 - **files edited/created**:
@@ -1305,6 +1675,7 @@ Vale per T3.10, T3.11, T3.12, T5.7 e T5.9. Le letture dai Server Component (T5.4
 - **tdd_target**: n/a (gate)
 - **review_mode**: mixed
 - **assigned_skills**: agent-browser
+- **complexity**: medium
 
 ### PR4 — Chat con proprietario esplicito
 
@@ -1348,9 +1719,9 @@ Branch suggerito: `contatti/pr4-chat-owner`. È un refactor senza cambiamenti vi
 
 ### PR5 — Sezione Contatti con note
 
-Branch suggerito: `contatti/pr5-sezione`. È additiva. Il rilascio si fa solo dopo G2 (AC69) e a breve distanza da PR3, perché tra PR3 e PR5 un admin non ha modo di riassegnare un singolo contatto con esito.
+Branch suggerito: `contatti/pr5-sezione`. È additiva. Il rilascio si fa solo dopo G2 (AC69) e a breve distanza da PR3: tra PR3 e PR5 un admin riassegna un contatto solo insieme al suo cliente, con "Passaggio di consegne" (D13, stesso effetto di S1). Il comando sul singolo contatto (`task.reassign`, T3.7) arriva con il dettaglio di Contatti (T5.7).
 
-Valgono le regole di PR3 su come si chiamano le mutation: `useMutation` dal client, mai server action. I Server Component leggono gli errori con `readContactError` (T3.2).
+Valgono le regole di PR3 su come si chiamano le mutation: `useMutation` dal client, mai server action. I Server Component leggono gli errori con `readContactError` (T3.2a).
 
 Ordine interno, secondo l'ux-advisor:
 1. query;
@@ -1363,7 +1734,7 @@ Ordine interno, secondo l'ux-advisor:
 8. punti d'ingresso e preferenze per ultimi.
 
 #### T5.1: Query `task.getContacts`
-- **depends_on**: [T1.1, T1.4, T3.1]
+- **depends_on**: [T1.1, T1.4, T3.1a, T3.1b, T3.1c]
 - **location**: `src/server/services/contact/getContacts.ts` (con `buildContactsWhere` e `buildContactsOrder` puri), `src/server/api/routers/task/GET/index.ts`, `src/server/services/contact/_test/getContacts.db.test.ts`; `src/server/db/schema/task.ts` e una migrazione per gli indici (nota "Indici" sotto)
 - **description**:
   - **Forma:** servizio Effect in sola lettura, con `Db`/`query` di T1.4, eseguito con `runTrpc` (D9). `buildContactsWhere` e `buildContactsOrder` restano funzioni pure.
@@ -1412,7 +1783,7 @@ Ordine interno, secondo l'ux-advisor:
 - **review_mode**: cli
 
 #### T5.2: Query `task.getContactById`
-- **depends_on**: [T3.2]
+- **depends_on**: [T3.2a, T3.2b]
 - **location**: `src/server/services/contact/getContactById.ts`, `src/server/api/routers/task/GET/index.ts`, `_test/getContactById.db.test.ts`
 - **description**: Servizio Effect in sola lettura, eseguito con `runTrpc(program, contactErrorToTrpc)` (D9). Input `{ id: z.string() }`, convertito dentro il servizio. Un id non numerico, ≤ 0, oltre il limite di un intero a 32 bit o inesistente fallisce con `ContactNotFound` (`CONTACT_NOT_FOUND`). Niente `BAD_REQUEST` di Zod ed errori di range di Postgres, che mostrerebbero un errore generico invece di "Contatto non trovato" (AC26). Restituisce:
   - task, cliente (con `blackListStatus`), operatore, alert aperto;
@@ -1435,7 +1806,7 @@ Ordine interno, secondo l'ux-advisor:
 - **review_mode**: cli
 
 #### T5.3: Stato URL della lista
-- **depends_on**: [T3.1]
+- **depends_on**: [T3.1a, T3.1c]
 - **location**: `src/app/dashboard/contatti/_lib/searchParams.ts`, `src/app/dashboard/contatti/_lib/_test/searchParams.test.ts`
 - **description**:
   - **Parametri dedicati** (non `filter_by`): `q`, `operatore` (lista; `0` = non assegnato), `stato` (lista), `priorita` (lista), `data` (`contattato` | `alert` | `creato`), `dal`, `al` (`YYYY-MM-DD`), `miei`, `alert`, `precedenti`, `cliente`, `ordina`, `verso`, `pagina`, `per_pagina`. Le liste sono separate da virgola.
@@ -1455,7 +1826,7 @@ Ordine interno, secondo l'ux-advisor:
 - **review_mode**: cli
 
 #### T5.4: Pagina lista Contatti in sola lettura
-- **depends_on**: [T5.1, T5.3, T3.9]
+- **depends_on**: [T5.1, T5.3, T3.9b]
 - **location**: `src/app/dashboard/contatti/{layout,page}.tsx`, `_components/ContactsTableSection.tsx`, `ContactsTable.tsx`, `ContactColumns.tsx`
 - **description**:
   - **Dati:** un server component legge `searchParams`, li passa a `parse` e poi a `getContacts`. Tabella tanstack con ordinamento e paginazione manuali.
@@ -1546,7 +1917,7 @@ Ordine interno, secondo l'ux-advisor:
 - **assigned_skills**: agent-browser
 
 #### T5.7: Dettaglio contatto — modifiche
-- **depends_on**: [T5.6, T3.3, T3.5, T3.6, T3.7, T3.9]
+- **depends_on**: [T5.6, T3.3, T3.5a, T3.5b, T3.6, T3.7, T3.9a, T3.9b]
 - **location**: `src/app/dashboard/contatti/(dettaglio)/[id]/_components/ContactStateControl.tsx`, `ContactPriorityControl.tsx`, `ContactCallbackForm.tsx`, `ContactOperatorControl.tsx`
 - **description**:
   - **Stato:** con la modale (sorgente `detail`). Dopo una riapertura:
@@ -1602,7 +1973,7 @@ Ordine interno, secondo l'ux-advisor:
 - **assigned_skills**: agent-browser
 
 #### T5.9: Cambio di stato nella riga
-- **depends_on**: [T5.4, T5.7, T3.3, T3.9]
+- **depends_on**: [T5.4, T5.7, T3.3, T3.9a, T3.9b]
 - **location**: `src/app/dashboard/contatti/_components/ContactColumns.tsx`, `ContactRowState.tsx`
 - **description**:
   - La colonna Stato usa `ContactStateSelect`, la modale e `changeState` (sorgente `list`) (AC9).
@@ -1665,7 +2036,7 @@ Ordine interno, secondo l'ux-advisor:
 
 #### T5.12: Verifica di stabilità e focus (design-engineer)
 - **depends_on**: [T5.8, T5.9, T5.10]
-- **location**: componenti di T3.9 e T5.4–T5.10
+- **location**: componenti di T3.9b e T5.4–T5.10
 - **description**: Verificare il budget P6:
   - nessuna animazione nuova (pannello Animations di DevTools vuoto quando una riga esce e alla riapertura);
   - colonne a larghezza fissa;
@@ -1832,30 +2203,111 @@ Branch suggerito: `contatti/pr6-clienti`. Il merge si fa solo dopo G5.
 - **review_mode**: mixed
 - **assigned_skills**: agent-browser
 
+### PR7 — Test di concorrenza su Postgres vero (bassa priorità)
+
+**Stato: da fare, bassa priorità** (D12, deciso da Omar il 2026-10-15). È il livello 2 della regola dei lock: T3.15 prova che il codice blocca il cliente, PR7 prova che con due connessioni vere le transazioni sullo stesso cliente si mettono in coda. Non blocca nessun'altra PR. Ha senso dopo il merge di PR3, così copre anche i suoi scrittori.
+
+Branch: `chore/test-postgres-concorrenza` da `dev`, PR verso `dev`. Nessun cambiamento visibile e nessuna modifica al codice dell'app: solo CI, harness e test.
+
+**Sicurezza del database** (regole di `AGENTS.md`). I test `*.pg.test.ts`:
+- leggono solo `TEST_DATABASE_URL`, mai `.env*` né le variabili di Supabase;
+- rifiutano un DSN senza host esplicito (altrimenti varrebbe `PGHOST`), con più host, o con un host diverso da `localhost` e `127.0.0.1`;
+- non lavorano mai sul database del DSN: l'harness crea un database suo, `mito_test_<casuale>`, ci applica le migrazioni e lo elimina alla fine. Così il `TRUNCATE` del reset non può toccare un database locale con dati, per esempio uno stack Supabase in locale o un tunnel.
+
+#### T7.1: Postgres vero nella CI e nell'harness
+- **depends_on**: [T3.14]
+- **location**: `.github/workflows/ci.yml` (servizio `postgres:15` nel job Test, con `TEST_DATABASE_URL`), `vitest.workspace.ts` (due progetti), `vitest.config.ts` (esclude `*.pg.test.ts`), `src/test/pg.ts`, `src/test/pg.setup.ts`, `src/test/_test/pg.pg.test.ts`
+- **description**:
+  - Il job Test della CI avvia un servizio `postgres:15` (prod è su 15.6) ed espone `TEST_DATABASE_URL`. Il comando resta `pnpm run test --run`.
+  - **Un secondo progetto vitest** (`vitest.workspace.ts`) per i `*.pg.test.ts`, in ambiente `node`, con un suo setup (`src/test/pg.setup.ts`). Il progetto di oggi li esclude. Serve perché `src/test/setup.ts` sostituisce `@/server/db` con PGlite in ogni file, e `bulkHandleTask`, il cron e i middleware tRPC importano quel modulo direttamente (`ServerLive` → `DbLive`, `enforceIsActiveOperator`): il setup del progetto nuovo lo sostituisce invece con un **pool postgres.js** sul database di prova, così le chiamate contemporanee prendono connessioni diverse. `@/server/auth` e Supabase si sostituiscono come oggi.
+  - `src/test/pg.ts`: creazione ed eliminazione del database `mito_test_<casuale>`; migrazioni reali con le stesse correzioni dell'harness PGlite (tipo `task_status` e `PUSHED_SCHEMA`, tech-debt "Le migrazioni non ricostruiscono lo schema di produzione"); `resetDb`; `holdCustomerLock(customerId)`, che apre una transazione del test su una connessione sua e blocca il cliente finché il test non la chiude; `waitUntilBlocked(n)`, che aspetta finché `pg_stat_activity` conta `n` backend in attesa di un lock (`wait_event_type = 'Lock'`). Niente `sleep`.
+  - Il guard sul DSN della sezione "Sicurezza del database". Senza `TEST_DATABASE_URL` i file `*.pg.test.ts` si saltano in locale, così si lanciano solo con un Postgres in Docker; **in CI (`CI` impostata) la variabile mancante fa fallire il job**, così i test non spariscono in silenzio.
+- **validation**: in CI i test `*.pg.test.ts` girano e non risultano saltati; in CI senza la variabile il job fallisce; in locale senza la variabile risultano saltati; un DSN senza host, con più host o con un host diverso da `localhost` ferma il test prima di collegarsi; il database `mito_test_*` non esiste più a fine esecuzione; un test di prova esegue `createContact` via caller su Postgres vero.
+- **status**: Planned
+- **log**:
+- **files edited/created**:
+- **backlog_item_id**: n/a
+- **backlog_item_url**: n/a
+- **relation_mode**: n/a (D6)
+- **tdd_target**: "con `TEST_DATABASE_URL` su un Postgres locale, l'harness crea il suo database, applica tutte le migrazioni e `createContact` via caller lascia un solo contatto attivo".
+- **review_mode**: cli
+- **complexity**: high
+
+#### T7.2: Test di concorrenza deterministici
+- **depends_on**: [T7.1, T3.14]
+- **location**: `src/server/services/contact/_test/concurrency.pg.test.ts`
+- **description**: Nessun aggancio dentro i servizi (PR7 non tocca il codice dell'app). Ogni test fissa l'ordine così: il test blocca il cliente con `holdCustomerLock`; le chiamate da provare partono (via caller, o il cron via `processDueAlerts`) e si mettono in coda dietro quel lock; `waitUntilBlocked(n)` aspetta che siano tutte in attesa; il test fa, se serve, la sua scrittura nella transazione che tiene il lock (per esempio aggancia un alert, come farebbe un collega) e chiude; poi si verifica lo stato finale.
+  - **AC71:** due `createContact` sullo stesso cliente: uno crea, l'altro riceve `CONTACT_ALREADY_ACTIVE`; una riapertura (`changeState`) e il followup del cron sullo stesso cliente: alla fine un solo contatto attivo.
+  - **R7:** la massiva, caso "alert confermato", in attesa sul lock mentre `setCallback` aggancia un nuovo alert, e viceversa. In entrambi gli ordini nessun alert aperto resta staccato: ogni alert aperto è quello di una task attiva.
+  - **F14:** due `resolveAlert` sullo stesso alert: una sola riga `alert_resolved`, e `resolved_by` è quello della prima.
+  - **Deadlock:** scrittori misti (`changeState`, `setCallback`, `bulkHandleTask`, cron) sullo stesso cliente finiscono tutti, senza `40P01`.
+  - **Controllo negativo:** togliendo `lockCustomer` da un servizio, il test di AC71 corrispondente diventa rosso.
+- **validation**: i test passano in CI dieci volte di fila; il controllo negativo, scritto nel log, li fa fallire.
+- **status**: Planned
+- **log**:
+- **files edited/created**:
+- **backlog_item_id**: n/a
+- **backlog_item_url**: n/a
+- **relation_mode**: n/a (D6)
+- **tdd_target**: "due `createContact` contemporanei sullo stesso cliente lasciano un solo contatto attivo, e il secondo riceve `CONTACT_ALREADY_ACTIVE`".
+- **review_mode**: cli
+- **complexity**: high
+
+#### T7.3: Gate PR7
+- **depends_on**: [T7.2]
+- **location**: —
+- **description**: Gate CI, con i test `*.pg.test.ts` eseguiti e non saltati. L'orchestratore chiude la voce di tech-debt "Nessun test esercita il lock del cliente".
+- **validation**: gate verdi; nel job Test i file `*.pg.test.ts` risultano eseguiti.
+- **status**: Planned
+- **log**:
+- **files edited/created**:
+- **backlog_item_id**: n/a
+- **backlog_item_url**: n/a
+- **relation_mode**: n/a (D6)
+- **tdd_target**: n/a (gate)
+- **review_mode**: cli
+- **complexity**: low
+
 ## 10. Wave di esecuzione
+
+**PR1 e PR2 sono fatte** (T1.1–T1.8, T2.1–T2.7), con i due merge, G1 e G2. Le loro wave (1–7 della versione del 2026-09-24) non servono più. Restano PR3–PR7, tutti i task `Planned`.
+
+**PR3, riscritta il 2026-10-15.** Le wave rispettano i `depends_on` e la regola "un solo task alla volta sui router di `task` e su `customer/PUT`" (intestazione di PR3). Con `execution.delegation: supervised`, la `complexity` di ogni task sceglie il modello del worker (`low` → veloce, `medium` → intermedio, `high` → il più forte).
 
 | Wave | Task | Parte quando |
 |---|---|---|
-| 1 | T1.1, T3.1, T4.1 | Subito |
-| 2 | T1.2, T1.3, T1.4, T2.1, T5.3 | T1.1 (T3.1 per T5.3) |
-| 3 | T1.5, T1.6, T2.2, T3.2 | Wave 2 (T1.4 per T3.2) |
-| 4 | T1.7 · T2.3 · T3.9 · T4.2 → **merge PR4** quando serve · T5.1, T5.2 | Wave 3 |
-| 5 | T1.8 → **merge PR1** · T2.5, T2.6, T2.7 · T3.3–T3.8, dalla testa di PR1 | Wave 4 (T1.7; T2.3 per T2.5) |
-| 6 | T2.4 (**G1 → G2**, manuale) · T3.10, T3.11, T3.12 | PR1 in prod · T3.3–T3.9 |
-| 7 | T3.13 → T3.14 → **merge PR3** (G3) | Wave 6 |
-| 8 | T5.4 → T5.5, T5.6 → T5.7, T5.8 → T5.9 → T5.10, T5.11 → T5.12 → T5.13 → **merge PR5** (G4) | PR3 e PR4 in main, G2 fatto |
-| 9 | T6.1–T6.7 → **merge PR6** | G5 |
+| 3.1 | T3.1a, T3.1b, T3.1c, T3.2a, T3.16 | Subito |
+| 3.2 | T3.2b, T3.9a, T3.9b | T3.1a, T3.1b, T3.2a |
+| 3.3 | T3.5b, T3.8a | T3.2b |
+| 3.4 | T3.3, T3.8b, T3.17 | T3.5b, T3.8a (e T3.9a per T3.17) |
+| 3.5 | T3.4 | T3.3 |
+| 3.6 | T3.5a, T3.10 | T3.4 (e T3.9a, T3.9b) |
+| 3.7 | T3.6, T3.11a | T3.5a |
+| 3.8 | T3.7, T3.11b, T3.12 | T3.6, T3.11a |
+| 3.9 | T3.8c | T3.7, T3.8b |
+| 3.10 | T3.13 | T3.8c, T3.10, T3.11a, T3.11b, T3.12 |
+| 3.11 | T3.15 | T3.13 |
+| 3.12 | T3.14 → **merge PR3** (G3) | T3.15, T3.16, T3.17 |
 
-**Stato al 2026-10-13:** fatti tutti i task di PR1 e PR2 (T1.1–T1.8, T2.1–T2.7), con i due merge e G1 e G2. Delle wave restano i task di PR3–PR6, tutti `Planned`.
+In modo `sequential` l'ordine è: T3.1a, T3.1b, T3.1c, T3.2a, T3.16, T3.2b, T3.9a, T3.9b, T3.5b, T3.8a, T3.8b, T3.17, T3.3, T3.4, T3.5a, T3.10, T3.6, T3.11a, T3.12, T3.7, T3.11b, T3.8c, T3.13, T3.15, T3.14.
 
-Il lavoro di più PR può procedere in parallelo sui branch, ma i **merge** seguono l'ordine vincolante di §3. PR3 e PR5 modificano file che PR1 riscrive (`task/POST/index.ts`) e usano la sua infrastruttura: se partono prima del merge di PR1, si parte dalla **testa del branch di PR1**, non da singoli task. Nei task paralleli di PR3 un solo worker alla volta tocca un dato file di router (`task/*/index.ts`); in alternativa T3.3 → T3.7 si fanno in sequenza.
+**Dopo PR3:**
+
+| Wave | Task | Parte quando |
+|---|---|---|
+| 4 | T4.1 → T4.2 → **merge PR4** | Subito: è indipendente da PR3 e si può fare in parallelo |
+| 5 | T5.1, T5.2, T5.3 → T5.4 → T5.5, T5.6 → T5.7, T5.8 → T5.9 → T5.10, T5.11 → T5.12 → T5.13 → **merge PR5** (G4) | PR3 e PR4 in `main` |
+| 6 | T6.1–T6.7 → **merge PR6** | G5 |
+| 7 | T7.1 → T7.2 → T7.3 → **merge PR7** | Dopo il merge di PR3, quando c'è tempo (bassa priorità) |
+
+I task di PR4–PR6 non hanno ancora una `complexity`: si aggiunge quando quelle PR si ripianificano con `create-plan` 0.8.0 (§15).
 
 ## 11. Strategia di test (fase TDD)
 
 - **Tracer bullet per PR:**
   - PR1: il test di caratterizzazione del cron (T1.2), poi `replaceActiveContact` (T1.4);
   - PR2: il test "nessun duplicato dopo la migrazione" (T2.2);
-  - PR3: `planStateChange` (T3.1), poi `changeState` end-to-end via caller (T3.3);
+  - PR3: `planStateChange` (T3.1a), poi la mutation più sottile sulla guardia, `resolveAlert` via caller (T3.5b), poi `changeState` (T3.3);
   - PR4: la scelta della mutation in base a `owner` (T4.1);
   - PR5: `getContacts` senza filtri (T5.1);
   - PR6: pagine esatte di `getAllCustomers` (T6.1).
@@ -1866,6 +2318,7 @@ Il lavoro di più PR può procedere in parallelo sui branch, ma i **merge** segu
   - `replaceActiveContact`: l'invariante "un solo attivo";
   - `planStateChange`: tutte le regole di transizione;
   - `contactEditability`: tutti i permessi;
+  - `loadEditableContact` e `resolveOpenAlert` (T3.2b, T3.5b): lock, permessi e chiusura unica degli alert;
   - `buildContactsWhere`: tutti i filtri.
 
   Server, client e test li usano dallo stesso posto.
@@ -1877,7 +2330,8 @@ Il lavoro di più PR può procedere in parallelo sui branch, ma i **merge** segu
   - modulo `@/server/db` → PGlite reale;
   - `@/server/auth`, `authCheck`, moduli Next/Supabase.
 
-  Mai mock di funzioni interne. I guasti per l'atomicità si iniettano con `failNextInsertInto` (trigger DB di test).
+  Mai mock di funzioni interne. I guasti per l'atomicità si iniettano con `failNextInsertInto` e `failNextUpdateOf` (trigger DB di test); le scritture concorrenti si simulano con `afterNextWriteTo`; il COMMIT fallito con `failAtCommit` (T3.16); la regola dei lock con `assertCustomerLockedOnWrite` (T3.15).
+- **Componenti (PR3, i primi del repo):** Testing Library in jsdom con `@testing-library/user-event` e i polyfill che Radix richiede (T3.9b). I componenti sono presentazionali e non chiamano tRPC; il collegamento alle mutation si verifica nel browser.
 - **Effect nei test (D9):**
   - le procedure si testano ancora via `createCaller` e il cron via `GET`: i test non sanno che dentro c'è Effect;
   - si esegue un servizio Effect direttamente (`Effect.runPromise` / `Effect.runPromiseExit` con `ServerLive`) solo quando è lui l'interfaccia pubblica: `transaction`, `replaceActiveContact`, `loadEditableContact`;
@@ -1885,22 +2339,29 @@ Il lavoro di più PR può procedere in parallelo sui branch, ma i **merge** segu
   - niente `@effect/vitest`: bastano vitest e il `vi.mock` di `@/server/db`;
   - Sentry non si mocka: nei test non ha DSN e non invia nulla. Le segnalazioni dei lavori isolati si verificano con il layer di test di `ErrorReporter` (P9).
 - **Caratterizzazione prima dei refactor:** T1.2 e T1.3 si scrivono sul codice di oggi e passano senza modificarlo. T1.5–T1.7 non ne cambiano le asserzioni, salvo il test di `createTask` marcato in anticipo.
-- **Concorrenza:** PGlite ha una sola connessione, quindi non può simulare richieste contemporanee. La garanzia contro la concorrenza è l'indice unico (T2.3), testato direttamente, insieme alla conversione di `23505` in `CONTACT_ALREADY_ACTIVE` (T3.4).
-- **Comportamenti prioritari**, cioè dove si concentra lo sforzo: AC71/AC72 (invarianza di cron e massiva), AC39 (atomicità), AC49/D2 (permessi), AC36/AC37 (conferma dell'alert), AC14/AC15 (paginazione), AC69/AC70 (pulizia).
-- **Browser** (`agent-browser`, sul DB di sviluppo): T3.8–T3.12, PR4, PR5, PR6, con almeno due operatori e un admin.
+- **Concorrenza (D12):** PGlite ha una sola connessione, quindi non può simulare richieste contemporanee. La garanzia è su tre livelli:
+  - l'indice unico (T2.3), testato direttamente, insieme alla conversione di `23505` in `CONTACT_ALREADY_ACTIVE` (T3.4);
+  - la regola dei lock provata da un test (T3.15, livello 1): ogni scrittura su un contatto avviene dopo il lock del cliente, nella stessa transazione;
+  - i test con due connessioni su un Postgres vero (PR7, livello 2, bassa priorità).
+- **Comportamenti prioritari**, cioè dove si concentra lo sforzo: AC71/AC72 (invarianza di cron e massiva), AC39 (atomicità), AC49/D2/A1 (permessi), AC36/AC37 (conferma dell'alert), AC52 (rifiuti), F14/R7 (chiusura degli alert), AC14/AC15 (paginazione), AC69/AC70 (pulizia).
+- **FLOW nel formato vecchio (create-plan 0.8.0):** ogni error path ed edge case della FLOW si è confrontato con gli AC. Quelli coperti sono controlli espliciti nelle `validation` dei task di PR3: conferma dell'alert (AC36), rifiuto per permessi (AC49, AC52), contatto superato (AC27, AC52), alert comparso nel frattempo (AC37), errore di rete e doppio clic (AC39, AC40), richiamo con data passata (AC44), "Crea contatto" su un cliente che ne ha già uno (AC67), contatto di un collega o non assegnato (AC51, A1), "Assegna Clienti" (D2), priorità "Automatica" (AC43), coesistenza (AC73). Quelli senza AC sono assunzioni (A9, A10), non perimetro implicito.
+- **Browser** (`agent-browser`, sul DB di sviluppo): T3.8b, T3.8c, T3.9b–T3.12, T3.17, PR4, PR5, PR6, con almeno due operatori e un admin.
 - **Prestazioni:** `EXPLAIN ANALYZE` su volumi reali, eseguito da una persona (A3).
 - **Mai** script con `NODE_ENV=production`.
 
-**Budget di movimento (P6, design-engineer):**
-- **Nessuna animazione nuova.** Si riusano così come sono Popover, Dialog, Toast (`TOAST_LIMIT = 1`; i toast con azione durano 8000 ms) e l'ingresso della Sheet.
+**Budget di movimento (P6, design-engineer; rivisto il 2026-10-15 per PR3):**
+- **Nessuna animazione nuova.** Si riusano così come sono Popover, Dialog, Toast (`TOAST_LIMIT = 1`; i toast con azione e quelli dei rifiuti durano 8000 ms) e l'ingresso della Sheet.
+- **Un'animazione in meno:** il menu del selettore di stato si apre e si chiude senza animazione, solo in `ContactStateSelect` (T3.9b). È l'azione più usata e si apre da tastiera; il primitivo `DropdownMenu` condiviso non cambia. L'eccezione si registra in `brain/chore/motion.md` (T3.14).
+- **Attesa:** dalla chiamata fino al nuovo valore a schermo, `router.refresh()` compreso; spinner esistente (`animate-spin`, 1 s lineare) nello spazio della freccia, subito e senza durata minima, statico con `prefers-reduced-motion`; `aria-busy` sul trigger.
 - **Cosa non si anima:**
   - righe che escono dai filtri o si spostano dopo una riapertura;
   - ripristino dopo un rifiuto;
   - badge "Superato", alert scaduto (che si segnala anche con un'icona, non solo col colore), "Contattato il" e avviso di riapertura.
 - **Stabilità del layout:** colonna stato `w-40`, colonne data `w-36`, "Contattato il" valorizzato solo dopo la conferma del server.
-- **Focus:** `aria-disabled` durante il salvataggio; `onCloseAutoFocus` → trigger; se la riga esce dalla lista, il focus va al selettore della riga successiva; le opzioni sono focalizzabili.
+- **Focus:** `aria-disabled` durante il salvataggio; `onCloseAutoFocus` → trigger; focus iniziale della modale su [Annulla]; se il trigger sparisce (la riga esce dai filtri, già in Clienti da PR3), il focus va al selettore della riga successiva, poi della precedente, poi alla tabella, mai a `body`; le opzioni sono focalizzabili.
+- **Niente valori ottimistici:** né nel selettore né nella "X" dell'alert; con un rifiuto non c'è niente da far "tornare indietro".
 - **Dettaglio:** Sheet nel layout sopra `[id]`; chiusura con una sola navigazione.
-- Le lacune dei primitivi (niente `motion-reduce`, Sheet a 500 ms `ease-in-out`, `transition-all` su Toast e `.dashabord-container`) vanno in un debito tecnico separato, fuori perimetro.
+- Le lacune dei primitivi (niente `motion-reduce` su Dialog, Toast e Sheet; menu senza `transform-origin`; uscita della Dialog lunga quanto l'entrata; Sheet a 500 ms `ease-in-out`; `transition-all` su Toast e `.dashabord-container`) vanno in un debito tecnico separato, fuori perimetro. La voce la scrive PR3 (T3.14), prima della review: senza, il passaggio sul movimento la segnalerebbe come difetto.
 
 ## 12. Gate di rilascio
 
@@ -1908,14 +2369,15 @@ Il lavoro di più PR può procedere in parallelo sui branch, ma i **merge** segu
 |---|---|---|---|---|
 | G1 | **Chiuso** il 2026-10-13, con G2 (T1.8) | Dopo il deploy di PR1 | Rivisto il 2026-09-28 (il cron di prod non gira): operatore di sistema creato in prod; PR1 in prod per almeno due giorni lavorativi di uso normale (riapertura, massiva, "Assegna Clienti") senza righe di livello error nei log Vercel né issue nuove in Sentry. Il cron alert in prod non si lancia prima di G2 (runbook T1.8) | Persona |
 | G2 | **Fatto** il 2026-10-13, dalla sessione di Leonardo (T2.4). Restano la prima notte dei cron pianificati, da controllare il 14/10, e gli avvisi | Prima di applicare PR2 | Guardia di PR1 nel deploy di prod; prerequisiti in sola lettura (operatore di sistema, `max(created_at)` delle migrazioni, nomi degli indici liberi, nessun trigger, `ALERT_CRON_ENABLED` assente). Poi un'unica sessione fuori orario: controlli ripetuti, merge `dev` → `main` limitato a PR2, estrazione in sola lettura conservata come traccia (senza via libera degli admin, deciso il 2026-09-29), `pnpm db:migrate:prod` lanciato a mano, duplicati = 0, estrazione vuota, indici con la definizione attesa, impronta di `task.updated_at` invariata; poi prima esecuzione del cron lanciata a mano, che chiude gli alert scaduti, verde e controllata su GitHub Actions, Vercel e Sentry, e solo dopo `ALERT_CRON_ENABLED = true`. A fine sessione operatori e cliente (riallineamento) avvisati. La notte dopo, la prima esecuzione pianificata è verde (T2.4) | Omar |
-| G3 | Aperto | Prima del deploy di PR3 | Operatori e admin informati con il testo di T3.14 | Persona |
-| G4 | Aperto | Prima del deploy di PR5 | G2 fatto (AC69); `EXPLAIN ANALYZE` ≤ 500 ms; guida T5.11 rivista; PR3 in prod da poco (per il vuoto di riassegnazione singola); Contatti annunciato agli operatori | Persona |
+| G3 | Aperto | Prima del deploy di PR3 | `adversarial-review` di PR3 SHIP (T3.14); operatori e admin informati con il testo di T3.14, compreso il salvataggio immediato nella scheda cliente (D11) | Persona |
+| G4 | Aperto | Prima del deploy di PR5 | G2 fatto (AC69); `EXPLAIN ANALYZE` ≤ 500 ms; guida T5.11 rivista; PR3 in prod da poco (la riassegnazione del singolo contatto arriva con PR5); Contatti annunciato agli operatori | Persona |
 | G5 | Aperto | Prima del merge di PR6 | Checklist scritta di un admin: giorni d'uso di Contatti, nessun blocco segnalato (A2) | Persona |
 
 **Rollback:**
 - PR1: revert del merge **solo prima di G2**. Dopo che l'indice unico è in prod, il revert riporterebbe il "prima inserisci, poi disattiva" nel cron e nella massiva: l'indice li rifiuterebbe (`23505`) e il vecchio `try/catch` unico fermerebbe l'intero cron. Dopo G2 PR1 si corregge solo in avanti, oppure si fa prima `DROP INDEX task_customer_active_uidx`.
 - PR4–PR6: revert del merge.
-- PR3: il revert ripristina le mutation rimosse ma lascia i dati coerenti, perché l'indice di PR2 resta in vigore.
+- PR3: il revert ripristina le mutation rimosse e il form con "Salva", e lascia i dati coerenti, perché l'indice di PR2 resta in vigore. Nessuna migrazione da annullare.
+- PR7: revert del merge (solo CI e test).
 - PR2 (Omar, in prod, nell'ordine):
   1. `DROP INDEX task_customer_active_uidx`, che riapre la possibilità di duplicati;
   2. riattivare i contatti disattivati dalla pulizia: gli id "disattivato" di (a) nell'export del passo 5 del runbook G2, della sera della migrazione, con `UPDATE "mito-deutsche_task" SET is_active = true WHERE id IN (...)`. Nessuna riga è stata cancellata. Se al passo 6 è stata salvata la lista delle task cambiate, per quei clienti si controlla prima a mano quale contatto riattivare;
@@ -1940,21 +2402,29 @@ Il lavoro di più PR può procedere in parallelo sui branch, ma i **merge** segu
 | L'esecuzione notturna non parte: GitHub ritarda o salta gli `schedule` quando è carico, e in un repo pubblico, come questo, li disattiva dopo 60 giorni senza attività. Gli alert del giorno, ripresi il giorno dopo, perdono il followup | Il messaggio Telegram di ogni notte fa da segnale, dopo il passo 8 di G2: se manca, Omar rilancia a mano Update Alerts PROD in giornata e controlla che `ALERT_CRON_ENABLED` sia `true` e che il workflow sia attivo. Prima del passo 8 non si imposta la variabile e non si riattiva niente. Orario lontano dall'inizio dell'ora (T2.6) |
 | In ora legale il cron non crea il followup per gli alert del giorno: le scadenze scelte dall'interfaccia sono la mezzanotte italiana (22:00 UTC d'estate), e `isDueToday` compensa un'ora sola. Preesistente, uguale nella base (review di PR2, v9) | Fuori perimetro di PR2 (non-goal sul comportamento del cron). Corretto a parte il 2026-10-13, deciso da Leonardo: il cron confronta i giorni in `Europe/Rome` (T2.4, tech-debt) |
 | Tra G2 e PR3, `updateTask` e `updateTaskFromDashboard` riattivano un contatto già sostituito: scrivono `isActive` preso dal client, senza lock (preesistente, review di PR1 F3). Con l'indice unico la riga risponde 500. Se succede a metà di un cron, fallisce quell'alert, e `alert.js` lo ritenta. Se succede a metà di una massiva, fallisce quel cliente e il blocco si ferma lì: i clienti successivi dello stesso blocco restano non assegnati (review di PR2, v3; raggiungibile solo con una chiamata tRPC diretta) | Finestra G2 → PR3 breve; passo 9 del runbook G2 (l'admin rilancia l'assegnazione); T3.13 rimuove le due mutation |
-| Deadlock tra transazioni concorrenti | Regola dei lock di T1.4: ogni `transaction` che scrive task o alert chiama per prima `lockCustomer`, poi tocca solo le righe di quel cliente (T1.5, T1.6, T1.7, T3.2). PGlite non può rilevarli: la regola si controlla in review |
-| Tra PR3 e PR5 un admin non può riassegnare un singolo contatto con esito | Rilasci ravvicinati (G4); nel frattempo resta l'assegnazione massiva |
+| Deadlock tra transazioni concorrenti | Regola dei lock di T1.4: ogni `transaction` che scrive task o alert chiama per prima `lockCustomer`, poi tocca solo le righe di quel cliente (T1.5, T1.6, T1.7, T3.2b). PGlite non può rilevarli: la regola è provata da un test (T3.15), la concorrenza vera da PR7 |
+| Tra PR3 e PR5 un admin riassegna un contatto solo insieme al cliente | "Passaggio di consegne" (D13) dà lo stesso effetto di S1; rilasci ravvicinati (G4) per il comando sul singolo contatto (T5.7) |
 | Lock su `task` e `alert` dalla creazione degli indici fino al COMMIT: le scritture aspettano per tutta la migrazione (circa 10 s; 7 s sul DB di sviluppo). Una transazione aperta su `task` la fa restare in attesa | Migrazione fuori orario (G2); controllo di `pg_stat_activity` prima e `pg_cancel_backend` se resta in attesa più di un minuto: la transazione si annulla (T2.4, passo 5) |
 | La pulizia sceglie il contatto "sbagliato" | Stesso criterio già usato dall'interfaccia (`getActiveTask`); nessuna cancellazione; l'elenco estratto subito prima ha gli id per riattivarlo (§12) |
 | Link salvati di Clienti con filtri su `task` producono SQL non valido dopo PR6 | T6.2 scarta i parametri prima di `sql.raw` (finding 7) |
 | Il refactor della chat rompe Pratiche | PR4 separata, senza cambiamenti visibili, con regressione browser |
 | Fuso orario (server in UTC, utenti in Italia) | Helper `Europe/Rome` testato sui cambi d'ora (A4); il cron alert resta com'è (non-goal) |
 | La riapertura nel dettaglio rifà lo slide-in della Sheet | Guscio della Sheet nel layout sopra `[id]` (T5.6) |
-| `deleteTasks` resta una mutation non protetta | Fuori perimetro (A8); da valutare a parte |
-| Conflitti di merge sui router di PR3 | Un worker per file di router, oppure T3.3 → T3.7 in sequenza |
+| `deleteTasks` è una mutation non protetta | Rimossa in T3.13 (A8 rivista, P7) |
+| Conflitti di merge sui router di PR3 | I task server sono in catena sui router di `task` e su `customer/PUT` (intestazione di PR3, §10) |
+| Uno scrittore nuovo dimentica `lockCustomer`, oppure qualcuno toglie `.for("update")` | Test della regola dei lock (T3.15), con controllo negativo e verifica per mutazione: prende `.for("update")` tolto e gli scrittori elencati. Uno scrittore nuovo è coperto solo se si aggiunge al test (regola nel docstring di `lockCustomer`); il trigger attivo per default in tutti i test DB è un seguito (§15). PR7 per la concorrenza vera |
+| Scrittori che restano fuori dalla regola dei lock (A11): "Assegna Clienti", cron `priority`, pulizia del log. Il cron `priority` può sovrascrivere una fascia manuale impostata mentre gira (preesistente, raro: gira di notte) | Elencati nel test (T3.15) e nel tech-debt (T3.14); conversione come seguito (§15) |
+| I test di componenti con Radix non partono in jsdom | Polyfill (`hasPointerCapture`, `scrollIntoView`, `ResizeObserver`) e `@testing-library/user-event` in T3.9b; se un comportamento resta intestabile in jsdom, passa ai controlli browser dello stesso task |
+| Gli operatori non trovano più "Salva" nella scheda cliente | Annuncio G3 (T3.14); stesso comportamento della riga Clienti |
+| Un passaggio di consegne sposta nell'export le chiamate già registrate sul contatto (D13) | Voluto (Omar, 2026-10-15): la modale e l'annuncio G3 lo dicono. Separare l'attribuzione dall'assegnazione appartiene al nuovo export su `task_event_log` (non-goal) |
+| Dopo "Assegna Clienti" cliente e contatto restano divergenti, ora che il form non li riallinea più. Le chiamate fatte dal nuovo operatore sul contatto restano attribuite al vecchio (AC41) | Con D2 il nuovo operatore lavora il contatto; l'annuncio G3 lo dice. Il contatto si allinea con la riassegnazione dell'admin, nell'interfaccia con PR5 (T5.7; rilasci ravvicinati, G4), o con il followup del cron. Il passaggio di consegne non serve a questo: cambia sempre il cliente (D13). Il seguito del tech-debt su "Assegna Clienti" resta |
+| La modale dell'alert arriva dopo un giro al server (P10) | Lo spinner copre l'attesa; un solo percorso per AC36 e AC37 |
+| Eliminando `createTask` si perdono i suoi test (T1.7) | I comportamenti sono riasseriti sulle mutation che la sostituiscono (T3.3, T3.4), prima della rimozione (T3.13) |
 | Il ponte tra Effect e le transazioni Drizzle non annulla le scritture, oppure perde l'errore tipizzato | Test di T1.4: errore tipizzato ed eccezione dentro `transaction` non lasciano scritture, e il chiamante riceve la stessa `Cause`; transazioni annidate rifiutate; `DbError` mai recuperato in successo; `failNextInsertInto` sui percorsi reali (T1.5, T1.6, T3.3) |
 | Un difetto (eccezione) su un alert ferma tutto il cron | `forEachIsolated` usa `Effect.exit`, non `Effect.either` (T1.4, testato con `Effect.die`) |
-| Il payload degli errori del contatto si perde tra tRPC e superjson, oppure non arriva dalle server action | `cause` annidato `{ code, payload }`, formatter con oggetto semplice, test con `getErrorShape` + superjson (T3.2); mutation solo con `useMutation` dal client; `readContactError` per i Server Component |
+| Il payload degli errori del contatto si perde tra tRPC e superjson, oppure non arriva dalle server action | `cause` annidato `{ code, payload }`, formatter con oggetto semplice, test con `getErrorShape` + superjson (T3.2a); mutation solo con `useMutation` dal client; `readContactError` per i Server Component |
 | `effect` o `@/server/db` finiscono nel bundle client | Codici in `src/lib/domain/contact/errors.ts` senza Effect; `import "server-only"` in `src/server/effect/*` e `src/server/services/**` |
-| Un errore tipizzato nuovo arriva al client come errore generico | `contactErrorToTrpc` è un `Record` sui `_tag`: senza la voce non compila (T3.2) |
+| Un errore tipizzato nuovo arriva al client come errore generico | `contactErrorToTrpc` è un `Record` sui `_tag`: senza la voce non compila (T3.2a) |
 | Stili misti (async ed Effect) nello stesso router durante la migrazione | Un solo bordo (`runTrpc`) e un solo modulo di infrastruttura; la regola di `AGENTS.md` limita la conversione al codice toccato |
 | Revisori poco pratici di Effect | API interna piccola (`query`, `transaction`, `runTrpc`, errori tipizzati); niente layer, servizi o scheduling oltre a quanto serve al piano |
 
@@ -1969,25 +2439,26 @@ Il lavoro di più PR può procedere in parallelo sui branch, ma i **merge** segu
 | AC16–AC18 | T5.3, T5.5 |
 | AC19, AC20, AC23 | T5.1, T5.4 |
 | AC21, AC22 | T5.1, T5.3, T5.5, T5.10 |
-| AC24–AC28 | T5.2, T5.6 |
-| AC29 | T3.5, T3.11, T5.7 |
-| AC30–AC41 | T3.1, T3.3, T3.9, T3.10, T3.11, T5.7, T5.9 |
-| AC42, AC43 | T3.5, T5.7 |
-| AC44–AC46 | T3.6, T3.11, T5.7 |
-| AC47, AC50 | T3.7, T5.7 |
-| AC48, AC49, AC51 | T3.1, T3.2, T3.8 (P4), T3.10, T3.11, T5.2, T5.6, T5.9 |
-| AC52 | T3.9, T5.7, T5.9 |
+| AC24–AC26, AC28 | T5.2, T5.6 |
+| AC27 | T3.2b (server), T3.9a, T5.2, T5.6 |
+| AC29 | T3.5b, T3.11b, T5.7 |
+| AC30–AC41 | T3.1a, T3.3, T3.9b, T3.10, T3.11a, T5.7, T5.9 (AC36, AC37: anche P10) |
+| AC42, AC43 | T3.1a, T3.5a, T3.11a, T5.7 |
+| AC44–AC46 | T3.1a, T3.1c, T3.6, T3.11b, T5.7 |
+| AC47, AC50 | T3.7, T5.7; eccezione D13: T3.8a, T3.17 |
+| AC48, AC49, AC51 | T3.1b, T3.2b, T3.8a, T3.8b, T3.8c (P4, P7, D13), T3.10, T3.11a, T3.11b, T3.12, T3.17, T5.2, T5.6, T5.9 |
+| AC52 | T3.2a, T3.9a, T3.10, T3.11a, T3.11b, T5.7, T5.9 |
 | AC53–AC57 | T4.1, T5.8 |
 | AC58–AC60 | T6.1, T6.2 |
 | AC61 | T6.1 (i sintomi spariscono già con PR2) |
 | AC62 | T5.10 |
 | AC63 | T6.3 |
 | AC64, AC65, AC68 | T6.4 |
-| AC66, AC67 | T3.4, T3.12, T6.4 |
+| AC66, AC67 | T3.1b, T3.4, T3.10 ("+"), T3.12, T6.4 |
 | AC69, AC70 | T2.1, T2.2, T2.4 |
-| AC71 | T1.4–T1.7, T2.3, T3.3, T3.4 |
-| AC72 | T1.2, T1.3, T1.5, T1.6 |
-| AC73 | T3.10, T3.11, T3.14 |
+| AC71 | T1.4–T1.7, T2.3, T3.3, T3.4, T3.15 (regola dei lock), T7.2 (concorrenza) |
+| AC72 | T1.2, T1.3, T1.5, T1.6, T3.8c (casi 3 e 4 senza log) |
+| AC73 | T3.10, T3.11a, T3.11b, T3.14 |
 | AC74 | T5.11, T6.6 |
 
 ## 15. Domande aperte
@@ -2000,27 +2471,37 @@ Il lavoro di più PR può procedere in parallelo sui branch, ma i **merge** segu
 
 **Risposta (2026-09-29):** lo `schedule` di `update-alert prod.yml`, riattivato in PR2 (T2.6). Il cron di Vercel è scartato: rifiutato da `authCheck`, una sola chiamata senza ripetizioni, nessun segnale quando fallisce (dettagli in T2.6).
 
-Tre punti restano assunzioni esplicite, che Omar può ribaltare prima della PR interessata:
+Le assunzioni esplicite, che Omar può ribaltare prima della PR interessata:
 
-| Assunzione | Tema | PR |
-|---|---|---|
-| A1 | Contatti non assegnati | PR3 |
-| A2 | Misura dell'adozione | PR6 |
-| A3 | Soglia di prestazioni | PR5 |
+| Assunzione | Tema | PR | Stato |
+|---|---|---|---|
+| A1 | Contatti non assegnati | PR3 | **Confermata** il 2026-10-15 |
+| A2 | Misura dell'adozione | PR6 | Aperta |
+| A3 | Soglia di prestazioni | PR5 | Aperta |
+| A9 | Conferma con il nome del cliente e [Apri] dopo un cambio di stato (FLOW, senza AC) | PR3: nessuna; PR5: da decidere | Aperta per PR5 |
+| A10 | Data passata del richiamo non selezionabile, come oggi | PR3 | Aperta, si verifica in T3.11b |
+| A11 | Scrittori fuori dalla regola dei lock | PR3 | Aperta, registrata nel tech-debt (T3.14) |
 
 **Conversioni a Effect rinviate** (regola di `AGENTS.md`: le conversioni più grandi si elencano come seguiti). Non fanno parte di questo piano perché il piano non ne tocca la logica:
 - le server action della chat (PR4 tocca solo il componente client);
 - la route e il router delle preferenze (T5.10 aggiunge solo una chiave);
-- `customer.bulkUpdateCustomers` (T3.8 cambia solo il tipo di procedura) e `deleteTasks` (A8);
+- `customer.bulkUpdateCustomers` (T3.8c cambia solo il tipo di procedura). Resta anche fuori dalla regola dei lock (A11), come il cron `priority`: portarli dentro è il seguito naturale di T3.15;
 - le altre procedure di `task` e `customer` che restano dopo T3.13;
-- i cron `priority` ed export.
+- i cron `priority` ed export;
+- il calcolo del giorno italiano dentro `processDueAlerts.ts`, che potrà usare `time.ts` (T3.1c) quando si toccherà il cron;
+- il trigger della regola dei lock (T3.15) attivo per default in tutti i `.db.test.ts`, con le factory e gli scrittori fuori regola (A11) esclusi in modo esplicito: così anche uno scrittore nuovo che dimentica il lock rende rossa la CI.
+
+**Seguiti di `create-plan` 0.8.0:** i task di PR4–PR6 non hanno ancora `complexity`, e la FLOW non è stata riletta, per loro, contro gli AC con il criterio nuovo. Si fa quando quelle PR si ripianificano.
 
 Scostamenti dalla spec, da riportare nella spec al prossimo aggiornamento:
 - **D2**: AC49 dice "solo i contatti assegnati a lui"; il piano ammette anche i contatti dei suoi clienti;
 - **D3**: AC43 dice che il cron ricalcola la priorità "alla sua esecuzione successiva"; un `chiamare` a 120 invece non viene mai ricalcolato;
 - **D8**: significato di "Solo i miei" (AC10);
 - **P1/P2**: "Crea contatto" e note anticipati rispetto alla tabella dei passi di rilascio;
-- **P7**: assegnazione massiva riservata agli admin anche sul server. I risultati dei quattro casi non cambiano.
+- **P7**: assegnazione massiva riservata agli admin anche sul server. I risultati dei quattro casi non cambiano;
+- **P5**: in PR3 il messaggio "contatto superato" non ha il link al contatto attivo che AC52 chiede, perché Contatti non esiste ancora; arriva con PR5;
+- **D11**: nella scheda cliente stato e priorità si salvano subito fino a PR6, che toglie i controlli (AC65);
+- **D13**: il "Passaggio di consegne" permette all'operatore del cliente, non solo all'admin, di spostare il contatto attivo a un altro operatore. È un'eccezione ad AC50 e a D2 ("la riassegnazione è solo ADMIN"), limitata a cliente e contatto insieme, con conferma e log. La spec non citava il cambio di operatore dal form (finding 1).
 
 ## 16. Esito della verifica
 
@@ -2048,3 +2529,37 @@ L'`adversarial-verifier` ha giudicato solo le parti su Effect (D9, P8, T1.4–T1
 | MAJOR | Server action e Server Component non ricevono `data.contactError` | Mutation solo con `useMutation` dal client (forma comune di PR3, T3.10–T3.12, PR5); `_actions/createAlert.ts` eliminata in T3.11; `readContactError` per gli RSC (T3.2, T5.6) |
 | MINOR | Messaggio vuoto negli `INTERNAL_SERVER_ERROR`; `mapError` facoltativo; `query` solo sulla `Tx`; transazioni annidate; recupero di un `DbError`; "No alerts to process"; stesso file in parallelo; seguiti non elencati; Effect nel bundle client | T1.4 (messaggio, overload, `serviceOption`, annidamento, regola sul `DbError`), T1.5 (`found`/`skipped`), T1.2 (`toMatchObject`), §8/§10 (T1.6 → T1.7 → PR3), §15, T3.2 (codici in `lib`), `server-only` (T1.1, T1.4) |
 | NIT | `discard: true`; cliente inesistente in `replaceActiveContact` e `createTask`; affermazione su `@effect/sql-drizzle`; TypeScript `^5.3.3` sotto la soglia di Effect; archi mancanti nel grafo | T1.6, T1.4/T1.7 (`CustomerMissing`), P8, `package.json` portato a `^5.5.4`, §8 |
+
+### Terza verifica: PR3 riscritta e PR7 (2026-10-15)
+
+L'`adversarial-verifier` (quality gate, contesto pulito, `review.mode: total`) ha giudicato la PR3 riscritta con `create-plan` 0.8.0, la PR7 e le sezioni trasversali, contro gli AC della spec e contro il codice. Esito **DO NOT SHIP**: 1 BLOCKER, 3 MAJOR, 8 MINOR, 3 NIT. Ha confermato, provandoli su PGlite 0.2.17, il trigger della regola dei lock (T3.15), il COMMIT fallito con un vincolo differito (T3.16), il percorso del payload d'errore tra tRPC e superjson (T3.2a) e la chiusura di R7 per serializzazione senza toccare `bulkHandleTask`. Tutto è integrato in questa versione:
+
+| Severità | Rilievo | Correzione |
+|---|---|---|
+| BLOCKER | D5 + P4 facevano riassegnare un contatto a un non-admin dal form del cliente, contro D2, AC50 e la verifica di T3.13 | D13 (Omar): "Passaggio di consegne" come azione separata, con modale, in qualunque stato; form senza operatore; eccezione registrata in §15. T3.8a riscritto, T3.17 nuovo, T3.13 nomina l'eccezione |
+| MAJOR | La riga Clienti non ha il nome dell'operatore del contatto per "Assegnato a <Nome>" | T3.10 aggiunge il nome a `getAllCustomers`, con un controllo sul caso con operatori diversi |
+| MAJOR | `complexity` sotto la rubrica per permessi, contratti pubblici e concorrenza | T3.7, T3.8b, T3.8c, T3.13, T3.15 portati a `high` |
+| MAJOR | L'harness di PR7 non raggiungeva Postgres (mock globale di `@/server/db`) e non poteva fermare le transazioni senza toccare l'app | Progetto vitest separato con un pool postgres.js; `holdCustomerLock` e `waitUntilBlocked(n)` (T7.1, T7.2) |
+| MINOR | Richiamo con un alert da sostituire chiuso nel frattempo | Si salva (T3.6), con un controllo |
+| MINOR | T3.12 metteva il focus su un selettore non ancora costruito | T3.12 ← T3.11a; wave e ordine aggiornati |
+| MINOR | T3.15 prometteva di coprire anche gli scrittori futuri | Promessa ristretta agli scrittori elencati; regola nel docstring di `lockCustomer`; trigger attivo per default come seguito (§15) |
+| MINOR | L'`errorFormatter` poteva scambiare un `DbError` (che ha `code`) per un errore del contatto; motivazione dell'annidamento imprecisa | Marcatore sul `cause`, controllo sul `DbError`, motivazione corretta (T3.2a) |
+| MINOR | PR7: un host locale non basta (stack Supabase locale, tunnel), `PGHOST` implicito, test saltati in CI senza accorgersene | Database `mito_test_<casuale>` creato ed eliminato dall'harness; DSN con host esplicito e unico; in CI la variabile mancante fa fallire il job |
+| MINOR | `deleteTasks`: nessun chiamante, `operatorProcedure`, cancella le task di qualunque cliente, contro AC27 e AC49 | Rimossa in T3.13 (A8 rivista, P7) |
+| MINOR | La "X" accettava ogni sorgente del log | `source: "list" \| "detail"` (T3.5b) |
+| MINOR | T3.7: "operatore attivo" non definito; log ambiguo con operatori diversi | Operatore con utente; regola del log definita, con i casi (T3.7) |
+| NIT | Tre affermazioni sul codice imprecise (finding 1, 18, 20); controllo su `reportedErrors` che non può fallire; `pnpm-lock.yaml`; test che caricano il DB in jsdom; dipendenze di PR7; stato NULL | Finding corretti; T3.16 senza quel controllo; T3.9b; suffisso `.db.test.ts`; T7.2 ← T3.14; T3.1a |
+
+**Seconda passata, mirata sulle correzioni (2026-10-15).** Un secondo `adversarial-verifier` a contesto pulito ha confermato che il BLOCKER è chiuso da una decisione registrata e che le correzioni reggono sul codice: Zod scarta `operatorId`, nessun altro scrittore di `operatorId` resta fuori dal lock o dai permessi, il grafo e le wave sono coerenti. Esito **DO NOT SHIP** per 1 MAJOR, 7 MINOR e 4 NIT, tutti integrati:
+
+| Severità | Rilievo | Correzione |
+|---|---|---|
+| MAJOR | Il ramo "si sposta solo il contatto" di T3.8a faceva prendere a un operatore il contatto di un collega, con le sue chiamate, senza cambiare il cliente: più largo dell'eccezione D13. E l'interfaccia non lo raggiungeva | Omar: il passaggio cambia sempre il cliente; destinazione uguale all'operatore attuale rifiutata (`HANDOVER_SAME_OPERATOR`), anche per l'admin; il solo contatto si allinea con `task.reassign` (PR5). D13, T3.8a, §13 e G3 aggiornati |
+| MINOR | T3.8a usa `touchCustomer` di T3.2b senza dipenderne, nella stessa wave | T3.8a ← T3.2b; wave 3.3 e 3.4, grafo e ordine aggiornati |
+| MINOR | Tre passaggi dicevano che tra PR3 e PR5 l'admin non può riassegnare un contatto | Riscritti: con D13 lo riassegna insieme al cliente (intestazione di PR5, G4, §13) |
+| MINOR | Il marcatore dell'errore del servizio del cliente non era specificato | Helper unico `contactErrorCause` (T3.2a) e test con `getErrorShape` in T3.8a |
+| MINOR | Regole del log diverse tra T3.7 e T3.8a; una sola riga perdeva il cambio del cliente | Una riga per ogni cosa che cambia, contatto e cliente, in tutti e due |
+| MINOR | T3.5a `medium` nonostante il controllo dei permessi | `high` |
+| MINOR | Dopo un rifiuto il pulsante che apre la modale poteva sparire | Modale montata nel form; con un rifiuto si chiude, e il focus va al pulsante o al testo dell'operatore (T3.17) |
+| MINOR | T7.1 chiama `createContact` senza dipendere da PR3 | T7.1 ← T3.14 |
+| NIT | Finding 1 citava D5; §11 elencava T3.8a tra i task browser; `CustomerFormSection.tsx` mancante; "Assegna a te" non mostra i rifiuti e aggiorna lo schermo prima della risposta | Finding corretto; §11 con T3.17; location di T3.17; "Assegna a te" sistemato in T3.17 |
