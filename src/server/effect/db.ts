@@ -156,6 +156,11 @@ export type LockedCustomer = {
  * Clienti" (`customer.bulkUpdateCustomers`), the `priority` cron
  * (`refreshPriorities`) and the event-log cleanup (`cleanupTaskEventLog`).
  * A new writer calls this first.
+ *
+ * The rule is tested in `src/server/services/contact/_test/lockRule.db.test.ts`:
+ * with a test trigger, a write of a customer's tasks, alerts or event log fails
+ * unless the transaction holds this lock. A new writer is covered only if it
+ * adds its call there.
  */
 export const lockCustomer = (
   customerId: string | null

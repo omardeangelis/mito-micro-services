@@ -1616,9 +1616,9 @@ Vale per T3.10, T3.11a, T3.11b, T3.12, T5.7 e T5.9. Le letture dai Server Compon
   - il controllo negativo fallisce come previsto;
   - tutti gli scrittori elencati passano;
   - **verifica per mutazione**, scritta nel log: togliendo `.for("update")` da `lockCustomer`, oppure la chiamata a `lockCustomer` da un servizio, il test diventa rosso. Oggi, con le stesse modifiche, tutti i test restano verdi (tech-debt).
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-10-15, worker sul modello dell'orchestratore, review al primo giro. Trigger di test con `xmin`/`xmax` (PGlite li espone come Postgres, niente ripiego). Scostamento motivato: conta solo `xmax = pg_current_xact_id()::xid`, senza `xmin`. Con `xmin` `handover` e `assignToYourself` restavano verdi anche senza `.for(\"update\")`, perché aggiornano il cliente prima di scrivere il log; il lock `FOR UPDATE` resta su `xmax` anche dopo un update nella stessa transazione. Le righe senza cliente si saltano. 21 test: controllo negativo, 19 scritture riuscite (`changeState` in quattro varianti, `createContact`, `setPriority`, `resolveAlert`, `setCallback` con e senza alert sostituito, `reassign`, `handover`, `assignToYourself`, i casi della massiva, il cron nei due rami) e "Assegna Clienti" rifiutata (eccezione dichiarata). Verifica per mutazione: senza `.for(\"update\")` i 19 test diventano rossi; senza `lockCustomer` in `assignToYourself` o in `handover` diventa rosso solo il suo. Docstring di `lockCustomer` aggiornato.
+- **files edited/created**: `src/test/lockRule.ts`, `src/server/services/contact/_test/lockRule.db.test.ts`, `src/server/effect/db.ts` (docstring)
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a (D6)
