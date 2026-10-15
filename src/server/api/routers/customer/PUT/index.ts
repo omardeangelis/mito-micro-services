@@ -8,7 +8,10 @@ import { task } from "@/server/db/schema/task"
 import { taskEventLog } from "@/server/db/schema/taskEventLog"
 import { runTrpc } from "@/server/effect/trpc"
 import { actorOf } from "@/server/services/contact/actor"
-import { handover as handoverService } from "@/server/services/customer/assignment"
+import {
+  assignToYourself as assignToYourselfService,
+  handover as handoverService,
+} from "@/server/services/customer/assignment"
 import { customerErrorToTrpc } from "@/server/services/customer/errors"
 
 export const updateCustomer = protectedProcedure
@@ -153,34 +156,18 @@ export const handleCustomerBlackList = operatorProcedure
       .where(eq(customers.id, input.id!))
   })
 
+/** "Assegna a te" (P4): see the `assignToYourself` service. */
 export const assignToYourself = operatorProcedure
   .input(z.object({ id: z.string() }))
-  .mutation(async ({ ctx, input }) => {
-    const { db, operator } = ctx
-
-    const [before] = await db
-      .select({ operatorId: customers.operatorId })
-      .from(customers)
-      .where(eq(customers.id, input.id))
-
-    const res = await db
-      .update(customers)
-      .set({ operatorId: operator.id })
-      .where(eq(customers.id, input.id))
-
-    if (before?.operatorId !== operator.id) {
-      await db.insert(taskEventLog).values({
+  .mutation(({ ctx, input }) =>
+    runTrpc(
+      assignToYourselfService({
         customerId: input.id,
-        actorOperatorId: operator.id,
-        action: "operator_reassign",
-        source: "self_assign",
-        fromOperatorId: before?.operatorId ?? null,
-        toOperatorId: operator.id,
-      })
-    }
-
-    return res
-  })
+        actor: actorOf(ctx.operator),
+      }),
+      customerErrorToTrpc
+    )
+  )
 
 const updateLastEditInput = insertCustomerSchema.pick({
   id: true,

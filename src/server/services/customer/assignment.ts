@@ -1,7 +1,11 @@
 import "server-only"
 import { Effect } from "effect"
 import { and, eq } from "drizzle-orm"
-import { type Actor, canHandover } from "@/lib/domain/contact/permissions"
+import {
+  type Actor,
+  canHandover,
+  canSelfAssign,
+} from "@/lib/domain/contact/permissions"
 import { customers } from "@/server/db/schema/customers"
 import { operators } from "@/server/db/schema/operators"
 import { task } from "@/server/db/schema/task"
@@ -123,5 +127,55 @@ export const handover = ({
 
       yield* touchCustomer(customer)
       return { contactMoved }
+    })
+  )
+
+/**
+ * "Assegna a te" (P4): the actor takes a customer with no operator. A
+ * customer that already has one is `CustomerAssignmentForbidden`, for admins
+ * too: taking it would grant edit rights over a colleague's contact (D2).
+ *
+ * Changes only the customer's operator, never its tasks, and writes one
+ * `operator_reassign` row with source `self_assign`.
+ */
+export const assignToYourself = ({
+  customerId,
+  actor,
+}: {
+  customerId: string
+  actor: Actor
+}): Effect.Effect<
+  void,
+  CustomerNotFound | CustomerAssignmentForbidden | DbError,
+  Db
+> =>
+  transaction(
+    Effect.gen(function* () {
+      // The customer id comes from the user: a missing one is not a defect
+      const customer = yield* lockCustomer(customerId).pipe(
+        Effect.catchTag("CustomerMissing", () =>
+          Effect.fail(new CustomerNotFound())
+        )
+      )
+      if (!canSelfAssign(customer)) {
+        return yield* new CustomerAssignmentForbidden()
+      }
+
+      yield* query((client) =>
+        client
+          .update(customers)
+          .set({ operatorId: actor.operatorId })
+          .where(eq(customers.id, customer.id))
+      )
+      yield* query((client) =>
+        client.insert(taskEventLog).values({
+          customerId: customer.id,
+          actorOperatorId: actor.operatorId,
+          action: "operator_reassign",
+          source: "self_assign",
+          fromOperatorId: customer.operatorId,
+          toOperatorId: actor.operatorId,
+        })
+      )
     })
   )

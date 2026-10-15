@@ -1334,9 +1334,9 @@ Vale per T3.10, T3.11a, T3.11b, T3.12, T5.7 e T5.9. Le letture dai Server Compon
 - **location**: `src/server/services/customer/assignment.ts`, `src/server/api/routers/customer/PUT/index.ts` (`assignToYourself`), `src/server/api/routers/customer/_test/customerOperator.db.test.ts`
 - **description**: `assignToYourself` diventa un servizio Effect nello stesso modulo, in un `transaction` che comincia con `lockCustomer`. Ammesso solo se il cliente non è assegnato (`canSelfAssign`), altrimenti `CustomerAssignmentForbidden`. Il resto resta come oggi: aggiorna solo il cliente e scrive `operator_reassign` con sorgente `self_assign`. Il link passa da una server action ([assignToYou.ts](../../../../src/app/dashboard/customers/[id]/_actions/assignToYou.ts)) e l'interfaccia lo mostra solo sui clienti non assegnati. Oggi un rifiuto non mostrerebbe nulla: il link aggiorna il valore a schermo prima della risposta e non gestisce l'errore. Lo sistema T3.17, che riscrive quella parte del form.
 - **validation**: test DB via caller: su un cliente non assegnato funziona come oggi; su un cliente già assegnato → FORBIDDEN, nessuna modifica. Browser: "Assegna a te" funziona come oggi.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done (controllo browser in T3.14)
+- **log**: 2026-10-15, worker sul modello dell'orchestratore, review al primo giro. Servizio `assignToYourself` accanto a `handover`: rifiuta per ogni ruolo un cliente già assegnato (`CUSTOMER_ASSIGNMENT_FORBIDDEN`), altrimenti fa quello che faceva (solo il cliente, una riga `self_assign`). La procedura ora restituisce `void` invece del risultato grezzo di Drizzle: l'unico chiamante (la server action) lo ignora. 5 test nuovi. Il controllo browser "Assegna a te funziona come oggi" è nella passata unica di T3.14.
+- **files edited/created**: `src/server/services/customer/assignment.ts`, `src/server/api/routers/customer/PUT/index.ts`, `src/server/api/routers/customer/_test/customerOperator.db.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a (D6)

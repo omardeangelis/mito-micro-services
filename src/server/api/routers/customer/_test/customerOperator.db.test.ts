@@ -435,3 +435,89 @@ describe("customer.updateCustomerFromDashboard", () => {
     await expectUntouched(seeded)
   })
 })
+
+describe("customer.assignToYourself", () => {
+  it("'Assegna a te' su un cliente già assegnato a un altro operatore risponde FORBIDDEN e non cambia l'operatore", async () => {
+    const owner = await createOperator()
+    const other = await createOperator()
+    const customer = await createCustomer({ operatorId: owner.id })
+
+    await expect(
+      createTestCaller(other).customer.assignToYourself({ id: customer.id })
+    ).rejects.toMatchObject({ code: "FORBIDDEN" })
+
+    expect(
+      await createTestCaller(owner).customer.getCustomerById({
+        id: customer.id,
+      })
+    ).toMatchObject({ operatorId: owner.id })
+    expect(await logOf(customer.id)).toEqual([])
+  })
+
+  it("'Assegna a te' su un cliente non assegnato lo dà all'operatore, scrive una riga self_assign e non tocca il contatto", async () => {
+    const operator = await createOperator()
+    const { customer, contact } = await customerWithContact({
+      operatorId: null,
+    })
+
+    await createTestCaller(operator).customer.assignToYourself({
+      id: customer.id,
+    })
+
+    expect(await customerRow(customer.id)).toMatchObject({
+      operatorId: operator.id,
+    })
+    expect(await tasksOf(customer.id)).toMatchObject([
+      { id: contact.id, operatorId: null, isActive: true },
+    ])
+    expect(await logOf(customer.id)).toMatchObject([
+      {
+        action: "operator_reassign",
+        source: "self_assign",
+        taskId: null,
+        fromOperatorId: null,
+        toOperatorId: operator.id,
+        actorOperatorId: operator.id,
+      },
+    ])
+  })
+
+  it.each([
+    ["un OPERATORE", "OPERATORE"],
+    ["un ADMIN", "ADMIN"],
+  ] as const)(
+    "%s su un cliente di un altro operatore riceve CUSTOMER_ASSIGNMENT_FORBIDDEN e nulla cambia",
+    async (_who, role) => {
+      const owner = await createOperator()
+      const actor = await createOperator({ role })
+      const seeded = await customerWithContact({ operatorId: owner.id })
+
+      const error = await rejectionOf(
+        createTestCaller(actor).customer.assignToYourself({
+          id: seeded.customer.id,
+        })
+      )
+
+      expect(error).toMatchObject({ code: "FORBIDDEN" })
+      expect(readContactError(error)).toEqual({
+        code: "CUSTOMER_ASSIGNMENT_FORBIDDEN",
+        payload: {},
+      })
+      await expectUntouched(seeded)
+    }
+  )
+
+  it("un cliente che non esiste riceve CUSTOMER_NOT_FOUND", async () => {
+    const operator = await createOperator()
+
+    const error = await rejectionOf(
+      createTestCaller(operator).customer.assignToYourself({ id: "missing" })
+    )
+
+    expect(error).toMatchObject({ code: "NOT_FOUND" })
+    expect(readContactError(error)).toEqual({
+      code: "CUSTOMER_NOT_FOUND",
+      payload: {},
+    })
+  })
+})
