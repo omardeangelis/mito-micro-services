@@ -1199,9 +1199,9 @@ Vale per T3.10, T3.11a, T3.11b, T3.12, T5.7 e T5.9. Le letture dai Server Compon
   - D2: l'operatore di un altro cliente riceve FORBIDDEN;
   - cliente inesistente → NOT_FOUND;
   - atomicità con `failNextInsertInto(task_event_log)`.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-10-15, worker sul modello dell'orchestratore, review al primo giro. 10 test via caller. `CustomerUnassigned` si controlla prima del permesso (anche l'admin riceve "Cliente non assegnato"). La conversione di `23505` in `ContactAlreadyActive` avvolge `transaction` da fuori, perché dentro la transazione è già abortita: rilegge il contatto attivo dopo il rollback, e se non lo trova rilancia il `DbError`. Nessun test proprio, come da piano. Un operatore su un cliente non suo riceve `CONTACT_FORBIDDEN` con `assignee: null` ("…: non è assegnato"): il testo non è preciso, ma ci arriva solo una richiesta fuori dall'interfaccia, che non mostra il pulsante. `activeTaskIdOf` duplica quella privata della guardia: a `/simplify`.
+- **files edited/created**: `src/server/services/contact/createContact.ts`, `src/server/api/routers/task/POST/index.ts`, `src/server/api/routers/task/index.ts`, `src/server/services/contact/_test/createContact.db.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a (D6)

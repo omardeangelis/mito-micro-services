@@ -19,6 +19,25 @@ import {
 } from "@/server/effect/db"
 import { runTrpc } from "@/server/effect/trpc"
 import { replaceActiveContact } from "@/server/services/contact/activeContact"
+import { actorOf } from "@/server/services/contact/actor"
+import { createContact as createContactService } from "@/server/services/contact/createContact"
+import { contactErrorToTrpc } from "@/server/services/contact/errors"
+
+const createContactInput = z.object({
+  customerId: z.string(),
+  // Only the interface creates a contact this way
+  source: z.enum(["list", "detail"]),
+})
+
+/** "Crea contatto": see the `createContact` service. */
+export const createContact = operatorProcedure
+  .input(createContactInput)
+  .mutation(({ ctx, input }) =>
+    runTrpc(
+      createContactService({ ...input, actor: actorOf(ctx.operator) }),
+      contactErrorToTrpc
+    )
+  )
 
 const insertTaskInput = insertTaskSchema
   .pick({
