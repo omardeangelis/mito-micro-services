@@ -200,6 +200,8 @@ updated: 2026-10-15
 | Run 3 — utenti per la passata, DB di sviluppo in sola lettura | OK | Transazione `READ ONLY`: due OPERATORE senza clienti (1001, 1003) e l'ADMIN generico (1000) |
 | Run 3 — passata browser sul DB di sviluppo | OK, con 4 correzioni | `next dev` sulla porta 3100 (`NEXTAUTH_URL` sovrascritto), link magico dalla console; 12 clienti di prova `zzpr3-c1…c12` creati con uno script (restano sul DB di sviluppo). Checklist in T3.14 |
 | Run 3 — verifica sul DB di sviluppo dopo la passata, sola lettura | OK | Al più un contatto attivo per cliente; il cambio di stato di un operatore sul contatto di un collega non lo sposta (AC41, nessun `operator_reassign` sulla task); il salvataggio del form con il solo telefono non tocca gli operatori; la riapertura crea un contatto nuovo a 120 |
+| Run 3 — gate CI su `1b50ace` (correzioni della review) | OK | `next lint` e `tsc --noEmit` puliti; `pnpm run test --run` 58 file, 852 test; `pnpm build` con le variabili di CI in un worktree senza `.env*` (solo `.env.example`), poi rimosso |
+| Run 3 — spinner con movimento ridotto, browser | OK | 2026-10-15, `next dev` su `1b50ace`, scheda di `zzpr3-c13` come operatore, `fetch` di `task.changeState` sospeso nella pagina (nessuna richiesta partita). Trigger in attesa con `aria-busy="true"` e il valore salvato `app.to`: senza `reduced-motion` `animationName: spin`, `getAnimations()` 1; con `set media light reduced-motion` `animationName: none`, `getAnimations()` 0. Lo screenshot mostra l'arco fermo nella sede della freccia. Dopo, in sola lettura: `zzpr3-c13` invariato, nessuna riga di log |
 
 ## Acceptance Criteria Status
 

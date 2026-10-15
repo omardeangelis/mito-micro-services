@@ -216,13 +216,13 @@ Scoperto nella review di PR2 (v7).
 Scoperto nel piano (P6, rivisto con `design-engineer` il 2026-10-15), preesistente: sono i primitivi shadcn in `src/components/ui/`, che PR3 non tocca.
 
 - Nessuna variante `motion-reduce` su Dialog, Toast e Sheet: con `prefers-reduced-motion` le transizioni di entrata e uscita restano.
-- Lo stesso per il contenuto di `Select` (`ui/select.tsx:78`) e di `DropdownMenu` (`ui/dropdown-menu.tsx:50,68`): `fade-in-0 zoom-in-95 slide-in-from-*` senza `motion-reduce`. PR3 usa il `Select` per la priorità nella scheda cliente (review di PR3, v7).
+- Lo stesso per il contenuto di `Select` (`ui/select.tsx:78`) e di `DropdownMenu` (`ui/dropdown-menu.tsx:50,68`): `fade-in-0 zoom-in-95 slide-in-from-*` senza `motion-reduce`. PR3 usa il `Select` per la priorità nella scheda cliente e per l'operatore di destinazione nella modale del passaggio di consegne (review di PR3, v7).
 - I menu di `DropdownMenu` e di `Select` condivisi non impostano `transform-origin` sul lato del trigger: lo `zoom-in` parte dal centro.
 - L'uscita della Dialog dura quanto l'entrata (200 ms): di solito l'uscita è più breve.
 - Sheet a 500 ms `ease-in-out`: lento per un pannello laterale, e la curva non è d'uscita.
 - `transition-all` su Toast e su `.dashabord-container`: anima anche proprietà di layout.
 
-**Effetto oggi:** solo sul movimento. Il selettore di stato di PR3 apre il suo menu senza animazione (eccezione in `brain/chore/motion.md`); la modale di conferma usa la Dialog com'è, e il selettore della priorità il `Select` com'è.
+**Effetto oggi:** solo sul movimento. Il selettore di stato di PR3 apre il suo menu senza animazione (eccezione in `brain/chore/motion.md`); la modale di conferma usa la Dialog com'è, e il selettore della priorità e quello del passaggio di consegne il `Select` com'è.
 
 **Da fare fuori da questa spec:** una passata sui primitivi `ui/` con `design-engineer` (`motion-reduce:` su entrata e uscita, `origin-[--radix-dropdown-menu-content-transform-origin]`, uscita più breve, Sheet più rapida, proprietà esplicite al posto di `transition-all`).
 
