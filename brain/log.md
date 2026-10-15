@@ -18,6 +18,25 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 - Concepts written: <count>
 -->
 
+## [2026-10-15] review-ingest | search_by con mappa esplicita (Clienti e Pratiche)
+- Report: [[review/search-by-explicit-map/REPORT]]
+- Verdict: SHIP
+- Durable findings folded to tech debt: 8 in [[tech-debt/crm/search-by-explicit-map]] (2 di sicurezza, 3 di accessibilità, 3 piccoli; il `console.log` su richiesta del proprietario di prodotto)
+
+## [2026-10-15] review | search_by con mappa esplicita (Clienti e Pratiche) — dal secondo al quinto giro
+- Report: [[review/search-by-explicit-map/REPORT]]
+- Scope: standalone
+- Verdict: SHIP (prima: DO NOT SHIP)
+- Impact: critical
+- Verifiers: secondo giro 8 su haiku (1 blocker, 1 major: badge fermo dopo back/avanti, titolo di test); terzo 4 (2 major sui test e sul badge di Pratiche); quarto 2 (2 major sui test del selettore); quinto 2 (SHIP, 4 minor sui test chiuse da `ee889e9`)
+
+## [2026-10-15] review | search_by con mappa esplicita (Clienti e Pratiche)
+- Report: [[review/search-by-explicit-map/REPORT]]
+- Scope: standalone
+- Verdict: DO NOT SHIP
+- Impact: critical
+- Verifiers: 7 su haiku (1 blocker, 1 major): ricerca per Comune scartata dall'enum
+
 ## [2026-09-26] review | Sezione Contatti — PR1, terza verifica e smoke
 - Report: [[specs/crm/sezione-contatti/REPORT]]
 - Scope: spec
