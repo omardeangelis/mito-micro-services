@@ -1,9 +1,31 @@
 import { operatorProcedure } from "@/server/api/trpc"
-import { task } from "@/server/db/schema/task"
+import { task, taskStatus } from "@/server/db/schema/task"
 import { taskEventLog } from "@/server/db/schema/taskEventLog"
 import { insertTaskSchema } from "@/lib/types/schemas"
 import { eq } from "drizzle-orm"
 import { z } from "zod"
+import { runTrpc } from "@/server/effect/trpc"
+import { actorOf } from "@/server/services/contact/actor"
+import { changeState as changeStateService } from "@/server/services/contact/changeState"
+import { contactErrorToTrpc } from "@/server/services/contact/errors"
+
+const changeStateInput = z.object({
+  taskId: z.number().int(),
+  toState: z.enum(taskStatus),
+  // Only the interface changes a state this way
+  source: z.enum(["list", "detail"]),
+  confirmedAlertId: z.number().int().nullable(),
+})
+
+/** The state change of a contact: see the `changeState` service. */
+export const changeState = operatorProcedure
+  .input(changeStateInput)
+  .mutation(({ ctx, input }) =>
+    runTrpc(
+      changeStateService({ ...input, actor: actorOf(ctx.operator) }),
+      contactErrorToTrpc
+    )
+  )
 
 const updateTaskInput = insertTaskSchema
   .pick({

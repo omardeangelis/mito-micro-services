@@ -1172,9 +1172,9 @@ Vale per T3.10, T3.11a, T3.11b, T3.12, T5.7 e T5.9. Le letture dai Server Compon
   - AC27: contatto superato rifiutato;
   - AC49, D2 e A1: i casi della guardia arrivano al caller con il codice giusto;
   - `customers.updated_at` aggiornato.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-10-15, worker sul modello dell'orchestratore, review al primo giro. 31 test via caller su AC27, AC30–AC41, D2, A1, D3; AC39 in quattro varianti (chiusura e riapertura, con l'alert, fallimento sul log o sul cliente). Verifica per mutazione del worker su `touchCustomer`, `mostRecent`, operatore della riapertura, `closedAt` e chiusura dell'alert. Nella riapertura la riga `state_change` va sul nuovo id, come faceva `createTask`.
+- **files edited/created**: `src/server/services/contact/changeState.ts`, `src/server/api/routers/task/PUT/index.ts`, `src/server/api/routers/task/index.ts`, `src/server/services/contact/_test/changeState.db.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a (D6)
