@@ -1220,9 +1220,9 @@ Vale per T3.10, T3.11a, T3.11b, T3.12, T5.7 e T5.9. Le letture dai Server Compon
 - **validation**: test DB via caller:
   - fascia manuale e ritorno ad "Automatica";
   - rifiuto per contatto superato e per permesso, senza scritture.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-10-15. Spostato da `high` a `medium` dall'orchestratore: un solo `UPDATE` dopo la guardia, nessuna scelta aperta. Worker sonnet, review al primo giro. 11 test: le quattro fasce, "Automatica" che lascia 120 (D3), rifiuti senza scritture, D2, nessun log e `customers.updated_at` invariato, valore non valido rifiutato dall'input.
+- **files edited/created**: `src/server/services/contact/setPriority.ts`, `src/server/api/routers/task/PUT/index.ts`, `src/server/api/routers/task/index.ts`, `src/server/services/contact/_test/setPriority.db.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a (D6)

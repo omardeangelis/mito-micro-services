@@ -8,6 +8,8 @@ import { runTrpc } from "@/server/effect/trpc"
 import { actorOf } from "@/server/services/contact/actor"
 import { changeState as changeStateService } from "@/server/services/contact/changeState"
 import { contactErrorToTrpc } from "@/server/services/contact/errors"
+import { setPriority as setPriorityService } from "@/server/services/contact/setPriority"
+import { priorityBands } from "@/lib/domain/contact/priority"
 
 const changeStateInput = z.object({
   taskId: z.number().int(),
@@ -23,6 +25,21 @@ export const changeState = operatorProcedure
   .mutation(({ ctx, input }) =>
     runTrpc(
       changeStateService({ ...input, actor: actorOf(ctx.operator) }),
+      contactErrorToTrpc
+    )
+  )
+
+const setPriorityInput = z.object({
+  taskId: z.number().int(),
+  priority: z.enum([...priorityBands, "auto"]),
+})
+
+/** The priority of a contact, by hand or back to the cron: see `setPriority`. */
+export const setPriority = operatorProcedure
+  .input(setPriorityInput)
+  .mutation(({ ctx, input }) =>
+    runTrpc(
+      setPriorityService({ ...input, actor: actorOf(ctx.operator) }),
       contactErrorToTrpc
     )
   )
