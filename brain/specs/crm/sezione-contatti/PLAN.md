@@ -1387,9 +1387,9 @@ Vale per T3.10, T3.11a, T3.11b, T3.12, T5.7 e T5.9. Le letture dai Server Compon
     - ricarica i dati (`router.refresh()`), così il controllo torna al valore salvato;
     - con `ALERT_CONFIRMATION_REQUIRED` non mostra toast: passa al chiamante l'alert ricevuto, che apre la modale (riga e scheda) o aggiorna il form (richiamo).
 - **validation**: unit test di `describeContactError` per ogni codice, per un errore HTTP e per uno in-process, e per un errore senza `contactError`.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-10-15, worker sonnet. Review: difetto banale corretto dall'orchestratore, l'hook passa da `.ts` a `.tsx` per usare JSX al posto di `createElement` con un cast `as unknown as ToastActionElement`. 23 test, uno per codice più le forme HTTP, in-process e gli errori generici. `switch` esaustivo con controllo `never`. `onError` restituisce `{ alert }` per `ALERT_CONFIRMATION_REQUIRED` (niente toast, niente refresh), altrimenti toast `destructive` di 8000 ms e `router.refresh()`. Il link [Vai al contatto attivo] compare solo se si passa `activeContactHref` (PR5).
+- **files edited/created**: `src/components/custom/contact/describeContactError.ts`, `src/components/custom/contact/useContactMutationFeedback.tsx`, `src/components/custom/contact/_test/describeContactError.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a (D6)
