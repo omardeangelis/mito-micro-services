@@ -288,3 +288,15 @@ Scoperto nel passaggio UI della review di PR3 (v6, 2026-10-15), preesistente: so
 **Effetto oggi:** il messaggio di rifiuto si legge, ma sotto la soglia di contrasto; chi usa un lettore di schermo sente un pulsante senza nome.
 
 **Da fare fuori da questa spec:** la stessa passata sui primitivi `ui/` di "Lacune dei primitivi di movimento": `bg-red-600` o più scuro nella variante `destructive`, `aria-label="Chiudi"` sul pulsante del toast, area della "X" di almeno 24 px.
+
+## La scheda cliente non regge sotto i 900 px
+
+Scoperto nel passaggio UI della review di PR3 (v6, seconda verifica, 2026-10-15). In parte preesistente.
+
+- Preesistente: sotto circa 895 px tutta la scheda cliente scorre in orizzontale (24 px di troppo a 800, 152 a 320) e a 320–375 px le etichette dell'anagrafica si sovrappongono ("Provincia"/"Sede", "Occupazione"/"Ambito"/"Provenienza"). `CustomerForm` non è cambiato in PR3.
+- Da PR3: nella card "Stato del cliente" il selettore dello stato è largo 160 px fissi (PLAN §9). Con due colonne sotto `lg` non tocca la priorità da 484 px in su; sotto, si sovrappone al selettore della priorità (65 px a 320, 43 a 375) e la parte destra del trigger apre la priorità.
+- Nella lista Clienti il motivo in sola lettura resta nei 160 px della colonna: "Assegnato a Martina Vi…", con il nome intero solo nel `title`, che tastiera e touch non raggiungono. Nella scheda il motivo è intero.
+
+**Effetto oggi:** nessuno per gli operatori, che lavorano da desktop. Conta per lo zoom al 400 % su un portatile (WCAG 1.4.10) e per un uso da telefono.
+
+**Da fare fuori da questa spec:** se la scheda deve funzionare sotto i 900 px, una passata sul suo layout (anagrafica e card), con il trigger dello stato che si restringe sotto i 484 px; nella lista, il nome intero del motivo raggiungibile senza puntatore.

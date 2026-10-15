@@ -162,3 +162,10 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 - Verdict: DO NOT SHIP (prima verifica)
 - Impact: critical
 - Verifiers: 7 (1 blocker, 8 major; v2, v3, v4 SHIP)
+
+## [2026-10-15] review | Sezione Contatti — PR3, verifiche dopo le correzioni
+- Report: [[specs/crm/sezione-contatti/REPORT]] (round PR3, "Verifiche successive")
+- Scope: spec
+- Verdict: SHIP (prima: DO NOT SHIP)
+- Impact: critical
+- Verifiers: 4 rilanciati su 7 (v1, v5, v6 SHIP; v7 DO NOT SHIP due volte, per il registro non committato e poi per la prova dello spinner, chiusi in `4fae91b` e `afb2975`)

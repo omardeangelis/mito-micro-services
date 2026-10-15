@@ -63,7 +63,7 @@ Serve una sezione **Contatti** (lista e dettaglio) sulle `task`. Le regole di mo
 |---|---|---|---|---|
 | **PR1** Percorsi di creazione sicuri | **Fatta.** In prod dal 2026-09-29 (PR #5, su `main` con la #7) | 1 | Cron alert e 4 casi della massiva danno gli stessi risultati (i test di caratterizzazione sono verdi prima e dopo). Ogni operazione è atomica. Un errore su un cliente non ferma il cron. `createTask` non lascia due contatti attivi | AC71 (codice), AC72 |
 | **PR2** Pulizia e vincolo DB | **Fatta.** Su `main` e migrazioni applicate in prod il 2026-10-13 (PR #6, su `main` con la #11; G2) | 1 | Nessun duplicato attivo. Il DB rifiuta un secondo contatto attivo. Nessun alert aperto su contatti non attivi. Elenco dei contatti disattivati e degli alert chiusi estratto subito prima della pulizia, come traccia | AC69, AC70, AC71 (DB) |
-| **PR3** Regole sul server, usate da Clienti | Da fare (piano riscritto il 2026-10-15) | 1 (+ AC66–AC67 anticipati, P1) | Da Clienti e dalla scheda cliente: cambio di stato atomico, modale di conferma per l'alert, operatore invariato, sola lettura con motivo, stato e priorità salvati subito nella scheda (D11), "Passaggio di consegne" al posto del cambio di operatore nel form (D13). I permessi D2 li rifiuta il server anche fuori dall'interfaccia. "Crea contatto" nella scheda cliente. Un alert non si chiude due volte e non si stacca per sbaglio (D10). Un test rende rossa la CI se uno degli scrittori di contatti smette di bloccare il cliente (D12) | regole server di AC27, AC30–AC52; AC66, AC67; AC73 |
+| **PR3** Regole sul server, usate da Clienti | **Pronta.** Branch `contatti/pr3-regole-server`, review SHIP il 2026-10-15 (dopo le correzioni); PR verso `dev`, poi G3 con l'annuncio agli operatori | 1 (+ AC66–AC67 anticipati, P1) | Da Clienti e dalla scheda cliente: cambio di stato atomico, modale di conferma per l'alert, operatore invariato, sola lettura con motivo, stato e priorità salvati subito nella scheda (D11), "Passaggio di consegne" al posto del cambio di operatore nel form (D13). I permessi D2 li rifiuta il server anche fuori dall'interfaccia. "Crea contatto" nella scheda cliente. Un alert non si chiude due volte e non si stacca per sbaglio (D10). Un test rende rossa la CI se uno degli scrittori di contatti smette di bloccare il cliente (D12) | regole server di AC27, AC30–AC52; AC66, AC67; AC73 |
 | **PR4** Chat con proprietario esplicito | Da fare | prerequisito del passo 3 (P2) | Nessun cambiamento visibile: note di Pratiche e scheda cliente identiche; la chat non deduce più dall'URL cosa aggiornare | AC55 (base) |
 | **PR5** Sezione Contatti con note | Da fare | 2 + 3 (P2) | Lista, filtri, URL, dettaglio, modifiche, note del cliente, "Vedi contatti", guida operatori per Contatti | AC1–AC57, AC62, AC74 (parte Contatti) |
 | **PR6** Clienti semplificata | Da fare | 4 | Colonne e filtri task rimossi, totale = righe, scheda cliente con riepilogo e "Gestisci contatto", etichette della massiva, guida completata | AC58–AC61, AC63–AC65, AC68, AC74 (parte restante) |
@@ -72,7 +72,7 @@ Serve una sezione **Contatti** (lista e dettaglio) sulle `task`. Le regole di mo
 **Ordine vincolante:**
 1. PR1 in prod, poi almeno una notte di cron senza errori. **Fatto:** in prod dal 2026-09-29. La notte di cron è caduta con G1 rivisto il 28/09: il cron di prod non si lanciava prima di G2.
 2. La migrazione di PR2 applicata a mano, con l'estrazione conservata subito prima come traccia (T2.4). PR2 entra in `dev` solo dopo che PR1 è su `main`. **Fatto il 2026-10-13** (log di T2.4).
-3. PR3 (con l'annuncio agli operatori). **È il prossimo passo.**
+3. PR3 (con l'annuncio agli operatori). **Pronta il 2026-10-15:** PR verso `dev`; il deploy in prod con l'annuncio (G3).
 4. PR4.
 5. PR5, solo dopo che PR2 è applicata (AC69), e a breve distanza da PR3.
 6. Qualche giorno d'uso, poi PR6.
@@ -1666,9 +1666,18 @@ Vale per T3.10, T3.11a, T3.11b, T3.12, T5.7 e T5.9. Le letture dai Server Compon
     - l'operatore del cliente non si cambia più dal form: c'è "Passaggio di consegne", per l'admin e per l'operatore del cliente. Sposta cliente e contatto attivo in qualunque stato, e le chiamate già registrate sul contatto passano al nuovo operatore nell'export (D13). Salvare il form non sposta più i contatti;
     - dopo "Assegna Clienti" un contatto con un esito può restare al vecchio operatore: il nuovo lo lavora, ma le chiamate restano al vecchio finché un admin non riassegna il contatto (dal dettaglio di Contatti, con PR5).
 - **validation**: gate verdi; `REPORT.md` della review SHIP; checklist AC73 spuntata.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-10-15, orchestratore, con worker per `/simplify` e per le correzioni della review.
+  - **`/simplify`** (`e245c11`): quattro revisori, applicati i rilievi che non cambiano il comportamento (`useSavingUntilRefreshed`, `focus.ts`, `useActor`, `lockCustomerOrNotFound`, `activeTaskIdOf`, codice morto). Gli altri in IMPLEMENTATION-NOTES.
+  - **Passata browser** sul DB di sviluppo (`next dev` sulla porta 3100): Federica Lupo e Martina Vinai (OPERATORE), Admin Admin (ADMIN), scelti in sola lettura; clienti di prova `zzpr3-c1…c15`, creati con uno script, che restano sul DB di sviluppo. Coperti T3.8b, T3.8c, T3.9b–T3.12 e T3.17. Quattro correzioni (`8472c90`): il menu dello stato si riapriva alla fine del salvataggio; nella scheda il focus finiva sulla Sheet dopo "Crea contatto", dopo il rifiuto per un collega e dopo "Assegna a te"; il messaggio di `CUSTOMER_ASSIGNMENT_FORBIDDEN`.
+  - **Tech-debt e `brain/chore/motion.md`** scritti prima della review (`ba4f388`), come chiede la descrizione.
+  - **`adversarial-review`** (7 passaggi, round PR3 di `REPORT.md`). Prima verifica su `ba4f388`: DO NOT SHIP, 1 BLOCKER (transizione sulle voci del menu dello stato) e 8 MAJOR ("Assegna a te" sul contatto di un collega; callback perse se il componente si smonta a metà salvataggio; sovrapposizione stato/priorità nella scheda; dialog con un messaggio lungo; due contrasti; nome accessibile del selettore; Select e DropdownMenu fuori dal registro). Correzioni con TDD in `1b50ace`, poi `4fae91b`, `afb2975` e `45ae55e` (l'indicazione "Assegna a te" di A1 non compariva: nessun chiamante passava `showHint`). Verifiche successive: v1, v5, v6 SHIP; v7 chiuso con il registro committato e la prova dello spinner con movimento ridotto. Verdetto **SHIP**.
+  - **P4 ristretto:** "Assegna a te" rifiuta anche un cliente non assegnato il cui contatto attivo è di un collega, per ogni ruolo.
+  - **Gate CI** su `45ae55e`: `next lint` e `tsc --noEmit` puliti; `pnpm run test --run` 58 file, 852 test; `pnpm build` con le variabili di CI in un worktree senza `.env*`.
+  - **Checklist AC73:** la riga di Clienti e la scheda cliente chiamano le stesse mutation di Contatti (`task.changeState`, `setPriority`, `setCallback`, `resolveAlert`, `createContact`), con `source` `list` o `detail` (v4). Spuntata.
+  - **Dati di sviluppo toccati dalla review:** il primo passaggio UI ha assegnato `zzpr3-c7` all'admin con un clic di una sonda (rimesso a nessun operatore; resta la riga `self_assign` nel log). `zzpr3-c5` ha come operatore l'admin, da un "Assegna a te" della passata browser.
+  - **Annuncio G3:** nella descrizione della PR.
+- **files edited/created**: `src/components/custom/contact/*` (`ContactStateSelect`, `AlertCloseConfirmDialog`, `ReadOnlyReason`, `focus.ts`, `useSavingUntilRefreshed.ts`, `useActor.ts` e i test); `src/app/dashboard/customers/[id]/_components/` (`CustomerTaskManager`, `CustomerForm`, `CustomerAlertCreator`, `CustomerCreateContact`, `CustomerHandoverDialog`, test nuovi in `_test/`); `src/app/dashboard/customers/_components/CustomerColumns.tsx` e `_test/`; `src/lib/domain/contact/permissions.ts`; `src/server/services/contact/` (`createContact`, `reassign`, `guard`, `errors`) e `customer/assignment.ts`, con i test; `src/test/failpoint.ts`; `brain/tech-debt/crm/sezione-contatti.md`; `brain/chore/motion.md`; `REPORT.md`, `RUBRIC.md`.
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a (D6)
@@ -2480,7 +2489,7 @@ Le assunzioni esplicite, che Omar può ribaltare prima della PR interessata:
 | A3 | Soglia di prestazioni | PR5 | Aperta |
 | A9 | Conferma con il nome del cliente e [Apri] dopo un cambio di stato (FLOW, senza AC) | PR3: nessuna; PR5: da decidere | Aperta per PR5 |
 | A10 | Data passata del richiamo non selezionabile, come oggi | PR3 | Aperta, si verifica in T3.11b |
-| A11 | Scrittori fuori dalla regola dei lock | PR3 | Aperta, registrata nel tech-debt (T3.14) |
+| A11 | Scrittori fuori dalla regola dei lock | PR3 | Registrata nel tech-debt il 2026-10-15 (T3.14), con la conferma della massiva legata al cliente (review di PR3); resta aperta per quando si riprende A7 |
 
 **Conversioni a Effect rinviate** (regola di `AGENTS.md`: le conversioni più grandi si elencano come seguiti). Non fanno parte di questo piano perché il piano non ne tocca la logica:
 - le server action della chat (PR4 tocca solo il componente client);

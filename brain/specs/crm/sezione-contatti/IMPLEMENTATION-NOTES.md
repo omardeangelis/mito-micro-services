@@ -18,7 +18,7 @@ updated: 2026-10-15
 - Run 1 (2026-09-25): solo **PR1 — Percorsi di creazione sicuri** (T1.1 → T1.8), branch `contatti/pr1-creazione-sicura` da `dev`, PR verso `dev`. PR2–PR6 non iniziate.
 - Run 2 (2026-09-29): solo **PR2 — Pulizia e vincolo DB** (T2.1, T2.2, T2.3, T2.5, T2.6, T2.7), branch `contatti/pr2-vincolo-db` da `dev`, PR verso `dev`. T2.4 è il runbook G2: va nella descrizione della PR, lo esegue Omar.
 - Run 3 (2026-10-15): solo **PR3 — Regole del contatto sul server, usate da Clienti** (T3.1a → T3.17, gate T3.14), branch `contatti/pr3-regole-server` da `dev`, PR verso `dev`. Baseline sul branch: 33 file, 302 test verdi.
-- **Stato al 2026-10-13:** PR1 e PR2 fatte e in prod (PR1 dal 29/09; PR2 su `main` e migrazioni applicate il 13/10, log di T2.4 nel PLAN). PR3–PR6 da fare: nessun task iniziato.
+- **Stato al 2026-10-15:** PR1 e PR2 fatte e in prod (PR1 dal 29/09; PR2 su `main` e migrazioni applicate il 13/10, log di T2.4 nel PLAN). PR3 pronta: tutti i task Done, review SHIP dopo le correzioni, PR verso `dev`; il deploy in prod è G3. PR4–PR7 da fare.
 
 ## Execution Mode
 
@@ -128,7 +128,7 @@ updated: 2026-10-15
   - **T3.1a:** `status.ts` scrive gli stati a mano (`allStates`), per non portare drizzle nel bundle client; un controllo di tipo e un test lo legano all'enum dello schema.
   - **T3.2a:** il marcatore dell'errore è la chiave stringa `__contactError`, non un simbolo: tRPC copia le chiavi del `cause` con `for…in`, che salta i simboli.
   - **T3.2b:** la rilettura bloccata della task filtra anche sul cliente bloccato: una task spostata a un altro cliente nel frattempo dà `ContactNotFound` invece di scrivere su un cliente non bloccato.
-  - **T3.4:** la conversione di `23505` in `ContactAlreadyActive` avvolge `transaction` da fuori (dentro la transazione è già abortita). Un operatore su un cliente non suo riceve `CONTACT_FORBIDDEN` con `assignee: null`: testo impreciso, ma ci arriva solo una richiesta fuori dall'interfaccia.
+  - **T3.4:** la conversione di `23505` in `ContactAlreadyActive` avvolge `transaction` da fuori (dentro la transazione è già abortita). ~~Un operatore su un cliente non suo riceve `CONTACT_FORBIDDEN` con `assignee: null`: testo impreciso, ma ci arriva solo una richiesta fuori dall'interfaccia.~~ Non era vero: ci arriva anche una pagina rimasta aperta dopo un passaggio di consegne (review, v4). Ora `assignee` è l'operatore del cliente.
   - **T3.5b:** `resolveOpenAlert` riceve il contatto della guardia invece di `taskId`, così si chiama solo dopo la guardia; `contactErrorToTrpc` traduce anche `CustomerMissing`.
   - **T3.8a:** il permesso si controlla prima della destinazione: un operatore su un cliente non suo riceve FORBIDDEN anche con una destinazione inesistente.
   - **T3.11b:** "Imposta richiamo" si vede anche con un alert aperto (prima era nascosto, e "Sostituisce…" non era raggiungibile).
@@ -150,6 +150,15 @@ updated: 2026-10-15
   - **nella scheda cliente il focus non arrivava al nuovo selettore** dopo "Crea contatto": la scheda è una Sheet di Radix, e quando un controllo con il focus sparisce Radix sposta il focus sulla Sheet, non su `body`. `focusIsLost` ora conta anche il focus su un `role="dialog"` (test in `focus.test.tsx`). Vale anche per gli altri ripristini nella scheda;
   - **scheda cliente, contatto preso da un collega nel frattempo:** dopo il rifiuto il controllo diventa sola lettura e il focus restava sulla Sheet. Ora va al titolo "Stato del cliente" (`tabIndex={-1}`), sempre presente: la sola lettura aspetta il nome dell'operatore prima di comparire;
   - **"Assegna a te":** dopo la risposta il focus va al testo dell'operatore (prima restava sulla Sheet). Il rifiuto `CUSTOMER_ASSIGNMENT_FORBIDDEN` diceva "Non puoi passare le consegne di questo cliente" anche dopo "Assegna a te": ora "Non puoi cambiare l'operatore di questo cliente", vero per entrambi. Scostamento dal testo del piano (T3.9a).
+
+- **Run 3 — correzioni dalla review (T3.14)**, round PR3 di `REPORT.md`, tutte con TDD (test RED scritto prima):
+  - **"Assegna a te" sul contatto di un collega** (v1, MAJOR): `canSelfAssign(actor, customer, activeContact)` e `assignToYourself` leggono il contatto attivo `FOR UPDATE` dopo il lock del cliente e rifiutano se il suo operatore non è null né l'attore, per ogni ruolo. Il link nel form segue la stessa regola. P4 aggiornato nel PLAN;
+  - **callback perse se il componente si smonta** (v5, MAJOR): con react-query 4 le callback passate a `mutate(vars, {...})` non girano dopo lo smontaggio. Tutti i salvataggi dei contatti usano `mutateAsync(vars).then(ok, err)`. Test con `useMutation` vero in `CustomerTaskManager.test.tsx`, `CustomerColumns.test.tsx`, `CustomerAlertCreator.test.tsx`;
+  - **movimento** (v7): niente `transition-colors` sulle voci del menu dello stato, con anello di focus (`focus:ring-2 ring-inset`); Select e DropdownMenu nel registro dei primitivi;
+  - **UI** (v6): nome del selettore `"<stato>, cambia stato"`; card dello stato a due colonne sotto `lg`; messaggio della conferma che scorre dentro la modale (regione con nome, raggiungibile da tastiera); descrizioni delle modali in `text-foreground`; motivo in sola lettura in `text-neutral-600`, intero nella scheda (`fit`); "Assegna a te" alto 36 px; priorità in sola lettura che va a capo;
+  - **minori**: `reassign` controlla `canReassign` nel servizio; il rifiuto di "Crea contatto" nomina l'operatore del cliente; focus ripristinato solo se perso (`CustomerForm`), con un ripiego dopo la "X" dell'alert; test del ripiego su `23505` (provato per mutazione: rosso se il ripiego trasforma l'errore in `ContactAlreadyActive`; cancellare il ripiego non si vede, perché senza contatto attivo rilancia lo stesso errore); assert mancanti su `reassign`, `setCallback` e `changeState`;
+  - **trovata nelle verifiche:** l'indicazione di A1 ("Usa “Assegna a te” nella scheda cliente" sotto "Non assegnato", T3.9b) non compariva mai, perché nessun chiamante passava `showHint`. Ora la passano lista e scheda; controllata nel browser su `zzpr3-c15`.
+- **Run 3 — rilievi della review non corretti:** nel tech-debt (Select e DropdownMenu senza `motion-reduce`; conferma della massiva legata al cliente; scadenza "oggi" contro il cron notturno; contrasto del toast e nomi nei primitivi; rotta di import e massive senza controllo dell'operatore; la scheda sotto i 900 px). Senza voce, MINOR: test dello smontaggio per tre componenti su cinque; in `reassign` il ruolo si controlla dopo il caricamento (nessuna scrittura, irraggiungibile da fuori per `adminProcedure`).
 
 ## Surprises and Decisions
 
@@ -202,6 +211,8 @@ updated: 2026-10-15
 | Run 3 — verifica sul DB di sviluppo dopo la passata, sola lettura | OK | Al più un contatto attivo per cliente; il cambio di stato di un operatore sul contatto di un collega non lo sposta (AC41, nessun `operator_reassign` sulla task); il salvataggio del form con il solo telefono non tocca gli operatori; la riapertura crea un contatto nuovo a 120 |
 | Run 3 — gate CI su `1b50ace` (correzioni della review) | OK | `next lint` e `tsc --noEmit` puliti; `pnpm run test --run` 58 file, 852 test; `pnpm build` con le variabili di CI in un worktree senza `.env*` (solo `.env.example`), poi rimosso |
 | Run 3 — spinner con movimento ridotto, browser | OK | 2026-10-15, `next dev` su `1b50ace`, scheda di `zzpr3-c13` come operatore, `fetch` di `task.changeState` sospeso nella pagina (nessuna richiesta partita). Trigger in attesa con `aria-busy="true"` e il valore salvato `app.to`: senza `reduced-motion` `animationName: spin`, `getAnimations()` 1; con `set media light reduced-motion` `animationName: none`, `getAnimations()` 0. Lo screenshot mostra l'arco fermo nella sede della freccia. Dopo, in sola lettura: `zzpr3-c13` invariato, nessuna riga di log |
+| Run 3 — gate CI su `45ae55e` (dopo la review) | OK | `next lint` e `tsc --noEmit` puliti; `pnpm run test --run` 58 file, 852 test; `pnpm build` con le variabili di CI in un worktree senza `.env*`, poi rimosso |
+| Run 3 — indicazione "Assegna a te", browser | OK | `zzpr3-c15` (cliente e contatto senza operatore, creato per la prova) come operatore: "Non assegnato" con "Usa “Assegna a te” nella scheda cliente" nella scheda e nella riga di Clienti; il link "Assegna a te" nel form |
 
 ## Acceptance Criteria Status
 
@@ -211,6 +222,17 @@ updated: 2026-10-15
 | AC70 (PR2) | Met nel codice; in prod dopo G2 | 1.183 alert chiusi dal sistema sul DB di sviluppo; nessuna riga in `task_event_log` |
 | AC71, parte DB (PR2) | Met nel codice; in prod dopo G2 | Indice unico parziale; definizione ricontrollata in prod al passo 6 del runbook |
 | AC72 (PR2) | Met | Cron e massiva invariati in PR2. `isDueToday` in ora legale era preesistente: corretto a parte il 2026-10-13 (Steering) |
+| AC27 (PR3, parte server) | Met | Ogni mutation rifiuta un contatto superato con `CONTACT_SUPERSEDED`; avviso e link al contatto attivo arrivano con PR5 |
+| AC29 (PR3) | Met | `resolveAlert`: Storico con chi l'ha chiuso, `alert_id` azzerato solo se punta ancora all'alert |
+| AC30–AC34 (PR3) | Met | Transizioni, "Contattato il", riapertura con lo stesso operatore del contatto (AC34) |
+| AC35 (PR3) | Non in PR3 | URL del contatto: PR5 |
+| AC36–AC41 (PR3) | Met | Conferma guidata dal server con data e messaggio, log, atomicità, no-op, operatore invariato |
+| AC42–AC47 (PR3) | Met | Fasce e "Automatica" (D3), richiamo con `replacesAlertId`, `operator_reassign` (riassegnazione singola solo dal server fino a PR5) |
+| AC48–AC50 (PR3) | Met | D2/A1; "Assegna a te" senza il contatto di un collega; `reassign` e massive solo admin, anche nel servizio |
+| AC51 (PR3) | Met | Motivo visibile nella lista e nella scheda; nella lista troncato a 160 px (PLAN §9), nome intero nel `title` (tech-debt) |
+| AC52 (PR3) | Met, senza link | Toast di 8000 ms con il motivo, anche dopo lo smontaggio; il link al contatto attivo arriva con PR5 (P5) |
+| AC66, AC67 (PR3) | Met | "Crea contatto" nella scheda e nella riga; "Cliente non assegnato"; contatto già attivo |
+| AC73 (PR3) | Met | Clienti e scheda cliente usano le mutation di Contatti (checklist in T3.14) |
 
 ## Remaining Work
 
@@ -227,6 +249,9 @@ updated: 2026-10-15
 - **Esecuzione notturna del cron alert:** lo `schedule` di `update-alert prod.yml`, riattivato in PR2 (T2.6; dal 2026-10-13 alle 23:47 UTC, 01:47 in Italia d'estate e 00:47 d'inverno), parte solo con la variabile `ALERT_CRON_ENABLED = true`. Il runbook G2 è un'unica sessione fuori orario: porta PR2 su `main` (passo 4), estrae l'elenco come traccia e applica la migrazione (passo 5), e imposta la variabile al passo 8.
 - ~~**Cron in ora legale (da decidere con Omar):** `isDueToday` non riconosce gli alert di oggi da fine marzo al 25 ottobre, e li chiude senza followup. Preesistente, fuori perimetro di PR2 (tech-debt). O una PR a sé prima di G2, o l'avviso agli operatori al passo 8.~~ Corretto il 2026-10-13, deciso da Leonardo: il cron confronta i giorni in `Europe/Rome` (tech-debt). Resta da decidere cosa fare degli alert del giorno già chiusi senza followup.
 - **`task_priority_active_idx`:** da ridisegnare in PR5 (T5.1) sulla query vera.
+- **PR3, dopo il merge su `dev`:** G3, il deploy in prod con l'annuncio agli operatori (testo nella descrizione della PR, da T3.14). Nessuna migrazione.
+- **PR3, seguiti:** test dello smontaggio a metà salvataggio per `CustomerAlertCreator`, `CustomerCreateContact` e `CustomerHandoverDialog`; la scadenza "oggi" contro il cron notturno va decisa prima che un selettore permetta oggi (PR5, tech-debt); la ricerca di Clienti per "Nome" e "Telefono" (tech-debt, preesistente).
+- **Dati di prova sul DB di sviluppo:** clienti `zzpr3-c1…c15` con i loro contatti, alert e righe di log. Restano; per toglierli basta il prefisso `zzpr3-` sull'id del cliente.
 
 ## Steering
 
