@@ -23,9 +23,9 @@ Una review sul movimento non lo segnala come incoerenza con gli altri menu.
 
 ## La Dialog non ha ancora la variante con movimento ridotto
 
-**Rinvio documentato il 2026-10-15.** La modale di conferma di PR3 (`AlertCloseConfirmDialog`) usa la `Dialog` di `src/components/ui/` com'è: fade e zoom di 200 ms in entrata e in uscita, anche con `prefers-reduced-motion`.
+**Rinvio documentato il 2026-10-15.** Le modali di PR3, la conferma (`AlertCloseConfirmDialog`) e il passaggio di consegne (`CustomerHandoverDialog`), usano la `Dialog` di `src/components/ui/` com'è: fade e zoom di 200 ms in entrata e in uscita, anche con `prefers-reduced-motion`.
 
 - Perché non ora: è una lacuna del primitivo condiviso, non della modale. Correggerla in PR3 cambierebbe tutte le Dialog dell'app, fuori perimetro (P6).
-- Dove si traccia: tech-debt "Lacune dei primitivi di movimento" in `brain/tech-debt/crm/sezione-contatti.md`, con Toast, Sheet, il `transform-origin` del menu e `transition-all`.
+- Dove si traccia: tech-debt "Lacune dei primitivi di movimento" in `brain/tech-debt/crm/sezione-contatti.md`, con Toast, Sheet, il contenuto di `Select` e `DropdownMenu` (anche il selettore della priorità di PR3), il `transform-origin` dei menu e `transition-all`.
 
 Una review sul movimento non lo segnala come difetto di PR3: lo rimanda a quella voce.

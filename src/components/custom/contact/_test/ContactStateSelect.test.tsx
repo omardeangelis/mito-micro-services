@@ -153,7 +153,9 @@ describe("ContactStateSelect", () => {
     const options = screen.getAllByRole("menuitemradio")
     expect(options.length).toBeGreaterThan(0)
     for (const option of options) {
-      expect(option.className).not.toContain("transition")
+      expect(option.className).not.toMatch(
+        /transition|duration-|ease-|animate-/
+      )
     }
   })
 

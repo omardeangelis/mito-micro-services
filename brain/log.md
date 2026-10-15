@@ -155,3 +155,10 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 - Verdict: DO NOT SHIP (prima: SHIP)
 - Impact: critical
 - Verifiers: 5 rilanciati su 9 (v3, v4, v5, v6 SHIP; v8 con 1 major nella checklist: il controllo di `/monitoring` non può fallire)
+
+## [2026-10-15] review | Sezione Contatti — PR3 "Regole del contatto sul server, usate da Clienti"
+- Report: [[specs/crm/sezione-contatti/REPORT]] (round PR3)
+- Scope: spec
+- Verdict: DO NOT SHIP (prima verifica)
+- Impact: critical
+- Verifiers: 7 (1 blocker, 8 major; v2, v3, v4 SHIP)
