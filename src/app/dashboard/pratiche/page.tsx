@@ -59,7 +59,8 @@ export default async function ParticheHome({
     filterBy: obj,
     orderBy: sortingObj.orderBy ?? "updatedAt",
     sortedBy: sortingObj.sortedBy ?? "asc",
-    q: q ? String(q) : undefined,
+    // Con `q` ripetuto cerca il primo, quello che mostra il badge
+    q: Array.isArray(q) ? q[0] : q,
     searchBy: parsePraticaSearchBy(search_by),
     sqlFilter: sqlQuery,
     filter: filter,

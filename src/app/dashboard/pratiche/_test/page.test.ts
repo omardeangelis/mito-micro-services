@@ -26,7 +26,12 @@ beforeEach(() => {
 
 describe("pagina Pratiche, search_by", () => {
   it("assente, sconosciuto o ripetuto cerca per ID pratica", async () => {
-    for (const search_by of [undefined, "region", ["praticaId", "region"]]) {
+    for (const search_by of [
+      undefined,
+      "",
+      "region",
+      ["praticaId", "region"],
+    ]) {
       api.getAllPratiche.mockClear()
       await ParticheHome({
         params: { slug: "" },
@@ -37,5 +42,16 @@ describe("pagina Pratiche, search_by", () => {
         searchBy: "praticaId",
       })
     }
+  })
+
+  it("con q ripetuto cerca il primo", async () => {
+    await ParticheHome({
+      params: { slug: "" },
+      searchParams: { q: ["PR-2026", "PR-2025"], search_by: "praticaId" },
+    })
+    expect(api.getAllPratiche.mock.calls[0]?.[0]).toMatchObject({
+      q: "PR-2026",
+      searchBy: "praticaId",
+    })
   })
 })

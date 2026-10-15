@@ -43,7 +43,7 @@ describe("useCustomerSearch", () => {
     })
   })
 
-  it("con back e avanti segue la ricerca dell'URL", () => {
+  it("quando l'URL cambia senza rimontare segue la ricerca", () => {
     navigate("q=Roma&search_by=comune")
     const { result, rerender } = renderHook(() => useCustomerSearch())
     navigate("q=Bianchi&search_by=surname")

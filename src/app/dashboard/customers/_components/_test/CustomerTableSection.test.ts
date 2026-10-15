@@ -25,10 +25,13 @@ beforeEach(() => {
   api.getUserPreference.mockReset().mockResolvedValue({ preferences: null })
 })
 
-async function searchByFor(search_by: string | string[] | undefined) {
-  await CustomersTableSection({ searchParams: { q: "Roma", search_by } })
+async function queryFor(searchParams: Record<string, string | string[]>) {
+  await CustomersTableSection({ searchParams })
   return api.getAllCustomers.mock.calls[0]?.[0]
 }
+
+const searchByFor = (search_by: string | string[] | undefined) =>
+  queryFor({ q: "Roma", ...(search_by === undefined ? {} : { search_by }) })
 
 describe("CustomersTableSection, search_by", () => {
   it("passa un valore del selettore", async () => {
@@ -39,11 +42,17 @@ describe("CustomersTableSection, search_by", () => {
   })
 
   it("assente, sconosciuto o ripetuto cerca per codice fiscale", async () => {
-    for (const value of [undefined, "address", ["comune", "email"]]) {
+    for (const value of [undefined, "", "address", ["comune", "email"]]) {
       api.getAllCustomers.mockClear()
       expect(await searchByFor(value)).toMatchObject({
         searchBy: "fiscalCode",
       })
     }
+  })
+
+  it("con q ripetuto cerca il primo", async () => {
+    expect(
+      await queryFor({ q: ["Roma", "Milano"], search_by: "comune" })
+    ).toMatchObject({ q: "Roma", searchBy: "comune" })
   })
 })

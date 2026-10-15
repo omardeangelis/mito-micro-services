@@ -80,7 +80,8 @@ export async function CustomersTableSection({
     orderBy: sortingObj.orderBy ?? "priority",
     sortedBy: sortingObj.sortedBy ?? "desc",
     searchBy: parseCustomerSearchBy(search_by),
-    q: q as string | undefined,
+    // Con `q` ripetuto cerca il primo, quello che mostra il badge
+    q: Array.isArray(q) ? q[0] : q,
     filterBy: filterObj,
     onlyMe: only_me === "true",
     showDM: black_list === "true",

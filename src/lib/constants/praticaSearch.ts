@@ -6,6 +6,10 @@ export const praticaSearchBy = z.enum(["praticaId"])
 
 export type PraticaSearchBy = z.infer<typeof praticaSearchBy>
 
+export const praticaSearchLabels = {
+  praticaId: "ID Pratica",
+} satisfies Record<PraticaSearchBy, string>
+
 // `search_by` letto dall'URL. Assente, sconosciuto (link modificato a mano) o
 // ripetuto cerca per ID pratica, invece di far fallire la pagina.
 export function parsePraticaSearchBy(

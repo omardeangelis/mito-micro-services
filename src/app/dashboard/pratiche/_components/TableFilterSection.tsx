@@ -11,9 +11,12 @@ import {
   SelectLabel,
   SelectTrigger,
 } from "@/components/ui/select"
-import { type PraticaSearchBy } from "@/lib/constants/praticaSearch"
+import {
+  type PraticaSearchBy,
+  praticaSearchLabels,
+} from "@/lib/constants/praticaSearch"
 import { X } from "lucide-react"
-import React, { useCallback } from "react"
+import React, { useCallback, useEffect } from "react"
 import { useForm } from "react-hook-form"
 import z from "zod"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -87,6 +90,14 @@ export function TableFilterSection<TData>({ allColumns }: Props<TData>) {
     mode: "all",
   })
 
+  // La ricerca in corso è quella dell'URL: back e avanti la cambiano senza
+  // rimontare il componente
+  const q = searchParams.get("q") ?? ""
+  const { setValue } = form
+  useEffect(() => {
+    setValue("id", q)
+  }, [q, setValue])
+
   const handleSubmit = form.handleSubmit((data) => {
     const url = new URL(window.location.href)
     if (data.id === "") {
@@ -144,14 +155,14 @@ export function TableFilterSection<TData>({ allColumns }: Props<TData>) {
               </Button>
             </form>
           </Form>
-          {form.getValues().id ? (
+          {q ? (
             <Badge
               className="badge-with-close w-fit"
               variant="secondary"
               onClick={resetSearchParams}
             >
               <div className="flex w-fit items-center">
-                {searchBy}: {form.getValues().id}
+                {praticaSearchLabels[searchBy]}: {q}
                 <span
                   data-close
                   className="badge-close-icon ml-2 flex items-center justify-center"
