@@ -22,6 +22,7 @@ import { replaceActiveContact } from "@/server/services/contact/activeContact"
 import { actorOf } from "@/server/services/contact/actor"
 import { createContact as createContactService } from "@/server/services/contact/createContact"
 import { contactErrorToTrpc } from "@/server/services/contact/errors"
+import { setCallback as setCallbackService } from "@/server/services/contact/setCallback"
 
 const createContactInput = z.object({
   customerId: z.string(),
@@ -35,6 +36,29 @@ export const createContact = operatorProcedure
   .mutation(({ ctx, input }) =>
     runTrpc(
       createContactService({ ...input, actor: actorOf(ctx.operator) }),
+      contactErrorToTrpc
+    )
+  )
+
+const setCallbackInput = z.object({
+  taskId: z.number().int(),
+  deadline: z.date(),
+  message: z.string().trim().max(500).nullish(),
+  // The open alert the form showed as replaced, or null
+  replacesAlertId: z.number().int().nullable(),
+})
+
+/** "Imposta richiamo": see the `setCallback` service. */
+export const setCallback = operatorProcedure
+  .input(setCallbackInput)
+  .mutation(({ ctx, input }) =>
+    runTrpc(
+      setCallbackService({
+        ...input,
+        // An empty message is no message
+        message: input.message?.length ? input.message : null,
+        actor: actorOf(ctx.operator),
+      }),
       contactErrorToTrpc
     )
   )

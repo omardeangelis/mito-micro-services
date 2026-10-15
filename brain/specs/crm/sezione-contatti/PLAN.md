@@ -1254,9 +1254,9 @@ Vale per T3.10, T3.11a, T3.11b, T3.12, T5.7 e T5.9. Le letture dai Server Compon
   - `replacesAlertId` di un alert chiuso nel frattempo, senza altri alert aperti: il richiamo si salva, e l'alert chiuso non cambia (né `resolved_by` né il log);
   - atomicità con `failNextInsertInto(task_event_log)`;
   - rifiuti per contatto superato e per permesso.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-10-15, worker sul modello dell'orchestratore, review al primo giro. 16 test via caller su AC44–AC46, A4 (mezzanotte di Roma ammessa, un millisecondo prima rifiutato), alert sostituito, alert cambiato o chiuso nel frattempo, atomicità in due punti, permessi, D2. Il messaggio vuoto o di soli spazi diventa null. Verifica per mutazione del worker sull'atomicità (servizio fuori da `transaction`).
+- **files edited/created**: `src/server/services/contact/setCallback.ts`, `src/server/api/routers/task/POST/index.ts`, `src/server/api/routers/task/index.ts`, `src/server/services/contact/_test/setCallback.db.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a (D6)
