@@ -19,6 +19,7 @@ import { eq } from "drizzle-orm"
 import { users } from "../db/schema/users"
 import { operatorSelectCompleteResponse } from "@/lib/constants/schema"
 import { supabaseClient } from "../client/supabase"
+import { contactErrorFromCause } from "@/lib/domain/contact/errors"
 
 /**
  * 1. CONTEXT
@@ -59,6 +60,8 @@ const t = initTRPC.context<typeof createTRPCContext>().create({
         ...shape.data,
         zodError:
           error.cause instanceof ZodError ? error.cause.flatten() : null,
+        // A new plain object, never the cause: superjson drops an Error's fields
+        contactError: contactErrorFromCause(error.cause),
       },
     }
   },

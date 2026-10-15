@@ -9,6 +9,7 @@ import { createSQLQuery } from "@/lib/utils/filters"
 import { CUSTOMER_FILTER_QUERY_MAP } from "../_constants"
 import { getTableName } from "drizzle-orm"
 import { task } from "@/server/db/schema/task"
+import { parseCustomerSearchBy } from "@/lib/constants/customerSearch"
 
 export async function CustomersTableSection({
   searchParams,
@@ -78,8 +79,9 @@ export async function CustomersTableSection({
     perPage: Number(per_page) || DEFAULT_PER_PAGE,
     orderBy: sortingObj.orderBy ?? "priority",
     sortedBy: sortingObj.sortedBy ?? "desc",
-    searchBy: search_by as string | undefined,
-    q: q as string | undefined,
+    searchBy: parseCustomerSearchBy(search_by),
+    // Con `q` ripetuto cerca il primo, quello che mostra il badge
+    q: Array.isArray(q) ? q[0] : q,
     filterBy: filterObj,
     onlyMe: only_me === "true",
     showDM: black_list === "true",

@@ -9,6 +9,7 @@ import { createSQLQuery } from "@/lib/utils/filters"
 import { PRATICA_FILTER_QUERY_MAP } from "../customers/_constants"
 import { getTableName } from "drizzle-orm"
 import { practices } from "@/server/db/schema/pratiche"
+import { parsePraticaSearchBy } from "@/lib/constants/praticaSearch"
 export default async function ParticheHome({
   searchParams,
 }: ServerPageDefaultProps) {
@@ -58,8 +59,9 @@ export default async function ParticheHome({
     filterBy: obj,
     orderBy: sortingObj.orderBy ?? "updatedAt",
     sortedBy: sortingObj.sortedBy ?? "asc",
-    q: q ? String(q) : undefined,
-    searchBy: search_by ? String(search_by) : undefined,
+    // Con `q` ripetuto cerca il primo, quello che mostra il badge
+    q: Array.isArray(q) ? q[0] : q,
+    searchBy: parsePraticaSearchBy(search_by),
     sqlFilter: sqlQuery,
     filter: filter,
   })

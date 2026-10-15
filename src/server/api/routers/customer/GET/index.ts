@@ -14,14 +14,20 @@ import {
   or,
   isNull,
   max,
+  getTableColumns,
 } from "drizzle-orm"
 import { z } from "zod"
 import { TRPCError } from "@trpc/server"
 import { practices } from "@/server/db/schema/pratiche"
 import { operators } from "@/server/db/schema/operators"
 import { type SupaBaseDb } from "@/lib/types"
+import { type PgColumn } from "drizzle-orm/pg-core"
 import { task, taskStatus } from "@/server/db/schema/task"
-import { type Task } from "@/lib/types/schemas"
+import {
+  type CustomerSearchBy,
+  customerSearchBy,
+} from "@/lib/constants/customerSearch"
+import { containsPattern } from "../../utils"
 
 const getCustomerByIdInput = z.object({
   id: z.string().optional(),
@@ -164,10 +170,21 @@ export const getAllCustomerForPratica = protectedProcedure
     }))
   })
 
+// Colonne in cui cerca ogni valore di `search_by`: il codice fiscale cerca
+// anche nella partita IVA
+const customerSearchColumns = {
+  fiscalCode: [customers.fiscalCode, customers.vatCode],
+  name: [customers.name],
+  surname: [customers.surname],
+  email: [customers.email],
+  phoneNumber: [customers.phoneNumber],
+  comune: [customers.comune],
+} satisfies Record<CustomerSearchBy, PgColumn[]>
+
 const getAllCustomersInput = z.object({
   page: z.number(),
   perPage: z.number(),
-  searchBy: z.string().optional(),
+  searchBy: customerSearchBy.optional().default("fiscalCode"),
   q: z.string().optional(),
   onlyMe: z.boolean().optional(),
   showDM: z.boolean().optional(),
@@ -201,16 +218,12 @@ export const getAllCustomers = operatorProcedure
         : undefined
 
     const getSearchedBy = () => {
-      if (!q || !searchBy) return undefined
-      if (searchBy === "fiscalCode") {
-        return or(
-          ilike(customers.fiscalCode, `%${q}%`),
-          ilike(customers.vatCode, `%${q}%`)
+      if (!q) return undefined
+      return or(
+        ...customerSearchColumns[searchBy].map((column) =>
+          ilike(column, containsPattern(q))
         )
-      } else {
-        // @ts-expect-error searchBy is a string
-        return ilike(customers[searchBy as keyof typeof customers], `%${q}%`)
-      }
+      )
     }
 
     const unassignedFilter = input.filterBy?.operatore === 0
@@ -344,8 +357,14 @@ export const getAllCustomers = operatorProcedure
       allCustomers.length > 0 ? allCustomers.map((c) => c.id) : undefined
 
     const tasks = await db
-      .select()
+      .select({
+        ...getTableColumns(task),
+        // The contact's operator, shown on rows the user can't edit (AC51)
+        operatorName: operators.name,
+        operatorSurname: operators.surname,
+      })
       .from(task)
+      .leftJoin(operators, eq(task.operatorId, operators.id))
       .where(
         and(
           customersId ? inArray(task.customerId, customersId ?? []) : undefined,
@@ -367,7 +386,8 @@ export const getAllCustomers = operatorProcedure
     const newCustomers = allCustomers.map((c) => {
       const activeTasks = tasks.filter((t) => t.customerId === c.id).length ?? 0
       const userTasks =
-        tasks.filter((t) => t.customerId === c.id)[0] ?? ({} as Task)
+        tasks.filter((t) => t.customerId === c.id)[0] ??
+        ({} as (typeof tasks)[number])
 
       return {
         ...c,

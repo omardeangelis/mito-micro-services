@@ -3,9 +3,9 @@ domain: crm
 type: review
 scope: spec
 spec: sezione-contatti
-review_target: "branch contatti/pr2-vincolo-db — PR2 (T2.1–T2.7); round di PR1 (contatti/pr1-creazione-sicura, verdetto ship) più sotto"
-base_ref: 3ebd72093b6ab5012a3679e4b4c4fca504025fff
-head_ref: 4b5ef3ae49f9c02a918a68220f116baca4f4507c
+review_target: "branch contatti/pr3-regole-server — PR3 (T3.1a–T3.17), round in fondo; round di PR1 (ship) e PR2 (ship) più sopra"
+base_ref: d4f5d2c54bae3155e1cc75301437b685490fd07a
+head_ref: 45ae55e
 verdict: ship
 review_impact: critical
 human_in_loop: true
@@ -18,7 +18,7 @@ links:
 ingested: false
 last_ingested: null
 created: 2026-09-25
-updated: 2026-10-09
+updated: 2026-10-15
 ---
 
 # Review Report: Sezione Contatti — PR1 "Percorsi di creazione sicuri"
@@ -350,4 +350,137 @@ Obbligatoria (`review_impact: critical`). Da seguire prima del merge di PR2 su `
 ### Notes for docs-maintenance
 
 - Durable findings da portare in `tech-debt/crm/sezione-contatti.md`: `task_priority_active_idx` da ridisegnare in PR5; `isDueToday` in ora legale (alert di oggi senza followup); ramo che fallisce della guardia provato solo su PGlite.
+- Domain pages che dovrebbero rimandare a questa review: nessuna (manca ancora `brain/domains/crm/`).
+
+---
+
+## [Round: 2026-10-15] PR3 — "Regole del contatto sul server, usate da Clienti"
+
+Round aggiunto: i report di PR1 e PR2 sopra restano come sono. Rubric: round PR3 di [[specs/crm/sezione-contatti/RUBRIC]].
+
+- **Target:** branch `contatti/pr3-regole-server` (PR verso `dev`), T3.1a–T3.17, gate T3.14.
+- **Compared:** `d4f5d2c` (merge base con `dev`) → `ba4f388` (prima verifica) → `45ae55e` (dopo le correzioni).
+
+### Verdict
+
+**SHIP** · impact: critical, dopo le correzioni e le verifiche successive (sotto). Nessun BLOCKER né MAJOR aperto. La checklist umana resta obbligatoria prima del merge e del deploy (G3).
+
+Prima verifica, su `ba4f388`: **DO NOT SHIP**. Un BLOCKER (v7), otto MAJOR (v1, v5, v6 ×5, v7). Il nucleo server regge: concorrenza (v2), regole di dominio (v3) e superficie API (v4) danno SHIP.
+
+Obiezioni più forti:
+- **v1:** `assignToYourself` controlla solo che il cliente non abbia un operatore, non chi tiene il suo contatto attivo. Su un cliente senza operatore con il contatto di un collega (dati che T2.5 lascia apposta), un operatore diventa operatore del cliente, modifica il contatto del collega (D2) e con `handover` lo passa a un terzo. È quello che P4 e A1 vietano.
+- **v5:** con react-query 4 le callback passate a `mutate(…, {onSuccess, onError})` non girano se il componente si smonta prima della risposta. Chiudendo la scheda, o lasciando la riga, durante un salvataggio, un rifiuto non dà né toast né refresh (AC52).
+- **v7:** `transition-colors` sulle voci del menu dello stato: l'evidenziazione che segue frecce e puntatore sfuma in 150 ms sul controllo più usato da tastiera. L'eccezione di `motion.md` copre solo apertura e chiusura.
+
+### Verifiche successive (dopo le correzioni)
+
+Correzioni in `1b50ace` (codice), `4fae91b` e `afb2975` (registro, note, test), `45ae55e` (indicazione "Assegna a te", priorità in sola lettura). Rilanciati i passaggi con un verdetto DO NOT SHIP: v1, v5, v6, v7. v2, v3 e v4 non rilanciati: le correzioni toccano il loro perimetro solo con test aggiunti e con il rifiuto di "Crea contatto" (v4), un payload già coperto dal contratto degli errori.
+
+| Verifica | Passaggi | Esito | Cosa è emerso | Corretto in |
+|---|---|---|---|---|
+| Seconda, su `1b50ace` | v1 (modello forte) | SHIP | MAJOR chiuso: `assignToYourself` legge il contatto attivo `FOR UPDATE` dopo il lock e rifiuta quello di un collega, per ogni ruolo; provato per mutazione (2 test rossi). MINOR chiuso: `reassign` controlla `canReassign` nel servizio (mutazione: 1 test rosso). NIT: tech-debt non ancora committato; P4 del PLAN da allineare; nessun test del link nel client; in `reassign` il ruolo si controlla dopo il caricamento (nessuna scrittura, irraggiungibile da fuori) | `4fae91b` (tech-debt, P4) |
+| Seconda, su `1b50ace` | v5 (Sonnet) | SHIP | MAJOR chiuso: `mutateAsync(...).then(ok, err)` in tutti e cinque i componenti; `router.refresh` gira anche dopo lo smontaggio (test con `useMutation` e `useRefreshAfterSave` veri). MINOR chiusi: focus solo se perso, ripiego dopo la "X". Restano MINOR: test dello smontaggio solo per 2 componenti su 5; un'eccezione dentro i gestori di `.then` lascerebbe l'attesa aperta (nessun caso realistico) | — |
+| Seconda, su `1b50ace` | v7 (Haiku) | DO NOT SHIP | BLOCKER chiuso: voci del menu senza transizione, con test. Il MAJOR (Select e DropdownMenu nel registro) era solo nel working tree, non nel commit | `4fae91b` |
+| Terza, su `4fae91b` | v7 (Haiku) | DO NOT SHIP | Registro e `motion.md` a posto. MINOR: la prova dello spinner fermo con movimento ridotto non era registrata; il `Select` della modale del passaggio di consegne non era nominato nel registro | `afb2975`: prova nel browser registrata (`animationName: none`, 0 animazioni con `reduced-motion`; `spin`, 1 senza), `Select` della modale nel registro |
+| Seconda, su `1b50ace` | v6 (Sonnet, browser) | SHIP | 8 rilievi su 9 risolti per misura (dialog con messaggio lungo, contrasti 16,9:1 e 7,1:1 in hover, nome "app.to, cambia stato", motivo intero nella scheda, anello sulle voci, "Assegna a te" 84,7×36 a 7,81:1); il nono è il toast, dichiarato. MINOR: sovrapposizione stato/priorità solo sotto 484 px (prima sotto 895); priorità in sola lettura fuori dalla card sotto 548 px. NIT: `showHint` mai passato | `45ae55e` (`flex-wrap`, indicazione mostrata); sovrapposizione sotto 484 px nel tech-debt |
+
+L'ultimo passaggio di v7 (`afb2975`) e l'indicazione "Assegna a te" (`45ae55e`) non sono stati rivisti da un verificatore. Il primo chiude una richiesta di prova, non di codice. Il secondo l'ho controllato nel browser su `zzpr3-c15` (cliente e contatto senza operatore): l'indicazione compare sotto "Non assegnato" nella scheda e nella riga di Clienti.
+
+Correzioni oltre i rilievi, trovate durante le verifiche:
+- `showHint` non era passato da nessun chiamante, quindi l'indicazione di A1 ("Non assegnato" con "Assegna a te", T3.9b) non compariva mai. Ora la passano lista e scheda;
+- il `flex-wrap` della priorità in sola lettura (v6, MINOR).
+
+### Coverage
+
+- Passaggi eseguiti: 7/7. v1–v4 sul modello più forte (ereditato); v5 e v6 su Sonnet; v7 su Haiku.
+- Passaggi saltati o falliti: nessuno.
+- v6 (UI) sul server di sviluppo `next dev` (porta 3100, DB di sviluppo), avviato per la review e fermato dopo, con due utenti di sviluppo (un operatore, un admin) sui clienti di prova `zzpr3-*`. Chromium solo, tema chiaro (il tema scuro non è applicato da niente nell'app), axe non disponibile. Il probe `hit-area` su "Assegna a te" ha assegnato `zzpr3-c7` all'admin: ripristinato a "nessun operatore" sul DB di sviluppo subito dopo.
+- v2 ha eseguito mutazioni (togliere `.for("update")`, le guardie di `resolveOpenAlert`, il ramo 23505) in una copia del repo nella scratchpad. Nessun altro accesso a un DB; nessuno script `db:*`, `update:*` o `NODE_ENV=production`.
+- Gate rieseguiti dai verificatori: `pnpm run test --run` completo (55 file, 825 test), `tsc --noEmit` e `next lint` puliti.
+
+### Findings
+
+| Severity | Concern (verifier) | Location | Problem | Required fix / evidence | Durable? |
+|----------|--------------------|----------|---------|-------------------------|----------|
+| BLOCKER | v7 — movimento | `src/components/custom/contact/ContactStateSelect.tsx:93` | `transition-colors` (150 ms) sulle `RadioItem`: l'evidenziazione sfuma a ogni freccia o movimento del puntatore sul controllo più usato da tastiera | Togliere la classe; test che la classe delle voci non contenga `transition` | no |
+| MAJOR | v1 — autorizzazione | `src/server/services/customer/assignment.ts:135` | `assignToYourself` accetta un cliente senza operatore anche quando il contatto attivo è di un collega: l'operatore ne ottiene la modifica (D2) e con `handover` lo sposta | Dopo `lockCustomer`, leggere il contatto attivo `FOR UPDATE` e rifiutare con `CustomerAssignmentForbidden` se il suo operatore non è null né l'attore; test con il contatto di un collega | no |
+| MAJOR | v5 — mutation nel client | `CustomerTaskManager.tsx:105-140`, `CustomerAlertCreator.tsx:94-143`, `CustomerCreateContact.tsx:107-122`, `CustomerColumns.tsx:503-537`, `CustomerHandoverDialog.tsx:128-140` | Callback per chiamata di `mutate`: perse se il componente si smonta a metà salvataggio (nessun toast, nessun refresh) | `mutateAsync` con try/catch, o callback nelle opzioni di `useMutation`; test che smonta a metà salvataggio | no |
+| MAJOR | v6 — UI | `CustomerTaskManager.tsx:252` (`grid-cols-4`) | Il trigger dello stato, ora fisso a 160 px, si sovrappone al selettore della priorità sotto ~895 px (17 px a 800, 113 a 320). Prima il `Select` era `w-full` | Colonne che contengono il controllo (`grid-cols-2 lg:grid-cols-4` o `auto-fit`) | no |
+| MAJOR | v6 — UI | `AlertCloseConfirmDialog.tsx:79-83` | Un messaggio con una parola lunga (un URL) allarga la griglia e spinge fuori Annulla e "Cambia stato"; 30 righe portano i pulsanti sotto il viewport, senza scorrimento | `min-w-0 max-h-[40vh] overflow-y-auto [overflow-wrap:anywhere]` sul messaggio | no |
+| MAJOR | v6 — UI | `AlertCloseConfirmDialog.tsx:76-81`, `CustomerHandoverDialog.tsx` (`DialogDescription`) | Descrizione `#737373` su `#ededed`: 4,05:1, sotto 4,5 (1.4.3). Porta la data dell'alert (AC36) | `text-foreground` sulle due `DialogDescription` | no |
+| MAJOR | v6 — UI | `ReadOnlyReason.tsx` nella riga in hover | Motivo `#737373` sulla riga `hover:bg-gray-100`: 4,31:1 (1.4.3) | Testo più scuro (`text-neutral-600`) o pillola con sfondo bianco | no |
+| MAJOR | v6 — UI | `CustomerTaskManager.tsx:213`; `CustomerColumns.tsx` | Nome accessibile del selettore: nella scheda "Stato" senza il valore visibile (2.5.3, 4.1.2); nella lista solo il valore, senza lo scopo (2.4.6) | In `ContactStateSelect`, nome che comincia dal valore e dice l'azione (`"<stato>, cambia stato"`) | no |
+| MAJOR | v7 — movimento | `CustomerTaskManager.tsx:294-334`; `ui/select.tsx:78`, `ui/dropdown-menu.tsx:50,68` | Il `Select` della priorità (nuovo) e il contenuto del `DropdownMenu` condiviso animano senza variante `motion-reduce`, e la voce del registro "Lacune dei primitivi di movimento" non li nomina | Aggiungerli alla voce del tech-debt | sì (registro) |
+| MINOR | v1 — autorizzazione | `src/server/services/contact/reassign.ts:54` | Il servizio non controlla `canReassign`: AC50 regge solo perché la procedura è `adminProcedure` | `ContactForbidden` se `!canReassign(actor)` nel servizio, con test | no |
+| MINOR | v2 — concorrenza | `createContact.ts:90-103` | Il ripiego su 23505 non è eseguito da nessun test (togliendolo, 196 test restano verdi) | Failpoint PGlite che solleva `unique_violation` sull'insert di `task` | no |
+| MINOR | v2 — concorrenza | `task/POST/index.ts:159-160, 196-202` | La conferma dell'alert nella massiva è legata al cliente, non all'alert: se un collega sostituisce l'alert nel frattempo, la massiva chiude quello nuovo. Preesistente (A7), non dichiarato | Dichiararlo in "Scrittori fuori dalla regola dei lock" | sì |
+| MINOR | v3 — dominio | `setCallback.ts:74`; `processDueAlerts.ts:84,161-175` | Il server accetta una scadenza "oggi" (A4), ma il cron delle 23:47 UTC la vede il giorno dopo come "passata" e chiude senza followup. Oggi il calendario esclude oggi | Decidere: scadenza da domani sul server, oppure dichiararlo nel tech-debt e in A4 prima che un'interfaccia permetta oggi | sì |
+| MINOR | v3 — dominio | test dei servizi | Rami senza assert: `reassign` con solo il contatto che cambia (la riga `operator_reassign`); `setCallback` da `caricato`/`erogata`/`non interessato`; `createContact` con `source: "list"`; `changeState` da stato NULL | Aggiungere gli assert | no |
+| MINOR | v4 — contratto errori | `createContact.ts:55-57` | `ContactForbidden({assignee: null})` mostra "non è assegnato" a un cliente assegnato a un collega; raggiungibile da una pagina rimasta aperta dopo un passaggio di consegne | Nome dell'operatore del cliente nel payload | no |
+| MINOR | v5 — mutation nel client | `CustomerForm.tsx:243-260` | Dopo "Assegna a te" e il passaggio di consegne il focus va al testo dell'operatore anche se l'utente l'ha spostato altrove | `focusIsLost()` o focus dentro il contenitore | no |
+| MINOR | v5 — mutation nel client | `CustomerAlertCreator.tsx:72-76` | Chiuso l'alert con la "X" senza trigger (dati legacy), il focus resta sul contenitore della Sheet | Destinazione di ripiego | no |
+| MINOR | v5 — mutation nel client | `src/components/custom/contact` | Nessun test automatico per gli hook e i loro consumatori | Test sui rami di `fail`/`awaitRefresh` più usati | no |
+| MINOR | v6 — UI | `ReadOnlyReason.tsx:41-48` | `w-40` fisso: "Assegnato a Martina Vi…" anche nella scheda, dove c'è spazio; il nome intero solo nel `title` (AC51) | Larghezza fissa solo nella tabella | no |
+| MINOR | v6 — UI | `ContactStateSelect.tsx:93` | Voce del menu con il focus: solo `bg-accent` su bianco, 1,09:1 (1.4.11) | Anello interno sulle voci | no |
+| MINOR | v6 — UI | `ui/toast` (variante `destructive`) | Toast di rifiuto `#fafafa` su `#ef4444`: 3,61:1 (indicativo) | Primitivo condiviso: registro, oppure `bg-red-600` | sì |
+| MINOR | v6 — UI | `CustomerForm.tsx` ("Assegna a te") | 85×20 px (sotto i 24 del progetto; regressione da `h-auto`) e `#a3a3a3` su bianco 2,52:1 | Togliere `h-auto`, `text-neutral-600` | no |
+| NIT | v1, v2, v3, v4, v5, v6, v7 | vari | Rotta di import senza controllo di `operatorId` (aggiungerla alla voce di `insertCustomer`); massive senza controllo dell'operatore di destinazione; `FOR NO KEY UPDATE`; harness che prova il lock solo al momento della scrittura; commento di `AlertNotFound` (`errors.ts:35`); `changeState` ignora `{resolved}`; `input.id!` in `updateCustomerFromDashboard`; `openAlert!`/`created!`; test duplicato in `router.db.test.ts`; messaggio generico di `enforceIsAdmin`; `{alert}` ignorato dopo `onError`; finestra di doppio invio in `CustomerAlertCreator`; 3 s di attesa in `CustomerCreateContact`; spinner fermo con movimento ridotto (verificato nel passaggio nel browser); pulsante di chiusura del toast senza nome, "X" della Dialog 16×16 | Nessuna azione obbligatoria | — |
+
+### What passed
+
+| Concern (verifier) | Evidence |
+|--------------------|----------|
+| v1 — autorizzazione | Attore sempre dalla sessione, ruolo riletto dal DB; ogni scrittura del contatto decide sulle righe bloccate; massive e `reassign` su `adminProcedure`; i rifiuti non scrivono niente (test dal router vero); nessun altro percorso cambia un operatore |
+| v2 — concorrenza | Ogni scrittore blocca il cliente prima delle letture che decidono; gli id di alert mandati dal client sono confrontati dopo il lock; le due guardie di `resolveOpenAlert` provate per mutazione; nessuno stato parziale (snapshot); senza `FOR UPDATE` 19 dei 21 test della regola vanno in rosso |
+| v3 — dominio | AC30–AC34, AC38, AC40–AC47, AC27, AC29, AC66, AC67: ogni regola ha un test che fallirebbe se cambiasse; fasce e "auto" (D3); giorno di Roma con i cambi d'ora |
+| v4 — superficie API | Nessun chiamante rimasto delle procedure rimosse (client, action, route, cron, workflow, script, repo `mito-deutsche`); massive irraggiungibili agli operatori; `contactError` sopravvive a superjson ed è decodificato in modo esaustivo; AC73 |
+| v5 — mutation nel client | Conferma guidata dal server (AC36, AC37), retry una sola volta; il controllo mostra sempre il valore salvato; toast 8000 ms; AC44 tiene aperto il modulo; nessuna attesa bloccata sui percorsi raggiungibili; focus ripristinato |
+| v6 — UI | Trigger 160×40 stabili da 320 a 1920 px; spinner nella sede della freccia; anelli di focus visibili e non tagliati; destinazioni di focus programmatiche visibili; target ≥ 24 px; badge di stato con contrasto ≥ 6,49; ruoli e nomi delle dialog; focus iniziale su Annulla; testi di AC36, AC51, AC52, AC66 presenti |
+| v7 — movimento | Menu dello stato senza animazione di apertura e chiusura (test); sei spinner tutti con `motion-reduce:animate-none`; nessun `transition-all`, keyframe o scroll smooth nuovo |
+
+### Per-concern verdicts
+
+| Pass | Charter | Verdict | Rationale |
+|------|---------|---------|-----------|
+| v1 | Autorizzazione delle scritture | DO NOT SHIP | Nucleo solido, ma `assignToYourself` apre la modifica del contatto di un collega |
+| v2 | Concorrenza e atomicità | SHIP | Lock prima delle letture, atomicità provata; resta un ramo difensivo senza test |
+| v3 | Regole di dominio | SHIP | Tutte le regole rispettate e coperte; la scadenza "oggi" contro il cron è latente |
+| v4 | Superficie API e contratto degli errori | SHIP | Nessun chiamante rimasto; un messaggio di rifiuto sbagliato per "Crea contatto" |
+| v5 | Mutation nel client | DO NOT SHIP | Toast e refresh persi se il componente si smonta a metà salvataggio |
+| v6 | UI pass | DO NOT SHIP | Cinque MAJOR locali: sovrapposizione nella scheda, dialog con messaggio lungo, due contrasti, nome accessibile |
+| v7 | Movimento | DO NOT SHIP | `transition-colors` sulle voci del menu; Select e DropdownMenu fuori dal registro |
+
+### Human Review Checklist
+
+Obbligatoria (`review_impact: critical`). Da seguire prima del merge di PR3 su `dev` e prima del deploy (G3):
+
+1. Verificare che il BLOCKER e i MAJOR siano chiusi: tabella "Verifiche successive" (v1, v5, v6 SHIP; v7 chiuso con la prova registrata in `afb2975`).
+2. Matrice dei permessi, anche con richieste fuori dall'interfaccia: un operatore cambia stato, priorità, richiamo e alert solo dei contatti suoi o dei clienti suoi (D2, A1); crea un contatto solo per i clienti suoi; "Assegna a te" solo su un cliente senza operatore e senza il contatto di un collega; `reassign` e le massive solo per gli admin.
+3. Nessun client già distribuito, workflow cron o script chiama una procedura rimossa (`updateTask*`, `task.createTask`, `createAlert`, `resolveAlerts`, `deleteTasks`, `customer.updateCustomer`): grep su `src`, `.github`, `package.json` e repo `mito-deutsche`.
+4. Regola dei lock: ogni scrittore nuovo blocca il cliente prima di leggere; le eccezioni dichiarate (cron, "Assegna Clienti" A7, `cleanupTaskEventLog`, la conferma della massiva legata al cliente) sono nel tech-debt.
+5. Eseguire i gate di `AGENTS.md` sulla testa della PR, in un checkout senza i file env veri: `SKIP_ENV_VALIDATION=true pnpm exec next lint`, `pnpm exec tsc --noEmit`, `pnpm run test --run`, `pnpm build` con i segnaposto; CI verde.
+6. Non eseguire nessuno script di produzione (`db:*:prod`, `update:*` senza `:dev`, `NODE_ENV=production`): PR3 non ha migrazioni.
+7. Prima del deploy, l'annuncio agli operatori di G3 (testo in PLAN.md T3.14 e nella descrizione della PR).
+
+### Acceptance criteria check (case B)
+
+| Criterion | Met / Unmet / Blocked | Notes |
+|-----------|-----------------------|-------|
+| AC27 | Met (server) | Rifiuto `CONTACT_SUPERSEDED` su ogni mutation; avviso e link sono di PR5 |
+| AC29 | Met | `resolveAlert`, Storico con chi l'ha chiuso |
+| AC30–AC34 | Met | Transizioni, "Contattato il", riapertura con lo stesso operatore |
+| AC36 | Met | Conferma con data e messaggio; dopo le correzioni il messaggio scorre dentro la modale e la descrizione è a 16,9:1 (v6, seconda verifica) |
+| AC37–AC41 | Met | Conferma guidata dal server, log, atomicità, no-op, operatore invariato |
+| AC42–AC47 | Met | Fasce, "Automatica", richiamo, `operator_reassign` |
+| AC48, AC50 | Met | Admin ovunque; `reassign` solo admin, anche nel servizio |
+| AC49 | Met | Dopo le correzioni "Assegna a te" rifiuta il contatto di un collega (v1, seconda verifica) |
+| AC51 | Met | Motivo visibile a 7,1:1 anche in hover; intero nella scheda, troncato nella lista a 160 px (PLAN §9, tech-debt) |
+| AC52 | Met | Toast e refresh anche se la scheda si chiude a metà salvataggio (v5, seconda verifica); il link al contatto attivo arriva con PR5 (P5) |
+| AC66, AC67 | Met | Il rifiuto per il cliente di un collega nomina il suo operatore |
+| AC73 | Met | Clienti e scheda usano le stesse mutation di Contatti |
+
+### Notes for docs-maintenance
+
+- Durable findings, già nel tech-debt (`tech-debt/crm/sezione-contatti.md`): Select e DropdownMenu nella voce "Lacune dei primitivi di movimento"; conferma della massiva legata al cliente; scadenza "oggi" contro il cron notturno; contrasto del toast `destructive` ("Contrasto e nomi nei primitivi condivisi"); rotta di import e massive nella voce di `insertCustomer`; "La scheda cliente non regge sotto i 900 px".
+- Non durevoli, corretti prima del merge: tutti gli altri BLOCKER, MAJOR e MINOR della tabella. Restano come MINOR senza voce: test dello smontaggio per `CustomerAlertCreator`, `CustomerCreateContact` e `CustomerHandoverDialog`; il ruolo controllato dopo il caricamento in `reassign`.
 - Domain pages che dovrebbero rimandare a questa review: nessuna (manca ancora `brain/domains/crm/`).

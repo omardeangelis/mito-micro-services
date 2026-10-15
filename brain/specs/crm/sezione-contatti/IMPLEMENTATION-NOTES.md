@@ -8,7 +8,7 @@ links:
 ingested: false
 last_ingested: null
 created: 2026-09-25
-updated: 2026-10-13
+updated: 2026-10-15
 ---
 
 # Implementation Notes
@@ -17,11 +17,14 @@ updated: 2026-10-13
 
 - Run 1 (2026-09-25): solo **PR1 — Percorsi di creazione sicuri** (T1.1 → T1.8), branch `contatti/pr1-creazione-sicura` da `dev`, PR verso `dev`. PR2–PR6 non iniziate.
 - Run 2 (2026-09-29): solo **PR2 — Pulizia e vincolo DB** (T2.1, T2.2, T2.3, T2.5, T2.6, T2.7), branch `contatti/pr2-vincolo-db` da `dev`, PR verso `dev`. T2.4 è il runbook G2: va nella descrizione della PR, lo esegue Omar.
+- Run 3 (2026-10-15): solo **PR3 — Regole del contatto sul server, usate da Clienti** (T3.1a → T3.17, gate T3.14), branch `contatti/pr3-regole-server` da `dev`, PR verso `dev`. Baseline sul branch: 33 file, 302 test verdi.
+- **Stato al 2026-10-15:** PR1 e PR2 fatte e in prod (PR1 dal 29/09; PR2 su `main` e migrazioni applicate il 13/10, log di T2.4 nel PLAN). PR3 pronta: tutti i task Done, review SHIP dopo le correzioni, PR verso `dev`; il deploy in prod è G3. PR4–PR7 da fare.
 
 ## Execution Mode
 
 - `sequential` (richiesto dall'utente): un task alla volta nell'ordine T1.1 → T1.2 → T1.3 → T1.4 → T1.5 → T1.6 → T1.7 → T1.8, nessun worker.
 - Run 2, `sequential` (richiesto dall'utente): T2.1 → T2.2 → T2.3 → T2.5 → T2.6 → T2.7, nessun worker.
+- Run 3, `sequential` (scelta minima sicura: l'utente non ha indicato la modalità, e i task server sono in catena sugli stessi router), nell'ordine di §10. Delegazione `supervised` (`brain.config.json`): l'orchestratore scrive il test RED di ogni task, un worker sul livello della `complexity` (`low` → haiku, `medium` → sonnet, `high` → modello dell'orchestratore) scrive il codice, l'orchestratore rivede. Escalation: nessun passaggio di livello. Una seconda proposta di correzione allo stesso worker (T3.17, ripristino del focus). Livelli spostati dall'orchestratore prima di partire: T3.5a e T3.8c da `high` a `medium` (motivo nel log del task).
 
 ## Deviations From the Plan
 
@@ -121,6 +124,42 @@ updated: 2026-10-13
   - **Test:** un cliente con duplicati senza alert nel test in due fasi (la factory `createAlert` riscriveva `updated_at`); la definizione completa degli indici.
   - **Non corretti in PR2:** `task_priority_active_idx` (si ridisegna in PR5: l'SQL resta quello provato sul DB di sviluppo); `isDueToday` in ora legale (preesistente, decisione di Omar). Entrambi nel tech-debt.
 
+- **Run 3 — scostamenti per task** (dettagli nei log del PLAN):
+  - **T3.1a:** `status.ts` scrive gli stati a mano (`allStates`), per non portare drizzle nel bundle client; un controllo di tipo e un test lo legano all'enum dello schema.
+  - **T3.2a:** il marcatore dell'errore è la chiave stringa `__contactError`, non un simbolo: tRPC copia le chiavi del `cause` con `for…in`, che salta i simboli.
+  - **T3.2b:** la rilettura bloccata della task filtra anche sul cliente bloccato: una task spostata a un altro cliente nel frattempo dà `ContactNotFound` invece di scrivere su un cliente non bloccato.
+  - **T3.4:** la conversione di `23505` in `ContactAlreadyActive` avvolge `transaction` da fuori (dentro la transazione è già abortita). ~~Un operatore su un cliente non suo riceve `CONTACT_FORBIDDEN` con `assignee: null`: testo impreciso, ma ci arriva solo una richiesta fuori dall'interfaccia.~~ Non era vero: ci arriva anche una pagina rimasta aperta dopo un passaggio di consegne (review, v4). Ora `assignee` è l'operatore del cliente.
+  - **T3.5b:** `resolveOpenAlert` riceve il contatto della guardia invece di `taskId`, così si chiama solo dopo la guardia; `contactErrorToTrpc` traduce anche `CustomerMissing`.
+  - **T3.8a:** il permesso si controlla prima della destinazione: un operatore su un cliente non suo riceve FORBIDDEN anche con una destinazione inesistente.
+  - **T3.11b:** "Imposta richiamo" si vede anche con un alert aperto (prima era nascosto, e "Sostituisce…" non era raggiungibile).
+  - **T3.12:** al successo la card di "Crea contatto" è smontata nello stesso commit del refresh: il focus passa al nuovo selettore dallo smontaggio, con un `MutationObserver` che aspetta il trigger al massimo 3 s.
+  - **T3.15:** la regola dei lock si controlla solo con `xmax = pg_current_xact_id()::xid`: con `xmin` `handover` e `assignToYourself` restavano verdi senza `FOR UPDATE`.
+  - **T3.17:** nessun test di componente della modale (chiama tRPC): i controlli sono nella passata browser di T3.14.
+- **Run 3 — `/simplify` (4 revisori).** Applicati:
+  - server: un solo `activeTaskIdOf` (in `activeContact.ts`) e `lockCustomerOrNotFound` (in `guard.ts`) per i tre blocchi uguali; `bandValue("urgent")` al posto di `120`; la massiva traduce `CustomerMissing` con `contactErrorToTrpc` (stesso codice e messaggio); niente `touchCustomer` in `handover`, perché `customers.updated_at` ha `$onUpdate`, e in `reassign` solo se il cliente non cambia;
+  - client: `useSavingUntilRefreshed` riunisce l'attesa "chiamata → refresh" copiata in quattro componenti; `focus.ts` (`focusIsLost`, `STATE_TRIGGER_SELECTOR`) e `useActor` al posto delle copie; tolto un ramo che non poteva girare (`if (onError(error))` dove l'errore di conferma non esiste);
+  - codice morto: `TaskBadge`, `getTaskStatusCategory` (e `_utils/index.ts`), `priorityEnum`, `priorityRangeMap`, l'export di `activeVariants`.
+- **Run 3 — `/simplify`, rilievi non applicati:**
+  - massiva e cron chiudono l'alert con codice proprio invece di `resolveOpenAlert` (niente `alert.updated_at`): codice fuori dal diff, nel tech-debt ("Scrittori fuori dalla regola dei lock");
+  - la regola del date picker è diversa da `isPastDay`: preesistente, cambia il comportamento, nel tech-debt;
+  - `getOperatorById` dal client in `CustomerTaskManager`, `lastAlertId` non usato in `getActiveAlerts`, `SET TRANSACTION ISOLATION` separato: fuori dal diff o infrastruttura di PR1;
+  - export usati dalle PR successive (`bandRange`, `isDueOrOverdue`, `romeDayBounds`, `canReassign`, `activeContactHref`): restano;
+  - helper di test duplicati (`rejectionOf`, i seed): solo test, nessun guadagno sul codice.
+- **Run 3 — correzioni dalla passata browser (T3.14)**, ognuna con un test quando il comportamento si prova in jsdom:
+  - **il menu dello stato si riapriva da solo alla fine del salvataggio.** La scelta di un'opzione fa partire l'attesa dentro `onChange` (Radix la spedisce con `flushSync`), quindi il menu controllato vale già `false` e Radix non chiama `onOpenChange(false)`: `open` restava `true` e il menu ricompariva quando l'attesa finiva. Ora la scelta chiude il menu. Test nuovo in `ContactStateSelect.test.tsx`, rosso senza la correzione; i test di T3.9b non lo prendevano perché il genitore non cambiava `pending`;
+  - **nella scheda cliente il focus non arrivava al nuovo selettore** dopo "Crea contatto": la scheda è una Sheet di Radix, e quando un controllo con il focus sparisce Radix sposta il focus sulla Sheet, non su `body`. `focusIsLost` ora conta anche il focus su un `role="dialog"` (test in `focus.test.tsx`). Vale anche per gli altri ripristini nella scheda;
+  - **scheda cliente, contatto preso da un collega nel frattempo:** dopo il rifiuto il controllo diventa sola lettura e il focus restava sulla Sheet. Ora va al titolo "Stato del cliente" (`tabIndex={-1}`), sempre presente: la sola lettura aspetta il nome dell'operatore prima di comparire;
+  - **"Assegna a te":** dopo la risposta il focus va al testo dell'operatore (prima restava sulla Sheet). Il rifiuto `CUSTOMER_ASSIGNMENT_FORBIDDEN` diceva "Non puoi passare le consegne di questo cliente" anche dopo "Assegna a te": ora "Non puoi cambiare l'operatore di questo cliente", vero per entrambi. Scostamento dal testo del piano (T3.9a).
+
+- **Run 3 — correzioni dalla review (T3.14)**, round PR3 di `REPORT.md`, tutte con TDD (test RED scritto prima):
+  - **"Assegna a te" sul contatto di un collega** (v1, MAJOR): `canSelfAssign(actor, customer, activeContact)` e `assignToYourself` leggono il contatto attivo `FOR UPDATE` dopo il lock del cliente e rifiutano se il suo operatore non è null né l'attore, per ogni ruolo. Il link nel form segue la stessa regola. P4 aggiornato nel PLAN;
+  - **callback perse se il componente si smonta** (v5, MAJOR): con react-query 4 le callback passate a `mutate(vars, {...})` non girano dopo lo smontaggio. Tutti i salvataggi dei contatti usano `mutateAsync(vars).then(ok, err)`. Test con `useMutation` vero in `CustomerTaskManager.test.tsx`, `CustomerColumns.test.tsx`, `CustomerAlertCreator.test.tsx`;
+  - **movimento** (v7): niente `transition-colors` sulle voci del menu dello stato, con anello di focus (`focus:ring-2 ring-inset`); Select e DropdownMenu nel registro dei primitivi;
+  - **UI** (v6): nome del selettore `"<stato>, cambia stato"`; card dello stato a due colonne sotto `lg`; messaggio della conferma che scorre dentro la modale (regione con nome, raggiungibile da tastiera); descrizioni delle modali in `text-foreground`; motivo in sola lettura in `text-neutral-600`, intero nella scheda (`fit`); "Assegna a te" alto 36 px; priorità in sola lettura che va a capo;
+  - **minori**: `reassign` controlla `canReassign` nel servizio; il rifiuto di "Crea contatto" nomina l'operatore del cliente; focus ripristinato solo se perso (`CustomerForm`), con un ripiego dopo la "X" dell'alert; test del ripiego su `23505` (provato per mutazione: rosso se il ripiego trasforma l'errore in `ContactAlreadyActive`; cancellare il ripiego non si vede, perché senza contatto attivo rilancia lo stesso errore); assert mancanti su `reassign`, `setCallback` e `changeState`;
+  - **trovata nelle verifiche:** l'indicazione di A1 ("Usa “Assegna a te” nella scheda cliente" sotto "Non assegnato", T3.9b) non compariva mai, perché nessun chiamante passava `showHint`. Ora la passano lista e scheda; controllata nel browser su `zzpr3-c15`.
+- **Run 3 — rilievi della review non corretti:** nel tech-debt (Select e DropdownMenu senza `motion-reduce`; conferma della massiva legata al cliente; scadenza "oggi" contro il cron notturno; contrasto del toast e nomi nei primitivi; rotta di import e massive senza controllo dell'operatore; la scheda sotto i 900 px). Senza voce, MINOR: test dello smontaggio per tre componenti su cinque; in `reassign` il ruolo si controlla dopo il caricamento (nessuna scrittura, irraggiungibile da fuori per `adminProcedure`).
+
 ## Surprises and Decisions
 
 - **Le migrazioni del repo non si applicano su un Postgres vuoto.** `20240926195125_lucky_roughhouse` crea `mito-deutsche_task` con il tipo `task_status`, che nasce solo in `20260619152227_same_hemingway`. Il DB di produzione aveva già il tipo (creato con `db:push` prima delle migrazioni), e la terza migrazione lo salta se esiste. L'harness crea il tipo prima di migrare; le migrazioni non si toccano (già applicate in prod). Vale anche per chi volesse creare un DB nuovo con `pnpm db:migrate`.
@@ -151,6 +190,12 @@ updated: 2026-10-13
   - `gh variable list`: vuoto.
 - **Run 2 — controllo strutturale su prod e sviluppo** (29/09, sola lettura, transazione `READ ONLY`): nessun trigger né regola su `task`, `alert` e `customers`; su `task` e `alert` solo le chiavi primarie. Dimensioni: `task` 97 MB in prod, 95 MB in sviluppo.
 
+- **Run 3 — la ricerca di Clienti per "Nome" e "Telefono" va in errore** (passata browser, preesistente su `dev`): `customers[searchBy]` con `nome` o `telefono` non è una colonna, e Postgres risponde `syntax error at or near "$2"`. Nel tech-debt e proposta come attività separata; per la passata si è filtrato con `search_by=fullName` dall'URL.
+- **Run 3 — artefatti della passata browser, non difetti dell'app:** nelle sessioni headless di `agent-browser` le animazioni CSS restano ferme finché non si disegna un frame (lo slide-in della Sheet a 0 ms, l'uscita dei popover): uno screenshot le sblocca. Un clic per riferimento su un elemento fuori vista nella Sheet cadeva sull'overlay e chiudeva la scheda. Un clic su un'opzione del `Select` a volte lasciava la lista aperta: il clic successivo sceglieva un'altra opzione. Le conferme sono state rifatte con i clic per coordinate dopo `scrollIntoView`, controllando il valore scelto prima di confermare.
+- **Run 3 — il link magico di `next dev` va aperto dopo la pagina "verify-request":** NextAuth stampa il link mentre salva il token; aperto subito risponde `error=Verification`.
+- **Run 3 — test manuali dopo la PR: l'interfaccia usava l'utente di un accesso precedente** (2026-10-15). `useActor` legge ruolo e operatore dallo store `userPreference-storage`, salvato nel localStorage e aggiornato solo dalla pagina Profilo. Con due accessi nello stesso browser l'interfaccia restava al primo utente: Federica vedeva il menu dell'admin su un contatto non suo, e l'admin vedeva "Assegnato a Martina Vinai" in sola lettura. Il server rifiutava comunque. Lo store era preesistente, ma con PR3 decide cosa si vede. Corretto: `UserPreferenceProvider` copia ruolo e operatore da `getUserPreference` a ogni risposta, e lo store salva nel browser solo le preferenze della tabella e ignora ruolo e operatore salvati prima (`UserPreferenceContext.test.tsx`).
+- **Run 3 — la riga di Clienti non nomina più l'operatore del contatto** (test manuali, 2026-10-15, D14). "Assegnato a …" sotto lo stato ripeteva quasi sempre la colonna Operatore: cliente e contatto sono allineati da PR2 e si separano solo dopo un "Assegna Clienti" su un contatto con esito (in prod 1 contatto attivo su 69.783, sola lettura). In sola lettura la riga mostra solo lo stato; resta "Non assegnato" con l'indicazione di "Assegna a te" quando né il cliente né il contatto hanno un operatore. Poi, su richiesta di Omar, lo stesso nella scheda cliente: niente blocco "Modifica" con il nome, perché l'operatore del cliente è nel form; la condizione è `isUnclaimed` in `ReadOnlyReason.tsx`, usata da riga e scheda. Omar ha deciso anche il resto: "Assegna Clienti" sposterà cliente e contatto insieme in PR6 (T6.8, AC75), senza una colonna "Gestito da". Test in `CustomerColumns.test.tsx` (3 RED prima della modifica) e `CustomerTaskManager.test.tsx` (1 RED).
+
 ## Sanity Checks
 
 | Check | Result | Notes |
@@ -161,6 +206,19 @@ updated: 2026-10-13
 | Run 2 — gate CI su `d803504` | OK | `next lint` e `tsc --noEmit` puliti; `pnpm run test --run` 21 file, 112 test; `pnpm build` con le variabili di CI in un worktree pulito (senza `.env*`) |
 | Run 2 — `indexdef` sul DB di sviluppo, sola lettura | OK | Le cinque definizioni coincidono con `activeContactIndex.db.test.ts` (Postgres 15.6); `task_customer_active_uidx` valido e unico |
 | Run 2 — prova del cron sul DB di sviluppo | Non fatta | La porta 3000, chiamata da `alert.js` in sviluppo, è occupata dal container di un altro progetto |
+| Run 3 — gate CI su `e245c11` (dopo `/simplify`) | OK | `next lint` e `tsc --noEmit` puliti; `pnpm run test --run` 54 file, 820 test; `pnpm build` con le variabili di CI in una copia senza `.env*` (solo `.env.example`), poi cancellata |
+| Run 3 — gate CI su `8472c90` (correzioni della passata browser) | OK | `next lint` e `tsc --noEmit` puliti; 55 file, 825 test |
+| Run 3 — utenti per la passata, DB di sviluppo in sola lettura | OK | Transazione `READ ONLY`: due OPERATORE senza clienti (1001, 1003) e l'ADMIN generico (1000) |
+| Run 3 — passata browser sul DB di sviluppo | OK, con 4 correzioni | `next dev` sulla porta 3100 (`NEXTAUTH_URL` sovrascritto), link magico dalla console; 12 clienti di prova `zzpr3-c1…c12` creati con uno script (restano sul DB di sviluppo). Checklist in T3.14 |
+| Run 3 — verifica sul DB di sviluppo dopo la passata, sola lettura | OK | Al più un contatto attivo per cliente; il cambio di stato di un operatore sul contatto di un collega non lo sposta (AC41, nessun `operator_reassign` sulla task); il salvataggio del form con il solo telefono non tocca gli operatori; la riapertura crea un contatto nuovo a 120 |
+| Run 3 — gate CI su `1b50ace` (correzioni della review) | OK | `next lint` e `tsc --noEmit` puliti; `pnpm run test --run` 58 file, 852 test; `pnpm build` con le variabili di CI in un worktree senza `.env*` (solo `.env.example`), poi rimosso |
+| Run 3 — spinner con movimento ridotto, browser | OK | 2026-10-15, `next dev` su `1b50ace`, scheda di `zzpr3-c13` come operatore, `fetch` di `task.changeState` sospeso nella pagina (nessuna richiesta partita). Trigger in attesa con `aria-busy="true"` e il valore salvato `app.to`: senza `reduced-motion` `animationName: spin`, `getAnimations()` 1; con `set media light reduced-motion` `animationName: none`, `getAnimations()` 0. Lo screenshot mostra l'arco fermo nella sede della freccia. Dopo, in sola lettura: `zzpr3-c13` invariato, nessuna riga di log |
+| Run 3 — gate CI su `45ae55e` (dopo la review) | OK | `next lint` e `tsc --noEmit` puliti; `pnpm run test --run` 58 file, 852 test; `pnpm build` con le variabili di CI in un worktree senza `.env*`, poi rimosso |
+| Run 3 — indicazione "Assegna a te", browser | OK | `zzpr3-c15` (cliente e contatto senza operatore, creato per la prova) come operatore: "Non assegnato" con "Usa “Assegna a te” nella scheda cliente" nella scheda e nella riga di Clienti; il link "Assegna a te" nel form |
+| Run 3 — cambio di utente nello stesso browser, dopo la correzione | OK | `next dev` sulla porta 3000, una sessione di `agent-browser`: accesso come Federica, poi come admin con nel localStorage lo store di Federica, senza passare dal Profilo. `zzpr3-c17` e `zzpr3-c19` con il menu dello stato, nessun ruolo nel localStorage. Gate: `next lint` e `tsc --noEmit` puliti, 59 file, 855 test |
+| Run 3 — prod in sola lettura: contatti con un operatore diverso dal cliente | OK | 2026-10-15, transazione `read only` (`transaction_read_only: on`), `.env.prod.local`: 1 contatto attivo separato su 69.783 (`richiamare`), 3 non attivi su 13.397; 0 alert aperti su contatti non attivi, 0 clienti con due contatti attivi; 2 "Assegna Clienti" registrati dopo PR2 |
+| Run 3 — riga di Clienti senza il nome dell'operatore | OK | `next lint` e `tsc --noEmit` puliti, 59 file, 859 test. Non provata nel browser: la coprono i test della cella in jsdom |
+| Run 3 — scheda cliente senza il nome dell'operatore | OK | `next lint` e `tsc --noEmit` puliti, 59 file, 861 test. Browser (`next dev` sulla porta 3000, Federica): `zzpr3-c19` mostra Stato e Priorità senza "Modifica" né "Assegnato a"; `zzpr3-c15` mostra "Modifica: Non assegnato" con l'indicazione di "Assegna a te" |
 
 ## Acceptance Criteria Status
 
@@ -170,6 +228,17 @@ updated: 2026-10-13
 | AC70 (PR2) | Met nel codice; in prod dopo G2 | 1.183 alert chiusi dal sistema sul DB di sviluppo; nessuna riga in `task_event_log` |
 | AC71, parte DB (PR2) | Met nel codice; in prod dopo G2 | Indice unico parziale; definizione ricontrollata in prod al passo 6 del runbook |
 | AC72 (PR2) | Met | Cron e massiva invariati in PR2. `isDueToday` in ora legale era preesistente: corretto a parte il 2026-10-13 (Steering) |
+| AC27 (PR3, parte server) | Met | Ogni mutation rifiuta un contatto superato con `CONTACT_SUPERSEDED`; avviso e link al contatto attivo arrivano con PR5 |
+| AC29 (PR3) | Met | `resolveAlert`: Storico con chi l'ha chiuso, `alert_id` azzerato solo se punta ancora all'alert |
+| AC30–AC34 (PR3) | Met | Transizioni, "Contattato il", riapertura con lo stesso operatore del contatto (AC34) |
+| AC35 (PR3) | Non in PR3 | URL del contatto: PR5 |
+| AC36–AC41 (PR3) | Met | Conferma guidata dal server con data e messaggio, log, atomicità, no-op, operatore invariato |
+| AC42–AC47 (PR3) | Met | Fasce e "Automatica" (D3), richiamo con `replacesAlertId`, `operator_reassign` (riassegnazione singola solo dal server fino a PR5) |
+| AC48–AC50 (PR3) | Met | D2/A1; "Assegna a te" senza il contatto di un collega; `reassign` e massive solo admin, anche nel servizio |
+| AC51 (PR3) | Met | Motivo visibile nella lista e nella scheda; nella lista troncato a 160 px (PLAN §9), nome intero nel `title` (tech-debt) |
+| AC52 (PR3) | Met, senza link | Toast di 8000 ms con il motivo, anche dopo lo smontaggio; il link al contatto attivo arriva con PR5 (P5) |
+| AC66, AC67 (PR3) | Met | "Crea contatto" nella scheda e nella riga; "Cliente non assegnato"; contatto già attivo |
+| AC73 (PR3) | Met | Clienti e scheda cliente usano le mutation di Contatti (checklist in T3.14) |
 
 ## Remaining Work
 
@@ -177,14 +246,18 @@ updated: 2026-10-13
 - **Indice unico e `task.kind`:** deciso di tenere l'indice per cliente in PR2; il passaggio a (cliente, tipo) arriva con il `kind`. Dopo PR2 resta da aggiornare il blocco E1 di [[chore/crm/design-lavorazioni-e-verticali]] (§9). Dettagli nella nota di PR2 del PLAN (§9).
 - **G1 rivisto (2026-09-28):**
   - ~~operatore di sistema da creare in prod~~: creato da Omar il 2026-09-29, id 1021;
-  - PR1 in prod dal 2026-09-29 (PR #7, `75a92e3`), per almeno due giorni lavorativi senza errori: fino a giovedì 1/10 compreso;
+  - PR1 in prod dal 2026-09-29 (PR #7, `75a92e3`), per almeno due giorni lavorativi senza errori: fino a giovedì 1/10 compreso. **Chiuso il 2026-10-13** con la sessione G2; i log di Vercel e Sentry di quel periodo non sono stati letti nella sessione;
   - il cron in prod non si lancia prima di G2. Gli alert scaduti si chiudono tutti con la prima esecuzione dopo la migrazione di PR2 (T2.4, passo 8).
 
   Runbook aggiornato in T1.8, §12 e nella descrizione della PR.
 - **Riallineamento degli operatori delle task:** terza migrazione di PR2 (T2.5).
+- **G2 eseguito il 2026-10-13** (log di T2.4 nel PLAN). Passo 9 e avvisi a operatori e cliente chiusi il 2026-10-15: i quattro cron girano ogni notte. Quello delle priorità è andato in timeout il 14/10 ed è corretto dalla #13; quello dello storage è verde ma la route fallisce, perché lo storage rifiuta la `SUPABASE_KEY` di produzione (Sentry `JAVASCRIPT-NEXTJS-6`; la stessa chiave serve agli export). Restano: il login Azure da provare con un accesso nuovo; chi lancia i cron di prod ogni mattina.
 - **Esecuzione notturna del cron alert:** lo `schedule` di `update-alert prod.yml`, riattivato in PR2 (T2.6; dal 2026-10-13 alle 23:47 UTC, 01:47 in Italia d'estate e 00:47 d'inverno), parte solo con la variabile `ALERT_CRON_ENABLED = true`. Il runbook G2 è un'unica sessione fuori orario: porta PR2 su `main` (passo 4), estrae l'elenco come traccia e applica la migrazione (passo 5), e imposta la variabile al passo 8.
 - ~~**Cron in ora legale (da decidere con Omar):** `isDueToday` non riconosce gli alert di oggi da fine marzo al 25 ottobre, e li chiude senza followup. Preesistente, fuori perimetro di PR2 (tech-debt). O una PR a sé prima di G2, o l'avviso agli operatori al passo 8.~~ Corretto il 2026-10-13, deciso da Leonardo: il cron confronta i giorni in `Europe/Rome` (tech-debt). Resta da decidere cosa fare degli alert del giorno già chiusi senza followup.
 - **`task_priority_active_idx`:** da ridisegnare in PR5 (T5.1) sulla query vera.
+- **PR3, dopo il merge su `dev`:** G3, il deploy in prod con l'annuncio agli operatori (testo nella descrizione della PR, da T3.14). Nessuna migrazione.
+- **PR3, seguiti:** test dello smontaggio a metà salvataggio per `CustomerAlertCreator`, `CustomerCreateContact` e `CustomerHandoverDialog`; la scadenza "oggi" contro il cron notturno va decisa prima che un selettore permetta oggi (PR5, tech-debt); la ricerca di Clienti per "Nome" e "Telefono" (tech-debt, preesistente).
+- **Dati di prova sul DB di sviluppo:** clienti `zzpr3-c1…c15` con i loro contatti, alert e righe di log. Restano; per toglierli basta il prefisso `zzpr3-` sull'id del cliente.
 
 ## Steering
 
@@ -208,3 +281,5 @@ updated: 2026-10-13
 | 2026-10-13 | Correggere `isDueToday` adesso, prima di G2 (Leonardo) | `processDueAlerts` confronta i giorni in `Europe/Rome`, nel codice e nella query; test sull'ora legale, sull'ora solare e sui due cambi d'ora. Aggiornati il runbook G2 (T2.4: passi 1, 2 e 8), §13 e il tech-debt (due voci risolte) |
 | 2026-10-13 | Il cron alert gira dopo la mezzanotte italiana, ma prima delle 04:17 (Leonardo). Scartata la sera tardi: il cron lavora per il giorno in cui gira, e la sera sarebbe quello che finisce | `schedule` a `47 23 * * *` (T2.6): 01:47 d'estate, 00:47 d'inverno. Test di `processDueAlerts` all'ora dello `schedule`. Regge solo con il confronto dei giorni in `Europe/Rome`, nello stesso rilascio |
 | 2026-10-13 | Riattivare lo `schedule` anche degli altri tre cron di prod, nella sequenza giusta (Leonardo) | Priorità 23:17 UTC, alert 23:47, clienti e pratiche 00:17, pulizia degli export 00:47 (tabella in T2.6). Priorità prima degli alert, perché dà 1 ai followup; clienti e pratiche dopo le 00:00 UTC, perché usa il giorno UTC del server. Stessa guardia `ALERT_CRON_ENABLED`: partono al passo 8 di G2. Runbook G2 aggiornato ai passi 8 e 9 |
+| 2026-10-13 | Rilascio in prod la sera stessa, fatto dall'agente: merge e migrazione (Leonardo) | PR #11 su `main`, deploy verde, `db:migrate:prod` alle 16:46 UTC con tutti i controlli del passo 6 a posto. Il primo cron si fermava all'installazione delle dipendenze: PR #12 sugli otto workflow, poi verde da `main`. Dettagli nel log di T2.4 |
+| 2026-10-15 | Avvio di PR3: solo PR3 (T3.1a–T3.17, gate T3.14), branch da `dev`, PR verso `dev`. Passata browser sul DB di sviluppo con due operatori e un admin scelti dall'agente in sola lettura, clienti di prova creati dall'agente | Run 3; passata browser in T3.14 |

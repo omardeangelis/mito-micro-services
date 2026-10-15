@@ -1,10 +1,20 @@
 import { api } from "@/trpc/server"
 import { CustomerForm } from "./CustomerForm"
 import type { Customer } from "@/lib/types/schemas"
+import type { HandoverActiveContact } from "./CustomerHandoverDialog"
 
-export const CustomerFormSection = async (props: Customer) => {
+type Props = {
+  customer: Customer
+  activeContact: HandoverActiveContact | null
+}
+
+export const CustomerFormSection = async (props: Props) => {
   const availableOperators = await api.operator.getAllUniqueOperators.query()
   return (
-    <CustomerForm customer={props} availableOperators={availableOperators} />
+    <CustomerForm
+      customer={props.customer}
+      availableOperators={availableOperators}
+      activeContact={props.activeContact}
+    />
   )
 }

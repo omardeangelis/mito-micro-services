@@ -1,4 +1,4 @@
-import { operatorProcedure, protectedProcedure } from "@/server/api/trpc"
+import { adminProcedure, operatorProcedure } from "@/server/api/trpc"
 import { customers } from "@/server/db/schema/customers"
 import { eq, inArray, desc } from "drizzle-orm"
 import { insertCustomerSchema } from "@/lib/types/schemas"
@@ -6,17 +6,13 @@ import { z } from "zod"
 import { updateCustomerUpdatedAt } from "@/server/shared/updateAt"
 import { task } from "@/server/db/schema/task"
 import { taskEventLog } from "@/server/db/schema/taskEventLog"
-
-export const updateCustomer = protectedProcedure
-  .input(insertCustomerSchema)
-  .mutation(async ({ input, ctx }) => {
-    const { db } = ctx
-    return await db
-      .update(customers)
-      .set(input)
-      .where(eq(customers.id, input.id!))
-      .returning({ id: customers.id })
-  })
+import { runTrpc } from "@/server/effect/trpc"
+import { actorOf } from "@/server/services/contact/actor"
+import {
+  assignToYourself as assignToYourselfService,
+  handover as handoverService,
+} from "@/server/services/customer/assignment"
+import { customerErrorToTrpc } from "@/server/services/customer/errors"
 
 const updateCustomerFromDashboardSchema = insertCustomerSchema.pick({
   id: true,
@@ -32,49 +28,49 @@ const updateCustomerFromDashboardSchema = insertCustomerSchema.pick({
   reddito: true,
   occupazione: true,
   ambitoLavorativo: true,
-  operatorId: true,
   sede: true,
   source: true,
 })
 
+/**
+ * Saves the customer's master data from the form. The operator changes only
+ * through `handover` (D13): an `operatorId` in the request is dropped.
+ */
 export const updateCustomerFromDashboard = operatorProcedure
   .input(updateCustomerFromDashboardSchema)
   .mutation(async ({ ctx, input }) => {
     const { db } = ctx
-
-    const [before] = await db
-      .select({ operatorId: customers.operatorId })
-      .from(customers)
-      .where(eq(customers.id, input.id!))
-
-    const res = await db
+    return await db
       .update(customers)
       .set(input)
       .where(eq(customers.id, input.id!))
       .returning({ id: customers.id })
-
-    if (
-      input.operatorId !== undefined &&
-      input.operatorId !== before?.operatorId
-    ) {
-      await db.insert(taskEventLog).values({
-        customerId: input.id!,
-        actorOperatorId: ctx.operator.id,
-        action: "operator_reassign",
-        source: "detail",
-        fromOperatorId: before?.operatorId ?? null,
-        toOperatorId: input.operatorId,
-      })
-    }
-
-    return res
   })
+
+const handoverInput = z.object({
+  customerId: z.string(),
+  toOperatorId: z.number().int(),
+})
+
+/** "Passaggio di consegne" (D13): see the `handover` service. */
+export const handover = operatorProcedure
+  .input(handoverInput)
+  .mutation(({ ctx, input }) =>
+    runTrpc(
+      handoverService({
+        customerId: input.customerId,
+        toOperatorId: input.toOperatorId,
+        actor: actorOf(ctx.operator),
+      }),
+      customerErrorToTrpc
+    )
+  )
 
 const bulkAssignCustomerSchema = z.object({
   operatorId: z.number(),
   customerIds: z.array(z.string()),
 })
-export const bulkUpdateCustomers = operatorProcedure
+export const bulkUpdateCustomers = adminProcedure
   .input(bulkAssignCustomerSchema)
   .mutation(async ({ input, ctx }) => {
     const { db } = ctx
@@ -149,34 +145,18 @@ export const handleCustomerBlackList = operatorProcedure
       .where(eq(customers.id, input.id!))
   })
 
+/** "Assegna a te" (P4): see the `assignToYourself` service. */
 export const assignToYourself = operatorProcedure
   .input(z.object({ id: z.string() }))
-  .mutation(async ({ ctx, input }) => {
-    const { db, operator } = ctx
-
-    const [before] = await db
-      .select({ operatorId: customers.operatorId })
-      .from(customers)
-      .where(eq(customers.id, input.id))
-
-    const res = await db
-      .update(customers)
-      .set({ operatorId: operator.id })
-      .where(eq(customers.id, input.id))
-
-    if (before?.operatorId !== operator.id) {
-      await db.insert(taskEventLog).values({
+  .mutation(({ ctx, input }) =>
+    runTrpc(
+      assignToYourselfService({
         customerId: input.id,
-        actorOperatorId: operator.id,
-        action: "operator_reassign",
-        source: "self_assign",
-        fromOperatorId: before?.operatorId ?? null,
-        toOperatorId: operator.id,
-      })
-    }
-
-    return res
-  })
+        actor: actorOf(ctx.operator),
+      }),
+      customerErrorToTrpc
+    )
+  )
 
 const updateLastEditInput = insertCustomerSchema.pick({
   id: true,

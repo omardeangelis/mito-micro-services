@@ -32,7 +32,19 @@ import { updateCustomerAction } from "../_actions/updateCustomer"
 import { useFormState, useFormStatus } from "react-dom"
 import { useFormIssueManager } from "@/lib/hooks/useFormIssueManager"
 import { InputWithCopy } from "@/components/custom/input/InputWithCopy"
-import { assignToYouAction } from "../_actions/assignToYou"
+import { api } from "@/trpc/react"
+import { useContactMutationFeedback } from "@/components/custom/contact/useContactMutationFeedback"
+import { useRefreshAfterSave } from "@/components/custom/contact/useRefreshAfterSave"
+import { focusIsLost } from "@/components/custom/contact/focus"
+import {
+  canHandover,
+  canSelfAssign,
+  operatorDisplayName,
+} from "@/lib/domain/contact/permissions"
+import {
+  CustomerHandoverDialog,
+  type HandoverActiveContact,
+} from "./CustomerHandoverDialog"
 import { useUserPreferenceContext } from "@/store/context/useUserPreferenceContext"
 import { sourceValues } from "@/server/db/schema/customers"
 import { parseInputValue, parseStringToNumber } from "@/lib/utils/format"
@@ -52,13 +64,11 @@ const customerformSchema = insertCustomerSchema
     reddito: true,
     occupazione: true,
     ambitoLavorativo: true,
-    operatorId: true,
     sede: true,
     source: true,
   })
   .merge(
     z.object({
-      operatorId: z.string().optional(),
       reddito: z
         .string()
         .optional()
@@ -99,6 +109,7 @@ type CustomerInput = z.infer<typeof customerformSchema>
 type Props = PropsWithChildren<{
   customer: Customer
   availableOperators: Operator[]
+  activeContact: HandoverActiveContact | null
 }>
 
 // Chiavi del form derivate dallo schema: una sola fonte di verità (niente lista da tenere a mano)
@@ -142,7 +153,6 @@ export const CustomerForm = (props: Props) => {
   const initialFormValues = React.useMemo<CustomerInput>(
     () => ({
       ...props.customer,
-      operatorId: props.customer.operatorId?.toString() ?? "",
       reddito: props.customer.reddito ?? undefined,
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- dipendenza voluta solo su id per evitare reset inutili
@@ -193,13 +203,71 @@ export const CustomerForm = (props: Props) => {
     }
   }, [formState.message, pending, form])
 
-  const getOperatorName = React.useCallback(
-    (id: number) => {
-      const operator = props.availableOperators.find((t) => t.id === id)
-      return operator ? `${operator.name} ${operator.surname}` : ""
+  const { refresh, refreshing } = useRefreshAfterSave()
+  const { onError: onContactError } = useContactMutationFeedback({ refresh })
+  const customerOperator =
+    props.customer.operatorId === null
+      ? undefined
+      : props.availableOperators.find((o) => o.id === props.customer.operatorId)
+  const operatorLabel = customerOperator
+    ? operatorDisplayName(customerOperator)
+    : props.customer.operatorId === null
+      ? "Non assegnato"
+      : `Operatore ${props.customer.operatorId}`
+  const showHandover =
+    role !== undefined &&
+    operatorId !== undefined &&
+    canHandover({ operatorId, role }, props.customer)
+  const showSelfAssign =
+    role !== undefined &&
+    operatorId !== undefined &&
+    canSelfAssign({ operatorId, role }, props.customer, props.activeContact)
+
+  const operatorTextRef = React.useRef<HTMLParagraphElement>(null)
+  const handoverButtonRef = React.useRef<HTMLButtonElement>(null)
+  const [handoverOpen, setHandoverOpen] = React.useState(false)
+  // Set when the server answered the handover: after the refresh the button
+  // may be gone, and the focus must not fall on the body
+  const focusAfterRefresh = React.useRef(false)
+
+  const focusHandoverOrigin = React.useCallback(() => {
+    const button = handoverButtonRef.current
+    const target =
+      button && document.contains(button) ? button : operatorTextRef.current
+    target?.focus()
+  }, [])
+
+  // Set when the server answered "Assegna a te": the link is gone after the
+  // refresh either way, and the operator text says who has the customer now
+  const focusOperatorAfterRefresh = React.useRef(false)
+
+  // The refresh has landed: if the button is gone the focus goes to the
+  // operator text
+  React.useEffect(() => {
+    if (refreshing) return
+    // Only when the focus is lost: the user may have moved it meanwhile
+    if (focusOperatorAfterRefresh.current) {
+      focusOperatorAfterRefresh.current = false
+      if (focusIsLost()) operatorTextRef.current?.focus()
+    }
+    if (!focusAfterRefresh.current) return
+    focusAfterRefresh.current = false
+    if (focusIsLost()) focusHandoverOrigin()
+  }, [refreshing, focusHandoverOrigin])
+
+  const assignToYourself = api.customer.assignToYourself.useMutation({
+    onSuccess: () => {
+      focusOperatorAfterRefresh.current = true
+      refresh()
     },
-    [props.availableOperators]
-  )
+    // The toast gives the reason and the refresh shows the current operator
+    onError: (error) => {
+      focusOperatorAfterRefresh.current = true
+      onContactError(error)
+    },
+  })
+  // The wait lasts until the refreshed operator is on screen
+  const assigning = assignToYourself.isLoading || refreshing
 
   useFormIssueManager(formState)
   return (
@@ -411,7 +479,7 @@ export const CustomerForm = (props: Props) => {
               )}
             />
           </div>
-          <div className="grid grid-cols-3 items-end gap-4">
+          <div className="grid grid-cols-3 items-start gap-4">
             <FormField
               control={form.control}
               name="occupazione"
@@ -467,78 +535,68 @@ export const CustomerForm = (props: Props) => {
                 )}
               />
             </div>
-            <FormField
-              control={form.control}
-              name="operatorId"
-              render={({ field: { ref: _, ...field } }) => (
-                <FormItem className="w-full bg-white">
-                  <div className="flex items-center justify-between">
-                    <FormLabel>Operatore</FormLabel>
-                    {props.customer.operatorId ? null : (
-                      <Button
-                        size="sm"
-                        variant="link"
-                        type="button"
-                        className="text-neutral-400"
-                        onClick={async (e) => {
-                          e.preventDefault()
-                          form.setValue("operatorId", operatorId?.toString())
-                          await assignToYouAction(props.customer.id)
-                        }}
-                      >
-                        Assegna a te
-                      </Button>
-                    )}
-                  </div>
-                  <Select {...field} onValueChange={field.onChange}>
-                    <FormControl>
-                      <SelectTrigger className="bg-white">
-                        <SelectValue>
-                          {getOperatorName(Number(field.value))}
-                        </SelectValue>
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectGroup>
-                        <SelectLabel>Operatore</SelectLabel>
-                        {props.availableOperators
-                          .filter(
-                            (o) => Number(form.watch("operatorId")) !== o.id
-                          )
-                          .map((operator) => (
-                            <SelectItem
-                              key={operator.id}
-                              value={operator.id.toString()}
-                            >
-                              {operator.name} {operator.surname}
-                            </SelectItem>
-                          ))}
-                      </SelectGroup>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage className="text-red-400" />
-                </FormItem>
-              )}
-            />
-            <FormField
-              name="operatorId"
-              control={form.control}
-              render={({ field }) => (
-                <FormItem className="w-full" hidden>
-                  <FormControl hidden>
-                    <Input
-                      className="w-full"
-                      placeholder="ID Pratica"
-                      {...field}
-                      value={field.value ?? ""}
-                    />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
+            <div className="flex w-full flex-col gap-2">
+              <span
+                id="customer-operator-label"
+                className="text-sm font-medium leading-none"
+              >
+                Operatore
+              </span>
+              <p
+                ref={operatorTextRef}
+                tabIndex={-1}
+                aria-labelledby="customer-operator-label"
+                className="flex h-10 items-center text-sm"
+              >
+                {operatorLabel}
+              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                {showSelfAssign ? (
+                  <Button
+                    size="sm"
+                    variant="link"
+                    type="button"
+                    aria-disabled={assigning}
+                    className="px-0 text-neutral-600"
+                    onClick={() => {
+                      if (assigning) return
+                      assignToYourself.mutate({ id: props.customer.id })
+                    }}
+                  >
+                    Assegna a te
+                  </Button>
+                ) : null}
+                {showHandover ? (
+                  <Button
+                    ref={handoverButtonRef}
+                    size="sm"
+                    variant="outline"
+                    type="button"
+                    onClick={() => setHandoverOpen(true)}
+                  >
+                    {props.customer.operatorId === null
+                      ? "Assegna operatore"
+                      : "Passaggio di consegne"}
+                  </Button>
+                ) : null}
+              </div>
+            </div>
           </div>
         </form>
       </Form>
+      <CustomerHandoverDialog
+        open={handoverOpen}
+        onClose={({ settled }) => {
+          setHandoverOpen(false)
+          if (!settled) return
+          focusAfterRefresh.current = true
+        }}
+        restoreFocus={focusHandoverOrigin}
+        refresh={refresh}
+        customer={props.customer}
+        operators={props.availableOperators}
+        activeContact={props.activeContact}
+      />
     </div>
   )
 }

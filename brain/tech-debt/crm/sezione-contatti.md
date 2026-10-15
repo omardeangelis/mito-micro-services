@@ -5,7 +5,7 @@ links:
   - "[[specs/crm/sezione-contatti/SPEC]]"
   - "[[specs/crm/sezione-contatti/IMPLEMENTATION-NOTES]]"
 created: 2026-09-25
-updated: 2026-10-13
+updated: 2026-10-15
 ---
 
 # Tech debt: Sezione Contatti
@@ -24,6 +24,8 @@ Scoperto in T1.1–T1.2 (PR1), preesistente.
 **Da fare fuori da questa spec:** una migrazione additiva e idempotente (`ADD COLUMN IF NOT EXISTS "is_resolved"`) e, per il tipo, una nota nel README o una migrazione "baseline". Poi `PUSHED_SCHEMA` si riduce di conseguenza.
 
 ## Nessun test esercita il lock del cliente
+
+**Livello 1 fatto il 2026-10-15 (PR3, T3.15).** `src/test/lockRule.ts` (`assertCustomerLockedOnWrite`) controlla, con un trigger di test, che ogni scrittura su task, alert e log di un cliente avvenga in una transazione che ha già bloccato il cliente (`xmax` della riga uguale alla transazione corrente). 19 scrittori coperti; senza `.for("update")` diventano tutti rossi. Resta il livello 2, due transazioni vere sullo stesso cliente su un Postgres vero: PR7.
 
 Scoperto nella review di PR1 (F5), accettato dal piano (D4) ma non dichiarato.
 
@@ -45,6 +47,8 @@ Scoperto nella review di PR1 (F1, seconda verifica), preesistente.
 
 **Da fare fuori da questa spec:** A7 lascia la logica invariata (non-goal). Un seguito può riassegnare la task attiva del cliente, con un criterio di spareggio.
 
+**Rientra nella spec dal 2026-10-15 (D14, AC75):** in PR6 T6.8 "Assegna Clienti" sposta il contatto attivo del cliente in ogni stato, con il servizio `handover`. Il 2026-10-15 in prod i contatti attivi con un operatore diverso da quello del cliente erano 1 su 69.783 (sola lettura). Si chiude con T6.8.
+
 ## Casi limite di `transaction` con le interruzioni
 
 Scoperto nella review di PR1 (F9, F10).
@@ -58,6 +62,8 @@ Scoperto nella review di PR1 (F9, F10).
 
 ## Alert risolti due volte e `alert_id` azzerato senza condizione nella massiva
 
+**Chiusa il 2026-10-15 (PR3).** `resolveAlerts` e `createAlert` non ci sono più (T3.13). Ogni scrittore di alert blocca il cliente prima di leggere task e alert: `resolveAlert` e `setCallback` passano da `resolveOpenAlert`, con la guardia `is_resolved = false` (T3.5b, T3.6), il cron ha la sua guardia, la massiva legge `alert_id` dopo il lock. La regola è provata da T3.15. Resta solo una differenza di forma, in "Scrittori fuori dalla regola dei lock".
+
 Scoperto nella review di PR1 (F14, R7), preesistente.
 
 - `resolveAlerts`, e l'update dell'alert nella massiva, non hanno né la guardia `is_resolved = false` né il lock del cliente. Accanto al cron o alla massiva un alert può essere risolto due volte: `resolved_by` sovrascritto e un secondo `alert_resolved` nel log.
@@ -68,6 +74,8 @@ Scoperto nella review di PR1 (F14, R7), preesistente.
 **Da fare:** PR3 (guardia e servizi con `lockCustomer`, T3.2).
 
 ## Ordine e pareggi nella massiva senza test
+
+**Chiusa il 2026-10-15 (PR3, T3.8c)** per i test: casi 3 e 4 con lo stesso stato o lo stesso operatore, senza le righe di log di ciò che non cambia. I pareggi su `updated_at` riguardavano solo i duplicati legacy, che PR2 ha eliminato (indice unico sul contatto attivo).
 
 Scoperto nella review di PR1 (F16, F17).
 
@@ -84,6 +92,7 @@ Preesistente. Il problema dei workflow di sviluppo è F18 della review di PR1; l
 
 - **Prima:** i workflow di sviluppo, come `update-alert.yml`, eseguivano gli script `:dev`, che chiamano `localhost:3000` dal runner di GitHub: fallirebbero sempre. Nessuno degli 8 workflow dei cron risulta mai eseguito (`gh run list`, 0 run, 2026-10-09). Quelli di prod chiamavano `mito-deutsche.vercel.app`, che non risulta fra gli alias del team Vercel: chi lo serva non è verificato.
 - **Ora:** ogni workflow dei cron chiama l'app in `CRON_BASE_URL`:
+
   - quelli di prod `https://crm.dbmito.it`, con `CRON_SECRET_KEY`;
   - quelli di sviluppo chiameranno lo staging, `https://staging-crm.dbmito.it`, con `STAGING_CRON_SECRET_KEY` e il bypass della protezione di Vercel, quando lo staging ci sarà (vedi **Resta**).
 
@@ -106,6 +115,8 @@ Scoperto nella review di `chore/cron-indirizzo` (2026-10-09, v4 sul runbook G2).
 **Da fare:** `CRON_SECRET_KEY` come secret di un environment GitHub limitato a `main`, con `environment:` sui 4 job di prod, al posto del secret del repository.
 
 ## Test mancanti sull'infrastruttura Effect
+
+**Chiusa il 2026-10-15 (PR3, T3.16).** COMMIT fallito → `DbError` (`failAtCommit`), interruzione dentro il programma → rollback, `runTrpc` che non scrive su `console.error` per un errore tradotto. L'atomicità di `createTask` cade con la procedura (T3.13); quella delle mutation nuove è nei loro test. `runTrpc` non usa `ErrorReporter` in nessun ramo.
 
 Scoperto nella review di PR1 (F11). La parte sul cron è coperta da PR1.
 
@@ -201,3 +212,93 @@ Scoperto nella review di PR2 (v7).
 - La guardia (operatore di sistema mancante con alert da chiudere) e l'annullamento delle tre migrazioni sono testati su PGlite. La prova sul DB di sviluppo copre solo il ramo riuscito.
 
 **Effetto oggi:** nessuno. Il passo 2 del runbook G2 verifica l'operatore di sistema prima della migrazione.
+
+## Lacune dei primitivi di movimento
+
+Scoperto nel piano (P6, rivisto con `design-engineer` il 2026-10-15), preesistente: sono i primitivi shadcn in `src/components/ui/`, che PR3 non tocca.
+
+- Nessuna variante `motion-reduce` su Dialog, Toast e Sheet: con `prefers-reduced-motion` le transizioni di entrata e uscita restano.
+- Lo stesso per il contenuto di `Select` (`ui/select.tsx:78`) e di `DropdownMenu` (`ui/dropdown-menu.tsx:50,68`): `fade-in-0 zoom-in-95 slide-in-from-*` senza `motion-reduce`. PR3 usa il `Select` per la priorità nella scheda cliente e per l'operatore di destinazione nella modale del passaggio di consegne (review di PR3, v7).
+- I menu di `DropdownMenu` e di `Select` condivisi non impostano `transform-origin` sul lato del trigger: lo `zoom-in` parte dal centro.
+- L'uscita della Dialog dura quanto l'entrata (200 ms): di solito l'uscita è più breve.
+- Sheet a 500 ms `ease-in-out`: lento per un pannello laterale, e la curva non è d'uscita.
+- `transition-all` su Toast e su `.dashabord-container`: anima anche proprietà di layout.
+
+**Effetto oggi:** solo sul movimento. Il selettore di stato di PR3 apre il suo menu senza animazione (eccezione in `brain/chore/motion.md`); la modale di conferma usa la Dialog com'è, e il selettore della priorità e quello del passaggio di consegne il `Select` com'è.
+
+**Da fare fuori da questa spec:** una passata sui primitivi `ui/` con `design-engineer` (`motion-reduce:` su entrata e uscita, `origin-[--radix-dropdown-menu-content-transform-origin]`, uscita più breve, Sheet più rapida, proprietà esplicite al posto di `transition-all`).
+
+## Scrittori fuori dalla regola dei lock
+
+Scoperto nel piano (A11, §15), dichiarato in PR3 (T3.15).
+
+- La regola (D12): ogni transazione che scrive task, alert o log di un cliente blocca prima il cliente con `lockCustomer`. Tre scrittori ne sono fuori:
+  - `customer.bulkUpdateCustomers` ("Assegna Clienti"): aggiorna clienti e task senza lock (A7, logica invariata). T3.15 lo fissa come eccezione: il test aspetta il rifiuto;
+  - il cron `priority` (`refreshPriorities`): ricalcola `priority` delle task attive in blocco;
+  - la pulizia di `task_event_log` (`cleanupTaskEventLog`): cancella righe vecchie.
+- La massiva (`task.bulkHandleTask`) e il cron degli alert prendono il lock ma chiudono l'alert con codice proprio invece di `resolveOpenAlert`: niente guardia `is_resolved = false` e niente `alert.updated_at`. Sotto il lock la guardia serve solo se una task punta a un alert già chiuso.
+- La conferma dell'alert nella massiva è legata al cliente, non all'alert (`task/POST/index.ts`, `resolveAlertCustomerIds`): l'admin conferma "l'alert di questo cliente", e la massiva chiude quello che legge dopo il lock. Se un collega lo sostituisce con `setCallback` fra la modale e il salvataggio, la massiva chiude il richiamo nuovo, che l'admin non ha visto. `changeState` e `setCallback` lo evitano con `confirmedAlertId` e `replacesAlertId` (AC37, AC44). Logica invariata da A7 (review di PR3, v2).
+
+**Effetto oggi:** `refreshPriorities` può sovrascrivere una priorità appena salvata da un operatore (l'ultima scrittura vince); "Assegna Clienti" in concorrenza con una mutation del contatto può lasciare il contatto attivo a un operatore diverso da quello del cliente (la stessa divergenza di "Assegna Clienti sceglie la task più recente anche se inattiva"). La pulizia del log non tocca righe recenti.
+
+**Da fare:** `refreshPriorities` con il lock per cliente, o con una condizione sul valore letto, quando PR5 ridisegna le priorità; "Assegna Clienti" con T6.8 in PR6 (D14); massiva e cron su `resolveOpenAlert` (stesso comportamento più `updated_at`); la massiva riceve dalla modale gli id degli alert confermati e li confronta dopo il lock.
+
+## `customer.insertCustomer` accetta l'operatore
+
+Scoperto nella review di PR3 (T3.13), preesistente.
+
+- La creazione del cliente accetta `operatorId` dall'input, senza i controlli di "Passaggio di consegne" (D13) e senza riga `operator_reassign` nel log.
+- Lo stesso fa la rotta di import `/api/import/create/customers` (`route.ts:13-26`): `authCheck()` accetta qualunque sessione e inserisce i clienti dal corpo JSON, `operatorId` compreso, senza validazione (review di PR3, v1).
+- Le massive per gli admin (`bulkHandleTask`, `bulkUpdateCustomers`) accettano qualunque `operatorId` come destinazione, l'operatore di sistema compreso; `handover` e `reassign` lo rifiutano con `findWorkingOperator` (review di PR3, v1).
+
+**Effetto oggi:** basso, la creazione e l'import non spostano contatti (un cliente nuovo non ne ha); le massive sono solo per gli admin.
+
+**Da fare fuori da questa spec:** decidere se un operatore può creare un cliente assegnato a un collega; se no, prendere l'operatore dalla sessione o richiedere un admin.
+
+## Data del richiamo: selettore e server con regole diverse
+
+Scoperto nel `/simplify` di PR3, preesistente (la regola del selettore è quella della base).
+
+- Il server rifiuta una scadenza prima della mezzanotte di Roma di oggi (`isPastDay`, A4): oggi è ammesso.
+- Il date picker della scheda cliente (`CustomerAlertCreator`) disabilita ogni giorno la cui mezzanotte, nel fuso del browser, viene prima dell'ora attuale di Roma: oggi compreso.
+
+- Il cron degli alert gira una volta per notte alle 23:47 UTC (00:47–01:47 in Italia) e crea il `followup` solo per gli alert con la scadenza nel giorno italiano dell'esecuzione. Un richiamo impostato per oggi dopo l'esecuzione della notte è visto la notte dopo come "di un giorno prima" e chiuso dall'operatore di sistema senza `followup`: il contatto non torna fra quelli da chiamare (review di PR3, v3).
+
+**Effetto oggi:** dalla scheda cliente non si imposta un richiamo per oggi, che il server accetterebbe. Con il browser in un altro fuso il confine si sposta di qualche ora. Un richiamo per oggi arriva solo da una chiamata diretta all'API.
+
+**Da fare:** in PR5, quando il richiamo arriva nel dettaglio di Contatti, prima che un selettore permetta oggi: decidere se il server chiede una scadenza da domani (`DeadlineInPast` anche per oggi, A4 e T3.6 da aggiornare) oppure se il cron tratta come "di oggi" le scadenze del giorno prima che non ha ancora visto. Poi il selettore prende la regola da `src/lib/domain/contact/time.ts`.
+
+## La ricerca di Clienti per "Nome" e "Telefono" va in errore
+
+Scoperto nel passaggio browser di PR3 (T3.14, 2026-10-15), preesistente: la stessa riga c'è su `dev`.
+
+- `customer.getAllCustomers` usa `search_by` come nome di colonna (`customers[searchBy]`). Il selettore manda `nome` e `telefono`, ma le colonne sono `name` e `phoneNumber`: `ilike` riceve `undefined` e Postgres risponde `syntax error at or near "$2"`. La pagina mostra l'errore di runtime.
+- "Cognome", "Email" e "Codice Fiscale" funzionano.
+
+**Effetto oggi:** chi cerca un cliente per nome o per telefono vede la pagina d'errore.
+
+**Da fare fuori da questa spec:** una mappa esplicita da `search_by` alla colonna, con un test sulla procedura.
+
+## Contrasto e nomi nei primitivi condivisi
+
+Scoperto nel passaggio UI della review di PR3 (v6, 2026-10-15), preesistente: sono i primitivi in `src/components/ui/`, che PR3 non tocca.
+
+- Toast `destructive`: testo `#fafafa` su `#ef4444`, circa 3,6:1 (WCAG 1.4.3 chiede 4,5). È il toast dei rifiuti di AC52.
+- Il pulsante di chiusura del toast non ha un nome accessibile.
+- La "X" della Dialog è 16×16 ed è l'ultima nell'ordine di tabulazione, dopo i pulsanti del footer; a 320 px il pulsante principale del footer sta sopra "Annulla".
+
+**Effetto oggi:** il messaggio di rifiuto si legge, ma sotto la soglia di contrasto; chi usa un lettore di schermo sente un pulsante senza nome.
+
+**Da fare fuori da questa spec:** la stessa passata sui primitivi `ui/` di "Lacune dei primitivi di movimento": `bg-red-600` o più scuro nella variante `destructive`, `aria-label="Chiudi"` sul pulsante del toast, area della "X" di almeno 24 px.
+
+## La scheda cliente non regge sotto i 900 px
+
+Scoperto nel passaggio UI della review di PR3 (v6, seconda verifica, 2026-10-15). In parte preesistente.
+
+- Preesistente: sotto circa 895 px tutta la scheda cliente scorre in orizzontale (24 px di troppo a 800, 152 a 320) e a 320–375 px le etichette dell'anagrafica si sovrappongono ("Provincia"/"Sede", "Occupazione"/"Ambito"/"Provenienza"). `CustomerForm` non è cambiato in PR3.
+- Da PR3: nella card "Stato del cliente" il selettore dello stato è largo 160 px fissi (PLAN §9). Con due colonne sotto `lg` non tocca la priorità da 484 px in su; sotto, si sovrappone al selettore della priorità (65 px a 320, 43 a 375) e la parte destra del trigger apre la priorità.
+- Nella lista Clienti il motivo in sola lettura resta nei 160 px della colonna: "Assegnato a Martina Vi…", con il nome intero solo nel `title`, che tastiera e touch non raggiungono. Nella scheda il motivo è intero.
+
+**Effetto oggi:** nessuno per gli operatori, che lavorano da desktop. Conta per lo zoom al 400 % su un portatile (WCAG 1.4.10) e per un uso da telefono.
+
+**Da fare fuori da questa spec:** se la scheda deve funzionare sotto i 900 px, una passata sul suo layout (anagrafica e card), con il trigger dello stato che si restringe sotto i 484 px; nella lista, il nome intero del motivo raggiungibile senza puntatore.

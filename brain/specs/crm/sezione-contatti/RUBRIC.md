@@ -6,7 +6,7 @@ spec: sezione-contatti
 links:
   - "[[specs/crm/sezione-contatti/REPORT]]"
 created: 2026-09-25
-updated: 2026-09-29
+updated: 2026-10-15
 ---
 
 # Review Rubric: Sezione Contatti — PR1 "Percorsi di creazione sicuri"
@@ -156,3 +156,62 @@ Nessuno. `reviewImpact: critical` e `humanInLoop: true` sono coerenti con la sup
 | v7 | Affidabilità dei test | medium | balanced (sonnet) |
 | v8 | Ciclo e codice di uscita di `alert.js` (T2.7) | medium | balanced (sonnet) |
 | v9 | Ordine del rilascio: `schedule` T2.6 e runbook G2 | high | strongest (inherit) |
+
+## [Round: 2026-10-15] PR3 — "Regole del contatto sul server, usate da Clienti"
+
+Round aggiunto: le rubric di PR1 e PR2 sopra restano come sono.
+
+### Change set under review
+
+- **Scope:** spec implementation, solo PR3 (PLAN.md §9: T3.1a–T3.17, gate T3.14). Contratto: le regole server di AC27 e AC30–AC52, più AC66, AC67 e AC73 (PLAN.md §3). Le parti della sezione Contatti (dettaglio, link al contatto attivo, URL del contatto) sono di PR5
+- **Target:** branch `contatti/pr3-regole-server` (PR verso `dev`)
+- **Compared:** `d4f5d2c54bae3155e1cc75301437b685490fd07a` (merge base con `dev`) → `ba4f3882cb23382676c0d33eaa963b923c6480bc`
+- **Files touched:** 94 (+9854/−1500). Modulo di dominio puro `src/lib/domain/contact`; servizi Effect `src/server/services/contact` e `customer`; router tRPC `task` e `customer` (mutation nuove, mutation non protette rimosse, massive su `adminProcedure`); `errorFormatter`; componenti di Clienti e della scheda cliente e `src/components/custom/contact`; harness di test. Due devDependency di test. Domini: crm
+
+### Routing rubric (review-classifier output)
+
+Charter accorciati qui; il testo completo è nei brief dei verificatori.
+
+```json
+{
+  "taskType": "feature",
+  "secondaryType": "security",
+  "domainsTouched": ["crm"],
+  "adversarialVerifiers": {
+    "count": 7,
+    "passes": [
+      { "id": "v1", "charter": "Authorization of every contact/customer write (AC48, AC49, AC50, AC66, D2/A1, D13): actor from the session, ownership re-checked on the locked row, rejected requests change nothing, no path left that changes a customer's or contact's operator outside the handover.", "complexity": "high" },
+      { "id": "v2", "charter": "Concurrency and atomicity under the lock rule (D12, AC37, AC39, AC44, AC45, AC67): lockCustomer first in every new writer, deciding reads after the lock, resolveOpenAlert guard, no partial state, lock-rule harness really fails without FOR UPDATE.", "complexity": "high" },
+      { "id": "v3", "charter": "Contact domain rules against the spec (AC27, AC29, AC30-AC34, AC38, AC40-AC47, AC66): transitions, Contattato il, reopen, no-op reselect, operator unchanged, superseded rejection, priority bands, callback rules, exact task_event_log rows.", "complexity": "high" },
+      { "id": "v4", "charter": "API surface removal and the error contract: no remaining callers of removed procedures/actions, adminProcedure moves, contactError payload over superjson, client decoding, Effect conformance at the edge, test changes vs lost coverage, AC73.", "complexity": "high" },
+      { "id": "v5", "charter": "Client-side mutation behavior in the Clienti list and customer sheet (AC36, AC37, AC44, AC51, AC52, AC66, AC67): confirmation flow, rejection feedback, hooks' races, focus restore, handover dialog and create-contact card.", "complexity": "medium" },
+      { "id": "v6", "charter": "UI pass: ui-review bar and probes on the changed rendered surface (selector, dialogs, read-only reason, badges, sheet controls), plus AC36, AC51, AC52, AC66, AC67 UI criteria.", "complexity": "medium" },
+      { "id": "v7", "charter": "Motion-craft pass: changed motion lines against design-engineering review.md, brain/chore/motion.md decisions win; unanimated state menu, transition-colors, spinner motion-reduce, AlertCloseConfirmDialog on the shared Dialog.", "complexity": "low" }
+    ]
+  },
+  "taskComplexity": "high",
+  "reviewImpact": "critical",
+  "humanInLoop": true,
+  "nextStep": "Run all 7 passes in parallel; strongest model for v1-v4, balanced for v5-v6, fast for v7. Report with a human checklist: authorization matrix incl. requests outside the UI; no deployed client, cron workflow or script calls a removed procedure; lock-first rule and declared exceptions; CI gates in a checkout without real env files. Run no production-targeting script."
+}
+```
+
+### Classifier rationale
+
+Critico per la superficie di autorizzazione: la PR riscrive chi può scrivere i contatti dei clienti (un operatore solo i propri) e sposta massive e riassegnazione su `adminProcedure`. La concorrenza ha un passaggio a sé perché PGlite non esegue due transazioni insieme e la regola `FOR UPDATE` si regge su un trigger di test e sulla lettura del codice. La rimozione di procedure ancora raggiungibili può rompere la produzione senza che i test di `src/` se ne accorgano, quindi è separata dalle regole di dominio. UI e movimento hanno un passaggio ciascuno; nessuna migrazione, segreto o pipeline CI nel diff.
+
+### Overrides applied
+
+Nessuno. `reviewImpact: critical` e `humanInLoop: true` sono coerenti con la superficie di rischio di `CLAUDE.md` (autorizzazione delle scritture).
+
+### Verification plan (derived)
+
+| Pass | Charter | Complexity | Model tier |
+|------|---------|------------|------------|
+| v1 | Autorizzazione delle scritture (AC48–AC50, AC66, D2/A1, D13) | high | strongest (inherit) |
+| v2 | Concorrenza e atomicità sotto la regola dei lock (D12) | high | strongest (inherit) |
+| v3 | Regole di dominio del contatto (AC27, AC29–AC34, AC38, AC40–AC47) | high | strongest (inherit) |
+| v4 | Superficie API rimossa e contratto degli errori (AC73) | high | strongest (inherit) |
+| v5 | Comportamento delle mutation nel client (AC36, AC37, AC44, AC51, AC52) | medium | balanced (sonnet) |
+| v6 | UI pass sulla superficie cambiata | medium | balanced (sonnet) |
+| v7 | Motion-craft pass | low | fast (haiku) |
