@@ -11,8 +11,9 @@ review_impact: critical
 human_in_loop: true
 links:
   - "[[review/search-by-explicit-map/RUBRIC]]"
-ingested: false
-last_ingested: null
+  - "[[tech-debt/crm/search-by-explicit-map]]"
+ingested: true
+last_ingested: 2026-10-15
 created: 2026-10-15
 updated: 2026-10-15
 ---

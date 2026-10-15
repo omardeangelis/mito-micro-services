@@ -18,6 +18,11 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 - Concepts written: <count>
 -->
 
+## [2026-10-15] review-ingest | search_by con mappa esplicita (Clienti e Pratiche)
+- Report: [[review/search-by-explicit-map/REPORT]]
+- Verdict: SHIP
+- Durable findings folded to tech debt: 8 in [[tech-debt/crm/search-by-explicit-map]] (2 di sicurezza, 3 di accessibilità, 3 piccoli; il `console.log` su richiesta del proprietario di prodotto)
+
 ## [2026-10-15] review | search_by con mappa esplicita (Clienti e Pratiche) — dal secondo al quinto giro
 - Report: [[review/search-by-explicit-map/REPORT]]
 - Scope: standalone
