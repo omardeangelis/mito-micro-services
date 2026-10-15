@@ -33,7 +33,7 @@ describe("indice unico sui contatti attivi", () => {
   })
 
   it("rifiuta anche la riattivazione di un contatto superato", async () => {
-    // What updateTask does today when the list sends isActive: true on an old
+    // What updateTask did before PR3 when the list sent isActive: true on an old
     // row (review of PR1, F3; runbook G2, step 9)
     const customer = await createCustomer()
     const superseded = await createTask({

@@ -27,7 +27,12 @@ export const createUserPreferenceStore = (
   initProps: UserPreferenceInitProps
 ) => {
   return create(
-    persist<UserPreferenceStore>(
+    persist<
+      UserPreferenceStore,
+      [],
+      [],
+      Pick<UserPreferenceStore, "preferences">
+    >(
       (set) => ({
         setRole: (role: User["role"]) => set({ role }),
         setOperatorId: (operatorId: Operator["id"]) => set({ operatorId }),
@@ -87,6 +92,16 @@ export const createUserPreferenceStore = (
       {
         name: "userPreference-storage",
         // name of the item in the storage (must be unique)
+        // Only the table preferences stay in the browser: the role and the
+        // operator come from the session (`UserPreferenceProvider`), and the
+        // ones an earlier sign-in saved here are ignored
+        partialize: (state) => ({ preferences: state.preferences }),
+        merge: (persisted, current) => ({
+          ...current,
+          preferences:
+            (persisted as Partial<UserPreferenceStore> | undefined)
+              ?.preferences ?? current.preferences,
+        }),
       }
     )
   )

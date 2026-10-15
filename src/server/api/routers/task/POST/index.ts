@@ -1,80 +1,56 @@
-import { TRPCError } from "@trpc/server"
 import { Effect } from "effect"
-import { operatorProcedure } from "@/server/api/trpc"
-import {
-  insertTaskSchema,
-  insertAlertSchema,
-  type Task,
-} from "@/lib/types/schemas"
+import { adminProcedure, operatorProcedure } from "@/server/api/trpc"
+import { bandValue } from "@/lib/domain/contact/priority"
+import { type Task } from "@/lib/types/schemas"
 import { alert, task, taskStatus } from "@/server/db/schema/task"
-import { taskEventLog, taskEventSource } from "@/server/db/schema/taskEventLog"
+import { taskEventLog } from "@/server/db/schema/taskEventLog"
 import { z } from "zod"
-import { and, desc, eq, inArray, isNotNull, not } from "drizzle-orm"
+import { and, desc, eq } from "drizzle-orm"
 import { customers } from "@/server/db/schema/customers"
-import {
-  type CustomerMissing,
-  lockCustomer,
-  query,
-  transaction,
-} from "@/server/effect/db"
+import { lockCustomer, query, transaction } from "@/server/effect/db"
 import { runTrpc } from "@/server/effect/trpc"
 import { replaceActiveContact } from "@/server/services/contact/activeContact"
+import { actorOf } from "@/server/services/contact/actor"
+import { createContact as createContactService } from "@/server/services/contact/createContact"
+import { contactErrorToTrpc } from "@/server/services/contact/errors"
+import { setCallback as setCallbackService } from "@/server/services/contact/setCallback"
 
-const insertTaskInput = insertTaskSchema
-  .pick({
-    customerId: true,
-    operatorId: true,
-    state: true,
-    closedAt: true,
-  })
-  .extend({
-    source: z.enum(taskEventSource),
-  })
+const createContactInput = z.object({
+  customerId: z.string(),
+  // Only the interface creates a contact this way
+  source: z.enum(["list", "detail"]),
+})
 
-/** `CustomerMissing` as tRPC reports it: the input names no customer. */
-const customerNotFound = (error: CustomerMissing) =>
-  new TRPCError({
-    code: "BAD_REQUEST",
-    message: `Cliente non trovato: ${error.customerId}`,
-  })
-
-export const createTask = operatorProcedure
-  .input(insertTaskInput)
+/** "Crea contatto": see the `createContact` service. */
+export const createContact = operatorProcedure
+  .input(createContactInput)
   .mutation(({ ctx, input }) =>
     runTrpc(
-      transaction(
-        Effect.gen(function* () {
-          const toState = input.state ?? "chiamare"
-          const customer = yield* lockCustomer(input.customerId ?? null)
-          // Deactivates the customer's active task: a customer never keeps two
-          const { created, previous } = yield* replaceActiveContact({
-            customer,
-            values: {
-              operatorId: input.operatorId,
-              // Rispetta lo stato richiesto invece di forzare sempre "chiamare":
-              // così una "riapertura" verso uno stato specifico non viene azzerata.
-              state: toState,
-              closedAt: input.closedAt,
-              priority: 120,
-            },
-            // As at base, where the insert was the only write
-            mostRecent: true,
-          })
-          yield* query((client) =>
-            client.insert(taskEventLog).values({
-              customerId: created.customerId,
-              taskId: created.id,
-              actorOperatorId: ctx.operator.id,
-              action: "state_change",
-              source: input.source,
-              fromState: previous?.state ?? null,
-              toState,
-            })
-          )
-          return created
-        })
-      ),
-      customerNotFound
+      createContactService({ ...input, actor: actorOf(ctx.operator) }),
+      contactErrorToTrpc
+    )
+  )
+
+const setCallbackInput = z.object({
+  taskId: z.number().int(),
+  deadline: z.date(),
+  message: z.string().trim().max(500).nullish(),
+  // The open alert the form showed as replaced, or null
+  replacesAlertId: z.number().int().nullable(),
+})
+
+/** "Imposta richiamo": see the `setCallback` service. */
+export const setCallback = operatorProcedure
+  .input(setCallbackInput)
+  .mutation(({ ctx, input }) =>
+    runTrpc(
+      setCallbackService({
+        ...input,
+        // An empty message is no message
+        message: input.message?.length ? input.message : null,
+        actor: actorOf(ctx.operator),
+      }),
+      contactErrorToTrpc
     )
   )
 
@@ -167,7 +143,12 @@ const assignCustomer = ({
     if (!customerTask) {
       const { created } = yield* replaceActiveContact({
         customer,
-        values: { operatorId, state, priority: 120, closedAt: null },
+        values: {
+          operatorId,
+          state,
+          priority: bandValue("urgent"),
+          closedAt: null,
+        },
       })
       yield* setCustomerOperator
       yield* insertLogRows([
@@ -204,7 +185,7 @@ const assignCustomer = ({
         values: {
           operatorId,
           state,
-          priority: 120,
+          priority: bandValue("urgent"),
           closedAt: customerTask.closedAt,
         },
         // As at base, where the previous task was written first
@@ -253,7 +234,7 @@ const assignCustomer = ({
     )
   })
 
-export const bulkHandleTask = operatorProcedure
+export const bulkHandleTask = adminProcedure
   .input(bulkHandleTaskSchema)
   .mutation(({ ctx, input }) => {
     const resolveAlertSet = new Set(input.resolveAlertCustomerIds)
@@ -274,61 +255,6 @@ export const bulkHandleTask = operatorProcedure
           ),
         { concurrency: 1, discard: true }
       ),
-      customerNotFound
+      contactErrorToTrpc
     )
-  })
-
-const insertAlertInput = insertAlertSchema.pick({
-  taskId: true,
-  message: true,
-  deadline: true,
-})
-
-export const createAlert = operatorProcedure
-  .input(insertAlertInput)
-  .mutation(async ({ ctx, input }) => {
-    const res = await ctx.db
-      .insert(alert)
-      .values({
-        taskId: input.taskId,
-        message: input.message,
-        deadline: input.deadline,
-      })
-      .returning()
-
-    const customerId = await ctx.db
-      .update(task)
-      .set({ alertId: res[0]!.id, state: "richiamare" })
-      .where(eq(task.id, input.taskId))
-      .returning({ customerID: task.customerId })
-
-    if (customerId.length === 0) {
-      const allCustomersAlert = await ctx.db
-        .select({
-          alertId: task.alertId,
-        })
-        .from(task)
-        .where(
-          and(
-            eq(task.customerId, customerId[0]!.customerID!),
-            isNotNull(task.alertId),
-            not(eq(task.alertId, res[0]!.id))
-          )
-        )
-
-      if (allCustomersAlert.length === 0) {
-        await ctx.db
-          .update(task)
-          .set({ alertId: null, state: "richiamare" })
-          .where(eq(task.customerId, customerId[0]!.customerID!))
-
-        const alertsIds = allCustomersAlert.map(
-          (alert) => alert.alertId
-        ) as number[]
-
-        await ctx.db.delete(alert).where(inArray(alert.id, alertsIds))
-      }
-    }
-
-    return res[0]
   })

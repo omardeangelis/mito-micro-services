@@ -90,3 +90,16 @@ export const replaceActiveContact = ({
         deactivated.find((row) => row.id === mostRecentActive?.id) ?? null,
     }
   })
+
+/** The id of the customer's active contact, or null. */
+export const activeTaskIdOf = (customerId: string) =>
+  Effect.gen(function* () {
+    const [active] = yield* query((client) =>
+      client
+        .select({ id: task.id })
+        .from(task)
+        .where(and(eq(task.customerId, customerId), eq(task.isActive, true)))
+        .limit(1)
+    )
+    return active?.id ?? null
+  })

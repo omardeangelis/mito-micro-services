@@ -151,9 +151,16 @@ export type LockedCustomer = {
  * The lock rule: every `transaction` that writes a customer's tasks or alerts
  * calls this first, then touches only that customer's rows. Two such
  * transactions on the same customer wait for each other instead of
- * deadlocking. The writers outside `transaction` (`updateTask`, `createAlert`,
- * `resolveAlerts` and the others PR3 moves) don't lock the customer: moving
- * one into a `transaction` means calling this first.
+ * deadlocking. Every writer of a contact runs in `transaction` and locks the
+ * customer first, except the ones explicitly outside the rule: "Assegna
+ * Clienti" (`customer.bulkUpdateCustomers`), the `priority` cron
+ * (`refreshPriorities`) and the event-log cleanup (`cleanupTaskEventLog`).
+ * A new writer calls this first.
+ *
+ * The rule is tested in `src/server/services/contact/_test/lockRule.db.test.ts`:
+ * with a test trigger, a write of a customer's tasks, alerts or event log fails
+ * unless the transaction holds this lock. A new writer is covered only if it
+ * adds its call there.
  */
 export const lockCustomer = (
   customerId: string | null
