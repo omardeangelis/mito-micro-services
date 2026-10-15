@@ -87,6 +87,27 @@ export async function failNextUpdateOf(
 }
 
 /**
+ * Makes the COMMIT of any transaction that writes `table` fail: a deferred
+ * constraint trigger raises when the transaction ends, not at the statement
+ * that wrote, so the statements pass and only the COMMIT is rejected. Every
+ * such commit fails, until `resetDb` removes the trigger.
+ */
+export async function failAtCommit(table: PgTable) {
+  const name = `${FAILPOINT_SCHEMA}.failpoint_${++count}`
+  await testClient.exec(`
+    CREATE SCHEMA IF NOT EXISTS ${FAILPOINT_SCHEMA};
+    CREATE FUNCTION ${name}() RETURNS trigger LANGUAGE plpgsql AS $$
+    BEGIN
+      RAISE EXCEPTION 'failpoint: commit of % failed', TG_TABLE_NAME;
+    END $$;
+    CREATE CONSTRAINT TRIGGER failpoint_${count}
+      AFTER INSERT OR UPDATE OR DELETE ON "public"."${getTableName(table)}"
+      DEFERRABLE INITIALLY DEFERRED
+      FOR EACH ROW EXECUTE FUNCTION ${name}();
+  `)
+}
+
+/**
  * Counts the `event` statements on `table` from now on, rows or not: the
  * returned function reads the count. `resetDb` removes the counter.
  */

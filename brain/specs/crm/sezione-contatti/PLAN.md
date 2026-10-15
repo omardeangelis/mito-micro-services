@@ -1636,9 +1636,9 @@ Vale per T3.10, T3.11a, T3.11b, T3.12, T5.7 e T5.9. Le letture dai Server Compon
 
   La voce sull'atomicità di `createTask` cade: T3.13 rimuove `createTask`, e l'atomicità delle mutation che la sostituiscono è testata in T3.3 e T3.4.
 - **validation**: i tre test passano; per mutazione, togliendo la traduzione dell'errore del COMMIT in `DbError` il primo diventa rosso.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-10-15, worker sonnet, review al primo giro. `failAtCommit` è un constraint trigger `DEFERRABLE INITIALLY DEFERRED` (PGlite lo supporta; `resetDb` lo rimuove con lo schema). Tre test: COMMIT fallito → `DbError` `P0001` senza scritture; `Effect.interrupt` dentro il programma → rollback e interruzione al chiamante; `runTrpc` scrive su `console.error` per un `DbError` e non per un errore tradotto. Verifica per mutazione: con `catch` di `transaction` che non produce `DbError` solo il test del COMMIT diventa rosso.
+- **files edited/created**: `src/test/failpoint.ts` (`failAtCommit`), `src/server/effect/_test/db.db.test.ts`, `src/server/effect/_test/trpc.db.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a (D6)
