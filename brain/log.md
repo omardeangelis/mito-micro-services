@@ -18,6 +18,13 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 - Concepts written: <count>
 -->
 
+## [2026-10-15] review | search_by con mappa esplicita (Clienti e Pratiche)
+- Report: [[review/search-by-explicit-map/REPORT]]
+- Scope: standalone
+- Verdict: DO NOT SHIP
+- Impact: critical
+- Verifiers: 7 su haiku (1 blocker, 1 major): ricerca per Comune scartata dall'enum
+
 ## [2026-09-26] review | Sezione Contatti — PR1, terza verifica e smoke
 - Report: [[specs/crm/sezione-contatti/REPORT]]
 - Scope: spec
