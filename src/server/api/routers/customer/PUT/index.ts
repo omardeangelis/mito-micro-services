@@ -6,6 +6,10 @@ import { z } from "zod"
 import { updateCustomerUpdatedAt } from "@/server/shared/updateAt"
 import { task } from "@/server/db/schema/task"
 import { taskEventLog } from "@/server/db/schema/taskEventLog"
+import { runTrpc } from "@/server/effect/trpc"
+import { actorOf } from "@/server/services/contact/actor"
+import { handover as handoverService } from "@/server/services/customer/assignment"
+import { customerErrorToTrpc } from "@/server/services/customer/errors"
 
 export const updateCustomer = protectedProcedure
   .input(insertCustomerSchema)
@@ -32,43 +36,43 @@ const updateCustomerFromDashboardSchema = insertCustomerSchema.pick({
   reddito: true,
   occupazione: true,
   ambitoLavorativo: true,
-  operatorId: true,
   sede: true,
   source: true,
 })
 
+/**
+ * Saves the customer's master data from the form. The operator changes only
+ * through `handover` (D13): an `operatorId` in the request is dropped.
+ */
 export const updateCustomerFromDashboard = operatorProcedure
   .input(updateCustomerFromDashboardSchema)
   .mutation(async ({ ctx, input }) => {
     const { db } = ctx
-
-    const [before] = await db
-      .select({ operatorId: customers.operatorId })
-      .from(customers)
-      .where(eq(customers.id, input.id!))
-
-    const res = await db
+    return await db
       .update(customers)
       .set(input)
       .where(eq(customers.id, input.id!))
       .returning({ id: customers.id })
-
-    if (
-      input.operatorId !== undefined &&
-      input.operatorId !== before?.operatorId
-    ) {
-      await db.insert(taskEventLog).values({
-        customerId: input.id!,
-        actorOperatorId: ctx.operator.id,
-        action: "operator_reassign",
-        source: "detail",
-        fromOperatorId: before?.operatorId ?? null,
-        toOperatorId: input.operatorId,
-      })
-    }
-
-    return res
   })
+
+const handoverInput = z.object({
+  customerId: z.string(),
+  toOperatorId: z.number().int(),
+})
+
+/** "Passaggio di consegne" (D13): see the `handover` service. */
+export const handover = operatorProcedure
+  .input(handoverInput)
+  .mutation(({ ctx, input }) =>
+    runTrpc(
+      handoverService({
+        customerId: input.customerId,
+        toOperatorId: input.toOperatorId,
+        actor: actorOf(ctx.operator),
+      }),
+      customerErrorToTrpc
+    )
+  )
 
 const bulkAssignCustomerSchema = z.object({
   operatorId: z.number(),

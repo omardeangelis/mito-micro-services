@@ -1319,9 +1319,9 @@ Vale per T3.10, T3.11a, T3.11b, T3.12, T5.7 e T5.9. Le letture dai Server Compon
   - via `getErrorShape` e superjson, un `CustomerAssignmentForbidden` arriva come `data.contactError = { code: 'CUSTOMER_ASSIGNMENT_FORBIDDEN', … }` (marcatore condiviso, T3.2a);
   - `updateCustomerFromDashboard` con `operatorId` nella richiesta salva l'anagrafica e non cambia né il cliente né il contatto, e non scrive righe di log;
   - salvare il form di un cliente il cui contatto in `chiamare` ha un altro operatore non sposta più il contatto.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-10-15, worker sul modello dell'orchestratore, review al primo giro. 16 test via caller su tutti i casi della validation. `customerErrorToTrpc` in `src/server/services/customer/errors.ts` traduce i due errori del cliente con `contactErrorCause` e passa il resto a `contactErrorToTrpc`. `CustomerMissing` di `lockCustomer` diventa `CustomerNotFound`. Il permesso si controlla prima della destinazione: un operatore su un cliente non suo riceve FORBIDDEN anche con una destinazione inesistente. Il test "salvare il form non sposta il contatto" chiama la procedura come fa ora la action: non avrebbe preso il bug di prima, che stava nella action. `touchCustomer` è ridondante dopo l'update di `operatorId` (`$onUpdate`): da valutare in `/simplify`.
+- **files edited/created**: `src/server/services/customer/{assignment,errors}.ts`, `src/server/api/routers/customer/PUT/index.ts` (`handover`, `updateCustomerFromDashboard`), `src/server/api/routers/customer/index.ts`, `src/app/dashboard/customers/[id]/_actions/updateCustomer.ts`, `src/server/api/routers/customer/_test/customerOperator.db.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a (D6)

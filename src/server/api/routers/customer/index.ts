@@ -16,6 +16,7 @@ import { insertCustomer } from "./POST"
 import {
   updateCustomer,
   updateCustomerFromDashboard,
+  handover,
   bulkUpdateCustomers,
   handleCustomerBlackList,
   assignToYourself,
@@ -37,6 +38,7 @@ export const customerRouter = createTRPCRouter({
   insertCustomer,
   updateCustomer,
   updateCustomerFromDashboard,
+  handover,
   bulkUpdateCustomers,
   handleCustomerBlackList,
   assignToYourself,
