@@ -1489,9 +1489,9 @@ Vale per T3.10, T3.11a, T3.11b, T3.12, T5.7 e T5.9. Le letture dai Server Compon
   - **AC36 e AC37:** gli stessi controlli della riga (T3.10), con sorgente `detail`;
   - **AC51 e AC52:** contatto di un collega in sola lettura con il motivo; rifiuto forzato con toast e valore salvato;
   - **attesa e tastiera:** gli stessi controlli della riga.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done (controlli browser in T3.14)
+- **log**: 2026-10-15, worker sonnet, review al primo giro. Stato con `ContactStateSelect` + modale (P10, sorgente `detail`), priorità con un `Select` delle quattro fasce più "Automatica" e la dicitura "Manuale"/"Automatica". Un solo `saving` per i due controlli; dopo il refresh il focus torna al controllo usato se è caduto su `body`. In sola lettura restano visibili i badge di stato e priorità con `ReadOnlyReason`; finché l'operatore del contatto non è caricato la vista è in sola lettura. Spariti `react-hook-form`, `createTask`, `updateTaskFromDashboard`, `resolveAlerts`, `getActiveTask` e "Salva" (D11). La logica di attesa e conferma è copiata da `StateSelector` di T3.10: da estrarre in `/simplify`.
+- **files edited/created**: `src/app/dashboard/customers/[id]/_components/CustomerTaskManager.tsx`, `src/app/dashboard/customers/[id]/page.tsx`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a (D6)

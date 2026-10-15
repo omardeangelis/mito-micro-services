@@ -1,338 +1,354 @@
 "use client"
 
-import { type Operator, type Task, selectTaskSchema } from "@/lib/types/schemas"
-import { useForm } from "react-hook-form"
-import { z } from "zod"
-import { zodResolver } from "@hookform/resolvers/zod"
+import { useEffect, useRef, useState } from "react"
+import { type Task, type TaskStatus } from "@/lib/types/schemas"
+import { PriorityBadge } from "@/components/custom/badge/priority"
+import { TaskStatusBadge } from "@/components/custom/badge/TaskStatusBadge"
+import { AlertCloseConfirmDialog } from "@/components/custom/contact/AlertCloseConfirmDialog"
+import { ContactStateSelect } from "@/components/custom/contact/ContactStateSelect"
+import { ReadOnlyReason } from "@/components/custom/contact/ReadOnlyReason"
 import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form"
-import { Input } from "@/components/ui/input"
+  type PendingAlert,
+  useContactMutationFeedback,
+} from "@/components/custom/contact/useContactMutationFeedback"
+import { useRefreshAfterSave } from "@/components/custom/contact/useRefreshAfterSave"
+import { LoadingSpinner } from "@/components/custom/loading-spinner"
+import { Label } from "@/components/ui/label"
 import {
-  SelectContent,
-  SelectLabel,
-  SelectValue,
   Select,
-  SelectGroup,
-  SelectTrigger,
+  SelectContent,
   SelectItem,
+  SelectSeparator,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select"
-import { convertNullToUndefined } from "@/lib/utils/form"
-import { taskStatus } from "@/server/db/schema/task"
+import { contactEditability } from "@/lib/domain/contact/permissions"
 import {
-  PriorityBadge,
-  priorityEnum,
-  priorityRangeMap,
-} from "@/components/custom/badge/priority"
-import { Button } from "@/components/ui/button"
-import { api } from "@/trpc/react"
-import { useEffect, useState } from "react"
-import { getTaskStatusDirection } from "../../_utils"
-import { useRouter } from "next/navigation"
+  type PriorityBand,
+  bandOf,
+  bandValue,
+  priorityBands,
+} from "@/lib/domain/contact/priority"
 import { formatDeadline } from "@/lib/utils/format"
-
-const schema = selectTaskSchema
-  .pick({
-    id: true,
-    state: true,
-    priority: true,
-    customPriority: true,
-  })
-  .merge(
-    z.object({
-      priority: z.string(),
-    })
-  )
-
-type TaskFormValues = z.infer<typeof schema>
-
-const resolver = zodResolver(schema)
+import { useUserPreferenceContext } from "@/store/context/useUserPreferenceContext"
+import { api } from "@/trpc/react"
 
 type TaskManager = {
   tasks: Task[]
+  /** The customer's operator, which can differ from the contact's (D2, A1). */
+  customerOperatorId: number | null
 }
 
+const bandLabels: Record<PriorityBand, string> = {
+  low: "Bassa",
+  medium: "Media",
+  high: "Alta",
+  urgent: "Urgente",
+}
+
+const AUTO = "auto"
+
+type PriorityChoice = PriorityBand | typeof AUTO
+
+const isPriorityChoice = (value: string): value is PriorityChoice =>
+  value === AUTO || (priorityBands as readonly string[]).includes(value)
+
+/**
+ * The state and the priority of the customer's active contact. Each is saved
+ * as soon as it is chosen, through the same rules and mutations as the Clienti
+ * row (D11): the controls show the saved value, and the wait lasts until the
+ * refreshed value is on screen.
+ */
 export const CustomerTaskManager = (props: TaskManager) => {
-  const [task, setTask] = useState<Task | null>(props.tasks[0]!)
-  const [operator, setOperator] = useState<Operator | null>(null)
-  const { data: operatorData, isLoading: operatorIsLoading } =
-    api.operator.getOperatorById.useQuery({
-      id: task?.operatorId ?? undefined,
-    })
+  const task = props.tasks[0]!
+  const { role, operatorId } = useUserPreferenceContext((state) => state)
+  const actor =
+    role !== undefined && operatorId !== undefined ? { role, operatorId } : null
+  const customer = { operatorId: props.customerOperatorId }
 
-  const availableTaskStatus = taskStatus.filter((s) => {
-    if (task?.state === "followup") return s !== "chiamare"
-    return s !== "followup"
-  })
-  const router = useRouter()
-  const apiUtils = api.useUtils()
-  const {
-    data,
-    isLoading,
-    isSuccess: isUpdateSuccess,
-    mutateAsync: updateTask,
-    reset: resetUpdateTask,
-  } = api.task.updateTaskFromDashboard.useMutation()
-  const {
-    data: newData,
-    isLoading: newTaskIsLoading,
-    isSuccess: isNewTaskSuccess,
-    mutateAsync: createTask,
-    reset: resetCreateTask,
-  } = api.task.createTask.useMutation()
-  const { mutateAsync: resolveAlerts } = api.task.resolveAlerts.useMutation()
-  const form = useForm<TaskFormValues>({
-    resolver,
-    defaultValues: {
-      id: task?.id,
-      state: task?.state,
-      priority: task?.priority?.toString() ?? undefined,
-      customPriority: task?.customPriority,
-    },
-  })
+  const { data: operator, isInitialLoading: operatorIsLoading } =
+    api.operator.getOperatorById.useQuery(
+      { id: task.operatorId ?? undefined },
+      { enabled: task.operatorId !== null }
+    )
 
-  const { data: activeTask } = api.task.getActiveTask.useQuery({
-    id: task!.customerId!,
-  })
+  const { refresh, refreshing } = useRefreshAfterSave()
+  const { onError } = useContactMutationFeedback({ refresh })
+  const changeState = api.task.changeState.useMutation()
+  const setPriority = api.task.setPriority.useMutation()
 
-  const onSubmit = form.handleSubmit(async (values) => {
-    if (values.state === "chiamare" && values.state !== task?.state) {
-      await createTask({
-        customerId: task?.customerId,
-        operatorId: task?.operatorId,
-        state: values.state,
-        closedAt: task?.closedAt,
-        source: "detail",
-      })
-      await updateTask({
-        id: activeTask?.[0]?.id,
-        isActive: false,
-      })
-    } else {
-      const direction = getTaskStatusDirection(task!.state!, values.state!)
-      await updateTask({
-        id: task?.id,
-        state: values.state,
-        priority: values.customPriority ? Number(values.priority) : 120,
-        customPriority: values.customPriority,
-        isClosed: direction === "close" ? true : false,
-      })
-    }
-    if (
-      task?.alertId &&
-      task.state === "richiamare" &&
-      task.state !== values.state
-    ) {
-      // Non eliminiamo l'alert: lo segniamo risolto e lo sganciamo, così resta
-      // recuperabile invece di essere cancellato per sempre dal DB.
-      await resolveAlerts({
-        id: task.alertId,
-        source: "detail",
-      })
-    }
-    router.refresh()
-    await apiUtils.task.getActiveTask.invalidate()
-  })
+  const stateTriggerRef = useRef<HTMLButtonElement>(null)
+  const priorityTriggerRef = useRef<HTMLButtonElement>(null)
+  // The control the last gesture came from: it gets the focus back if the
+  // refresh leaves it on the page
+  const lastControl = useRef<React.RefObject<HTMLButtonElement> | null>(null)
+
+  // From the call until the refreshed contact is rendered
+  const [saving, setSaving] = useState(false)
+  const pending = saving || refreshing
+  // The server answered and the refresh started: its end closes the wait
+  const awaitingRefresh = useRef(false)
+  // The change waiting for the user to confirm closing the open alert (P10)
+  const [confirmation, setConfirmation] = useState<{
+    state: TaskStatus
+    alert: PendingAlert
+  } | null>(null)
 
   useEffect(() => {
-    const incoming = props.tasks[0]
-    if (!incoming) return
-    if (
-      incoming.id !== task?.id ||
-      incoming.state !== task?.state ||
-      incoming.alertId !== task?.alertId
-    ) {
-      setTask(incoming)
-      form.reset({
-        id: incoming.id,
-        state: incoming.state,
-        priority: incoming.priority?.toString() ?? undefined,
-        customPriority: incoming.customPriority,
-      })
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [props.tasks])
+    if (refreshing || !awaitingRefresh.current) return
+    awaitingRefresh.current = false
+    setSaving(false)
+    const lost =
+      document.activeElement === null ||
+      document.activeElement === document.body
+    if (lost) lastControl.current?.current?.focus()
+    lastControl.current = null
+  }, [refreshing])
 
-  useEffect(() => {
-    if (isUpdateSuccess && data) {
-      setTask(data)
-      form.reset({
-        state: data.state,
-        customPriority: data.customPriority,
-        priority: data.priority?.toString(),
-      })
-      resetCreateTask()
-      resetUpdateTask()
-    } else if (isNewTaskSuccess && newData) {
-      setTask(newData)
-      form.reset({
-        state: newData.state,
-        customPriority: newData.customPriority,
-        priority: newData.priority?.toString(),
-      })
-      resetUpdateTask()
-      resetCreateTask()
-    }
-  }, [
-    isUpdateSuccess,
-    isNewTaskSuccess,
-    task,
-    form,
-    data,
-    newData,
-    resetUpdateTask,
-    resetCreateTask,
-  ])
+  const afterAnswer = () => {
+    awaitingRefresh.current = true
+  }
 
-  useEffect(() => {
-    if (operatorData && !operatorIsLoading) {
-      setOperator(operatorData)
-    }
-  }, [operatorData, operatorIsLoading])
+  const submitState = (state: TaskStatus, confirmedAlertId: number | null) => {
+    lastControl.current = stateTriggerRef
+    setSaving(true)
+    changeState.mutate(
+      { taskId: task.id, toState: state, source: "detail", confirmedAlertId },
+      {
+        onSuccess: () => {
+          afterAnswer()
+          refresh()
+        },
+        onError: (error) => {
+          const result = onError(error)
+          if (result) {
+            // An open alert to confirm (AC36), maybe set meanwhile by a
+            // colleague (AC37): nothing changed, the modal asks
+            setSaving(false)
+            lastControl.current = null
+            setConfirmation({ state, alert: result.alert })
+            return
+          }
+          // The toast gives the reason, the refresh shows the saved value
+          afterAnswer()
+        },
+      }
+    )
+  }
 
-  const isSubmitDisabled =
-    form.formState.isSubmitting || isLoading || newTaskIsLoading
+  const submitPriority = (priority: PriorityChoice) => {
+    lastControl.current = priorityTriggerRef
+    setSaving(true)
+    setPriority.mutate(
+      { taskId: task.id, priority },
+      {
+        onSuccess: () => {
+          afterAnswer()
+          refresh()
+        },
+        onError: (error) => {
+          // No confirmation exists for the priority: the toast gives the
+          // reason and the refresh shows the saved value
+          if (onError(error)) setSaving(false)
+          else afterAnswer()
+        },
+      }
+    )
+  }
+
+  const priorityBand = bandOf(task.priority ?? 0)
+  const priorityMode = task.customPriority ? "Manuale" : "Automatica"
+  const state = task.state ?? "nessuno"
+
+  const editability =
+    actor && !operatorIsLoading
+      ? contactEditability(actor, {
+          isActive: true,
+          taskOperator:
+            task.operatorId === null
+              ? null
+              : {
+                  id: task.operatorId,
+                  name: operator?.name ?? null,
+                  surname: operator?.surname ?? null,
+                },
+          customer,
+        })
+      : null
+
+  const controls = () => {
+    // Until the signed-in user is known nothing is interactive
+    if (!editability) {
+      return (
+        <>
+          <div className="flex flex-col items-start gap-1">
+            <span className="text-sm font-medium">Stato</span>
+            <TaskStatusBadge status={state} />
+          </div>
+          <div className="flex flex-col items-start gap-1">
+            <span className="text-sm font-medium">Priorità</span>
+            <PriorityBadge priority={task.priority ?? 0} />
+          </div>
+        </>
+      )
+    }
+
+    // Read-only: the saved state and priority stay visible, with the reason
+    // (AC51)
+    if (editability.kind !== "editable") {
+      return (
+        <>
+          <div className="flex flex-col items-start gap-1">
+            <span className="text-sm font-medium">Stato</span>
+            <TaskStatusBadge status={state} />
+          </div>
+          <div className="flex flex-col items-start gap-1">
+            <span className="text-sm font-medium">Priorità</span>
+            <div className="flex items-center gap-2 text-sm">
+              <PriorityBadge priority={task.priority ?? 0} />
+              <span>{bandLabels[priorityBand]}</span>
+              <span className="text-muted-foreground">{priorityMode}</span>
+            </div>
+          </div>
+          <div className="col-span-2 flex flex-col items-start gap-1">
+            <span className="text-sm font-medium">Modifica</span>
+            <ReadOnlyReason
+              editability={editability}
+              customerUnassigned={props.customerOperatorId === null}
+            />
+          </div>
+        </>
+      )
+    }
+
+    return (
+      <>
+        <div className="flex flex-col items-start gap-1">
+          <span className="text-sm font-medium">Stato</span>
+          <ContactStateSelect
+            aria-label="Stato"
+            value={task.state}
+            pending={pending}
+            triggerRef={stateTriggerRef}
+            onChange={(next) => {
+              if (pending) return
+              submitState(next, null)
+            }}
+          />
+          <AlertCloseConfirmDialog
+            alert={confirmation?.alert ?? null}
+            returnFocusRef={stateTriggerRef}
+            onCancel={() => setConfirmation(null)}
+            onConfirm={(alertId) => {
+              if (!confirmation) return
+              setConfirmation(null)
+              submitState(confirmation.state, alertId)
+            }}
+          />
+        </div>
+        <PrioritySelect
+          band={priorityBand}
+          mode={priorityMode}
+          pending={pending}
+          triggerRef={priorityTriggerRef}
+          onChange={(next) => {
+            if (pending) return
+            submitPriority(next)
+          }}
+        />
+      </>
+    )
+  }
+
   return (
     <div className="mt-8 rounded-md border bg-white p-4">
       <h2 className="mb-2 text-lg font-medium">Stato del cliente</h2>
-      <Form {...form}>
-        <form className="flex items-end justify-between" onSubmit={onSubmit}>
-          <div className="grid grid-cols-4 items-end gap-4">
-            <FormField
-              control={form.control}
-              name="id"
-              render={({ field }) => {
-                return (
-                  <FormItem hidden>
-                    <FormControl>
-                      <Input {...field} type="hidden" />
-                    </FormControl>
-                  </FormItem>
-                )
-              }}
-            />
-            <FormField
-              control={form.control}
-              name="state"
-              render={({ field: { ref: _, ...field } }) => (
-                <FormItem className="w-full bg-white">
-                  <FormLabel>Stato</FormLabel>
-                  <Select
-                    {...field}
-                    onValueChange={field.onChange}
-                    value={field.value ?? undefined}
-                  >
-                    <FormControl>
-                      <SelectTrigger className="bg-white">
-                        <SelectValue>
-                          {field.value
-                            ? convertNullToUndefined(field.value)
-                            : "Seleziona Stato"}
-                        </SelectValue>
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectGroup>
-                        <SelectLabel>Stato</SelectLabel>
-                        {availableTaskStatus.map((state) => (
-                          <SelectItem key={state} value={state}>
-                            {state}
-                          </SelectItem>
-                        ))}
-                      </SelectGroup>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage className="text-red-400" />
-                </FormItem>
-              )}
-            />
-            <>
-              <FormField
-                control={form.control}
-                name="priority"
-                render={({ field: { ref: _, ...field } }) => (
-                  <FormItem className="w-full bg-white">
-                    <FormLabel>Priorità</FormLabel>
-                    <Select
-                      {...field}
-                      onValueChange={(value) => {
-                        field.onChange(value)
-                        form.setValue("customPriority", true)
-                      }}
-                      value={field.value ?? undefined}
-                    >
-                      <FormControl>
-                        <SelectTrigger className="bg-white">
-                          <SelectValue>
-                            <PriorityBadge priority={Number(field.value)} />
-                          </SelectValue>
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectGroup>
-                          <SelectLabel>Priorità</SelectLabel>
-                          {priorityEnum.map((priority) => (
-                            <SelectItem
-                              key={priority}
-                              value={priorityRangeMap[priority].toString()}
-                            >
-                              <span className="mr-2">{priority}</span>
-                              <PriorityBadge
-                                priority={priorityRangeMap[priority]}
-                              />
-                            </SelectItem>
-                          ))}
-                        </SelectGroup>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage className="text-red-400" />
-                  </FormItem>
-                )}
-              />
-            </>
-            <FormField
-              defaultValue={formatDeadline(task?.closedAt ?? undefined, {
-                precision: "hour",
-              })}
-              name="closedAt"
-              disabled
-              render={({ field }) => (
-                <FormItem className="w-full bg-white">
-                  <FormLabel>Contattato il</FormLabel>
-                  <FormControl>
-                    <Input {...field} placeholder="Mai Contattato" />
-                  </FormControl>
-                  <FormMessage className="text-red-400" />
-                </FormItem>
-              )}
-            />
-            {operator && (
-              <FormField
-                defaultValue={`${operator?.name} ${operator?.surname}`}
-                name="operatorId"
-                disabled
-                render={({ field }) => (
-                  <FormItem className="w-full bg-white">
-                    <FormLabel>Ultimo Contatto</FormLabel>
-                    <FormControl>
-                      <Input {...field} placeholder="Mai Contattato" />
-                    </FormControl>
-                    <FormMessage className="text-red-400" />
-                  </FormItem>
-                )}
-              />
-            )}
+      <div className="grid grid-cols-4 items-start gap-4">
+        {controls()}
+        <div className="flex flex-col items-start gap-1">
+          <span className="text-sm font-medium">Contattato il</span>
+          <p className="flex h-10 items-center text-sm">
+            {formatDeadline(task.closedAt ?? undefined, {
+              precision: "hour",
+            }) ?? "Mai Contattato"}
+          </p>
+        </div>
+        {operator ? (
+          <div className="flex flex-col items-start gap-1">
+            <span className="text-sm font-medium">Ultimo Contatto</span>
+            <p className="flex h-10 items-center text-sm">
+              {operator.name} {operator.surname}
+            </p>
           </div>
-          <Button type="submit" disabled={isSubmitDisabled}>
-            Salva
-          </Button>
-        </form>
-      </Form>
+        ) : null}
+      </div>
+    </div>
+  )
+}
+
+/**
+ * The priority of the contact (AC42, AC43): the four bands and "Automatica".
+ * It shows the saved band and whether it was set by hand ("Manuale") or by the
+ * cron ("Automatica"). While a save is running the trigger ignores
+ * interaction but stays focusable: `disabled` would drop the focus.
+ */
+function PrioritySelect(props: {
+  band: PriorityBand
+  mode: "Manuale" | "Automatica"
+  pending: boolean
+  triggerRef: React.RefObject<HTMLButtonElement>
+  onChange: (choice: PriorityChoice) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const value: PriorityChoice = props.mode === "Automatica" ? AUTO : props.band
+
+  return (
+    <div className="flex flex-col items-start gap-1">
+      <Label htmlFor="contact-priority">Priorità</Label>
+      <Select
+        value={value}
+        // While pending the menu can't open (pointer, Enter, Space, arrows all
+        // go through here)
+        open={open && !props.pending}
+        onOpenChange={(next) => {
+          if (!props.pending) setOpen(next)
+        }}
+        onValueChange={(next) => {
+          if (props.pending || !isPriorityChoice(next) || next === value) return
+          props.onChange(next)
+        }}
+      >
+        <SelectTrigger
+          id="contact-priority"
+          ref={props.triggerRef}
+          className="bg-white"
+          aria-busy={props.pending}
+          aria-disabled={props.pending}
+        >
+          <SelectValue>
+            <span className="flex items-center gap-2">
+              <PriorityBadge priority={bandValue(props.band)} />
+              {bandLabels[props.band]}
+              {props.pending ? (
+                <LoadingSpinner className="h-4 w-4 shrink-0 motion-reduce:animate-none" />
+              ) : null}
+            </span>
+          </SelectValue>
+        </SelectTrigger>
+        <SelectContent>
+          {priorityBands.map((band) => (
+            <SelectItem key={band} value={band}>
+              <span className="flex items-center gap-2">
+                <PriorityBadge priority={bandValue(band)} />
+                {bandLabels[band]}
+              </span>
+            </SelectItem>
+          ))}
+          <SelectSeparator />
+          <SelectItem value={AUTO}>Automatica</SelectItem>
+        </SelectContent>
+      </Select>
+      <p className="text-xs text-muted-foreground">{props.mode}</p>
     </div>
   )
 }

@@ -55,7 +55,10 @@ export default async function CustomerHome({
       </Suspense>
       {customerTasks.length > 0 ? (
         <Suspense>
-          <CustomerTaskManager tasks={customerTasks} />
+          <CustomerTaskManager
+            tasks={customerTasks}
+            customerOperatorId={customer!.operatorId}
+          />
         </Suspense>
       ) : null}
       <Suspense fallback={<Skeleton className="h-56 w-full rounded-md" />}>
