@@ -71,7 +71,9 @@ export default async function CustomerHome({
         />
       </Suspense>
       <Suspense fallback={<Skeleton className="h-80 w-full rounded-md" />}>
-        <CustomerActivities customer={{ id }} />
+        <CustomerActivities
+          customer={{ id, operatorId: customer!.operatorId }}
+        />
       </Suspense>
     </CustomerSheet>
   )

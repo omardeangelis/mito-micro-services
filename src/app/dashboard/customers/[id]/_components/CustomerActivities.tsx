@@ -2,11 +2,13 @@ import { type Customer } from "@/lib/types/schemas"
 import { api } from "@/trpc/server"
 import { CustomerAlertCreator } from "./CustomerAlertCreator"
 import { CustomerAlertHistory } from "./CustomerAlertHistory"
-import { getTaskStatusCategory } from "../../_utils"
+import { canSetCallback } from "@/lib/domain/contact/status"
 
 type Props = {
   customer: {
     id: Customer["id"]
+    /** The customer's operator, which can differ from the contact's (D2, A1). */
+    operatorId: Customer["operatorId"]
   }
 }
 
@@ -18,11 +20,12 @@ export const CustomerActivities = async (props: Props) => {
   if (!task || task.length === 0) {
     return null
   }
-  const taskCategory = getTaskStatusCategory(task[0]!.state!)
-  const { alerts, lastAlertId } = await api.task.getActiveAlerts.query({
+  const { alerts } = await api.task.getActiveAlerts.query({
     alertId: task[0]!.alertId!,
   })
-  const creatable = taskCategory === "close" || taskCategory === "idle"
+  // "Imposta richiamo" only with an outcome or `nessuno`; the server checks it
+  // too (AC46)
+  const creatable = canSetCallback(task[0]!.state)
 
   const customerAlerts = await api.task.getCustomerAlerts.query({
     id: props.customer.id,
@@ -41,9 +44,10 @@ export const CustomerActivities = async (props: Props) => {
       <CustomerAlertCreator
         task={{
           id: task[0]!.id,
+          operatorId: task[0]!.operatorId,
         }}
+        customerOperatorId={props.customer.operatorId}
         alert={alerts}
-        lastAlertId={lastAlertId}
         creatable={creatable}
       />
       <p className="mb-2 mt-4 text-sm font-medium text-gray-600">

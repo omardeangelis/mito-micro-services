@@ -1515,9 +1515,9 @@ Vale per T3.10, T3.11a, T3.11b, T3.12, T5.7 e T5.9. Le letture dai Server Compon
   - **AC46:** su un contatto in `chiamare` "Imposta richiamo" non c'è;
   - **AC52:** contatto di un collega: rifiuto con il motivo, il blocco dell'alert resta;
   - **attesa:** un doppio clic su "Setta alert" manda una sola richiesta.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done (controlli browser in T3.14)
+- **log**: 2026-10-15, worker sonnet, review al primo giro. "Imposta richiamo" e la "X" passano da `useMutation` dal client; `_actions/createAlert.ts` eliminata. Con `ALERT_CONFIRMATION_REQUIRED` il form resta aperto con i dati e la riga "Sostituisce il richiamo del <data>" mostra l'alert ricevuto; il worker ricarica anche la pagina, così il blocco del Prossimo alert dietro il form coincide. Il trigger è ora un pulsante con l'etichetta "Imposta richiamo" e si vede anche quando c'è un alert (prima era nascosto, e "Sostituisce…" non era raggiungibile). "Imposta richiamo" e la "X" si vedono solo se il contatto è modificabile (P5). `creatable` usa `canSetCallback`.
+- **files edited/created**: `src/app/dashboard/customers/[id]/_components/{CustomerAlertCreator,CustomerActivities}.tsx`, `src/app/dashboard/customers/[id]/page.tsx`, `src/app/dashboard/customers/[id]/_actions/createAlert.ts` (eliminato)
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a (D6)
