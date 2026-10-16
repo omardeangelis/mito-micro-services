@@ -1,13 +1,15 @@
 import { act, fireEvent, render, screen, within } from "@testing-library/react"
-import { StrictMode } from "react"
+import { StrictMode, Suspense, useState } from "react"
 import userEvent from "@testing-library/user-event"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { type Message } from "@/lib/types/schemas"
 import { CollassableSection } from "@/components/custom/CollassableItem"
-import { CustomerChat, CustomerNewChat } from "../CustomerChat"
+import { CustomerChat, CustomerNewChat, CustomerNotes } from "../CustomerChat"
+import { CustomerChatSection } from "../CustomerChatSection"
 import { updateChatAction } from "../_actions/updateChat"
 import { deleteMessageAction } from "../_actions/deleteMessage"
 import { clearUnsentNotes } from "../unsentNote"
+import { clearDeletingNotes } from "../deletingNotes"
 
 type Note = Pick<Message, "id" | "content" | "sendDate" | "operatorId">
 
@@ -29,7 +31,31 @@ const mocks = vi.hoisted(() => ({
       })
   ),
   // The operator of the session, until `getUserOperator` loads it
-  operator: { id: 11 } as { id: number } | undefined,
+  operator: { id: 11, role: "OPERATORE" } as
+    | { id: number; role: "ADMIN" | "OPERATORE" }
+    | undefined,
+  // Called by each note at each of its renders
+  noteRender: vi.fn(),
+  // What the server reads for CustomerChatSection
+  server: { chatId: null as number | null, messages: [] as unknown[] },
+}))
+
+vi.mock("@/trpc/server", () => ({
+  api: {
+    customer: {
+      getCustomerById: {
+        query: async () => ({ id: "c-42", chatId: mocks.server.chatId }),
+      },
+    },
+    chat: {
+      getChatMessagesById: {
+        query: async () => ({
+          messages: mocks.server.messages,
+          total: mocks.server.messages.length,
+        }),
+      },
+    },
+  },
 }))
 
 vi.mock("@/trpc/react", () => ({
@@ -37,10 +63,13 @@ vi.mock("@/trpc/react", () => ({
     operator: {
       getUserOperator: { useQuery: () => ({ data: mocks.operator }) },
       getOperatorById: {
-        useQuery: () => ({
-          data: { name: "Federica", surname: "Rossi" },
-          isLoading: false,
-        }),
+        useQuery: () => {
+          mocks.noteRender()
+          return {
+            data: { name: "Federica", surname: "Rossi" },
+            isLoading: false,
+          }
+        },
       },
     },
     customer: {
@@ -60,11 +89,7 @@ vi.mock("@/trpc/react", () => ({
 const router = { replace: vi.fn(), refresh: vi.fn() }
 const toastApi = { toast: vi.fn() }
 vi.mock("@/components/ui/use-toast", () => ({ useToast: () => toastApi }))
-vi.mock("next/navigation", () => ({
-  useRouter: () => router,
-  // The id of the page the chat sits in: a contact, not the customer
-  useParams: () => ({ id: "7" }),
-}))
+vi.mock("next/navigation", () => ({ useRouter: () => router }))
 
 vi.mock("../_actions/updateChat", () => ({
   updateChatAction: vi.fn(
@@ -90,23 +115,34 @@ const note = (id: number, content: string): Note => ({
   operatorId: 11,
 })
 
-function renderChat(messages: Note[], total = messages.length, limit = 5) {
-  const view = (current: Note[], currentTotal: number) => (
-    <CollassableSection defaultValue={["item-1"]}>
-      <CustomerChat
-        customerId="c-42"
-        chatId={3}
-        messages={current}
-        total={currentTotal}
-        limit={limit}
-      />
-    </CollassableSection>
+function renderChat(
+  messages: Note[] | null,
+  total = messages?.length ?? 0,
+  limit = 5
+) {
+  // `null`: the customer has no chat any more, as CustomerChatSection draws it
+  const view = (current: Note[] | null, currentTotal: number) => (
+    <CustomerNotes>
+      {current ? (
+        <CollassableSection defaultValue={["item-1"]}>
+          <CustomerChat
+            customerId="c-42"
+            chatId={3}
+            messages={current}
+            total={currentTotal}
+            limit={limit}
+          />
+        </CollassableSection>
+      ) : (
+        <CustomerNewChat customerId="c-42" />
+      )}
+    </CustomerNotes>
   )
   const result = render(view(messages, total))
   return {
     ...result,
     // The page drawn again by the server after the action
-    reload: (next: Note[], nextTotal = next.length) =>
+    reload: (next: Note[] | null, nextTotal = next?.length ?? 0) =>
       result.rerender(view(next, nextTotal)),
   }
 }
@@ -124,16 +160,19 @@ beforeEach(() => {
   mocks.updateChat.length = 0
   mocks.deleteMessage.length = 0
   mocks.createChat.length = 0
-  mocks.operator = { id: 11 }
+  mocks.operator = { id: 11, role: "OPERATORE" }
+  mocks.server = { chatId: null, messages: [] }
   // Unsent notes outlive the chat (T4.4): not from one test to the next
   window.sessionStorage.clear()
   clearUnsentNotes()
-  // The chat in the contact detail: the URL is not the customer's
-  window.history.pushState({}, "", "/dashboard/contatti/7")
+  // Deletions outlive the chat too
+  clearDeletingNotes()
+  // The chat in the customer's page
+  window.history.pushState({}, "", "/dashboard/customers/c-42")
 })
 
 describe("CustomerChat, invio di una nota", () => {
-  it("con l'URL di un contatto aggiorna il cliente della chat e non la pratica", async () => {
+  it("aggiorna l'ultima modifica del cliente e non della pratica", async () => {
     renderChat([note(1, "Prima nota")])
     const user = userEvent.setup()
 
@@ -246,8 +285,79 @@ describe("CustomerChat, invio di una nota", () => {
   })
 })
 
+describe("CustomerChat, nota salvata prima della risposta", () => {
+  it("se la pagina mostra la nota prima che l'action risponda, eliminata dopo non ricompare", async () => {
+    const { reload } = renderChat([note(1, "Prima nota")])
+    const user = userEvent.setup()
+
+    await user.type(field(), "Nuova nota")
+    await user.click(submit())
+    // Another refresh (a note deleted meanwhile) draws the saved note first
+    reload([note(1, "Prima nota"), note(9, "Nuova nota")])
+    await act(async () => {
+      mocks.updateChat[0]!({ ok: true, id: 9 })
+    })
+    expect(notesWith("Nuova nota")).toHaveLength(1)
+
+    // Deleted later: the page drops it, and nothing brings it back
+    reload([note(1, "Prima nota")])
+
+    expect(notesWith("Nuova nota")).toHaveLength(0)
+  })
+})
+
+describe("CustomerChat, chi può eliminare una nota", () => {
+  const trashes = (text: string) =>
+    within(screen.getByText(text).closest("article")!).queryAllByRole(
+      "button",
+      { name: "Elimina nota" }
+    )
+  const ofColleague = { ...note(2, "Nota di un collega"), operatorId: 12 }
+
+  it("un operatore ha il cestino sulle sue note e non su quelle di un collega", () => {
+    renderChat([note(1, "Mia nota"), ofColleague])
+
+    expect(trashes("Mia nota")).toHaveLength(1)
+    expect(trashes("Nota di un collega")).toHaveLength(0)
+  })
+
+  it("anche un amministratore ha il cestino solo sulle sue note", () => {
+    mocks.operator = { id: 11, role: "ADMIN" }
+    renderChat([note(1, "Mia nota"), ofColleague])
+
+    expect(trashes("Mia nota")).toHaveLength(1)
+    expect(trashes("Nota di un collega")).toHaveLength(0)
+  })
+
+  it("finché l'operatore non è caricato nessuna nota ha il cestino", () => {
+    mocks.operator = undefined
+    renderChat([note(1, "Mia nota")])
+
+    expect(trashes("Mia nota")).toHaveLength(0)
+  })
+
+  it("eliminata una nota, il focus va al cestino della nota dopo che l'operatore può eliminare", async () => {
+    // The colleague's note before it has no trash: it doesn't count
+    const { reload } = renderChat([
+      ofColleague,
+      note(3, "Terza nota"),
+      note(4, "Quarta nota"),
+      note(5, "Quinta nota"),
+    ])
+    const user = userEvent.setup()
+
+    await user.click(trashes("Terza nota")[0]!)
+    await act(async () => {
+      mocks.deleteMessage[0]!({ ok: true })
+    })
+    reload([ofColleague, note(4, "Quarta nota"), note(5, "Quinta nota")])
+
+    expect(document.activeElement).toBe(trashes("Quarta nota")[0])
+  })
+})
+
 describe("CustomerChat, eliminazione di una nota", () => {
-  it("con l'URL di un contatto aggiorna il cliente della chat e non la pratica", async () => {
+  it("aggiorna l'ultima modifica del cliente e non della pratica", async () => {
     renderChat([note(1, "Prima nota"), note(2, "Seconda nota")])
     const user = userEvent.setup()
 
@@ -257,7 +367,6 @@ describe("CustomerChat, eliminazione di una nota", () => {
 
     expect(deleteMessageAction).toHaveBeenCalledWith({
       id: 2,
-      operatorId: 11,
       customerId: "c-42",
     })
     await act(async () => {
@@ -325,6 +434,58 @@ describe("CustomerChat, attesa dell'invio", () => {
 
     expect(screen.queryByText("Invio…")).toBeNull()
     expect(status().textContent).toBe("")
+  })
+})
+
+describe("CustomerChat, invio con StrictMode", () => {
+  it("con gli effetti doppi di StrictMode la nota parte e si annuncia una volta", async () => {
+    render(
+      <StrictMode>
+        <CustomerNotes>
+          <CollassableSection defaultValue={["item-1"]}>
+            <CustomerChat
+              customerId="c-42"
+              chatId={3}
+              messages={[note(1, "Prima nota")]}
+              total={1}
+              limit={5}
+            />
+          </CollassableSection>
+        </CustomerNotes>
+      </StrictMode>
+    )
+    const user = userEvent.setup()
+    const announced: string[] = []
+    new MutationObserver(() =>
+      announced.push(status().textContent ?? "")
+    ).observe(status(), { childList: true, subtree: true, characterData: true })
+
+    await user.type(field(), "Richiamare domani")
+    await user.click(submit())
+    await act(async () => {
+      mocks.updateChat[0]!({ ok: true, id: 901 })
+    })
+
+    expect(updateChatAction).toHaveBeenCalledTimes(1)
+    expect(announced).toEqual(["Invio della nota", "Nota inviata"])
+  })
+})
+
+describe("CustomerChat, note e campo", () => {
+  it("scrivere nel campo non ridisegna le note", async () => {
+    renderChat([
+      note(1, "Prima nota"),
+      note(2, "Seconda nota"),
+      note(3, "Terza nota"),
+    ])
+    const user = userEvent.setup()
+    await user.click(field())
+    mocks.noteRender.mockClear()
+
+    await user.keyboard("Ciao!")
+
+    expect(field().value).toBe("Ciao!")
+    expect(mocks.noteRender).not.toHaveBeenCalled()
   })
 })
 
@@ -413,6 +574,49 @@ describe("CustomerChat, scroll della lista", () => {
     })
   })
 
+  describe("se l'operatore ha scorso in su", () => {
+    const scrollUp = () => {
+      // Away from the bottom: scrollTop 0, scrollHeight 480
+      fireEvent.scroll(list())
+      scrolled.length = 0
+    }
+
+    it("la nota di un collega in arrivo non la fa scorrere", () => {
+      const { reload } = renderChat([note(1, "Prima nota")])
+      scrollUp()
+
+      reload([
+        note(1, "Prima nota"),
+        { ...note(2, "Del collega"), operatorId: 12 },
+      ])
+
+      expect(listScrolls()).toEqual([])
+    })
+
+    it("eliminare l'ultima nota non la fa scorrere", () => {
+      const { reload } = renderChat([
+        note(1, "Prima nota"),
+        note(2, "Seconda nota"),
+      ])
+      scrollUp()
+
+      reload([note(1, "Prima nota")])
+
+      expect(listScrolls()).toEqual([])
+    })
+
+    it("inviando una nota la lista torna in fondo", async () => {
+      renderChat([note(1, "Prima nota")])
+      const user = userEvent.setup()
+      scrollUp()
+
+      await user.type(field(), "Richiamare domani")
+      await user.click(submit())
+
+      expect(listScrolls()).toEqual([480])
+    })
+  })
+
   it("scrivere nel campo non fa scorrere la lista", async () => {
     renderChat([note(1, "Prima nota")])
     const user = userEvent.setup()
@@ -485,6 +689,419 @@ describe("CustomerChat, attesa dell'eliminazione", () => {
     expect(toastApi.toast).not.toHaveBeenCalled()
   })
 
+  it("due eliminazioni di fila sono annunciate entrambe", async () => {
+    const { reload } = renderChat([
+      note(1, "Prima nota"),
+      note(2, "Seconda nota"),
+      note(3, "Terza nota"),
+    ])
+    const user = userEvent.setup()
+
+    await user.click(trash("Terza nota"))
+    await act(async () => {
+      mocks.deleteMessage[0]!({ ok: true })
+    })
+    reload([note(1, "Prima nota"), note(2, "Seconda nota")])
+    const first = status().firstElementChild
+    await user.click(trash("Seconda nota"))
+    await act(async () => {
+      mocks.deleteMessage[1]!({ ok: true })
+    })
+    reload([note(1, "Prima nota")])
+
+    // A screen reader reads what is added to the region: the same text in the
+    // same node would be silent
+    expect(status().textContent).toBe("Nota eliminata")
+    expect(status().firstElementChild).not.toBe(first)
+    expect(first?.isConnected).toBe(false)
+  })
+
+  it("due eliminazioni in corso insieme sono annunciate entrambe", async () => {
+    const { reload } = renderChat([
+      note(1, "Prima nota"),
+      note(2, "Seconda nota"),
+      note(3, "Terza nota"),
+    ])
+    const user = userEvent.setup()
+
+    await user.click(trash("Seconda nota"))
+    await user.click(trash("Terza nota"))
+    await act(async () => {
+      mocks.deleteMessage[0]!({ ok: true })
+    })
+    reload([note(1, "Prima nota"), note(3, "Terza nota")])
+    expect(status().textContent).toBe("Nota eliminata")
+    const first = status().firstElementChild
+
+    await act(async () => {
+      mocks.deleteMessage[1]!({ ok: true })
+    })
+    reload([note(1, "Prima nota")])
+
+    expect(status().textContent).toBe("Nota eliminata")
+    expect(first?.isConnected).toBe(false)
+  })
+
+  it("eliminata l'unica nota la chat lascia il posto ad 'Avvia una chat': lo stato dice 'Nota eliminata' e il focus va al pulsante", async () => {
+    const { reload } = renderChat([note(1, "Prima nota")])
+    const user = userEvent.setup()
+
+    await user.click(trash("Prima nota"))
+    await act(async () => {
+      mocks.deleteMessage[0]!({ ok: true })
+    })
+    // The server deleted the chat with its last note
+    reload(null)
+
+    expect(status().textContent).toBe("Nota eliminata")
+    expect(document.activeElement).toBe(
+      screen.getByRole("button", { name: "Avvia una chat" })
+    )
+  })
+
+  it("eliminata l'unica nota nella sezione del cliente, la regione di stato resta la stessa e il focus va ad 'Avvia una chat'", async () => {
+    mocks.server = { chatId: 3, messages: [note(1, "Prima nota")] }
+    const section = () => CustomerChatSection({ customerId: "c-42" })
+    const { rerender } = render(await section())
+    const region = status()
+    const user = userEvent.setup()
+
+    await user.click(trash("Prima nota"))
+    await act(async () => {
+      mocks.deleteMessage[0]!({ ok: true })
+    })
+    // The server deleted the chat with its last note
+    mocks.server = { chatId: null, messages: [] }
+    rerender(await section())
+
+    expect(status()).toBe(region)
+    expect(status().textContent).toBe("Nota eliminata")
+    expect(document.activeElement).toBe(
+      screen.getByRole("button", { name: "Avvia una chat" })
+    )
+  })
+
+  it("due note sparite con un solo aggiornamento: lo stato dice 'Note eliminate' e il focus va accanto all'ultima eliminata", async () => {
+    const { reload } = renderChat([
+      note(1, "Prima nota"),
+      note(2, "Seconda nota"),
+      note(3, "Terza nota"),
+      note(4, "Quarta nota"),
+      note(5, "Quinta nota"),
+    ])
+    const user = userEvent.setup()
+
+    await user.click(trash("Seconda nota"))
+    await user.click(trash("Quarta nota"))
+    await act(async () => {
+      mocks.deleteMessage[0]!({ ok: true })
+      mocks.deleteMessage[1]!({ ok: true })
+    })
+    reload([
+      note(1, "Prima nota"),
+      note(3, "Terza nota"),
+      note(5, "Quinta nota"),
+    ])
+
+    expect(status().textContent).toBe("Note eliminate")
+    // The focus was on the fourth note's trash
+    expect(document.activeElement).toBe(trash("Quinta nota"))
+  })
+
+  it("se durante l'eliminazione l'operatore è passato al campo, il focus resta lì", async () => {
+    const { reload } = renderChat([
+      note(1, "Prima nota"),
+      note(2, "Seconda nota"),
+      note(3, "Terza nota"),
+    ])
+    const user = userEvent.setup()
+
+    await user.click(trash("Seconda nota"))
+    await user.click(field())
+    await act(async () => {
+      mocks.deleteMessage[0]!({ ok: true })
+    })
+    reload([note(1, "Prima nota"), note(3, "Terza nota")])
+
+    expect(status().textContent).toBe("Nota eliminata")
+    expect(document.activeElement).toBe(field())
+  })
+
+  it("chiudendo e riaprendo 'Note' durante l'eliminazione l'attesa resta e un secondo clic non parte", async () => {
+    const { reload } = renderChat([
+      note(1, "Prima nota"),
+      note(2, "Seconda nota"),
+    ])
+    const user = userEvent.setup()
+    // The chevron of "Note": a button with no name, open or closed
+    const toggle = () =>
+      document.querySelector<HTMLButtonElement>("button[aria-expanded]")!
+
+    await user.click(trash("Seconda nota"))
+    await user.click(toggle())
+    expect(screen.queryByText("Seconda nota")).toBeNull()
+    await user.click(toggle())
+
+    expect(trash("Seconda nota").getAttribute("aria-busy")).toBe("true")
+    await user.click(trash("Seconda nota"))
+    expect(deleteMessageAction).toHaveBeenCalledTimes(1)
+
+    await act(async () => {
+      mocks.deleteMessage[0]!({ ok: true })
+    })
+    reload([note(1, "Prima nota")])
+    expect(status().textContent).toBe("Nota eliminata")
+    expect(toastApi.toast).not.toHaveBeenCalled()
+  })
+
+  it("se la nota era già eliminata in un'altra scheda, niente errore: l'attesa resta finché la pagina non la toglie", async () => {
+    const { reload } = renderChat([
+      note(1, "Prima nota"),
+      note(2, "Seconda nota"),
+    ])
+    const user = userEvent.setup()
+
+    await user.click(trash("Seconda nota"))
+    await act(async () => {
+      mocks.deleteMessage[0]!({ ok: false, gone: true })
+    })
+
+    expect(toastApi.toast).not.toHaveBeenCalled()
+    expect(trash("Seconda nota").getAttribute("aria-busy")).toBe("true")
+    expect(mocks.updateCustomer).not.toHaveBeenCalled()
+
+    reload([note(1, "Prima nota")])
+    expect(status().textContent).toBe("Nota eliminata")
+    expect(document.activeElement).toBe(trash("Prima nota"))
+  })
+
+  it("dopo un'eliminazione fallita, la nota tolta poi da un'altra scheda non è annunciata", async () => {
+    const { reload } = renderChat([
+      note(1, "Prima nota"),
+      note(2, "Seconda nota"),
+    ])
+    const user = userEvent.setup()
+
+    await user.click(trash("Seconda nota"))
+    await act(async () => {
+      mocks.deleteMessage[0]!({ ok: false, error: "Invalid form data" })
+    })
+    reload([note(1, "Prima nota")])
+
+    expect(status().textContent).toBe("")
+  })
+
+  it("passando a un altro cliente non resta niente del precedente: né l'annuncio, né la nota in invio", async () => {
+    mocks.server = {
+      chatId: 3,
+      messages: [note(1, "Prima nota"), note(2, "Seconda nota")],
+    }
+    const { rerender } = render(
+      await CustomerChatSection({ customerId: "c-42" })
+    )
+    const user = userEvent.setup()
+
+    await user.type(field(), "Richiamare domani")
+    await user.click(submit())
+    await user.click(trash("Seconda nota"))
+    // The operator opens another customer while both are still running
+    mocks.server = {
+      chatId: 8,
+      messages: [note(5, "Nota di un altro cliente")],
+    }
+    rerender(await CustomerChatSection({ customerId: "c-43" }))
+
+    expect(status().textContent).toBe("")
+    expect(notesWith("Richiamare domani")).toHaveLength(0)
+  })
+
+  describe("cambiando cliente durante l'eliminazione", () => {
+    const c42 = [note(1, "Prima nota"), note(2, "Seconda nota")]
+    const c43 = [note(5, "Nota di un altro cliente")]
+    const show = async (customerId: string, messages: Note[]) => {
+      mocks.server = { chatId: customerId === "c-42" ? 3 : 8, messages }
+      return CustomerChatSection({ customerId })
+    }
+
+    it("tornando al cliente l'attesa c'è ancora e un secondo clic non parte", async () => {
+      const { rerender } = render(await show("c-42", c42))
+      const user = userEvent.setup()
+
+      await user.click(trash("Seconda nota"))
+      rerender(await show("c-43", c43))
+      rerender(await show("c-42", c42))
+
+      expect(trash("Seconda nota").getAttribute("aria-busy")).toBe("true")
+      await user.click(trash("Seconda nota"))
+      expect(deleteMessageAction).toHaveBeenCalledTimes(1)
+
+      await act(async () => {
+        mocks.deleteMessage[0]!({ ok: true })
+      })
+      rerender(await show("c-42", [note(1, "Prima nota")]))
+      expect(status().textContent).toBe("Nota eliminata")
+    })
+
+    it("se l'eliminazione fallisce sulla pagina di un altro cliente, niente errore lì; tornando il cestino è di nuovo attivo", async () => {
+      const { rerender } = render(await show("c-42", c42))
+      const user = userEvent.setup()
+
+      await user.click(trash("Seconda nota"))
+      rerender(await show("c-43", c43))
+      await act(async () => {
+        mocks.deleteMessage[0]!({ ok: false, error: "Invalid form data" })
+      })
+
+      expect(toastApi.toast).not.toHaveBeenCalled()
+      rerender(await show("c-42", c42))
+      expect(trash("Seconda nota").getAttribute("aria-busy")).not.toBe("true")
+    })
+
+    it("se l'eliminazione fallisce dopo il ritorno al cliente, compare l'errore", async () => {
+      const { rerender } = render(await show("c-42", c42))
+      const user = userEvent.setup()
+
+      await user.click(trash("Seconda nota"))
+      rerender(await show("c-43", c43))
+      rerender(await show("c-42", c42))
+      await act(async () => {
+        mocks.deleteMessage[0]!({ ok: false, error: "Invalid form data" })
+      })
+
+      expect(toastApi.toast).toHaveBeenCalledTimes(1)
+      expect(trash("Seconda nota").getAttribute("aria-busy")).not.toBe("true")
+    })
+  })
+
+  it("se dopo il clic sul cestino l'operatore clicca altrove, il focus resta dove l'ha messo", async () => {
+    const { reload } = renderChat([
+      note(1, "Prima nota"),
+      note(2, "Seconda nota"),
+      note(3, "Terza nota"),
+    ])
+    const user = userEvent.setup()
+
+    await user.click(trash("Seconda nota"))
+    await user.click(document.body)
+    await act(async () => {
+      mocks.deleteMessage[0]!({ ok: true })
+    })
+    reload([note(1, "Prima nota"), note(3, "Terza nota")])
+
+    expect(status().textContent).toBe("Nota eliminata")
+    expect(document.activeElement).toBe(document.body)
+  })
+
+  it("se durante l'eliminazione l'operatore va altrove con la tastiera, il focus resta lì", async () => {
+    const { reload } = renderChat([
+      note(1, "Prima nota"),
+      note(2, "Seconda nota"),
+      note(3, "Terza nota"),
+    ])
+    const user = userEvent.setup()
+
+    await user.click(trash("Seconda nota"))
+    await user.tab({ shift: true })
+    expect(document.activeElement).toBe(trash("Prima nota"))
+    await act(async () => {
+      mocks.deleteMessage[0]!({ ok: true })
+    })
+    reload([note(1, "Prima nota"), note(3, "Terza nota")])
+
+    expect(document.activeElement).toBe(trash("Prima nota"))
+  })
+
+  it("se il clic sul cestino non gli ha dato il focus (Safari), il focus non si sposta", async () => {
+    const { reload } = renderChat([
+      note(1, "Prima nota"),
+      note(2, "Seconda nota"),
+      note(3, "Terza nota"),
+    ])
+
+    // A click event alone: no pointer, no focus
+    fireEvent.click(trash("Seconda nota"))
+    await act(async () => {
+      mocks.deleteMessage[0]!({ ok: true })
+    })
+    reload([note(1, "Prima nota"), note(3, "Terza nota")])
+
+    expect(status().textContent).toBe("Nota eliminata")
+    expect(document.activeElement).toBe(document.body)
+  })
+
+  it("un secondo clic sul cestino occupato non cambia dove va il focus", async () => {
+    const { reload } = renderChat([
+      note(1, "Prima nota"),
+      note(2, "Seconda nota"),
+      note(3, "Terza nota"),
+    ])
+    const user = userEvent.setup()
+
+    await user.dblClick(trash("Seconda nota"))
+    await act(async () => {
+      mocks.deleteMessage[0]!({ ok: true })
+    })
+    reload([note(1, "Prima nota"), note(3, "Terza nota")])
+
+    expect(document.activeElement).toBe(trash("Terza nota"))
+  })
+
+  it("eliminata l'ultima nota, il focus va al cestino della precedente più vicina", async () => {
+    const { reload } = renderChat([
+      note(1, "Prima nota"),
+      note(2, "Seconda nota"),
+      note(3, "Terza nota"),
+    ])
+    const user = userEvent.setup()
+
+    await user.click(trash("Terza nota"))
+    await act(async () => {
+      mocks.deleteMessage[0]!({ ok: true })
+    })
+    reload([note(1, "Prima nota"), note(2, "Seconda nota")])
+
+    expect(document.activeElement).toBe(trash("Seconda nota"))
+  })
+
+  it("con gli effetti doppi di StrictMode un'eliminazione parte e si annuncia una volta", async () => {
+    const view = (messages: Note[]) => (
+      <StrictMode>
+        <CustomerNotes>
+          <CollassableSection defaultValue={["item-1"]}>
+            <CustomerChat
+              customerId="c-42"
+              chatId={3}
+              messages={messages}
+              total={messages.length}
+              limit={5}
+            />
+          </CollassableSection>
+        </CustomerNotes>
+      </StrictMode>
+    )
+    const { rerender } = render(
+      view([note(1, "Prima nota"), note(2, "Seconda nota")])
+    )
+    const user = userEvent.setup()
+    const announced: string[] = []
+    new MutationObserver(() =>
+      announced.push(status().textContent ?? "")
+    ).observe(status(), { childList: true, subtree: true, characterData: true })
+
+    await user.click(trash("Seconda nota"))
+    await act(async () => {
+      mocks.deleteMessage[0]!({ ok: true })
+    })
+    rerender(view([note(1, "Prima nota")]))
+    await act(async () => undefined)
+
+    expect(deleteMessageAction).toHaveBeenCalledTimes(1)
+    expect(announced.filter((text) => text === "Nota eliminata")).toHaveLength(
+      1
+    )
+    expect(document.activeElement).toBe(trash("Prima nota"))
+  })
+
   it("eliminata l'ultima nota, il focus va al cestino della precedente", async () => {
     const { reload } = renderChat([
       note(1, "Prima nota"),
@@ -545,7 +1162,11 @@ describe("CustomerNewChat, avvio della chat", () => {
     screen.getByRole<HTMLButtonElement>("button", { name: "Avvia una chat" })
 
   it("crea la chat una volta sola, anche con un doppio clic", async () => {
-    render(<CustomerNewChat customerId="c-42" />)
+    render(
+      <CustomerNotes>
+        <CustomerNewChat customerId="c-42" />
+      </CustomerNotes>
+    )
     const user = userEvent.setup()
 
     await user.dblClick(start())
@@ -555,7 +1176,11 @@ describe("CustomerNewChat, avvio della chat", () => {
   })
 
   it("durante la creazione la scheda resta e il pulsante è occupato, con lo spinner", async () => {
-    render(<CustomerNewChat customerId="c-42" />)
+    render(
+      <CustomerNotes>
+        <CustomerNewChat customerId="c-42" />
+      </CustomerNotes>
+    )
     const user = userEvent.setup()
 
     await user.click(start())
@@ -570,7 +1195,11 @@ describe("CustomerNewChat, avvio della chat", () => {
   })
 
   it("quando il server risponde aggiorna la pagina, che mostra la chat", async () => {
-    render(<CustomerNewChat customerId="c-42" />)
+    render(
+      <CustomerNotes>
+        <CustomerNewChat customerId="c-42" />
+      </CustomerNotes>
+    )
     const user = userEvent.setup()
 
     await user.click(start())
@@ -583,8 +1212,60 @@ describe("CustomerNewChat, avvio della chat", () => {
     expect(screen.queryByRole("alert")).toBeNull()
   })
 
+  it("il pulsante resta occupato finché la pagina aggiornata non è a schermo", async () => {
+    // The refreshed page: suspended until its server payload arrives
+    let arrive!: () => void
+    const payload = new Promise<void>((resolve) => {
+      arrive = resolve
+    })
+    let arrived = false
+    void payload.then(() => {
+      arrived = true
+    })
+    const Refreshed = () => {
+      if (!arrived) throw payload
+      return null
+    }
+    let draw!: () => void
+    const Page = () => {
+      const [refreshed, setRefreshed] = useState(false)
+      draw = () => setRefreshed(true)
+      return (
+        <CustomerNotes>
+          <CustomerNewChat customerId="c-42" />
+          <Suspense fallback={null}>
+            {refreshed ? <Refreshed /> : null}
+          </Suspense>
+        </CustomerNotes>
+      )
+    }
+    router.refresh.mockImplementationOnce(() => draw())
+    render(<Page />)
+    const user = userEvent.setup()
+
+    await user.click(start())
+    await act(async () => {
+      mocks.createChat[0]!.resolve({ id: 3 })
+    })
+
+    expect(router.refresh).toHaveBeenCalledTimes(1)
+    expect(start().getAttribute("aria-busy")).toBe("true")
+    expect(start().querySelector("svg.animate-spin")).not.toBeNull()
+
+    await act(async () => {
+      arrive()
+      await payload
+    })
+
+    expect(start().getAttribute("aria-busy")).not.toBe("true")
+  })
+
   it("se la creazione fallisce compare 'Chat non avviata, riprova' e il pulsante torna attivo", async () => {
-    render(<CustomerNewChat customerId="c-42" />)
+    render(
+      <CustomerNotes>
+        <CustomerNewChat customerId="c-42" />
+      </CustomerNotes>
+    )
     const user = userEvent.setup()
 
     await user.click(start())
@@ -606,7 +1287,7 @@ describe("CustomerNewChat, avvio della chat", () => {
   })
 
   it("la chat appena avviata mette il focus nel campo della nota", async () => {
-    const { unmount } = render(<CustomerNewChat customerId="c-42" />)
+    const { reload } = renderChat(null)
     const user = userEvent.setup()
 
     await user.click(start())
@@ -614,10 +1295,23 @@ describe("CustomerNewChat, avvio della chat", () => {
       mocks.createChat[0]!.resolve({ id: 3 })
     })
     // The refreshed page draws the chat in place of the button
+    reload([])
+
+    expect(document.activeElement).toBe(field())
+  })
+
+  it("se l'operatore esce prima che la chat avviata compaia, riaprendo il cliente la chat non prende il focus", async () => {
+    const { unmount } = renderChat(null)
+    const user = userEvent.setup()
+
+    await user.click(start())
+    await act(async () => {
+      mocks.createChat[0]!.resolve({ id: 3 })
+    })
     unmount()
     renderChat([])
 
-    expect(document.activeElement).toBe(field())
+    expect(document.activeElement).not.toBe(field())
   })
 
   it("una chat che c'era già non prende il focus", () => {
@@ -627,7 +1321,11 @@ describe("CustomerNewChat, avvio della chat", () => {
   })
 
   it("se la creazione fallisce, la chat aperta dopo non prende il focus", async () => {
-    const { unmount } = render(<CustomerNewChat customerId="c-42" />)
+    const { unmount } = render(
+      <CustomerNotes>
+        <CustomerNewChat customerId="c-42" />
+      </CustomerNotes>
+    )
     const user = userEvent.setup()
 
     await user.click(start())
@@ -927,7 +1625,7 @@ describe("CustomerChat, bozza della nota non inviata (AC76, D18)", () => {
 
     unmount()
     clearChatMemory()
-    mocks.operator = { id: 11 }
+    mocks.operator = { id: 11, role: "OPERATORE" }
     renderChat([note(1, "Prima nota")])
     await screen.findByRole("alert")
     expect(field().value).toBe("Senza operatore")
@@ -1002,7 +1700,7 @@ describe("CustomerChat, bozza della nota non inviata (AC76, D18)", () => {
     expect(draftOf("c-42")).toBe("Bozza")
     expect(field().value).toBe("")
 
-    mocks.operator = { id: 11 }
+    mocks.operator = { id: 11, role: "OPERATORE" }
     reload([note(1, "Prima nota")])
     await screen.findByRole("alert")
     expect(field().value).toBe("Bozza")
@@ -1012,15 +1710,17 @@ describe("CustomerChat, bozza della nota non inviata (AC76, D18)", () => {
     storeDraft("c-42", "Bozza")
     render(
       <StrictMode>
-        <CollassableSection defaultValue={["item-1"]}>
-          <CustomerChat
-            customerId="c-42"
-            chatId={3}
-            messages={[note(1, "Prima nota")]}
-            total={1}
-            limit={5}
-          />
-        </CollassableSection>
+        <CustomerNotes>
+          <CollassableSection defaultValue={["item-1"]}>
+            <CustomerChat
+              customerId="c-42"
+              chatId={3}
+              messages={[note(1, "Prima nota")]}
+              total={1}
+              limit={5}
+            />
+          </CollassableSection>
+        </CustomerNotes>
       </StrictMode>
     )
 
@@ -1036,7 +1736,7 @@ describe("CustomerChat, bozza della nota non inviata (AC76, D18)", () => {
 
     await user.type(field(), "T")
     await user.click(submit())
-    mocks.operator = { id: 11 }
+    mocks.operator = { id: 11, role: "OPERATORE" }
     reload([note(1, "Prima nota")])
     await act(async () => undefined)
 
@@ -1054,7 +1754,7 @@ describe("CustomerChat, bozza della nota non inviata (AC76, D18)", () => {
     await user.click(submit())
     // Not checked yet: the stored draft stays as it is
     expect(draftOf("c-42")).toBe("Originale")
-    mocks.operator = { id: 11 }
+    mocks.operator = { id: 11, role: "OPERATORE" }
     reload([note(1, "Prima nota")])
     await act(async () => undefined)
 
@@ -1070,7 +1770,7 @@ describe("CustomerChat, bozza della nota non inviata (AC76, D18)", () => {
 
     await user.type(field(), "abc")
     await user.click(submit())
-    mocks.operator = { id: 11 }
+    mocks.operator = { id: 11, role: "OPERATORE" }
     reload([note(1, "Prima nota")])
     await act(async () => undefined)
     expect(field().value).toBe("abc")
@@ -1185,7 +1885,7 @@ describe("CustomerChat, bozza della nota non inviata (AC76, D18)", () => {
 
   it.each([
     ["senza operatore", undefined],
-    ["con un invio che fallisce", { id: 11 }],
+    ["con un invio che fallisce", { id: 11, role: "OPERATORE" as const }],
   ])(
     "un campo vuoto inviato %s non mostra il messaggio e non fa una bozza",
     async (_case, operator) => {

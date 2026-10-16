@@ -6,7 +6,7 @@ spec: sezione-contatti
 links:
   - "[[specs/crm/sezione-contatti/REPORT]]"
 created: 2026-09-25
-updated: 2026-10-15
+updated: 2026-10-16
 ---
 
 # Review Rubric: Sezione Contatti — PR1 "Percorsi di creazione sicuri"
@@ -274,3 +274,44 @@ Nessuno. `reviewImpact: critical` e `humanInLoop: true` sono coerenti con la sup
 | v4 | Testo delle note in `sessionStorage` | medium | balanced (sonnet) |
 | v5 | UI pass sulla chat | medium | balanced (sonnet) |
 | v6 | Gate del progetto | low | fast (haiku) |
+
+## [Round: 2026-10-16] PR4 — T4.5 e T4.6 (dai test manuali)
+
+Round aggiunto: le rubric sopra restano come sono.
+
+### Change set under review
+
+- **Scope:** spec implementation, solo T4.5 e T4.6 di PLAN.md. Contratto: AC77 (T4.5, D19) e AC78 (T4.6, D20)
+- **Target:** branch `contatti/pr4-chat-cliente`, PR verso `dev` (omardeangelis/mito-micro-services#18)
+- **Compared:** `3d76ab5` → `b5ac1a7` (T4.5) e `b5ac1a7` → `f440a0d` (T4.6), solo `src/`
+- **Files touched:** T4.5: servizio nuovo `src/server/services/chat/createCustomerChat.ts`, router della chat, test DB nuovo, `CustomerChat.tsx` e test; rimossi `_actions/createNewChat.ts` e la procedura `chat.createNewChat`. T4.6: `CustomerChat.tsx`, `_actions/deleteMessage.ts`, test della chat e test nuovo di `deleteMessage`. Domini: crm
+
+### Routing rubric (scelta dell'utente, senza classifier)
+
+```json
+{
+  "taskType": "feature",
+  "domainsTouched": ["crm"],
+  "adversarialVerifiers": {
+    "count": 2,
+    "passes": [
+      { "id": "v1", "charter": "T4.5 / AC77, D19: one chat per customer created in a transaction with the customer locked, existing chat returned, missing customer → NOT_FOUND with nothing written; removed procedure and action have no callers; CustomerNewChat wait (aria-busy, aria-disabled, spinner), single call on double click, failure message linked by aria-describedby, focus in the field after a chat started here; test adequacy.", "complexity": "low" },
+      { "id": "v2", "charter": "T4.6 / AC78, D20: 'Invio…' and busy 'Commenta' until the server answers; list opens at the newest note and shows the sent one, stays put after a scroll up, 'Carica altri messaggi' does not scroll; delete with no optimistic removal, failure toast, keyboard-reachable trash, focus to the next/previous trash; status announcements; ResizeObserver lifecycle; test adequacy.", "complexity": "low" }
+    ]
+  },
+  "reviewImpact": "medium",
+  "humanInLoop": false,
+  "nextStep": "Run v1 and v2 in parallel on the fast tier."
+}
+```
+
+### Overrides applied
+
+L'utente ha fissato i passaggi: due verificatori su Haiku, uno per task, senza `review-classifier` e senza UI pass. Il comportamento nel browser (doppio clic, attesa di invio ed eliminazione, focus, eliminazione offline) è stato provato a mano sul DB di sviluppo prima del commit (PLAN.md, validation di T4.5 e T4.6). `reviewImpact: medium` è una stima dell'orchestratore, non del classifier.
+
+### Verification plan (derived)
+
+| Pass | Charter | Complexity | Model tier |
+|------|---------|------------|------------|
+| v1 | "Avvia una chat": una chat per cliente e attesa visibile (AC77) | low (scelta dell'utente) | fast (haiku) |
+| v2 | Attesa di invio ed eliminazione, scroll, accessibilità (AC78) | low (scelta dell'utente) | fast (haiku) |

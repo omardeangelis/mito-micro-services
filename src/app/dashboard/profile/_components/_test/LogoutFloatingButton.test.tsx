@@ -2,6 +2,10 @@ import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { describe, expect, it, vi } from "vitest"
 import { LogoutFloatingButton } from "../LogoutFloatingButton"
+import {
+  startDeleting,
+  takeDeleted,
+} from "@/components/custom/notes/deletingNotes"
 
 const draftKey = "mito:nota-non-inviata:c-42"
 const draftAtSignOut: Array<string | null> = []
@@ -28,5 +32,17 @@ describe("LogoutFloatingButton", () => {
       .click(screen.getByRole("button", { name: "Esci dal gestionale" }))
 
     expect(draftAtSignOut).toEqual([null])
+  })
+
+  it("uscendo dimentica le note in eliminazione: il prossimo operatore non vede attese", async () => {
+    startDeleting("c-42", 905, [])
+    render(<LogoutFloatingButton />)
+
+    await userEvent
+      .setup()
+      .click(screen.getByRole("button", { name: "Esci dal gestionale" }))
+
+    // Nothing left to wait for, or to announce
+    expect(takeDeleted("c-42", [])).toEqual([])
   })
 })

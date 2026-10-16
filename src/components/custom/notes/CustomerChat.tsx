@@ -5,15 +5,19 @@ import { Textarea } from "@/components/ui/textarea"
 import { AccordionContent, AccordionTrigger } from "@/components/ui/accordion"
 import {
   Fragment,
+  createContext,
   useCallback,
+  useContext,
   useEffect,
   useId,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   memo,
   type ComponentProps,
   type FormEvent,
+  type PropsWithChildren,
 } from "react"
 import { api } from "@/trpc/react"
 import { type Message } from "@/lib/types/schemas"
@@ -35,6 +39,15 @@ import {
   typeUnsentNote,
   useUnsentNote,
 } from "./unsentNote"
+import {
+  isChatShown,
+  leaveTrashes,
+  showChat,
+  startDeleting,
+  stopDeleting,
+  takeDeleted,
+  useDeletingNotes,
+} from "./deletingNotes"
 
 type MessageResponse = Pick<
   Message,
@@ -59,6 +72,74 @@ const TRASH_LABEL = "Elimina nota"
 // with an animation (P6)
 const scrollToBottom = (list: HTMLElement | null) => {
   if (list) list.scrollTop = list.scrollHeight
+}
+
+type NotesStatus = {
+  /** Read by screen readers: "Invio della nota", "Nota inviata", "Nota eliminata" */
+  announce: (text: string) => void
+  /** The notes of the customer on the page now, none without a chat. `focus` moves the focus after a deletion */
+  shown: (
+    customerId: string,
+    ids: number[],
+    focus: (next: number[]) => void
+  ) => void
+}
+
+const NotesStatusContext = createContext<NotesStatus | null>(null)
+
+const useNotesStatus = () => {
+  const status = useContext(NotesStatusContext)
+  if (!status) {
+    throw new Error("CustomerChat and CustomerNewChat go inside CustomerNotes")
+  }
+  return status
+}
+
+/**
+ * The notes of a customer, as a chat or as "Avvia una chat". It stays on the
+ * page when one replaces the other: deleting the last note deletes the chat,
+ * and "Nota eliminata" and the focus still have a place to go.
+ */
+export function CustomerNotes({ children }: PropsWithChildren) {
+  // Each announcement is a new node: the same text twice in a row is read twice
+  const [announcement, setAnnouncement] = useState({ text: "", key: 0 })
+  const status = useMemo<NotesStatus>(() => {
+    const announce = (text: string) =>
+      setAnnouncement((current) => ({ text, key: current.key + 1 }))
+    return {
+      announce,
+      shown: (customerId, ids, focus) => {
+        // Several at once: each trash starts its own
+        const gone = takeDeleted(customerId, ids)
+        if (gone.length === 0) return
+        announce(gone.length === 1 ? "Nota eliminata" : "Note eliminate")
+        // The last trash clicked, only if the focus stayed on it
+        const last = gone.at(-1)!
+        if (!last.focused) return
+        focus(last.next.filter((id) => !gone.some((d) => d.id === id)))
+      },
+    }
+  }, [])
+  // A click or a focus elsewhere leaves the focus where the operator put it
+  useEffect(() => {
+    document.addEventListener("pointerdown", leaveTrashes, true)
+    document.addEventListener("focusin", leaveTrashes, true)
+    return () => {
+      document.removeEventListener("pointerdown", leaveTrashes, true)
+      document.removeEventListener("focusin", leaveTrashes, true)
+      // The operator left before the started chat was drawn
+      focusOnStart = null
+    }
+  }, [])
+
+  return (
+    <NotesStatusContext.Provider value={status}>
+      <p role="status" className="sr-only">
+        <span key={announcement.key}>{announcement.text}</span>
+      </p>
+      {children}
+    </NotesStatusContext.Provider>
+  )
 }
 
 // The customer whose chat was just started here: its field takes the focus
@@ -92,8 +173,8 @@ export function CustomerChat({
   const { text: content, failed } = useUnsentNote(customerId)
   const failedId = useId()
   const [pending, setPending] = useState<PendingNote[]>([])
-  // Read by screen readers: "Invio della nota", "Nota inviata", "Nota eliminata"
-  const [announcement, setAnnouncement] = useState("")
+  const notes = useNotesStatus()
+  const deleting = useDeletingNotes(customerId)
 
   const waiting = pending.filter((note) => !isSaved(note, messages))
   // The note on its way to the server: it has no id until the action answers
@@ -112,54 +193,67 @@ export function CustomerChat({
   const { toast } = useToast()
   const { data: operatorData } = api.operator.getUserOperator.useQuery()
   const operatorId = operatorData?.id
+  // Only the author of a note deletes it, an administrator too, as the server
+  // checks. Until the operator is known no note has the trash
+  const canDelete = (message: MessageResponse) =>
+    operatorData !== undefined && message.operatorId === operatorData.id
   const { mutate: touchCustomer } = api.customer.updateLastEdit.useMutation()
 
-  // The note being deleted and its place among the saved notes: once the page
-  // drops it, the focus moves to the trash of the note that takes its place
+  // Once the page drops a deleted note, the focus moves to the trash that
+  // takes its place: the next note's, else the previous one's
   const messagesRef = useRef(messages)
   messagesRef.current = messages
-  const deletedRef = useRef<{ id: number; index: number } | null>(null)
-  const handleDeleteStart = useCallback((id: number) => {
-    const index = messagesRef.current.findIndex((m) => m.id === id)
-    deletedRef.current = { id, index }
-  }, [])
+  const handleDeleteStart = useCallback(
+    (id: number) => {
+      const ids = messagesRef.current.map((m) => m.id)
+      const index = ids.indexOf(id)
+      startDeleting(customerId, id, [
+        ...ids.slice(index + 1),
+        ...ids.slice(0, index).reverse(),
+      ])
+    },
+    [customerId]
+  )
   const handleDeleted = useCallback(
     () => touchCustomer({ id: customerId }),
     [touchCustomer, customerId]
   )
   const handleDeleteFailed = useCallback(
     (id: number) => {
-      if (deletedRef.current?.id === id) deletedRef.current = null
+      stopDeleting(customerId, id)
+      // Not on the page of another customer opened in the meantime
+      if (!isChatShown(customerId)) return
       toast({
         variant: "destructive",
         duration: 8000,
         description: "Nota non eliminata, riprova",
       })
     },
-    [toast]
+    [customerId, toast]
   )
 
+  useEffect(() => showChat(customerId), [customerId])
   useEffect(() => {
-    const deleted = deletedRef.current
-    if (!deleted || messages.some((m) => m.id === deleted.id)) return
-    deletedRef.current = null
-    setAnnouncement("Nota eliminata")
-    // Only when the focus was on the trash that is gone
-    const focused = document.activeElement
-    if (focused && focused !== document.body && focused.isConnected) return
-    const trashes = scrollRef.current?.querySelectorAll<HTMLButtonElement>(
-      `button[aria-label="${TRASH_LABEL}"]`
+    notes.shown(
+      customerId,
+      messages.map((m) => m.id),
+      (next) => {
+        // A note without a trash (a colleague's, or one still loading) is skipped
+        const trash = next
+          .map((id) =>
+            scrollRef.current?.querySelector<HTMLButtonElement>(
+              `button[data-note-id="${id}"]`
+            )
+          )
+          .find(Boolean)
+        ;(trash ?? fieldRef.current)?.focus()
+      }
     )
-    const next =
-      trashes?.[deleted.index] ??
-      trashes?.[deleted.index - 1] ??
-      fieldRef.current
-    next?.focus()
-  }, [messages])
+  }, [customerId, messages, notes])
 
-  // The list opens at the newest notes, and follows a note sent or arrived
-  // While at the bottom the list stays there, also when the notes grow after
-  // opening (names loaded); once the operator scrolls up it stays put
+  // The list opens at the newest notes. While at the bottom it stays there,
+  // when a note arrives or the notes grow after opening (names loaded); once
+  // the operator scrolls up it stays put, until they send a note
   const pinnedRef = useRef(true)
   const listRef = useCallback((list: HTMLDivElement | null) => {
     scrollRef.current = list
@@ -207,12 +301,16 @@ export function CustomerChat({
       ...message,
       key: message.id as number | string,
       sending: false,
+      deleting: deleting.includes(message.id),
+      deletable: canDelete(message),
     })),
     // A pending note has no trash: there is no message to delete yet
     ...waiting.map((note) => ({
       ...note,
       id: undefined,
       sending: note.id === undefined,
+      deleting: false,
+      deletable: false,
     })),
   ]
   const lastKey = rows.at(-1)?.key
@@ -220,8 +318,7 @@ export function CustomerChat({
   useLayoutEffect(() => {
     if (scrolledKey.current === lastKey) return
     scrolledKey.current = lastKey
-    pinnedRef.current = true
-    scrollToBottom(scrollRef.current)
+    if (pinnedRef.current) scrollToBottom(scrollRef.current)
   }, [lastKey])
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -233,7 +330,9 @@ export function CustomerChat({
       return
     }
     sendingRef.current = true
-    setAnnouncement("Invio della nota")
+    // The note sent shows at the bottom, wherever the operator had scrolled
+    pinnedRef.current = true
+    notes.announce("Invio della nota")
     const { sent, settle } = sendUnsentNote(customerId)
     const key = `pending-${pendingCounter.current++}`
     setPending((current) => [
@@ -254,11 +353,14 @@ export function CustomerChat({
     // Anything but `{ ok: true }` failed: a rejection, `{ ok: false }`, or no
     // result at all (after a deploy Next resolves an unknown action without one)
     settle(result?.ok === true)
-    setAnnouncement(result?.ok ? "Nota inviata" : "")
+    notes.announce(result?.ok ? "Nota inviata" : "")
     if (result?.ok) {
+      // Already on the page (another refresh came first): the pending note is
+      // done, or it would come back once the saved one is deleted
+      const saved = messagesRef.current.some((m) => m.id === result.id)
       setPending((current) =>
-        current.map((item) =>
-          item.key === key ? { ...item, id: result.id } : item
+        current.flatMap((item) =>
+          item.key !== key ? [item] : saved ? [] : [{ ...item, id: result.id }]
         )
       )
       touchCustomer({ id: customerId })
@@ -269,9 +371,6 @@ export function CustomerChat({
 
   return (
     <section {...rest}>
-      <p role="status" className="sr-only">
-        {announcement}
-      </p>
       <div className="rounded-md border border-neutral-200 p-4">
         <div className="flex w-full items-center justify-between">
           <div className="flex items-center gap-4">
@@ -306,6 +405,8 @@ export function CustomerChat({
                         operatorId={row.operatorId}
                         customerId={customerId}
                         sending={row.sending}
+                        deleting={row.deleting}
+                        deletable={row.deletable}
                         onDeleteStart={handleDeleteStart}
                         onDeleted={handleDeleted}
                         onDeleteFailed={handleDeleteFailed}
@@ -372,6 +473,13 @@ export function CustomerNewChat({
 }: CustomerNewChatProps) {
   const failedId = useId()
   const [failed, setFailed] = useState(false)
+  // The last note deleted takes the chat with it: the focus comes here
+  const startRef = useRef<HTMLButtonElement | null>(null)
+  const notes = useNotesStatus()
+  useEffect(
+    () => notes.shown(customerId, [], () => startRef.current?.focus()),
+    [customerId, notes]
+  )
   // Busy from the click until the refreshed page draws the chat in its place
   const { pending, start, fail, finishAfterRefresh } = useSavingUntilRefreshed()
   // `mutateAsync` settles after an unmount too
@@ -396,6 +504,7 @@ export function CustomerNewChat({
         <div className="flex items-center justify-between">
           <h4 className="font-medium">Inizia una nuova chat</h4>
           <Button
+            ref={startRef}
             onClick={handleCreateNewChat}
             variant="outline"
             aria-busy={pending}
@@ -428,6 +537,10 @@ type CustomerNoteProps = Omit<MessageResponse, "id"> & {
   customerId: string
   /** On its way to the server: "Invio…" in place of the date */
   sending: boolean
+  /** Until the page drops the note: nothing is removed in advance (P6) */
+  deleting: boolean
+  /** The trash: only on a saved note of the operator */
+  deletable: boolean
   onDeleteStart: (id: number) => void
   onDeleted: () => void
   onDeleteFailed: (id: number) => void
@@ -441,6 +554,8 @@ const CustomerNote = memo(function CustomerNote({
   operatorId,
   customerId,
   sending,
+  deleting,
+  deletable,
   onDeleteStart,
   onDeleted,
   onDeleteFailed,
@@ -448,23 +563,19 @@ const CustomerNote = memo(function CustomerNote({
   const { data, isLoading } = api.operator.getOperatorById.useQuery({
     id: Number(operatorId),
   })
-  // Until the page drops the note: nothing is removed in advance (P6)
-  const [deleting, setDeleting] = useState(false)
 
   const handleDelete = async () => {
-    if (id === undefined || deleting) return
-    setDeleting(true)
+    if (id === undefined || !deletable || deleting) return
     onDeleteStart(id)
-    const result = await deleteMessageAction({
-      id,
-      operatorId,
-      customerId,
-    }).catch(() => null)
+    const result = await deleteMessageAction({ id, customerId }).catch(
+      () => null
+    )
+    // Already deleted, in another tab: the refreshed page drops it
+    if (result && "gone" in result) return
     // Anything but `{ ok: true }` failed, as for a note sent
     if (result?.ok) {
       onDeleted()
     } else {
-      setDeleting(false)
       onDeleteFailed(id)
     }
   }
@@ -496,7 +607,7 @@ const CustomerNote = memo(function CustomerNote({
           </div>
           <p className="text-md text-muted-foreground">{content}</p>
         </div>
-        {id !== undefined && (
+        {id !== undefined && deletable && (
           // Shown by CSS, not state: moving the pointer onto the button must
           // not unmount it before the click lands. Opacity, not visibility:
           // the keyboard reaches it too. No transition (P6)
@@ -505,6 +616,7 @@ const CustomerNote = memo(function CustomerNote({
               variant="ghost"
               size="icon"
               aria-label={TRASH_LABEL}
+              data-note-id={id}
               aria-busy={deleting}
               aria-disabled={deleting}
               className={

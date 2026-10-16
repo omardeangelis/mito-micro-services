@@ -1,11 +1,12 @@
 import { beforeAll, beforeEach, describe, expect, it } from "vitest"
-import { eq } from "drizzle-orm"
+import { eq, getTableName } from "drizzle-orm"
 import { chat } from "@/server/db/schema/chat"
 import { customers } from "@/server/db/schema/customers"
 import { chatToOperator } from "@/server/db/schema/relations/chatToOperator"
 import { createTestCaller } from "@/test/caller"
 import { migrateUpTo, resetDb, testDb } from "@/test/db"
 import { createCustomer, createOperator } from "@/test/factories"
+import { beforeNextLockOf } from "@/test/failpoint"
 
 const chatIdOf = async (customerId: string) => {
   const [row] = await testDb
@@ -55,6 +56,29 @@ describe("chat.createNewCustomerChat", () => {
     expect(await chatIdOf(customer.id)).toBe(first.id)
     expect(await testDb.select({ id: chat.id }).from(chat)).toEqual([
       { id: first.id },
+    ])
+  })
+
+  it("se un collega avvia la chat mentre aspetta il cliente, restituisce la sua", async () => {
+    const federica = await createOperator()
+    const collega = await createOperator()
+    const customer = await createCustomer()
+    // The colleague's "Avvia una chat" commits while this one waits for the lock
+    beforeNextLockOf(
+      customers,
+      `INSERT INTO "${getTableName(chat)}" (id, is_read) OVERRIDING SYSTEM VALUE VALUES (900, false);
+       UPDATE "${getTableName(customers)}" SET chat_id = 900 WHERE id = '${customer.id}';
+       INSERT INTO "${getTableName(chatToOperator)}" (chat_id, operator_id) VALUES (900, ${collega.id});`
+    )
+
+    const created = await createTestCaller(federica).chat.createNewCustomerChat(
+      { customerId: customer.id }
+    )
+
+    expect(created.id).toBe(900)
+    expect(await chatIdOf(customer.id)).toBe(900)
+    expect(await testDb.select({ id: chat.id }).from(chat)).toEqual([
+      { id: 900 },
     ])
   })
 

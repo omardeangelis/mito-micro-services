@@ -1,5 +1,5 @@
 import { CollassableSection } from "@/components/custom/CollassableItem"
-import { CustomerChat, CustomerNewChat } from "./CustomerChat"
+import { CustomerChat, CustomerNewChat, CustomerNotes } from "./CustomerChat"
 import { api } from "@/trpc/server"
 
 export async function CustomerChatSection({
@@ -10,24 +10,34 @@ export async function CustomerChatSection({
   limit?: number
 }) {
   const customer = await api.customer.getCustomerById.query({ id: customerId })
-  if (!customer?.chatId) return <CustomerNewChat customerId={customerId} />
-  const { messages, total } = await api.chat.getChatMessagesById.query({
-    id: customer.chatId,
-    limit,
-  })
+  const chat = customer?.chatId
+    ? {
+        id: customer.chatId,
+        ...(await api.chat.getChatMessagesById.query({
+          id: customer.chatId,
+          limit,
+        })),
+      }
+    : null
 
   return (
-    <CollassableSection defaultValue={["item-1"]}>
-      <CustomerChat
-        // A new customer is a new chat: no text or draft carried over
-        key={customerId}
-        className="bg-white"
-        customerId={customerId}
-        chatId={customer.chatId}
-        messages={messages}
-        total={total}
-        limit={limit ?? 5}
-      />
-    </CollassableSection>
+    // The same element with or without a chat: it outlives the swap. A new
+    // customer starts over: no text, draft or announcement carried over
+    <CustomerNotes key={customerId}>
+      {chat ? (
+        <CollassableSection defaultValue={["item-1"]}>
+          <CustomerChat
+            className="bg-white"
+            customerId={customerId}
+            chatId={chat.id}
+            messages={chat.messages}
+            total={chat.total}
+            limit={limit ?? 5}
+          />
+        </CollassableSection>
+      ) : (
+        <CustomerNewChat customerId={customerId} />
+      )}
+    </CustomerNotes>
   )
 }
