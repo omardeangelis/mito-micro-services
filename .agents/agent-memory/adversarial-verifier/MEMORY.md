@@ -1,0 +1,24 @@
+- [Plan verification techniques](feedback_plan_verification_techniques.md) — PGlite probes, writer enumeration, per-role cases, helper-vs-depends_on, UI data, date rule vs cron
+- [Vacuous test patterns](feedback_vacuous_test_patterns.md) — assertions/gates that cannot fail; flag on sight
+- [Client mutation checks](feedback_client_mutation_checks.md) — rq v4 per-call callbacks dropped on unmount; browser-only plans leave no tests
+- [UI probe side effects](feedback_ui_probe_side_effects.md) — hit-area really clicks (mutated data once); abort the endpoint or skip click probes in read-only passes
+- [Review at reviewed commit](feedback_review_at_reviewed_commit.md) — read ledger/decision docs via git show <sha>; working-tree fixes are not resolutions
+- [Motion exception scope](feedback_motion_exception_scope.md) — exceptions bind to named consumers; class guards miss descendants; browser claims need a probe record
+- [Mock tRPC in UI pass](feedback_ui_pass_mock_trpc_responses.md) — show dialogs/toasts via stream-format mock, audit POSTs after; list load POSTs preferences
+- [Storage draft checks](feedback_storage_draft_checks.md) — remount race, own-success wipe, empty-submit flag, sign-out x in-flight, mutation runner
+- [Server action boundary](feedback_server_action_boundary_checks.md) — tsx zod probe recipe, revalidatePath is a literal tag, compare with /api/trpc exposure
+- [Gate exit capture](feedback_gate_exit_capture.md) — zsh PIPESTATUS is empty: redirect gate logs; server-action bundling via export-name grep
+- [UI pass moving target](feedback_ui_pass_moving_target.md) — component can change mid-run (check mtime); EMAXCONN on shared dev server; select-all fails, use Backspace
+- [Live region and class checks](feedback_live_region_and_class_checks.md) — sr-only status repeat text is silent; class-string tests prove no reachability; compile Tailwind in scratchpad
+- [Lock order mutants](feedback_lock_order_mutants.md) — read-before-lock survives PGlite trigger tests; ask for statement-order evidence
+- [Mutant harness hygiene](feedback_mutant_harness_hygiene.md) — re-sync src before each mutant; a wrong restore path contaminates the next run
+- [Live region host unmount](feedback_live_region_host_unmount.md) — announcements/focus inside a component the action can unmount never run; probe the swap
+- [Mutant apply verify](feedback_mutant_apply_verify.md) — grep-check a mutant applied before trusting green; Next action queue is serial
+- [Test helper wiring](feedback_test_helper_wiring.md) — helper wrapping its own provider hides parent wiring; probe the real parent; zsh loop quirk
+- [Collapse during in-flight](feedback_collapse_during_inflight_probe.md) — waits in children unmounted by collapse are lost on reopen; probe collapse mid-action
+- [Real caller probe and kill reason](feedback_real_caller_probe_and_kill_reason.md) — check tRPC error shape via real api proxy; a removed-wrapper mutant may die for an unrelated reason
+- [Memo and order probes](feedback_memo_and_order_probes.md) — memo needs a render counter; fallback order needs three items
+- [Mutant battery in scratch copy](feedback_mutant_battery_scratch_copy.md) — rsync src, perl per mutant, cmp check; probes reuse test header
+- [Tx rollback mutant masking](feedback_tx_rollback_mutant_masking.md) — DB failpoint kills no-transaction mutant, not commit-on-JS-failure; pin both
+- [Contract wording over plan decisions](feedback_contract_wording_over_plan_decisions.md) — a test named after a browser quirk can lock in a SPEC miss; check each added condition against the AC text
+- [Mocked framework side effects](feedback_mocked_framework_side_effects.md) — mocked router.refresh hides Next's hard-reload fallback on failure paths; read node_modules source

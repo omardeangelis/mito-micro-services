@@ -1,0 +1,16 @@
+---
+name: vacuous-test-patterns
+description: Test/gate patterns seen in plans that cannot fail, to flag on sight
+metadata:
+  type: feedback
+---
+
+- **"X does not call service S" when X has no call to S on any branch** (e.g., asserting an edge runner leaves the error-reporter buffer empty when it never uses the reporter). Proves nothing; require a mutation check or drop it.
+- **Test-only DB triggers installed in one file** prove the rule only for the writers that file calls; claims like "CI goes red if any writer forgets the lock" are false for writers added later unless the trigger is on by default in the harness.
+- **Env-gated suites that skip when the variable is missing** pass vacuously in CI if the variable disappears; in CI they should fail, not skip.
+
+Related: [[plan-verification-techniques]]
+
+- **Concurrency tests on the in-memory DB (PGlite, one connection) are vacuous for row locks.** Two `Promise.all` calls on one customer pass with the `FOR UPDATE` lock removed, because the driver serializes the transactions. Only a real Postgres with two sessions can show the lock; say so instead of accepting a parallel-call test as proof.
+- **Mock router + `startTransition` tests never exercise the wait.** With `router.refresh` as `vi.fn()`, a button that resets its busy state right after the server answers passes every assertion. Check that a test holds the busy state after success until the page commit, by mutation (rewire the success path to end the wait early and rerun).
+- **Module-level singletons shared across tests** (e.g., a `let focusOnStart` flag not reset in `beforeEach`) make negative tests order-dependent; they pass now only because later tests overwrite the flag.
