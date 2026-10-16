@@ -350,7 +350,5 @@ Da PR4 (T4.5, D19). Rilevate il 2026-10-16 con una query in sola lettura.
 - Le ha create `createNewCustomerChat` prima di T4.5, che sovrascriveva il `chat_id` del cliente: la causa è chiusa, le righe restano.
 - Per le 7 con messaggi il cliente non si ricava con certezza: il collegamento è perso.
 
-**Effetto oggi:** le note di quelle 7 chat non sono visibili da nessuna schermata.
-
-**Da fare:** con l'ok di Omar, cancellare le 12 chat vuote (con le righe di `chat_to_operator`) e decidere se ricollegare o lasciare le 7 con messaggi.
+**Chiuso il 2026-10-16**, su richiesta di Omar: cancellate tutte le chat senza cliente né pratica create da più di un'ora, con i loro messaggi e le righe di `chat_to_operator`, in una transazione per DB. Staging (DB di sviluppo): 12 chat, 13 messaggi. Prod: 19 chat, 13 messaggi. Dopo: 0 chat orfane e nessun cliente con una chat mancante. Prima della cancellazione ogni riga è stata salvata in un backup JSON locale.
 
