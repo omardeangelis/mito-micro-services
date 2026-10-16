@@ -321,7 +321,7 @@ Notati ripianificando PR4 (PLAN §15), preesistenti: PR4 sposta la chat in `src/
 Da PR4 (P11, D15).
 
 - Le server action della chat (`src/components/custom/notes/_actions/`) restano async semplici, fuori da Effect: l'unico errore previsto è la validazione dell'input, lasciata a Zod (P8, P11).
-- Le procedure `chat.createNewChat` e `pratiche.updateLastEdit` non hanno più chiamanti dopo D15. Le chat di pratica già nel DB restano senza interfaccia: rimuovere le procedure o riportare le note in Pratiche è una scelta di prodotto.
+- La procedura `pratiche.updateLastEdit` non ha più chiamanti dopo D15 (`chat.createNewChat` è stata rimossa in T4.5). Le chat di pratica già nel DB restano senza interfaccia: rimuovere le procedure o riportare le note in Pratiche è una scelta di prodotto.
 
 **Effetto oggi:** nessuno per gli operatori; codice morto sul server.
 
@@ -341,3 +341,16 @@ Da PR4 (review, v4, 2026-10-15). La bozza di AC76 è legata all'operatore e "Esc
 - le bozze del primo operatore su clienti che il secondo non apre restano in `sessionStorage` finché la scheda non si chiude: mai mostrate, leggibili solo dagli strumenti del browser.
 
 **Da fare, se serve:** non salvare la bozza senza operatore, o pulire all'accesso le bozze con un `operatorId` diverso da quello della sessione.
+
+## Chat orfane nel DB
+
+Da PR4 (T4.5, D19). Rilevate il 2026-10-16 con una query in sola lettura.
+
+- In prod 19 chat non hanno né cliente né pratica; 7 contengono 13 messaggi, scritti tra dicembre 2024 e luglio 2026. Le altre 12 sono vuote. Nessuna pratica ha una chat.
+- Le ha create `createNewCustomerChat` prima di T4.5, che sovrascriveva il `chat_id` del cliente: la causa è chiusa, le righe restano.
+- Per le 7 con messaggi il cliente non si ricava con certezza: il collegamento è perso.
+
+**Effetto oggi:** le note di quelle 7 chat non sono visibili da nessuna schermata.
+
+**Da fare:** con l'ok di Omar, cancellare le 12 chat vuote (con le righe di `chat_to_operator`) e decidere se ricollegare o lasciare le 7 con messaggi.
+

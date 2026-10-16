@@ -17,8 +17,9 @@ import {
 import { api } from "@/trpc/react"
 import { type Message } from "@/lib/types/schemas"
 import { Skeleton } from "@/components/ui/skeleton"
+import { LoadingSpinner } from "@/components/custom/loading-spinner"
+import { useSavingUntilRefreshed } from "@/components/custom/contact/useSavingUntilRefreshed"
 import { updateChatAction } from "./_actions/updateChat"
-import { createChatAction } from "./_actions/createNewChat"
 import { deleteMessageAction } from "./_actions/deleteMessage"
 import { cn, formatDateAsDMHM } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
@@ -50,6 +51,10 @@ type PendingNote = Omit<MessageResponse, "id"> & {
 const isSaved = (note: PendingNote, messages: MessageResponse[]) =>
   note.id !== undefined && messages.some((m) => m.id === note.id)
 
+// The customer whose chat was just started here: its field takes the focus
+// once the refreshed page draws the chat in place of "Avvia una chat"
+let focusOnStart: string | null = null
+
 type SectionProps = ComponentProps<"section">
 
 type CustomerChatProps = {
@@ -69,6 +74,7 @@ export function CustomerChat({
   ...rest
 }: CustomerChatProps) {
   const scrollRef = useRef<HTMLDivElement | null>(null)
+  const fieldRef = useRef<HTMLTextAreaElement | null>(null)
   const pendingCounter = useRef(0)
   // Ignores a second submit before the first one re-renders
   const sendingRef = useRef(false)
@@ -108,6 +114,11 @@ export function CustomerChat({
   }, [messages])
 
   useEffect(() => openUnsentNote(customerId), [customerId])
+  useEffect(() => {
+    if (focusOnStart !== customerId) return
+    focusOnStart = null
+    fieldRef.current?.focus()
+  }, [customerId])
   // In an effect, not in render: the server HTML and the first client render
   // must match. A note saved before a reload shows once the operator is known
   useEffect(() => {
@@ -207,6 +218,7 @@ export function CustomerChat({
           <form onSubmit={handleSubmit}>
             <div className="mt-8 flex flex-col gap-6">
               <Textarea
+                ref={fieldRef}
                 placeholder="Scrivi qua il tuo messaggio"
                 name="content"
                 value={content}
@@ -250,27 +262,53 @@ export function CustomerNewChat({
   customerId,
   className,
 }: CustomerNewChatProps) {
-  const [loading, setLoading] = useState(false)
-  const handleCreateNewChat = async () => {
-    setLoading(true)
-    try {
-      await createChatAction({ customerId })
-    } catch (error) {
-      console.error(error)
-    } finally {
-      setLoading(false)
-    }
+  const failedId = useId()
+  const [failed, setFailed] = useState(false)
+  // Busy from the click until the refreshed page draws the chat in its place
+  const { pending, start, fail, finishAfterRefresh } = useSavingUntilRefreshed()
+  // `mutateAsync` settles after an unmount too
+  const { mutateAsync: createChat } =
+    api.chat.createNewCustomerChat.useMutation()
+
+  const handleCreateNewChat = () => {
+    if (pending) return
+    setFailed(false)
+    start()
+    focusOnStart = customerId
+    createChat({ customerId }).then(finishAfterRefresh, () => {
+      focusOnStart = null
+      fail()
+      setFailed(true)
+    })
   }
-  if (loading) return <Skeleton className="h-20 w-full rounded-lg" />
+
   return (
     <section className={cn("bg-white shadow-sm", className)}>
       <div className="rounded-md border border-neutral-200 p-8">
         <div className="flex items-center justify-between">
           <h4 className="font-medium">Inizia una nuova chat</h4>
-          <Button onClick={handleCreateNewChat} variant="outline">
+          <Button
+            onClick={handleCreateNewChat}
+            variant="outline"
+            aria-busy={pending}
+            aria-disabled={pending}
+            aria-describedby={failed ? failedId : undefined}
+          >
             Avvia una chat
+            {pending ? (
+              <LoadingSpinner className="ml-2 h-4 w-4 motion-reduce:animate-none" />
+            ) : null}
           </Button>
         </div>
+        {failed ? (
+          <p
+            id={failedId}
+            role="alert"
+            className="mt-4 text-right text-sm text-red-700"
+          >
+            Chat non avviata, riprova
+          </p>
+        ) : null}
       </div>
     </section>
   )

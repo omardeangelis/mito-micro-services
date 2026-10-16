@@ -7,7 +7,6 @@ import { CollassableSection } from "@/components/custom/CollassableItem"
 import { CustomerChat, CustomerNewChat } from "../CustomerChat"
 import { updateChatAction } from "../_actions/updateChat"
 import { deleteMessageAction } from "../_actions/deleteMessage"
-import { createChatAction } from "../_actions/createNewChat"
 import { clearUnsentNotes } from "../unsentNote"
 
 type Note = Pick<Message, "id" | "content" | "sendDate" | "operatorId">
@@ -18,6 +17,17 @@ const mocks = vi.hoisted(() => ({
   // Settled by hand: the action is the boundary towards the server
   updateChat: [] as Array<(value: unknown) => void>,
   deleteMessage: [] as Array<(value: unknown) => void>,
+  // "Avvia una chat": the tRPC mutation, settled by hand
+  createChat: [] as Array<{
+    resolve: (value: { id: number }) => void
+    reject: (error: Error) => void
+  }>,
+  createChatMutate: vi.fn(
+    () =>
+      new Promise<{ id: number }>((resolve, reject) => {
+        mocks.createChat.push({ resolve, reject })
+      })
+  ),
   // The operator of the session, until `getUserOperator` loads it
   operator: { id: 11 } as { id: number } | undefined,
 }))
@@ -35,6 +45,11 @@ vi.mock("@/trpc/react", () => ({
     },
     customer: {
       updateLastEdit: { useMutation: () => ({ mutate: mocks.updateCustomer }) },
+    },
+    chat: {
+      createNewCustomerChat: {
+        useMutation: () => ({ mutateAsync: mocks.createChatMutate }),
+      },
     },
     pratiche: {
       updateLastEdit: { useMutation: () => ({ mutate: mocks.updatePratica }) },
@@ -64,9 +79,6 @@ vi.mock("../_actions/deleteMessage", () => ({
         mocks.deleteMessage.push(resolve)
       })
   ),
-}))
-vi.mock("../_actions/createNewChat", () => ({
-  createChatAction: vi.fn(async () => undefined),
 }))
 
 const note = (id: number, content: string): Note => ({
@@ -108,6 +120,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   mocks.updateChat.length = 0
   mocks.deleteMessage.length = 0
+  mocks.createChat.length = 0
   mocks.operator = { id: 11 }
   // Unsent notes outlive the chat (T4.4): not from one test to the next
   window.sessionStorage.clear()
@@ -253,14 +266,104 @@ describe("CustomerChat, eliminazione di una nota", () => {
   })
 })
 
-describe("CustomerNewChat", () => {
-  it("'Avvia una chat' crea la chat del cliente", async () => {
+describe("CustomerNewChat, avvio della chat", () => {
+  const start = () =>
+    screen.getByRole<HTMLButtonElement>("button", { name: "Avvia una chat" })
+
+  it("crea la chat una volta sola, anche con un doppio clic", async () => {
     render(<CustomerNewChat customerId="c-42" />)
     const user = userEvent.setup()
 
-    await user.click(screen.getByRole("button", { name: "Avvia una chat" }))
+    await user.dblClick(start())
 
-    expect(createChatAction).toHaveBeenCalledWith({ customerId: "c-42" })
+    expect(mocks.createChatMutate).toHaveBeenCalledTimes(1)
+    expect(mocks.createChatMutate).toHaveBeenCalledWith({ customerId: "c-42" })
+  })
+
+  it("durante la creazione la scheda resta e il pulsante è occupato, con lo spinner", async () => {
+    render(<CustomerNewChat customerId="c-42" />)
+    const user = userEvent.setup()
+
+    await user.click(start())
+
+    expect(screen.getByText("Inizia una nuova chat")).toBeTruthy()
+    expect(start().getAttribute("aria-busy")).toBe("true")
+    expect(start().getAttribute("aria-disabled")).toBe("true")
+    expect(start().querySelector("svg.animate-spin")).not.toBeNull()
+    expect(start().querySelector("svg")?.getAttribute("class")).toContain(
+      "motion-reduce:animate-none"
+    )
+  })
+
+  it("quando il server risponde aggiorna la pagina, che mostra la chat", async () => {
+    render(<CustomerNewChat customerId="c-42" />)
+    const user = userEvent.setup()
+
+    await user.click(start())
+    expect(router.refresh).not.toHaveBeenCalled()
+    await act(async () => {
+      mocks.createChat[0]!.resolve({ id: 3 })
+    })
+
+    expect(router.refresh).toHaveBeenCalledTimes(1)
+    expect(screen.queryByRole("alert")).toBeNull()
+  })
+
+  it("se la creazione fallisce compare 'Chat non avviata, riprova' e il pulsante torna attivo", async () => {
+    render(<CustomerNewChat customerId="c-42" />)
+    const user = userEvent.setup()
+
+    await user.click(start())
+    await act(async () => {
+      mocks.createChat[0]!.reject(new Error("Failed to fetch"))
+    })
+
+    const alert = screen.getByRole("alert")
+    expect(alert.textContent).toBe("Chat non avviata, riprova")
+    expect(start().getAttribute("aria-describedby")).toBe(alert.id)
+    expect(start().getAttribute("aria-busy")).not.toBe("true")
+    expect(start().getAttribute("aria-disabled")).not.toBe("true")
+    expect(router.refresh).not.toHaveBeenCalled()
+
+    // Trying again clears the message
+    await user.click(start())
+    expect(screen.queryByRole("alert")).toBeNull()
+    expect(mocks.createChatMutate).toHaveBeenCalledTimes(2)
+  })
+
+  it("la chat appena avviata mette il focus nel campo della nota", async () => {
+    const { unmount } = render(<CustomerNewChat customerId="c-42" />)
+    const user = userEvent.setup()
+
+    await user.click(start())
+    await act(async () => {
+      mocks.createChat[0]!.resolve({ id: 3 })
+    })
+    // The refreshed page draws the chat in place of the button
+    unmount()
+    renderChat([])
+
+    expect(document.activeElement).toBe(field())
+  })
+
+  it("una chat che c'era già non prende il focus", () => {
+    renderChat([note(1, "Prima nota")])
+
+    expect(document.activeElement).not.toBe(field())
+  })
+
+  it("se la creazione fallisce, la chat aperta dopo non prende il focus", async () => {
+    const { unmount } = render(<CustomerNewChat customerId="c-42" />)
+    const user = userEvent.setup()
+
+    await user.click(start())
+    await act(async () => {
+      mocks.createChat[0]!.reject(new Error("Failed to fetch"))
+    })
+    unmount()
+    renderChat([])
+
+    expect(document.activeElement).not.toBe(field())
   })
 })
 

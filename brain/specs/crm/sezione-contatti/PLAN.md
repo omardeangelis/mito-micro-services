@@ -104,6 +104,7 @@ Serve una sezione **Contatti** (lista e dettaglio) sulle `task`. Le regole di mo
 | D16 | **Nota non inviata corretta in PR4, con un AC nuovo (AC76).** Il testo torna nel campo, compare "Nota non inviata, riprova" e la nota non resta nella chat; il campo si svuota comunque all'invio, come oggi. PR5 è già grande e PR4 riscrive proprio quella funzione. PR4 non è più senza cambiamenti visibili | Omar, 2026-10-15 |
 | D17 | **AC56 accetta "Avvia una chat"** (SPEC aggiornata). Il dettaglio del contatto riusa la chat di PR4 così com'è: senza chat si avvia con il pulsante, come nella scheda cliente. È un'azione esplicita al posto di un effetto del primo invio, e non aggiunge lavoro a PR4 o PR5 | Omar, 2026-10-15, dalla quarta verifica |
 | D18 | **Il testo non inviato si conserva in `sessionStorage`** (T4.4, AC76 esteso). Dopo un deploy l'action vecchia non esiste più e ogni invio fallisce finché la pagina non si ricarica; ricaricando, il testo si perderebbe. La bozza, per cliente e per finestra, torna nel campo dopo il ricaricamento, e anche se la scheda si è chiusa durante l'invio. Niente `router.refresh()` dopo un fallimento: in quei casi Next ricaricherebbe tutta la pagina (finding 31). Rischio accettato: se l'errore arriva dopo che la nota è già salvata, l'operatore può rinviarla e trovarla doppia; la vede al primo ricaricamento e la elimina col cestino. Dopo la review di PR4 (v4): la bozza è dell'operatore che l'ha scritta (`{ operatorId, text }`), e un'altra persona che entra nella stessa finestra non la vede (la chat la ignora e la cancella); "Esci dal gestionale" cancella tutte le bozze. "Duplica scheda" di Chrome copia `sessionStorage`: la bozza passa alla copia, dello stesso operatore. Residuo (review di PR4, v4): una bozza salvata prima che l'operatore si carichi non ha proprietario e la adotta chi apre quel cliente dopo nella stessa scheda, se nel frattempo nessuno è uscito con "Esci dal gestionale"; le bozze di un collega su clienti mai riaperti restano nello storage, mai mostrate, finché la scheda non si chiude (tech-debt) | Omar, 2026-10-15, dalla quarta verifica; legame con l'operatore dalla review di PR4 |
+| D19 | **Una chat per cliente, creata in una transazione** (T4.5, AC77). `createNewCustomerChat` sovrascriveva `chat_id`: un secondo clic, una pagina non aggiornata o due operatori lasciavano la prima chat orfana (19 in prod, 7 con messaggi). Ora blocca il cliente e restituisce la chat esistente. Il gestionale non cancella i clienti, quindi la cancellazione a cascata proposta non avrebbe evitato le orfane. La pulizia di quelle già nel DB resta fuori da PR4 (tech-debt), con l'ok di Omar | Omar, 2026-10-16 |
 | P1 | **"Crea contatto" nella scheda cliente anticipato a PR3** (spec: passo 4). Senza, tra PR5 e PR6 il percorso della FLOW "cliente senza contatti → [Apri scheda cliente]" arriva a una scheda senza nessuna azione. È solo un'aggiunta: non toglie niente a Clienti | Piano (ux-advisor) |
 | P2 | **Note insieme a Contatti.** Il refactor della chat va in una PR a sé (PR4), prima della sezione; l'integrazione nel dettaglio sta in PR5. Il passo 3 della spec si fonde col passo 2, così il giro chiamate (percorso A della FLOW) è completo dal primo giorno | Piano (ux-advisor) |
 | P3 | **Guida divisa in due.** La sezione su Contatti e il §5 escono con PR5; il cambio di etichetta "Crea/assegna contatti" esce con PR6 | Piano (ux-advisor) |
@@ -228,7 +229,7 @@ PR3  (parte da dev: PR1 e PR2 sono già su dev e su main)
                     T3.8c, T3.13, T3.15, T3.16, T3.17 ─ T3.14   [G3]
      T3.1a, T3.1b, T3.1c, T3.2a e T3.16 non hanno dipendenze.
 
-PR4  T4.1 ─ T4.3 ─ T4.4 ─ T4.2   (PR3 è in prod; i test usano il setup dei test di PR3)
+PR4  T4.1 ─ T4.3 ─ T4.4 ─ T4.5 ─ T4.2   (PR3 è in prod; i test usano il setup dei test di PR3)
 
 PR5  T5.1 ─┐    (T5.1 ← T1.4, T3.1a–T3.1c · T5.2 ← T3.2a, T3.2b · T5.3 ← T3.1a, T3.1c · T5.8 ← T4.1, T4.3, T4.4)
      T5.2 ─┼─ T5.4 ─┬─ T5.5
@@ -1712,7 +1713,7 @@ Vale per T3.10, T3.11a, T3.11b, T3.12, T5.7 e T5.9. Le letture dai Server Compon
 
 ### PR4 — Chat con proprietario esplicito
 
-**Stato: pronta, PR da aprire.** Implementata il 2026-10-15 (run 4 di `IMPLEMENTATION-NOTES.md`): T4.1, T4.3, T4.4 e il gate T4.2 fatti, review SHIP dopo le correzioni (round PR4 di `REPORT.md`). Restano commit, PR verso `dev` e le due righe agli operatori. Riscritta il 2026-10-15 con `create-plan` 0.8.0, dopo aver confrontato il vecchio T4.1 con il codice (finding 24–30). La chat è solo del cliente (D15). Le server action restano (P11). La nota non inviata si recupera già qui (AC76, D16). Il form non usa più `useOptimistic` e `useFormStatus`, che nel React dei test non esistono (P12, finding 30). Gli id restano stabili: T4.1 e il gate T4.2 mantengono il loro, i task nuovi sono T4.3 e T4.4 (bozza conservata, D18). Nessun `design-engineer`: PR4 non anima niente (P6).
+**Stato: pronta, PR da aprire.** Implementata il 2026-10-15 (run 4 di `IMPLEMENTATION-NOTES.md`): T4.1, T4.3, T4.4 e il gate T4.2 fatti, review SHIP dopo le correzioni (round PR4 di `REPORT.md`). Il 2026-10-16, dai test manuali, T4.5: "Avvia una chat" senza chat orfane e con l'attesa visibile (AC77, D19). Restano PR verso `dev` e le due righe agli operatori. Riscritta il 2026-10-15 con `create-plan` 0.8.0, dopo aver confrontato il vecchio T4.1 con il codice (finding 24–30). La chat è solo del cliente (D15). Le server action restano (P11). La nota non inviata si recupera già qui (AC76, D16). Il form non usa più `useOptimistic` e `useFormStatus`, che nel React dei test non esistono (P12, finding 30). Gli id restano stabili: T4.1 e il gate T4.2 mantengono il loro, i task nuovi sono T4.3 e T4.4 (bozza conservata, D18). Nessun `design-engineer`: PR4 non anima niente (P6).
 
 Branch: `contatti/pr4-chat-cliente` da `dev`, PR verso `dev`. PR3 è in prod dal 2026-10-15 (G3), quindi PR4 parte e si unisce a `dev` senza vincoli d'ordine. Le due righe per gli operatori (AC76 e "Commenta" disabilitato) arrivano prima del deploy di PR4 (T4.2). Prepara la chat che il dettaglio di Contatti integra in T5.8 (P2).
 
@@ -1887,8 +1888,35 @@ Lo dice la descrizione della PR.
 - **assigned_skills**: agent-browser
 - **complexity**: low
 
+#### T4.5: "Avvia una chat" senza chat orfane (AC77, D19)
+- **depends_on**: [T4.1]
+- **location**: `src/server/services/chat/createCustomerChat.ts` (nuovo), `src/server/api/routers/chat/POST/index.ts`, `src/server/api/routers/chat/index.ts`, `src/components/custom/notes/CustomerChat.tsx`
+- **description**:
+  - **Perché:** in prod 19 chat non hanno né cliente né pratica, 7 con messaggi (13). Quasi tutte nascono da `createNewCustomerChat`, che crea sempre una chat nuova e sovrascrive `customers.chat_id`: lo stesso operatore ne crea un'altra da 2 a 11 secondi dopo, e la prima resta scollegata (query in sola lettura del 2026-10-16). Il gestionale non cancella mai un cliente: la cancellazione a cascata non c'entra.
+  - **Server, in Effect:** `createCustomerChat` in `transaction`, con `lockCustomer`. Se il cliente ha già una chat la restituisce; altrimenti crea la chat, la collega al cliente e vi aggiunge l'operatore. Cliente inesistente: `CustomerMissing` → `NOT_FOUND`, nessuna chat creata. `createNewCustomerChat` la esegue con `runTrpc`.
+  - **Interfaccia (P6 rivisto):** `CustomerNewChat` chiama la mutation tRPC e usa `useSavingUntilRefreshed`, come "Crea contatto". Dal clic fino alla chat a schermo la scheda resta, il pulsante ha `aria-busy`, `aria-disabled` e lo spinner esistente (`motion-reduce:animate-none`); un secondo clic non parte. Niente più skeleton. Fallimento: "Chat non avviata, riprova" (`role="alert"`, `text-red-700`, collegato al pulsante con `aria-describedby`) e pulsante di nuovo attivo. Quando la chat compare il focus va nel campo della nota.
+  - **Rimossi:** la server action `createNewChat.ts` (sostituita dalla mutation) e la procedura `chat.createNewChat` delle pratiche, senza chiamanti dopo D15.
+  - **Fuori dal task:** la pulizia delle chat orfane già nel DB (tech-debt, serve l'ok di Omar).
+- **validation**:
+  - `createNewCustomerChat.db.test.ts`: crea e collega con l'operatore; seconda chiamata di un collega → stessa chat, una sola riga in `chat`; cliente inesistente → `NOT_FOUND`, nessuna riga in `chat` e `chat_to_operator`.
+  - `CustomerChat.test.tsx`: doppio clic → una chiamata; durante l'attesa scheda presente, `aria-busy`, `aria-disabled`, spinner con `motion-reduce:animate-none`; successo → `router.refresh()`; fallimento → messaggio, `aria-describedby`, pulsante attivo, nuovo clic toglie il messaggio; focus nel campo solo dopo una chat avviata qui.
+  - Browser (DB di sviluppo, `ZZPR3TEST000C003`): doppio clic → una chat; pulsante occupato con lo spinner per circa 1,3 s, poi la chat con il focus nel campo; orfane invariate.
+- **status**: Done
+- **log**:
+  - 2026-10-16, dal feedback di Omar sui test manuali. Inline dall'orchestratore. Test RED prima: due test server rossi (seconda chat creata; chat orfana per un cliente inesistente), il file dell'interfaccia rosso per la mutation mancante.
+  - Mutazione: senza la guardia del doppio clic, senza l'azzeramento del focus al fallimento e senza il ritorno della chat esistente, un test rosso ciascuno.
+  - Gate: 73 file e 965 test, `next lint` e `tsc --noEmit` puliti.
+- **files edited/created**: `src/server/services/chat/createCustomerChat.ts`, `src/server/api/routers/chat/POST/index.ts`, `src/server/api/routers/chat/index.ts`, `src/server/api/routers/chat/_test/createNewCustomerChat.db.test.ts`, `src/components/custom/notes/CustomerChat.tsx`, `src/components/custom/notes/_test/CustomerChat.test.tsx`; rimosso `src/components/custom/notes/_actions/createNewChat.ts`
+- **backlog_item_id**: n/a
+- **backlog_item_url**: n/a
+- **relation_mode**: n/a (D6)
+- **tdd_target**: "la seconda chiamata su un cliente che ha già una chat restituisce quella chat e non ne crea un'altra".
+- **review_mode**: mixed
+- **assigned_skills**: agent-browser
+- **complexity**: medium
+
 #### T4.2: Gate PR4
-- **depends_on**: [T4.1, T4.3, T4.4]
+- **depends_on**: [T4.1, T4.3, T4.4, T4.5]
 - **location**: `brain/tech-debt/crm/sezione-contatti.md`, `REPORT.md` e `RUBRIC.md` nella cartella della spec, la descrizione della PR
 - **description**:
   - Gate CI.

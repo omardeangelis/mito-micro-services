@@ -187,6 +187,8 @@ updated: 2026-10-15
   - test delle action (`_actions/_test/updateChat.test.ts`) e schemi più stretti: `chatId` intero positivo, `customerId` non vuoto (v2, v3, v6).
 - **Run 4 — rilievi della review non corretti:** "Commenta" scende di 28 px quando compare il messaggio (v5, MINOR): riservare lo spazio cambierebbe l'aspetto, che il piano vuole invariato; il rinfresco del dettaglio di Contatti appoggiato a Next 14.2.5 (v2) va controllato in T5.8, che ora dice cosa fare se non regge; l'anello di focus tagliato da `AccordionContent` (preesistente, tech-debt).
 
+- **Run 4 — T4.5, dopo i test manuali (2026-10-16).** Dal feedback di Omar: "Avvia una chat" lasciava chat orfane e l'attesa era solo un lampo di skeleton. Query in sola lettura su prod: nessuna pratica con una chat, 19 chat orfane create dalla sovrascrittura di `customers.chat_id`. Correzione inline dall'orchestratore, con TDD: `createCustomerChat` in Effect (transazione, `lockCustomer`, chat esistente restituita); `CustomerNewChat` con la mutation tRPC e `useSavingUntilRefreshed`, come "Crea contatto" (P6 rivisto); focus nel campo della chat appena avviata. Rimosse `createNewChat.ts` e `chat.createNewChat`. Pulizia delle orfane nel tech-debt (D19).
+
 ## Surprises and Decisions
 
 - **Le migrazioni del repo non si applicano su un Postgres vuoto.** `20240926195125_lucky_roughhouse` crea `mito-deutsche_task` con il tipo `task_status`, che nasce solo in `20260619152227_same_hemingway`. Il DB di produzione aveva già il tipo (creato con `db:push` prima delle migrazioni), e la terza migrazione lo salta se esiste. L'harness crea il tipo prima di migrare; le migrazioni non si toccano (già applicate in prod). Vale anche per chi volesse creare un DB nuovo con `pnpm db:migrate`.
