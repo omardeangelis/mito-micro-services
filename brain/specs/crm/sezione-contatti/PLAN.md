@@ -105,6 +105,7 @@ Serve una sezione **Contatti** (lista e dettaglio) sulle `task`. Le regole di mo
 | D17 | **AC56 accetta "Avvia una chat"** (SPEC aggiornata). Il dettaglio del contatto riusa la chat di PR4 così com'è: senza chat si avvia con il pulsante, come nella scheda cliente. È un'azione esplicita al posto di un effetto del primo invio, e non aggiunge lavoro a PR4 o PR5 | Omar, 2026-10-15, dalla quarta verifica |
 | D18 | **Il testo non inviato si conserva in `sessionStorage`** (T4.4, AC76 esteso). Dopo un deploy l'action vecchia non esiste più e ogni invio fallisce finché la pagina non si ricarica; ricaricando, il testo si perderebbe. La bozza, per cliente e per finestra, torna nel campo dopo il ricaricamento, e anche se la scheda si è chiusa durante l'invio. Niente `router.refresh()` dopo un fallimento: in quei casi Next ricaricherebbe tutta la pagina (finding 31). Rischio accettato: se l'errore arriva dopo che la nota è già salvata, l'operatore può rinviarla e trovarla doppia; la vede al primo ricaricamento e la elimina col cestino. Dopo la review di PR4 (v4): la bozza è dell'operatore che l'ha scritta (`{ operatorId, text }`), e un'altra persona che entra nella stessa finestra non la vede (la chat la ignora e la cancella); "Esci dal gestionale" cancella tutte le bozze. "Duplica scheda" di Chrome copia `sessionStorage`: la bozza passa alla copia, dello stesso operatore. Residuo (review di PR4, v4): una bozza salvata prima che l'operatore si carichi non ha proprietario e la adotta chi apre quel cliente dopo nella stessa scheda, se nel frattempo nessuno è uscito con "Esci dal gestionale"; le bozze di un collega su clienti mai riaperti restano nello storage, mai mostrate, finché la scheda non si chiude (tech-debt) | Omar, 2026-10-15, dalla quarta verifica; legame con l'operatore dalla review di PR4 |
 | D19 | **Una chat per cliente, creata in una transazione** (T4.5, AC77). `createNewCustomerChat` sovrascriveva `chat_id`: un secondo clic, una pagina non aggiornata o due operatori lasciavano la prima chat orfana (19 in prod, 7 con messaggi). Ora blocca il cliente e restituisce la chat esistente. Il gestionale non cancella i clienti, quindi la cancellazione a cascata proposta non avrebbe evitato le orfane. La pulizia di quelle già nel DB resta fuori da PR4 (tech-debt), con l'ok di Omar | Omar, 2026-10-16 |
+| D20 | **L'attesa nella chat si vede, senza animazioni nuove** (T4.6, AC78). Valori del `design-engineer`: "Invio…" con lo spinner, eliminazione senza rimozione anticipata, nessun toast di conferma, scroll istantaneo sul solo contenitore della lista, focus al cestino accanto. Scostamento: "Commenta" è occupato fino alla risposta del server e non fino al ricaricamento, perché la nota in attesa è già a schermo | Omar, 2026-10-16, dai test manuali |
 | P1 | **"Crea contatto" nella scheda cliente anticipato a PR3** (spec: passo 4). Senza, tra PR5 e PR6 il percorso della FLOW "cliente senza contatti → [Apri scheda cliente]" arriva a una scheda senza nessuna azione. È solo un'aggiunta: non toglie niente a Clienti | Piano (ux-advisor) |
 | P2 | **Note insieme a Contatti.** Il refactor della chat va in una PR a sé (PR4), prima della sezione; l'integrazione nel dettaglio sta in PR5. Il passo 3 della spec si fonde col passo 2, così il giro chiamate (percorso A della FLOW) è completo dal primo giorno | Piano (ux-advisor) |
 | P3 | **Guida divisa in due.** La sezione su Contatti e il §5 escono con PR5; il cambio di etichetta "Crea/assegna contatti" esce con PR6 | Piano (ux-advisor) |
@@ -229,7 +230,7 @@ PR3  (parte da dev: PR1 e PR2 sono già su dev e su main)
                     T3.8c, T3.13, T3.15, T3.16, T3.17 ─ T3.14   [G3]
      T3.1a, T3.1b, T3.1c, T3.2a e T3.16 non hanno dipendenze.
 
-PR4  T4.1 ─ T4.3 ─ T4.4 ─ T4.5 ─ T4.2   (PR3 è in prod; i test usano il setup dei test di PR3)
+PR4  T4.1 ─ T4.3 ─ T4.4 ─ T4.5 ─ T4.6 ─ T4.2   (PR3 è in prod; i test usano il setup dei test di PR3)
 
 PR5  T5.1 ─┐    (T5.1 ← T1.4, T3.1a–T3.1c · T5.2 ← T3.2a, T3.2b · T5.3 ← T3.1a, T3.1c · T5.8 ← T4.1, T4.3, T4.4)
      T5.2 ─┼─ T5.4 ─┬─ T5.5
@@ -1713,7 +1714,7 @@ Vale per T3.10, T3.11a, T3.11b, T3.12, T5.7 e T5.9. Le letture dai Server Compon
 
 ### PR4 — Chat con proprietario esplicito
 
-**Stato: pronta, PR da aprire.** Implementata il 2026-10-15 (run 4 di `IMPLEMENTATION-NOTES.md`): T4.1, T4.3, T4.4 e il gate T4.2 fatti, review SHIP dopo le correzioni (round PR4 di `REPORT.md`). Il 2026-10-16, dai test manuali, T4.5: "Avvia una chat" senza chat orfane e con l'attesa visibile (AC77, D19). Restano PR verso `dev` e le due righe agli operatori. Riscritta il 2026-10-15 con `create-plan` 0.8.0, dopo aver confrontato il vecchio T4.1 con il codice (finding 24–30). La chat è solo del cliente (D15). Le server action restano (P11). La nota non inviata si recupera già qui (AC76, D16). Il form non usa più `useOptimistic` e `useFormStatus`, che nel React dei test non esistono (P12, finding 30). Gli id restano stabili: T4.1 e il gate T4.2 mantengono il loro, i task nuovi sono T4.3 e T4.4 (bozza conservata, D18). Nessun `design-engineer`: PR4 non anima niente (P6).
+**Stato: pronta, PR da aprire.** Implementata il 2026-10-15 (run 4 di `IMPLEMENTATION-NOTES.md`): T4.1, T4.3, T4.4 e il gate T4.2 fatti, review SHIP dopo le correzioni (round PR4 di `REPORT.md`). Il 2026-10-16, dai test manuali, T4.5: "Avvia una chat" senza chat orfane e con l'attesa visibile (AC77, D19); T4.6: attesa di invio ed eliminazione e scroll della lista (AC78, D20). Restano PR verso `dev` e le due righe agli operatori. Riscritta il 2026-10-15 con `create-plan` 0.8.0, dopo aver confrontato il vecchio T4.1 con il codice (finding 24–30). La chat è solo del cliente (D15). Le server action restano (P11). La nota non inviata si recupera già qui (AC76, D16). Il form non usa più `useOptimistic` e `useFormStatus`, che nel React dei test non esistono (P12, finding 30). Gli id restano stabili: T4.1 e il gate T4.2 mantengono il loro, i task nuovi sono T4.3 e T4.4 (bozza conservata, D18). Nessun `design-engineer`: PR4 non anima niente (P6).
 
 Branch: `contatti/pr4-chat-cliente` da `dev`, PR verso `dev`. PR3 è in prod dal 2026-10-15 (G3), quindi PR4 parte e si unisce a `dev` senza vincoli d'ordine. Le due righe per gli operatori (AC76 e "Commenta" disabilitato) arrivano prima del deploy di PR4 (T4.2). Prepara la chat che il dettaglio di Contatti integra in T5.8 (P2).
 
@@ -1915,8 +1916,40 @@ Lo dice la descrizione della PR.
 - **assigned_skills**: agent-browser
 - **complexity**: medium
 
+#### T4.6: Attesa visibile di invio ed eliminazione, scroll della lista (AC78, D20)
+- **depends_on**: [T4.3, T4.5]
+- **location**: `src/components/custom/notes/CustomerChat.tsx`, `src/components/custom/notes/_actions/deleteMessage.ts`
+- **description**:
+  - **Perché (test manuali di Omar, 2026-10-16):** l'invio non mostrava l'attesa; con più di 5 note la nota appena inviata restava sotto il bordo della lista; l'eliminazione non dava nessun segno.
+  - **Valori dal `design-engineer`** (2026-10-16, P6 rivisto, nessuna animazione nuova):
+    - nota in invio: "Invio…" con lo spinner `h-3 w-3` al posto della data, `aria-busy` sull'`article`, riga non attenuata; "Commenta" con `aria-busy` e lo spinner `ml-2 h-4 w-4 motion-reduce:animate-none`;
+    - una regione `role="status"` `sr-only`: "Invio della nota", "Nota inviata", "Nota eliminata";
+    - scroll istantaneo (`scrollTop = scrollHeight`) solo sul contenitore della lista, mai `scrollIntoView`: all'apertura, quando cambia l'ultima riga (invio, nota salvata), e mentre le note cambiano altezza (nomi caricati) finché l'operatore non scorre in su (`ResizeObserver`). "Carica altri messaggi" non scorre;
+    - eliminazione senza rimozione anticipata: spinner al posto del cestino, `aria-busy` e `aria-disabled`, cestino visibile anche senza hover; la riga sparisce quando la pagina non la ha più. Nessun toast di conferma (`TOAST_LIMIT = 1` sostituirebbe un rifiuto ancora aperto); fallimento in un toast `destructive` di 8000 ms "Nota non eliminata, riprova";
+    - focus dopo l'eliminazione, solo se era sul cestino sparito: cestino della nota dopo, poi della precedente, poi il campo;
+    - cestino con `aria-label="Elimina nota"` e `opacity-0 group-hover:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-100` al posto di `invisible`, così si raggiunge da tastiera.
+  - **Scostamento dal `design-engineer` (D20):** "Commenta" è occupato fino alla risposta del server, non fino al ricaricamento: la nota in attesa è già a schermo, e il test di T4.3 lo fissa.
+  - `deleteMessageAction` restituisce `{ ok: true } | { ok: false, error }`; tutto il resto è un fallimento, come per l'invio.
+- **validation**:
+  - `CustomerChat.test.tsx`: "Invio…" e `aria-busy` fino alla risposta, stato "Invio della nota" → "Nota inviata", vuoto dopo un fallimento; spinner su "Commenta"; scroll all'apertura, dopo l'invio e all'arrivo della nota salvata, non scrivendo, non con "Carica altri messaggi", sì al ridimensionamento in fondo e no dopo uno scroll in su; eliminazione con spinner, un solo clic, nessuna rimozione anticipata, stato "Nota eliminata", focus alla nota dopo o alla precedente, toast per rifiuto, `{ ok: false }` e `undefined`; cestino non `invisible`.
+  - `deleteMessage.test.ts`: `{ ok: true }` e rinfresco; dati non validi → `{ ok: false }`, niente eliminazione.
+  - Browser (DB di sviluppo, `ZZPR3TEST000C002`, Federica Lupo): lista aperta in fondo; invio con "Invio…" per circa 1,3 s e nota visibile in fondo; eliminazione con spinner per circa 1,5 s, poi "Nota eliminata" e focus sul cestino della precedente; eliminazione offline → toast, nota al suo posto.
+- **status**: Done
+- **log**:
+  - 2026-10-16, inline dall'orchestratore dopo il `design-engineer`. 14 test RED, poi verdi. Il browser ha mostrato la lista ferma in cima all'apertura: le note crescono dopo lo scroll, quando arrivano i nomi degli operatori. Aggiunti il `ResizeObserver` e i due test, rossi prima della correzione.
+  - Mutazione: guardia del doppio clic sul cestino, scroll solo al cambio dell'ultima riga, focus dopo l'eliminazione, cestino che torna dopo un fallimento, scroll all'apertura: almeno un test rosso ciascuna.
+  - Gate: 74 file e 981 test prima del `ResizeObserver`, poi 79/79 in `notes`; `next lint` e `tsc --noEmit` puliti.
+- **files edited/created**: `src/components/custom/notes/CustomerChat.tsx`, `src/components/custom/notes/_actions/deleteMessage.ts`, `src/components/custom/notes/_test/CustomerChat.test.tsx`, `src/components/custom/notes/_actions/_test/deleteMessage.test.ts`
+- **backlog_item_id**: n/a
+- **backlog_item_url**: n/a
+- **relation_mode**: n/a (D6)
+- **tdd_target**: "dopo l'invio la lista scorre fino alla nota appena inviata".
+- **review_mode**: mixed
+- **assigned_skills**: agent-browser
+- **complexity**: medium
+
 #### T4.2: Gate PR4
-- **depends_on**: [T4.1, T4.3, T4.4, T4.5]
+- **depends_on**: [T4.1, T4.3, T4.4, T4.5, T4.6]
 - **location**: `brain/tech-debt/crm/sezione-contatti.md`, `REPORT.md` e `RUBRIC.md` nella cartella della spec, la descrizione della PR
 - **description**:
   - Gate CI.

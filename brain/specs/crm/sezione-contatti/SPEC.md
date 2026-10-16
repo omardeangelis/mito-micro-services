@@ -168,6 +168,7 @@ Gli stati "da chiamare" sono `chiamare` e `followup`; gli stati con esito sono `
 - **AC57** — "Carica altri messaggi" nel dettaglio del contatto mostra i messaggi più vecchi.
 - **AC76** — Se una nota non viene salvata, il testo scritto torna nel campo, sotto il campo compare "Nota non inviata, riprova" e la nota non resta nella chat come se fosse stata inviata. Vale ovunque si scrivono le note: scheda cliente e dettaglio del contatto. Il testo non inviato resta anche se la pagina si ricarica o la scheda si chiude, nella stessa finestra del browser, finché la nota non viene inviata o il campo non viene svuotato.
 - **AC77** — Un cliente ha al massimo una chat. "Avvia una chat" premuto due volte, da una pagina non ancora aggiornata o da due operatori sullo stesso cliente apre la chat che c'è già, senza crearne un'altra. Dopo il clic la scheda resta al suo posto e il pulsante mostra che la chat si sta avviando, finché la chat non compare; poi il cursore è nel campo della nota. Se la chat non si avvia, compare "Chat non avviata, riprova" e il pulsante torna attivo.
+- **AC78** — Nella chat l'attesa si vede. Una nota in invio dice "Invio…" al posto della data e "Commenta" mostra che sta inviando, finché il server non risponde. La lista si apre sulle note più recenti e, dopo un invio, mostra la nota appena inviata anche con più di 5 note; non torna in fondo da sola se l'operatore ha scorso in su. Una nota in eliminazione resta al suo posto con l'attesa al posto del cestino, finché non sparisce; se non si elimina compare "Nota non eliminata, riprova". Il cestino si raggiunge anche da tastiera, e dopo un'eliminazione il focus passa al cestino della nota accanto. Chi usa un lettore di schermo sente "Invio della nota", "Nota inviata" e "Nota eliminata".
 
 ### Tabella Clienti semplificata
 
@@ -216,7 +217,7 @@ Gli stati "da chiamare" sono `chiamare` e `followup`; gli stati con esito sono `
   |---|---|---|
   | 1 | Dati e regole sul server; i controlli di Clienti le usano già | Regole lato server di AC27, AC30–AC52 e AC66–AC67; AC69–AC73 |
   | 2 | Contatti affiancato a Clienti, e "Vedi contatti" nel menu della riga cliente | AC1–AC52, AC62 |
-  | 3 | Note nel dettaglio del contatto | AC53–AC57; AC76 e AC77 (nella scheda cliente arrivano prima, con la chat condivisa) |
+  | 3 | Note nel dettaglio del contatto | AC53–AC57; AC76–AC78 (nella scheda cliente arrivano prima, con la chat condivisa) |
   | 4 | Semplificazione di Clienti e della scheda cliente, guida operatori | AC58–AC61, AC63–AC68, AC74, AC75 |
 - **Gate CI**: quelli di `AGENTS.md`, eseguiti da `.github/workflows/ci.yml`: lint (`next lint` e `tsc --noEmit`), `pnpm run test --run`, `pnpm build`.
 - L'interfaccia è in italiano.

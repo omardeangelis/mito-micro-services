@@ -189,6 +189,8 @@ updated: 2026-10-15
 
 - **Run 4 — T4.5, dopo i test manuali (2026-10-16).** Dal feedback di Omar: "Avvia una chat" lasciava chat orfane e l'attesa era solo un lampo di skeleton. Query in sola lettura su prod: nessuna pratica con una chat, 19 chat orfane create dalla sovrascrittura di `customers.chat_id`. Correzione inline dall'orchestratore, con TDD: `createCustomerChat` in Effect (transazione, `lockCustomer`, chat esistente restituita); `CustomerNewChat` con la mutation tRPC e `useSavingUntilRefreshed`, come "Crea contatto" (P6 rivisto); focus nel campo della chat appena avviata. Rimosse `createNewChat.ts` e `chat.createNewChat`. Pulizia delle orfane nel tech-debt (D19).
 
+- **Run 4 — T4.6 (2026-10-16).** Dal feedback di Omar: nessun segno durante invio ed eliminazione, nota appena inviata nascosta sotto il bordo con più di 5 note. Valori dal `design-engineer` (D20), implementazione inline con TDD. Sorpresa nel browser: la lista si apriva in cima perché le note crescono quando arrivano i nomi degli operatori, dopo lo scroll; ora un `ResizeObserver` la tiene in fondo finché l'operatore non scorre in su.
+
 ## Surprises and Decisions
 
 - **Le migrazioni del repo non si applicano su un Postgres vuoto.** `20240926195125_lucky_roughhouse` crea `mito-deutsche_task` con il tipo `task_status`, che nasce solo in `20260619152227_same_hemingway`. Il DB di produzione aveva già il tipo (creato con `db:push` prima delle migrazioni), e la terza migrazione lo salta se esiste. L'harness crea il tipo prima di migrare; le migrazioni non si toccano (già applicate in prod). Vale anche per chi volesse creare un DB nuovo con `pnpm db:migrate`.

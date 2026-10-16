@@ -1,4 +1,4 @@
-import { act, render, screen, within } from "@testing-library/react"
+import { act, fireEvent, render, screen, within } from "@testing-library/react"
 import { StrictMode } from "react"
 import userEvent from "@testing-library/user-event"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
@@ -58,6 +58,8 @@ vi.mock("@/trpc/react", () => ({
 }))
 
 const router = { replace: vi.fn(), refresh: vi.fn() }
+const toastApi = { toast: vi.fn() }
+vi.mock("@/components/ui/use-toast", () => ({ useToast: () => toastApi }))
 vi.mock("next/navigation", () => ({
   useRouter: () => router,
   // The id of the page the chat sits in: a contact, not the customer
@@ -110,6 +112,7 @@ function renderChat(messages: Note[], total = messages.length, limit = 5) {
 }
 
 const field = () => screen.getByRole<HTMLTextAreaElement>("textbox")
+const status = () => screen.getByRole("status")
 const submit = () =>
   screen.getByRole<HTMLButtonElement>("button", { name: "Commenta" })
 // The notes in the chat, not the text in the field
@@ -258,11 +261,282 @@ describe("CustomerChat, eliminazione di una nota", () => {
       customerId: "c-42",
     })
     await act(async () => {
-      mocks.deleteMessage[0]!(undefined)
+      mocks.deleteMessage[0]!({ ok: true })
     })
 
     expect(mocks.updateCustomer).toHaveBeenCalledWith({ id: "c-42" })
     expect(mocks.updatePratica).not.toHaveBeenCalled()
+  })
+})
+
+describe("CustomerChat, attesa dell'invio", () => {
+  it("la nota in attesa dice 'Invio…' finché il server non risponde", async () => {
+    const { reload } = renderChat([note(1, "Prima nota")])
+    const user = userEvent.setup()
+
+    await user.type(field(), "Richiamare domani")
+    await user.click(submit())
+
+    const pending = screen.getByText("Richiamare domani").closest("article")!
+    expect(pending.getAttribute("aria-busy")).toBe("true")
+    expect(within(pending).getByText("Invio…")).toBeTruthy()
+    expect(status().textContent).toBe("Invio della nota")
+
+    await act(async () => {
+      mocks.updateChat[0]!({ ok: true, id: 901 })
+    })
+    reload([note(1, "Prima nota"), note(901, "Richiamare domani")])
+
+    const saved = screen.getByText("Richiamare domani").closest("article")!
+    expect(saved.getAttribute("aria-busy")).not.toBe("true")
+    expect(within(saved).queryByText("Invio…")).toBeNull()
+    expect(status().textContent).toBe("Nota inviata")
+  })
+
+  it("'Commenta' ha lo spinner e aria-busy durante l'invio", async () => {
+    renderChat([note(1, "Prima nota")])
+    const user = userEvent.setup()
+
+    await user.type(field(), "Richiamare domani")
+    await user.click(submit())
+
+    expect(submit().getAttribute("aria-busy")).toBe("true")
+    const spinner = submit().querySelector("svg.animate-spin")
+    expect(spinner?.getAttribute("class")).toContain(
+      "motion-reduce:animate-none"
+    )
+
+    await act(async () => {
+      mocks.updateChat[0]!({ ok: true, id: 901 })
+    })
+    expect(submit().getAttribute("aria-busy")).not.toBe("true")
+    expect(submit().querySelector("svg")).toBeNull()
+  })
+
+  it("se l'invio fallisce la nota in attesa sparisce e lo stato non dice 'Nota inviata'", async () => {
+    renderChat([note(1, "Prima nota")])
+    const user = userEvent.setup()
+
+    await user.type(field(), "Richiamare domani")
+    await user.click(submit())
+    await act(async () => {
+      mocks.updateChat[0]!(undefined)
+    })
+
+    expect(screen.queryByText("Invio…")).toBeNull()
+    expect(status().textContent).toBe("")
+  })
+})
+
+describe("CustomerChat, scroll della lista", () => {
+  let scrolled: Array<{ element: Element; top: number }>
+  beforeEach(() => {
+    scrolled = []
+    vi.spyOn(Element.prototype, "scrollHeight", "get").mockReturnValue(480)
+    vi.spyOn(Element.prototype, "scrollTop", "set").mockImplementation(
+      function (this: Element, top: number) {
+        scrolled.push({ element: this, top })
+      }
+    )
+  })
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  const list = () => screen.getByText("Prima nota").closest(".overflow-y-auto")!
+  const listScrolls = () =>
+    scrolled.filter((entry) => entry.element === list()).map((e) => e.top)
+
+  it("all'apertura la lista mostra le note più recenti, in fondo", () => {
+    renderChat([note(1, "Prima nota"), note(2, "Seconda nota")])
+
+    expect(listScrolls()).toEqual([480])
+  })
+
+  it("dopo l'invio la lista scorre fino alla nota appena inviata, e di nuovo quando arriva salvata", async () => {
+    const { reload } = renderChat([note(1, "Prima nota")])
+    const user = userEvent.setup()
+    scrolled.length = 0
+
+    await user.type(field(), "Richiamare domani")
+    await user.click(submit())
+    expect(listScrolls()).toEqual([480])
+
+    await act(async () => {
+      mocks.updateChat[0]!({ ok: true, id: 901 })
+    })
+    reload([note(1, "Prima nota"), note(901, "Richiamare domani")])
+    expect(listScrolls()).toEqual([480, 480])
+  })
+
+  describe("quando le note cambiano altezza (nomi caricati dopo l'apertura)", () => {
+    let resized: (() => void) | undefined
+    beforeEach(() => {
+      resized = undefined
+      vi.stubGlobal(
+        "ResizeObserver",
+        class {
+          constructor(callback: () => void) {
+            resized = callback
+          }
+          observe() {
+            return undefined
+          }
+          disconnect() {
+            return undefined
+          }
+        }
+      )
+    })
+    afterEach(() => {
+      vi.unstubAllGlobals()
+    })
+
+    it("la lista resta in fondo", () => {
+      renderChat([note(1, "Prima nota"), note(2, "Seconda nota")])
+      scrolled.length = 0
+
+      act(() => resized?.())
+
+      expect(listScrolls()).toEqual([480])
+    })
+
+    it("se l'operatore ha scorso in su, la lista resta dov'è", () => {
+      renderChat([note(1, "Prima nota"), note(2, "Seconda nota")])
+      scrolled.length = 0
+
+      // Away from the bottom: scrollTop 0, scrollHeight 480
+      fireEvent.scroll(list())
+      act(() => resized?.())
+
+      expect(listScrolls()).toEqual([])
+    })
+  })
+
+  it("scrivere nel campo non fa scorrere la lista", async () => {
+    renderChat([note(1, "Prima nota")])
+    const user = userEvent.setup()
+    scrolled.length = 0
+
+    await user.type(field(), "Testo")
+
+    expect(listScrolls()).toEqual([])
+  })
+
+  it("'Carica altri messaggi' non fa scorrere niente", async () => {
+    renderChat([note(1, "Prima nota")], 12, 5)
+    const user = userEvent.setup()
+    scrolled.length = 0
+
+    await user.click(
+      screen.getByRole("button", { name: "Carica altri messaggi" })
+    )
+
+    expect(router.replace).toHaveBeenCalled()
+    expect(scrolled).toEqual([])
+  })
+})
+
+describe("CustomerChat, attesa dell'eliminazione", () => {
+  const trash = (text: string) =>
+    within(
+      screen.getByText(text).closest("article")!
+    ).getByRole<HTMLButtonElement>("button", { name: "Elimina nota" })
+
+  it("durante l'eliminazione la nota resta, con lo spinner al posto del cestino, e un secondo clic non parte", async () => {
+    renderChat([note(1, "Prima nota"), note(2, "Seconda nota")])
+    const user = userEvent.setup()
+
+    await user.click(trash("Seconda nota"))
+    await user.click(trash("Seconda nota"))
+
+    expect(deleteMessageAction).toHaveBeenCalledTimes(1)
+    const row = screen.getByText("Seconda nota").closest("article")!
+    expect(row.getAttribute("aria-busy")).toBe("true")
+    expect(trash("Seconda nota").getAttribute("aria-busy")).toBe("true")
+    expect(trash("Seconda nota").getAttribute("aria-disabled")).toBe("true")
+    expect(
+      trash("Seconda nota").querySelector("svg.animate-spin")
+    ).not.toBeNull()
+    // Shown without hover while busy
+    expect(trash("Seconda nota").className).toContain("opacity-100")
+  })
+
+  it("quando la nota è eliminata sparisce, lo stato dice 'Nota eliminata' e il focus va al cestino della nota dopo", async () => {
+    const { reload } = renderChat([
+      note(1, "Prima nota"),
+      note(2, "Seconda nota"),
+      note(3, "Terza nota"),
+    ])
+    const user = userEvent.setup()
+
+    await user.click(trash("Seconda nota"))
+    await act(async () => {
+      mocks.deleteMessage[0]!({ ok: true })
+    })
+    // Still there until the page is drawn again: nothing removed in advance
+    expect(screen.getByText("Seconda nota")).toBeTruthy()
+
+    reload([note(1, "Prima nota"), note(3, "Terza nota")])
+
+    expect(screen.queryByText("Seconda nota")).toBeNull()
+    expect(status().textContent).toBe("Nota eliminata")
+    expect(document.activeElement).toBe(trash("Terza nota"))
+    expect(toastApi.toast).not.toHaveBeenCalled()
+  })
+
+  it("eliminata l'ultima nota, il focus va al cestino della precedente", async () => {
+    const { reload } = renderChat([
+      note(1, "Prima nota"),
+      note(2, "Seconda nota"),
+    ])
+    const user = userEvent.setup()
+
+    await user.click(trash("Seconda nota"))
+    await act(async () => {
+      mocks.deleteMessage[0]!({ ok: true })
+    })
+    reload([note(1, "Prima nota")])
+
+    expect(document.activeElement).toBe(trash("Prima nota"))
+  })
+
+  it.each([
+    ["rifiuta", new Error("Failed to fetch")],
+    ["restituisce un errore", { ok: false, error: "Invalid form data" }],
+    ["risolve senza risultato", undefined],
+  ])(
+    "se l'action %s compare 'Nota non eliminata, riprova' e il cestino torna",
+    async (_case, answer) => {
+      renderChat([note(1, "Prima nota"), note(2, "Seconda nota")])
+      const user = userEvent.setup()
+      vi.mocked(deleteMessageAction).mockImplementationOnce(() =>
+        answer instanceof Error
+          ? Promise.reject(answer)
+          : Promise.resolve(answer as never)
+      )
+
+      await user.click(trash("Seconda nota"))
+      await act(async () => undefined)
+
+      expect(toastApi.toast).toHaveBeenCalledWith({
+        variant: "destructive",
+        duration: 8000,
+        description: "Nota non eliminata, riprova",
+      })
+      expect(trash("Seconda nota").getAttribute("aria-busy")).not.toBe("true")
+      expect(trash("Seconda nota").querySelector("svg.animate-spin")).toBeNull()
+      expect(mocks.updateCustomer).not.toHaveBeenCalled()
+      expect(status().textContent).toBe("")
+    }
+  )
+
+  it("il cestino si raggiunge da tastiera", () => {
+    renderChat([note(1, "Prima nota")])
+
+    const button = trash("Prima nota")
+    expect(button.closest(".invisible")).toBeNull()
+    expect(button.className).toContain("focus-visible:opacity-100")
   })
 })
 

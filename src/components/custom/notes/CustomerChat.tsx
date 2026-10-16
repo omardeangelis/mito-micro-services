@@ -8,6 +8,7 @@ import {
   useCallback,
   useEffect,
   useId,
+  useLayoutEffect,
   useRef,
   useState,
   memo,
@@ -25,6 +26,7 @@ import { cn, formatDateAsDMHM } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { TrashIcon } from "lucide-react"
 import { useRouter } from "next/navigation"
+import { useToast } from "@/components/ui/use-toast"
 import {
   checkUnsentNote,
   openUnsentNote,
@@ -50,6 +52,14 @@ type PendingNote = Omit<MessageResponse, "id"> & {
 // shows at most `limit` notes, and two notes can share a text
 const isSaved = (note: PendingNote, messages: MessageResponse[]) =>
   note.id !== undefined && messages.some((m) => m.id === note.id)
+
+const TRASH_LABEL = "Elimina nota"
+
+// The list shows the newest notes, at the bottom. Instant: nothing scrolls
+// with an animation (P6)
+const scrollToBottom = (list: HTMLElement | null) => {
+  if (list) list.scrollTop = list.scrollHeight
+}
 
 // The customer whose chat was just started here: its field takes the focus
 // once the refreshed page draws the chat in place of "Avvia una chat"
@@ -82,29 +92,96 @@ export function CustomerChat({
   const { text: content, failed } = useUnsentNote(customerId)
   const failedId = useId()
   const [pending, setPending] = useState<PendingNote[]>([])
+  // Read by screen readers: "Invio della nota", "Nota inviata", "Nota eliminata"
+  const [announcement, setAnnouncement] = useState("")
 
   const waiting = pending.filter((note) => !isSaved(note, messages))
   // The note on its way to the server: it has no id until the action answers
   const sending = pending.some((note) => note.id === undefined)
 
   const router = useRouter()
+  // Older notes appear at the top, next to the button: nothing scrolls
   const incrementLimit = useCallback(() => {
     const url = new URL(location.href)
     url.searchParams.set("limit", String(limit + 5))
-    // scroll to the bottom of the chat
     router.replace(url.toString(), {
       scroll: false,
     })
-    scrollRef.current?.scrollIntoView({ behavior: "smooth", block: "end" })
   }, [limit, router])
 
+  const { toast } = useToast()
   const { data: operatorData } = api.operator.getUserOperator.useQuery()
   const operatorId = operatorData?.id
   const { mutate: touchCustomer } = api.customer.updateLastEdit.useMutation()
+
+  // The note being deleted and its place among the saved notes: once the page
+  // drops it, the focus moves to the trash of the note that takes its place
+  const messagesRef = useRef(messages)
+  messagesRef.current = messages
+  const deletedRef = useRef<{ id: number; index: number } | null>(null)
+  const handleDeleteStart = useCallback((id: number) => {
+    const index = messagesRef.current.findIndex((m) => m.id === id)
+    deletedRef.current = { id, index }
+  }, [])
   const handleDeleted = useCallback(
     () => touchCustomer({ id: customerId }),
     [touchCustomer, customerId]
   )
+  const handleDeleteFailed = useCallback(
+    (id: number) => {
+      if (deletedRef.current?.id === id) deletedRef.current = null
+      toast({
+        variant: "destructive",
+        duration: 8000,
+        description: "Nota non eliminata, riprova",
+      })
+    },
+    [toast]
+  )
+
+  useEffect(() => {
+    const deleted = deletedRef.current
+    if (!deleted || messages.some((m) => m.id === deleted.id)) return
+    deletedRef.current = null
+    setAnnouncement("Nota eliminata")
+    // Only when the focus was on the trash that is gone
+    const focused = document.activeElement
+    if (focused && focused !== document.body && focused.isConnected) return
+    const trashes = scrollRef.current?.querySelectorAll<HTMLButtonElement>(
+      `button[aria-label="${TRASH_LABEL}"]`
+    )
+    const next =
+      trashes?.[deleted.index] ??
+      trashes?.[deleted.index - 1] ??
+      fieldRef.current
+    next?.focus()
+  }, [messages])
+
+  // The list opens at the newest notes, and follows a note sent or arrived
+  // While at the bottom the list stays there, also when the notes grow after
+  // opening (names loaded); once the operator scrolls up it stays put
+  const pinnedRef = useRef(true)
+  const listRef = useCallback((list: HTMLDivElement | null) => {
+    scrollRef.current = list
+    pinnedRef.current = true
+    scrollToBottom(list)
+  }, [])
+  const handleListScroll = useCallback(() => {
+    const list = scrollRef.current
+    if (!list) return
+    pinnedRef.current =
+      list.scrollTop + list.clientHeight >= list.scrollHeight - 4
+  }, [])
+  const resizeRef = useRef<ResizeObserver | null>(null)
+  const contentRef = useCallback((content: HTMLDivElement | null) => {
+    resizeRef.current?.disconnect()
+    resizeRef.current = null
+    if (!content || typeof ResizeObserver === "undefined") return
+    resizeRef.current = new ResizeObserver(() => {
+      if (pinnedRef.current) scrollToBottom(scrollRef.current)
+    })
+    resizeRef.current.observe(content)
+  }, [])
 
   useEffect(() => {
     setPending((current) => {
@@ -125,6 +202,28 @@ export function CustomerChat({
     if (operatorId !== undefined) checkUnsentNote(customerId, operatorId)
   }, [customerId, operatorId])
 
+  const rows = [
+    ...messages.map((message) => ({
+      ...message,
+      key: message.id as number | string,
+      sending: false,
+    })),
+    // A pending note has no trash: there is no message to delete yet
+    ...waiting.map((note) => ({
+      ...note,
+      id: undefined,
+      sending: note.id === undefined,
+    })),
+  ]
+  const lastKey = rows.at(-1)?.key
+  const scrolledKey = useRef(lastKey)
+  useLayoutEffect(() => {
+    if (scrolledKey.current === lastKey) return
+    scrolledKey.current = lastKey
+    pinnedRef.current = true
+    scrollToBottom(scrollRef.current)
+  }, [lastKey])
+
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     if (sendingRef.current) return
@@ -134,6 +233,7 @@ export function CustomerChat({
       return
     }
     sendingRef.current = true
+    setAnnouncement("Invio della nota")
     const { sent, settle } = sendUnsentNote(customerId)
     const key = `pending-${pendingCounter.current++}`
     setPending((current) => [
@@ -154,6 +254,7 @@ export function CustomerChat({
     // Anything but `{ ok: true }` failed: a rejection, `{ ok: false }`, or no
     // result at all (after a deploy Next resolves an unknown action without one)
     settle(result?.ok === true)
+    setAnnouncement(result?.ok ? "Nota inviata" : "")
     if (result?.ok) {
       setPending((current) =>
         current.map((item) =>
@@ -166,14 +267,11 @@ export function CustomerChat({
     }
   }
 
-  const rows = [
-    ...messages.map((message) => ({ ...message, key: message.id })),
-    // A pending note has no `id` yet, so no trash
-    ...waiting.map((note) => ({ ...note, id: undefined })),
-  ]
-
   return (
     <section {...rest}>
+      <p role="status" className="sr-only">
+        {announcement}
+      </p>
       <div className="rounded-md border border-neutral-200 p-4">
         <div className="flex w-full items-center justify-between">
           <div className="flex items-center gap-4">
@@ -195,23 +293,29 @@ export function CustomerChat({
 
               <div
                 className="relative max-h-96 overflow-y-auto"
-                ref={scrollRef}
+                ref={listRef}
+                onScroll={handleListScroll}
               >
-                {rows.map((row, index) => (
-                  <Fragment key={row.key}>
-                    <CustomerNote
-                      id={row.id}
-                      content={row.content}
-                      sendDate={row.sendDate}
-                      operatorId={row.operatorId}
-                      customerId={customerId}
-                      onDeleted={handleDeleted}
-                    />
-                    {index !== rows.length - 1 ? (
-                      <hr className="mb-2 border border-neutral-100" />
-                    ) : null}
-                  </Fragment>
-                ))}
+                <div ref={contentRef}>
+                  {rows.map((row, index) => (
+                    <Fragment key={row.key}>
+                      <CustomerNote
+                        id={row.id}
+                        content={row.content}
+                        sendDate={row.sendDate}
+                        operatorId={row.operatorId}
+                        customerId={customerId}
+                        sending={row.sending}
+                        onDeleteStart={handleDeleteStart}
+                        onDeleted={handleDeleted}
+                        onDeleteFailed={handleDeleteFailed}
+                      />
+                      {index !== rows.length - 1 ? (
+                        <hr className="mb-2 border border-neutral-100" />
+                      ) : null}
+                    </Fragment>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
@@ -239,11 +343,15 @@ export function CustomerChat({
             </div>
             <div className="mt-8 flex items-center justify-end gap-4">
               <Button
+                aria-busy={sending}
                 aria-disabled={sending}
                 type="submit"
                 variant={sending ? "disabled" : "default"}
               >
                 Commenta
+                {sending ? (
+                  <LoadingSpinner className="ml-2 h-4 w-4 motion-reduce:animate-none" />
+                ) : null}
               </Button>
             </div>
           </form>
@@ -318,7 +426,11 @@ export function CustomerNewChat({
 type CustomerNoteProps = Omit<MessageResponse, "id"> & {
   id?: number
   customerId: string
+  /** On its way to the server: "Invio…" in place of the date */
+  sending: boolean
+  onDeleteStart: (id: number) => void
   onDeleted: () => void
+  onDeleteFailed: (id: number) => void
 }
 
 // Memoized: typing in the field re-renders the chat, not every note
@@ -328,38 +440,85 @@ const CustomerNote = memo(function CustomerNote({
   sendDate,
   operatorId,
   customerId,
+  sending,
+  onDeleteStart,
   onDeleted,
+  onDeleteFailed,
 }: CustomerNoteProps) {
   const { data, isLoading } = api.operator.getOperatorById.useQuery({
     id: Number(operatorId),
   })
+  // Until the page drops the note: nothing is removed in advance (P6)
+  const [deleting, setDeleting] = useState(false)
 
   const handleDelete = async () => {
-    if (id === undefined) return
-    await deleteMessageAction({ id, operatorId, customerId })
-    onDeleted()
+    if (id === undefined || deleting) return
+    setDeleting(true)
+    onDeleteStart(id)
+    const result = await deleteMessageAction({
+      id,
+      operatorId,
+      customerId,
+    }).catch(() => null)
+    // Anything but `{ ok: true }` failed, as for a note sent
+    if (result?.ok) {
+      onDeleted()
+    } else {
+      setDeleting(false)
+      onDeleteFailed(id)
+    }
   }
   if (data && !isLoading)
     return (
-      <article className="group relative flex w-full items-center gap-4 py-4">
+      <article
+        aria-busy={sending || deleting}
+        className="group relative flex w-full items-center gap-4 py-4"
+      >
         <Avatar className="bg-neutral-400" />
         <div className="flex flex-col justify-between">
           <div className="flex w-full items-center gap-4">
             <h6 className="text-lg font-medium">
               {data.name} {data.surname}
             </h6>
-            <p className="text-sm text-muted-foreground">
-              {formatDateAsDMHM(sendDate)}
-            </p>
+            {sending ? (
+              <span className="flex items-center gap-1 text-sm text-muted-foreground">
+                <LoadingSpinner
+                  aria-hidden
+                  className="h-3 w-3 motion-reduce:animate-none"
+                />
+                Invio…
+              </span>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                {formatDateAsDMHM(sendDate)}
+              </p>
+            )}
           </div>
           <p className="text-md text-muted-foreground">{content}</p>
         </div>
         {id !== undefined && (
-          // Hover shown by CSS, not state: moving the pointer onto the button
-          // must not unmount it before the click lands
-          <div className="invisible absolute right-0 top-0 flex items-center gap-4 group-hover:visible">
-            <Button variant="ghost" size="icon" onClick={handleDelete}>
-              <TrashIcon size={16} />
+          // Shown by CSS, not state: moving the pointer onto the button must
+          // not unmount it before the click lands. Opacity, not visibility:
+          // the keyboard reaches it too. No transition (P6)
+          <div className="absolute right-0 top-0 flex items-center gap-4">
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label={TRASH_LABEL}
+              aria-busy={deleting}
+              aria-disabled={deleting}
+              className={
+                deleting
+                  ? "opacity-100"
+                  : "opacity-0 focus-visible:opacity-100 group-hover:opacity-100 [@media(hover:none)]:opacity-100"
+              }
+              onClick={handleDelete}
+            >
+              {deleting ? (
+                <LoadingSpinner className="h-4 w-4 motion-reduce:animate-none" />
+              ) : (
+                <TrashIcon size={16} />
+              )}
             </Button>
           </div>
         )}

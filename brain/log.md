@@ -207,3 +207,7 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 - Spec: [[specs/crm/sezione-contatti/SPEC]] (AC77 nuovo), piano: [[specs/crm/sezione-contatti/PLAN]] (T4.5, D19)
 - "Avvia una chat" crea al massimo una chat per cliente, in una transazione; attesa con spinner fino alla chat a schermo, fallimento con "Chat non avviata, riprova"
 - Prod, in sola lettura: nessuna pratica con una chat; 19 chat orfane (7 con 13 messaggi), pulizia nel tech-debt
+
+## [2026-10-16] implement | sezione-contatti PR4, T4.6
+- Spec: [[specs/crm/sezione-contatti/SPEC]] (AC78 nuovo), piano: [[specs/crm/sezione-contatti/PLAN]] (T4.6, D20)
+- Chat: "Invio…" e spinner durante l'invio, eliminazione con spinner e toast in caso di errore, lista che si apre e resta sulle note più recenti, cestino raggiungibile da tastiera

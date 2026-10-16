@@ -18,7 +18,7 @@ export async function deleteMessageAction(values: {
   const parsedValues = formSchema.safeParse(values)
   if (!parsedValues.success) {
     console.error(parsedValues.error.errors)
-    return
+    return { ok: false as const, error: "Invalid form data" }
   }
 
   await api.chat.deleteMessage.mutate({
@@ -27,4 +27,5 @@ export async function deleteMessageAction(values: {
   })
 
   revalidatePath(`/dashboard/customers/${parsedValues.data.customerId}`, "page")
+  return { ok: true as const }
 }
