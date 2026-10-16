@@ -14,7 +14,7 @@ updated: 2026-10-15
 
 **Spec:** [[specs/crm/sezione-contatti/SPEC]] · **Flow:** [[specs/crm/sezione-contatti/FLOW]] · **Bozza di design:** [[chore/crm/design-contatti]]
 **Generato:** 2026-09-24 con `create-plan`: grill → swarm-plan → ux-advisor + design-engineer → tdd → adversarial-verifier. Nessun codice scritto.
-**Aggiornato:** 2026-09-25, codice server su Effect (D9, P8); errori segnalati a Sentry (P9). 2026-10-15, PR3 riscritta con `create-plan` 0.8.0 (`complexity` per task, FLOW confrontata con gli AC, `design-engineer`, D10–D13, P6 rivisto, P10) e PR7 aggiunta.
+**Aggiornato:** 2026-09-25, codice server su Effect (D9, P8); errori segnalati a Sentry (P9). 2026-10-15, PR3 riscritta con `create-plan` 0.8.0 (`complexity` per task, FLOW confrontata con gli AC, `design-engineer`, D10–D13, P6 rivisto, P10) e PR7 aggiunta. Sempre il 2026-10-15, PR4 riscritta con `create-plan` 0.8.0: chat solo del cliente (D15), server action tenute (P11), form senza `useOptimistic` (P12), nota non inviata recuperata (AC76 nuovo, D16). Dopo la quarta verifica: AC56 con "Avvia una chat" (D17), bozza della nota non inviata (T4.4, D18), G3 chiuso (PR3 in prod).
 
 ---
 
@@ -54,7 +54,7 @@ Serve una sezione **Contatti** (lista e dettaglio) sulle `task`. Le regole di mo
 | Percorsi di creazione (cron alert, massiva, `createTask`) | Alto | Percorsi critici, notturni e quotidiani; l'export conta le righe `task` | PR1 |
 | Dati di produzione (pulizia + indice unico) | Alto | Modifica righe in prod con una migrazione manuale; l'indice rompe cron e massiva se arriva prima di PR1 | PR2 |
 | Cambio di stato quotidiano da Clienti | Medio-alto | È l'azione più usata; arrivano una regola di permessi nuova (D2), la fine della riassegnazione silenziosa (AC41) e il salvataggio immediato nella scheda cliente (D11) | PR3 |
-| Chat condivisa con Pratiche e scheda cliente | Medio | Refactor di una funzione esistente | PR4 |
+| Chat della scheda cliente | Basso-medio | Refactor di una funzione esistente, più AC76. Pratiche non mostra le note (finding 24), quindi c'è una sola schermata da non rompere | PR4 |
 | Sezione Contatti | Basso sull'esistente | Additiva: nuova route, nuove query di sola lettura | PR5 (una PR) |
 | Clienti semplificata | Medio | Rimozione; va fatta dopo l'adozione | PR6 |
 | Test di concorrenza su Postgres vero | Basso sull'esistente | Solo CI e test; nessun codice dell'app | PR7 (bassa priorità) |
@@ -63,8 +63,8 @@ Serve una sezione **Contatti** (lista e dettaglio) sulle `task`. Le regole di mo
 |---|---|---|---|---|
 | **PR1** Percorsi di creazione sicuri | **Fatta.** In prod dal 2026-09-29 (PR #5, su `main` con la #7) | 1 | Cron alert e 4 casi della massiva danno gli stessi risultati (i test di caratterizzazione sono verdi prima e dopo). Ogni operazione è atomica. Un errore su un cliente non ferma il cron. `createTask` non lascia due contatti attivi | AC71 (codice), AC72 |
 | **PR2** Pulizia e vincolo DB | **Fatta.** Su `main` e migrazioni applicate in prod il 2026-10-13 (PR #6, su `main` con la #11; G2) | 1 | Nessun duplicato attivo. Il DB rifiuta un secondo contatto attivo. Nessun alert aperto su contatti non attivi. Elenco dei contatti disattivati e degli alert chiusi estratto subito prima della pulizia, come traccia | AC69, AC70, AC71 (DB) |
-| **PR3** Regole sul server, usate da Clienti | **Su `dev`** dal 2026-10-15 (PR #14), review SHIP dopo le correzioni. Il deploy in prod si fa con G3 e l'annuncio agli operatori | 1 (+ AC66–AC67 anticipati, P1) | Da Clienti e dalla scheda cliente: cambio di stato atomico, modale di conferma per l'alert, operatore invariato, sola lettura con motivo, stato e priorità salvati subito nella scheda (D11), "Passaggio di consegne" al posto del cambio di operatore nel form (D13). I permessi D2 li rifiuta il server anche fuori dall'interfaccia. "Crea contatto" nella scheda cliente. Un alert non si chiude due volte e non si stacca per sbaglio (D10). Un test rende rossa la CI se uno degli scrittori di contatti smette di bloccare il cliente (D12) | regole server di AC27, AC30–AC52; AC66, AC67; AC73 |
-| **PR4** Chat con proprietario esplicito | Da fare | prerequisito del passo 3 (P2) | Nessun cambiamento visibile: note di Pratiche e scheda cliente identiche; la chat non deduce più dall'URL cosa aggiornare | AC55 (base) |
+| **PR3** Regole sul server, usate da Clienti | **Fatta.** In prod dal 2026-10-15 (PR #14, su `main` con la #16), review SHIP dopo le correzioni (G3) | 1 (+ AC66–AC67 anticipati, P1) | Da Clienti e dalla scheda cliente: cambio di stato atomico, modale di conferma per l'alert, operatore invariato, sola lettura con motivo, stato e priorità salvati subito nella scheda (D11), "Passaggio di consegne" al posto del cambio di operatore nel form (D13). I permessi D2 li rifiuta il server anche fuori dall'interfaccia. "Crea contatto" nella scheda cliente. Un alert non si chiude due volte e non si stacca per sbaglio (D10). Un test rende rossa la CI se uno degli scrittori di contatti smette di bloccare il cliente (D12) | regole server di AC27, AC30–AC52; AC66, AC67; AC73 |
+| **PR4** Chat con proprietario esplicito | Da fare (riscritta il 2026-10-15) | prerequisito del passo 3 (P2); AC76 al passo 3, nella scheda cliente già con PR4 | La chat riceve il cliente invece di dedurlo dall'URL, ed è condivisa in `src/components/custom/notes/`. Note della scheda cliente identiche quando l'invio riesce; quando fallisce il testo torna nel campo con "Nota non inviata, riprova" e resta anche dopo un ricaricamento | AC55 (base), AC56 ("Avvia una chat"), AC76 |
 | **PR5** Sezione Contatti con note | Da fare | 2 + 3 (P2) | Lista, filtri, URL, dettaglio, modifiche, note del cliente, "Vedi contatti", guida operatori per Contatti | AC1–AC57, AC62, AC74 (parte Contatti) |
 | **PR6** Clienti semplificata | Da fare | 4 | Colonne e filtri task rimossi, totale = righe, scheda cliente con riepilogo e "Gestisci contatto", etichette della massiva, "Assegna Clienti" che sposta cliente e contatto insieme (D14), guida completata | AC58–AC61, AC63–AC65, AC68, AC74 (parte restante), AC75 |
 | **PR7** Test di concorrenza su Postgres vero | Da fare, bassa priorità (D12) | — | La CI prova con due connessioni vere che le transazioni sullo stesso cliente si mettono in coda, che R7 non accade e che non ci sono deadlock | AC71 (concorrenza) |
@@ -72,9 +72,9 @@ Serve una sezione **Contatti** (lista e dettaglio) sulle `task`. Le regole di mo
 **Ordine vincolante:**
 1. PR1 in prod, poi almeno una notte di cron senza errori. **Fatto:** in prod dal 2026-09-29. La notte di cron è caduta con G1 rivisto il 28/09: il cron di prod non si lanciava prima di G2.
 2. La migrazione di PR2 applicata a mano, con l'estrazione conservata subito prima come traccia (T2.4). PR2 entra in `dev` solo dopo che PR1 è su `main`. **Fatto il 2026-10-13** (log di T2.4).
-3. PR3 (con l'annuncio agli operatori). **Su `dev` dal 2026-10-15** (PR #14); il deploy in prod con l'annuncio (G3).
-4. PR4.
-5. PR5, solo dopo che PR2 è applicata (AC69), e a breve distanza da PR3.
+3. PR3 (con l'annuncio agli operatori). **Fatto:** in prod dal 2026-10-15 (PR #16, G3).
+4. PR4: può partire subito, PR3 è in prod (G3). Le due righe per gli operatori (AC76, "Commenta" disabilitato durante l'invio) arrivano prima del suo deploy.
+5. PR5, solo dopo che PR2 è applicata (AC69) e dopo PR4, che prepara la chat (T5.8), a breve distanza da PR3.
 6. Qualche giorno d'uso, poi PR6.
 7. PR7 in qualunque momento dopo PR3, a bassa priorità: non blocca nessun rilascio.
 
@@ -100,6 +100,10 @@ Serve una sezione **Contatti** (lista e dettaglio) sulle `task`. Le regole di mo
 | D12 | **Regola dei lock provata da un test.** Livello 1 in PR3 (T3.15): un trigger di test fa fallire ogni scrittura su `task`, `alert` e `task_event_log` fatta senza aver bloccato il cliente nella stessa transazione, per tutti gli scrittori di contatti di oggi; uno nuovo si aggiunge al test. Livello 2 in PR7, a bassa priorità: test di concorrenza su un Postgres vero in CI | Omar, 2026-10-15 |
 | D13 | **"Passaggio di consegne" al posto del cambio di operatore nel form** (sostituisce D5). La verifica di PR3 ha trovato che D5 + P4 facevano riassegnare un contatto a un non-admin, contro D2 e AC50. Ora:<br>• il form del cliente salva solo l'anagrafica: `updateCustomerFromDashboard` non accetta più `operatorId`, e sparisce il riallineamento silenzioso del contatto a ogni salvataggio;<br>• un'azione separata, "Passaggio di consegne", con una modale che spiega cosa succede, sposta il cliente e il suo contatto attivo **in qualunque stato** a un altro operatore. La usano l'admin (su ogni cliente) e l'operatore del cliente (sui suoi);<br>• le chiamate già registrate sul contatto passano al nuovo operatore nell'export (regola di attribuzione della spec); la modale e l'annuncio G3 lo dicono.<br>• il passaggio cambia sempre l'operatore del cliente: una destinazione uguale a quella attuale è rifiutata, anche per l'admin (Omar, dopo la seconda verifica). Allineare il solo contatto è la riassegnazione dell'admin (`task.reassign`), nell'interfaccia con PR5.<br>È un'eccezione esplicita a D2 ("la riassegnazione è solo ADMIN") e ad AC50, registrata in §15 | Omar, 2026-10-15 |
 | D14 | **Cliente e contatto attivo hanno lo stesso operatore** (AC75, sostituisce A7 per "Assegna Clienti"). Dai test manuali di PR3: la riga di Clienti mostrava "Assegnato a …" accanto a una colonna Operatore che diceva un'altra cosa, e la scheda "Assegna Clienti" dice "Assegna solo il cliente" mentre sposta anche il contatto, ma solo in `chiamare`. Ora:<br>• **in PR6 (T6.8)** "Assegna Clienti" diventa un passaggio di consegne in massa: per ogni cliente usa il servizio `handover` (D13), quindi sposta cliente e contatto attivo in ogni stato, blocca il cliente (esce da A11) e scrive i log. Il testo della scheda lo dice, e i contatti attivi ancora separati si riallineano prima del rilascio;<br>• **subito, in PR3:** la riga di Clienti non nomina l'operatore del contatto. In sola lettura mostra solo lo stato, e "Non assegnato" con l'indicazione di "Assegna a te" quando né il cliente né il contatto hanno un operatore (AC51 rivisto). Lo stesso nella scheda cliente, dove l'operatore del cliente è nel form.<br>Misurato in prod in sola lettura il 2026-10-15: 1 contatto attivo su 69.783 con un operatore diverso da quello del cliente (in `richiamare`); 3 non attivi su 13.397, che restano come sono (storico). Niente colonna "Gestito da": renderebbe ufficiale una separazione che la spec rinvia a `task.kind` | Omar, 2026-10-15 |
+| D15 | **Chat solo del cliente.** Pratiche non mostra le note dal primo commit del repo (finding 24), quindi la chat riceve `customerId` e non un `owner` con due tipi. Si eliminano i rami pratica che la chat tocca (`PraticaNotesSetcion.tsx`, il ramo `pratica` di `createChatAction`, le chiamate a `pratiche.updateLastEdit`). Restano le procedure tRPC e le chat di pratica già nel DB (seguito in §15) | Omar, 2026-10-15 |
+| D16 | **Nota non inviata corretta in PR4, con un AC nuovo (AC76).** Il testo torna nel campo, compare "Nota non inviata, riprova" e la nota non resta nella chat; il campo si svuota comunque all'invio, come oggi. PR5 è già grande e PR4 riscrive proprio quella funzione. PR4 non è più senza cambiamenti visibili | Omar, 2026-10-15 |
+| D17 | **AC56 accetta "Avvia una chat"** (SPEC aggiornata). Il dettaglio del contatto riusa la chat di PR4 così com'è: senza chat si avvia con il pulsante, come nella scheda cliente. È un'azione esplicita al posto di un effetto del primo invio, e non aggiunge lavoro a PR4 o PR5 | Omar, 2026-10-15, dalla quarta verifica |
+| D18 | **Il testo non inviato si conserva in `sessionStorage`** (T4.4, AC76 esteso). Dopo un deploy l'action vecchia non esiste più e ogni invio fallisce finché la pagina non si ricarica; ricaricando, il testo si perderebbe. La bozza, per cliente e per finestra, torna nel campo dopo il ricaricamento, e anche se la scheda si è chiusa durante l'invio. Niente `router.refresh()` dopo un fallimento: in quei casi Next ricaricherebbe tutta la pagina (finding 31). Rischio accettato: se l'errore arriva dopo che la nota è già salvata, l'operatore può rinviarla e trovarla doppia; la vede al primo ricaricamento e la elimina col cestino. Dopo la review di PR4 (v4): la bozza è dell'operatore che l'ha scritta (`{ operatorId, text }`), e un'altra persona che entra nella stessa finestra non la vede (la chat la ignora e la cancella); "Esci dal gestionale" cancella tutte le bozze. "Duplica scheda" di Chrome copia `sessionStorage`: la bozza passa alla copia, dello stesso operatore. Residuo (review di PR4, v4): una bozza salvata prima che l'operatore si carichi non ha proprietario e la adotta chi apre quel cliente dopo nella stessa scheda, se nel frattempo nessuno è uscito con "Esci dal gestionale"; le bozze di un collega su clienti mai riaperti restano nello storage, mai mostrate, finché la scheda non si chiude (tech-debt) | Omar, 2026-10-15, dalla quarta verifica; legame con l'operatore dalla review di PR4 |
 | P1 | **"Crea contatto" nella scheda cliente anticipato a PR3** (spec: passo 4). Senza, tra PR5 e PR6 il percorso della FLOW "cliente senza contatti → [Apri scheda cliente]" arriva a una scheda senza nessuna azione. È solo un'aggiunta: non toglie niente a Clienti | Piano (ux-advisor) |
 | P2 | **Note insieme a Contatti.** Il refactor della chat va in una PR a sé (PR4), prima della sezione; l'integrazione nel dettaglio sta in PR5. Il passo 3 della spec si fonde col passo 2, così il giro chiamate (percorso A della FLOW) è completo dal primo giorno | Piano (ux-advisor) |
 | P3 | **Guida divisa in due.** La sezione su Contatti e il §5 escono con PR5; il cambio di etichetta "Crea/assegna contatti" esce con PR6 | Piano (ux-advisor) |
@@ -111,6 +115,8 @@ Serve una sezione **Contatti** (lista e dettaglio) sulle `task`. Le regole di mo
 | P9 | **Ogni errore arriva a Sentry una volta sola, dal bordo dove si perderebbe:**<br>• **procedure tRPC:** il middleware Sentry di `trpc.ts` (§1). `runTrpc` non segnala niente: `DbError` e difetti diventano `INTERNAL_SERVER_ERROR` e li segnala il middleware. Gli errori tipizzati di PR3 hanno codici client (`NOT_FOUND`, `FORBIDDEN`, `CONFLICT`, …) e non diventano issue;<br>• **lavori che isolano i fallimenti** (cron alert): `forEachIsolated` segnala ogni elemento fallito con `ErrorReporter` (T1.4), perché la risposta resta un successo e nessun bordo vedrebbe l'errore;<br>• **route in Effect:** un `Exit` non riuscito dell'intera esecuzione si segnala con `ErrorReporter` prima della risposta d'errore.<br>`ErrorReporter` è un servizio (`Context.Tag`): `ServerLive` fornisce quello che chiama `Sentry.captureException(Cause.squash(cause))`, i test uno che registra le segnalazioni | Piano |
 | P10 | **La modale dell'alert usa i dati del server.** Il client manda il cambio di stato senza conferma; se c'è un alert aperto il server risponde `ALERT_CONFIRMATION_REQUIRED` con data e messaggio, e il client apre la modale. Un solo percorso per AC36 e AC37, e la riga Clienti non deve caricare i dati dell'alert, che `getAllCustomers` non restituisce | Piano, 2026-10-15 |
 
+| P11 | **Le server action della chat restano.** `updateChatAction` fa tre chiamate (operatori, aggiunta dell'operatore, inserimento): portarle sul client con `useMutation` allargherebbe PR4 senza un AC. La regola di PR3 ("mai server action") riguarda gli errori del contatto; AC76 non ha bisogno del messaggio del server, basta sapere che l'invio è fallito. Restano anche fuori da Effect, anche se PR4 cambia cosa ricevono e cosa restituiscono: l'unico errore previsto è la validazione dell'input (`{ error }` da Zod), che P8 lascia a Zod al confine; il resto del lavoro passa già da procedure tRPC, e ad AC76 basta distinguere `{ ok: true, id }` da tutto il resto. La conversione è un seguito (§15) | Piano, 2026-10-15 |
+| P12 | **Il form della chat senza `useOptimistic` e `useFormStatus`** (finding 30): `onSubmit`, campo controllato, nota in attesa in uno stato locale, flag `sending`. Si vede lo stesso comportamento di oggi quando l'invio riesce, più "Commenta" disabilitato durante l'invio, che era l'intenzione del codice (finding 28). Scartato l'alias di `react` verso il React di Next in vitest: cambierebbe il React di tutti i test di componenti di PR3 | Piano, 2026-10-15, dalla revisione di `swarm-plan` |
 ## 5. Assunzioni e vincoli
 
 - **A1 (domanda 3), confermata da Omar il 2026-10-15:** un contatto non assegnato è in sola lettura per l'operatore, salvo che il cliente sia suo (D2). Il motivo è visibile: "Non assegnato". Se il cliente non è assegnato, il messaggio indica "Assegna a te" nella scheda cliente come via d'uscita. Nessun "prendi in carico".
@@ -169,6 +175,14 @@ Serve una sezione **Contatti** (lista e dettaglio) sulle `task`. Le regole di mo
 22. **Nessun test di componenti nel repo:** `@testing-library/react` è installato ma non usato; mancano `@testing-library/user-event` e i polyfill jsdom che Radix richiede (T3.9b).
 23. **La "X" dell'alert e il selettore della riga mostrano valori ottimistici** (`useOptimistic` in `CustomerAlertCreator.tsx` e `CustomerColumns.tsx`): con un rifiuto il valore "torna indietro". PR3 li toglie (P6 rivisto).
 
+24. **Pratiche non mostra le note.** `PraticaNotesSetcion.tsx` non ha chiamanti e la pagina della pratica non ha la chat, già nel primo commit del repo (clone di prod). `PraticaNewChat` è usato solo dalla scheda cliente, con il tipo di default `customer`. Il ramo `pratica` di `createChatAction` e le chiamate della chat a `pratiche.updateLastEdit` non si raggiungono. Da qui D15.
+25. **La chat deduce il proprietario dall'URL in due punti:** l'invio (`PraticaActiveChat`, `PraticaNotes.tsx:52`) e l'eliminazione di una nota (`PraticaNote`, `PraticaNotes.tsx:221`). In `/dashboard/contatti/[id]` tutti e due aggiornerebbero la pratica con l'id della task (AC55).
+26. **`location.pathname` si legge durante il render.** Funziona solo perché la chat sta nel portal della Sheet, che si monta nel browser dopo il caricamento. In una pagina renderizzata sul server darebbe errore.
+27. **Il refresh dopo l'invio funziona per un comportamento di Next.** `updateChatAction` e `deleteMessageAction` rinfrescano sempre `/dashboard/pratiche/[id]`. La scheda cliente si aggiorna lo stesso perché Next 14.2 ridisegna la pagina corrente dopo qualunque `revalidatePath` in una server action (`pathWasRevalidated` in `action-handler.js`). Basta quindi il cliente, non il percorso da rinfrescare. Il sorgente marca il comportamento come provvisorio (`// TODO: only revalidate if the path matches` sopra `pathWasRevalidated`, in `revalidate.js`): con un aggiornamento di Next il dettaglio di Contatti potrebbe smettere di ridisegnarsi dopo l'invio. T5.8 lo controlla nel browser.
+28. **Il pulsante "Commenta" non si disabilita mai.** `useFormStatus` è chiamato nel componente che contiene il form, non in un suo figlio, quindi `pending` resta falso: due clic veloci possono inviare due volte. T4.1 lo sistema, perché deve comunque sostituire `useFormStatus` (P12).
+29. **Una nota che non parte va persa.** Il form si svuota prima dell'action e la nota ottimistica sparisce senza messaggio; un rifiuto dell'action risalirebbe fino a `global-error.tsx` (sotto `dashboard` non c'è un `error.tsx`), e `{ error }` (dati non validi) passa come un successo. Passa come successo anche un'action che risolve `undefined`: Next 14.2 lo fa quando la risposta non è RSC, per esempio dopo un deploy, quando l'id dell'action non esiste più (`server-action-reducer.js`, `fetchServerAction`). Da qui AC76 (D16) e `{ ok: true }` (T4.1).
+30. **`useOptimistic` e `useFormStatus` non esistono nel React dei test.** Vitest usa `react` 18.3.1 installato, dove tutti e due sono `undefined`; ci sono solo nel React canary interno di Next (`next/dist/compiled/react`). Anche `<form action={fn}>` in React 18.3.1 non chiama la funzione. Il componente di oggi non si monta in jsdom. Da qui P12.
+31. **`router.refresh()` dopo un fallimento ricaricherebbe la pagina.** In Next 14.2.5, se il fetch RSC lancia (rete), se la risposta non è RSC o non è 200 (proxy), o se il `buildId` è cambiato (deploy), `fetchServerResponse` ripiega su una navigazione completa (`fetch-server-response.js:86-116`), che `app-router.js` esegue con `window.location.replace`. Sono i casi di AC76: il testo rimesso nel campo sparirebbe. I test con `useRouter` simulato non lo vedono. Trovato dalla quarta verifica.
 ## 7. Ricerca esterna
 
 - **Drizzle + PGlite** (Context7, drizzle-orm-docs):
@@ -214,9 +228,9 @@ PR3  (parte da dev: PR1 e PR2 sono già su dev e su main)
                     T3.8c, T3.13, T3.15, T3.16, T3.17 ─ T3.14   [G3]
      T3.1a, T3.1b, T3.1c, T3.2a e T3.16 non hanno dipendenze.
 
-PR4  T4.1 ─ T4.2
+PR4  T4.1 ─ T4.3 ─ T4.4 ─ T4.2   (PR3 è in prod; i test usano il setup dei test di PR3)
 
-PR5  T5.1 ─┐    (T5.1 ← T1.4, T3.1a–T3.1c · T5.2 ← T3.2a, T3.2b · T5.3 ← T3.1a, T3.1c)
+PR5  T5.1 ─┐    (T5.1 ← T1.4, T3.1a–T3.1c · T5.2 ← T3.2a, T3.2b · T5.3 ← T3.1a, T3.1c · T5.8 ← T4.1, T4.3, T4.4)
      T5.2 ─┼─ T5.4 ─┬─ T5.5
      T5.3 ─┘        └─ T5.6 ─┬─ T5.7 ─┬─ T5.9 ─┐
                              └─ T5.8 ─┘        ├─ T5.10 ─ T5.12 ─ T5.13   [G4]
@@ -933,7 +947,7 @@ Branch suggerito: `contatti/pr2-vincolo-db`. Contiene migrazioni, uno script di 
 
 ### PR3 — Regole del contatto sul server, usate da Clienti
 
-**Stato: da fare.** Riscritta il 2026-10-15 con `create-plan` 0.8.0: ogni task ha una `complexity`, i task larghi sono divisi, gli error path della FLOW sono controlli espliciti, le interfacce sono quelle che PR1 ha costruito davvero, e ci sono il `design-engineer` (P6 rivisto) e le decisioni D10–D13. Gli id dei task restano stabili: i task divisi prendono una lettera (T3.1a, T3.1b, …), quelli nuovi proseguono la numerazione (T3.15, T3.16).
+**Stato: fatta.** In prod dal 2026-10-15 (PR #14 su `dev`, PR #16 su `main`; G3). Riscritta il 2026-10-15 con `create-plan` 0.8.0: ogni task ha una `complexity`, i task larghi sono divisi, gli error path della FLOW sono controlli espliciti, le interfacce sono quelle che PR1 ha costruito davvero, e ci sono il `design-engineer` (P6 rivisto) e le decisioni D10–D13. Gli id dei task restano stabili: i task divisi prendono una lettera (T3.1a, T3.1b, …), quelli nuovi proseguono la numerazione (T3.15, T3.16).
 
 Branch: `contatti/pr3-regole-server` da `dev` (PR1 e PR2 sono su `dev` e su `main`), PR verso `dev`. Da qui valgono AC73, D2, A1 (confermata il 2026-10-15), P4 e D13.
 
@@ -1698,43 +1712,206 @@ Vale per T3.10, T3.11a, T3.11b, T3.12, T5.7 e T5.9. Le letture dai Server Compon
 
 ### PR4 — Chat con proprietario esplicito
 
-Branch suggerito: `contatti/pr4-chat-owner`. È un refactor senza cambiamenti visibili: isola il rischio sulle note esistenti prima che Contatti le usi (P2).
+**Stato: pronta, PR da aprire.** Implementata il 2026-10-15 (run 4 di `IMPLEMENTATION-NOTES.md`): T4.1, T4.3, T4.4 e il gate T4.2 fatti, review SHIP dopo le correzioni (round PR4 di `REPORT.md`). Restano commit, PR verso `dev` e le due righe agli operatori. Riscritta il 2026-10-15 con `create-plan` 0.8.0, dopo aver confrontato il vecchio T4.1 con il codice (finding 24–30). La chat è solo del cliente (D15). Le server action restano (P11). La nota non inviata si recupera già qui (AC76, D16). Il form non usa più `useOptimistic` e `useFormStatus`, che nel React dei test non esistono (P12, finding 30). Gli id restano stabili: T4.1 e il gate T4.2 mantengono il loro, i task nuovi sono T4.3 e T4.4 (bozza conservata, D18). Nessun `design-engineer`: PR4 non anima niente (P6).
 
-#### T4.1: Chat con proprietario esplicito
+Branch: `contatti/pr4-chat-cliente` da `dev`, PR verso `dev`. PR3 è in prod dal 2026-10-15 (G3), quindi PR4 parte e si unisce a `dev` senza vincoli d'ordine. Le due righe per gli operatori (AC76 e "Commenta" disabilitato) arrivano prima del deploy di PR4 (T4.2). Prepara la chat che il dettaglio di Contatti integra in T5.8 (P2).
+
+**Cosa cambia per chi la usa:**
+- quando l'invio riesce, niente: la nota compare subito e il campo si svuota, come oggi;
+- quando l'invio fallisce, il testo torna nel campo con "Nota non inviata, riprova" (AC76). Oggi la nota sparisce e il testo è perso;
+- il testo non inviato resta anche se la pagina si ricarica (per esempio dopo un aggiornamento dell'app) o se la scheda si chiude durante l'invio (T4.4);
+- durante l'invio "Commenta" è disabilitato, come il codice di oggi voleva fare senza riuscirci (finding 28): un doppio clic non invia due volte.
+
+Lo dice la descrizione della PR.
+
+**Perimetro:**
+- la chat che oggi sta in `src/app/dashboard/pratiche/[id]/` (componenti e server action) si sposta in `src/components/custom/notes/`, perché la importano la scheda cliente e, da PR5, il dettaglio di Contatti. I nomi `Pratica*` diventano `Customer*`. `CollassableSection` si sposta in `src/components/custom/`, perché la usano la chat e la pagina della pratica;
+- le server action restano server action, fuori da Effect (P8, P11);
+- si eliminano i rami pratica che nessuna schermata raggiunge (D15). Le procedure tRPC `chat.createNewChat` e `pratiche.updateLastEdit` restano, senza chiamanti (seguito in §15);
+- fuori perimetro, e registrati in §15:
+  - `chat.deleteMessage` senza controllo su chi elimina;
+  - l'eliminazione fallita senza messaggio;
+  - `customer.updateLastEdit` chiamata dal client dopo l'action;
+  - il cestino visibile solo al passaggio del mouse;
+  - il campo della nota senza etichetta.
+
+#### T4.1: Chat del cliente con proprietario esplicito
 - **depends_on**: []
-- **location**: `src/app/dashboard/pratiche/[id]/_components/PraticaNotes.tsx`, `src/app/dashboard/pratiche/[id]/_actions/updateChat.ts`, `createNewChat.ts`, `src/app/dashboard/customers/[id]/_components/CustomerChatSection.tsx`, `src/app/dashboard/pratiche/[id]/_test/chatOwner.test.ts`
+- **location**:
+  - nuovi in `src/components/custom/notes/`: `CustomerChat.tsx` (client: chat attiva, nuova chat, singola nota), `CustomerChatSection.tsx` (Server Component), `_actions/updateChat.ts`, `_actions/createNewChat.ts`, `_actions/deleteMessage.ts`, `_test/CustomerChat.test.tsx`;
+  - spostato: `src/app/dashboard/pratiche/[id]/_components/CollassableItem.tsx` → `src/components/custom/CollassableItem.tsx`, con l'import in `src/app/dashboard/pratiche/[id]/page.tsx`;
+  - eliminati: `src/app/dashboard/pratiche/[id]/_components/PraticaNotes.tsx`, `PraticaNotesSetcion.tsx`, `src/app/dashboard/pratiche/[id]/_actions/updateChat.ts`, `createNewChat.ts`, `deleteMessage.ts`, `src/app/dashboard/customers/[id]/_components/CustomerChatSection.tsx`;
+  - modificato: `src/app/dashboard/customers/[id]/page.tsx` (import della sezione spostata).
 - **description**:
-  - `PraticaActiveChat` e `PraticaNewChat` ricevono `owner: { type: "customer" | "pratica"; id }` invece di dedurlo da `location.pathname` e `params.id`.
-  - Le action ricevono `owner` e il percorso corrente da rinfrescare, non più percorsi fissi.
-  - Una nota con `owner.type = "customer"` non aggiorna nessuna pratica (base di AC55).
-  - Scheda cliente e pratica passano il proprio `owner`.
+  - **Interfaccia.** `CustomerChatSection({ customerId, limit? })` carica il cliente e la chat come oggi, e mostra la chat attiva oppure "Avvia una chat" (AC56, D17).
+    - `CustomerChat` riceve `customerId` insieme a `chatId`, `messages`, `total` e `limit`.
+    - `CustomerNewChat` riceve `customerId` e lo destruttura, invece di spargerlo sulla `<section>` come fa oggi `PraticaNewChat` con `{...props}`.
+    - Nessun componente legge più `location.pathname` o `useParams` (finding 25, 26).
+  - **Invio ed eliminazione** (oggi `PraticaActiveChat` e `PraticaNote`, finding 25): dopo l'action chiamano `customer.updateLastEdit({ id: customerId })`. La chiamata a `pratiche.updateLastEdit` sparisce (base di AC55).
+  - **Form senza `useOptimistic` e `useFormStatus`** (P12, finding 30):
+    - `<form onSubmit>` con `preventDefault`, invece di `action={fn}`;
+    - il campo è controllato;
+    - la nota in attesa sta in uno stato locale, con una chiave che non può coincidere con un id del DB (per esempio `pending-<n>`), e senza cestino. Oggi la nota ottimistica ha `id: optimisticMessage.length + 1` (`PraticaNotes.tsx:78`), e il suo cestino eliminerebbe il messaggio con quell'id, in qualunque chat (`chat.deleteMessage` non controlla, §15);
+    - un flag `sending` rende "Commenta" `aria-disabled` dall'invio alla risposta, e `onSubmit` ignora un invio mentre `sending` è vero. Non l'attributo `disabled`: toglierebbe il focus a chi ha inviato da tastiera (stessa regola dei controlli di PR3).
+
+    Quello che si vede quando l'invio riesce resta uguale: la nota compare subito e il campo si svuota subito. La nota in attesa resta finché i `messages` ricaricati non contengono un messaggio con l'id che `updateChatAction` ha restituito, così non lampeggia: Next risolve l'action prima di mostrare la pagina ridisegnata (`server-action-reducer.js`). Il numero dei messaggi o il testo non bastano: la chat ne mostra al massimo `limit`, e due note possono avere lo stesso testo.
+  - **Server action:**
+    - `updateChatAction` e `deleteMessageAction` ricevono anche `customerId` e rinfrescano `/dashboard/customers/<customerId>` invece del percorso fisso `/dashboard/pratiche/[id]`. La pagina corrente si ridisegna comunque (finding 27): per questo il dettaglio di Contatti non ha bisogno di passare il proprio percorso;
+    - `updateChatAction` restituisce `{ ok: true, id }` quando la nota è salvata, con l'id della riga che `chat.insertMessage` restituisce già. T4.3 tratta come fallimento tutto il resto (finding 29);
+    - `createChatAction` accetta solo `{ customerId }`: il ramo `pratica` sparisce (D15).
+  - **Tutto il resto resta com'è:**
+    - testi e aspetto;
+    - accordion aperto di default;
+    - "Carica altri messaggi", con `limit` nell'URL;
+    - il cestino al passaggio del mouse, sulle note salvate;
+    - la logica di `updateChatAction` (operatori della chat, aggiunta dell'operatore, inserimento).
+  - Il fallimento dell'invio si gestisce in T4.3.
 - **validation**:
-  - unit test della funzione che sceglie le mutation in base a `owner`;
-  - browser: le note in Pratiche e nella scheda cliente funzionano come prima (invio, "Carica altri messaggi", prima chat creata).
-- **status**: Planned
+  - **Primo passo RED:** il comportamento di `tdd_target`. Fallisce prima perché `CustomerChat` non esiste ancora; il componente di oggi, comunque, non si monterebbe in jsdom, perché `useOptimistic` e `useFormStatus` non esistono in React 18.3.1. Non si risolve con un alias verso `next/dist/compiled/react` in vitest, perché cambierebbe il React di tutti i test di componenti esistenti (P12).
+  - **Test del componente.** I mock sono quelli dei test di PR3 (`CustomerAlertCreator.test.tsx`): `@/trpc/react` (`operator.getUserOperator`, `operator.getOperatorById`, `customer.updateLastEdit`, `pratiche.updateLastEdit`), `next/navigation` (`useRouter`) e i moduli delle action, che sono il confine verso il server. Il componente si monta dentro `CollassableSection` aperta; si aspetta che le note escano dallo `Skeleton`, e il cestino si raggiunge con `hover`. Casi:
+    - con l'URL `/dashboard/contatti/7`, inviare una nota nella chat del cliente `c-42` chiama `updateChatAction` con `chatId`, `content` e `customerId: "c-42"`, poi `customer.updateLastEdit({ id: "c-42" })`. `pratiche.updateLastEdit` non viene chiamata (AC55);
+    - la nota compare subito e il campo si svuota; "Commenta" ha `aria-disabled="true"` finché l'action non risponde, e un secondo invio in quel momento non chiama l'action; quando arrivano i `messages` ricaricati con l'id restituito, la nota compare una volta sola;
+    - con 5 note nella chat (`limit` 5), una con lo stesso testo della nota inviata: la nota in attesa compare subito, e sparisce solo quando i `messages` contengono l'id restituito;
+    - la nota in attesa non ha il pulsante per eliminarla, anche al passaggio del mouse;
+    - lo stesso, cliente e pratica, per l'eliminazione di una nota;
+    - "Avvia una chat" chiama `createChatAction` con `customerId: "c-42"`.
+  - **Controlli sul codice:**
+    - `rg -n "location\.pathname|useParams|useOptimistic|useFormStatus" src/components/custom/notes` non trova nulla;
+    - `rg -n "pratiche\.updateLastEdit" src/components src/app` non trova nulla;
+    - `rg -nF <stringa> src` non trova nulla per: `PraticaNotes`, `PraticaActiveChat`, `PraticaNewChat`, `pratiche/[id]/_actions/updateChat`, `pratiche/[id]/_actions/createNewChat`, `pratiche/[id]/_actions/deleteMessage`, `pratiche/[id]/_components/CollassableItem`.
+  - **Browser**, nella scheda cliente sul DB di sviluppo (la passata completa è in T4.2): invio, "Carica altri messaggi", "Avvia una chat" su un cliente senza chat, eliminazione dell'ultima nota (la chat sparisce e torna "Avvia una chat"), pagina della pratica con le sezioni dei clienti. Tutto come prima, salvo "Commenta" disabilitato durante l'invio.
+- **status**: Done
 - **log**:
-- **files edited/created**:
+  - 2026-10-15: test RED dell'orchestratore (6 casi), rosso per `Failed to resolve import "../CustomerChat"`. Worker sonnet, prima revisione passata. Le action ricevono un oggetto invece di `FormData`.
+  - Scostamento del worker: il cestino delle note salvate è nascosto con il CSS (`invisible group-hover:visible`) invece dello stato `show`. Con lo stato, `user-event` mandava un `mouseout` senza `relatedTarget` spostandosi sul pulsante, e React lo smontava prima del clic. Al mouse si comporta come prima; `invisible` lo toglie anche dal focus, come prima.
+  - Correzione dell'orchestratore: una sola lista di note salvate e in attesa, così l'ultima nota non ha la riga sotto (come prima).
+  - Verifica per mutazione: con la nota in attesa riconosciuta dal testo invece che dall'id, il caso delle 5 note diventa rosso.
+  - Gate: 6/6 test di `notes`, suite intera 906 verdi (worker), `next lint` e `tsc --noEmit` puliti; i controlli `rg` non trovano nulla (fuori dal mock del test).
+- **files edited/created**: creati `src/components/custom/notes/{CustomerChat.tsx, CustomerChatSection.tsx, _actions/updateChat.ts, _actions/createNewChat.ts, _actions/deleteMessage.ts, _test/CustomerChat.test.tsx}`; spostato `CollassableItem.tsx` in `src/components/custom/`; modificati `src/app/dashboard/customers/[id]/page.tsx`, `src/app/dashboard/pratiche/[id]/page.tsx`; eliminati `PraticaNotes.tsx`, `PraticaNotesSetcion.tsx`, le tre action di `pratiche/[id]/_actions`, `customers/[id]/_components/CustomerChatSection.tsx`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a (D6)
-- **tdd_target**: "una nota inviata con owner cliente non chiama l'aggiornamento della pratica".
+- **tdd_target**: "`CustomerChat` si monta in jsdom e, con l'URL `/dashboard/contatti/7`, una nota inviata nella chat del cliente `c-42` aggiorna il cliente `c-42` e non chiama l'aggiornamento della pratica".
 - **review_mode**: mixed
 - **assigned_skills**: agent-browser
+- **complexity**: medium
+
+#### T4.3: Nota non inviata (AC76)
+- **depends_on**: [T4.1]
+- **location**: `src/components/custom/notes/CustomerChat.tsx`, `src/components/custom/notes/_test/CustomerChat.test.tsx`
+- **description**:
+  - **L'invio quando riesce resta com'è** (T4.1, D16).
+  - **Fallimento:** è tutto quello che non è `{ ok: true, id }`. Sono casi reali:
+    - `updateChatAction` rifiuta (rete; in produzione Next nasconde il messaggio, ma la promessa rifiuta);
+    - restituisce `{ error }` (dati non validi);
+    - risolve `undefined`: succede dopo un deploy, quando l'id dell'action non esiste più, o con una pagina d'errore del proxy, perché Next risolve senza risultato invece di rifiutare (finding 29);
+    - il dato dell'operatore non è ancora caricato: oggi `operatorData!.id` lancia prima ancora di chiamare l'action.
+
+    Tutto l'invio sta dentro un solo `try/catch`. Oggi un rifiuto risalirebbe fino a `global-error.tsx`, che sostituisce l'intera app.
+  - **Con un fallimento:**
+    - il testo inviato torna nel campo. Se intanto l'operatore ha scritto altro, il testo fallito va prima del nuovo, su una riga a sé: niente si perde;
+    - sotto il campo compare "Nota non inviata, riprova", in un elemento con `role="alert"`, collegato al campo con `aria-describedby`;
+    - la nota in attesa sparisce dalla chat;
+    - `customer.updateLastEdit` non viene chiamata;
+    - niente `router.refresh()`: nei casi di rete, deploy e proxy Next ricaricherebbe tutta la pagina, e il testo appena rimesso sparirebbe (finding 31). Se l'errore è arrivato dopo che la nota era già salvata (timeout dopo l'inserimento), l'operatore può rinviarla e trovarla doppia: rischio accettato (D18, §13).
+  - Il testo da conservare dopo un ricaricamento o una scheda chiusa è di T4.4.
+  - **Il messaggio si toglie all'inizio di ogni invio** e ricompare se fallisce di nuovo, così un secondo fallimento si annuncia di nuovo.
+  - **Niente animazioni** (P6): il messaggio compare e sparisce senza transizioni. Il focus resta dove l'operatore l'ha lasciato.
+- **validation**: test del componente:
+  - `updateChatAction` che rifiuta: il campo contiene di nuovo il testo; `getByRole("alert")` dice "Nota non inviata, riprova" ed è collegato al campo; la nota non è nella lista; `customer.updateLastEdit` non è chiamata; `router.refresh` non è chiamato;
+  - `updateChatAction` che restituisce `{ error }`, oppure `undefined`: stesso risultato;
+  - operatore non ancora caricato: stesso risultato, senza chiamare l'action;
+  - due fallimenti di fila: il messaggio sparisce all'inizio del secondo invio e ricompare;
+  - testo scritto durante l'invio, poi fallimento: nel campo ci sono il testo fallito e, sotto, quello nuovo;
+  - dopo un fallimento, un invio riuscito toglie il messaggio e svuota il campo;
+  - invio riuscito: nessun messaggio d'errore e campo vuoto.
+
+  Browser, nella scheda cliente: con la rete interrotta durante l'invio (modalità offline dello strumento), il testo torna nel campo con il messaggio; tornata la rete, "Commenta" invia la nota. La pagina non si ricarica in nessun momento.
+- **status**: Done
+- **log**:
+  - 2026-10-15: 7 test RED dell'orchestratore, rossi perché il fallimento non era gestito (il rifiuto arrivava in cima come "Unhandled Rejection"). Lo stesso worker sonnet di T4.1.
+  - Prima revisione fallita: il worker aveva reso il campo non controllato, perché `queryAllByText` trovava il testo rimesso nel campo e lo contava come una nota. Il difetto era nell'helper del test, che ora ignora `textarea`. Il campo resta controllato, come vuole T4.1, e serve a T4.4: la bozza segue lo stato, non un nodo del DOM forse già staccato. Seconda proposta: niente `throw` usato come salto, un `fail()` esplicito. Passata.
+  - Il messaggio usa `text-destructive`, la classe d'errore di `ui/form.tsx`.
+  - Gate: 14/14 test di `notes`, suite intera 914 verdi (worker), `next lint` e `tsc --noEmit` puliti, nessun rifiuto non gestito.
+- **files edited/created**: `src/components/custom/notes/CustomerChat.tsx`, `src/components/custom/notes/_test/CustomerChat.test.tsx`
+- **backlog_item_id**: n/a
+- **backlog_item_url**: n/a
+- **relation_mode**: n/a (D6)
+- **tdd_target**: "se `updateChatAction` rifiuta, il campo contiene di nuovo il testo inviato, compare 'Nota non inviata, riprova' e la nota non è nella chat".
+- **review_mode**: mixed
+- **assigned_skills**: agent-browser
+- **complexity**: medium
+
+#### T4.4: Bozza della nota non inviata (AC76, D18)
+- **depends_on**: [T4.3]
+- **location**: `src/components/custom/notes/CustomerChat.tsx` (o un hook accanto, `useUnsentNote.ts`), `src/components/custom/notes/_test/CustomerChat.test.tsx`
+- **description**:
+  - **Perché:** dopo un deploy l'id dell'action vecchia non esiste più, e ogni invio risolve `undefined` finché la pagina non si ricarica (finding 29). Ricaricando, il testo rimesso da T4.3 si perderebbe. Lo stesso se la scheda del cliente si chiude durante l'invio: il componente si smonta e il campo non c'è più.
+  - **Bozza:** dopo un fallimento il testo che T4.3 rimette nel campo si salva in `sessionStorage`, con la chiave `mito:nota-non-inviata:<customerId>`. La scrive il gestore del fallimento, anche se il componente si è smontato durante l'invio: in quel caso la bozza è il testo inviato.
+  - Finché c'è la bozza, segue il campo a ogni modifica. Si cancella quando un invio riesce o quando il campo viene svuotato.
+  - **Al montaggio**, in un effetto e non nel render, per non divergere dall'HTML del server: se c'è una bozza per quel cliente, torna nel campo e compare "Nota non inviata, riprova", con lo stesso `role="alert"` di T4.3.
+  - `sessionStorage` vale per la finestra: un'altra finestra o un altro operatore non vedono la bozza. Ogni lettura e scrittura sta in un `try/catch`: se il browser la blocca, la chat funziona come in T4.3, senza bozza.
+  - Niente animazioni (P6).
+- **validation**: test del componente (jsdom ha `sessionStorage`):
+  - fallimento: `sessionStorage` contiene il testo con la chiave del cliente;
+  - montando la chat del cliente `c-42` con una sua bozza, il campo contiene il testo e compare l'alert; con la bozza di un altro cliente, niente;
+  - invio riuscito dopo un fallimento: la bozza non c'è più;
+  - campo svuotato dopo un fallimento: la bozza non c'è più;
+  - testo cambiato dopo un fallimento: la bozza contiene il testo nuovo;
+  - fallimento che arriva dopo lo smontaggio del componente: la bozza c'è, e rimontando la chat il testo torna nel campo;
+  - `sessionStorage.getItem` e `setItem` che lanciano: stesso comportamento di T4.3, nessun errore.
+
+  Browser, nella scheda cliente: invio con la rete interrotta, poi rete ripristinata e pagina ricaricata: il testo è nel campo con il messaggio, e "Commenta" invia la nota. Lo stesso chiudendo e riaprendo la scheda del cliente dopo il fallimento.
+- **status**: Done
+- **log**:
+  - 2026-10-15: 8 test RED dell'orchestratore, 4 rossi per la bozza mancante (gli altri 4 controllano l'assenza della bozza). Worker haiku.
+  - Il worker si è fermato con 6 test rossi: la bozza scritta da un test passava al successivo, perché `sessionStorage` non si svuotava tra un test e l'altro. Difetto dell'harness: ora il `beforeEach` del file la svuota.
+  - Correzioni dell'orchestratore, con test (rosso togliendo la correzione):
+    - durante il nuovo invio di una bozza, il testo scritto andava nella bozza al posto di quello in volo, e un ricaricamento lo perdeva. Ora la bozza tiene il testo in volo e, sotto, quello nuovo;
+    - `CustomerChatSection` monta `CustomerChat` con `key={customerId}`: se la stessa istanza ricevesse un altro cliente (navigazione nel dettaglio di Contatti, PR5), non porterebbe con sé il testo né la bozza del cliente precedente.
+  - Rischio accettato (D18): un ricaricamento durante l'invio di una bozza mostra di nuovo il testo anche se il server l'ha salvato.
+  - Gate: 23/23 test di `notes`, suite intera 69 file e 923 test, `next lint` e `tsc --noEmit` puliti.
+  - Correzioni dopo l'adversarial review (round PR4 di `REPORT.md`), con TDD (test RED prima, ognuno rosso per mutazione):
+    - la bozza vive in `unsentNote.ts`, con il valore `{ operatorId, text }`: una bozza di un altro operatore non si mostra e si cancella; "Esci dal gestionale" cancella tutte le bozze prima di `signOut` (v4);
+    - una chat del cliente già aperta quando fallisce l'invio di una chat chiusa mostra subito il testo, con il messaggio (evento `mito:nota-non-inviata`), e la digitazione non lo sovrascrive più: la bozza segue il campo solo nella chat che la mostra (v1);
+    - con l'operatore non ancora caricato la bozza si salva (`operatorId` nullo), e torna dopo un ricaricamento (v1);
+    - il messaggio è `text-red-700` (6,47:1) invece di `text-destructive` (3,76:1) (v5).
+  - Seconda e terza verifica di v1: altri intrecci fra chat dello stesso cliente (bozza presa da un'altra chat cancellata dal successo di un invio; bozza rinviata da una chat chiusa persa o raddoppiata). Cambio di struttura: `unsentNote.ts` è uno store per cliente letto con `useSyncExternalStore` (testo del campo, messaggio, note fallite in rinvio), condiviso da tutte le chat, con `sessionStorage` come copia. Quarta verifica SHIP; poi, con test e mutazione: un campo vuoto inviato non accende il messaggio, e un invio partito prima di "Esci dal gestionale" non scrive più niente ("generazione").
+  - Gate finali: 72 file e 956 test, `next lint` e `tsc --noEmit` puliti, `pnpm build` in una copia senza `.env*`.
+- **files edited/created**: `src/components/custom/notes/CustomerChat.tsx`, `src/components/custom/notes/CustomerChatSection.tsx`, `src/components/custom/notes/unsentNote.ts`, `src/components/custom/notes/_test/CustomerChat.test.tsx`, `src/components/custom/notes/_test/unsentNote.test.ts`, `src/components/custom/notes/_actions/_test/updateChat.test.ts`, `src/components/custom/notes/_actions/{updateChat,createNewChat,deleteMessage}.ts` (schemi), `src/app/dashboard/profile/_components/LogoutFloatingButton.tsx`, `src/app/dashboard/profile/_components/_test/LogoutFloatingButton.test.tsx`
+- **backlog_item_id**: n/a
+- **backlog_item_url**: n/a
+- **relation_mode**: n/a (D6)
+- **tdd_target**: "dopo un invio fallito, rimontando la chat dello stesso cliente il campo contiene il testo non inviato e compare 'Nota non inviata, riprova'".
+- **review_mode**: mixed
+- **assigned_skills**: agent-browser
+- **complexity**: low
 
 #### T4.2: Gate PR4
-- **depends_on**: [T4.1]
-- **location**: —
-- **description**: Gate CI e regressione browser delle note in Pratiche e nella scheda cliente.
-- **validation**: gate verdi; nessuna differenza visibile.
-- **status**: Planned
+- **depends_on**: [T4.1, T4.3, T4.4]
+- **location**: `brain/tech-debt/crm/sezione-contatti.md`, `REPORT.md` e `RUBRIC.md` nella cartella della spec, la descrizione della PR
+- **description**:
+  - Gate CI.
+  - Passata browser completa sul DB di sviluppo, con un operatore e un admin:
+    - nella scheda cliente, tutto il percorso di T4.1 (invio, "Carica altri messaggi", "Avvia una chat", eliminazione fino alla chat vuota), il fallimento di T4.3 e la bozza di T4.4 (pagina ricaricata, scheda chiusa e riaperta);
+    - la pagina della pratica, dopo lo spostamento di `CollassableSection`.
+  - `adversarial-review` del branch (`review.mode: total`), con il passaggio UI. Prima della review l'orchestratore scrive nel tech-debt i seguiti fuori perimetro elencati nell'intestazione di PR4 (§15). Sono preesistenti: senza, il passaggio UI li segnalerebbe come difetti di PR4.
+  - Nella descrizione della PR: la chat si è spostata in `src/components/custom/notes/` e i rami pratica sono eliminati (D15). Per gli operatori, due righe: "se una nota non parte, il testo resta nel campo, anche se ricarichi la pagina" (AC76) e "durante l'invio Commenta è disabilitato". Le stesse due righe vanno agli operatori prima del deploy di PR4 (§12).
+- **validation**: gate verdi; passata browser senza differenze, salvo AC76 e "Commenta" disabilitato durante l'invio; `REPORT.md` della review SHIP; operatori avvisati con le due righe prima del deploy.
+- **status**: Done, salvo la PR e l'avviso agli operatori (da Omar)
 - **log**:
-- **files edited/created**:
+  - 2026-10-15: gate CI verdi (72 file, 956 test; build in una copia senza `.env*`). Passata browser sul DB di sviluppo (`next dev` sulla porta 3100), Federica Lupo (OPERATORE) e Admin, clienti `zzpr3-c1` e `zzpr3-c2`: checklist in `IMPLEMENTATION-NOTES.md` (Sanity Checks). Nessuna pratica toccata (sola lettura).
+  - Seguiti fuori perimetro scritti nel tech-debt prima della review.
+  - `/simplify` (4 revisori) e `adversarial-review` con il passaggio UI: prima verifica DO NOT SHIP (4 MAJOR), SHIP dopo le correzioni (round PR4 di `REPORT.md`).
+  - Da fare: commit, PR verso `dev` con la descrizione (bozza in chat), le due righe agli operatori prima del deploy.
+- **files edited/created**: `brain/tech-debt/crm/sezione-contatti.md`, `RUBRIC.md` e `REPORT.md` (round PR4), `brain/index.md`, `brain/log.md`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a (D6)
 - **tdd_target**: n/a (gate)
 - **review_mode**: mixed
 - **assigned_skills**: agent-browser
+- **complexity**: low
 
 ### PR5 — Sezione Contatti con note
 
@@ -1969,18 +2146,21 @@ Ordine interno, secondo l'ux-advisor:
 - **assigned_skills**: agent-browser
 
 #### T5.8: Note del cliente nel dettaglio contatto
-- **depends_on**: [T5.6, T4.1]
+- **depends_on**: [T5.6, T4.1, T4.3, T4.4]
 - **location**: `src/app/dashboard/contatti/(dettaglio)/[id]/page.tsx`, `_components/ContactNotes.tsx`
 - **description**:
-  - Sezione note con la chat del cliente (`owner` cliente).
+  - Sezione note con la chat del cliente: `CustomerChatSection({ customerId })` (T4.1).
   - La pagina legge `limit` dall'URL per "Carica altri messaggi" (AC57).
-  - Se il cliente non ha una chat, la prima nota la crea (AC56).
+  - Se il cliente non ha una chat, si avvia con "Avvia una chat" (AC56, D17).
   - Si può scrivere anche quando il contatto è in sola lettura (AC54).
-  - Se una nota non parte, il testo resta nel campo con l'errore (FLOW).
+  - La chat porta già AC76 (T4.3, T4.4).
+  - Se dopo un invio la pagina non si ridisegna (il comportamento di Next del finding 27 è provvisorio), le action rinfrescano anche `/dashboard/contatti/[id]` con `revalidatePath(…, "page")` (review di PR4, v2).
 - **validation**: browser:
   - una nota scritta dal contatto si vede nella scheda cliente, e viceversa (AC53);
   - nessuna pratica viene modificata (AC55);
-  - prima nota su un cliente senza chat.
+  - su un cliente senza chat compare "Avvia una chat"; avviata la chat, la prima nota si salva (AC56);
+  - una nota inviata dal dettaglio di Contatti compare senza ricaricare a mano. La pagina si ridisegna per il comportamento di Next del finding 27, che il sorgente marca come provvisorio;
+  - nota non inviata: il testo torna nel campo e resta dopo un ricaricamento (AC76).
 - **status**: Planned
 - **log**:
 - **files edited/created**:
@@ -2336,12 +2516,12 @@ In modo `sequential` l'ordine è: T3.1a, T3.1b, T3.1c, T3.2a, T3.16, T3.2b, T3.9
 
 | Wave | Task | Parte quando |
 |---|---|---|
-| 4 | T4.1 → T4.2 → **merge PR4** | Subito: è indipendente da PR3 e si può fare in parallelo |
+| 4 | T4.1 → T4.3 → T4.4 → T4.2 → **merge PR4** | Subito: PR3 è in prod (G3). T4.1, T4.3 e T4.4 toccano lo stesso componente, quindi vanno in sequenza |
 | 5 | T5.1, T5.2, T5.3 → T5.4 → T5.5, T5.6 → T5.7, T5.8 → T5.9 → T5.10, T5.11 → T5.12 → T5.13 → **merge PR5** (G4) | PR3 e PR4 in `main` |
 | 6 | T6.1–T6.8 → **merge PR6** | G5 |
 | 7 | T7.1 → T7.2 → T7.3 → **merge PR7** | Dopo il merge di PR3, quando c'è tempo (bassa priorità) |
 
-I task di PR4–PR6 non hanno ancora una `complexity`: si aggiunge quando quelle PR si ripianificano con `create-plan` 0.8.0 (§15).
+PR4 è riscritta con `create-plan` 0.8.0 e ogni suo task ha una `complexity`. I task di PR5 e PR6 non ce l'hanno ancora: si aggiunge quando quelle PR si ripianificano (§15).
 
 ## 11. Strategia di test (fase TDD)
 
@@ -2349,7 +2529,7 @@ I task di PR4–PR6 non hanno ancora una `complexity`: si aggiunge quando quelle
   - PR1: il test di caratterizzazione del cron (T1.2), poi `replaceActiveContact` (T1.4);
   - PR2: il test "nessun duplicato dopo la migrazione" (T2.2);
   - PR3: `planStateChange` (T3.1a), poi la mutation più sottile sulla guardia, `resolveAlert` via caller (T3.5b), poi `changeState` (T3.3);
-  - PR4: la scelta della mutation in base a `owner` (T4.1);
+  - PR4: una nota inviata con l'URL di Contatti aggiorna il cliente e non la pratica (T4.1), poi la nota non inviata (T4.3) e la sua bozza (T4.4);
   - PR5: `getContacts` senza filtri (T5.1);
   - PR6: pagine esatte di `getAllCustomers` (T6.1).
 
@@ -2372,7 +2552,7 @@ I task di PR4–PR6 non hanno ancora una `complexity`: si aggiunge quando quelle
   - `@/server/auth`, `authCheck`, moduli Next/Supabase.
 
   Mai mock di funzioni interne. I guasti per l'atomicità si iniettano con `failNextInsertInto` e `failNextUpdateOf` (trigger DB di test); le scritture concorrenti si simulano con `afterNextWriteTo`; il COMMIT fallito con `failAtCommit` (T3.16); la regola dei lock con `assertCustomerLockedOnWrite` (T3.15).
-- **Componenti (PR3, i primi del repo):** Testing Library in jsdom con `@testing-library/user-event` e i polyfill che Radix richiede (T3.9b). I componenti sono presentazionali e non chiamano tRPC; il collegamento alle mutation si verifica nel browser.
+- **Componenti (PR3, i primi del repo):** Testing Library in jsdom con `@testing-library/user-event` e i polyfill che Radix richiede (T3.9b). I componenti presentazionali non chiamano tRPC, e il collegamento alle mutation si verifica nel browser. Quelli che la chiamano (`CustomerAlertCreator`, la chat di PR4) simulano `@/trpc/react` e, per la chat, i moduli delle server action.
 - **Effect nei test (D9):**
   - le procedure si testano ancora via `createCaller` e il cron via `GET`: i test non sanno che dentro c'è Effect;
   - si esegue un servizio Effect direttamente (`Effect.runPromise` / `Effect.runPromiseExit` con `ServerLive`) solo quando è lui l'interfaccia pubblica: `transaction`, `replaceActiveContact`, `loadEditableContact`;
@@ -2385,8 +2565,8 @@ I task di PR4–PR6 non hanno ancora una `complexity`: si aggiunge quando quelle
   - la regola dei lock provata da un test (T3.15, livello 1): ogni scrittura su un contatto avviene dopo il lock del cliente, nella stessa transazione;
   - i test con due connessioni su un Postgres vero (PR7, livello 2, bassa priorità).
 - **Comportamenti prioritari**, cioè dove si concentra lo sforzo: AC71/AC72 (invarianza di cron e massiva), AC39 (atomicità), AC49/D2/A1 (permessi), AC36/AC37 (conferma dell'alert), AC52 (rifiuti), F14/R7 (chiusura degli alert), AC14/AC15 (paginazione), AC69/AC70 (pulizia).
-- **FLOW nel formato vecchio (create-plan 0.8.0):** ogni error path ed edge case della FLOW si è confrontato con gli AC. Quelli coperti sono controlli espliciti nelle `validation` dei task di PR3: conferma dell'alert (AC36), rifiuto per permessi (AC49, AC52), contatto superato (AC27, AC52), alert comparso nel frattempo (AC37), errore di rete e doppio clic (AC39, AC40), richiamo con data passata (AC44), "Crea contatto" su un cliente che ne ha già uno (AC67), contatto di un collega o non assegnato (AC51, A1), "Assegna Clienti" (D2), priorità "Automatica" (AC43), coesistenza (AC73). Quelli senza AC sono assunzioni (A9, A10), non perimetro implicito.
-- **Browser** (`agent-browser`, sul DB di sviluppo): T3.8b, T3.8c, T3.9b–T3.12, T3.17, PR4, PR5, PR6, con almeno due operatori e un admin.
+- **FLOW nel formato vecchio (create-plan 0.8.0):** ogni error path ed edge case della FLOW si è confrontato con gli AC. Quelli coperti sono controlli espliciti nelle `validation` dei task di PR3: conferma dell'alert (AC36), rifiuto per permessi (AC49, AC52), contatto superato (AC27, AC52), alert comparso nel frattempo (AC37), errore di rete e doppio clic (AC39, AC40), richiamo con data passata (AC44), "Crea contatto" su un cliente che ne ha già uno (AC67), contatto di un collega o non assegnato (AC51, A1), "Assegna Clienti" (D2), priorità "Automatica" (AC43), coesistenza (AC73). Quelli senza AC sono assunzioni (A9, A10), non perimetro implicito. Per PR4 l'error path "Nota non inviata" aveva solo la FLOW: ora lo copre AC76 (D16), e la FLOW lo cita.
+- **Browser** (`agent-browser`, sul DB di sviluppo): T3.8b, T3.8c, T3.9b–T3.12, T3.17, T4.1, T4.3, T4.4, PR5, PR6, con almeno due operatori e un admin.
 - **Prestazioni:** `EXPLAIN ANALYZE` su volumi reali, eseguito da una persona (A3).
 - **Mai** script con `NODE_ENV=production`.
 
@@ -2410,9 +2590,11 @@ I task di PR4–PR6 non hanno ancora una `complexity`: si aggiunge quando quelle
 |---|---|---|---|---|
 | G1 | **Chiuso** il 2026-10-13, con G2 (T1.8) | Dopo il deploy di PR1 | Rivisto il 2026-09-28 (il cron di prod non gira): operatore di sistema creato in prod; PR1 in prod per almeno due giorni lavorativi di uso normale (riapertura, massiva, "Assegna Clienti") senza righe di livello error nei log Vercel né issue nuove in Sentry. Il cron alert in prod non si lancia prima di G2 (runbook T1.8) | Persona |
 | G2 | **Fatto** il 2026-10-13, dalla sessione di Leonardo (T2.4). Prima notte dei cron pianificati e avvisi chiusi il 2026-10-15; il cron dello storage è verde ma fallisce sulla chiave Supabase (log di T2.4) | Prima di applicare PR2 | Guardia di PR1 nel deploy di prod; prerequisiti in sola lettura (operatore di sistema, `max(created_at)` delle migrazioni, nomi degli indici liberi, nessun trigger, `ALERT_CRON_ENABLED` assente). Poi un'unica sessione fuori orario: controlli ripetuti, merge `dev` → `main` limitato a PR2, estrazione in sola lettura conservata come traccia (senza via libera degli admin, deciso il 2026-09-29), `pnpm db:migrate:prod` lanciato a mano, duplicati = 0, estrazione vuota, indici con la definizione attesa, impronta di `task.updated_at` invariata; poi prima esecuzione del cron lanciata a mano, che chiude gli alert scaduti, verde e controllata su GitHub Actions, Vercel e Sentry, e solo dopo `ALERT_CRON_ENABLED = true`. A fine sessione operatori e cliente (riallineamento) avvisati. La notte dopo, la prima esecuzione pianificata è verde (T2.4) | Omar |
-| G3 | Aperto | Prima del deploy di PR3 | `adversarial-review` di PR3 SHIP (T3.14); operatori e admin informati con il testo di T3.14, compreso il salvataggio immediato nella scheda cliente (D11) | Persona |
+| G3 | **Chiuso** il 2026-10-15: PR3 in prod (PR #16) | Prima del deploy di PR3 | `adversarial-review` di PR3 SHIP (T3.14); operatori e admin informati con il testo di T3.14, compreso il salvataggio immediato nella scheda cliente (D11) | Persona |
 | G4 | Aperto | Prima del deploy di PR5 | G2 fatto (AC69); `EXPLAIN ANALYZE` ≤ 500 ms; guida T5.11 rivista; PR3 in prod da poco (la riassegnazione del singolo contatto arriva con PR5); Contatti annunciato agli operatori | Persona |
 | G5 | Aperto | Prima del merge di PR6 | Checklist scritta di un admin: giorni d'uso di Contatti, nessun blocco segnalato (A2) | Persona |
+
+PR4 non ha un gate a sé: prima del suo deploy gli operatori ricevono le due righe di T4.2 (nota non inviata, anche dopo un ricaricamento, e "Commenta" disabilitato durante l'invio).
 
 **Rollback:**
 - PR1: revert del merge **solo prima di G2**. Dopo che l'indice unico è in prod, il revert riporterebbe il "prima inserisci, poi disattiva" nel cron e nella massiva: l'indice li rifiuterebbe (`23505`) e il vecchio `try/catch` unico fermerebbe l'intero cron. Dopo G2 PR1 si corregge solo in avanti, oppure si fa prima `DROP INDEX task_customer_active_uidx`.
@@ -2448,7 +2630,10 @@ I task di PR4–PR6 non hanno ancora una `complexity`: si aggiunge quando quelle
 | Lock su `task` e `alert` dalla creazione degli indici fino al COMMIT: le scritture aspettano per tutta la migrazione (circa 10 s; 7 s sul DB di sviluppo). Una transazione aperta su `task` la fa restare in attesa | Migrazione fuori orario (G2); controllo di `pg_stat_activity` prima e `pg_cancel_backend` se resta in attesa più di un minuto: la transazione si annulla (T2.4, passo 5) |
 | La pulizia sceglie il contatto "sbagliato" | Stesso criterio già usato dall'interfaccia (`getActiveTask`); nessuna cancellazione; l'elenco estratto subito prima ha gli id per riattivarlo (§12) |
 | Link salvati di Clienti con filtri su `task` producono SQL non valido dopo PR6 | T6.2 scarta i parametri prima di `sql.raw` (finding 7) |
-| Il refactor della chat rompe Pratiche | PR4 separata, senza cambiamenti visibili, con regressione browser |
+| Il refactor della chat rompe le note della scheda cliente | PR4 separata, con test del componente e passata browser completa (T4.2). Pratiche non mostra note (finding 24) |
+| Un errore arriva dopo che la nota è già salvata (timeout dopo l'inserimento): con il testo rimesso nel campo, l'operatore la rinvia e la nota compare due volte | Accettato (D18): caso raro, la nota doppia si vede al primo ricaricamento e si elimina col cestino. `router.refresh()` dopo il fallimento è escluso, perché ricaricherebbe la pagina (finding 31) |
+| Dopo un deploy ogni invio fallisce finché la pagina non si ricarica, e ricaricando il testo si perderebbe | Bozza in `sessionStorage` che torna nel campo dopo il ricaricamento (T4.4, D18) |
+| AC76 e "Commenta" disabilitato arrivano in prod senza che gli operatori lo sappiano | Le due righe agli operatori prima del deploy di PR4 (T4.2) |
 | Fuso orario (server in UTC, utenti in Italia) | Helper `Europe/Rome` testato sui cambi d'ora (A4); il cron alert resta com'è (non-goal) |
 | La riapertura nel dettaglio rifà lo slide-in della Sheet | Guscio della Sheet nel layout sopra `[id]` (T5.6) |
 | `deleteTasks` è una mutation non protetta | Rimossa in T3.13 (A8 rivista, P7) |
@@ -2489,7 +2674,10 @@ I task di PR4–PR6 non hanno ancora una `complexity`: si aggiunge quando quelle
 | AC47, AC50 | T3.7, T5.7; eccezione D13: T3.8a, T3.17 |
 | AC48, AC49, AC51 | T3.1b, T3.2b, T3.8a, T3.8b, T3.8c (P4, P7, D13), T3.10, T3.11a, T3.11b, T3.12, T3.17, T5.2, T5.6, T5.9 |
 | AC52 | T3.2a, T3.9a, T3.10, T3.11a, T3.11b, T5.7, T5.9 |
-| AC53–AC57 | T4.1, T5.8 |
+| AC53, AC54, AC57 | T5.8 (la chat condivisa da T4.1) |
+| AC56 | T4.1 ("Avvia una chat" nella chat condivisa), T5.8 (D17) |
+| AC55 | T4.1 (base), T5.8 |
+| AC76 | T4.3, T4.4; nel dettaglio di Contatti T5.8 |
 | AC58–AC60 | T6.1, T6.2 |
 | AC61 | T6.1 (i sintomi spariscono già con PR2) |
 | AC62 | T5.10 |
@@ -2525,7 +2713,7 @@ Le assunzioni esplicite, che Omar può ribaltare prima della PR interessata:
 | A11 | Scrittori fuori dalla regola dei lock | PR3 | Registrata nel tech-debt il 2026-10-15 (T3.14), con la conferma della massiva legata al cliente (review di PR3); per "Assegna Clienti" si chiude con T6.8 (D14), per il cron `priority` e la pulizia del log resta aperta |
 
 **Conversioni a Effect rinviate** (regola di `AGENTS.md`: le conversioni più grandi si elencano come seguiti). Non fanno parte di questo piano perché il piano non ne tocca la logica:
-- le server action della chat (PR4 tocca solo il componente client);
+- le server action della chat: PR4 le sposta e cambia cosa ricevono e cosa restituiscono; l'unico errore previsto è la validazione dell'input, che resta a Zod (P8, P11);
 - la route e il router delle preferenze (T5.10 aggiunge solo una chiave);
 - ~~`customer.bulkUpdateCustomers` (T3.8c cambia solo il tipo di procedura). Resta anche fuori dalla regola dei lock (A11), come il cron `priority`: portarli dentro è il seguito naturale di T3.15;~~ entra nel piano con T6.8 (D14): passa a Effect e alla regola dei lock. Il cron `priority` resta fuori;
 - le altre procedure di `task` e `customer` che restano dopo T3.13;
@@ -2533,7 +2721,17 @@ Le assunzioni esplicite, che Omar può ribaltare prima della PR interessata:
 - il calcolo del giorno italiano dentro `processDueAlerts.ts`, che potrà usare `time.ts` (T3.1c) quando si toccherà il cron;
 - il trigger della regola dei lock (T3.15) attivo per default in tutti i `.db.test.ts`, con le factory e gli scrittori fuori regola (A11) esclusi in modo esplicito: così anche uno scrittore nuovo che dimentica il lock rende rossa la CI.
 
-**Seguiti di `create-plan` 0.8.0:** i task di PR4–PR6 non hanno ancora `complexity`, e la FLOW non è stata riletta, per loro, contro gli AC con il criterio nuovo. Si fa quando quelle PR si ripianificano.
+**Seguiti di `create-plan` 0.8.0:** i task di PR5 e PR6 non hanno ancora `complexity`, e la FLOW non è stata riletta, per loro, contro gli AC con il criterio nuovo. Si fa quando quelle PR si ripianificano. PR4 è fatta il 2026-10-15.
+
+**Fuori perimetro, notati ripianificando PR4** (vanno nel tech-debt con T4.2):
+- `chat.deleteMessage` è un'`operatorProcedure` che elimina qualunque messaggio: non controlla chi l'ha scritto, e l'`operatorId` che riceve dal client non serve a niente;
+- un'eliminazione fallita non mostra niente: `handleDelete` è un `onClick` async e il rifiuto resta non gestito;
+- `customer.updateLastEdit` è chiamata dal client dopo l'action, in una richiesta separata, invece che nella stessa scrittura della nota;
+- il cestino compare solo al passaggio del mouse, quindi da tastiera non si raggiunge; il campo della nota ha solo il placeholder, senza etichetta;
+- le server action della chat non sono in Effect (P11);
+- le procedure `chat.createNewChat` e `pratiche.updateLastEdit` non hanno più chiamanti dopo D15. Le chat di pratica già nel DB restano senza interfaccia: rimuovere le procedure o riportare le note in Pratiche è una scelta di prodotto.
+
+~~**Da decidere quando si ripianifica PR5:** AC56 contro il pulsante "Avvia una chat".~~ Deciso con D17: AC56 accetta il pulsante, e la spec è aggiornata.
 
 Scostamenti dalla spec, da riportare nella spec al prossimo aggiornamento:
 - **D2**: AC49 dice "solo i contatti assegnati a lui"; il piano ammette anche i contatti dei suoi clienti;
@@ -2605,3 +2803,21 @@ L'`adversarial-verifier` (quality gate, contesto pulito, `review.mode: total`) h
 | MINOR | Dopo un rifiuto il pulsante che apre la modale poteva sparire | Modale montata nel form; con un rifiuto si chiude, e il focus va al pulsante o al testo dell'operatore (T3.17) |
 | MINOR | T7.1 chiama `createContact` senza dipendere da PR3 | T7.1 ← T3.14 |
 | NIT | Finding 1 citava D5; §11 elencava T3.8a tra i task browser; `CustomerFormSection.tsx` mancante; "Assegna a te" non mostra i rifiuti e aggiorna lo schermo prima della risposta | Finding corretto; §11 con T3.17; location di T3.17; "Assegna a te" sistemato in T3.17 |
+
+### Quarta verifica: PR4 riscritta (2026-10-15)
+
+L'`adversarial-verifier` (quality gate, contesto pulito, `review.mode: total`) ha giudicato la PR4 riscritta, le sezioni trasversali che la citano e T5.8, contro AC53–AC57 e AC76 e contro il codice. Esito **DO NOT SHIP**: 1 BLOCKER, 3 MAJOR, 7 MINOR. Ha confermato i finding 24–30, gli elenchi dei file, la fattibilità dei test in jsdom e il grafo dentro PR4. Tutto è integrato in questa versione:
+
+| Severità | Rilievo | Correzione |
+|---|---|---|
+| BLOCKER | `router.refresh()` dopo un fallimento ricarica tutta la pagina nei casi di rete, deploy e proxy, e il testo che AC76 rimette nel campo sparisce. I test con il router simulato non lo vedono | Finding 31; T4.3 senza `router.refresh()`, con un test che lo esclude; nota doppia dopo un timeout accettata (D18, Omar); bozza in `sessionStorage` per il caso del deploy (T4.4, D18, Omar; AC76 esteso nella spec) |
+| MAJOR | La regola per togliere la nota in attesa non era definita: il numero dei messaggi si ferma a `limit`, il testo può ripetersi | `updateChatAction` restituisce `{ ok: true, id }`; la nota in attesa resta finché i `messages` non hanno quell'id, con un test a 5 note e testo uguale (T4.1) |
+| MAJOR | Il cestino della nota in attesa usava un id finto, che poteva eliminare un altro messaggio | Nota in attesa senza cestino e con una chiave che non coincide con un id del DB, con un test (T4.1) |
+| MAJOR | AC56 ("la prima nota crea la chat") restava aperto mentre PR4 fissa l'interfaccia che T5.8 usa; T5.8 si contraddiceva | D17 (Omar): AC56 accetta "Avvia una chat", spec aggiornata; T5.8, §14 e §15 allineati |
+| MINOR | "Commenta" con `disabled` toglierebbe il focus a chi invia da tastiera | `aria-disabled` e invio ignorato durante `sending` (T4.1) |
+| MINOR | P11 diceva che le action non hanno errori previsti, ma `{ error }` è un caso di T4.3 | P11 e §15 riformulati: l'unico errore previsto è la validazione, che resta a Zod (P8) |
+| MINOR | L'ordine PR4 → PR5 era scritto solo nella wave 5; "indipendente da PR3" impreciso | §3 punto 5; §8 con l'arco verso T5.8 |
+| MINOR | Il finding 27 si regge su un comportamento di Next marcato `TODO` | Nota nel finding 27; controllo nel browser in T5.8 |
+| MINOR | Chiudere la scheda durante l'invio perdeva il testo | Coperto dalla bozza di T4.4 |
+| MINOR | T4.2 senza `location` e senza un posto in §12 per l'avviso agli operatori | `location` di T4.2; nota sotto la tabella di §12 |
+| MINOR | Portata di `rg` ambigua; motivo del RED; motivo React 19 non pertinente; AC76 nel passo 1 della spec, già chiuso; §11 diceva che i componenti non chiamano tRPC | `rg … src`; RED sul comportamento; frase tolta; AC76 nel passo 3 della spec; §11 corretto |

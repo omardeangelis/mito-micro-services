@@ -3,9 +3,9 @@ domain: crm
 type: review
 scope: spec
 spec: sezione-contatti
-review_target: "branch contatti/pr3-regole-server — PR3 (T3.1a–T3.17), round in fondo; round di PR1 (ship) e PR2 (ship) più sopra"
-base_ref: d4f5d2c54bae3155e1cc75301437b685490fd07a
-head_ref: 45ae55e
+review_target: "branch contatti/pr4-chat-cliente — PR4 (T4.1, T4.3, T4.4), round in fondo; round di PR1, PR2 e PR3 (ship) più sopra"
+base_ref: c787dd17b24db81f751c8f714f7f56884981dd54
+head_ref: working-tree
 verdict: ship
 review_impact: critical
 human_in_loop: true
@@ -484,3 +484,106 @@ Obbligatoria (`review_impact: critical`). Da seguire prima del merge di PR3 su `
 - Durable findings, già nel tech-debt (`tech-debt/crm/sezione-contatti.md`): Select e DropdownMenu nella voce "Lacune dei primitivi di movimento"; conferma della massiva legata al cliente; scadenza "oggi" contro il cron notturno; contrasto del toast `destructive` ("Contrasto e nomi nei primitivi condivisi"); rotta di import e massive nella voce di `insertCustomer`; "La scheda cliente non regge sotto i 900 px".
 - Non durevoli, corretti prima del merge: tutti gli altri BLOCKER, MAJOR e MINOR della tabella. Restano come MINOR senza voce: test dello smontaggio per `CustomerAlertCreator`, `CustomerCreateContact` e `CustomerHandoverDialog`; il ruolo controllato dopo il caricamento in `reassign`.
 - Domain pages che dovrebbero rimandare a questa review: nessuna (manca ancora `brain/domains/crm/`).
+
+---
+
+## [Round: 2026-10-15] PR4 — "Chat con proprietario esplicito"
+
+Round aggiunto: i report di PR1, PR2 e PR3 sopra restano come sono. Rubric: round PR4 di [[specs/crm/sezione-contatti/RUBRIC]].
+
+- **Target:** branch `contatti/pr4-chat-cliente` (PR verso `dev`), T4.1, T4.3, T4.4, gate T4.2.
+- **Compared:** `c787dd1` (`dev`) → albero di lavoro non committato (prima verifica e verifiche successive, sul branch non ancora committato).
+
+### Verdict
+
+**SHIP** · impact: critical, dopo le correzioni e le verifiche successive (sotto). Nessun BLOCKER né MAJOR aperto. La checklist umana resta obbligatoria prima del merge e del deploy.
+
+Prima verifica: **DO NOT SHIP**. Nessun BLOCKER, quattro MAJOR (v1 ×2, v4, v5). Danno SHIP il perimetro di AC55/AC56 e la parità del refactor (v2), il confine delle server action (v3) e i gate (v6).
+
+Obiezioni più forti:
+- **v1:** chiusa e riaperta la chat mentre un invio è in corso, il fallimento scrive la bozza dopo il montaggio della chat nuova: il campo resta vuoto, e la prima lettera digitata sovrascrive la bozza con il solo testo nuovo. Il testo fallito si perde senza essere mai mostrato (AC76).
+- **v4:** la bozza ha la chiave del solo cliente e l'uscita non la cancella: un collega che entra dopo, nella stessa finestra, la trova nel campo e può inviarla a suo nome.
+- **v5:** "Nota non inviata, riprova" in `text-destructive`, `#ef4444` su bianco: 3,76:1, sotto 4,5 (1.4.3).
+
+### Verifiche successive (dopo le correzioni)
+
+Rilanciati i passaggi con un verdetto DO NOT SHIP: v1, v4, v5. v2, v3 e v6 restano SHIP; i loro MINOR sui test delle action sono chiusi (`_actions/_test/updateChat.test.ts`).
+
+| Verifica | Passaggi | Esito | Cosa è emerso | Corretto con |
+|---|---|---|---|---|
+| Seconda | v4 (Sonnet) | SHIP | MAJOR chiuso: bozza `{ operatorId, text }`, copia di un collega ignorata e cancellata, "Esci dal gestionale" cancella tutto. MINOR: una copia salvata prima che l'operatore si carichi non ha proprietario; le copie di un collega su clienti mai riaperti restano nello storage | Residui registrati in D18 e nel tech-debt |
+| Seconda | v5 (Sonnet, browser) | SHIP | Contrasto chiuso: `text-red-700`, 6,47:1. MINOR: "Commenta" scende di 28 px quando compare il messaggio | Non corretto: riservare lo spazio cambierebbe l'aspetto (vincolo del piano) |
+| Seconda | v1 (modello forte) | DO NOT SHIP | Chiusi i due MAJOR della prima verifica. Due nuovi: il successo di un invio cancellava la bozza presa nel frattempo da un'altra chat; nessun test proteggeva il ripristino mentre l'operatore si carica (mutazione verde) | Contatore delle bozze adottate; test del ricaricamento, di StrictMode, dell'invio prima dell'operatore |
+| Terza | v1 (modello forte) | DO NOT SHIP | Altri intrecci con lo stato diviso fra le chat: copia di un collega più invio prima dell'operatore (testo perso); bozza rinviata da una chat chiusa (testo perso o raddoppiato). v5 aveva visto il raddoppio nel browser sulla stessa build | Cambio di struttura: uno store per cliente (`unsentNote.ts`, `useSyncExternalStore`) condiviso da tutte le chat, con `sessionStorage` come copia; test per ogni intreccio |
+| Quarta | v1 (modello forte) | SHIP | 21 mutanti dello store su 24 uccisi. MINOR: un campo vuoto inviato accendeva il messaggio; un'uscita durante un invio lasciava una copia senza proprietario; test mancanti (chiave della nota in attesa, campo dopo l'uscita) | Messaggio solo con testo; "generazione" incrementata dall'uscita, che rende muti gli invii partiti prima; test aggiunti, ognuno rosso per mutazione |
+
+Le correzioni dopo la quarta verifica di v1 (campo vuoto, uscita durante un invio, test della chiave) non sono state riviste da un verificatore: le ho controllate con un test rosso prima e una mutazione dopo. Ricontrollati nel browser, sul codice finale, invio, fallimento offline, bozza dopo il ricaricamento e dopo la scheda chiusa e riaperta, rinvio.
+
+Gate sul codice finale: `next lint` e `tsc --noEmit` puliti, 72 file e 956 test, `pnpm build` in una copia senza `.env*`.
+
+### Coverage
+
+- Passaggi eseguiti: 6/6. v1 e v3 sul modello più forte (ereditato); v2, v4 e v5 su Sonnet; v6 su Haiku.
+- Passaggi saltati o falliti: nessuno.
+- v5 (UI) sul server di sviluppo `next dev` (porta 3100, DB di sviluppo), già acceso per la passata browser di T4.2, con una sessione `agent-browser` già autenticata come operatore. Clienti di prova `zzpr3-c1` (senza chat) e `zzpr3-c2` (con note). Nessuna scrittura: il fallimento offline e l'invio trattenuto nella pagina. Chromium solo, tema chiaro (l'app non ne ha un altro); niente Safari mobile. Senza axe-core: contrasto dal probe `contrast` della skill.
+- v1 ha provato le mutazioni in locale e ripristinato il file (shasum invariato); v3 ha eseguito gli schemi Zod veri in uno script nella scratchpad. Nessun accesso a un DB, nessuno script `db:*` o `NODE_ENV=production`.
+- Gate rieseguiti da v6: `next lint` e `tsc --noEmit` puliti, 69 file e 923 test, `pnpm build` in tre copie senza `.env*`.
+
+### Findings
+
+| Severity | Concern (verifier) | Location | Problem | Required fix / evidence | Durable? |
+|----------|--------------------|----------|---------|-------------------------|----------|
+| MAJOR | v1 — AC76 | `CustomerChat.tsx` (`handleChange`, effetto di montaggio, ramo del fallimento) | Chat riaperta durante l'invio, poi fallimento, poi una lettera: la bozza diventa la sola lettera e il testo fallito non è mai comparso | La chat aperta deve adottare la bozza scritta da un'altra istanza (testo fallito nel campo, con il messaggio), non sovrascriverla; test smonta → rimonta → fallimento → digitazione | no |
+| MAJOR | v1 — AC76 | `CustomerChat.tsx` (ramo "operatore non caricato") | Mostra il messaggio ma non salva la bozza: ricaricando, il testo si perde | Salvare la bozza anche lì; assert nel test | no |
+| MAJOR | v4 — dati nel browser | `CustomerChat.tsx` (`draftKey`), `LogoutFloatingButton.tsx` | Bozza legata al solo cliente e mai cancellata all'uscita: con la stessa finestra, o con la sessione scaduta, il collega successivo vede e può inviare a suo nome la nota di un altro. D18 diceva il contrario | Bozza legata all'operatore (ignorata e tolta per un altro operatore) e cancellata all'uscita; test | no |
+| MAJOR | v5 — UI | `CustomerChat.tsx` (`p[role=alert]`, `text-destructive`) | 3,76:1 a 14 px regular, sotto 4,5 (1.4.3), a ogni larghezza | Rosso più scuro (`text-red-700`, 6,47:1) | no |
+| MINOR | v1 — test | `_test/CustomerChat.test.tsx` | Nessun test protegge "la bozza segue il campo solo se esiste già" (mutazione `if (true)`: 23/23 verdi) né "ripristino in un effetto" (RTL non idrata) | Test "testo scritto e mai inviato: nessuna bozza al rimontaggio"; il ripristino senza idratazione divergente resta provato nel browser | no |
+| MINOR | v2, v3, v6 — test | `src/components/custom/notes/_actions/` | Le action sono mock nei test: Zod, `{ ok, id }` e `revalidatePath` non sono eseguiti da nessun test | Test di `updateChatAction` con `@/trpc/server` e `next/cache` simulati | no |
+| MINOR | v2 — rinfresco | `_actions/*.ts` (`revalidatePath` del cliente) | Sul dettaglio di Contatti la pagina si ridisegna solo perché Next 14.2.5 imposta `pathWasRevalidated` senza confrontare il percorso (TODO in `revalidate.js`) | T5.8 lo controlla nel browser; o un `revalidatePath` anche della rotta di Contatti quando esiste (PR5) | sì |
+| MINOR | v4 — dati nel browser | `sessionStorage` | "Duplica scheda" in Chrome copia la bozza: due schede la possono inviare due volte | Una riga in D18 | no |
+| NIT | v3 | `_actions/*.ts` | `customerId` accetta `""`; `chatId` accetta decimali e negativi (falliscono comunque in Postgres) | `z.string().min(1)`, `z.number().int().positive()` | no |
+| NIT | v1 | `_test/CustomerChat.test.tsx` | La chiave `pending-N` non è protetta da un test (React avvisa soltanto); il test dello smontaggio non copre "testo inviato più campo" | Facoltativo | no |
+| NIT | v5 — UI | `AccordionContent` (`overflow-hidden`) | L'anello di focus di campo e "Commenta" è tagliato di 4 px; preesistente, non peggiorato | Tech-debt | sì |
+| NIT | v2 | `incrementLimit` | La pagina di Contatti dovrà leggere `limit` dai `searchParams` e passarlo alla chat | Una riga nel piano di PR5 (T5.8) | no |
+
+### What passed
+
+| Concern (verifier) | Evidence |
+|--------------------|----------|
+| v1 — AC76 | Nota in attesa con chiave `pending-N`, risolta solo dall'id (mutazioni su testo e numero rosse); nessun lampeggio: Next risolve l'action prima del nuovo albero (`server-action-reducer.js:173`); doppio invio ignorato anche con due `requestSubmit` nello stesso tick; ogni fallimento (rifiuto, `{ ok: false }`, `undefined`, operatore assente) rimette il testo, toglie la nota, non chiama `updateLastEdit` né `router.refresh`; ordine del testo scritto durante l'invio; messaggio tolto e rimesso; bozza per cliente, dopo lo smontaggio, con il testo in volo, cancellata da successo e campo vuoto, tollerante allo storage bloccato |
+| v2 — AC55/AC56, parità | Solo `customer.updateLastEdit` dal client; "Avvia una chat" con `chatId` nullo crea la chat del cliente; nessun id dalla rotta; nessun import rimasto; i rami pratica eliminati non erano raggiungibili da nessuna schermata a `c787dd1` (D15); niente `router.refresh`, action senza Effect; testi invariati |
+| v3 — server action | Schemi Zod provati davvero: override di `chatId`, tipi sbagliati rifiutati, chiavi in più tolte; ogni scrittura e ogni `revalidatePath` dopo una procedura `operatorProcedure`; nessuna capacità in più rispetto a `/api/trpc`, il ramo pratica in meno; un `customerId` ostile aggiunge solo un tag letterale sotto `/dashboard/customers/`; contratto `{ ok, id }` corretto su ogni ramo |
+| v4 — dati nel browser | Chiave per cliente, solo `sessionStorage`, niente URL, log o console col testo; scritta solo dopo un fallimento; cancellata da successo e campo vuoto; nessun passaggio fra schede, finestre o profili |
+| v5 — UI | Messaggio `role=alert` subito sotto il campo, collegato da `aria-describedby` solo quando c'è; nessuna sovrapposizione da 280 a 1440 px; "Commenta" `aria-disabled`, focalizzabile, con anello visibile durante l'invio; cestino nascosto dal CSS e visibile sotto il mouse, nessuno sulla nota in attesa; AC56 "Avvia una chat"; testi e aspetto invariati |
+| v6 — gate | `next lint`, `tsc --noEmit`, 923 test, `pnpm build` in copie pulite; le tre action fuori da `app/` registrate nel manifest e impacchettate; `CollassableItem` spostato identico |
+
+### Per-concern verdicts
+
+| Pass | Concern | Complexity / model | Verdict | Strongest objection |
+|------|---------|--------------------|---------|---------------------|
+| v1 | Invio, fallimento e bozza (AC76) | high / ereditato | DO NOT SHIP | Testo fallito perso riaprendo la chat durante l'invio |
+| v2 | AC55/AC56 e parità del refactor | medium / Sonnet | SHIP | Rinfresco del dettaglio di Contatti appoggiato a un comportamento provvisorio di Next |
+| v3 | Confine delle server action | high / ereditato | SHIP | Action senza test propri |
+| v4 | Testo delle note in `sessionStorage` | medium / Sonnet | DO NOT SHIP | Bozza visibile al collega successivo nella stessa finestra |
+| v5 | UI pass sulla chat | medium / Sonnet | DO NOT SHIP | Contrasto del messaggio 3,76:1 |
+| v6 | Gate del progetto | low / Haiku | SHIP | Action testate solo con i mock |
+
+### Human Review Checklist
+
+`reviewImpact: critical`: prima del merge e del deploy.
+1. **Server action.** Leggere i tre file in `src/components/custom/notes/_actions/`: ogni scrittura passa da una procedura `operatorProcedure`, e un input non valido risponde `{ ok: false }` senza scrivere.
+2. **Bozza nel browser.** Con due utenti nella stessa finestra: il primo fa fallire un invio (offline) ed esce; il secondo entra e apre lo stesso cliente: il campo è vuoto.
+3. **Pratiche.** Aprire una pratica con clienti: la pagina si carica con le sezioni dei clienti. Nessuna pratica aveva una chat visibile prima di PR4 (D15).
+4. **Operatori.** Mandare le due righe di T4.2 prima del deploy.
+
+### Acceptance criteria check (case B)
+
+| Criterio | Esito | Evidenza |
+|---|---|---|
+| AC55 | Met | v2, v3: solo il cliente si aggiorna; nella passata browser 0 pratiche toccate |
+| AC56 | Met | v2, v5: "Avvia una chat" con `chatId` nullo, poi la chat |
+| AC76 | Met, nella scheda cliente | v1 (quarta), v4, v5 (seconda): testo nel campo con il messaggio, nessuna nota fantasma, bozza dopo il ricaricamento e la scheda chiusa, dell'operatore che l'ha scritta. Residui registrati in D18. Nel dettaglio di Contatti arriva con PR5 (T5.8) |
+
+### Notes for docs-maintenance
+
+- Durevoli: rinfresco del dettaglio di Contatti legato al comportamento di Next 14.2.5 (da chiudere in T5.8); anello di focus tagliato da `AccordionContent`; bozze senza proprietario o di un collega (tech-debt, D18).

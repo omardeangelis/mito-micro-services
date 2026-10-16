@@ -3,10 +3,13 @@
 import { useUserPreferenceContext } from "@/store/context/useUserPreferenceContext"
 import { signOut } from "next-auth/react"
 import { useCallback } from "react"
+import { clearUnsentNotes } from "@/components/custom/notes/unsentNote"
 
 export const LogoutFloatingButton = () => {
   const logoutStore = useUserPreferenceContext((state) => state.logout)
   const handleLogout = useCallback(async () => {
+    // Unsent notes are of this operator: not for the next one in this tab
+    clearUnsentNotes()
     await signOut({ callbackUrl: "/" })
     logoutStore()
   }, [logoutStore])

@@ -164,8 +164,9 @@ Gli stati "da chiamare" sono `chiamare` e `followup`; gli stati con esito sono `
 - **AC53** — Il dettaglio del contatto mostra la chat del cliente. Una nota scritta dal contatto compare anche nella scheda cliente, e viceversa.
 - **AC54** — Chiunque apra il dettaglio di un contatto può scrivere una nota, anche quando il contatto è in sola lettura, come oggi nella scheda cliente.
 - **AC55** — Scrivere una nota dal contatto non modifica nessuna pratica.
-- **AC56** — Se il cliente non ha ancora una chat, la prima nota scritta dal contatto la crea.
+- **AC56** — Se il cliente non ha ancora una chat, il dettaglio del contatto mostra "Avvia una chat", come oggi la scheda cliente. Dopo, le note si scrivono come in ogni chat.
 - **AC57** — "Carica altri messaggi" nel dettaglio del contatto mostra i messaggi più vecchi.
+- **AC76** — Se una nota non viene salvata, il testo scritto torna nel campo, sotto il campo compare "Nota non inviata, riprova" e la nota non resta nella chat come se fosse stata inviata. Vale ovunque si scrivono le note: scheda cliente e dettaglio del contatto. Il testo non inviato resta anche se la pagina si ricarica o la scheda si chiude, nella stessa finestra del browser, finché la nota non viene inviata o il campo non viene svuotato.
 
 ### Tabella Clienti semplificata
 
@@ -214,7 +215,7 @@ Gli stati "da chiamare" sono `chiamare` e `followup`; gli stati con esito sono `
   |---|---|---|
   | 1 | Dati e regole sul server; i controlli di Clienti le usano già | Regole lato server di AC27, AC30–AC52 e AC66–AC67; AC69–AC73 |
   | 2 | Contatti affiancato a Clienti, e "Vedi contatti" nel menu della riga cliente | AC1–AC52, AC62 |
-  | 3 | Note nel dettaglio del contatto | AC53–AC57 |
+  | 3 | Note nel dettaglio del contatto | AC53–AC57; AC76 (nella scheda cliente arriva prima, con la chat condivisa) |
   | 4 | Semplificazione di Clienti e della scheda cliente, guida operatori | AC58–AC61, AC63–AC68, AC74, AC75 |
 - **Gate CI**: quelli di `AGENTS.md`, eseguiti da `.github/workflows/ci.yml`: lint (`next lint` e `tsc --noEmit`), `pnpm run test --run`, `pnpm build`.
 - L'interfaccia è in italiano.

@@ -188,3 +188,17 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 - Verdict: SHIP (prima: DO NOT SHIP)
 - Impact: critical
 - Verifiers: 4 rilanciati su 7 (v1, v5, v6 SHIP; v7 DO NOT SHIP due volte, per il registro non committato e poi per la prova dello spinner, chiusi in `4fae91b` e `afb2975`)
+
+## [2026-10-15] review | Sezione Contatti — PR4 "Chat con proprietario esplicito"
+- Report: [[specs/crm/sezione-contatti/REPORT]] (round PR4)
+- Scope: spec
+- Verdict: DO NOT SHIP (prima verifica)
+- Impact: critical
+- Verifiers: 6 (4 major; v2, v3, v6 SHIP)
+
+## [2026-10-15] review | Sezione Contatti — PR4, verifiche dopo le correzioni
+- Report: [[specs/crm/sezione-contatti/REPORT]] (round PR4, "Verifiche successive")
+- Scope: spec
+- Verdict: SHIP (prima: DO NOT SHIP)
+- Impact: critical
+- Verifiers: 3 rilanciati su 6 (v4 e v5 SHIP; v1 SHIP alla quarta passata, dopo il passaggio a uno store per cliente della nota non inviata)

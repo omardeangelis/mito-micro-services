@@ -215,3 +215,62 @@ Nessuno. `reviewImpact: critical` e `humanInLoop: true` sono coerenti con la sup
 | v5 | Comportamento delle mutation nel client (AC36, AC37, AC44, AC51, AC52) | medium | balanced (sonnet) |
 | v6 | UI pass sulla superficie cambiata | medium | balanced (sonnet) |
 | v7 | Motion-craft pass | low | fast (haiku) |
+
+---
+
+## [Round: 2026-10-15] PR4 — "Chat con proprietario esplicito"
+
+Round aggiunto: le rubric di PR1, PR2 e PR3 sopra restano come sono.
+
+### Change set under review
+
+- **Scope:** spec implementation, solo PR4 (PLAN.md §9: T4.1, T4.3, T4.4, gate T4.2). Contratto: AC55, AC56 e AC76 (PLAN.md §14). Il dettaglio di Contatti che userà la chat è di PR5 (T5.8)
+- **Target:** branch `contatti/pr4-chat-cliente` (PR verso `dev`), modifiche non ancora committate
+- **Compared:** `c787dd1` (`dev`) → albero di lavoro (`git diff HEAD` più i file nuovi in `src/components/custom/notes/`)
+- **Files touched:** 15. Nuovi: `src/components/custom/notes/` (`CustomerChat.tsx`, `CustomerChatSection.tsx`, tre server action, test). Spostato: `CollassableItem.tsx` in `src/components/custom/`. Modificate le pagine del cliente e della pratica (import). Eliminati la chat della pratica (`PraticaNotes.tsx`, `PraticaNotesSetcion.tsx`, tre action) e la vecchia `CustomerChatSection.tsx`. Domini: crm
+
+### Routing rubric (review-classifier output)
+
+Charter accorciati qui; il testo completo è nei brief dei verificatori.
+
+```json
+{
+  "taskType": "feature",
+  "secondaryType": "refactor",
+  "domainsTouched": ["crm"],
+  "adversarialVerifiers": {
+    "count": 6,
+    "passes": [
+      { "id": "v1", "charter": "AC76 send/failure behavior of CustomerChat: pending notes resolved by returned id, every failure outcome (rejection, { ok: false }, undefined, operator not loaded) restores the text without a ghost note, join order, draft lifecycle (restore after mount, follows edits, cleared on success/empty, survives unmount mid-send, blocked storage), tests that would fail on regression. Functional only.", "complexity": "high" },
+      { "id": "v2", "charter": "AC55/AC56 and refactor parity: only the customer is touched, 'Avvia una chat' when chatId is null, no route-derived ids, revalidation of the hosting page, no dangling imports, pratica-chat removal matches D15 and drops no live pratica UI, no router.refresh(), actions plain async.", "complexity": "medium" },
+      { "id": "v3", "charter": "Server-action boundary of the three new 'use server' actions: zod schemas on object input, hostile input, operator-authenticated tRPC caller unchanged, { ok, id } contract when insertMessage returns nothing; deleteMessage author check pre-existing, only not worsened.", "complexity": "high" },
+      { "id": "v4", "charter": "Note text (PII) in sessionStorage: per-customer key, sessionStorage only, written only after a failure, removed on success or empty field, no cross-customer or cross-tab leak, residual exposure on a shared workstation (logout or user switch in the same tab).", "complexity": "medium" },
+      { "id": "v5", "charter": "UI pass: ui-review bar and probes on the changed chat surface; failure message role=alert under the field and linked by aria-describedby; 'Commenta' aria-disabled and focusable; CSS hover trash and no trash on pending notes; copy and look unchanged; AC56 and AC76 UI criteria. Field label and hover-only trash are pre-existing tech debt.", "complexity": "medium" },
+      { "id": "v6", "charter": "Project gates in CI order (next lint, tsc --noEmit, pnpm run test --run, pnpm build with CI placeholders in a checkout without env files); 'use server' modules outside app/ build and bundle.", "complexity": "low" }
+    ]
+  },
+  "taskComplexity": "high",
+  "reviewImpact": "critical",
+  "humanInLoop": true,
+  "nextStep": "Run v1-v6 in parallel: strongest model for v1 and v3, balanced for v2, v4 and v5, fast for v6. Report with a human checklist: server-action input and auth boundary, sessionStorage PII retention, no pratica UI lost its notes."
+}
+```
+
+### Classifier rationale
+
+Critico per due superfici generiche: le tre server action sono moduli nuovi che ricevono dal client un input di forma nuova e lo passano a procedure che scrivono ed eliminano nel DB (v3); la bozza di AC76 tiene nel browser il testo libero delle note sui clienti, probabilmente dati personali (v4). Funzionamento della bozza (v1) e sua esposizione (v4) sono passaggi separati. La rimozione della chat della pratica ha un controllo a sé (v2), anche se D15 la decide. Nessun codice di movimento, quindi nessun motion-craft pass; `brain/chore/ui-review.md` non esiste, quindi il UI pass usa il bar di default della skill.
+
+### Overrides applied
+
+Nessuno. `reviewImpact: critical` e `humanInLoop: true` sono coerenti con la superficie di rischio (input non fidato verso il DB, dati personali nel browser).
+
+### Verification plan (derived)
+
+| Pass | Charter | Complexity | Model tier |
+|------|---------|------------|------------|
+| v1 | Invio e fallimento, nota in attesa e bozza (AC76) | high | strongest (inherit) |
+| v2 | AC55/AC56 e parità del refactor | medium | balanced (sonnet) |
+| v3 | Confine delle server action | high | strongest (inherit) |
+| v4 | Testo delle note in `sessionStorage` | medium | balanced (sonnet) |
+| v5 | UI pass sulla chat | medium | balanced (sonnet) |
+| v6 | Gate del progetto | low | fast (haiku) |
