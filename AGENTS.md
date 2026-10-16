@@ -8,7 +8,7 @@ spec-driven skill suite live under `brain/` — start with `create-spec`, and re
 
 - `src/` — the MITO CRM app: T3 stack (Next.js 14 App Router, tRPC v10, Drizzle on Postgres, NextAuth v4), deployed on Vercel.
 - `brain/` — knowledge base. Existing design drafts and the monorepo migration plan live in `brain/chore/` (`crm/`, `migration_plan.md` + `migration/`); delivered HTML handovers in `brain/raw/assets/`. Project docs are written in Italian.
-- `.agents/skills/`, `.agents/agents/` — spec-driven skills and advisor subagents (symlinked into `.claude/`).
+- `.agents/skills/`, `.agents/agents/`, `.agents/agent-memory/` — spec-driven skills, advisor subagents and their project memories (symlinked into `.claude/`).
 
 ## Project guidelines
 

@@ -12,6 +12,68 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 
 <!-- Entries are appended by create-spec (spec creation) and docs-maintenance (ingest). Format:
 
+## [2026-10-16] review | Sezione Contatti — PR4, T4.5–T4.7 (sesta verifica)
+- Report: [[specs/crm/sezione-contatti/REPORT]]
+- Scope: spec
+- Verdict: DO NOT SHIP
+- Impact: medium
+- Verifiers: 2 (0 blockers, 1 major)
+
+## [2026-10-16] implement | Sezione Contatti — PR4, T4.7 (MAJOR e MINOR della quinta verifica)
+- Spec: [[specs/crm/sezione-contatti/PLAN]]
+- Store per cliente delle note in eliminazione; focus solo se rimasto sul cestino; toast solo col cliente a schermo; test di rollback
+
+## [2026-10-16] review | Sezione Contatti — PR4, T4.5–T4.7 (quinta verifica)
+- Report: [[specs/crm/sezione-contatti/REPORT]]
+- Scope: spec
+- Verdict: DO NOT SHIP
+- Impact: medium
+- Verifiers: 2 (0 blockers, 2 major)
+
+## [2026-10-16] implement | Sezione Contatti — PR4, T4.7 (BLOCKER della quarta verifica)
+- Spec: [[specs/crm/sezione-contatti/PLAN]]
+- Note in eliminazione nello stato di `CustomerNotes`; NOT_FOUND senza toast (`gone`); test per chiudi e riapri, nota già eliminata, registro, cambio di cliente
+
+## [2026-10-16] review | Sezione Contatti — PR4, T4.5–T4.7 (quarta verifica)
+- Report: [[specs/crm/sezione-contatti/REPORT]]
+- Scope: spec
+- Verdict: DO NOT SHIP
+- Impact: medium
+- Verifiers: 2 (1 blockers, 0 major)
+
+## [2026-10-16] implement | Sezione Contatti — PR4, T4.7 (test della terza verifica)
+- Spec: [[specs/crm/sezione-contatti/PLAN]]
+- Test della sezione vera, del plurale, del focus con due eliminazioni e della guardia del focus; `beforeNextLockOf` fallisce se non scatta; isolamento già coperto
+
+## [2026-10-16] review | Sezione Contatti — PR4, T4.5–T4.7 (terza verifica)
+- Report: [[specs/crm/sezione-contatti/REPORT]]
+- Scope: spec
+- Verdict: DO NOT SHIP
+- Impact: medium
+- Verifiers: 2 (0 blockers, 3 major)
+
+## [2026-10-16] implement | Sezione Contatti — PR4, T4.7 (MAJOR della seconda verifica)
+- Spec: [[specs/crm/sezione-contatti/PLAN]]
+- Ordine sotto il lock coperto da test (`beforeNextLockOf`); regione di stato e eliminazioni in `CustomerNotes`, che resta quando la chat sparisce; scroll che segue l'ultima nota solo se la lista è in fondo
+
+## [2026-10-16] review | Sezione Contatti — PR4, T4.5–T4.7 (seconda verifica)
+- Report: [[specs/crm/sezione-contatti/REPORT]]
+- Scope: spec
+- Verdict: DO NOT SHIP
+- Impact: medium
+- Verifiers: 2 (0 blockers, 5 major)
+
+## [2026-10-16] implement | Sezione Contatti — PR4, T4.7
+- Spec: [[specs/crm/sezione-contatti/PLAN]]
+- Correzioni della review di T4.5 e T4.6; eliminazione della nota solo dell'autore, con il cliente bloccato (AC79, D21)
+
+## [2026-10-16] review | Sezione Contatti — PR4, T4.5 e T4.6
+- Report: [[specs/crm/sezione-contatti/REPORT]]
+- Scope: spec
+- Verdict: DO NOT SHIP
+- Impact: medium
+- Verifiers: 2 (1 blockers, 3 major)
+
 ## [YYYY-MM-DD] ingest | <spec title>
 - Source: [[specs/<domain>/<spec>/SPEC]]
 - Flows written: <count>
@@ -188,3 +250,26 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 - Verdict: SHIP (prima: DO NOT SHIP)
 - Impact: critical
 - Verifiers: 4 rilanciati su 7 (v1, v5, v6 SHIP; v7 DO NOT SHIP due volte, per il registro non committato e poi per la prova dello spinner, chiusi in `4fae91b` e `afb2975`)
+
+## [2026-10-15] review | Sezione Contatti — PR4 "Chat con proprietario esplicito"
+- Report: [[specs/crm/sezione-contatti/REPORT]] (round PR4)
+- Scope: spec
+- Verdict: DO NOT SHIP (prima verifica)
+- Impact: critical
+- Verifiers: 6 (4 major; v2, v3, v6 SHIP)
+
+## [2026-10-15] review | Sezione Contatti — PR4, verifiche dopo le correzioni
+- Report: [[specs/crm/sezione-contatti/REPORT]] (round PR4, "Verifiche successive")
+- Scope: spec
+- Verdict: SHIP (prima: DO NOT SHIP)
+- Impact: critical
+- Verifiers: 3 rilanciati su 6 (v4 e v5 SHIP; v1 SHIP alla quarta passata, dopo il passaggio a uno store per cliente della nota non inviata)
+
+## [2026-10-16] implement | sezione-contatti PR4, T4.5
+- Spec: [[specs/crm/sezione-contatti/SPEC]] (AC77 nuovo), piano: [[specs/crm/sezione-contatti/PLAN]] (T4.5, D19)
+- "Avvia una chat" crea al massimo una chat per cliente, in una transazione; attesa con spinner fino alla chat a schermo, fallimento con "Chat non avviata, riprova"
+- Prod, in sola lettura: nessuna pratica con una chat; 19 chat orfane (7 con 13 messaggi), pulizia nel tech-debt
+
+## [2026-10-16] implement | sezione-contatti PR4, T4.6
+- Spec: [[specs/crm/sezione-contatti/SPEC]] (AC78 nuovo), piano: [[specs/crm/sezione-contatti/PLAN]] (T4.6, D20)
+- Chat: "Invio…" e spinner durante l'invio, eliminazione con spinner e toast in caso di errore, lista che si apre e resta sulle note più recenti, cestino raggiungibile da tastiera

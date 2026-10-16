@@ -3,7 +3,7 @@ domain: crm
 type: flow
 links: ["[[specs/crm/sezione-contatti/SPEC]]"]
 created: 2026-09-24
-updated: 2026-09-24
+updated: 2026-10-15
 ---
 
 # Flow: Sezione Contatti e tabella Clienti semplificata
@@ -60,7 +60,7 @@ L'utente deve essere autenticato come `OPERATORE` o `ADMIN`. Tutti vedono tutti 
 - **"Imposta richiamo" con una data passata.** La data non si può selezionare, come oggi.
 - **"Crea contatto" su un cliente che nel frattempo ne ha già uno.** Compare "Questo cliente ha già un contatto attivo" e il riepilogo si aggiorna con "Gestisci contatto" (AC67).
 - **Contatto inesistente o id malformato.** Compare "Contatto non trovato" con il pulsante [Torna a Contatti], non un errore generico.
-- **Nota non inviata.** Il testo resta nel campo con un messaggio d'errore e non compare nella chat come se fosse stato inviato.
+- **Nota non inviata (AC76).** Il testo resta nel campo con un messaggio d'errore e non compare nella chat come se fosse stato inviato. Resta anche se la pagina si ricarica, per esempio dopo un aggiornamento dell'app, o se la scheda si chiude durante l'invio.
 
 ## Edge cases
 

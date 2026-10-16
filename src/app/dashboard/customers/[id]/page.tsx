@@ -4,7 +4,7 @@ import { CustomerPraticaSection } from "./_components/CustomersPraticaSection"
 import { Suspense } from "react"
 import { CustomerFormSection } from "./_components/CustomerFormSection"
 import { Skeleton } from "@/components/ui/skeleton"
-import { CustomerChatSection } from "./_components/CustomerChatSection"
+import { CustomerChatSection } from "@/components/custom/notes/CustomerChatSection"
 import { api } from "@/trpc/server"
 import { CustomerActivities } from "./_components/CustomerActivities"
 import { CustomerTaskManager } from "./_components/CustomerTaskManager"
@@ -72,7 +72,7 @@ export default async function CustomerHome({
       </Suspense>
       <Suspense fallback={<Skeleton className="h-80 w-full rounded-md" />}>
         <CustomerChatSection
-          id={id}
+          customerId={id}
           limit={limit ? Number(limit) : undefined}
         />
       </Suspense>

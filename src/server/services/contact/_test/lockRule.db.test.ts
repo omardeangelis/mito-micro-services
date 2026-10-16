@@ -10,11 +10,21 @@ import {
 import { Cause, Exit } from "effect"
 import { eq } from "drizzle-orm"
 import { type TaskStatus } from "@/lib/types/schemas"
+import { messages } from "@/server/db/schema/chat"
+import { customers } from "@/server/db/schema/customers"
+import { chatToOperator } from "@/server/db/schema/relations/chatToOperator"
 import { task } from "@/server/db/schema/task"
 import { query, transaction } from "@/server/effect/db"
 import { processDueAlerts } from "@/server/services/contact/processDueAlerts"
 import { createTestCaller } from "@/test/caller"
-import { activeTasksOf, logOf, migrateUpTo, resetDb, tasksOf } from "@/test/db"
+import {
+  activeTasksOf,
+  logOf,
+  migrateUpTo,
+  resetDb,
+  tasksOf,
+  testDb,
+} from "@/test/db"
 import { runServer } from "@/test/effect"
 import {
   createAlert,
@@ -23,7 +33,10 @@ import {
   createSystemOperator,
   createTask,
 } from "@/test/factories"
-import { assertCustomerLockedOnWrite } from "@/test/lockRule"
+import {
+  assertCustomerLockedOnChatWrite,
+  assertCustomerLockedOnWrite,
+} from "@/test/lockRule"
 
 beforeAll(async () => {
   await migrateUpTo()
@@ -459,5 +472,68 @@ describe("regola dei lock: fuori dalla regola", () => {
         customerIds: [customer.id],
       })
     ).rejects.toThrow("lock rule")
+  })
+})
+
+// The customer's chat: "Avvia una chat" and deleting a note write the chat of
+// one customer, so two operators on it wait for each other. In PGlite the
+// transactions never overlap, so only this check sees the lock go missing
+describe("regola dei lock: chat del cliente", () => {
+  it("con la verifica attiva, aggiungere un operatore alla chat senza lockCustomer fallisce", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined)
+    const operator = await createOperator()
+    const customer = await createCustomer()
+    const { id: chatId } = await createTestCaller(
+      operator
+    ).chat.createNewCustomerChat({ customerId: customer.id })
+    const colleague = await createOperator()
+    await assertCustomerLockedOnChatWrite()
+
+    const exit = await runServer(
+      transaction(
+        query((client) =>
+          client
+            .insert(chatToOperator)
+            .values({ chatId, operatorId: colleague.id })
+        )
+      )
+    )
+
+    expect(Exit.isFailure(exit) && Cause.pretty(exit.cause)).toContain(
+      "lock rule"
+    )
+  })
+
+  it("'Avvia una chat' prende il lock del cliente", async () => {
+    const operator = await createOperator()
+    const customer = await createCustomer()
+    await assertCustomerLockedOnChatWrite()
+
+    const { id } = await createTestCaller(operator).chat.createNewCustomerChat({
+      customerId: customer.id,
+    })
+
+    const [after] = await testDb
+      .select({ chatId: customers.chatId })
+      .from(customers)
+      .where(eq(customers.id, customer.id))
+    expect(after!.chatId).toBe(id)
+  })
+
+  it("eliminare l'ultima nota, che cancella la chat, prende il lock del cliente", async () => {
+    const operator = await createOperator()
+    const customer = await createCustomer()
+    const { id: chatId } = await createTestCaller(
+      operator
+    ).chat.createNewCustomerChat({ customerId: customer.id })
+    const [saved] = await testDb
+      .insert(messages)
+      .values({ chatId, operatorId: operator.id, content: "Nota" })
+      .returning({ id: messages.id })
+    await assertCustomerLockedOnChatWrite()
+
+    await createTestCaller(operator).chat.deleteMessage({ id: saved!.id })
+
+    expect(await testDb.select().from(chatToOperator)).toEqual([])
   })
 })
