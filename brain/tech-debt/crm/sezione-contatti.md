@@ -302,3 +302,53 @@ Scoperto nel passaggio UI della review di PR3 (v6, seconda verifica, 2026-10-15)
 **Effetto oggi:** nessuno per gli operatori, che lavorano da desktop. Conta per lo zoom al 400 % su un portatile (WCAG 1.4.10) e per un uso da telefono.
 
 **Da fare fuori da questa spec:** se la scheda deve funzionare sotto i 900 px, una passata sul suo layout (anagrafica e card), con il trigger dello stato che si restringe sotto i 484 px; nella lista, il nome intero del motivo raggiungibile senza puntatore.
+
+## La chat delle note: eliminazione, aggiornamento del cliente e accessibilità
+
+Notati ripianificando PR4 (PLAN §15), preesistenti: PR4 sposta la chat in `src/components/custom/notes/` ma non cambia queste parti.
+
+- `chat.deleteMessage` è un'`operatorProcedure` che elimina qualunque messaggio: non controlla chi l'ha scritto, e l'`operatorId` che riceve dal client non serve a niente.
+- Un'eliminazione fallita non mostra niente: `handleDelete` è un `onClick` async e il rifiuto resta non gestito.
+- `customer.updateLastEdit` è chiamata dal client dopo l'action, in una richiesta separata, invece che nella stessa scrittura della nota: se la seconda richiesta fallisce, la nota c'è e l'ultima modifica del cliente no.
+- Il cestino compare solo al passaggio del mouse (da PR4 con il CSS, `invisible group-hover:visible`, invece dello stato): da tastiera non si raggiunge e non ha un nome accessibile. Il campo della nota ha solo il placeholder, senza etichetta.
+
+**Effetto oggi:** un operatore può eliminare, anche fuori dall'interfaccia, una nota di un collega in qualunque chat; chi usa la tastiera o un lettore di schermo non elimina le note e sente un campo senza nome.
+
+**Da fare fuori da questa spec:** controllo dell'autore in `chat.deleteMessage` (o del ruolo), messaggio d'errore sull'eliminazione, aggiornamento del cliente nella stessa action, cestino sempre raggiungibile da tastiera con `aria-label`, etichetta del campo.
+
+## Server action della chat fuori da Effect e procedure senza chiamanti
+
+Da PR4 (P11, D15).
+
+- Le server action della chat (`src/components/custom/notes/_actions/`) restano async semplici, fuori da Effect: l'unico errore previsto è la validazione dell'input, lasciata a Zod (P8, P11).
+- La procedura `pratiche.updateLastEdit` non ha più chiamanti dopo D15 (`chat.createNewChat` è stata rimossa in T4.5). Le chat di pratica già nel DB restano senza interfaccia: rimuovere le procedure o riportare le note in Pratiche è una scelta di prodotto.
+
+**Effetto oggi:** nessuno per gli operatori; codice morto sul server.
+
+**Da fare:** decidere le chat di pratica; portare le action in Effect quando la chat si rifà.
+
+## L'anello di focus nella chat è tagliato
+
+Scoperto nel passaggio UI della review di PR4 (v5, 2026-10-15), preesistente: `AccordionContent` ha `overflow-hidden`, che taglia di 4 px l'anello di focus del campo della nota e di "Commenta" (resta visibile per 2 px più 2 di offset). La struttura era la stessa nella chat della pratica.
+
+**Da fare:** padding interno nel contenuto dell'accordion della chat, o `ring-inset` sui due controlli.
+
+## Bozze della nota non inviata senza proprietario o di un collega
+
+Da PR4 (review, v4, 2026-10-15). La bozza di AC76 è legata all'operatore e "Esci dal gestionale" le cancella tutte (D18). Restano due casi, senza uscita dal gestionale nella stessa scheda (sessione scaduta, poi un altro accesso):
+
+- una bozza salvata quando la query dell'operatore non si era ancora caricata ha `operatorId` nullo: chi apre quel cliente dopo la vede e la può inviare a suo nome. Serve che la query non si sia mai caricata per tutta la sessione del primo operatore;
+- le bozze del primo operatore su clienti che il secondo non apre restano in `sessionStorage` finché la scheda non si chiude: mai mostrate, leggibili solo dagli strumenti del browser.
+
+**Da fare, se serve:** non salvare la bozza senza operatore, o pulire all'accesso le bozze con un `operatorId` diverso da quello della sessione.
+
+## Chat orfane nel DB
+
+Da PR4 (T4.5, D19). Rilevate il 2026-10-16 con una query in sola lettura.
+
+- In prod 19 chat non hanno né cliente né pratica; 7 contengono 13 messaggi, scritti tra dicembre 2024 e luglio 2026. Le altre 12 sono vuote. Nessuna pratica ha una chat.
+- Le ha create `createNewCustomerChat` prima di T4.5, che sovrascriveva il `chat_id` del cliente: la causa è chiusa, le righe restano.
+- Per le 7 con messaggi il cliente non si ricava con certezza: il collegamento è perso.
+
+**Chiuso il 2026-10-16**, su richiesta di Omar: cancellate tutte le chat senza cliente né pratica create da più di un'ora, con i loro messaggi e le righe di `chat_to_operator`, in una transazione per DB. Staging (DB di sviluppo): 12 chat, 13 messaggi. Prod: 19 chat, 13 messaggi. Dopo: 0 chat orfane e nessun cliente con una chat mancante. Prima della cancellazione ogni riga è stata salvata in un backup JSON locale.
+

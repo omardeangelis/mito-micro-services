@@ -17,14 +17,16 @@ updated: 2026-10-15
 
 - Run 1 (2026-09-25): solo **PR1 — Percorsi di creazione sicuri** (T1.1 → T1.8), branch `contatti/pr1-creazione-sicura` da `dev`, PR verso `dev`. PR2–PR6 non iniziate.
 - Run 2 (2026-09-29): solo **PR2 — Pulizia e vincolo DB** (T2.1, T2.2, T2.3, T2.5, T2.6, T2.7), branch `contatti/pr2-vincolo-db` da `dev`, PR verso `dev`. T2.4 è il runbook G2: va nella descrizione della PR, lo esegue Omar.
+- Run 4 (2026-10-15): solo **PR4 — Chat con proprietario esplicito** (T4.1 → T4.3 → T4.4, gate T4.2), branch `contatti/pr4-chat-cliente` da `dev`, PR verso `dev`.
 - Run 3 (2026-10-15): solo **PR3 — Regole del contatto sul server, usate da Clienti** (T3.1a → T3.17, gate T3.14), branch `contatti/pr3-regole-server` da `dev`, PR verso `dev`. Baseline sul branch: 33 file, 302 test verdi.
-- **Stato al 2026-10-15:** PR1 e PR2 fatte e in prod (PR1 dal 29/09; PR2 su `main` e migrazioni applicate il 13/10, log di T2.4 nel PLAN). PR3 pronta: tutti i task Done, review SHIP dopo le correzioni, PR verso `dev`; il deploy in prod è G3. PR4–PR7 da fare.
+- **Stato al 2026-10-15:** PR1 e PR2 fatte e in prod (PR1 dal 29/09; PR2 su `main` e migrazioni applicate il 13/10, log di T2.4 nel PLAN). PR3 in prod dal 15/10 (G3 chiuso). PR4 pronta sul branch `contatti/pr4-chat-cliente`, non committata: tutti i task Done, review SHIP dopo le correzioni; restano commit, PR verso `dev` e l'avviso agli operatori. PR5–PR7 da fare.
 
 ## Execution Mode
 
 - `sequential` (richiesto dall'utente): un task alla volta nell'ordine T1.1 → T1.2 → T1.3 → T1.4 → T1.5 → T1.6 → T1.7 → T1.8, nessun worker.
 - Run 2, `sequential` (richiesto dall'utente): T2.1 → T2.2 → T2.3 → T2.5 → T2.6 → T2.7, nessun worker.
 - Run 3, `sequential` (scelta minima sicura: l'utente non ha indicato la modalità, e i task server sono in catena sugli stessi router), nell'ordine di §10. Delegazione `supervised` (`brain.config.json`): l'orchestratore scrive il test RED di ogni task, un worker sul livello della `complexity` (`low` → haiku, `medium` → sonnet, `high` → modello dell'orchestratore) scrive il codice, l'orchestratore rivede. Escalation: nessun passaggio di livello. Una seconda proposta di correzione allo stesso worker (T3.17, ripristino del focus). Livelli spostati dall'orchestratore prima di partire: T3.5a e T3.8c da `high` a `medium` (motivo nel log del task).
+- Run 4, `sequential` (scelta minima sicura: l'utente non ha indicato la modalità, e T4.1, T4.3 e T4.4 scrivono lo stesso componente), nell'ordine T4.1 → T4.3 → T4.4 → T4.2. Delegazione `supervised`: test RED dell'orchestratore, worker sul livello della `complexity`, revisione dell'orchestratore.
 
 ## Deviations From the Plan
 
@@ -160,6 +162,44 @@ updated: 2026-10-15
   - **trovata nelle verifiche:** l'indicazione di A1 ("Usa “Assegna a te” nella scheda cliente" sotto "Non assegnato", T3.9b) non compariva mai, perché nessun chiamante passava `showHint`. Ora la passano lista e scheda; controllata nel browser su `zzpr3-c15`.
 - **Run 3 — rilievi della review non corretti:** nel tech-debt (Select e DropdownMenu senza `motion-reduce`; conferma della massiva legata al cliente; scadenza "oggi" contro il cron notturno; contrasto del toast e nomi nei primitivi; rotta di import e massive senza controllo dell'operatore; la scheda sotto i 900 px). Senza voce, MINOR: test dello smontaggio per tre componenti su cinque; in `reassign` il ruolo si controlla dopo il caricamento (nessuna scrittura, irraggiungibile da fuori per `adminProcedure`).
 
+- **Run 4 — scostamenti per task** (dettagli nei log del PLAN):
+  - **T4.1:** le server action ricevono un oggetto invece di `FormData`. Il cestino delle note salvate è nascosto con il CSS (`invisible group-hover:visible`) invece che con lo stato: con lo stato, il puntatore che si sposta sul pulsante lo smontava prima del clic. Al mouse si comporta come prima.
+  - **T4.3:** il messaggio usa `text-destructive`, come `ui/form.tsx`.
+  - **T4.4:** la bozza tiene anche il testo in volo quando si rinvia una bozza (correzione dell'orchestratore, con test). `CustomerChatSection` monta la chat con `key={customerId}`.
+- **Run 4 — `/simplify` (4 revisori).** Applicati:
+  - `CustomerChat` senza stato o ref derivabili: `sending` e il testo in volo vengono dalla nota in attesa senza id; la bozza "attiva" è quella in `sessionStorage`; niente `mountedRef`, perché dopo lo smontaggio il ref del campo basta;
+  - `joinNotes` e `saveDraft` scrivono una volta sola l'unione dei testi e il salvataggio o la rimozione della bozza; `isSaved` è una funzione del modulo;
+  - `updateChatAction` restituisce `{ ok: true, id } | { ok: false, error }`, e il client controlla `result?.ok`; le due letture indipendenti dell'action vanno in `Promise.all`;
+  - `CustomerNote` è `memo` e riceve `onDeleted` dal genitore: un solo `updateLastEdit` invece di uno per nota, e scrivere nel campo non ridisegna le note;
+  - in `CustomerNewChat` tolti i rami morti (`loading` era sempre falso dove veniva letto) e la classe inesistente `-w-full`.
+- **Run 4 — `/simplify`, rilievi non applicati:**
+  - `updateLastEdit` dentro le action, l'ingresso dell'operatore nella chat dentro `insertMessage`: cambiano il server oltre il perimetro (P11, tech-debt);
+  - `revalidatePath` per ogni superficie: la pagina corrente si ridisegna comunque (finding 27), e T5.8 lo controlla nel browser;
+  - un hook `useUnsentNoteDraft`: con `joinNotes` e `saveDraft` la logica della bozza sta in poche righe;
+  - `FormMessage` per il messaggio: richiede il contesto di react-hook-form e aggiunge `font-medium`;
+  - il cestino raggiungibile da tastiera (tech-debt) e il cliente letto due volte (pagina e sezione), preesistente.
+
+- **Run 4 — correzioni dopo l'adversarial review** (round PR4 di `REPORT.md`, prima verifica DO NOT SHIP), con TDD dall'orchestratore (ogni correzione ha un test rosso prima, e una mutazione che lo fa tornare rosso):
+  - **la nota non inviata è uno store per cliente** (`src/components/custom/notes/unsentNote.ts`, letto con `useSyncExternalStore`): testo del campo, messaggio, note fallite in rinvio. Ogni chat del cliente, aperta, chiusa o riaperta, vede lo stesso stato, e `sessionStorage` ne è la copia. Prima ogni chat aveva il suo stato e la bozza era condivisa: v1 ha trovato a ogni passata un intreccio nuovo (testo perso riaprendo la chat durante l'invio; cancellato dal successo di un altro invio; raddoppiato o perso rinviando una bozza con la chat riaperta). Con lo store questi intrecci non esistono più;
+  - **la copia è dell'operatore** (`{ operatorId, text }`): una copia di un collega non si mostra e si cancella; "Esci dal gestionale" le cancella tutte prima di `signOut` (v4). Residui registrati (D18, tech-debt): una copia salvata prima che l'operatore si carichi non ha proprietario; il testo rifiutato prima che l'operatore arrivi, con una copia non ancora controllata, resta solo in memoria fino all'arrivo dell'operatore;
+  - svuotare il campo toglie anche il messaggio (v1);
+  - il messaggio è `text-red-700` (6,47:1) invece di `text-destructive` (3,76:1) (v5);
+  - test delle action (`_actions/_test/updateChat.test.ts`) e schemi più stretti: `chatId` intero positivo, `customerId` non vuoto (v2, v3, v6).
+- **Run 4 — rilievi della review non corretti:** "Commenta" scende di 28 px quando compare il messaggio (v5, MINOR): riservare lo spazio cambierebbe l'aspetto, che il piano vuole invariato; il rinfresco del dettaglio di Contatti appoggiato a Next 14.2.5 (v2) va controllato in T5.8, che ora dice cosa fare se non regge; l'anello di focus tagliato da `AccordionContent` (preesistente, tech-debt).
+
+- **Run 4 — T4.5, dopo i test manuali (2026-10-16).** Dal feedback di Omar: "Avvia una chat" lasciava chat orfane e l'attesa era solo un lampo di skeleton. Query in sola lettura su prod: nessuna pratica con una chat, 19 chat orfane create dalla sovrascrittura di `customers.chat_id`. Correzione inline dall'orchestratore, con TDD: `createCustomerChat` in Effect (transazione, `lockCustomer`, chat esistente restituita); `CustomerNewChat` con la mutation tRPC e `useSavingUntilRefreshed`, come "Crea contatto" (P6 rivisto); focus nel campo della chat appena avviata. Rimosse `createNewChat.ts` e `chat.createNewChat`. Pulizia delle orfane nel tech-debt (D19).
+
+- **Run 4 — T4.6 (2026-10-16).** Dal feedback di Omar: nessun segno durante invio ed eliminazione, nota appena inviata nascosta sotto il bordo con più di 5 note. Valori dal `design-engineer` (D20), implementazione inline con TDD. Sorpresa nel browser: la lista si apriva in cima perché le note crescono quando arrivano i nomi degli operatori, dopo lo scroll; ora un `ResizeObserver` la tiene in fondo finché l'operatore non scorre in su.
+- **Run 4 — T4.7 (2026-10-16).** Dalla review di T4.5 e T4.6 (DO NOT SHIP: un BLOCKER, tre MAJOR) e da due problemi preesistenti che Omar ha chiesto di correggere. Annunci come nodi nuovi (seconda eliminazione di fila silenziosa); nota in attesa chiusa se il suo id è già nella pagina; test dell'attesa di "Avvia una chat" con la pagina sospesa in una transizione; regola dei lock della chat nei test (`assertCustomerLockedOnChatWrite`), unico modo di vedere il lock mancare con PGlite. Eliminazione in Effect (`deleteCustomerMessage`): cliente bloccato, solo l'autore (D21; all'inizio anche un ADMIN, eccezione tolta da Omar dopo la seconda verifica), cestino solo all'autore. Rami pratica tolti: nessuna pratica ha una chat. Browser su `zzpr3-c1` con Federica Lupo, 403 sulla nota dell'Admin. Gate: 75 file, 998 test.
+- **Run 4 — T4.7, MAJOR della seconda verifica (2026-10-16).**
+  - **Server:** con PGlite le transazioni non si sovrappongono, quindi l'ordine tra lock e lettura non si vedeva. `beforeNextLockOf` (`src/test/failpoint.ts`) esegue l'SQL di un collega subito prima del `FOR UPDATE` sul cliente, dentro la stessa transazione: se la transazione fallisce va in rollback anche quello, quindi i test guardano la risposta e non le righe.
+  - **Interfaccia:** la regione di stato e le eliminazioni in corso passano a `CustomerNotes`, che avvolge chat e "Avvia una chat" in `CustomerChatSection`. La `key` del cliente ora è su `CustomerNotes`: su `CustomerChat` era sovrascritta da `CollassableSection`, che clona i figli con `key` = indice. Lo scroll segue l'ultima nota solo se la lista è già in fondo.
+  - **Verifica:** browser su `zzpr3-c10` (dettagli in `PLAN.md`). Gate: 75 file, 1005 test.
+  - **Regola dell'ADMIN:** Omar ha deciso che un ADMIN non elimina le note degli altri. Servizio e cestino accettano solo l'autore.
+  - **Dopo la terza verifica:** test della sezione vera, del plurale, del focus con due eliminazioni e della guardia del focus; `beforeNextLockOf` fallisce se non scatta. Il MAJOR sull'isolamento era già coperto da `db.db.test.ts`. Gate: 1008 test.
+  - **Dopo la quarta verifica:** l'attesa dell'eliminazione passa da `CustomerNote` a `CustomerNotes` (sopravvive alla chiusura di "Note"); NOT_FOUND diventa `{ ok: false, gone: true }`, senza toast. Test per chiudi e riapri, nota già eliminata, registro dopo un fallimento, cambio di cliente. Gate: 1014 test.
+  - **Dopo la quinta verifica:** store per cliente delle note in eliminazione (`deletingNotes.ts`), fuori dai componenti come la bozza; focus spostato solo se è rimasto sul cestino; toast solo con la chat del cliente a schermo; `focusOnStart` azzerato all'uscita. Test di rollback lato server. Gate: 1029 test.
+
 ## Surprises and Decisions
 
 - **Le migrazioni del repo non si applicano su un Postgres vuoto.** `20240926195125_lucky_roughhouse` crea `mito-deutsche_task` con il tipo `task_status`, che nasce solo in `20260619152227_same_hemingway`. Il DB di produzione aveva già il tipo (creato con `db:push` prima delle migrazioni), e la terza migrazione lo salta se esiste. L'harness crea il tipo prima di migrare; le migrazioni non si toccano (già applicate in prod). Vale anche per chi volesse creare un DB nuovo con `pnpm db:migrate`.
@@ -219,6 +259,11 @@ updated: 2026-10-15
 | Run 3 — prod in sola lettura: contatti con un operatore diverso dal cliente | OK | 2026-10-15, transazione `read only` (`transaction_read_only: on`), `.env.prod.local`: 1 contatto attivo separato su 69.783 (`richiamare`), 3 non attivi su 13.397; 0 alert aperti su contatti non attivi, 0 clienti con due contatti attivi; 2 "Assegna Clienti" registrati dopo PR2 |
 | Run 3 — riga di Clienti senza il nome dell'operatore | OK | `next lint` e `tsc --noEmit` puliti, 59 file, 859 test. Non provata nel browser: la coprono i test della cella in jsdom |
 | Run 3 — scheda cliente senza il nome dell'operatore | OK | `next lint` e `tsc --noEmit` puliti, 59 file, 861 test. Browser (`next dev` sulla porta 3000, Federica): `zzpr3-c19` mostra Stato e Priorità senza "Modifica" né "Assegnato a"; `zzpr3-c15` mostra "Modifica: Non assegnato" con l'indicazione di "Assegna a te" |
+| Run 4 — gate CI dopo `/simplify` | OK | `next lint` e `tsc --noEmit` puliti; `pnpm run test --run` 69 file, 923 test; `pnpm build` con le variabili di CI in una copia senza `.env*` (solo `.env.example`), poi cancellata |
+| Run 4 — passata browser sul DB di sviluppo | OK | `next dev` sulla porta 3100, `agent-browser` (clic per coordinate: per riferimento chiudeva la Sheet, come in PR3). Federica Lupo (OPERATORE) su `zzpr3-c1`, Admin su `zzpr3-c2`: "Avvia una chat"; invio con "Commenta" `aria-disabled` e nota in attesa; offline (`set offline on`) il testo torna con "Nota non inviata, riprova" collegato al campo, il focus resta su "Commenta", la pagina non si ricarica; bozza ritrovata dopo il ricaricamento e dopo la scheda chiusa e riaperta senza ricaricare, poi inviata; bozza che segue il campo e sparisce svuotandolo, anche dopo "Carica altri messaggi" (`limit=10`, 7/7); cestino solo sotto il mouse, eliminazione fino a "Avvia una chat"; pagina della pratica con la sezione Cliente. Dopo `/simplify` ripetuti invio, fallimento offline e bozza dopo il ricaricamento |
+| Run 4 — AC55 sul DB di sviluppo, sola lettura | OK | Dopo la passata `updatedAt` di `zzpr3-c1` e `zzpr3-c2` aggiornati; 0 pratiche con `updated_at` negli ultimi 40 minuti |
+| Run 4 — gate CI sul codice finale | OK | `next lint` e `tsc --noEmit` puliti; 72 file, 956 test; `pnpm build` con le variabili di CI in una copia senza `.env*`, poi cancellata |
+| Run 4 — browser sul codice finale | OK | Federica su `zzpr3-c2`: invio (5/6 con "Carica altri messaggi"), fallimento offline con testo, messaggio `#b91c1c` e copia `{ operatorId: 1001 }`, stessa bozza dopo il ricaricamento e dopo la scheda chiusa e riaperta senza ricaricare, nessun raddoppio con StrictMode, rinvio salvato e copia cancellata; "Esci dal gestionale" cancella le copie |
 
 ## Acceptance Criteria Status
 
@@ -239,6 +284,9 @@ updated: 2026-10-15
 | AC52 (PR3) | Met, senza link | Toast di 8000 ms con il motivo, anche dopo lo smontaggio; il link al contatto attivo arriva con PR5 (P5) |
 | AC66, AC67 (PR3) | Met | "Crea contatto" nella scheda e nella riga; "Cliente non assegnato"; contatto già attivo |
 | AC73 (PR3) | Met | Clienti e scheda cliente usano le mutation di Contatti (checklist in T3.14) |
+| AC55 (PR4) | Met | Solo il cliente si aggiorna (test e review v2, v3); nella passata browser 0 pratiche toccate |
+| AC56 (PR4) | Met nella scheda cliente | "Avvia una chat" con `chatId` nullo, poi la chat; nel dettaglio di Contatti con PR5 (T5.8) |
+| AC76 (PR4) | Met nella scheda cliente | Testo nel campo con "Nota non inviata, riprova", nessuna nota fantasma, bozza dell'operatore dopo il ricaricamento e la scheda chiusa; residui in D18 e nel tech-debt. Nel dettaglio di Contatti con PR5 (T5.8) |
 
 ## Remaining Work
 
@@ -257,7 +305,8 @@ updated: 2026-10-15
 - **`task_priority_active_idx`:** da ridisegnare in PR5 (T5.1) sulla query vera.
 - **PR3, dopo il merge su `dev`:** G3, il deploy in prod con l'annuncio agli operatori (testo nella descrizione della PR, da T3.14). Nessuna migrazione.
 - **PR3, seguiti:** test dello smontaggio a metà salvataggio per `CustomerAlertCreator`, `CustomerCreateContact` e `CustomerHandoverDialog`; la scadenza "oggi" contro il cron notturno va decisa prima che un selettore permetta oggi (PR5, tech-debt); la ricerca di Clienti per "Nome" e "Telefono" (tech-debt, preesistente).
-- **Dati di prova sul DB di sviluppo:** clienti `zzpr3-c1…c15` con i loro contatti, alert e righe di log. Restano; per toglierli basta il prefisso `zzpr3-` sull'id del cliente.
+- **PR4, dopo l'implementazione:** commit e PR verso `dev` (bozza della descrizione in chat); le due righe agli operatori prima del deploy (T4.2). Seguiti: test di `deleteMessageAction` e `createChatAction`; "Commenta" che scende di 28 px quando compare il messaggio (review v5, MINOR).
+- **Dati di prova sul DB di sviluppo:** clienti `zzpr3-c1…c15` con i loro contatti, alert e righe di log; dalla passata di PR4 `zzpr3-c1` e `zzpr3-c2` hanno una chat con note di prova (quella di `zzpr3-c1` è vuota). Restano; per toglierli basta il prefisso `zzpr3-` sull'id del cliente.
 
 ## Steering
 
@@ -283,3 +332,6 @@ updated: 2026-10-15
 | 2026-10-13 | Riattivare lo `schedule` anche degli altri tre cron di prod, nella sequenza giusta (Leonardo) | Priorità 23:17 UTC, alert 23:47, clienti e pratiche 00:17, pulizia degli export 00:47 (tabella in T2.6). Priorità prima degli alert, perché dà 1 ai followup; clienti e pratiche dopo le 00:00 UTC, perché usa il giorno UTC del server. Stessa guardia `ALERT_CRON_ENABLED`: partono al passo 8 di G2. Runbook G2 aggiornato ai passi 8 e 9 |
 | 2026-10-13 | Rilascio in prod la sera stessa, fatto dall'agente: merge e migrazione (Leonardo) | PR #11 su `main`, deploy verde, `db:migrate:prod` alle 16:46 UTC con tutti i controlli del passo 6 a posto. Il primo cron si fermava all'installazione delle dipendenze: PR #12 sugli otto workflow, poi verde da `main`. Dettagli nel log di T2.4 |
 | 2026-10-15 | Avvio di PR3: solo PR3 (T3.1a–T3.17, gate T3.14), branch da `dev`, PR verso `dev`. Passata browser sul DB di sviluppo con due operatori e un admin scelti dall'agente in sola lettura, clienti di prova creati dall'agente | Run 3; passata browser in T3.14 |
+| 2026-10-15 | Avvio di PR4 con `/implement-spec` (dopo la quarta verifica del piano) | Run 4: T4.1 → T4.3 → T4.4 → T4.2, `sequential`, `supervised` |
+| 2026-10-16 | Correggere BLOCKER e MAJOR della review di T4.5 e T4.6, più l'eliminazione dell'ultima nota senza lock e quella di qualunque nota da qualunque operatore; poi rilanciare la review | Nuovo T4.7 (AC79, D21) |
+| 2026-10-16 | Un ADMIN non elimina le note degli altri: una nota la elimina solo il suo autore | AC79 e D21 riscritti, eccezione tolta da servizio e cestino |

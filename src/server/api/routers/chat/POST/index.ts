@@ -1,10 +1,13 @@
 import { operatorProcedure } from "@/server/api/trpc"
 import { insertMessageSchema } from "@/lib/types/schemas"
 import { insertChatToOperatorSchema } from "@/lib/types/schemas"
-import { chatToOperator, customers, practices } from "@/server/db/schema/index"
+import { chatToOperator } from "@/server/db/schema/index"
 import { chat, messages } from "@/server/db/schema/index"
 import { eq } from "drizzle-orm"
 import z from "zod"
+import { TRPCError } from "@trpc/server"
+import { runTrpc } from "@/server/effect/trpc"
+import { createCustomerChat } from "@/server/services/chat/createCustomerChat"
 
 const insertMessageInput = insertMessageSchema.pick({
   chatId: true,
@@ -54,52 +57,18 @@ export const addOperatorToChat = operatorProcedure
     return req[0]
   })
 
-const createChatInput = z.object({
-  praticaId: z.string(),
-})
-
-export const createNewChat = operatorProcedure
-  .input(createChatInput)
-  .mutation(async ({ ctx, input }) => {
-    const { id } = ctx.operator
-    const chatItem = await ctx.db
-      .insert(chat)
-      .values({ isRead: false })
-      .returning({ id: chat.id })
-
-    await ctx.db
-      .update(practices)
-      .set({ chatId: chatItem[0]!.id })
-      .where(eq(practices.praticaId, input.praticaId))
-
-    await ctx.db
-      .insert(chatToOperator)
-      .values({ chatId: chatItem[0]!.id, operatorId: id })
-
-    return chatItem[0]!
-  })
-
 const createCustomerChatInput = z.object({
   customerId: z.string(),
 })
 
 export const createNewCustomerChat = operatorProcedure
   .input(createCustomerChatInput)
-  .mutation(async ({ ctx, input }) => {
-    const { id } = ctx.operator
-    const chatItem = await ctx.db
-      .insert(chat)
-      .values({ isRead: false })
-      .returning({ id: chat.id })
-
-    await ctx.db
-      .update(customers)
-      .set({ chatId: chatItem[0]!.id })
-      .where(eq(customers.id, input.customerId))
-
-    await ctx.db
-      .insert(chatToOperator)
-      .values({ chatId: chatItem[0]!.id, operatorId: id })
-
-    return chatItem[0]!
-  })
+  .mutation(({ ctx, input }) =>
+    runTrpc(
+      createCustomerChat({
+        customerId: input.customerId,
+        operatorId: ctx.operator.id,
+      }),
+      () => new TRPCError({ code: "NOT_FOUND", message: "Cliente non trovato" })
+    )
+  )

@@ -1,3 +1,4 @@
+import { onTestFinished, vi } from "vitest"
 import { getTableName } from "drizzle-orm"
 import { type PgTable } from "drizzle-orm/pg-core"
 import { FAILPOINT_SCHEMA, testClient } from "./db"
@@ -167,5 +168,45 @@ export async function slowWritesTo(table: PgTable, ms: number) {
     table,
     when: "BEFORE INSERT OR UPDATE",
     action: `WHILE clock_timestamp() < statement_timestamp() + interval '${ms} milliseconds' LOOP END LOOP;`,
+  })
+}
+
+/**
+ * Runs `statement` (SQL) right before the next `SELECT … FOR UPDATE` of `table`
+ * (the lock `lockCustomer` takes), in its transaction: the lock and the
+ * statements after it find the rows a colleague would have written while the
+ * transaction waited for the lock, and the statements before it don't. It
+ * tests what the code does with those rows. Being in the same transaction,
+ * they are found under any isolation level: that the transactions run in
+ * `read committed` is checked in `db.db.test.ts`. If the transaction fails,
+ * `statement` rolls back with it. Row locks fire no trigger, so it wraps the
+ * transactions of `testClient` instead, until it runs or the test ends. A test
+ * where it never runs fails: the lock was not taken, or not the way it expects.
+ */
+export function beforeNextLockOf(table: PgTable, statement: string) {
+  const lock = new RegExp(`from "${getTableName(table)}" .*for update$`)
+  const transaction = testClient.transaction.bind(testClient)
+  let done = false
+  const spy = vi
+    .spyOn(testClient, "transaction")
+    .mockImplementation((callback) =>
+      transaction((tx) => {
+        const query = tx.query.bind(tx)
+        tx.query = (async (sql: string, ...rest: unknown[]) => {
+          if (!done && lock.test(sql)) {
+            done = true
+            spy.mockRestore()
+            await tx.exec(statement)
+          }
+          return query(sql, ...(rest as []))
+        }) as typeof tx.query
+        return callback(tx)
+      })
+    )
+  onTestFinished(() => {
+    spy.mockRestore()
+    if (!done) {
+      throw new Error(`No SELECT … FOR UPDATE of ${getTableName(table)} ran`)
+    }
   })
 }

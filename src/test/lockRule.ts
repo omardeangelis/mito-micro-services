@@ -1,5 +1,7 @@
 import { getTableName } from "drizzle-orm"
+import { messages } from "@/server/db/schema/chat"
 import { customers } from "@/server/db/schema/customers"
+import { chatToOperator } from "@/server/db/schema/relations/chatToOperator"
 import { alert, task } from "@/server/db/schema/task"
 import { taskEventLog } from "@/server/db/schema/taskEventLog"
 import { FAILPOINT_SCHEMA, testClient } from "./db"
@@ -85,4 +87,49 @@ export async function assertCustomerLockedOnWrite() {
         FOR EACH ROW EXECUTE FUNCTION ${name}();
     `)
   }
+}
+
+const chatName = `${FAILPOINT_SCHEMA}.chat_lock_rule`
+
+/**
+ * As `assertCustomerLockedOnWrite`, for a customer's chat: from now on, adding
+ * or removing an operator of a chat (`chat_to_operator`) and deleting a note
+ * (`messages`) fail with "lock rule: …" unless the current transaction has
+ * locked the customer whose `chat_id` is that chat. A chat no customer points
+ * to has nothing to lock and passes. Sending a note is outside the rule: it
+ * locks nothing. Same conditions as `assertCustomerLockedOnWrite`; seed first.
+ */
+export async function assertCustomerLockedOnChatWrite() {
+  const customersTable = `"public"."${getTableName(customers)}"`
+  await testClient.exec(`
+    CREATE SCHEMA IF NOT EXISTS ${FAILPOINT_SCHEMA};
+    CREATE FUNCTION ${chatName}() RETURNS trigger LANGUAGE plpgsql AS $$
+    DECLARE
+      row_chat integer;
+      locked boolean;
+    BEGIN
+      IF TG_OP = 'DELETE' THEN
+        row_chat := OLD.chat_id;
+      ELSE
+        row_chat := NEW.chat_id;
+      END IF;
+      SELECT c.xmax = pg_current_xact_id()::xid
+        INTO locked
+        FROM ${customersTable} c WHERE c.chat_id = row_chat;
+      IF locked IS FALSE THEN
+        RAISE EXCEPTION 'lock rule: customer of chat % not locked by this transaction (% on %)',
+          row_chat, TG_OP, TG_TABLE_NAME;
+      END IF;
+      IF TG_OP = 'DELETE' THEN
+        RETURN OLD;
+      END IF;
+      RETURN NEW;
+    END $$;
+    CREATE TRIGGER "chat_lock_rule_chat_to_operator"
+      BEFORE INSERT OR UPDATE OR DELETE ON "public"."${getTableName(chatToOperator)}"
+      FOR EACH ROW EXECUTE FUNCTION ${chatName}();
+    CREATE TRIGGER "chat_lock_rule_messages"
+      BEFORE DELETE ON "public"."${getTableName(messages)}"
+      FOR EACH ROW EXECUTE FUNCTION ${chatName}();
+  `)
 }
