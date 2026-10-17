@@ -8,7 +8,7 @@ import { customers } from "@/server/db/schema/customers"
 import type * as schema from "@/server/db/schema/index"
 
 /** The Drizzle client, or the transaction in progress: both run queries. */
-type DbClient = PgDatabase<
+export type DbClient = PgDatabase<
   PostgresJsQueryResultHKT,
   typeof schema,
   ExtractTablesWithRelations<typeof schema>

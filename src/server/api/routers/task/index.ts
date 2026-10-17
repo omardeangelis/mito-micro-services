@@ -10,6 +10,8 @@ import {
   getTaskById,
   getActiveTask,
   getCustomersWithActiveAlerts,
+  getContacts,
+  getContactById,
 } from "./GET"
 
 export const taskRouter = createTRPCRouter({
@@ -27,4 +29,6 @@ export const taskRouter = createTRPCRouter({
   getAllAvaibleTaskStatus,
   getActiveTask,
   getCustomersWithActiveAlerts,
+  getContacts,
+  getContactById,
 })
