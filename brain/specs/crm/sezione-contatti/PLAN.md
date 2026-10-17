@@ -2339,7 +2339,7 @@ Ordine interno: T5.1 → T5.2 (stesso file di router) → T5.16 (misura) → T5.
 
     La prima pagina di default con il suo `count` è di circa 170 ms a caldo e 260 ms a freddo, sommando le due query: **A3 (≤ 500 ms) è rispettata** con un margine largo, e un tetto alle pagine o un totale approssimato non servono.
   - **Indici.** Con il `NULLS LAST` di T5.1 il planner usa `task_priority_active_idx` (scansione parallela e `Incremental Sort`) e `task_operator_active_idx` per il `count` per operatore. Stesse query con `COALESCE(t.is_active, false)`, che non implica il predicato dei due indici parziali e quindi li esclude (media di 4 esecuzioni, senza / con indice): default 77 / 68, operatore 23 / 29, operatore medio 22 / 37, "Solo i miei" 74 / 65, ricerca "33" 70 / 61, `count` per operatore 45 / 45. **Le differenze stanno entro ±15 ms e vanno nei due sensi: a 70.000 righe una scansione sequenziale con ordinamento costa quanto l'indice.**
-  - **Proposta, da confermare da Omar:** togliere **entrambi** gli indici. Nessuno dei due cambia i tempi misurati e ognuno rende non-HOT gli `UPDATE` di `priority` o `operator_id`. Il `DROP INDEX` è lo scostamento dal vincolo "migrazioni solo additive" già dichiarato in §15. La migrazione si genera con `pnpm db:generate` solo dopo T5.1 e dopo la ripetizione della misura; se allora i tempi cambiano, la proposta si rivede. Rollback, dalle definizioni lette in prod: `CREATE INDEX task_priority_active_idx ON "mito-deutsche_task" USING btree (priority DESC NULLS LAST) WHERE is_active;` e `CREATE INDEX task_operator_active_idx ON "mito-deutsche_task" USING btree (operator_id) WHERE is_active;`.
+  - **Decisione, confermata da Omar il 2026-10-17:** togliere **entrambi** gli indici. Nessuno dei due cambia i tempi misurati e ognuno rende non-HOT gli `UPDATE` di `priority` o `operator_id`. Il `DROP INDEX` è lo scostamento dal vincolo "migrazioni solo additive" già dichiarato in §15. La migrazione si genera con `pnpm db:generate` solo dopo T5.1 e dopo la ripetizione della misura; se allora i tempi cambiano, la decisione si rivede con Omar. Lo scostamento è dichiarato in §15. Rollback, dalle definizioni lette in prod: `CREATE INDEX task_priority_active_idx ON "mito-deutsche_task" USING btree (priority DESC NULLS LAST) WHERE is_active;` e `CREATE INDEX task_operator_active_idx ON "mito-deutsche_task" USING btree (operator_id) WHERE is_active;`.
   - **Da tenere d'occhio, fuori da A3:** la ricerca cliente con un termine comune ("rossi") fa una scansione sequenziale di `customers` e arriva a 189 ms a caldo e 400 ms a freddo: è il caso più vicino ai 500 ms. Un indice trigram richiederebbe l'estensione `pg_trgm`, una decisione a parte (non in questo task).
 - **files edited/created**:
 - **backlog_item_id**: n/a
@@ -3139,7 +3139,7 @@ PR4 non ha un gate a sé: prima del suo deploy gli operatori ricevono le due rig
 | Fuso orario (server in UTC, utenti in Italia) | Helper `Europe/Rome` testato sui cambi d'ora (A4); il cron alert resta com'è (non-goal) |
 | La riapertura nel dettaglio rifà lo slide-in della Sheet | Guscio della Sheet nel layout sopra `[id]` (T5.6) |
 | La query della lista è troppo lenta con i volumi reali e lo si scopre a interfaccia finita | PR5a prima di PR5b (D23): T5.16 misura con `EXPLAIN ANALYZE` su volumi reali (A3) prima di costruire l'interfaccia |
-| Un `DROP INDEX` è uno scostamento dal vincolo "migrazioni solo additive" | Non tocca dati ed è reversibile; si dichiara in T5.16 e §15, e Omar lo conferma dopo la misura |
+| Un `DROP INDEX` è uno scostamento dal vincolo "migrazioni solo additive" | Non tocca dati ed è reversibile; dichiarato in T5.16 e §15, confermato da Omar il 2026-10-17 sulla misura preliminare |
 | Il dettaglio come rotta semplice rimonta la lista alla chiusura: scorrimento perso, focus su `body` | Una sola navigazione, `returnHref`, focus riportato al menu della riga (T5.4b, T5.6); verificato in T5.12. Slot parallelo rinviato (P13) |
 | Cambiare id con `router.replace` rimonta la pagina e mostra uno skeleton | Nessun `loading.tsx` né `Suspense` con skeleton sotto `(dettaglio)`; `useTransition`; osservatore di `.animate-pulse` in T5.6 e T5.12 |
 | I toast non si annunciano o non si raggiungono mentre la Sheet è aperta (Radix nasconde il resto della pagina) | Non verificato dal piano: controllo e, se serve, regione `role="alert"` dentro la Sheet (T5.12, punto 9) |
@@ -3219,7 +3219,7 @@ Le assunzioni esplicite, che Omar può ribaltare prima della PR interessata:
 |---|---|---|---|
 | A1 | Contatti non assegnati | PR3 | **Confermata** il 2026-10-15 |
 | A2 | Misura dell'adozione | PR6 | Aperta |
-| A3 | Soglia di prestazioni | PR5a | Aperta: si misura in T5.16 (una persona) |
+| A3 | Soglia di prestazioni | PR5a | Aperta: la misura preliminare del 2026-10-17 la rispetta (T5.16, su richiesta di Omar); si ripete con la query vera di T5.1 |
 | A9 | Conferma con il nome del cliente e [Apri] dopo un cambio di stato (FLOW, senza AC) | PR3: nessuna; PR5b: toast con nome e [Apri] | **Confermata** da Omar il 2026-10-17 (T5.9) |
 | A12 | Avviso dopo una riapertura dal dettaglio (FLOW, senza AC) | PR5b | **Confermata** il 2026-10-17 (T5.7a) |
 | A13 | "Non hai contatti assegnati" con il solo "Solo i miei" (FLOW, senza AC) | PR5b | **Confermata** il 2026-10-17 (T5.4b) |
@@ -3266,7 +3266,7 @@ Scostamenti dalla spec, da riportare nella spec al prossimo aggiornamento:
 - **D22**: AC44 dice che il richiamo ha "una data non passata"; il piano chiede una data da domani e rifiuta oggi;
 - **A14**: AC8 elenca due voci del menu azioni e AC24 dice "cliccando una riga"; il piano aggiunge "Apri contatto" nel menu perché il dettaglio si apra anche da tastiera;
 - **A9, A12, A13**: il toast di conferma con [Apri], l'avviso di riapertura e il messaggio "Non hai contatti assegnati" stanno nella FLOW e in nessun AC;
-- **T5.16**: un eventuale `DROP INDEX` non è "additivo" come chiedono i Constraints della spec (non tocca dati ed è reversibile).
+- **T5.16**: il `DROP INDEX` di `task_priority_active_idx` e `task_operator_active_idx` non è "additivo" come chiedono i Constraints della spec (non tocca dati ed è reversibile con un `CREATE INDEX`). **Confermato da Omar il 2026-10-17**, sulla misura preliminare di T5.16. La migrazione si genera dopo T5.1 e dopo la ripetizione della misura con il `.toSQL()` vero; la applica Omar a mano.
 
 ## 16. Esito della verifica
 
