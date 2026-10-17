@@ -2326,8 +2326,21 @@ Ordine interno: T5.1 → T5.2 (stesso file di router) → T5.16 (misura) → T5.
   5. **Se l'esito cambia gli indici**, una sola migrazione generata con `pnpm db:generate`, con l'istruzione inversa scritta nel `log` per il rollback. Un `DROP INDEX` non è "additivo" come chiede il vincolo della spec: non tocca dati ed è reversibile con un `CREATE INDEX`, ma è uno scostamento da dichiarare in §15 e da far confermare a Omar.
   6. **Applicazione in prod:** a mano da Omar, con i controlli del passo 5 di T2.4 (nessuna transazione aperta su `task`; il `CREATE INDEX` tiene un lock sulle scritture per pochi secondi) e confronto di `pg_indexes.indexdef` dopo. Se non si cambia nulla, nessuna migrazione e il `log` registra "indici tenuti" con i numeri.
 - **validation**: i piani e i tempi nel `log`; per ciascun indice la decisione con il motivo; prima pagina di default ≤ 500 ms (A3); se c'è una migrazione, `activeContactIndex.db.test.ts` aggiornato e verde e `db:migrate` sul DB di sviluppo riuscito.
-- **status**: Planned
-- **log**:
+- **status**: Planned (misura preliminare del 2026-10-17 nel log; si ripete con la query vera di T5.1)
+- **log**: 2026-10-17 — **Misura preliminare, eseguita da un agente su richiesta esplicita di Omar** (eccezione ad A3, che la riserva a una persona). Solo `SELECT` ed `EXPLAIN (ANALYZE, BUFFERS)`, ciascuno in una transazione `READ ONLY` con `statement_timeout` di 60 s: nessuna scrittura. Un `DROP INDEX` provato e annullato con `ROLLBACK` non è stato tentato: terrebbe un lock esclusivo su `task` in prod. **Limite:** T5.1 non esiste ancora, quindi le query sono SQL scritto a mano secondo la descrizione di T5.1 (stesse join, `NULLS LAST`, `LIMIT 25`), non il `.toSQL()` del passo 1. **La misura va ripetuta con la query vera prima di chiudere T5.16 e G4a.**
+  - **Volumi** (PostgreSQL 15.1): `task` 83.657 righe (69.784 attive, 13.873 non attive), `customers` 70.938, `alert` circa 19.000. Dalla creazione, `task_priority_active_idx` ha 0 scansioni e `task_operator_active_idx` 2.
+  - **Tempi, esecuzione calda / fredda (ms):**
+    - default: prima pagina 68 / 163; `count` 101 / 98; pagina 2000 (`OFFSET` 49.975) 189 / 295; priorità crescente 66 / 105;
+    - operatore: il più carico (8.584 attive) 29 / 32, `count` 45 / 39; uno medio 37 / 417 (la fredda è il primo accesso);
+    - "Solo i miei" 65 / 78, `count` 106 / 109; con "Con alert" e ordine Prossimo alert (percorso A) 33 / 33;
+    - ricerca cliente (cinque `ILIKE`): "rossi" 189 / 400, "33" 61 / 60;
+    - `includeInactive`: prima pagina 79 / 78, `count` 100 / 100, ordine Creato decrescente 63 / 56;
+    - ordine Contattato il 63 / 61, ordine Cliente 123 / 143.
+
+    La prima pagina di default con il suo `count` è di circa 170 ms a caldo e 260 ms a freddo, sommando le due query: **A3 (≤ 500 ms) è rispettata** con un margine largo, e un tetto alle pagine o un totale approssimato non servono.
+  - **Indici.** Con il `NULLS LAST` di T5.1 il planner usa `task_priority_active_idx` (scansione parallela e `Incremental Sort`) e `task_operator_active_idx` per il `count` per operatore. Stesse query con `COALESCE(t.is_active, false)`, che non implica il predicato dei due indici parziali e quindi li esclude (media di 4 esecuzioni, senza / con indice): default 77 / 68, operatore 23 / 29, operatore medio 22 / 37, "Solo i miei" 74 / 65, ricerca "33" 70 / 61, `count` per operatore 45 / 45. **Le differenze stanno entro ±15 ms e vanno nei due sensi: a 70.000 righe una scansione sequenziale con ordinamento costa quanto l'indice.**
+  - **Proposta, da confermare da Omar:** togliere **entrambi** gli indici. Nessuno dei due cambia i tempi misurati e ognuno rende non-HOT gli `UPDATE` di `priority` o `operator_id`. Il `DROP INDEX` è lo scostamento dal vincolo "migrazioni solo additive" già dichiarato in §15. La migrazione si genera con `pnpm db:generate` solo dopo T5.1 e dopo la ripetizione della misura; se allora i tempi cambiano, la proposta si rivede. Rollback, dalle definizioni lette in prod: `CREATE INDEX task_priority_active_idx ON "mito-deutsche_task" USING btree (priority DESC NULLS LAST) WHERE is_active;` e `CREATE INDEX task_operator_active_idx ON "mito-deutsche_task" USING btree (operator_id) WHERE is_active;`.
+  - **Da tenere d'occhio, fuori da A3:** la ricerca cliente con un termine comune ("rossi") fa una scansione sequenziale di `customers` e arriva a 189 ms a caldo e 400 ms a freddo: è il caso più vicino ai 500 ms. Un indice trigram richiederebbe l'estensione `pg_trgm`, una decisione a parte (non in questo task).
 - **files edited/created**:
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
