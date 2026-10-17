@@ -36,6 +36,38 @@ export const updateCustomerTableVisibleColumns = protectedProcedure
       .where(eq(users.id, ctx.session.user.id))
   })
 
+const updateContactTableVisibleColumnsInput = z.object({
+  preferences: z.object({
+    // The names of the columns the user hid: a handful of short keys
+    contactTableVisibleColumns: z.array(z.string().max(64)).max(20).optional(),
+  }),
+})
+
+export type UpdateContactTableVisibleColumnsInput = z.infer<
+  typeof updateContactTableVisibleColumnsInput
+>
+
+export const updateContactTableVisibleColumns = protectedProcedure
+  .input(updateContactTableVisibleColumnsInput)
+  .mutation(async ({ ctx, input }) => {
+    const { preferences } = input
+    const { preferences: oldPreferences } = await retrieveUserPrefercence({
+      db: ctx.db,
+      id: ctx.session.user.id,
+    })
+
+    const newPref = {
+      ...oldPreferences,
+      contactTableVisibleColumns: preferences.contactTableVisibleColumns,
+    }
+    await ctx.db
+      .update(users)
+      .set({
+        preferences: JSON.stringify(newPref),
+      })
+      .where(eq(users.id, ctx.session.user.id))
+  })
+
 const updateDashboardCollapsedInput = z.object({
   preferences: z.object({
     dashboardCollapsed: z.boolean(),
