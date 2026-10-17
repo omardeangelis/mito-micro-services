@@ -55,6 +55,73 @@ describe("deadlines picked in the date picker", () => {
   })
 })
 
+// The same day rule for any instant of the Rome day, not only the midnights
+// the date picker sends: the whole day is due, the first instant of the next
+// one is not, also on the days the clock changes (23 and 25 hours)
+describe("isDueOrOverdue: any instant of the day", () => {
+  it.each([
+    {
+      name: "a summer day",
+      now: "2026-07-15T10:00:00Z",
+      laterToday: "2026-07-15T15:00:00Z",
+    },
+    {
+      name: "a winter day",
+      now: "2026-12-15T10:00:00Z",
+      laterToday: "2026-12-15T16:00:00Z",
+    },
+    {
+      name: "the day the clock goes forward (23 hours)",
+      now: "2026-03-29T10:00:00Z",
+      laterToday: "2026-03-29T15:00:00Z",
+    },
+    {
+      name: "the day the clock goes back (25 hours)",
+      now: "2026-10-25T10:00:00Z",
+      laterToday: "2026-10-25T16:00:00Z",
+    },
+  ])(
+    "on $name, a later hour of today and its last millisecond are due, the first millisecond of tomorrow is not",
+    ({ now: nowValue, laterToday }) => {
+      const now = new Date(nowValue)
+      const { end } = romeDayBounds(now)
+
+      expect(isDueOrOverdue(new Date(laterToday), now)).toBe(true)
+      expect(isDueOrOverdue(new Date(end.getTime() - 1), now)).toBe(true)
+      expect(isDueOrOverdue(end, now)).toBe(false)
+    }
+  )
+})
+
+// Between the Rome midnight and the UTC midnight the Rome day is already the
+// next one while the UTC day is still the previous one: 1 or 2 hours every
+// night, when the nightly cron runs. "Today" is the Rome day, not the UTC day
+// and not the day of the machine.
+describe("isDueOrOverdue: just after the Rome midnight", () => {
+  it.each([
+    { name: "a summer day", now: "2026-07-14T22:30:00Z" },
+    { name: "a winter day", now: "2026-12-14T23:30:00Z" },
+    { name: "the day the clock goes forward", now: "2026-03-28T23:30:00Z" },
+    { name: "the day the clock goes back", now: "2026-10-24T22:30:00Z" },
+    {
+      name: "the day after the clock went forward",
+      now: "2026-03-29T22:30:00Z",
+    },
+    { name: "the day after the clock went back", now: "2026-10-25T23:30:00Z" },
+  ])(
+    "at 00:30 on $name, the whole Rome day is due and the first instant of the next one is not",
+    ({ now: nowValue }) => {
+      const now = new Date(nowValue)
+      const { start, end } = romeDayBounds(now)
+
+      expect(isDueOrOverdue(new Date(start.getTime() - 1), now)).toBe(true)
+      expect(isDueOrOverdue(start, now)).toBe(true)
+      expect(isDueOrOverdue(new Date(end.getTime() - 1), now)).toBe(true)
+      expect(isDueOrOverdue(end, now)).toBe(false)
+    }
+  )
+})
+
 describe("romeDayBounds", () => {
   it.each([
     {

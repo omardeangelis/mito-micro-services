@@ -30,7 +30,7 @@ export const describeContactError = (error: unknown): string => {
     case "CALLBACK_NOT_ALLOWED":
       return `Non si può impostare un richiamo con lo stato ${contactError.payload.state ?? "nessuno"}`
     case "DEADLINE_IN_PAST":
-      return "La data del richiamo è già passata"
+      return "Il richiamo si imposta da domani"
     case "CUSTOMER_ASSIGNMENT_FORBIDDEN":
       // From "Passaggio di consegne" and from "Assegna a te" alike
       return "Non puoi cambiare l'operatore di questo cliente"

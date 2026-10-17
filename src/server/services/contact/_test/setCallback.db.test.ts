@@ -273,6 +273,10 @@ describe("task.setCallback: stati (AC46)", () => {
 })
 
 describe("task.setCallback: scadenza (AC44, A4)", () => {
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
   it("una scadenza di ieri, nel giorno di Roma, rifiuta con DEADLINE_IN_PAST e non modifica nulla", async () => {
     const operator = await createOperator()
     const { customer, contact } = await seedContact({
@@ -299,17 +303,64 @@ describe("task.setCallback: scadenza (AC44, A4)", () => {
     expect(await snapshot(customer.id)).toEqual(before)
   })
 
-  it("una scadenza a mezzanotte di oggi, nel giorno di Roma, è ammessa", async () => {
+  it("una scadenza a mezzanotte di oggi, nel giorno di Roma, rifiuta con DEADLINE_IN_PAST e non modifica nulla (D22)", async () => {
     const operator = await createOperator()
     const { customer, contact } = await seedContact({
       state: "app.to",
       customerOperatorId: operator.id,
     })
     const today = romeDayBounds(new Date()).start
+    const before = await snapshot(customer.id)
+
+    const error = await failure(
+      createTestCaller(operator).task.setCallback({
+        taskId: contact.id,
+        deadline: today,
+        message: null,
+        replacesAlertId: null,
+      })
+    )
+
+    expect(error).toMatchObject({ code: "BAD_REQUEST" })
+    expect(readContactError(error)).toEqual({
+      code: "DEADLINE_IN_PAST",
+      payload: {},
+    })
+    expect(await snapshot(customer.id)).toEqual(before)
+  })
+
+  it("il rifiuto di una scadenza di oggi dice che il richiamo si imposta da domani (D22)", async () => {
+    const operator = await createOperator()
+    const { contact } = await seedContact({
+      state: "app.to",
+      customerOperatorId: operator.id,
+    })
+
+    const error = await failure(
+      createTestCaller(operator).task.setCallback({
+        taskId: contact.id,
+        deadline: romeDayBounds(new Date()).start,
+        message: null,
+        replacesAlertId: null,
+      })
+    )
+
+    expect(error).toMatchObject({
+      message: "Il richiamo si imposta da domani",
+    })
+  })
+
+  it("una scadenza a mezzanotte di domani, nel giorno di Roma, è salvata: stato richiamare e alert con quella scadenza (D22)", async () => {
+    const operator = await createOperator()
+    const { customer, contact } = await seedContact({
+      state: "app.to",
+      customerOperatorId: operator.id,
+    })
+    const tomorrow = romeDayBounds(new Date()).end
 
     const { alertId } = await createTestCaller(operator).task.setCallback({
       taskId: contact.id,
-      deadline: today,
+      deadline: tomorrow,
       message: null,
       replacesAlertId: null,
     })
@@ -318,9 +369,217 @@ describe("task.setCallback: scadenza (AC44, A4)", () => {
       { id: contact.id, state: "richiamare", alertId },
     ])
     expect(await testDb.select().from(alert)).toMatchObject([
-      { id: alertId, deadline: today },
+      {
+        id: alertId,
+        taskId: contact.id,
+        deadline: tomorrow,
+        isResolved: false,
+      },
     ])
   })
+
+  // The date picker of the browser sends tomorrow's midnight in Rome as UTC:
+  // 22:00 of the day before in summer time, 23:00 in winter time
+  it.each([
+    ["ora legale", "2026-07-15T10:00:00Z", "2026-07-15T22:00:00Z"],
+    ["ora solare", "2026-12-15T10:00:00Z", "2026-12-15T23:00:00Z"],
+  ] as const)(
+    "la scadenza che il date picker sceglie per domani, in %s, è salvata (D22)",
+    async (_clock, now, picked) => {
+      // Only Date: the in-memory database needs real timers
+      vi.useFakeTimers({ toFake: ["Date"] })
+      vi.setSystemTime(new Date(now))
+      const operator = await createOperator()
+      const { customer, contact } = await seedContact({
+        state: "app.to",
+        customerOperatorId: operator.id,
+      })
+      const deadline = new Date(picked)
+
+      const { alertId } = await createTestCaller(operator).task.setCallback({
+        taskId: contact.id,
+        deadline,
+        message: null,
+        replacesAlertId: null,
+      })
+
+      expect(await tasksOf(customer.id)).toMatchObject([
+        { id: contact.id, state: "richiamare", alertId },
+      ])
+      expect(await testDb.select().from(alert)).toMatchObject([
+        { id: alertId, taskId: contact.id, deadline, isResolved: false },
+      ])
+    }
+  )
+
+  // The day rule holds for any instant of the Rome day, not only for the
+  // midnights the date picker sends: today ends at the next midnight in Rome,
+  // a day of 23 or 25 hours when the clock changes
+  const romeDays = [
+    ["ora legale", "2026-07-15T10:00:00Z", "2026-07-15T15:00:00Z"],
+    ["ora solare", "2026-12-15T10:00:00Z", "2026-12-15T16:00:00Z"],
+    [
+      "giorno del cambio d'ora in primavera (23 ore)",
+      "2026-03-29T10:00:00Z",
+      "2026-03-29T15:00:00Z",
+    ],
+    [
+      "giorno del cambio d'ora in autunno (25 ore)",
+      "2026-10-25T10:00:00Z",
+      "2026-10-25T16:00:00Z",
+    ],
+  ] as const
+
+  it.each(
+    romeDays.flatMap(([clock, now, laterToday]) => [
+      [clock, "più tardi oggi (17:00 a Roma)", now, new Date(laterToday)],
+      [
+        clock,
+        "l'ultimo millisecondo di oggi",
+        now,
+        new Date(romeDayBounds(new Date(now)).end.getTime() - 1),
+      ],
+    ])
+  )(
+    "%s: la scadenza %s rifiuta con DEADLINE_IN_PAST e non modifica nulla (D22)",
+    async (_clock, _instant, now, deadline) => {
+      vi.useFakeTimers({ toFake: ["Date"] })
+      vi.setSystemTime(new Date(now))
+      const operator = await createOperator()
+      const { customer, contact } = await seedContact({
+        state: "app.to",
+        customerOperatorId: operator.id,
+      })
+      const before = await snapshot(customer.id)
+
+      const error = await failure(
+        createTestCaller(operator).task.setCallback({
+          taskId: contact.id,
+          deadline,
+          message: null,
+          replacesAlertId: null,
+        })
+      )
+
+      expect(error).toMatchObject({ code: "BAD_REQUEST" })
+      expect(readContactError(error)).toEqual({
+        code: "DEADLINE_IN_PAST",
+        payload: {},
+      })
+      expect(await snapshot(customer.id)).toEqual(before)
+    }
+  )
+
+  // Between the Rome midnight and the UTC midnight the Rome day is already
+  // the next one while the UTC day is still the previous one (1 or 2 hours
+  // every night, when the cron runs): today's midnight must be refused then
+  // too, and tomorrow's accepted
+  const justAfterRomeMidnight = [
+    ["ora legale", "2026-07-14T22:30:00Z"],
+    ["ora solare", "2026-12-14T23:30:00Z"],
+    ["giorno del cambio d'ora in primavera", "2026-03-28T23:30:00Z"],
+    ["giorno del cambio d'ora in autunno", "2026-10-24T22:30:00Z"],
+    ["giorno dopo il cambio d'ora in primavera", "2026-03-29T22:30:00Z"],
+    ["giorno dopo il cambio d'ora in autunno", "2026-10-25T23:30:00Z"],
+  ] as const
+
+  it.each(
+    justAfterRomeMidnight.flatMap(([clock, now]) => {
+      const { start, end } = romeDayBounds(new Date(now))
+      return [
+        [clock, "la mezzanotte di oggi", now, start],
+        [
+          clock,
+          "l'ultimo millisecondo di oggi",
+          now,
+          new Date(end.getTime() - 1),
+        ],
+      ] as const
+    })
+  )(
+    "alle 00:30 a Roma, %s: la scadenza %s rifiuta con DEADLINE_IN_PAST e non modifica nulla (D22)",
+    async (_clock, _instant, now, deadline) => {
+      vi.useFakeTimers({ toFake: ["Date"] })
+      vi.setSystemTime(new Date(now))
+      const operator = await createOperator()
+      const { customer, contact } = await seedContact({
+        state: "app.to",
+        customerOperatorId: operator.id,
+      })
+      const before = await snapshot(customer.id)
+
+      const error = await failure(
+        createTestCaller(operator).task.setCallback({
+          taskId: contact.id,
+          deadline,
+          message: null,
+          replacesAlertId: null,
+        })
+      )
+
+      expect(readContactError(error)).toEqual({
+        code: "DEADLINE_IN_PAST",
+        payload: {},
+      })
+      expect(await snapshot(customer.id)).toEqual(before)
+    }
+  )
+
+  it.each(justAfterRomeMidnight)(
+    "alle 00:30 a Roma, %s: la mezzanotte di domani è salvata (D22)",
+    async (_clock, now) => {
+      vi.useFakeTimers({ toFake: ["Date"] })
+      vi.setSystemTime(new Date(now))
+      const operator = await createOperator()
+      const { customer, contact } = await seedContact({
+        state: "app.to",
+        customerOperatorId: operator.id,
+      })
+      const deadline = romeDayBounds(new Date(now)).end
+
+      const { alertId } = await createTestCaller(operator).task.setCallback({
+        taskId: contact.id,
+        deadline,
+        message: null,
+        replacesAlertId: null,
+      })
+
+      expect(await tasksOf(customer.id)).toMatchObject([
+        { id: contact.id, state: "richiamare", alertId },
+      ])
+      expect(await testDb.select().from(alert)).toMatchObject([
+        { id: alertId, taskId: contact.id, deadline, isResolved: false },
+      ])
+    }
+  )
+
+  it.each(romeDays)(
+    "%s: la scadenza al primo millisecondo di domani è salvata (D22)",
+    async (_clock, now) => {
+      vi.useFakeTimers({ toFake: ["Date"] })
+      vi.setSystemTime(new Date(now))
+      const operator = await createOperator()
+      const { customer, contact } = await seedContact({
+        state: "app.to",
+        customerOperatorId: operator.id,
+      })
+      const deadline = romeDayBounds(new Date(now)).end
+
+      const { alertId } = await createTestCaller(operator).task.setCallback({
+        taskId: contact.id,
+        deadline,
+        message: null,
+        replacesAlertId: null,
+      })
+
+      expect(await tasksOf(customer.id)).toMatchObject([
+        { id: contact.id, state: "richiamare", alertId },
+      ])
+      expect(await testDb.select().from(alert)).toMatchObject([
+        { id: alertId, taskId: contact.id, deadline, isResolved: false },
+      ])
+    }
+  )
 })
 
 describe("task.setCallback: alert aperto da confermare (AC44)", () => {
