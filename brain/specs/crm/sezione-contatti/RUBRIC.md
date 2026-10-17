@@ -6,7 +6,7 @@ spec: sezione-contatti
 links:
   - "[[specs/crm/sezione-contatti/REPORT]]"
 created: 2026-09-25
-updated: 2026-10-16
+updated: 2026-10-17
 ---
 
 # Review Rubric: Sezione Contatti — PR1 "Percorsi di creazione sicuri"
@@ -315,3 +315,68 @@ L'utente ha fissato i passaggi: due verificatori su Haiku, uno per task, senza `
 |------|---------|------------|------------|
 | v1 | "Avvia una chat": una chat per cliente e attesa visibile (AC77) | low (scelta dell'utente) | fast (haiku) |
 | v2 | Attesa di invio ed eliminazione, scroll, accessibilità (AC78) | low (scelta dell'utente) | fast (haiku) |
+
+## [Round: 2026-10-17] PR5a — "Logica sul server e stato dell'URL"
+
+Round aggiunto: le rubric di PR1, PR2, PR3 e PR4 sopra restano come sono.
+
+### Change set under review
+
+- **Scope:** spec implementation, solo PR5a (PLAN.md §9: T5.1, T5.2, T5.3, T5.14, T5.15, T5.16; T5.17 è il gate). Contratto: AC2, AC3, AC5, AC10–AC18, AC21–AC23, AC25–AC28, AC44 (D22), AC51 (parte server). L'interfaccia (lista, filtri, dettaglio) è di PR5b
+- **Target:** branch `contatti/pr5a-lettura-server` (PR verso `dev`), modifiche non ancora committate
+- **Compared:** `6f28635` (`dev`) → albero di lavoro (file modificati più i file nuovi non tracciati)
+- **Files touched:** 26 in `src/` (circa 5.250 righe aggiunte, di cui circa 3.800 di test e di snapshot della migrazione). Nuovi: `listInput.ts`, `getContacts.ts`, `getContactById.ts`, `customerAlerts.ts`, `searchParams.ts`, la migrazione `20261017174700_blushing_roland_deschain.sql` con il suo snapshot, quattro file di test. Modificati: i due router `task`, il router `user`, la rotta delle preferenze, `setCallback.ts`, `errors.ts`, `describeContactError.ts`, lo schema di `task`, `effect/db.ts` (un `export`)
+
+### Routing rubric (review-classifier output)
+
+Charter accorciati qui; il testo completo è nei brief dei verificatori.
+
+```json
+{
+  "taskType": "feature",
+  "secondaryType": "migration",
+  "domainsTouched": ["crm"],
+  "adversarialVerifiers": {
+    "count": 10,
+    "passes": [
+      { "id": "v1", "charter": "Index-drop migration and schema contract chain (T5.16, A3, PLAN §15 deviation): SQL and schema equivalent, snapshot chain and journal, only the two partial indexes go, rollback statements exact, no remaining query relies on them, lock of a non-CONCURRENT DROP INDEX on the live task table, the index test fails if a drop is missing", "complexity": "high" },
+      { "id": "v2", "charter": "Read authorization and data exposure (AC51, PII): operatorProcedure semantics, actor only from the session, shape of every returned row checked for over-exposure, preference write limited to the session user, no SQL or row data in error payloads", "complexity": "high" },
+      { "id": "v3", "charter": "Untrusted input reaching SQL and resource bounds: getContactsInput is the only gate, every sql fragment parametrized, closed whitelist for column and direction, getContactById id parsing, NUL and control characters, cost ceilings an authenticated operator can trigger", "complexity": "high" },
+      { "id": "v4", "charter": "List query semantics against the spec (AC2, AC3, AC10–AC15, AC21–AC23): filters in AND, bands as the badge, Rome day across DST, six sort columns with NULLS LAST and id tiebreak, join cardinality and exact total, customerFilter; would the 68 tests fail on these regressions", "complexity": "high" },
+      { "id": "v5", "charter": "Contact detail semantics (AC26–AC28, AC51 server part): ContactNotFound for every bad or missing id, activeTaskId, open alert vs closed history, editability and canReassign agree with the PR3 write paths, customerAlerts extraction keeps getCustomerAlerts identical", "complexity": "medium" },
+      { "id": "v6", "charter": "URL-state module functional contract (AC16–AC18, AC25, PR5a→PR5b contract): parse/serialize round-trip, invalid parameters ignored, defaults omitted, toContactsInput always accepted by getContactsInput, purity of the module. Out of scope: redirect safety (v7)", "complexity": "medium" },
+      { "id": "v7", "charter": "Navigation-target safety of the URL-state module (P15, open redirect): returnHref, detailHref and seeContactsHref can never produce an external, scheme-relative or non-http(s) target or a different path, whatever the da value; serialization cannot inject parameters or a fragment; would the tests catch a bypass", "complexity": "high" },
+      { "id": "v8", "charter": "Callback-from-tomorrow rule (AC44, D22, T5.15): today and earlier rejected at the midnight boundary and on both DST days independent of process TZ, tomorrow accepted, no other writer changes behavior, messages match, the flipped assertion is the only one changed", "complexity": "medium" },
+      { "id": "v9", "charter": "Contact-column preference write (AC5, T5.14): only contactTableVisibleColumns changes and every other key stays, empty list vs missing key, lost-update window at parity with the siblings, payload bounds, type and cot route compatibility", "complexity": "low" },
+      { "id": "v10", "charter": "Project gates and conventions: the CI gates in order in a clean checkout outside .claude/worktrees, no server-only module in the client graph via listInput.ts or searchParams.ts, Effect rules of AGENTS.md for the new services, the plain-async preference mutation against the 'only code the change touches' rule", "complexity": "low" }
+    ]
+  },
+  "taskComplexity": "high",
+  "reviewImpact": "critical",
+  "humanInLoop": true,
+  "nextStep": "Run v1–v10 in parallel: strongest model for v1, v2, v3, v4 and v7, balanced for v5, v6 and v8, fast for v9 and v10. No verifier connects to the production database, runs db:migrate:prod or any NODE_ENV=production script, or repeats the T5.16 measurement. Human checklist: CI gates green on the PR; the person applying the migration picks the time and the lock approach and keeps the rollback ready; read-only EXPLAIN of the default page after the drop; AC51 exposure of customer PII accepted; the rejection of a callback for today (D22) acknowledged before release."
+}
+```
+
+### Classifier rationale
+
+Critico per due superfici: una migrazione che toglie due indici da una tabella di produzione (da applicare a mano, scostamento dal vincolo "solo additive" dichiarato in §15), e due letture nuove che restituiscono dati personali dei clienti (CF, P.IVA, telefono) a ogni operatore, con testo libero, ordinamento e id che arrivano a SQL, più un modulo che costruisce l'indirizzo di ritorno del dettaglio (superficie di redirect aperto). Il resto (dettaglio, URL, richiamo, preferenza) è in passaggi propri perché i passaggi di sicurezza restino stretti. Nessun markup, stile, ARIA o movimento: né passaggio UI né di movimento.
+
+### Overrides applied
+
+Nessuno. Alla seconda verifica l'orchestratore ha aggiunto un passaggio di regressione (v11, opus) sulle correzioni, fuori dal rubric del classifier, e ha rilanciato v1, v8 e v10.
+
+### Verification plan (derived)
+
+| Pass | Charter | Complexity | Model tier |
+|------|---------|------------|------------|
+| v1 | Migrazione dei due `DROP INDEX` e catena schema → SQL → snapshot | high | strongest (opus) |
+| v2 | Autorizzazione in lettura ed esposizione dei dati (AC51) | high | strongest (opus) |
+| v3 | Input non fidato verso SQL e costi (AC10) | high | strongest (opus) |
+| v4 | Semantica della lista (AC2, AC3, AC10–AC15, AC21–AC23) | high | strongest (opus) |
+| v5 | Semantica del dettaglio (AC26–AC28, AC51) | medium | balanced (sonnet) |
+| v6 | Stato dell'URL: contratto funzionale (AC16–AC18, AC25) | medium | balanced (sonnet) |
+| v7 | Indirizzo di ritorno sicuro (P15) | high | strongest (opus) |
+| v8 | Richiamo da domani (AC44, D22) | medium | balanced (sonnet) |
+| v9 | Preferenza delle colonne (AC5) | low | fast (haiku) |
+| v10 | Gate e convenzioni del progetto | low | fast (haiku) |

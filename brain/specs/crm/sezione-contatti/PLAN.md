@@ -7,14 +7,14 @@ links:
   - "[[chore/crm/design-contatti]]"
   - "[[chore/crm/guida-assegnazione-massiva-e-alert]]"
 created: 2026-09-24
-updated: 2026-10-17
+updated: 2026-10-18
 ---
 
 # Plan: Sezione Contatti e tabella Clienti semplificata
 
 **Spec:** [[specs/crm/sezione-contatti/SPEC]] · **Flow:** [[specs/crm/sezione-contatti/FLOW]] · **Bozza di design:** [[chore/crm/design-contatti]]
 **Generato:** 2026-09-24 con `create-plan`: grill → swarm-plan → ux-advisor + design-engineer → tdd → adversarial-verifier. Nessun codice scritto.
-**Aggiornato:** 2026-09-25, codice server su Effect (D9, P8); errori segnalati a Sentry (P9). 2026-10-15, PR3 riscritta con `create-plan` 0.8.0 (`complexity` per task, FLOW confrontata con gli AC, `design-engineer`, D10–D13, P6 rivisto, P10) e PR7 aggiunta. Sempre il 2026-10-15, PR4 riscritta con `create-plan` 0.8.0: chat solo del cliente (D15), server action tenute (P11), form senza `useOptimistic` (P12), nota non inviata recuperata (AC76 nuovo, D16). Dopo la quarta verifica: AC56 con "Avvia una chat" (D17), bozza della nota non inviata (T4.4, D18), G3 chiuso (PR3 in prod). 2026-10-17, PR5 riscritta con `create-plan` 0.8.0 e divisa in PR5a (logica) e PR5b (interfaccia): D22, D23, P13–P17, A12–A14, task T5.14–T5.17 e `complexity` su ogni task.
+**Aggiornato:** 2026-09-25, codice server su Effect (D9, P8); errori segnalati a Sentry (P9). 2026-10-15, PR3 riscritta con `create-plan` 0.8.0 (`complexity` per task, FLOW confrontata con gli AC, `design-engineer`, D10–D13, P6 rivisto, P10) e PR7 aggiunta. Sempre il 2026-10-15, PR4 riscritta con `create-plan` 0.8.0: chat solo del cliente (D15), server action tenute (P11), form senza `useOptimistic` (P12), nota non inviata recuperata (AC76 nuovo, D16). Dopo la quarta verifica: AC56 con "Avvia una chat" (D17), bozza della nota non inviata (T4.4, D18), G3 chiuso (PR3 in prod). 2026-10-17, PR5 riscritta con `create-plan` 0.8.0 e divisa in PR5a (logica) e PR5b (interfaccia): D22, D23, P13–P17, A12–A14, task T5.14–T5.17 e `complexity` su ogni task. 2026-10-18, PR7 estesa con il database locale in Docker e il seeder di Contatti: D24, T7.1b e T7.1c.
 
 ---
 
@@ -58,7 +58,7 @@ Serve una sezione **Contatti** (lista e dettaglio) sulle `task`. Le regole di mo
 | Letture di Contatti sul server (query, stato dell'URL, preferenza, indici, richiamo da domani) | Basso-medio | Sola lettura e senza chiamanti; una migrazione di indici possibile, applicata a mano; il rifiuto del richiamo per oggi | PR5a |
 | Sezione Contatti (interfaccia) | Basso sull'esistente | Additiva: nuova route; tocca Clienti solo per "Vedi contatti" e un prop opzionale del selettore | PR5b |
 | Clienti semplificata | Medio | Rimozione; va fatta dopo l'adozione | PR6 |
-| Test di concorrenza su Postgres vero | Basso sull'esistente | Solo CI e test; nessun codice dell'app | PR7 (bassa priorità) |
+| Test di concorrenza e database locale su Postgres vero | Basso sull'esistente | Solo CI, test e strumenti di sviluppo (Docker, script, seeder); nessun codice dell'app | PR7 (bassa priorità) |
 
 | PR | Stato | Passo spec | Outcome verificabile | AC |
 |---|---|---|---|---|
@@ -66,10 +66,10 @@ Serve una sezione **Contatti** (lista e dettaglio) sulle `task`. Le regole di mo
 | **PR2** Pulizia e vincolo DB | **Fatta.** Su `main` e migrazioni applicate in prod il 2026-10-13 (PR #6, su `main` con la #11; G2) | 1 | Nessun duplicato attivo. Il DB rifiuta un secondo contatto attivo. Nessun alert aperto su contatti non attivi. Elenco dei contatti disattivati e degli alert chiusi estratto subito prima della pulizia, come traccia | AC69, AC70, AC71 (DB) |
 | **PR3** Regole sul server, usate da Clienti | **Fatta.** In prod dal 2026-10-15 (PR #14, su `main` con la #16), review SHIP dopo le correzioni (G3) | 1 (+ AC66–AC67 anticipati, P1) | Da Clienti e dalla scheda cliente: cambio di stato atomico, modale di conferma per l'alert, operatore invariato, sola lettura con motivo, stato e priorità salvati subito nella scheda (D11), "Passaggio di consegne" al posto del cambio di operatore nel form (D13). I permessi D2 li rifiuta il server anche fuori dall'interfaccia. "Crea contatto" nella scheda cliente. Un alert non si chiude due volte e non si stacca per sbaglio (D10). Un test rende rossa la CI se uno degli scrittori di contatti smette di bloccare il cliente (D12) | regole server di AC27, AC30–AC52; AC66, AC67; AC73 |
 | **PR4** Chat con proprietario esplicito | **Fatta.** In prod (PR #18 su `dev`, #19 su `main`); riscritta il 2026-10-15 | prerequisito del passo 3 (P2); AC76 al passo 3, nella scheda cliente già con PR4 | La chat riceve il cliente invece di dedurlo dall'URL, ed è condivisa in `src/components/custom/notes/`. Note della scheda cliente identiche quando l'invio riesce; quando fallisce il testo torna nel campo con "Nota non inviata, riprova" e resta anche dopo un ricaricamento | AC55 (base), AC56 ("Avvia una chat"), AC76 |
-| **PR5a** Contatti: lettura e regole dal server | Da fare (riscritta il 2026-10-17) | 2 (base) | `getContacts` e `getContactById` provate con i filtri, l'ordine e la paginazione della spec; stato dell'URL puro; preferenza delle colonne; richiamo solo da domani; indici decisi con le misure di A3 | AC2, AC3, AC10–AC15, AC16–AC18 e AC25 (stato dell'URL), AC21–AC23, AC26–AC28 e AC51 (parte server), AC5 (parte server), AC44 (D22) |
+| **PR5a** Contatti: lettura e regole dal server | Implementata il 2026-10-17, non committata; rimozione dei due indici riconfermata da Omar il 2026-10-18; in attesa di G4a | 2 (base) | `getContacts` e `getContactById` provate con i filtri, l'ordine e la paginazione della spec; stato dell'URL puro; preferenza delle colonne; richiamo solo da domani; indici decisi con le misure di A3 | AC2, AC3, AC10–AC15, AC16–AC18 e AC25 (stato dell'URL), AC21–AC23, AC26–AC28 e AC51 (parte server), AC5 (parte server), AC44 (D22) |
 | **PR5b** Contatti: interfaccia | Da fare (riscritta il 2026-10-17) | 2 + 3 (P2) | Lista, filtri, dettaglio, modifiche, note del cliente, "Vedi contatti", guida operatori per Contatti; nessuna animazione nuova | AC1–AC57 (interfaccia), AC62, AC74 (parte Contatti), AC76–AC79 nel dettaglio |
 | **PR6** Clienti semplificata | Da fare | 4 | Colonne e filtri task rimossi, totale = righe, scheda cliente con riepilogo e "Gestisci contatto", etichette della massiva, "Assegna Clienti" che sposta cliente e contatto insieme (D14), guida completata | AC58–AC61, AC63–AC65, AC68, AC74 (parte restante), AC75 |
-| **PR7** Test di concorrenza su Postgres vero | Da fare, bassa priorità (D12) | — | La CI prova con due connessioni vere che le transazioni sullo stesso cliente si mettono in coda, che R7 non accade e che non ci sono deadlock | AC71 (concorrenza) |
+| **PR7** Postgres vero: test di concorrenza e database locale | Da fare, bassa priorità (D12, D24) | — | La CI prova con due connessioni vere che le transazioni sullo stesso cliente si mettono in coda, che R7 non accade e che non ci sono deadlock; `pnpm db:local:up`, `db:local:migrate` e `seed:local` tirano su un Postgres in Docker con le migrazioni e dati di Contatti, per provarci le migrazioni prima di sviluppo | AC71 (concorrenza) |
 
 **Ordine vincolante:**
 1. PR1 in prod, poi almeno una notte di cron senza errori. **Fatto:** in prod dal 2026-09-29. La notte di cron è caduta con G1 rivisto il 28/09: il cron di prod non si lanciava prima di G2.
@@ -124,6 +124,7 @@ Serve una sezione **Contatti** (lista e dettaglio) sulle `task`. Le regole di mo
 | P12 | **Il form della chat senza `useOptimistic` e `useFormStatus`** (finding 30): `onSubmit`, campo controllato, nota in attesa in uno stato locale, flag `sending`. Si vede lo stesso comportamento di oggi quando l'invio riesce, più "Commenta" disabilitato durante l'invio, che era l'intenzione del codice (finding 28). Scartato l'alias di `react` verso il React di Next in vitest: cambierebbe il React di tutti i test di componenti di PR3 | Piano, 2026-10-15, dalla revisione di `swarm-plan` |
 | D22 | **Il richiamo si imposta da domani.** `setCallback` rifiuta anche la scadenza di oggi (`DEADLINE_IN_PAST`) e il date picker di Contatti non offre oggi. Il cron gira una volta per notte e chiude senza followup i richiami il cui giorno è già passato: un richiamo per oggi, impostato dopo la corsa della notte, non riporta il contatto fra quelli da chiamare. Il cron non cambia. Per chi usa la scheda cliente non cambia nulla (disabilita già oggi). T5.15 ribalta l'unica asserzione di `setCallback.db.test.ts` che ammetteva oggi. Chiude la voce del tech-debt "Data del richiamo: selettore e server con regole diverse" | Omar, 2026-10-17 |
 | D23 | **PR5 divisa in PR5a (logica) e PR5b (interfaccia).** Criterio di Omar: dividere se è troppo grande, tenere unito se dividere fa perdere contesto. Motivi: PR5a è l'unica parte con rischio sul database (indici, migrazione a mano) e con la misura di A3, che solo una persona può fare e che conviene prima dell'interfaccia; PR5a si rivede in sola CLI, PR5b anche con i passaggi UI e movimento; il piano resta un file e il contratto fra le due è fissato da test (intestazione di PR5). Costo: due branch, due gate, e procedure di sola lettura senza chiamanti in prod | Omar (criterio), 2026-10-17; applicato dal piano |
+| D24 | **Database locale in Docker, con migrazioni e seeder, nella PR7.** Oggi `pnpm db:migrate` gira solo sul database di sviluppo condiviso, e Drizzle non rilegge una migrazione già applicata: una migrazione sbagliata (come i `DROP INDEX` di PR5a) si scopre lì, davanti ai colleghi. PR7 ha già bisogno di un Postgres 15 vero in Docker (T7.1): lo stesso servizio e la stessa costruzione dello schema (con i due pezzi di `PUSHED_SCHEMA`, perché le migrazioni da sole non partono su un Postgres vuoto) servono per provare le migrazioni su un database proprio, riempito da un seeder di Contatti. È una prova prima di sviluppo e di prod, non li sostituisce. Fuori da PR7: far girare l'app sul database locale (login Azure AD, storage Supabase) | Omar, 2026-10-18; applicato dal piano |
 | P13 | **Il dettaglio è una rotta semplice, non uno slot parallelo.** Come la scheda cliente di oggi, la lista non resta dietro la Sheet (finding 32). Il `design-engineer` ha proposto uno slot `@dettaglio` per tenerla montata. Non si adotta: dopo ogni `router.refresh()` del dettaglio, la lista nello slot non abbinato ricadrebbe su `default.tsx` (comportamento di Next 14 che il piano non ha provato), e il vantaggio sparirebbe alla prima modifica. Il costo di rimontare la lista si cura con una sola navigazione alla chiusura, `returnHref` (P15) e il focus riportato alla riga (T5.4b, T5.6). Rivedibile con una prova in browser | Piano (design-engineer), 2026-10-17 |
 | P14 | **Gli indici di Contatti si decidono con le misure, non prima** (T5.16). L'ordine si scrive `NULLS LAST` (T5.1) perché il planner possa servirlo con un indice. La misura su volumi reali è di una persona (A3) e viene prima dell'interfaccia (D23) | Piano, 2026-10-17 |
 | P15 | **`da` porta uno stato, mai un percorso.** `returnHref(da)` = `/dashboard/contatti` + `serialize(parse(da))`: nessun indirizzo esterno o sporco esce dal dettaglio (AC18, AC25) | Piano, 2026-10-17 |
@@ -270,7 +271,8 @@ PR6  T6.1 ─ T6.2 ─┐                                      (T6.1 ← T1.4)
      T6.3 ────────┼─ T6.5 ─ T6.6 ─ T6.7                  [G5]
      T6.4 ────────┘
 
-PR7  T7.1 ─ T7.2 ─ T7.3          (dopo il merge di PR3; bassa priorità)
+PR7  T7.1 ─┬─ T7.2 ──────────┬─ T7.3          (dopo il merge di PR3; bassa priorità)
+          └─ T7.1b ─ T7.1c ─┘                 (T7.1b e T7.1c non aspettano T7.2)
 ```
 
 ## 9. Task
@@ -2179,9 +2181,17 @@ Ordine interno: T5.1 → T5.2 (stesso file di router) → T5.16 (misura) → T5.
   - una task senza cliente (`customer_id` NULL) non compare mai;
   - `onlyMe` insieme a `operatorIds` di altri operatori: i due filtri si combinano in AND (i miei **e** assegnati a quegli operatori);
   - input non valido → `BAD_REQUEST`, mai un 500: data impossibile, `perPage` fuori elenco, `page` oltre 10.000, `customerQuery` con un NUL.
-- **status**: Planned
+- **status**: Done
 - **log**:
-- **files edited/created**:
+  - 2026-10-17, worker `high` (modello dell'orchestratore), nessuna escalation. Test RED dell'orchestratore (`task.getContacts` non esiste), poi 68 test verdi nel file, un comportamento alla volta nell'ordine della `validation`. Il worker ha provato per mutazione (rossi): giorno UTC al posto di quello di Roma (AC11), join degli alert su `alert.task_id` (AC14), niente spareggio su `task.id` (AC15), `LEFT JOIN` sui clienti, `totalContacts` dei soli attivi, `hasAlert` tolto dall'AND.
+  - Scostamenti dal brief, rivisti dall'orchestratore:
+    - **`from`/`to` solo fra gli anni 2000 e 2100.** Senza limite, `Date.UTC(1, …)` dà il 1901 e un anno `0000` arriva a Postgres e fa un 500. Costante in `isDay` (`listInput.ts`).
+    - **Più rigido del piano** ("mai un 500"): NUL in `customerId`, `operatorIds` oltre 2^31−1, `page` ≤ 0, `customerQuery` oltre 100 caratteri → `BAD_REQUEST`. `customerId` vuoto è accettato e dà `found: false`: se T5.3 vuole altro, si decide lì.
+    - **Righe, totale e `customerFilter` partono insieme** (`Effect.all`, `concurrency: "unbounded"`): non sommano le latenze (la misura di T5.16 dava circa 70 ms a query). Non sono nella stessa transazione, quindi con una scrittura fra una query e l'altra il totale può non combaciare con le righe; per una lista da guardare è accettato.
+    - Un test oltre l'elenco: la forma esatta di `ContactRow` e `customerFilter: null` (il contratto con PR5b).
+  - Gate (orchestratore): `pnpm run test --run` sul file 68/68; `tsc --noEmit` pulito; `eslint --no-eslintrc -c .eslintrc.cjs src/server src/lib` pulito. **`next lint` non parte in questo worktree:** sta in `<repo>/.claude/worktrees/` e ESLint carica anche il `.eslintrc.cjs` del repo padre (`Plugin "@typescript-eslint" was conflicted`). Va rilanciato come lo lancia la CI, in T5.17.
+  - **Dopo la review di `adversarial-review` (2026-10-17):** le liste del filtro hanno un tetto, per non mandare a Postgres un `IN` di migliaia di valori: `priorities` ≤ 4, `states` ≤ 8, `operatorIds` ≤ `MAX_OPERATOR_IDS` (100, esportato da `listInput.ts`), oltre `BAD_REQUEST`. Il file di test passa da 68 a 78 test. Il tetto alle richieste di un batch tRPC e uno `statement_timeout` non ci sono (vedi tech-debt). **Il RED di questa correzione l'ha scritto il worker di correzione, non l'orchestratore**: è uno scostamento da `supervised`, registrato in `IMPLEMENTATION-NOTES.md`.
+- **files edited/created**: `src/lib/domain/contact/listInput.ts`, `src/server/services/contact/getContacts.ts`, `src/server/api/routers/task/GET/index.ts`, `src/server/api/routers/task/index.ts`, `src/server/services/contact/_test/getContacts.db.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a (D6)
@@ -2200,16 +2210,24 @@ Ordine interno: T5.1 → T5.2 (stesso file di router) → T5.16 (misura) → T5.
     - `history`: gli alert **chiusi** del cliente, per scadenza decrescente come lo Storico della scheda cliente (`getCustomerAlerts`), con `resolvedByName`, `resolvedBySurname` e la data di chiusura (`updatedAt`) (AC28). La query si estrae da `getCustomerAlerts` in una funzione condivisa; `getCustomerAlerts` non cambia comportamento;
     - `activeTaskId`: il contatto attivo del cliente, se questo non lo è (AC27), con `activeTaskIdOf`;
     - `editability`: `contactEditability` per l'utente collegato (AC51);
-    - `canReassign`: vero per un admin.
+    - `canReassign`: vero per un admin su un contatto attivo (falso su un contatto superato, che `task.reassign` rifiuta per tutti).
 - **validation**: test DB:
   - contatto attivo modificabile; contatto di un collega con il nome come motivo; "Non assegnato"; contatto superato con `activeTaskId` e `editability: superseded` (anche per un admin);
   - `history` contiene solo gli alert chiusi, con il nome e il cognome di chi li ha chiusi, senza quello aperto, e nello stesso ordine di `getCustomerAlerts`;
   - `customPriority` vero e falso;
   - id `"abc"`, `"0"`, `"-3"`, `"1e3"`, `"0x10"`, `"1.5"`, `" 12"`, `"99999999999"`, inesistente, e quello di una task senza cliente → `CONTACT_NOT_FOUND`;
   - `getCustomerAlerts` restituisce lo stesso di prima (test esistente invariato).
-- **status**: Planned
+- **status**: Done
 - **log**:
-- **files edited/created**:
+  - 2026-10-17, worker `high` (modello dell'orchestratore), nessuna escalation. Test RED dell'orchestratore (`task.getContactById` non esiste), poi 31 test verdi nel file. Il worker ha provato per mutazione i test che nascevano già verdi: alert aperto senza `isResolved = false`, `taskOperator: null`, `activeTaskId` sempre calcolato, parser dell'id con `Number()`, niente massimo, `LEFT JOIN` sul cliente, `onlyClosed` tolto.
+  - Scostamenti dal brief, rivisti dall'orchestratore:
+    - **`customPriority` è `boolean | null`**, com'è la colonna (nullable, default `false`). Una riga con NULL non è né "Manuale" né ricalcolata dal cron; la UI la tratta come "Automatica" con un controllo di verità, come `CustomerTaskManager`.
+    - **`DbClient` esportato** da `src/server/effect/db.ts` (un `export`), per tipare `customerAlerts(client, customerId, { onlyClosed })`, la query dello Storico condivisa da `getCustomerAlerts` e dal nuovo servizio. `getCustomerAlerts` non cambia: stessi campi, stesso ordine (a parità di scadenza resta indefinito, come prima), e un test nuovo con una seed nota ne fissa forma, ordine e perimetro.
+    - **`openAlertOf`** (l'alert aperto di un contatto) è esportato da `getContacts.ts` e usato da `getContactById.ts`: il worker l'aveva duplicato (correzione dell'orchestratore).
+    - Id in più nel test: `"01000"`, `"+1000"`, `"1000 "`, `"1000\n"`, `""`. Il contatto seminato ha id 1000, quindi un parser permissivo lo troverebbe.
+  - Gate (orchestratore): `pnpm run test --run src/server/services/contact src/server/api/routers/task src/app/api/cron/alert` 18 file, 316 test; dopo la correzione di `openAlertOf`, i due file nuovi 99/99; `tsc --noEmit` e `eslint --no-eslintrc -c .eslintrc.cjs src/server src/lib` puliti.
+  - **Dopo la review (2026-10-17):** (1) `canReassign` vale `contact.isActive && canReassign(actor)`: `task.reassign` rifiuta un contatto superato per tutti (AC27), quindi la UI non deve offrire il cambio di operatore su una riga che non si può cambiare; due test nuovi, uno per ruolo, sul superato. (2) `getCustomerAlerts` passa da `runTrpc(query(...))`, non più da `ctx.db` diretto (D9): un errore del database esce come errore tipato di `runTrpc`, come per le altre procedure di Contatti. Stessa query, stessi campi e stesso ordine di prima. Il file passa da 31 a 38 test. Il RED è del worker di correzione (come in T5.1).
+- **files edited/created**: `src/server/services/contact/getContactById.ts`, `src/server/services/contact/customerAlerts.ts`, `src/server/services/contact/getContacts.ts` (solo `export` di `openAlertOf`), `src/server/effect/db.ts` (solo `export` di `DbClient`), `src/server/api/routers/task/GET/index.ts`, `src/server/api/routers/task/index.ts`, `src/server/services/contact/_test/getContactById.db.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a (D6)
@@ -2254,9 +2272,20 @@ Ordine interno: T5.1 → T5.2 (stesso file di router) → T5.16 (misura) → T5.
   - `seeContactsHref` si legge con `parse` come "cliente X, precedenti inclusi, creato decrescente";
   - `returnHref` con `da` di `?stato=richiamare&pagina=2`, assente, `https://evil.example`, `//evil.example`, `javascript:…`, un array: sempre `/dashboard/contatti` + parametri validi;
   - **contratto con T5.1:** `toContactsInput` di uno stato di default, di uno con tutti i filtri e di uno per ogni valore della tabella supera `getContactsInput.parse`.
-- **status**: Planned
+- **status**: Done
 - **log**:
-- **files edited/created**:
+  - 2026-10-17, worker `high` (modello dell'orchestratore), nessuna escalation. Test RED dell'orchestratore (il modulo non esiste), poi 117 test verdi. Il worker ha applicato 37 mutazioni al modulo, una alla volta: due sono sopravvissute (i flag `miei`/`alert`/`precedenti` che valgono solo con `1`, e un `trim` ridondante in `toContactsInput`) e le ha chiuse; ora nessuna sopravvive.
+  - **Forma dello stato** (contratto con PR5b): `ContactsListState`, sempre completo, `Readonly`, con i nomi di `ContactsFilters` di T5.1 più `q`. "Assente" è `undefined` (per `q`, `from`, `to`, `customerId`), mai `null` né stringa vuota. Le liste sono in ordine canonico e senza duplicati. Esportati anche `defaultState` (per "Azzera filtri") e `ActiveFilterKey`.
+  - Scostamenti e scelte, rivisti dall'orchestratore:
+    - **I limiti di `parse` vengono dallo schema `getContactsInput`** (`shape.customerQuery`, `shape.from`, `shape.page`, …), non sono copiati: l'URL non può accettare ciò che il server rifiuta. Costo: `zod` entra nel bundle dei componenti client che importano il modulo (Clienti lo ha già, con i form).
+    - **`cliente=` vuoto e `q` di soli spazi** valgono "filtro assente" (T5.1 lasciava a T5.3 la scelta sul `customerId` vuoto).
+    - **`detailHref` con lo stato di default non scrive `?da=`**: `returnHref(undefined)` porta alla lista senza parametri. T5.6 legge `da` assente come "lista di default".
+    - **Ordine dei parametri in `serialize`:** `q, operatore, stato, priorita, data, dal, al, miei, alert, cliente, precedenti, ordina, verso, pagina, per_pagina` (`cliente` prima di `precedenti`, così `seeContactsHref` dà `?cliente=<id>&precedenti=1&ordina=creato&verso=desc`, la stringa del piano). Le virgole delle liste restano `,` (non `%2C`).
+    - **`seeContactsHref` e `returnHref` includono il percorso** `/dashboard/contatti`; il piano scriveva solo la parte dopo il `?` per il primo.
+    - **Uno stato costruito a mano non è validato:** una `q` oltre 100 caratteri fa fallire `getContactsInput`. Il campo di ricerca di T5.5a deve avere `maxLength` 100.
+  - Gate (orchestratore): `pnpm run test --run src/app/dashboard/contatti` 117/117; `tsc --noEmit` pulito; `eslint --no-eslintrc -c .eslintrc.cjs src/app/dashboard/contatti src/lib` pulito.
+  - **Dopo la review (2026-10-17):** (1) `parse` tiene al più `MAX_OPERATOR_IDS` operatori, i 100 con l'id più basso, perché il server ne rifiuta di più e un link con 500 operatori darebbe una pagina d'errore invece di una lista. (2) `detailHref(id: number, state)`: un `id` che non è un intero positivo sicuro (`0`, `-1`, `1.5`, `NaN`, `Infinity`, `2^53`) porta alla lista con lo stesso stato, perché `.`, `..`, `%2e%2e` o un testo vuoto, messi come segmento di percorso, risolverebbero al genitore o alla lista stessa. (3) test nuovi: i casi che fissano la regex di `digits`, un test deterministico che percorre lo spazio dei parametri (ogni parametro con tutti i suoi valori validi e le coppie di valori (`q`, `customerId`, `from`, `to` e `operatorIds` restano fissi), più una lista di dieci record ostili per i valori non validi) per il contratto con `getContactsInput`, e una prova di forma su un corpus ostile (ogni indirizzo che il modulo costruisce resta nell'app, senza `//` né schema, con solo parametri validi). Sono scritti per far cadere i mutanti M03, M13, M15, M16 e M20 della review; la verifica indipendente li riprova. (4) commenti: `from <= to` è a carico di chi costruisce lo stato (`ContactsListState`, `withFilterChange`), e `seeContactsHref` dice cosa succede con un `customerId` che `parse` scarta. Il file passa da 117 a 165 test. Il RED è del worker di correzione.
+- **files edited/created**: `src/app/dashboard/contatti/_lib/searchParams.ts`, `src/app/dashboard/contatti/_lib/_test/searchParams.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a (D6)
@@ -2273,7 +2302,7 @@ Ordine interno: T5.1 → T5.2 (stesso file di router) → T5.16 (misura) → T5.
   - **Il nome inganna:** nonostante "VisibleColumns", la lista contiene le colonne **nascoste** (`CustomerTableSection` le mette a `false`). Contatti fa lo stesso, per restare coerente e perché la lista vuota significa "tutto visibile". Il commento del tipo lo dice.
   - Le altre chiavi del JSON restano come sono. Lo store del client e il pulsante delle colonne sono in T5.10.
   - **Effect (D9):** è una procedura di una riga della stessa famiglia delle due esistenti, in async semplice; la procedura e il router delle preferenze non passano a Effect (§15). D9 lo nomina come eccezione.
-  - Fuori perimetro (§15): le tre procedure di preferenza leggono e riscrivono il JSON senza lock (preesistente).
+  - Fuori perimetro: le quattro procedure di preferenza leggono e riscrivono il JSON senza lock, e per un utente senza riga in `operators` il JSON letto è `{}` e la scrittura lo sostituisce (preesistente). Nel tech-debt, "Le procedure delle preferenze: gli stessi difetti in tutte e quattro".
 - **validation**: test DB via `createTestCaller` e `getUserPreference`:
   - salvare le colonne di Contatti non cambia `customerTableVisibleColumns` e viceversa;
   - le altre chiavi (`dashboardCollapsed`, colonne di Pratiche) restano;
@@ -2281,9 +2310,14 @@ Ordine interno: T5.1 → T5.2 (stesso file di router) → T5.16 (misura) → T5.
   - `tsc --noEmit` pulito con lo store e `UserPreferenceContext.test.tsx` invariati.
 
   La chiave `cot` della route si prova nel browser in T5.10: un test della route dovrebbe simulare `api`, cioè una funzione interna, contro §11.
-- **status**: Planned
+- **status**: Done
 - **log**:
-- **files edited/created**:
+  - 2026-10-17, worker `medium` (sonnet), nessuna escalation. Test RED dell'orchestratore (`user.updateContactTableVisibleColumns` non esiste), poi 6 test verdi nel file. Cinque test nascevano già verdi (la procedura copia le gemelle): il worker li ha provati per mutazione, senza `...oldPreferences` (anche sulla procedura di Clienti), senza `.where`, `undefined` forzato a `[]` e `[]` a `undefined`.
+  - Comportamento fissato, uguale a quello delle gemelle: salvare `preferences: {}` fa sparire la chiave dal JSON (la scelta precedente è cancellata: "tutto visibile") e lascia le altre chiavi; un secondo utente vede `undefined`, non `[]`.
+  - Il commento del tipo `UserPreference` dice che le liste contengono le colonne **nascoste**. `UserPreferenceContext.test.tsx` sta in `src/store/context/_test/` (non sotto `src/lib src/components src/app` come diceva il brief): eseguito a parte, 3/3, invariato.
+  - Gate (orchestratore): `pnpm run test --run src/server/api/routers/user src/store` 9/9; `tsc --noEmit` pulito senza toccare store né `UserPreferenceContext.test.tsx`; eslint pulito su `src/server src/lib src/app/api`. La chiave `cot` della route si prova nel browser in T5.10.
+  - **Dopo la review (2026-10-17):** l'input accetta al più 20 nomi di colonna lunghi al più 64 caratteri (`z.array(z.string().max(64)).max(20)`), perché la procedura scrive nel JSON delle preferenze dell'utente e non aveva nessun limite. Il file passa da 6 a 9 test. Lo stesso difetto sta nelle due procedure gemelle (Clienti e pratiche), che non si toccano qui: vedi tech-debt.
+- **files edited/created**: `src/server/api/routers/user/PUT/updateUserPreference.ts`, `src/server/api/routers/user/index.ts`, `src/app/api/user/preferences/route.ts`, `src/lib/types/schemas.ts`, `src/server/api/routers/user/_test/contactPreference.db.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a (D6)
@@ -2305,9 +2339,14 @@ Ordine interno: T5.1 → T5.2 (stesso file di router) → T5.16 (misura) → T5.
   - domani → salvato;
   - la scadenza di un date picker scelta dal browser (22:00 o 23:00 UTC del giorno prima di domani) → salvata, nei due casi di ora legale e solare;
   - unit test di `describeContactError` con il testo nuovo, e il messaggio del server letto da `getErrorShape`.
-- **status**: Planned
+- **status**: Done
 - **log**:
-- **files edited/created**:
+  - 2026-10-17, worker `medium` (sonnet), nessuna escalation. L'orchestratore ha riscritto l'unica asserzione che cambia ("una scadenza a mezzanotte di oggi… è ammessa" → rifiutata con `DEADLINE_IN_PAST` e nessuna scrittura) e l'ha vista rossa per il motivo giusto; il worker ha poi fatto passare tutto e aggiunto tre test: il messaggio del server letto da `error.message`, domani a mezzanotte di Roma salvato, e la scadenza del date picker per domani in ora legale (`2026-07-15T22:00:00Z`) e in ora solare (`2026-12-15T23:00:00Z`), con `vi.useFakeTimers({ toFake: ["Date"] })` (i timer veri servono a PGlite). Provato per mutazione: con un confronto sul giorno UTC al posto di `isDueOrOverdue` falliscono tutti e tre.
+  - Il testo "Il richiamo si imposta da domani" è lo stesso sul server (`errors.ts`) e nel client (`describeContactError`, con il suo test). `errors.db.test.ts` asserisce solo codice e payload: non toccato. `isPastDay`, il cron e il date picker non sono toccati.
+  - Gli altri test del file usano ancora `Date.now()` reale: come prima, possono diventare instabili solo a cavallo della mezzanotte di Roma.
+  - Gate (orchestratore): `pnpm run test --run src/server/services/contact src/components/custom/contact src/lib` 32 file, 668 test; `tsc --noEmit` e `eslint --no-eslintrc -c .eslintrc.cjs src/server src/lib src/components/custom/contact` puliti.
+  - **Dopo la review (2026-10-17):** i test confrontano ora l'istante con il **giorno di Roma**, non con il giorno UTC (v8): `setCallback.db.test.ts` ha ora 53 test, con le coppie a cavallo della mezzanotte di Roma in ora legale e in ora solare, e `time.test.ts` (21 test) prova `isDueOrOverdue` con un'ora qualsiasi del giorno, anche nei giorni di 23 e 25 ore. **Seconda verifica (v8):** i test non distinguevano il giorno di Roma dal giorno UTC o da quello della macchina, perché ogni `now` stava alle 10:00Z. Aggiunti, dall'orchestratore, sei `now` alle 00:30 di Roma (estate, inverno, i due giorni del cambio d'ora e i due successivi: il giorno di Roma è già quello dopo, quello UTC no): la mezzanotte di oggi e `end - 1` rifiutate, quella di domani salvata. Provati su una copia con tre mutanti (giorno UTC di `now`, giorno locale del processo, UTC inline in `setCallback`): cadono 18, 18 e 12 test. La spec dice ora "da domani": AC44 e il Decision Log di `SPEC.md` sono aggiornati (D22). Il RED è del worker di correzione.
+- **files edited/created**: `src/server/services/contact/setCallback.ts`, `src/server/services/contact/errors.ts`, `src/components/custom/contact/describeContactError.ts`, `src/components/custom/contact/_test/describeContactError.test.ts`, `src/server/services/contact/_test/setCallback.db.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a (D6)
@@ -2324,9 +2363,9 @@ Ordine interno: T5.1 → T5.2 (stesso file di router) → T5.16 (misura) → T5.
   3. **L'orchestratore decide per ciascuno dei due indici** (`task_priority_active_idx`, `task_operator_active_idx`) fra tenere, ridisegnare o togliere, con il motivo scritto nel `log`. Con `ORDER BY … NULLS LAST, task.id` (T5.1) un indice su `(priority DESC NULLS LAST, id DESC) WHERE is_active` può servire l'ordine di default; il filtro per operatore usa `task_operator_active_idx` solo sugli attivi; "Solo i miei" e `includeInactive` non li usano. Se i tempi sono ≤ 500 ms anche senza indici, la scelta è togliere quelli che non servono: ogni indice rallenta gli `UPDATE` di `priority` e `operator_id` (non più HOT).
   4. **Se la prima pagina di default supera i 500 ms anche con l'indice migliore**, il task si ferma e torna da Omar con i piani: le strade sono rivedere la query (per esempio un totale approssimato o un tetto alle pagine) o rivedere A3. PR5b non parte finché A3 non è rispettata o rivista.
   5. **Se l'esito cambia gli indici**, una sola migrazione generata con `pnpm db:generate`, con l'istruzione inversa scritta nel `log` per il rollback. Un `DROP INDEX` non è "additivo" come chiede il vincolo della spec: non tocca dati ed è reversibile con un `CREATE INDEX`, ma è uno scostamento da dichiarare in §15 e da far confermare a Omar.
-  6. **Applicazione in prod:** a mano da Omar, con i controlli del passo 5 di T2.4 (nessuna transazione aperta su `task`; il `CREATE INDEX` tiene un lock sulle scritture per pochi secondi) e confronto di `pg_indexes.indexdef` dopo. Se non si cambia nulla, nessuna migrazione e il `log` registra "indici tenuti" con i numeri.
+  6. **Applicazione in prod:** a mano da Omar, con i controlli del passo 5 di T2.4 (nessuna transazione aperta su `task`; il `DROP INDEX` prende un lock `ACCESS EXCLUSIVE`, letture comprese) e confronto di `pg_indexes.indexdef` dopo. Se non si cambia nulla, nessuna migrazione e il `log` registra "indici tenuti" con i numeri.
 - **validation**: i piani e i tempi nel `log`; per ciascun indice la decisione con il motivo; prima pagina di default ≤ 500 ms (A3); se c'è una migrazione, `activeContactIndex.db.test.ts` aggiornato e verde e `db:migrate` sul DB di sviluppo riuscito.
-- **status**: Planned (misura preliminare del 2026-10-17 nel log; si ripete con la query vera di T5.1)
+- **status**: Done, salvo `db:migrate` sul DB di sviluppo e l'applicazione della migrazione in prod (da Omar, G4a). Rimozione dei due indici riconfermata da Omar il 2026-10-18
 - **log**: 2026-10-17 — **Misura preliminare, eseguita da un agente su richiesta esplicita di Omar** (eccezione ad A3, che la riserva a una persona). Solo `SELECT` ed `EXPLAIN (ANALYZE, BUFFERS)`, ciascuno in una transazione `READ ONLY` con `statement_timeout` di 60 s: nessuna scrittura. Un `DROP INDEX` provato e annullato con `ROLLBACK` non è stato tentato: terrebbe un lock esclusivo su `task` in prod. **Limite:** T5.1 non esiste ancora, quindi le query sono SQL scritto a mano secondo la descrizione di T5.1 (stesse join, `NULLS LAST`, `LIMIT 25`), non il `.toSQL()` del passo 1. **La misura va ripetuta con la query vera prima di chiudere T5.16 e G4a.**
   - **Volumi** (PostgreSQL 15.1): `task` 83.657 righe (69.784 attive, 13.873 non attive), `customers` 70.938, `alert` circa 19.000. Dalla creazione, `task_priority_active_idx` ha 0 scansioni e `task_operator_active_idx` 2.
   - **Tempi, esecuzione calda / fredda (ms):**
@@ -2341,7 +2380,35 @@ Ordine interno: T5.1 → T5.2 (stesso file di router) → T5.16 (misura) → T5.
   - **Indici.** Con il `NULLS LAST` di T5.1 il planner usa `task_priority_active_idx` (scansione parallela e `Incremental Sort`) e `task_operator_active_idx` per il `count` per operatore. Stesse query con `COALESCE(t.is_active, false)`, che non implica il predicato dei due indici parziali e quindi li esclude (media di 4 esecuzioni, senza / con indice): default 77 / 68, operatore 23 / 29, operatore medio 22 / 37, "Solo i miei" 74 / 65, ricerca "33" 70 / 61, `count` per operatore 45 / 45. **Le differenze stanno entro ±15 ms e vanno nei due sensi: a 70.000 righe una scansione sequenziale con ordinamento costa quanto l'indice.**
   - **Decisione, confermata da Omar il 2026-10-17:** togliere **entrambi** gli indici. Nessuno dei due cambia i tempi misurati e ognuno rende non-HOT gli `UPDATE` di `priority` o `operator_id`. Il `DROP INDEX` è lo scostamento dal vincolo "migrazioni solo additive" già dichiarato in §15. La migrazione si genera con `pnpm db:generate` solo dopo T5.1 e dopo la ripetizione della misura; se allora i tempi cambiano, la decisione si rivede con Omar. Lo scostamento è dichiarato in §15. Rollback, dalle definizioni lette in prod: `CREATE INDEX task_priority_active_idx ON "mito-deutsche_task" USING btree (priority DESC NULLS LAST) WHERE is_active;` e `CREATE INDEX task_operator_active_idx ON "mito-deutsche_task" USING btree (operator_id) WHERE is_active;`.
   - **Da tenere d'occhio, fuori da A3:** la ricerca cliente con un termine comune ("rossi") fa una scansione sequenziale di `customers` e arriva a 189 ms a caldo e 400 ms a freddo: è il caso più vicino ai 500 ms. Un indice trigram richiederebbe l'estensione `pg_trgm`, una decisione a parte (non in questo task).
-- **files edited/created**:
+  - **2026-10-17, misura ripetuta con la query vera di T5.1** (stessa eccezione ad A3, stesse garanzie: un agente su richiesta di Omar, solo `SELECT` ed `EXPLAIN (ANALYZE, BUFFERS)` in transazioni `READ ONLY` con `statement_timeout` di 60 s, nessuna scrittura). L'SQL è quello che `getContacts` manda a Postgres, preso con il logger di Drizzle su PGlite e con i parametri scritti nel testo (un test temporaneo, cancellato); `LIMIT 20`, il default di `PER_PAGES` (la misura preliminare usava 25); operatore 1015 (8.584 task attive) e 1012. Stessa base di prima: PostgreSQL 15.1, 69.784 attive e 13.873 non attive.
+    - **Tempi, esecuzione fredda / calda (ms), prima pagina e `count`:**
+      - default: 129 / 68 e 104 / 95; priorità crescente 101 / 71 e 95 / 95; pagina 2000 167 / 169 e 104 / 97;
+      - operatore 1015: 29 / 28 e 40 / 39; operatore 1012: 246 / 41 e 36 / 35;
+      - "Solo i miei": 67 / 67 e 107 / 108; con "Con alert" e ordine Prossimo alert: 88 / 34 e 114 / 115;
+      - ricerca cliente: "rossi" 339 / 190 e 192 / 189; "33" 60 / 61 e **660** / 167;
+      - `includeInactive`: 77 / 79 e 100 / 100; con ordine Creato decrescente 50 / 49 e 109 / 100;
+      - ordine Contattato il 59 / 60 e 94 / 95; ordine Cliente 118 / 122 e 110 / 95.
+
+      La prima pagina di default con il suo `count` fa 163 ms a caldo e 233 ms a freddo sommando le due query, e il servizio le lancia insieme, quindi l'attesa è la più lenta delle due. **A3 (≤ 500 ms) è rispettata** con un margine di oltre il doppio, e un tetto alle pagine o un totale approssimato non servono.
+    - **Con e senza i due indici** (media di 4 esecuzioni alternate, con / senza; il "senza" è la stessa query con `COALESCE(is_active, false) = true`, che il planner non può servire con un indice parziale: spegne anche `task_customer_active_uidx`, che resta, quindi è una stima), prima pagina e `count`:
+      - default 61,5 / 78,1 e 97,3 / 130,8 (un valore a 212 ms, gli altri 99–111);
+      - operatore 1015 28,5 / 22,7 e 39,7 / 48,5; operatore 1012 36,5 / 28,2 e 35,3 / 38,3;
+      - "Solo i miei" 62,7 / 72,6 e 110,8 / 117,5; con "Con alert" 32,8 / 33,8 e 118,3 / 50,9;
+      - ordine Contattato il 60,0 / 70,3; ordine Cliente 115,5 / 113,3; ricerca "rossi" 197 / 192; "33" 90 / 70 e 165 / 235;
+      - **pagina 2000: 216 / 332,5** e 101 / 105.
+
+      Rispetto alla misura preliminare (differenze entro ±15 ms) con la query vera si vede una differenza piccola, ma misurabile, per **`task_priority_active_idx`**: circa 16 ms sulla prima pagina di default (62 contro 78 ms), circa 10 ms con l'ordine Contattato il e circa 116 ms su una pagina profonda (la 2000: `OFFSET` 39.980). **`task_operator_active_idx`** fa risparmiare meno di 10 ms: 3–9 ms sul `count` per operatore (39,7 contro 48,5 e 35,3 contro 38,3), mentre la prima pagina filtrata è un po' più veloce senza (28,5 contro 22,7 e 36,5 contro 28,2).
+    - **Decisione: togliere entrambi. Riconfermata da Omar il 2026-10-18 sulle misure con la query vera.** La conferma del 2026-10-17 poggiava sulla misura preliminare ("nessuno dei due cambia i tempi"), e il piano chiede di rivedere la decisione con Omar se i tempi cambiano: per `task_priority_active_idx` sono cambiati (16 ms sulla prima pagina, 116 ms alla pagina 2000). Per `task_operator_active_idx` la conferma regge. Il costo dell'indice sulla priorità è di 16 ms in una lista che ne impiega 163 e, senza indici, la prima pagina (78 ms) e il `count` (131 ms) partono insieme: l'attesa è la più lenta, circa 131 ms, e sommate fanno circa 210 ms, sempre sotto i 500 ms. Per contro, ogni indice rende non-HOT gli `UPDATE` di `priority` (il cron notturno, `refreshPriorities`, la riscrive per le task attive senza priorità manuale, in una transazione con il limite di 60 s) e di `operator_id`. Omar ha scelto di togliere anche `task_priority_active_idx` sapendo che le pagine profonde rallentano (216 contro 332 ms alla pagina 2000); per tornare indietro vale il rollback in testa alla migrazione.
+    - **Migrazione generata** con `pnpm db:generate`: `20261017174700_blushing_roland_deschain.sql`, `SET LOCAL lock_timeout = '5s'` e due `DROP INDEX IF EXISTS` (`task_operator_active_idx`, `task_priority_active_idx`), con la ragione, la nota sul lock e il rollback in testa al file. Il `DROP INDEX` prende un lock `ACCESS EXCLUSIVE` su `task`, letture comprese, e il migratore di Drizzle esegue tutte le migrazioni in sospeso in una sola transazione: senza `lock_timeout` una transazione lunga su `task` metterebbe in coda dietro di sé ogni query sulla tabella. Con il limite la migrazione si arrende dopo 5 s e fa rollback ("canceling statement due to lock timeout"): si rilancia più tardi. Il generatore ha aggiunto anche `ALTER TABLE "mito-deutsche_customers" ALTER COLUMN "id" SET DEFAULT '<letterale casuale>'` (stesso difetto di T2.3: `.default(nanoid())` si valuta una volta sola), tolto a mano; lo snapshot cambia letterale, l'SQL no. `activeContactIndex.db.test.ts` ora si aspetta tre definizioni (rosso prima del cambio, per il motivo giusto, poi verde); `src/server/db/migrations` 16 test verdi in 4 file (`activeContactIndex.db.test.ts` ne ha 5: le definizioni, e l'elenco di tutti gli indici di `task`, che vede anche un indice in più).
+    - **Non fatto:** `pnpm db:migrate` sul DB di sviluppo (il worktree non ha `.env.development.local` e scrive su un database condiviso: lo lancia Omar insieme al resto) e l'applicazione in prod. **Da applicare a mano da Omar**, in un momento tranquillo, con il rollback pronto (sta in testa alla migrazione):
+      0. **fatto il 2026-10-18:** Omar ha riconfermato la rimozione di `task_priority_active_idx` sulle misure con la query vera (sopra), quindi la migrazione non cambia più; resta da applicarla, e da qui può girare anche `pnpm db:migrate` sul DB di sviluppo dopo il merge in `dev`;
+      1. controlli dello stato delle migrazioni: il checkout è `main` con l'albero pulito e `_journal.json` finisce con `20261017174700_blushing_roland_deschain`; `SELECT max(created_at) FROM drizzle.__drizzle_migrations` vale `1791749278159` (nessuna migrazione più recente già applicata), e dopo l'applicazione `1792259220591`. Da un checkout senza il file il migratore salta tutto e termina senza errori;
+      2. le transazioni aperte, i controlli del passo 5 di T2.4: nessuna transazione aperta su `task`, e nessuna che la tiene da tempo (`SELECT pid, state, now() - xact_start AS durata, left(query, 80) FROM pg_stat_activity WHERE datname = current_database() AND xact_start IS NOT NULL ORDER BY xact_start`; l'elenco comprende ogni transazione, anche quella di chi lo lancia). Il `DROP INDEX` prende un lock `ACCESS EXCLUSIVE` e, finché lo aspetta, ogni query su `task` aspetta dietro di lui, fino a 5 s per tentativo;
+      3. se la migrazione si ferma con "canceling statement due to lock timeout", il `DROP` non ha ottenuto il lock: nessun indice è stato tolto e `max(created_at)` è rimasto `1791749278159`. Si cerca chi tiene la tabella con la stessa query (una transazione lunga, per esempio `refreshPriorities`, fino a 60 s, o un export) e si rilancia dopo che ha finito. Un `DROP` in coda si riconosce da `query LIKE '%DROP INDEX IF EXISTS "task_%'` in `pg_stat_activity`; non si termina nessun altro processo senza chiedere;
+      4. dopo, `SELECT indexname FROM pg_indexes WHERE tablename = 'mito-deutsche_task' ORDER BY indexname` dà **tre** righe (`mito-deutsche_task_pkey`, `task_customer_active_uidx`, `task_customer_id_idx`), e la query del passo 6 di T2.4 (le cinque definizioni) dà tre righe invece di cinque (`alert_task_id_idx`, `task_customer_active_uidx`, `task_customer_id_idx`), con le stesse `indexdef` di prima;
+      5. dopo, di nuovo in sola lettura (`EXPLAIN (ANALYZE, BUFFERS)` in una transazione `READ ONLY`): la prima pagina di default, il suo `count` e la pagina 2000. Il "senza indici" di sopra è una stima ottenuta spegnendo gli indici con `COALESCE`, e questo è il riscontro vero. Attese: prima pagina circa 80 ms, `count` circa 130 ms, pagina 2000 circa 330 ms; se la prima pagina supera i 500 ms, si ricrea `task_priority_active_idx` con il rollback e si torna da Omar (G4a).
+    - **Da tenere d'occhio, fuori da A3:** la ricerca cliente con un termine comune ("rossi") fa una scansione sequenziale di `customers` (190 ms a caldo, 339 a freddo), e il `count` di una ricerca con poche lettere o cifre ("33") è arrivato a 660 ms a freddo: la lista aspetta il più lento dei due, quindi la prima ricerca "a freddo" può superare i 500 ms. Un indice trigram richiederebbe `pg_trgm`: una decisione a parte (non in questo task).
+- **files edited/created**: `src/server/db/schema/task.ts`, `src/server/db/migrations/20261017174700_blushing_roland_deschain.sql`, `src/server/db/migrations/meta/_journal.json`, `src/server/db/migrations/meta/20261017174700_snapshot.json`, `src/server/db/migrations/_test/activeContactIndex.db.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a (D6)
@@ -2357,11 +2424,17 @@ Ordine interno: T5.1 → T5.2 (stesso file di router) → T5.16 (misura) → T5.
   - `adversarial-review` del branch (`review.mode: total`). Prima della review l'orchestratore scrive nel tech-debt (sono suoi, non dei worker): chiusa "Gli indici di PR2 per Contatti non servono ancora nessuna query" (T5.16), chiusa "Data del richiamo: selettore e server con regole diverse" (T5.15), e lo scostamento dei `DROP INDEX` se c'è.
   - Descrizione della PR: il rifiuto del richiamo per oggi, le procedure senza chiamanti, l'esito degli indici, l'ordine di applicazione se c'è una migrazione.
   - Aggiornare nel tech-debt il rimando "T5.13 lo controlla" della voce sugli indici (ora T5.16 e T5.17).
+  - **Prima del merge di PR5a in `dev`:** la riconferma di Omar sulla rimozione di `task_priority_active_idx` è arrivata il 2026-10-18 (T5.16, passo 0), quindi il merge non aspetta altro. Resta vero che chi lancia `pnpm db:migrate` sul DB di sviluppo condiviso applica la migrazione, e Drizzle non la rilegge: va detto nella descrizione della PR, insieme al rollback in testa al file.
   - **G4a:** misura di A3 registrata; se c'è una migrazione, applicata da Omar e verificata prima del deploy.
-- **validation**: gate verdi; `REPORT.md` della review SHIP; G4a chiuso.
-- **status**: Planned
+- **validation**: gate verdi; `REPORT.md` della review SHIP; la riconferma di Omar sull'indice della priorità registrata (T5.16, passo 0: fatta il 2026-10-18); G4a chiuso.
+- **status**: In corso — in attesa di Omar (commit e PR; G4a dopo il merge). Riconferma sull'indice della priorità: fatta il 2026-10-18
 - **log**:
-- **files edited/created**:
+  - 2026-10-17 — **Gate CI** in una copia pulita fuori da `.claude/worktrees/` (senza `.env*`, variabili segnaposto): `next lint` "No ESLint warnings or errors", `tsc --noEmit`, `pnpm run test --run` 79 file e 1364 test, `pnpm build`: tutti exit 0. Rilanciati dopo l'ultima correzione.
+  - **`adversarial-review`** (caso B, `review.mode: total`): `RUBRIC.md` e `REPORT.md` (round PR5a). Prima verifica 8 SHIP e 2 DO NOT SHIP (BLOCKER di v10 su `getCustomerAlerts`, MAJOR di v8 sui test del richiamo e su AC44, MAJOR di v1 sul `lock_timeout`, MAJOR di v4 su AC23). Corretti; seconda verifica: v1, v8 (dopo un secondo MAJOR sul giorno di Roma alle 00:30, chiuso con test dell'orchestratore), v10 e il passaggio di regressione v11 sono SHIP. **La riconferma di Omar su `task_priority_active_idx` è arrivata il 2026-10-18** (REPORT, checklist 1): la condizione del merge in `dev` è chiusa.
+  - **Tech-debt** (dell'orchestratore): chiuse la voce degli indici (riconfermata; resta l'applicazione) e quella del richiamo; nuove: ricerca cliente lenta a freddo, `next lint` nei worktree, richieste della lista senza tetto, procedure delle preferenze, cognome vuoto e collazione, fuso dei test. `SPEC.md`: AC10 (D8), AC44 (D22), eccezione ai Constraints per il `DROP INDEX`, due righe nel Decision Log.
+  - **Descrizione della PR** (bozza nel riepilogo di fine turno): il rifiuto del richiamo per oggi, le procedure senza chiamanti, l'esito degli indici con le misure, la riconferma di Omar (2026-10-18), l'ordine di applicazione e il `lock_timeout`.
+  - **Non fatto:** commit e PR (non richiesti); `pnpm db:migrate` sul DB di sviluppo; applicazione in prod (G4a, di Omar).
+- **files edited/created**: `brain/specs/crm/sezione-contatti/` (`SPEC.md`, `PLAN.md`, `IMPLEMENTATION-NOTES.md`, `RUBRIC.md`, `REPORT.md`), `brain/tech-debt/crm/sezione-contatti.md`, `brain/index.md`, `brain/log.md`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a (D6)
@@ -2920,24 +2993,30 @@ Branch suggerito: `contatti/pr6-clienti`. Il merge si fa solo dopo G5.
 - **review_mode**: mixed
 - **assigned_skills**: agent-browser
 
-### PR7 — Test di concorrenza su Postgres vero (bassa priorità)
+### PR7 — Postgres vero: test di concorrenza e database locale (bassa priorità)
 
 **Stato: da fare, bassa priorità** (D12, deciso da Omar il 2026-10-15). È il livello 2 della regola dei lock: T3.15 prova che il codice blocca il cliente, PR7 prova che con due connessioni vere le transazioni sullo stesso cliente si mettono in coda. Non blocca nessun'altra PR. Ha senso dopo il merge di PR3, così copre anche i suoi scrittori.
 
-Branch: `chore/test-postgres-concorrenza` da `dev`, PR verso `dev`. Nessun cambiamento visibile e nessuna modifica al codice dell'app: solo CI, harness e test.
+**Database locale** (D24, chiesto da Omar il 2026-10-18). Lo stesso Postgres in Docker serve anche a provare le migrazioni su un database proprio invece che su sviluppo: T7.1b lo tira su e applica le migrazioni, T7.1c lo riempie di dati di Contatti. PR3 è in prod, quindi nulla impedisce di partire ora; T7.1b e T7.1c non dipendono da T7.2 e si possono fare prima dei test di concorrenza.
+
+Branch: `chore/test-postgres-concorrenza` da `dev`, PR verso `dev`. Nessun cambiamento visibile e nessuna modifica al codice dell'app: solo CI, harness, test, `docker-compose.yml`, script di `package.json`, seeder locale e README.
 
 **Sicurezza del database** (regole di `AGENTS.md`). I test `*.pg.test.ts`:
 - leggono solo `TEST_DATABASE_URL`, mai `.env*` né le variabili di Supabase;
 - rifiutano un DSN senza host esplicito (altrimenti varrebbe `PGHOST`), con più host, o con un host diverso da `localhost` e `127.0.0.1`;
 - non lavorano mai sul database del DSN: l'harness crea un database suo, `mito_test_<casuale>`, ci applica le migrazioni e lo elimina alla fine. Così il `TRUNCATE` del reset non può toccare un database locale con dati, per esempio uno stack Supabase in locale o un tunnel.
 
+**Il database locale** (T7.1b, T7.1c) ha un DSN fisso nello script (`postgres://postgres:local@127.0.0.1:54329/mito_local`) e la porta pubblicata solo su `127.0.0.1`. I suoi script non leggono `.env*`, né le variabili di Supabase, né `loadEnv`: non possono arrivare a sviluppo né a prod. Prima di collegarsi controllano che l'host sia `localhost` o `127.0.0.1` e che il database si chiami `mito_local`; `db:local:reset` e `seed:local` svuotano solo quello. Un database `mito_test_<casuale>` dell'harness sta sullo stesso server ma non si incrocia con `mito_local`.
+
 #### T7.1: Postgres vero nella CI e nell'harness
 - **depends_on**: [T3.14]
-- **location**: `.github/workflows/ci.yml` (servizio `postgres:15` nel job Test, con `TEST_DATABASE_URL`), `vitest.workspace.ts` (due progetti), `vitest.config.ts` (esclude `*.pg.test.ts`), `src/test/pg.ts`, `src/test/pg.setup.ts`, `src/test/_test/pg.pg.test.ts`
+- **location**: `.github/workflows/ci.yml` (servizio `postgres:15` nel job Test, con `TEST_DATABASE_URL`), `docker-compose.yml`, `vitest.workspace.ts` (due progetti), `vitest.config.ts` (esclude `*.pg.test.ts`), `src/test/pg.ts`, `src/test/pg.setup.ts`, `src/test/_test/pg.pg.test.ts`, `src/server/db/pushedSchema.ts`, `src/test/db.ts`
 - **description**:
   - Il job Test della CI avvia un servizio `postgres:15` (prod è su 15.6) ed espone `TEST_DATABASE_URL`. Il comando resta `pnpm run test --run`.
   - **Un secondo progetto vitest** (`vitest.workspace.ts`) per i `*.pg.test.ts`, in ambiente `node`, con un suo setup (`src/test/pg.setup.ts`). Il progetto di oggi li esclude. Serve perché `src/test/setup.ts` sostituisce `@/server/db` con PGlite in ogni file, e `bulkHandleTask`, il cron e i middleware tRPC importano quel modulo direttamente (`ServerLive` → `DbLive`, `enforceIsActiveOperator`): il setup del progetto nuovo lo sostituisce invece con un **pool postgres.js** sul database di prova, così le chiamate contemporanee prendono connessioni diverse. `@/server/auth` e Supabase si sostituiscono come oggi.
   - `src/test/pg.ts`: creazione ed eliminazione del database `mito_test_<casuale>`; migrazioni reali con le stesse correzioni dell'harness PGlite (tipo `task_status` e `PUSHED_SCHEMA`, tech-debt "Le migrazioni non ricostruiscono lo schema di produzione"); `resetDb`; `holdCustomerLock(customerId)`, che apre una transazione del test su una connessione sua e blocca il cliente finché il test non la chiude; `waitUntilBlocked(n)`, che aspetta finché `pg_stat_activity` conta `n` backend in attesa di un lock (`wait_event_type = 'Lock'`). Niente `sleep`.
+  - **Postgres in Docker per l'uso locale (D24):** `docker-compose.yml` con il servizio `postgres:15` (porta `127.0.0.1:54329`, volume con nome, `healthcheck` con `pg_isready`). In locale `TEST_DATABASE_URL` punta a quel servizio (`postgres://postgres:local@127.0.0.1:54329/postgres`), e l'harness crea `mito_test_<casuale>` sullo stesso server di `mito_local` (T7.1b) senza toccarlo.
+  - **I due pezzi di `PUSHED_SCHEMA` escono da `src/test/db.ts`** e diventano un modulo senza effetti all'import (`src/server/db/pushedSchema.ts`), usato dall'harness PGlite, dall'harness Postgres e dallo script di T7.1b: un solo elenco di ciò che prod ha ricevuto con `db:push`. I test di oggi restano verdi senza cambiare un'asserzione.
   - Il guard sul DSN della sezione "Sicurezza del database". Senza `TEST_DATABASE_URL` i file `*.pg.test.ts` si saltano in locale, così si lanciano solo con un Postgres in Docker; **in CI (`CI` impostata) la variabile mancante fa fallire il job**, così i test non spariscono in silenzio.
 - **validation**: in CI i test `*.pg.test.ts` girano e non risultano saltati; in CI senza la variabile il job fallisce; in locale senza la variabile risultano saltati; un DSN senza host, con più host o con un host diverso da `localhost` ferma il test prima di collegarsi; il database `mito_test_*` non esiste più a fine esecuzione; un test di prova esegue `createContact` via caller su Postgres vero.
 - **status**: Planned
@@ -2970,11 +3049,49 @@ Branch: `chore/test-postgres-concorrenza` da `dev`, PR verso `dev`. Nessun cambi
 - **review_mode**: cli
 - **complexity**: high
 
+#### T7.1b: Database locale in Docker e migrazioni
+- **depends_on**: [T7.1]
+- **location**: `package.json` (script `db:local:*`), `src/server/db/scripts/localDb.ts`, `src/server/db/scripts/_test/localDb.test.ts`, `src/server/db/scripts/_test/localDb.pg.test.ts`, `README.md` (sezione "Database locale"), `.env.example` (una riga: il database locale non usa questo file)
+- **description**: Un database `mito_local` nel Postgres di T7.1, sul quale lanciare le migrazioni prima di sviluppo (D24).
+  - Script: `db:local:up` (`docker compose up -d --wait postgres`), `db:local:down` (ferma, tiene il volume), `db:local:reset` (elimina e ricrea `mito_local`), `db:local:migrate`.
+  - `db:local:migrate` non usa drizzle-kit (la sua configurazione legge `.env` e `loadEnv`): applica le migrazioni del journal con il migratore di `drizzle-orm` per postgres.js, in ordine, e i due pezzi di `PUSHED_SCHEMA` dove prod li ha ricevuti, con gli stessi passi dell'harness PGlite (cartella di migrazioni troncata alla voce N). Su un database già migrato applica solo quelle in sospeso, come `db:migrate`. Costruire lo schema con le sole migrazioni fallirebbe alla prima (tech-debt "Le migrazioni non ricostruiscono lo schema di produzione").
+  - Il guard sul DSN della sezione "Sicurezza del database" (host, nome del database), in una funzione pura con test. Sta nel comando; la funzione che migra prende un client, così il test di confronto la lancia su `mito_test_<casuale>`.
+  - README: come provare una migrazione prima di sviluppo (checkout del ramo base, `db:local:reset` e `db:local:migrate`; poi checkout del ramo con la migrazione nuova e `db:local:migrate`; i controlli di T5.16 in sola lettura sul locale). Il limite: lo schema è quello delle migrazioni, non una copia di sviluppo; dati, ruoli, estensioni e oggetti creati a mano con `db:push` non ci sono.
+  - Non fa girare l'app sul database locale (D24): login con Azure AD e storage su Supabase restano di sviluppo.
+- **validation**: da un Docker nuovo, `pnpm db:local:up && pnpm db:local:migrate` crea tutte le tabelle; l'elenco di tabelle, colonne e indici è lo stesso che l'harness PGlite costruisce con le stesse migrazioni (un `*.pg.test.ts`, eseguito in CI); un secondo `db:local:migrate` non applica niente; con un host che non è `localhost` o `127.0.0.1`, o un database con un altro nome, lo script si ferma prima di collegarsi; i test di oggi restano verdi senza cambiare un'asserzione.
+- **status**: Planned
+- **log**:
+- **files edited/created**:
+- **backlog_item_id**: n/a
+- **backlog_item_url**: n/a
+- **relation_mode**: n/a (D6)
+- **tdd_target**: "con un Postgres vuoto in Docker, `db:local:migrate` crea tutte le tabelle e un secondo lancio non applica niente".
+- **review_mode**: cli
+- **complexity**: medium
+
+#### T7.1c: Seeder di Contatti sul database locale
+- **depends_on**: [T7.1b]
+- **location**: `src/server/db/seeds/local.ts`, `src/server/db/seeds/_test/local.pg.test.ts`, `package.json` (script `seed:local`)
+- **description**: Un seeder che riempie `mito_local` con dati che esercitano Contatti, uguali a ogni lancio (`faker.seed`). Parte dai seed di oggi per operatori, utenti, prodotti, pratiche e chat, se girano ancora sullo schema attuale (da verificare nel task; se no, li aggiorna). Non riusa `createTasks`: crea `task` con `isActive` casuale, che l'indice unico `task_customer_active_uidx` può rifiutare, e non crea alert. `seed:db` e `seed:delete` non cambiano.
+  - **Dati di Contatti:** `--customers N` (300 di default, quindi più pagine da 20); per ogni cliente zero o un contatto attivo, con tutti i `task_status`, priorità manuali e calcolate, operatore del contatto uguale e diverso da quello del cliente (D8, "Solo i miei"), storico di contatti chiusi, alert aperti (solo su contatti attivi) e risolti, richiami da domani e scaduti (D22), clienti senza contatti, un operatore di sistema (`createSystemOperator`, se serve) e almeno un admin.
+  - Scrive con inserimenti diretti, non con i servizi: non c'è concorrenza né sessione, e le invarianti le controlla il test.
+  - Svuota e riempie solo `mito_local` (guard di T7.1b).
+- **validation**: dopo `seed:local --customers 50`: nessun cliente ha più di un contatto attivo, ogni alert aperto appartiene a un contatto attivo, ogni `task_status` compare almeno una volta, ci sono contatti dei due tipi di D8 e richiami scaduti; due lanci di fila danno le stesse righe; con un DSN non locale si ferma prima di collegarsi; `pnpm seed:db` si comporta come prima; `next lint` accetta il nuovo file (la regola sugli import dei seed).
+- **status**: Planned
+- **log**:
+- **files edited/created**:
+- **backlog_item_id**: n/a
+- **backlog_item_url**: n/a
+- **relation_mode**: n/a (D6)
+- **tdd_target**: "dopo `seed:local --customers 50`, nessun cliente ha più di un contatto attivo e ogni alert aperto appartiene a un contatto attivo".
+- **review_mode**: cli
+- **complexity**: medium
+
 #### T7.3: Gate PR7
-- **depends_on**: [T7.2]
+- **depends_on**: [T7.2, T7.1b, T7.1c]
 - **location**: —
-- **description**: Gate CI, con i test `*.pg.test.ts` eseguiti e non saltati. L'orchestratore chiude la voce di tech-debt "Nessun test esercita il lock del cliente".
-- **validation**: gate verdi; nel job Test i file `*.pg.test.ts` risultano eseguiti.
+- **description**: Gate CI, con i test `*.pg.test.ts` eseguiti e non saltati; a mano, da un Docker nuovo, `pnpm db:local:up`, `db:local:migrate` e `seed:local`. L'orchestratore chiude la voce di tech-debt "Nessun test esercita il lock del cliente" e aggiorna "Le migrazioni non ricostruiscono lo schema di produzione" (la contromisura ora è condivisa).
+- **validation**: gate verdi; nel job Test i file `*.pg.test.ts` risultano eseguiti; il database locale si costruisce e si riempie da zero.
 - **status**: Planned
 - **log**:
 - **files edited/created**:
@@ -3016,7 +3133,7 @@ In modo `sequential` l'ordine è: T3.1a, T3.1b, T3.1c, T3.2a, T3.16, T3.2b, T3.9
 | 5a | T5.1, T5.14, T5.15 → T5.2, T5.3, T5.16 → T5.17 → **merge PR5a** (G4a) | PR3 e PR4 in `main`. T5.2 e T5.3 dopo T5.1 (stesso router; schema Zod); T5.16 ha un passo di Omar |
 | 5b | T5.4a → T5.4b → T5.5a, T5.6 → T5.5b, T5.6b → T5.7a → T5.7b, T5.9 → T5.7c → T5.8, T5.10, T5.11 → T5.12 → T5.13 → **merge PR5b** (G4b) | PR5a in `dev` |
 | 6 | T6.1–T6.8 → **merge PR6** | G5 |
-| 7 | T7.1 → T7.2 → T7.3 → **merge PR7** | Dopo il merge di PR3, quando c'è tempo (bassa priorità) |
+| 7 | T7.1 → T7.1b → T7.1c, T7.2 → T7.3 → **merge PR7** | Dopo il merge di PR3, quando c'è tempo (bassa priorità). T7.1b e T7.1c non aspettano T7.2 e toccano file diversi, ma `package.json` è in comune: in sequenza se le fa una sola persona |
 
 PR4 e PR5 sono riscritte con `create-plan` 0.8.0 e ogni loro task ha una `complexity`. I task di PR6 non ce l'hanno ancora: si aggiunge quando quella PR si ripianifica (§15).
 
@@ -3100,9 +3217,9 @@ PR4 non ha un gate a sé: prima del suo deploy gli operatori ricevono le due rig
 **Rollback:**
 - PR1: revert del merge **solo prima di G2**. Dopo che l'indice unico è in prod, il revert riporterebbe il "prima inserisci, poi disattiva" nel cron e nella massiva: l'indice li rifiuterebbe (`23505`) e il vecchio `try/catch` unico fermerebbe l'intero cron. Dopo G2 PR1 si corregge solo in avanti, oppure si fa prima `DROP INDEX task_customer_active_uidx`.
 - PR4, PR5b, PR6: revert del merge.
-- PR5a: revert del merge (procedure senza chiamanti e regola del richiamo). La migrazione degli indici, se c'è, si annulla con l'istruzione inversa scritta nel `log` di T5.16 (un `CREATE INDEX` annulla un `DROP INDEX` e viceversa), da Omar; non tocca dati.
+- PR5a: revert del merge (procedure senza chiamanti e regola del richiamo). La migrazione degli indici, se c'è, si annulla con l'istruzione inversa scritta in testa alla migrazione (una transazione con `SET LOCAL lock_timeout` e i due `CREATE INDEX`; poi si rimettono gli indici nello schema e si genera una migrazione con `CREATE INDEX IF NOT EXISTS`), da Omar; non tocca dati.
 - PR3: il revert ripristina le mutation rimosse e il form con "Salva", e lascia i dati coerenti, perché l'indice di PR2 resta in vigore. Nessuna migrazione da annullare.
-- PR7: revert del merge (solo CI e test).
+- PR7: revert del merge (solo CI, test, Docker e strumenti locali; nessun dato e nessuna migrazione).
 - PR2 (Omar, in prod, nell'ordine):
   1. `DROP INDEX task_customer_active_uidx`, che riapre la possibilità di duplicati;
   2. riattivare i contatti disattivati dalla pulizia: gli id "disattivato" di (a) nell'export del passo 5 del runbook G2, della sera della migrazione, con `UPDATE "mito-deutsche_task" SET is_active = true WHERE id IN (...)`. Nessuna riga è stata cancellata. Se al passo 6 è stata salvata la lista delle task cambiate, per quei clienti si controlla prima a mano quale contatto riattivare;
@@ -3257,16 +3374,16 @@ Le assunzioni esplicite, che Omar può ribaltare prima della PR interessata:
 Scostamenti dalla spec, da riportare nella spec al prossimo aggiornamento:
 - **D2**: AC49 dice "solo i contatti assegnati a lui"; il piano ammette anche i contatti dei suoi clienti;
 - **D3**: AC43 dice che il cron ricalcola la priorità "alla sua esecuzione successiva"; un `chiamare` a 120 invece non viene mai ricalcolato;
-- **D8**: significato di "Solo i miei" (AC10);
+- **D8**: significato di "Solo i miei" (AC10). **Riportato nella spec il 2026-10-17** (AC10 e Decision Log);
 - **P1/P2**: "Crea contatto" e note anticipati rispetto alla tabella dei passi di rilascio;
 - **P7**: assegnazione massiva riservata agli admin anche sul server. I risultati dei quattro casi non cambiano;
 - **P5**: in PR3 il messaggio "contatto superato" non ha il link al contatto attivo che AC52 chiede, perché Contatti non esiste ancora; arriva con PR5;
 - **D11**: nella scheda cliente stato e priorità si salvano subito fino a PR6, che toglie i controlli (AC65);
 - **D13**: il "Passaggio di consegne" permette all'operatore del cliente, non solo all'admin, di spostare il contatto attivo a un altro operatore. È un'eccezione ad AC50 e a D2 ("la riassegnazione è solo ADMIN"), limitata a cliente e contatto insieme, con conferma e log. La spec non citava il cambio di operatore dal form (finding 1).
-- **D22**: AC44 dice che il richiamo ha "una data non passata"; il piano chiede una data da domani e rifiuta oggi;
+- **D22**: AC44 diceva che il richiamo ha "una data non passata"; il piano chiede una data da domani e rifiuta oggi. **Riportato nella spec il 2026-10-17** (AC44 e Decision Log);
 - **A14**: AC8 elenca due voci del menu azioni e AC24 dice "cliccando una riga"; il piano aggiunge "Apri contatto" nel menu perché il dettaglio si apra anche da tastiera;
 - **A9, A12, A13**: il toast di conferma con [Apri], l'avviso di riapertura e il messaggio "Non hai contatti assegnati" stanno nella FLOW e in nessun AC;
-- **T5.16**: il `DROP INDEX` di `task_priority_active_idx` e `task_operator_active_idx` non è "additivo" come chiedono i Constraints della spec (non tocca dati ed è reversibile con un `CREATE INDEX`). **Confermato da Omar il 2026-10-17**, sulla misura preliminare di T5.16. La migrazione si genera dopo T5.1 e dopo la ripetizione della misura con il `.toSQL()` vero; la applica Omar a mano.
+- **T5.16**: il `DROP INDEX` di `task_priority_active_idx` e `task_operator_active_idx` non è "additivo" come chiedono i Constraints della spec (non tocca dati ed è reversibile con un `CREATE INDEX`). **Confermato da Omar il 2026-10-17**, sulla misura preliminare di T5.16; **riconfermato il 2026-10-18** sulle misure con la query vera (T5.16, passo 0). La migrazione si genera dopo T5.1 e dopo la ripetizione della misura con il `.toSQL()` vero; la applica Omar a mano. **Riportato nella spec il 2026-10-17** (eccezione ai Constraints).
 
 ## 16. Esito della verifica
 

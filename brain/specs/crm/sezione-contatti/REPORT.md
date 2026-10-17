@@ -3,10 +3,10 @@ domain: crm
 type: review
 scope: spec
 spec: sezione-contatti
-review_target: "branch contatti/pr4-chat-cliente — PR4: T4.5–T4.7 (do-not-ship, sesta verifica), round in fondo; round di PR1, PR2, PR3 e PR4 T4.1–T4.4 (ship) più sopra"
-base_ref: c787dd17b24db81f751c8f714f7f56884981dd54
+review_target: "branch contatti/pr5a-lettura-server — PR5a: T5.1–T5.3, T5.14–T5.16 (ship; riconferma di Omar sull'indice della priorità arrivata il 2026-10-18), round in fondo; round di PR1, PR2, PR3 e PR4 più sopra"
+base_ref: 6f2863544868aff4923638cf7280a3fed6a62cf4
 head_ref: working-tree
-verdict: do-not-ship
+verdict: ship
 review_impact: critical
 human_in_loop: true
 links:
@@ -18,7 +18,7 @@ links:
 ingested: false
 last_ingested: null
 created: 2026-09-25
-updated: 2026-10-16
+updated: 2026-10-18
 ---
 
 # Review Report: Sezione Contatti — PR1 "Percorsi di creazione sicuri"
@@ -782,3 +782,122 @@ Passato: v1 autore senza eccezione ADMIN, lock prima di ogni scrittura, ricontro
 ### Notes for docs-maintenance
 
 - Durevoli: invio di una nota senza lock e `messages.chat_id` senza chiave esterna (seconda verifica, v1). L'eliminazione senza lock e senza controllo dell'operatore è chiusa in T4.7. Gli altri finding sono da correggere prima del merge.
+
+## [Round: 2026-10-17] PR5a — "Logica sul server e stato dell'URL"
+
+Round aggiunto: i report sopra restano come sono. Rubric: round del 2026-10-17 di [[specs/crm/sezione-contatti/RUBRIC]].
+
+- **Target:** branch `contatti/pr5a-lettura-server` (PR verso `dev`), modifiche non ancora committate. T5.1, T5.2, T5.3, T5.14, T5.15, T5.16.
+- **Compared:** `6f28635` → albero di lavoro.
+
+### Verdict
+
+**SHIP** · impact: critical. La condizione umana (riconferma di Omar sull'indice della priorità) è chiusa il 2026-10-18. Prima verifica (v1–v10): 8 SHIP e 2 DO NOT SHIP (v8, v10). Dopo le correzioni, seconda verifica: v1, v8, v10 e un passaggio di regressione sulle correzioni (v11) sono SHIP.
+
+La condizione, **chiusa il 2026-10-18** (Omar: "Togli entrambi"): **la rimozione di `task_priority_active_idx` andava riconfermata da Omar sulle misure con la query vera** (checklist, punto 1). La conferma del 2026-10-17 era sulla misura preliminare ("nessuno dei due cambia i tempi"); con la query vera quell'indice vale circa 16 ms sulla prima pagina e 116 ms alla pagina 2000, e il piano chiede di rivedere la decisione se i tempi cambiano. La migrazione e il piano la presentavano come proposta da riconfermare; ora la presentano come riconfermata, e la migrazione e il suo test non cambiano, quindi v1 non va rilanciato.
+
+### Coverage
+
+- **Prima verifica:** 10/10 passaggi del rubric (v1–v4 e v7 sul modello più forte, v5, v6 e v8 sul bilanciato, v9 e v10 sul veloce). Nessun passaggio saltato.
+- **Seconda verifica, dopo le correzioni:** v1 (opus), v8 e v10 (sonnet), più **v11, un passaggio di regressione aggiunto dall'orchestratore** (non è nel rubric del classifier): giudica le correzioni di server e URL con mutanti su una copia, 68 provati (62 uccisi, 4 equivalenti, 2 che sopravvivono per scelta).
+- **Non rilanciati dopo le correzioni:** v2, v3, v4, v5, v6, v7 e v9 (SHIP alla prima verifica, sul codice di allora). Le correzioni che toccano le loro aree le ha giudicate v11 (tetti dell'input, `canReassign`, `getCustomerAlerts`, preferenza, modulo dell'URL e `detailHref`). I mutanti della prima verifica di v3 e v4 (M38, M45, M46, `sql.raw`, limite dell'id, `trim` dopo il massimo) li ha riprovati l'orchestratore sulle correzioni: cadono tutti (1 test ciascuno).
+- **UI pass:** non chartered (nessun markup, stile, ARIA o movimento).
+- **Produzione:** nessun verificatore si è collegato al database di produzione né ha ripetuto la misura di T5.16. v1 ha provato la migrazione con la CLI di Drizzle su un container locale Postgres 16.
+- **Scostamento dalla delega `supervised`:** i due worker di correzione hanno scritto anche i test dei loro punti, senza un RED dell'orchestratore. I test dell'ultimo giro (giorno di Roma alle 00:30, elenco degli indici di `task`) sono dell'orchestratore, provati con mutanti su una copia.
+
+### Findings
+
+Esiti rispetto allo stato finale. "Corretto" vuol dire corretto e rigiudicato da un verificatore o provato con un mutante dall'orchestratore.
+
+| Severity | Concern (verifier) | Location | Problem | Required fix / evidence | Durable? |
+|----------|--------------------|----------|---------|-------------------------|----------|
+| BLOCKER | v10 — Effect | `task/GET/index.ts:86-88` | `getCustomerAlerts` toccato dal refactor ma lasciato su `ctx.db` | **Corretto**: `runTrpc(query(...))`. v10 (seconda): stesso SQL, stesse righe e stesso ordine, stesso corpo di errore HTTP (una riga di log in più) | no |
+| MAJOR | v1 — migrazione | `20261017174700_*.sql` | `DROP INDEX` con lock `ACCESS EXCLUSIVE` nella transazione unica del migratore, senza `lock_timeout`; il runbook parlava di un altro lock | **Corretto**: `SET LOCAL lock_timeout = '5s'`, runbook riscritto (passi 0–5). v1 ha provato con la CLI su Postgres 16: dopo 5 s `55P03`, niente applicato, il retry riesce | no |
+| MAJOR | v1 — migrazione (seconda) | `PLAN.md` T5.16, intestazione dell'SQL | La decisione era presentata come "decisa con Omar" ma si reggeva sul "nessun indice cambia i tempi", smentito dalla misura con la query vera | **Chiuso da Omar il 2026-10-18**: era "proposta, da riconfermare" in piano, spec, tech-debt e note; ora è riconfermata (checklist 1) | sì |
+| MAJOR | v8 — richiamo | `setCallback.db.test.ts`, `time.test.ts` | Ogni test usava la mezzanotte di Roma o `now` alle 10:00Z: il confronto di istanti non cadeva | **Corretto**: istanti qualsiasi del giorno e i due giorni di 23 e 25 ore | no |
+| MAJOR | v8 — richiamo (seconda) | stessi file | Con `now` alle 00:30 di Roma (il giorno UTC è ancora quello prima) il giorno UTC o il giorno locale del processo al posto di quello di Roma sopravvivevano a tutti i test | **Corretto** (orchestratore): sei `now` alle 00:30 in estate, inverno, nei due giorni del cambio d'ora e nei due successivi. Su una copia: giorno UTC di `now` 18 test rossi, giorno locale 18, UTC inline in `setCallback` 12. v8: SHIP | sì (vedi Notes) |
+| MAJOR | v8 — richiamo | `SPEC.md` AC44 | AC44 ammetteva ancora "una data non passata", cioè oggi | **Corretto**: AC44 "da domani in poi", righe nel Decision Log, AC10 per D8 | no |
+| MAJOR | v4 — AC23 | `getContacts.ts:187-190` | Cliente senza contatti non testato: `innerJoin` o `count()` al posto di `leftJoin` e `count(task.id)` restavano verdi | **Corretto**: test aggiunti, entrambi i mutanti cadono | no |
+| MINOR | v4 — AC14 | `getContacts.ts:76-79` | Un secondo alert aperto sulla stessa task duplicava la riga (M38) | **Corretto**: test, il mutante cade | no |
+| MINOR | v3 — input | `listInput.ts` | Liste senza tetto: 1.000 braccia alternate di `priorities` = 2,4 s in PGlite su 70.000 contatti | **Corretto**: 4 fasce, 8 stati, 100 operatori (`BAD_REQUEST`). v11: nessun input legittimo del modulo dell'URL è rifiutato (20.000 casi) | no |
+| MINOR | v3 — input | `getContacts.ts:100`, `getContactById.ts:20`, `listInput.ts:81` | Nulla fissava i parametri legati, il limite dell'id e l'ordine `trim`/`max` | **Corretto**: apostrofo, `2147483648`, riempimento a 100; i tre mutanti cadono | no |
+| MINOR | v5 — AC27 | `getContactById.ts:128` | `canReassign` valeva per un admin anche su un contatto superato, che `task.reassign` rifiuta | **Corretto**: `isActive && canReassign(actor)`. v11: 54 combinazioni uguali alla scrittura | no |
+| MINOR | v5 — AC51 | `getContactById.db.test.ts` | Il cablaggio A1/D2 e l'admin su un contatto attivo non erano provati | **Corretto**: test aggiunti | no |
+| MINOR | v6, v7 — URL | `searchParams.ts` | Regex `digits` e rami dell'indirizzo non fissati: 3 mutanti di `digits` e M03, M13, M15, M16, M20 sopravvivevano | **Corretto**: test sullo spazio dei parametri e su un corpus ostile. v11: i mutanti non equivalenti cadono | no |
+| MINOR | v7 — P15 | `searchParams.ts:343` | `detailHref("..")` e `""` uscivano dal percorso | **Corretto**: `id: number`, intero positivo sicuro, altrimenti la lista con lo stesso stato. v11: 40.000 chiamate ostili, mai fuori da `/dashboard/contatti` | no |
+| MINOR | v9 — AC5 | `updateUserPreference.ts` | Nessun limite sull'array | **Corretto**: 20 nomi da 64 caratteri; test sulle chiavi sconosciute | no |
+| MINOR | v1 — runbook | `PLAN.md` T5.16 | Righe attese del passo "dopo" sbagliate, stallo sottostimato, niente controlli di stato del migratore, rollback senza limite di attesa, test cieco a un indice in più | **Corretto**: runbook riscritto, rollback in una transazione con `SET LOCAL`, nuovo test che elenca gli indici di `task` (cade con un indice in più). v1: SHIP | no |
+| MINOR | v1 — merge | `PLAN.md` T5.17 | Niente impediva il merge in `dev` prima della riconferma di Omar: un `pnpm db:migrate` di un compagno applicherebbe la migrazione | **Corretto**: condizione scritta in T5.17 e nella checklist | no |
+| MINOR | v10 — snapshot | `meta/20261017174700_snapshot.json:130` | Il letterale del default di `customers.id` cambia a ogni `db:generate` (`.default(nanoid())`) | **Non corretto, per precedente** (T2.3): l'SQL non lo contiene, lo snapshot sì. Voce di tech-debt aggiornata | sì |
+| MINOR | v4 — AC13 | `getContacts.ts:160-163` | Un cognome stringa vuota ordina per primo, non in fondo | **Non corretto**: tech-debt, da guardare su dati di prod in PR5b | sì |
+| MINOR | v3 — costi | `trpc` | Richieste in batch senza tetto, nessuno `statement_timeout` (preesistente, più grande con la nuova lista) | **Non corretto**: tech-debt | sì |
+| MINOR | v9, v10 — preferenze | `updateUserPreference.ts`, `getUserPreference.ts:24` | Lettura-modifica-scrittura senza lock; senza riga in `operators` il JSON letto è `{}` e la scrittura lo sostituisce (preesistente nelle quattro procedure) | **Non corretto**: tech-debt | sì |
+| NIT | v2, v10, v11 | vari | Nessun test di rifiuto per sessione assente o senza operatore; ramo `cot` senza test (500 sul corpo rifiutato); il wrapper di `getCustomerAlerts` non è fissato da un test; messaggio Postgres grezzo al client (preesistente) | Non corretti. `cot` lo prova il browser in T5.10 | sì (`cot`, messaggio grezzo) |
+| NIT | v8 — fuso dei test | `vitest.config.ts:12` | `TZ: "UTC"` nell'ambiente, ma `Intl` nei worker resta nel fuso della macchina: un mutante "giorno locale" è equivalente su un computer in `Europe/Rome` | Non corretto: tech-debt | sì |
+
+### What passed
+
+| Concern (verifier) | Evidence |
+|--------------------|----------|
+| v1 — migrazione | SQL e schema equivalenti; catena `prevId`/`when` coerente; rigenerata dalla base dà le due `DROP` più il letterale; solo i due indici cadono; rollback identico alle `indexdef` di PR2; applicata da vuoto e dallo stato prima con la CLI su Postgres 16 (exit 0, tre indici su `task`); `lock_timeout` prova su Postgres vero |
+| v2 — lettura e dati | Tre letture dietro `operatorProcedure`; nessuna sessione, nessun operatore e operatore di sistema respinti; l'attore viene solo dalla sessione; le chiavi restituite elencate, nessuna email, ruolo o preferenza; la preferenza scrive solo la riga della sessione |
+| v3 — input verso SQL | 36 combinazioni di ordine/verso/campo data con marcatori: il testo SQL non li contiene, stanno tutti nei parametri; `%`, `_` e `\` letterali; l'id del dettaglio non raggiunge il driver se non è valido |
+| v4 — semantica della lista | Filtri in AND, fasce come il badge, giorno di Roma anche col cambio d'ora, sei colonne con `NULLS LAST` e spareggio per id, totale esatto |
+| v5 — dettaglio | `CONTACT_NOT_FOUND` per ogni id non valido; `activeTaskId` uguale al payload del rifiuto in 18 combinazioni; `editability` uguale alla scrittura in 36 |
+| v6 — URL | Andata e ritorno, un indirizzo per stato, default omessi, `toContactsInput` sempre accettato da `getContactsInput` (fuzz) |
+| v7 — P15 | `returnHref` non esce dalla lista per costruzione; 70+ stringhe ostili e 20.000 casuali, sempre un indirizzo dell'app |
+| v8 — richiamo | Regola uguale all'oracolo su 17 casi e su 404.976 coppie in tre fusi, e test verdi in sette fusi; messaggi uguali su server e client; una sola asserzione cambiata |
+| v9 — preferenza | Scrive solo la sua chiave e lascia le altre; vuoto e assente distinti; parità con le gemelle |
+| v10 — gate | `next lint`, `tsc --noEmit`, `pnpm run test --run` (79 file, 1339 test) e `pnpm build` in una copia pulita, exit 0; chiusura del client di `listInput.ts` e `searchParams.ts`: solo `zod` |
+| v11 — regressione | 610 test dei file toccati verdi; 68 mutanti: 62 uccisi; limiti, `canReassign` (54 combinazioni), `detailHref` (40.000 chiamate), tetto degli operatori e giorni di Roma |
+| Orchestratore — gate finali | Dopo l'ultimo giro: `next lint`, `tsc --noEmit`, `pnpm run test --run` (79 file, 1364 test) e `pnpm build` in una copia pulita, exit 0 |
+
+### Per-concern verdicts
+
+| Pass | Charter | Verdict | Rationale |
+|------|---------|---------|-----------|
+| v1 (seconda) | Migrazione dei due `DROP INDEX` e catena schema → SQL → snapshot | SHIP | Tutto corretto in file e prove; la riconferma di Omar (umana) è arrivata il 2026-10-18; un MINOR sul merge in `dev` è in T5.17 |
+| v1 | idem | DO NOT SHIP | Mancava `lock_timeout`; runbook sul lock sbagliato |
+| v2 | Autorizzazione in lettura ed esposizione dei dati (AC51) | SHIP | Solo NIT |
+| v3 | Input non fidato verso SQL e costi (AC10) | SHIP | Liste senza tetto e parametri non fissati da test: corretti |
+| v4 | Semantica della lista | SHIP | AC23 senza test: corretto |
+| v5 | Semantica del dettaglio | SHIP | `canReassign` sul superato: corretto |
+| v6 | Stato dell'URL: contratto funzionale | SHIP | Regex `digits` non fissata: corretto |
+| v7 | Indirizzo di ritorno sicuro (P15) | SHIP | `detailHref` e mutanti sopravvissuti: corretti |
+| v8 (seconda) | Richiamo da domani | SHIP | Giorno UTC e giorno locale ora cadono |
+| v8 | idem | DO NOT SHIP | Test che non distinguevano il giorno di Roma; AC44 |
+| v9 | Preferenza delle colonne | SHIP | Limite dell'input: corretto |
+| v10 (seconda) | Gate e convenzioni | SHIP | BLOCKER su `getCustomerAlerts` corretto e provato uguale al vecchio |
+| v10 | idem | DO NOT SHIP | BLOCKER: `getCustomerAlerts` fuori da Effect |
+| v11 | Regressione delle correzioni | SHIP | Sei NIT; 62 mutanti su 68 uccisi |
+
+### Human Review Checklist
+
+`reviewImpact: critical`. Passi, nell'ordine:
+1. ~~**Omar riconferma la rimozione di `task_priority_active_idx` sulle misure con la query vera**~~ **Fatto il 2026-10-18** (PLAN, T5.16, decisione). Con l'indice: prima pagina 62 ms contro 78, pagina 2000 216 contro 332 ms; senza, il peggio resta sotto i 500 ms di A3, e l'indice rende non-HOT gli `UPDATE` di `priority` (il cron notturno ne riscrive circa 70.000). L'indice per operatore non serve: la conferma regge. **Da sapere al merge in `dev`:** a merge fatto, un `pnpm db:migrate` sul DB di sviluppo condiviso applicherebbe la migrazione e Drizzle non la rilegge.
+2. CI verde sulla PR (`next lint`, `tsc --noEmit`, `pnpm run test --run`, `pnpm build`).
+3. Applicare la migrazione in prod a mano, in un momento tranquillo, con il rollback pronto: passi 0–5 di T5.16 (stato del migratore e `max(created_at)` prima e dopo, nessuna transazione lunga su `task`, gestione del `lock timeout`, tre righe su `task` dopo, `EXPLAIN` in sola lettura di prima pagina, `count` e pagina 2000). `pnpm db:migrate` sul DB di sviluppo non è stato lanciato da nessun agente.
+4. Accettare l'esposizione di CF, P.IVA e telefono di tutti i clienti a ogni operatore nella lista e nel dettaglio (AC51, deciso dalla spec).
+5. Prendere atto del rifiuto del richiamo per oggi (D22): da PR5a l'API lo rifiuta, la scheda cliente lo disabilitava già; la spec dice "da domani".
+6. Guardare la lista ordinata per Cliente su dati veri quando PR5b la mostra (cognome vuoto, collazione): tech-debt.
+
+### Acceptance criteria check (case B)
+
+| Criterio | Esito | Evidenza |
+|---|---|---|
+| AC2, AC3 | Met lato server | v4: solo attivi di default, per priorità decrescente; `includeInactive` aggiunge i superati |
+| AC5 (server) | Met lato server | v9: chiave separata da Clienti, le altre chiavi restano; limite dell'input aggiunto; la rotta `cot` la prova il browser in T5.10 |
+| AC10–AC15 | Met | v4, v3: filtri in AND, D8 (ora anche in AC10), giorno di Roma, fasce come il badge, sei ordinamenti, totale esatto |
+| AC16–AC18, AC25 | Met nel modulo | v6, v7, v11: parametri non validi scartati uno a uno, ritorno dal dettaglio sempre interno, `detailHref` guardato |
+| AC21–AC23 | Met lato server e URL | v4: `customerFilter` con `totalContacts`, ora anche per un cliente senza contatti |
+| AC26–AC28 | Met lato server | v5: `CONTACT_NOT_FOUND`, `activeTaskId`, Storico |
+| AC44 (D22) | Met | v8: `setCallback` rifiuta oggi; SPEC aggiornata |
+| AC51 (server) | Met lato server | v2, v5: `editability` e `canReassign` come la scrittura; PII esposti per scelta della spec |
+| Constraints: migrazioni additive | Deviazione dichiarata | `DROP INDEX` dichiarato in §15 e nella spec; riconfermato da Omar il 2026-10-18 |
+| A3 (prima pagina ≤ 500 ms) | Met sui dati di prod | Log di T5.16: 163 ms a caldo, 233 a freddo; dopo la `DROP` va ripetuta (checklist 3) |
+
+### Notes for docs-maintenance
+
+- Durevoli, già nel tech-debt (`brain/tech-debt/crm/sezione-contatti.md`): la ricerca cliente lenta a freddo; `next lint` che non parte nei worktree; le richieste senza tetto della lista; le procedure delle preferenze (lock, riga in `operators`, limite, rotta `cot`); il cognome vuoto e la collazione dell'ordine per Cliente; il fuso dei test; il letterale di `customers.id` nello snapshot. Chiuse dal lavoro: gli indici di PR2 (in attesa della riconferma e dell'applicazione) e il richiamo di oggi.
+- Il test sul giorno di Roma con `now` alle 00:30 è dell'orchestratore, non di un worker.
+- Backlink dalle pagine di dominio: n/a finché PR5 non è conclusa.

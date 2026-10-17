@@ -8,7 +8,7 @@ links:
 ingested: false
 last_ingested: null
 created: 2026-09-25
-updated: 2026-10-15
+updated: 2026-10-18
 ---
 
 # Implementation Notes
@@ -17,6 +17,7 @@ updated: 2026-10-15
 
 - Run 1 (2026-09-25): solo **PR1 — Percorsi di creazione sicuri** (T1.1 → T1.8), branch `contatti/pr1-creazione-sicura` da `dev`, PR verso `dev`. PR2–PR6 non iniziate.
 - Run 2 (2026-09-29): solo **PR2 — Pulizia e vincolo DB** (T2.1, T2.2, T2.3, T2.5, T2.6, T2.7), branch `contatti/pr2-vincolo-db` da `dev`, PR verso `dev`. T2.4 è il runbook G2: va nella descrizione della PR, lo esegue Omar.
+- Run 5 (2026-10-17): solo **PR5a — Logica sul server e stato dell'URL** (T5.1 → T5.2 → T5.3 → T5.14 → T5.15 → T5.16 → gate T5.17), branch `contatti/pr5a-lettura-server` da `dev`, PR verso `dev`. PR5b (interfaccia) non iniziata.
 - Run 4 (2026-10-15): solo **PR4 — Chat con proprietario esplicito** (T4.1 → T4.3 → T4.4, gate T4.2), branch `contatti/pr4-chat-cliente` da `dev`, PR verso `dev`.
 - Run 3 (2026-10-15): solo **PR3 — Regole del contatto sul server, usate da Clienti** (T3.1a → T3.17, gate T3.14), branch `contatti/pr3-regole-server` da `dev`, PR verso `dev`. Baseline sul branch: 33 file, 302 test verdi.
 - **Stato al 2026-10-15:** PR1 e PR2 fatte e in prod (PR1 dal 29/09; PR2 su `main` e migrazioni applicate il 13/10, log di T2.4 nel PLAN). PR3 in prod dal 15/10 (G3 chiuso). PR4 pronta sul branch `contatti/pr4-chat-cliente`, non committata: tutti i task Done, review SHIP dopo le correzioni; restano commit, PR verso `dev` e l'avviso agli operatori. PR5–PR7 da fare.
@@ -26,6 +27,7 @@ updated: 2026-10-15
 - `sequential` (richiesto dall'utente): un task alla volta nell'ordine T1.1 → T1.2 → T1.3 → T1.4 → T1.5 → T1.6 → T1.7 → T1.8, nessun worker.
 - Run 2, `sequential` (richiesto dall'utente): T2.1 → T2.2 → T2.3 → T2.5 → T2.6 → T2.7, nessun worker.
 - Run 3, `sequential` (scelta minima sicura: l'utente non ha indicato la modalità, e i task server sono in catena sugli stessi router), nell'ordine di §10. Delegazione `supervised` (`brain.config.json`): l'orchestratore scrive il test RED di ogni task, un worker sul livello della `complexity` (`low` → haiku, `medium` → sonnet, `high` → modello dell'orchestratore) scrive il codice, l'orchestratore rivede. Escalation: nessun passaggio di livello. Una seconda proposta di correzione allo stesso worker (T3.17, ripristino del focus). Livelli spostati dall'orchestratore prima di partire: T3.5a e T3.8c da `high` a `medium` (motivo nel log del task).
+- Run 5, `sequential` (scelta minima sicura: l'utente non ha indicato la modalità, e T5.1 e T5.2 scrivono lo stesso file di router). Delegazione `supervised`: test RED dell'orchestratore, worker sul livello della `complexity` (T5.14 e T5.15 `medium` → sonnet; T5.1, T5.2, T5.3, T5.16 `high` → modello dell'orchestratore), revisione dell'orchestratore. Escalation: nessuna finora.
 - Run 4, `sequential` (scelta minima sicura: l'utente non ha indicato la modalità, e T4.1, T4.3 e T4.4 scrivono lo stesso componente), nell'ordine T4.1 → T4.3 → T4.4 → T4.2. Delegazione `supervised`: test RED dell'orchestratore, worker sul livello della `complexity`, revisione dell'orchestratore.
 
 ## Deviations From the Plan
@@ -200,6 +202,19 @@ updated: 2026-10-15
   - **Dopo la quarta verifica:** l'attesa dell'eliminazione passa da `CustomerNote` a `CustomerNotes` (sopravvive alla chiusura di "Note"); NOT_FOUND diventa `{ ok: false, gone: true }`, senza toast. Test per chiudi e riapri, nota già eliminata, registro dopo un fallimento, cambio di cliente. Gate: 1014 test.
   - **Dopo la quinta verifica:** store per cliente delle note in eliminazione (`deletingNotes.ts`), fuori dai componenti come la bozza; focus spostato solo se è rimasto sul cestino; toast solo con la chat del cliente a schermo; `focusOnStart` azzerato all'uscita. Test di rollback lato server. Gate: 1029 test.
 
+- **Run 5 — scostamenti per task** (dettagli nei log del PLAN):
+  - **T5.1:** `from`/`to` solo fra gli anni 2000 e 2100 (senza limite un anno `0000` arriva a Postgres e dà un 500); input più rigido del piano per "mai un 500" (NUL in `customerId`, `operatorIds` oltre 2^31−1, `page` ≤ 0, `customerQuery` oltre 100 caratteri → `BAD_REQUEST`); righe, totale e `customerFilter` partono insieme (`Effect.all`), senza una transazione comune.
+  - **T5.2:** `customPriority` è `boolean | null` come la colonna; `DbClient` esportato da `effect/db.ts` per tipare `customerAlerts`, la query dello Storico condivisa con `getCustomerAlerts`; `openAlertOf` condiviso fra le due letture.
+  - **T5.3:** i limiti di `parse` vengono dallo schema di T5.1 (`zod` nel bundle client); `detailHref` con lo stato di default non scrive `?da=`; `cliente=` vuoto vale "assente"; `seeContactsHref` e `returnHref` includono il percorso.
+  - **T5.14:** `contactTableVisibleColumns` opzionale nel tipo; la lista contiene le colonne nascoste.
+  - **T5.15:** l'unica asserzione che cambia è quella di `setCallback.db.test.ts` ("a mezzanotte di oggi… è ammessa" → rifiutata, D22).
+  - **T5.16:** misura ripetuta in prod con la query vera, e **una differenza che la misura preliminare non vedeva**: l'indice sulla priorità vale circa 16 ms sulla prima pagina di default e 116 ms su una pagina profonda. Decisione invariata (togliere entrambi), **riconfermata da Omar il 2026-10-18** sulle misure con la query vera (la conferma del 2026-10-17 era sulla misura preliminare, e il piano chiede di rivederla se i tempi cambiano). `DROP INDEX` dichiarato in §15, migrazione `20261017174700_blushing_roland_deschain.sql`, da applicare a mano in prod.
+- **Run 5 — correzioni dopo la review (`adversarial-review`, caso B).** Prima verifica: 8 passate SHIP e 2 DO NOT SHIP. Corretti: il BLOCKER di v10 (`getCustomerAlerts` fuori da Effect, ora `runTrpc(query(...))`, D9); i MAJOR di v8 (test che confrontavano l'istante con il giorno UTC invece del giorno di Roma; AC44 della spec che ancora ammetteva oggi, ora "da domani" con le righe nel Decision Log); il MAJOR di v1 (`DROP INDEX` con lock `ACCESS EXCLUSIVE` in una transazione unica: aggiunto `SET LOCAL lock_timeout = '5s'`, la query per riconoscere un `DROP` in coda e la misura di controllo dopo l'applicazione nel runbook di T5.16). Più i MINOR: tetti sulle liste di `getContactsInput` (4 fasce, 8 stati, `MAX_OPERATOR_IDS` operatori) e sull'input della preferenza (20 nomi di 64 caratteri), `canReassign` falso sul contatto superato (AC27), `parse` che tiene al più `MAX_OPERATOR_IDS` operatori, `detailHref` che riporta alla lista per un id che non è un intero positivo.
+  - **Scostamento da `supervised`:** i due worker di correzione (server e modulo dell'URL) hanno scritto anche il test di ogni punto, e il RED non è dell'orchestratore. L'orchestratore ha riletto il codice e ha rieseguito test, `tsc` e i gate; la verifica dei mutanti è stata rifatta da verificatori indipendenti (vedi `REPORT.md`).
+  - Il worker del modulo dell'URL è stato interrotto da un errore di rete a metà. Al ritorno i suoi punti erano già nel codice e nei test (165 test verdi).
+  - `SPEC.md` aggiornata: AC10 ("Solo i miei", D8), AC44 (da domani, D22), l'eccezione ai Constraints per il `DROP INDEX` e due righe nel Decision Log.
+- **Run 5 — `next lint` nel worktree.** Non parte in `.claude/worktrees/` (ESLint carica anche il `.eslintrc.cjs` del repo padre): durante i task `eslint --no-eslintrc -c .eslintrc.cjs`, per il gate `next lint` in una copia fuori dal repo. Nel tech-debt.
+
 ## Surprises and Decisions
 
 - **Le migrazioni del repo non si applicano su un Postgres vuoto.** `20240926195125_lucky_roughhouse` crea `mito-deutsche_task` con il tipo `task_status`, che nasce solo in `20260619152227_same_hemingway`. Il DB di produzione aveva già il tipo (creato con `db:push` prima delle migrazioni), e la terza migrazione lo salta se esiste. L'harness crea il tipo prima di migrare; le migrazioni non si toccano (già applicate in prod). Vale anche per chi volesse creare un DB nuovo con `pnpm db:migrate`.
@@ -264,6 +279,8 @@ updated: 2026-10-15
 | Run 4 — AC55 sul DB di sviluppo, sola lettura | OK | Dopo la passata `updatedAt` di `zzpr3-c1` e `zzpr3-c2` aggiornati; 0 pratiche con `updated_at` negli ultimi 40 minuti |
 | Run 4 — gate CI sul codice finale | OK | `next lint` e `tsc --noEmit` puliti; 72 file, 956 test; `pnpm build` con le variabili di CI in una copia senza `.env*`, poi cancellata |
 | Run 4 — browser sul codice finale | OK | Federica su `zzpr3-c2`: invio (5/6 con "Carica altri messaggi"), fallimento offline con testo, messaggio `#b91c1c` e copia `{ operatorId: 1001 }`, stessa bozza dopo il ricaricamento e dopo la scheda chiusa e riaperta senza ricaricare, nessun raddoppio con StrictMode, rinvio salvato e copia cancellata; "Esci dal gestionale" cancella le copie |
+| Run 5 — prod in sola lettura: query vera di `getContacts` | OK | 2026-10-17, transazioni `READ ONLY` con `statement_timeout` di 60 s, `.env.prod.local` senza stampare le credenziali. Prima pagina di default 68 ms a caldo (129 a freddo), `count` 95 (104): A3 rispettata. Con / senza i due indici: priorità 62 / 78 ms (pagina 2000: 216 / 332,5), operatore nessun guadagno. Dettagli nel log di T5.16 |
+| Run 5 — gate CI sul codice dopo le correzioni della review | OK | In una copia pulita fuori dal repo, nell'ordine della CI: `next lint` ("No ESLint warnings or errors"), `tsc --noEmit`, `pnpm run test --run` 79 file e 1364 test, `pnpm build` con `SKIP_ENV_VALIDATION=true` e le variabili segnaposto di CI: tutti con exit 0 |
 
 ## Acceptance Criteria Status
 
@@ -287,6 +304,15 @@ updated: 2026-10-15
 | AC55 (PR4) | Met | Solo il cliente si aggiorna (test e review v2, v3); nella passata browser 0 pratiche toccate |
 | AC56 (PR4) | Met nella scheda cliente | "Avvia una chat" con `chatId` nullo, poi la chat; nel dettaglio di Contatti con PR5 (T5.8) |
 | AC76 (PR4) | Met nella scheda cliente | Testo nel campo con "Nota non inviata, riprova", nessuna nota fantasma, bozza dell'operatore dopo il ricaricamento e la scheda chiusa; residui in D18 e nel tech-debt. Nel dettaglio di Contatti con PR5 (T5.8) |
+| AC2, AC3 (PR5a, server) | Met lato server | `task.getContacts`: senza filtri solo gli attivi per priorità decrescente; con `includeInactive` anche i superati, con `isActive: false`. La lista è in PR5b |
+| AC5 (PR5a, server) | Met lato server | `user.updateContactTableVisibleColumns`, chiave separata da Clienti; store, pulsante e chiave `cot` della rotta in T5.10 |
+| AC10–AC15 (PR5a, server) | Met | Filtri in AND, D8, ricerca con `%` e `_` letterali, giorno di Roma (anche con il cambio d'ora), fasce con la priorità NULL in "bassa", ordine con i nulli in fondo, totale esatto, nessun duplicato fra le pagine |
+| AC16–AC18, AC25 (PR5a, URL) | Met nel modulo | `searchParams.ts`: parametri non validi scartati uno a uno, ritorno dal dettaglio sempre interno. Pagina e controlli in PR5b |
+| AC21–AC23 (PR5a) | Met lato server e URL | `customerFilter` con `totalContacts`, `seeContactsHref`. I messaggi sono di PR5b |
+| AC26–AC28 (PR5a, server) | Met lato server | `task.getContactById`: `CONTACT_NOT_FOUND` per ogni id non valido, `activeTaskId`, Storico degli alert chiusi. Il dettaglio è in PR5b |
+| AC42, AC43 (PR5a, dato) | Met lato server | `customPriority` nel dettaglio (nullable: la UI tratta NULL come "Automatica") |
+| AC44 (PR5a, D22) | Met | `setCallback` rifiuta anche una scadenza per oggi: "Il richiamo si imposta da domani" |
+| AC51 (PR5a, server) | Met lato server | `editability` e `canReassign` nel dettaglio; il motivo in sola lettura è di PR5b |
 
 ## Remaining Work
 
