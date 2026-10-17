@@ -203,7 +203,7 @@ Scoperto nella review di PR2 (v2, prima e seconda verifica). Riguarda `task_prio
 
 **Effetto oggi:** nessuno sui risultati.
 
-**Da fare:** in PR5 (T5.1). Misurare con `EXPLAIN ANALYZE` una pagina di default, una filtrata per operatore e una "Solo i miei". Poi tenere, ridisegnare o togliere i due indici, con una sola migrazione. T5.13 lo controlla.
+**Da fare:** in PR5a (T5.16). Misurare con `EXPLAIN ANALYZE` una pagina di default, una filtrata per operatore e una "Solo i miei". Poi tenere, ridisegnare o togliere i due indici, con una sola migrazione. T5.17 lo controlla.
 
 ## Il ramo che fallisce della guardia di `contatti_cleanup` è provato solo su PGlite
 
