@@ -7,6 +7,7 @@ spec-driven skill suite live under `brain/` — start with `create-spec`, and re
 ## Repo map
 
 - `src/` — the MITO CRM app: T3 stack (Next.js 14 App Router, tRPC v10, Drizzle on Postgres, NextAuth v4), deployed on Vercel.
+- `api/` — the backend on Cloud Run (Hono). It hosts the same server code as `src/` (it imports it; it never copies it) and serves the same API on the same paths: `pnpm api:build` bundles it, `pnpm api:smoke` starts the bundle and calls it (CI runs both), `pnpm api:dev` runs it on the development database (`.env.development.local` only). The plan is `brain/chore/migrazione-gcp.md`.
 - `brain/` — knowledge base. Existing design drafts and the monorepo migration plan live in `brain/chore/` (`crm/`, `migration_plan.md` + `migration/`); delivered HTML handovers in `brain/raw/assets/`. Project docs are written in Italian.
 - `.agents/skills/`, `.agents/agents/`, `.agents/agent-memory/` — spec-driven skills, advisor subagents and their project memories (symlinked into `.claude/`).
 
@@ -25,6 +26,15 @@ Database contract chain:
 - Schema is `src/server/db/schema/*` (tables prefixed `mito-deutsche_`). After a schema change run `pnpm db:generate` and commit the generated SQL in `src/server/db/migrations/` (prefix `supabase`); apply locally with `pnpm db:migrate`.
 - Never run scripts that set `NODE_ENV=production` — `db:push:prod`, `db:migrate:prod`, and the variants without `:dev` of `update:*`, `delete:export`, `clean:task-event-log`, `create:system-operator`. They target the production database. The database ones read its credentials from `.env.prod.local` through `loadEnv` (`src/lib/global/loadDbEnv.ts`), and stop if the file is missing, doesn't set both `SUPABASE_DB_CONNECTION_STRING` and `SUPABASE_MITO_PSW`, or `.env.production.local` still exists. Next.js never loads `.env.prod.local`, and `next.config.js` (so `next dev`, `build`, `start` and `lint` too) stops while `.env.production.local` exists, so the production database stays out of a local `next build` or `next start` as long as no other env file or the shell holds it. Next.js does load `.env` in every mode: here it is the fallback for the other files and holds production values (storage and secrets), so don't run a local `next build` or `next start` with the real env files; build in a checkout without them, like a `git worktree`, with the placeholders of the Build gate. drizzle-kit loads `.env` before `loadEnv` runs, and `.env` wins over `.env.development.local`: the database keys never go in `.env`. Only the database scripts may import `loadEnv`, and nothing else imports the seeds or the database scripts, which call it (ESLint `no-restricted-imports` in `src/`, the folder `next lint` checks; static imports only).
 - The cron scripts (`update:*`, `delete:export`, `clean:task-event-log`) change data through the app at `CRON_BASE_URL`, which the cron workflows set. The variants without `:dev`, and every script in GitHub Actions, need it to be the https address of the app and stop without it; elsewhere the `:dev` ones call only the local server. They read `NODE_ENV` and `GITHUB_ACTIONS` before loading `.env`, so `.env` can't make a `:dev` script call a remote app; only the environment of the command that starts it can. For the scripts allowed to call one, the app is `CRON_BASE_URL` wherever it is set, `.env` included.
+
+## Server code and the backend
+
+The server code is moving from the Next.js app to the backend in `api/`, one piece at a time, while features keep landing. Until the move ends both run the same files, so new server code has to run in both:
+
+- **No Next.js in `src/server/**`.** No `next/*`, no `next-auth` runtime calls, no `@/trpc/server`. The exception is `src/server/auth.ts`, which keeps NextAuth. Read the session with `getServerAuthSession` (the backend gives it the request's session through `requestSession`).
+- **New operations are tRPC procedures.** No new route handlers or server actions with logic in them: a server action only calls `@/trpc/server` and revalidates.
+- **New server code goes in Effect services**, as in the section below.
+- **The backend never copies a file from `src/`.** It imports it. When a piece needs something different outside Next.js, the change goes in the shared file, behind an interface both sides use.
 
 ## Effect
 
