@@ -13,6 +13,7 @@ import { env, isProduction } from "@/env"
 import { db } from "@/server/db"
 import { type Db } from "@/server/effect/db"
 import { ServerLive } from "@/server/effect/server"
+import { requestSession } from "@/server/requestSession"
 import {
   createUserWithOperator,
   matchUserEmail,
@@ -162,7 +163,13 @@ export const authOptions: NextAuthOptions = {
 
 /**
  * Wrapper for `getServerSession` so that you don't need to import the `authOptions` in every file.
+ * In the backend (`api/`) the session is the one of the request it is serving
+ * (`requestSession`), read from the same cookie and table.
  *
  * @see https://next-auth.js.org/configuration/nextjs
  */
-export const getServerAuthSession = () => getServerSession(authOptions)
+export const getServerAuthSession = () => {
+  const fromBackend = requestSession.getStore()
+  if (fromBackend) return Promise.resolve(fromBackend.session)
+  return getServerSession(authOptions)
+}
