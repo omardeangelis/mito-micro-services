@@ -1,0 +1,164 @@
+import "server-only"
+import { Effect } from "effect"
+import { and, eq } from "drizzle-orm"
+import {
+  type Actor,
+  canHandover,
+  canSelfAssign,
+} from "@/lib/domain/contact/permissions"
+import { customers } from "@/server/db/schema/customers"
+import { task } from "@/server/db/schema/task"
+import { taskEventLog } from "@/server/db/schema/taskEventLog"
+import { type Db, type DbError, query, transaction } from "@/server/effect/db"
+import {
+  type CustomerNotFound,
+  type OperatorNotFound,
+} from "@/server/services/contact/errors"
+import { lockCustomerOrNotFound } from "@/server/services/contact/guard"
+import { findWorkingOperator } from "@/server/services/contact/operator"
+import { CustomerAssignmentForbidden, HandoverSameOperator } from "./errors"
+
+/**
+ * "Passaggio di consegne" (D13): moves the customer and its active contact,
+ * in any state, to `toOperatorId`. An admin hands over every customer, an
+ * operator only their own. The calls already recorded on the contact follow
+ * it in the export.
+ *
+ * - The target must be an operator with a user, as the operator middleware
+ *   requires (the system operator has none): else `OperatorNotFound`.
+ * - It always changes the customer's operator: a target that is already the
+ *   customer's is `HandoverSameOperator`, for admins too.
+ * - Writes one `operator_reassign` row for the customer and, when the contact
+ *   moves, one for the contact.
+ */
+export const handover = ({
+  customerId,
+  toOperatorId,
+  actor,
+}: {
+  customerId: string
+  toOperatorId: number
+  actor: Actor
+}): Effect.Effect<
+  { contactMoved: boolean },
+  | CustomerNotFound
+  | CustomerAssignmentForbidden
+  | OperatorNotFound
+  | HandoverSameOperator
+  | DbError,
+  Db
+> =>
+  transaction(
+    Effect.gen(function* () {
+      const customer = yield* lockCustomerOrNotFound(customerId)
+      if (!canHandover(actor, customer)) {
+        return yield* new CustomerAssignmentForbidden()
+      }
+
+      const target = yield* findWorkingOperator(toOperatorId)
+      if (customer.operatorId === target.id) {
+        return yield* new HandoverSameOperator()
+      }
+
+      yield* query((client) =>
+        client
+          .update(customers)
+          .set({ operatorId: target.id })
+          .where(eq(customers.id, customer.id))
+      )
+
+      const [contact] = yield* query((client) =>
+        client
+          .select({ id: task.id, operatorId: task.operatorId })
+          .from(task)
+          .where(and(eq(task.customerId, customer.id), eq(task.isActive, true)))
+          .for("update")
+      )
+      const contactMoved = !!contact && contact.operatorId !== target.id
+      if (contactMoved) {
+        yield* query((client) =>
+          client
+            .update(task)
+            .set({ operatorId: target.id })
+            .where(eq(task.id, contact.id))
+        )
+      }
+
+      const reassign = {
+        customerId: customer.id,
+        actorOperatorId: actor.operatorId,
+        action: "operator_reassign" as const,
+        source: "detail" as const,
+        toOperatorId: target.id,
+      }
+      yield* query((client) =>
+        client.insert(taskEventLog).values([
+          { ...reassign, taskId: null, fromOperatorId: customer.operatorId },
+          ...(contactMoved
+            ? [
+                {
+                  ...reassign,
+                  taskId: contact.id,
+                  fromOperatorId: contact.operatorId,
+                },
+              ]
+            : []),
+        ])
+      )
+
+      return { contactMoved }
+    })
+  )
+
+/**
+ * "Assegna a te" (P4): the actor takes a customer with no operator. A
+ * customer that already has one, or whose active contact is a colleague's, is
+ * `CustomerAssignmentForbidden`, for admins too: taking it would grant edit
+ * rights over a colleague's contact (D2).
+ *
+ * Changes only the customer's operator, never its tasks, and writes one
+ * `operator_reassign` row with source `self_assign`.
+ */
+export const assignToYourself = ({
+  customerId,
+  actor,
+}: {
+  customerId: string
+  actor: Actor
+}): Effect.Effect<
+  void,
+  CustomerNotFound | CustomerAssignmentForbidden | DbError,
+  Db
+> =>
+  transaction(
+    Effect.gen(function* () {
+      const customer = yield* lockCustomerOrNotFound(customerId)
+      const [contact] = yield* query((client) =>
+        client
+          .select({ id: task.id, operatorId: task.operatorId })
+          .from(task)
+          .where(and(eq(task.customerId, customer.id), eq(task.isActive, true)))
+          .for("update")
+      )
+      if (!canSelfAssign(actor, customer, contact ?? null)) {
+        return yield* new CustomerAssignmentForbidden()
+      }
+
+      yield* query((client) =>
+        client
+          .update(customers)
+          .set({ operatorId: actor.operatorId })
+          .where(eq(customers.id, customer.id))
+      )
+      yield* query((client) =>
+        client.insert(taskEventLog).values({
+          customerId: customer.id,
+          actorOperatorId: actor.operatorId,
+          action: "operator_reassign",
+          source: "self_assign",
+          fromOperatorId: customer.operatorId,
+          toOperatorId: actor.operatorId,
+        })
+      )
+    })
+  )

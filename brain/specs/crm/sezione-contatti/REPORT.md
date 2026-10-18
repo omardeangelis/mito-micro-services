@@ -3,10 +3,10 @@ domain: crm
 type: review
 scope: spec
 spec: sezione-contatti
-review_target: "branch contatti/pr2-vincolo-db — PR2 (T2.1–T2.7); round di PR1 (contatti/pr1-creazione-sicura, verdetto ship) più sotto"
-base_ref: 3ebd72093b6ab5012a3679e4b4c4fca504025fff
-head_ref: 4b5ef3ae49f9c02a918a68220f116baca4f4507c
-verdict: ship
+review_target: "branch contatti/pr4-chat-cliente — PR4: T4.5–T4.7 (do-not-ship, sesta verifica), round in fondo; round di PR1, PR2, PR3 e PR4 T4.1–T4.4 (ship) più sopra"
+base_ref: c787dd17b24db81f751c8f714f7f56884981dd54
+head_ref: working-tree
+verdict: do-not-ship
 review_impact: critical
 human_in_loop: true
 links:
@@ -18,7 +18,7 @@ links:
 ingested: false
 last_ingested: null
 created: 2026-09-25
-updated: 2026-10-09
+updated: 2026-10-16
 ---
 
 # Review Report: Sezione Contatti — PR1 "Percorsi di creazione sicuri"
@@ -351,3 +351,434 @@ Obbligatoria (`review_impact: critical`). Da seguire prima del merge di PR2 su `
 
 - Durable findings da portare in `tech-debt/crm/sezione-contatti.md`: `task_priority_active_idx` da ridisegnare in PR5; `isDueToday` in ora legale (alert di oggi senza followup); ramo che fallisce della guardia provato solo su PGlite.
 - Domain pages che dovrebbero rimandare a questa review: nessuna (manca ancora `brain/domains/crm/`).
+
+---
+
+## [Round: 2026-10-15] PR3 — "Regole del contatto sul server, usate da Clienti"
+
+Round aggiunto: i report di PR1 e PR2 sopra restano come sono. Rubric: round PR3 di [[specs/crm/sezione-contatti/RUBRIC]].
+
+- **Target:** branch `contatti/pr3-regole-server` (PR verso `dev`), T3.1a–T3.17, gate T3.14.
+- **Compared:** `d4f5d2c` (merge base con `dev`) → `ba4f388` (prima verifica) → `45ae55e` (dopo le correzioni).
+
+### Verdict
+
+**SHIP** · impact: critical, dopo le correzioni e le verifiche successive (sotto). Nessun BLOCKER né MAJOR aperto. La checklist umana resta obbligatoria prima del merge e del deploy (G3).
+
+Prima verifica, su `ba4f388`: **DO NOT SHIP**. Un BLOCKER (v7), otto MAJOR (v1, v5, v6 ×5, v7). Il nucleo server regge: concorrenza (v2), regole di dominio (v3) e superficie API (v4) danno SHIP.
+
+Obiezioni più forti:
+- **v1:** `assignToYourself` controlla solo che il cliente non abbia un operatore, non chi tiene il suo contatto attivo. Su un cliente senza operatore con il contatto di un collega (dati che T2.5 lascia apposta), un operatore diventa operatore del cliente, modifica il contatto del collega (D2) e con `handover` lo passa a un terzo. È quello che P4 e A1 vietano.
+- **v5:** con react-query 4 le callback passate a `mutate(…, {onSuccess, onError})` non girano se il componente si smonta prima della risposta. Chiudendo la scheda, o lasciando la riga, durante un salvataggio, un rifiuto non dà né toast né refresh (AC52).
+- **v7:** `transition-colors` sulle voci del menu dello stato: l'evidenziazione che segue frecce e puntatore sfuma in 150 ms sul controllo più usato da tastiera. L'eccezione di `motion.md` copre solo apertura e chiusura.
+
+### Verifiche successive (dopo le correzioni)
+
+Correzioni in `1b50ace` (codice), `4fae91b` e `afb2975` (registro, note, test), `45ae55e` (indicazione "Assegna a te", priorità in sola lettura). Rilanciati i passaggi con un verdetto DO NOT SHIP: v1, v5, v6, v7. v2, v3 e v4 non rilanciati: le correzioni toccano il loro perimetro solo con test aggiunti e con il rifiuto di "Crea contatto" (v4), un payload già coperto dal contratto degli errori.
+
+| Verifica | Passaggi | Esito | Cosa è emerso | Corretto in |
+|---|---|---|---|---|
+| Seconda, su `1b50ace` | v1 (modello forte) | SHIP | MAJOR chiuso: `assignToYourself` legge il contatto attivo `FOR UPDATE` dopo il lock e rifiuta quello di un collega, per ogni ruolo; provato per mutazione (2 test rossi). MINOR chiuso: `reassign` controlla `canReassign` nel servizio (mutazione: 1 test rosso). NIT: tech-debt non ancora committato; P4 del PLAN da allineare; nessun test del link nel client; in `reassign` il ruolo si controlla dopo il caricamento (nessuna scrittura, irraggiungibile da fuori) | `4fae91b` (tech-debt, P4) |
+| Seconda, su `1b50ace` | v5 (Sonnet) | SHIP | MAJOR chiuso: `mutateAsync(...).then(ok, err)` in tutti e cinque i componenti; `router.refresh` gira anche dopo lo smontaggio (test con `useMutation` e `useRefreshAfterSave` veri). MINOR chiusi: focus solo se perso, ripiego dopo la "X". Restano MINOR: test dello smontaggio solo per 2 componenti su 5; un'eccezione dentro i gestori di `.then` lascerebbe l'attesa aperta (nessun caso realistico) | — |
+| Seconda, su `1b50ace` | v7 (Haiku) | DO NOT SHIP | BLOCKER chiuso: voci del menu senza transizione, con test. Il MAJOR (Select e DropdownMenu nel registro) era solo nel working tree, non nel commit | `4fae91b` |
+| Terza, su `4fae91b` | v7 (Haiku) | DO NOT SHIP | Registro e `motion.md` a posto. MINOR: la prova dello spinner fermo con movimento ridotto non era registrata; il `Select` della modale del passaggio di consegne non era nominato nel registro | `afb2975`: prova nel browser registrata (`animationName: none`, 0 animazioni con `reduced-motion`; `spin`, 1 senza), `Select` della modale nel registro |
+| Seconda, su `1b50ace` | v6 (Sonnet, browser) | SHIP | 8 rilievi su 9 risolti per misura (dialog con messaggio lungo, contrasti 16,9:1 e 7,1:1 in hover, nome "app.to, cambia stato", motivo intero nella scheda, anello sulle voci, "Assegna a te" 84,7×36 a 7,81:1); il nono è il toast, dichiarato. MINOR: sovrapposizione stato/priorità solo sotto 484 px (prima sotto 895); priorità in sola lettura fuori dalla card sotto 548 px. NIT: `showHint` mai passato | `45ae55e` (`flex-wrap`, indicazione mostrata); sovrapposizione sotto 484 px nel tech-debt |
+
+L'ultimo passaggio di v7 (`afb2975`) e l'indicazione "Assegna a te" (`45ae55e`) non sono stati rivisti da un verificatore. Il primo chiude una richiesta di prova, non di codice. Il secondo l'ho controllato nel browser su `zzpr3-c15` (cliente e contatto senza operatore): l'indicazione compare sotto "Non assegnato" nella scheda e nella riga di Clienti.
+
+Correzioni oltre i rilievi, trovate durante le verifiche:
+- `showHint` non era passato da nessun chiamante, quindi l'indicazione di A1 ("Non assegnato" con "Assegna a te", T3.9b) non compariva mai. Ora la passano lista e scheda;
+- il `flex-wrap` della priorità in sola lettura (v6, MINOR).
+
+### Coverage
+
+- Passaggi eseguiti: 7/7. v1–v4 sul modello più forte (ereditato); v5 e v6 su Sonnet; v7 su Haiku.
+- Passaggi saltati o falliti: nessuno.
+- v6 (UI) sul server di sviluppo `next dev` (porta 3100, DB di sviluppo), avviato per la review e fermato dopo, con due utenti di sviluppo (un operatore, un admin) sui clienti di prova `zzpr3-*`. Chromium solo, tema chiaro (il tema scuro non è applicato da niente nell'app), axe non disponibile. Il probe `hit-area` su "Assegna a te" ha assegnato `zzpr3-c7` all'admin: ripristinato a "nessun operatore" sul DB di sviluppo subito dopo.
+- v2 ha eseguito mutazioni (togliere `.for("update")`, le guardie di `resolveOpenAlert`, il ramo 23505) in una copia del repo nella scratchpad. Nessun altro accesso a un DB; nessuno script `db:*`, `update:*` o `NODE_ENV=production`.
+- Gate rieseguiti dai verificatori: `pnpm run test --run` completo (55 file, 825 test), `tsc --noEmit` e `next lint` puliti.
+
+### Findings
+
+| Severity | Concern (verifier) | Location | Problem | Required fix / evidence | Durable? |
+|----------|--------------------|----------|---------|-------------------------|----------|
+| BLOCKER | v7 — movimento | `src/components/custom/contact/ContactStateSelect.tsx:93` | `transition-colors` (150 ms) sulle `RadioItem`: l'evidenziazione sfuma a ogni freccia o movimento del puntatore sul controllo più usato da tastiera | Togliere la classe; test che la classe delle voci non contenga `transition` | no |
+| MAJOR | v1 — autorizzazione | `src/server/services/customer/assignment.ts:135` | `assignToYourself` accetta un cliente senza operatore anche quando il contatto attivo è di un collega: l'operatore ne ottiene la modifica (D2) e con `handover` lo sposta | Dopo `lockCustomer`, leggere il contatto attivo `FOR UPDATE` e rifiutare con `CustomerAssignmentForbidden` se il suo operatore non è null né l'attore; test con il contatto di un collega | no |
+| MAJOR | v5 — mutation nel client | `CustomerTaskManager.tsx:105-140`, `CustomerAlertCreator.tsx:94-143`, `CustomerCreateContact.tsx:107-122`, `CustomerColumns.tsx:503-537`, `CustomerHandoverDialog.tsx:128-140` | Callback per chiamata di `mutate`: perse se il componente si smonta a metà salvataggio (nessun toast, nessun refresh) | `mutateAsync` con try/catch, o callback nelle opzioni di `useMutation`; test che smonta a metà salvataggio | no |
+| MAJOR | v6 — UI | `CustomerTaskManager.tsx:252` (`grid-cols-4`) | Il trigger dello stato, ora fisso a 160 px, si sovrappone al selettore della priorità sotto ~895 px (17 px a 800, 113 a 320). Prima il `Select` era `w-full` | Colonne che contengono il controllo (`grid-cols-2 lg:grid-cols-4` o `auto-fit`) | no |
+| MAJOR | v6 — UI | `AlertCloseConfirmDialog.tsx:79-83` | Un messaggio con una parola lunga (un URL) allarga la griglia e spinge fuori Annulla e "Cambia stato"; 30 righe portano i pulsanti sotto il viewport, senza scorrimento | `min-w-0 max-h-[40vh] overflow-y-auto [overflow-wrap:anywhere]` sul messaggio | no |
+| MAJOR | v6 — UI | `AlertCloseConfirmDialog.tsx:76-81`, `CustomerHandoverDialog.tsx` (`DialogDescription`) | Descrizione `#737373` su `#ededed`: 4,05:1, sotto 4,5 (1.4.3). Porta la data dell'alert (AC36) | `text-foreground` sulle due `DialogDescription` | no |
+| MAJOR | v6 — UI | `ReadOnlyReason.tsx` nella riga in hover | Motivo `#737373` sulla riga `hover:bg-gray-100`: 4,31:1 (1.4.3) | Testo più scuro (`text-neutral-600`) o pillola con sfondo bianco | no |
+| MAJOR | v6 — UI | `CustomerTaskManager.tsx:213`; `CustomerColumns.tsx` | Nome accessibile del selettore: nella scheda "Stato" senza il valore visibile (2.5.3, 4.1.2); nella lista solo il valore, senza lo scopo (2.4.6) | In `ContactStateSelect`, nome che comincia dal valore e dice l'azione (`"<stato>, cambia stato"`) | no |
+| MAJOR | v7 — movimento | `CustomerTaskManager.tsx:294-334`; `ui/select.tsx:78`, `ui/dropdown-menu.tsx:50,68` | Il `Select` della priorità (nuovo) e il contenuto del `DropdownMenu` condiviso animano senza variante `motion-reduce`, e la voce del registro "Lacune dei primitivi di movimento" non li nomina | Aggiungerli alla voce del tech-debt | sì (registro) |
+| MINOR | v1 — autorizzazione | `src/server/services/contact/reassign.ts:54` | Il servizio non controlla `canReassign`: AC50 regge solo perché la procedura è `adminProcedure` | `ContactForbidden` se `!canReassign(actor)` nel servizio, con test | no |
+| MINOR | v2 — concorrenza | `createContact.ts:90-103` | Il ripiego su 23505 non è eseguito da nessun test (togliendolo, 196 test restano verdi) | Failpoint PGlite che solleva `unique_violation` sull'insert di `task` | no |
+| MINOR | v2 — concorrenza | `task/POST/index.ts:159-160, 196-202` | La conferma dell'alert nella massiva è legata al cliente, non all'alert: se un collega sostituisce l'alert nel frattempo, la massiva chiude quello nuovo. Preesistente (A7), non dichiarato | Dichiararlo in "Scrittori fuori dalla regola dei lock" | sì |
+| MINOR | v3 — dominio | `setCallback.ts:74`; `processDueAlerts.ts:84,161-175` | Il server accetta una scadenza "oggi" (A4), ma il cron delle 23:47 UTC la vede il giorno dopo come "passata" e chiude senza followup. Oggi il calendario esclude oggi | Decidere: scadenza da domani sul server, oppure dichiararlo nel tech-debt e in A4 prima che un'interfaccia permetta oggi | sì |
+| MINOR | v3 — dominio | test dei servizi | Rami senza assert: `reassign` con solo il contatto che cambia (la riga `operator_reassign`); `setCallback` da `caricato`/`erogata`/`non interessato`; `createContact` con `source: "list"`; `changeState` da stato NULL | Aggiungere gli assert | no |
+| MINOR | v4 — contratto errori | `createContact.ts:55-57` | `ContactForbidden({assignee: null})` mostra "non è assegnato" a un cliente assegnato a un collega; raggiungibile da una pagina rimasta aperta dopo un passaggio di consegne | Nome dell'operatore del cliente nel payload | no |
+| MINOR | v5 — mutation nel client | `CustomerForm.tsx:243-260` | Dopo "Assegna a te" e il passaggio di consegne il focus va al testo dell'operatore anche se l'utente l'ha spostato altrove | `focusIsLost()` o focus dentro il contenitore | no |
+| MINOR | v5 — mutation nel client | `CustomerAlertCreator.tsx:72-76` | Chiuso l'alert con la "X" senza trigger (dati legacy), il focus resta sul contenitore della Sheet | Destinazione di ripiego | no |
+| MINOR | v5 — mutation nel client | `src/components/custom/contact` | Nessun test automatico per gli hook e i loro consumatori | Test sui rami di `fail`/`awaitRefresh` più usati | no |
+| MINOR | v6 — UI | `ReadOnlyReason.tsx:41-48` | `w-40` fisso: "Assegnato a Martina Vi…" anche nella scheda, dove c'è spazio; il nome intero solo nel `title` (AC51) | Larghezza fissa solo nella tabella | no |
+| MINOR | v6 — UI | `ContactStateSelect.tsx:93` | Voce del menu con il focus: solo `bg-accent` su bianco, 1,09:1 (1.4.11) | Anello interno sulle voci | no |
+| MINOR | v6 — UI | `ui/toast` (variante `destructive`) | Toast di rifiuto `#fafafa` su `#ef4444`: 3,61:1 (indicativo) | Primitivo condiviso: registro, oppure `bg-red-600` | sì |
+| MINOR | v6 — UI | `CustomerForm.tsx` ("Assegna a te") | 85×20 px (sotto i 24 del progetto; regressione da `h-auto`) e `#a3a3a3` su bianco 2,52:1 | Togliere `h-auto`, `text-neutral-600` | no |
+| NIT | v1, v2, v3, v4, v5, v6, v7 | vari | Rotta di import senza controllo di `operatorId` (aggiungerla alla voce di `insertCustomer`); massive senza controllo dell'operatore di destinazione; `FOR NO KEY UPDATE`; harness che prova il lock solo al momento della scrittura; commento di `AlertNotFound` (`errors.ts:35`); `changeState` ignora `{resolved}`; `input.id!` in `updateCustomerFromDashboard`; `openAlert!`/`created!`; test duplicato in `router.db.test.ts`; messaggio generico di `enforceIsAdmin`; `{alert}` ignorato dopo `onError`; finestra di doppio invio in `CustomerAlertCreator`; 3 s di attesa in `CustomerCreateContact`; spinner fermo con movimento ridotto (verificato nel passaggio nel browser); pulsante di chiusura del toast senza nome, "X" della Dialog 16×16 | Nessuna azione obbligatoria | — |
+
+### What passed
+
+| Concern (verifier) | Evidence |
+|--------------------|----------|
+| v1 — autorizzazione | Attore sempre dalla sessione, ruolo riletto dal DB; ogni scrittura del contatto decide sulle righe bloccate; massive e `reassign` su `adminProcedure`; i rifiuti non scrivono niente (test dal router vero); nessun altro percorso cambia un operatore |
+| v2 — concorrenza | Ogni scrittore blocca il cliente prima delle letture che decidono; gli id di alert mandati dal client sono confrontati dopo il lock; le due guardie di `resolveOpenAlert` provate per mutazione; nessuno stato parziale (snapshot); senza `FOR UPDATE` 19 dei 21 test della regola vanno in rosso |
+| v3 — dominio | AC30–AC34, AC38, AC40–AC47, AC27, AC29, AC66, AC67: ogni regola ha un test che fallirebbe se cambiasse; fasce e "auto" (D3); giorno di Roma con i cambi d'ora |
+| v4 — superficie API | Nessun chiamante rimasto delle procedure rimosse (client, action, route, cron, workflow, script, repo `mito-deutsche`); massive irraggiungibili agli operatori; `contactError` sopravvive a superjson ed è decodificato in modo esaustivo; AC73 |
+| v5 — mutation nel client | Conferma guidata dal server (AC36, AC37), retry una sola volta; il controllo mostra sempre il valore salvato; toast 8000 ms; AC44 tiene aperto il modulo; nessuna attesa bloccata sui percorsi raggiungibili; focus ripristinato |
+| v6 — UI | Trigger 160×40 stabili da 320 a 1920 px; spinner nella sede della freccia; anelli di focus visibili e non tagliati; destinazioni di focus programmatiche visibili; target ≥ 24 px; badge di stato con contrasto ≥ 6,49; ruoli e nomi delle dialog; focus iniziale su Annulla; testi di AC36, AC51, AC52, AC66 presenti |
+| v7 — movimento | Menu dello stato senza animazione di apertura e chiusura (test); sei spinner tutti con `motion-reduce:animate-none`; nessun `transition-all`, keyframe o scroll smooth nuovo |
+
+### Per-concern verdicts
+
+| Pass | Charter | Verdict | Rationale |
+|------|---------|---------|-----------|
+| v1 | Autorizzazione delle scritture | DO NOT SHIP | Nucleo solido, ma `assignToYourself` apre la modifica del contatto di un collega |
+| v2 | Concorrenza e atomicità | SHIP | Lock prima delle letture, atomicità provata; resta un ramo difensivo senza test |
+| v3 | Regole di dominio | SHIP | Tutte le regole rispettate e coperte; la scadenza "oggi" contro il cron è latente |
+| v4 | Superficie API e contratto degli errori | SHIP | Nessun chiamante rimasto; un messaggio di rifiuto sbagliato per "Crea contatto" |
+| v5 | Mutation nel client | DO NOT SHIP | Toast e refresh persi se il componente si smonta a metà salvataggio |
+| v6 | UI pass | DO NOT SHIP | Cinque MAJOR locali: sovrapposizione nella scheda, dialog con messaggio lungo, due contrasti, nome accessibile |
+| v7 | Movimento | DO NOT SHIP | `transition-colors` sulle voci del menu; Select e DropdownMenu fuori dal registro |
+
+### Human Review Checklist
+
+Obbligatoria (`review_impact: critical`). Da seguire prima del merge di PR3 su `dev` e prima del deploy (G3):
+
+1. Verificare che il BLOCKER e i MAJOR siano chiusi: tabella "Verifiche successive" (v1, v5, v6 SHIP; v7 chiuso con la prova registrata in `afb2975`).
+2. Matrice dei permessi, anche con richieste fuori dall'interfaccia: un operatore cambia stato, priorità, richiamo e alert solo dei contatti suoi o dei clienti suoi (D2, A1); crea un contatto solo per i clienti suoi; "Assegna a te" solo su un cliente senza operatore e senza il contatto di un collega; `reassign` e le massive solo per gli admin.
+3. Nessun client già distribuito, workflow cron o script chiama una procedura rimossa (`updateTask*`, `task.createTask`, `createAlert`, `resolveAlerts`, `deleteTasks`, `customer.updateCustomer`): grep su `src`, `.github`, `package.json` e repo `mito-deutsche`.
+4. Regola dei lock: ogni scrittore nuovo blocca il cliente prima di leggere; le eccezioni dichiarate (cron, "Assegna Clienti" A7, `cleanupTaskEventLog`, la conferma della massiva legata al cliente) sono nel tech-debt.
+5. Eseguire i gate di `AGENTS.md` sulla testa della PR, in un checkout senza i file env veri: `SKIP_ENV_VALIDATION=true pnpm exec next lint`, `pnpm exec tsc --noEmit`, `pnpm run test --run`, `pnpm build` con i segnaposto; CI verde.
+6. Non eseguire nessuno script di produzione (`db:*:prod`, `update:*` senza `:dev`, `NODE_ENV=production`): PR3 non ha migrazioni.
+7. Prima del deploy, l'annuncio agli operatori di G3 (testo in PLAN.md T3.14 e nella descrizione della PR).
+
+### Acceptance criteria check (case B)
+
+| Criterion | Met / Unmet / Blocked | Notes |
+|-----------|-----------------------|-------|
+| AC27 | Met (server) | Rifiuto `CONTACT_SUPERSEDED` su ogni mutation; avviso e link sono di PR5 |
+| AC29 | Met | `resolveAlert`, Storico con chi l'ha chiuso |
+| AC30–AC34 | Met | Transizioni, "Contattato il", riapertura con lo stesso operatore |
+| AC36 | Met | Conferma con data e messaggio; dopo le correzioni il messaggio scorre dentro la modale e la descrizione è a 16,9:1 (v6, seconda verifica) |
+| AC37–AC41 | Met | Conferma guidata dal server, log, atomicità, no-op, operatore invariato |
+| AC42–AC47 | Met | Fasce, "Automatica", richiamo, `operator_reassign` |
+| AC48, AC50 | Met | Admin ovunque; `reassign` solo admin, anche nel servizio |
+| AC49 | Met | Dopo le correzioni "Assegna a te" rifiuta il contatto di un collega (v1, seconda verifica) |
+| AC51 | Met | Motivo visibile a 7,1:1 anche in hover; intero nella scheda, troncato nella lista a 160 px (PLAN §9, tech-debt) |
+| AC52 | Met | Toast e refresh anche se la scheda si chiude a metà salvataggio (v5, seconda verifica); il link al contatto attivo arriva con PR5 (P5) |
+| AC66, AC67 | Met | Il rifiuto per il cliente di un collega nomina il suo operatore |
+| AC73 | Met | Clienti e scheda usano le stesse mutation di Contatti |
+
+### Notes for docs-maintenance
+
+- Durable findings, già nel tech-debt (`tech-debt/crm/sezione-contatti.md`): Select e DropdownMenu nella voce "Lacune dei primitivi di movimento"; conferma della massiva legata al cliente; scadenza "oggi" contro il cron notturno; contrasto del toast `destructive` ("Contrasto e nomi nei primitivi condivisi"); rotta di import e massive nella voce di `insertCustomer`; "La scheda cliente non regge sotto i 900 px".
+- Non durevoli, corretti prima del merge: tutti gli altri BLOCKER, MAJOR e MINOR della tabella. Restano come MINOR senza voce: test dello smontaggio per `CustomerAlertCreator`, `CustomerCreateContact` e `CustomerHandoverDialog`; il ruolo controllato dopo il caricamento in `reassign`.
+- Domain pages che dovrebbero rimandare a questa review: nessuna (manca ancora `brain/domains/crm/`).
+
+---
+
+## [Round: 2026-10-15] PR4 — "Chat con proprietario esplicito"
+
+Round aggiunto: i report di PR1, PR2 e PR3 sopra restano come sono. Rubric: round PR4 di [[specs/crm/sezione-contatti/RUBRIC]].
+
+- **Target:** branch `contatti/pr4-chat-cliente` (PR verso `dev`), T4.1, T4.3, T4.4, gate T4.2.
+- **Compared:** `c787dd1` (`dev`) → albero di lavoro non committato (prima verifica e verifiche successive, sul branch non ancora committato).
+
+### Verdict
+
+**SHIP** · impact: critical, dopo le correzioni e le verifiche successive (sotto). Nessun BLOCKER né MAJOR aperto. La checklist umana resta obbligatoria prima del merge e del deploy.
+
+Prima verifica: **DO NOT SHIP**. Nessun BLOCKER, quattro MAJOR (v1 ×2, v4, v5). Danno SHIP il perimetro di AC55/AC56 e la parità del refactor (v2), il confine delle server action (v3) e i gate (v6).
+
+Obiezioni più forti:
+- **v1:** chiusa e riaperta la chat mentre un invio è in corso, il fallimento scrive la bozza dopo il montaggio della chat nuova: il campo resta vuoto, e la prima lettera digitata sovrascrive la bozza con il solo testo nuovo. Il testo fallito si perde senza essere mai mostrato (AC76).
+- **v4:** la bozza ha la chiave del solo cliente e l'uscita non la cancella: un collega che entra dopo, nella stessa finestra, la trova nel campo e può inviarla a suo nome.
+- **v5:** "Nota non inviata, riprova" in `text-destructive`, `#ef4444` su bianco: 3,76:1, sotto 4,5 (1.4.3).
+
+### Verifiche successive (dopo le correzioni)
+
+Rilanciati i passaggi con un verdetto DO NOT SHIP: v1, v4, v5. v2, v3 e v6 restano SHIP; i loro MINOR sui test delle action sono chiusi (`_actions/_test/updateChat.test.ts`).
+
+| Verifica | Passaggi | Esito | Cosa è emerso | Corretto con |
+|---|---|---|---|---|
+| Seconda | v4 (Sonnet) | SHIP | MAJOR chiuso: bozza `{ operatorId, text }`, copia di un collega ignorata e cancellata, "Esci dal gestionale" cancella tutto. MINOR: una copia salvata prima che l'operatore si carichi non ha proprietario; le copie di un collega su clienti mai riaperti restano nello storage | Residui registrati in D18 e nel tech-debt |
+| Seconda | v5 (Sonnet, browser) | SHIP | Contrasto chiuso: `text-red-700`, 6,47:1. MINOR: "Commenta" scende di 28 px quando compare il messaggio | Non corretto: riservare lo spazio cambierebbe l'aspetto (vincolo del piano) |
+| Seconda | v1 (modello forte) | DO NOT SHIP | Chiusi i due MAJOR della prima verifica. Due nuovi: il successo di un invio cancellava la bozza presa nel frattempo da un'altra chat; nessun test proteggeva il ripristino mentre l'operatore si carica (mutazione verde) | Contatore delle bozze adottate; test del ricaricamento, di StrictMode, dell'invio prima dell'operatore |
+| Terza | v1 (modello forte) | DO NOT SHIP | Altri intrecci con lo stato diviso fra le chat: copia di un collega più invio prima dell'operatore (testo perso); bozza rinviata da una chat chiusa (testo perso o raddoppiato). v5 aveva visto il raddoppio nel browser sulla stessa build | Cambio di struttura: uno store per cliente (`unsentNote.ts`, `useSyncExternalStore`) condiviso da tutte le chat, con `sessionStorage` come copia; test per ogni intreccio |
+| Quarta | v1 (modello forte) | SHIP | 21 mutanti dello store su 24 uccisi. MINOR: un campo vuoto inviato accendeva il messaggio; un'uscita durante un invio lasciava una copia senza proprietario; test mancanti (chiave della nota in attesa, campo dopo l'uscita) | Messaggio solo con testo; "generazione" incrementata dall'uscita, che rende muti gli invii partiti prima; test aggiunti, ognuno rosso per mutazione |
+
+Le correzioni dopo la quarta verifica di v1 (campo vuoto, uscita durante un invio, test della chiave) non sono state riviste da un verificatore: le ho controllate con un test rosso prima e una mutazione dopo. Ricontrollati nel browser, sul codice finale, invio, fallimento offline, bozza dopo il ricaricamento e dopo la scheda chiusa e riaperta, rinvio.
+
+Gate sul codice finale: `next lint` e `tsc --noEmit` puliti, 72 file e 956 test, `pnpm build` in una copia senza `.env*`.
+
+### Coverage
+
+- Passaggi eseguiti: 6/6. v1 e v3 sul modello più forte (ereditato); v2, v4 e v5 su Sonnet; v6 su Haiku.
+- Passaggi saltati o falliti: nessuno.
+- v5 (UI) sul server di sviluppo `next dev` (porta 3100, DB di sviluppo), già acceso per la passata browser di T4.2, con una sessione `agent-browser` già autenticata come operatore. Clienti di prova `zzpr3-c1` (senza chat) e `zzpr3-c2` (con note). Nessuna scrittura: il fallimento offline e l'invio trattenuto nella pagina. Chromium solo, tema chiaro (l'app non ne ha un altro); niente Safari mobile. Senza axe-core: contrasto dal probe `contrast` della skill.
+- v1 ha provato le mutazioni in locale e ripristinato il file (shasum invariato); v3 ha eseguito gli schemi Zod veri in uno script nella scratchpad. Nessun accesso a un DB, nessuno script `db:*` o `NODE_ENV=production`.
+- Gate rieseguiti da v6: `next lint` e `tsc --noEmit` puliti, 69 file e 923 test, `pnpm build` in tre copie senza `.env*`.
+
+### Findings
+
+| Severity | Concern (verifier) | Location | Problem | Required fix / evidence | Durable? |
+|----------|--------------------|----------|---------|-------------------------|----------|
+| MAJOR | v1 — AC76 | `CustomerChat.tsx` (`handleChange`, effetto di montaggio, ramo del fallimento) | Chat riaperta durante l'invio, poi fallimento, poi una lettera: la bozza diventa la sola lettera e il testo fallito non è mai comparso | La chat aperta deve adottare la bozza scritta da un'altra istanza (testo fallito nel campo, con il messaggio), non sovrascriverla; test smonta → rimonta → fallimento → digitazione | no |
+| MAJOR | v1 — AC76 | `CustomerChat.tsx` (ramo "operatore non caricato") | Mostra il messaggio ma non salva la bozza: ricaricando, il testo si perde | Salvare la bozza anche lì; assert nel test | no |
+| MAJOR | v4 — dati nel browser | `CustomerChat.tsx` (`draftKey`), `LogoutFloatingButton.tsx` | Bozza legata al solo cliente e mai cancellata all'uscita: con la stessa finestra, o con la sessione scaduta, il collega successivo vede e può inviare a suo nome la nota di un altro. D18 diceva il contrario | Bozza legata all'operatore (ignorata e tolta per un altro operatore) e cancellata all'uscita; test | no |
+| MAJOR | v5 — UI | `CustomerChat.tsx` (`p[role=alert]`, `text-destructive`) | 3,76:1 a 14 px regular, sotto 4,5 (1.4.3), a ogni larghezza | Rosso più scuro (`text-red-700`, 6,47:1) | no |
+| MINOR | v1 — test | `_test/CustomerChat.test.tsx` | Nessun test protegge "la bozza segue il campo solo se esiste già" (mutazione `if (true)`: 23/23 verdi) né "ripristino in un effetto" (RTL non idrata) | Test "testo scritto e mai inviato: nessuna bozza al rimontaggio"; il ripristino senza idratazione divergente resta provato nel browser | no |
+| MINOR | v2, v3, v6 — test | `src/components/custom/notes/_actions/` | Le action sono mock nei test: Zod, `{ ok, id }` e `revalidatePath` non sono eseguiti da nessun test | Test di `updateChatAction` con `@/trpc/server` e `next/cache` simulati | no |
+| MINOR | v2 — rinfresco | `_actions/*.ts` (`revalidatePath` del cliente) | Sul dettaglio di Contatti la pagina si ridisegna solo perché Next 14.2.5 imposta `pathWasRevalidated` senza confrontare il percorso (TODO in `revalidate.js`) | T5.8 lo controlla nel browser; o un `revalidatePath` anche della rotta di Contatti quando esiste (PR5) | sì |
+| MINOR | v4 — dati nel browser | `sessionStorage` | "Duplica scheda" in Chrome copia la bozza: due schede la possono inviare due volte | Una riga in D18 | no |
+| NIT | v3 | `_actions/*.ts` | `customerId` accetta `""`; `chatId` accetta decimali e negativi (falliscono comunque in Postgres) | `z.string().min(1)`, `z.number().int().positive()` | no |
+| NIT | v1 | `_test/CustomerChat.test.tsx` | La chiave `pending-N` non è protetta da un test (React avvisa soltanto); il test dello smontaggio non copre "testo inviato più campo" | Facoltativo | no |
+| NIT | v5 — UI | `AccordionContent` (`overflow-hidden`) | L'anello di focus di campo e "Commenta" è tagliato di 4 px; preesistente, non peggiorato | Tech-debt | sì |
+| NIT | v2 | `incrementLimit` | La pagina di Contatti dovrà leggere `limit` dai `searchParams` e passarlo alla chat | Una riga nel piano di PR5 (T5.8) | no |
+
+### What passed
+
+| Concern (verifier) | Evidence |
+|--------------------|----------|
+| v1 — AC76 | Nota in attesa con chiave `pending-N`, risolta solo dall'id (mutazioni su testo e numero rosse); nessun lampeggio: Next risolve l'action prima del nuovo albero (`server-action-reducer.js:173`); doppio invio ignorato anche con due `requestSubmit` nello stesso tick; ogni fallimento (rifiuto, `{ ok: false }`, `undefined`, operatore assente) rimette il testo, toglie la nota, non chiama `updateLastEdit` né `router.refresh`; ordine del testo scritto durante l'invio; messaggio tolto e rimesso; bozza per cliente, dopo lo smontaggio, con il testo in volo, cancellata da successo e campo vuoto, tollerante allo storage bloccato |
+| v2 — AC55/AC56, parità | Solo `customer.updateLastEdit` dal client; "Avvia una chat" con `chatId` nullo crea la chat del cliente; nessun id dalla rotta; nessun import rimasto; i rami pratica eliminati non erano raggiungibili da nessuna schermata a `c787dd1` (D15); niente `router.refresh`, action senza Effect; testi invariati |
+| v3 — server action | Schemi Zod provati davvero: override di `chatId`, tipi sbagliati rifiutati, chiavi in più tolte; ogni scrittura e ogni `revalidatePath` dopo una procedura `operatorProcedure`; nessuna capacità in più rispetto a `/api/trpc`, il ramo pratica in meno; un `customerId` ostile aggiunge solo un tag letterale sotto `/dashboard/customers/`; contratto `{ ok, id }` corretto su ogni ramo |
+| v4 — dati nel browser | Chiave per cliente, solo `sessionStorage`, niente URL, log o console col testo; scritta solo dopo un fallimento; cancellata da successo e campo vuoto; nessun passaggio fra schede, finestre o profili |
+| v5 — UI | Messaggio `role=alert` subito sotto il campo, collegato da `aria-describedby` solo quando c'è; nessuna sovrapposizione da 280 a 1440 px; "Commenta" `aria-disabled`, focalizzabile, con anello visibile durante l'invio; cestino nascosto dal CSS e visibile sotto il mouse, nessuno sulla nota in attesa; AC56 "Avvia una chat"; testi e aspetto invariati |
+| v6 — gate | `next lint`, `tsc --noEmit`, 923 test, `pnpm build` in copie pulite; le tre action fuori da `app/` registrate nel manifest e impacchettate; `CollassableItem` spostato identico |
+
+### Per-concern verdicts
+
+| Pass | Concern | Complexity / model | Verdict | Strongest objection |
+|------|---------|--------------------|---------|---------------------|
+| v1 | Invio, fallimento e bozza (AC76) | high / ereditato | DO NOT SHIP | Testo fallito perso riaprendo la chat durante l'invio |
+| v2 | AC55/AC56 e parità del refactor | medium / Sonnet | SHIP | Rinfresco del dettaglio di Contatti appoggiato a un comportamento provvisorio di Next |
+| v3 | Confine delle server action | high / ereditato | SHIP | Action senza test propri |
+| v4 | Testo delle note in `sessionStorage` | medium / Sonnet | DO NOT SHIP | Bozza visibile al collega successivo nella stessa finestra |
+| v5 | UI pass sulla chat | medium / Sonnet | DO NOT SHIP | Contrasto del messaggio 3,76:1 |
+| v6 | Gate del progetto | low / Haiku | SHIP | Action testate solo con i mock |
+
+### Human Review Checklist
+
+`reviewImpact: critical`: prima del merge e del deploy.
+1. **Server action.** Leggere i tre file in `src/components/custom/notes/_actions/`: ogni scrittura passa da una procedura `operatorProcedure`, e un input non valido risponde `{ ok: false }` senza scrivere.
+2. **Bozza nel browser.** Con due utenti nella stessa finestra: il primo fa fallire un invio (offline) ed esce; il secondo entra e apre lo stesso cliente: il campo è vuoto.
+3. **Pratiche.** Aprire una pratica con clienti: la pagina si carica con le sezioni dei clienti. Nessuna pratica aveva una chat visibile prima di PR4 (D15).
+4. **Operatori.** Mandare le due righe di T4.2 prima del deploy.
+
+### Acceptance criteria check (case B)
+
+| Criterio | Esito | Evidenza |
+|---|---|---|
+| AC55 | Met | v2, v3: solo il cliente si aggiorna; nella passata browser 0 pratiche toccate |
+| AC56 | Met | v2, v5: "Avvia una chat" con `chatId` nullo, poi la chat |
+| AC76 | Met, nella scheda cliente | v1 (quarta), v4, v5 (seconda): testo nel campo con il messaggio, nessuna nota fantasma, bozza dopo il ricaricamento e la scheda chiusa, dell'operatore che l'ha scritta. Residui registrati in D18. Nel dettaglio di Contatti arriva con PR5 (T5.8) |
+
+### Notes for docs-maintenance
+
+- Durevoli: rinfresco del dettaglio di Contatti legato al comportamento di Next 14.2.5 (da chiudere in T5.8); anello di focus tagliato da `AccordionContent`; bozze senza proprietario o di un collega (tech-debt, D18).
+
+## [Round: 2026-10-16] PR4 — T4.5 e T4.6 (dai test manuali)
+
+Round aggiunto: i report sopra restano come sono. Rubric: round del 2026-10-16 di [[specs/crm/sezione-contatti/RUBRIC]].
+
+- **Target:** branch `contatti/pr4-chat-cliente` (omardeangelis/mito-micro-services#18), T4.5 e T4.6.
+- **Compared:** `3d76ab5` → `b5ac1a7` (T4.5, v1) e `b5ac1a7` → `f440a0d` (T4.6, v2).
+
+### Verdict
+
+**DO NOT SHIP** · impact: medium (stima dell'orchestratore, senza classifier). Un BLOCKER (v2) e tre MAJOR (v1 ×2, v2).
+
+Obiezioni più forti:
+- **v2:** la regione `role="status"` resta su "Nota eliminata" e nessuno la svuota: alla seconda eliminazione di fila React non cambia il DOM e il lettore di schermo non annuncia niente (AC78). Confermato leggendo il codice: `announcement` cambia solo in `CustomerChat.tsx:146`, `236`, `257`.
+- **v1:** nessun test committato osserva il blocco del cliente (`createCustomerChat.ts:32`): togliendolo, tutti i test restano verdi, perché PGlite ha una sola connessione e serializza le transazioni. La garanzia "due operatori, una chat" di AC77 è provata solo leggendo il codice.
+
+### Seconda verifica (dopo T4.7)
+
+Correzioni in T4.7 (PLAN.md): annunci come nodi nuovi, nota in attesa chiusa se già salvata, test dell'attesa di "Avvia una chat" con la pagina sospesa, regola dei lock della chat nei test (`assertCustomerLockedOnChatWrite`). In più, su richiesta dell'utente, due problemi preesistenti: eliminazione in Effect con il cliente bloccato, e solo dell'autore o di un ADMIN (AC79, D21). Albero di lavoro non committato sopra `f440a0d`. Due verificatori su Haiku, divisi questa volta per lato: v1 server (T4.5 e l'eliminazione), v2 interfaccia (T4.6 e il cestino).
+
+**DO NOT SHIP** su entrambi. Chiusi il BLOCKER e i tre MAJOR della prima verifica: mutanti uccisi per lock in creazione ed eliminazione, controllo dell'autore, eccezione ADMIN, annuncio senza chiave, nota in attesa, attesa del rinfresco. Nuovi MAJOR:
+
+| Severity | Verifier | Location | Problem | Required fix / evidence | Durable? |
+|----------|----------|----------|---------|-------------------------|----------|
+| MAJOR | v1 — AC77 | `createCustomerChat.ts:32-39` | Spostando la lettura di `chat_id` prima di `lockCustomer` i 32 test restano verdi: il trigger prova che il lock c'è quando si scrive, non che precede la lettura | Test che fallisce con l'ordine invertito (per esempio le istruzioni SQL della transazione, `FOR UPDATE` prima della lettura), o il limite accettato e scritto | no |
+| MAJOR | v1 — AC79 | `deleteCustomerMessage.ts:67-71` | Togliendo il controllo `deleted.length === 0` sotto il lock i test restano verdi; senza, una seconda eliminazione ripulirebbe la chat e potrebbe scollegare quella appena avviata da un collega | Come sopra | no |
+| MAJOR | v2 — AC78 | `CustomerChat.tsx:161-177`, `296`; `CustomerChatSection.tsx:13` | Eliminata l'ultima nota, il server cancella la chat e la pagina mostra "Avvia una chat": la regione di stato e l'effetto del focus spariscono con la chat. Nessun "Nota eliminata", focus sul body (riprodotto in una copia) | Regione di stato e focus in un componente che resta (la sezione); focus su "Avvia una chat"; test col cambio a `CustomerNewChat` | no |
+| MAJOR | v2 — AC78 | `CustomerChat.tsx:241-246` | Ogni cambio dell'ultima riga riporta in fondo anche chi ha scorso in su: la nota di un collega arrivata con un rinfresco, o l'eliminazione della propria ultima nota (riprodotto) | Scorrere al cambio dell'ultima riga solo per un invio proprio o se la lista è già in fondo; due test | no |
+| MAJOR | v2 — AC78 | `CustomerChat.tsx:135-141` | Due eliminazioni in volo: `deletedRef` ha un posto solo e la prima non è annunciata (riprodotto). Era MINOR nella prima verifica | Eliminazioni in volo per id; test | no |
+| MINOR | v1 | `chat/POST/index.ts:17-59` (preesistente) | `insertMessage` e `addOperatorToChat` scrivono senza lock; `messages.chat_id` senza chiave esterna: un invio che incrocia l'eliminazione dell'ultima nota può lasciare un messaggio senza chat (finestra stretta: `addOperatorToChat` prima fallisce per la chiave esterna) | Invio sotto `lockCustomer`, solo se `chat_id` è ancora quella chat | sì |
+| MINOR | v1 | `src/server/effect/db.ts:151-165` | Il commento di `lockCustomer` parla solo di task e alert | Aggiungere la chat | no |
+| MINOR | v1 | `deleteCustomerMessage.ts:67` | Il filtro su `chatId` nella cancellazione è difensivo e non protetto da test | Facoltativo | no |
+| MINOR | v2 | `CustomerChat.tsx:138-173` | L'indice del focus conta le note eliminabili, il DOM solo i cestini disegnati: una nota con il nome non ancora caricato (Skeleton) sposta il focus sul campo | Salvare i cestini vicini all'avvio e usare quello ancora collegato | no |
+| MINOR | v1, v2 (già nella prima verifica) | `CustomerChat.tsx:44` | `focusOnStart` resta impostato se l'operatore esce durante l'avvio | Azzerarlo allo smontaggio | no |
+| MINOR | v2 (già nella prima verifica) | `_test/CustomerChat.test.tsx` | Il test del cestino da tastiera controlla le classi, non il Tab | Prova nel browser o test con `user.tab()` | no |
+| NIT | v2 | `CustomerChat.tsx:177` | Warning `exhaustive-deps` su `setAnnouncement`, introdotto da T4.7 | Corretto dall'orchestratore dopo la verifica: `next lint` senza warning, 86 test di `notes` verdi | no |
+| NIT | v1 | `createCustomerChat.ts:44` | `created!.id` | `Effect.dieMessage` | no |
+
+Passato (evidenze dei verificatori): autorizzazione dall'operatore della sessione, input solo `{ id }`; FORBIDDEN e NOT_FOUND mappati in un punto; mutanti M1–M7 e M10 uccisi (lock, autore, ADMIN, chat esistente, pulizia della chat); due eliminazioni di fila annunciate; cestino solo all'autore o a un ADMIN; attesa di "Avvia una chat" fino alla pagina aggiornata, coerente con `router.refresh` di Next 14.2.5 in una transizione; `ResizeObserver` senza perdite. Gate: `tsc --noEmit` e i test di chat e `notes` verdi.
+
+### Terza verifica (dopo i cinque MAJOR e la regola dell'autore)
+
+Correzioni (PLAN.md, log di T4.7): `beforeNextLockOf` per l'ordine sotto il lock, con due test; `CustomerNotes` tiene la regione di stato e le eliminazioni quando la chat lascia il posto ad "Avvia una chat"; scroll solo se la lista è in fondo, l'invio riporta sempre in fondo. Poi, deciso dall'utente: un ADMIN non elimina le note degli altri (AC79 e D21 riscritti). Albero di lavoro non committato sopra `f440a0d`. Stessi due verificatori su Haiku: v1 server, v2 interfaccia, mutanti su copie nella scratchpad.
+
+**DO NOT SHIP** (v1 DO NOT SHIP, v2 SHIP con due MAJOR di copertura). I cinque MAJOR della seconda verifica sono chiusi: ognuno ha un mutante ucciso (v1: lettura prima del lock, ricontrollo tolto, eccezione ADMIN rimessa; v2: `pinnedRef` ignorato, invio senza ritorno in fondo, eliminazioni non accodate). Le probe di v2 sul codice reale confermano lo stesso nodo di stato, "Nota eliminata" e il focus su "Avvia una chat". Nessun difetto nel codice di produzione: i nuovi MAJOR riguardano solo test che mancano.
+
+| Severity | Verifier | Location | Problem | Required fix / evidence | Durable? |
+|----------|----------|----------|---------|-------------------------|----------|
+| MAJOR | v1 — AC77, AC79 | `src/server/effect/db.ts:125` | L'isolamento `read committed` di `transaction()` non è controllato da nessun test: il mutante `repeatable read` lascia verdi i 36 test, perché `beforeNextLockOf` scrive nella stessa transazione. Con `repeatable read` il secondo "Avvia una chat" darebbe un errore di serializzazione invece della chat del collega. Nota dell'orchestratore: falso positivo. Il test c'è già, `src/server/effect/_test/db.db.test.ts:132` ("gira in read committed anche se il database ha un altro livello di default"), fuori dai quattro file eseguiti dal verificatore; con il mutante `repeatable read` diventa rosso | Nessuno | no |
+| MAJOR | v2 — AC78 | `CustomerChatSection.tsx:26` | Nessun test monta `CustomerChatSection`: `renderChat` mette da sé `CustomerNotes` sopra i due rami. Il mutante con la `key` legata alla presenza della chat lascia verdi gli 80 test, mentre una probe che rende la sezione vera perde il nodo di stato | Test che rende `CustomerChatSection` (con `@/trpc/server` finto) e passa dalla chat ad "Avvia una chat" | no |
+| MAJOR | v2 — AC78 | `CustomerChat.tsx:118-119` | La guardia che sposta il focus solo da body o da un nodo scollegato non è coperta: senza, la suite resta verde, e chi è passato al campo durante l'eliminazione si ritrova sul cestino (probe) | Test: clic nel campo durante l'attesa, poi il focus resta nel campo | no |
+| MINOR | v1 | `deleteMessage.db.test.ts:124-126` | Dopo `NOT_FOUND` le scritture del collega vanno in rollback con la transazione: il test non può controllare lo stato finale | Dirlo nel test (il commento dell'helper lo dice già) | no |
+| MINOR | v1 | `src/test/failpoint.ts:193-197` | Se la query del lock cambia forma, `beforeNextLockOf` non scatta e il test fallisce con un messaggio fuorviante | In `onTestFinished`, fallire se l'helper non è scattato | no |
+| MINOR | v2 | `CustomerChat.tsx:116` | "Note eliminate" (plurale) non è asserito: il mutante che lo toglie passa | Asserirlo | no |
+| MINOR | v2 | `CustomerChat.tsx:121-122` | Con due eliminazioni in volo il focus segue l'ultima eliminata (`gone.at(-1)`); il mutante `gone[0]` passa | Test del focus con due eliminazioni in volo | no |
+| NIT | v1 | `_actions/deleteMessage.ts:25` | `revalidatePath` usa il `customerId` del client | Effetto solo sulla cache | no |
+| NIT | v2 | `CustomerChat.tsx:228-236` | Vicini senza cestino (note di colleghi): il focus va al campo | Scelta da documentare | no |
+| NIT | v2 | `CustomerChat.tsx:170`, `294-299` | Nota salvata disegnata prima della risposta: per un attimo la riga "Invio…" e la nota insieme (lettura del codice) | Facoltativo | no |
+
+Passato: i cinque MAJOR della seconda verifica; autore confrontato con l'operatore della sessione, ADMIN compreso; ordine delle cancellazioni compatibile con le chiavi esterne; spy di `beforeNextLockOf` che non passano al test successivo; regex del lock senza falsi positivi; `deletions` azzerate al cambio di cliente dalla `key`; contesto memoizzato, nessun annuncio doppio in StrictMode; classi del cestino compilate. Gate: `tsc --noEmit` e `next lint` puliti, 36 test del server e 91 di `notes` verdi.
+
+### Quarta verifica (dopo i test della terza)
+
+Test aggiunti dopo la terza verifica (PLAN.md, log di T4.7): sezione vera, plurale, focus con due eliminazioni, guardia del focus, `beforeNextLockOf` che fallisce se non scatta. Stessi due verificatori su Haiku; v1 ha eseguito anche `db.db.test.ts`.
+
+**DO NOT SHIP** (v1 SHIP, v2 DO NOT SHIP con un BLOCKER). Tutti i mutanti richiesti sono uccisi: v1 lettura prima del lock, ricontrollo, eccezione ADMIN, `repeatable read`, lock in un'altra forma, più lock tolti e chat cancellata con note rimaste; v2 `key` legata alla chat, guardia del focus, `gone[0]`, scroll, `shown([])`, `focusOnStart`.
+
+| Severity | Verifier | Location | Problem | Required fix / evidence | Durable? |
+|----------|----------|----------|---------|-------------------------|----------|
+| BLOCKER | v2 — AC78 | `CustomerChat.tsx:545`, `369` | L'attesa dell'eliminazione (`deleting`) è nello stato di `CustomerNote`, dentro `AccordionContent`, che Radix smonta alla chiusura. Chiudendo e riaprendo "Note" durante la richiesta il cestino torna attivo (`aria-busy="false"`, sonda), e un secondo clic manda una seconda eliminazione: se la prima è riuscita, la seconda dà NOT_FOUND e "Nota non eliminata, riprova". Nota dell'orchestratore: confermato leggendo il codice; nessun dato perso, il caso richiede di chiudere e riaprire la sezione mentre la richiesta è in volo | Tenere gli id in eliminazione in `CustomerNotes` (stato) e leggerli da lì; test "chiudi e riapri durante l'eliminazione" | no |
+| MINOR | v1 | `chat/POST/index.ts:43` (preesistente) | `addOperatorToChat` scrive `chat_to_operator` senza `lockCustomer`: viola la regola di `lockRule.ts`; la chiave esterna evita dati rotti, una delle due operazioni dà 500 | Già nella seconda verifica (invio senza lock) | sì |
+| MINOR | v1 | `src/test/failpoint.ts:177` | Il commento dice che il test vede quello che avrebbe scritto un collega concorrente, ma le scritture sono nella stessa transazione: i test di concorrenza passano anche in `repeatable read` (lo prende solo `db.db.test.ts:132`) | Precisare il commento, o uno scrittore su un'altra connessione | no |
+| MINOR | v2 | `CustomerChatSection.tsx:26` | Senza `key={customerId}` i test restano verdi; le sonde mostrano "Nota eliminata" e la nota in invio sul cliente nuovo | Test con `rerender` su un altro cliente | no |
+| MINOR | v2 | `CustomerChat.tsx:110` | Se `deleteFailed` non togliesse la nota dal registro, nessun test fallirebbe; la nota tolta poi da un collega verrebbe annunciata come eliminata | Caso nel test del fallimento | no |
+| MINOR | v2 | `CustomerChat.tsx:555-560` | "Nota non eliminata, riprova" anche se la nota è già sparita (sonda) | Nessun toast se la risposta è NOT_FOUND | no |
+| NIT | v1 | `createNewCustomerChat.db.test.ts` | Con il lock in un'altra forma la prima asserzione che fallisce è "expected 1000 to be 900"; il messaggio chiaro arriva dopo | — | no |
+| NIT | v2 | `_test/CustomerChat.test.tsx:88`, `163` | I commenti parlano della scheda contatto, ma `CustomerChatSection` è solo nella pagina del cliente | Correggere i commenti | no |
+
+Passato: autorizzazione dalla sessione, input solo `{ id }`; `DbError` → INTERNAL_SERVER_ERROR; nessun altro percorso cancella note o chat; StrictMode senza annunci o invii doppi (sonde); AC79 coperto. Gate: `tsc --noEmit` e `next lint` puliti, 402 test di server e `notes` verdi (v1), 94 di `notes` (v2).
+
+### Quinta verifica (dopo il BLOCKER della quarta)
+
+Correzioni dopo la quarta verifica (PLAN.md, log di T4.7): note in eliminazione nello stato di `CustomerNotes`; NOT_FOUND diventa `{ ok: false, gone: true }`, senza toast; test per chiudi e riapri, nota già eliminata, registro dopo un fallimento, cambio di cliente; commenti corretti. Stessi due verificatori su Haiku, mutanti su una copia nella scratchpad.
+
+**DO NOT SHIP** (v1 SHIP, v2 DO NOT SHIP con un MAJOR, nessun BLOCKER). Il BLOCKER della quarta è chiuso: chiudendo e riaprendo "Note" l'attesa resta e un secondo clic non parte (mutante con lo stato nella nota ucciso). Mutanti: v1 16 uccisi su 17 con i test del repo (il 17°, transazione tolta, cade solo per l'helper del lock); v2 15 su 17.
+
+| Severity | Verifier | Location | Problem | Required fix / evidence | Durable? |
+|----------|----------|----------|---------|-------------------------|----------|
+| MAJOR | v2 — AC78 | `CustomerChatSection.tsx:26`, `CustomerChat.tsx:101` | Le note in eliminazione stanno nel `CustomerNotes` con `key={customerId}`: aprendo un altro cliente e tornando prima della risposta, la nota ha di nuovo il cestino normale (sonda: `aria-busy="false"`). Un secondo clic manda una seconda eliminazione, che ora risponde `gone`: niente toast, nessun dato perso. Nota dell'orchestratore: lo stesso succede uscendo dalla pagina del cliente e tornando, perché ogni stato del client si perde; serve uno store per cliente fuori dal componente, come per la bozza (D18) | Note in eliminazione per cliente sopra `CustomerNotes` (store del modulo); test "elimina, cambia cliente, torna" | no |
+| MAJOR | v1 — AC79 | `deleteCustomerMessage.ts:43`, `deleteMessage.db.test.ts` | Nessun test vede il rollback: togliendo la transazione cadono solo i test dell'helper del lock. Oggi il rollback funziona (sonda con `failNextUpdateOf(customers)`: INTERNAL, nota e chat intatte) | Test con un errore sull'aggiornamento del cliente durante l'eliminazione dell'ultima nota: nota, chat, `chat_to_operator` e `customers.chat_id` invariati | no |
+| MINOR | v1 | `deleteMessage.test.ts:36-62` | La forma di NOT_FOUND è costruita a mano, con `@/trpc/server` simulato; manca il caso INTERNAL che rifiuta. La forma è quella vera (sonda col caller reale) | Caso INTERNAL; eventualmente il test col caller reale | no |
+| MINOR | v1 | `chat/DELETE/index.ts:14-21` | Tolto lo scollegamento di `practices.chat_id`: se una pratica punta alla chat, l'eliminazione dell'ultima nota dà INTERNAL e tiene la nota. D21 lo giustifica con un controllo su dev e prod | Già in D21 | no |
+| MINOR | v2 | `CustomerChat.tsx:123-128` | Con il focus su `body` (clic su uno spazio vuoto dopo il cestino) il focus va comunque al cestino dopo | Ricordare in `deleteStart` se il focus era sul cestino | no |
+| MINOR | v2 | `CustomerChat.tsx:147`, `486` | `focusOnStart` resta se l'operatore esce dopo un avvio riuscito prima del rinfresco: la prossima apertura di quel cliente mette il focus nel campo (già nella prima verifica) | Azzerarlo quando `CustomerNewChat` si smonta | no |
+| MINOR | v2 | `CustomerChat.tsx:221-231` | Un'eliminazione fallita dopo il passaggio a un altro cliente mostra "Nota non eliminata, riprova" sulla pagina del nuovo cliente | Toast solo se il cliente a schermo è quello dell'eliminazione | no |
+| MINOR | v2 | `CustomerChat.tsx:543`, `211-212` | Nessun test protegge il `memo` di `CustomerNote` né l'ordine "precedente più vicina" (mutanti sopravvissuti) | Test con contatore dei render; test con tre note | no |
+| NIT | v1 | `failpoint.ts:180`, `deleteCustomerMessage.ts` | Il commento dice "`read committed` is tested", ma il test controlla il livello impostato; "locked first" vale solo per le scritture | Riformulare | no |
+| NIT | v1 | `chat/DELETE/index.ts:18-21` | `CustomerMissing` diventa NOT_FOUND e quindi `gone` (in pratica irraggiungibile) | Accettare o mapparlo a parte | no |
+| NIT | v2 | `CustomerChat.test.tsx:1449`, `CustomerChat.tsx:124` | Nessun test StrictMode su invio ed eliminazione (comportamento corretto in sonda); `isConnected` senza effetto | Test; togliere la condizione | no |
+
+Nota di v1, già registrata: dopo l'eliminazione dell'ultima nota, un collega con la chat ancora aperta può inviare una nota in una chat cancellata (`insertMessage` senza lock né controllo della chat); la nota resta invisibile. Rende raggiungibile il debito "invio senza lock".
+
+Passato: forma dell'errore del caller reale; FORBIDDEN, INTERNAL e `DbError` rifiutano senza rinfrescare; autore senza eccezione ADMIN, lock prima dell'eliminazione, ricontrollo, pulizia dell'ultima nota, lock di "Avvia una chat" (mutanti uccisi); `gone` giusto rispetto ad AC78; chiudi e riapri; registro ripulito su successo, fallimento e nota sparita; `key` sul cliente; annunci in nodi nuovi, guardie del focus, scroll. Gate: `next lint` e `tsc --noEmit` puliti; 64 test di server e azioni (v1), 100 di `notes` (v2).
+
+### Sesta verifica (dopo i MAJOR e i MINOR della quinta)
+
+Correzioni dopo la quinta verifica (PLAN.md, log di T4.7): store per cliente delle note in eliminazione (`deletingNotes.ts`); focus spostato solo se è rimasto sul cestino; toast solo con la chat del cliente a schermo; `focusOnStart` azzerato all'uscita; test di rollback, INTERNAL, `memo`, precedente più vicina, StrictMode, uscita. Stessi due verificatori su Haiku, mutanti su copie nella scratchpad.
+
+**DO NOT SHIP** (v1 SHIP, v2 DO NOT SHIP con un MAJOR, nessun BLOCKER). Mutanti: v1 20 uccisi su 21 (sopravvive solo `updatedAt` esplicito, ridondante con `$onUpdate`); v2 25 su 26.
+
+| Severity | Verifier | Location | Problem | Required fix / evidence | Durable? |
+|----------|----------|----------|---------|-------------------------|----------|
+| MAJOR | v2 — AC78 | `deletingNotes.ts:50`, `CustomerChat.tsx:117-118`, test `CustomerChat.test.tsx:1014` | AC78 dice "dopo un'eliminazione il focus passa al cestino della nota accanto", senza condizioni. Il codice lo sposta solo se al clic il browser aveva dato il focus al cestino: un clic che non lo dà (Safari su macOS e iOS, alcune tecnologie assistive) lascia il focus su `body`, e il test "Safari" fissa proprio questo. Nota dell'orchestratore: la quinta verifica chiedeva di non spostare il focus da `body`; le due letture si conciliano prendendo il cestino dal clic, non da `activeElement` | Il cestino dal clic; test "Safari" rovesciato | no |
+| MINOR | v2 | `CustomerChat.tsx:117-118` | Conta solo l'ultima eliminazione sparita: se quella con il focus non è l'ultima, il focus resta su `body` (sonda) | Usare l'eliminazione col focus; test | no |
+| MINOR | v2 | `CustomerChat.tsx:249` | Il cestino accanto può essere di una nota ancora in eliminazione: il focus ci va, e quando sparisce anche lei finisce su `body` (sonda) | Saltare le note in eliminazione; test | no |
+| MINOR | v2 | `CustomerChat.tsx:249` | Nessun test del ripiego sul campo quando non resta un cestino dell'operatore (mutante sopravvissuto; comportamento giusto in sonda) | Test con la nota di un collega e la propria | no |
+| MINOR | v2 | `CustomerChat.test.tsx:719-743`, `1032-1047` | I test con due eliminazioni insieme non controllano il focus | Asserzioni sul focus | no |
+| MINOR | v2 | `deleteMessage.ts:25-37` | Un errore di rete dopo il commit dà "Nota non eliminata, riprova" e la pagina resta vecchia finché non si rinfresca; un nuovo clic risponde `gone` e la toglie | Rischio accettato accanto a D18 (niente `router.refresh()` dopo un fallimento, finding 31) | no |
+| MINOR | v1 | `deleteMessage.ts:43-46` | `instanceof` fra classi di `@trpc/client` e `@trpc/server`: provato nei test, non in una build di produzione | Controllo su una preview: eliminare una nota già eliminata | no |
+| NIT | v1 | `deleteCustomerMessage.ts:26-31`, `89`; `lockRule.ts:94-101` | Docstring poco chiara sul perché del lock; `updatedAt` esplicito ridondante; "adding or removing" invece di insert, update, delete | Riformulare | no |
+| NIT | v2 | `CustomerChat.test.tsx:1151`, `deletingNotes.ts`, `CustomerChat.tsx:224-252` | Test del cestino da tastiera solo sulle classi; store per cliente e non per operatore (svuotato all'uscita); "Nota eliminata" annunciata tornando sul cliente; fallimento silenzioso su un altro cliente | Test con `user.tab()`; il resto da accettare | no |
+
+Passato: v1 autore senza eccezione ADMIN, lock prima di ogni scrittura, ricontrollo, pulizia dell'ultima nota, `read committed`, rollback (mutante senza transazione ucciso dal test nuovo), solo NOT_FOUND diventa `gone`. v2 store senza perdite (iscrizioni tolte, istantanee stabili), nessuna attesa bloccata, uscita che svuota, guardie del focus (clic altrove, Tab, secondo clic), toast e ritorno al cliente, `focusOnStart` col cambio vero, `memo`, StrictMode, annunci, scroll. Gate: `next lint` e `tsc --noEmit` puliti; 64 test (v1), 115 (v2).
+
+### Coverage
+
+- Passaggi eseguiti: 2/2, su Haiku per scelta dell'utente. Niente `review-classifier` e niente UI pass (scelta dell'utente): il comportamento nel browser è stato provato a mano prima del commit (PLAN.md, validation di T4.5 e T4.6).
+- v1 ha lavorato su una copia di `b5ac1a7` nella scratchpad (`git archive`), con sonde e mutanti: chiamate parallele, blocco tolto, trigger che fa fallire `chat_to_operator` (rollback corretto), fine anticipata dell'attesa.
+- v2 ha lavorato sull'albero a `f440a0d`, senza sonde nel repo; ha compilato le classi Tailwind in una build di prova.
+- Gate rieseguiti: `next lint` e `tsc --noEmit` puliti; i test di `src/server/api/routers/chat` e `src/components/custom/notes` verdi (v1: 64; v2: 79 in `notes`). Nessun accesso a un DB vero, nessuno script `NODE_ENV=production`.
+
+### Findings
+
+| Severity | Concern (verifier) | Location | Problem | Required fix / evidence | Durable? |
+|----------|--------------------|----------|---------|-------------------------|----------|
+| BLOCKER | v2 — AC78, annunci | `CustomerChat.tsx:146` | Due eliminazioni di fila: la stessa stringa, nessun cambio nel DOM, nessun annuncio della seconda | Svuotare l'annuncio prima di impostarlo (o un nodo con chiave); test con due eliminazioni di fila | no |
+| MAJOR | v1 — AC77, due operatori | `createCustomerChat.ts:32`, `createNewCustomerChat.db.test.ts` | Il mutante senza `lockCustomer` lascia verdi tutti i test: PGlite serializza le transazioni | Prova con due sessioni su un Postgres vero (o una prova documentata sul DB di sviluppo) | no |
+| MAJOR | v1 — AC77, attesa fino alla chat | `CustomerChat.tsx:278`, `_test/CustomerChat.test.tsx` | Il mutante che chiude l'attesa alla risposta del server (senza aspettare il rinfresco) lascia verdi i 52 test: `router.refresh` è un `vi.fn()` | Test che controlla `aria-busy` dopo la risposta fino alla fine della transizione; `useSavingUntilRefreshed` non ha test propri | no |
+| MAJOR | v2 — nota fantasma | `CustomerChat.tsx:186-191`, `259-263` | Se un rinfresco porta la nota salvata prima della risposta dell'action, l'id arriva dopo e l'effetto su `messages` non riparte; eliminando poi la nota, la riga in attesa ricompare senza cestino fino al ricaricamento | Quando arriva l'id, togliere l'elemento se `messagesRef.current` lo contiene già; test con il rinfresco prima della risposta. Nota dell'orchestratore: l'action rinfresca la pagina da sé, quindi di solito un nuovo `messages` segue l'id; serve un rinfresco arrivato da un'altra parte durante l'invio (un'eliminazione) e, dopo, nessun altro rinfresco. Plausibile, non riprodotto | no |
+| MINOR | v2 — eliminazioni sovrapposte | `CustomerChat.tsx:121-132` | `deletedRef` ha un posto solo: la seconda eliminazione sovrascrive la prima, che non viene annunciata né sposta il focus | Una mappa per id; test con due eliminazioni in volo | no |
+| MINOR | v2 — focus e scroll | `CustomerChat.tsx:157` | `focus()` senza `preventScroll` può spostare la lista scorsa in su | `focus({ preventScroll: true })` | no |
+| MINOR | v2 — SSR | `CustomerChat.tsx:220` | `useLayoutEffect` nel render del server: avviso in sviluppo | Effetto di layout isomorfo | no |
+| MINOR | v2 — test | `_test/CustomerChat.test.tsx:426-437`, `534-540` | "Carica altri" non cambia `messages`, quindi non può fallire; il test del cestino controlla le classi, non la tastiera | Rirender con note più vecchie; `user.tab()` fino al cestino ed Enter | no |
+| MINOR | v2 — test | `_test/CustomerChat.test.tsx` | Mancano: focus al campo dopo l'ultima nota eliminata, `disconnect()` all'uscita, eliminazioni ripetute | Test | no |
+| MINOR | v2 — accessibilità | `CustomerChat.tsx:507` | Ogni cestino si chiama "Elimina nota", senza dire quale | Data o autore nel nome, o `aria-describedby` sul testo | no |
+| MINOR | v1 — focus | `CustomerChat.tsx:56`, `277` | `focusOnStart` resta impostato se l'operatore esce durante un avvio riuscito: la prossima apertura di quel cliente prende il focus | Azzerarlo quando `CustomerNewChat` si smonta senza chat | no |
+| MINOR | v1 — test | `_test/CustomerChat.test.tsx` | `focusOnStart` non azzerato in `beforeEach`: il test "una chat che c'era già non prende il focus" passa per l'ordine dei test | Azzeramento per i test o flag per montaggio | no |
+| MINOR | v1 — atomicità | `createNewCustomerChat.db.test.ts` | Rollback corretto (sonda con trigger), ma nessun test nel repo | Committare il test col trigger | no |
+| MINOR | v1 — eliminazione dell'ultima nota | `chat/DELETE/index.ts:25-70` (preesistente) | Cancella la chat e azzera `chat_id` senza `lockCustomer`: chi avvia nello stesso momento riceve una chat poi cancellata | `lockCustomer` anche lì, o tech-debt | sì |
+| NIT | v1 | `createCustomerChat.ts:44` | `created!.id` contro la regola di AGENTS.md | Errore tipizzato | no |
+| NIT | v1 | deploy | Una scheda col bundle vecchio chiama l'action rimossa: solo `console.error` | Transitorio | no |
+| NIT | v2 | `CustomerChat.tsx:120` | `messagesRef` scritto nel render | Scriverlo in un effetto di layout | no |
+| NIT | v2 (preesistente) | `chat/DELETE/index.ts:18-27` | La procedura ignora `operatorId`: ogni operatore può eliminare ogni nota per id | Tech-debt | sì |
+
+### What passed
+
+| Concern (verifier) | Evidence |
+|--------------------|----------|
+| v1 — T4.5 / AC77 | Seconda chiamata → stessa chat, una riga; cliente inesistente → `NOT_FOUND`, nessuna riga; `runTrpc` mappa `CustomerMissing` e `DbError` in un punto; `FOR UPDATE` e la `SELECT` dopo, in READ COMMITTED, danno al secondo la chat del primo; due chiamate parallele in PGlite → una chat; rollback con il trigger; mutanti uccisi: guardia del doppio clic, focus azzerato al fallimento, rinfresco al successo, focus consumato; nessun chiamante rimasto di `chat.createNewChat` o `createChatAction`; spinner esistente con `motion-reduce:animate-none` |
+| v2 — T4.6 / AC78 | "Invio…" al posto della data e spinner su "Commenta"; doppio invio ignorato da `sendingRef`; lista in fondo all'apertura e dopo l'invio, scroll istantaneo, mai `scrollIntoView`; ordine crescente dal server; eliminazione con spinner, un clic solo, nessuna rimozione anticipata; rifiuto, `{ ok: false }` e `undefined` → toast di 8000 ms e cestino di nuovo attivo; `deleteMessageAction` con la stessa firma; classi del cestino compilate; focus al cestino dopo, poi al precedente, poi al campo; `ResizeObserver` scollegato e ricreato |
+
+### Per-concern verdicts
+
+| Pass | Concern | Complexity / model | Verdict | Strongest objection |
+|------|---------|--------------------|---------|---------------------|
+| v1 (sesta) | Server: creazione ed eliminazione (AC77, AC79) | low / Haiku | SHIP | `instanceof` non provato in una build di produzione |
+| v2 (sesta) | Interfaccia: attese, cestino, annunci (AC77–AC79) | low / Haiku | DO NOT SHIP | Focus non spostato se il clic non ha dato il focus al cestino |
+| v1 (quinta) | Server: creazione ed eliminazione (AC77, AC79) | low / Haiku | SHIP | Nessun test vede il rollback dell'eliminazione |
+| v2 (quinta) | Interfaccia: attese, cestino, annunci (AC77–AC79) | low / Haiku | DO NOT SHIP | Attesa persa cambiando cliente e tornando durante l'eliminazione |
+| v1 (quarta) | Server: creazione ed eliminazione (AC77, AC79) | low / Haiku | SHIP | `addOperatorToChat` senza lock (preesistente) |
+| v2 (quarta) | Interfaccia: attese, cestino, annunci (AC77–AC79) | low / Haiku | DO NOT SHIP | Attesa dell'eliminazione persa chiudendo e riaprendo "Note" |
+| v1 (terza) | Server: creazione ed eliminazione (AC77, AC79) | low / Haiku | DO NOT SHIP | Isolamento `read committed` non controllato dai test |
+| v2 (terza) | Interfaccia: attese, cestino, annunci (AC77–AC79) | low / Haiku | SHIP | `CustomerChatSection` e guardia del focus senza test |
+| v1 (seconda) | Server: creazione ed eliminazione (AC77, AC79) | low / Haiku | DO NOT SHIP | Ordine lock-lettura e ricontrollo sotto lock non protetti dai test |
+| v2 (seconda) | Interfaccia: attese, cestino, annunci (AC77–AC79) | low / Haiku | DO NOT SHIP | Eliminata l'ultima nota, nessun annuncio e focus perso |
+| v1 | "Avvia una chat" (AC77) | low / Haiku | DO NOT SHIP | Il blocco del cliente non è osservato da nessun test |
+| v2 | Attesa di invio ed eliminazione, scroll (AC78) | low / Haiku | DO NOT SHIP | Seconda eliminazione di fila senza annuncio |
+
+### Suggested manual validation
+
+`reviewImpact: medium`, facoltativa:
+1. **Due operatori.** Due browser con due operatori sullo stesso cliente senza chat, "Avvia una chat" quasi insieme: una sola chat (query sulle orfane invariata).
+2. **Lettore di schermo.** VoiceOver, due note eliminate di fila: si sente "Nota eliminata" due volte (oggi la seconda no).
+
+### Acceptance criteria check (case B)
+
+| Criterio | Esito | Evidenza |
+|---|---|---|
+| AC77 | Met (quarta verifica) | Quarta verifica: ordine sotto il lock e isolamento protetti dai test. Terza verifica: ordine lock-lettura protetto da test; l'isolamento `read committed` no. v1: logica corretta e provata in sonde; il blocco e l'attesa fino al rinfresco non sono osservati dai test committati |
+| AC78 | Not met (sesta verifica) | Sesta verifica: attesa sopravvive al cambio di cliente; il focus passa al cestino accanto solo se il clic gli aveva dato il focus. Quinta verifica: chiudi e riapri chiuso; cambiando cliente e tornando durante l'eliminazione l'attesa sparisce (un secondo clic risponde `gone`, senza errore). Quarta verifica: chiudendo e riaprendo "Note" durante un'eliminazione l'attesa sparisce e il cestino riparte. Terza verifica: i tre MAJOR chiusi, con probe sul codice reale; mancano i test della sezione vera e della guardia del focus. Prima verifica: seconda eliminazione di fila senza annuncio (chiuso in T4.7). Seconda verifica: ultima nota eliminata senza annuncio né focus; lista riportata in fondo dopo uno scroll in su; due eliminazioni in volo, un annuncio |
+| AC79 | Met (terza verifica) | Terza verifica: solo l'autore, ADMIN compreso, mutante ucciso; ricontrollo sotto lock protetto. Seconda verifica, v1 e v2: autore o ADMIN, cestino solo a loro, 403 nel browser; il ricontrollo sotto lock non è protetto dai test |
+
+### Notes for docs-maintenance
+
+- Durevoli: invio di una nota senza lock e `messages.chat_id` senza chiave esterna (seconda verifica, v1). L'eliminazione senza lock e senza controllo dell'operatore è chiusa in T4.7. Gli altri finding sono da correggere prima del merge.

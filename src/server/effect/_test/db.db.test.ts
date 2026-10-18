@@ -16,6 +16,7 @@ import { forEachIsolated } from "@/server/effect/errorReporter"
 import { runTrpc } from "@/server/effect/trpc"
 import { migrateUpTo, resetDb, testClient, testDb } from "@/test/db"
 import { failureTag, isDefect, runServer } from "@/test/effect"
+import { failAtCommit } from "@/test/failpoint"
 import { reportedErrors } from "@/test/errorReporter"
 
 class Boom extends Data.TaggedError("Boom")<Record<never, never>> {}
@@ -70,6 +71,20 @@ describe("transaction", () => {
 
     expect(isDefect(exit)).toBe(true)
     expect(squashedMessage(exit)).toBe("kaboom")
+    expect(await testDb.select().from(users)).toEqual([])
+  })
+
+  it("se il programma scrive e poi si interrompe, non resta nessuna scrittura e il chiamante riceve un'interruzione", async () => {
+    const exit = await runServer(
+      transaction(
+        Effect.gen(function* () {
+          yield* insertUser("u1")
+          return yield* Effect.interrupt
+        })
+      )
+    )
+
+    expect(Exit.isInterrupted(exit)).toBe(true)
     expect(await testDb.select().from(users)).toEqual([])
   })
 
@@ -134,6 +149,20 @@ describe("transaction", () => {
     } finally {
       await testClient.exec(`RESET default_transaction_isolation`)
     }
+  })
+})
+
+describe("transaction al COMMIT", () => {
+  it("un COMMIT che fallisce per un vincolo differito arriva al chiamante come DbError con il codice SQLSTATE, e non resta nessuna scrittura", async () => {
+    await failAtCommit(users)
+
+    const exit = await runServer(transaction(insertUser("u1")))
+
+    expect(failureTag(exit)).toBe("DbError")
+    expect(Exit.isFailure(exit) && Cause.squash(exit.cause)).toMatchObject({
+      code: "P0001",
+    })
+    expect(await testDb.select().from(users)).toEqual([])
   })
 })
 

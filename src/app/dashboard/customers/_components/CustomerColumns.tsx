@@ -17,31 +17,32 @@ import { type ColumnDef } from "@tanstack/react-table"
 import React, { useCallback } from "react"
 import { cn, formatDateAsDMY } from "@/lib/utils"
 import { SortableHeader } from "@/components/custom/table/TableHeaders"
-import { Badge } from "@/components/ui/badge"
-import { cva } from "class-variance-authority"
 import { handleCustomerBlackList } from "../_actions/handleCustomerBlackList"
-import {
-  type TaskCategory,
-  type Customer,
-  type Task,
-} from "@/lib/types/schemas"
+import { type Customer, type Task } from "@/lib/types/schemas"
 
 import { type TaskStatus } from "@/lib/types/schemas"
-import { taskStatus } from "@/server/db/schema/task"
-import { getTaskStatusCategory } from "../_utils"
-import { useOptimistic } from "react"
-import { taskStatusAction } from "../_actions/taskStatusAction"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover"
 import { PlusCircleIcon } from "lucide-react"
-import { useToast } from "@/components/ui/use-toast"
-import { useUserPreferenceContext } from "@/store/context/useUserPreferenceContext"
-import { ToastAction } from "@/components/ui/toast"
 import { api } from "@/trpc/react"
 import { PriorityBadge } from "@/components/custom/badge/priority"
+import { TaskStatusBadge } from "@/components/custom/badge/TaskStatusBadge"
+import { LoadingSpinner } from "@/components/custom/loading-spinner"
+import { AlertCloseConfirmDialog } from "@/components/custom/contact/AlertCloseConfirmDialog"
+import { ContactStateSelect } from "@/components/custom/contact/ContactStateSelect"
+import {
+  isUnclaimed,
+  ReadOnlyReason,
+} from "@/components/custom/contact/ReadOnlyReason"
+import {
+  type PendingAlert,
+  useContactMutationFeedback,
+} from "@/components/custom/contact/useContactMutationFeedback"
+import { useActor } from "@/components/custom/contact/useActor"
+import { useSavingUntilRefreshed } from "@/components/custom/contact/useSavingUntilRefreshed"
+import { useRowFocusAfterSave } from "@/components/custom/contact/useRowFocusAfterSave"
+import {
+  canCreateContact,
+  contactEditability,
+} from "@/lib/domain/contact/permissions"
 
 export type CustomerColumnSelectedProps = {
   id: string | null
@@ -66,7 +67,14 @@ export type CustomerColumnSelectedProps = {
     surname: string | null
   } | null
   activeTasks: number | null
-  tasks: Task | null
+  /** The active contact; `getAllCustomers` gives `{}` when there is none. */
+  tasks:
+    | (Task & {
+        /** The contact's operator, which can differ from the customer's. */
+        operatorName: string | null
+        operatorSurname: string | null
+      })
+    | null
 }
 
 export const CustomerColumns: ColumnDef<CustomerColumnSelectedProps>[] = [
@@ -349,7 +357,7 @@ export const CustomerColumns: ColumnDef<CustomerColumnSelectedProps>[] = [
           <StateSelector
             tasks={row.original.tasks}
             customerId={row.original.id!}
-            operatorId={row.original.operatore?.id ?? null}
+            customerOperatorId={row.original.operatore?.id ?? null}
           />
         </div>
       )
@@ -430,53 +438,6 @@ export const CustomerColumns: ColumnDef<CustomerColumnSelectedProps>[] = [
   },
 ]
 
-const activeVariants = cva("", {
-  variants: {
-    state: {
-      idle: "bg-gray-100 text-grey-800",
-      open: "bg-green-100 text-green-800",
-      close: "bg-blue-100 text-blue-800",
-    } satisfies Record<TaskCategory, string>,
-  },
-  defaultVariants: { state: "idle" },
-})
-
-type TaskBadgeProps = {
-  tasks: CustomerColumnSelectedProps["tasks"]
-}
-
-export const TaskBadge = React.memo(({ tasks }: TaskBadgeProps) => {
-  return (
-    <Badge
-      variant={"outline"}
-      size={"xs"}
-      className={activeVariants({
-        state: getTaskStatusCategory(tasks?.state ?? "nessuno"),
-      })}
-    >
-      {tasks?.state ?? "nessuno"}
-    </Badge>
-  )
-})
-
-export const TaskBadgeV2 = React.memo(({ status }: { status: TaskStatus }) => {
-  return (
-    <Badge
-      variant={"outline"}
-      size={"xs"}
-      className={activeVariants({
-        state: getTaskStatusCategory(status),
-      })}
-    >
-      {status}
-    </Badge>
-  )
-})
-
-TaskBadgeV2.displayName = "TaskBadgeV2"
-
-TaskBadge.displayName = "TaskBadge"
-
 const BlackListedDropDown: React.FC<{
   customerId: string
 }> = (props) => {
@@ -497,139 +458,168 @@ const BlackListedDropDown: React.FC<{
   )
 }
 
+type RowContact = NonNullable<CustomerColumnSelectedProps["tasks"]>
+
+/** The row's active contact, or null when the customer has none. */
+const activeContactOf = (
+  tasks: CustomerColumnSelectedProps["tasks"]
+): RowContact | null => (typeof tasks?.id === "number" ? tasks : null)
+
+/**
+ * The "Stato Chiamate" cell: the state of the active contact, through the same
+ * rules and mutations as the Contatti section (AC73). It always shows the
+ * saved value; the wait lasts until the new saved value is on screen.
+ */
 function StateSelector(props: {
   tasks: CustomerColumnSelectedProps["tasks"]
   customerId: string
-  operatorId: number | null
+  customerOperatorId: number | null
 }) {
-  const [open, setOpen] = React.useState(false)
-  const { role } = useUserPreferenceContext((state) => state)
-  const resolveAlert = api.task.resolveAlerts.useMutation()
-  const [optimisticState, setOptimisticState] = useOptimistic(
-    props.tasks?.state,
-    (_, newState: TaskStatus) => newState
-  )
-  const availableStates = React.useMemo(() => {
-    return taskStatus.filter((s) => {
-      if (optimisticState === "followup")
-        return s !== "chiamare" && s !== optimisticState
-      return s !== "followup" && s !== optimisticState
-    })
-  }, [optimisticState])
+  const actor = useActor()
+  const contact = activeContactOf(props.tasks)
+  const customer = { operatorId: props.customerOperatorId }
 
-  const { toast } = useToast()
+  const cellRef = React.useRef<HTMLDivElement>(null)
+  const triggerRef = React.useRef<HTMLButtonElement>(null)
+  const { remember, forget, settle } = useRowFocusAfterSave(cellRef)
 
-  const handleSelectChange = useCallback(
-    async (value: TaskStatus) => {
-      if (!props.operatorId)
-        return toast({
-          title: "Cliente non assegnato",
-          description: "Devi assegnare un operatore al cliente",
-          variant: "destructive",
-          duration: 5000,
-        })
-      if (role !== "ADMIN" && props.operatorId !== props.tasks?.operatorId) {
-        return toast({
-          title: "Operazione non consentita",
-          description:
-            "Puoi modificare solo i customers o pratiche che ti sono assegnati.",
-          variant: "destructive",
-          duration: 3000,
-        })
-      }
-      if (props.tasks?.state === value) return
-      if (props.tasks?.alertId) {
-        return toast({
-          title: "Richiesta Conferma",
-          description:
-            "Modificando lo stato del task verrà risolta l'alert associato",
-          variant: "info",
-          closeManually: true,
-          action: (
-            <ToastAction altText="conferma" asChild>
-              <button
-                onClick={async () => {
-                  setOptimisticState(value)
-                  setOpen(false)
-                  await resolveAlert.mutateAsync({
-                    id: props.tasks!.alertId!,
-                    source: "list",
-                  })
-                  await taskStatusAction({
-                    customerId: props.customerId,
-                    newState: value,
-                    oldState: props.tasks?.state ?? "nessuno",
-                    taskId: props.tasks?.id ?? null,
-                    operatorId: props.operatorId,
-                    isActive: true,
-                  })
-                }}
-              >
-                Conferma
-              </button>
-            </ToastAction>
-          ),
-          duration: 3000,
-        })
-      }
-      setOptimisticState(value)
-      setOpen(false)
-      await taskStatusAction({
-        customerId: props.customerId,
-        newState: value,
-        oldState: props.tasks?.state ?? "nessuno",
-        taskId: props.tasks?.id ?? null,
-        operatorId: props.operatorId,
-        isActive: true,
+  // From the call until the refreshed row is rendered
+  const { pending, start, fail, awaitRefresh, finishAfterRefresh, refresh } =
+    useSavingUntilRefreshed(settle)
+  const { onError } = useContactMutationFeedback({ refresh })
+  const changeState = api.task.changeState.useMutation()
+  const createContact = api.task.createContact.useMutation()
+
+  // The change waiting for the user to confirm closing the open alert (P10)
+  const [confirmation, setConfirmation] = React.useState<{
+    state: TaskStatus
+    alert: PendingAlert
+  } | null>(null)
+
+  const submitState = (
+    taskId: number,
+    state: TaskStatus,
+    confirmedAlertId: number | null
+  ) => {
+    remember()
+    start()
+    // `mutateAsync`: unlike the per-call callbacks of `mutate`, it settles
+    // after the row unmounted, so the toast and the refresh still run
+    changeState
+      .mutateAsync({ taskId, toState: state, source: "list", confirmedAlertId })
+      .then(finishAfterRefresh, (error) => {
+        const result = onError(error)
+        if (result) {
+          // An open alert to confirm (AC36), maybe set meanwhile by a
+          // colleague (AC37): nothing changed, the modal asks
+          fail()
+          forget()
+          setConfirmation({ state, alert: result.alert })
+          return
+        }
+        // The toast gives the reason, the refresh shows the saved value
+        awaitRefresh()
       })
-    },
-    [
-      props.operatorId,
-      props.tasks,
-      props.customerId,
-      toast,
-      role,
-      setOptimisticState,
-      resolveAlert,
-    ]
-  )
+  }
 
-  if (!optimisticState)
-    return (
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={async (e) => {
-          e.stopPropagation()
-          await handleSelectChange("chiamare")
-        }}
-      >
-        <PlusCircleIcon size={16} />
-      </Button>
-    )
-  return (
-    <Popover onOpenChange={setOpen} open={open}>
-      <PopoverTrigger asChild>
-        <Button variant="ghost">
-          <TaskBadgeV2 status={optimisticState} />
+  const create = () => {
+    if (pending) return
+    remember()
+    start()
+    createContact
+      .mutateAsync({ customerId: props.customerId, source: "list" })
+      .then(finishAfterRefresh, (error) => {
+        awaitRefresh()
+        onError(error)
+      })
+  }
+
+  const content = () => {
+    if (!contact) {
+      if (!actor || !canCreateContact(actor, customer)) return null
+      return (
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          aria-label="Crea contatto"
+          title="Crea contatto"
+          aria-busy={pending}
+          aria-disabled={pending}
+          onClick={(e) => {
+            e.stopPropagation()
+            create()
+          }}
+        >
+          {pending ? (
+            <LoadingSpinner className="h-4 w-4 motion-reduce:animate-none" />
+          ) : (
+            <PlusCircleIcon size={16} />
+          )}
         </Button>
-      </PopoverTrigger>
-      <PopoverContent>
-        <div className="bg-white">
-          {availableStates.map((state) => (
-            <div
-              className="cursor-pointer p-2 hover:bg-gray-100"
-              key={state}
-              onClick={async (e) => {
-                e.stopPropagation()
-                await handleSelectChange(state)
-              }}
-            >
-              <p>{state}</p>
-            </div>
-          ))}
+      )
+    }
+
+    // Until the signed-in user is known nothing is interactive
+    if (!actor) return <TaskStatusBadge status={contact.state ?? "nessuno"} />
+
+    const editability = contactEditability(actor, {
+      isActive: true,
+      taskOperator:
+        contact.operatorId === null
+          ? null
+          : {
+              id: contact.operatorId,
+              name: contact.operatorName,
+              surname: contact.operatorSurname,
+            },
+      customer,
+    })
+    // Read-only: the saved state stays visible. The row names no colleague:
+    // the Operatore column already does (apart from the contacts "Assegna
+    // Clienti" leaves behind, until T6.8)
+    if (editability.kind !== "editable")
+      return (
+        <div className="flex flex-col items-center gap-1">
+          <TaskStatusBadge status={contact.state ?? "nessuno"} />
+          {isUnclaimed(editability, props.customerOperatorId) ? (
+            <ReadOnlyReason
+              editability={editability}
+              customerUnassigned
+              showHint
+            />
+          ) : null}
         </div>
-      </PopoverContent>
-    </Popover>
+      )
+
+    return (
+      <>
+        <ContactStateSelect
+          value={contact.state}
+          pending={pending}
+          triggerRef={triggerRef}
+          onChange={(state) => {
+            if (pending) return
+            submitState(contact.id, state, null)
+          }}
+        />
+        <AlertCloseConfirmDialog
+          alert={confirmation?.alert ?? null}
+          returnFocusRef={triggerRef}
+          onCancel={() => setConfirmation(null)}
+          onConfirm={(alertId) => {
+            if (!confirmation) return
+            setConfirmation(null)
+            submitState(contact.id, confirmation.state, alertId)
+          }}
+        />
+      </>
+    )
+  }
+
+  return (
+    <div ref={cellRef} className="flex w-40 items-center justify-center">
+      {content()}
+    </div>
   )
 }

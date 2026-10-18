@@ -1,3 +1,4 @@
+import { onTestFinished, vi } from "vitest"
 import { getTableName } from "drizzle-orm"
 import { type PgTable } from "drizzle-orm/pg-core"
 import { FAILPOINT_SCHEMA, testClient } from "./db"
@@ -47,12 +48,15 @@ async function addFailpoint({
 /**
  * Makes the next INSERT into `table` fail inside the database, as a driver
  * error would. With `where` (SQL column → value), only the next row that
- * matches fails. Later inserts go through.
+ * matches fails; with `sqlstate`, it fails with that code (else P0001). Later
+ * inserts go through.
  */
 export async function failNextInsertInto(
   table: PgTable,
-  where: Record<string, string | number> = {}
+  where: Record<string, string | number> = {},
+  { sqlstate }: { sqlstate?: string } = {}
 ) {
+  const errcode = sqlstate ? ` USING ERRCODE = ${literal(sqlstate)}` : ""
   await addFailpoint({
     table,
     when: "BEFORE INSERT",
@@ -60,7 +64,7 @@ export async function failNextInsertInto(
       Object.entries(where)
         .map(([column, value]) => `NEW."${column}" = ${literal(value)}`)
         .join(" AND ") || "TRUE",
-    action: `RAISE EXCEPTION 'failpoint: insert into % failed', TG_TABLE_NAME;`,
+    action: `RAISE EXCEPTION 'failpoint: insert into % failed', TG_TABLE_NAME${errcode};`,
     once: true,
   })
 }
@@ -84,6 +88,27 @@ export async function failNextUpdateOf(
     action: `RAISE EXCEPTION 'failpoint: update of % failed', TG_TABLE_NAME;`,
     once: true,
   })
+}
+
+/**
+ * Makes the COMMIT of any transaction that writes `table` fail: a deferred
+ * constraint trigger raises when the transaction ends, not at the statement
+ * that wrote, so the statements pass and only the COMMIT is rejected. Every
+ * such commit fails, until `resetDb` removes the trigger.
+ */
+export async function failAtCommit(table: PgTable) {
+  const name = `${FAILPOINT_SCHEMA}.failpoint_${++count}`
+  await testClient.exec(`
+    CREATE SCHEMA IF NOT EXISTS ${FAILPOINT_SCHEMA};
+    CREATE FUNCTION ${name}() RETURNS trigger LANGUAGE plpgsql AS $$
+    BEGIN
+      RAISE EXCEPTION 'failpoint: commit of % failed', TG_TABLE_NAME;
+    END $$;
+    CREATE CONSTRAINT TRIGGER failpoint_${count}
+      AFTER INSERT OR UPDATE OR DELETE ON "public"."${getTableName(table)}"
+      DEFERRABLE INITIALLY DEFERRED
+      FOR EACH ROW EXECUTE FUNCTION ${name}();
+  `)
 }
 
 /**
@@ -143,5 +168,45 @@ export async function slowWritesTo(table: PgTable, ms: number) {
     table,
     when: "BEFORE INSERT OR UPDATE",
     action: `WHILE clock_timestamp() < statement_timestamp() + interval '${ms} milliseconds' LOOP END LOOP;`,
+  })
+}
+
+/**
+ * Runs `statement` (SQL) right before the next `SELECT … FOR UPDATE` of `table`
+ * (the lock `lockCustomer` takes), in its transaction: the lock and the
+ * statements after it find the rows a colleague would have written while the
+ * transaction waited for the lock, and the statements before it don't. It
+ * tests what the code does with those rows. Being in the same transaction,
+ * they are found under any isolation level: that the transactions run in
+ * `read committed` is checked in `db.db.test.ts`. If the transaction fails,
+ * `statement` rolls back with it. Row locks fire no trigger, so it wraps the
+ * transactions of `testClient` instead, until it runs or the test ends. A test
+ * where it never runs fails: the lock was not taken, or not the way it expects.
+ */
+export function beforeNextLockOf(table: PgTable, statement: string) {
+  const lock = new RegExp(`from "${getTableName(table)}" .*for update$`)
+  const transaction = testClient.transaction.bind(testClient)
+  let done = false
+  const spy = vi
+    .spyOn(testClient, "transaction")
+    .mockImplementation((callback) =>
+      transaction((tx) => {
+        const query = tx.query.bind(tx)
+        tx.query = (async (sql: string, ...rest: unknown[]) => {
+          if (!done && lock.test(sql)) {
+            done = true
+            spy.mockRestore()
+            await tx.exec(statement)
+          }
+          return query(sql, ...(rest as []))
+        }) as typeof tx.query
+        return callback(tx)
+      })
+    )
+  onTestFinished(() => {
+    spy.mockRestore()
+    if (!done) {
+      throw new Error(`No SELECT … FOR UPDATE of ${getTableName(table)} ran`)
+    }
   })
 }

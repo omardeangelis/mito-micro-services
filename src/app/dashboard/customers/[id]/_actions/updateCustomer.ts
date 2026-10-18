@@ -34,10 +34,8 @@ const updateCustomerFromDashboardSchema = insertCustomerSchema
     occupazione: true,
     ambitoLavorativo: true,
     sede: true,
-    operatorId: true,
     source: true,
   })
-  .merge(z.object({ operatorId: z.string().optional() }))
 
 export async function updateCustomerAction(_: FormState, formData: FormData) {
   const formValues = Object.fromEntries(formData.entries())
@@ -52,27 +50,12 @@ export async function updateCustomerAction(_: FormState, formData: FormData) {
         unRefinedData.error.errors[0]?.message ?? "Errore nei dati inseriti",
     }
   }
-  const { id, birthdayDate, operatorId, ...rest } = unRefinedData.data
-  const tasks = await api.task.getActiveTask.query({ id })
-  const task = tasks[0]
-
-  if (task) {
-    if (task.state === "chiamare") {
-      if (task.operatorId?.toString() !== operatorId) {
-        await api.task.updateTask.mutate({
-          id: task.id,
-          operatorId: operatorId ? Number(operatorId) : null,
-          isClosed: false,
-          state: "chiamare",
-        })
-      }
-    }
-  }
+  // The operator changes only through the handover (D13)
+  const { id, birthdayDate, ...rest } = unRefinedData.data
   try {
     await api.customer.updateCustomerFromDashboard.mutate({
       id: id,
       birthdayDate: birthdayDate ? new Date(Date.parse(birthdayDate)) : null,
-      operatorId: operatorId ? Number(operatorId) : null,
       ...rest,
       reddito: sanitizeRedditoValue(rest.reddito),
     })

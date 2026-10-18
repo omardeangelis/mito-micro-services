@@ -9,7 +9,7 @@ links:
   - "[[chore/crm/guida-assegnazione-massiva-e-alert]]"
   - "[[chore/crm/report-frontend-riorganizzazione]]"
 created: 2026-09-24
-updated: 2026-09-29
+updated: 2026-10-15
 ---
 
 # Spec: Sezione Contatti e tabella Clienti semplificata
@@ -58,7 +58,7 @@ Chi la usa:
 - **Lavorazioni coesistenti** (`task.kind`, verticali Prestiti e Cessioni): Contatti mostra un solo contatto attivo per cliente.
 - **Separare referente del cliente e proprietario del contatto**: riassegnare un contatto cambia anche l'operatore del cliente (decisione 1 della bozza, §10). La separazione arriva con `task.kind`.
 - **Rinominare** la tabella `task` o il router tRPC `task`.
-- **Cambiare il comportamento dell'assegnazione massiva**: i quattro casi della [guida operatori](../../../chore/crm/guida-assegnazione-massiva-e-alert.md) danno gli stessi risultati di oggi; cambia solo l'etichetta. L'ordine interno delle operazioni si può cambiare per rispettare AC71.
+- **Cambiare il comportamento dell'assegnazione massiva**: i quattro casi della [guida operatori](../../../chore/crm/guida-assegnazione-massiva-e-alert.md) danno gli stessi risultati di oggi; cambia solo l'etichetta. L'ordine interno delle operazioni si può cambiare per rispettare AC71. Fa eccezione "Assegna Clienti", che dal passo 4 sposta anche il contatto attivo in ogni stato (AC75, deciso da Omar il 2026-10-15).
 - **Cambiare il comportamento dei cron `alert` e `priority`**, compreso il fatto che il cron alert assegni il followup all'operatore del cliente. Anche qui l'ordine interno delle operazioni si può cambiare, e gli errori si possono isolare per cliente, per rispettare AC71.
 - **Cambiare il modo in cui l'export chiamate conta** (quali righe, con quali date). L'attribuzione all'operatore assegnato resta quella di oggi (vedi Constraints).
 - **Cambiare lo schema di `task_event_log`**.
@@ -156,7 +156,7 @@ Gli stati "da chiamare" sono `chiamare` e `followup`; gli stati con esito sono `
 - **AC48** — Un amministratore può modificare qualunque contatto.
 - **AC49** — Un operatore può cambiare stato, priorità e richiamo, e chiudere l'alert, solo dei contatti assegnati a lui. Può creare un contatto (AC66) solo per i clienti assegnati a lui. Il limite vale anche per le richieste fatte fuori dall'interfaccia: il server le rifiuta e non modifica nulla.
 - **AC50** — Un operatore non può cambiare l'operatore di un contatto: il comando non gli viene mostrato e il server rifiuta la richiesta.
-- **AC51** — Operatori e amministratori vedono tutti i contatti, nella lista e nel dettaglio. Un contatto che l'utente non può modificare è mostrato in sola lettura, con il motivo visibile ("Assegnato a <Nome Cognome>" oppure "Non assegnato").
+- **AC51** — Operatori e amministratori vedono tutti i contatti, nella lista e nel dettaglio. Un contatto che l'utente non può modificare è mostrato in sola lettura, con il motivo visibile ("Assegnato a <Nome Cognome>" oppure "Non assegnato"). Nella riga di Clienti e nella scheda cliente il motivo non nomina l'operatore, che è quello del cliente già mostrato (AC75): compare solo "Non assegnato", con l'indicazione di "Assegna a te", quando né il cliente né il contatto hanno un operatore (deciso da Omar il 2026-10-15).
 - **AC52** — Quando il server rifiuta una modifica (per i permessi, perché il contatto è superato, o per un errore), il controllo torna al valore salvato e compare un messaggio con il motivo. Se il contatto è superato, il messaggio offre il link al contatto attivo.
 
 ### Note
@@ -164,8 +164,12 @@ Gli stati "da chiamare" sono `chiamare` e `followup`; gli stati con esito sono `
 - **AC53** — Il dettaglio del contatto mostra la chat del cliente. Una nota scritta dal contatto compare anche nella scheda cliente, e viceversa.
 - **AC54** — Chiunque apra il dettaglio di un contatto può scrivere una nota, anche quando il contatto è in sola lettura, come oggi nella scheda cliente.
 - **AC55** — Scrivere una nota dal contatto non modifica nessuna pratica.
-- **AC56** — Se il cliente non ha ancora una chat, la prima nota scritta dal contatto la crea.
+- **AC56** — Se il cliente non ha ancora una chat, il dettaglio del contatto mostra "Avvia una chat", come oggi la scheda cliente. Dopo, le note si scrivono come in ogni chat.
 - **AC57** — "Carica altri messaggi" nel dettaglio del contatto mostra i messaggi più vecchi.
+- **AC76** — Se una nota non viene salvata, il testo scritto torna nel campo, sotto il campo compare "Nota non inviata, riprova" e la nota non resta nella chat come se fosse stata inviata. Vale ovunque si scrivono le note: scheda cliente e dettaglio del contatto. Il testo non inviato resta anche se la pagina si ricarica o la scheda si chiude, nella stessa finestra del browser, finché la nota non viene inviata o il campo non viene svuotato.
+- **AC77** — Un cliente ha al massimo una chat. "Avvia una chat" premuto due volte, da una pagina non ancora aggiornata o da due operatori sullo stesso cliente apre la chat che c'è già, senza crearne un'altra. Dopo il clic la scheda resta al suo posto e il pulsante mostra che la chat si sta avviando, finché la chat non compare; poi il cursore è nel campo della nota. Se la chat non si avvia, compare "Chat non avviata, riprova" e il pulsante torna attivo.
+- **AC78** — Nella chat l'attesa si vede. Una nota in invio dice "Invio…" al posto della data e "Commenta" mostra che sta inviando, finché il server non risponde. La lista si apre sulle note più recenti e, dopo un invio, mostra la nota appena inviata anche con più di 5 note; non torna in fondo da sola se l'operatore ha scorso in su. Una nota in eliminazione resta al suo posto con l'attesa al posto del cestino, finché non sparisce; se non si elimina compare "Nota non eliminata, riprova". Il cestino si raggiunge anche da tastiera, e dopo un'eliminazione il focus passa al cestino della nota accanto. Chi usa un lettore di schermo sente "Invio della nota", "Nota inviata" e "Nota eliminata".
+- **AC79** — Una nota la elimina solo chi l'ha scritta, anche quando è un amministratore. Il cestino compare solo all'autore, e il server rifiuta l'eliminazione chiesta da chiunque altro, amministratori compresi. Eliminare l'ultima nota e avviare la chat sullo stesso cliente, nello stesso momento, non lasciano il cliente con una chat cancellata.
 
 ### Tabella Clienti semplificata
 
@@ -175,6 +179,7 @@ Gli stati "da chiamare" sono `chiamare` e `followup`; gli stati con esito sono `
 - **AC61** — Nella tabella Clienti ogni pagina contiene esattamente il numero di righe richiesto, tranne l'ultima, e il totale è uguale al numero di clienti che soddisfano i filtri.
 - **AC62** — Il menu azioni della riga cliente offre "Vedi contatti" (AC21).
 - **AC63** — L'assegnazione massiva resta in Clienti con entrambe le modalità. Nel dialogo "Assegna chiamate" diventa "Crea/assegna contatti", e lo stesso vale per il pulsante, i passaggi e il riepilogo finale. Il comportamento nei quattro casi della guida operatori non cambia.
+- **AC75** — L'operatore del cliente è anche l'operatore del suo contatto attivo. "Assegna Clienti" sposta al nuovo operatore il cliente e il suo contatto attivo in qualunque stato, senza creare contatti, e scrive le righe di log come il passaggio di consegne. Le chiamate già registrate su quel contatto passano al nuovo operatore nell'export; i contatti non attivi restano all'operatore che li ha lavorati. La scheda del dialogo lo dice. Prima del rilascio i contatti attivi con un operatore diverso da quello del cliente si riallineano.
 
 ### Scheda cliente
 
@@ -213,8 +218,8 @@ Gli stati "da chiamare" sono `chiamare` e `followup`; gli stati con esito sono `
   |---|---|---|
   | 1 | Dati e regole sul server; i controlli di Clienti le usano già | Regole lato server di AC27, AC30–AC52 e AC66–AC67; AC69–AC73 |
   | 2 | Contatti affiancato a Clienti, e "Vedi contatti" nel menu della riga cliente | AC1–AC52, AC62 |
-  | 3 | Note nel dettaglio del contatto | AC53–AC57 |
-  | 4 | Semplificazione di Clienti e della scheda cliente, guida operatori | AC58–AC61, AC63–AC68, AC74 |
+  | 3 | Note nel dettaglio del contatto | AC53–AC57; AC76–AC79 (nella scheda cliente arrivano prima, con la chat condivisa) |
+  | 4 | Semplificazione di Clienti e della scheda cliente, guida operatori | AC58–AC61, AC63–AC68, AC74, AC75 |
 - **Gate CI**: quelli di `AGENTS.md`, eseguiti da `.github/workflows/ci.yml`: lint (`next lint` e `tsc --noEmit`), `pnpm run test --run`, `pnpm build`.
 - L'interfaccia è in italiano.
 
@@ -283,4 +288,5 @@ La proposta di implementazione completa (query, indici, struttura dei file, stim
 | "Crea contatto": stato `chiamare`, operatore del cliente, bloccato se il cliente non ha operatore; lo usano gli amministratori e l'operatore del cliente. | Stato e operatore sono quelli della creazione di oggi. Aprirlo all'operatore del cliente è una proposta coerente con AC49 (domanda 1). |
 | Dal passo 1 i controlli rimasti in Clienti seguono le regole di Contatti (AC73). | Altrimenti per giorni permessi e conferma dell'alert varrebbero solo in parte. |
 | L'assegnazione massiva resta in Clienti. | È il modo in cui nascono i contatti per i clienti che non ne hanno uno. |
+| "Assegna Clienti" sposta cliente e contatto attivo insieme, in ogni stato (AC75); la riga di Clienti e la scheda cliente non nominano l'operatore del contatto (AC51). Deciso da Omar il 2026-10-15, dopo i test manuali di PR3. | Prima spostava il contatto solo in `chiamare`: dopo una riassegnazione i contatti con esito restavano al vecchio operatore, e la colonna Operatore di Clienti diceva una cosa diversa dal contatto, contro il testo della scheda ("Assegna solo il cliente"). Il 2026-10-15 in prod i contatti attivi separati erano 1 su 69.783: la regola tiene allineato quello che la migrazione di PR2 ha allineato. |
 | Timeline degli eventi esclusa. | Facoltativa nella bozza; esclusa per tenere il perimetro stretto. |

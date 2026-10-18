@@ -1,6 +1,6 @@
 import { type ServerPageProps } from "@/lib/types"
 import PraticaGeneralForm from "./_components/PraticaGeneralForm"
-import { CollassableSection } from "./_components/CollassableItem"
+import { CollassableSection } from "@/components/custom/CollassableItem"
 import { CustomerSection } from "./_components/CustomerSection"
 import { api } from "@/trpc/server"
 

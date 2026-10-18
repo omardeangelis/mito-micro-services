@@ -450,7 +450,7 @@ describe("cron alert: ogni alert in una transazione sua", () => {
   it("un alert di un giorno precedente stacca dalla task solo sé stesso, non un alert agganciato nel frattempo", async () => {
     const { customerOperator, customer, previous, alert } =
       await seedContactWithAlert(new Date("2026-09-23T08:00:00.000Z"))
-    // An operator schedules a new callback on the same task (createAlert)
+    // An operator schedules a new callback on the same task
     // while the cron resolves the due alert
     await afterNextWriteTo(
       alerts,

@@ -113,8 +113,8 @@ const processAlert = (
         ])
       )
     } else {
-      // Only if the task still points at this alert: createAlert doesn't lock
-      // the customer, and may have linked a new one since the list was read
+      // Only if the task still points at this alert: a writer may have linked
+      // a new one since the list was read
       yield* query((client) =>
         client
           .update(tasks)
