@@ -63,7 +63,7 @@ for (const [name, value] of Object.entries(values)) {
     { input: value, stdio: ["pipe", "ignore", "pipe"] }
   )
   if (result.status !== 0) {
-    console.error(`${secret}: gcloud failed\n${result.stderr}`)
+    console.error(`${secret}: gcloud failed\n${result.error ?? result.stderr}`)
     process.exit(1)
   }
   console.log(`${secret}: new version added`)

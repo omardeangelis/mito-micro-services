@@ -33,6 +33,7 @@ The server code is moving from the Next.js app to the backend in `api/`, one pie
 
 - **No Next.js in `src/server/**`.** No `next/*`, no `next-auth` runtime calls, no `@/trpc/server`. The exception is `src/server/auth.ts`, which keeps NextAuth. Read the session with `getServerAuthSession` (the backend gives it the request's session through `requestSession`).
 - **New operations are tRPC procedures.** No new route handlers or server actions with logic in them: a server action only calls `@/trpc/server` and revalidates.
+- **Read an error of `@/trpc/server` in both shapes.** It is a `TRPCClientError` whose `cause` is the procedure's `TRPCError` in-process, and with the code in `data` over HTTP (`BACKEND_URL`). `readContactError` and `deleteMessage` read both.
 - **New server code goes in Effect services**, as in the section below.
 - **The backend never copies a file from `src/`.** It imports it. When a piece needs something different outside Next.js, the change goes in the shared file, behind an interface both sides use.
 

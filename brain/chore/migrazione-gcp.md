@@ -48,7 +48,7 @@ browser ──► crm.dbmito.it (Vercel: Next.js, solo frontend)
 ```
 
 - **Stesso dominio grazie alle rewrite di Vercel.** I cookie restano first-party, non serve CORS, l'URI di Azure non cambia e **non serve toccare il DNS**, che dipende da una società esterna. Le rewrite stanno in `beforeFiles`: le route esistenti di Next altrimenti avrebbero la precedenza. Si accendono solo se `BACKEND_URL` è impostata.
-- **I server component e le server action** (16 + 11, tutti passano da `@/trpc/server`) chiamano il backend via HTTP, inoltrando il cookie, quando `BACKEND_URL` è impostata. Cambia un solo file, `src/trpc/server.ts`. `revalidatePath` resta in Next.
+- **I server component e le server action** (16 + 11, tutti passano da `@/trpc/server`) chiamano il backend via HTTP, inoltrando il cookie, quando `BACKEND_URL` è impostata. Cambia `src/trpc/server.ts`, più chi legge il codice di un errore: via HTTP sta in `data`, non nel `TRPCError` di `cause` (in B2 solo `deleteMessage`; `readContactError` legge già le due forme). `revalidatePath` resta in Next.
 - **Region `europe-west3`** (Francoforte), la stessa dell'attuale Supabase: nessun passo intermedio peggiora la latenza fra backend e DB.
 - **Un solo progetto GCP, `mito-crm` ("Mito CRM"), con staging e prod affiancati come in sevedemo** (decisione di Leonardo, 2026-10-18). Li separano le risorse, non il progetto:
   - un servizio Cloud Run per ambiente, `mito-crm-staging` e `mito-crm-prod`, ciascuno con il proprio service account;
