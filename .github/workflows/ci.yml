@@ -82,3 +82,6 @@ jobs:
           # build imports them; nothing connects
           NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:54321
           SUPABASE_KEY: ci-placeholder
+      # The backend on Cloud Run (api/): the bundle of the same server code
+      - name: Backend build
+        run: pnpm api:build
