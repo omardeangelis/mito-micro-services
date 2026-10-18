@@ -1,0 +1,9 @@
+# What `gcloud builds submit` (api/gcp/build.sh) never uploads. Without this
+# file gcloud follows .gitignore only, which leaves out .env and .env*.local but
+# not every env file. The env files first: they hold the database keys and, in
+# .env, the production values
+.env*
+!.env.example
+.git
+.gitignore
+#!include:.gitignore
