@@ -19,8 +19,12 @@ vi.mock("@sentry/nextjs", () => ({
   }),
 }))
 
+type Rewrite = { source: string; destination: string }
 type Built = {
-  config: { env: Record<string, string> }
+  config: {
+    env: Record<string, string>
+    rewrites: () => Promise<Rewrite[] | { beforeFiles: Rewrite[] }>
+  }
   options: {
     sourcemaps: { disable: boolean }
     release: { create: boolean }
@@ -36,6 +40,7 @@ const SIGNALS = [
   "APP_ENV",
   "NEXT_PUBLIC_VERCEL_ENV",
   "NEXT_PUBLIC_APP_ENV",
+  "BACKEND_URL",
 ]
 const saved = Object.fromEntries(SIGNALS.map((key) => [key, process.env[key]]))
 
@@ -139,6 +144,59 @@ describe("next.config.js", () => {
     )
     expect(existsSync).toHaveBeenCalledWith(
       new URL("../../.env.production.local", import.meta.url)
+    )
+  })
+
+  it("senza BACKEND_URL le chiamate tRPC restano alle route di Next.js", async () => {
+    const { config } = await loadNextConfig({})
+
+    expect(await config.rewrites()).toEqual([])
+  })
+
+  it.each([
+    [
+      "al backend su Cloud Run",
+      "https://mito-crm-staging-869830994359.europe-west3.run.app/",
+      "https://mito-crm-staging-869830994359.europe-west3.run.app",
+    ],
+    [
+      "al backend locale di api:dev",
+      "http://localhost:4000",
+      "http://localhost:4000",
+    ],
+  ])(
+    "con BACKEND_URL manda le chiamate tRPC %s, prima delle route di Next.js",
+    async (_, backendUrl, origin) => {
+      const { config } = await loadNextConfig({ BACKEND_URL: backendUrl })
+
+      expect(await config.rewrites()).toEqual({
+        beforeFiles: [
+          {
+            source: "/api/trpc/:path*",
+            destination: `${origin}/api/trpc/:path*`,
+          },
+        ],
+        afterFiles: [],
+        fallback: [],
+      })
+    }
+  )
+
+  it.each([
+    [
+      "in http fuori da localhost",
+      "http://backend.example.com",
+      /BACKEND_URL must be https/,
+    ],
+    [
+      "con un percorso",
+      "https://backend.example.com/api",
+      /BACKEND_URL must be the origin/,
+    ],
+    ["che non è un URL", "backend.example.com", /BACKEND_URL is not a URL/],
+  ])("si ferma con un BACKEND_URL %s", async (_, backendUrl, error) => {
+    await expect(loadNextConfig({ BACKEND_URL: backendUrl })).rejects.toThrow(
+      error
     )
   })
 })
