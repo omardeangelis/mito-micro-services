@@ -68,11 +68,13 @@ browser ──► crm.dbmito.it (Vercel: Next.js, solo frontend)
 - **HTTP: Hono** (`@hono/node-server`). Route handler e tRPC (`fetchRequestHandler`) usano già `Request`/`Response` standard: Hono li monta così come sono, mentre Express richiederebbe una conversione a ogni richiesta. I test esistenti già eseguono le route handler in Node, con `new NextRequest(url)`.
 - **Contesto tRPC:** `createTRPCContext` riceve la sessione invece di chiamare `getServerAuthSession`. Next gli passa la sua, il backend la ricava dal cookie di NextAuth. Stessa forma: `{ user: { name, email, image, id }, expires }`.
 - **Auth:** NextAuth v4 resta, ma eseguita nel backend tramite `AuthHandler` di `next-auth/core`, il nucleo indipendente dal framework su cui poggia anche l'adattatore Next. Stesse tabelle, cookie, callback e provider (`azure-ad`): il client `next-auth/react` non si accorge di niente. Il passaggio ad Auth.js v5 è un'ondata a parte, dopo.
-- **Cron:** route `/internal/cron/*` sul backend, chiamate da Cloud Scheduler con token OIDC verificato. Dentro:
-  - lock (`pg_try_advisory_lock`);
-  - registro delle esecuzioni per giorno per `update`, che oggi fa +1 all'età a ogni lancio;
-  - zero retry, `TZ=UTC`;
-  - riepilogo su Slack con esito e conteggi, come il `cronReport` di sevedemo.
+- **Cron (`api/src/cron/`):** `POST /internal/cron/<job>` sul backend, fuori da `/api`, quindi nessuna rewrite di Vercel ci arriva. Lo chiama Cloud Scheduler con un token OIDC del suo service account. Il backend verifica firma di Google (solo RS256), scadenza, audience e email verificata del service account (`CRON_OIDC_AUDIENCE`, `CRON_OIDC_SERVICE_ACCOUNT`); senza le due variabili rifiuta ogni chiamata. Dentro:
+  - **un run per job e giorno UTC**, nella tabella `cron_run`, con vincolo unico (job, giorno). Fa anche da lock: due chiamate insieme eseguono un run solo, e niente `pg_try_advisory_lock`, che con il pooler di Supabase resterebbe su una connessione condivisa. Una seconda chiamata nello stesso giorno risponde "già girato" e non esegue niente;
+  - un run fallito si ripete lo stesso giorno ("Force run" dalla console) solo per i job che non fanno niente due volte. `update` mai: fa +1 all'età a ogni lancio;
+  - zero retry nello scheduler, `TZ=UTC`;
+  - `alert` riprende dentro il backend il ciclo di `alert.js` (chiamate fino a esaurire gli alert, nuovo tentativo sui falliti dopo 10 s);
+  - riepilogo su Slack di ogni chiamata, riuscita, fallita o saltata, con soli conteggi (come il `cronReport` di sevedemo); i fallimenti vanno anche su Sentry;
+  - i corpi dei job sono in `src/server/services/cron/`, usati anche dalle route di Next finché esistono.
   - **Orari UTC invariati:** priority 23:17, alert 23:47, customers e practices 00:17, pulizia export 00:47. L'ordine conta: priority va prima di alert.
   - Cloud Monitoring avvisa su Slack se un job non parte o va in errore.
 - **DB:** `postgres.js` come oggi. Su Cloud Run si collega via socket Unix (`INSTANCE_UNIX_SOCKET`, come sevedemo), in locale tramite Cloud SQL Auth Proxy. Pool fisso per istanza, `min-instances=1`.
@@ -203,3 +205,8 @@ Le dismissioni arrivano 2–4 settimane dopo.
   - S1 fatto in parte: billing, API, Artifact Registry, Secret Manager, service account. Mancano il deploy automatico e il bucket GCS (B3);
   - B2: `mito-api` gira su `mito-crm-staging` con il DB di sviluppo. Leonardo ha caricato i segreti con `api/gcp/load-staging-secrets.mjs`, che legge solo `.env.development.local` e non stampa i valori;
   - B2: la rewrite e `@/trpc/server` via HTTP sono nella PR di B2.
+- 2026-10-18, B5 (cron sul backend):
+  - la migrazione `20261018195740_cron_run` aggiunge solo la tabella `cron_run` e il suo enum. In prod arriva con il primo rilascio successivo e resta inutilizzata fino alla fase P;
+  - `db:generate` produce sempre anche `ALTER TABLE customers ... SET DEFAULT '<id casuale>'`, perché lo schema usa `default(nanoid())`. Va tolta a mano, e nello snapshot va lasciato il valore precedente, come nelle migrazioni dal 2026-09;
+  - i job di Cloud Scheduler dello staging nascono in pausa (`setup-staging.sh`). I workflow GitHub di staging girano solo a mano, quindi non c'è un secondo scheduler;
+  - `cleanupTaskEventLog` ha la route sul backend, ma nessuno scheduler: oggi non lo lancia nessun workflow.
