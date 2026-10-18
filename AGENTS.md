@@ -7,7 +7,7 @@ spec-driven skill suite live under `brain/` — start with `create-spec`, and re
 ## Repo map
 
 - `src/` — the MITO CRM app: T3 stack (Next.js 14 App Router, tRPC v10, Drizzle on Postgres, NextAuth v4), deployed on Vercel.
-- `api/` — the backend on Cloud Run (Hono). It hosts the same server code as `src/` (it imports it; it never copies it) and serves the same API on the same paths: `pnpm api:build` bundles it, `pnpm api:dev` runs it on the development database (`.env.development.local` only). The plan is `brain/chore/migrazione-gcp.md`.
+- `api/` — the backend on Cloud Run (Hono). It hosts the same server code as `src/` (it imports it; it never copies it) and serves the same API on the same paths: `pnpm api:build` bundles it, `pnpm api:smoke` starts the bundle and calls it (CI runs both), `pnpm api:dev` runs it on the development database (`.env.development.local` only). The plan is `brain/chore/migrazione-gcp.md`.
 - `brain/` — knowledge base. Existing design drafts and the monorepo migration plan live in `brain/chore/` (`crm/`, `migration_plan.md` + `migration/`); delivered HTML handovers in `brain/raw/assets/`. Project docs are written in Italian.
 - `.agents/skills/`, `.agents/agents/`, `.agents/agent-memory/` — spec-driven skills, advisor subagents and their project memories (symlinked into `.claude/`).
 

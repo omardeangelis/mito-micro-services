@@ -85,3 +85,6 @@ jobs:
       # The backend on Cloud Run (api/): the bundle of the same server code
       - name: Backend build
         run: pnpm api:build
+      # Starts the bundle and calls it: what fails only outside Next.js
+      - name: Backend smoke
+        run: pnpm api:smoke
