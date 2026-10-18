@@ -5,7 +5,7 @@ import {
   type DefaultSession,
   type NextAuthOptions,
 } from "next-auth"
-import { type Adapter } from "next-auth/adapters"
+import { type Adapter, type AdapterUser } from "next-auth/adapters"
 import AzureADProvider from "next-auth/providers/azure-ad"
 import Email from "next-auth/providers/email"
 import { type Provider } from "next-auth/providers/index"
@@ -155,7 +155,11 @@ export const authOptions: NextAuthOptions = {
   },
   adapter: {
     ...DBAdapter,
-    createUser: (user) => runAuth(createUserWithOperator(user)),
+    // Since 4.24.15 the Adapter type also allows @auth/core's createUser,
+    // whose user has an id, so the parameter isn't inferred. NextAuth v4
+    // still calls it without the id (core/lib/callback-handler)
+    createUser: (user: Omit<AdapterUser, "id">) =>
+      runAuth(createUserWithOperator(user)),
   },
   providers,
 }
