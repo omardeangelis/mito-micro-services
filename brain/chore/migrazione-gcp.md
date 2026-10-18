@@ -42,7 +42,7 @@ Questo piano sostituisce le decisioni D8 e D9 (Railway) e la fase 2 (Express) di
 browser ──► crm.dbmito.it (Vercel: Next.js, solo frontend)
               │  rewrite beforeFiles: /api/trpc, /api/import, /api/export, /api/auth, /api/user
               ▼
-            mito-api (Cloud Run, europe-west3) ──► Cloud SQL (socket Unix)
+            mito-api su Cloud Run (mito-crm-staging / mito-crm-prod, europe-west3) ──► Cloud SQL (socket Unix)
               ▲                                └─► GCS (gcs-storage-kit, ADC)
             Cloud Scheduler (OIDC) → /internal/cron/*  ──► Slack
 ```
@@ -50,7 +50,14 @@ browser ──► crm.dbmito.it (Vercel: Next.js, solo frontend)
 - **Stesso dominio grazie alle rewrite di Vercel.** I cookie restano first-party, non serve CORS, l'URI di Azure non cambia e **non serve toccare il DNS**, che dipende da una società esterna. Le rewrite stanno in `beforeFiles`: le route esistenti di Next altrimenti avrebbero la precedenza. Si accendono solo se `BACKEND_URL` è impostata.
 - **I server component e le server action** (16 + 11, tutti passano da `@/trpc/server`) chiamano il backend via HTTP, inoltrando il cookie, quando `BACKEND_URL` è impostata. Cambia un solo file, `src/trpc/server.ts`. `revalidatePath` resta in Next.
 - **Region `europe-west3`** (Francoforte), la stessa dell'attuale Supabase: nessun passo intermedio peggiora la latenza fra backend e DB.
-- **Progetti GCP** `mito-staging` e `mito-prod`, separati per IAM e billing.
+- **Un solo progetto GCP, `mito-crm` ("Mito CRM"), con staging e prod affiancati come in sevedemo** (decisione di Leonardo, 2026-10-18). Li separano le risorse, non il progetto:
+  - un servizio Cloud Run per ambiente, `mito-crm-staging` e `mito-crm-prod`, ciascuno con il proprio service account;
+  - i segreti `STAGING_*` e `PROD_*`, mai senza prefisso, leggibili solo dal service account del proprio ambiente;
+  - bucket e istanze Cloud SQL separati;
+  - nessun ruolo di progetto ai service account dei servizi;
+  - la prod si aggiorna solo da `main`.
+
+  `mito-api` resta il nome del codice in `api/` e dell'immagine.
 
 ### Backend `mito-api`
 
@@ -70,7 +77,13 @@ browser ──► crm.dbmito.it (Vercel: Next.js, solo frontend)
   - Cloud Monitoring avvisa su Slack se un job non parte o va in errore.
 - **DB:** `postgres.js` come oggi. Su Cloud Run si collega via socket Unix (`INSTANCE_UNIX_SOCKET`, come sevedemo), in locale tramite Cloud SQL Auth Proxy. Pool fisso per istanza, `min-instances=1`.
 - **Effect:** l'infrastruttura nuova (sessione, storage, verifica OIDC, report dei cron, Slack) è fatta di servizi Effect con un Layer ciascuno. Le route Hono restano async semplici e mappano gli errori in un punto solo.
-- **Deploy:** GitHub Actions con Workload Identity Federation → Artifact Registry → `gcloud run deploy`. Un push su `dev` aggiorna lo staging; il deploy di prod si lancia da `main`. Dockerfile basato su quello di sevedemo.
+- **Build e deploy (`api/gcp/`):**
+  - `build.sh` costruisce l'immagine con Cloud Build, come service account `mito-crm-build`. L'immagine va in Artifact Registry (`mito-crm`) con il commit come tag. Lo script si ferma se dovesse caricare un file `.env`, che `.gcloudignore` già esclude.
+  - `deploy-staging.sh` la mette su `mito-crm-staging`, con i valori presi dai segreti.
+  - `setup-staging.sh` registra le risorse create una volta sola, e fa da ricetta per la prod.
+  - **Deploy automatico, da decidere:**
+    - un trigger di Cloud Build collegato a GitHub, come in sevedemo (push su `dev` → staging, `main` → prod). Serve che Omar autorizzi l'app Cloud Build sul repo;
+    - oppure GitHub Actions con Workload Identity Federation.
 
 ### Storage: `gcs-storage-kit`
 
@@ -93,7 +106,7 @@ Un progetto a sé (`~/Desktop/lavoro/gcs-storage-kit`), da copiare in ogni proge
 | # | Cosa | Chi | Dipende da |
 |---|---|---|---|
 | S0 | Dominio `staging-crm.dbmito.it` (CNAME presso la società DNS). Serve solo per il collaudo finale e per Azure sullo staging | società DNS | — |
-| S1 | Fondamenta GCP: progetti, billing, API abilitate, Artifact Registry, Secret Manager, WIF per GitHub, service account di `mito-api`, bucket GCS di staging | Leonardo (console, billing) + Opus (script `gcloud` versionati) | — |
+| S1 | Fondamenta GCP: progetto `mito-crm`, billing, API abilitate, Artifact Registry, Secret Manager, deploy automatico da GitHub, service account per ambiente, bucket GCS di staging | Leonardo (console, billing) + Opus (script `gcloud` versionati) | — |
 | K | `gcs-storage-kit` | Haiku + review di Opus | — |
 | T | Test di caratterizzazione di update, delete, cleanup e refreshPriorities | Haiku + review di Opus | — |
 | B1 | `createTRPCContext` riceve la sessione (PR piccola, prima di tutto il resto) + scheletro di `api/`: Hono, tRPC montato, sessione dal cookie, health, Dockerfile, job di CI | Opus + Haiku | — |
@@ -133,8 +146,8 @@ Le dismissioni arrivano 2–4 settimane dopo.
 
 - **In ogni copia, senza eccezioni:** svuotare `session` e `verificationToken`, azzerare `access_token`, `refresh_token` e `id_token` di `account`. Sono credenziali.
 - **Dati dei clienti:** pseudonimizzazione deterministica (nomi, codici fiscali, telefoni, email, indirizzi, testo libero). Restano identici volumi, importi, stati, date, ID. Serve l'ok del committente. **Decisione aperta.**
-- **I dati grezzi non escono dal progetto prod:**
-  1. clone in un'istanza temporanea dentro `mito-prod`;
+- **I dati grezzi non escono dalle risorse di prod:**
+  1. clone in un'istanza temporanea che solo il service account di prod e Leonardo possono leggere;
   2. sanitizzazione con SQL versionato;
   3. verifica: conteggi uguali, nessun valore personale rimasto (confronto per hash), tabelle di auth vuote;
   4. export in un bucket di passaggio che solo lo staging può leggere;
@@ -156,7 +169,9 @@ Le dismissioni arrivano 2–4 settimane dopo.
 ## Attività manuali
 
 - [ ] **Società DNS:** CNAME `staging-crm`, con il valore indicato da Vercel.
-- [ ] **GCP:** creare `mito-staging` (poi `mito-prod`), collegare il billing, impostare i budget alert, darmi `gcloud` autenticato o i ruoli per eseguire gli script.
+- [x] **GCP:** progetto `mito-crm` con il billing collegato e `gcloud` autenticato come info@spatalo.tech (2026-10-18).
+- [ ] **GCP:** budget alert sul progetto `mito-crm`.
+- [ ] **Vercel:** `BACKEND_URL` nel solo progetto di staging, per accendere la rewrite (B2).
 - [ ] **Slack:** webhook per `#mito-cron-staging` e `#mito-cron-prod`.
 - [ ] **Committente:** ok sulla copia pseudonimizzata della prod nello staging.
 - [ ] **Omar:** condividere questo piano e le regole per il codice nuovo.
@@ -165,6 +180,9 @@ Le dismissioni arrivano 2–4 settimane dopo.
 ## Rischi
 
 - **Rewrite di Vercel** (B2): timeout del proxy, dimensione del body, streaming. È la prima cosa da provare. Se non regge, si usa il dominio `api.` con cookie sul dominio padre, e serve la società DNS.
+  - In locale, con `next start` e la rewrite verso `mito-crm-staging`, regge: risposte di Cloud Run, batch in streaming identico alla chiamata diretta, body da 3 MB.
+  - Resta da provare su Vercel.
+- **Stesso DB per Vercel staging e backend** (B2): il backend trova solo le sessioni del suo DB. Il progetto Vercel di staging ha un Supabase suo, diverso da quello di prod (il workflow lo controlla), e `mito-crm-staging` usa quello di `.env.development.local`. Prima di accendere la rewrite va verificato che coincidano.
 - **Auth nel backend** (B4): `next-auth/core` è un'API interna di NextAuth v4. Va provata in staging con Azure ed email prima della prod.
 - **Lavoro in parallelo con Omar:** conflitti sui file caldi. Si gestiscono con PR piccole e il codice condiviso, non copiato.
 - **Cron non idempotente** (`updateCustomerAge`): lock, registro per giorno, zero retry, mai due scheduler insieme.
@@ -180,3 +198,8 @@ Le dismissioni arrivano 2–4 settimane dopo.
 ## Note di esecuzione
 
 - 2026-10-18: `origin/dev` era 64 commit avanti rispetto al `dev` locale (lavoro di Omar sui Contatti). La PR di W0 è stata riallineata e i gate rieseguiti (1029 test).
+- 2026-10-18, staging su GCP:
+  - creato il progetto `mito-crm` al posto di `mito-staging`/`mito-prod`. `mito-staging`, creato prima, è stato eliminato e si può recuperare per 30 giorni;
+  - S1 fatto in parte: billing, API, Artifact Registry, Secret Manager, service account. Mancano il deploy automatico e il bucket GCS (B3);
+  - B2: `mito-api` gira su `mito-crm-staging` con il DB di sviluppo. Leonardo ha caricato i segreti con `api/gcp/load-staging-secrets.mjs`, che legge solo `.env.development.local` e non stampa i valori;
+  - B2: la rewrite e `@/trpc/server` via HTTP sono nella PR di B2.
