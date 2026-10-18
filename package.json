@@ -90,6 +90,7 @@
     "effect": "^3.22.2",
     "exceljs": "^4.4.0",
     "hono": "^4.13.13",
+    "jose": "^6.2.12",
     "jsonwebtoken": "^9.0.3",
     "lucide-react": "^0.436.0",
     "nanoid": "^5.1.16",
