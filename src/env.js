@@ -61,6 +61,9 @@ export const env = createEnv({
     CRON_SECRET_KEY: z.string().optional(),
     TELEGRAM_BOT_TOKEN: z.string().optional(),
     TELEGRAM_CHAT_ID: z.string().optional(),
+    // The backend on Cloud Run: with it set, the tRPC calls go there
+    // (next.config.js checks it)
+    BACKEND_URL: z.string().url().optional(),
   },
 
   /**
@@ -108,6 +111,7 @@ export const env = createEnv({
     CRON_SECRET_KEY: process.env.CRON_SECRET_KEY,
     TELEGRAM_BOT_TOKEN: process.env.TELEGRAM_BOT_TOKEN,
     TELEGRAM_CHAT_ID: process.env.TELEGRAM_CHAT_ID,
+    BACKEND_URL: process.env.BACKEND_URL,
   },
   /**
    * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially

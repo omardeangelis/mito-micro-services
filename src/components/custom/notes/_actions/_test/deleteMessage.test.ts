@@ -33,23 +33,42 @@ describe("deleteMessageAction", () => {
     )
   })
 
-  it("con una nota già eliminata rinfresca la pagina e lo dice, senza errore", async () => {
-    // As the Server Component caller rejects: the procedure's error as `cause`
-    mocks.deleteMessage.mockRejectedValue(
-      TRPCClientError.from(
-        new TRPCError({ code: "NOT_FOUND", message: "Nota non trovata" })
-      )
-    )
+  it.each([
+    [
+      // In-process: the procedure's error as `cause`
+      "in-process",
+      () =>
+        TRPCClientError.from(
+          new TRPCError({ code: "NOT_FOUND", message: "Nota non trovata" })
+        ),
+    ],
+    [
+      // Over HTTP, from the backend: the code in `data`
+      "dal backend via HTTP",
+      () =>
+        TRPCClientError.from({
+          error: {
+            message: "Nota non trovata",
+            code: -32004,
+            data: { code: "NOT_FOUND", httpStatus: 404 },
+          },
+        }),
+    ],
+  ])(
+    "con una nota già eliminata (%s) rinfresca la pagina e lo dice, senza errore",
+    async (_, notFound) => {
+      mocks.deleteMessage.mockRejectedValue(notFound())
 
-    await expect(deleteMessageAction(valid)).resolves.toEqual({
-      ok: false,
-      gone: true,
-    })
-    expect(mocks.revalidatePath).toHaveBeenCalledWith(
-      "/dashboard/customers/c-42",
-      "page"
-    )
-  })
+      await expect(deleteMessageAction(valid)).resolves.toEqual({
+        ok: false,
+        gone: true,
+      })
+      expect(mocks.revalidatePath).toHaveBeenCalledWith(
+        "/dashboard/customers/c-42",
+        "page"
+      )
+    }
+  )
 
   it.each([
     ["FORBIDDEN", "Solo l'autore della nota può eliminarla"],
