@@ -3,16 +3,17 @@ domain: platform
 title: Backend, DB, storage e cron su GCP
 type: piano
 status: in_progress
-last_updated: 2026-10-18
+last_updated: 2026-10-19
 ---
 
 # Backend, DB, storage e cron su GCP
 
-Decisioni del 2026-10-14 e del 2026-10-18:
+Decisioni del 2026-10-14, del 2026-10-18 e del 2026-10-19:
 
 - DB, storage e cron passano da Supabase e GitHub Actions a Google Cloud.
 - **Tutto il codice server esce dall'app Next.js e va in un backend su Cloud Run**, che espone le stesse API: le 76 procedure tRPC, le route REST di import ed export, l'auth e i cron. Next.js resta su Vercel come solo frontend.
 - Lo storage passa da `gcs-storage-kit`, un kit riusabile ricavato da sevedemo-backend.
+- **La PR7 del piano Contatti entra in questo piano** ([[specs/crm/sezione-contatti/PLAN]], D12 e D24): un Postgres 15 vero nella CI e in Docker, con un database locale `mito_local` costruito dalle migrazioni. Prima di B6 servono T7.1 e T7.1b, per provare migrazioni, dump e script di verifica senza toccare sviluppo.
 
 Questo piano sostituisce le decisioni D8 e D9 (Railway) e la fase 2 (Express) di [[chore/migration_plan]].
 
@@ -35,6 +36,7 @@ Questo piano sostituisce le decisioni D8 e D9 (Railway) e la fase 2 (Express) di
   - niente `next/*`, `next-auth` o `@/trpc/server` dentro `src/server/**` (eccezione temporanea: `src/server/auth.ts`);
   - le operazioni nuove sono procedure tRPC: niente nuove route handler né server action con logica dentro;
   - i servizi nuovi in Effect, con le dipendenze come `Context.Tag`.
+- PR7 tocca `package.json`, `pnpm-lock.yaml`, `.github/workflows/ci.yml`, `vitest.config.ts` e `src/test/db.ts`; W1 tocca i primi due. Si fanno una alla volta, W1 per prima perché è già avviata.
 
 ## Architettura target
 
@@ -117,11 +119,12 @@ Un progetto a sé (`~/Desktop/lavoro/gcs-storage-kit`), da copiare in ogni proge
 | B4 | Auth: NextAuth v4 eseguita nel backend con `next-auth/core`, rewrite di `/api/auth`. Da qui Next non tocca più il DB | Opus | B2 |
 | B5 | Cron sul backend + Cloud Scheduler + Slack; poi vengono tolti i workflow cron di GitHub per lo staging | Opus + Haiku | T, B2 |
 | W1 | Drizzle 0.45 / kit 0.31 ([[chore/manutenzione-dipendenze]]) | Haiku + review di Opus | — |
-| B6 | DB: Cloud SQL di staging, dump del DB Supabase di sviluppo, script di verifica, backend via socket Unix, locale via Auth Proxy | Opus + Leonardo | B4, W1 |
+| PR7 | PR7 del piano Contatti: T7.1 (servizio `postgres:15` in CI e in Docker, harness `*.pg.test.ts` su un database `mito_test_<casuale>`, `PUSHED_SCHEMA` in un modulo suo) e T7.1b (`mito_local` con `db:local:up`, `db:local:reset` e `db:local:migrate`). T7.2 (concorrenza dei Contatti) e T7.1c (seeder di Contatti) restano a Omar, a bassa priorità | Opus (T7.1, T7.1b) + Omar (T7.2, T7.1c) | W1 |
+| B6 | DB: Cloud SQL di staging, dump del DB Supabase di sviluppo, script di verifica, backend via socket Unix, locale via Auth Proxy | Opus + Leonardo | B4, W1, PR7 (T7.1, T7.1b) |
 | S5 | Copia prod → staging (sotto) | Opus + Leonardo | ok del committente |
 | S6 | Osservazione per almeno 2 settimane, prove di rollback e di restore PITR → go/no-go | tutti | B1–B6 |
 
-K, T, B1 e W1 partono subito e in parallelo. B2 aspetta solo S1.
+K, T, B1 e W1 partono subito e in parallelo. B2 aspetta solo S1. PR7 parte dopo W1, e prima di B6.
 
 ### Fase P — prod
 
@@ -137,7 +140,13 @@ Le dismissioni arrivano 2–4 settimane dopo.
 
 ## DB: dettagli
 
-- Cloud SQL edizione Enterprise, versione ≥ quella di Supabase (`select version()`), ruolo `mito_app`, backup automatici + PITR, deletion protection, HA solo in prod.
+- Cloud SQL edizione Enterprise, Postgres 15 come Supabase (prod è su 15.6) e come il servizio di PR7, ruolo `mito_app`, backup automatici + PITR, deletion protection, HA solo in prod.
+- **Lo schema di Cloud SQL nasce dal dump, mai dalle migrazioni.** Su un Postgres vuoto le migrazioni non partono senza i due pezzi di `PUSHED_SCHEMA` (tech-debt "Le migrazioni non ricostruiscono lo schema di produzione", in [[tech-debt/crm/sezione-contatti]]). Dopo il restore, `drizzle.__drizzle_migrations` arriva con il dump e `db:migrate` applica solo le migrazioni nuove.
+- **Prova generale in locale, prima di creare l'istanza** (con il Postgres di PR7):
+  - dump del DB di sviluppo (mai della prod) → `db:local:reset` → `pg_restore` in `mito_local` → script di verifica contro sviluppo, in sola lettura: deve dare identico;
+  - fa emergere senza costi quello che un Postgres senza Supabase non ha: ruoli `anon` e `authenticated`, estensioni, policy, oggetti fuori da `public` e `drizzle`;
+  - lo script di verifica ha un suo `*.pg.test.ts` in CI: due database `mito_test_*` restaurati dallo stesso dump danno identico, una riga cambiata dà diverso.
+- Ogni migrazione nuova, anche quelle del backend (come `cron_run`), passa prima da `db:local:migrate`, poi da sviluppo. Dopo B6, da sviluppo a Cloud SQL di staging.
 - Copia dei dati: `pg_dump -Fc --schema=public --schema=drizzle --no-owner --no-privileges` → `pg_restore` → `ANALYZE` → script di verifica (conteggi, checksum md5 ordinato per PK, sequence, enum, indici, `drizzle.__drizzle_migrations`). Il risultato deve essere identico.
 - Runbook della finestra di prod: pausa dei cron → Supabase in sola lettura, connessioni chiuse → dump → restore → verifica → variabile del DB su `mito-api` prod → smoke test → go/no-go → ripartono i cron.
   - Rollback prima del go: variabile vecchia e via la sola lettura.
@@ -164,7 +173,7 @@ Le dismissioni arrivano 2–4 settimane dopo.
 - [ ] **Auth:** login Azure e via email, logout, scadenza della sessione, utente nuovo creato con il suo operatore.
 - [ ] **Storage:** export caricato con URL firmato e scaricato; il cron di pulizia svuota `export/`; il bucket rifiuta l'accesso anonimo.
 - [ ] **DB:** script di verifica identico; 2 settimane senza errori; connessioni sotto il limite; restore PITR provato.
-- [ ] **Cron:** 7 notti di fila verdi con i conteggi attesi su Slack; un fallimento forzato fa scattare l'alert; un secondo lancio in parallelo si ferma da solo; un secondo `update` nello stesso giorno viene saltato.
+- [ ] **Cron:** 7 notti di fila verdi con i conteggi attesi su Slack; un fallimento forzato fa scattare l'alert; un secondo lancio in parallelo si ferma da solo (provato anche in CI: due `startRun` contemporanei su Postgres vero, con l'harness di PR7); un secondo `update` nello stesso giorno viene saltato.
 - [ ] **Rollback** provato per ogni passo, togliendo la variabile.
 - [ ] **Prova della prod:** dump della prod restaurato nell'istanza prod, verifica identica, tempi misurati.
 
@@ -190,6 +199,7 @@ Le dismissioni arrivano 2–4 settimane dopo.
 - **Cron non idempotente** (`updateCustomerAge`): lock, registro per giorno, zero retry, mai due scheduler insieme.
 - **Il chiamante mattutino sconosciuto dei cron di prod** (sessione del 2026-10-13 in `brain/specs/crm/sezione-contatti/PLAN.md`).
 - **Costi:** `min-instances=1` per ambiente e HA del DB in prod.
+- **Limite di 12 funzioni del piano Hobby di Vercel:** il 2026-10-19 il deploy di staging da `dev` è fallito con "No more than 12 Serverless Functions can be added to a Deployment on the Hobby plan". Lo staging resta sul deploy precedente; anche il prossimo rilascio di prod è a rischio. Decisione aperta: piano Pro per il team `spatalos-projects`, o meno funzioni.
 
 ## Dismissioni (dopo 2–4 settimane di prod stabile)
 
@@ -210,3 +220,15 @@ Le dismissioni arrivano 2–4 settimane dopo.
   - `db:generate` produce sempre anche `ALTER TABLE customers ... SET DEFAULT '<id casuale>'`, perché lo schema usa `default(nanoid())`. Va tolta a mano, e nello snapshot va lasciato il valore precedente, come nelle migrazioni dal 2026-09;
   - i job di Cloud Scheduler dello staging nascono in pausa (`setup-staging.sh`). I workflow GitHub di staging girano solo a mano, quindi non c'è un secondo scheduler;
   - `cleanupTaskEventLog` ha la route sul backend, ma nessuno scheduler: oggi non lo lancia nessun workflow.
+- 2026-10-19, B5:
+  - PR #24 su `dev`; la migrazione `cron_run` è applicata solo al DB di sviluppo, con un controllo che il progetto Supabase non fosse quello della prod;
+  - `mito-crm-staging` gira con l'immagine `mito-api:6c091bc` (revisione `00003`): `/health` 200, i cron rispondono 401 senza un token valido dello Scheduler;
+  - creati il service account `mito-crm-scheduler-staging` e i 4 job (`priority`, `alert`, `update`, `delete-export`), in pausa;
+  - un lancio a mano di ciascuno (un job in pausa non si può lanciare: va riattivato, lanciato e rimesso in pausa), tutti `succeeded` in `cron_run`:
+    - `priority` 6,2 s;
+    - `alert` 16,8 s, 267 alert trovati e processati;
+    - `update` 4,1 s, 0 pratiche e 42 clienti;
+    - `delete-export` 0,7 s, 3 file eliminati.
+
+    Il primo ha risposto in 20,8 s, perché l'istanza si è avviata a freddo in circa 15 s;
+  - i job sono stati riattivati la sera stessa, e da lì contano le 7 notti del go/no-go. Gli esiti vanno solo nei log finché manca il webhook di Slack.
