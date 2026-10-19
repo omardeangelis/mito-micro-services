@@ -18,7 +18,8 @@ export type PendingAlert = {
 export type ContactMutationFeedbackOptions = {
   /**
    * Link to the customer's active contact. When given, the "superseded" toast
-   * offers it (AC52). Absent until the Contatti section exists.
+   * offers it (AC52). The controls of Contatti always give it, carrying the
+   * list state.
    */
   activeContactHref?: (activeTaskId: number) => string
   /**
@@ -65,7 +66,7 @@ export const useContactMutationFeedback = (
           ? {
               action: (
                 <ToastAction altText="Vai al contatto attivo" asChild>
-                  <Link href={activeContactHref(activeTaskId)}>
+                  <Link href={activeContactHref(activeTaskId)} scroll={false}>
                     Vai al contatto attivo
                   </Link>
                 </ToastAction>

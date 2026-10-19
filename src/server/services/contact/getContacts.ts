@@ -67,6 +67,14 @@ export type CustomerFilter = {
 export type GetContactsResult = {
   contacts: ContactRow[]
   total: number
+  /**
+   * With `includeInactive` and no customer filter: the contacts no longer
+   * active of the customers whose rows are in `contacts`, the newest created
+   * first. The list hangs them under the active contact of their customer;
+   * they are not rows of the list and `total` doesn't count them. Empty
+   * otherwise (with a customer filter `contacts` already holds them all).
+   */
+  previous: ContactRow[]
   /** Null without `customerId`. */
   customerFilter: CustomerFilter | null
 }
@@ -119,7 +127,11 @@ const buildContactsWhere = (
     filters.customerId === undefined
       ? undefined
       : eq(task.customerId, filters.customerId),
-    filters.includeInactive ? undefined : eq(task.isActive, true),
+    // The previous contacts of a customer are shown under its active one, so
+    // they are rows of the list only when the list is that customer's alone
+    filters.includeInactive && filters.customerId !== undefined
+      ? undefined
+      : eq(task.isActive, true),
     filters.hasAlert ? isNotNull(alert.id) : undefined,
     or(
       filters.operatorIds.includes(0) ? isNull(task.operatorId) : undefined,
@@ -198,6 +210,59 @@ const customerFilterOf = (
         )
       )
 
+/** What a row of the list is made of: the contact, its operator, customer and open alert. */
+const contactSelection = {
+  id: task.id,
+  state: task.state,
+  priority: task.priority,
+  isActive: task.isActive,
+  closedAt: task.closedAt,
+  createdAt: task.createdAt,
+  updatedAt: task.updatedAt,
+  operator: {
+    id: operators.id,
+    name: operators.name,
+    surname: operators.surname,
+  },
+  customer: {
+    id: customers.id,
+    name: customers.name,
+    surname: customers.surname,
+    phoneNumber: customers.phoneNumber,
+    fiscalCode: customers.fiscalCode,
+    vatCode: customers.vatCode,
+    blackListStatus: customers.blackListStatus,
+    operatorId: customers.operatorId,
+  },
+  alert: {
+    id: alert.id,
+    deadline: alert.deadline,
+    message: alert.message,
+  },
+}
+
+/** The contacts no longer active of the customers, the newest created first. */
+const previousContactsOf = (
+  customerIds: readonly string[]
+): Effect.Effect<ContactRow[], DbError, Db> =>
+  customerIds.length === 0
+    ? Effect.succeed([])
+    : query((client) =>
+        client
+          .select(contactSelection)
+          .from(task)
+          .innerJoin(customers, eq(customers.id, task.customerId))
+          .leftJoin(operators, eq(operators.id, task.operatorId))
+          .leftJoin(alert, openAlertOf)
+          .where(
+            and(
+              eq(task.isActive, false),
+              inArray(task.customerId, [...customerIds])
+            )
+          )
+          .orderBy(desc(task.createdAt), desc(task.id))
+      )
+
 /**
  * The contacts that satisfy the filters (AC10), ordered, one page of them,
  * with the exact total of the whole result (AC14).
@@ -213,35 +278,7 @@ export const getContacts = ({
   const where = buildContactsWhere(filters, actor)
   const contacts = query((client) =>
     client
-      .select({
-        id: task.id,
-        state: task.state,
-        priority: task.priority,
-        isActive: task.isActive,
-        closedAt: task.closedAt,
-        createdAt: task.createdAt,
-        updatedAt: task.updatedAt,
-        operator: {
-          id: operators.id,
-          name: operators.name,
-          surname: operators.surname,
-        },
-        customer: {
-          id: customers.id,
-          name: customers.name,
-          surname: customers.surname,
-          phoneNumber: customers.phoneNumber,
-          fiscalCode: customers.fiscalCode,
-          vatCode: customers.vatCode,
-          blackListStatus: customers.blackListStatus,
-          operatorId: customers.operatorId,
-        },
-        alert: {
-          id: alert.id,
-          deadline: alert.deadline,
-          message: alert.message,
-        },
-      })
+      .select(contactSelection)
       .from(task)
       .innerJoin(customers, eq(customers.id, task.customerId))
       .leftJoin(operators, eq(operators.id, task.operatorId))
@@ -269,5 +306,14 @@ export const getContacts = ({
       customerFilter: customerFilterOf(filters.customerId),
     },
     { concurrency: "unbounded" }
+  ).pipe(
+    Effect.flatMap((page) =>
+      (filters.includeInactive && filters.customerId === undefined
+        ? previousContactsOf([
+            ...new Set(page.contacts.map(({ customer }) => customer.id)),
+          ])
+        : Effect.succeed([] as ContactRow[])
+      ).pipe(Effect.map((previous) => ({ ...page, previous })))
+    )
   )
 }

@@ -1,6 +1,6 @@
 import "server-only"
 import { Effect } from "effect"
-import { eq } from "drizzle-orm"
+import { and, desc, eq, ne } from "drizzle-orm"
 import {
   type Actor,
   canReassign,
@@ -45,6 +45,19 @@ export type GetContactByIdResult = {
     updatedAt: Date
     resolvedByName: string | null
     resolvedBySurname: string | null
+  }[]
+  /**
+   * The other contacts of the customer, the active one included, the newest
+   * created first: what the detail shows as the history of the customer's
+   * contacts (AC80). Not the contact itself.
+   */
+  customerContacts: {
+    id: number
+    state: ContactRow["state"]
+    isActive: boolean
+    closedAt: Date | null
+    createdAt: Date
+    operator: ContactRow["operator"]
   }[]
   activeTaskId: number | null
   editability: ContactEditability
@@ -116,10 +129,30 @@ export const getContactById = ({
     const closedAlerts = yield* query((client) =>
       customerAlerts(client, customer.id, { onlyClosed: true })
     )
+    const customerContacts = yield* query((client) =>
+      client
+        .select({
+          id: task.id,
+          state: task.state,
+          isActive: task.isActive,
+          closedAt: task.closedAt,
+          createdAt: task.createdAt,
+          operator: {
+            id: operators.id,
+            name: operators.name,
+            surname: operators.surname,
+          },
+        })
+        .from(task)
+        .leftJoin(operators, eq(operators.id, task.operatorId))
+        .where(and(eq(task.customerId, customer.id), ne(task.id, contact.id)))
+        .orderBy(desc(task.createdAt), desc(task.id))
+    )
     return {
       contact,
       customer,
       alert: openAlert,
+      customerContacts,
       history: closedAlerts.map(({ isResolved, ...entry }) => entry),
       activeTaskId: contact.isActive
         ? null

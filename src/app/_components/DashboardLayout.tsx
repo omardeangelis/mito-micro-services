@@ -7,6 +7,7 @@ import Image from "next/image"
 import {
   FolderIcon,
   HomeIcon,
+  PhoneCall,
   UserIcon,
   ChevronLeft,
   ChevronRight,
@@ -61,6 +62,7 @@ export function DashboardLayout() {
 
   const isDashboard = pathname === "/dashboard/" || pathname === "/dashboard"
   const isCustomers = pathname.includes("dashboard/customers")
+  const isContatti = pathname.includes("dashboard/contatti")
   const isPratiche = pathname.includes("dashboard/pratiche")
   const isProfile = pathname.includes("dashboard/profile")
   const defaultListItemClass = useMemo(
@@ -143,6 +145,21 @@ export function DashboardLayout() {
               <UserIcon className={iconClass} />
               {preference?.dashboardCollapsed ? null : (
                 <span className="font-bold text-inherit">Customers</span>
+              )}
+            </li>
+          </Link>
+          <Link
+            href="/dashboard/contatti"
+            className={
+              isContatti
+                ? cn(defaultListItemClass, "bg-slate-800 text-white")
+                : cn(defaultListItemClass, "hover:bg-gray-300")
+            }
+          >
+            <li className="flex place-items-center rounded-2xl text-inherit">
+              <PhoneCall className={iconClass} />
+              {preference?.dashboardCollapsed ? null : (
+                <span className="font-bold text-inherit">Contatti</span>
               )}
             </li>
           </Link>
