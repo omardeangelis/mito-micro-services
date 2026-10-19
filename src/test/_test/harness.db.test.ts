@@ -1,6 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, it } from "vitest"
 import { task } from "@/server/db/schema/task"
-import { migrateUpTo, resetDb } from "@/test/db"
+import { driverFailure, migrateUpTo, resetDb } from "@/test/db"
 import { createTestCaller } from "@/test/caller"
 import {
   createCustomer,
@@ -52,9 +52,9 @@ describe("harness di test su PGlite", () => {
     const customer = await createCustomer()
     await failNextInsertInto(task)
 
-    await expect(createTask({ customerId: customer.id })).rejects.toThrow(
-      /failpoint/
-    )
+    await expect(
+      driverFailure(createTask({ customerId: customer.id }))
+    ).rejects.toThrow(/failpoint/)
     await expect(createTask({ customerId: customer.id })).resolves.toBeDefined()
   })
 
@@ -64,9 +64,9 @@ describe("harness di test su PGlite", () => {
     await failNextInsertInto(task, { customer_id: second.id })
 
     await expect(createTask({ customerId: first.id })).resolves.toBeDefined()
-    await expect(createTask({ customerId: second.id })).rejects.toThrow(
-      /failpoint/
-    )
+    await expect(
+      driverFailure(createTask({ customerId: second.id }))
+    ).rejects.toThrow(/failpoint/)
     await expect(createTask({ customerId: second.id })).resolves.toBeDefined()
   })
 

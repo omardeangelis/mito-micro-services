@@ -42,3 +42,27 @@ export function dropExpectedTrpcErrors(
   }
   return event
 }
+
+// Drizzle 0.45 reports a failed query as "Failed query: <sql>\nparams: <values>",
+// and a log line may carry it with its stack after
+const QUERY_PARAMS = /(Failed query: [\s\S]*?\nparams: )[\s\S]*?(?=\n\s+at |$)/g
+const withoutParams = (text: string) =>
+  text.replace(QUERY_PARAMS, "$1[removed]")
+
+/**
+ * Removes the parameters of a failed query from the event: they are the
+ * values of the query, customers' data. The tRPC procedures and the import
+ * routes already report the driver's error; this covers every other path, in
+ * the exceptions and in the logs kept as breadcrumbs.
+ */
+export function dropQueryParams(event: ErrorEvent): ErrorEvent {
+  for (const exception of event.exception?.values ?? []) {
+    if (exception.value) exception.value = withoutParams(exception.value)
+  }
+  for (const breadcrumb of event.breadcrumbs ?? []) {
+    if (breadcrumb.message)
+      breadcrumb.message = withoutParams(breadcrumb.message)
+  }
+  if (event.message) event.message = withoutParams(event.message)
+  return event
+}

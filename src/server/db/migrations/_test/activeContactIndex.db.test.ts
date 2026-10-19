@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm"
 import { task } from "@/server/db/schema/task"
 import {
   activeTasksOf,
+  driverFailure,
   migrateUpTo,
   resetDb,
   testClient,
@@ -26,9 +27,9 @@ describe("indice unico sui contatti attivi", () => {
     const customer = await createCustomer()
     await createTask({ customerId: customer.id })
 
-    await expect(createTask({ customerId: customer.id })).rejects.toMatchObject(
-      { code: "23505" }
-    )
+    await expect(
+      driverFailure(createTask({ customerId: customer.id }))
+    ).rejects.toMatchObject({ code: "23505" })
     expect(await activeTasksOf(customer.id)).toHaveLength(1)
   })
 
@@ -43,10 +44,12 @@ describe("indice unico sui contatti attivi", () => {
     await createTask({ customerId: customer.id })
 
     await expect(
-      testDb
-        .update(task)
-        .set({ isActive: true })
-        .where(eq(task.id, superseded.id))
+      driverFailure(
+        testDb
+          .update(task)
+          .set({ isActive: true })
+          .where(eq(task.id, superseded.id))
+      )
     ).rejects.toMatchObject({ code: "23505" })
   })
 

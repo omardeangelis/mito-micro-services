@@ -1,3 +1,4 @@
+import type { ErrorEvent } from "@sentry/nextjs"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 vi.mock("@sentry/nextjs", () => ({
@@ -85,3 +86,53 @@ describe.each(Object.keys(CONFIGS) as (keyof typeof CONFIGS)[])(
     })
   }
 )
+
+describe("i parametri di una query fallita non arrivano a Sentry", () => {
+  const QUERY = 'Failed query: insert into "t" ("name", "cf") values ($1, $2)'
+  const FAILED = `${QUERY}\nparams: Mario Rossi,RSSMRA80A01H501U`
+  const event = (): ErrorEvent => ({
+    type: undefined,
+    message: FAILED,
+    exception: { values: [{ type: "Error", value: FAILED }] },
+    breadcrumbs: [
+      { message: `Cron update failed ${FAILED}\n    at step (cron.ts:1:1)` },
+    ],
+  })
+
+  it("dropQueryParams li toglie da eccezioni, log e messaggio, e lascia la query", async () => {
+    const { dropQueryParams } = await import("@/lib/utils/sentry")
+    const scrubbed = dropQueryParams(event())
+
+    expect(JSON.stringify(scrubbed)).not.toMatch(/Mario Rossi|RSSMRA80A01H501U/)
+    expect(scrubbed.exception?.values?.[0]?.value).toBe(
+      `${QUERY}\nparams: [removed]`
+    )
+    expect(scrubbed.breadcrumbs?.[0]?.message).toBe(
+      `Cron update failed ${QUERY}\nparams: [removed]\n    at step (cron.ts:1:1)`
+    )
+  })
+
+  it("dropQueryParams lascia com'è un evento senza query fallite", async () => {
+    const { dropQueryParams } = await import("@/lib/utils/sentry")
+    const plain: ErrorEvent = {
+      type: undefined,
+      exception: { values: [{ type: "Error", value: "params: niente" }] },
+    }
+
+    expect(dropQueryParams(structuredClone(plain))).toEqual(plain)
+  })
+
+  it("il beforeSend di sentry.server.config li toglie", async () => {
+    const options = await loadSentryInit("server", {
+      NEXT_PUBLIC_VERCEL_ENV: "production",
+      NEXT_PUBLIC_SENTRY_DSN: DSN,
+    })
+    const beforeSend = options?.beforeSend
+    if (!beforeSend) throw new Error("sentry.server.config has no beforeSend")
+    const sent = await beforeSend(event(), {
+      originalException: new Error(FAILED),
+    })
+
+    expect(JSON.stringify(sent)).not.toMatch(/Mario Rossi|RSSMRA80A01H501U/)
+  })
+})
