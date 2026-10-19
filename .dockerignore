@@ -1,0 +1,15 @@
+# What api/Dockerfile never sends to the build. The env files first: they hold
+# the database keys and, in .env, the production values
+.env*
+!.env.example
+**/node_modules
+.next
+.git
+.github
+api/dist
+coverage
+tmp
+brain
+.agents
+.claude
+*.log

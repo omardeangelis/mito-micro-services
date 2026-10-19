@@ -70,6 +70,35 @@ if (
   )
 }
 
+// The backend on Cloud Run (api/) serves the same API on the same paths. With
+// BACKEND_URL set, Vercel sends the browser's tRPC calls there, and
+// @/trpc/server calls it over HTTP. The rewrite is fixed at build time, so a
+// change needs a new deploy. The session cookie travels to it: https only,
+// except for the local backend of `pnpm api:dev`
+const backendUrl = process.env.BACKEND_URL || undefined
+/** @type {string | undefined} */
+let backendOrigin
+if (backendUrl !== undefined) {
+  if (!URL.canParse(backendUrl)) {
+    throw new Error("BACKEND_URL is not a URL: set it to https://<host>")
+  }
+  const url = new URL(backendUrl)
+  if (
+    url.protocol !== "https:" &&
+    !["localhost", "127.0.0.1"].includes(url.hostname)
+  ) {
+    throw new Error(
+      "BACKEND_URL must be https: the session cookie travels to it"
+    )
+  }
+  if (url.pathname !== "/" || url.search || url.hash) {
+    throw new Error(
+      "BACKEND_URL must be the origin of the backend, without a path"
+    )
+  }
+  backendOrigin = url.origin
+}
+
 /** @type {import("next").NextConfig} */
 const config = {
   reactStrictMode: true,
@@ -83,6 +112,20 @@ const config = {
     // browser keeps what the build saw
     NEXT_PUBLIC_VERCEL_ENV: process.env.VERCEL_ENV ?? "none",
     NEXT_PUBLIC_APP_ENV: process.env.APP_ENV ?? "none",
+  },
+  async rewrites() {
+    if (backendOrigin === undefined) return []
+    // beforeFiles: otherwise the route of Next.js at /api/trpc answers first
+    return {
+      beforeFiles: [
+        {
+          source: "/api/trpc/:path*",
+          destination: `${backendOrigin}/api/trpc/:path*`,
+        },
+      ],
+      afterFiles: [],
+      fallback: [],
+    }
   },
   async headers() {
     return [

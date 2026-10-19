@@ -4,6 +4,7 @@ import {
   createTRPCProxyClient,
   loggerLink,
   TRPCClientError,
+  type TRPCLink,
 } from "@trpc/client"
 import { callProcedure } from "@trpc/server"
 import { observable } from "@trpc/server/observable"
@@ -11,8 +12,10 @@ import { type TRPCErrorResponse } from "@trpc/server/rpc"
 import { headers } from "next/headers"
 import { cache } from "react"
 
+import { env } from "@/env"
 import { appRouter, type AppRouter } from "@/server/api/root"
 import { createTRPCContext } from "@/server/api/trpc"
+import { backendLink } from "./backendLink"
 import { transformer } from "./shared"
 
 /**
@@ -28,6 +31,33 @@ const createContext = cache(() => {
   })
 })
 
+/**
+ * Custom RSC link that lets us invoke procedures without using http requests. Since Server
+ * Components always run on the server, we can just call the procedure as a function.
+ */
+const rscLink: TRPCLink<AppRouter> =
+  () =>
+  ({ op }) =>
+    observable((observer) => {
+      createContext()
+        .then((ctx) => {
+          return callProcedure({
+            procedures: appRouter._def.procedures,
+            path: op.path,
+            rawInput: op.input,
+            ctx,
+            type: op.type,
+          })
+        })
+        .then((data) => {
+          observer.next({ result: { data } })
+          observer.complete()
+        })
+        .catch((cause: TRPCErrorResponse) => {
+          observer.error(TRPCClientError.from(cause))
+        })
+    })
+
 export const api = createTRPCProxyClient<AppRouter>({
   transformer,
   links: [
@@ -36,30 +66,12 @@ export const api = createTRPCProxyClient<AppRouter>({
         process.env.NODE_ENV === "development" ||
         (op.direction === "down" && op.result instanceof Error),
     }),
-    /**
-     * Custom RSC link that lets us invoke procedures without using http requests. Since Server
-     * Components always run on the server, we can just call the procedure as a function.
-     */
-    () =>
-      ({ op }) =>
-        observable((observer) => {
-          createContext()
-            .then((ctx) => {
-              return callProcedure({
-                procedures: appRouter._def.procedures,
-                path: op.path,
-                rawInput: op.input,
-                ctx,
-                type: op.type,
-              })
-            })
-            .then((data) => {
-              observer.next({ result: { data } })
-              observer.complete()
-            })
-            .catch((cause: TRPCErrorResponse) => {
-              observer.error(TRPCClientError.from(cause))
-            })
-        }),
+    // With the backend on Cloud Run, the procedures run there, over HTTP
+    env.BACKEND_URL
+      ? backendLink({
+          url: env.BACKEND_URL,
+          cookie: () => headers().get("cookie"),
+        })
+      : rscLink,
   ],
 })

@@ -2,7 +2,15 @@ import { eq, sql } from "drizzle-orm"
 import { db } from "@/server/db"
 import { customers } from "@/server/db/schema/customers"
 
-async function updateCustomerAge(todayMonth: number, todayDay: number) {
+/**
+ * The `update` cron: adds a year to the age of the customers born on this
+ * month and day. It adds one at every run, so it runs once a day. Returns how
+ * many it updated.
+ */
+async function updateCustomerAge(
+  todayMonth: number,
+  todayDay: number
+): Promise<number> {
   const customersToUpdate = await db
     .select()
     .from(customers)
@@ -20,6 +28,7 @@ async function updateCustomerAge(todayMonth: number, todayDay: number) {
       })
       .where(eq(customers.id, customer.id))
   }
+  return customersToUpdate.length
 }
 
 export { updateCustomerAge }
