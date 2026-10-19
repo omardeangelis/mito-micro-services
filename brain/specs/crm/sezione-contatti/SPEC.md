@@ -9,7 +9,7 @@ links:
   - "[[chore/crm/guida-assegnazione-massiva-e-alert]]"
   - "[[chore/crm/report-frontend-riorganizzazione]]"
 created: 2026-09-24
-updated: 2026-10-15
+updated: 2026-10-18
 ---
 
 # Spec: Sezione Contatti e tabella Clienti semplificata
@@ -99,7 +99,7 @@ I comportamenti visti dall'utente (messaggi, percorsi di errore, casi limite) so
   - stato, a scelta multipla;
   - priorità, a scelta multipla tra le quattro fasce;
   - intervallo di date dal/al su un campo a scelta tra Contattato il (default), Prossimo alert e Creato;
-  - "Solo i miei": solo i contatti assegnati all'utente collegato;
+  - "Solo i miei": i contatti che l'utente collegato può lavorare: quelli assegnati a lui e quelli di un collega il cui cliente è assegnato a lui (D2);
   - "Con alert": solo i contatti con un alert aperto;
   - "Includi contatti precedenti" (AC3).
 - **AC11** — Nell'intervallo di date "al" comprende l'intera giornata, secondo l'ora italiana.
@@ -146,7 +146,7 @@ Gli stati "da chiamare" sono `chiamare` e `followup`; gli stati con esito sono `
 
 - **AC42** — La priorità del contatto si imposta a mano scegliendo una delle quattro fasce. Da quel momento il cron `priority` non la sovrascrive più e il dettaglio la mostra come "Manuale".
 - **AC43** — L'opzione "Automatica" restituisce la priorità al cron `priority`, che la ricalcola alla sua esecuzione successiva. Il dettaglio la mostra come "Automatica".
-- **AC44** — "Imposta richiamo" crea un alert con una data non passata e un messaggio facoltativo, porta lo stato del contatto a `richiamare` e lo mostra come Prossimo alert. Se c'era già un alert aperto, il form indica quale alert sostituisce e, al salvataggio, quello passa nello Storico. La conferma di AC36 non si applica: il form stesso fa da conferma. Se al salvataggio l'alert aperto non è quello indicato nel form (per esempio perché un collega ne ha impostato un altro), il richiamo non viene salvato e il form mostra l'alert attuale.
+- **AC44** — "Imposta richiamo" crea un alert con una data da domani in poi (non oggi, né un giorno passato) e un messaggio facoltativo, porta lo stato del contatto a `richiamare` e lo mostra come Prossimo alert. Se c'era già un alert aperto, il form indica quale alert sostituisce e, al salvataggio, quello passa nello Storico. La conferma di AC36 non si applica: il form stesso fa da conferma. Se al salvataggio l'alert aperto non è quello indicato nel form (per esempio perché un collega ne ha impostato un altro), il richiamo non viene salvato e il form mostra l'alert attuale.
 - **AC45** — "Imposta richiamo" avviene per intero oppure non avviene. Scrive, con sorgente `detail`, una riga `state_change` quando lo stato cambia e una riga `alert_resolved` per l'alert sostituito.
 - **AC46** — "Imposta richiamo" è disponibile solo quando lo stato del contatto è uno stato con esito o `nessuno`.
 - **AC47** — Un amministratore può cambiare l'operatore del contatto. Il cambio aggiorna sia l'operatore del contatto sia quello del cliente, e scrive una riga `operator_reassign` in `task_event_log`.
@@ -209,7 +209,7 @@ Gli stati "da chiamare" sono `chiamare` e `followup`; gli stati con esito sono `
 - **Regole sul server.** Permessi, regole di transizione e atomicità dei cambi di stato valgono sul server, non solo nell'interfaccia.
 - **Nessun SQL costruito dal client.** I filtri di Contatti arrivano al server come valori tipizzati e validati; nessun frammento SQL passa dall'URL o dal browser.
 - **Un solo contatto attivo per cliente garantito dal database** (AC71), non solo dal codice.
-- **Migrazioni dello schema solo additive**, generate con `pnpm db:generate`. La pulizia di AC69 aggiorna righe esistenti ma non cancella nulla. Durante lo sviluppo non si esegue nessuno script che punta alla produzione (`NODE_ENV=production`).
+- **Migrazioni dello schema solo additive**, generate con `pnpm db:generate`, con una sola eccezione: la migrazione di PR5a toglie due indici parziali di PR2 (`task_priority_active_idx`, `task_operator_active_idx`) che la soglia del piano (A3: prima pagina entro 500 ms) non richiede: sui dati di produzione la prima pagina resta sotto la soglia anche senza. Non tocca dati ed è reversibile con un `CREATE INDEX`. Omar l'ha confermata il 2026-10-17 sulla prima misura e l'ha riconfermata il 2026-10-18 sulle misure con la query vera (PLAN, T5.16), che per l'indice sulla priorità mostrano circa 16 ms sulla prima pagina e 116 ms alla pagina 2000. La pulizia di AC69 aggiorna righe esistenti ma non cancella nulla. Durante lo sviluppo non si esegue nessuno script che punta alla produzione (`NODE_ENV=production`).
 - **Pulizia tracciata.** Subito prima della pulizia si estrae l'elenco dei clienti coinvolti, dei contatti che verranno disattivati e degli alert che verranno chiusi (AC70), e lo si conserva. Non serve il via libera degli amministratori (deciso da Omar il 2026-09-29).
 - **Prestazioni.** Le liste Contatti e Clienti restano utilizzabili con i volumi di produzione; va verificato su dati di dimensione reale prima del rilascio (soglia: domanda 7).
 - **Rilascio in quattro passi**, ognuno rilasciabile da solo, in quest'ordine. Il passo 4 va per ultimo, dopo qualche giorno di uso di Contatti da parte degli operatori.
@@ -289,4 +289,6 @@ La proposta di implementazione completa (query, indici, struttura dei file, stim
 | Dal passo 1 i controlli rimasti in Clienti seguono le regole di Contatti (AC73). | Altrimenti per giorni permessi e conferma dell'alert varrebbero solo in parte. |
 | L'assegnazione massiva resta in Clienti. | È il modo in cui nascono i contatti per i clienti che non ne hanno uno. |
 | "Assegna Clienti" sposta cliente e contatto attivo insieme, in ogni stato (AC75); la riga di Clienti e la scheda cliente non nominano l'operatore del contatto (AC51). Deciso da Omar il 2026-10-15, dopo i test manuali di PR3. | Prima spostava il contatto solo in `chiamare`: dopo una riassegnazione i contatti con esito restavano al vecchio operatore, e la colonna Operatore di Clienti diceva una cosa diversa dal contatto, contro il testo della scheda ("Assegna solo il cliente"). Il 2026-10-15 in prod i contatti attivi separati erano 1 su 69.783: la regola tiene allineato quello che la migrazione di PR2 ha allineato. |
+| "Solo i miei" include anche i contatti di un collega il cui cliente è assegnato all'utente. Deciso con il piano di Contatti (D8). | È la stessa regola di AC49: chi può lavorare il contatto lo trova con il filtro. Con "assegnati all'utente" il filtro nasconderebbe contatti che l'utente può modificare. |
+| Il richiamo si imposta da domani, non da oggi. Deciso da Omar il 2026-10-17 (D22). | Il cron alert gira una volta per notte e chiude senza followup i richiami il cui giorno è già passato: un richiamo per oggi, impostato dopo la corsa della notte, non riporterebbe il contatto fra quelli da chiamare. La scheda cliente già disabilita oggi. |
 | Timeline degli eventi esclusa. | Facoltativa nella bozza; esclusa per tenere il perimetro stretto. |

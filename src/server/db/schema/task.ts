@@ -86,12 +86,6 @@ export const task = createTable(
       .on(table.customerId)
       .where(sql`is_active`),
     customerIdIdx: index("task_customer_id_idx").on(table.customerId),
-    operatorActiveIdx: index("task_operator_active_idx")
-      .on(table.operatorId)
-      .where(sql`is_active`),
-    priorityActiveIdx: index("task_priority_active_idx")
-      .on(table.priority.desc())
-      .where(sql`is_active`),
   })
 )
 

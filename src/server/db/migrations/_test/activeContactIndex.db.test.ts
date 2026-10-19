@@ -62,8 +62,11 @@ describe("indice unico sui contatti attivi", () => {
   })
 })
 
+// task_operator_active_idx and task_priority_active_idx are gone since PR5a
+// (T5.16): the list of contacts doesn't need them. They stay in the IN list so
+// that a missing drop shows up here.
 describe("definizione degli indici di PR2", () => {
-  it("coincide con quella che il runbook G2 confronta in prod (passo 6)", async () => {
+  it("coincide con quella che il runbook G2 confronta in prod (passo 6), senza i due indici tolti da PR5a", async () => {
     const { rows } = await testClient.query<{ indexdef: string }>(
       `SELECT indexdef FROM pg_indexes
        WHERE indexname IN ('task_customer_active_uidx', 'task_customer_id_idx',
@@ -75,8 +78,22 @@ describe("definizione degli indici di PR2", () => {
       'CREATE INDEX alert_task_id_idx ON public."mito-deutsche_alert" USING btree (task_id)',
       'CREATE UNIQUE INDEX task_customer_active_uidx ON public."mito-deutsche_task" USING btree (customer_id) WHERE is_active',
       'CREATE INDEX task_customer_id_idx ON public."mito-deutsche_task" USING btree (customer_id)',
-      'CREATE INDEX task_operator_active_idx ON public."mito-deutsche_task" USING btree (operator_id) WHERE is_active',
-      'CREATE INDEX task_priority_active_idx ON public."mito-deutsche_task" USING btree (priority DESC NULLS LAST) WHERE is_active',
+    ])
+  })
+
+  // The list above looks the names up one by one: an index added to `task` by
+  // a later migration would go unseen without this
+  it("lascia su task solo la chiave primaria e i due indici dei clienti", async () => {
+    const { rows } = await testClient.query<{ indexname: string }>(
+      `SELECT indexname FROM pg_indexes
+       WHERE tablename = 'mito-deutsche_task'
+       ORDER BY indexname`
+    )
+
+    expect(rows.map(({ indexname }) => indexname)).toEqual([
+      "mito-deutsche_task_pkey",
+      "task_customer_active_uidx",
+      "task_customer_id_idx",
     ])
   })
 })
