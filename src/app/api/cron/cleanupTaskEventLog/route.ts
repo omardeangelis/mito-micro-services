@@ -1,15 +1,10 @@
 import * as Sentry from "@sentry/nextjs"
 import { NextResponse } from "next/server"
-import { lt } from "drizzle-orm"
-import { subMonths } from "date-fns"
-import { db } from "@/server/db"
-import { taskEventLog } from "@/server/db/schema/taskEventLog"
+import { cleanupTaskEventLog } from "@/server/services/cron/cleanupTaskEventLog"
 import { authCheck } from "../../_utils/auth"
 
 export const dynamic = "force-dynamic"
 export const maxDuration = 60
-
-const RETENTION_MONTHS = 3
 
 export async function GET(request: Request) {
   // auth check
@@ -17,16 +12,11 @@ export async function GET(request: Request) {
   if (authResponse) return authResponse
 
   try {
-    const cutoff = subMonths(new Date(), RETENTION_MONTHS)
-
-    const deleted = await db
-      .delete(taskEventLog)
-      .where(lt(taskEventLog.createdAt, cutoff))
-      .returning({ id: taskEventLog.id })
+    const deletedCount = await cleanupTaskEventLog(new Date())
 
     return NextResponse.json({
       message: "Cron job ran",
-      deletedCount: deleted.length,
+      deletedCount,
     })
   } catch (error) {
     console.error("Error cleaning up task_event_log", error)

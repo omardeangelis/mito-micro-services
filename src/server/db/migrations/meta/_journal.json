@@ -57,6 +57,13 @@
       "when": 1791749278159,
       "tag": "20261011200758_task_updated_at_default",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1792353460148,
+      "tag": "20261018195740_cron_run",
+      "breakpoints": true
     }
   ]
 }

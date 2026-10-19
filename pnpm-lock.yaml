@@ -168,6 +168,9 @@ importers:
       hono:
         specifier: ^4.13.13
         version: 4.13.13
+      jose:
+        specifier: ^6.2.12
+        version: 6.2.12
       jsonwebtoken:
         specifier: ^9.0.3
         version: 9.0.3
@@ -4194,6 +4197,9 @@ packages:
 
   jose@5.6.3:
     resolution: {integrity: sha512-1Jh//hEEwMhNYPDDLwXHa2ePWgWiFNNUadVmguAAw2IJ6sj9mNxV5tGXJNqlMkJAybF6Lgw1mISDxTePP/187g==}
+
+  jose@6.2.12:
+    resolution: {integrity: sha512-9NiFmJEex0sy2Dk58j2UGBSHgUs2ypF9eZSu4L6vjOX3Dp96Sw1F3uL+H+D1sx02jZZdzUT0HgvCy59CuvXcWw==}
 
   js-base64@3.7.7:
     resolution: {integrity: sha512-7rCnleh0z2CkXhH67J8K1Ytz0b2Y+yxTPL+/KOJoa20hfnVQ/3/T6W/KflYI4bRHRagNeXeU2bkNGI3v1oS/lw==}
@@ -9920,6 +9926,8 @@ snapshots:
   jose@4.15.9: {}
 
   jose@5.6.3: {}
+
+  jose@6.2.12: {}
 
   js-base64@3.7.7: {}
 

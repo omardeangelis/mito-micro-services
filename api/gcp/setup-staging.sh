@@ -55,3 +55,24 @@ for name in SUPABASE_DB_CONNECTION_STRING SUPABASE_MITO_PSW SUPABASE_KEY \
     --member=serviceAccount:$SA --role=roles/secretmanager.secretAccessor \
     --condition=None
 done
+
+# The crons (B5): Cloud Scheduler calls /internal/cron/<job> with an OIDC token
+# of its own service account, which the backend checks (CRON_OIDC_* in
+# deploy-staging.sh). The service account needs no role: the service is
+# public and the token is the check. No retry: a failed run waits for the next
+# day or a "Force run". Same UTC times as the GitHub crons; the jobs start
+# paused, and are resumed when staging takes over its crons
+gcloud services enable cloudscheduler.googleapis.com --project=$P
+SCHED=mito-crm-scheduler-staging@$P.iam.gserviceaccount.com
+gcloud iam service-accounts create mito-crm-scheduler-staging --project=$P
+URL=https://mito-crm-staging-869830994359.europe-west3.run.app
+for job in "priority|17 23 * * *" "alert|47 23 * * *" \
+  "update|17 0 * * *" "delete-export|47 0 * * *"; do
+  name=${job%%|*}
+  gcloud scheduler jobs create http mito-crm-staging-$name --project=$P \
+    --location=$R --schedule="${job#*|}" --time-zone=Etc/UTC \
+    --uri=$URL/internal/cron/$name --http-method=POST \
+    --oidc-service-account-email=$SCHED --oidc-token-audience=$URL \
+    --attempt-deadline=30m --max-retry-attempts=0
+  gcloud scheduler jobs pause mito-crm-staging-$name --project=$P --location=$R
+done

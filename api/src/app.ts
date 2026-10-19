@@ -3,6 +3,8 @@ import { Hono } from "hono"
 import { appRouter } from "@/server/api/root"
 import { createTRPCContext } from "@/server/api/trpc"
 import { requestSession } from "@/server/requestSession"
+import { cronLive } from "./cron/live"
+import { cronRoutes } from "./cron/routes"
 import { sessionFromRequest } from "./session"
 
 /**
@@ -14,6 +16,10 @@ import { sessionFromRequest } from "./session"
 export const app = new Hono()
 
 app.get("/health", (c) => c.json({ ok: true }))
+
+// Cloud Scheduler's calls, with its OIDC token: outside /api, so no Vercel
+// rewrite reaches them and they read no session
+app.route("/internal/cron", cronRoutes(cronLive(process.env)))
 
 app.use("/api/*", async (c, next) => {
   const session = await sessionFromRequest(c.req.raw)
