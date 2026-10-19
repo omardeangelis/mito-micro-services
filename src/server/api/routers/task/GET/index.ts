@@ -1,10 +1,17 @@
 import { operatorProcedure } from "@/server/api/trpc"
 import { alert, task } from "@/server/db/schema/task"
 import { customers } from "@/server/db/schema/customers"
-import { operators } from "@/server/db/schema/operators"
 import { desc, eq, and, sql, inArray } from "drizzle-orm"
 import { selectCustomerSchema, selectTaskSchema } from "@/lib/types/schemas"
 import { z } from "zod"
+import { getContactsInput } from "@/lib/domain/contact/listInput"
+import { query } from "@/server/effect/db"
+import { runTrpc } from "@/server/effect/trpc"
+import { actorOf } from "@/server/services/contact/actor"
+import { customerAlerts } from "@/server/services/contact/customerAlerts"
+import { contactErrorToTrpc } from "@/server/services/contact/errors"
+import { getContactById as getContactByIdService } from "@/server/services/contact/getContactById"
+import { getContacts as getContactsService } from "@/server/services/contact/getContacts"
 
 const taskInput = selectTaskSchema.pick({
   id: true,
@@ -79,23 +86,9 @@ const getCustomerAlertsInput = selectCustomerSchema.pick({ id: true })
 // ciascun alert risolto. Usato dalla sezione "Alerts" nel dettaglio cliente.
 export const getCustomerAlerts = operatorProcedure
   .input(getCustomerAlertsInput)
-  .query(async ({ ctx, input }) => {
-    return await ctx.db
-      .select({
-        id: alert.id,
-        deadline: alert.deadline,
-        message: alert.message,
-        isResolved: alert.isResolved,
-        updatedAt: alert.updatedAt,
-        resolvedByName: operators.name,
-        resolvedBySurname: operators.surname,
-      })
-      .from(alert)
-      .innerJoin(task, eq(task.id, alert.taskId))
-      .leftJoin(operators, eq(operators.id, alert.resolvedBy))
-      .where(eq(task.customerId, input.id))
-      .orderBy(desc(alert.deadline))
-  })
+  .query(({ input }) =>
+    runTrpc(query((client) => customerAlerts(client, input.id)))
+  )
 
 const getCustomersWithActiveAlertsInput = z.object({
   customerIds: z.array(z.string()),
@@ -155,3 +148,20 @@ export const getActiveTask = operatorProcedure
       )
       .limit(1)
   })
+
+/** The list of contacts, filtered, ordered and paged: see `getContacts`. */
+export const getContacts = operatorProcedure
+  .input(getContactsInput)
+  .query(({ ctx, input }) =>
+    runTrpc(getContactsService({ ...input, actor: actorOf(ctx.operator) }))
+  )
+
+/** The detail of a contact, read-only: see `getContactById`. */
+export const getContactById = operatorProcedure
+  .input(z.object({ id: z.string() }))
+  .query(({ ctx, input }) =>
+    runTrpc(
+      getContactByIdService({ id: input.id, actor: actorOf(ctx.operator) }),
+      contactErrorToTrpc
+    )
+  )

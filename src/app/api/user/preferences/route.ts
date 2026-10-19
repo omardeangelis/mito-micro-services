@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import { api } from "@/trpc/server"
 import {
   type UpdateUserTableVisibleColumnsInput,
+  type UpdateContactTableVisibleColumnsInput,
   type UpdateDashboardCollapsedInput,
   type UpdatePracticesTableVisibleColumnsInput,
 } from "@/server/api/routers/user/PUT/updateUserPreference"
@@ -10,10 +11,11 @@ export const dynamic = "force-dynamic"
 
 /**
  * ct = updateCustomerTableVisibleColumns
+ * cot = updateContactTableVisibleColumns
  * pt = practiceTableVisibleColumns
  * ds = updateDashboardCollapsed
  */
-type PrefParamsAcceptedValues = "ct" | "pt" | "ds"
+type PrefParamsAcceptedValues = "ct" | "cot" | "pt" | "ds"
 
 const handler = async (req: NextRequest) => {
   const { searchParams } = new URL(req.url)
@@ -25,6 +27,12 @@ const handler = async (req: NextRequest) => {
   if (key === "ct") {
     const body = (await req.json()) as UpdateUserTableVisibleColumnsInput
     await api.user.updateCustomerTableVisibleColumns.mutate(body)
+    return NextResponse.json({ message: "OK" })
+  }
+
+  if (key === "cot") {
+    const body = (await req.json()) as UpdateContactTableVisibleColumnsInput
+    await api.user.updateContactTableVisibleColumns.mutate(body)
     return NextResponse.json({ message: "OK" })
   }
 

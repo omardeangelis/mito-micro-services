@@ -7,6 +7,7 @@ import {
 } from "@/components/custom/table/TableActions"
 import { Avatar } from "@/components/ui/avatar"
 import {
+  DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu"
@@ -14,9 +15,11 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Button } from "@/components/ui/button"
 import { useCustomerTableStore } from "@/store/useCustomerTableStore"
 import { type ColumnDef } from "@tanstack/react-table"
+import Link from "next/link"
 import React, { useCallback } from "react"
 import { cn, formatDateAsDMY } from "@/lib/utils"
 import { SortableHeader } from "@/components/custom/table/TableHeaders"
+import { seeContactsHref } from "@/app/dashboard/contatti/_lib/searchParams"
 import { handleCustomerBlackList } from "../_actions/handleCustomerBlackList"
 import { type Customer, type Task } from "@/lib/types/schemas"
 
@@ -410,6 +413,16 @@ export const CustomerColumns: ColumnDef<CustomerColumnSelectedProps>[] = [
       const customer = row.original
       return (
         <TableActionMenu>
+          {/* A portal, but its clicks bubble to the row and open the card */}
+          <DropdownMenuItem
+            asChild
+            className="cursor-pointer"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Link href={seeContactsHref(customer.id!)} prefetch={false}>
+              Vedi contatti
+            </Link>
+          </DropdownMenuItem>
           <DropdownMenuLabel>Copia</DropdownMenuLabel>
           {(customer.fiscalCode ?? customer.vatCode) ? (
             <DropDownCilpBoard

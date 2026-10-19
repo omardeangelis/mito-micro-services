@@ -5,7 +5,7 @@ links:
   - "[[specs/crm/sezione-contatti/SPEC]]"
   - "[[specs/crm/sezione-contatti/IMPLEMENTATION-NOTES]]"
 created: 2026-09-25
-updated: 2026-10-15
+updated: 2026-10-18
 ---
 
 # Tech debt: Sezione Contatti
@@ -20,6 +20,8 @@ Scoperto in T1.1–T1.2 (PR1), preesistente.
 **Effetto oggi:** nessuno in prod. Un DB nuovo creato con `pnpm db:migrate` (sviluppo, preview) non parte o non ha la colonna.
 
 **Contromisura attuale:** l'harness di test (`src/test/db.ts`, `PUSHED_SCHEMA`) applica i due pezzi dove prod li ha ricevuti.
+
+**Contromisura estesa in PR7 (T7.1, T7.1b, D24, 2026-10-18):** i due pezzi di `PUSHED_SCHEMA` diventano un modulo condiviso (`src/server/db/pushedSchema.ts`) e il database locale in Docker costruisce lo schema con gli stessi pezzi. Non risolve il difetto: chi lancia `pnpm db:migrate` su un database nuovo (sviluppo, preview) trova ancora la prima migrazione che fallisce.
 
 **Da fare fuori da questa spec:** una migrazione additiva e idempotente (`ADD COLUMN IF NOT EXISTS "is_resolved"`) e, per il tipo, una nota nel README o una migrazione "baseline". Poi `PUSHED_SCHEMA` si riduce di conseguenza.
 
@@ -172,7 +174,7 @@ Misurata nello smoke di PR1.
 Scoperto in T2.3 (PR2), preesistente.
 
 - `customers.id` ha `.default(nanoid())`: il valore si calcola una volta, quando si carica lo schema. `drizzle-kit` lo vede come un default letterale diverso a ogni esecuzione e aggiunge `ALTER TABLE "mito-deutsche_customers" ALTER COLUMN "id" SET DEFAULT '<letterale>'` a ogni migrazione generata.
-- Le migrazioni `20260615235953` e `20260619152227` l'hanno applicato. In `20260902181440` e in quella di T2.3 la riga è stata tolta a mano; lo snapshot invece registra il nuovo letterale.
+- Le migrazioni `20260615235953` e `20260619152227` l'hanno applicato. In `20260902181440`, in quella di T2.3 e in quella di T5.16 (`20261019142325`) la riga è stata tolta a mano; lo snapshot invece registra il nuovo letterale, quindi ogni migrazione cambia un letterale nello snapshot senza che l'SQL lo mostri.
 
 **Effetto oggi:** nessuno sui dati, finché gli insert di `customers` passano l'id. Un insert senza id prenderebbe il letterale fisso, e il secondo fallirebbe per chiave duplicata.
 
@@ -203,7 +205,7 @@ Scoperto nella review di PR2 (v2, prima e seconda verifica). Riguarda `task_prio
 
 **Effetto oggi:** nessuno sui risultati.
 
-**Da fare:** in PR5a (T5.16). Misurare con `EXPLAIN ANALYZE` una pagina di default, una filtrata per operatore e una "Solo i miei". Poi tenere, ridisegnare o togliere i due indici, con una sola migrazione. T5.17 lo controlla.
+~~**Da fare:** in PR5a (T5.16). Misurare con `EXPLAIN ANALYZE` una pagina di default, una filtrata per operatore e una "Solo i miei". Poi tenere, ridisegnare o togliere i due indici, con una sola migrazione. T5.17 lo controlla.~~ Fatto in PR5a (T5.16, 2026-10-17). Misurata in prod, in sola lettura, la query vera di `getContacts`: la prima pagina di default fa 62 ms con l'indice sulla priorità e 78 ms senza (pagina 2000: 216 e 332 ms), l'indice per operatore non serve. Tolti entrambi con `20261019142325_blushing_roland_deschain.sql`, da applicare a mano in prod (A3 e G4a); il rollback è nel file. **Omar ha riconfermato il 2026-10-18** la rimozione di `task_priority_active_idx` sulle misure con la query vera (16 ms sulla prima pagina, 116 ms alla pagina 2000): la conferma del 2026-10-17 era sulla misura preliminare. Un `DROP INDEX` non è "additivo" come chiede la spec: scostamento dichiarato in §15 del PLAN e confermato da Omar. Le misure sono nel log di T5.16.
 
 ## Il ramo che fallisce della guardia di `contatti_cleanup` è provato solo su PGlite
 
@@ -259,14 +261,80 @@ Scoperto nella review di PR3 (T3.13), preesistente.
 
 Scoperto nel `/simplify` di PR3, preesistente (la regola del selettore è quella della base).
 
-- Il server rifiuta una scadenza prima della mezzanotte di Roma di oggi (`isPastDay`, A4): oggi è ammesso.
+- Il server rifiutava una scadenza prima della mezzanotte di Roma di oggi (`isPastDay`, A4): oggi era ammesso. Dal 2026-10-17 (D22, T5.15) rifiuta anche oggi.
 - Il date picker della scheda cliente (`CustomerAlertCreator`) disabilita ogni giorno la cui mezzanotte, nel fuso del browser, viene prima dell'ora attuale di Roma: oggi compreso.
 
 - Il cron degli alert gira una volta per notte alle 23:47 UTC (00:47–01:47 in Italia) e crea il `followup` solo per gli alert con la scadenza nel giorno italiano dell'esecuzione. Un richiamo impostato per oggi dopo l'esecuzione della notte è visto la notte dopo come "di un giorno prima" e chiuso dall'operatore di sistema senza `followup`: il contatto non torna fra quelli da chiamare (review di PR3, v3).
 
-**Effetto oggi:** dalla scheda cliente non si imposta un richiamo per oggi, che il server accetterebbe. Con il browser in un altro fuso il confine si sposta di qualche ora. Un richiamo per oggi arriva solo da una chiamata diretta all'API.
+**Effetto oggi:** da PR5a il server rifiuta anche un richiamo per oggi, quindi una chiamata diretta all'API non lo imposta più. Dalla scheda cliente non si impostava già. Con il browser in un altro fuso il confine del selettore si sposta di qualche ora.
 
-**Da fare:** in PR5, quando il richiamo arriva nel dettaglio di Contatti, prima che un selettore permetta oggi: decidere se il server chiede una scadenza da domani (`DeadlineInPast` anche per oggi, A4 e T3.6 da aggiornare) oppure se il cron tratta come "di oggi" le scadenze del giorno prima che non ha ancora visto. Poi il selettore prende la regola da `src/lib/domain/contact/time.ts`.
+~~**Da fare:** in PR5, quando il richiamo arriva nel dettaglio di Contatti, prima che un selettore permetta oggi: decidere se il server chiede una scadenza da domani (`DeadlineInPast` anche per oggi, A4 e T3.6 da aggiornare) oppure se il cron tratta come "di oggi" le scadenze del giorno prima che non ha ancora visto. Poi il selettore prende la regola da `src/lib/domain/contact/time.ts`.~~ Deciso (D22) e fatto lato server in PR5a (T5.15, 2026-10-17): `setCallback` rifiuta una scadenza di oggi o prima (`isDueOrOverdue`), con il messaggio "Il richiamo si imposta da domani" sul server e nel client. Il cron non cambia. **Resta:** il selettore della scheda cliente (`CustomerAlertCreator`) ha ancora la sua regola, nel fuso del browser (disabilita oggi); il form di Contatti (T5.7b) prende la regola da `time.ts`, e l'allineamento della scheda cliente va fatto allora o lasciato com'è.
+
+## La ricerca cliente di Contatti è lenta a freddo
+
+Scoperto nella misura di T5.16 (PR5a, 2026-10-17), fuori da A3.
+
+- `customers` non ha un indice per `ILIKE '%testo%'`: la ricerca su cognome, nome, CF, P.IVA e telefono fa una scansione sequenziale. In prod, con la query vera: "rossi" 190 ms a caldo e 339 a freddo; il `count` di "33" 167 ms a caldo e **660** a freddo. `getContacts` aspetta righe e totale insieme, quindi la prima ricerca a freddo può superare i 500 ms.
+- Un indice trigram richiede l'estensione `pg_trgm` (una migrazione che crea l'estensione e un indice GIN su cinque colonne): è una decisione a parte.
+
+**Effetto oggi:** nessuno in prod: la lista non ha ancora chiamanti (PR5b).
+
+**Da fare:** misurare di nuovo con la lista in uso; se la ricerca a freddo dà fastidio, valutare `pg_trgm` o limitare la ricerca a un minimo di caratteri.
+
+## `next lint` non parte nei worktree di `.claude/worktrees/`
+
+Scoperto in PR5a (2026-10-17), preesistente.
+
+- Il worktree sta dentro il repo padre: ESLint risale le cartelle, trova anche il suo `.eslintrc.cjs` e si ferma con `Plugin "@typescript-eslint" was conflicted between ".eslintrc.cjs" and "../../../.eslintrc.cjs"`.
+- Contromisura usata: `pnpm exec eslint --no-eslintrc -c .eslintrc.cjs src/... --ext .ts,.tsx`, con la stessa configurazione. La CI gira in un checkout pulito e non ha il problema.
+
+**Da fare fuori da questa spec:** `root: true` in `.eslintrc.cjs`, o girare `next lint` in un worktree fuori dal repo.
+
+## La lista di Contatti: richieste senza tetto e senza limite di tempo
+
+Scoperto nella review di PR5a (2026-10-17).
+
+- Una richiesta tRPC in batch porta un numero qualsiasi di chiamate `getContacts`, e ciascuna lancia tre query insieme (righe, totale, cliente) con `concurrency: "unbounded"`. Un client che manda decine di chiamate occupa le connessioni del pool (`postgres.js` con il massimo di default, 10, perché `src/server/db/index.ts` non imposta `max`) e le query più lente (la ricerca cliente a freddo arriva a 660 ms) tengono il database. Non c'è un tetto di richieste per batch (`unstable_httpBatchStreamLink` in `src/trpc/react.tsx` non imposta `maxBatchSize` e il server non limita le chiamate per richiesta) e il database non ha uno `statement_timeout` per l'app: una query che si pianta resta appesa (vedi anche "Il cron alert quando la connessione al DB cade").
+- I tetti sull'input (`MAX_OPERATOR_IDS`, 4 fasce, 8 stati, 100 caratteri di ricerca, `perPage` fra i valori ammessi, pagina ≤ 10.000) limitano il costo di una query, non il numero di query.
+
+**Effetto oggi:** nessuno: la lista non ha ancora chiamanti (PR5b). Lo possono provocare solo utenti con una sessione.
+
+**Da fare fuori da questa spec:** `maxBatchSize` sul link di tRPC (e un tetto sul server) e uno `statement_timeout` per le query di lettura.
+
+## Le procedure delle preferenze: gli stessi difetti in tutte e quattro
+
+Scoperto nella review di PR5a (2026-10-17), preesistente nelle gemelle.
+
+- Le quattro procedure di `updateUserPreference.ts` (colonne di Clienti, di pratiche e di Contatti, e `dashboardCollapsed`) leggono le preferenze, cambiano una chiave e riscrivono il JSON intero: due salvataggi vicini (due schede, o una colonna e il pannello `dashboardCollapsed`) possono cancellarsi a vicenda. Nessuna transazione, nessun lock.
+- Solo la procedura di Contatti ha un limite sull'input (20 nomi, 64 caratteri ciascuno, PR5a); quelle delle colonne di Clienti e di pratiche accettano un array di stringhe di qualsiasi lunghezza e lo scrivono nel JSON dell'utente.
+- `retrieveUserPrefercence` fa il `JSON.parse` di una colonna testuale senza controllarne la forma: una preferenza rovinata fa fallire ogni procedura.
+- La rotta `/api/user/preferences` (chiavi `ct`, `cot`, `pt`, `ds`) non cattura l'errore della procedura: un corpo rifiutato dal limite dà un 500, non un 400. Un client che aggiorna lo stato locale senza guardare la risposta (come `CustomersTable`) mostrerebbe una scelta che il server non ha salvato. Il ramo `cot` non ha un test automatico: lo prova il browser in T5.10.
+
+**Effetto oggi:** un salvataggio può andare perso; nessun dato di altri utenti.
+
+**Da fare fuori da questa spec:** una sola procedura che aggiorna la chiave con `jsonb_set` (o una transazione con `FOR UPDATE`) e lo stesso limite di input per tutte.
+
+## Il cognome vuoto e la collazione dell'ordine per Cliente
+
+Scoperto nella review di PR5a (2026-10-17).
+
+- L'ordine "Cliente" è `surname, name` con `NULLS LAST`: un cognome stringa vuota (non NULL) non va in fondo, passa per primo in ordine crescente. Se i dati di prod hanno cognomi vuoti, la lista crescente comincia con righe senza nome. Non misurato in prod.
+- I test girano su PGlite, che ordina i testi con la collazione `C`; Postgres in produzione usa quella del database (di solito `en_US.UTF-8` o simile), che ignora maiuscole e accenti in modo diverso. L'ordine alfabetico con accenti e maiuscole non è provato dai test.
+
+**Effetto oggi:** nessuno: la lista non ha ancora chiamanti (PR5b).
+
+**Da fare:** in PR5b, guardare la lista ordinata per Cliente su dati di prod (o di staging); se serve, `NULLIF(surname, '')` nell'ordine e una collazione esplicita.
+
+## I test dei giorni di Roma girano nel fuso della macchina
+
+Scoperto nella review di PR5a (2026-10-17, v8).
+
+- `vitest.config.ts` imposta `env: { TZ: "UTC" }`, ma `Intl` nei worker resta nel fuso della macchina (una sonda ha stampato `process.env.TZ=UTC` e `Intl.resolvedOptions().timeZone=Europe/Rome`). Un mutante che prende il giorno locale del processo, al posto di quello di Roma, è equivalente al codice giusto su un computer in `Europe/Rome` e cade solo con `TZ=` esplicito o in CI (UTC).
+- I test di `setCallback` sul giorno di oggi e di domani usano ancora l'orologio vero (`Date.now()`) e possono fallire a cavallo della mezzanotte di Roma.
+
+**Effetto oggi:** sul computer di uno sviluppatore italiano un errore del genere passerebbe i test e lo prenderebbe la CI.
+
+**Da fare fuori da questa spec:** fissare il fuso nel setup dei test, e usare un orologio finto in tutti i test sul giorno.
 
 ## La ricerca di Clienti per "Nome" e "Telefono" va in errore
 
@@ -352,3 +420,33 @@ Da PR4 (T4.5, D19). Rilevate il 2026-10-16 con una query in sola lettura.
 
 **Chiuso il 2026-10-16**, su richiesta di Omar: cancellate tutte le chat senza cliente né pratica create da più di un'ora, con i loro messaggi e le righe di `chat_to_operator`, in una transazione per DB. Staging (DB di sviluppo): 12 chat, 13 messaggi. Prod: 19 chat, 13 messaggi. Dopo: 0 chat orfane e nessun cliente con una chat mancante. Prima della cancellazione ogni riga è stata salvata in un backup JSON locale.
 
+## Le mutation di Contatti e Clienti offline
+
+Scoperto in T5.7a (PR5b, 2026-10-18), preesistente: viene da `useContactMutationFeedback` e dal `QueryClient` di PR3, condivisi con la cella dello stato di Clienti.
+
+- Con il browser davvero offline (`navigator.onLine` falso) React Query v4 mette in pausa la mutation (`networkMode: "online"`, il predefinito): il selettore resta in attesa senza messaggio. Con una richiesta che cade a connessione attiva (provata abortendo `task.changeState`) tutto funziona: "Modifica non salvata, riprova", valore salvato, selettore di nuovo attivo, anche nella Sheet.
+- Provato `networkMode: "always"`: la richiesta parte e fallisce, ma l'hook, dopo il toast, fa `router.refresh()`; offline questa fa una navigazione completa e il browser mostra la sua pagina d'errore. Annullato.
+
+**Da fare fuori da questa spec (insieme a Clienti):** l'hook non deve fare `router.refresh()` per un errore che non è del contatto (rete, 500: il valore non è cambiato) e le mutation di contatto vanno con `networkMode: "always"`. Per ora il caso è rotto in entrambe le tabelle allo stesso modo.
+
+## Piccoli debiti dell'interfaccia di Contatti (PR5b)
+
+Registrati nel Run 6 (2026-10-18). Nessuno blocca il rilascio.
+
+- **Il badge blacklist** (`role="img"` con "In blacklist" o "Blacklist in revisione") è scritto due volte: nella lista (`ContactColumns`) e nel dettaglio (`ContactDetailHeader`). `BlackListBadge` non ha un nome accessibile da solo (la scheda cliente e la pratica lo mostrano ancora come sola icona). Va estratto e il nome messo nel componente.
+- **`PriorityBadge` è solo un'icona**, senza testo né nome: vale anche in Clienti. Il dettaglio ha almeno "Manuale"/"Automatica" accanto; la riga della lista non ha niente.
+- **`DatePickerFormItem`** (condiviso con Clienti e Pratiche) dà al pulsante il nome dell'etichetta, non il valore scelto: un lettore di schermo non sente la data. "Imposta richiamo" (D22) usa `isDueOrOverdue(date, new Date())` su date a mezzanotte locale: giusto in Italia, in un fuso lontano potrebbe segnare il giorno sbagliato.
+- **`ContactSheet`**: la guardia "sto già chiudendo" non si azzera: se una navigazione si bloccasse senza smontare il guscio, la Sheet non si potrebbe chiudere di nuovo.
+- **Barra dei filtri:** un `?operatore=99` che non è nell'elenco mostra "Operatore, 1 selezionato" senza casella spuntata; una scelta oltre `MAX_OPERATOR_IDS` si ignora senza messaggio; i campi data fanno un `push` per ogni valore valido (un anno digitato a mano può farne qualcuno; gli anni che il server rifiuta no, e dal 2026-10-18 non bloccano più gli altri filtri: mostrano il messaggio "Usa una data tra il 2000 e il 2100"); la barra non è sticky.
+- **Annuncio della riga che esce** (`ContactsTable`): se fra il salvataggio e il refresh arriva un altro aggiornamento in cui la riga c'è ancora, l'annuncio si perde; con la lista che si svuota parlano sia il nodo sr-only sia quello dello stato vuoto.
+- **`RestoreRowFocus`:** con `sessionStorage` illeggibile porta il focus alla tabella a ogni montaggio della lista, anche senza un ritorno dal dettaglio (come dice il piano; caso raro).
+- **`limit` della chat:** la scheda cliente accetta un `limit` enorme (`getChatMessagesById` non ha un massimo); il dettaglio no (`parseChatLimit`).
+- **Lo Storico del dettaglio** non ha un tetto all'altezza dei messaggi lunghi.
+- **Movimento:** il `Select` dell'operatore e i `Popover` usano i primitivi con le loro animazioni; i `Button` hanno `transition-colors` al passaggio del mouse. Rientra in "Lacune dei primitivi di movimento". Dal passaggio di movimento del 2026-10-19 (Haiku): `Switch`, `Accordion` e `Popover` non sono nell'elenco di quella voce (`Switch` senza `motion-reduce`, `Accordion` con `animate-accordion-*`); il menu delle azioni di riga, "Colonne" e i `Select` della paginazione e della data si aprono con l'animazione standard, e `motion.md` non dice se è una scelta.
+- **Contrasto dei primitivi condivisi** (passaggio UI del 2026-10-19, Haiku, misurato come admin): la traccia dell'interruttore spento (`#e5e5e5` su bianco, 1,26:1), la voce a fuoco dei menu (`#f5f5f5` su bianco, 1,09:1, unico segno del focus) e la X della Sheet (16×16, e non resta in vista quando il contenuto scorre).
+- **Clienti, preesistente e fuori da PR5b:** a 800 px la barra dei filtri non va a capo e metà dei filtri resta fuori dallo schermo; i selettori della barra non hanno nome accessibile; i due pulsanti con l'icona di ricerca e di filtro si chiamano "Toggle bold" e "Toggle italic" (`TableFilterSections.tsx`, `ToggleGroupDemo`).
+- **Nomi uguali:** il pulsante "Azioni per" di una riga e delle sue sotto-righe ha lo stesso nome (lo stesso cliente); due contatti precedenti dello stesso giorno e operatore hanno lo stesso testo nel dettaglio.
+
+## Dati di prova sul DB di sviluppo (PR5b)
+
+Restano dalla passata browser del Run 6, nel prefisso `zzpr3-`: i contatti riaperti e gli alert di `zzpr3-c2`, `zzpr3-c10`, `zzpr3-c13`, `zzpr3-c20` (e la chat con una nota, "Prima nota T5.8", di `zzpr3-c20`). Per toglierli basta il prefisso `zzpr3-` sull'id del cliente.

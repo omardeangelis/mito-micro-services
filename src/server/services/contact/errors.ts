@@ -43,7 +43,7 @@ export class CallbackNotAllowed extends Data.TaggedError("CallbackNotAllowed")<
   ContactErrorPayload<"CALLBACK_NOT_ALLOWED">
 > {}
 
-/** The callback's deadline is in the past (AC44). */
+/** The callback's deadline is today or earlier (AC44, D22). */
 export class DeadlineInPast extends Data.TaggedError("DeadlineInPast") {}
 
 /** The customer doesn't exist. */
@@ -131,7 +131,7 @@ const trpcErrors: { readonly [Tag in ContactError["_tag"]]: TrpcEntry } = {
   DeadlineInPast: {
     code: "DEADLINE_IN_PAST",
     trpc: "BAD_REQUEST",
-    message: "La data del richiamo è passata",
+    message: "Il richiamo si imposta da domani",
   },
   CustomerNotFound: {
     code: "CUSTOMER_NOT_FOUND",

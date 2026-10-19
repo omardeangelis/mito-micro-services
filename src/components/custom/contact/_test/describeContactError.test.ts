@@ -71,7 +71,7 @@ describe("describeContactError, one message per code", () => {
     [
       "DEADLINE_IN_PAST",
       { code: "DEADLINE_IN_PAST", payload: {} },
-      "La data del richiamo è già passata",
+      "Il richiamo si imposta da domani",
     ],
     [
       "CUSTOMER_ASSIGNMENT_FORBIDDEN",

@@ -29,10 +29,18 @@ export type ChatToOperatorWrite = typeof chatToOperator.$inferInsert
 //USER
 export type User = typeof users.$inferSelect
 export type UserWrite = typeof users.$inferInsert
+// Despite the "VisibleColumns" names, the lists hold the columns the user
+// *hid*: CustomersTable.tsx (src/app/dashboard/customers/_components) writes
+// the list of the hidden columns, and CustomerTableSection.tsx in the same
+// folder turns each of them into `false` when it reads the list back. Contatti
+// does the same, and an empty list means everything is visible.
+// `contactTableVisibleColumns` is optional: whoever never saved it has
+// `undefined` (all columns visible).
 export type UserPreference = {
   dashboardCollapsed: boolean
   customerTableVisibleColumns: string[]
   practicesTableVisibleColumns: string[]
+  contactTableVisibleColumns?: string[]
 }
 
 export type CustomerToPratica = typeof customerToPratica.$inferSelect

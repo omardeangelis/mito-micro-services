@@ -9,6 +9,8 @@ When running gates through the Bash tool (zsh shell), do not read exit codes fro
 
 Also, a `grep --include=*.ts` glob fails in zsh with "no matches found" unless the call is wrapped in `bash -c` or the pattern is quoted.
 
+zsh also does not word-split an unquoted variable: `F="a.ts b.ts"; grep x $F` searches one file named `"a.ts b.ts"` and prints "No such file", which looks like a clean result. Write the file list inline, or use `${=F}`, and check that the grep actually opened the files.
+
 To prove a `"use server"` module is registered as a server action after `next build`, do not grep `.next/server/server-reference-manifest.json` for file names. It is keyed by action hash and maps to page workers only. Instead, grep the export names (for example `createChatAction`) across `.next/server`, which keeps them in the server bundle, and confirm the action hashes are referenced from both the page's server bundle and a client chunk.
 
 **Why:** In the PR4 gate run the first tsc and lint exit codes came back empty because of the zsh pipe, and the first manifest grep returned nothing although the actions were present. Both looked like failures or passes without evidence.

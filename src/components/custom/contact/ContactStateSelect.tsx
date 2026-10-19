@@ -16,6 +16,11 @@ type ContactStateSelectProps = {
   /** A change is being saved: the trigger stays focusable but opens nothing. */
   pending?: boolean
   triggerRef?: React.Ref<HTMLButtonElement>
+  /**
+   * The id of an element that says what the selector is about, such as the
+   * customer of a table row: the trigger is described by it.
+   */
+  describedBy?: string
 }
 
 /**
@@ -33,6 +38,7 @@ export function ContactStateSelect({
   onChange,
   pending = false,
   triggerRef,
+  describedBy,
 }: ContactStateSelectProps) {
   const [open, setOpen] = React.useState(false)
 
@@ -54,6 +60,7 @@ export function ContactStateSelect({
           // The name starts with the visible value (2.5.3) and says what the
           // button does, so a screen reader announces both
           aria-label={`${value ?? "nessuno"}, cambia stato`}
+          aria-describedby={describedBy}
           aria-busy={pending}
           aria-disabled={pending}
           // A table finds the selector of a nearby row through it, when the
