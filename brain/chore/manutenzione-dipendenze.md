@@ -85,6 +85,8 @@ _(per ogni ondata: data, PR, versioni prima e dopo, esito dei gate, residui di `
   - `dropQueryParams` nel `beforeSend` di `sentry.server.config.ts` toglie i parametri da eccezioni, breadcrumb e messaggio, per ogni altro percorso (per esempio i cron).
 - I test che scrivono direttamente con Drizzle leggono l'errore del driver con `driverFailure` (`src/test/db.ts`); le asserzioni sono le stesse. Una prova al contrario (middleware e pulizia tolti) fa fallire i 4 test nuovi.
 - `pnpm db:generate`: solo la riga nota `ALTER TABLE customers ... SET DEFAULT '<id casuale>'`; lo snapshot di drizzle-kit 0.31 aggiunge campi vuoti (`policies`, `roles`, `checkConstraints`, `isRLSEnabled`, `views`), stessa versione 7. Nessun file generato è stato tenuto.
-- Gate: lint, tsc, 1105/1105 test, build, `api:build` e `api:smoke` verdi.
+- Gate prima del merge di `dev`: lint, tsc, 1105/1105 test, build, `api:build` e `api:smoke` verdi.
 - `pnpm audit --prod`: drizzle-orm non c'è più (high da 19 a 18).
-- Da provare su staging dopo il merge: immagine del backend con Drizzle 0.45 e `pnpm db:migrate` con drizzle-kit 0.31 sul DB di sviluppo (nessuna migrazione in sospeso: verifica solo che legga `drizzle.__drizzle_migrations`).
+- `pnpm db:migrate` con drizzle-kit 0.31 sul DB di sviluppo (Supabase): ha applicato `20261019142325_blushing_roland_deschain` di PR5a, in sospeso. Sulla tabella delle task restano `mito-deutsche_task_pkey`, `task_customer_active_uidx` e `task_customer_id_idx`.
+- Gate dopo il merge di `dev` (PR #25 e #26): 1825/1825 test.
+- Da provare su staging dopo il merge: l'immagine del backend con Drizzle 0.45.
