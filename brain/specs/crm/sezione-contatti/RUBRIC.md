@@ -325,7 +325,7 @@ Round aggiunto: le rubric di PR1, PR2, PR3 e PR4 sopra restano come sono.
 - **Scope:** spec implementation, solo PR5a (PLAN.md §9: T5.1, T5.2, T5.3, T5.14, T5.15, T5.16; T5.17 è il gate). Contratto: AC2, AC3, AC5, AC10–AC18, AC21–AC23, AC25–AC28, AC44 (D22), AC51 (parte server). L'interfaccia (lista, filtri, dettaglio) è di PR5b
 - **Target:** branch `contatti/pr5a-lettura-server` (PR verso `dev`), modifiche non ancora committate
 - **Compared:** `6f28635` (`dev`) → albero di lavoro (file modificati più i file nuovi non tracciati)
-- **Files touched:** 26 in `src/` (circa 5.250 righe aggiunte, di cui circa 3.800 di test e di snapshot della migrazione). Nuovi: `listInput.ts`, `getContacts.ts`, `getContactById.ts`, `customerAlerts.ts`, `searchParams.ts`, la migrazione `20261017174700_blushing_roland_deschain.sql` con il suo snapshot, quattro file di test. Modificati: i due router `task`, il router `user`, la rotta delle preferenze, `setCallback.ts`, `errors.ts`, `describeContactError.ts`, lo schema di `task`, `effect/db.ts` (un `export`)
+- **Files touched:** 26 in `src/` (circa 5.250 righe aggiunte, di cui circa 3.800 di test e di snapshot della migrazione). Nuovi: `listInput.ts`, `getContacts.ts`, `getContactById.ts`, `customerAlerts.ts`, `searchParams.ts`, la migrazione `20261019142325_blushing_roland_deschain.sql` con il suo snapshot, quattro file di test. Modificati: i due router `task`, il router `user`, la rotta delle preferenze, `setCallback.ts`, `errors.ts`, `describeContactError.ts`, lo schema di `task`, `effect/db.ts` (un `export`)
 
 ### Routing rubric (review-classifier output)
 

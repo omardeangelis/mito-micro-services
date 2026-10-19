@@ -174,7 +174,7 @@ Misurata nello smoke di PR1.
 Scoperto in T2.3 (PR2), preesistente.
 
 - `customers.id` ha `.default(nanoid())`: il valore si calcola una volta, quando si carica lo schema. `drizzle-kit` lo vede come un default letterale diverso a ogni esecuzione e aggiunge `ALTER TABLE "mito-deutsche_customers" ALTER COLUMN "id" SET DEFAULT '<letterale>'` a ogni migrazione generata.
-- Le migrazioni `20260615235953` e `20260619152227` l'hanno applicato. In `20260902181440`, in quella di T2.3 e in quella di T5.16 (`20261017174700`) la riga è stata tolta a mano; lo snapshot invece registra il nuovo letterale, quindi ogni migrazione cambia un letterale nello snapshot senza che l'SQL lo mostri.
+- Le migrazioni `20260615235953` e `20260619152227` l'hanno applicato. In `20260902181440`, in quella di T2.3 e in quella di T5.16 (`20261019142325`) la riga è stata tolta a mano; lo snapshot invece registra il nuovo letterale, quindi ogni migrazione cambia un letterale nello snapshot senza che l'SQL lo mostri.
 
 **Effetto oggi:** nessuno sui dati, finché gli insert di `customers` passano l'id. Un insert senza id prenderebbe il letterale fisso, e il secondo fallirebbe per chiave duplicata.
 
@@ -205,7 +205,7 @@ Scoperto nella review di PR2 (v2, prima e seconda verifica). Riguarda `task_prio
 
 **Effetto oggi:** nessuno sui risultati.
 
-~~**Da fare:** in PR5a (T5.16). Misurare con `EXPLAIN ANALYZE` una pagina di default, una filtrata per operatore e una "Solo i miei". Poi tenere, ridisegnare o togliere i due indici, con una sola migrazione. T5.17 lo controlla.~~ Fatto in PR5a (T5.16, 2026-10-17). Misurata in prod, in sola lettura, la query vera di `getContacts`: la prima pagina di default fa 62 ms con l'indice sulla priorità e 78 ms senza (pagina 2000: 216 e 332 ms), l'indice per operatore non serve. Tolti entrambi con `20261017174700_blushing_roland_deschain.sql`, da applicare a mano in prod (A3 e G4a); il rollback è nel file. **Omar ha riconfermato il 2026-10-18** la rimozione di `task_priority_active_idx` sulle misure con la query vera (16 ms sulla prima pagina, 116 ms alla pagina 2000): la conferma del 2026-10-17 era sulla misura preliminare. Un `DROP INDEX` non è "additivo" come chiede la spec: scostamento dichiarato in §15 del PLAN e confermato da Omar. Le misure sono nel log di T5.16.
+~~**Da fare:** in PR5a (T5.16). Misurare con `EXPLAIN ANALYZE` una pagina di default, una filtrata per operatore e una "Solo i miei". Poi tenere, ridisegnare o togliere i due indici, con una sola migrazione. T5.17 lo controlla.~~ Fatto in PR5a (T5.16, 2026-10-17). Misurata in prod, in sola lettura, la query vera di `getContacts`: la prima pagina di default fa 62 ms con l'indice sulla priorità e 78 ms senza (pagina 2000: 216 e 332 ms), l'indice per operatore non serve. Tolti entrambi con `20261019142325_blushing_roland_deschain.sql`, da applicare a mano in prod (A3 e G4a); il rollback è nel file. **Omar ha riconfermato il 2026-10-18** la rimozione di `task_priority_active_idx` sulle misure con la query vera (16 ms sulla prima pagina, 116 ms alla pagina 2000): la conferma del 2026-10-17 era sulla misura preliminare. Un `DROP INDEX` non è "additivo" come chiede la spec: scostamento dichiarato in §15 del PLAN e confermato da Omar. Le misure sono nel log di T5.16.
 
 ## Il ramo che fallisce della guardia di `contatti_cleanup` è provato solo su PGlite
 

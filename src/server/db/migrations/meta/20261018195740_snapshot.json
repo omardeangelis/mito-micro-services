@@ -1,5 +1,5 @@
 {
-  "id": "6c2633ef-ce48-401c-a114-2b0f9bc13c2d",
+  "id": "a7c2e9ac-f34d-40a8-b8ad-bf908f84e3ec",
   "prevId": "653090d2-6f8e-4b69-9aff-6f4a34bd9e28",
   "version": "7",
   "dialect": "postgresql",
@@ -118,6 +118,80 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {}
     },
+    "public.mito-deutsche_cron_run": {
+      "name": "mito-deutsche_cron_run",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "identity": {
+            "type": "always",
+            "name": "mito-deutsche_cron_run_id_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "cache": "1",
+            "cycle": false
+          }
+        },
+        "job": {
+          "name": "job",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "run_day": {
+          "name": "run_day",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "cron_run_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "started_at": {
+          "name": "started_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "CURRENT_TIMESTAMP"
+        },
+        "finished_at": {
+          "name": "finished_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "counters": {
+          "name": "counters",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "cron_run_job_day": {
+          "name": "cron_run_job_day",
+          "nullsNotDistinct": false,
+          "columns": [
+            "job",
+            "run_day"
+          ]
+        }
+      }
+    },
     "public.mito-deutsche_customers": {
       "name": "mito-deutsche_customers",
       "schema": "",
@@ -127,7 +201,7 @@
           "type": "varchar",
           "primaryKey": true,
           "notNull": true,
-          "default": "'um5BDlEtCEIEkOc1MGOYc'"
+          "default": "'kcpdEJfKBvN6rZvfZ1zTX'"
         },
         "fullname": {
           "name": "fullname",
@@ -1212,6 +1286,38 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
+        },
+        "task_operator_active_idx": {
+          "name": "task_operator_active_idx",
+          "columns": [
+            {
+              "expression": "operator_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "where": "is_active",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "task_priority_active_idx": {
+          "name": "task_priority_active_idx",
+          "columns": [
+            {
+              "expression": "priority",
+              "isExpression": false,
+              "asc": false,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "where": "is_active",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
@@ -1589,6 +1695,15 @@
     }
   },
   "enums": {
+    "public.cron_run_status": {
+      "name": "cron_run_status",
+      "schema": "public",
+      "values": [
+        "running",
+        "succeeded",
+        "failed"
+      ]
+    },
     "public.blacklist_status": {
       "name": "blacklist_status",
       "schema": "public",

@@ -1,4 +1,4 @@
-export const DAYS_PER_RATE = 30
+export { DAYS_PER_RATE } from "@/lib/constants/practice"
 
 export const dateWithoutTimeZone = (date: Date | undefined | string) => {
   if (!date) return undefined
