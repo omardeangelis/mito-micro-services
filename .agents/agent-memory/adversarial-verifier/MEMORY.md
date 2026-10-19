@@ -1,6 +1,6 @@
 - [Plan verification techniques](feedback_plan_verification_techniques.md) — PGlite probes, writer enumeration, per-role cases, helper-vs-depends_on, UI data, date rule vs cron
 - [Vacuous test patterns](feedback_vacuous_test_patterns.md) — assertions/gates that cannot fail; flag on sight
-- [Client mutation checks](feedback_client_mutation_checks.md) — rq v4 per-call callbacks dropped on unmount; browser-only plans leave no tests
+- [Client mutation checks](feedback_client_mutation_checks.md) — rq v4 callbacks dropped on unmount; success-path navigation runs after leaving; grep hook options per consumer
 - [UI probe side effects](feedback_ui_probe_side_effects.md) — hit-area really clicks (mutated data once); abort the endpoint or skip click probes in read-only passes
 - [Review at reviewed commit](feedback_review_at_reviewed_commit.md) — read ledger/decision docs via git show <sha>; working-tree fixes are not resolutions
 - [Motion exception scope](feedback_motion_exception_scope.md) — exceptions bind to named consumers; class guards miss descendants; browser claims need a probe record
@@ -18,7 +18,26 @@
 - [Collapse during in-flight](feedback_collapse_during_inflight_probe.md) — waits in children unmounted by collapse are lost on reopen; probe collapse mid-action
 - [Real caller probe and kill reason](feedback_real_caller_probe_and_kill_reason.md) — check tRPC error shape via real api proxy; a removed-wrapper mutant may die for an unrelated reason
 - [Memo and order probes](feedback_memo_and_order_probes.md) — memo needs a render counter; fallback order needs three items
-- [Mutant battery in scratch copy](feedback_mutant_battery_scratch_copy.md) — rsync src, perl per mutant, cmp check; probes reuse test header
+- [Mutant battery in scratch copy](feedback_mutant_battery_scratch_copy.md) — rsync src, exact-pair runner, cmp check; probes outside; `(`-led replacement = ASI false kill
 - [Tx rollback mutant masking](feedback_tx_rollback_mutant_masking.md) — DB failpoint kills no-transaction mutant, not commit-on-JS-failure; pin both
 - [Contract wording over plan decisions](feedback_contract_wording_over_plan_decisions.md) — a test named after a browser quirk can lock in a SPEC miss; check each added condition against the AC text
+- [Authz read surface probes](feedback_authz_read_surface_probes.md) — createCaller gates, HTTP payload probe, PGlite rename for DbError, tsc gate mutant; route wrapping api = 500
 - [Mocked framework side effects](feedback_mocked_framework_side_effects.md) — mocked router.refresh hides Next's hard-reload fallback on failure paths; read node_modules source
+- [Href builder safety](feedback_href_builder_safety_checks.md) — model Next push as new URL(href, location); `..` ids; passthrough mutants at call sites; DB ids writable via insert schema
+- [Read mirrors write](feedback_read_mirrors_write_differential.md) — matrix read vs real write; boolean flags diverge on superseded; shared scratchpad pointer-file collision
+- [Day-rule tests and TZ matrix](feedback_day_rule_tests_and_tz_matrix.md) — mutate deadline AND now sides; 10:00Z nows hide UTC-now mutants; display formatters + RSC/SSR in UTC; tautological expected strings
+- [Server-only vitest alias](feedback_server_only_vitest_alias.md) — vitest stubs server-only, so green tests prove no client reachability; tsx probe plus control
+- [Snapshot structural diff](feedback_snapshot_structural_diff.md) — diff consecutive Drizzle snapshots fully; SQL can omit a change the snapshot carries
+- [Touched procedure Effect wrap](feedback_touched_procedure_effect_wrap.md) — a procedure whose query was extracted must still go through query and runTrpc
+- [SQL input and cost probes](feedback_sql_input_and_cost_probes.md) — toSQL marker sweep; apostrophe kills sql.raw mutant; alternate array values for OR blowup
+- [List query mutant patterns](feedback_list_query_mutant_patterns.md) — seed rows passing the join filter; empty branch of found/missing; '' vs NULLS LAST; PGlite C collation; rerun survivors by hand
+- [Index-drop migration checks](feedback_index_drop_migration_checks.md) — regenerate from base; COALESCE proxy; pg_locks; real-PG Docker contention test via drizzle-kit CLI; IN-list test blind spot
+- [URL-state module checks](feedback_url_state_module_checks.md) — Number() coercion mutants; seeded fuzz; equivalent mutants; __proto__ record prototype; esbuild purity
+- [Client PII telemetry checks](feedback_client_pii_telemetry_checks.md) — Replay maskAttributes default, loggerLink logs input, Sentry URL/Referer; probes from node_modules
+- [Row state and toast probes](feedback_row_state_toast_probes.md) — real Toaster + fake timers; portal click bubbling; success vs rejection after unmount; mutant/fixture collision
+- [Optimistic filter bar probes](feedback_optimistic_filter_bar_probes.md) — sibling navigators discard pending filter nav; RSC fetch delay; one invalid field blocks the bar; sync mocks hide pending
+- [Router cache stale seed](feedback_router_cache_stale_seed.md) — useState seeded from server prop is stale on return within 30 s; network-log proof, fetch-mock pitfalls, equivalent stop mutants
+- [Router cache and error.tsx probes](feedback_next_router_cache_and_error_boundary_probes.md) — Back never refetches; mutation+replace w/o refresh = stale list; invalid session cookie triggers error.tsx; reset() never refetches
+- [Client graph esbuild probe](feedback_client_graph_esbuild_probe.md) — bundle each "use client" file, stop at "use server", flag src/server, env, server-only; trpc/shared.ts is a known hit
+- [Focus loss and toast announce](feedback_focus_loss_and_toast_announce_probes.md) — controls that vanish on activation and Back drop focus to body; Radix toast announce escapes a modal's aria-hidden; webpack toast injection
+- [UI pass driver artifacts](feedback_ui_pass_driver_artifacts.md) — set viewport fires no resize (false stale popovers); portal/Sheet probes need hand measuring; sticky bar vs focus Tab loop
