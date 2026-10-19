@@ -27,6 +27,112 @@ beforeEach(async () => {
 })
 
 describe("task.getContactById", () => {
+  describe("the other contacts of the customer (AC80)", () => {
+    it("lists them newest created first, with state, operator and dates, and not the contact itself", async () => {
+      const me = await createOperator({ name: "Mario", surname: "Rossi" })
+      const other = await createOperator({ name: "Giulia", surname: "Bianchi" })
+      const customer = await createCustomer({ operatorId: me.id })
+      const oldest = await createTask({
+        customerId: customer.id,
+        operatorId: other.id,
+        isActive: false,
+        state: "non interessato",
+        closedAt: new Date("2026-02-10T09:00:00Z"),
+        createdAt: new Date("2026-02-01T09:00:00Z"),
+      })
+      const newest = await createTask({
+        customerId: customer.id,
+        operatorId: me.id,
+        isActive: false,
+        state: "erogata",
+        closedAt: null,
+        createdAt: new Date("2026-03-01T09:00:00Z"),
+      })
+      const active = await createTask({
+        customerId: customer.id,
+        operatorId: me.id,
+        createdAt: new Date("2026-04-01T09:00:00Z"),
+      })
+      // Another customer's contact is nobody's history here
+      await createTask({ customerId: (await createCustomer()).id })
+
+      const result = await createTestCaller(me).task.getContactById({
+        id: String(active.id),
+      })
+
+      expect(result.customerContacts).toEqual([
+        {
+          id: newest.id,
+          state: "erogata",
+          isActive: false,
+          closedAt: null,
+          createdAt: new Date("2026-03-01T09:00:00Z"),
+          operator: { id: me.id, name: "Mario", surname: "Rossi" },
+        },
+        {
+          id: oldest.id,
+          state: "non interessato",
+          isActive: false,
+          closedAt: new Date("2026-02-10T09:00:00Z"),
+          createdAt: new Date("2026-02-01T09:00:00Z"),
+          operator: { id: other.id, name: "Giulia", surname: "Bianchi" },
+        },
+      ])
+    })
+
+    it("from a superseded contact the list holds the active one and the rest, still not itself", async () => {
+      const me = await createOperator()
+      const customer = await createCustomer({ operatorId: me.id })
+      const first = await createTask({
+        customerId: customer.id,
+        isActive: false,
+        createdAt: new Date("2026-02-01T09:00:00Z"),
+      })
+      const second = await createTask({
+        customerId: customer.id,
+        isActive: false,
+        createdAt: new Date("2026-03-01T09:00:00Z"),
+      })
+      const active = await createTask({
+        customerId: customer.id,
+        createdAt: new Date("2026-04-01T09:00:00Z"),
+      })
+
+      const result = await createTestCaller(me).task.getContactById({
+        id: String(second.id),
+      })
+
+      expect(
+        result.customerContacts.map(({ id, isActive }) => ({ id, isActive }))
+      ).toEqual([
+        { id: active.id, isActive: true },
+        { id: first.id, isActive: false },
+      ])
+    })
+
+    it("is empty for a customer with a single contact, and null where the contact has no operator", async () => {
+      const me = await createOperator()
+      const customer = await createCustomer()
+      const only = await createTask({ customerId: customer.id })
+
+      const alone = await createTestCaller(me).task.getContactById({
+        id: String(only.id),
+      })
+      expect(alone.customerContacts).toEqual([])
+
+      const unassigned = await createTask({
+        customerId: customer.id,
+        isActive: false,
+      })
+      const again = await createTestCaller(me).task.getContactById({
+        id: String(only.id),
+      })
+      expect(again.customerContacts).toEqual([
+        expect.objectContaining({ id: unassigned.id, operator: null }),
+      ])
+    })
+  })
+
   it("a superseded contact comes back read-only, with the active contact of the customer", async () => {
     const operator = await createOperator()
     const customer = await createCustomer({ operatorId: operator.id })

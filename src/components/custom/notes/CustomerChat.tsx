@@ -21,7 +21,6 @@ import {
 } from "react"
 import { api } from "@/trpc/react"
 import { type Message } from "@/lib/types/schemas"
-import { Skeleton } from "@/components/ui/skeleton"
 import { LoadingSpinner } from "@/components/custom/loading-spinner"
 import { useSavingUntilRefreshed } from "@/components/custom/contact/useSavingUntilRefreshed"
 import { updateChatAction } from "./_actions/updateChat"
@@ -560,7 +559,9 @@ const CustomerNote = memo(function CustomerNote({
   onDeleted,
   onDeleteFailed,
 }: CustomerNoteProps) {
-  const { data, isLoading } = api.operator.getOperatorById.useQuery({
+  // The note is drawn at once; the author's name comes when it is there. No
+  // skeleton: it would pulse for ever if the lookup never answers
+  const { data } = api.operator.getOperatorById.useQuery({
     id: Number(operatorId),
   })
 
@@ -579,62 +580,63 @@ const CustomerNote = memo(function CustomerNote({
       onDeleteFailed(id)
     }
   }
-  if (data && !isLoading)
-    return (
-      <article
-        aria-busy={sending || deleting}
-        className="group relative flex w-full items-center gap-4 py-4"
-      >
-        <Avatar className="bg-neutral-400" />
-        <div className="flex flex-col justify-between">
-          <div className="flex w-full items-center gap-4">
+  return (
+    <article
+      aria-busy={sending || deleting}
+      className="group relative flex w-full items-center gap-4 py-4"
+    >
+      <Avatar className="bg-neutral-400" />
+      <div className="flex flex-col justify-between">
+        {/* min-h-7: the line keeps its height when the name arrives */}
+        <div className="flex min-h-7 w-full items-center gap-4">
+          {data ? (
             <h6 className="text-lg font-medium">
               {data.name} {data.surname}
             </h6>
-            {sending ? (
-              <span className="flex items-center gap-1 text-sm text-muted-foreground">
-                <LoadingSpinner
-                  aria-hidden
-                  className="h-3 w-3 motion-reduce:animate-none"
-                />
-                Invio…
-              </span>
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                {formatDateAsDMHM(sendDate)}
-              </p>
-            )}
-          </div>
-          <p className="text-md text-muted-foreground">{content}</p>
+          ) : null}
+          {sending ? (
+            <span className="flex items-center gap-1 text-sm text-muted-foreground">
+              <LoadingSpinner
+                aria-hidden
+                className="h-3 w-3 motion-reduce:animate-none"
+              />
+              Invio…
+            </span>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              {formatDateAsDMHM(sendDate)}
+            </p>
+          )}
         </div>
-        {id !== undefined && deletable && (
-          // Shown by CSS, not state: moving the pointer onto the button must
-          // not unmount it before the click lands. Opacity, not visibility:
-          // the keyboard reaches it too. No transition (P6)
-          <div className="absolute right-0 top-0 flex items-center gap-4">
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label={TRASH_LABEL}
-              data-note-id={id}
-              aria-busy={deleting}
-              aria-disabled={deleting}
-              className={
-                deleting
-                  ? "opacity-100"
-                  : "opacity-0 focus-visible:opacity-100 group-hover:opacity-100 [@media(hover:none)]:opacity-100"
-              }
-              onClick={handleDelete}
-            >
-              {deleting ? (
-                <LoadingSpinner className="h-4 w-4 motion-reduce:animate-none" />
-              ) : (
-                <TrashIcon size={16} />
-              )}
-            </Button>
-          </div>
-        )}
-      </article>
-    )
-  return <Skeleton className="w-30 h-10" />
+        <p className="text-md text-muted-foreground">{content}</p>
+      </div>
+      {id !== undefined && deletable && (
+        // Shown by CSS, not state: moving the pointer onto the button must
+        // not unmount it before the click lands. Opacity, not visibility:
+        // the keyboard reaches it too. No transition (P6)
+        <div className="absolute right-0 top-0 flex items-center gap-4">
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label={TRASH_LABEL}
+            data-note-id={id}
+            aria-busy={deleting}
+            aria-disabled={deleting}
+            className={
+              deleting
+                ? "opacity-100"
+                : "opacity-0 focus-visible:opacity-100 group-hover:opacity-100 [@media(hover:none)]:opacity-100"
+            }
+            onClick={handleDelete}
+          >
+            {deleting ? (
+              <LoadingSpinner className="h-4 w-4 motion-reduce:animate-none" />
+            ) : (
+              <TrashIcon size={16} />
+            )}
+          </Button>
+        </div>
+      )}
+    </article>
+  )
 })

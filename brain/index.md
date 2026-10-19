@@ -60,6 +60,7 @@ _empty_
 - [[specs/crm/sezione-contatti/REPORT|crm/sezione-contatti — PR4]] — spec · ship (dopo le correzioni; prima do-not-ship) · critical · 2026-10-15
 - [[specs/crm/sezione-contatti/REPORT|crm/sezione-contatti — PR4, T4.5–T4.7]] — spec · do-not-ship (sesta verifica) · medium · 2026-10-16
 - [[specs/crm/sezione-contatti/REPORT|crm/sezione-contatti — PR5a]] — spec · ship (dopo le correzioni; prima do-not-ship; riconferma di Omar sull'indice della priorità arrivata il 2026-10-18) · critical · 2026-10-18
+- [[specs/crm/sezione-contatti/REPORT|crm/sezione-contatti — PR5b]] — spec · do-not-ship (primo giro: 3 BLOCKER e 11 MAJOR aperti) · critical · 2026-10-18
 - [[review/staging-accesso-sentry/REPORT|staging-accesso-sentry]] — standalone · do-not-ship · critical · 2026-10-09 (sesto giro)
 - [[review/cron-base-url/REPORT|cron-base-url]] — standalone · do-not-ship · critical · 2026-10-09 (sesto giro)
 - [[review/search-by-explicit-map/REPORT|search-by-explicit-map]] — standalone · ship (quinto giro; prima do-not-ship) · critical · 2026-10-15

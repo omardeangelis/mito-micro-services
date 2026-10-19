@@ -109,22 +109,129 @@ describe("task.getContacts", () => {
     expect(result.customerFilter).toBeNull()
   })
 
-  it("with includeInactive also returns the superseded contacts, marked as such (AC3)", async () => {
-    const operator = await createOperator()
-    const active = await seedContact({ priority: 60 })
-    const superseded = await seedContact({ priority: 150, isActive: false })
+  describe("includeInactive: the previous contacts (AC3)", () => {
+    it("keeps the list to the active contacts and hands the previous ones of those customers apart, newest created first", async () => {
+      const operator = await createOperator()
+      const customer = await createCustomer()
+      const older = await createTask({
+        customerId: customer.id,
+        isActive: false,
+        state: "non interessato",
+        createdAt: new Date("2026-03-01T10:00:00Z"),
+      })
+      const newer = await createTask({
+        customerId: customer.id,
+        isActive: false,
+        state: "erogata",
+        createdAt: new Date("2026-03-02T10:00:00Z"),
+      })
+      const active = await createTask({
+        customerId: customer.id,
+        createdAt: new Date("2026-03-03T10:00:00Z"),
+      })
 
-    const result = await createTestCaller(operator).task.getContacts({
-      includeInactive: true,
+      const result = await createTestCaller(operator).task.getContacts({
+        includeInactive: true,
+      })
+
+      expect(idsOf(result)).toEqual([active.id])
+      expect(result.contacts[0]?.isActive).toBe(true)
+      // The total counts the rows of the list, not the previous contacts
+      expect(result.total).toBe(1)
+      expect(result.previous.map(({ id }) => id)).toEqual([newer.id, older.id])
+      expect(result.previous.every(({ isActive }) => !isActive)).toBe(true)
+      expect(result.previous[0]).toMatchObject({
+        state: "erogata",
+        customer: { id: customer.id },
+      })
     })
 
-    expect(
-      result.contacts.map(({ id, isActive }) => ({ id, isActive }))
-    ).toEqual([
-      { id: superseded.id, isActive: false },
-      { id: active.id, isActive: true },
-    ])
-    expect(result.total).toBe(2)
+    it("hands over nothing without the switch", async () => {
+      const operator = await createOperator()
+      const customer = await createCustomer()
+      await createTask({ customerId: customer.id, isActive: false })
+      await createTask({ customerId: customer.id })
+
+      const result = await createTestCaller(operator).task.getContacts({})
+
+      expect(result.previous).toEqual([])
+    })
+
+    it("hands over only the previous contacts of the customers on the page", async () => {
+      const operator = await createOperator()
+      const high = await createCustomer()
+      const low = await createCustomer()
+      const left = await createCustomer()
+      await createTask({ customerId: high.id, priority: 120 })
+      const ofHigh = await createTask({ customerId: high.id, isActive: false })
+      // 19 more in between: `low` is the 21st, on the second page
+      for (let i = 0; i < 19; i++) await seedContact({ priority: 60 })
+      await createTask({ customerId: low.id, priority: 20 })
+      await createTask({ customerId: low.id, isActive: false })
+      // A customer whose only contact is a previous one has no row to hang from
+      await createTask({ customerId: left.id, isActive: false })
+
+      const result = await createTestCaller(operator).task.getContacts({
+        includeInactive: true,
+        perPage: 20,
+        page: 1,
+      })
+
+      expect(result.contacts).toHaveLength(20)
+      expect(result.total).toBe(21)
+      expect(result.previous.map(({ id }) => id)).toEqual([ofHigh.id])
+    })
+
+    it("follows the filters of the list for the rows, not for the previous ones", async () => {
+      const operator = await createOperator()
+      const customer = await createCustomer()
+      await createTask({ customerId: customer.id, state: "chiamare" })
+      const previous = await createTask({
+        customerId: customer.id,
+        isActive: false,
+        state: "erogata",
+      })
+
+      const result = await createTestCaller(operator).task.getContacts({
+        includeInactive: true,
+        states: ["chiamare"],
+      })
+
+      expect(result.total).toBe(1)
+      expect(result.previous.map(({ id }) => id)).toEqual([previous.id])
+
+      const filteredOut = await createTestCaller(operator).task.getContacts({
+        includeInactive: true,
+        states: ["richiamare"],
+      })
+      expect(filteredOut.contacts).toEqual([])
+      expect(filteredOut.previous).toEqual([])
+    })
+
+    it("with a customer filter keeps all of its contacts in the list, as before (AC21)", async () => {
+      const operator = await createOperator()
+      const customer = await createCustomer()
+      const previous = await createTask({
+        customerId: customer.id,
+        isActive: false,
+        createdAt: new Date("2026-03-01T10:00:00Z"),
+      })
+      const active = await createTask({
+        customerId: customer.id,
+        createdAt: new Date("2026-03-02T10:00:00Z"),
+      })
+
+      const result = await createTestCaller(operator).task.getContacts({
+        customerId: customer.id,
+        includeInactive: true,
+        orderBy: "createdAt",
+        sortedBy: "desc",
+      })
+
+      expect(idsOf(result)).toEqual([active.id, previous.id])
+      expect(result.total).toBe(2)
+      expect(result.previous).toEqual([])
+    })
   })
 
   describe("filters (AC10)", () => {

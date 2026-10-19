@@ -23,10 +23,10 @@ describe("ReadOnlyReason", () => {
     expect(screen.getByText("Non assegnato")).not.toBeNull()
   })
 
-  it("un contatto superato scrive 'Superato'", () => {
+  it("un contatto superato scrive 'Concluso'", () => {
     render(<ReadOnlyReason editability={{ kind: "superseded" }} />)
 
-    expect(screen.getByText("Superato")).not.toBeNull()
+    expect(screen.getByText("Concluso")).not.toBeNull()
   })
 
   it("l'indicazione compare solo con 'Non assegnato', cliente non assegnato e showHint", () => {
@@ -93,7 +93,7 @@ describe("ReadOnlyReason", () => {
   it("il testo ha contrasto sufficiente anche sulla riga evidenziata: text-neutral-600, non text-muted-foreground", () => {
     render(<ReadOnlyReason editability={{ kind: "superseded" }} />)
 
-    const text = screen.getByText("Superato")
+    const text = screen.getByText("Concluso")
     const badge = text.closest<HTMLElement>("[title]")!
 
     expect(badge.className).toContain("text-neutral-600")

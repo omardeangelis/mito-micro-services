@@ -18,6 +18,7 @@ updated: 2026-10-18
 - Run 1 (2026-09-25): solo **PR1 — Percorsi di creazione sicuri** (T1.1 → T1.8), branch `contatti/pr1-creazione-sicura` da `dev`, PR verso `dev`. PR2–PR6 non iniziate.
 - Run 2 (2026-09-29): solo **PR2 — Pulizia e vincolo DB** (T2.1, T2.2, T2.3, T2.5, T2.6, T2.7), branch `contatti/pr2-vincolo-db` da `dev`, PR verso `dev`. T2.4 è il runbook G2: va nella descrizione della PR, lo esegue Omar.
 - Run 5 (2026-10-17): solo **PR5a — Logica sul server e stato dell'URL** (T5.1 → T5.2 → T5.3 → T5.14 → T5.15 → T5.16 → gate T5.17), branch `contatti/pr5a-lettura-server` da `dev`, PR verso `dev`. PR5b (interfaccia) non iniziata.
+- Run 6 (2026-10-18): solo **PR5b — Interfaccia** (T5.4a → T5.4b → T5.5a → T5.5b → T5.6 → T5.6b → T5.7a → T5.7b → T5.9 → T5.7c → T5.8 → T5.10 → T5.11 → T5.12 → gate T5.13), branch `contatti/pr5b-interfaccia` **da `contatti/pr5a-lettura-server`** (PR5a non è ancora in `dev`: il piano la voleva da `dev` con PR5a già dentro). Se PR5a cambia prima del merge, PR5b si riallinea con un rebase; la PR di PR5b va verso `dev` solo dopo il merge di PR5a. PR6 e PR7 non iniziate.
 - Run 4 (2026-10-15): solo **PR4 — Chat con proprietario esplicito** (T4.1 → T4.3 → T4.4, gate T4.2), branch `contatti/pr4-chat-cliente` da `dev`, PR verso `dev`.
 - Run 3 (2026-10-15): solo **PR3 — Regole del contatto sul server, usate da Clienti** (T3.1a → T3.17, gate T3.14), branch `contatti/pr3-regole-server` da `dev`, PR verso `dev`. Baseline sul branch: 33 file, 302 test verdi.
 - **Stato al 2026-10-15:** PR1 e PR2 fatte e in prod (PR1 dal 29/09; PR2 su `main` e migrazioni applicate il 13/10, log di T2.4 nel PLAN). PR3 in prod dal 15/10 (G3 chiuso). PR4 pronta sul branch `contatti/pr4-chat-cliente`, non committata: tutti i task Done, review SHIP dopo le correzioni; restano commit, PR verso `dev` e l'avviso agli operatori. PR5–PR7 da fare.
@@ -28,6 +29,7 @@ updated: 2026-10-18
 - Run 2, `sequential` (richiesto dall'utente): T2.1 → T2.2 → T2.3 → T2.5 → T2.6 → T2.7, nessun worker.
 - Run 3, `sequential` (scelta minima sicura: l'utente non ha indicato la modalità, e i task server sono in catena sugli stessi router), nell'ordine di §10. Delegazione `supervised` (`brain.config.json`): l'orchestratore scrive il test RED di ogni task, un worker sul livello della `complexity` (`low` → haiku, `medium` → sonnet, `high` → modello dell'orchestratore) scrive il codice, l'orchestratore rivede. Escalation: nessun passaggio di livello. Una seconda proposta di correzione allo stesso worker (T3.17, ripristino del focus). Livelli spostati dall'orchestratore prima di partire: T3.5a e T3.8c da `high` a `medium` (motivo nel log del task).
 - Run 5, `sequential` (scelta minima sicura: l'utente non ha indicato la modalità, e T5.1 e T5.2 scrivono lo stesso file di router). Delegazione `supervised`: test RED dell'orchestratore, worker sul livello della `complexity` (T5.14 e T5.15 `medium` → sonnet; T5.1, T5.2, T5.3, T5.16 `high` → modello dell'orchestratore), revisione dell'orchestratore. Escalation: nessuna finora.
+- Run 6, `sequential` (richiesto da Omar con "parti con la PR5b"; la catena dei file di §10 è tutta sugli stessi componenti). Delegazione `supervised`: test RED dell'orchestratore, worker sul livello della `complexity` (`low` → haiku, `medium` → sonnet, `high` → modello dell'orchestratore), revisione e prove in browser dell'orchestratore. Escalation: nessuna finora.
 - Run 4, `sequential` (scelta minima sicura: l'utente non ha indicato la modalità, e T4.1, T4.3 e T4.4 scrivono lo stesso componente), nell'ordine T4.1 → T4.3 → T4.4 → T4.2. Delegazione `supervised`: test RED dell'orchestratore, worker sul livello della `complexity`, revisione dell'orchestratore.
 
 ## Deviations From the Plan
@@ -252,6 +254,14 @@ updated: 2026-10-18
 - **Run 3 — test manuali dopo la PR: l'interfaccia usava l'utente di un accesso precedente** (2026-10-15). `useActor` legge ruolo e operatore dallo store `userPreference-storage`, salvato nel localStorage e aggiornato solo dalla pagina Profilo. Con due accessi nello stesso browser l'interfaccia restava al primo utente: Federica vedeva il menu dell'admin su un contatto non suo, e l'admin vedeva "Assegnato a Martina Vinai" in sola lettura. Il server rifiutava comunque. Lo store era preesistente, ma con PR3 decide cosa si vede. Corretto: `UserPreferenceProvider` copia ruolo e operatore da `getUserPreference` a ogni risposta, e lo store salva nel browser solo le preferenze della tabella e ignora ruolo e operatore salvati prima (`UserPreferenceContext.test.tsx`).
 - **Run 3 — la riga di Clienti non nomina più l'operatore del contatto** (test manuali, 2026-10-15, D14). "Assegnato a …" sotto lo stato ripeteva quasi sempre la colonna Operatore: cliente e contatto sono allineati da PR2 e si separano solo dopo un "Assegna Clienti" su un contatto con esito (in prod 1 contatto attivo su 69.783, sola lettura). In sola lettura la riga mostra solo lo stato; resta "Non assegnato" con l'indicazione di "Assegna a te" quando né il cliente né il contatto hanno un operatore. Poi, su richiesta di Omar, lo stesso nella scheda cliente: niente blocco "Modifica" con il nome, perché l'operatore del cliente è nel form; la condizione è `isUnclaimed` in `ReadOnlyReason.tsx`, usata da riga e scheda. Omar ha deciso anche il resto: "Assegna Clienti" sposterà cliente e contatto insieme in PR6 (T6.8, AC75), senza una colonna "Gestito da". Test in `CustomerColumns.test.tsx` (3 RED prima della modifica) e `CustomerTaskManager.test.tsx` (1 RED).
 
+- **PR5b, correzioni dopo la review (2026-10-18) — scelte che non erano nel piano:**
+  - **Lo stato verso cui va la lista è uno solo.** `ContactsListShell` espone `intent` e `navigateWith`; `useContactFilters`, l'intestazione, la paginazione e gli stati vuoti costruiscono l'indirizzo da lì. Prima ognuno partiva dall'indirizzo, e Next scartava la navigazione in sospeso dell'altro (M6). `navigateWith` non naviga se l'indirizzo non cambierebbe e niente è in corso, e non rinavigava verso un indirizzo già in volo (il timer della ricerca non rimanda quello che un altro controllo ha già mandato).
+  - **Il focus perso si recupera nella shell, non in ogni controllo.** Un controllo che si toglie da solo non può rimettere il focus: lo fa la shell a navigazione finita (tabella, `data-contacts-table`). Solo per navigazioni che restano sulla lista, o il focus finirebbe dietro la Sheet.
+  - **`formatDateAsDMY` è in `Europe/Rome` per tutti** (decisione di Omar, opzione B): cambia anche Clienti e Pratiche, dove su un server in UTC le date erano un giorno prima. Una data non valida dà `""`.
+  - **`ReadOnlyReason` e `CustomerChat` sono condivisi:** "Concluso" e la nota senza scheletro valgono anche per Clienti e la scheda cliente.
+  - **Un'insidia di React 18.3 da ricordare:** un `setState(updater)` chiamato da un effetto al montaggio, nello stesso componente che fa un `setState` in fase di render, riporta lo stato al valore di prima nel render successivo. Si è visto in `useContactFilters`; si evita decidendo fuori dall'updater e passando un valore solo quando serve.
+  - **I test della lista non cambiano il fuso:** `process.env.TZ` dentro il worker di vitest non cambia né `Date` né `Intl`; la matrice dei fusi si fa da fuori (`TZ=… pnpm run test --run`).
+
 ## Sanity Checks
 
 | Check | Result | Notes |
@@ -282,6 +292,8 @@ updated: 2026-10-18
 | Run 4 — browser sul codice finale | OK | Federica su `zzpr3-c2`: invio (5/6 con "Carica altri messaggi"), fallimento offline con testo, messaggio `#b91c1c` e copia `{ operatorId: 1001 }`, stessa bozza dopo il ricaricamento e dopo la scheda chiusa e riaperta senza ricaricare, nessun raddoppio con StrictMode, rinvio salvato e copia cancellata; "Esci dal gestionale" cancella le copie |
 | Run 5 — prod in sola lettura: query vera di `getContacts` | OK | 2026-10-17, transazioni `READ ONLY` con `statement_timeout` di 60 s, `.env.prod.local` senza stampare le credenziali. Prima pagina di default 68 ms a caldo (129 a freddo), `count` 95 (104): A3 rispettata. Con / senza i due indici: priorità 62 / 78 ms (pagina 2000: 216 / 332,5), operatore nessun guadagno. Dettagli nel log di T5.16 |
 | Run 5 — gate CI sul codice dopo le correzioni della review | OK | In una copia pulita fuori dal repo, nell'ordine della CI: `next lint` ("No ESLint warnings or errors"), `tsc --noEmit`, `pnpm run test --run` 79 file e 1364 test, `pnpm build` con `SKIP_ENV_VALIDATION=true` e le variabili segnaposto di CI: tutti con exit 0 |
+| Run 6 — gate CI su PR5b prima della review | OK | In una copia pulita fuori dal repo, nell'ordine della CI: `next lint` ("No ESLint warnings or errors"), `tsc --noEmit`, `pnpm run test --run` 105 file e 1631 test, `pnpm build` con `SKIP_ENV_VALIDATION=true` e segnaposto di CI: tutti exit 0 |
+| Run 6 — `adversarial-review` di PR5b, primo giro | DO NOT SHIP | 13 verificatori: 4 SHIP, 9 DO NOT SHIP; 3 BLOCKER e 11 MAJOR aperti (date nel fuso del server, lista in cache dopo una riapertura, focus su `body`; dettagli in REPORT). Alcune prove dell'orchestratore in T5.12 erano troppo larghe (cache calda, casi della tabella soltanto) |
 
 ## Acceptance Criteria Status
 
@@ -314,6 +326,13 @@ updated: 2026-10-18
 | AC42, AC43 (PR5a, dato) | Met lato server | `customPriority` nel dettaglio (nullable: la UI tratta NULL come "Automatica") |
 | AC44 (PR5a, D22) | Met | `setCallback` rifiuta anche una scadenza per oggi: "Il richiamo si imposta da domani" |
 | AC51 (PR5a, server) | Met lato server | `editability` e `canReassign` nel dettaglio; il motivo in sola lettura è di PR5b |
+| AC1, AC4, AC6, AC8, AC26, AC27, AC44, AC48–AC51, AC53–AC57, AC62 (PR5b) | Met | Review del 2026-10-18 (v2, v8, v10, v11, v12): voce di menu, colonne, "Prossimo alert", menu della riga, "Contatto non trovato", banner del superato, permessi dal server, chat e note, "Vedi contatti". AC54 e AC53 non provati scrivendo |
+| AC2, AC3, AC35 (PR5b) | **Non soddisfatti** | v8: dopo una riapertura, Indietro e Esc/X entro 30 s mostrano la lista in cache col contatto sostituito come riga attiva; v4: una riapertura finita dopo la chiusura riporta dentro il dettaglio |
+| AC5 (PR5b) | **Non soddisfatto al ritorno dal dettaglio** | v6: la colonna nascosta ricompare per circa 30 s (cache del router) |
+| AC7, AC24, AC28 (PR5b) | **Non soddisfatti in produzione** | v10: le date del dettaglio escono nel fuso del processo del server (UTC su Vercel), un giorno prima; la data della lista cade nell'idratazione |
+| AC17, AC18 (PR5b) | Parziali | v7: la ricerca in sospeso si perde con un altro controllo; un anno a due cifre blocca la barra |
+| AC52 (PR5b) | **Non soddisfatto per tre controlli** | v4: priorità, "X" e operatore senza il link al contatto attivo |
+| P17 (PR5b) | **Non rispettata** | v9: il focus finisce su `body` (paginazione, chip, "Azzera filtri", Indietro); v13: scheletro `animate-pulse` nella chat sotto il dettaglio |
 
 ## Remaining Work
 
@@ -333,6 +352,7 @@ updated: 2026-10-18
 - **PR3, dopo il merge su `dev`:** G3, il deploy in prod con l'annuncio agli operatori (testo nella descrizione della PR, da T3.14). Nessuna migrazione.
 - **PR3, seguiti:** test dello smontaggio a metà salvataggio per `CustomerAlertCreator`, `CustomerCreateContact` e `CustomerHandoverDialog`; la scadenza "oggi" contro il cron notturno va decisa prima che un selettore permetta oggi (PR5, tech-debt); la ricerca di Clienti per "Nome" e "Telefono" (tech-debt, preesistente).
 - **PR4, dopo l'implementazione:** commit e PR verso `dev` (bozza della descrizione in chat); le due righe agli operatori prima del deploy (T4.2). Seguiti: test di `deleteMessageAction` e `createChatAction`; "Commenta" che scende di 28 px quando compare il messaggio (review v5, MINOR).
+- **PR5b, dopo la review del 2026-10-18 (DO NOT SHIP):** i 3 BLOCKER e gli 11 MAJOR sono corretti (con un test RED per ciascuno; log di T5.13). Restano da decidere i MINOR (corretti o nel tech-debt), rilanciare v8, v9, v10, v4, v7, v6, v3, v12 e v13, poi la checklist umana del REPORT (prova con tastiera e screen reader, matrice OPERATORE/ADMIN, scelta su Sentry, pannello Animations, iPhone Safari, guida T5.11, testo G4b). PR5b va verso `dev` solo dopo il merge di PR5a. Nessun commit, push o PR fatti.
 - **Dati di prova sul DB di sviluppo:** clienti `zzpr3-c1…c15` con i loro contatti, alert e righe di log; dalla passata di PR4 `zzpr3-c1` e `zzpr3-c2` hanno una chat con note di prova (quella di `zzpr3-c1` è vuota). Restano; per toglierli basta il prefisso `zzpr3-` sull'id del cliente.
 
 ## Steering
@@ -362,3 +382,4 @@ updated: 2026-10-18
 | 2026-10-15 | Avvio di PR4 con `/implement-spec` (dopo la quarta verifica del piano) | Run 4: T4.1 → T4.3 → T4.4 → T4.2, `sequential`, `supervised` |
 | 2026-10-16 | Correggere BLOCKER e MAJOR della review di T4.5 e T4.6, più l'eliminazione dell'ultima nota senza lock e quella di qualunque nota da qualunque operatore; poi rilanciare la review | Nuovo T4.7 (AC79, D21) |
 | 2026-10-16 | Un ADMIN non elimina le note degli altri: una nota la elimina solo il suo autore | AC79 e D21 riscritti, eccezione tolta da servizio e cestino |
+| 2026-10-18 | "No, parti con la PR5b" (risposta alla domanda se fare push e PR di PR5a) | Nessun push né PR di PR5a; Run 6 su `contatti/pr5b-interfaccia` sopra il branch di PR5a |

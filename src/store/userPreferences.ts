@@ -14,6 +14,7 @@ export interface UserPreferenceStore {
   setDashboardCollapsed: (collapsed: boolean) => void
   setCustomerTableVisibleColumns: (columns: string[]) => void
   setPracticesTableVisibleColumns: (columns: string[]) => void
+  setContactTableVisibleColumns: (columns: string[]) => void
   logout: () => void
 }
 
@@ -85,6 +86,21 @@ export const createUserPreferenceStore = (
               customerTableVisibleColumns:
                 state.preferences?.customerTableVisibleColumns ?? [],
               practicesTableVisibleColumns: columns,
+            },
+          }))
+        },
+        setContactTableVisibleColumns: (columns: string[]) => {
+          set((state) => ({
+            ...state,
+            preferences: {
+              ...state.preferences,
+              dashboardCollapsed:
+                state.preferences?.dashboardCollapsed ?? false,
+              customerTableVisibleColumns:
+                state.preferences?.customerTableVisibleColumns ?? [],
+              practicesTableVisibleColumns:
+                state.preferences?.practicesTableVisibleColumns ?? [],
+              contactTableVisibleColumns: columns,
             },
           }))
         },

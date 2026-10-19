@@ -6,7 +6,7 @@ spec: sezione-contatti
 links:
   - "[[specs/crm/sezione-contatti/REPORT]]"
 created: 2026-09-25
-updated: 2026-10-17
+updated: 2026-10-18
 ---
 
 # Review Rubric: Sezione Contatti — PR1 "Percorsi di creazione sicuri"
@@ -380,3 +380,124 @@ Nessuno. Alla seconda verifica l'orchestratore ha aggiunto un passaggio di regre
 | v8 | Richiamo da domani (AC44, D22) | medium | balanced (sonnet) |
 | v9 | Preferenza delle colonne (AC5) | low | fast (haiku) |
 | v10 | Gate e convenzioni del progetto | low | fast (haiku) |
+
+## [Round: 2026-10-18] PR5b — "Interfaccia"
+
+Round aggiunto: le rubric di PR1, PR2, PR3, PR4 e PR5a sopra restano come sono.
+
+### Change set under review
+
+- **Scope:** spec implementation, solo PR5b (PLAN.md §9: T5.4a–T5.12; T5.13 è il gate). Contratto: AC1–AC9, AC10–AC23 (lato interfaccia), AC24–AC57, AC62; decisioni P6, P13, P17 (movimento e focus). La logica sul server e lo stato dell'URL sono di PR5a (già rivista SHIP, fuori ambito salvo come contratto del chiamato)
+- **Target:** branch `contatti/pr5b-interfaccia` (PR verso `dev`), modifiche non ancora committate
+- **Compared:** `0daa1a3` (tip di `contatti/pr5a-lettura-server`) → albero di lavoro (file modificati più i file nuovi non tracciati)
+- **Files touched:** 7 file modificati in `src/` (`DashboardLayout.tsx`, `CustomerColumns.tsx`, `ContactStateSelect.tsx`, `ui/sheet.tsx`, `store/userPreferences.ts` e due test) e 68 nuovi (42 di codice, 26 di test): circa 3.500 righe di codice e 5.400 di test. Nuovi: la rotta `/dashboard/contatti` (lista, filtri, colonne, paginazione, stati vuoti e di errore, ripristino del focus), il gruppo `(dettaglio)/` con la `ContactSheet` e i controlli di scrittura (stato, richiamo, priorità, chiusura alert, operatore), le note del cliente. Brain: guida per gli operatori (bozza T5.11), `motion.md`, debito tecnico, PLAN e IMPLEMENTATION-NOTES
+
+### Routing rubric (review-classifier output)
+
+```json
+{
+  "taskType": "feature",
+  "secondaryType": "ui",
+  "domainsTouched": ["crm"],
+  "adversarialVerifiers": {
+    "count": 13,
+    "passes": [
+      {
+        "id": "v1",
+        "charter": "Untrusted URL input reaching navigation targets and server inputs. Check every href and router call built from query parameters or route params: ContactSheet close and ContactNotFound 'Torna a Contatti' (returnHref(da)), detailHrefFromDa after a reopen and from 'Vai al contatto attivo', row open (detailHref), toast [Apri], listHref, 'Apri cliente' (/dashboard/customers/<id>, id encoding), and 'Vedi contatti' in CustomerColumns. Whatever `da`, `id`, `cliente` or `limit` holds, each target must stay a same-origin path under /dashboard and must not gain an injected parameter or fragment. Check that the [id] param and `limit` (parseChatLimit) are parsed strictly before they reach getContactById or the chat LIMIT, that filter values reach getContacts only through the reviewed parse/toContactsInput, that no URL is concatenated by hand, that no raw HTML is rendered, and that the value read back from sessionStorage is handled defensively. searchParams.ts itself is already reviewed: judge only how this diff calls it. Out of scope: which history entries navigation creates (v8).",
+        "complexity": "high"
+      },
+      {
+        "id": "v2",
+        "charter": "Authorization boundary in the UI (AC48–AC51, AC54). Check that each write control (row state, detail state, callback, priority, alert close, operator) renders only from the server's editability, canReassign and active flags, never from a role or ownership guess made in the client. Check that operators never see 'Cambia operatore' (AC50) and that the operator list loads only when canReassign is true. Check that read-only contacts and superseded contacts show the reason or the banner (AC27, AC51), and that notes stay writable when the contact is read-only (AC54). Check that no mutation input carries a client-chosen actor or self-operator id the server would trust. Check that the preference POST (?pref=cot) can change only the session user's contact-column key, and that every new read and write goes through the existing protected tRPC procedures or route. Out of scope: how a rejection is shown and reverted (v4, v5).",
+        "complexity": "high"
+      },
+      {
+        "id": "v3",
+        "charter": "Personal data on the client. Check: search text in `q` and `da` (which can be a fiscal code, phone number or name) ending up in browser history, in Referer headers sent to external origins, or in server and Vercel request logs; that sessionStorage (returnFocus) holds only the contact id and a timestamp; the 'Copia telefono' clipboard write; customer names in toasts and live regions; that contatti/error.tsx and ContactNotFound never render an error message, stack or row data; console output and client error reporting; link prefetch fetching PII-bearing RSC payloads. The AC51 decision that every operator sees every contact's name, phone and fiscal code is accepted: do not re-argue it.",
+        "complexity": "medium"
+      },
+      {
+        "id": "v4",
+        "charter": "Detail write controls against AC29–AC47 and AC52. Check ContactStateControl: reopening creates a new contact and router.replace keeps `da`; the confirmation modal appears when an alert is open, and Cancel or Esc changes nothing; confirmedAlertId is sent; a re-confirmation is asked when a colleague changes the alert in the meantime; reselecting the current state does nothing. Check ContactCallbackForm: it is available only for an outcome state or `nessuno`; replacesAlertId is sent; ALERT_CONFIRMATION_REQUIRED keeps the form open with its data; an empty message is sent as null. Check ContactPriorityControl: manual versus automatic, with the label taken from the saved value. Check ContactAlertCloseButton and ContactOperatorControl. For every control: the saved value is shown and never an optimistic one, double submit is impossible, mutateAsync().then(finishAfterRefresh, onError) is used, a rejection returns to the saved value with a message, and a superseded rejection offers the active contact. Would the tests fail on these regressions? Out of scope: day boundaries (v10) and focus (v9).",
+        "complexity": "high"
+      },
+      {
+        "id": "v5",
+        "charter": "State change from a list row (AC9, AC40, AC52, A9). Check ContactRowState in the ContactColumns cell: it applies the same rules as the detail; the confirmation modal appears when an alert is open; a mutation still in flight when the row leaves the page or unmounts after refresh still settles (callbacks not lost); a rejection returns the row to its saved value; read-only and superseded rows show ReadOnlyReason at a fixed width; the success toast is background type for 5000 ms and, after a reopen, is 8000 ms with an [Apri] action and altText pointing to the new taskId; the announcement node is filled when a row leaves; the toast limit of 1 does not lose the only route to the new contact. Out of scope: where focus goes after the row leaves (v9).",
+        "complexity": "medium"
+      },
+      {
+        "id": "v6",
+        "charter": "List rows, columns and the column preference (AC2–AC6, AC8). Check that each row is a contact, that only active contacts appear by default, and that 'Superato' marks inactive rows when previous contacts are included. Check the column set and contents: CF falls back to the VAT code, the blacklist badge appears beside the customer, and a NULL priority shows as the lowest band. Check that Telefono and CF can be hidden: the hidden set is read from the server preference rather than the persisted store, so it carries across devices, and it is saved through POST ?pref=cot with correct failure handling. Check the row menu: 'Apri contatto' is the first item, 'Apri cliente', and 'Copia telefono' only when a phone exists; menu, links and selector stop propagation so they do not also open the detail. Out of scope: the Italian-day rule behind the next-alert highlight (v10).",
+        "complexity": "medium"
+      },
+      {
+        "id": "v7",
+        "charter": "Filters, sorting, pagination and URL state (AC10–AC23). Check the useContactFilters hook: local state seeded from parsed URL state; a 300 ms debounced `q` navigated with replace while every other filter uses push; every change resets to page 1; the timer never reads a stale closure; qInFlight is reset correctly, so 'Azzera filtri' clears the box. Check MultiSelectFilter: operator with 'Non assegnato', state, priority bands, keyboard operation and the selected count. Check the date range on a chosen field: a backward range or a partial year is never navigated. Check the 'Solo i miei', 'Con alert' and 'Includi contatti precedenti' toggles, the customer chip and its removal, sort headers with aria-sort and direction rules, per-page and past-the-last-page pagination, and the empty states with 'Azzera filtri' and the customer-specific messages. Check that one shared transition drives aria-busy without a skeleton, and that invalid parameters are ignored and the controls show only what is applied.",
+        "complexity": "high"
+      },
+      {
+        "id": "v8",
+        "charter": "App Router structure, server data loading and history semantics (AC24–AC28, AC35, AC53–AC57, P13, P17). Check that the list page and the detail page are Server Components (noStore, a single Promise.all, Suspense only around the list table) and that error.tsx catches failures. Check that (dettaglio)/layout sits above [id] with no loading.tsx or Suspense skeleton beneath it, so an id change never remounts the Sheet and old content stays until new content is ready. Check that the [id] page handles CONTACT_NOT_FOUND inside the Sheet and rethrows every other error. Check that the chat renders after the contact without Suspense, that 'Avvia una chat' is offered, and that 'Carica altri messaggi' keeps `da` and `limit`. Check history: close makes exactly one push even with Esc, overlay click and X together (the never-reset guard is a recorded debt), a reopen uses replace so Back skips the superseded contact, and 'Vai al contatto attivo' uses push. Check that no server-only module or server env reaches the client graph, and that the server `api` caller is used only in Server Components. Out of scope: whether a target is safe (v1).",
+        "complexity": "high"
+      },
+      {
+        "id": "v9",
+        "charter": "Focus management and live announcements. Focus must never end on body. Check each case: on open it goes to the title; on close, returnFocus is written before navigating and RestoreRowFocus moves focus to the origin row's actions button, honours the 30 s expiry and read-once, and falls back to the table; after a reopen the state trigger takes focus through the one-shot flag, or the title when the contact is read-only; after the alert is closed focus goes to 'Imposta richiamo' or the section heading (passive-effect cleanup timing); when a row leaves the list focus goes to the next row's selector, then the previous, then the table; modal Cancel or Esc returns focus to the selector; a popover close returns focus to its trigger; navigation uses scroll:false so focus is not stolen. Check that status and alert regions are always mounted, that announceAlert repeats rejections inside the Sheet because toasts are aria-hidden there, and that aria-busy is set on the table, the row and the close button. Out of scope: static accessible names, contrast and focus-ring visibility (UI pass).",
+        "complexity": "high"
+      },
+      {
+        "id": "v10",
+        "charter": "Italian-day rules on the client and in SSR. Check that the AC7 next-alert highlight ('Oggi' versus 'Scaduto', with icon and text) uses the Europe/Rome day whatever the browser time zone and the UTC Vercel server rendering the Server Component, with no hydration mismatch from `now`. Check that the AC44 callback picker disables today and earlier by the Rome day and agrees with the server's isDueOrOverdue (D22), including near midnight and on the DST change days. Would the tests fail with TZ set explicitly to non-Rome zones, given the recorded tech debt that Intl in vitest workers uses the machine time zone?",
+        "complexity": "medium"
+      },
+      {
+        "id": "v11",
+        "charter": "Shared edits and entry points. Check the blast radius on existing screens: the optional closeProps on ui/sheet.tsx leaves every other Sheet consumer unchanged; the optional describedBy on ContactStateSelect leaves the Clienti cell and the customer sheet unchanged; the new setter in the userPreferences store keeps the persisted shape and the other preferences intact. Check the side-menu entry right after Customers (AC1), including active-state matching for /dashboard/contatti/[id]. Check the 'Vedi contatti' item in CustomerColumns (AC62): it targets seeContactsHref and stops propagation inside the row.",
+        "complexity": "low"
+      },
+      {
+        "id": "v12",
+        "charter": "UI pass: apply the ui-review skill's bar and probes (seven classes, evidence gate, falsification pass) to the changed rendered surface: the Contatti list, filter bar, multi-select popover, date inputs, toggles, customer chip, pagination, Colonne menu, row menu, empty and error states, the detail Sheet (header, superseded banner, read-only reason, alert section and Storico, callback form, priority, operator and alert-close controls, notes) and the new menu items in DashboardLayout and CustomerColumns. Add the spec's UI criteria: AC5, AC7 (icon and text, not colour only), AC20, AC22, AC27, AC51 and AC52. brain/chore/ui-review.md does not exist, so the skill's default bar applies. Recorded primitive gaps (toast contrast, Dialog X size, DatePickerFormItem name, PriorityBadge icon-only) go back to tech debt, not to findings against this change.",
+        "complexity": "medium"
+      },
+      {
+        "id": "v13",
+        "charter": "Motion-craft pass: check the changed motion lines against the design-engineering skill's references/review.md (baseline in .agents/agents/design-engineer.md), with brain/chore/motion.md decisions winning. No new animation is allowed (P6, P13, P17). Check: the Sheet exit is unanimated by unmount; rows use transition-none; the state and priority menus are unanimated Radix primitives; there is no skeleton or animate-pulse under (dettaglio) or during list transitions; spinners have motion-reduce; primitives (Popover, Select, Dialog, Sheet entry, transition-colors on Button) are used unchanged. Primitive gaps are referred to the tech-debt entry 'Lacune dei primitivi di movimento'. Target size and static styling stay with the UI pass.",
+        "complexity": "low"
+      }
+    ]
+  },
+  "taskComplexity": "high",
+  "reviewImpact": "critical",
+  "humanInLoop": true,
+  "nextStep": "Run v1–v13 as independent adversarial-verifier passes in parallel, each with clean context, its own charter, the diff from 0daa1a3 to the working tree (tracked changes plus untracked src/ files), the SPEC.md ACs it cites, and the PLAN.md PR5b common rules and T5.4a–T5.13 logs (deviations to check, not to accept). Model tiers: strongest (Opus) for v1, v2, v4, v7, v8, v9; balanced for v3, v5, v6, v10, v12; fast for v11, v13. searchParams.ts and all server code are out of scope except as callee contracts. No verifier connects to the production database, runs any NODE_ENV=production script, or runs next build/start with the real env files; browser probes use only a local dev server on the development database. Write RUBRIC.md and REPORT.md in brain/specs/crm/sezione-contatti/ as a new PR5b round, leaving the earlier rounds intact. REPORT.md must end with a checklist a human completes before merging."
+}
+```
+
+### Classifier rationale
+
+Critico per tre superfici: la UI scrive dati su un record condiviso (stato, richiamo, priorità, alert, operatore) con regole che il server fa rispettare ma che l'interfaccia deve mostrare senza indovinare; indirizzi costruiti da query string e da `da` (superficie di redirect aperto) e testo di ricerca che può essere un codice fiscale o un telefono nell'URL; focus e annunci per tecnologie assistive su una Sheet che nasconde il resto della pagina. Un passaggio per concern perché i passaggi stretti restino stretti. Passaggi UI (v12) e di movimento (v13) separati per decisione di progetto (P6, P13, P17).
+
+### Overrides applied
+
+Nessuno.
+
+### Verification plan (derived)
+
+| Pass | Charter | Complexity | Model tier |
+|------|---------|------------|------------|
+| v1 | Input non fidato dall'URL verso indirizzi e input del server | high | strongest (opus) |
+| v2 | Confine di autorizzazione nella UI (AC48–AC51, AC54) | high | strongest (opus) |
+| v3 | Dati personali sul client | medium | balanced (sonnet) |
+| v4 | Controlli di scrittura del dettaglio (AC29–AC47, AC52) | high | strongest (opus) |
+| v5 | Cambio di stato da una riga (AC9, AC40, AC52) | medium | balanced (sonnet) |
+| v6 | Righe, colonne e preferenza delle colonne (AC2–AC6, AC8) | medium | balanced (sonnet) |
+| v7 | Filtri, ordinamento, paginazione e stato dell'URL (AC10–AC23) | high | strongest (opus) |
+| v8 | Struttura App Router, dati dal server e cronologia (AC24–AC28, AC35, AC53–AC57) | high | strongest (opus) |
+| v9 | Focus e annunci | high | strongest (opus) |
+| v10 | Giorno italiano su client e SSR (AC7, AC44) | medium | balanced (sonnet) |
+| v11 | Modifiche condivise e punti d'ingresso (AC1, AC62) | low | fast (haiku) |
+| v12 | Passaggio UI sulla superficie renderizzata | medium | balanced (sonnet) |
+| v13 | Passaggio di movimento (P6, P13, P17) | low | fast (haiku) |

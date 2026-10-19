@@ -14,7 +14,7 @@ type ReadOnlyReasonProps = {
 }
 
 const reasonOf = (editability: ReadOnlyEditability): string => {
-  if (editability.kind === "superseded") return "Superato"
+  if (editability.kind === "superseded") return "Concluso"
   return editability.assignee === null
     ? "Non assegnato"
     : `Assegnato a ${editability.assignee}`
