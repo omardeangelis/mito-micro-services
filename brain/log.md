@@ -284,3 +284,10 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 ## [2026-10-16] implement | sezione-contatti PR4, T4.6
 - Spec: [[specs/crm/sezione-contatti/SPEC]] (AC78 nuovo), piano: [[specs/crm/sezione-contatti/PLAN]] (T4.6, D20)
 - Chat: "Invio…" e spinner durante l'invio, eliminazione con spinner e toast in caso di errore, lista che si apre e resta sulle note più recenti, cestino raggiungibile da tastiera
+
+## [2026-10-18] review | Sezione Contatti — PR5b "Interfaccia"
+- Report: [[specs/crm/sezione-contatti/REPORT]]
+- Scope: spec
+- Verdict: DO NOT SHIP
+- Impact: critical
+- Verifiers: 13 (3 blockers, 11 major; 4 SHIP e 9 DO NOT SHIP)

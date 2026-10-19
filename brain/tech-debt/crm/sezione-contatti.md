@@ -5,7 +5,7 @@ links:
   - "[[specs/crm/sezione-contatti/SPEC]]"
   - "[[specs/crm/sezione-contatti/IMPLEMENTATION-NOTES]]"
 created: 2026-09-25
-updated: 2026-10-17
+updated: 2026-10-18
 ---
 
 # Tech debt: Sezione Contatti
@@ -420,3 +420,33 @@ Da PR4 (T4.5, D19). Rilevate il 2026-10-16 con una query in sola lettura.
 
 **Chiuso il 2026-10-16**, su richiesta di Omar: cancellate tutte le chat senza cliente né pratica create da più di un'ora, con i loro messaggi e le righe di `chat_to_operator`, in una transazione per DB. Staging (DB di sviluppo): 12 chat, 13 messaggi. Prod: 19 chat, 13 messaggi. Dopo: 0 chat orfane e nessun cliente con una chat mancante. Prima della cancellazione ogni riga è stata salvata in un backup JSON locale.
 
+## Le mutation di Contatti e Clienti offline
+
+Scoperto in T5.7a (PR5b, 2026-10-18), preesistente: viene da `useContactMutationFeedback` e dal `QueryClient` di PR3, condivisi con la cella dello stato di Clienti.
+
+- Con il browser davvero offline (`navigator.onLine` falso) React Query v4 mette in pausa la mutation (`networkMode: "online"`, il predefinito): il selettore resta in attesa senza messaggio. Con una richiesta che cade a connessione attiva (provata abortendo `task.changeState`) tutto funziona: "Modifica non salvata, riprova", valore salvato, selettore di nuovo attivo, anche nella Sheet.
+- Provato `networkMode: "always"`: la richiesta parte e fallisce, ma l'hook, dopo il toast, fa `router.refresh()`; offline questa fa una navigazione completa e il browser mostra la sua pagina d'errore. Annullato.
+
+**Da fare fuori da questa spec (insieme a Clienti):** l'hook non deve fare `router.refresh()` per un errore che non è del contatto (rete, 500: il valore non è cambiato) e le mutation di contatto vanno con `networkMode: "always"`. Per ora il caso è rotto in entrambe le tabelle allo stesso modo.
+
+## Piccoli debiti dell'interfaccia di Contatti (PR5b)
+
+Registrati nel Run 6 (2026-10-18). Nessuno blocca il rilascio.
+
+- **Il badge blacklist** (`role="img"` con "In blacklist" o "Blacklist in revisione") è scritto due volte: nella lista (`ContactColumns`) e nel dettaglio (`ContactDetailHeader`). `BlackListBadge` non ha un nome accessibile da solo (la scheda cliente e la pratica lo mostrano ancora come sola icona). Va estratto e il nome messo nel componente.
+- **`PriorityBadge` è solo un'icona**, senza testo né nome: vale anche in Clienti. Il dettaglio ha almeno "Manuale"/"Automatica" accanto; la riga della lista non ha niente.
+- **`DatePickerFormItem`** (condiviso con Clienti e Pratiche) dà al pulsante il nome dell'etichetta, non il valore scelto: un lettore di schermo non sente la data. "Imposta richiamo" (D22) usa `isDueOrOverdue(date, new Date())` su date a mezzanotte locale: giusto in Italia, in un fuso lontano potrebbe segnare il giorno sbagliato.
+- **`ContactSheet`**: la guardia "sto già chiudendo" non si azzera: se una navigazione si bloccasse senza smontare il guscio, la Sheet non si potrebbe chiudere di nuovo.
+- **Barra dei filtri:** un `?operatore=99` che non è nell'elenco mostra "Operatore, 1 selezionato" senza casella spuntata; una scelta oltre `MAX_OPERATOR_IDS` si ignora senza messaggio; i campi data fanno un `push` per ogni valore valido (un anno digitato a mano può farne qualcuno; gli anni che il server rifiuta no, e dal 2026-10-18 non bloccano più gli altri filtri: mostrano il messaggio "Usa una data tra il 2000 e il 2100"); la barra non è sticky.
+- **Annuncio della riga che esce** (`ContactsTable`): se fra il salvataggio e il refresh arriva un altro aggiornamento in cui la riga c'è ancora, l'annuncio si perde; con la lista che si svuota parlano sia il nodo sr-only sia quello dello stato vuoto.
+- **`RestoreRowFocus`:** con `sessionStorage` illeggibile porta il focus alla tabella a ogni montaggio della lista, anche senza un ritorno dal dettaglio (come dice il piano; caso raro).
+- **`limit` della chat:** la scheda cliente accetta un `limit` enorme (`getChatMessagesById` non ha un massimo); il dettaglio no (`parseChatLimit`).
+- **Lo Storico del dettaglio** non ha un tetto all'altezza dei messaggi lunghi.
+- **Movimento:** il `Select` dell'operatore e i `Popover` usano i primitivi con le loro animazioni; i `Button` hanno `transition-colors` al passaggio del mouse. Rientra in "Lacune dei primitivi di movimento". Dal passaggio di movimento del 2026-10-19 (Haiku): `Switch`, `Accordion` e `Popover` non sono nell'elenco di quella voce (`Switch` senza `motion-reduce`, `Accordion` con `animate-accordion-*`); il menu delle azioni di riga, "Colonne" e i `Select` della paginazione e della data si aprono con l'animazione standard, e `motion.md` non dice se è una scelta.
+- **Contrasto dei primitivi condivisi** (passaggio UI del 2026-10-19, Haiku, misurato come admin): la traccia dell'interruttore spento (`#e5e5e5` su bianco, 1,26:1), la voce a fuoco dei menu (`#f5f5f5` su bianco, 1,09:1, unico segno del focus) e la X della Sheet (16×16, e non resta in vista quando il contenuto scorre).
+- **Clienti, preesistente e fuori da PR5b:** a 800 px la barra dei filtri non va a capo e metà dei filtri resta fuori dallo schermo; i selettori della barra non hanno nome accessibile; i due pulsanti con l'icona di ricerca e di filtro si chiamano "Toggle bold" e "Toggle italic" (`TableFilterSections.tsx`, `ToggleGroupDemo`).
+- **Nomi uguali:** il pulsante "Azioni per" di una riga e delle sue sotto-righe ha lo stesso nome (lo stesso cliente); due contatti precedenti dello stesso giorno e operatore hanno lo stesso testo nel dettaglio.
+
+## Dati di prova sul DB di sviluppo (PR5b)
+
+Restano dalla passata browser del Run 6, nel prefisso `zzpr3-`: i contatti riaperti e gli alert di `zzpr3-c2`, `zzpr3-c10`, `zzpr3-c13`, `zzpr3-c20` (e la chat con una nota, "Prima nota T5.8", di `zzpr3-c20`). Per toglierli basta il prefisso `zzpr3-` sull'id del cliente.

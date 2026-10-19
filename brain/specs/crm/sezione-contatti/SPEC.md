@@ -83,9 +83,9 @@ I comportamenti visti dall'utente (messaggi, percorsi di errore, casi limite) so
 ### Lista Contatti
 
 - **AC2** — Ogni riga della lista è un contatto. Senza filtri la lista mostra solo i contatti attivi, ordinati per priorità decrescente.
-- **AC3** — L'interruttore "Includi contatti precedenti" aggiunge i contatti non più attivi (sostituiti da una riapertura, da un followup o da un'assegnazione massiva). Queste righe sono marcate come superate, non si modificano nella riga e aprono il dettaglio in sola lettura.
+- **AC3** — L'interruttore "Contatti chiusi" (nei Filtri Avanzati) mostra i contatti non più attivi (sostituiti da una riapertura, da un followup o da un'assegnazione massiva) come sotto-righe del contatto attivo del loro cliente, dal più recente: stare sotto dice già che sono conclusi, quindi non portano un'etichetta. Non si modificano nella riga e aprono il dettaglio in sola lettura. Le righe e il totale della lista restano quelli dei contatti attivi, e i filtri valgono per quelli; i contatti chiusi di un cliente che ha un contatto attivo tra le righe si vedono tutti, qualunque filtro. Un contatto non più attivo il cui cliente non ha un contatto attivo tra le righe (la lista di un solo cliente, AC21, lo mostra) è una riga come le altre, con la scritta "Concluso".
 - **AC4** — La lista mostra le colonne: Cliente (link alla scheda cliente), Telefono, CF, Stato, Priorità, Operatore, Contattato il, Prossimo alert, Creato, Aggiornato, menu azioni.
-- **AC5** — Le colonne Telefono e CF si possono nascondere. La scelta è salvata per utente, si ritrova dopo logout e su un altro dispositivo, ed è indipendente da quella della tabella Clienti.
+- **AC5** — Le colonne Telefono e CF si possono nascondere, dal menu a icona in fondo alla barra dei filtri. La scelta è salvata per utente, si ritrova dopo logout e su un altro dispositivo, ed è indipendente da quella della tabella Clienti.
 - **AC6** — La colonna Prossimo alert mostra la scadenza dell'alert aperto del contatto, con il messaggio al passaggio del mouse. Senza alert aperto la cella è vuota.
 - **AC7** — Il Prossimo alert è evidenziato quando la scadenza è oggi o già passata, secondo l'ora italiana, e non lo è quando è futura.
 - **AC8** — Il menu azioni della riga offre "Apri cliente" e "Copia telefono", che copia il numero negli appunti. "Copia telefono" non compare se il cliente non ha un telefono.
@@ -101,7 +101,9 @@ I comportamenti visti dall'utente (messaggi, percorsi di errore, casi limite) so
   - intervallo di date dal/al su un campo a scelta tra Contattato il (default), Prossimo alert e Creato;
   - "Solo i miei": i contatti che l'utente collegato può lavorare: quelli assegnati a lui e quelli di un collega il cui cliente è assegnato a lui (D2);
   - "Con alert": solo i contatti con un alert aperto;
-  - "Includi contatti precedenti" (AC3).
+  - "Contatti chiusi" (AC3).
+  
+  La barra è quella delle altre tabelle: in vista la ricerca, Operatore, Stato, Priorità e "Solo i miei"; in "Filtri Avanzati", con il numero dei filtri attivi, l'intervallo di date con il suo campo, "Con alert" e "Contatti chiusi"; in fondo il menu delle colonne (AC5), un'icona. Il messaggio di una data che la lista non può applicare resta in vista anche con il pannello chiuso.
 - **AC11** — Nell'intervallo di date "al" comprende l'intera giornata, secondo l'ora italiana.
 - **AC12** — Le fasce di priorità (bassa ≤ 20, media ≤ 60, alta ≤ 100, urgente > 100) sono le stesse per il badge e per il filtro: un contatto con il badge di una fascia compare filtrando per quella fascia e non per le altre.
 - **AC13** — Si può ordinare per Priorità, Contattato il, Prossimo alert, Creato, Aggiornato e Cliente (cognome, poi nome), in ordine crescente o decrescente. L'ordinamento vale sull'intero risultato filtrato, non sulla sola pagina. I contatti senza valore nel campo di ordinamento finiscono in fondo.
@@ -170,6 +172,7 @@ Gli stati "da chiamare" sono `chiamare` e `followup`; gli stati con esito sono `
 - **AC77** — Un cliente ha al massimo una chat. "Avvia una chat" premuto due volte, da una pagina non ancora aggiornata o da due operatori sullo stesso cliente apre la chat che c'è già, senza crearne un'altra. Dopo il clic la scheda resta al suo posto e il pulsante mostra che la chat si sta avviando, finché la chat non compare; poi il cursore è nel campo della nota. Se la chat non si avvia, compare "Chat non avviata, riprova" e il pulsante torna attivo.
 - **AC78** — Nella chat l'attesa si vede. Una nota in invio dice "Invio…" al posto della data e "Commenta" mostra che sta inviando, finché il server non risponde. La lista si apre sulle note più recenti e, dopo un invio, mostra la nota appena inviata anche con più di 5 note; non torna in fondo da sola se l'operatore ha scorso in su. Una nota in eliminazione resta al suo posto con l'attesa al posto del cestino, finché non sparisce; se non si elimina compare "Nota non eliminata, riprova". Il cestino si raggiunge anche da tastiera, e dopo un'eliminazione il focus passa al cestino della nota accanto. Chi usa un lettore di schermo sente "Invio della nota", "Nota inviata" e "Nota eliminata".
 - **AC79** — Una nota la elimina solo chi l'ha scritta, anche quando è un amministratore. Il cestino compare solo all'autore, e il server rifiuta l'eliminazione chiesta da chiunque altro, amministratori compresi. Eliminare l'ultima nota e avviare la chat sullo stesso cliente, nello stesso momento, non lasciano il cliente con una chat cancellata.
+- **AC80** — Il dettaglio mostra sempre, sotto lo Storico degli alert, i "Contatti precedenti" del cliente: gli altri suoi contatti, dal più recente, ciascuno con stato, operatore, "Contattato il" e "Creato il", e ciascuno un link a quel contatto (con lo stato della lista, come "Vai al contatto attivo"). Da un contatto concluso l'elenco comprende anche il contatto attivo, segnato "Attivo". Senza altri contatti dice "Nessun contatto precedente". Vale per ogni contatto, attivo o concluso, modificabile o no.
 
 ### Tabella Clienti semplificata
 
@@ -278,8 +281,8 @@ La proposta di implementazione completa (query, indici, struttura dei file, stim
 | Vista di default: solo contatti attivi, con un interruttore per i precedenti (decisione 5 della bozza). | Raccomandazione della bozza, adottata. |
 | Note: solo la chat del cliente, niente `messages.task_id` (decisione 6 della bozza). Chiunque apra il contatto può scrivere. | Il legame nota → task si romperebbe a ogni nuova riga `task`; si ricostruisce con il nuovo export chiamate. La chat è del cliente, e oggi è scrivibile da tutti nella scheda cliente. |
 | La riapertura crea un nuovo contatto che eredita "Contattato il". | Aggiornare la stessa riga, o svuotare la data, cambierebbe i numeri dell'export chiamate. |
-| Un contatto superato si apre in sola lettura, senza redirect automatico. | Con il redirect, le righe di "Includi contatti precedenti" non si potrebbero consultare. |
-| L'interruttore si chiama "Includi contatti precedenti", non "Includi chiusi". | Per l'operatore "chiuso" significa "ha già un esito", che è un'altra cosa. |
+| Un contatto superato si apre in sola lettura, senza redirect automatico. | Con il redirect, le righe dei contatti chiusi non si potrebbero consultare. |
+| L'interruttore si chiama "Contatti chiusi" (Omar, 2026-10-19), e i contatti chiusi sono sotto-righe del contatto attivo, nei Filtri Avanzati; il dettaglio mostra sempre i contatti precedenti (AC80). | Cambia la decisione iniziale ("Includi contatti precedenti", non "Includi chiusi", perché per l'operatore "chiuso" è anche "ha già un esito"): resta il rischio di confonderli, e la riga descrive l'interruttore ("sostituiti da una riapertura, un followup o un'assegnazione massiva"). Sotto il contatto attivo, un contatto chiuso si riconosce senza etichetta; lo stesso cliente non compare due volte come righe uguali. |
 | La priorità manuale si sceglie per fascia. | È già così nel dettaglio di oggi; un numero libero non serve all'operatore. |
 | "Vedi contatti" include i contatti precedenti. | Con i soli attivi mostrerebbe al più una riga, lo stesso risultato di "Gestisci contatto". |
 | Ordinamento di default di Contatti: priorità decrescente. | Mette in cima i contatti da lavorare prima. |
