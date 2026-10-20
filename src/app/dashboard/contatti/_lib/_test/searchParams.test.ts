@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 import {
   type ContactsListState,
   activeFilters,
+  customerContactsState,
   defaultState,
   detailHref,
   parse,
@@ -1139,5 +1140,33 @@ describe("activeFilters", () => {
     })
 
     expect(activeFilters(state)).toEqual([])
+  })
+})
+
+describe("customerContactsState", () => {
+  it("is the state of 'Vedi contatti': the customer, previous contacts included, newest created first (D28)", () => {
+    expect(customerContactsState("c1a2")).toEqual({
+      ...defaultState,
+      customerId: "c1a2",
+      includeInactive: true,
+      orderBy: "createdAt",
+      sortedBy: "desc",
+    })
+  })
+
+  it("is the state 'Vedi contatti' links to, so the two links can't diverge", () => {
+    expect(seeContactsHref("c1a2")).toBe(
+      `/dashboard/contatti${serialize(customerContactsState("c1a2"))}`
+    )
+  })
+
+  it("is also the state the detail of a contact carries to come back to that list (AC25)", () => {
+    const href = detailHref(42, customerContactsState("c1a2"))
+
+    expect(
+      returnHref(
+        new URL(href, "https://mito.test").searchParams.get("da") ?? undefined
+      )
+    ).toBe(seeContactsHref("c1a2"))
   })
 })

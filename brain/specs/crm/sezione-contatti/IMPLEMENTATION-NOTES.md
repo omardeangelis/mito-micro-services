@@ -267,6 +267,7 @@ updated: 2026-10-20
 
 - **Run 7 — scostamenti per task** (dettagli nei log del PLAN):
   - **T6.2:** il blocco di test "la cella Stato Chiamate della lista Clienti" di `CustomerColumns.test.tsx` è tolto con il suo componente (`StateSelector`), com'era previsto dal piano; `createSQLQuery` con il terzo argomento scarta anche i filtri su colonne che la mappa di Clienti non conosce, non solo `state` e `closed_at`: lo sa la review di sicurezza su `sql.raw` (A15). Nel DB di sviluppo, durante la passata browser, la preferenza di colonne dell'admin di prova è stata riscritta e poi ripristinata a `["id"]`.
+  - **T6.4:** la data del prossimo alert usa `formatDateAsDMY` (`5/11/2026`, senza zeri), come il resto dell'app: il test RED del contratto diceva `05/11/2026` ed è stato corretto. Il riepilogo aggiunge all'icona della priorità l'etichetta di banda a parole. Lo Storico degli alert non sta più nella scheda cliente (è nel dettaglio del contatto). Provato nel browser (admin e operatrice, da tastiera) e lasciati dati di prova sul DB di sviluppo: contatti per `zzpr3-c12` e `zzpr3-c14`, un richiamo su `zzpr3-c4`.
 
 ## Sanity Checks
 
