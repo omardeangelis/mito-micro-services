@@ -16,7 +16,7 @@ Tutto preesistente: la review del cambio `search_by` l'ha trovato, ma non l'ha i
 
 ### Sicurezza: filtri tradotti in SQL grezzo
 
-- **[FOLLOW-UP, sicurezza]** `input.sqlFilter` arriva a `sql.raw` — `src/server/api/routers/customer/GET/index.ts:338`, `:445`, `src/server/api/routers/pratiche/GET/index.ts:85`. Lo stesso vale per `input.sqlTaskFilter` (`customer/GET/index.ts:371`).
+- **[FOLLOW-UP, sicurezza]** `input.sqlFilter` arriva a `sql.raw` — `src/server/api/routers/customer/GET/index.ts:354` (dopo T6.1 di PR6 è scritto una volta sola, nel `where` condiviso da pagina e conteggio; prima erano due righe, 338 e 445), `src/server/api/routers/pratiche/GET/index.ts:85`. Lo stesso valeva per `input.sqlTaskFilter` (`customer/GET/index.ts:371`), che T6.1 ha tolto dall'input: in prod sparisce con il rilascio di PR6.
   - Perché resta: la stringa SQL la costruisce la pagina (`createSQLQuery`) e la manda come input della procedura tRPC. Il server la esegue senza validarla. Chiunque possa chiamare la procedura può quindi mandare un frammento SQL qualsiasi.
   - Fix o prova che serve: una review di sicurezza dedicata. Probabile fix: la pagina manda i filtri come dati, cioè nome della colonna da una mappa chiusa, operatore da un enum e valore. Il server li traduce con gli operatori di Drizzle e i parametri, come fa già `search_by` con `customerSearchColumns`.
 - **[FOLLOW-UP, sicurezza]** `createSQLQuery` costruisce `ilike '%${filter.value}%'` senza escape — `src/lib/utils/filters.ts:65`.
@@ -56,7 +56,7 @@ Decisione di Omar (2026-10-20, A15 del [[specs/crm/sezione-contatti/PLAN]]): PR6
 
 ### Il problema, com'è nel codice
 
-- Due procedure, `customer.getAllCustomers` e `pratiche.getAllPratiche`, accettano `sqlFilter: z.string()` e lo passano a `sql.raw` dentro il `WHERE` (`src/server/api/routers/customer/GET/index.ts`, nella lista e nel conteggio; `src/server/api/routers/pratiche/GET/index.ts`). `getAllCustomers` accetta anche `sqlTaskFilter`, che T6.1 di PR6 toglie dall'input.
+- Due procedure, `customer.getAllCustomers` e `pratiche.getAllPratiche`, accettano `sqlFilter: z.string()` e lo passano a `sql.raw` dentro il `WHERE` (`src/server/api/routers/customer/GET/index.ts`, nel `where` che la lista e il conteggio condividono dopo T6.1 di PR6; `src/server/api/routers/pratiche/GET/index.ts`). `getAllCustomers` accettava anche `sqlTaskFilter`, che T6.1 di PR6 ha tolto dall'input.
 - Sono `operatorProcedure`: le chiama qualunque utente con una riga in `operators`, di ruolo ADMIN o OPERATORE (`enforceIsActiveOperator` controlla solo che l'operatore esista). Si raggiungono su `/api/trpc` e sul backend Cloud Run senza passare dalla pagina.
 - La stringa la costruisce la pagina con `createSQLQuery` (`src/lib/utils/filters.ts`) e il server non la rivede. La lista bianca dei nomi di colonna che PR6 aggiunge in T6.2 sta nella pagina e **non protegge la procedura**: serve a non rompere i link salvati, non è un controllo di sicurezza.
 - Dentro `createSQLFilter`: il nome della colonna si interpola anche se non è nella mappa; un operatore sconosciuto diventa `undefined` nel SQL; il valore sta tra apici senza escape; `ilike '%…%'` non protegge `%` e `_`.
