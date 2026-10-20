@@ -3123,9 +3123,15 @@ Regole valide per tutta la PR:
   - cliente senza operatore e senza contatto → solo il cliente, una riga; contatto già dell'operatore → una riga, il contatto non cambia;
   - contatto di un collega → `FORBIDDEN`, nulla cambia;
   - il test della regola dei lock copre la variante con il contatto.
-- **status**: Planned
+- **status**: Done
 - **log**:
-- **files edited/created**:
+  - 2026-10-20 (Run 7), worker `medium` su sonnet, nessuna escalation. Test RED dell'orchestratore: 4 rossi per il motivo giusto (contatto che non segue il cliente, una sola riga di log, il guasto sulla riga del contatto che non fallisce, il lock con due righe) e il resto verde come guardiano.
+  - **Test che cambiano di proposito:** in `customerOperator.db.test.ts` il test "su un cliente non assegnato lo dà all'operatore … e non tocca il contatto" affermava `operatorId: null` sul contatto: ora afferma che cliente e contatto sono dell'operatore, con due righe `self_assign` (cliente con `task_id` nullo, contatto con il suo `task_id`, `from` nullo, `to` l'operatore e l'operatore come attore). Nuovi: stato, priorità, `closedAt` e alert del contatto che segue restano com'erano (`updatedAt` è l'unico campo che cambia, per `$onUpdate`); senza contatto attivo solo il cliente, una riga, e un contatto superato resta senza operatore; il guasto dell'`INSERT` sulla sola riga del contatto (`failNextInsertInto(taskEventLog, { task_id })`) annulla i due `UPDATE` e il log resta vuoto. In `lockRule.db.test.ts` il test di `assignToYourself` ora ha il contatto che segue (due righe di log) e c'è la variante senza contatto attivo.
+  - Il servizio è corto: `assignToYourself` usa `lockActiveContact` e il nucleo `moveCustomerAndContact` di T6.8a con la sorgente `self_assign` (il tipo del nucleo la accetta ora). Il controllo `canSelfAssign` resta prima di qualunque scrittura: un contatto di un collega è ancora `CUSTOMER_ASSIGNMENT_FORBIDDEN` e nulla cambia. Un contatto già dell'operatore non cambia (una riga sola, già coperto).
+  - **Verifica per mutazione** (orchestratore, su `assignment.ts` poi ripristinato; test: `customerOperator`, `lockRule`, `bulkUpdateCustomers`): con `contact: null` passato al nucleo da `assignToYourself` 4 test rossi; senza la riga di log del contatto nel nucleo 13 (anche `handover` e `bulkUpdateCustomers`). **Senza il `FOR UPDATE` sulla lettura del contatto nessun test diventa rosso**: ogni scrittore di `task` prende prima il lock del cliente (D12) e la regola dei lock lo verifica, quindi il blocco sul contatto è ridondante; resta com'era, come difesa, senza un test che lo provi (e un test di concorrenza non si può fare su PGlite, a connessione unica).
+  - Conseguenza per l'export, già accettata da Omar (A16): le chiamate chiuse su un contatto senza operatore entrano nell'export una volta che "Assegna a te" gli dà l'operatore.
+  - Gate (orchestratore): `tsc --noEmit` e `eslint --no-eslintrc -c .eslintrc.cjs src` puliti; `pnpm run test --run` 125 file e 1922 test verdi (5 saltati).
+- **files edited/created**: `src/server/services/customer/assignment.ts`, `src/server/api/routers/customer/_test/customerOperator.db.test.ts`, `src/server/services/contact/_test/lockRule.db.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a (D6)

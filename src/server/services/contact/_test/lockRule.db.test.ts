@@ -293,10 +293,42 @@ describe("regola dei lock: l'operatore del cliente", () => {
     expect(await logOf(customer.id)).toHaveLength(2)
   })
 
-  it("customer.assignToYourself prende il lock del cliente", async () => {
+  it("customer.assignToYourself con il contatto senza operatore, che segue il cliente, prende il lock del cliente", async () => {
     const operator = await createOperator()
     const customer = await createCustomer({ operatorId: null })
-    await createTask({ customerId: customer.id, operatorId: null })
+    const contact = await createTask({
+      customerId: customer.id,
+      operatorId: null,
+    })
+    await assertCustomerLockedOnWrite()
+
+    await createTestCaller(operator).customer.assignToYourself({
+      id: customer.id,
+    })
+
+    expect(await tasksOf(customer.id)).toMatchObject([
+      { id: contact.id, operatorId: operator.id },
+    ])
+    expect(await logOf(customer.id)).toMatchObject([
+      {
+        action: "operator_reassign",
+        source: "self_assign",
+        taskId: null,
+        toOperatorId: operator.id,
+      },
+      {
+        action: "operator_reassign",
+        source: "self_assign",
+        taskId: contact.id,
+        fromOperatorId: null,
+        toOperatorId: operator.id,
+      },
+    ])
+  })
+
+  it("customer.assignToYourself senza contatto attivo prende il lock del cliente", async () => {
+    const operator = await createOperator()
+    const customer = await createCustomer({ operatorId: null })
     await assertCustomerLockedOnWrite()
 
     await createTestCaller(operator).customer.assignToYourself({
@@ -304,11 +336,7 @@ describe("regola dei lock: l'operatore del cliente", () => {
     })
 
     expect(await logOf(customer.id)).toMatchObject([
-      {
-        action: "operator_reassign",
-        source: "self_assign",
-        toOperatorId: operator.id,
-      },
+      { source: "self_assign", taskId: null, toOperatorId: operator.id },
     ])
   })
 })

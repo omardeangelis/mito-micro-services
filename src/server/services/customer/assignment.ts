@@ -48,9 +48,9 @@ const lockActiveContact = (
   })
 
 /**
- * The core of "Passaggio di consegne" and "Assegna Clienti" (D14, D26, D29):
- * puts the customer and its active contact on `toOperatorId`, in the
- * transaction that locked `customer`.
+ * The core of "Passaggio di consegne", "Assegna Clienti" and "Assegna a te"
+ * (D14, D26, D29): puts the customer and its active contact on `toOperatorId`,
+ * in the transaction that locked `customer`.
  *
  * - Each one is written only if its operator differs from `toOperatorId`, so
  *   customer and contact end on the same operator and an aligned pair writes
@@ -77,7 +77,7 @@ const moveCustomerAndContact = ({
   contact: ActiveContact | null
   toOperatorId: number
   actor: Actor
-  source: "detail" | "bulk"
+  source: "detail" | "bulk" | "self_assign"
 }): Effect.Effect<
   { customerMoved: boolean; contactMoved: boolean },
   DbError,
@@ -246,13 +246,19 @@ export const assignCustomers = ({
   })
 
 /**
- * "Assegna a te" (P4): the actor takes a customer with no operator. A
- * customer that already has one, or whose active contact is a colleague's, is
- * `CustomerAssignmentForbidden`, for admins too: taking it would grant edit
- * rights over a colleague's contact (D2).
+ * "Assegna a te" (P4, D26, D29): the actor takes a customer with no operator.
+ * A customer that already has one, or whose active contact is a colleague's,
+ * is `CustomerAssignmentForbidden`, for admins too: taking it would grant edit
+ * rights over a colleague's contact (D2). The check runs before any write.
  *
- * Changes only the customer's operator, never its tasks, and writes one
- * `operator_reassign` row with source `self_assign`.
+ * - The customer goes to the actor and so does its active contact when it has
+ *   no operator; one already the actor's stays as it is. A customer without an
+ *   active contact only gets its own update.
+ * - Writes one `operator_reassign` row with source `self_assign` for each
+ *   thing that moved (`moveCustomerAndContact`): the customer's, and the
+ *   contact's with `from` null.
+ * - Never touches the inactive contacts, nor the state, priority or alert of
+ *   the active one.
  */
 export const assignToYourself = ({
   customerId,
@@ -268,32 +274,17 @@ export const assignToYourself = ({
   transaction(
     Effect.gen(function* () {
       const customer = yield* lockCustomerOrNotFound(customerId)
-      const [contact] = yield* query((client) =>
-        client
-          .select({ id: task.id, operatorId: task.operatorId })
-          .from(task)
-          .where(and(eq(task.customerId, customer.id), eq(task.isActive, true)))
-          .for("update")
-      )
-      if (!canSelfAssign(actor, customer, contact ?? null)) {
+      const contact = yield* lockActiveContact(customer)
+      if (!canSelfAssign(actor, customer, contact)) {
         return yield* new CustomerAssignmentForbidden()
       }
 
-      yield* query((client) =>
-        client
-          .update(customers)
-          .set({ operatorId: actor.operatorId })
-          .where(eq(customers.id, customer.id))
-      )
-      yield* query((client) =>
-        client.insert(taskEventLog).values({
-          customerId: customer.id,
-          actorOperatorId: actor.operatorId,
-          action: "operator_reassign",
-          source: "self_assign",
-          fromOperatorId: customer.operatorId,
-          toOperatorId: actor.operatorId,
-        })
-      )
+      yield* moveCustomerAndContact({
+        customer,
+        contact,
+        toOperatorId: actor.operatorId,
+        actor,
+        source: "self_assign",
+      })
     })
   )
