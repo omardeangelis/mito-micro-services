@@ -3,7 +3,7 @@ domain: _root
 type: index
 links: []
 created: 2026-09-24
-updated: 2026-09-26
+updated: 2026-10-20
 ---
 
 # Brain — Master Map
@@ -43,6 +43,7 @@ _empty_
 | Domain | Spec | Status |
 |---|---|---|
 | crm | [[specs/crm/sezione-contatti/SPEC]] | Draft |
+| crm | [[specs/crm/filtri-sql-sicuri/SPEC]] | Draft |
 
 - [[specs/crm/crm-specs|crm-specs]] — CRM spec page map
 

@@ -3,7 +3,7 @@ domain: _root
 type: index
 links: []
 created: 2026-09-24
-updated: 2026-09-26
+updated: 2026-10-20
 ---
 
 # Brain — Log
@@ -90,6 +90,13 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 - Flows written: <count>
 - Concepts written: <count>
 -->
+
+## [2026-10-20] spec | Filtri avanzati sicuri di Clienti e Pratiche
+- Spec: [[specs/crm/filtri-sql-sicuri/SPEC]] (bozza, `status: draft`), da [[tech-debt/crm/search-by-explicit-map]]
+- Scope: riforma di sicurezza dei filtri avanzati; chiude la SQL-injection `sql.raw` di `customer.getAllCustomers` e `pratiche.getAllPratiche` (confermata da prova di sfruttamento su Postgres reale, 4/4)
+- Decisioni di Omar: filtri strutturati + URL invariato, backend ignora subito `sqlFilter`, voci non valide scartate, Clienti+Pratiche in una PR
+- Gate `adversarial-verifier` (total): DO NOT SHIP al primo giro (1 MAJOR baseline post-PR6 + 3 MINOR); findings ripiegati nella bozza
+- Attende approvazione di Omar e la data; esce dopo PR6 della Sezione Contatti. Fix non implementato.
 
 ## [2026-10-15] review-ingest | search_by con mappa esplicita (Clienti e Pratiche)
 - Report: [[review/search-by-explicit-map/REPORT]]
