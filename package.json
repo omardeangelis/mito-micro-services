@@ -18,6 +18,7 @@
     "db:local:down": "docker compose down",
     "db:local:reset": "tsx src/server/db/scripts/runLocalDb.ts reset",
     "db:local:migrate": "tsx src/server/db/scripts/runLocalDb.ts migrate",
+    "db:copy-check:dev": "cross-env NODE_ENV=development tsx src/server/db/scripts/runCopyCheck.ts",
     "dev": "next dev",
     "lint:dev": "next lint --fix",
     "start": "next start",
