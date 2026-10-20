@@ -37,6 +37,10 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { PlusSquareIcon } from "lucide-react"
+
+/** Last modified first: the id of the "Aggiornato il" column. */
+const DEFAULT_SORTING: SortingState = [{ id: "Aggiornato il", desc: true }]
+
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
   data: TData[]
@@ -99,16 +103,21 @@ export function CustomersTable<TData, TValue>({
     const orderBy = searchParams.get("order_by")?.split(",") ?? []
     const sortedBy = searchParams.get("sorted_by")?.split(",") ?? []
 
-    if (!orderBy.length)
-      return [
-        {
-          id: "priority",
-          desc: true,
-        },
-      ]
+    // The column an `order_by` id names: by its `accessorKey` (what the URL
+    // has) or by its `id`. The ones Clienti no longer has (`contattato`,
+    // `priority`) and made-up names name none.
+    const columnOf = (id: string) =>
+      columns.find(
+        (c) => ("accessorKey" in c && c.accessorKey === id) || c.id === id
+      )
+
+    // No sort, or one that names a missing column: the default as a whole,
+    // direction included, so the removed parameters are not written back to
+    // the URL
+    if (!orderBy.length || !orderBy.every((id) => columnOf(id)))
+      return DEFAULT_SORTING
     return orderBy.map((id, index) => ({
-      // @ts-expect-error ts-migrate(2531) accessorKey exists
-      id: columns.find((c) => c.accessorKey === id)?.id ?? id,
+      id: columnOf(id)?.id ?? id,
       desc: sortedBy[index] === "desc",
     }))
   })
