@@ -162,7 +162,9 @@ export type LockedCustomer = {
  * The rule is tested in `src/server/services/contact/_test/lockRule.db.test.ts`:
  * with a test trigger, a write of a customer's tasks, alerts or event log fails
  * unless the transaction holds this lock. A new writer is covered only if it
- * adds its call there.
+ * adds its call there. Its twin for the "same operator" rule (D26, D27) is
+ * `src/test/operatorRule.ts`, run on every writer of operators in
+ * `operatorRule.db.test.ts`.
  */
 export const lockCustomer = (
   customerId: string | null
