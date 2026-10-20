@@ -41,6 +41,7 @@ import { type FetchDefaultResponse } from "@/app/api/export/[export]/fetchDefaul
 import { generateDefaultWorkbook } from "@/lib/workers/export/service/defaultExport"
 import { generateCallWorkbook } from "@/lib/workers/export/service/callExport"
 import { saveExport } from "@/lib/workers/export/service/saveExport"
+import { api } from "@/trpc/react"
 import { type DateRange } from "react-day-picker"
 import { useForm } from "react-hook-form"
 import {
@@ -264,6 +265,8 @@ export const CompleteDialog = () => {
   const baseUrl = window?.location.origin
   const [isDialogOpen, setIsDialogOpen] = useState<boolean>(false)
   const [tabsValue, setTabsValue] = useState("default")
+  const { mutateAsync: createExportUploadUrl } =
+    api.supabase.createExportUploadUrl.useMutation()
   const {
     isLoading,
     error,
@@ -344,9 +347,18 @@ export const CompleteDialog = () => {
       return
     }
 
-    const saveFileResponse = await saveExport(filePath, workbook)
+    let saveError: Error | null
+    try {
+      const upload = await createExportUploadUrl({
+        filePathName: filePath,
+      })
+      saveError = (await saveExport(upload, workbook)).error
+    } catch (error) {
+      saveError = error instanceof Error ? error : new Error(String(error))
+    }
 
-    if (saveFileResponse.error) {
+    if (saveError) {
+      console.error("Error saving the export", saveError)
       setIsLoading(false)
       setError("Errore nel salvataggio del file")
     } else {
@@ -361,6 +373,7 @@ export const CompleteDialog = () => {
     tabsValue,
     dateRange,
     setStoredFilePath,
+    createExportUploadUrl,
   ])
 
   const downloadFile = useCallback(

@@ -1,8 +1,26 @@
 import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc"
+import { deleteExportFiles } from "@/server/services/cron/deleteExport"
+import { Storage, StorageLive } from "@/server/services/storage"
+import { TRPCError } from "@trpc/server"
+import { Effect, Either } from "effect"
 import { z } from "zod"
 
-const BUCKET_NAME = "mito-storage"
 const EXPORT_PATH = "export"
+const XLSX_CONTENT_TYPE =
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+const exportKey = (filePathName: string) => `${EXPORT_PATH}/${filePathName}`
+
+// A name under export/: the date in it has slashes, but no ".." and no leading "/"
+const exportFileName = z
+  .string()
+  .min(1)
+  .max(300)
+  .refine((name) => !name.startsWith("/") && !name.split("/").includes(".."))
+
+/** Runs a storage program; a failure comes back as `Left`, not thrown. */
+const runStorage = <A, E>(program: Effect.Effect<A, E, Storage>) =>
+  Effect.runPromise(program.pipe(Effect.provide(StorageLive), Effect.either))
 
 export const storageRouter = createTRPCRouter({
   uploadExportFile: protectedProcedure
@@ -12,24 +30,43 @@ export const storageRouter = createTRPCRouter({
         buffer: z.instanceof(Buffer),
       })
     )
-    .mutation(async ({ ctx, input }) => {
+    .mutation(async ({ input }) => {
       const { filePathName, buffer } = input
-      const bucket = ctx.supabaseClient.storage.from("mito-storage")
-      const sbResult = await bucket.upload(
-        `/${EXPORT_PATH}/${filePathName}`,
-        buffer,
-        {
-          upsert: true,
-        }
+      const result = await runStorage(
+        Effect.flatMap(Storage, (storage) =>
+          storage.upload({
+            key: exportKey(filePathName),
+            body: new Uint8Array(buffer),
+            contentType: XLSX_CONTENT_TYPE,
+          })
+        )
       )
-
-      let filePath
-
-      if (!sbResult.error) {
-        filePath = bucket.getPublicUrl(filePathName).data.publicUrl
+      // The bucket is private: the name, not a public URL, finds the file again
+      return Either.isRight(result) ? filePathName : undefined
+    }),
+  /**
+   * A signed URL where the browser uploads an export (PUT, with exactly this
+   * content type), instead of writing to the bucket with a public key.
+   */
+  createExportUploadUrl: protectedProcedure
+    .input(z.object({ filePathName: exportFileName }))
+    .mutation(async ({ input }) => {
+      const result = await runStorage(
+        Effect.flatMap(Storage, (storage) =>
+          storage.signedUploadUrl(exportKey(input.filePathName), {
+            contentType: XLSX_CONTENT_TYPE,
+          })
+        )
+      )
+      if (Either.isLeft(result)) {
+        console.error("Error signing the upload URL:", result.left.message)
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Upload URL not available",
+          cause: result.left,
+        })
       }
-
-      return filePath
+      return { url: result.right, contentType: XLSX_CONTENT_TYPE }
     }),
   downloadExportFile: protectedProcedure
     .input(
@@ -37,21 +74,27 @@ export const storageRouter = createTRPCRouter({
         filePathName: z.string(),
       })
     )
-    .mutation(async ({ ctx, input }) => {
+    .mutation(async ({ input }) => {
       const { filePathName } = input
       if (!filePathName)
         return new Response("File name not provided", { status: 400 })
 
-      const bucket = ctx.supabaseClient.storage.from(BUCKET_NAME)
-      const sbResult = await bucket.download(`/${EXPORT_PATH}/${filePathName}`)
+      const result = await runStorage(
+        Effect.flatMap(Storage, (storage) =>
+          storage.download(exportKey(filePathName))
+        )
+      )
 
-      if (sbResult.error) {
-        console.error("Error downloading file:", sbResult.error.message)
+      if (Either.isLeft(result)) {
+        console.error("Error downloading file:", result.left.message)
         return new Response("Error downloading file", { status: 500 })
       }
 
-      const file = sbResult.data
-      const fileBuffer = await file.arrayBuffer()
+      const file = result.right
+      const fileBuffer = file.buffer.slice(
+        file.byteOffset,
+        file.byteOffset + file.byteLength
+      )
 
       const headers = new Headers()
       headers.set("Content-Type", "application/octet-stream")
@@ -63,34 +106,7 @@ export const storageRouter = createTRPCRouter({
         headers: headers,
       }
     }),
-  deleteExportFile: protectedProcedure.mutation(async ({ ctx }) => {
-    const { data: files, error: listError } = await ctx.supabaseClient.storage
-      .from(BUCKET_NAME)
-      .list(EXPORT_PATH, { limit: 1000 })
-
-    if (listError) {
-      throw listError
-    }
-
-    if (!files || files.length === 0) {
-      console.log(`No files found in the ${EXPORT_PATH} folder.`)
-    } else {
-      // Delete each file in the "export" folder
-      for (const file of files) {
-        const { error: deleteError } = await ctx.supabaseClient.storage
-          .from(BUCKET_NAME)
-          .remove([`${EXPORT_PATH}/${file.name}`])
-
-        if (deleteError) {
-          console.error(
-            `Error deleting file ${EXPORT_PATH}/${file.name}:`,
-            deleteError.message
-          )
-        } else {
-          console.log(`File ${EXPORT_PATH}/${file.name} deleted successfully.`)
-        }
-      }
-    }
-    console.log(`All files in the ${EXPORT_PATH} folder have been deleted.`)
+  deleteExportFile: protectedProcedure.mutation(async () => {
+    await deleteExportFiles()
   }),
 })
