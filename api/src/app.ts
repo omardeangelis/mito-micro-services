@@ -3,6 +3,8 @@ import { Hono } from "hono"
 import { appRouter } from "@/server/api/root"
 import { createTRPCContext } from "@/server/api/trpc"
 import { requestSession } from "@/server/requestSession"
+import { GET as authUser } from "@/app/api/auth/user/route"
+import { authRoute } from "./auth"
 import { cronLive } from "./cron/live"
 import { cronRoutes } from "./cron/routes"
 import { sessionFromRequest } from "./session"
@@ -25,6 +27,15 @@ app.use("/api/*", async (c, next) => {
   const session = await sessionFromRequest(c.req.raw)
   await requestSession.run({ session }, next)
 })
+
+// The route of the Next.js app answers nothing without a session, and Next.js
+// turns that into a 500
+app.all(
+  "/api/auth/user",
+  async () => (await authUser()) ?? new Response(null, { status: 500 })
+)
+
+app.all("/api/auth/*", (c) => authRoute(c.req.raw))
 
 app.all("/api/trpc/*", (c) =>
   fetchRequestHandler({
