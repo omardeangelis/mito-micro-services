@@ -154,10 +154,10 @@ export type LockedCustomer = {
  * calls this first, then touches only that customer's rows. Two such
  * transactions on the same customer wait for each other instead of
  * deadlocking. Every writer of a contact runs in `transaction` and locks the
- * customer first, except the ones explicitly outside the rule: "Assegna
- * Clienti" (`customer.bulkUpdateCustomers`), the `priority` cron
- * (`refreshPriorities`) and the event-log cleanup (`cleanupTaskEventLog`).
- * A new writer calls this first.
+ * customer first, "Assegna Clienti" (`customer.bulkUpdateCustomers`, one
+ * transaction per customer) included, except the ones explicitly outside the
+ * rule: the `priority` cron (`refreshPriorities`) and the event-log cleanup
+ * (`cleanupTaskEventLog`). A new writer calls this first.
  *
  * The rule is tested in `src/server/services/contact/_test/lockRule.db.test.ts`:
  * with a test trigger, a write of a customer's tasks, alerts or event log fails

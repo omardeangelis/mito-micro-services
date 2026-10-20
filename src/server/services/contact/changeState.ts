@@ -102,7 +102,7 @@ export const changeState = ({
             customPriority: false,
             alertId: null,
           },
-          // "Assegna Clienti" picks the most recent task (F1)
+          // The readers that pick the most recent task (F1) must see this one
           mostRecent: true,
         })
         current = created.id

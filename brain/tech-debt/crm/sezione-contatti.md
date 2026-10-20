@@ -5,7 +5,7 @@ links:
   - "[[specs/crm/sezione-contatti/SPEC]]"
   - "[[specs/crm/sezione-contatti/IMPLEMENTATION-NOTES]]"
 created: 2026-09-25
-updated: 2026-10-18
+updated: 2026-10-20
 ---
 
 # Tech debt: Sezione Contatti
@@ -48,6 +48,8 @@ Scoperto nella review di PR1 (F1, seconda verifica), preesistente.
 **Effetto oggi:** il cliente passa al nuovo operatore, il suo contatto attivo no. La guardia sul `WHERE` indefinito (PR1) evita solo che l'update tocchi tutta la tabella. In prod l'update su tutta la tabella è successo il 28/09/2026: tutte le task a un solo operatore. Il riallineamento all'operatore del cliente è in PR2 (T2.5) ([[specs/crm/sezione-contatti/PLAN]], §9, PR2); questa logica poi lo fa divergere di nuovo.
 
 **Da fare fuori da questa spec:** A7 lascia la logica invariata (non-goal). Un seguito può riassegnare la task attiva del cliente, con un criterio di spareggio.
+
+**Chiusa il 2026-10-20 (PR6, T6.8a).** "Assegna Clienti" non sceglie più per recenza: `assignCustomers` blocca il cliente e sposta il suo contatto attivo in ogni stato, con le righe `operator_reassign`. Il testo che segue è la storia.
 
 **Rientra nella spec dal 2026-10-15 (D14, AC75):** in PR6 T6.8 "Assegna Clienti" sposta il contatto attivo del cliente in ogni stato, con il servizio `handover`. Il 2026-10-15 in prod i contatti attivi con un operatore diverso da quello del cliente erano 1 su 69.783 (sola lettura). Si chiude con T6.8.
 
@@ -234,16 +236,26 @@ Scoperto nel piano (P6, rivisto con `design-engineer` il 2026-10-15), preesisten
 
 Scoperto nel piano (A11, §15), dichiarato in PR3 (T3.15).
 
-- La regola (D12): ogni transazione che scrive task, alert o log di un cliente blocca prima il cliente con `lockCustomer`. Tre scrittori ne sono fuori:
-  - `customer.bulkUpdateCustomers` ("Assegna Clienti"): aggiorna clienti e task senza lock (A7, logica invariata). T3.15 lo fissa come eccezione: il test aspetta il rifiuto;
+- La regola (D12): ogni transazione che scrive task, alert o log di un cliente blocca prima il cliente con `lockCustomer`. Due scrittori ne sono fuori ("Assegna Clienti" è dentro dal 2026-10-20: T6.8a, una transazione per cliente):
   - il cron `priority` (`refreshPriorities`): ricalcola `priority` delle task attive in blocco;
   - la pulizia di `task_event_log` (`cleanupTaskEventLog`): cancella righe vecchie.
 - La massiva (`task.bulkHandleTask`) e il cron degli alert prendono il lock ma chiudono l'alert con codice proprio invece di `resolveOpenAlert`: niente guardia `is_resolved = false` e niente `alert.updated_at`. Sotto il lock la guardia serve solo se una task punta a un alert già chiuso.
 - La conferma dell'alert nella massiva è legata al cliente, non all'alert (`task/POST/index.ts`, `resolveAlertCustomerIds`): l'admin conferma "l'alert di questo cliente", e la massiva chiude quello che legge dopo il lock. Se un collega lo sostituisce con `setCallback` fra la modale e il salvataggio, la massiva chiude il richiamo nuovo, che l'admin non ha visto. `changeState` e `setCallback` lo evitano con `confirmedAlertId` e `replacesAlertId` (AC37, AC44). Logica invariata da A7 (review di PR3, v2).
 
-**Effetto oggi:** `refreshPriorities` può sovrascrivere una priorità appena salvata da un operatore (l'ultima scrittura vince); "Assegna Clienti" in concorrenza con una mutation del contatto può lasciare il contatto attivo a un operatore diverso da quello del cliente (la stessa divergenza di "Assegna Clienti sceglie la task più recente anche se inattiva"). La pulizia del log non tocca righe recenti.
+**Effetto oggi:** `refreshPriorities` può sovrascrivere una priorità appena salvata da un operatore (l'ultima scrittura vince); La pulizia del log non tocca righe recenti. ("Assegna Clienti" in concorrenza con una mutation del contatto non può più separare cliente e contatto: T6.8a, 2026-10-20.)
 
-**Da fare:** `refreshPriorities` con il lock per cliente, o con una condizione sul valore letto, quando PR5 ridisegna le priorità; "Assegna Clienti" con T6.8 in PR6 (D14); massiva e cron su `resolveOpenAlert` (stesso comportamento più `updated_at`); la massiva riceve dalla modale gli id degli alert confermati e li confronta dopo il lock.
+**Da fare:** `refreshPriorities` con il lock per cliente, o con una condizione sul valore letto, quando PR5 ridisegna le priorità; massiva e cron su `resolveOpenAlert` (stesso comportamento più `updated_at`); la massiva riceve dalla modale gli id degli alert confermati e li confronta dopo il lock.
+
+## "Assegna Clienti" su molti clienti: una transazione ciascuno
+
+Scoperto in PR6 (T6.8a), conseguenza di P19.
+
+- `assignCustomers` apre una transazione per cliente, in sequenza (come `bulkHandleTask`): per ogni cliente blocca il cliente e il contatto, scrive fino a due `UPDATE` e una riga di log, circa otto giri verso il DB. La versione di prima faceva tre query in tutto.
+- Il selettore delle righe di Clienti arriva a 500 per pagina (`PER_PAGES`, `src/lib/constants/pagination.ts`): selezionando tutta la pagina la chiamata fa 500 transazioni. Alla misura dello smoke di T1.8 (circa 0,2 s a transazione con 30 ms di latenza e circa 7 giri, [[specs/crm/sezione-contatti/IMPLEMENTATION-NOTES]]) sarebbero oltre i 60 s di una funzione Vercel per qualche centinaio di clienti: è una stima, non una misura di "Assegna Clienti". Un errore a metà lascia i clienti già fatti assegnati e il resto no (P19).
+
+**Effetto oggi:** non misurato su prod. `bulkHandleTask` ha lo stesso costo per cliente e gira in prod dal 29/09.
+
+**Da fare fuori da questa spec:** misurare "Assegna Clienti" con 100 e 500 clienti sul DB di sviluppo; se supera il limite, spezzare la selezione in blocchi dal client, o scrivere la versione a insiemi (un `UPDATE` e un `INSERT … SELECT` per tutti i clienti, con i lock presi in ordine di id).
 
 ## `customer.insertCustomer` accetta l'operatore
 
@@ -251,7 +263,7 @@ Scoperto nella review di PR3 (T3.13), preesistente.
 
 - La creazione del cliente accetta `operatorId` dall'input, senza i controlli di "Passaggio di consegne" (D13) e senza riga `operator_reassign` nel log.
 - Lo stesso fa la rotta di import `/api/import/create/customers` (`route.ts:13-26`): `authCheck()` accetta qualunque sessione e inserisce i clienti dal corpo JSON, `operatorId` compreso, senza validazione (review di PR3, v1).
-- Le massive per gli admin (`bulkHandleTask`, `bulkUpdateCustomers`) accettano qualunque `operatorId` come destinazione, l'operatore di sistema compreso; `handover` e `reassign` lo rifiutano con `findWorkingOperator` (review di PR3, v1).
+- La massiva `bulkHandleTask` accetta qualunque `operatorId` come destinazione, l'operatore di sistema compreso; `handover`, `reassign` e, dal 2026-10-20, "Assegna Clienti" (`assignCustomers`, T6.8a) lo rifiutano con `findWorkingOperator` (review di PR3, v1).
 
 **Effetto oggi:** basso, la creazione e l'import non spostano contatti (un cliente nuovo non ne ha); le massive sono solo per gli admin.
 
