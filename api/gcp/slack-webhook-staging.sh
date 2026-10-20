@@ -16,7 +16,7 @@ SECRET=STAGING_CRON_SLACK_WEBHOOK_URL
 
 printf "Webhook URL of #mito-cron-staging: "
 stty -echo 2>/dev/null || true
-read -r WEBHOOK
+read -r WEBHOOK || [ -n "$WEBHOOK" ]
 stty echo 2>/dev/null || true
 echo
 case "$WEBHOOK" in
