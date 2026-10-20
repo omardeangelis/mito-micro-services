@@ -63,13 +63,18 @@ export async function migrateLocalDatabase() {
   }
 }
 
-/** `db:local:reset`: drops mito_local and creates it again, empty. */
+/**
+ * `db:local:reset`: drops mito_local and creates it again, empty, in the time
+ * zone of the databases in use.
+ */
 export async function resetLocalDatabase() {
   // From the server's own database: mito_local can't drop itself
   const server = connect("postgres")
   try {
     await server`DROP DATABASE IF EXISTS mito_local WITH (FORCE)`
     await server`CREATE DATABASE mito_local`
+    // As the development and production databases: the sessions' dates
+    await server`ALTER DATABASE mito_local SET TimeZone = 'Europe/Rome'`
   } finally {
     await server.end()
   }

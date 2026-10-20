@@ -76,3 +76,19 @@ for job in "priority|17 23 * * *" "alert|47 23 * * *" \
     --attempt-deadline=30m --max-retry-attempts=0
   gcloud scheduler jobs pause mito-crm-staging-$name --project=$P --location=$R
 done
+
+# The database (B6): Cloud SQL Enterprise, Postgres 15 as Supabase. Shared core
+# (db-g1-small) for staging, zonal: HA only in prod. Backups at 03:00 UTC, after
+# the crons, with PITR on 7 days of logs. Public IP with no authorized network:
+# only the Cloud SQL connectors get in (Cloud Run's socket, the Auth Proxy),
+# with a client certificate. The database and the mito_app user come after,
+# from create-staging-db.mjs, which keeps the password out of command lines
+gcloud services enable sqladmin.googleapis.com --project=$P
+gcloud sql instances create mito-crm-staging --project=$P --region=$R \
+  --database-version=POSTGRES_15 --edition=ENTERPRISE --tier=db-g1-small \
+  --availability-type=ZONAL --storage-type=SSD --storage-size=10 \
+  --storage-auto-increase --backup-start-time=03:00 \
+  --enable-point-in-time-recovery --retained-backups-count=7 \
+  --retained-transaction-log-days=7 --deletion-protection \
+  --ssl-mode=TRUSTED_CLIENT_CERTIFICATE_REQUIRED \
+  --maintenance-window-day=SUN --maintenance-window-hour=4

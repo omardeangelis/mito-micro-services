@@ -120,7 +120,7 @@ Un progetto a sé (`~/Desktop/lavoro/gcs-storage-kit`), da copiare in ogni proge
 | B5 | Cron sul backend + Cloud Scheduler + Slack; poi vengono tolti i workflow cron di GitHub per lo staging | Opus + Haiku | T, B2 |
 | W1 | Drizzle 0.45 / kit 0.31 ([[chore/manutenzione-dipendenze]]) | Haiku + review di Opus | — |
 | PR7 | PR7 del piano Contatti: T7.1 (servizio `postgres:15` in CI e in Docker, harness `*.pg.test.ts` su un database `mito_test_<casuale>`, `PUSHED_SCHEMA` in un modulo suo) e T7.1b (`mito_local` con `db:local:up`, `db:local:reset` e `db:local:migrate`). T7.2 (concorrenza dei Contatti) e T7.1c (seeder di Contatti) restano a Omar, a bassa priorità | Opus (T7.1, T7.1b) + Omar (T7.2, T7.1c) | W1 |
-| B6 | DB: Cloud SQL di staging, dump del DB Supabase di sviluppo, script di verifica, backend via socket Unix, locale via Auth Proxy | Opus + Leonardo | B4, W1, PR7 (T7.1, T7.1b) |
+| B6 | DB: Cloud SQL di staging, dump del DB Supabase di sviluppo, script di verifica, backend via socket Unix, locale via Auth Proxy. Fatti il 2026-10-20 istanza, copia e verifica (note di esecuzione); il backend passa a Cloud SQL dopo B4 | Opus + Leonardo | B4, W1, PR7 (T7.1, T7.1b) |
 | S5 | Copia prod → staging (sotto) | Opus + Leonardo | ok del committente |
 | S6 | Osservazione per almeno 2 settimane, prove di rollback e di restore PITR → go/no-go | tutti | B1–B6 |
 
@@ -145,9 +145,20 @@ Le dismissioni arrivano 2–4 settimane dopo.
 - **Prova generale in locale, prima di creare l'istanza** (con il Postgres di PR7):
   - dump del DB di sviluppo (mai della prod) → `db:local:reset` → `pg_restore` in `mito_local` → script di verifica contro sviluppo, in sola lettura: deve dare identico;
   - fa emergere senza costi quello che un Postgres senza Supabase non ha: ruoli `anon` e `authenticated`, estensioni, policy, oggetti fuori da `public` e `drizzle`;
-  - lo script di verifica ha un suo `*.pg.test.ts` in CI: due database `mito_test_*` restaurati dallo stesso dump danno identico, una riga cambiata dà diverso.
+  - lo script di verifica ha un suo `*.pg.test.ts` in CI (`copyCheck.pg.test.ts`): una copia di un database `mito_test_*` (`CREATE DATABASE ... TEMPLATE`) dà identico, e un valore cambiato, una riga in più, una sequenza avanzata, una tabella, un indice o un'impostazione del database in più danno diverso.
 - Ogni migrazione nuova, anche quelle del backend (come `cron_run`), passa prima da `db:local:migrate`, poi da sviluppo. Dopo B6, da sviluppo a Cloud SQL di staging.
-- Copia dei dati: `pg_dump -Fc --schema=public --schema=drizzle --no-owner --no-privileges` → `pg_restore` → `ANALYZE` → script di verifica (conteggi, checksum md5 ordinato per PK, sequence, enum, indici, `drizzle.__drizzle_migrations`). Il risultato deve essere identico.
+- Copia dei dati: `pg_dump -Fc --schema=public --schema=drizzle --no-owner --no-privileges` → `pg_restore --clean --if-exists --no-owner --no-privileges --exit-on-error` → `ANALYZE` → script di verifica (`pnpm db:copy-check:dev`, `src/server/db/scripts/copyCheck.ts`). Il risultato deve essere "Identico". Lo script confronta:
+  - conteggi e checksum md5 delle righe di ogni tabella (comprese quelle di `drizzle.__drizzle_migrations`);
+  - sequence ed enum;
+  - colonne, indici e vincoli;
+  - le impostazioni del database.
+
+  Per sviluppo → staging è un solo comando, `node api/gcp/copy-dev-to-staging.mjs [--replace]`. Le regole che ne sono uscite:
+  - **`pg_dump` mai attraverso il pooler.** Imposta `search_path = ''` per la sua sessione, e in transaction mode resterebbe su un backend che usa l'app. Si usa l'host diretto (`db.<ref>.supabase.co:5432`, utente `postgres`), che è solo IPv6.
+  - **`pg_dump` e `pg_restore` della versione 15**, dall'immagine `postgres:15`. Il `pg_restore` 18 di Homebrew manda `SET transaction_timeout`, che Postgres 15 rifiuta, e un archivio del 18 non si apre con il 15. Docker su Mac non ha IPv6: un relay su 127.0.0.1 inoltra all'host diretto, con TLS da un capo all'altro.
+  - **`--clean --if-exists`**, perché il dump contiene `CREATE SCHEMA public`.
+  - **Il fuso.** Supabase ha `ALTER DATABASE postgres SET TimeZone = 'Europe/Rome'`, e le date delle sessioni ne dipendono. Il dump degli schemi non lo porta: va rifatto su ogni copia (`mito` su Cloud SQL, `mito_local` con `db:local:reset`), e la verifica lo controlla.
+  - **Ruoli ed estensioni di Supabase.** `public` non usa né `anon` e `authenticated` né le funzioni di `extensions`: il restore parte da un Postgres vuoto senza errori. Il ruolo `postgres` di Supabase ha `search_path` con `extensions`, che all'app non serve.
 - Runbook della finestra di prod: pausa dei cron → Supabase in sola lettura, connessioni chiuse → dump → restore → verifica → variabile del DB su `mito-api` prod → smoke test → go/no-go → ripartono i cron.
   - Rollback prima del go: variabile vecchia e via la sola lettura.
   - Il metodo per la sola lettura si prova in B6: il ruolo `postgres` di Supabase potrebbe non avere il permesso per `ALTER DATABASE`.
@@ -198,7 +209,7 @@ Le dismissioni arrivano 2–4 settimane dopo.
 - **Lavoro in parallelo con Omar:** conflitti sui file caldi. Si gestiscono con PR piccole e il codice condiviso, non copiato.
 - **Cron non idempotente** (`updateCustomerAge`): lock, registro per giorno, zero retry, mai due scheduler insieme.
 - **Il chiamante mattutino sconosciuto dei cron di prod** (sessione del 2026-10-13 in `brain/specs/crm/sezione-contatti/PLAN.md`).
-- **Costi:** `min-instances=1` per ambiente e HA del DB in prod.
+- **Costi:** `min-instances=1` per ambiente e HA del DB in prod. Cloud SQL di staging è `db-g1-small` (core condiviso, 1,7 GB), zonale, con 10 GB di SSD, backup e PITR: qualche decina di euro al mese. Per la prod la scelta del tipo va fatta con le misure dello staging.
 - **Limite di 12 funzioni del piano Hobby di Vercel:** il 2026-10-19 il deploy di staging da `dev` è fallito con "No more than 12 Serverless Functions can be added to a Deployment on the Hobby plan". Lo staging resta sul deploy precedente; anche il prossimo rilascio di prod è a rischio. Decisione aperta: piano Pro per il team `spatalos-projects`, o meno funzioni.
 
 ## Dismissioni (dopo 2–4 settimane di prod stabile)
@@ -236,4 +247,14 @@ Le dismissioni arrivano 2–4 settimane dopo.
   - prima notte dei job: `priority` e `alert` `skipped`, come previsto. Il giorno di `cron_run` è quello UTC, e i lanci a mano del 19 lo avevano già preso. `update` (43 clienti) e `delete-export` (1 file) `succeeded`. Le 7 notti piene contano dalla notte tra il 20 e il 21;
   - W1 su staging (PR #27): `mito-crm-staging` gira con l'immagine `mito-api:40cdbcd` (revisione `00004`), costruita da `dev` con `api/gcp/build.sh`. `/health` 200. Un lancio a mano di `update` e `delete-export` risponde `skipped` senza cambiare `cron_run`. `priority` e `alert` non si lanciano a mano: prenderebbero il giorno UTC e salterebbero la notte;
   - il deploy di staging su Vercel da `dev` fallisce ancora per il limite di 12 funzioni del piano Hobby.
-  - PR7, T7.1 e T7.1b (branch `chore/test-postgres-concorrenza`): i test `*.pg.test.ts` girano su Postgres 15 (servizio della CI, `docker-compose.yml` in locale), ognuno su un database `mito_test_<casuale>` che elimina alla fine. `db:local:reset` e `db:local:migrate` costruiscono `mito_local` dalle migrazioni con i pezzi di `PUSHED_SCHEMA` (`src/server/db/pushedSchema.ts`), con lo stesso schema dell'harness PGlite. Il guard sul DSN (`src/server/db/localDsn.ts`) serve anche agli script di B6 che lavoreranno su un Postgres locale. Il dettaglio è nel log dei due task in [[specs/crm/sezione-contatti/PLAN]].
+  - PR7, T7.1 e T7.1b (PR #30, su `dev`): i test `*.pg.test.ts` girano su Postgres 15 (servizio della CI, `docker-compose.yml` in locale), ognuno su un database `mito_test_<casuale>` che elimina alla fine. `db:local:reset` e `db:local:migrate` costruiscono `mito_local` dalle migrazioni con i pezzi di `PUSHED_SCHEMA` (`src/server/db/pushedSchema.ts`), con lo stesso schema dell'harness PGlite. Il guard sul DSN (`src/server/db/localDsn.ts`) serve anche agli script di B6 che lavoreranno su un Postgres locale. Il dettaglio è nel log dei due task in [[specs/crm/sezione-contatti/PLAN]].
+  - B6, prova generale in locale:
+    - il DB di sviluppo è Postgres 15.6, 116 MB, con 103 MB in `public`. Ha 16 tabelle in `public`, 13 righe in `drizzle.__drizzle_migrations`, e in `public` nessuna policy, RLS, funzione o trigger;
+    - dump di `public` e `drizzle` dall'host diretto: 19 MB in 15 s. Restore in `mito_local`: 2 s, senza errori;
+    - `db:copy-check:dev` dà "Identico": 17 tabelle, 421.747 righe, 10 sequenze, stesso schema. Con un valore cambiato a mano dà "Diverso" ed esce con 1.
+  - B6, Cloud SQL di staging:
+    - istanza `mito-crm-staging` (`mito-crm:europe-west3:mito-crm-staging`): Postgres 15, Enterprise, `db-g1-small`, zonale. Ha backup alle 03:00 UTC, PITR di 7 giorni e protezione dalla cancellazione. L'IP pubblico non ha reti autorizzate e il certificato client è obbligatorio, quindi entrano solo i connettori. I comandi sono in `api/gcp/setup-staging.sh`;
+    - l'utente `mito_app` viene da `api/gcp/create-staging-db-user.mjs`. La sua password esiste solo nel secret `STAGING_CLOUDSQL_MITO_APP_PASSWORD`;
+    - il database `mito` (di `mito_app`, `TimeZone = 'Europe/Rome'`) viene da `node api/gcp/copy-dev-to-staging.mjs --replace`: dump in 13 s, restore in 25 s, verifica "Identico";
+    - resta da fare, dopo B4: il backend su Cloud SQL via socket Unix. Servono il ruolo `cloudsql.client` al service account di `mito-crm-staging` (con una condizione sull'istanza, perché non riceva ruoli su tutto il progetto), il secret della password leggibile solo da quel service account, e una copia fresca subito prima del passaggio. Prima di B4 il login di Vercel staging e il backend userebbero due database diversi;
+    - restano da provare: un restore PITR (go/no-go S6) e il modo di mettere Supabase in sola lettura (runbook della prod).
