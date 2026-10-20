@@ -42,6 +42,7 @@ const SIGNALS = [
   "NEXT_PUBLIC_APP_ENV",
   "BACKEND_URL",
   "BACKEND_AUTH",
+  "BACKEND_REST",
 ]
 const saved = Object.fromEntries(SIGNALS.map((key) => [key, process.env[key]]))
 
@@ -226,6 +227,42 @@ describe("next.config.js", () => {
   it("si ferma con BACKEND_AUTH=true senza BACKEND_URL", async () => {
     await expect(loadNextConfig({ BACKEND_AUTH: "true" })).rejects.toThrow(
       /BACKEND_AUTH needs BACKEND_URL/
+    )
+  })
+
+  it("con BACKEND_REST=true manda al backend le route di import, export e user", async () => {
+    const { config } = await loadNextConfig({
+      BACKEND_URL: "https://backend.example.com",
+      BACKEND_REST: "true",
+    })
+
+    expect(await config.rewrites()).toEqual({
+      beforeFiles: [
+        {
+          source: "/api/trpc/:path*",
+          destination: "https://backend.example.com/api/trpc/:path*",
+        },
+        {
+          source: "/api/import/:path*",
+          destination: "https://backend.example.com/api/import/:path*",
+        },
+        {
+          source: "/api/export/:path*",
+          destination: "https://backend.example.com/api/export/:path*",
+        },
+        {
+          source: "/api/user/:path*",
+          destination: "https://backend.example.com/api/user/:path*",
+        },
+      ],
+      afterFiles: [],
+      fallback: [],
+    })
+  })
+
+  it("si ferma con BACKEND_REST=true senza BACKEND_URL", async () => {
+    await expect(loadNextConfig({ BACKEND_REST: "true" })).rejects.toThrow(
+      /BACKEND_REST needs BACKEND_URL/
     )
   })
 })
