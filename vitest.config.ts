@@ -1,11 +1,14 @@
-import { defineConfig } from "vitest/config"
+import { configDefaults, defineConfig } from "vitest/config"
 import react from "@vitejs/plugin-react"
 import { resolve } from "path"
 
 export default defineConfig({
   plugins: [react()],
   test: {
+    name: "unit",
     environment: "jsdom",
+    // On a real Postgres, in the other project of vitest.workspace.ts
+    exclude: [...configDefaults.exclude, "**/*.pg.test.ts"],
     // Server tests on the in-memory database (src/test/db.ts)
     environmentMatchGlobs: [["**/*.db.test.ts", "node"]],
     setupFiles: ["src/test/setup.ts"],

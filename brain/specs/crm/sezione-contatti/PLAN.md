@@ -3106,7 +3106,7 @@ Branch suggerito: `contatti/pr6-clienti`. Il merge si fa solo dopo G5.
 
 ### PR7 — Postgres vero: test di concorrenza e database locale (bassa priorità)
 
-**Stato: da fare, bassa priorità** (D12, deciso da Omar il 2026-10-15). È il livello 2 della regola dei lock: T3.15 prova che il codice blocca il cliente, PR7 prova che con due connessioni vere le transazioni sullo stesso cliente si mettono in coda. Non blocca nessun'altra PR. Ha senso dopo il merge di PR3, così copre anche i suoi scrittori.
+**Stato: T7.1 e T7.1b fatte da Leonardo il 2026-10-20 (branch `chore/test-postgres-concorrenza`); T7.2, T7.1c e T7.3 da fare, bassa priorità** (D12, deciso da Omar il 2026-10-15). È il livello 2 della regola dei lock: T3.15 prova che il codice blocca il cliente, PR7 prova che con due connessioni vere le transazioni sullo stesso cliente si mettono in coda. Non blocca nessun'altra PR. Ha senso dopo il merge di PR3, così copre anche i suoi scrittori.
 
 **Database locale** (D24, chiesto da Omar il 2026-10-18). Lo stesso Postgres in Docker serve anche a provare le migrazioni su un database proprio invece che su sviluppo: T7.1b lo tira su e applica le migrazioni, T7.1c lo riempie di dati di Contatti. PR3 è in prod, quindi nulla impedisce di partire ora; T7.1b e T7.1c non dipendono da T7.2 e si possono fare prima dei test di concorrenza.
 
@@ -3130,9 +3130,19 @@ Branch: `chore/test-postgres-concorrenza` da `dev`, PR verso `dev`. Nessun cambi
   - **I due pezzi di `PUSHED_SCHEMA` escono da `src/test/db.ts`** e diventano un modulo senza effetti all'import (`src/server/db/pushedSchema.ts`), usato dall'harness PGlite, dall'harness Postgres e dallo script di T7.1b: un solo elenco di ciò che prod ha ricevuto con `db:push`. I test di oggi restano verdi senza cambiare un'asserzione.
   - Il guard sul DSN della sezione "Sicurezza del database". Senza `TEST_DATABASE_URL` i file `*.pg.test.ts` si saltano in locale, così si lanciano solo con un Postgres in Docker; **in CI (`CI` impostata) la variabile mancante fa fallire il job**, così i test non spariscono in silenzio.
 - **validation**: in CI i test `*.pg.test.ts` girano e non risultano saltati; in CI senza la variabile il job fallisce; in locale senza la variabile risultano saltati; un DSN senza host, con più host o con un host diverso da `localhost` ferma il test prima di collegarsi; il database `mito_test_*` non esiste più a fine esecuzione; un test di prova esegue `createContact` via caller su Postgres vero.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done (2026-10-20, branch `chore/test-postgres-concorrenza`)
+- **log**: 2026-10-20 — Harness e test scritti insieme, poi fatti girare su Postgres 15 in Docker. Al primo giro `holdCustomerLock` falliva (sotto), il resto passava. Scelte:
+  - **`@/server/db` nelle factory e nel caller.** `src/test/factories.ts` e `src/test/caller.ts` scrivono con `db` di `@/server/db` invece di `testDb`: ogni progetto lo sostituisce con il suo database (PGlite in `setup.ts`, Postgres in `pg.setup.ts`), quindi gli stessi helper servono ai due harness. I test di oggi non cambiano;
+  - **il progetto `pg`** (`vitest.workspace.ts`) parte da `vitest.config.ts`, in ambiente `node`, con `setup.ts` e poi `pg.setup.ts`: il secondo `vi.mock("@/server/db")` sostituisce il primo, gli altri confini restano quelli di `setup.ts`;
+  - **saltati in locale.** Un file `*.pg.test.ts` mette i suoi test in `describe.skipIf(!hasTestDatabase)`, hook compresi. Senza `TEST_DATABASE_URL` risultano saltati; in CI (`CI` impostata) `pg.setup.ts` fa fallire ogni file;
+  - **il guard sul DSN** è `localConnection` (`src/server/db/localDsn.ts`), condiviso con T7.1b, con i test in `src/server/db/_test/localDsn.test.ts`. Rifiuta anche una query string (postgres.js ne legge le opzioni); il pool si apre con le opzioni ricavate dal DSN, mai con il DSN, così `PGHOST` e simili non contano;
+  - **`PUSHED_SCHEMA` e il percorso delle migrazioni** escono da `src/test/db.ts` in `src/server/db/pushedSchema.ts` (`migrateWithPushedSchema`, con il migratore del driver passato da chi chiama);
+  - **`holdCustomerLock`** apre un client suo con una sola connessione (postgres.js accetta `BEGIN` fuori da `begin` solo con `max: 1`; Drizzle non accetta una connessione `reserve()`), e restituisce `db` per scrivere nella transazione del lock. `waitUntilBlocked` interroga `pg_stat_activity` ogni 10 ms, con un timeout;
+  - i failpoint (`src/test/failpoint.ts`, `lockRule.ts`) restano solo su PGlite;
+  - la CI ha anche un passo "No test database left": dopo vitest nessun `mito_test_*` deve restare sul servizio.
+
+  Prove: con `TEST_DATABASE_URL` 1840/1840 test (1825 di prima, 10 del guard, 5 su Postgres); senza la variabile i 5 risultano saltati; con `CI=1` e senza la variabile i 2 file falliscono; con un host remoto si ferma con "Not a local database" prima di collegarsi; nessun `mito_test_*` resta dopo il giro. Un test fallito che teneva una connessione lasciava il suo database: `dropTestDatabase` chiude il pool con `end({ timeout: 1 })` e `DROP ... WITH (FORCE)`.
+- **files edited/created**: `.github/workflows/ci.yml`, `docker-compose.yml`, `vitest.workspace.ts`, `vitest.config.ts`, `package.json` (`test:pg`), `src/test/pg.ts`, `src/test/pg.setup.ts`, `src/test/_test/pg.pg.test.ts`, `src/test/db.ts`, `src/test/factories.ts`, `src/test/caller.ts`, `src/server/db/pushedSchema.ts`, `src/server/db/localDsn.ts`, `src/server/db/_test/localDsn.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a (D6)
@@ -3170,9 +3180,15 @@ Branch: `chore/test-postgres-concorrenza` da `dev`, PR verso `dev`. Nessun cambi
   - README: come provare una migrazione prima di sviluppo (checkout del ramo base, `db:local:reset` e `db:local:migrate`; poi checkout del ramo con la migrazione nuova e `db:local:migrate`; i controlli di T5.16 in sola lettura sul locale). Il limite: lo schema è quello delle migrazioni, non una copia di sviluppo; dati, ruoli, estensioni e oggetti creati a mano con `db:push` non ci sono.
   - Non fa girare l'app sul database locale (D24): login con Azure AD e storage su Supabase restano di sviluppo.
 - **validation**: da un Docker nuovo, `pnpm db:local:up && pnpm db:local:migrate` crea tutte le tabelle; l'elenco di tabelle, colonne e indici è lo stesso che l'harness PGlite costruisce con le stesse migrazioni (un `*.pg.test.ts`, eseguito in CI); un secondo `db:local:migrate` non applica niente; con un host che non è `localhost` o `127.0.0.1`, o un database con un altro nome, lo script si ferma prima di collegarsi; i test di oggi restano verdi senza cambiare un'asserzione.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done (2026-10-20, branch `chore/test-postgres-concorrenza`)
+- **log**: 2026-10-20 — `localDb.pg.test.ts` passa: 10 migrazioni su un database vuoto, 0 al secondo lancio e lo stesso schema dell'harness PGlite. Al primo giro il confronto falliva solo sull'ordine delle righe (sotto). Scelte:
+  - `localDb.ts` contiene le funzioni (`migrateDatabase(client)`, `migrateLocalDatabase`, `resetLocalDatabase`), `runLocalDb.ts` il comando (`reset` | `migrate`): il test importa le funzioni senza lanciare il comando. `migrateDatabase` restituisce quante migrazioni ha applicato, e il comando lo stampa;
+  - il guard è `localConnection(LOCAL_DATABASE_URL, { database: "mito_local" })` di T7.1, provato in `src/server/db/_test/localDsn.test.ts`;
+  - gli script girano con `tsx`, che non carica `.env*`. Non importano lo schema, né `@/env`, né `loadEnv`;
+  - il confronto con l'harness PGlite (colonne, indici, vincoli ed enum dello schema `public`) ordina con `COLLATE "C"`: le collation di default dei due motori sono diverse.
+
+  Prove a mano da un volume nuovo: `pnpm db:local:up`, `db:local:reset`, `db:local:migrate` ("10 migrazioni applicate", 16 tabelle), un secondo `db:local:migrate` ("0 migrazioni applicate").
+- **files edited/created**: `package.json` (`db:local:up`, `db:local:down`, `db:local:reset`, `db:local:migrate`), `src/server/db/scripts/localDb.ts`, `src/server/db/scripts/runLocalDb.ts`, `src/server/db/scripts/_test/localDb.pg.test.ts`, `README.md` (sezione "Database locale"), `.env.example`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a (D6)

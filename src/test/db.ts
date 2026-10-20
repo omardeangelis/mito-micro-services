@@ -1,11 +1,10 @@
-import fs from "fs"
-import os from "os"
 import path from "path"
 import { PGlite } from "@electric-sql/pglite"
 import { drizzle } from "drizzle-orm/pglite"
 import { migrate } from "drizzle-orm/pglite/migrator"
 import { and, asc, eq } from "drizzle-orm"
 import { driverError } from "@/server/db/driverError"
+import { migrateWithPushedSchema } from "@/server/db/pushedSchema"
 import * as schema from "@/server/db/schema/index"
 
 const MIGRATIONS_FOLDER = path.resolve(__dirname, "../server/db/migrations")
@@ -28,93 +27,24 @@ export const CONTATTI_SCHEMA_TAG = "20260929062408_contatti_operator_realign"
 export const testClient = new PGlite()
 export const testDb = drizzle(testClient, { schema })
 
-type Journal = { entries: { tag: string }[] }
-
-const journal = JSON.parse(
-  fs.readFileSync(`${MIGRATIONS_FOLDER}/meta/_journal.json`, "utf8")
-) as Journal
-
-const indexOfTag = (tag: string) => {
-  const index = journal.entries.findIndex((entry) => entry.tag === tag)
-  if (index === -1) throw new Error(`Unknown migration tag: ${tag}`)
-  return index
-}
-
-/**
- * Schema the production database got from `drizzle-kit push`, which no
- * migration creates. The snapshots already include it, so `db:generate` never
- * emits it. Each piece is applied after the migration it came with, and does
- * nothing if already there.
- */
-const PUSHED_SCHEMA: { after: string | null; sql: string }[] = [
-  {
-    // The first migration creates the task table with this type, which the
-    // third one creates only when it doesn't exist yet
-    after: null,
-    sql: `DO $$ BEGIN
-      CREATE TYPE "public"."task_status" AS ENUM('chiamare', 'non interessato', 'app.to', 'caricato', 'richiamare', 'erogata', 'nessuno', 'followup');
-    EXCEPTION WHEN duplicate_object THEN NULL;
-    END $$`,
-  },
-  {
-    // In the snapshots since this migration, in none of the SQL files
-    after: "20260615235953_brown_madelyne_pryor",
-    sql: `ALTER TABLE "mito-deutsche_alert" ADD COLUMN IF NOT EXISTS "is_resolved" boolean DEFAULT false NOT NULL`,
-  },
-]
-
-/** A copy of the migrations folder whose journal stops at entry `last`. */
-function migrationsFolderUpTo(last: number) {
-  const folder = fs.mkdtempSync(path.join(os.tmpdir(), "migrations-"))
-  fs.mkdirSync(path.join(folder, "meta"))
-  const entries = journal.entries.slice(0, last + 1)
-  fs.writeFileSync(
-    path.join(folder, "meta/_journal.json"),
-    JSON.stringify({ ...journal, entries })
-  )
-  for (const { tag } of entries) {
-    fs.copyFileSync(
-      path.join(MIGRATIONS_FOLDER, `${tag}.sql`),
-      path.join(folder, `${tag}.sql`)
-    )
-  }
-  return folder
-}
-
 /**
  * Applies the repo migrations to the test database, together with the pushed
- * schema production has: all of them, or only up to `tag`. Call it once per
- * test file, in `beforeAll`; a later call applies only what is missing, as a
- * migration of a database already in use (seed with `migrateUpTo(previous)`,
- * then `migrateUpTo()`).
+ * schema production has (`migrateWithPushedSchema`): all of them, or only up
+ * to `tag`. Call it once per test file, in `beforeAll`; a later call applies
+ * only what is missing, as a migration of a database already in use (seed with
+ * `migrateUpTo(previous)`, then `migrateUpTo()`).
  */
 export async function migrateUpTo(tag?: string) {
-  const last = tag ? indexOfTag(tag) : journal.entries.length - 1
   // The session time zone decides DATE() of a timestamptz. The databases in
   // use run in Europe/Rome: in UTC, a query that leans on the session for its
   // days shows in the tests (the alert cron's names the time zone)
   await testClient.exec(`SET TIME ZONE 'UTC'`)
-
-  // The migrator skips the migrations already applied, and applies the
-  // pending ones in one transaction
-  let applied = -1
-  const migrateTo = async (index: number) => {
-    if (index <= applied) return
-    const folder = migrationsFolderUpTo(index)
-    try {
-      await migrate(testDb, { migrationsFolder: folder })
-    } finally {
-      fs.rmSync(folder, { recursive: true })
-    }
-    applied = index
-  }
-  for (const piece of PUSHED_SCHEMA) {
-    const after = piece.after ? indexOfTag(piece.after) : -1
-    if (after > last) break
-    await migrateTo(after)
-    await testClient.exec(piece.sql)
-  }
-  await migrateTo(last)
+  await migrateWithPushedSchema({
+    folder: MIGRATIONS_FOLDER,
+    upTo: tag,
+    migrate: (migrationsFolder) => migrate(testDb, { migrationsFolder }),
+    exec: (sql) => testClient.exec(sql),
+  })
 }
 
 /**
