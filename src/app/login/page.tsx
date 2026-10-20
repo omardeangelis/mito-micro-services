@@ -2,12 +2,12 @@ import { unstable_noStore as noStore } from "next/cache"
 import Link from "next/link"
 import { redirect } from "next/navigation"
 import Image from "next/image"
-import { getServerAuthSession } from "@/server/auth"
+import { getPageSession } from "@/trpc/pageSession"
 import { Button } from "@/components/ui/button"
 
 export default async function Home() {
   noStore()
-  const session = await getServerAuthSession()
+  const session = await getPageSession()
   if (session?.user.name) {
     redirect("/dashboard")
   }
