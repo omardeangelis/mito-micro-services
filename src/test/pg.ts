@@ -97,10 +97,42 @@ export async function migrateUpTo(tag?: string) {
   })
 }
 
-/** Closes the pool and drops the test database, if it was created. */
+const extras: { name: string; client: postgres.Sql }[] = []
+
+/**
+ * Another database on the test server, empty or a copy of `template` (whose
+ * clients must be closed first: Postgres copies only a database nobody is
+ * connected to), for tests that compare two. Dropped after the file, with the
+ * test database.
+ */
+export async function extraDatabase({ template }: { template?: string } = {}) {
+  const name = `${testDatabaseName}_${extras.length + 1}`
+  await onServer((sql) =>
+    template
+      ? sql`CREATE DATABASE ${sql(name)} TEMPLATE ${sql(template)}`
+      : sql`CREATE DATABASE ${sql(name)}`
+  )
+  const extra = { name, client: connect(name, 2) }
+  extras.push(extra)
+  return extra
+}
+
+/** A new client on an extra database whose client a test closed. */
+export function reconnect(extra: { name: string; client: postgres.Sql }) {
+  extra.client = connect(extra.name, 2)
+  return extra.client
+}
+
+/** Closes the pools and drops the test databases, if they were created. */
 export async function dropTestDatabase() {
-  if (!created) return
   // A test that failed may leave a connection busy: close them all
+  for (const { name, client } of extras.splice(0)) {
+    await client.end({ timeout: 1 })
+    await onServer(
+      (sql) => sql`DROP DATABASE IF EXISTS ${sql(name)} WITH (FORCE)`
+    )
+  }
+  if (!created) return
   await pgClient.end({ timeout: 1 })
   await onServer(
     (sql) => sql`DROP DATABASE IF EXISTS ${sql(testDatabaseName)} WITH (FORCE)`
