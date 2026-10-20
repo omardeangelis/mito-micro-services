@@ -1,27 +1,29 @@
-import { createClient } from "@supabase/supabase-js"
 import * as XLSX from "xlsx"
 
-//instance supabase client
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ""
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? ""
-const BUCKET_NAME = "mito-storage"
-const EXPORT_PATH = "export"
+/**
+ * Uploads the export to the signed URL the server made for it
+ * (`supabase.createExportUploadUrl`), with the content type it was signed
+ * for. The browser never holds a storage key.
+ */
+export const saveExport = async (
+  upload: { url: string; contentType: string },
+  workbook: XLSX.WorkBook
+): Promise<{ error: Error | null }> => {
+  const body = XLSX.write(workbook, {
+    bookType: "xlsx",
+    type: "array",
+  }) as ArrayBuffer
 
-export const saveExport = async (filePath: string, workbook: XLSX.WorkBook) => {
-  const buffer = Buffer.from(
-    XLSX.write(workbook, {
-      bookType: "xlsx",
-      type: "array",
-    }) as WithImplicitCoercion<ArrayBuffer | SharedArrayBuffer>
-  )
-
-  const supabaseClient = createClient(supabaseUrl, supabaseKey)
-
-  const bucket = supabaseClient.storage.from(BUCKET_NAME)
-
-  const sbResult = await bucket.upload(`/${EXPORT_PATH}/${filePath}`, buffer, {
-    upsert: true,
-  })
-
-  return sbResult
+  try {
+    const response = await fetch(upload.url, {
+      method: "PUT",
+      headers: { "Content-Type": upload.contentType },
+      body,
+    })
+    return response.ok
+      ? { error: null }
+      : { error: new Error(`Upload failed with status ${response.status}`) }
+  } catch (error) {
+    return { error: error instanceof Error ? error : new Error(String(error)) }
+  }
 }
