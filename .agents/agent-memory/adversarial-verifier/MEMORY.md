@@ -41,3 +41,4 @@
 - [Client graph esbuild probe](feedback_client_graph_esbuild_probe.md) — bundle each "use client" file, stop at "use server", flag src/server, env, server-only; trpc/shared.ts is a known hit
 - [Focus loss and toast announce](feedback_focus_loss_and_toast_announce_probes.md) — controls that vanish on activation and Back drop focus to body; Radix toast announce escapes a modal's aria-hidden; webpack toast injection
 - [UI pass driver artifacts](feedback_ui_pass_driver_artifacts.md) — set viewport fires no resize (false stale popovers); portal/Sheet probes need hand measuring; sticky bar vs focus Tab loop
+- [Removed params, focus handoff, gates](feedback_removed_params_focus_handoff_gates.md) — URL writer vs reader names; client readers survive a server discard (popover crash); plan param literal vs real parser; gate cells vs task text; migrations in one tx

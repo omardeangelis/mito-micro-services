@@ -7,14 +7,14 @@ links:
   - "[[chore/crm/design-contatti]]"
   - "[[chore/crm/guida-assegnazione-massiva-e-alert]]"
 created: 2026-09-24
-updated: 2026-10-18
+updated: 2026-10-20
 ---
 
 # Plan: Sezione Contatti e tabella Clienti semplificata
 
 **Spec:** [[specs/crm/sezione-contatti/SPEC]] · **Flow:** [[specs/crm/sezione-contatti/FLOW]] · **Bozza di design:** [[chore/crm/design-contatti]]
 **Generato:** 2026-09-24 con `create-plan`: grill → swarm-plan → ux-advisor + design-engineer → tdd → adversarial-verifier. Nessun codice scritto.
-**Aggiornato:** 2026-09-25, codice server su Effect (D9, P8); errori segnalati a Sentry (P9). 2026-10-15, PR3 riscritta con `create-plan` 0.8.0 (`complexity` per task, FLOW confrontata con gli AC, `design-engineer`, D10–D13, P6 rivisto, P10) e PR7 aggiunta. Sempre il 2026-10-15, PR4 riscritta con `create-plan` 0.8.0: chat solo del cliente (D15), server action tenute (P11), form senza `useOptimistic` (P12), nota non inviata recuperata (AC76 nuovo, D16). Dopo la quarta verifica: AC56 con "Avvia una chat" (D17), bozza della nota non inviata (T4.4, D18), G3 chiuso (PR3 in prod). 2026-10-17, PR5 riscritta con `create-plan` 0.8.0 e divisa in PR5a (logica) e PR5b (interfaccia): D22, D23, P13–P17, A12–A14, task T5.14–T5.17 e `complexity` su ogni task. 2026-10-18, PR7 estesa con il database locale in Docker e il seeder di Contatti: D24, T7.1b e T7.1c.
+**Aggiornato:** 2026-09-25, codice server su Effect (D9, P8); errori segnalati a Sentry (P9). 2026-10-15, PR3 riscritta con `create-plan` 0.8.0 (`complexity` per task, FLOW confrontata con gli AC, `design-engineer`, D10–D13, P6 rivisto, P10) e PR7 aggiunta. Sempre il 2026-10-15, PR4 riscritta con `create-plan` 0.8.0: chat solo del cliente (D15), server action tenute (P11), form senza `useOptimistic` (P12), nota non inviata recuperata (AC76 nuovo, D16). Dopo la quarta verifica: AC56 con "Avvia una chat" (D17), bozza della nota non inviata (T4.4, D18), G3 chiuso (PR3 in prod). 2026-10-17, PR5 riscritta con `create-plan` 0.8.0 e divisa in PR5a (logica) e PR5b (interfaccia): D22, D23, P13–P17, A12–A14, task T5.14–T5.17 e `complexity` su ogni task. 2026-10-18, PR7 estesa con il database locale in Docker e il seeder di Contatti: D24, T7.1b e T7.1c. 2026-10-20, PR5a e PR5b risultano fatte su `dev` e PR6 è riscritta con `create-plan` 0.8.0: rilascio unico con PR5 (D25), cliente e contatto sempre sullo stesso operatore (D26, D27), "Gestisci contatto" con la lista filtrata sul cliente (D28), task T6.8a, T6.8b, T6.9, T6.10, `complexity` su ogni task e gate G5 riscritto.
 
 ---
 
@@ -57,7 +57,7 @@ Serve una sezione **Contatti** (lista e dettaglio) sulle `task`. Le regole di mo
 | Chat della scheda cliente | Basso-medio | Refactor di una funzione esistente, più AC76. Pratiche non mostra le note (finding 24), quindi c'è una sola schermata da non rompere | PR4 |
 | Letture di Contatti sul server (query, stato dell'URL, preferenza, indici, richiamo da domani) | Basso-medio | Sola lettura e senza chiamanti; una migrazione di indici possibile, applicata a mano; il rifiuto del richiamo per oggi | PR5a |
 | Sezione Contatti (interfaccia) | Basso sull'esistente | Additiva: nuova route; tocca Clienti solo per "Vedi contatti" e un prop opzionale del selettore | PR5b |
-| Clienti semplificata | Medio | Rimozione; va fatta dopo l'adozione | PR6 |
+| Clienti semplificata | Medio | Rimozione di colonne e controlli, più una scrittura nuova ("Assegna Clienti" sposta anche il contatto) e un riallineamento di dati in prod con una migrazione a mano. Esce insieme a PR5 (D25), senza il periodo d'uso | PR6 |
 | Test di concorrenza e database locale su Postgres vero | Basso sull'esistente | Solo CI, test e strumenti di sviluppo (Docker, script, seeder); nessun codice dell'app | PR7 (bassa priorità) |
 
 | PR | Stato | Passo spec | Outcome verificabile | AC |
@@ -66,9 +66,9 @@ Serve una sezione **Contatti** (lista e dettaglio) sulle `task`. Le regole di mo
 | **PR2** Pulizia e vincolo DB | **Fatta.** Su `main` e migrazioni applicate in prod il 2026-10-13 (PR #6, su `main` con la #11; G2) | 1 | Nessun duplicato attivo. Il DB rifiuta un secondo contatto attivo. Nessun alert aperto su contatti non attivi. Elenco dei contatti disattivati e degli alert chiusi estratto subito prima della pulizia, come traccia | AC69, AC70, AC71 (DB) |
 | **PR3** Regole sul server, usate da Clienti | **Fatta.** In prod dal 2026-10-15 (PR #14, su `main` con la #16), review SHIP dopo le correzioni (G3) | 1 (+ AC66–AC67 anticipati, P1) | Da Clienti e dalla scheda cliente: cambio di stato atomico, modale di conferma per l'alert, operatore invariato, sola lettura con motivo, stato e priorità salvati subito nella scheda (D11), "Passaggio di consegne" al posto del cambio di operatore nel form (D13). I permessi D2 li rifiuta il server anche fuori dall'interfaccia. "Crea contatto" nella scheda cliente. Un alert non si chiude due volte e non si stacca per sbaglio (D10). Un test rende rossa la CI se uno degli scrittori di contatti smette di bloccare il cliente (D12) | regole server di AC27, AC30–AC52; AC66, AC67; AC73 |
 | **PR4** Chat con proprietario esplicito | **Fatta.** In prod (PR #18 su `dev`, #19 su `main`); riscritta il 2026-10-15 | prerequisito del passo 3 (P2); AC76 al passo 3, nella scheda cliente già con PR4 | La chat riceve il cliente invece di dedurlo dall'URL, ed è condivisa in `src/components/custom/notes/`. Note della scheda cliente identiche quando l'invio riesce; quando fallisce il testo torna nel campo con "Nota non inviata, riprova" e resta anche dopo un ricaricamento | AC55 (base), AC56 ("Avvia una chat"), AC76 |
-| **PR5a** Contatti: lettura e regole dal server | Implementata il 2026-10-17, non committata; rimozione dei due indici riconfermata da Omar il 2026-10-18; in attesa di G4a | 2 (base) | `getContacts` e `getContactById` provate con i filtri, l'ordine e la paginazione della spec; stato dell'URL puro; preferenza delle colonne; richiamo solo da domani; indici decisi con le misure di A3 | AC2, AC3, AC10–AC15, AC16–AC18 e AC25 (stato dell'URL), AC21–AC23, AC26–AC28 e AC51 (parte server), AC5 (parte server), AC44 (D22) |
-| **PR5b** Contatti: interfaccia | Da fare (riscritta il 2026-10-17) | 2 + 3 (P2) | Lista, filtri, dettaglio, modifiche, note del cliente, "Vedi contatti", guida operatori per Contatti; nessuna animazione nuova | AC1–AC57 (interfaccia), AC62, AC74 (parte Contatti), AC76–AC79 nel dettaglio |
-| **PR6** Clienti semplificata | Da fare | 4 | Colonne e filtri task rimossi, totale = righe, scheda cliente con riepilogo e "Gestisci contatto", etichette della massiva, "Assegna Clienti" che sposta cliente e contatto insieme (D14), guida completata | AC58–AC61, AC63–AC65, AC68, AC74 (parte restante), AC75 |
+| **PR5a** Contatti: lettura e regole dal server | **Fatta** su `dev` (PR #26, 2026-10-20). Esce in prod con PR6 (D25); la migrazione che toglie i due indici si applica a mano nella sessione di rilascio (G4a dentro G5) | 2 (base) | `getContacts` e `getContactById` provate con i filtri, l'ordine e la paginazione della spec; stato dell'URL puro; preferenza delle colonne; richiamo solo da domani; indici decisi con le misure di A3 | AC2, AC3, AC10–AC15, AC16–AC18 e AC25 (stato dell'URL), AC21–AC23, AC26–AC28 e AC51 (parte server), AC5 (parte server), AC44 (D22) |
+| **PR5b** Contatti: interfaccia | **Fatta** su `dev` (PR #25, 2026-10-20); il "DO NOT SHIP" della review del 18/10 è risolto e verificato (Omar, 2026-10-20). Esce in prod con PR6 (D25), con G4b dentro G5 | 2 + 3 (P2) | Lista, filtri, dettaglio, modifiche, note del cliente, "Vedi contatti", guida operatori per Contatti; nessuna animazione nuova | AC1–AC57 (interfaccia), AC62, AC74 (parte Contatti), AC76–AC79 nel dettaglio |
+| **PR6** Clienti semplificata | Da fare (riscritta il 2026-10-20) | 4 | Colonne e filtri task rimossi, totale = righe, scheda cliente con riepilogo e "Gestisci contatto" (D28), etichette della massiva, "Assegna Clienti" e "Assegna a te" che tengono cliente e contatto sullo stesso operatore (D14, D26), migrazione di riallineamento dei contatti attivi, regola "stesso operatore" provata dai test (D27), guida completata, rilascio unico con PR5 (G5) | AC58–AC61, AC63–AC68, AC74 (parte restante), AC75 (AC66 e AC67 già da PR3: T6.4 ne cura il focus e il riepilogo) |
 | **PR7** Postgres vero: test di concorrenza e database locale | Da fare, bassa priorità (D12, D24) | — | La CI prova con due connessioni vere che le transazioni sullo stesso cliente si mettono in coda, che R7 non accade e che non ci sono deadlock; `pnpm db:local:up`, `db:local:migrate` e `seed:local` tirano su un Postgres in Docker con le migrazioni e dati di Contatti, per provarci le migrazioni prima di sviluppo | AC71 (concorrenza) |
 
 **Ordine vincolante:**
@@ -76,8 +76,8 @@ Serve una sezione **Contatti** (lista e dettaglio) sulle `task`. Le regole di mo
 2. La migrazione di PR2 applicata a mano, con l'estrazione conservata subito prima come traccia (T2.4). PR2 entra in `dev` solo dopo che PR1 è su `main`. **Fatto il 2026-10-13** (log di T2.4).
 3. PR3 (con l'annuncio agli operatori). **Fatto:** in prod dal 2026-10-15 (PR #16, G3).
 4. PR4. **Fatto:** in prod (PR #18 e #19). Poteva partire subito, PR3 era in prod (G3). Le due righe per gli operatori (AC76, "Commenta" disabilitato durante l'invio) arrivano prima del suo deploy.
-5. PR5a (può andare in prod da sola), poi PR5b, solo dopo che PR2 è applicata (AC69, fatto) e dopo PR4, che prepara la chat (T5.8), a breve distanza da PR3.
-6. Qualche giorno d'uso, poi PR6.
+5. PR5a e PR5b. **Fatto:** su `dev` (PR #26 e #25), dopo PR2 in prod (AC69) e PR4, che prepara la chat (T5.8).
+6. PR6 su `dev` subito dopo PR5, e **PR5a, PR5b e PR6 in prod insieme** (D25, Omar, 2026-10-20): niente attesa di giorni d'uso, G5 è il gate del rilascio unico (sequenza in T6.7).
 7. PR7 in qualunque momento dopo PR3, a bassa priorità: non blocca nessun rilascio.
 
 ## 4. Decision ledger (risolto)
@@ -98,10 +98,10 @@ Serve una sezione **Contatti** (lista e dettaglio) sulle `task`. Le regole di mo
 | D8 | **"Solo i miei"** = contatti con `task.operatorId = me` **oppure** `customers.operatorId = me`, cioè quelli che posso lavorare (D2). **Scostamento da AC10**, che dice "assegnati all'utente collegato" | Grill, dopo ux-advisor |
 | D9 | **Effect.** Il codice server che il piano scrive o rifattorizza usa Effect, come chiede la regola in `AGENTS.md`:<br>• gli errori previsti sono errori tipizzati (`Data.TaggedError`) invece di `throw` e `!`;<br>• ogni operazione che scrive gira in un `transaction` Effect;<br>• le procedure tRPC e i route restano async e traducono gli errori in un solo punto (`runTrpc`).<br>Vale per PR1, PR3, per le query di PR5 e per `getAllCustomers` in PR6. Fa eccezione la procedura di preferenza di T5.14, una riga della stessa famiglia delle due esistenti (§15). Nessuna regola di prodotto cambia | Omar, 2026-09-25 |
 | D10 | **Tech-debt assegnato a PR3, incluso per intero:**<br>• **F14/R7:** ogni alert si chiude con `resolveOpenAlert` (solo se ancora aperto, e stacca la task solo se punta ancora a lui); con `createAlert` e `resolveAlerts` rimosse, tutti gli scrittori bloccano il cliente, e la massiva non può più staccare un richiamo appena impostato. La logica di `bulkHandleTask` non cambia (A7);<br>• test mancanti della massiva (casi 3 e 4 senza righe di log);<br>• test mancanti dell'infrastruttura Effect (F11) | Omar, 2026-10-15 |
-| D11 | **Scheda cliente a salvataggio immediato.** Niente più form con "Salva": lo stato si salva quando si sceglie (stesso selettore e stessa modale della riga), la priorità quando si cambia fascia o si sceglie "Automatica". Ogni gesto è una mutation atomica; con un solo "Salva", `changeState` e `setPriority` in sequenza potevano salvare a metà. Vale fino a PR6, che rende la scheda un riepilogo (AC65) | Omar, 2026-10-15, su proposta del `design-engineer` |
+| D11 | **Scheda cliente a salvataggio immediato.** Niente più form con "Salva": lo stato si salva quando si sceglie (stesso selettore e stessa modale della riga), la priorità quando si cambia fascia o si sceglie "Automatica". Ogni gesto è una mutation atomica; con un solo "Salva", `changeState` e `setPriority` in sequenza potevano salvare a metà. Vale fino a PR6, che rende la scheda un riepilogo (AC65); il salvataggio immediato è in prod dal 2026-10-15 e finisce con il rilascio unico di PR5 e PR6 (D25) | Omar, 2026-10-15, su proposta del `design-engineer` |
 | D12 | **Regola dei lock provata da un test.** Livello 1 in PR3 (T3.15): un trigger di test fa fallire ogni scrittura su `task`, `alert` e `task_event_log` fatta senza aver bloccato il cliente nella stessa transazione, per tutti gli scrittori di contatti di oggi; uno nuovo si aggiunge al test. Livello 2 in PR7, a bassa priorità: test di concorrenza su un Postgres vero in CI | Omar, 2026-10-15 |
 | D13 | **"Passaggio di consegne" al posto del cambio di operatore nel form** (sostituisce D5). La verifica di PR3 ha trovato che D5 + P4 facevano riassegnare un contatto a un non-admin, contro D2 e AC50. Ora:<br>• il form del cliente salva solo l'anagrafica: `updateCustomerFromDashboard` non accetta più `operatorId`, e sparisce il riallineamento silenzioso del contatto a ogni salvataggio;<br>• un'azione separata, "Passaggio di consegne", con una modale che spiega cosa succede, sposta il cliente e il suo contatto attivo **in qualunque stato** a un altro operatore. La usano l'admin (su ogni cliente) e l'operatore del cliente (sui suoi);<br>• le chiamate già registrate sul contatto passano al nuovo operatore nell'export (regola di attribuzione della spec); la modale e l'annuncio G3 lo dicono.<br>• il passaggio cambia sempre l'operatore del cliente: una destinazione uguale a quella attuale è rifiutata, anche per l'admin (Omar, dopo la seconda verifica). Allineare il solo contatto è la riassegnazione dell'admin (`task.reassign`), nell'interfaccia con PR5.<br>È un'eccezione esplicita a D2 ("la riassegnazione è solo ADMIN") e ad AC50, registrata in §15 | Omar, 2026-10-15 |
-| D14 | **Cliente e contatto attivo hanno lo stesso operatore** (AC75, sostituisce A7 per "Assegna Clienti"). Dai test manuali di PR3: la riga di Clienti mostrava "Assegnato a …" accanto a una colonna Operatore che diceva un'altra cosa, e la scheda "Assegna Clienti" dice "Assegna solo il cliente" mentre sposta anche il contatto, ma solo in `chiamare`. Ora:<br>• **in PR6 (T6.8)** "Assegna Clienti" diventa un passaggio di consegne in massa: per ogni cliente usa il servizio `handover` (D13), quindi sposta cliente e contatto attivo in ogni stato, blocca il cliente (esce da A11) e scrive i log. Il testo della scheda lo dice, e i contatti attivi ancora separati si riallineano prima del rilascio;<br>• **subito, in PR3:** la riga di Clienti non nomina l'operatore del contatto. In sola lettura mostra solo lo stato, e "Non assegnato" con l'indicazione di "Assegna a te" quando né il cliente né il contatto hanno un operatore (AC51 rivisto). Lo stesso nella scheda cliente, dove l'operatore del cliente è nel form.<br>Misurato in prod in sola lettura il 2026-10-15: 1 contatto attivo su 69.783 con un operatore diverso da quello del cliente (in `richiamare`); 3 non attivi su 13.397, che restano come sono (storico). Niente colonna "Gestito da": renderebbe ufficiale una separazione che la spec rinvia a `task.kind` | Omar, 2026-10-15 |
+| D14 | **Cliente e contatto attivo hanno lo stesso operatore** (AC75, sostituisce A7 per "Assegna Clienti"). Dai test manuali di PR3: la riga di Clienti mostrava "Assegnato a …" accanto a una colonna Operatore che diceva un'altra cosa, e la scheda "Assegna Clienti" dice "Assegna solo il cliente" mentre sposta anche il contatto, ma solo in `chiamare`. Ora:<br>• **in PR6 (T6.8a)** "Assegna Clienti" diventa un passaggio di consegne in massa: per ogni cliente usa il servizio `handover` (D13), quindi sposta cliente e contatto attivo in ogni stato, blocca il cliente (esce da A11) e scrive i log. Il testo della scheda lo dice, e i contatti attivi ancora separati si riallineano prima del rilascio;<br>• **subito, in PR3:** la riga di Clienti non nomina l'operatore del contatto. In sola lettura mostra solo lo stato, e "Non assegnato" con l'indicazione di "Assegna a te" quando né il cliente né il contatto hanno un operatore (AC51 rivisto). Lo stesso nella scheda cliente, dove l'operatore del cliente è nel form.<br>Misurato in prod in sola lettura il 2026-10-15: 1 contatto attivo su 69.783 con un operatore diverso da quello del cliente (in `richiamare`); 3 non attivi su 13.397, che restano come sono (storico). Niente colonna "Gestito da": renderebbe ufficiale una separazione che la spec rinvia a `task.kind`.<br>**Rivisto il 2026-10-20 (D26):** il riallineamento di chi è già separato è una migrazione (T6.9), non "pochi casi dall'interfaccia"; con il rilascio unico (D25) l'interfaccia di PR5 non esiste prima del deploy | Omar, 2026-10-15; rivisto il 2026-10-20 |
 | D15 | **Chat solo del cliente.** Pratiche non mostra le note dal primo commit del repo (finding 24), quindi la chat riceve `customerId` e non un `owner` con due tipi. Si eliminano i rami pratica che la chat tocca (`PraticaNotesSetcion.tsx`, il ramo `pratica` di `createChatAction`, le chiamate a `pratiche.updateLastEdit`). Restano le procedure tRPC e le chat di pratica già nel DB (seguito in §15) | Omar, 2026-10-15 |
 | D16 | **Nota non inviata corretta in PR4, con un AC nuovo (AC76).** Il testo torna nel campo, compare "Nota non inviata, riprova" e la nota non resta nella chat; il campo si svuota comunque all'invio, come oggi. PR5 è già grande e PR4 riscrive proprio quella funzione. PR4 non è più senza cambiamenti visibili | Omar, 2026-10-15 |
 | D17 | **AC56 accetta "Avvia una chat"** (SPEC aggiornata). Il dettaglio del contatto riusa la chat di PR4 così com'è: senza chat si avvia con il pulsante, come nella scheda cliente. È un'azione esplicita al posto di un effetto del primo invio, e non aggiunge lavoro a PR4 o PR5 | Omar, 2026-10-15, dalla quarta verifica |
@@ -130,11 +130,17 @@ Serve una sezione **Contatti** (lista e dettaglio) sulle `task`. Le regole di mo
 | P15 | **`da` porta uno stato, mai un percorso.** `returnHref(da)` = `/dashboard/contatti` + `serialize(parse(da))`: nessun indirizzo esterno o sporco esce dal dettaglio (AC18, AC25) | Piano, 2026-10-17 |
 | P16 | **L'attore viene dalla sessione.** "Solo i miei" (D8) è un booleano: il server usa `ctx.operator`, non un id mandato dal client | Piano, 2026-10-17 |
 | P17 | **Budget di movimento di PR5b** (`design-engineer`, 2026-10-17; P6 resta valido). Nessuna animazione nuova. Sheet nel layout sopra `[id]`, senza `loading.tsx` né skeleton sotto, con `router.replace` in `useTransition`. Chiusura con una sola navigazione e focus riportato alla riga. Filtri in `startTransition` con stato locale seminato dall'URL. Toast di successo `background` (5000 ms) e di rifiuto assertivi (8000 ms); annunci in contenitori `role="status"` sempre montati. Uscita della Sheet non animata (accettata). Il selettore di stato porta il cliente nel nome accessibile. I controlli browser sono in T5.12. Non adottato: accorciare i 500 ms della Sheet (fuori da P6, già nel tech-debt) | Piano (design-engineer), 2026-10-17 |
+| D25 | **PR5 e PR6 escono in prod insieme.** Non si aspettano giorni d'uso di Contatti prima di PR6. G5 (checklist scritta di un admin) cade e A2 si chiude. PR5a, PR5b e PR6 vanno su `dev` come PR distinte e salgono in `main` in un solo rilascio, con una sola sessione (T6.7) e un solo annuncio agli operatori. Il piano si adegua: la scheda cliente perde i controlli di stato nello stesso rilascio in cui compare Contatti, quindi non c'è un periodo in cui convivono (AC73 non arriva in prod). Costo accettato: se Contatti ha un difetto, il revert riporta anche le colonne di Clienti, perché il merge è uno solo | Omar, 2026-10-20 |
+| D26 | **Cliente e contatto attivo hanno sempre lo stesso operatore, e i casi già separati si riallineano tutti** (completa D14 e AC75). Non c'è una soglia sotto cui si lascia com'è. Il riallineamento è una migrazione custom a mano (T6.9), nella sessione di rilascio, dopo il deploy: vince l'operatore del cliente, ogni contatto spostato ha la sua riga `operator_reassign` (sorgente `bulk`), le task non attive non cambiano. I percorsi che oggi li separano sono due, `bulkUpdateCustomers` (T6.8a) e "Assegna a te" con un contatto senza operatore (T6.8b, finding 38). Il caso opposto, cliente senza operatore e contatto con un operatore, non lo decide l'SQL: lo script lo conta e il gate si ferma se ce ne sono | Omar, 2026-10-20 |
+| D27 | **La garanzia di D26 sta nel codice e nei test, senza vincoli nel database.** Un test (T6.10) rende rossa la CI se uno scrittore lascia cliente e contatto attivo su operatori diversi, come la regola dei lock (D12). Niente trigger in prod: in futuro un cliente potrà avere un gestore (admin) diverso dagli operatori che lo contattano, e un vincolo andrebbe tolto. La regola è una sola, con un nome e un commento che dice dove cambiarla. Oggi quella distinzione non serve | Omar, 2026-10-20 |
+| D28 | **"Gestisci contatto" apre il dettaglio con la lista filtrata sul cliente** (T6.4). Il link usa `detailHref` con lo stato di "Vedi contatti" (`seeContactsHref`: filtro sul cliente, contatti chiusi inclusi, il più recente creato prima), estratto in `customerContactsState` perché i due link non possano divergere; alla chiusura si torna a "Contatti di <cliente>", con il focus sulla riga. Scartato un ritorno alla scheda cliente: `da` porta uno stato della lista, mai un percorso (P15), e servirebbe un secondo tipo di ritorno nel dettaglio di PR5b | Omar, 2026-10-20 |
+| P18 | **Ordine dei task di PR6: prima l'interfaccia di Clienti, poi la query.** T6.2 toglie colonne, filtri e ordinamenti mentre il server accetta ancora l'input vecchio; T6.1 toglie dal server `tasks`, `closedAt` e `priority`. Con l'ordine opposto `tsc` e la tabella si romperebbero fra i due task. In prod, con `BACKEND_URL` attiva, frontend e backend si rilasciano separati: un frontend vecchio con la query nuova legge `tasks` che non c'è, un frontend nuovo con la query vecchia funziona (Zod scarta i campi che non conosce). Quindi prima il frontend, poi il backend (A17) | Piano, 2026-10-20 |
+| P19 | **"Assegna Clienti" come `bulkHandleTask`: una transazione per cliente, in sequenza, il primo errore ferma il resto** (T6.8a). L'operatore di destinazione si controlla una volta prima del ciclo, così un operatore sbagliato non lascia clienti a metà. Diversamente dal passaggio di consegne singolo (D13), un cliente già allineato non è un errore ma un no-op, perché una selezione di molti clienti ne contiene spesso. Il nucleo che sposta cliente e contatto è lo stesso di `handover`; cambiano il rifiuto di "stesso operatore" e la sorgente del log (`bulk`). Un id che non esiste dà `CUSTOMER_NOT_FOUND` e ferma il resto: oggi veniva ignorato, ma il gestionale non cancella clienti. Non restituisce più le righe aggiornate: la sola chiamante le ignora | Piano, 2026-10-20 |
 
 ## 5. Assunzioni e vincoli
 
 - **A1 (domanda 3), confermata da Omar il 2026-10-15:** un contatto non assegnato è in sola lettura per l'operatore, salvo che il cliente sia suo (D2). Il motivo è visibile: "Non assegnato". Se il cliente non è assegnato, il messaggio indica "Assegna a te" nella scheda cliente come via d'uscita. Nessun "prendi in carico".
-- **A2 (domanda 5):** nessun tracciamento dell'adozione nel codice (il progetto non ha analytics). Il via a PR6 è un **gate manuale**: un admin compila una checklist scritta (G5).
+- ~~**A2 (domanda 5):** nessun tracciamento dell'adozione nel codice (il progetto non ha analytics). Il via a PR6 è un **gate manuale**: un admin compila una checklist scritta (G5).~~ **Chiusa il 2026-10-20 (D25):** PR5 e PR6 escono insieme, quindi non si misura l'adozione prima di PR6. G5 è il gate del rilascio unico.
 - **A3 (domanda 7):** la prima pagina di Contatti (filtri di default) e di Clienti deve stare sotto i **500 ms** di execution time in `EXPLAIN ANALYZE`, su dati di volume reale. La misura la esegue una persona, mai un agente.
 - **A4:** "oggi" e i confini di giornata (AC7, AC11, data minima del richiamo) si calcolano in `Europe/Rome` con un helper puro basato su `Intl`, senza dipendenze nuove, testato sui cambi d'ora del 29/03 e del 25/10/2026.
 - **A5:** oggi il cron alert elabora anche gli alert aperti su task non attive. Tra PR1 e PR2 il nuovo helper disattiva l'eventuale contatto attivo del cliente prima di creare il followup. Il contatto visibile nell'interfaccia resta quello di oggi (il più recente), ma senza duplicato. Dopo PR2 il caso non esiste più (AC70).
@@ -144,14 +150,17 @@ Serve una sezione **Contatti** (lista e dettaglio) sulle `task`. Le regole di mo
   - non tocca `task.alert_id`;
   - non scrive in `task_event_log` (AC70);
   - ignora le task con `customer_id` NULL.
-- **A7:** `bulkHandleTask` e `bulkUpdateCustomers` ("Assegna Clienti") mantengono la logica e i risultati di oggi (non-goal). Cambia solo chi può chiamarle: gli admin, come già nell'interfaccia (P7). Unica eccezione, in PR1 dopo la review: `bulkUpdateCustomers` non aggiorna più tutte le task della tabella quando nessun cliente scelto ha in cima una task `chiamare` (update con `WHERE` indefinito). **Rivista il 2026-10-15 (D14):** in PR6 `bulkUpdateCustomers` sposta anche il contatto attivo in ogni stato (T6.8, AC75); `bulkHandleTask` resta com'è.
+- **A7:** `bulkHandleTask` e `bulkUpdateCustomers` ("Assegna Clienti") mantengono la logica e i risultati di oggi (non-goal). Cambia solo chi può chiamarle: gli admin, come già nell'interfaccia (P7). Unica eccezione, in PR1 dopo la review: `bulkUpdateCustomers` non aggiorna più tutte le task della tabella quando nessun cliente scelto ha in cima una task `chiamare` (update con `WHERE` indefinito). **Rivista il 2026-10-15 (D14):** in PR6 `bulkUpdateCustomers` sposta anche il contatto attivo in ogni stato (T6.8a, AC75); `bulkHandleTask` resta com'è.
 - **A8:** ~~la mutation `deleteTasks` è fuori perimetro e va segnalata nei rischi.~~ **Rivista il 2026-10-15** dopo la verifica di PR3: `deleteTasks` è un'`operatorProcedure` senza chiamanti che cancella tutte le task di qualunque cliente, quindi aggira AC27 e AC49 sul server. Si rimuove in T3.13, come `customer.updateCustomer` (P7).
 - **A9 (FLOW senza AC):** la FLOW chiede, dopo un cambio di stato nella riga, "una conferma breve con il nome del cliente" e, dopo una riapertura, il pulsante [Apri]. Nessun AC li copre: in PR3 la riga Clienti non mostra conferme nuove (oggi non ne ha), e il nuovo valore salvato fa da conferma. **Confermata da Omar il 2026-10-17 per Contatti:** la riga mostra un toast "<Cliente>: <stato>" e, dopo una riapertura, [Apri] sul contatto nuovo (T5.9).
 - **A10 (FLOW, "Imposta richiamo" con data passata):** la data passata non si seleziona nel date picker, come oggi; il server la rifiuta comunque (AC44, T3.6).
-- **A11 (scrittori fuori dalla regola dei lock):** `bulkUpdateCustomers` ("Assegna Clienti"), il cron `priority` (`refreshPriorities`) e la pulizia di `task_event_log` scrivono senza bloccare il cliente. Restano così in PR3 (A7, P8); T3.15 li elenca e il tech-debt li registra (T3.14).
+- **A11 (scrittori fuori dalla regola dei lock):** `bulkUpdateCustomers` ("Assegna Clienti"), il cron `priority` (`refreshPriorities`) e la pulizia di `task_event_log` scrivono senza bloccare il cliente. Restano così in PR3 (A7, P8); T3.15 li elenca e il tech-debt li registra (T3.14). **Dal 2026-10-20 `bulkUpdateCustomers` esce dall'elenco con T6.8a**; restano il cron `priority` e la pulizia del log.
 - **A12 (FLOW senza AC, confermata da Omar il 2026-10-17):** dopo una riapertura dal dettaglio compare l'avviso "Contatto riaperto. Il precedente resta tra i contatti precedenti" (AC35 copre solo l'URL). T5.7a.
 - **A13 (FLOW senza AC, confermata il 2026-10-17):** una lista vuota con il solo "Solo i miei" attivo dice "Non hai contatti assegnati" (AC20 copre l'elenco dei filtri e [Azzera filtri]). T5.4b.
 - **A14 (confermata il 2026-10-17; scostamento da AC8):** il menu azioni della riga ha come prima voce "Apri contatto". La riga si apre solo col clic su `<tr>` (finding 33) e AC24 non dà un'altra via da tastiera; AC8 elenca due voci. T5.4a.
+- **A15 (assunzione del piano, non ancora confermata da Omar):** `sql.raw` e il parsing dei filtri di Clienti restano fuori da PR6 (non-goal). La fuga è già un debito di sicurezza aperto ([[tech-debt/crm/search-by-explicit-map]]): il fix tocca anche Pratiche e vuole una review di sicurezza dedicata. PR6 non la peggiora, e restringe il nome della colonna: T6.2 tiene solo le voci di `filter` il cui nome di colonna è in `CUSTOMER_FILTER_QUERY_MAP` (senza `state` e `closed_at`), una lista bianca locale a Clienti; `createSQLQuery`, condivisa con Pratiche, non cambia. I **valori** dei filtri restano non escapati: è il debito noto.
+- **A16 (da confermare con Omar):** "Assegna a te" assegna all'operatore anche il contatto attivo **senza operatore** (T6.8b). Oggi cambia solo il cliente (T3.8b) e con un contatto senza operatore li separa; D26 non lo ammette. Costo: le chiamate già registrate su quel contatto passano all'operatore nell'export, come nel passaggio di consegne, e se il contatto non aveva un operatore **entrano** nell'export, che oggi le esclude (`closedCalls` fa `innerJoin` con `operators`): la spec chiede che nessuna modifica cambi quali righe conta. Lo stesso passaggio "contatto senza operatore → operatore" lo fanno già il passaggio di consegne (D13) e la riassegnazione dell'admin (T3.7), e lo fanno T6.8a ("Assegna Clienti" su un cliente senza operatore con il contatto senza operatore, l'uso tipico) e T6.9 (a2). T2.5 lo aveva già accettato, e il caso è raro: lo script lo misura in (c). Rifiutare "Assegna a te" in quel caso, l'alternativa di T6.8b, toglierebbe all'operatore la via d'uscita di AC51 e non eviterebbe l'effetto, che resta in T6.8a e T6.9. **Omar conferma prima che parta T6.8b.**
+- **A17:** se in prod `BACKEND_URL` è attiva al momento del rilascio, il frontend (Vercel) si rilascia prima del backend (Cloud Run). La query nuova di Clienti toglie `tasks`, `closedAt` e `priority`, che un frontend vecchio legge (P18, finding 41). La scheda cliente nuova chiama anche `task.getContactById`, che un backend vecchio potrebbe non avere: in quel caso frontend e backend si rilasciano insieme e si prova la scheda dopo il deploy. Oggi in prod c'è solo Vercel e l'assunzione non si applica.
 - **Vincoli dalla spec:**
   - migrazioni solo additive, generate con `pnpm db:generate`;
   - nessun `sql.raw` nei filtri Contatti;
@@ -206,6 +215,12 @@ Serve una sezione **Contatti** (lista e dettaglio) sulle `task`. Le regole di mo
 35. **Le colonne nascoste si leggono dal server.** `CustomerTableSection` legge `getUserPreference` nel Server Component. Lo store `userPreference-storage` (localStorage) darebbe il valore sbagliato su un altro dispositivo, perché `merge` preferisce il persistito. T5.4a fa come Clienti (AC5).
 36. **Una priorità NULL è "bassa" nel badge e fuori da ogni fascia nel SQL.** `PriorityBadge` usa `bandOf(0)` e `priority <= 20` esclude i NULL. Il filtro usa `COALESCE(priority, 0)` (T5.1) e la riga mostra `priority ?? 0` (T5.4a), come chiede AC12.
 37. **Il richiamo di oggi arriva al cron e si perde.** Il server accetta oggi, il cron chiude senza followup i richiami del giorno prima (tech-debt). Da qui D22 e T5.15.
+38. **Cliente e contatto attivo si separano oggi in due punti soltanto** (verificato il 2026-10-20 su tutti gli scrittori di `customers.operator_id` e `task.operator_id`). (1) `bulkUpdateCustomers` sposta il contatto solo se la task più recente è in `chiamare`. (2) `assignToYourself`, con un contatto attivo senza operatore: `canSelfAssign` lo ammette, il servizio cambia solo il cliente, e il test di `customerOperator.db.test.ts` afferma proprio `operatorId: null` sul contatto. Gli altri scrivono tutti e due: `handover`, `task.reassign`, `bulkHandleTask`, `createContact`, la riapertura (AC34) e il followup del cron. L'import crea i clienti con operatore nullo e scarta l'operatore negli aggiornamenti. Il form non cambia più l'operatore (D13). Il caso con il cliente senza operatore e il contatto con un operatore non lo produce nessuno degli scrittori verificati, ma può esistere nei dati (T2.5 lo lasciava com'era). Da qui D26, T6.8a, T6.8b e T6.9.
+39. **Contatti non importa niente da Clienti, tranne `BlackListBadge`.** Lo `StateSelector` di `CustomerColumns.tsx` è solo nominato nei commenti di `ContactRowState.tsx` e `ContactStateControl.tsx`, che hanno il loro selettore. T6.2 e T6.5 lo tolgono senza toccare Contatti, salvo i due commenti.
+40. **`getAllCustomers.db.test.ts` oggi prova solo la ricerca.** La paginazione e il totale (AC61) non hanno test. Dopo PR2 l'indice unico impedisce i duplicati che producevano il sintomo, quindi AC61 si prova con più pratiche per cliente e con `updatedAt` uguali. L'ordinamento di default per `updatedAt` non ha pareggio: senza `customers.id` come chiave finale `LIMIT/OFFSET` può ripetere o saltare righe tra le pagine, e un'assegnazione massiva scrive molti `updatedAt` insieme.
+41. **Frontend e backend si rilasciano separati con `BACKEND_URL` attiva** (piano GCP). La query nuova di Clienti non restituisce più `tasks`: un frontend vecchio che la legge si rompe, mentre un frontend nuovo con la query vecchia funziona, perché Zod scarta l'input che non conosce. Da qui A17.
+42. **`bulkUpdateCustomers` ha sette chiamate nei test, in cinque file.** Tre in `bulkUpdateCustomers.db.test.ts` (due test suoi più il rifiuto di `OPERATORE`), una nell'eccezione di `lockRule.db.test.ts` e una ciascuno in `changeState`, `bulkHandleTask` e `driverError`, usate come passaggio di preparazione o per provare un errore. T6.8a ne cambia due di proposito (il secondo test di `bulkUpdateCustomers.db.test.ts`, il cui titolo "se è da chiamare" va riscritto, e l'eccezione del `lockRule`) e lascia gli altri verdi (intestazione di PR6).
+43. **Il merge `dev` → `main` porta più di Contatti.** A 2026-10-20 `main` è 48 commit indietro: oltre a PR5a e PR5b ci sono il lavoro su GCP (backend su Cloud Run dormiente, cron spostati nei servizi) e l'aggiornamento di Drizzle alla 0.45 (W1). Con il rilascio unico (D25) escono insieme, salvo un merge limitato (T6.7, §13).
 
 ## 7. Ricerca esterna
 
@@ -260,16 +275,21 @@ PR5a server:   T5.1 ─┬─ T5.2    (T5.2 dopo T5.1: stesso file di router; T5
       senza altre dipendenze:  T5.14, T5.15 (T5.15 ← T3.1c, T3.6)
       chiusura: T5.2, T5.3, T5.14, T5.15, T5.16 ─ T5.17   [G4a]
 
-PR5b (da dev con PR5a dentro)
+PR5b (da dev con PR5a dentro; fatte)
       lista:      T5.4a ─ T5.4b ─ T5.5a ─ T5.5b            (T5.4a ← T5.1, T5.3, T5.14 · T5.5a ← T5.3)
       dettaglio:  T5.4b ─ T5.6 ─ T5.6b ─ T5.7a ─ T5.7b ─ T5.7c ─ T5.8   (T5.6 ← T5.2, T5.3 · T5.7b ← T5.15 · T5.8 ← T4.1, T4.3, T4.4)
       riga:       T5.4a, T5.7a ─ T5.9
       ingresso:   T5.3, T5.5b, T5.9, T5.14 ─ T5.10
       chiusura:   T5.7c, T5.9 ─ T5.11 · T5.8, T5.9, T5.10 ─ T5.12 · T5.11, T5.12 ─ T5.13   [G4b]
 
-PR6  T6.1 ─ T6.2 ─┐                                      (T6.1 ← T1.4)
-     T6.3 ────────┼─ T6.5 ─ T6.6 ─ T6.7                  [G5]
-     T6.4 ────────┘
+PR6  Clienti:    T6.2 ─┬─ T6.1                      (T6.1 dopo T6.2: la tabella smette di leggere `tasks` prima che la query li tolga, P18)
+                       └─ T6.5 (← T6.4)
+     scheda:     T6.4 ─── T6.5
+     server:     T6.8a ─┬─ T6.8b ─ T6.10        (T6.10 ← T6.8a, T6.8b · T6.8b ← conferma di Omar su A16)
+                        └─ T6.3                 (T6.3 ← T6.8a: il testo dice quello che il server fa)
+     dati:       T6.9                           (senza dipendenze)
+     chiusura:   T6.2, T6.3, T6.4, T6.8a ─ T6.6
+                 T6.1, T6.3, T6.5, T6.6, T6.8b, T6.9, T6.10 ─ T6.7   [G5, rilascio unico con PR5]
 
 PR7  T7.1 ─┬─ T7.2 ──────────┬─ T7.3          (dopo il merge di PR3; bassa priorità)
           └─ T7.1b ─ T7.1c ─┘                 (T7.1b e T7.1c non aspettano T7.2)
@@ -2120,7 +2140,7 @@ Valgono le regole di PR3 su come si chiamano le mutation: `useMutation` dal clie
 | Edge: "Contatti chiusi" (prima "Includi contatti precedenti"), sotto-righe | AC3 | T5.1, T5.4a, T5.5b |
 | Edge: vecchio link a un contatto superato | AC27 | T5.2, T5.6b |
 | Edge: contatto di un collega o non assegnato | AC51, A1 | T5.2, T5.4a, T5.6b, T5.9 |
-| Edge: dopo "Assegna Clienti" | AC75, D8 | PR6 (T6.8); fino ad allora D8 ("Solo i miei" include i clienti miei): T5.1 |
+| Edge: dopo "Assegna Clienti" | AC75, D8 | PR6 (T6.8a); fino ad allora D8 ("Solo i miei" include i clienti miei): T5.1 |
 | Edge: priorità "Automatica" | AC43 | T5.7c |
 | Edge: telefono mancante | AC8 | T5.4a |
 | Edge: coesistenza con Clienti, "Vedi contatti" | AC62, AC73 | AC73 fatto in PR3; AC62 in T5.10 |
@@ -2427,7 +2447,7 @@ Ordine interno: T5.1 → T5.2 (stesso file di router) → T5.16 (misura) → T5.
   - **Prima del merge di PR5a in `dev`:** la riconferma di Omar sulla rimozione di `task_priority_active_idx` è arrivata il 2026-10-18 (T5.16, passo 0), quindi il merge non aspetta altro. Resta vero che chi lancia `pnpm db:migrate` sul DB di sviluppo condiviso applica la migrazione, e Drizzle non la rilegge: va detto nella descrizione della PR, insieme al rollback in testa al file.
   - **G4a:** misura di A3 registrata; se c'è una migrazione, applicata da Omar e verificata prima del deploy.
 - **validation**: gate verdi; `REPORT.md` della review SHIP; la riconferma di Omar sull'indice della priorità registrata (T5.16, passo 0: fatta il 2026-10-18); G4a chiuso.
-- **status**: In corso — in attesa di Omar (commit e PR; G4a dopo il merge). Riconferma sull'indice della priorità: fatta il 2026-10-18
+- **status**: Done su `dev` (PR #26, 2026-10-20). Il gate G4a (applicare la migrazione degli indici in prod e ricontrollarla) confluisce nel rilascio unico G5 (T6.7). Riconferma sull'indice della priorità: fatta il 2026-10-18
 - **log**:
   - 2026-10-17 — **Gate CI** in una copia pulita fuori da `.claude/worktrees/` (senza `.env*`, variabili segnaposto): `next lint` "No ESLint warnings or errors", `tsc --noEmit`, `pnpm run test --run` 79 file e 1364 test, `pnpm build`: tutti exit 0. Rilanciati dopo l'ultima correzione.
   - **`adversarial-review`** (caso B, `review.mode: total`): `RUBRIC.md` e `REPORT.md` (round PR5a). Prima verifica 8 SHIP e 2 DO NOT SHIP (BLOCKER di v10 su `getCustomerAlerts`, MAJOR di v8 sui test del richiamo e su AC44, MAJOR di v1 sul `lock_timeout`, MAJOR di v4 su AC23). Corretti; seconda verifica: v1, v8 (dopo un secondo MAJOR sul giorno di Roma alle 00:30, chiuso con test dell'orchestratore), v10 e il passaggio di regressione v11 sono SHIP. **La riconferma di Omar su `task_priority_active_idx` è arrivata il 2026-10-18** (REPORT, checklist 1): la condizione del merge in `dev` è chiusa.
@@ -2922,7 +2942,7 @@ Parte da `dev` con PR5a già dentro. Le procedure e i moduli di PR5a si usano co
     - l'admin riassegna un singolo contatto dal dettaglio.
   - Verificare che G4a sia chiuso e G2 fatto prima del deploy (AC69).
 - **validation**: gate verdi; `REPORT.md` della review SHIP; checklist della FLOW spuntata; G4b chiuso.
-- **status**: In corso. Gate CI e review fatti il 2026-10-18; la review è **DO NOT SHIP** (3 BLOCKER e 11 MAJOR aperti): da correggere e rilanciare prima della PR. Restano G4b e le prove di una persona
+- **status**: Done su `dev` (PR #25, 2026-10-20). La review del 2026-10-18 era DO NOT SHIP (3 BLOCKER e 11 MAJOR); Omar riferisce il 2026-10-20 che è risolta e verificata (il dettaglio delle correzioni è nel log qui sotto e in `REPORT.md`; il piano non registra il nuovo esito della review). Il gate G4b confluisce nel rilascio unico G5 (T6.7)
 - **log**:
   - 2026-10-18, orchestratore. **Gate CI** su una copia pulita, nell'ordine della CI: `next lint` ("No ESLint warnings or errors"), `tsc --noEmit`, `pnpm run test --run` (105 file, 1631 test), `pnpm build`: tutti exit 0. Percorsi A, B e C della FLOW, error paths ed edge cases provati sul DB di sviluppo (Federica Lupo e Admin), come nei log di T5.4a–T5.12.
   - 2026-10-18, **`adversarial-review`** (`review.mode: total`, 13 verificatori indipendenti, v12 UI e v13 movimento inclusi; round "PR5b — Interfaccia" in [[specs/crm/sezione-contatti/RUBRIC]] e [[specs/crm/sezione-contatti/REPORT]]): **DO NOT SHIP**, 4 passaggi SHIP (v1, v2, v5, v11) e 9 DO NOT SHIP. **Tre BLOCKER:** (1) le date del dettaglio escono nel fuso del server (UTC su Vercel), un giorno prima per i richiami del selettore (v10); (2) dopo una riapertura, Indietro e Esc/X entro 30 s mostrano la lista in cache, con il contatto sostituito come riga attiva (v8, AC35); (3) il focus finisce su `body` da tastiera su cinque controlli della lista che si tolgono da soli (v9). **Undici MAJOR:** errore di idratazione della data in lista (v10); AC52 senza link al contatto attivo in priorità, "X" e operatore (v4); riapertura finita dopo la chiusura che riporta dentro il dettaglio (v4); nomi dei clienti in `aria-label`/`altText` non mascherati dal Replay di Sentry (v3); ricerca in sospeso persa con un altro controllo (v7); un anno a due cifre che blocca la barra (v7); colonna nascosta che ricompare per la cache del router (v6); "Riprova" di `error.tsx` che non riprova (v8); focus su `body` con Indietro e "Torna a Contatti" (v9); barra della paginazione che copre il focus (v12, 2.4.11); scheletro `animate-pulse` nella chat sotto il dettaglio (v13, riprodotto). **Claims del mio log di T5.12 smentite:** il controllo 7 ("mai su `body`") e il controllo 3 ("zero `.animate-pulse`", a cache calda) erano troppo larghi; la sonda dei toast nella Sheet (controllo 9) non vedeva l'annuncio proprio di Radix. Dettagli, severità e correzioni richieste nel REPORT.
@@ -2954,90 +2974,219 @@ Parte da `dev` con PR5a già dentro. Le procedure e i moduli di PR5a si usano co
 
 ### PR6 — Clienti semplificata
 
-Branch suggerito: `contatti/pr6-clienti`. Il merge si fa solo dopo G5.
+**Riscritta il 2026-10-20 con `create-plan` 0.8.0**, con PR5a e PR5b già su `dev` (PR #26 e #25) e con il rilascio unico di PR5 e PR6 (D25).
 
-#### T6.1: `getAllCustomers` senza join con `task`
-- **depends_on**: [T1.1, T1.4]
-- **location**: `src/server/api/routers/customer/GET/index.ts`, `src/server/api/routers/customer/_test/getAllCustomers.db.test.ts`
+Branch suggerito: `contatti/pr6-clienti`, da `dev`. La PR va verso `dev`, come le precedenti, e da lì in prod insieme a PR5a e PR5b con il gate G5 (T6.7). Non c'è più l'attesa di "qualche giorno d'uso" (D25).
+
+Regole valide per tutta la PR:
+- **Un task alla volta sugli stessi file.** `customer/PUT/index.ts` e `customer/assignment.ts` (T6.8a → T6.8b), `CustomerBulkDialog.tsx` (T6.3), `[id]/page.tsx` (T6.4 → T6.5), `customer/GET/index.ts` (T6.1).
+- **L'albero resta verde dopo ogni task.** T6.2 (interfaccia) viene prima di T6.1 (server): la tabella smette di leggere `tasks`, `closedAt` e `priority` prima che la query li tolga (P18).
+- **Test che cambiano di proposito**, con il motivo nel log del task che li cambia:
+  - `bulkUpdateCustomers.db.test.ts`, secondo test ("non tocca nessuna task"): ora il contatto segue il cliente (T6.8a);
+  - `lockRule.db.test.ts`, il test "Assegna Clienti … la verifica la rifiuta" (T6.8a);
+  - `customerOperator.db.test.ts`, il test "'Assegna a te' … non tocca il contatto", che con un contatto senza operatore afferma proprio la separazione (T6.8b);
+  - `CustomerColumns.test.tsx` ("Stato Chiamate") e `TableFilterSections.test.tsx` (T6.2);
+  - `CustomerTaskManager.test.tsx` e `CustomerAlertCreator.test.tsx` si eliminano con i loro componenti (T6.5).
+- **Test che devono restare verdi senza modifiche**, perché usano `bulkUpdateCustomers` come passaggio di preparazione o ne provano un errore: `changeState.db.test.ts` ("dopo una riapertura Assegna Clienti riassegna il contatto riaperto"), `bulkHandleTask.db.test.ts` (caso 2, `bulkUpdateCustomers` dopo `bulkHandleTask`) e `driverError.db.test.ts` (errore del driver da `bulkUpdateCustomers`).
+- **Nessun movimento nuovo** (P6): il `design-engineer` non è stato chiamato. La scheda cliente perde controlli, non ne guadagna, e "Gestisci contatto" è un link.
+
+#### T6.2: Clienti — colonne, filtri e ordinamenti tolti
+- **depends_on**: []
+- **location**: `src/app/dashboard/customers/_components/CustomerColumns.tsx` (anche il tipo `CustomerColumnSelectedProps`), `CustomerTableSection.tsx`, `TableFilterSections.tsx`, `CustomersTable.tsx`, `src/components/custom/table/PopoverFilter.tsx` (condiviso con Pratiche) e il suo test, `src/app/dashboard/customers/_constants/index.ts` (la mappa `PRATICA_FILTER_MAP` che usa Pratiche non si tocca), `src/store/userPreferences.ts`, i test accanto (`_test/CustomerColumns.test.tsx`, `_test/TableFilterSections.test.tsx`, `_test/CustomerTableSection.test.ts`, un test di `CustomersTable`)
 - **description**:
-  - Il refactor tocca tutta la query, quindi il resolver diventa un programma Effect con `query` e `runTrpc` (D9). `sql.raw` e il parsing dei filtri restano come sono (non-goal, T6.2).
-  - Si tolgono il join con `task`, il filtro `status`, `sqlTaskFilter`, la seconda query sulle task, `generateUniqueCustomers` e gli ordinamenti `contattato` e `priority`.
-  - Il conteggio delle pratiche diventa una sottoquery scalare.
-  - L'ordinamento di default diventa `updatedAt desc` (AC59); un `orderBy` sconosciuto torna al default (AC60).
-  - `sql.raw` di `sqlFilter` resta (non-goal), ma riceve solo colonne di `customers` (T6.2).
-- **validation**: test DB:
-  - pagine piene tranne l'ultima e totale = numero di clienti filtrati (AC61), anche con dati che prima avevano duplicati;
-  - `orderBy=priority` → ordinamento di default.
+  - Si tolgono le colonne "Stato Chiamate", "Contattato il" e "Priorità" e lo `StateSelector` della riga (AC58). Contatti ha un selettore suo (`ContactRowState`): non importa nulla da qui (finding 39).
+  - Si tolgono "Stato" e "Contattato il" da `CUSTOMER_FILTER_MAP` e il `TaskStatusSelector` dal pannello filtri, insieme agli ordinamenti `contattato` e `priority` (AC59). L'ordinamento di default, quando l'URL non ne ha uno, diventa `updatedAt` decrescente: `CustomersTable` oggi scrive nell'URL, al montaggio, quello di prima.
+  - `CustomerTableSection` non costruisce più `stateSqlQuery` e non manda `status` né `sqlTaskFilter`. Il parsing scarta i parametri rimossi **prima** di costruire `sqlFilter`: un link salvato si apre senza quei filtri e con l'ordinamento di default (AC60, finding 7). I parametri veri sono tre, e il piano del 2026-10-20 li aveva confusi:
+    - `filter_by=%5Bstatus%5D%3Dchiamare` (cioè `[status]=chiamare`, più voci separate da virgola e valori multipli con `-`: `[status]=chiamare-richiamare`): è la forma che scrive `useGetMultipleUrlParamsValues` e che legge `getUrlParmsWithMultipleValue`. Il server non lo legge più. Anche il client lo scarta: `TableFilterSections` non mostra più il chip "chiamare" cancellabile per un filtro che nessuno applica;
+    - `filter=<colonna>:<operatore>:<valore>`, quello del popover dei filtri avanzati (`PopoverFilter.tsx`): la **colonna** è il nome SQL (`state`, `closed_at`), non l'etichetta "Stato" o "Contattato il" della mappa. `createSQLQuery` non scarta i nomi che non conosce: usa la mappa solo per il tipo del dato, e il resto arriva a `sql.raw`. Dopo T6.1 un link con `filter=state:eq:chiamare` darebbe `column "state" does not exist` e la pagina cadrebbe in `global-error`. Il parsing tiene quindi solo le voci di `filter` il cui nome di colonna è una chiave di `CUSTOMER_FILTER_QUERY_MAP` (senza `state` e `closed_at`, una volta tolte le due voci dalla mappa): una lista bianca locale a Clienti, senza toccare `createSQLQuery`, che serve anche Pratiche;
+    - `order_by=contattato` e `order_by=priority`, con il loro `sorted_by`: tornano all'ordinamento di default, `sortedBy` compreso (la direzione apparteneva alla colonna rimossa).
+    - **Il popover dei filtri avanzati (`PopoverFilter.tsx`) legge `filter` da solo, dall'URL del browser, non dal risultato del server.** All'avvio mappa una colonna sconosciuta su `"Nato il"` (`?? "Nato il"`), che non è una chiave della mappa, e `AdvancedFilter` fa `filterMap.get(filtro.name)!.columnType`: con `state` o `closed_at` fuori dalla mappa il popover cade nell'`ErrorBoundary` ("Something went wrong"). Oggi quel link lo apre; la regressione la introduce T6.2 e la chiude T6.2: nell'effetto di avvio si scartano le voci con `createFilterFromString` nullo o con un nome che non è nella `filterMap`, al posto di `?? "Nato il"`. Vale anche per Pratiche (componente condiviso) e per un `filter=` malformato.
+    Il resto di `sql.raw`, e i valori non escapati, restano un debito noto (A15). Il pulsante "Retry" dell'`ErrorBoundary` non fa niente (`onClick={() => this.props.handleError}`, preesistente): fuori perimetro, va nel tech-debt (§15).
+  - Le colonne rimosse ancora presenti nelle preferenze dell'utente (la preferenza lato server letta da `CustomerTableSection` e lo store `src/store/userPreferences.ts`; `useCustomerStore` tiene solo l'opzione dei filtri) vengono ignorate, senza errori e senza lasciare una tabella vuota.
+  - `CustomerColumnSelectedProps` perde `tasks` e `activeTasks`, così T6.1 non rompe `tsc`.
+  - `CustomersTable.tsx` semina l'ordinamento dal `order_by` grezzo e poi lo riscrive nell'URL: un `order_by` che non corrisponde a nessuna colonna (`contattato`, `priority`) conta come assente e dà il default, altrimenti il link salvato conserva parametri che il server scarta e lo stato della tabella nomina una colonna che non c'è.
+  - Il server non cambia in questo task: accetta ancora i parametri vecchi e il suo output ha ancora `tasks`, `closedAt` e `priority`, che la tabella non legge più. T6.1 li toglie.
+- **validation**:
+  - test del parsing, con i **parametri veri** e `api.customer.getAllCustomers` simulata come in `CustomerTableSection.test.ts`: `filter=state:eq:chiamare`, `filter=closed_at:gte:2026-09-01`, `filter_by=%5Bstatus%5D%3Dchiamare`, `order_by=contattato&sorted_by=asc` e `order_by=priority`: l'input passato a `getAllCustomers` non contiene `state` né `closed_at` in `sqlFilter`, né `status` né `sqlTaskFilter`, e l'ordinamento è quello di default (`sortedBy` compreso); un `filter=comune:eq:Roma` accanto resta. **Ogni test deve essere rosso sul codice di oggi** (verificato prima di scrivere il codice: oggi `status` e `sqlFilter` con `state` arrivano alla procedura);
+  - test del popover con il **componente vero** e la mappa ridotta: con `?filter=state:eq:chiamare` o `?filter=closed_at:gte:…` il popover si apre senza errori, senza righe, con "Nessun Filtro attivo"; con `comune:eq:Roma` mostra la riga; lo stesso per la mappa di Pratiche con un nome ignoto;
+  - test di `CustomersTable`: con `order_by=contattato&sorted_by=asc` lo stato di ordinamento è il default e l'URL non riscrive quei parametri;
+  - test delle colonne e del pannello filtri: le tre colonne non ci sono e il menu colonne non le offre; i due filtri non sono fra le chiavi di `CUSTOMER_FILTER_MAP` (asserzione sulla mappa vera, o mock di `PopoverDateFilter` e `TaskStatusSelector` che catturano la prop `filterMap`: i mock di oggi rendono `null` e un test "non ci sono" non sarebbe mai rosso);
+  - browser: un link salvato con quei parametri si apre senza errori, il popover dei filtri avanzati si apre su "Nessun Filtro attivo" e non compare il chip "chiamare"; con una preferenza che nomina una colonna rimossa la tabella si apre lo stesso. **Il controllo vale davvero solo dopo T6.1**, quando il join non c'è più: si ripete in T6.1 e in T6.7.
 - **status**: Planned
 - **log**:
 - **files edited/created**:
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a (D6)
-- **tdd_target**: "con 25 clienti e `perPage=10`, le pagine hanno 10, 10 e 5 righe e il totale è 25".
-- **review_mode**: cli
-
-#### T6.2: Colonne, filtri e ordinamenti di Clienti
-- **depends_on**: [T6.1]
-- **location**: `src/app/dashboard/customers/_components/CustomerColumns.tsx`, `CustomerTableSection.tsx`, `TableFilterSections.tsx`, `src/app/dashboard/customers/_constants/index.ts`, `src/app/dashboard/customers/_components/_test/filterParsing.test.ts`
-- **description**:
-  - Si tolgono le colonne "Stato Chiamate", "Contattato il" e "Priorità", e lo `StateSelector` (AC58).
-  - Si tolgono i filtri "Stato" e "Contattato il" da `CUSTOMER_FILTER_MAP` e `TaskStatusSelector`, insieme agli ordinamenti relativi (AC59).
-  - Il parsing scarta i parametri rimossi prima di costruire `sqlFilter` (finding 7, AC60).
-  - Le colonne rimosse ancora presenti nelle preferenze vengono ignorate.
-- **validation**: test del parsing e browser: un link salvato con `filter_by` "Stato" o con `orderBy=contattato` si apre senza errori e senza quei filtri.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
-- **backlog_item_id**: n/a
-- **backlog_item_url**: n/a
-- **relation_mode**: n/a (D6)
-- **tdd_target**: "un URL di Clienti con il filtro 'Stato' si apre senza errori e ignora quel filtro".
+- **tdd_target**: "un URL di Clienti con `filter=state:eq:chiamare` e `order_by=contattato` produce un `sqlFilter` senza `state` e l'ordinamento per ultima modifica".
 - **review_mode**: mixed
 - **assigned_skills**: agent-browser
+- **complexity**: medium
 
-#### T6.3: Etichette dell'assegnazione massiva
-- **depends_on**: []
-- **location**: `src/app/dashboard/customers/_components/CustomerBulkDialog.tsx`
-- **description**: "Assegna chiamate" diventa "Crea/assegna contatti" nel dialogo, nel pulsante, nei passaggi e nel riepilogo (AC63). La logica non cambia. Il testo della scheda "Assegna Clienti" lo cambia T6.8.
-- **validation**: i test di caratterizzazione di T1.3 restano verdi; browser: le etichette nuove compaiono in entrambe le modalità.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
-- **backlog_item_id**: n/a
-- **backlog_item_url**: n/a
-- **relation_mode**: n/a (D6)
-- **tdd_target**: "il dialogo di assegnazione massiva mostra 'Crea/assegna contatti'".
-- **review_mode**: browser
-- **assigned_skills**: agent-browser
-
-#### T6.4: Scheda cliente con riepilogo del contatto
-- **depends_on**: [T3.12, T5.6]
-- **location**: `src/app/dashboard/customers/[id]/page.tsx`, `_components/CustomerContactSummary.tsx`
+#### T6.1: `getAllCustomers` senza join con `task`
+- **depends_on**: [T6.2]
+- **location**: `src/server/api/routers/customer/GET/index.ts`, `src/server/api/routers/customer/_test/getAllCustomers.db.test.ts`
 - **description**:
-  - Al posto di `CustomerTaskManager` e `CustomerActivities` compare un riepilogo in sola lettura: stato, operatore, priorità, prossimo alert.
-  - Il pulsante "Gestisci contatto" porta a `/dashboard/contatti/[id]` (AC64, AC65).
-  - "Crea contatto" (T3.12) resta per i clienti senza contatto attivo (AC66, AC67); dopo il successo il riepilogo mostra "Gestisci contatto".
-  - Le note restano come sono (AC68).
-- **validation**: browser:
-  - il riepilogo compare;
-  - "Gestisci contatto" apre il dettaglio;
-  - dalla scheda non si possono più cambiare stato, priorità o alert.
+  - Il refactor tocca tutta la query, quindi il resolver diventa un programma Effect con `query` e `runTrpc` (D9). `customerSearchColumns`, `containsPattern` e il resto delle procedure del file (`getCustomerById`, i selettori `getAllAvailable*`, `getAllFileName`, `getCustomerUnderReview`) non si toccano.
+  - Si tolgono: il join con `task`, `filterBy.status` e `sqlTaskFilter` dall'input, la seconda query sulle task, `generateUniqueCustomers`, i campi `tasks`, `activeTasks`, `closedAt`, `priority` e `taskCustomerId` dall'output, e gli ordinamenti `contattato` e `priority`.
+  - Il conteggio delle pratiche (`signedPractices`) diventa una sottoquery scalare, usata anche dall'ordinamento omonimo; spariscono `groupBy` e il join con `customerToPratica`. Il totale conta i clienti filtrati, senza join.
+  - L'ordinamento di default è `updatedAt` decrescente (AC59); un `orderBy` sconosciuto o rimosso torna al default (AC60), **con la direzione del default** anche se arriva un `sortedBy` (apparteneva alla colonna rimossa). **Ogni ordinamento chiude con `customers.id`, nella stessa direzione della chiave principale, come pareggio**: con `updatedAt` uguali (un'assegnazione massiva li scrive tutti insieme) `LIMIT/OFFSET` senza pareggio può ripetere o saltare righe fra le pagine.
+  - `sql.raw` di `sqlFilter` resta (A15), ma da T6.2 riceve solo colonne di `customers`.
+  - Compatibilità: l'input vecchio non rompe nulla (Zod scarta i campi che non conosce); un frontend vecchio che legge `tasks` si rompe, quindi in prod il frontend si rilascia prima del backend (A17, T6.7).
+- **validation**: test DB (`getAllCustomers.db.test.ts` oggi prova solo la ricerca, finding 40):
+  - con 25 clienti e `perPage=10`, le pagine hanno 10, 10 e 5 righe distinte e il totale è 25 (AC61), anche con più pratiche per cliente e con `updatedAt` tutti uguali. I clienti si creano con gli id in ordine **opposto** a quello di inserimento e si asserisce l'ordine esatto di ogni pagina, perché un pareggio mancante non cade in PGlite se gli id sono già in ordine di inserimento; in più si asserisce sul `toSQL()` che l'ultima chiave dell'`ORDER BY` è `customers.id`;
+  - `order_by=priority&sorted_by=asc` dà l'ordine di default (più recente prima), non l'inverso;
+  - `status` e `sqlTaskFilter` nell'input non hanno più effetto, e un `sqlFilter` su una colonna di `customers` (per esempio `comune ilike '%Roma%'`) funziona come prima. La lista bianca dei nomi di colonna sta nella pagina (T6.2): la procedura accetta ancora un `sqlFilter` libero (A15). Che un link salvato con `filter=state:…` si apra dopo T6.1 lo prova il browser in T6.7;
+  - `orderBy=priority`, `orderBy=contattato` e un `orderBy` sconosciuto → ordinamento di default;
+  - `orderBy=signedPractices` ordina per numero di pratiche; "Solo i miei", operatore, sede, ambito, occupazione e file danno gli stessi clienti di prima;
+  - i test di ricerca esistenti restano verdi senza modifiche.
 - **status**: Planned
 - **log**:
 - **files edited/created**:
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a (D6)
-- **tdd_target**: "la scheda di un cliente con contatto attivo mostra il riepilogo in sola lettura e 'Gestisci contatto' apre il dettaglio del contatto".
-- **review_mode**: browser
+- **tdd_target**: "con 25 clienti, `updatedAt` tutti uguali e id in ordine opposto all'inserimento, le tre pagine hanno 10, 10 e 5 righe distinte nell'ordine esatto di `customers.id` decrescente".
+- **review_mode**: cli
+- **complexity**: high
+
+#### T6.8a: "Assegna Clienti" sposta cliente e contatto insieme (D14, D26, AC75)
+- **depends_on**: []
+- **location**: `src/server/services/customer/assignment.ts` (anche il servizio nuovo per la massiva, nello stesso file), `src/server/api/routers/customer/PUT/index.ts` (`bulkUpdateCustomers`), `src/server/api/routers/customer/_test/bulkUpdateCustomers.db.test.ts`, `src/server/services/contact/_test/lockRule.db.test.ts`, i commenti di `src/server/effect/db.ts` (`lockCustomer`), `src/server/services/contact/activeContact.ts`, `createContact.ts:79` e `changeState.ts:105` che nominano "Assegna Clienti" come chi sceglie la task più recente
+- **description**:
+  - **Servizio.** In `assignment.ts` il nucleo di `handover` (cliente e contatto attivo al nuovo operatore, righe `operator_reassign`) diventa una funzione condivisa; `handover` la usa con il rifiuto di "stesso operatore" (D13) e la sorgente `detail`. Un servizio nuovo per la massiva la usa con la sorgente `bulk` e senza rifiuto:
+    1. controlla **una volta** l'operatore di destinazione (`findWorkingOperator`, `OperatorNotFound`), prima di toccare un cliente;
+    2. per ogni cliente, nell'ordine dato, una transazione (come `bulkHandleTask`: `concurrency: 1`, il primo errore ferma il resto, i clienti già fatti restano assegnati): blocca il cliente (`lockCustomerOrNotFound`), controlla che l'attore sia admin (`canReassign`, non `canHandover`: quest'ultimo ammette anche l'operatore del cliente, e la massiva è solo admin, P7), blocca il contatto attivo `FOR UPDATE`;
+    3. cliente già del nuovo operatore e contatto già suo, o assente: **non scrive niente e non è un errore**; cliente già suo con il contatto di un altro operatore: allinea solo il contatto; altrimenti sposta il cliente e il contatto attivo, **in qualunque stato** (AC75), senza toccare stato, priorità né alert;
+    4. una riga `operator_reassign` con sorgente `bulk` per il cliente che cambia e una per il contatto che cambia (con `task_id`), `actor` = l'admin;
+    5. non crea contatti, non tocca i contatti non attivi.
+  - **Procedura.** `bulkUpdateCustomers` resta `adminProcedure` con lo stesso input; diventa `runTrpc(program, customerErrorToTrpc)` (D9). Non restituisce più le righe del cliente (la sola chiamante, `customerBulkUpdate.ts`, le ignora). Un `customerId` che non esiste dà `CUSTOMER_NOT_FOUND` e ferma il resto, come in `bulkHandleTask`: oggi veniva ignorato in silenzio, ma il gestionale non cancella clienti (P19).
+  - **Regola dei lock (A11).** "Assegna Clienti" esce dalle eccezioni: il test "la verifica la rifiuta" di `lockRule.db.test.ts` diventa una chiamata riuscita per ogni variante (cliente senza contatto, con contatto in `chiamare`, in `richiamare` con alert aperto, già allineato), e il commento di `lockCustomer`, quello di `activeContact.ts` e l'elenco delle eccezioni del test si aggiornano. Il tech-debt "Scrittori fuori dalla regola dei lock" perde `bulkUpdateCustomers`.
+  - L'annuncio (T6.7) e il testo del dialogo (T6.3) dicono che le chiamate già registrate sul contatto passano al nuovo operatore nell'export.
+- **validation**: test DB, via `createCaller`:
+  - cliente con contatto in `richiamare` e alert aperto, passato a un altro operatore: cliente e contatto al nuovo operatore, alert e stato invariati, due righe `operator_reassign` con sorgente `bulk`;
+  - cliente con contatto in `chiamare`: come oggi (cliente e contatto spostati);
+  - cliente senza contatto: si sposta solo il cliente, una riga di log, nessun contatto nuovo;
+  - cliente già del nuovo operatore con il contatto di un altro: cambia solo il contatto, una riga di log; cliente e contatto già allineati: nessuna scrittura, nessuna riga di log, nessun errore;
+  - un contatto non attivo non cambia;
+  - un `OPERATORE` che la chiama riceve `FORBIDDEN` e nulla cambia; il servizio chiamato direttamente da un attore `OPERATORE` (anche per un suo cliente) dà `CustomerAssignmentForbidden`, perché il test via procedura passa dal middleware e non lo prova; un operatore di destinazione inesistente, o l'operatore di sistema, dà errore **prima** che qualunque cliente cambi;
+  - un guasto al secondo cliente (failpoint) lascia il primo spostato e il resto no, con `INTERNAL_SERVER_ERROR` e il messaggio del driver (`driverError.db.test.ts` resta verde com'è);
+  - il test della regola dei lock copre tutte le varianti; verifica per mutazione scritta nel log: senza il `lockCustomer` del servizio, o senza l'aggiornamento del contatto, almeno un test diventa rosso;
+  - `changeState.db.test.ts` e `bulkHandleTask.db.test.ts` restano verdi senza modifiche.
+- **status**: Planned
+- **log**:
+- **files edited/created**:
+- **backlog_item_id**: n/a
+- **backlog_item_url**: n/a
+- **relation_mode**: n/a (D6)
+- **tdd_target**: "con 'Assegna Clienti' un cliente il cui contatto è in `richiamare` passa al nuovo operatore insieme al contatto, con le due righe di log".
+- **review_mode**: cli
+- **complexity**: high
+
+#### T6.8b: "Assegna a te" allinea anche il contatto senza operatore (D26)
+- **depends_on**: [T6.8a, conferma di Omar su A16]
+- **location**: `src/server/services/customer/assignment.ts` (`assignToYourself`), `src/server/api/routers/customer/_test/customerOperator.db.test.ts` (i test di `assignToYourself`), `src/server/services/contact/_test/lockRule.db.test.ts`
+- **description**:
+  - Oggi `assignToYourself` cambia **solo** il cliente. Con un contatto attivo **senza operatore** (che `canSelfAssign` ammette) il cliente passa all'operatore e il contatto resta senza: è il secondo punto che separa cliente e contatto (finding 38). Il servizio, già con il contatto bloccato `FOR UPDATE`, imposta anche l'operatore del contatto quando è nullo, e scrive una seconda riga `operator_reassign` con sorgente `self_assign` e `task_id`. Un contatto già dell'operatore non cambia; quello di un collega resta rifiutato, come oggi (P4).
+  - È uno scostamento da T3.8b ("cambia solo il cliente"; il test di `customerOperator.db.test.ts` lo afferma con un contatto senza operatore), voluto da D26 e **da confermare con Omar prima di partire** (A16). Conseguenza per l'export: `closedCalls` fa un `innerJoin` con `operators`, quindi oggi le chiamate chiuse su un contatto senza operatore **non** compaiono; dopo il task sì, perché il contatto ha un operatore. La spec chiede che nessuna modifica cambi quali righe conta l'export (Constraints). Il caso è raro (T2.5 diede un operatore a tutte le task di clienti che l'avevano, e da allora i percorsi del codice assegnano sempre l'operatore del cliente), e T2.5 lo aveva già accettato; ma è una scelta di Omar, con l'alternativa di rifiutare "Assegna a te" in quel caso.
+- **validation**: test DB:
+  - cliente senza operatore con un contatto attivo senza operatore → dopo "Assegna a te" cliente e contatto sono dell'operatore, due righe di log `self_assign` (il test esistente cambia di proposito: oggi afferma `operatorId: null` sul contatto);
+  - cliente senza operatore e senza contatto → solo il cliente, una riga; contatto già dell'operatore → una riga, il contatto non cambia;
+  - contatto di un collega → `FORBIDDEN`, nulla cambia;
+  - il test della regola dei lock copre la variante con il contatto.
+- **status**: Planned
+- **log**:
+- **files edited/created**:
+- **backlog_item_id**: n/a
+- **backlog_item_url**: n/a
+- **relation_mode**: n/a (D6)
+- **tdd_target**: "un cliente senza operatore con un contatto attivo senza operatore, dopo 'Assegna a te', ha cliente e contatto dello stesso operatore".
+- **review_mode**: cli
+- **complexity**: medium
+
+#### T6.9: Riallineamento dei contatti attivi (D26)
+- **depends_on**: []
+- **location**: `src/server/db/migrations/<timestamp>_contatti_contact_realign.sql` (via `pnpm drizzle-kit generate --custom --name=contatti_contact_realign`), `src/server/db/scripts/contatti-operator-mismatch.sql`, `src/server/db/scripts/_test/operatorMismatch.db.test.ts` (con un helper nuovo di sola lettura, o `queryReadOnly` direttamente: `runCleanupPreview.ts` ha il file e le tre liste scritti dentro), `src/server/db/migrations/_test/contattiRealign.db.test.ts`, `src/test/db.ts` (la costante col tag della migrazione di T6.9, come `CONTATTI_SCHEMA_TAG`, perché `migrateUpTo` non cambi le righe confrontate quando ne arrivano altre)
+- **description**: dopo T6.8a e T6.8b nessun percorso del codice separa più cliente e contatto attivo; resta da riallineare quello che si è separato prima. Come T2.5, ma solo per i contatti attivi e con la traccia nel log. L'SQL:
+  - per ogni `task` con `is_active` e un cliente che ha un operatore, `task.operator_id = customers.operator_id` dove è diverso (anche se il contatto non ha operatore). Vince il cliente, come in D14 e in T2.5. L'SQL è **uno statement solo**: una CTE legge i valori vecchi (`UPDATE … RETURNING` darebbe solo il nuovo `operator_id`, e il log vuole anche `from_operator_id`), l'`UPDATE` e l'`INSERT … SELECT` nel log ne partono, così il log e l'`UPDATE` vedono lo stesso snapshot in `READ COMMITTED`;
+  - una riga `task_event_log` per ogni contatto spostato: `operator_reassign`, sorgente `bulk`, `task_id` e `customer_id`, `from_operator_id` e `to_operator_id`, attore = l'operatore di sistema (`user_id = 'system'`). Come in T2.2: se ci sono righe da spostare e l'operatore di sistema non esiste, la migrazione si ferma con un errore chiaro;
+  - `task.updated_at` invariato (A6, è SQL diretto): l'ordinamento "Aggiornato" non cambia;
+  - **non tocca** le task non attive (storico, D14: 3 su 13.397 il 2026-10-15), né i contatti attivi **senza operatore del cliente** ma con un operatore proprio: sono il caso opposto, che l'SQL non può decidere (finding 38). Su prod il 28/09 non ce n'erano. **Regola di default:** il contatto resta com'è, il cliente non si tocca, il caso va nell'elenco; il rilascio non prosegue finché Omar non ha deciso per iscritto, nel log di T6.7 (data, numeri, esito). Gli esiti possibili sono due. Per **(b)**: eseguire prima il "Passaggio di consegne" del cliente verso l'operatore del contatto (azione già in prod con PR3: sposta il cliente e, perché il contatto è già suo, non lo muove), oppure accettare il caso come eccezione nota, che il passo 4 di T6.7 elenca invece di contare come 0. Per **(a2) esportabili**: accettare (la migrazione prosegue, le chiamate entrano nell'export, l'annuncio lo dice) oppure non rilasciare: l'SQL non esclude righe;
+  - è idempotente: rilanciata non cambia niente;
+  - `contatti-operator-mismatch.sql` è la sola estrazione, in sola lettura (`READ ONLY`, come `contatti-cleanup-preview.sql`): (a) i contatti attivi con un operatore diverso da quello del cliente (che ha un operatore), per coppia di operatori e per stato, con l'elenco; (a2) fra questi, quelli con il contatto **senza** operatore e, di questi, gli **esportabili** (`closed_at` valorizzato e stato diverso da `nessuno`: oggi fuori dall'export, perché `closedCalls` fa `innerJoin` con `operators`, e dopo dentro); (b) i contatti con il cliente senza operatore e il contatto con un operatore; (c) a titolo informativo, i contatti attivi senza operatore il cui cliente è senza operatore e con chiamate esportabili: la migrazione non li tocca, ma "Assegna Clienti", "Assegna a te" e il passaggio di consegne li portano a un operatore e quindi nell'export (A16). Si esegue **prima di scrivere la migrazione** (Omar, in sola lettura, appena lo script esiste: sa subito se (b) o (a2) esportabili sono zero), poi prima della sessione (traccia) e dopo (atteso 0 su (a) e su (b)). Il gate G5 si ferma se (b) o (a2) esportabili sono maggiori di zero.
+  - **Dopo il rilascio** uno script che trova righe non si rimedia rilanciando la migrazione (Drizzle non la rilegge): vuol dire che un percorso del codice separa ancora cliente e contatto, che T6.10 avrebbe dovuto prendere. Si apre una correzione del codice e si riallinea con la riassegnazione dell'admin o con una migrazione nuova.
+  - La migrazione la applica Omar a mano, `pnpm db:migrate:prod`, nella sessione di rilascio (T6.7); nessun agente lancia `db:migrate:prod`. Sul DB di sviluppo condiviso `pnpm db:migrate` solo con la conferma di Omar, come per PR2: Drizzle non rilegge una migrazione già applicata.
+- **validation**: test in due fasi, come `contattiCleanup.db.test.ts` (`migrateUpTo`, seed, migrazione):
+  - un contatto attivo in `richiamare` con operatore diverso da quello del cliente prende l'operatore del cliente, con una riga di log (da, a, sorgente `bulk`, attore di sistema, `task_id`);
+  - un contatto attivo senza operatore con il cliente assegnato prende l'operatore del cliente;
+  - le task non attive non cambiano, e nemmeno un contatto attivo il cui cliente non ha operatore;
+  - un contatto già allineato non cambia e non ha righe di log;
+  - righe `task` e `task.updated_at` invariati; rilanciata una seconda volta non cambia niente;
+  - senza l'operatore di sistema e con righe da spostare la migrazione si ferma;
+  - test dello script di sola lettura (`operatorMismatch.db.test.ts`), con fixture che coprono (a), (a2) con e senza chiamate esportabili, (b), un caso misto e uno già allineato: i conteggi e l'elenco sono quelli attesi, e lo script non scrive. Un join sbagliato che non trova mai righe renderebbe vuoto il gate, quindi il test lo prova con righe presenti.
+  - Prova anche sul Postgres locale di T7.1b (`pnpm db:local:up` e `db:local:migrate`) se è disponibile.
+- **status**: Planned
+- **log**:
+- **files edited/created**:
+- **backlog_item_id**: n/a
+- **backlog_item_url**: n/a
+- **relation_mode**: n/a (D6)
+- **tdd_target**: "dopo la migrazione un contatto attivo in `richiamare` ha l'operatore del suo cliente, con una riga `operator_reassign` nel log".
+- **review_mode**: cli
+- **complexity**: high
+
+#### T6.4: Scheda cliente con riepilogo del contatto e "Gestisci contatto"
+- **depends_on**: []
+- **location**: `src/app/dashboard/customers/[id]/page.tsx`, `src/app/dashboard/customers/[id]/_components/CustomerContactSummary.tsx` (nuovo), `src/app/dashboard/customers/[id]/_components/CustomerCreateContact.tsx` e `_test/CustomerCreateContact.test.tsx` (nuovo: oggi non c'è), `src/app/dashboard/contatti/_lib/searchParams.ts` e il suo test (lo stato di "Vedi contatti" estratto), `src/app/dashboard/customers/[id]/_components/_test/CustomerContactSummary.test.tsx` (nuovo)
+- **description**:
+  - In `page.tsx` `CustomerTaskManager` e `CustomerActivities` escono. Se il cliente ha un contatto attivo compare `CustomerContactSummary`, in sola lettura (AC64): stato (`TaskStatusBadge`), operatore (`operatorDisplayName`, "Non assegnato" se manca), priorità (`PriorityBadge`) e prossimo alert (data con `formatDateAsDMY`, "Nessun alert" se non c'è). I dati vengono da `task.getContactById` sul contatto di `getActiveTask`: stato, operatore, priorità e alert aperto. La procedura fa tre query (anche lo Storico e i contatti precedenti, che il riepilogo non usa): accettato, è una pagina sola, e il riepilogo non duplica una query nuova. Il resto della pagina (`getHandoverActiveContact` per il passaggio di consegne) non cambia.
+  - **"Gestisci contatto"** (AC64, D28) è un `Link` con `prefetch={false}` a `detailHref(contact.id, customerContactsState(customerId))`. `customerContactsState` è lo stato di "Vedi contatti" (`seeContactsHref`: il filtro sul cliente, i contatti chiusi inclusi, il più recente creato prima), estratto da `searchParams.ts` perché `seeContactsHref` e il link usino **lo stesso** oggetto (con `{ ...defaultState, customerId }` si vedrebbe solo il contatto attivo: un'altra vista). Alla chiusura del dettaglio si torna a "Contatti di <cliente>" con il contatto attivo e i precedenti, e il focus sulla riga. Il resto di Contatti non cambia.
+  - Dalla scheda non si cambiano più stato, priorità né alert (AC65): D11 non vale più. Niente controlli scrivibili, solo il link.
+  - **Senza contatto attivo** resta `CustomerCreateContact` (T3.12, AC66, AC67). Dopo il successo la pagina si aggiorna e compare il riepilogo con "Gestisci contatto"; se nel frattempo il cliente ha già un contatto, il messaggio lo dice e il riepilogo compare (FLOW).
+  - **Il focus dopo "Crea contatto".** Oggi `CustomerCreateContact` porta il focus al selettore di stato del contatto nuovo (`STATE_TRIGGER_SELECTOR`, attesa di 3 s) e poi rinuncia. Nella scheda nuova quel selettore non c'è: il pulsante si smonta e il focus resta su `body`, da tastiera e da lettore di schermo (AC66). Il componente passa il focus a "Gestisci contatto" (un selettore suo, `data-contact-manage-link`), anche nel caso `CONTACT_ALREADY_ACTIVE`. `STATE_TRIGGER_SELECTOR` e `focus.ts` restano: li usa Contatti.
+  - Le note restano come sono (AC68): `CustomerChatSection` non cambia. Form, pratiche e "Passaggio di consegne" non cambiano.
+  - Il riepilogo non peggiora la larghezza della scheda (tech-debt "La scheda cliente non regge sotto i 900 px"): il riepilogo va a capo senza scorrimento orizzontale.
+- **validation**:
+  - test del componente (Testing Library): con un contatto attivo mostra stato, operatore, priorità e prossimo alert; "Nessun alert" e "Non assegnato" nei casi vuoti; il link ha l'`href` di `detailHref(id, customerContactsState(customerId))`, lo stesso stato di `seeContactsHref` (D28); nel riepilogo non c'è nessun selettore né pulsante di modifica;
+  - test di `CustomerCreateContact`: dopo il successo, e dopo `CONTACT_ALREADY_ACTIVE`, il focus è su "Gestisci contatto" e non su `body`;
+  - browser (un admin e un operatore, due clienti): il riepilogo compare; "Gestisci contatto" apre il dettaglio con la lista filtrata sul cliente dietro (contatto attivo e precedenti), e la chiusura riporta a quella lista; "Crea contatto" su un cliente senza contatto mostra poi il riepilogo **con il focus sul link, provato da tastiera**; da 320 a 1280 px niente scorrimento orizzontale, il link ha un'area di almeno 24 px e il contrasto dei badge è quello già in uso.
+- **status**: Planned
+- **log**:
+- **files edited/created**:
+- **backlog_item_id**: n/a
+- **backlog_item_url**: n/a
+- **relation_mode**: n/a (D6)
+- **tdd_target**: "la scheda di un cliente con contatto attivo mostra stato, operatore, priorità e prossimo alert in sola lettura, e 'Gestisci contatto' punta al dettaglio con il filtro sul cliente".
+- **review_mode**: mixed
 - **assigned_skills**: agent-browser
+- **complexity**: medium
+
+#### T6.3: Etichette e testi della assegnazione massiva (AC63, AC75)
+- **depends_on**: [T6.8a]
+- **location**: `src/app/dashboard/customers/_components/CustomerBulkDialog.tsx`, `src/app/dashboard/customers/_components/_test/CustomerBulkDialog.test.tsx` (nuovo)
+- **description**: il dialogo non ha test (619 righe, con form, Radix, store e tRPC): il primo lo scrive questo task, e per questo la `complexity` è `medium` anche se le modifiche sono di testo.
+  - "Assegna chiamate" diventa "Crea/assegna contatti" nella scelta del tipo, nel titolo e nella descrizione del dialogo, nel pulsante, nei passaggi e nel riepilogo (AC63). Quello che oggi dice "chiamata/e create" dice "contatto/i": la logica non cambia (i quattro casi della guida).
+  - Il testo della scheda "Assegna Clienti" non è più vero. Oggi la card dice "Assegna solo il cliente a un operatore, senza creare nuove chiamate" e la descrizione del dialogo aggiunge "né modificare lo stato delle chiamate esistenti": dice che si spostano **il cliente e il suo contatto attivo, in qualunque stato**, al nuovo operatore, che non si creano contatti, che le chiamate già registrate sul contatto passano al nuovo operatore nell'export e che i contatti non attivi restano a chi li ha lavorati (AC75). La stessa frase compare nella descrizione del dialogo e nel riepilogo finale ("N clienti assegnati a …"). Il testo esatto lo rivede Omar al gate (T6.7).
+- **validation**: test del componente: il dialogo, in entrambe le modalità, mostra "Crea/assegna contatti" e il testo nuovo di "Assegna Clienti", e non mostra più "Assegna chiamate"; browser: le etichette nuove compaiono in tutti i passaggi di entrambe le modalità.
+- **status**: Planned
+- **log**:
+- **files edited/created**:
+- **backlog_item_id**: n/a
+- **backlog_item_url**: n/a
+- **relation_mode**: n/a (D6)
+- **tdd_target**: "il dialogo di assegnazione massiva mostra 'Crea/assegna contatti' e il testo nuovo di 'Assegna Clienti'".
+- **review_mode**: mixed
+- **assigned_skills**: agent-browser
+- **complexity**: medium
 
 #### T6.5: Rimozione del codice morto
 - **depends_on**: [T6.2, T6.4]
-- **location**: `CustomerTaskManager.tsx`, `CustomerActivities.tsx`, `CustomerAlertCreator.tsx`, `TaskStatusSelector`, `task.getAllAvaibleTaskStatus` se non ha chiamanti, re-export in `customers/_utils`
-- **description**: Eliminare i componenti e le action che dopo T6.2 e T6.4 non sono più usati, verificando i chiamanti con `grep`.
-- **validation**: lint (`next lint` e `tsc --noEmit`) e `pnpm build` verdi.
+- **location**: `src/app/dashboard/customers/[id]/_components/` (`CustomerTaskManager.tsx`, `CustomerActivities.tsx`, `CustomerAlertCreator.tsx`, `CustomerAlertHistory.tsx` e i test `CustomerTaskManager.test.tsx`, `CustomerAlertCreator.test.tsx`), `src/components/custom/table/CustomFilters.tsx` (`TaskStatusSelector`), `src/server/api/routers/task/GET/index.ts` e `index.ts` (`getActiveAlerts`, `getAllAvaibleTaskStatus`), i commenti di Contatti e del server che citano simboli eliminati: lo `StateSelector` (`ContactRowState.tsx:43`, `ContactStateControl.tsx:28`), `CustomerAlertCreator` (`ContactAlertCloseButton.tsx:38`, `ContactCallbackForm.tsx:46`) e `getActiveAlerts` (`processDueAlerts.ts:87`)
+- **description**:
+  - Per ogni simbolo, `grep` dei chiamanti prima di toglierlo; si elimina solo ciò che non ha più chiamanti dopo T6.2 e T6.4. Oggi: `getActiveAlerts` è usata solo da `CustomerActivities`, e `getAllAvaibleTaskStatus` non ha chiamanti.
+  - **Restano**: `getCustomerAlerts` (la usa la pagina per il passaggio di consegne e i test del cron e della massiva), `getActiveTask`, `CustomerCreateContact`, `CustomerHandoverDialog`, `BlackListBadge`, `ReadOnlyReason` e i componenti condivisi di `src/components/custom/contact/` che Contatti usa.
+  - I commenti che nominano un simbolo eliminato si correggono (elenco in `location`): il `grep` dei nomi eliminati deve restare vuoto, commenti compresi. `STATE_TRIGGER_SELECTOR` e `components/custom/contact/focus.ts` **restano**: li usa Contatti.
+- **validation**: `next lint` e `tsc --noEmit` verdi; test e `pnpm build` verdi; `grep` dei nomi eliminati senza risultati; nessun test cambia di asserzione.
 - **status**: Planned
 - **log**:
 - **files edited/created**:
@@ -3046,15 +3195,38 @@ Branch suggerito: `contatti/pr6-clienti`. Il merge si fa solo dopo G5.
 - **relation_mode**: n/a (D6)
 - **tdd_target**: n/a (pulizia)
 - **review_mode**: cli
+- **complexity**: medium
 
-#### T6.6: Guida operatori — completamento (P3)
-- **depends_on**: [T6.2, T6.3, T6.4, T6.8]
-- **location**: `brain/chore/crm/guida-assegnazione-massiva-e-alert.md`
+#### T6.10: Regola "stesso operatore" nel test dei lock (D26, D27)
+- **depends_on**: [T6.8a, T6.8b]
+- **location**: `src/test/operatorRule.ts` (nuovo, accanto a `lockRule.ts`), `src/server/services/contact/_test/operatorRule.db.test.ts` (nuovo), il commento di `lockCustomer` in `src/server/effect/db.ts`
+- **description**: la garanzia di D26 sta nel codice e nei test (D27), non in un vincolo del database. Come la regola dei lock (T3.15), ma per gli operatori:
+  - **`assertContactOperatorMatchesCustomer()`**: un trigger di test `CONSTRAINT TRIGGER … DEFERRABLE INITIALLY DEFERRED` su `task` e `customers`, nello schema dei failpoint, che al COMMIT fallisce con "operator rule: …" se un cliente toccato dalla transazione ha un contatto attivo con `operator_id IS DISTINCT FROM` quello del cliente. `resetDb` lo rimuove. Lo installa il solo file di questo task: non è attivo per default, perché molti test creano di proposito fixture divergenti (i default di `createCustomer` e `createTask` sono entrambi senza operatore, quindi allineati; le divergenze le fanno i singoli test).
+  - **Una sola regola, con un nome e un commento (D27):** "oggi cliente e contatto attivo hanno lo stesso operatore. Il giorno in cui un cliente avrà un gestore (admin) diverso da chi lo contatta (operatori), questa è la sola regola da cambiare". Niente trigger né vincolo in prod.
+  - **Controllo negativo:** una scrittura diretta su `task` che lascia i due operatori diversi fa fallire il COMMIT con il messaggio della regola.
+  - **Copertura:** da fixture allineate, una chiamata riuscita per ogni scrittore che cambia o assegna gli operatori: `changeState` (persist, close, riapertura), `createContact`, `reassign`, `handover`, `assignToYourself` (anche con il contatto senza operatore, T6.8b), i quattro casi di `bulkHandleTask`, `bulkUpdateCustomers` in tutte le varianti (T6.8a) e il cron `processDueAlerts` quando crea il followup. Uno scrittore aggiunto dopo è coperto solo se aggiunge la sua chiamata a questo file; lo dice il commento.
+- **validation**:
+  - il controllo negativo fallisce come previsto;
+  - tutti gli scrittori elencati passano;
+  - **verifica per mutazione**, scritta nel log: senza l'aggiornamento del contatto in `handover`, in `bulkUpdateCustomers` o in `assignToYourself`, il test diventa rosso.
+- **status**: Planned
+- **log**:
+- **files edited/created**:
+- **backlog_item_id**: n/a
+- **backlog_item_url**: n/a
+- **relation_mode**: n/a (D6)
+- **tdd_target**: "con la regola attiva, una scrittura su `task` che lascia contatto e cliente su operatori diversi fa fallire il COMMIT con il messaggio della regola".
+- **review_mode**: cli
+- **complexity**: high
+
+#### T6.6: Guida operatori e FLOW — completamento (P3, AC74)
+- **depends_on**: [T6.2, T6.3, T6.4, T6.8a]
+- **location**: `brain/chore/crm/guida-assegnazione-massiva-e-alert.md`, `brain/specs/crm/sezione-contatti/FLOW.md`
 - **description**:
-  - "Assegna chiamate" diventa "Crea/assegna contatti" in tutta la guida.
-  - "Assegna Clienti" sposta cliente e contatto attivo in ogni stato, e le chiamate già registrate passano al nuovo operatore (AC75, T6.8).
-  - Clienti senza le colonne di stato; scheda cliente con il riepilogo (AC74).
-- **validation**: Omar rivede il testo.
+  - **Guida.** "Assegna chiamate" diventa "Crea/assegna contatti" in tutta la guida. Le frasi che dicono che "Assegna Clienti" cambia solo l'operatore e non tocca mai stato o richiami sono false dopo T6.8a: la riga 27 della tabella, il "Da ricordare" della riga 29 ("è sempre la scelta più sicura"), il §4 e la risposta delle righe 153–154 ("Nel dubbio, usate Assegna Clienti") vanno riscritte. "Assegna Clienti" sposta cliente e contatto attivo in ogni stato, e le chiamate già registrate passano al nuovo operatore (AC75, T6.8a): anche il consiglio del §2 per le ferie vale, perché il collega che subentra trova il contatto in Contatti con "Solo i miei". Clienti senza le colonne di stato e senza il filtro "Stato"; scheda cliente con il riepilogo e "Gestisci contatto" (AC74).
+  - **FLOW.** L'edge case "Dopo 'Assegna Clienti'" dice ancora che il contatto resta al precedente (domanda 2 della spec, superata da AC75): si riscrive. Il "segnale di successo" e la "Coesistenza fino al passo 4" parlano di un periodo in cui Clienti e Contatti convivono: con il rilascio unico (D25) in prod non succede; le due frasi si adeguano. Nessun requisito nuovo: ogni riga cita il suo AC.
+  - La SPEC non si modifica qui: gli scostamenti sono elencati in §15 per il prossimo aggiornamento.
+- **validation**: Omar rivede il testo; un `grep` della guida per "solo l'operatore", "non tocca mai" e "sempre la scelta più sicura" non trova frasi riferite a "Assegna Clienti" che siano rimaste vere solo per il vecchio comportamento.
 - **status**: Planned
 - **log**:
 - **files edited/created**:
@@ -3063,37 +3235,24 @@ Branch suggerito: `contatti/pr6-clienti`. Il merge si fa solo dopo G5.
 - **relation_mode**: n/a (D6)
 - **tdd_target**: n/a (documentazione)
 - **review_mode**: cli
+- **complexity**: low
 
-#### T6.8: "Assegna Clienti" sposta cliente e contatto insieme (D14)
-- **depends_on**: [T3.8a]
-- **location**: `src/server/api/routers/customer/PUT/index.ts` (`bulkUpdateCustomers`), `src/server/services/customer/` (`handover`), `src/app/dashboard/customers/_components/CustomerBulkDialog.tsx`, `src/server/api/routers/customer/_test/bulkUpdateCustomers.db.test.ts`, test della regola dei lock (T3.15)
-- **description**:
-  - `bulkUpdateCustomers` diventa un programma Effect (D9) che per ogni cliente scelto applica le regole di `handover`: blocca il cliente, sposta cliente e contatto attivo in ogni stato, scrive le righe `operator_reassign` con sorgente `bulk`. Un cliente già del nuovo operatore con il contatto allineato non cambia (la massiva non rifiuta come il passaggio singolo); uno già suo con il contatto di un altro operatore allinea solo il contatto. Nessun contatto nuovo. Solo admin, come oggi (P7).
-  - Esce dalle eccezioni alla regola dei lock (A11): si toglie dall'elenco di T3.15 e dal tech-debt.
-  - I test di caratterizzazione di "Assegna Clienti" sul caso "solo `chiamare`" cambiano di proposito: un contatto in `richiamare` o `app.to` ora segue il cliente.
-  - Il testo della scheda "Assegna Clienti" dice che si spostano cliente e contatto, e che le chiamate già registrate passano al nuovo operatore nell'export.
-  - Riallineamento prima del rilascio: si contano di nuovo in prod, in sola lettura, i contatti attivi con un operatore diverso da quello del cliente (1 il 2026-10-15). Pochi casi si sistemano dall'interfaccia, con la riassegnazione dell'admin (PR5); se sono tanti, una migrazione come T2.5, solo per i contatti attivi. Lo decide Omar al momento.
-  - Va nell'annuncio di PR6 (T6.7).
-- **validation**: test DB: un cliente con il contatto in `richiamare` passato con "Assegna Clienti" ha cliente e contatto al nuovo operatore, con le righe di log; un cliente con il contatto in `chiamare` come oggi; i contatti non attivi non cambiano; il test della regola dei lock copre `bulkUpdateCustomers`. Browser: il testo nuovo della scheda.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
-- **backlog_item_id**: n/a
-- **backlog_item_url**: n/a
-- **relation_mode**: n/a (D6)
-- **tdd_target**: "con 'Assegna Clienti' un cliente il cui contatto è in `richiamare` passa al nuovo operatore insieme al contatto".
-- **review_mode**: mixed
-- **assigned_skills**: agent-browser
-
-#### T6.7: Gate PR6
-- **depends_on**: [T6.5, T6.6, T6.8]
+#### T6.7: Gate PR6 e rilascio unico (G5, D25)
+- **depends_on**: [T6.1, T6.3, T6.5, T6.6, T6.8b, T6.9, T6.10]
 - **location**: —
 - **description**:
-  - Gate CI.
-  - `EXPLAIN ANALYZE` della prima pagina di Clienti su volumi reali, eseguito da una persona (A3).
-  - Passata browser su Clienti e scheda cliente.
-  - Annuncio agli operatori della rimozione delle colonne e degli ordinamenti, e di "Assegna Clienti" che sposta anche il contatto (T6.8).
-- **validation**: gate verdi; tempo ≤ 500 ms; checklist AC58–AC68 e AC75 spuntata.
+  - Gate CI, in una copia pulita fuori da `.claude/worktrees/` e senza `.env*`, con le variabili segnaposto (`AGENTS.md`).
+  - `adversarial-review` (`review.mode: total`) con il passaggio UI sulla scheda cliente (T6.4) e sulla tabella (T6.2); il passaggio sul movimento non serve (P6). Il diff di PR6 parte da `dev` con PR5 dentro, quindi la review **non copre PR5b**: l'ultimo round di PR5b in `REPORT.md` è DO NOT SHIP (18/10) e il file non è stato aggiornato. Omar riferisce il 2026-10-20 che è risolto e verificato: o si aggiunge a `REPORT.md` il round con l'esito di quella verifica, o la nota di Omar (data e cosa ha controllato) sostituisce il SHIP di T5.13 e di G4b. Senza una delle due, G4b non si chiude.
+  - Passata browser su Clienti (colonne, filtri, link salvati, assegnazione massiva in entrambe le modalità con i testi nuovi) e sulla scheda cliente (riepilogo, "Gestisci contatto", "Crea contatto"), sul DB di sviluppo con due operatori e un admin.
+  - **A3**: `EXPLAIN ANALYZE` della prima pagina di Clienti su volumi reali, eseguito da una persona. Se supera i 500 ms, la decisione su un indice (per esempio su `customers.updated_at`) si prende con la misura, come in T5.16.
+  - **Rilascio unico di PR5 e PR6 (G5), sessione di Omar fuori orario, come G2:**
+    0. *Prima della sessione, l'annuncio agli operatori* (un solo testo, nella descrizione della PR): Contatti, come in T5.13 (voce di menu, "Solo i miei", "Con alert", dettaglio, il richiamo da domani, "Contatti chiusi", "Vedi contatti"), più PR6: in Clienti spariscono le colonne "Stato Chiamate", "Contattato il" e "Priorità", i filtri e gli ordinamenti relativi, e il cambio di stato dalla riga e dalla scheda (si fa in Contatti, con "Gestisci contatto"); "Crea/assegna contatti"; "Assegna Clienti" sposta anche il contatto, e le chiamate già registrate passano al nuovo operatore nell'export; "Assegna a te" assegna anche un contatto senza operatore.
+    1. *Prima, sola lettura in prod:* lo script di T6.9 salva l'elenco (a), (a2) e (b). Se (b) o (a2) esportabili sono maggiori di zero ci si ferma e decide Omar per iscritto (il riallineamento non lo può fare l'SQL, e il secondo caso cambia quali chiamate conta l'export). Si controlla `git log origin/main..origin/dev` e `git diff --stat origin/main..origin/dev -- src/server/db/migrations`: il merge porta in prod anche i commit di `dev` che non sono di Contatti (lavoro su GCP e dipendenze, per esempio Drizzle 0.45, e la migrazione `cron_run`); chi li ha scritti conferma che sono rilasciabili, oppure il merge è limitato a ciò che deve uscire (§13).
+    2. *Merge `dev` → `main` e deploy di Vercel verde.* Se `BACKEND_URL` è attiva in prod, prima il frontend e poi il backend (A17).
+    3. *`pnpm db:migrate:prod`, lanciato da Omar.* Il migrator applica **tre** migrazioni in una sola transazione: `cron_run` (tabella nuova, usata dal backend), gli indici tolti da PR5a (con `SET LOCAL lock_timeout = '5s'` e un lock esclusivo su `task` che dura fino al COMMIT) e il riallineamento di T6.9. Quel `lock_timeout` vale anche per l'`UPDATE` e l'`INSERT` di T6.9: un lock di riga atteso più di 5 s annulla tutta la sessione, indici compresi, e fallisce in modo sicuro; si rilancia, dopo aver controllato `pg_stat_activity` come nel runbook G2 (T2.4). L'ordine è deploy e poi migrazione: da questo momento nessun percorso del codice può separare cliente e contatto. Si ricontrollano nomi e definizioni degli indici (G4a).
+    4. *Subito dopo:* lo script di T6.9 dà 0 su (a) e su (b), salvo le eccezioni che Omar ha accettato per iscritto nel log di questo task (elencate, non contate come 0); i log di Vercel e Sentry senza errori nuovi per 15 minuti; la mattina dopo si ripete lo script, dopo la notte dei cron.
+  - Chiude G4a, G4b e G5 insieme. G4a (indici "applicata a mano e verificata **prima del deploy**") diventa, nel rilascio unico, "applicata nella sessione, dopo il deploy" (passo 3): gli indici tolti non servono a nessuna query, quindi l'ordine non cambia i risultati.
+- **validation**: gate verdi; `REPORT.md` della review di PR6 SHIP, e l'esito della verifica di PR5b registrato (sopra); tempo ≤ 500 ms; checklist AC58–AC61, AC63–AC68 e AC75 spuntata; il browser di T6.2 ripetuto dopo T6.1 (un link con `filter=state:…` si apre); dopo il rilascio lo script di T6.9 dà 0 su (a) e su (b).
 - **status**: Planned
 - **log**:
 - **files edited/created**:
@@ -3103,6 +3262,7 @@ Branch suggerito: `contatti/pr6-clienti`. Il merge si fa solo dopo G5.
 - **tdd_target**: n/a (gate)
 - **review_mode**: mixed
 - **assigned_skills**: agent-browser
+- **complexity**: medium
 
 ### PR7 — Postgres vero: test di concorrenza e database locale (bassa priorità)
 
@@ -3231,7 +3391,7 @@ Branch: `chore/test-postgres-concorrenza` da `dev`, PR verso `dev`. Nessun cambi
 
 ## 10. Wave di esecuzione
 
-**PR1 e PR2 sono fatte** (T1.1–T1.8, T2.1–T2.7), con i due merge, G1 e G2. Le loro wave (1–7 della versione del 2026-09-24) non servono più. Restano PR3–PR7, tutti i task `Planned`.
+**PR1 e PR2 sono fatte** (T1.1–T1.8, T2.1–T2.7), con i due merge, G1 e G2. Le loro wave (1–7 della versione del 2026-09-24) non servono più. Restano PR3–PR7, tutti i task `Planned` nel testo originale: PR3, PR4, PR5a e PR5b sono poi state fatte (tabella di §3) e restano PR6 e PR7.
 
 **PR3, riscritta il 2026-10-15.** Le wave rispettano i `depends_on` e la regola "un solo task alla volta sui router di `task` e su `customer/PUT`" (intestazione di PR3). Con `execution.delegation: supervised`, la `complexity` di ogni task sceglie il modello del worker (`low` → veloce, `medium` → intermedio, `high` → il più forte).
 
@@ -3257,12 +3417,17 @@ In modo `sequential` l'ordine è: T3.1a, T3.1b, T3.1c, T3.2a, T3.16, T3.2b, T3.9
 | Wave | Task | Parte quando |
 |---|---|---|
 | 4 | T4.1 → T4.3 → T4.4 → T4.2 → **merge PR4** | Subito: PR3 è in prod (G3). T4.1, T4.3 e T4.4 toccano lo stesso componente, quindi vanno in sequenza |
-| 5a | T5.1, T5.14, T5.15 → T5.2, T5.3, T5.16 → T5.17 → **merge PR5a** (G4a) | PR3 e PR4 in `main`. T5.2 e T5.3 dopo T5.1 (stesso router; schema Zod); T5.16 ha un passo di Omar |
-| 5b | T5.4a → T5.4b → T5.5a, T5.6 → T5.5b, T5.6b → T5.7a → T5.7b, T5.9 → T5.7c → T5.8, T5.10, T5.11 → T5.12 → T5.13 → **merge PR5b** (G4b) | PR5a in `dev` |
-| 6 | T6.1–T6.8 → **merge PR6** | G5 |
+| 5a | T5.1, T5.14, T5.15 → T5.2, T5.3, T5.16 → T5.17 → **merge PR5a** (G4a) | **Fatta** su `dev` (PR #26). Prod con PR6 (D25) |
+| 5b | T5.4a → T5.4b → T5.5a, T5.6 → T5.5b, T5.6b → T5.7a → T5.7b, T5.9 → T5.7c → T5.8, T5.10, T5.11 → T5.12 → T5.13 → **merge PR5b** (G4b) | **Fatta** su `dev` (PR #25). Prod con PR6 (D25) |
+| 6.1 | T6.2, T6.4, T6.8a, T6.9 | Subito: PR5a e PR5b sono su `dev`. File diversi, quindi anche in parallelo. **T6.9 ha un passo di Omar a metà**: lanciare lo script di sola lettura in prod appena esiste, prima di scrivere la migrazione (come T5.16) |
+| 6.2 | T6.1, T6.5, T6.8b, T6.3 | T6.1 ← T6.2 · T6.5 ← T6.2, T6.4 · T6.8b e T6.3 ← T6.8a (T6.8b dopo T6.8a: stesso file `assignment.ts`; **T6.8b parte solo dopo la conferma di Omar su A16**, e da lei dipendono T6.10 e T6.7) |
+| 6.3 | T6.10, T6.6 | T6.10 ← T6.8a, T6.8b · T6.6 ← T6.2, T6.3, T6.4, T6.8a |
+| 6.4 | T6.7 → **merge PR6 in `dev`**, poi il rilascio unico di PR5a, PR5b e PR6 su `main` (G5) | Tutti gli altri task. La sessione di rilascio è di Omar |
 | 7 | T7.1 → T7.1b → T7.1c, T7.2 → T7.3 → **merge PR7** | Dopo il merge di PR3, quando c'è tempo (bassa priorità). T7.1b e T7.1c non aspettano T7.2 e toccano file diversi, ma `package.json` è in comune: in sequenza se le fa una sola persona |
 
-PR4 e PR5 sono riscritte con `create-plan` 0.8.0 e ogni loro task ha una `complexity`. I task di PR6 non ce l'hanno ancora: si aggiunge quando quella PR si ripianifica (§15).
+PR4, PR5 e PR6 sono riscritte con `create-plan` 0.8.0 e ogni loro task ha una `complexity`. PR6 il 2026-10-20: T6.1, T6.8a, T6.9 e T6.10 `high`; T6.2, T6.3, T6.4, T6.5 e T6.8b `medium`; T6.6 `low`; T6.7 `medium`.
+
+In modo `sequential`, PR6: T6.2, T6.4, T6.8a, T6.9, T6.1, T6.8b, T6.3, T6.5, T6.10, T6.6, T6.7. Un solo task alla volta tocca `customer/PUT/index.ts` e `customer/assignment.ts` (T6.8a → T6.8b), `[id]/page.tsx` (T6.4 → T6.5) e `CustomerTableSection.tsx` / `customer/GET/index.ts` (T6.2 → T6.1).
 
 In modo `sequential`, PR5a: T5.1, T5.14, T5.15, T5.2, T5.3, T5.16, T5.17. PR5b: T5.4a, T5.4b, T5.5a, T5.5b, T5.6, T5.6b, T5.7a, T5.7b, T5.9, T5.7c, T5.8, T5.10, T5.11, T5.12, T5.13. Un solo task alla volta tocca `task/GET/index.ts` (T5.1 → T5.2), i file della lista in `contatti/_components` (T5.4a → T5.4b → T5.5a → T5.5b → T5.9 → T5.10) e quelli del dettaglio (T5.6 → T5.6b → T5.7a → T5.7b → T5.7c → T5.8).
 
@@ -3274,7 +3439,7 @@ In modo `sequential`, PR5a: T5.1, T5.14, T5.15, T5.2, T5.3, T5.16, T5.17. PR5b: 
   - PR3: `planStateChange` (T3.1a), poi la mutation più sottile sulla guardia, `resolveAlert` via caller (T3.5b), poi `changeState` (T3.3);
   - PR4: una nota inviata con l'URL di Contatti aggiorna il cliente e non la pratica (T4.1), poi la nota non inviata (T4.3) e la sua bozza (T4.4);
   - PR5a: `getContacts` senza filtri (T5.1), poi `parse` dell'URL (T5.3) e il richiamo di oggi (T5.15); PR5b: la chiusura del dettaglio con una sola navigazione (T5.6), poi la riapertura (T5.7a) e il cambio di stato nella riga (T5.9);
-  - PR6: pagine esatte di `getAllCustomers` (T6.1).
+  - PR6: un URL di Clienti con i filtri rimossi si apre senza errori (T6.2), poi le pagine esatte di `getAllCustomers` (T6.1), "Assegna Clienti" che sposta il contatto in `richiamare` (T6.8a) e la migrazione di riallineamento (T6.9).
 
   Dentro ogni task si procede per cicli verticali RED → GREEN, un comportamento alla volta, nell'ordine delle `validation`. Mai scrivere tutti i test prima del codice.
 - **Moduli profondi, con interfaccia piccola e logica ricca:**
@@ -3335,15 +3500,16 @@ In modo `sequential`, PR5a: T5.1, T5.14, T5.15, T5.2, T5.3, T5.16, T5.17. PR5b: 
 | G1 | **Chiuso** il 2026-10-13, con G2 (T1.8) | Dopo il deploy di PR1 | Rivisto il 2026-09-28 (il cron di prod non gira): operatore di sistema creato in prod; PR1 in prod per almeno due giorni lavorativi di uso normale (riapertura, massiva, "Assegna Clienti") senza righe di livello error nei log Vercel né issue nuove in Sentry. Il cron alert in prod non si lancia prima di G2 (runbook T1.8) | Persona |
 | G2 | **Fatto** il 2026-10-13, dalla sessione di Leonardo (T2.4). Prima notte dei cron pianificati e avvisi chiusi il 2026-10-15; il cron dello storage è verde ma fallisce sulla chiave Supabase (log di T2.4) | Prima di applicare PR2 | Guardia di PR1 nel deploy di prod; prerequisiti in sola lettura (operatore di sistema, `max(created_at)` delle migrazioni, nomi degli indici liberi, nessun trigger, `ALERT_CRON_ENABLED` assente). Poi un'unica sessione fuori orario: controlli ripetuti, merge `dev` → `main` limitato a PR2, estrazione in sola lettura conservata come traccia (senza via libera degli admin, deciso il 2026-09-29), `pnpm db:migrate:prod` lanciato a mano, duplicati = 0, estrazione vuota, indici con la definizione attesa, impronta di `task.updated_at` invariata; poi prima esecuzione del cron lanciata a mano, che chiude gli alert scaduti, verde e controllata su GitHub Actions, Vercel e Sentry, e solo dopo `ALERT_CRON_ENABLED = true`. A fine sessione operatori e cliente (riallineamento) avvisati. La notte dopo, la prima esecuzione pianificata è verde (T2.4) | Omar |
 | G3 | **Chiuso** il 2026-10-15: PR3 in prod (PR #16) | Prima del deploy di PR3 | `adversarial-review` di PR3 SHIP (T3.14); operatori e admin informati con il testo di T3.14, compreso il salvataggio immediato nella scheda cliente (D11) | Persona |
-| G4a | Aperto | Prima del deploy di PR5a | `adversarial-review` SHIP (T5.17); `EXPLAIN ANALYZE` ≤ 500 ms registrato con la decisione sugli indici (T5.16, A3, una persona); se c'è una migrazione, applicata a mano e verificata (T5.16) | Persona (Omar) |
-| G4b | Aperto | Prima del deploy di PR5b | G4a chiuso; G2 fatto (AC69); `adversarial-review` SHIP (T5.13); guida T5.11 rivista da Omar; Contatti annunciato agli operatori con il testo di T5.13; PR3 in prod da poco (la riassegnazione del singolo contatto arriva con T5.7b) | Persona |
-| G5 | Aperto | Prima del merge di PR6 | Checklist scritta di un admin: giorni d'uso di Contatti, nessun blocco segnalato (A2) | Persona |
+| G4a | Aperto, confluisce in G5 | Nella sessione di G5 (rilascio unico, D25), dopo il deploy | `adversarial-review` SHIP (T5.17); `EXPLAIN ANALYZE` ≤ 500 ms registrato con la decisione sugli indici (T5.16, A3, una persona); la migrazione degli indici applicata a mano da Omar insieme alle altre pendenti (T6.7, passo 3) e verificata (nomi e definizioni). Gli indici tolti non servono a nessuna query, quindi l'ordine fra deploy e migrazione non cambia i risultati | Persona (Omar) |
+| G4b | Aperto, confluisce in G5 | Prima del merge di G5, tranne ciò che dice la cella | G2 fatto (AC69); `adversarial-review` SHIP (T5.13: il round del 18/10 era DO NOT SHIP e `REPORT.md` non è stato aggiornato, quindi serve il round di verifica oppure la nota di Omar, 2026-10-20, T6.7); guida T5.11 rivista da Omar; Contatti annunciato agli operatori con il testo di T5.13 (nel testo unico di T6.7); PR3 in prod da poco (la riassegnazione del singolo contatto arriva con T5.7b). G4a si chiude nella sessione, dopo il deploy | Persona |
+| G5 | Aperto — riscritto il 2026-10-20 (D25): non più l'attesa dell'uso, ma il **rilascio unico di PR5a, PR5b e PR6** | **Prima del merge `dev` → `main`**, poi **nella sessione** (due colonne qui sotto) | *Prima del merge:* G4b chiuso (salvo G4a); per PR6 (T6.7) gate CI, `adversarial-review` SHIP con il passaggio UI, passata browser, `EXPLAIN ANALYZE` di Clienti ≤ 500 ms, testo di "Assegna Clienti" rivisto da Omar; il testo unico dell'annuncio mandato agli operatori; estrazione di T6.9 in sola lettura senza casi che fermano il gate ("cliente senza operatore e contatto con operatore", chiamate esportabili di un contatto senza operatore), o la decisione scritta di Omar. *Nella sessione di Omar:* controllo di `git log origin/main..origin/dev` e delle migrazioni pendenti, merge e deploy, `db:migrate:prod` (`cron_run`, indici e riallineamento, in una transazione; qui si chiude G4a), estrazione che dà 0 su (a) e su (b), e di nuovo la mattina dopo | Persona (Omar) |
 
 PR4 non ha un gate a sé: prima del suo deploy gli operatori ricevono le due righe di T4.2 (nota non inviata, anche dopo un ricaricamento, e "Commenta" disabilitato durante l'invio).
 
 **Rollback:**
 - PR1: revert del merge **solo prima di G2**. Dopo che l'indice unico è in prod, il revert riporterebbe il "prima inserisci, poi disattiva" nel cron e nella massiva: l'indice li rifiuterebbe (`23505`) e il vecchio `try/catch` unico fermerebbe l'intero cron. Dopo G2 PR1 si corregge solo in avanti, oppure si fa prima `DROP INDEX task_customer_active_uidx`.
-- PR4, PR5b, PR6: revert del merge.
+- PR4, PR5b: revert del merge.
+- PR6 (rilascio unico, D25): revert del merge del codice. Riporta Clienti con le colonne e i controlli di stato, e il vecchio "Assegna Clienti", ma anche PR5a e PR5b se il merge è stato unico: per tenere Contatti e ritirare solo PR6 si fa un revert dei commit di PR6. La migrazione di T6.9 **non si annulla**: i contatti restano allineati, che è lo stato voluto. Per riportare un contatto al suo operatore di prima basta la sua riga `operator_reassign` (sorgente `bulk`, `from_operator_id`). La migrazione degli indici di PR5a si annulla come descritto sotto.
 - PR5a: revert del merge (procedure senza chiamanti e regola del richiamo). La migrazione degli indici, se c'è, si annulla con l'istruzione inversa scritta in testa alla migrazione (una transazione con `SET LOCAL lock_timeout` e i due `CREATE INDEX`; poi si rimettono gli indici nello schema e si genera una migrazione con `CREATE INDEX IF NOT EXISTS`), da Omar; non tocca dati.
 - PR3: il revert ripristina le mutation rimosse e il form con "Salva", e lascia i dati coerenti, perché l'indice di PR2 resta in vigore. Nessuna migrazione da annullare.
 - PR7: revert del merge (solo CI, test, Docker e strumenti locali; nessun dato e nessuna migrazione).
@@ -3376,6 +3542,11 @@ PR4 non ha un gate a sé: prima del suo deploy gli operatori ricevono le due rig
 | Lock su `task` e `alert` dalla creazione degli indici fino al COMMIT: le scritture aspettano per tutta la migrazione (circa 10 s; 7 s sul DB di sviluppo). Una transazione aperta su `task` la fa restare in attesa | Migrazione fuori orario (G2); controllo di `pg_stat_activity` prima e `pg_cancel_backend` se resta in attesa più di un minuto: la transazione si annulla (T2.4, passo 5) |
 | La pulizia sceglie il contatto "sbagliato" | Stesso criterio già usato dall'interfaccia (`getActiveTask`); nessuna cancellazione; l'elenco estratto subito prima ha gli id per riattivarlo (§12) |
 | Link salvati di Clienti con filtri su `task` producono SQL non valido dopo PR6 | T6.2 scarta i parametri prima di `sql.raw` (finding 7) |
+| Il rilascio unico (D25) porta in prod anche i commit di `dev` che non sono di Contatti: GCP (backend dormiente, cron nei servizi) e Drizzle 0.45 (finding 43). Un difetto lì ritirerebbe anche Contatti | Prima del merge `git log origin/main..origin/dev` e conferma di chi ha scritto quei commit che sono rilasciabili, oppure merge limitato a ciò che deve uscire (T6.7). Le dipendenze non si aggiornano nella stessa release di un cutover ([[chore/manutenzione-dipendenze]]) |
+| La migrazione di riallineamento (T6.9) cambia l'operatore dei contatti in prod, quindi l'attribuzione delle chiamate già registrate nell'export | È la regola voluta (D14, AC75). Estrazione prima (traccia), una riga di log per contatto con da e a, `updated_at` invariato, idempotente; il caso del cliente senza operatore e quello di un contatto senza operatore con chiamate esportabili (l'export le conterebbe: `innerJoin` con `operators`) fermano il gate. Annunciata agli operatori (T6.7) |
+| Frontend vecchio con la query nuova di Clienti (`tasks` assente) durante il rilascio, con `BACKEND_URL` attiva | Frontend prima del backend (A17, P18); le pagine già aperte si ricaricano. Con il solo Vercel (oggi in prod) il deploy è uno solo |
+| "Assegna Clienti" su molti clienti: una transazione per cliente, più lunga di un `UPDATE` unico (la chiamata arriva a pezzi dal dialogo) | Transazioni brevi (blocco del cliente, una lettura e al più due scritture), per cliente e in sequenza come `bulkHandleTask`; il primo errore ferma il resto e i già fatti restano assegnati (P19). Si misura il tempo su un chunk reale nella passata browser (T6.7) |
+| Un nuovo scrittore di operatori dimentica di spostare il contatto e rompe D26 senza che nessun test lo veda | Il test di T6.10 elenca gli scrittori e il commento dice di aggiungere il nuovo; lo script di controllo di T6.9 (sola lettura) si rilancia a mano, e se trova righe si corregge il codice e si riallinea (T6.9). Nessun vincolo nel database (D27) |
 | Il refactor della chat rompe le note della scheda cliente | PR4 separata, con test del componente e passata browser completa (T4.2). Pratiche non mostra note (finding 24) |
 | Un errore arriva dopo che la nota è già salvata (timeout dopo l'inserimento): con il testo rimesso nel campo, l'operatore la rinvia e la nota compare due volte | Accettato (D18): caso raro, la nota doppia si vede al primo ricaricamento e si elimina col cestino. `router.refresh()` dopo il fallimento è escluso, perché ricaricherebbe la pagina (finding 31) |
 | Dopo un deploy ogni invio fallisce finché la pagina non si ricarica, e ricaricando il testo si perderebbe | Bozza in `sessionStorage` che torna nel campo dopo il ricaricamento (T4.4, D18) |
@@ -3398,7 +3569,7 @@ PR4 non ha un gate a sé: prima del suo deploy gli operatori ricevono le due rig
 | I test di componenti con Radix non partono in jsdom | Polyfill (`hasPointerCapture`, `scrollIntoView`, `ResizeObserver`) e `@testing-library/user-event` in T3.9b; se un comportamento resta intestabile in jsdom, passa ai controlli browser dello stesso task |
 | Gli operatori non trovano più "Salva" nella scheda cliente | Annuncio G3 (T3.14); stesso comportamento della riga Clienti |
 | Un passaggio di consegne sposta nell'export le chiamate già registrate sul contatto (D13) | Voluto (Omar, 2026-10-15): la modale e l'annuncio G3 lo dicono. Separare l'attribuzione dall'assegnazione appartiene al nuovo export su `task_event_log` (non-goal) |
-| Dopo "Assegna Clienti" cliente e contatto restano divergenti, ora che il form non li riallinea più. Le chiamate fatte dal nuovo operatore sul contatto restano attribuite al vecchio (AC41) | Con D2 il nuovo operatore lavora il contatto; l'annuncio G3 lo dice. Il contatto si allinea con la riassegnazione dell'admin, nell'interfaccia con PR5b (T5.7b; rilasci ravvicinati, G4b), o con il followup del cron. Il passaggio di consegne non serve a questo: cambia sempre il cliente (D13). Il seguito del tech-debt su "Assegna Clienti" resta |
+| ~~Dopo "Assegna Clienti" cliente e contatto restano divergenti, ora che il form non li riallinea più.~~ **Risolto con T6.8a (2026-10-20, D14, D26).** Testo di PR3: Dopo "Assegna Clienti" cliente e contatto restano divergenti, ora che il form non li riallinea più. Le chiamate fatte dal nuovo operatore sul contatto restano attribuite al vecchio (AC41) | Con D2 il nuovo operatore lavora il contatto; l'annuncio G3 lo dice. Il contatto si allinea con la riassegnazione dell'admin, nell'interfaccia con PR5b (T5.7b; rilasci ravvicinati, G4b), o con il followup del cron. Il passaggio di consegne non serve a questo: cambia sempre il cliente (D13). Il seguito del tech-debt su "Assegna Clienti" resta |
 | La modale dell'alert arriva dopo un giro al server (P10) | Lo spinner copre l'attesa; un solo percorso per AC36 e AC37 |
 | Eliminando `createTask` si perdono i suoi test (T1.7) | I comportamenti sono riasseriti sulle mutation che la sostituiscono (T3.3, T3.4), prima della rimozione (T3.13) |
 | Il ponte tra Effect e le transazioni Drizzle non annulla le scritture, oppure perde l'errore tipizzato | Test di T1.4: errore tipizzato ed eccezione dentro `transaction` non lasciano scritture, e il chiamante riceve la stessa `Cause`; transazioni annidate rifiutate; `DbError` mai recuperato in successo; `failNextInsertInto` sui percorsi reali (T1.5, T1.6, T3.3) |
@@ -3434,17 +3605,17 @@ PR4 non ha un gate a sé: prima del suo deploy gli operatori ricevono le due rig
 | AC55 | T4.1 (base), T5.8 |
 | AC76 | T4.3, T4.4; nel dettaglio di Contatti T5.8 |
 | AC77–AC79 | T4.5–T4.7; nel dettaglio di Contatti T5.8 |
-| AC58–AC60 | T6.1, T6.2 |
+| AC58–AC60 | T6.1, T6.2 (AC60: il parsing in T6.2, l'`orderBy` sconosciuto in T6.1) |
 | AC61 | T6.1 (i sintomi spariscono già con PR2) |
 | AC62 | T5.10 |
-| AC63 | T6.3 |
-| AC75 | T6.8 (D14); in PR3 riga di Clienti e scheda cliente senza il nome (AC51): T3.14 |
-| AC64, AC65, AC68 | T6.4 |
+| AC63 | T6.3 (il testo di "Assegna Clienti" anche per AC75) |
+| AC75 | T6.8a (D14), T6.8b ("Assegna a te", D26), T6.9 (riallineamento prima del rilascio), T6.10 (regola provata dai test), T6.3 (testo); in PR3 riga di Clienti e scheda cliente senza il nome (AC51): T3.14 |
+| AC64, AC65, AC68 | T6.4 (AC64: link con la lista filtrata sul cliente, D28) |
 | AC66, AC67 | T3.1b, T3.4, T3.10 ("+"), T3.12, T6.4 |
 | AC69, AC70 | T2.1, T2.2, T2.4 |
-| AC71 | T1.4–T1.7, T2.3, T3.3, T3.4, T3.15 (regola dei lock), T7.2 (concorrenza) |
+| AC71 | T1.4–T1.7, T2.3, T3.3, T3.4, T3.15 (regola dei lock), T6.8a ("Assegna Clienti" sotto la regola), T7.2 (concorrenza) |
 | AC72 | T1.2, T1.3, T1.5, T1.6, T3.8c (casi 3 e 4 senza log) |
-| AC73 | T3.10, T3.11a, T3.11b, T3.14 |
+| AC73 | T3.10, T3.11a, T3.11b, T3.14 (in prod non arriva a convivere con Contatti: D25) |
 | AC74 | T5.11, T6.6 |
 
 ## 15. Domande aperte
@@ -3462,25 +3633,28 @@ Le assunzioni esplicite, che Omar può ribaltare prima della PR interessata:
 | Assunzione | Tema | PR | Stato |
 |---|---|---|---|
 | A1 | Contatti non assegnati | PR3 | **Confermata** il 2026-10-15 |
-| A2 | Misura dell'adozione | PR6 | Aperta |
+| A2 | Misura dell'adozione | PR6 | **Chiusa** il 2026-10-20 (D25) |
 | A3 | Soglia di prestazioni | PR5a | Aperta: la misura preliminare del 2026-10-17 la rispetta (T5.16, su richiesta di Omar); si ripete con la query vera di T5.1 |
 | A9 | Conferma con il nome del cliente e [Apri] dopo un cambio di stato (FLOW, senza AC) | PR3: nessuna; PR5b: toast con nome e [Apri] | **Confermata** da Omar il 2026-10-17 (T5.9) |
 | A12 | Avviso dopo una riapertura dal dettaglio (FLOW, senza AC) | PR5b | **Confermata** il 2026-10-17 (T5.7a) |
 | A13 | "Non hai contatti assegnati" con il solo "Solo i miei" (FLOW, senza AC) | PR5b | **Confermata** il 2026-10-17 (T5.4b) |
 | A14 | Voce "Apri contatto" nel menu della riga (accesso da tastiera; scostamento da AC8) | PR5b | **Confermata** il 2026-10-17 (T5.4a) |
+| A15 | `sql.raw` e il parsing dei filtri di Clienti fuori da PR6 (lista bianca del nome di colonna in T6.2) | PR6 | Assunzione del piano, non ancora confermata da Omar |
+| A16 | "Assegna a te" assegna anche il contatto senza operatore; l'export conterebbe le sue chiamate chiuse | PR6 (T6.8b) | **Da confermare con Omar prima di T6.8b** |
+| A17 | Frontend prima del backend con `BACKEND_URL` attiva in prod | PR6 | Oggi non si applica (in prod solo Vercel) |
 | A10 | Data passata del richiamo non selezionabile, come oggi | PR3 | Aperta, si verifica in T3.11b |
-| A11 | Scrittori fuori dalla regola dei lock | PR3 | Registrata nel tech-debt il 2026-10-15 (T3.14), con la conferma della massiva legata al cliente (review di PR3); per "Assegna Clienti" si chiude con T6.8 (D14), per il cron `priority` e la pulizia del log resta aperta |
+| A11 | Scrittori fuori dalla regola dei lock | PR3 | Registrata nel tech-debt il 2026-10-15 (T3.14), con la conferma della massiva legata al cliente (review di PR3); per "Assegna Clienti" si chiude con T6.8a (D14), per il cron `priority` e la pulizia del log resta aperta |
 
 **Conversioni a Effect rinviate** (regola di `AGENTS.md`: le conversioni più grandi si elencano come seguiti). Non fanno parte di questo piano perché il piano non ne tocca la logica:
 - le server action della chat: PR4 le sposta e cambia cosa ricevono e cosa restituiscono; l'unico errore previsto è la validazione dell'input, che resta a Zod (P8, P11);
 - la route e il router delle preferenze (T5.14 aggiunge solo una chiave);
-- ~~`customer.bulkUpdateCustomers` (T3.8c cambia solo il tipo di procedura). Resta anche fuori dalla regola dei lock (A11), come il cron `priority`: portarli dentro è il seguito naturale di T3.15;~~ entra nel piano con T6.8 (D14): passa a Effect e alla regola dei lock. Il cron `priority` resta fuori;
+- ~~`customer.bulkUpdateCustomers` (T3.8c cambia solo il tipo di procedura). Resta anche fuori dalla regola dei lock (A11), come il cron `priority`: portarli dentro è il seguito naturale di T3.15;~~ entra nel piano con T6.8a (D14): passa a Effect e alla regola dei lock. Il cron `priority` resta fuori;
 - le altre procedure di `task` e `customer` che restano dopo T3.13;
 - i cron `priority` ed export;
 - il calcolo del giorno italiano dentro `processDueAlerts.ts`, che potrà usare `time.ts` (T3.1c) quando si toccherà il cron;
 - il trigger della regola dei lock (T3.15) attivo per default in tutti i `.db.test.ts`, con le factory e gli scrittori fuori regola (A11) esclusi in modo esplicito: così anche uno scrittore nuovo che dimentica il lock rende rossa la CI.
 
-**Seguiti di `create-plan` 0.8.0:** i task di PR6 non hanno ancora `complexity`, e la FLOW non è stata riletta, per loro, contro gli AC con il criterio nuovo. Si fa quando PR6 si ripianifica. PR4 è fatta il 2026-10-15; PR5 è riscritta il 2026-10-17.
+**Seguiti di `create-plan` 0.8.0:** fatti per PR3 (2026-10-15), PR4 (2026-10-15), PR5 (2026-10-17) e PR6 (2026-10-20). La FLOW riletta contro gli AC per PR6 ha una riga superata ("Dopo 'Assegna Clienti'", domanda 2 della spec) e due frasi sul periodo di convivenza fra Clienti e Contatti: le sistema T6.6.
 
 **Fuori perimetro, notati ripianificando PR4** (vanno nel tech-debt con T4.2):
 - `chat.deleteMessage` è un'`operatorProcedure` che elimina qualunque messaggio: non controlla chi l'ha scritto, e l'`operatorId` che riceve dal client non serve a niente;
@@ -3498,6 +3672,11 @@ Le assunzioni esplicite, che Omar può ribaltare prima della PR interessata:
 - le righe di Clienti che si aprono solo col clic (finding 33) e la paginazione di Clienti con stato locale (finding 34);
 - l'uscita della Sheet senza animazione, i 500 ms dell'entrata, il contrasto del toast `destructive` e il pulsante di chiusura del toast senza nome: già nel tech-debt, i primitivi non si toccano.
 
+**Fuori perimetro, notati ripianificando PR6** (vanno nel tech-debt con T6.7):
+- il pulsante "Retry" di `PopoverFilterErrorBoundary` non fa niente (`onClick={() => this.props.handleError}`, preesistente);
+- la voce di [[tech-debt/crm/search-by-explicit-map]] sull'`sql.raw` va aggiornata: `sqlTaskFilter` sparisce con T6.1 e i numeri di riga cambiano; il resto del difetto (valori non escapati, `sqlFilter` libero nella procedura) resta;
+- `task.getContactById` fa tre query per un riepilogo che ne usa una (T6.4).
+
 Scostamenti dalla spec, da riportare nella spec al prossimo aggiornamento:
 - **D2**: AC49 dice "solo i contatti assegnati a lui"; il piano ammette anche i contatti dei suoi clienti;
 - **D3**: AC43 dice che il cron ricalcola la priorità "alla sua esecuzione successiva"; un `chiamare` a 120 invece non viene mai ricalcolato;
@@ -3510,6 +3689,9 @@ Scostamenti dalla spec, da riportare nella spec al prossimo aggiornamento:
 - **D22**: AC44 diceva che il richiamo ha "una data non passata"; il piano chiede una data da domani e rifiuta oggi. **Riportato nella spec il 2026-10-17** (AC44 e Decision Log);
 - **A14**: AC8 elenca due voci del menu azioni e AC24 dice "cliccando una riga"; il piano aggiunge "Apri contatto" nel menu perché il dettaglio si apra anche da tastiera;
 - **A9, A12, A13**: il toast di conferma con [Apri], l'avviso di riapertura e il messaggio "Non hai contatti assegnati" stanno nella FLOW e in nessun AC;
+- **D25** (2026-10-20): la tabella dei passi di rilascio della spec ha PR5 al passo 2 e 3 e la semplificazione di Clienti al passo 4, dopo il passo 3 con la misura dell'adozione (domanda 5, A2). Il piano rilascia i passi 2, 3 e 4 insieme. Da riportare nella spec: tabella dei passi, domanda 5 chiusa, AC73 (la coesistenza non arriva in prod).
+- **D26** (2026-10-20): AC75 chiede che "prima del rilascio i contatti attivi con un operatore diverso da quello del cliente si riallineino"; il piano lo fa nella sessione di rilascio, subito dopo il deploy e prima di dichiararlo finito (T6.9). Aggiunge anche "Assegna a te" che assegna il contatto senza operatore (A16, T6.8b), che AC48–AC50 non citano.
+- **D14 / domanda 2 della spec**: la domanda 2 ("dopo Assegna Clienti il contatto resta al precedente") è superata da AC75; la tabella delle domande aperte della spec è da aggiornare.
 - **T5.16**: il `DROP INDEX` di `task_priority_active_idx` e `task_operator_active_idx` non è "additivo" come chiedono i Constraints della spec (non tocca dati ed è reversibile con un `CREATE INDEX`). **Confermato da Omar il 2026-10-17**, sulla misura preliminare di T5.16; **riconfermato il 2026-10-18** sulle misure con la query vera (T5.16, passo 0). La migrazione si genera dopo T5.1 e dopo la ripetizione della misura con il `.toSQL()` vero; la applica Omar a mano. **Riportato nella spec il 2026-10-17** (eccezione ai Constraints).
 
 ## 16. Esito della verifica
@@ -3615,3 +3797,31 @@ L'`adversarial-verifier` (quality gate, contesto pulito, `review.mode: total`) h
 | MINOR | T5.16 senza il ramo "oltre 500 ms", parametri non scritti nel testo dell'`EXPLAIN`, ricerca e `includeInactive` non misurate | Aggiunti |
 | MINOR | T5.14 in async contro D9; il test della route simulava `api`, una funzione interna | D9 con l'eccezione; il test della route è tolto, la chiave `cot` si prova in T5.10 |
 | NIT | "6 PR"; PR4 ancora "da fare"; AC16–AC18 e AC25 fuori dall'elenco di PR5a; 75.000 task contro 69.783 + 13.397; riga di `StateSelector`; "T5.13" nel tech-debt; messaggio server di `DeadlineInPast`; focus senza scadenza; chiusura senza segnale; ordine dello Storico | Corretti |
+
+### Sesta verifica: PR6 riscritta (2026-10-20)
+
+L'`adversarial-verifier` (quality gate, contesto pulito, `review.mode: total`) ha giudicato la PR6 riscritta (T6.1–T6.10), le sezioni trasversali che la citano e D25–D28 contro AC58–AC75, la FLOW e il codice, aprendo i file. Esito **DO NOT SHIP**: nessun BLOCKER, 4 MAJOR, 10 MINOR, 5 NIT. Ha confermato su codice il grafo e l'ordine (nessun file scritto da due task senza ordine), i quattro chiamanti dei test di `bulkUpdateCustomers` che devono restare verdi, i due soli percorsi che separano cliente e contatto (finding 38), l'assenza di chiamanti di `getActiveAlerts` e `getAllAvaibleTaskStatus`, e la fattibilità del trigger differito di T6.10 (`failAtCommit` lo fa già su PGlite). Ho ricontrollato sul codice i rilievi prima di accettarli: erano veri.
+
+| Severità | Rilievo | Correzione |
+|---|---|---|
+| MAJOR | AC60 e T6.2 scartavano "`filter_by` con 'Stato' o 'Contattato il'", ma i filtri avanzati stanno in `filter=<colonna>:<op>:<valore>` con il nome SQL (`state`, `closed_at`), e `createSQLQuery` li inoltra a `sql.raw` anche senza la voce nella mappa. Dopo T6.1 la pagina cadeva in errore, e il test di T6.2 passava a vuoto | T6.2 tiene solo le voci di `filter` con una colonna in `CUSTOMER_FILTER_QUERY_MAP` (lista bianca locale a Clienti), scarta `status`, `order_by` e `sorted_by` rimossi; il test usa i parametri veri; la prova si ripete in T6.1 e T6.7; A15 riscritta |
+| MAJOR | `CustomerCreateContact` porta il focus al selettore di stato che T6.4 e T6.5 eliminano: dopo "Crea contatto" il focus finisce su `body` (AC66) | T6.4 ha `CustomerCreateContact` nella `location`: il focus va a "Gestisci contatto", anche con `CONTACT_ALREADY_ACTIVE`, con test e prova da tastiera; `STATE_TRIGGER_SELECTOR` resta |
+| MAJOR | Il gate di T6.9 poggiava su uno script senza test e senza una regola per il caso (b) | Test dello script con fixture per (a), (a2), (b), un caso misto e uno allineato; regola di default per (b); la misura in prod si fa prima di scrivere la migrazione |
+| MAJOR | G4b e G5 chiedevano un SHIP di PR5b che non c'è (l'ultimo round è DO NOT SHIP e il `REPORT.md` non è stato aggiornato), e G4a ("prima del deploy") contraddiceva T6.7 | La review di T6.7 non copre PR5b: serve il round di verifica in `REPORT.md` o la nota di Omar; G4a diventa "nella sessione, dopo il deploy" |
+| MINOR | La sessione di T6.7 applica tre migrazioni in una transazione (`cron_run`, indici, T6.9), con il `lock_timeout` di 5 s degli indici; l'annuncio era dopo la migrazione | Le tre migrazioni sono elencate, con il rilancio dopo `pg_stat_activity`; l'annuncio è il passo 0 |
+| MINOR | `canHandover` ammette l'operatore del cliente: nel servizio della massiva lascerebbe passare un `OPERATORE` | T6.8a usa `canReassign` e prova il servizio chiamato direttamente |
+| MINOR | "Gestisci contatto" con `{ ...defaultState, customerId }` non è la vista di "Vedi contatti" (`seeContactsHref` ha anche i contatti chiusi) | `customerContactsState` estratto e usato da tutti e due |
+| MINOR | `closedCalls` fa `innerJoin` con `operators`: dare un operatore a un contatto che non l'aveva fa entrare nell'export chiamate che oggi non conta (Constraints) | (a2) esportabili nello script e nel gate di T6.7; A16 lo dice e aspetta la conferma di Omar prima di T6.8b |
+| MINOR | A15–A17 mancavano nella tabella di §15; commenti che nominano simboli eliminati fuori dalla `location` di T6.5 e T6.8a; dettagli di T6.2 (tipo `CustomerColumnSelectedProps`, preferenze in `userPreferences.ts`); `tdd_target` di T6.1 già soddisfatto e senza RED sul pareggio; igiene di T6.9 (tag di `migrateUpTo`, statement unico, "rilanciare") | Corretti: tabella, `location`, id dei fixture in ordine opposto e `toSQL()`, tag in `src/test/db.ts`, CTE unica, chiarita la frase sul rilancio |
+| NIT | Finding 42 (sette chiamate, cinque file); `complexity` di T6.3; riferimenti a "T6.8"; A17 (`task.getContactById` nuova nel backend); le factory | Corretti |
+
+**Seconda passata mirata** (stesso giorno, un secondo verificatore a contesto pulito sulle sole parti riscritte): **DO NOT SHIP**, nessun BLOCKER, 2 MAJOR, 7 MINOR, 6 NIT. Ha confermato su codice la lista bianca (le chiavi di `CUSTOMER_FILTER_QUERY_MAP` sono `birthday_date, age, source, comune, sede, phone_number, ambito_lavorativo, occupazione`), che Pratiche ha la sua mappa e non ne risente, il refactor di `seeContactsHref`, le tre migrazioni pendenti con il `lock_timeout` che vale anche per l'`UPDATE` di T6.9, la CTE unica (provata su PGlite) e il test dello script in sola lettura. Rilievi ricontrollati sul codice e corretti:
+
+| Severità | Rilievo | Correzione |
+|---|---|---|
+| MAJOR | Il popover dei filtri avanzati legge `filter` dall'URL da solo e mappa una colonna sconosciuta su `"Nato il"`, che non è una chiave: con `state` e `closed_at` fuori dalla mappa cade nell'`ErrorBoundary`. T6.2 introduceva una regressione e `PopoverFilter.tsx` non era nella `location` | `PopoverFilter.tsx` e il suo test in T6.2: si scartano le voci con nome ignoto o malformate, anche per Pratiche; test col componente vero e la mappa ridotta |
+| MAJOR | `filter_by` era scritto `status-chiamare`, forma che il parser non legge: il test passava a vuoto. La forma vera è `[status]=chiamare` (codificata), e il chip "chiamare" restava | Forma corretta nel testo e nei test; il client scarta anche `status`; i test devono essere rossi sul codice di oggi |
+| MINOR | L'ordinamento lato client semina dal `order_by` grezzo; i mock dei test dei filtri rendono `null`; la riga di T6.1 sui link salvati era un test DB di un comportamento della pagina; (b) e (a2) senza esiti eseguibili e il passo 4 impossibile con "lascia com'è"; A16 non copriva T6.8a; le celle di G4a, G4b e G5 contraddicevano T6.7; `complexity` di T6.3 e AC66/AC67 incoerenti fra sezioni; la conferma di A16 non era in §8 né nelle wave | Corretti: semina, mock, riformulazione di T6.1, esiti e registro della decisione, conteggio (c), celle di §12 separate in "prima del merge" e "nella sessione", §3, §8 e §10 |
+| NIT | Nome del servizio nuovo e numeri di riga dei commenti; `CustomerCreateContact.test.tsx` non esiste; `getContactById` pesante; `from_operator_id` vuole una CTE; helper del test dello script; frasi della guida rimaste false | Corretti o dichiarati (T6.8a, T6.4, T6.9, T6.6, §15) |
+
+Il piano non è stato sottoposto a una terza verifica: le correzioni di questo secondo giro sono state ricontrollate sul codice dall'orchestratore, non da un verificatore indipendente.
