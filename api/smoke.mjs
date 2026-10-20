@@ -51,6 +51,11 @@ const expect = async (path, status) => {
 await expect("/health", 200)
 // A procedure that needs a session: the session middleware and the router run
 await expect("/api/trpc/user.getUserPreference", 401)
+// NextAuth's routes, without a cookie: they answer without the database
+await expect("/api/auth/session", 200)
+await expect("/api/auth/providers", 200)
+// A REST route of the Next.js app, with NextResponse from next/server
+await expect("/api/export/download", 401)
 
 clearTimeout(timer)
 child.removeAllListeners("exit")

@@ -82,6 +82,10 @@ await build({
     // browser; outside Next.js its index throws (vitest.config.ts does the same)
     "server-only": "./node_modules/server-only/empty.js",
     "@sentry/nextjs": "./api/src/shims/sentry.ts",
+    "@/trpc/server": "./api/src/shims/trpcServer.ts",
+    // The route handlers answer with NextResponse. `next` has no `exports`
+    // map, so Node resolves its subpaths only with the file's extension
+    "next/server": "next/server.js",
   },
   plugins: [cjsDefaultInterop],
   logLevel: "info",
