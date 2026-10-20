@@ -39,3 +39,56 @@ pnpm seed:clearTables
 pnpm seed:pratiche
 pnpm seed:customers
 pnpm seed:customerToPratica
+
+## Database locale
+
+Il database locale è un Postgres 15 in Docker, come la produzione. Serve a due cose: provare una migrazione su un database proprio prima di applicarla allo sviluppo condiviso, e far girare i test su Postgres vero.
+
+Comandi, dalla radice del repo:
+
+- `pnpm db:local:up`: avvia il Postgres e aspetta che sia pronto.
+- `pnpm db:local:down`: ferma il Postgres. I dati restano nel volume `mito-postgres`.
+- `pnpm db:local:reset`: elimina il database `mito_local` e lo ricrea vuoto.
+- `pnpm db:local:migrate`: applica a `mito_local` le migrazioni in sospeso e stampa quante ne ha applicate.
+- `pnpm test:pg`: esegue i test `*.pg.test.ts` su quel Postgres.
+
+Gli script `db:local:*` non leggono i file `.env*`: il DSN è scritto in `src/server/db/scripts/localDb.ts`, e si fermano prima di collegarsi se l'host non è `localhost` o `127.0.0.1` o se il database non è `mito_local`. Non possono arrivare al database di sviluppo né a quello di produzione.
+
+### Provare una migrazione prima di sviluppo
+
+1. Passa al ramo base, quello da cui parte la migrazione (di solito `dev`), e riparti da un database vuoto. `reset` cancella i dati di `mito_local`.
+
+```bash
+git checkout <ramo-base>
+pnpm db:local:up
+pnpm db:local:reset
+pnpm db:local:migrate
+```
+
+2. Passa al ramo con la migrazione nuova e applicala. Il comando deve applicarne almeno una, per esempio `mito_local: 1 migrazione applicata`.
+
+```bash
+git checkout <ramo-con-la-migrazione>
+pnpm db:local:migrate
+```
+
+3. Controlla lo schema sul database locale, in sola lettura, per esempio con `psql`.
+
+```bash
+docker compose exec postgres psql -U postgres -d mito_local
+```
+
+### Limiti
+
+- Lo schema viene dalle migrazioni del repo, più i pezzi che la produzione ha ricevuto da `db:push`. Non è una copia del database di sviluppo.
+- Dati, ruoli, estensioni e oggetti creati a mano non ci sono.
+- L'app non gira sul database locale: il login Azure AD e lo storage Supabase restano quelli di sviluppo.
+
+### Test su Postgres vero
+
+```bash
+pnpm db:local:up
+pnpm test:pg
+```
+
+Ogni file di test crea un database suo, `mito_test_<casuale>`, sullo stesso Postgres, e lo elimina alla fine: `mito_local` non viene toccato. Senza `TEST_DATABASE_URL`, `pnpm run test --run` salta questi test. In CI invece girano sempre.
