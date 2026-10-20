@@ -5,6 +5,7 @@ import { PGlite } from "@electric-sql/pglite"
 import { drizzle } from "drizzle-orm/pglite"
 import { migrate } from "drizzle-orm/pglite/migrator"
 import { and, asc, eq } from "drizzle-orm"
+import { driverError } from "@/server/db/driverError"
 import * as schema from "@/server/db/schema/index"
 
 const MIGRATIONS_FOLDER = path.resolve(__dirname, "../server/db/migrations")
@@ -176,3 +177,13 @@ export const logOf = (customerId: string) =>
     .from(schema.taskEventLog)
     .where(eq(schema.taskEventLog.customerId, customerId))
     .orderBy(asc(schema.taskEventLog.id))
+
+/**
+ * Fails with the database driver's error when the query of `run` fails:
+ * Drizzle 0.45 wraps it in a DrizzleQueryError, so the SQLSTATE and the
+ * driver's message are on its `cause`.
+ */
+export const driverFailure = (run: PromiseLike<unknown>) =>
+  Promise.resolve(run).catch((error: unknown) => {
+    throw driverError(error)
+  })
