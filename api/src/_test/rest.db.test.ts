@@ -7,6 +7,9 @@ import {
   it,
   vi,
 } from "vitest"
+import { once } from "node:events"
+import { type AddressInfo } from "node:net"
+import { serve } from "@hono/node-server"
 import { sessions } from "@/server/db/schema/users"
 import { migrateUpTo, resetDb, testDb } from "@/test/db"
 import { createOperator } from "@/test/factories"
@@ -128,5 +131,33 @@ describe("route REST sul backend", () => {
     })
 
     expect(response.status).toBe(400)
+  })
+
+  it("su una porta vera, come su Cloud Run, legge il corpo della richiesta", async () => {
+    // @hono/node-server hands the routes its own request, not undici's
+    const server = serve({ fetch: app.fetch, port: 0, hostname: "127.0.0.1" })
+    await once(server, "listening")
+    const { port } = server.address() as AddressInfo
+    try {
+      const operator = await createOperator()
+      const token = await signIn(operator.userId)
+
+      const response = await fetch(
+        `http://127.0.0.1:${port}/api/export/export/getMessages`,
+        {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            cookie: `${SESSION_COOKIE}=${token}`,
+          },
+          body: JSON.stringify({ chatIds: [] }),
+        }
+      )
+
+      expect(response.status).toBe(200)
+      expect(await response.json()).toEqual({ result: [] })
+    } finally {
+      server.close()
+    }
   })
 })

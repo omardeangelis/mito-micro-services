@@ -41,6 +41,15 @@ const ROUTES: [string, RouteModule][] = [
   ["/api/user/preferences", userPreferences],
 ]
 
+// From the URL and the parts: @hono/node-server's request is a lazy stand-in
+// for the standard one, which Request's constructor doesn't take as input
+const toNextRequest = (request: Request) =>
+  new NextRequest(request.url, {
+    method: request.method,
+    headers: request.headers,
+    ...(request.body ? { body: request.body, duplex: "half" } : {}),
+  })
+
 /**
  * The REST routes of import, export and user preferences, as the Next.js app
  * serves them: the same files, run on a NextRequest made from the request.
@@ -58,7 +67,7 @@ export function restRoutes() {
         method,
         path,
         async (c) =>
-          (await handler(new NextRequest(c.req.raw))) ??
+          (await handler(toNextRequest(c.req.raw))) ??
           new Response(null, { status: 500 })
       )
     }
