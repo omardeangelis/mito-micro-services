@@ -42,3 +42,7 @@
 - [Focus loss and toast announce](feedback_focus_loss_and_toast_announce_probes.md) — controls that vanish on activation and Back drop focus to body; Radix toast announce escapes a modal's aria-hidden; webpack toast injection
 - [UI pass driver artifacts](feedback_ui_pass_driver_artifacts.md) — set viewport fires no resize (false stale popovers); portal/Sheet probes need hand measuring; sticky bar vs focus Tab loop
 - [Removed params, focus handoff, gates](feedback_removed_params_focus_handoff_gates.md) — URL writer vs reader names; client readers survive a server discard (popover crash); plan param literal vs real parser; gate cells vs task text; migrations in one tx
+- [Probe the engine before calling a test vacuous](lesson_probe-engine-before-calling-a-test-vacuous.md) — 20-line PGlite probe settles tie-order/CTE claims; my tiebreak suspicion was a false positive
+- [Stale text after a ledger change](lesson_stale-text-after-ledger-change.md) — where plans keep old wording: Done tasks, headers, AC tables, verification logs
+- [Migration high-water mark and partial merges](lesson_migration-high-water-mark-and-partial-merges.md) — check limited-merge options against the migrator's created_at rule
+- [zsh/rg quoting](env_zsh-rg-quoting.md) — quote globs, use rg -g
