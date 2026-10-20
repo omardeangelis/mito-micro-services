@@ -53,6 +53,11 @@ import { splitArray } from "@/app/api/import/_utils"
 
 const SPLIT_SIZE = 30
 
+// Quello che "Assegna Clienti" fa alle chiamate già registrate: lo dicono sia
+// la scheda di scelta sia la descrizione del dialogo.
+const CLIENTI_EXPORT_NOTE =
+  "Le chiamate già registrate sul contatto passano al nuovo operatore nell'export; i contatti non attivi restano a chi li ha lavorati."
+
 type BulkType = "chiamate" | "clienti"
 
 const formSchema = z
@@ -101,7 +106,7 @@ export const CustomerBulkDialog = (props: BulkActionDialogProps) => {
     api.operator.getAllUniqueOperators.useQuery()
 
   // Carica i clienti selezionati che hanno un alert attivo: solo nel flusso
-  // "chiamate", dove la creazione di una nuova chiamata può sovrascriverne lo stato.
+  // "chiamate", dove la creazione di un nuovo contatto può sovrascriverne lo stato.
   const { data: customersWithAlert, isLoading: isLoadingAlerts } =
     api.task.getCustomersWithActiveAlerts.useQuery(
       { customerIds },
@@ -227,13 +232,13 @@ export const CustomerBulkDialog = (props: BulkActionDialogProps) => {
             </button>
             <DialogTitle>
               {mode === "chiamate"
-                ? "Assegnazione Massiva delle Chiamate"
-                : "Assegnazione Massiva dei Clienti"}
+                ? "Crea/assegna contatti"
+                : "Assegna Clienti"}
             </DialogTitle>
             <DialogDescription>
               {mode === "chiamate"
-                ? "Crea una chiamata da fare per i clienti selezionati e li assegna all'operatore scelto."
-                : "Assegna i clienti selezionati a un operatore, senza creare nuove chiamate né modificare lo stato delle chiamate esistenti."}
+                ? "Crea un contatto da chiamare per i clienti selezionati e li assegna all'operatore scelto."
+                : `Sposta i clienti selezionati, con il loro contatto attivo in qualunque stato, all'operatore scelto, senza creare contatti. ${CLIENTI_EXPORT_NOTE}`}
             </DialogDescription>
           </DialogHeader>
 
@@ -347,7 +352,9 @@ export const CustomerBulkDialog = (props: BulkActionDialogProps) => {
                 variant={disabled || pending ? "disabled" : "default"}
                 type="submit"
               >
-                {mode === "chiamate" ? "Assegna chiamate" : "Assegna clienti"}
+                {mode === "chiamate"
+                  ? "Crea/assegna contatti"
+                  : "Assegna clienti"}
               </Button>
             </form>
           </Form>
@@ -388,7 +395,7 @@ const AlertResolveSection = (props: {
           {props.customers.length} cliente/i selezionati hanno un alert attivo
         </AlertTitle>
         <AlertDescription>
-          Spunta i clienti per cui creare una nuova chiamata e risolvere
+          Spunta i clienti per cui creare un nuovo contatto e risolvere
           l&apos;alert. Quelli non spuntati manterranno stato e alert: cambierà
           solo l&apos;operatore.
         </AlertDescription>
@@ -467,9 +474,11 @@ const ModeChoice = (props: {
         >
           <Card className="flex h-full cursor-pointer flex-col gap-2 p-5 transition-colors hover:border-primary hover:bg-muted/50">
             <Phone className="h-6 w-6 text-primary" />
-            <span className="text-base font-semibold">Assegna Chiamate</span>
+            <span className="text-base font-semibold">
+              Crea/assegna contatti
+            </span>
             <span className="text-sm text-muted-foreground">
-              Crea una chiamata da fare per ogni cliente e lo assegna
+              Crea un contatto da chiamare per ogni cliente e lo assegna
               all&apos;operatore.
             </span>
           </Card>
@@ -483,8 +492,7 @@ const ModeChoice = (props: {
             <Users className="h-6 w-6 text-primary" />
             <span className="text-base font-semibold">Assegna Clienti</span>
             <span className="text-sm text-muted-foreground">
-              Assegna solo il cliente a un operatore, senza creare nuove
-              chiamate.
+              {`Sposta il cliente e il suo contatto attivo, in qualunque stato, all'operatore. Non crea contatti. ${CLIENTI_EXPORT_NOTE}`}
             </span>
           </Card>
         </button>
@@ -499,7 +507,7 @@ const LOADING_STEPS: Record<BulkType, string[]> = {
   chiamate: [
     "Verifica dei clienti selezionati",
     "Assegnazione all'operatore",
-    "Creazione delle chiamate",
+    "Creazione dei contatti",
     "Aggiornamento degli alert",
     "Salvataggio delle modifiche",
   ],
@@ -526,7 +534,7 @@ const LoadingUpdate = (props: { mode: BulkType }) => {
       <DialogHeader>
         <DialogTitle>
           {props.mode === "chiamate"
-            ? "Assegnazione chiamate in corso"
+            ? "Crea/assegna contatti in corso"
             : "Assegnazione clienti in corso"}
         </DialogTitle>
         <DialogDescription>
@@ -581,12 +589,12 @@ const SuccessUpdate = (props: {
           <CircleCheck className="h-8 w-8 text-success" />
         </div>
         <DialogTitle className="text-xl">
-          {isChiamate ? "Chiamate assegnate" : "Clienti assegnati"}
+          {isChiamate ? "Contatti assegnati" : "Clienti assegnati"}
         </DialogTitle>
         <DialogDescription>
           {isChiamate
-            ? `${props.count} chiamata/e create${props.operatorName ? ` e assegnate a ${props.operatorName}` : ""}.`
-            : `${props.count} cliente/i assegnati${props.operatorName ? ` a ${props.operatorName}` : ""}.`}
+            ? `${props.count} contatto/i creati${props.operatorName ? ` e assegnati a ${props.operatorName}` : ""}.`
+            : `${props.count} cliente/i assegnati${props.operatorName ? ` a ${props.operatorName}` : ""}, con il loro contatto attivo.`}
         </DialogDescription>
       </DialogHeader>
 

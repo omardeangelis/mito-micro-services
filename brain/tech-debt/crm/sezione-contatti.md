@@ -257,6 +257,17 @@ Scoperto in PR6 (T6.8a), conseguenza di P19.
 
 **Da fare fuori da questa spec:** misurare "Assegna Clienti" con 100 e 500 clienti sul DB di sviluppo; se supera il limite, spezzare la selezione in blocchi dal client, o scrivere la versione a insiemi (un `UPDATE` e un `INSERT … SELECT` per tutti i clienti, con i lock presi in ordine di id).
 
+## Con un caricamento diretto di Clienti l'admin non vede la colonna di selezione
+
+Scoperto nella passata browser di T6.3 (PR6, 2026-10-20), preesistente (da T3.14, PR3).
+
+- `UserPreferenceProvider` crea lo store con `role: data?.role` e, dopo il primo render dei figli, lo aggiorna in un `useEffect`; da T3.14 il ruolo non è più nel browser. `CustomersTable` legge `role` una volta nell'inizializzatore di `useState` per la visibilità della colonna `select` (`role === "ADMIN"`): con un caricamento diretto di `/dashboard/customers` (o un ricaricamento) il ruolo è ancora `undefined`, la colonna non c'è, e con lei il pulsante "Edit" e il dialogo di assegnazione massiva.
+- Arrivandoci con un clic dalla barra (la query `getUserPreference` è già in cache) la colonna c'è. In più la visibilità, non il ruolo, finisce nelle preferenze salvate: la lista nascosta salvata dal caricamento diretto contiene `select`, e `CustomersTable` lo riscrive con il ruolo a ogni caricamento, quindi non resta.
+
+**Effetto oggi:** un admin che apre Clienti da un link diretto non può usare "Assegna Clienti" finché non passa da un'altra pagina. Non cambia con PR6.
+
+**Da fare fuori da questa spec:** far dipendere la visibilità di `select` dal ruolo corrente (un effetto, o `columnVisibility` calcolata dal ruolo) e non dal valore del primo render.
+
 ## `customer.insertCustomer` accetta l'operatore
 
 Scoperto nella review di PR3 (T3.13), preesistente.
