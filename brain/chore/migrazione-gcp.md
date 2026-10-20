@@ -3,7 +3,7 @@ domain: platform
 title: Backend, DB, storage e cron su GCP
 type: piano
 status: in_progress
-last_updated: 2026-10-19
+last_updated: 2026-10-20
 ---
 
 # Backend, DB, storage e cron su GCP
@@ -232,3 +232,7 @@ Le dismissioni arrivano 2–4 settimane dopo.
 
     Il primo ha risposto in 20,8 s, perché l'istanza si è avviata a freddo in circa 15 s;
   - i job sono stati riattivati la sera stessa, e da lì contano le 7 notti del go/no-go. Gli esiti vanno solo nei log finché manca il webhook di Slack.
+- 2026-10-20:
+  - prima notte dei job: `priority` e `alert` `skipped`, come previsto. Il giorno di `cron_run` è quello UTC, e i lanci a mano del 19 lo avevano già preso. `update` (43 clienti) e `delete-export` (1 file) `succeeded`. Le 7 notti piene contano dalla notte tra il 20 e il 21;
+  - W1 su staging (PR #27): `mito-crm-staging` gira con l'immagine `mito-api:40cdbcd` (revisione `00004`), costruita da `dev` con `api/gcp/build.sh`. `/health` 200. Un lancio a mano di `update` e `delete-export` risponde `skipped` senza cambiare `cron_run`. `priority` e `alert` non si lanciano a mano: prenderebbero il giorno UTC e salterebbero la notte;
+  - il deploy di staging su Vercel da `dev` fallisce ancora per il limite di 12 funzioni del piano Hobby.
