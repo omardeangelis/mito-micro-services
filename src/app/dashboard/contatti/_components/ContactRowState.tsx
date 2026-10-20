@@ -40,7 +40,7 @@ type Props = {
 /**
  * The "Stato" cell of a row: the state of the contact, changed in place with
  * the rules of the detail (AC9, AC30–AC41), the source `list`, and the same
- * cell as the Clienti table (`StateSelector`).
+ * select and wait as the detail's `ContactStateControl`.
  *
  * - The saved value is always on screen; the wait is the spinner of the
  *   selector, from the call until the new value is rendered (AC39). A change

@@ -40,8 +40,6 @@ vi.mock("@/components/custom/table/CustomFilters", () => ({
   FileCombobox: () => null,
   OperatorSelector: () => null,
   SedeSelector: () => null,
-  // Un segno visibile: se il pannello lo mostra, il test lo vede
-  TaskStatusSelector: () => <div data-testid="task-status-selector" />,
 }))
 vi.mock("@/components/custom/table/PopoverFilter", () => ({
   PopoverDateFilter: ({ filterMap }: { filterMap: Map<string, unknown> }) => {
@@ -125,7 +123,6 @@ async function mount(href: string) {
       await rerender()
     },
     text: () => view.container.textContent ?? "",
-    has: (testId: string) => view.queryByTestId(testId) !== null,
     canSearch: () =>
       !(view.getByRole("button", { name: "Cerca" }) as HTMLButtonElement)
         .disabled,
@@ -239,11 +236,6 @@ describe("TableFilterSections, ricerca", () => {
 // in Contatti
 
 describe("TableFilterSections, filtri tolti", () => {
-  it("non offre il filtro per stato", async () => {
-    const page = await mount("/dashboard/customers")
-    expect(page.has("task-status-selector")).toBe(false)
-  })
-
   it("il popover dei filtri avanzati non ha 'Stato' né 'Contattato il'", async () => {
     await mount("/dashboard/customers")
     expect([...popover.filterMap!.keys()]).not.toContain("Stato")

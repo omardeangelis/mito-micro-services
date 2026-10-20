@@ -52,16 +52,6 @@ vi.mock("../_components/CustomerCreateContact", () => ({
     return null
   },
 }))
-vi.mock("../_components/CustomerTaskManager", () => ({
-  CustomerTaskManager: function CustomerTaskManager() {
-    return null
-  },
-}))
-vi.mock("../_components/CustomerActivities", () => ({
-  CustomerActivities: function CustomerActivities() {
-    return null
-  },
-}))
 
 const giulia = { id: 9, name: "Giulia", surname: "Bianchi" }
 const deadline = new Date("2026-11-05T09:00:00Z")
@@ -144,13 +134,7 @@ describe("la scheda cliente con un contatto attivo", () => {
   })
 
   it("non ha più i controlli di stato, priorità e alert (AC65)", async () => {
-    for (const name of [
-      "CustomerTaskManager",
-      "CustomerActivities",
-      "CustomerCreateContact",
-    ]) {
-      expect(await elementsNamed(name)).toHaveLength(0)
-    }
+    expect(await elementsNamed("CustomerCreateContact")).toHaveLength(0)
   })
 
   it("tiene il form, le pratiche e le note (AC68)", async () => {
