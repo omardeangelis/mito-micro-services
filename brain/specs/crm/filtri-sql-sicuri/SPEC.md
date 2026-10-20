@@ -128,3 +128,4 @@ Chi è coinvolto:
 | Voci non valide scartate silenziosamente | Robusto ai link salvati stantii (coerente con AC60 di PR6); un vecchio link resta una lista, non diventa una pagina in errore (Omar, 2026-10-20). |
 | Clienti + Pratiche in un'unica PR | `filters.ts` è condiviso e la falla è identica: separarle lascerebbe Pratiche sfruttabile più a lungo e richiederebbe un doppio refactor del codice condiviso (Omar, 2026-10-20). |
 | Severità alzata rispetto allo scope iniziale | La prova mostra esecuzione arbitraria con il ruolo DB owner (`postgres`), non un filtro malformato: raggio d'azione = intero database (2026-10-20). |
+| Ci si ferma alla SPEC; `create-plan` (PLAN.md) è rimandato a dopo l'implementazione di PR6 | La baseline del fix è il codice post-PR6: pianificare prima significherebbe pianificare su righe e forma della query che PR6 cambia. La SPEC resta `draft` in attesa dell'approvazione di Omar e della data (Omar, 2026-10-20). |
