@@ -1,57 +1,65 @@
-import { createClient, type SupabaseClient } from "@supabase/supabase-js"
+import { Cause, Effect, Exit, Option, type Layer } from "effect"
+import {
+  Storage,
+  StorageLive,
+  type StorageConfigError,
+} from "@/server/services/storage"
 
-// Made at the first run, not on import: the backend imports every job when it
-// starts, and createClient throws without the URL
-let client: SupabaseClient | undefined
-const supabase = () =>
-  (client ??= createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_KEY!
-  ))
-
-const BUCKET_NAME = "mito-storage"
 const EXPORT_PATH = "export"
 
-/**
- * The `delete` cron: deletes the files of the export folder, one by one. A
- * file it can't delete is logged and the others go on; a failure to list the
- * folder is thrown. Returns how many it deleted and how many it couldn't.
- */
-export async function deleteExportFiles(): Promise<{
-  deleted: number
-  failed: number
-}> {
-  const { data: files, error: listError } = await supabase()
-    .storage.from(BUCKET_NAME)
-    .list(EXPORT_PATH, { limit: 1000 })
+const messageOf = (error: { message: string; cause?: unknown }) =>
+  typeof error.cause === "object" &&
+  error.cause !== null &&
+  "message" in error.cause &&
+  typeof error.cause.message === "string"
+    ? error.cause.message
+    : error.message
 
-  if (listError) {
-    throw listError
-  }
+const deleteExport = Effect.gen(function* () {
+  const storage = yield* Storage
+  const files = yield* storage.list(`${EXPORT_PATH}/`, { limit: 1000 })
 
   let deleted = 0
   let failed = 0
-  if (!files || files.length === 0) {
+  if (files.length === 0) {
     console.log(`No files found in the ${EXPORT_PATH} folder.`)
   } else {
     // Delete each file in the "export" folder
     for (const file of files) {
-      const { error: deleteError } = await supabase()
-        .storage.from(BUCKET_NAME)
-        .remove([`${EXPORT_PATH}/${file.name}`])
-
-      if (deleteError) {
-        failed++
-        console.error(
-          `Error deleting file ${EXPORT_PATH}/${file.name}:`,
-          deleteError.message
-        )
-      } else {
-        deleted++
-        console.log(`File ${EXPORT_PATH}/${file.name} deleted successfully.`)
-      }
+      yield* storage.remove(file.key).pipe(
+        Effect.match({
+          onFailure: (error) => {
+            failed++
+            console.error(`Error deleting file ${file.key}:`, messageOf(error))
+          },
+          onSuccess: () => {
+            deleted++
+            console.log(`File ${file.key} deleted successfully.`)
+          },
+        })
+      )
     }
   }
   console.log(`All files in the ${EXPORT_PATH} folder have been deleted.`)
   return { deleted, failed }
+})
+
+/**
+ * The `delete` cron: deletes the files of the export folder, one by one. A
+ * file it can't delete is logged and the others go on; a failure to list the
+ * folder is thrown, as the storage reported it. Returns how many it deleted
+ * and how many it couldn't.
+ */
+export async function deleteExportFiles(
+  storage: Layer.Layer<Storage, StorageConfigError> = StorageLive
+): Promise<{ deleted: number; failed: number }> {
+  const exit = await Effect.runPromiseExit(
+    Effect.provide(deleteExport, storage)
+  )
+  if (Exit.isSuccess(exit)) return exit.value
+  const failure = Cause.failureOption(exit.cause)
+  if (Option.isNone(failure)) throw Cause.squash(exit.cause)
+  throw failure.value._tag === "StorageListError"
+    ? (failure.value.cause ?? failure.value)
+    : failure.value
 }
