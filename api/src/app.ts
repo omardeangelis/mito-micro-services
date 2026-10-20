@@ -5,6 +5,7 @@ import { createTRPCContext } from "@/server/api/trpc"
 import { requestSession } from "@/server/requestSession"
 import { GET as authUser } from "@/app/api/auth/user/route"
 import { authRoute } from "./auth"
+import { restRoutes } from "./rest"
 import { cronLive } from "./cron/live"
 import { cronRoutes } from "./cron/routes"
 import { sessionFromRequest } from "./session"
@@ -36,6 +37,8 @@ app.all(
 )
 
 app.all("/api/auth/*", (c) => authRoute(c.req.raw))
+
+app.route("/", restRoutes())
 
 app.all("/api/trpc/*", (c) =>
   fetchRequestHandler({

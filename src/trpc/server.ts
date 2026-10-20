@@ -1,21 +1,14 @@
 import "server-only"
 
-import {
-  createTRPCProxyClient,
-  loggerLink,
-  TRPCClientError,
-  type TRPCLink,
-} from "@trpc/client"
-import { callProcedure } from "@trpc/server"
-import { observable } from "@trpc/server/observable"
-import { type TRPCErrorResponse } from "@trpc/server/rpc"
+import { createTRPCProxyClient, loggerLink } from "@trpc/client"
 import { headers } from "next/headers"
 import { cache } from "react"
 
 import { env } from "@/env"
-import { appRouter, type AppRouter } from "@/server/api/root"
+import { type AppRouter } from "@/server/api/root"
 import { createTRPCContext } from "@/server/api/trpc"
 import { backendLink } from "./backendLink"
+import { inProcessLink } from "./inProcessLink"
 import { transformer } from "./shared"
 
 /**
@@ -35,28 +28,7 @@ const createContext = cache(() => {
  * Custom RSC link that lets us invoke procedures without using http requests. Since Server
  * Components always run on the server, we can just call the procedure as a function.
  */
-const rscLink: TRPCLink<AppRouter> =
-  () =>
-  ({ op }) =>
-    observable((observer) => {
-      createContext()
-        .then((ctx) => {
-          return callProcedure({
-            procedures: appRouter._def.procedures,
-            path: op.path,
-            rawInput: op.input,
-            ctx,
-            type: op.type,
-          })
-        })
-        .then((data) => {
-          observer.next({ result: { data } })
-          observer.complete()
-        })
-        .catch((cause: TRPCErrorResponse) => {
-          observer.error(TRPCClientError.from(cause))
-        })
-    })
+const rscLink = inProcessLink(createContext)
 
 export const api = createTRPCProxyClient<AppRouter>({
   transformer,
