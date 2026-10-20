@@ -3,7 +3,7 @@ domain: platform
 title: Manutenzione delle dipendenze
 type: piano
 status: in_progress
-last_updated: 2026-10-19
+last_updated: 2026-10-20
 ---
 
 # Manutenzione delle dipendenze
@@ -43,7 +43,7 @@ Le critiche di `vitest` e `tinypool` toccano solo gli strumenti di test.
 |---|---|---|---|
 | W0 | Patch di sicurezza dentro il major: next 14.2.35, eslint-config-next, next-auth 4.24.15, jsonwebtoken 9.0.3, tRPC 10.45.4, nanoid 5.1.x, ws 8.x, vitest 1.x, postcss 8.x, più i transitivi corretti nello stesso major con `pnpm.overrides`. Esclusi: xlsx, nodemailer, supabase-js, Drizzle, postgres, prettier | Subito, indipendente da GCP | fatta (PR #20, su `dev`) |
 | W0b | xlsx dal CDN di SheetJS (0.20.x), con test di caratterizzazione su import ed export | Dopo W0 | da fare |
-| W1 | drizzle-orm 0.45, drizzle-kit 0.31, drizzle-zod, postgres 3.4.x. Il controllo: `pnpm db:generate` non produce differenze. Si prova su Supabase prima di spostare il DB | Prima di S3 della migrazione GCP | in review (branch `chore/deps-w1`, PR verso `dev`) |
+| W1 | drizzle-orm 0.45, drizzle-kit 0.31, drizzle-zod, postgres 3.4.x. Il controllo: `pnpm db:generate` non produce differenze. Si prova su Supabase prima di spostare il DB | Prima di S3 della migrazione GCP | fatta (PR #27, su `dev`) |
 | W2 | Next 15.5 + React 19, insieme a TanStack Query 5 e tRPC 11, più nodemailer. Prima uno spike: tremor 3 e react-day-picker 8 con React 19, codemod per le API di richiesta asincrone | Spike in parallelo; merge fuori dalle settimane di cutover | da fare |
 | W3 | Il resto, una famiglia alla volta: zod 4, Tailwind 4, ESLint flat config + typescript-eslint 8, vitest e jsdom, Sentry 11, date-fns 4, zustand 5, react-day-picker, lucide-react, i minor di Radix e di react-hook-form | Dopo W2 | da fare |
 | Renovate | Attivare l'app: automerge dei patch su `dev` con la CI verde, major su approvazione (la regola c'è già), gruppi per famiglia (Radix, tRPC, Drizzle) | Dopo W1 | da fare |
@@ -89,4 +89,5 @@ _(per ogni ondata: data, PR, versioni prima e dopo, esito dei gate, residui di `
 - `pnpm audit --prod`: drizzle-orm non c'è più (high da 19 a 18).
 - `pnpm db:migrate` con drizzle-kit 0.31 sul DB di sviluppo (Supabase): ha applicato `20261019142325_blushing_roland_deschain` di PR5a, in sospeso. Sulla tabella delle task restano `mito-deutsche_task_pkey`, `task_customer_active_uidx` e `task_customer_id_idx`.
 - Gate dopo il merge di `dev` (PR #25 e #26): 1825/1825 test.
-- Da provare su staging dopo il merge: l'immagine del backend con Drizzle 0.45.
+- 2026-10-20, PR #27 su `dev`. Su staging gira l'immagine `mito-api:40cdbcd` (revisione `00004`): `/health` 200. Un lancio a mano di `update` e `delete-export`, già andati quel giorno, risponde `skipped` e lascia `cron_run` com'era: le due `INSERT ... ON CONFLICT` di `startRun` funzionano con postgres.js sul DB di sviluppo.
+- Per un branch aperto prima di W1: dopo il merge di `dev` serve `pnpm install` (cambia il lockfile; in un conflitto su `pnpm-lock.yaml` si prende quello di `dev` e si rilancia `pnpm install`). Un test che aspetta direttamente una query Drizzle e ne controlla l'errore (`code`, messaggio) la avvolge in `driverFailure(...)`; `DbError` e `runTrpc` non cambiano. Gli script `db:*` e `drizzle-kit generate --custom --name=...` restano uguali.
