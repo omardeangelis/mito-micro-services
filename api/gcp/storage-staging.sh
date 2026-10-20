@@ -13,9 +13,10 @@ BUCKET=mito-crm-staging-storage
 
 # Private: no ACLs (UBLA) and no public access, whatever IAM says
 gcloud storage buckets create gs://$BUCKET --project=$P --location=$R \
-  --uniform-bucket-level-access --public-access-prevention
-# Not on create: older gcloud versions don't take --labels there
-gcloud storage buckets update gs://$BUCKET --update-labels=env=staging
+  --uniform-bucket-level-access
+# Not on create: older gcloud versions don't take these flags there
+gcloud storage buckets update gs://$BUCKET --public-access-prevention \
+  --update-labels=env=staging
 
 # The browser uploads with a signed URL (PUT) and downloads with one (GET)
 cat > /tmp/mito-storage-cors.json <<'JSON'
