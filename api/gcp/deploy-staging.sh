@@ -18,11 +18,13 @@ S=STAGING_
 # The database is Cloud SQL (B6), through the Unix socket Cloud Run mounts for
 # the instance: user mito_app, database mito, password from its secret
 # (staging-db-access.sh lets the service account read it and connect)
+# Storage is the GCS bucket storage-staging.sh creates, with the ADC of the
+# service account (src/server/services/storage/layer.ts)
 gcloud run deploy mito-crm-staging --project=mito-crm --region=europe-west3 \
   --image=europe-west3-docker.pkg.dev/mito-crm/mito-crm/mito-api:$TAG \
   --add-cloudsql-instances=$INSTANCE \
   --set-secrets=SUPABASE_MITO_PSW=${S}CLOUDSQL_MITO_APP_PASSWORD:latest,SUPABASE_KEY=${S}SUPABASE_KEY:latest,NEXT_PUBLIC_SUPABASE_URL=${S}NEXT_PUBLIC_SUPABASE_URL:latest,NEXTAUTH_SECRET=${S}NEXTAUTH_SECRET:latest,CRON_SLACK_WEBHOOK_URL=${S}CRON_SLACK_WEBHOOK_URL:latest \
-  --set-env-vars=NEXT_PUBLIC_APP_ENV=staging,NEXTAUTH_URL=$FRONTEND,SUPABASE_DB_CONNECTION_STRING=postgres://mito_app@localhost/mito,INSTANCE_UNIX_SOCKET=/cloudsql/$INSTANCE,TZ=UTC,CRON_OIDC_AUDIENCE=$URL,CRON_OIDC_SERVICE_ACCOUNT=mito-crm-scheduler-staging@mito-crm.iam.gserviceaccount.com,CRON_REPORT_ENV=staging \
+  --set-env-vars=NEXT_PUBLIC_APP_ENV=staging,NEXTAUTH_URL=$FRONTEND,SUPABASE_DB_CONNECTION_STRING=postgres://mito_app@localhost/mito,INSTANCE_UNIX_SOCKET=/cloudsql/$INSTANCE,TZ=UTC,CRON_OIDC_AUDIENCE=$URL,CRON_OIDC_SERVICE_ACCOUNT=mito-crm-scheduler-staging@mito-crm.iam.gserviceaccount.com,CRON_REPORT_ENV=staging,GCS_BUCKET=mito-crm-staging-storage \
   --timeout=1800 \
   --quiet
 curl -fsS -o /dev/null -w "/health %{http_code}\n" "$URL/health"
