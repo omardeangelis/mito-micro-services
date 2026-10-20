@@ -14,6 +14,7 @@ import { ZodError } from "zod"
 
 import { getServerAuthSession } from "@/server/auth"
 import { db } from "@/server/db"
+import { driverError } from "@/server/db/driverError"
 import { operators } from "../db/schema/operators"
 import { eq } from "drizzle-orm"
 import { users } from "../db/schema/users"
@@ -89,13 +90,38 @@ export const createTRPCRouter = t.router
 const sentryMiddleware = t.middleware(Sentry.trpcMiddleware())
 
 /**
+ * A procedure that fails on a query fails with the database driver's error, as
+ * before Drizzle 0.45: the message of the DrizzleQueryError around it holds
+ * the SQL and its parameters, which must reach neither the response nor
+ * Sentry. It sits inside `sentryMiddleware`, so Sentry gets the error it
+ * returns. A TRPCError a procedure built with its own message stays as it is.
+ */
+const driverErrorMiddleware = t.middleware(async ({ next }) => {
+  const result = await next()
+  if (result.ok) return result
+  const cause = driverError(result.error.cause)
+  if (cause === result.error.cause || !(cause instanceof Error)) return result
+  if (result.error.message !== result.error.cause?.message) return result
+  return {
+    ...result,
+    error: new TRPCError({
+      code: result.error.code,
+      message: cause.message,
+      cause,
+    }),
+  }
+})
+
+/**
  * Public (unauthenticated) procedure
  *
  * This is the base piece you use to build new queries and mutations on your tRPC API. It does not
  * guarantee that a user querying is authorized, but you can still access user session data if they
  * are logged in.
  */
-export const publicProcedure = t.procedure.use(sentryMiddleware)
+export const publicProcedure = t.procedure
+  .use(sentryMiddleware)
+  .use(driverErrorMiddleware)
 
 /**
  * Protected (authenticated) procedure

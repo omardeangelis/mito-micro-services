@@ -5,6 +5,7 @@ import { TRPCClientError } from "@trpc/client"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { describeContactError } from "@/components/custom/contact/describeContactError"
 import { type ContactErrorData } from "@/lib/domain/contact/errors"
+import { seeContactsHref } from "@/app/dashboard/contatti/_lib/searchParams"
 import {
   CustomerColumns,
   type CustomerColumnSelectedProps,
@@ -56,6 +57,22 @@ vi.mock("@/components/custom/contact/useActor", () => ({
 
 const toastApi = { toast: mocks.toast }
 vi.mock("@/components/ui/use-toast", () => ({ useToast: () => toastApi }))
+
+vi.mock("next/link", async () => {
+  const { forwardRef } = await import("react")
+  return {
+    default: forwardRef<
+      HTMLAnchorElement,
+      React.ComponentProps<"a"> & { prefetch?: boolean }
+    >(function LinkMock({ href, children, prefetch: _p, ...rest }, ref) {
+      return (
+        <a ref={ref} href={href} {...rest}>
+          {children}
+        </a>
+      )
+    }),
+  }
+})
 
 const row = {
   id: "customer-1",
@@ -187,5 +204,26 @@ describe("la cella Stato Chiamate della lista Clienti", () => {
 
     expect(screen.getByText("richiamare")).not.toBeNull()
     expect(screen.queryByText("Non assegnato")).toBeNull()
+  })
+})
+
+describe("il menu azioni della riga cliente", () => {
+  it("offre 'Vedi contatti': Contatti filtrata sul cliente, con i precedenti, dal più recente (AC21, AC62)", async () => {
+    const user = userEvent.setup()
+    const column = CustomerColumns.find((c) => c.id === "actions")!
+    const cell = column.cell as (context: unknown) => React.ReactNode
+
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        {cell({ row: { original: { ...row, id: "customer-1" } } })}
+      </QueryClientProvider>
+    )
+    await user.click(screen.getByRole("button", { name: "Open menu" }))
+
+    const link = screen.getByRole("menuitem", { name: "Vedi contatti" })
+    expect(link.getAttribute("href")).toBe(seeContactsHref("customer-1"))
+    expect(link.getAttribute("href")).toBe(
+      "/dashboard/contatti?cliente=customer-1&precedenti=1&ordina=creato&verso=desc"
+    )
   })
 })

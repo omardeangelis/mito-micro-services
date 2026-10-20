@@ -28,4 +28,7 @@ Techniques that paid off when reviewing PLAN.md designs:
 - **On a fix re-review, check that "declared in tech debt / ledger" fixes are committed.** `git diff <reviewed-commit> -- brain/tech-debt/...` shows notes that exist only in the working tree; a review pinned to a commit can't count them as resolved. Also check the plan's decision text (e.g. P4) was updated when a fix narrows a rule.
 - **Under a lock, check what the confirmation token identifies.** A lock serializes writers but a confirmation keyed on the container (customer id) instead of the item (alert id) still lets a stale confirmation close an item set meanwhile.
 
+- **Resolve every "(§N)" or "tracked in tech-debt" pointer in a plan before accepting it.** A plan that says a pre-existing risk is "out of perimeter (§15)" must have that risk in §15 or in the tech-debt file; grep both for the risk's own nouns (here "JSON", "lock", the column name). Missing entries mean the pointer is UNSUPPORTED even when the behavior claim is true.
+- **Parity with a sibling procedure: extract both blocks with awk and `diff` them.** If only the names differ, the parity claim is proven structurally; then say which failure modes the sibling shares (lost update, empty-join wipe) and that they are not worse.
+
 Related: [[vacuous-test-patterns]]

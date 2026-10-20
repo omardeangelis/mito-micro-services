@@ -4,11 +4,12 @@ import { eq, type ExtractTablesWithRelations } from "drizzle-orm"
 import { type PgDatabase } from "drizzle-orm/pg-core"
 import { type PostgresJsQueryResultHKT } from "drizzle-orm/postgres-js"
 import { db } from "@/server/db"
+import { driverError } from "@/server/db/driverError"
 import { customers } from "@/server/db/schema/customers"
 import type * as schema from "@/server/db/schema/index"
 
 /** The Drizzle client, or the transaction in progress: both run queries. */
-type DbClient = PgDatabase<
+export type DbClient = PgDatabase<
   PostgresJsQueryResultHKT,
   typeof schema,
   ExtractTablesWithRelations<typeof schema>
@@ -36,7 +37,8 @@ export class DbError extends Data.TaggedError("DbError")<{
   readonly code: string | undefined
 }> {}
 
-const toDbError = (cause: unknown) => {
+const toDbError = (error: unknown) => {
+  const cause = driverError(error)
   const code = (cause as { code?: unknown } | null)?.code
   return new DbError({
     cause,

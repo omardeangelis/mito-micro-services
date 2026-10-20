@@ -187,6 +187,27 @@ describe("ContactStateSelect", () => {
     ).not.toBeNull()
   })
 
+  it("con describedBy il trigger rimanda all'elemento indicato, ad esempio il cliente della riga", () => {
+    render(
+      <>
+        <span id="cliente-riga">Rossi Mario</span>
+        <ContactStateSelect
+          value="chiamare"
+          onChange={vi.fn()}
+          describedBy="cliente-riga"
+        />
+      </>
+    )
+
+    expect(trigger().getAttribute("aria-describedby")).toBe("cliente-riga")
+  })
+
+  it("senza describedBy il trigger non ha aria-describedby", () => {
+    renderSelect()
+
+    expect(trigger().hasAttribute("aria-describedby")).toBe(false)
+  })
+
   it("passa il ref al trigger", () => {
     const ref = { current: null as HTMLButtonElement | null }
     renderSelect({ triggerRef: ref })

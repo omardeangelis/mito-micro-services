@@ -3,8 +3,8 @@ domain: crm
 type: review
 scope: spec
 spec: sezione-contatti
-review_target: "branch contatti/pr4-chat-cliente — PR4: T4.5–T4.7 (do-not-ship, sesta verifica), round in fondo; round di PR1, PR2, PR3 e PR4 T4.1–T4.4 (ship) più sopra"
-base_ref: c787dd17b24db81f751c8f714f7f56884981dd54
+review_target: "branch contatti/pr5b-interfaccia — PR5b: T5.4a–T5.12 (do-not-ship al primo giro: 3 BLOCKER e 11 MAJOR aperti), round in fondo; round di PR1, PR2, PR3, PR4 e PR5a più sopra"
+base_ref: 0daa1a35422629be16efaf59775f8ee929edfb83
 head_ref: working-tree
 verdict: do-not-ship
 review_impact: critical
@@ -18,7 +18,7 @@ links:
 ingested: false
 last_ingested: null
 created: 2026-09-25
-updated: 2026-10-16
+updated: 2026-10-18
 ---
 
 # Review Report: Sezione Contatti — PR1 "Percorsi di creazione sicuri"
@@ -782,3 +782,314 @@ Passato: v1 autore senza eccezione ADMIN, lock prima di ogni scrittura, ricontro
 ### Notes for docs-maintenance
 
 - Durevoli: invio di una nota senza lock e `messages.chat_id` senza chiave esterna (seconda verifica, v1). L'eliminazione senza lock e senza controllo dell'operatore è chiusa in T4.7. Gli altri finding sono da correggere prima del merge.
+
+## [Round: 2026-10-17] PR5a — "Logica sul server e stato dell'URL"
+
+Round aggiunto: i report sopra restano come sono. Rubric: round del 2026-10-17 di [[specs/crm/sezione-contatti/RUBRIC]].
+
+- **Target:** branch `contatti/pr5a-lettura-server` (PR verso `dev`), modifiche non ancora committate. T5.1, T5.2, T5.3, T5.14, T5.15, T5.16.
+- **Compared:** `6f28635` → albero di lavoro.
+
+### Verdict
+
+**SHIP** · impact: critical. La condizione umana (riconferma di Omar sull'indice della priorità) è chiusa il 2026-10-18. Prima verifica (v1–v10): 8 SHIP e 2 DO NOT SHIP (v8, v10). Dopo le correzioni, seconda verifica: v1, v8, v10 e un passaggio di regressione sulle correzioni (v11) sono SHIP.
+
+La condizione, **chiusa il 2026-10-18** (Omar: "Togli entrambi"): **la rimozione di `task_priority_active_idx` andava riconfermata da Omar sulle misure con la query vera** (checklist, punto 1). La conferma del 2026-10-17 era sulla misura preliminare ("nessuno dei due cambia i tempi"); con la query vera quell'indice vale circa 16 ms sulla prima pagina e 116 ms alla pagina 2000, e il piano chiede di rivedere la decisione se i tempi cambiano. La migrazione e il piano la presentavano come proposta da riconfermare; ora la presentano come riconfermata, e la migrazione e il suo test non cambiano, quindi v1 non va rilanciato.
+
+### Coverage
+
+- **Prima verifica:** 10/10 passaggi del rubric (v1–v4 e v7 sul modello più forte, v5, v6 e v8 sul bilanciato, v9 e v10 sul veloce). Nessun passaggio saltato.
+- **Seconda verifica, dopo le correzioni:** v1 (opus), v8 e v10 (sonnet), più **v11, un passaggio di regressione aggiunto dall'orchestratore** (non è nel rubric del classifier): giudica le correzioni di server e URL con mutanti su una copia, 68 provati (62 uccisi, 4 equivalenti, 2 che sopravvivono per scelta).
+- **Non rilanciati dopo le correzioni:** v2, v3, v4, v5, v6, v7 e v9 (SHIP alla prima verifica, sul codice di allora). Le correzioni che toccano le loro aree le ha giudicate v11 (tetti dell'input, `canReassign`, `getCustomerAlerts`, preferenza, modulo dell'URL e `detailHref`). I mutanti della prima verifica di v3 e v4 (M38, M45, M46, `sql.raw`, limite dell'id, `trim` dopo il massimo) li ha riprovati l'orchestratore sulle correzioni: cadono tutti (1 test ciascuno).
+- **UI pass:** non chartered (nessun markup, stile, ARIA o movimento).
+- **Produzione:** nessun verificatore si è collegato al database di produzione né ha ripetuto la misura di T5.16. v1 ha provato la migrazione con la CLI di Drizzle su un container locale Postgres 16.
+- **Scostamento dalla delega `supervised`:** i due worker di correzione hanno scritto anche i test dei loro punti, senza un RED dell'orchestratore. I test dell'ultimo giro (giorno di Roma alle 00:30, elenco degli indici di `task`) sono dell'orchestratore, provati con mutanti su una copia.
+
+### Findings
+
+Esiti rispetto allo stato finale. "Corretto" vuol dire corretto e rigiudicato da un verificatore o provato con un mutante dall'orchestratore.
+
+| Severity | Concern (verifier) | Location | Problem | Required fix / evidence | Durable? |
+|----------|--------------------|----------|---------|-------------------------|----------|
+| BLOCKER | v10 — Effect | `task/GET/index.ts:86-88` | `getCustomerAlerts` toccato dal refactor ma lasciato su `ctx.db` | **Corretto**: `runTrpc(query(...))`. v10 (seconda): stesso SQL, stesse righe e stesso ordine, stesso corpo di errore HTTP (una riga di log in più) | no |
+| MAJOR | v1 — migrazione | `20261019142325_*.sql` | `DROP INDEX` con lock `ACCESS EXCLUSIVE` nella transazione unica del migratore, senza `lock_timeout`; il runbook parlava di un altro lock | **Corretto**: `SET LOCAL lock_timeout = '5s'`, runbook riscritto (passi 0–5). v1 ha provato con la CLI su Postgres 16: dopo 5 s `55P03`, niente applicato, il retry riesce | no |
+| MAJOR | v1 — migrazione (seconda) | `PLAN.md` T5.16, intestazione dell'SQL | La decisione era presentata come "decisa con Omar" ma si reggeva sul "nessun indice cambia i tempi", smentito dalla misura con la query vera | **Chiuso da Omar il 2026-10-18**: era "proposta, da riconfermare" in piano, spec, tech-debt e note; ora è riconfermata (checklist 1) | sì |
+| MAJOR | v8 — richiamo | `setCallback.db.test.ts`, `time.test.ts` | Ogni test usava la mezzanotte di Roma o `now` alle 10:00Z: il confronto di istanti non cadeva | **Corretto**: istanti qualsiasi del giorno e i due giorni di 23 e 25 ore | no |
+| MAJOR | v8 — richiamo (seconda) | stessi file | Con `now` alle 00:30 di Roma (il giorno UTC è ancora quello prima) il giorno UTC o il giorno locale del processo al posto di quello di Roma sopravvivevano a tutti i test | **Corretto** (orchestratore): sei `now` alle 00:30 in estate, inverno, nei due giorni del cambio d'ora e nei due successivi. Su una copia: giorno UTC di `now` 18 test rossi, giorno locale 18, UTC inline in `setCallback` 12. v8: SHIP | sì (vedi Notes) |
+| MAJOR | v8 — richiamo | `SPEC.md` AC44 | AC44 ammetteva ancora "una data non passata", cioè oggi | **Corretto**: AC44 "da domani in poi", righe nel Decision Log, AC10 per D8 | no |
+| MAJOR | v4 — AC23 | `getContacts.ts:187-190` | Cliente senza contatti non testato: `innerJoin` o `count()` al posto di `leftJoin` e `count(task.id)` restavano verdi | **Corretto**: test aggiunti, entrambi i mutanti cadono | no |
+| MINOR | v4 — AC14 | `getContacts.ts:76-79` | Un secondo alert aperto sulla stessa task duplicava la riga (M38) | **Corretto**: test, il mutante cade | no |
+| MINOR | v3 — input | `listInput.ts` | Liste senza tetto: 1.000 braccia alternate di `priorities` = 2,4 s in PGlite su 70.000 contatti | **Corretto**: 4 fasce, 8 stati, 100 operatori (`BAD_REQUEST`). v11: nessun input legittimo del modulo dell'URL è rifiutato (20.000 casi) | no |
+| MINOR | v3 — input | `getContacts.ts:100`, `getContactById.ts:20`, `listInput.ts:81` | Nulla fissava i parametri legati, il limite dell'id e l'ordine `trim`/`max` | **Corretto**: apostrofo, `2147483648`, riempimento a 100; i tre mutanti cadono | no |
+| MINOR | v5 — AC27 | `getContactById.ts:128` | `canReassign` valeva per un admin anche su un contatto superato, che `task.reassign` rifiuta | **Corretto**: `isActive && canReassign(actor)`. v11: 54 combinazioni uguali alla scrittura | no |
+| MINOR | v5 — AC51 | `getContactById.db.test.ts` | Il cablaggio A1/D2 e l'admin su un contatto attivo non erano provati | **Corretto**: test aggiunti | no |
+| MINOR | v6, v7 — URL | `searchParams.ts` | Regex `digits` e rami dell'indirizzo non fissati: 3 mutanti di `digits` e M03, M13, M15, M16, M20 sopravvivevano | **Corretto**: test sullo spazio dei parametri e su un corpus ostile. v11: i mutanti non equivalenti cadono | no |
+| MINOR | v7 — P15 | `searchParams.ts:343` | `detailHref("..")` e `""` uscivano dal percorso | **Corretto**: `id: number`, intero positivo sicuro, altrimenti la lista con lo stesso stato. v11: 40.000 chiamate ostili, mai fuori da `/dashboard/contatti` | no |
+| MINOR | v9 — AC5 | `updateUserPreference.ts` | Nessun limite sull'array | **Corretto**: 20 nomi da 64 caratteri; test sulle chiavi sconosciute | no |
+| MINOR | v1 — runbook | `PLAN.md` T5.16 | Righe attese del passo "dopo" sbagliate, stallo sottostimato, niente controlli di stato del migratore, rollback senza limite di attesa, test cieco a un indice in più | **Corretto**: runbook riscritto, rollback in una transazione con `SET LOCAL`, nuovo test che elenca gli indici di `task` (cade con un indice in più). v1: SHIP | no |
+| MINOR | v1 — merge | `PLAN.md` T5.17 | Niente impediva il merge in `dev` prima della riconferma di Omar: un `pnpm db:migrate` di un compagno applicherebbe la migrazione | **Corretto**: condizione scritta in T5.17 e nella checklist | no |
+| MINOR | v10 — snapshot | `meta/20261019142325_snapshot.json:130` | Il letterale del default di `customers.id` cambia a ogni `db:generate` (`.default(nanoid())`) | **Non corretto, per precedente** (T2.3): l'SQL non lo contiene, lo snapshot sì. Voce di tech-debt aggiornata | sì |
+| MINOR | v4 — AC13 | `getContacts.ts:160-163` | Un cognome stringa vuota ordina per primo, non in fondo | **Non corretto**: tech-debt, da guardare su dati di prod in PR5b | sì |
+| MINOR | v3 — costi | `trpc` | Richieste in batch senza tetto, nessuno `statement_timeout` (preesistente, più grande con la nuova lista) | **Non corretto**: tech-debt | sì |
+| MINOR | v9, v10 — preferenze | `updateUserPreference.ts`, `getUserPreference.ts:24` | Lettura-modifica-scrittura senza lock; senza riga in `operators` il JSON letto è `{}` e la scrittura lo sostituisce (preesistente nelle quattro procedure) | **Non corretto**: tech-debt | sì |
+| NIT | v2, v10, v11 | vari | Nessun test di rifiuto per sessione assente o senza operatore; ramo `cot` senza test (500 sul corpo rifiutato); il wrapper di `getCustomerAlerts` non è fissato da un test; messaggio Postgres grezzo al client (preesistente) | Non corretti. `cot` lo prova il browser in T5.10 | sì (`cot`, messaggio grezzo) |
+| NIT | v8 — fuso dei test | `vitest.config.ts:12` | `TZ: "UTC"` nell'ambiente, ma `Intl` nei worker resta nel fuso della macchina: un mutante "giorno locale" è equivalente su un computer in `Europe/Rome` | Non corretto: tech-debt | sì |
+
+### What passed
+
+| Concern (verifier) | Evidence |
+|--------------------|----------|
+| v1 — migrazione | SQL e schema equivalenti; catena `prevId`/`when` coerente; rigenerata dalla base dà le due `DROP` più il letterale; solo i due indici cadono; rollback identico alle `indexdef` di PR2; applicata da vuoto e dallo stato prima con la CLI su Postgres 16 (exit 0, tre indici su `task`); `lock_timeout` prova su Postgres vero |
+| v2 — lettura e dati | Tre letture dietro `operatorProcedure`; nessuna sessione, nessun operatore e operatore di sistema respinti; l'attore viene solo dalla sessione; le chiavi restituite elencate, nessuna email, ruolo o preferenza; la preferenza scrive solo la riga della sessione |
+| v3 — input verso SQL | 36 combinazioni di ordine/verso/campo data con marcatori: il testo SQL non li contiene, stanno tutti nei parametri; `%`, `_` e `\` letterali; l'id del dettaglio non raggiunge il driver se non è valido |
+| v4 — semantica della lista | Filtri in AND, fasce come il badge, giorno di Roma anche col cambio d'ora, sei colonne con `NULLS LAST` e spareggio per id, totale esatto |
+| v5 — dettaglio | `CONTACT_NOT_FOUND` per ogni id non valido; `activeTaskId` uguale al payload del rifiuto in 18 combinazioni; `editability` uguale alla scrittura in 36 |
+| v6 — URL | Andata e ritorno, un indirizzo per stato, default omessi, `toContactsInput` sempre accettato da `getContactsInput` (fuzz) |
+| v7 — P15 | `returnHref` non esce dalla lista per costruzione; 70+ stringhe ostili e 20.000 casuali, sempre un indirizzo dell'app |
+| v8 — richiamo | Regola uguale all'oracolo su 17 casi e su 404.976 coppie in tre fusi, e test verdi in sette fusi; messaggi uguali su server e client; una sola asserzione cambiata |
+| v9 — preferenza | Scrive solo la sua chiave e lascia le altre; vuoto e assente distinti; parità con le gemelle |
+| v10 — gate | `next lint`, `tsc --noEmit`, `pnpm run test --run` (79 file, 1339 test) e `pnpm build` in una copia pulita, exit 0; chiusura del client di `listInput.ts` e `searchParams.ts`: solo `zod` |
+| v11 — regressione | 610 test dei file toccati verdi; 68 mutanti: 62 uccisi; limiti, `canReassign` (54 combinazioni), `detailHref` (40.000 chiamate), tetto degli operatori e giorni di Roma |
+| Orchestratore — gate finali | Dopo l'ultimo giro: `next lint`, `tsc --noEmit`, `pnpm run test --run` (79 file, 1364 test) e `pnpm build` in una copia pulita, exit 0 |
+
+### Per-concern verdicts
+
+| Pass | Charter | Verdict | Rationale |
+|------|---------|---------|-----------|
+| v1 (seconda) | Migrazione dei due `DROP INDEX` e catena schema → SQL → snapshot | SHIP | Tutto corretto in file e prove; la riconferma di Omar (umana) è arrivata il 2026-10-18; un MINOR sul merge in `dev` è in T5.17 |
+| v1 | idem | DO NOT SHIP | Mancava `lock_timeout`; runbook sul lock sbagliato |
+| v2 | Autorizzazione in lettura ed esposizione dei dati (AC51) | SHIP | Solo NIT |
+| v3 | Input non fidato verso SQL e costi (AC10) | SHIP | Liste senza tetto e parametri non fissati da test: corretti |
+| v4 | Semantica della lista | SHIP | AC23 senza test: corretto |
+| v5 | Semantica del dettaglio | SHIP | `canReassign` sul superato: corretto |
+| v6 | Stato dell'URL: contratto funzionale | SHIP | Regex `digits` non fissata: corretto |
+| v7 | Indirizzo di ritorno sicuro (P15) | SHIP | `detailHref` e mutanti sopravvissuti: corretti |
+| v8 (seconda) | Richiamo da domani | SHIP | Giorno UTC e giorno locale ora cadono |
+| v8 | idem | DO NOT SHIP | Test che non distinguevano il giorno di Roma; AC44 |
+| v9 | Preferenza delle colonne | SHIP | Limite dell'input: corretto |
+| v10 (seconda) | Gate e convenzioni | SHIP | BLOCKER su `getCustomerAlerts` corretto e provato uguale al vecchio |
+| v10 | idem | DO NOT SHIP | BLOCKER: `getCustomerAlerts` fuori da Effect |
+| v11 | Regressione delle correzioni | SHIP | Sei NIT; 62 mutanti su 68 uccisi |
+
+### Human Review Checklist
+
+`reviewImpact: critical`. Passi, nell'ordine:
+1. ~~**Omar riconferma la rimozione di `task_priority_active_idx` sulle misure con la query vera**~~ **Fatto il 2026-10-18** (PLAN, T5.16, decisione). Con l'indice: prima pagina 62 ms contro 78, pagina 2000 216 contro 332 ms; senza, il peggio resta sotto i 500 ms di A3, e l'indice rende non-HOT gli `UPDATE` di `priority` (il cron notturno ne riscrive circa 70.000). L'indice per operatore non serve: la conferma regge. **Da sapere al merge in `dev`:** a merge fatto, un `pnpm db:migrate` sul DB di sviluppo condiviso applicherebbe la migrazione e Drizzle non la rilegge.
+2. CI verde sulla PR (`next lint`, `tsc --noEmit`, `pnpm run test --run`, `pnpm build`).
+3. Applicare la migrazione in prod a mano, in un momento tranquillo, con il rollback pronto: passi 0–5 di T5.16 (stato del migratore e `max(created_at)` prima e dopo, nessuna transazione lunga su `task`, gestione del `lock timeout`, tre righe su `task` dopo, `EXPLAIN` in sola lettura di prima pagina, `count` e pagina 2000). `pnpm db:migrate` sul DB di sviluppo non è stato lanciato da nessun agente.
+4. Accettare l'esposizione di CF, P.IVA e telefono di tutti i clienti a ogni operatore nella lista e nel dettaglio (AC51, deciso dalla spec).
+5. Prendere atto del rifiuto del richiamo per oggi (D22): da PR5a l'API lo rifiuta, la scheda cliente lo disabilitava già; la spec dice "da domani".
+6. Guardare la lista ordinata per Cliente su dati veri quando PR5b la mostra (cognome vuoto, collazione): tech-debt.
+
+### Acceptance criteria check (case B)
+
+| Criterio | Esito | Evidenza |
+|---|---|---|
+| AC2, AC3 | Met lato server | v4: solo attivi di default, per priorità decrescente; `includeInactive` aggiunge i superati |
+| AC5 (server) | Met lato server | v9: chiave separata da Clienti, le altre chiavi restano; limite dell'input aggiunto; la rotta `cot` la prova il browser in T5.10 |
+| AC10–AC15 | Met | v4, v3: filtri in AND, D8 (ora anche in AC10), giorno di Roma, fasce come il badge, sei ordinamenti, totale esatto |
+| AC16–AC18, AC25 | Met nel modulo | v6, v7, v11: parametri non validi scartati uno a uno, ritorno dal dettaglio sempre interno, `detailHref` guardato |
+| AC21–AC23 | Met lato server e URL | v4: `customerFilter` con `totalContacts`, ora anche per un cliente senza contatti |
+| AC26–AC28 | Met lato server | v5: `CONTACT_NOT_FOUND`, `activeTaskId`, Storico |
+| AC44 (D22) | Met | v8: `setCallback` rifiuta oggi; SPEC aggiornata |
+| AC51 (server) | Met lato server | v2, v5: `editability` e `canReassign` come la scrittura; PII esposti per scelta della spec |
+| Constraints: migrazioni additive | Deviazione dichiarata | `DROP INDEX` dichiarato in §15 e nella spec; riconfermato da Omar il 2026-10-18 |
+| A3 (prima pagina ≤ 500 ms) | Met sui dati di prod | Log di T5.16: 163 ms a caldo, 233 a freddo; dopo la `DROP` va ripetuta (checklist 3) |
+
+### Notes for docs-maintenance
+
+- Durevoli, già nel tech-debt (`brain/tech-debt/crm/sezione-contatti.md`): la ricerca cliente lenta a freddo; `next lint` che non parte nei worktree; le richieste senza tetto della lista; le procedure delle preferenze (lock, riga in `operators`, limite, rotta `cot`); il cognome vuoto e la collazione dell'ordine per Cliente; il fuso dei test; il letterale di `customers.id` nello snapshot. Chiuse dal lavoro: gli indici di PR2 (in attesa della riconferma e dell'applicazione) e il richiamo di oggi.
+- Il test sul giorno di Roma con `now` alle 00:30 è dell'orchestratore, non di un worker.
+- Backlink dalle pagine di dominio: n/a finché PR5 non è conclusa.
+
+## [Round: 2026-10-18] PR5b — "Interfaccia"
+
+Round aggiunto: i report sopra restano come sono. Rubric: round del 2026-10-18 di [[specs/crm/sezione-contatti/RUBRIC]].
+
+- **Target:** branch `contatti/pr5b-interfaccia` (PR verso `dev`), modifiche non ancora committate. T5.4a–T5.12.
+- **Compared:** `0daa1a3` (tip di `contatti/pr5a-lettura-server`) → albero di lavoro.
+
+### Verdict
+
+**DO NOT SHIP** · impact: critical · primo giro (v1–v13). 4 passaggi SHIP (v1, v2, v5, v11) e 9 DO NOT SHIP (v3, v4, v6, v7, v8, v9, v10, v12, v13). Tre BLOCKER e undici MAJOR, tutti aperti.
+
+Le tre obiezioni bloccanti, ciascuna con una prova:
+
+1. **v10, date in Server Component nel fuso del server.** `formatDateAsDMY` usa `getDate()`/`getMonth()` nel fuso del processo (`src/lib/utils/index.ts:76-78`) e il dettaglio è un Server Component. Su Vercel (UTC, lo dice il repo stesso) un richiamo impostato dal selettore per il 21/10 (22:00Z del 20) si legge "20/10/2026" nel dettaglio e "21/10" in lista e nel modulo. Né la macchina di sviluppo né i test lo vedono: sono a Roma e i test calcolano il valore atteso con la stessa funzione. Riga di codice riletta dall'orchestratore.
+2. **v8, dopo una riapertura la lista torna vecchia.** `ContactStateControl.tsx:92-104` sostituisce l'indirizzo e salta di proposito `router.refresh()`; "Indietro" (sempre) e Esc/X (entro 30 s) mostrano la lista dalla cache di Next senza richieste: il contatto sostituito appare come riga attiva, modificabile e senza "Superato", e il nuovo manca (AC2, AC3, AC35). Provato in browser con `changeState` simulato.
+3. **v9, il focus finisce su `body` da tastiera.** "Precedente" verso la pagina 1, "Successiva" verso l'ultima, "Rimuovi il filtro cliente", "Azzera filtri" e "Vai alla prima pagina" si tolgono da soli e lasciano `document.activeElement === document.body`. Regola comune di PR5b e P17. Provato in browser; il codice di `ContactPagination.tsx` riletto dall'orchestratore.
+
+Il resto della verifica dice che l'impianto regge: Sheet mai rimontata, `CONTACT_NOT_FOUND` dentro la Sheet, una sola `push` alla chiusura, nessuna regola di autorizzazione indovinata dal client, nessun indirizzo costruito da `da`, `id`, `cliente` o `limit` esce da `/dashboard/contatti`, la regola del giorno di Roma coincide col server in 10 istanti e 5 fusi. I difetti sono nei punti di raccordo: cache del router, fuso del server, controlli che si tolgono da soli, pagine che il piano non elencava.
+
+### Coverage
+
+- **13/13 passaggi del rubric** hanno risposto: v1, v2, v4, v7, v8, v9 su opus; v3, v5, v6, v10, v12 su sonnet; v11 e v13 su haiku. Nessun passaggio saltato né rilanciato.
+- **Browser (solo lettura, DB di sviluppo, OPERATORE Federica Lupo):** v6, v7, v8, v9 e v12 con sessioni proprie (`review-cols-pr5b`, `review-filters-pr5b`, `review-nav-pr5b`, `review-focus-pr5b`, `review-ui-pr5b`). I controlli che richiedono una scrittura (riapertura vera, richiamo, chiusura dell'alert, rifiuto del server) sono stati simulati con `route` in pagina o argomentati dal codice e dai test: v8 e v12 dichiarano le chiamate simulate, nessuna è arrivata al server. L'app stessa ha scritto due volte `pref=ct` aprendo Clienti (comportamento esistente).
+- **Orchestratore:** ha riletto il codice per i tre BLOCKER e per i MAJOR di v3, v4, v7, v13; ha riprodotto in browser lo scheletro di v13 (sessione `review-synth-pr5b`, chiusa).
+- **Non verificato da nessuno:** i controlli solo-admin (nessuna sessione ADMIN), la lettura di uno screen reader (NVDA/VoiceOver), il pannello Animations di DevTools, Mobile Safari/touch, il fuso reale del runtime di Vercel (preso dalle dichiarazioni del repo), `error.tsx` renderizzato in browser, una riapertura vera e una nota scritta dal contatto (AC53 nei due versi, AC54 scrivendo). Elencati nella checklist.
+- **UI pass (v12):** su Chromium 149 con `agent-browser` 0.27.1, tema chiaro (l'app non ne ha altri); axe non installato, quindi contrasti e alberi letti a mano. **Pass del movimento (v13):** riferimento `design-engineering/references/review.md`, con `brain/chore/motion.md` che vince.
+- **Produzione:** nessun verificatore si è collegato al database di produzione né ha lanciato uno script con `NODE_ENV=production`. Il server di sviluppo sulla porta 3100 era già acceso e non è stato toccato.
+- **Albero di lavoro:** rimasto intatto: `git diff --stat 0daa1a3 -- src` dà ancora 7 file, +124/-3, ricontrollato dopo l'ultimo verificatore. I mutanti sono girati in copie fuori dal repo. I verificatori hanno scritto note nella loro memoria in `.agents/agent-memory/adversarial-verifier/` (file da lasciare fuori dai commit, come quelli già presenti).
+- **Scostamento dalla delega `supervised`:** i controlli di T5.12 sono stati eseguiti dall'orchestratore (browser) e non da un worker; vedi "Claims contradicted".
+
+### Findings
+
+Tutti **aperti**: il giro non ha corretto niente. La colonna "Durable?" resta vuota finché le correzioni non sono fatte: un BLOCKER/MAJOR non corretto prima del merge diventa durevole per `docs-maintenance`.
+
+| Severity | Concern (verifier) | Location | Problem | Required fix / evidence | Durable? |
+|----------|--------------------|----------|---------|-------------------------|----------|
+| BLOCKER | v10 — giorno italiano (AC24, AC28) | `ContactAlertSection.tsx:20,25,80`, `ContactDetailHeader.tsx:139-142`, `src/lib/utils/index.ts:76-78` | Il dettaglio (Server Component) stampa le date nel fuso del processo. `renderToString` del vero `ContactAlertSection`: scadenza `2026-10-20T22:00:00Z` → `TZ=UTC` "20/10/2026", `TZ=Europe/Rome` "21/10/2026"; Storico "26/9" contro "27/9". Su Vercel (UTC) ogni richiamo del selettore si legge un giorno prima | Formatter con `timeZone: "Europe/Rome"` per tutti i componenti nuovi di Contatti; test con stringhe scritte a mano (`2026-10-20T22:00:00Z` → `21/10/2026`) sotto `TZ=UTC`, `America/Los_Angeles`, `Europe/Rome`. I test attuali calcolano l'atteso con `formatDateAsDMY` (`ContactDetailContent.test.tsx:225,248,269`, `ContactsTable.test.tsx:350`) | — |
+| BLOCKER | v8 — cronologia (AC35, AC2, AC3) | `ContactStateControl.tsx:92-104` | Dopo una riapertura, `replace` senza `router.refresh()`: "Indietro" e Esc/X entro 30 s mostrano la lista in cache. Sonda: `changeState` simulato `{taskId:76744, reopened:true}`, history length 20 invariata, Indietro con 0 richieste `_rsc`; Esc a 12 s: righe `["76743"]`. Con `reopened:false` (percorso con refresh) la lista si ricarica. La riga del contatto sostituito è attiva, modificabile e senza "Superato"; il nuovo manca; un clic riapre il vecchio | `startNavigation(() => { router.replace(href, { scroll: false }); router.refresh() })`; test che la riapertura rinfresca; prova in browser: riapri, poi Indietro/Esc → la lista mostra il contatto nuovo | — |
+| BLOCKER | v9 — focus (regola comune di PR5b, P17) | `ContactPagination.tsx:56,70`, `ContactFilters.tsx:176`, `ContactsEmptyState.tsx:111,125` | Da tastiera il focus finisce su `body` quando il controllo si toglie da solo: Invio su "Precedente" da `pagina=2`, su "Successiva" verso l'ultima pagina, su "Rimuovi il filtro cliente", su "Azzera filtri", su "Vai alla prima pagina". Prova: `document.activeElement` dopo la navigazione, cinque volte. Controllo: 2→3 tiene il focus su "Successiva". Nessun test | Tenere i due link e usare `aria-disabled` agli estremi, oppure in `ContactsListShell.navigate`, a transizione finita con `focusIsLost()`, mettere il focus sulla tabella (ha già `tabIndex=-1`); focus sulla casella di ricerca prima di togliere il chip; un test da tastiera per controllo con `document.activeElement !== document.body` | — |
+| MAJOR | v10 — SSR (AC7) | `ContactColumns.tsx:161` (anche `:262,:285,:294`) | La cella "Prossimo alert" formatta nel fuso del processo: server `TZ=UTC` e client `TZ=Europe/Rome` danno "Text content did not match. Server: 14/10/2026 Client: 15/10/2026" e "Hydration failed" ×6, con ritorno al rendering lato client. Controllo Roma/Roma: nessun errore. Ogni pagina con un richiamo del selettore. `now` non c'entra | Stessa correzione del BLOCKER di v10 | — |
+| MAJOR | v4 — AC52 | `ContactPriorityControl.tsx:64`, `ContactAlertCloseButton.tsx:67`, `ContactOperatorControl.tsx:54` | `useContactMutationFeedback({ refresh })` senza `activeContactHref`: un rifiuto `CONTACT_SUPERSEDED` dà il toast senza "Vai al contatto attivo" (sonda: `hasAction false` ×3 con `activeTaskId: 303`; stato e richiamo invece danno `/dashboard/contatti/303?da=…`). Verificato dall'orchestratore con grep: solo tre punti lo passano. Il piano lo nomina in T5.7a e T5.7b, non in T5.7c; l'unico test dell'operatore usa `activeTaskId: null` | Passare `activeContactHref = (id) => detailHrefFromDa(id, da)` ai tre (portare `da` da `ContactDetailHeader` e da `ContactDetailContent` via `ContactAlertSection`); un test di rifiuto superato per controllo che asserisce l'href | — |
+| MAJOR | v4 — AC35 | `ContactStateControl.tsx:87-105` | La riapertura che finisce dopo che l'utente ha chiuso la Sheet esegue `router.replace` (la callback di `mutateAsync` gira dopo lo smontaggio, per scelta). Sonda P4: smonta, risolvi `{taskId:202, reopened:true}` → `replace` chiamato. Esito: o la Sheet chiusa si riapre su D2 con history [L0, D1, D2] e "Indietro" sul contatto sostituito, o Next scarta la `push` della chiusura e Esc si perde. Argomentato dal sorgente di Next 14.2.5 (`app-router.js:288-292`, `action-queue.js:121-124`) e da jsdom, non in browser | Ref "montato" o confronto col percorso corrente: se il controllo non c'è più, solo `refresh` (o toast con link al nuovo contatto); test smonta → risolvi riaperto → `replace` non chiamato | — |
+| MAJOR | v3 — dati personali | `ContactRowActions.tsx:41`, `ContactRowState.tsx:108`, `sentry.client.config.ts:27-31` | Il nome del cliente va in `aria-label="Azioni per …"` (fino a 500 righe a pagina) e in `altText` (Radix lo scrive in `data-radix-toast-announce-alt`). Il Replay di Sentry ha `maskAllText: true` ma `maskAttributes` di default (`title`, `placeholder`): la vera funzione `maskAttribute` dà `aria-label → Azioni per LODDO MICHELE` in chiaro. Config e attributi riletti dall'orchestratore. Solo produzione, 10% delle sessioni più ogni sessione con errore. Nel codice di base non c'è niente di simile | `aria-labelledby` sulla cella del cliente già esistente (`customerCellId`) e `altText` fisso; oppure `maskAttributes: ["title","placeholder","aria-label","data-radix-toast-announce-alt"]`; aggiornare i test `getByRole("button",{name:"Azioni per …"})` | — |
+| MAJOR | v7 — AC18, AC10, P17 | `useContactFilters.ts:84-86,98-105`, `ContactColumns.tsx:88-90`, `ContactPagination.tsx:44-47,92-96`, `ContactsEmptyState.tsx:85,98` | Una ricerca o un filtro in sospeso si perde o resta solo a schermo quando un altro controllo naviga: l'hook costruisce l'indirizzo dal suo `latest`, intestazioni, paginazione e stati vuoti dallo `state` dell'indirizzo, e Next scarta la navigazione in sospeso. Browser (RSC tenute 3 s): scrivo "verdi", attendo 0,8 s, clic su "Creato" → la casella dice "verdi" con la lista non filtrata (62.998); il clic dopo su "Includi contatti precedenti" applica la ricerca di nascosto (27). Con Stato → "richiamare" e "Creato" entro 0,85 s il filtro sparisce | Una sola fonte per lo stato successivo per tutti i navigatori della lista (`navigateWith(change)` nella shell sul `latest` dell'hook); come minimo riportare la casella a `parsed.q` quando `pending` finisce senza timer; test con `pending` tenuto aperto | — |
+| MAJOR | v7 — AC10, AC17, P17 | `useContactFilters.ts:42-47,118-121,140-143`, `ContactDateFilter.tsx:52-55,108-116` | Un giorno rifiutato dal server (anno a due cifre: "26" → `0026-10-01`) o un intervallo al contrario blocca ogni altro filtro e la ricerca, senza messaggio: `notApplicable(next)` guarda tutto lo stato. Browser: dopo "26" in "Dal", "Con alert" e "rossi" non arrivano né all'indirizzo né alla lista; nessun `role=alert`. Verificato nel codice dall'orchestratore. Il debito (riga 440) registra solo l'assenza di `push` | Costruire l'indirizzo con l'ultima data applicabile mentre quella digitata non lo è, tenendo a schermo quella digitata; stesso `aria-invalid` e messaggio dell'intervallo al contrario anche per il giorno rifiutato | — |
+| MAJOR | v6 — AC5 | `ContactsTable.tsx:79`, `ContactColumnsMenu.tsx:38-44` | La colonna nascosta ricompare tornando dal dettaglio: `useState(() => hiddenColumns)` seminato una volta dalla prop, il salvataggio non rinfresca, e la cache del router (30 s in Next 14.2.5, nessun `staleTimes`) riusa il payload vecchio. Browser (POST simulato 200): nascondo Telefono, apro una riga, "Chiudi" → Telefono torna; dopo 36 s lo stesso giro fa una richiesta e resta nascosta | `router.refresh()` dopo la risposta OK; test di rimontaggio con la prop vecchia | — |
+| MAJOR | v8 — errore | `src/app/dashboard/contatti/error.tsx:23` | "Riprova" chiama solo `reset()`: in Next 14.2 riesce a ripresentare l'errore in cache senza richieste. Browser: cookie di sessione non valido → `error.tsx`; ripristinato il cookie, due clic su Riprova → 0 richieste `_rsc`, errore resta; lo stesso con altri filtri sullo stesso percorso. `error.test.tsx:17-19` controlla solo `reset` | `startTransition(() => { router.refresh(); reset() })` e un test che Riprova rinfresca | — |
+| MAJOR | v9 — focus | `ContactSheet.tsx:103-109`, `ContactNotFound.tsx:15` | Uscendo dal dettaglio senza `close()` il focus finisce su `body`: tasto Indietro del browser (lista montata, `sessionStorage` vuoto) e "Torna a Contatti" nella pagina "Contatto non trovato". Esc sulla stessa pagina arriva alla tabella. Vanifica il rimedio di P13 per la lista rimontata | Salvare il ritorno nella pulizia allo smontaggio della shell quando `closingRef` è falso; "Torna a Contatti" passa dalla shell o salva prima di navigare | — |
+| MAJOR | v12 — UI (2.4.11, AA) | `ContactsTable.tsx:197`, `contatti/page.tsx` | La barra della paginazione (`sticky bottom-0 z-10`) copre per intero i controlli con il focus: a 1440×900, Tab 71 sul link "Giorcelli Gabriella" (y 844–864) sotto la barra (y 828–884); anche Tab 72. Una riga per pagina, sempre. Riprodotto due volte, stesse misure. Stesso schema in Clienti e Pratiche | `scroll-pb-16` sul `div.dashbaord-layout`: con `scroll-padding-bottom: 72px` Tab 71 sta a y 792–812 | — |
+| MAJOR | v13 — movimento (P17, T5.12 controllo 1) | `CustomerChat.tsx:639` (raggiunto da `ContactNotes` sotto `(dettaglio)`) | `Skeleton` con `animate-pulse` infinito mentre `getOperatorById` non ha dati (`:582`): al primo apertura a freddo, e per sempre (con la nota nascosta) se la ricerca dell'autore fallisce. **Riprodotto dall'orchestratore** in browser su `/dashboard/contatti/76728?da=…`: ricarica a freddo → 5 `.animate-pulse` e 0 `article` subito dopo il caricamento, 0 e 5 dopo 3 s; con la richiesta `operator.getOperatorById` annullata → ancora 5 e 0 dopo 6 s. Il file non è nel change set: è la chat condivisa, ora montata sotto il dettaglio | Rendere il corpo della nota senza aspettare l'autore (il nome compare quando c'è) e nessun pulse; test in `CustomerChat.test.tsx` con la ricerca in attesa e poi rifiutata. La correzione vale anche per la scheda cliente | — |
+| MINOR | v1 — link | `ContactColumns.tsx:123`, `ContactRowActions.tsx:63`, `ContactDetailHeader.tsx:78` | `/dashboard/customers/${customer.id}` senza codifica, con un id che ogni utente autenticato può scegliere (`insertCustomer` accetta `../../api/auth/signout`, `x?y=1#z`, `..`). Stesso sito, ma l'indirizzo esce da `/dashboard` o prende parametri. `ContactsEmptyState.tsx:74` invece codifica. Schema già presente in `CustomersTable.tsx:218` e `BlackList.tsx:77`, fuori dal debito | Un `customerHref(id)` con `encodeURIComponent` e `""`, `.`, `..` verso l'elenco, usato dai quattro punti; i due vecchi nel debito | — |
+| MINOR | v1 — test | `ContactNotFound.tsx:15`, `ContactSupersededBanner.tsx:37`, `ContactStateControl.tsx:57,101`, `ContactCallbackForm.tsx:69`, `[id]/page.tsx:20` | I test fissano i costruttori di indirizzi, non i punti di chiamata: sostituire `returnHref(da)` con `"/dashboard/contatti?" + da`, `detailHrefFromDa` con un passaggio diretto o `parseChatLimit` con `Number(searchParams.limit)` lascia tutto verde (baseline 27 file, 427 test). Con `limit=-5` arriverebbe `.limit(-5)` alla chat | Un caso con `da` ostile per punto di chiamata e un test sul cablaggio di `page.tsx` | — |
+| MINOR | v2 — test | `ContactDetailHeader.tsx:96,110,126`, `ContactDetailContent.tsx:32,34`, `ContactAlertSection.tsx:86`, `[id]/page.tsx:27` | Nessun test fissa le regole di visibilità dei controlli del dettaglio (T5.6b e T5.7c lo chiedevano): sette mutanti, e uno che toglie tutte le guardie, passano 490 test su 490. Il codice oggi è corretto (sonda con i veri controlli 6/6) e il server rifiuta comunque | La matrice della sonda (`authz-probe.test.tsx.keep`) come test, più l'asserzione di pagina che `getAllUniqueOperators` non è chiamata e `ContactNotes` c'è | — |
+| MINOR | v3 — log | `src/trpc/server.ts:30-35`, `ContactsTableSection.tsx:19` | Con la `getContacts` in errore il `loggerLink` stampa `input`, quindi il testo cercato (CF, telefono) va su `stderr` (sonda: `customerQuery: 'RSSMRA80A01H501U'`). Stesso meccanismo già in Clienti | Un `logger` che omette `input`; le righe di log di Vercel con la query: non verificato | — |
+| MINOR | v3 — Sentry | `searchParams.ts` (`detailHref`), `sentry.client.config.ts` | Il testo cercato esce verso Sentry negli URL (`event.request.url`, `Referer`, breadcrumb, navigazioni del Replay); `da` è un secondo vettore. Il debito nomina la cronologia del browser, non Sentry | `beforeSend`/`beforeBreadcrumb` che toglie `q` e `da`, oppure registrare Sentry nel debito che il team ha già accettato | — |
+| MINOR | v4 — test | `ContactStateControl.tsx`, `ContactCallbackForm.tsx`, `ContactOperatorControl.tsx` e gli altri | Sopravvivono: nessuna ri-conferma dopo una conferma (AC37), selettore occupato per sempre dopo "Annulla", href del link al contatto attivo, doppio invio dell'operatore, `mutate(vars,{onSuccess,onError})` al posto di `mutateAsync().then` (nessun test smonta a metà), fine dell'attesa prima del refresh in tutti e cinque i controlli, guardie di visibilità | I test nominati da v4 (probe P1, P2, P5 e i mutanti `*_mutate_callbacks`, `*_err_fail_now`) | — |
+| MINOR | v4 — dato | `ContactOperatorControl.tsx:69,112` | Un operatore non in `getAllUniqueOperators` (join con `users`: l'operatore di sistema non ha riga) appare "Non assegnato" (sonda `operatorId=99`). Il log del piano lo menziona, il debito no | Passare `contact.operator` e mostrarne il nome | — |
+| MINOR | v5 — annuncio | `ContactsTable.tsx:89-94` | "Il contatto di X non è più nell'elenco. N contatti." parte se l'id non è nella pagina, anche quando la riga è passata a un'altra pagina per l'ordine o è stata sostituita da una riapertura (sonda: la frase con il cliente ancora in lista, nuovo id 22). Non è il caso del debito (riga 441) | Passare `result.taskId` in `rowChanged` e contare presente il contatto se uno dei due id è nelle righe, o frase diversa se il totale non è sceso | — |
+| MINOR | v5 — toast | `ContactRowState.tsx:99-121`, `ContactRowActions.tsx` | Limite di un toast: riaprendo A con un filtro attivo e cambiando B entro 8 s, [Apri] sparisce (sonda PB4). Il piano rimanda a "Vedi contatti", che c'è solo nel menu di Clienti | Voce "Vedi contatti del cliente" in `ContactRowActions` (`seeContactsHref` esiste), o correggere la frase del piano | — |
+| MINOR | v5 — test | `ContactRowState.test.tsx`, `ContactsTable.test.tsx` | 18 mutanti sopravvivono: bersaglio di "Vai al contatto attivo", successo dopo lo smontaggio, `stopPropagation` della cella, selettore bloccato dopo "Annulla", `aria-live`, `describedBy`, presentazione del toast (`useToast` simulato ovunque) | Le sonde PA1–PA6 e PC1–PC4 come test permanenti | — |
+| MINOR | v6 — AC5 | `ContactColumnsMenu.tsx:38-44`, `route.ts:33-36` | Il salvataggio gestisce solo il rifiuto di rete: un 500/401 non dà alcun segnale (browser: colonna nascosta, nessun `console.error`, riappare al ricaricamento). Il debito (riga 311) nomina questo rischio; qui c'è un nuovo client con lo stesso comportamento | Controllare `response.ok` (e `router.refresh()` solo allora); test con `{ok:false,status:500}` | — |
+| MINOR | v6 — AC3 | `ContactRowState.tsx:150-152`, test `:221` | "Superato" manca finché `useActor()` è nullo (un commit dopo il provider; per sempre senza riga in `operators`): il segno ha bisogno solo di `isActive` | Mostrare "Superato" prima del controllo sull'attore; aggiornare il test che lo fissa | — |
+| MINOR | v6, v11 — test | `ContactRowState.tsx:195-199`, `ContactColumns.tsx:225`, `ContactsTableSection.tsx:39`, `CustomerColumns.tsx:420` | Senza `stopPropagation` della cella o di "Vedi contatti" i test restano verdi (514; 6/6): un clic aprirebbe anche il contatto o la scheda cliente. `vatCode ?? fiscalCode` sopravvive (l'ordine di Clienti è `fiscalCode ?? vatCode`). La riga che rende l'AC5 valido tra dispositivi non ha test | Test con selettore e menu veri dentro un `<tr onClick>`; cliente con entrambi i codici; test della sezione | — |
+| MINOR | v7 — test | `useContactFilters.ts`, `ContactPagination.tsx`, `ContactColumns.tsx`, `ContactsTable.tsx` | 42 mutanti, molti sopravvivono con 99/99 verdi: timer con snapshot vecchio, reset di `qInFlight`, `aria-busy` della tabella, navigazione fuori da `startTransition`, `aria-sort`, bordo della pagina successiva, `maxLength` | Un'asserzione per mutante nominato (`results.txt`) | — |
+| MINOR | v8 — test | `[id]/page.tsx:42-48`, `ContactsTableSection.tsx` | Nessun test importa i due file: una pagina che mostra "non trovato" per ogni errore passa tutta la suite; la `push` di "Vai al contatto attivo" non è fissata (mutante con `replace`: 87 verdi) | Test di pagina con `api` simulato | — |
+| MINOR | v9 — annunci | `ContactSheet.tsx:84`, `announceAlert` | Dentro la Sheet ogni rifiuto è pronunciato due volte: Radix annuncia con un `role=status` `assertive` fuori dalla regione nascosta, poi ripete il nodo `role=alert` della Sheet (browser e jsdom). Il sondaggio di T5.6 guardava solo il contenitore dei toast. E `announce` con lo stesso testo due volte non cambia il DOM: la seconda riapertura nella stessa Sheet è muta | Togliere `announceAlert` o registrare il doppio come accettato; chiave a contatore per `announce` | — |
+| MINOR | v9 — test | `ReadOnlyFocusFlag`, `aria-busy`, regioni sempre montate, `focusIsLost()`, `forget()` | I mutanti M14, M15, M4, M19, M20, M30, M32, M17, M33 passano la suite | Test per ciascuno | — |
+| MINOR | v10 — test | `ContactCallbackForm.test.tsx:198-200`, `ContactsTable.test.tsx:88`, `ContactCallbackForm.test.tsx:67` | Il test del giorno "domani" cade con `TZ=Pacific/Kiritimati`, `Asia/Tokyo`, `Pacific/Auckland` e passa a Roma, UTC, Los Angeles; il debito (righe 328–337) copre solo i test di PR5a. Ogni `now` è alle 10:00Z: il giorno UTC di `now` e il confronto di istanti nel selettore sopravvivono | `now = 2026-10-18T22:30:00Z` (00:30 a Roma) e `2026-10-24T22:30:00Z`; fissare il fuso nel test | — |
+| MINOR | v12 — UI | `ContactCallbackForm.tsx:139`, `MultiSelectFilter.tsx:79` | I popover toccano il bordo del viewport (0 px a destra a 1440, 1280, 1024, 768 e 320; Stato e Priorità 0 px a 900 px di altezza) | `collisionPadding={8}` | — |
+| MINOR | v12 — UI | `DashboardLayout.tsx:160-162` | Il link "Contatti" non ha nome accessibile col menu chiuso (solo icona); lo stesso per Home, Customers e Pratiche (preesistente) | `aria-label="Contatti"` (e sugli altri) | — |
+| MINOR | v12 — UI | `ui/switch.tsx`, `ui/input.tsx` (primitivi) | Contorni dei controlli nuovi sotto 3:1 (interruttore spento 1,26:1, input 1,26:1, trigger `#ededed` 1,17:1): passaggio dei primitivi, non in debito | Scurire a circa `#8a8a8a` | — |
+| MINOR | v12 — UI | `components/custom/badge/priority.tsx` | All'hover l'icona di priorità passa su `#434344` (urgente 2,04:1, alta 2,78:1) per `hover:bg-primary/80` del `Badge`; anche nella Sheet | Nessuno sfondo all'hover su `PriorityBadge` | — |
+| MINOR | v12 — UI | `ContactFilters.tsx:178-186`, `ContactPagination.tsx:87`, `ContactFilters.tsx:127` | Con un nome lungo il pulsante del chip scende a 16×40 (<24 px) a 768 px; con numeri a cinque cifre l'intervallo va a capo (`pagina=999`); barra dei filtri e paginazione non vanno a capo sotto ~400/450 px (menu chiuso, 320: select fuori schermo) | `shrink-0` sul pulsante; `whitespace-nowrap` sul `<p>`; `min-w-0 w-full sm:min-w-[18rem]` sull'input e riga che va a capo | — |
+| MINOR | v12 — UI | `ui/sheet.tsx:74-80`, `MultiSelectFilter.tsx:79`, `ContactCallbackForm.tsx:139` | "Chiudi" della Sheet 16×16 e ultimo nell'ordine del Tab; nomi accessibili: "Campo data" e "Righe per pagina" non contengono il testo visibile, "Pagina successiva" non inizia con "Successiva"; i due popover sono `dialog` senza nome | Area di 24 px e primo nel DOM; nome `${valore}, azione` come `ContactStateSelect`; `aria-label` sui `PopoverContent` | — |
+| NIT | v1, v2, v3, v4, v5, v8, v9, v11, v12, v13 | vari | Caso `da` ripetuto (`page.tsx:36` usa `da[0]`, la Sheet no); `contactIdOf` più largo sopravvive; stato della riga deciso nel client con la funzione del server (stesso contratto, ruolo dal server); `Promise.all` che per l'admin è sequenziale (`page.tsx:25-31`); `pathname.includes` che accende "Contatti" su indirizzi che non sono rotte; nidificazione `Link > li` preesistente; link del toast fuori dalla trappola del focus; primitivi condivisi non nominati in `motion.md`; righe vuote di spaziatura (padding morto delle opzioni, valori dell'intestazione 4–8 px, "Vedi contatti" senza separatore) | Non corretti | — |
+
+### Correzioni dopo il giro (2026-10-18)
+
+Il verdetto sopra resta **DO NOT SHIP** finché i verificatori non girano sul codice corretto. Stato dei 3 BLOCKER e degli 11 MAJOR dopo le correzioni (un test RED per ciascuno; suite intera verde: 1704 test, 109 file, sotto `TZ=UTC`, `America/Los_Angeles` e il fuso della macchina; `tsc` e ESLint puliti). Dettagli nel log di T5.13 del [[specs/crm/sezione-contatti/PLAN]].
+
+| Finding | Esito | Come |
+|---------|-------|------|
+| BLOCKER v10 (date nel fuso del server) | Corretto, non rilanciato | `formatDateAsDMY` con `Europe/Rome` alla radice (anche Clienti e Pratiche); test con stringhe a mano in tre fusi |
+| BLOCKER v8 (lista vecchia dopo la riapertura) | Corretto, provato in browser (`changeState` simulato) | `router.refresh()` dopo il `replace`; "Indietro" rifà la richiesta della lista |
+| BLOCKER v9 (focus su `body`) | Corretto, provato in browser su "Precedente" | Recupero del focus nella shell: tabella, a navigazione finita; cinque test da tastiera |
+| MAJOR v10 (idratazione) | Corretto, **da provare con il server in UTC** | Stesso formatter |
+| MAJOR v4 (AC52) | Corretto | `activeContactHref` nei tre controlli, un test per controllo |
+| MAJOR v4 (riapertura dopo la chiusura) | Corretto | `mounted` ref: solo `refresh` |
+| MAJOR v3 (nomi in attributi) | Corretto (scelta A), provato in browser | `aria-labelledby` e `altText` fisso |
+| MAJOR v7 (ricerca in sospeso) | Corretto, provato in browser | Stato unico nella shell (`navigateWith`) |
+| MAJOR v7 (anno a due cifre, intervallo al contrario) | Corretto, provato in browser (anno) | `addressable` + messaggio per il giorno rifiutato |
+| MAJOR v6 (colonna nascosta ricompare) | Corretto | `router.refresh()` dopo la risposta OK |
+| MAJOR v8 ("Riprova") | Corretto | `refresh` + `reset` in una transizione |
+| MAJOR v9 (Indietro, "Torna a Contatti") | Corretto | Il ritorno si scrive anche allo smontaggio senza `close()` |
+| MAJOR v12 (barra sulla messa a fuoco) | Corretto (`scroll-padding-bottom` 64 px verificato), **posizione col focus da misurare** | `scroll-pb-16` sulla pagina di Contatti |
+| MAJOR v13 (scheletro nella chat) | Corretto, provato in browser | Nota subito, autore quando c'è |
+
+Aperti: tutti i MINOR e i NIT; il rilancio di v8, v9, v10, v4, v7, v6, v3, v12, v13; le prove che i test in jsdom non coprono (cache del router di Next, idratazione con il server in UTC, misure della barra); la checklist umana.
+
+### What passed
+
+| Concern (verifier) | Evidence |
+|--------------------|----------|
+| v1 — URL non fidato | 413 indirizzi di dettaglio da 59 query ostili: chiusura e "Torna a Contatti" sempre `/dashboard/contatti` con sole chiavi note, senza frammento; fuzz di 60.000 stringhe: 0 violazioni di `detailHrefFromDa`; `[id]` solo `^[1-9][0-9]*$` fino a 2147483647; `limit` stretto (`-5`, `1e9`, `0x10`, cifre a larghezza piena → `undefined`); filtri solo via `toContactsInput(parse())`; nessun HTML grezzo; `sessionStorage` letto in difesa |
+| v2 — autorizzazione | Tutti i controlli del dettaglio da `editability`/`canReassign` calcolati sul server; lista degli operatori solo con `canReassign`; "Cambia operatore" mai a un operatore (sonda con i veri controlli 6/6); nessun attore nel corpo delle mutation; `?pref=cot` scrive solo la chiave dell'utente di sessione; nessuna nuova `"use server"`, rotta o accesso diretto al DB |
+| v3 — dati personali (resto) | `sessionStorage` solo `{id, at}`, letta una volta, scade a 30 s; "Copia telefono" solo il numero; `error.tsx` non legge `error`; `Referrer-Policy: strict-origin-when-cross-origin`; nessun `target=_blank`; nessun prefetch di payload con dati personali (nessun `loading.tsx`) |
+| v4 — controlli di scrittura | Salva con `source: "detail"`, valore salvato sempre, `confirmedAlertId`, riapertura con `replace` e `da`, "Annulla" ed Esc senza invii, `replacesAlertId`, `null` per il messaggio vuoto, etichetta della priorità dal valore salvato; i cinque controlli usano `mutateAsync().then`; 14 file, 157 test, `tsc` 0 |
+| v5 — stato dalla riga | Stesse regole del dettaglio, `contactEditability` come la guardia del server; toast di successo `background` 5000 ms (real Toaster: aperto a 4800, chiuso a 5200), riapertura 8000 ms con [Apri] come `<a>`; callback non persi allo smontaggio; nodo di annuncio sempre montato; 108 test, 52 mutanti |
+| v6 — righe e colonne | Ordine delle colonne misurato nel browser; CF con ripiego su P.IVA; badge in blacklist (D7); priorità NULL come la fascia più bassa; menu della riga (ordine, "Copia telefono" solo con telefono, 29 clienti senza telefono nella pagina da 100); propagazione dei clic; POST `?pref=cot` osservato; 58 test |
+| v7 — filtri | Indirizzo ostile (`?stato=boh,…&dal=…&al=…`) mostra solo i filtri applicati; `q` con una `replace` e nessuna `push`; "bian" + "Con alert" entro 300 ms → una `push`; "Azzera filtri", Indietro/Avanti; tastiera del multi-select; ordinamento; pagina oltre l'ultima (`0 - 0 di 14828`); chip e AC21–AC23; nessuno scheletro nelle transizioni |
+| v8 — struttura | Server Component, `noStore`, un `Promise.all`, Suspense solo attorno alla tabella; Sheet mai rimontata (stesso nodo su cambio di id e `limit`); 7 id ostili → "Contatto non trovato"; una `push` alla chiusura con Esc, fondo e X insieme; riapertura con `replace`; "Vai al contatto attivo" con `push`; chat dopo il contatto senza Suspense, "Avvia una chat", "Carica altri messaggi"; grafo del client senza moduli server (esbuild su 27 file) |
+| v9 — focus (resto) | Apertura sul titolo (mouse, tastiera, link diretto); chiusura sul pulsante della riga; Esc annidato chiude solo il livello; flag di riapertura per contatti modificabili e in sola lettura; chiusura dell'alert; riga che esce; "Annulla"/Esc della modale; popover; `scroll:false`; regioni sempre montate |
+| v10 — giorno italiano | `AlertCell` con `isPastDay`/`isDueOrOverdue`; selettore del richiamo uguale al server su 10 istanti × 5 fusi (0 differenze vs `Intl` Roma), compreso il cambio d'ora; filtri data senza conversione di fuso; `ContactsTable.test` verde in sei fusi |
+| v11 — condivisi | `closeProps` e `describedBy` inerti per tutti gli altri consumatori; il setter dello store conserva le altre chiavi; voce "Contatti" tra Customers e Pratiche, attiva anche su `/dashboard/contatti/12`; "Vedi contatti" con `seeContactsHref`; 639 test, `tsc` 0 |
+| v12 — UI | AC1, AC5 (resa), AC7 (icona e testo, 7,09:1 e 6,47:1), AC20, AC22, AC27 (14,44:1), AC51, AC52 (toast con link e selettore tornato a "richiamare"); anelli del focus visibili ovunque; contrasti ≥ 4,54:1; bersagli ≥ 28 px nei menu; Sheet senza overflow da 291 a 1440 px |
+| v13 — movimento | Nessuna animazione nuova (grep sul change set); uscita della Sheet senza animazione per smontaggio; righe `transition-none` (verificato con `tailwind-merge` 2.4.0); menu dello stato e della priorità senza animazioni; quattro spinner con `motion-reduce:animate-none`; primitivi invariati; nessuno scheletro nelle navigazioni della lista |
+
+### Claims contradicted
+
+Affermazioni del piano o dei log che i verificatori hanno trovato false o troppo larghe. I primi due sono dei log di T5.12 scritti dall'orchestratore; gli altri del piano e del debito tecnico.
+
+| Dove | Affermazione | Esito |
+|------|--------------|-------|
+| `PLAN.md` T5.12, controllo 7 e log | Esito: "Mai su `body`" dopo la prima interazione | **Contraddetta da v9** per cinque controlli della lista e per Indietro/"Torna a Contatti". I casi provati erano quelli della tabella del `design-engineer`: la prova non copriva i controlli che si tolgono da soli |
+| `PLAN.md` T5.12, controllo 3 (log) e `PLAN.md:2474` | Zero `.animate-pulse` aggiunti; "la prima apertura del dettaglio non ha skeleton" | **Contraddetta da v13 e riprodotta dall'orchestratore**: con la cache fredda e le note del cliente, 5 `.animate-pulse` nella Sheet; la prova di T5.12 era a cache calda |
+| `PLAN.md` T5.6 e T5.12 (controllo 9), sonda dei toast | La regione dei toast è `aria-hidden` dentro la Sheet, quindi ogni rifiuto compare una sola volta nel nodo `role=alert` | **Contraddetta da v9**: Radix annuncia con un nodo proprio fuori dalla regione nascosta; il rifiuto si sente due volte |
+| `PLAN.md` T5.9 (limite di un toast) | [Apri] non è l'unica via, c'è comunque "Vedi contatti" (citazione di v5) | **Parziale (v5)**: la voce c'è solo nel menu di Clienti |
+| `brain/tech-debt/crm/sezione-contatti.md:440` | Gli anni rifiutati non producono `push` (è l'unico effetto registrato) | **Incompleta (v7)**: bloccano anche ogni altro filtro e la ricerca |
+| log di T5.12, controlli 5 e 6 | Nessun salto di layout, una sola navigazione alla chiusura | Confermati (v8: una sola `push`; v12: nessuno overflow) |
+
+### Per-concern verdicts
+
+| Pass | Charter | Verdict | Rationale |
+|------|---------|---------|-----------|
+| v1 | Input non fidato dall'URL verso indirizzi e input del server | SHIP | Nessun indirizzo esce da `/dashboard/contatti`; due MINOR (link "Apri cliente" non codificati, test ai punti di chiamata) |
+| v2 | Confine di autorizzazione nella UI | SHIP | I controlli seguono i flag del server; il MINOR è che nessun test fissa le guardie del dettaglio |
+| v3 | Dati personali sul client | DO NOT SHIP | MAJOR: nomi dei clienti in attributi non mascherati dal Replay di Sentry; due MINOR (log di `input`, URL verso Sentry) |
+| v4 | Controlli di scrittura del dettaglio | DO NOT SHIP | MAJOR: AC52 senza link al contatto attivo in tre controlli; MAJOR: la riapertura finita dopo la chiusura naviga di nuovo nel dettaglio |
+| v5 | Cambio di stato da una riga | SHIP | Tre MINOR (annuncio sbagliato, toast unico, 18 mutanti vivi); nessuno su un percorso normale |
+| v6 | Righe, colonne e preferenza | DO NOT SHIP | MAJOR: la colonna nascosta ricompare tornando dal dettaglio (cache del router) |
+| v7 | Filtri, ordinamento, paginazione e URL | DO NOT SHIP | Due MAJOR: la ricerca in sospeso si perde con un altro controllo; un anno a due cifre blocca tutta la barra |
+| v8 | Struttura App Router e cronologia | DO NOT SHIP | BLOCKER: lista vecchia dopo una riapertura; MAJOR: "Riprova" non riprova |
+| v9 | Focus e annunci | DO NOT SHIP | BLOCKER: focus su `body` da tastiera su cinque controlli; MAJOR: Indietro e "Torna a Contatti" |
+| v10 | Giorno italiano su client e SSR | DO NOT SHIP | BLOCKER: date nel fuso del server nel dettaglio; MAJOR: errore di idratazione in lista |
+| v11 | Modifiche condivise e punti d'ingresso | SHIP | Nessun consumatore esistente cambia; un MINOR sul `stopPropagation` di "Vedi contatti" |
+| v12 | Passaggio UI | DO NOT SHIP | MAJOR: la barra della paginazione copre i controlli con il focus (2.4.11); gli altri sono MINOR |
+| v13 | Passaggio di movimento | DO NOT SHIP | MAJOR: scheletro `animate-pulse` nella chat sotto il dettaglio (riprodotto); verdetto della skill: Approve |
+
+### Human Review Checklist
+
+`reviewImpact: critical`. Passi, nell'ordine:
+1. **Correggere prima del merge i tre BLOCKER e gli undici MAJOR** (e decidere i MINOR: quelli che non si correggono vanno nel debito). Rilanciare poi almeno v8, v9, v10, v4, v7, v6, v3, v12 e v13 sul codice corretto: una correzione che sposta i focus o i formattatori tocca tutti i casi di cui sopra.
+2. **CI verde sulla PR verso `dev`**: `SKIP_ENV_VALIDATION=true pnpm exec next lint`, `pnpm exec tsc --noEmit`, `pnpm run test --run`, `pnpm build` in una copia pulita (nessun `next build` con i file `.env` veri).
+3. **Fuso del server**: dopo la correzione, su un'anteprima di Vercel (o con `TZ=UTC` locale sul server di sviluppo) un richiamo impostato per il 21/10 si legge 21/10 nel dettaglio, in lista e nel modulo, e la console del browser non mostra errori di idratazione. I test con stringhe scritte a mano girano sotto `TZ=UTC`, `America/Los_Angeles` e `Europe/Rome`.
+4. **Percorso con tastiera e screen reader (NVDA o VoiceOver)**, una persona: aprire, chiudere (Esc, X, fondo, Indietro), riaprire, chiudere l'alert, riga che esce dalla lista, paginazione verso la prima e l'ultima pagina, rimuovere il chip, "Azzera filtri". Il focus non finisce mai su `body`; un rifiuto nella Sheet si sente una volta; "Il contatto … non è più nell'elenco" solo quando è vero.
+5. **Matrice dei permessi come OPERATORE e come ADMIN** (nessun verificatore ha visto i controlli solo-admin): "Cambia operatore", la riapertura vera dal dettaglio e dalla riga, il richiamo, la chiusura dell'alert, con i rifiuti del server che riportano i controlli al valore salvato e offrono il contatto attivo.
+6. **Decidere su Sentry**: nomi dei clienti in `aria-label`/`altText` (correggere o accettare per iscritto) e testo cercato in URL e `Referer` verso Sentry (scrub o voce nel debito già accettato). Il testo cercato (CF, telefono) vive nell'URL e in `da`: presa d'atto.
+7. **Decidere i dati di prova `zzpr3-` nel DB di sviluppo** (rimuoverli o lasciarli) e confermare che nessuno script con `NODE_ENV=production` è stato lanciato da agenti o da te.
+8. **Pannello Animations di DevTools al 100% e al 10%** e **controllo su iPhone Safari** della barra della paginazione (altezza `100vh`): restano a una persona (T5.12 controllo 1, ipotesi di v12).
+9. **Testo della guida per gli operatori (T5.11)** e **testo dell'annuncio (G4b)**: restano di Omar. Prima del deploy: G4a chiuso e G2 fatto.
+10. **PR5b dopo PR5a**: PR5a non è ancora in `dev`; PR5b va riallineata (o aperta) dopo il merge di PR5a.
+
+### Acceptance criteria check (case B)
+
+| Criterio | Esito | Evidenza |
+|---|---|---|
+| AC1 | Met | v11, v12: voce tra Customers e Pratiche, attiva anche sul dettaglio |
+| AC2, AC3 | **Parziale** | v6, v12 i dati; v8: dopo una riapertura il contatto superato torna come riga attiva (BLOCKER) |
+| AC4, AC6, AC8 | Met | v6, v12 |
+| AC5 | **Unmet al ritorno dal dettaglio** | v6: la colonna nascosta ricompare per 30 s; lettura dal server e chiave separata OK |
+| AC7 | **Parziale** | v10: regola e marcatore giusti; il testo della data cade nell'idratazione con il server in UTC |
+| AC9, AC40 | Met | v5, v4 (minor) |
+| AC10–AC17, AC19–AC23 | Met con eccezioni | v7: filtri, ordine, pagina, chip, stati vuoti in browser; AC17/AC18: la ricerca in sospeso e l'anno a due cifre (MAJOR) |
+| AC18 | **Parziale** | v7: parametri non validi ignorati; i controlli mostrano un filtro non applicato nei due casi sopra |
+| AC24, AC28 | **Unmet in produzione** | v10: date del dettaglio un giorno prima nel fuso UTC del server |
+| AC25 | Met, con il focus al ritorno **Parziale** | v8, v9: indirizzo e stato OK; Indietro e "Torna a Contatti" lasciano il focus su `body` |
+| AC26, AC27 | Met | v8, v12 |
+| AC29–AC34, AC36–AC47 | Met | v4: conferma, `replace`, `replacesAlertId`, priorità, "X", operatore; test fragili (MINOR) |
+| AC35 | **Unmet** | v8 (lista vecchia dopo la riapertura, BLOCKER) e v4 (riapertura dopo la chiusura, MAJOR) |
+| AC44 (D22) | Met | v10: il selettore coincide con `isDueOrOverdue` su 10 istanti e 5 fusi |
+| AC48–AC51 | Met | v2: nessun client indovina permessi; operatori solo se `canReassign` |
+| AC52 | **Unmet per tre controlli** | v4: priorità, "X" e operatore senza il link al contatto attivo; stato, richiamo e riga sì |
+| AC53–AC57 | Met | v8: chat dopo il contatto, "Avvia una chat", note in sola lettura, "Carica altri messaggi" con `da` e `limit` (scrittura non provata) |
+| AC62 | Met | v11: `seeContactsHref`, `stopPropagation` (non fissato da un test) |
+| P6, P13, P17 | **Parziale** | v13: nessuna animazione nuova, ma scheletro nella chat sotto il dettaglio; v9: il focus finisce su `body` |
+
+### Notes for docs-maintenance
+
+- Tutti i BLOCKER e MAJOR sono aperti: nessuno è ancora durevole. Quelli che non verranno corretti prima del merge lo diventano.
+- Probabilmente durevoli (nello stesso schema, da registrare nel debito se non corretti): la cache del router di Next che serve la lista vecchia dopo una scrittura (v6, v8); i formattatori di data che usano il fuso del processo nei Server Component e nei client renderizzati dal server; il Replay di Sentry che maschera solo `title` e `placeholder`; i test che dipendono dal fuso della macchina; i link `/dashboard/customers/${id}` senza codifica (v1); la barra sticky che copre il focus anche in Clienti e Pratiche (v12); i bordi dei primitivi sotto 3:1 e `hover` del `Badge` di priorità.
+- Backlink dalle pagine di dominio: n/a finché PR5 non è conclusa.

@@ -1,7 +1,7 @@
 import * as Sentry from "@sentry/nextjs"
 import { NextResponse } from "next/server"
-import { updatePractices } from "./updatePractices"
-import { updateCustomerAge } from "./updateCustomer"
+import { updateCustomerAge } from "@/server/services/cron/updateCustomerAge"
+import { updatePractices } from "@/server/services/cron/updatePractices"
 import { format } from "date-fns"
 import { authCheck } from "../../_utils/auth"
 

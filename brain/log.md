@@ -12,6 +12,17 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 
 <!-- Entries are appended by create-spec (spec creation) and docs-maintenance (ingest). Format:
 
+## [2026-10-17] review | Sezione Contatti — PR5a "Logica sul server e stato dell'URL"
+- Report: [[specs/crm/sezione-contatti/REPORT]] (round PR5a)
+- Scope: spec
+- Verdict: SHIP (prima: DO NOT SHIP); la riconferma di Omar sull'indice della priorità, aperta il 2026-10-17, è arrivata il 2026-10-18
+- Impact: critical
+- Verifiers: 10, poi v1, v8, v10 rilanciati e v11 (regressione) aggiunto (1 blocker e 4 major alla prima verifica, 2 major alla seconda; tutti corretti; la riconferma umana è arrivata il 2026-10-18)
+
+## [2026-10-17] implement | Sezione Contatti — PR5a
+- Spec: [[specs/crm/sezione-contatti/SPEC]] (AC10, AC44, Constraints e Decision Log aggiornati), piano: [[specs/crm/sezione-contatti/PLAN]] (T5.1, T5.2, T5.3, T5.14, T5.15, T5.16; T5.17 è il gate)
+- `task.getContacts` e `task.getContactById`, stato dell'URL puro (`searchParams.ts`), preferenza delle colonne di Contatti, richiamo solo da domani (D22), migrazione dei due `DROP INDEX` con `lock_timeout` (da applicare a mano da Omar); nessuna interfaccia (PR5b)
+
 ## [2026-10-16] review | Sezione Contatti — PR4, T4.5–T4.7 (sesta verifica)
 - Report: [[specs/crm/sezione-contatti/REPORT]]
 - Scope: spec
@@ -273,3 +284,10 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 ## [2026-10-16] implement | sezione-contatti PR4, T4.6
 - Spec: [[specs/crm/sezione-contatti/SPEC]] (AC78 nuovo), piano: [[specs/crm/sezione-contatti/PLAN]] (T4.6, D20)
 - Chat: "Invio…" e spinner durante l'invio, eliminazione con spinner e toast in caso di errore, lista che si apre e resta sulle note più recenti, cestino raggiungibile da tastiera
+
+## [2026-10-18] review | Sezione Contatti — PR5b "Interfaccia"
+- Report: [[specs/crm/sezione-contatti/REPORT]]
+- Scope: spec
+- Verdict: DO NOT SHIP
+- Impact: critical
+- Verifiers: 13 (3 blockers, 11 major; 4 SHIP e 9 DO NOT SHIP)

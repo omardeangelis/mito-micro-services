@@ -10,6 +10,7 @@ import {
 } from "vitest"
 import { eq } from "drizzle-orm"
 import { type User } from "next-auth"
+import { type AdapterUser } from "next-auth/adapters"
 import { operators } from "@/server/db/schema/operators"
 import { users } from "@/server/db/schema/users"
 import { authOptions } from "@/server/auth"
@@ -58,8 +59,14 @@ afterAll(() => {
 
 const adapter = authOptions.adapter!
 
+// The Adapter type allows two createUser signatures; NextAuth v4 calls the
+// one without the id, as here (see src/server/auth.ts)
+const adapterCreateUser = adapter.createUser as (
+  user: Omit<AdapterUser, "id">
+) => Promise<AdapterUser>
+
 const createUser = () =>
-  adapter.createUser!({
+  adapterCreateUser({
     name: "Ada",
     email: "ada@x.it",
     image: "https://example.com/ada.png",

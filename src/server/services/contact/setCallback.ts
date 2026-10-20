@@ -3,7 +3,7 @@ import { Effect } from "effect"
 import { eq } from "drizzle-orm"
 import { type Actor } from "@/lib/domain/contact/permissions"
 import { canSetCallback } from "@/lib/domain/contact/status"
-import { isPastDay } from "@/lib/domain/contact/time"
+import { isDueOrOverdue } from "@/lib/domain/contact/time"
 import { alert, task } from "@/server/db/schema/task"
 import { taskEventLog } from "@/server/db/schema/taskEventLog"
 import {
@@ -31,7 +31,7 @@ import { loadEditableContact, touchCustomer } from "./guard"
  * showed; an alert closed meanwhile leaves nothing to replace.
  *
  * - `CallbackNotAllowed`: the state is not an outcome nor `nessuno` (AC46);
- * - `DeadlineInPast`: the deadline is on a past Rome day (A4);
+ * - `DeadlineInPast`: the deadline is on today's Rome day or before (D22);
  * - `AlertConfirmationRequired`: the open alert is not `replacesAlertId`,
  *   with the current one (AC44).
  *
@@ -71,7 +71,9 @@ export const setCallback = ({
       if (!canSetCallback(from)) {
         return yield* new CallbackNotAllowed({ state: from })
       }
-      if (isPastDay(deadline, new Date())) return yield* new DeadlineInPast()
+      if (isDueOrOverdue(deadline, new Date())) {
+        return yield* new DeadlineInPast()
+      }
       if (openAlert && openAlert.id !== replacesAlertId) {
         const { id, deadline, message } = openAlert
         return yield* new AlertConfirmationRequired({

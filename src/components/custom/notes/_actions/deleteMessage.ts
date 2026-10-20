@@ -2,6 +2,7 @@
 
 import { TRPCClientError } from "@trpc/client"
 import { TRPCError } from "@trpc/server"
+import { type AppRouter } from "@/server/api/root"
 import { api } from "@/trpc/server"
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
@@ -38,9 +39,9 @@ export async function deleteMessageAction(values: {
   return { ok: true as const }
 }
 
-// From a Server Component the caller rejects with a `TRPCClientError` whose
-// `cause` is the procedure's `TRPCError`
+// The caller rejects with a `TRPCClientError`: in-process its `cause` is the
+// procedure's `TRPCError`, over HTTP (BACKEND_URL) the code is in `data`
 const isNotFound = (error: unknown) =>
   error instanceof TRPCClientError &&
-  error.cause instanceof TRPCError &&
-  error.cause.code === "NOT_FOUND"
+  ((error.cause instanceof TRPCError && error.cause.code === "NOT_FOUND") ||
+    (error as TRPCClientError<AppRouter>).data?.code === "NOT_FOUND")

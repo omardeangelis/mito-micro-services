@@ -1,4 +1,5 @@
 import { eq } from "drizzle-orm"
+import { db } from "@/server/db"
 import { SYSTEM_OPERATOR_USER_ID } from "@/lib/constants/operator"
 import { customers } from "@/server/db/schema/customers"
 import { practices } from "@/server/db/schema/pratiche"
@@ -6,7 +7,9 @@ import { customerToPratica } from "@/server/db/schema/relations/customerToPratic
 import { operators } from "@/server/db/schema/operators"
 import { alert, task } from "@/server/db/schema/task"
 import { users } from "@/server/db/schema/users"
-import { testDb } from "./db"
+
+// `db` is the test database of the project the file runs in: PGlite
+// (src/test/setup.ts) or Postgres (src/test/pg.setup.ts)
 
 let sequence = 0
 const nextId = (prefix: string) => `${prefix}-${++sequence}`
@@ -16,7 +19,7 @@ type Role = "ADMIN" | "OPERATORE"
 /** A user without an operator row: the operator middleware rejects it. */
 export async function createUser(values: { role?: Role } = {}) {
   const id = nextId("user")
-  const [user] = await testDb
+  const [user] = await db
     .insert(users)
     .values({ id, email: `${id}@test.local`, role: values.role ?? "OPERATORE" })
     .returning()
@@ -28,7 +31,7 @@ export async function createOperator(
   values: { role?: Role; name?: string; surname?: string } = {}
 ) {
   const user = await createUser({ role: values.role })
-  const [operator] = await testDb
+  const [operator] = await db
     .insert(operators)
     .values({
       userId: user.id,
@@ -41,7 +44,7 @@ export async function createOperator(
 
 /** The synthetic operator the cron jobs act as. It has no user row. */
 export async function createSystemOperator() {
-  const [operator] = await testDb
+  const [operator] = await db
     .insert(operators)
     .values({ userId: SYSTEM_OPERATOR_USER_ID, name: "Sistema" })
     .returning()
@@ -52,7 +55,7 @@ export async function createCustomer(
   values: Partial<typeof customers.$inferInsert> = {}
 ) {
   const id = nextId("customer")
-  const [customer] = await testDb
+  const [customer] = await db
     .insert(customers)
     .values({
       id,
@@ -72,7 +75,7 @@ export async function createPractice(
   values: Partial<typeof practices.$inferInsert> & { customerId: string }
 ) {
   const { customerId, ...rest } = values
-  const [practice] = await testDb
+  const [practice] = await db
     .insert(practices)
     .values({
       praticaId: nextId("pratica"),
@@ -86,7 +89,7 @@ export async function createPractice(
       ...rest,
     })
     .returning()
-  await testDb.insert(customerToPratica).values({
+  await db.insert(customerToPratica).values({
     customerId,
     praticaId: practice!.praticaId,
     customerRole: "Intestatario",
@@ -98,7 +101,7 @@ export async function createPractice(
 export async function createTask(
   values: Partial<typeof task.$inferInsert> = {}
 ) {
-  const [created] = await testDb
+  const [created] = await db
     .insert(task)
     .values({ state: "chiamare", isActive: true, ...values })
     .returning()
@@ -112,8 +115,8 @@ export async function createAlert(
     deadline: Date
   }
 ) {
-  const [created] = await testDb.insert(alert).values(values).returning()
-  await testDb
+  const [created] = await db.insert(alert).values(values).returning()
+  await db
     .update(task)
     .set({ alertId: created!.id })
     .where(eq(task.id, values.taskId))

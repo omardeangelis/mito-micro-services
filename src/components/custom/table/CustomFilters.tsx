@@ -12,7 +12,7 @@ import { taskStatus } from "@/server/db/schema/task"
 import { api } from "@/trpc/react"
 import React, { useMemo } from "react"
 import { Button } from "@/components/ui/button"
-import { Check, ChevronsUpDown } from "lucide-react"
+import { Check, ChevronDown } from "lucide-react"
 import {
   Command,
   CommandEmpty,
@@ -281,15 +281,20 @@ export const FileCombobox = ({
             variant="outline"
             role="combobox"
             aria-expanded={open}
-            className="w-full max-w-[150px] justify-between overflow-x-scroll text-ellipsis whitespace-nowrap"
+            className="w-full min-w-[7rem] max-w-[12rem] justify-between gap-2 border-input bg-background px-3 font-normal"
           >
-            {value
-              ? options.find((option) => option.value === value)?.label
-              : "File"}
-            <ChevronsUpDown className="opacity-50" />
+            <span className="truncate">
+              {value
+                ? options.find((option) => option.value === value)?.label
+                : "File"}
+            </span>
+            <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-fit overflow-x-scroll p-0">
+        <PopoverContent
+          collisionPadding={16}
+          className="w-fit max-w-[calc(100vw-2rem)] p-0"
+        >
           <Command>
             <CommandInput placeholder="File" className="h-9" />
             <CommandList>

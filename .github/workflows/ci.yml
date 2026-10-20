@@ -47,6 +47,22 @@ jobs:
     needs: lint
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    # The `*.pg.test.ts` files run on it (src/test/pg.ts): Postgres 15, as
+    # production. Each file creates its own database and drops it
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 15
+    env:
+      TEST_DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/postgres
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6
@@ -59,6 +75,10 @@ jobs:
       # `pnpm test --run` fails: pnpm reads --run as its own option
       - name: Vitest
         run: pnpm run test --run
+      - name: No test database left
+        run: |
+          left=$(psql "$TEST_DATABASE_URL" -tAc "SELECT datname FROM pg_database WHERE datname LIKE 'mito_test_%'")
+          if [ -n "$left" ]; then echo "Test databases not dropped: $left"; exit 1; fi
 
   build:
     name: Build
@@ -82,3 +102,9 @@ jobs:
           # build imports them; nothing connects
           NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:54321
           SUPABASE_KEY: ci-placeholder
+      # The backend on Cloud Run (api/): the bundle of the same server code
+      - name: Backend build
+        run: pnpm api:build
+      # Starts the bundle and calls it: what fails only outside Next.js
+      - name: Backend smoke
+        run: pnpm api:smoke

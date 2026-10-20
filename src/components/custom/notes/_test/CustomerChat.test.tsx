@@ -36,6 +36,14 @@ const mocks = vi.hoisted(() => ({
     | undefined,
   // Called by each note at each of its renders
   noteRender: vi.fn(),
+  // What the lookup of the author of a note answers
+  author: {
+    data: { name: "Federica", surname: "Rossi" },
+    isLoading: false,
+  } as {
+    data: { name: string; surname: string } | undefined
+    isLoading: boolean
+  },
   // What the server reads for CustomerChatSection
   server: { chatId: null as number | null, messages: [] as unknown[] },
 }))
@@ -65,10 +73,7 @@ vi.mock("@/trpc/react", () => ({
       getOperatorById: {
         useQuery: () => {
           mocks.noteRender()
-          return {
-            data: { name: "Federica", surname: "Rossi" },
-            isLoading: false,
-          }
+          return mocks.author
         },
       },
     },
@@ -161,6 +166,10 @@ beforeEach(() => {
   mocks.deleteMessage.length = 0
   mocks.createChat.length = 0
   mocks.operator = { id: 11, role: "OPERATORE" }
+  mocks.author = {
+    data: { name: "Federica", surname: "Rossi" },
+    isLoading: false,
+  }
   mocks.server = { chatId: null, messages: [] }
   // Unsent notes outlive the chat (T4.4): not from one test to the next
   window.sessionStorage.clear()
@@ -169,6 +178,39 @@ beforeEach(() => {
   clearDeletingNotes()
   // The chat in the customer's page
   window.history.pushState({}, "", "/dashboard/customers/c-42")
+})
+
+describe("CustomerChat, l'autore di una nota che non c'è ancora (M11, P17)", () => {
+  // The note is on screen at once; the author's name comes when it is there.
+  // A skeleton pulses for ever if the lookup never answers
+
+  it("mentre cerca l'autore mostra già la nota, senza scheletro", () => {
+    mocks.author = { data: undefined, isLoading: true }
+
+    renderChat([note(1, "Richiamare dopo le 15")])
+
+    expect(notesWith("Richiamare dopo le 15")).toHaveLength(1)
+    expect(document.querySelector(".animate-pulse")).toBeNull()
+    expect(screen.queryByRole("heading", { level: 6 })).toBeNull()
+  })
+
+  it("se la ricerca dell'autore fallisce la nota resta, senza scheletro e senza nome", () => {
+    mocks.author = { data: undefined, isLoading: false }
+
+    renderChat([note(1, "Richiamare dopo le 15")])
+
+    expect(notesWith("Richiamare dopo le 15")).toHaveLength(1)
+    expect(document.querySelector(".animate-pulse")).toBeNull()
+    expect(screen.queryByRole("heading", { level: 6 })).toBeNull()
+  })
+
+  it("quando l'autore c'è il nome compare accanto alla data", () => {
+    renderChat([note(1, "Richiamare dopo le 15")])
+
+    expect(
+      screen.getByRole("heading", { level: 6, name: "Federica Rossi" })
+    ).toBeTruthy()
+  })
 })
 
 describe("CustomerChat, invio di una nota", () => {

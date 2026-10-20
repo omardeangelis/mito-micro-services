@@ -2,7 +2,11 @@
 // The config you add here will be used whenever the server handles a request.
 // https://docs.sentry.io/platforms/javascript/guides/nextjs/
 
-import { dropExpectedTrpcErrors, sentryInitOptions } from "@/lib/utils/sentry"
+import {
+  dropExpectedTrpcErrors,
+  dropQueryParams,
+  sentryInitOptions,
+} from "@/lib/utils/sentry"
 import * as Sentry from "@sentry/nextjs"
 
 Sentry.init({
@@ -11,7 +15,10 @@ Sentry.init({
   // Adjust this value in production, or use tracesSampler for greater control
   tracesSampleRate: 1,
 
-  beforeSend: dropExpectedTrpcErrors,
+  beforeSend: (event, hint) => {
+    const kept = dropExpectedTrpcErrors(event, hint)
+    return kept && dropQueryParams(kept)
+  },
 
   // Setting this option to true will print useful information to the console while you're setting up Sentry.
   debug: false,
