@@ -23,29 +23,29 @@ Quando selezionate più clienti nella lista e cliccate su **"Assegnazione Massiv
 
 | Riquadro | Cosa fa | Quando usarlo |
 |---|---|---|
-| 📞 **Assegna Chiamate** | Crea **una nuova chiamata da fare** per ogni cliente selezionato e lo assegna all'operatore scelto. | Quando volete che questi clienti vengano richiamati/lavorati di nuovo (es. ridistribuire un lotto di "da chiamare"). |
-| 👥 **Assegna Clienti** | Cambia **solo l'operatore** assegnato al cliente. Non crea nessuna chiamata, non cambia lo stato, non tocca nessun alert. | Quando volete solo "spostare" dei clienti da un operatore a un altro (es. un operatore va in ferie), senza toccare il lavoro già fatto su di loro. |
+| 📞 **Crea/assegna contatti** | Crea **un nuovo contatto da chiamare** per ogni cliente selezionato e lo assegna all'operatore scelto. | Quando volete che questi clienti vengano richiamati/lavorati di nuovo (es. ridistribuire un lotto di "da chiamare"). |
+| 👥 **Assegna Clienti** | Sposta **il cliente e il suo contatto attivo**, in qualunque stato, all'operatore scelto. Non crea nessun contatto, non cambia lo stato, non tocca nessun alert. | Quando volete solo "spostare" dei clienti da un operatore a un altro (es. un operatore va in ferie), senza toccare il lavoro già fatto su di loro: il collega che subentra trova il contatto in **Contatti**, con "Solo i miei", e può lavorarlo. |
 
-**Da ricordare:** se non siete sicuri di cosa state facendo, **"Assegna Clienti" è sempre la scelta più sicura**: non cambia mai nulla a parte chi è l'operatore responsabile del cliente.
+**Da ricordare:** se non siete sicuri di cosa state facendo, **"Assegna Clienti" è la scelta che non cambia il lavoro già fatto**: non crea contatti, non cambia lo stato e non tocca i richiami. Cambia chi è l'operatore responsabile **del cliente e del suo contatto attivo**, e le chiamate già registrate su quel contatto passano al nuovo operatore (lo vede anche l'esportazione delle chiamate). Il dettaglio è nella sezione 4.
 
-Il resto di questa sezione riguarda **"Assegna Chiamate"**, che è l'opzione più delicata perché può cambiare lo stato dei clienti.
+Il resto di questa sezione riguarda **"Crea/assegna contatti"**, che è l'opzione più delicata perché può cambiare lo stato dei clienti.
 
 ---
 
-## 3. "Assegna Chiamate": cosa succede ai clienti selezionati
+## 3. "Crea/assegna contatti": cosa succede ai clienti selezionati
 
-Dopo aver scelto "Assegna Chiamate", selezionate l'operatore a cui assegnare i clienti e lo stato della nuova chiamata (es. "chiamare"). A questo punto il sistema guarda **come si trova oggi ogni singolo cliente** e si comporta in modo diverso. Ecco tutti i casi possibili:
+Dopo aver scelto "Crea/assegna contatti", selezionate l'operatore a cui assegnare i clienti e lo stato del nuovo contatto (es. "chiamare"). A questo punto il sistema guarda **come si trova oggi ogni singolo cliente** e si comporta in modo diverso. Ecco tutti i casi possibili:
 
 ### Caso 1 — Cliente nuovo, mai contattato prima
-Il sistema crea la prima chiamata per questo cliente, con lo stato scelto, e lo assegna all'operatore scelto. Niente di strano: è la normale apertura di un nuovo cliente.
+Il sistema crea il primo contatto per questo cliente, con lo stato scelto, e lo assegna all'operatore scelto. Niente di strano: è la normale apertura di un nuovo cliente.
 
 ### Caso 2 — Cliente già "da chiamare" o in "followup" (cioè non ha ancora avuto un esito)
-Il cliente viene **solo riassegnato** al nuovo operatore. Non viene creata nessuna chiamata doppia, non cambia stato: semplicemente passa di mano.
+Il cliente viene **solo riassegnato** al nuovo operatore. Non viene creato nessun contatto doppio, non cambia stato: semplicemente passa di mano.
 
 ### Caso 3 — Cliente con un esito già dato (es. "non interessato", "app.to", "caricato", "erogata") e **senza** nessun richiamo programmato attivo
-Il sistema crea una **nuova chiamata** con lo stato scelto nel form e assegna il cliente al nuovo operatore. Il vecchio esito non viene perso (resta nello storico), ma **lo stato del cliente cambia** a quello che avete scelto.
+Il sistema crea un **nuovo contatto** con lo stato scelto nel form e assegna il cliente al nuovo operatore. Il vecchio esito non viene perso (resta nello storico), ma **lo stato del cliente cambia** a quello che avete scelto.
 
-> ⚠️ **Attenzione:** questo è l'unico caso in cui un'assegnazione massiva "Assegna Chiamate" può davvero cambiare lo stato di un cliente che aveva già un esito. Se non volete che questo succeda per qualcuno di questi clienti, usate invece "Assegna Clienti".
+> ⚠️ **Attenzione:** questo è l'unico caso in cui un'assegnazione massiva "Crea/assegna contatti" può davvero cambiare lo stato di un cliente che aveva già un esito. Se non volete che questo succeda per qualcuno di questi clienti, usate invece "Assegna Clienti", che non cambia mai lo stato.
 
 ### Caso 4 — Cliente con un richiamo programmato attivo (un alert non ancora scaduto né risolto)
 Questo è il caso più importante, ed è quello per cui è stato cambiato il programma. Se tra i clienti selezionati ce ne sono alcuni con un richiamo ancora attivo, **prima di procedere il sistema vi mostra un riquadro di avviso** con l'elenco di questi clienti, la data del loro richiamo e l'eventuale nota.
@@ -53,19 +53,19 @@ Questo è il caso più importante, ed è quello per cui è stato cambiato il pro
 Per ciascuno di questi clienti potete scegliere, con una casella da spuntare ("Risolvi alert"):
 
 - **Casella NON spuntata (impostazione di default, consigliata se non siete sicuri):**
-  Il cliente viene **solo riassegnato** al nuovo operatore. Lo stato e il richiamo programmato restano **esattamente identici a prima**. Non viene creata nessuna nuova chiamata.
+  Il cliente viene **solo riassegnato** al nuovo operatore. Lo stato e il richiamo programmato restano **esattamente identici a prima**. Non viene creato nessun nuovo contatto.
 
 - **Casella spuntata:**
   State confermando che va bene chiudere il vecchio richiamo. Il sistema:
   1. chiude il richiamo programmato (che finisce nello Storico, non viene cancellato);
-  2. crea una nuova chiamata con lo stato scelto nel form;
+  2. crea un nuovo contatto con lo stato scelto nel form;
   3. assegna il cliente al nuovo operatore.
 
 **Quando spuntare la casella?** Solo se sapete con certezza che quel richiamo non serve più (es. è un duplicato, oppure il cliente è già stato gestito altrove). Nel dubbio, **lasciatela vuota**: il cliente verrà comunque riassegnato, e chi se ne occuperà dopo potrà comunque vedere il richiamo programmato e decidere.
 
 ### Riepilogo finale
 A fine operazione il programma mostra un riepilogo con:
-- quanti clienti/chiamate sono stati assegnati;
+- quanti clienti/contatti sono stati assegnati;
 - a chi (nome dell'operatore);
 - quanti alert sono stati **risolti** (casella spuntata) e quanti sono stati **mantenuti** (casella non spuntata).
 
@@ -73,7 +73,15 @@ A fine operazione il programma mostra un riepilogo con:
 
 ## 4. "Assegna Clienti": la versione semplice
 
-Con questa modalità non c'è nessun caso speciale da considerare: **qualunque sia lo stato del cliente, qualunque richiamo abbia attivo, non cambia nulla tranne l'operatore assegnato.** Non viene creata nessuna chiamata, non viene toccato nessun alert. Per questo è l'opzione consigliata quando l'obiettivo è solo "spostare" dei clienti tra operatori.
+Con questa modalità non c'è nessun caso speciale da considerare: **qualunque sia lo stato del contatto del cliente, qualunque richiamo abbia attivo, lo stato e il richiamo restano come sono.** Non viene creato nessun contatto e non viene chiuso nessun alert.
+
+Il programma sposta al nuovo operatore **il cliente e il suo contatto attivo**, insieme e in qualunque stato (anche con un richiamo aperto: il richiamo resta dov'è). Tre cose da sapere:
+
+- **Il nuovo operatore trova il contatto in Contatti** (con "Solo i miei") e lo può lavorare: è il caso del collega che va in ferie.
+- **Le chiamate già registrate su quel contatto passano al nuovo operatore**, anche nell'esportazione delle chiamate. I contatti non più attivi (quelli conclusi o sostituiti) restano invece all'operatore che li ha lavorati.
+- Un cliente senza contatto attivo si sposta da solo. Un cliente e un contatto che sono già del nuovo operatore non cambiano.
+
+Per questo è l'opzione consigliata quando l'obiettivo è solo "spostare" dei clienti tra operatori, senza creare lavoro nuovo.
 
 ---
 
@@ -107,6 +115,11 @@ Nel menu a sinistra, la voce **"Contatti"** sta subito dopo "Customers". Ogni ri
 
 ### Cosa si vede in ogni riga
 Cliente (cliccandolo si apre la sua scheda), Telefono, CF (o partita IVA), Stato, Priorità, Operatore, "Contattato il", "Prossimo alert", Creato, Aggiornato. Il **Prossimo alert** è segnato con **"Oggi"** o **"Scaduto"** (icona e testo, secondo l'ora italiana) quando la scadenza è oggi o già passata; passando il mouse si legge il messaggio. Il menu **"…"** della riga ha **"Apri contatto"**, **"Apri cliente"** e **"Copia telefono"**. Con il menu **"Colonne"** si possono nascondere Telefono e CF: la scelta è vostra e vale su ogni computer dove entrate.
+
+### Clienti e la scheda cliente
+Lo stato dei contatti si guarda e si cambia in **Contatti**: la tabella **Clienti** non ha più le colonne "Stato Chiamate", "Contattato il" e "Priorità", né i filtri "Stato" e "Contattato il", né l'ordinamento per queste colonne. Senza un ordine scelto, Clienti mostra prima i clienti modificati più di recente. Un indirizzo salvato che usava quei filtri si apre lo stesso, ignorandoli.
+
+La **scheda cliente** mostra un riepilogo del contatto attivo, in sola lettura: stato, operatore, priorità e prossimo alert. Il pulsante **"Gestisci contatto"** apre quel contatto in Contatti, dove si modifica; se il cliente non ha un contatto attivo c'è **"Crea contatto"**. Lo Storico degli alert sta nel dettaglio del contatto.
 
 ### Filtrare e ordinare
 - **Cerca cliente**: cognome, nome, codice fiscale, partita IVA o telefono, anche in parte.
@@ -150,11 +163,11 @@ No. Non si cancella più nulla: lo trovate subito sotto, nella sezione "Storico"
 **Se faccio un'assegnazione massiva su un grande gruppo di clienti, rischio di rovinare il lavoro fatto da un collega su qualcuno di loro?**
 No, a meno che non lo confermiate voi stessi. Se un cliente ha un richiamo ancora attivo, il programma ve lo segnala sempre prima e non lo tocca finché non spuntate la casella apposita.
 
-**Qual è la differenza pratica tra "Assegna Chiamate" e "Assegna Clienti"?**
-"Assegna Chiamate" può creare una nuova chiamata e quindi cambiare lo stato di un cliente. "Assegna Clienti" cambia solo l'operatore e non tocca mai stato o richiami. Nel dubbio, usate "Assegna Clienti".
+**Qual è la differenza pratica tra "Crea/assegna contatti" e "Assegna Clienti"?**
+"Crea/assegna contatti" può creare un nuovo contatto e quindi cambiare lo stato di un cliente. "Assegna Clienti" non crea contatti e non cambia mai stato o richiami: sposta il cliente e il suo contatto attivo al nuovo operatore, e con loro le chiamate già registrate. Se il dubbio è sullo stato dei clienti, usate "Assegna Clienti".
 
-**Perché alcuni clienti, dopo un'assegnazione massiva, non hanno cambiato stato anche se l'ho scelto nel form?**
-Perché erano già "da chiamare" o "in followup" (cioè non avevano ancora un esito), oppure avevano un richiamo attivo che non avete confermato di chiudere. In questi casi il sistema cambia solo l'operatore, di proposito, per non buttare via lavoro già fatto.
+**Perché alcuni clienti, dopo un "Crea/assegna contatti", non hanno cambiato stato anche se l'ho scelto nel form?**
+Perché erano già "da chiamare" o "in followup" (cioè non avevano ancora un esito), oppure avevano un richiamo attivo che non avete confermato di chiudere. In questi casi il sistema cambia solo l'operatore, di proposito, per non buttare via lavoro già fatto. Con "Assegna Clienti" lo stato non cambia mai.
 
 **Cosa significa "Operatore di Sistema" che vedo in qualche riga dello Storico?**
 Significa che quel richiamo è scaduto da solo (nessuno lo ha chiuso a mano) ed è stato chiuso automaticamente dal controllo notturno del programma.

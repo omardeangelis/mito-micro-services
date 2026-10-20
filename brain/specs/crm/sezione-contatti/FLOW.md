@@ -3,7 +3,7 @@ domain: crm
 type: flow
 links: ["[[specs/crm/sezione-contatti/SPEC]]"]
 created: 2026-09-24
-updated: 2026-10-15
+updated: 2026-10-20
 ---
 
 # Flow: Sezione Contatti e tabella Clienti semplificata
@@ -13,7 +13,7 @@ Questo file descrive i comportamenti che l'utente vede per [[specs/crm/sezione-c
 ## Goal
 
 L'operatore trova in una sola lista i contatti da lavorare subito e ne registra l'esito o il richiamo senza passare da Clienti. L'amministratore vede il carico di ogni operatore e lo sposta.
-**Segnale di successo:** tra il passo 2 e il passo 4 del rilascio i cambi di stato si fanno da Contatti (la misura va decisa, vedi Open questions). Nessun operatore modifica per errore il contatto di un collega. Il totale di Clienti coincide con le righe.
+**Segnale di successo:** dopo il rilascio i cambi di stato si fanno da Contatti, perché Clienti non ha più i controlli di stato (AC58); i passi 2, 3 e 4 escono insieme (D25), quindi non c'è un periodo intermedio da misurare. Nessun operatore modifica per errore il contatto di un collega. Il totale di Clienti coincide con le righe.
 
 ## Personas
 
@@ -72,10 +72,10 @@ L'utente deve essere autenticato come `OPERATORE` o `ADMIN`. Tutti vedono tutti 
 - **Contatti precedenti nel dettaglio** (AC80). Sempre, sotto lo Storico degli alert: gli altri contatti del cliente, ciascuno un link. Da un contatto concluso c'è anche quello attivo, segnato "Attivo".
 - **Vecchio link a un contatto superato** (AC27). Il dettaglio si apre in sola lettura con il banner "Contatto concluso" e il pulsante [Vai al contatto attivo]. Niente redirect automatico, altrimenti le sotto-righe dei contatti chiusi non si potrebbero mai consultare.
 - **Contatto di un collega o non assegnato.** È in sola lettura e il motivo è visibile ("Assegnato a <Nome>" oppure "Non assegnato"): niente controlli disabilitati senza spiegazione. Finché la domanda 3 della spec resta aperta, un contatto non assegnato è un vicolo cieco per l'operatore.
-- **Dopo "Assegna Clienti"** (domanda 2 della spec). Il cliente passa al nuovo operatore, ma il contatto resta al precedente. Il nuovo operatore vede il cliente in Clienti con "Solo i miei", ma non in Contatti, e se apre il contatto lo trova in sola lettura. È proprio il caso del collega in ferie, per cui la guida (§2) consiglia "Assegna Clienti". Il contatto passa al nuovo operatore solo se un alert scade e il cron crea il followup.
+- **Dopo "Assegna Clienti"** (AC75). Il cliente e il suo contatto attivo, in qualunque stato, passano insieme al nuovo operatore: lo vede in Contatti con "Solo i miei" e lo può modificare. È il caso del collega in ferie, per cui la guida (§2) consiglia "Assegna Clienti". Le chiamate già registrate sul contatto passano al nuovo operatore nell'export; i contatti non attivi restano a chi li ha lavorati.
 - **Priorità "Automatica"** (AC43). Il valore resta uguale fino al prossimo passaggio del cron. Se il dettaglio non mostra "Automatica" o "Manuale", la scelta sembra non avere effetto.
 - **Telefono mancante.** "Copia telefono" non compare.
-- **Coesistenza fino al passo 4 del rilascio** (AC73). Dal passo 1 le regole valgono sul server; dal passo 2 lo stesso contatto si modifica sia da Contatti sia dai controlli ancora presenti in Clienti. L'operatore deve ottenere lo stesso risultato da tutti e due: conferma dell'alert, operatore invariato, permessi. Altrimenti per giorni AC36, AC41 e AC49 valgono solo in parte. Dal passo 2 "Vedi contatti" nel menu della riga cliente (AC62) porta gli operatori in Contatti.
+- **Coesistenza dei controlli di stato** (AC73). Dal passo 1 le regole valgono sul server. I passi 2, 3 e 4 escono insieme (D25): in produzione Clienti e Contatti non convivono mai, perché il giorno del rilascio Clienti perde i controlli di stato (AC58) e lo stato si cambia solo da Contatti. Dove i passi escono separati, lo stesso contatto si modifica da tutti e due e l'operatore deve ottenere lo stesso risultato: conferma dell'alert, operatore invariato, permessi. Dal passo 2 "Vedi contatti" nel menu della riga cliente (AC62) porta gli operatori in Contatti.
 
 ## Friction notes & decisions
 
@@ -88,15 +88,15 @@ L'utente deve essere autenticato come `OPERATORE` o `ADMIN`. Tutti vedono tutti 
 - **Etichetta "Contatti chiusi"** (Omar, 2026-10-19; prima "Includi contatti precedenti"), con la spiegazione "sostituiti da una riapertura, un followup o un'assegnazione massiva". Per l'operatore "chiuso" significa anche "ha già un esito": la spiegazione serve a questo.
 - **Priorità a fasce** (AC42). Il dettaglio di oggi le fa già scegliere così, e all'operatore un numero libero non serve.
 - **Chiudere il dettaglio riporta alla vista di prima.** Da verificare: oggi la scheda cliente, quando si chiude, può finire sull'URL fisso della lista; lo stesso comportamento in Contatti farebbe perdere i filtri a ogni contatto aperto.
-- **Nessuna azione massiva in Contatti** (YAGNI). Le assegnazioni massive restano in Clienti. Il costo si vede con la domanda 2 della spec: i contatti di un collega assente si spostano uno alla volta.
+- **Nessuna azione massiva in Contatti** (YAGNI). Le assegnazioni massive restano in Clienti. "Assegna Clienti" sposta anche il contatto attivo (AC75), quindi il caso del collega assente non richiede di spostare i contatti uno alla volta.
 
 ## Open questions
 
 Le domande aperte sono nella tabella della spec ([[specs/crm/sezione-contatti/SPEC]], sezione Open Questions); qui solo l'impatto sul flusso.
 
-- **Domande 1 e 2 vanno decise prima del passo 1**, che porta le regole sul server. Con AC49, "Assegna Clienti" impedisce al nuovo operatore di lavorare i contatti del collega in ferie. Le opzioni sono nella spec.
+- **La domanda 1 va decisa prima del passo 1**, che porta le regole sul server. La domanda 2 è chiusa: "Assegna Clienti" sposta anche il contatto, quindi il nuovo operatore lo lavora (AC75).
 - **Domanda 3** (contatti non assegnati): finché resta aperta, un contatto non assegnato è in sola lettura per ogni operatore.
-- **Domanda 5** (misurare l'adozione prima del passo 4): serve un segnale senza dati personali, per esempio le visite a `/dashboard/contatti`.
+- **Domanda 5**: chiusa. I passi 2, 3 e 4 escono insieme (D25), quindi l'adozione non si misura prima del passo 4; un segnale senza dati personali, per esempio le visite a `/dashboard/contatti`, resta utile dopo il rilascio.
 - **Domanda 6** (blacklist): oggi Contatti non mostra nessuna indicazione.
 
 Decise nella spec dopo questa revisione: "Contattato il" ereditato alla riapertura (AC34), note scrivibili da chiunque apra il contatto (AC54), regole di "Crea contatto" (AC66), ordinamento di default per priorità decrescente (AC2).

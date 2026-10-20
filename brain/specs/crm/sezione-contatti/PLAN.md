@@ -3286,9 +3286,14 @@ Regole valide per tutta la PR:
   - **FLOW.** L'edge case "Dopo 'Assegna Clienti'" dice ancora che il contatto resta al precedente (domanda 2 della spec, superata da AC75): si riscrive. Il "segnale di successo" e la "Coesistenza fino al passo 4" parlano di un periodo in cui Clienti e Contatti convivono: con il rilascio unico (D25) in prod non succede; le due frasi si adeguano. Nessun requisito nuovo: ogni riga cita il suo AC.
   - La SPEC non si modifica qui: gli scostamenti sono elencati in §15 per il prossimo aggiornamento.
 - **validation**: Omar rivede il testo; un `grep` della guida per "solo l'operatore", "non tocca mai" e "sempre la scelta più sicura" non trova frasi riferite a "Assegna Clienti" che siano rimaste vere solo per il vecchio comportamento.
-- **status**: Planned
+- **status**: Done
 - **log**:
-- **files edited/created**:
+  - 2026-10-20 (Run 7), scritto dall'orchestratore, senza worker: è un testo per gli operatori che Omar rivede al gate (T6.7), e il lavoro di brief e revisione sarebbe stato pari a quello di scriverlo (scostamento dalla delega `supervised` per un task `low`, dichiarato).
+  - **Guida** (`guida-assegnazione-massiva-e-alert.md`): "Assegna Chiamate" è "Crea/assegna contatti" ovunque (tabella del §2, §3 e i suoi quattro casi, riepilogo finale, FAQ), e "una chiamata" creata è "un contatto". "Assegna Clienti" dice, nella tabella, nel "Da ricordare" (non più "sempre la scelta più sicura") e nel §4 riscritto, che sposta cliente e contatto attivo in ogni stato, che stato e richiami non cambiano, che il collega che subentra trova il contatto in Contatti con "Solo i miei", che le chiamate già registrate passano al nuovo operatore (anche nell'export) e i contatti non attivi restano a chi li ha lavorati. Le due FAQ che confrontavano le modalità sono riscritte ("Se il dubbio è sullo stato dei clienti, usate Assegna Clienti"). Nuova sottosezione "Clienti e la scheda cliente" nel §6: Clienti senza colonne e filtri di stato, ordine di default per ultima modifica, link vecchi che si aprono lo stesso, scheda con il riepilogo e "Gestisci contatto" (AC63, AC74, AC75).
+  - **FLOW** (`FLOW.md`): "Dopo 'Assegna Clienti'" riscritto (AC75: il contatto segue il cliente); "Segnale di successo" e "Coesistenza" adeguati al rilascio unico (D25), con AC58 e AC73; la nota sull'azione massiva in Contatti non rimanda più alla domanda 2 (chiusa); "Open questions" dice che la domanda 2 e la 5 sono chiuse (come in SPEC). Nessun requisito nuovo; `updated` portato al 2026-10-20. La SPEC non è toccata.
+  - Il `grep` della guida per "solo l'operatore", "non tocca mai", "sempre la scelta più sicura", "Assegna Chiamate" e "chiamata/e" trova solo una frase vera, riferita a "Crea/assegna contatti" ("il sistema cambia solo l'operatore" nei casi senza esito o con un richiamo non confermato).
+  - Non toccato: la guida non nomina "Assegna a te" (non è nel piano); se Omar vuole una riga per T6.8b va aggiunta al gate. Gate: nessun codice cambia.
+- **files edited/created**: `brain/chore/crm/guida-assegnazione-massiva-e-alert.md`, `brain/specs/crm/sezione-contatti/FLOW.md`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a (D6)
