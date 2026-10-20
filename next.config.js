@@ -99,6 +99,15 @@ if (backendUrl !== undefined) {
   backendOrigin = url.origin
 }
 
+// With BACKEND_AUTH=true too, the browser's /api/auth calls (login, callback,
+// session, logout) go to the backend, which runs the same NextAuth. A step of
+// its own, after tRPC: both read the same session table until the database
+// moves (brain/chore/migrazione-gcp.md)
+const backendAuth = process.env.BACKEND_AUTH === "true"
+if (backendAuth && backendOrigin === undefined) {
+  throw new Error("BACKEND_AUTH needs BACKEND_URL: set both or neither")
+}
+
 /** @type {import("next").NextConfig} */
 const config = {
   reactStrictMode: true,
@@ -122,6 +131,14 @@ const config = {
           source: "/api/trpc/:path*",
           destination: `${backendOrigin}/api/trpc/:path*`,
         },
+        ...(backendAuth
+          ? [
+              {
+                source: "/api/auth/:path*",
+                destination: `${backendOrigin}/api/auth/:path*`,
+              },
+            ]
+          : []),
       ],
       afterFiles: [],
       fallback: [],

@@ -1,9 +1,9 @@
-import { getServerAuthSession } from "@/server/auth"
+import { getPageSession } from "@/trpc/pageSession"
 import { redirect } from "next/navigation"
 import { api } from "@/trpc/server"
 
 export async function DashboardInitialPage() {
-  const session = await getServerAuthSession()
+  const session = await getPageSession()
   if (!session?.user.name) {
     return redirect("/login")
   }
