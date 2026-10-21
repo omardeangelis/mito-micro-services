@@ -78,7 +78,7 @@ export const PopoverDateFilter = ({
       ...prev,
       {
         id: nanoid(),
-        name: filterMap.keys().next().value as string,
+        name: filterMap.keys().next().value!,
         value: "",
         operator: "eq",
       },
