@@ -367,7 +367,8 @@ function registerChecks(get: () => Dataset, n: number, day: Day) {
       if (c.email !== null) {
         expect(c.email).toMatch(/@(example\.com|[a-z-]+\.test)$/)
       }
-      expect(c.chatId).toBeNull()
+      // Chats are set by the contacts step (AC25, contacts.test.ts)
+      expect(c.chatId === null || typeof c.chatId === "number").toBe(true)
     }
     expect(customers.some((c) => c.fiscalCode === null)).toBe(true)
     expect(customers.some((c) => c.fiscalCode !== null)).toBe(true)
@@ -390,7 +391,8 @@ function registerChecks(get: () => Dataset, n: number, day: Day) {
     }
   })
 
-  it("leaves the arrays of later steps empty", () => {
+  // Their content is checked in contacts.test.ts (AC18-AC27)
+  it("fills the arrays of the contacts step", () => {
     const dataset = get()
     for (const key of [
       "chats",
@@ -399,7 +401,7 @@ function registerChecks(get: () => Dataset, n: number, day: Day) {
       "tasks",
       "taskEventLog",
     ] as const) {
-      expect(dataset[key]).toEqual([])
+      expect(dataset[key].length).toBeGreaterThan(0)
     }
   })
 }

@@ -37,3 +37,26 @@ export function customerScenarioCounts(n: number) {
     U10c: scaled(20, 1, n),
   }
 }
+
+/**
+ * Active contacts of each `priority` / `alert` scenario that is not the filler
+ * (P4 takes every active contact left). A3 alternates P6 (with `closed_at`) and
+ * P12 (without); P8 cycles the four manual priorities, so it is a multiple of 4.
+ * Full counts are those of N = 10,000 (AC30: A1 + A2 + A3 >= 1,000 open alerts
+ * due on D or before; P4 + P5 well over 5,001 contacts that get priority 1).
+ */
+export function contactScenarioCounts(n: number) {
+  return {
+    P1: scaled(250, 2, n),
+    P2: scaled(120, 2, n),
+    P3: scaled(150, 2, n),
+    P10: scaled(40, 1, n),
+    P5: scaled(250, 2, n),
+    A1: scaled(350, 2, n),
+    A2: scaled(40, 1, n),
+    A3: scaled(760, 2, n),
+    A4: scaled(150, 2, n),
+    P11: scaled(150, 2, n),
+    P8: 4 * scaled(20, 1, n),
+  }
+}
