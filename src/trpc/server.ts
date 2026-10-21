@@ -4,7 +4,7 @@ import { createTRPCProxyClient, loggerLink } from "@trpc/client"
 import { headers } from "next/headers"
 import { cache } from "react"
 
-import { env } from "@/env"
+import { env } from "@mito/env"
 import { type AppRouter } from "@/server/api/root"
 import { createTRPCContext } from "@/server/api/trpc"
 import { backendLink } from "./backendLink"

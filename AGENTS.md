@@ -21,7 +21,7 @@ Every change must pass the gates CI runs on PRs to `dev` and `main` (`.github/wo
 
 - **Lint** — `SKIP_ENV_VALIDATION=true pnpm exec next lint` (ESLint on `src/`, no `--fix`) and `pnpm exec tsc --noEmit`. `pnpm lint:dev` fixes what `next lint` reports. `pnpm lint` (`eslint --fix .`) also lints the root config files, but its `--fix` hides formatting errors that fail the Vercel build.
 - **Test** — `pnpm run test --run` (vitest, `NODE_ENV=test`, jsdom); `pnpm test --run` fails because pnpm reads `--run` as its own option. Tests live next to the code in `_test/` folders.
-- **Build** — `pnpm build` (`next build`). Needs the env from `src/env.js`; to build without real credentials set `SKIP_ENV_VALIDATION=true` plus placeholder `NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_KEY`, as CI does.
+- **Build** — `pnpm build` (`next build`). Needs the env from `@mito/env` (`packages/env/src/index.js`); to build without real credentials set `SKIP_ENV_VALIDATION=true` plus placeholder `NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_KEY`, as CI does.
 
 Database contract chain:
 
