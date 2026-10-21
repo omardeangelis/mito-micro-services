@@ -428,9 +428,9 @@ TB5 e TB6 sono in sequenza perché tutti e due toccano `types.ts`. TB6 lo usa e 
   - per ogni riga selezionata da `priority`, la priorità del seed è diversa da `expected`;
   - P2, P8 e P9 registrano priorità e `updated_at` del seed come attesi invariati;
   - il manifesto è serializzabile in JSON ed è uguale fra due chiamate.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done (2026-10-21, commit `01f5c24`)
+- **log**: Worker sul modello dell'orchestratore, una sola passata. `manifest.ts` importa solo `day.ts`, i tipi e `SYSTEM_OPERATOR_USER_ID`: niente codice dei cron. 72 test (a 300, a 10.000 e a 300 con cinque D difficili): le righe selezionate, ricalcolate nel test con le regole della spec, coincidono con quelle del manifesto; sette rotture forzate (D10, D13, priorità di seed uguale all'attesa, import a 30 giorni, log sul giorno del confine) fanno fallire `buildManifest`. A 10.000: 5.911 righe P con atteso 1, 1.150 alert in A1–A3, 250 pratiche, 139 clienti, 2.519 righe L1. `types.ts` invariato; `newActiveContact`, `newLog` e `deleted` sono pseudo-colonne che TB7 legge.
+- **files edited/created**: `src/server/db/seeds/local/manifest.ts`, `_test/manifest.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a (D9)
