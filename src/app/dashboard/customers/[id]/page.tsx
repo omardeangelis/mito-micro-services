@@ -16,8 +16,7 @@ import type { HandoverActiveContact } from "./_components/CustomerHandoverDialog
 async function getHandoverActiveContact(
   customerId: string,
   task:
-    | Awaited<ReturnType<typeof api.task.getActiveTask.query>>[number]
-    | undefined
+    Awaited<ReturnType<typeof api.task.getActiveTask.query>>[number] | undefined
 ): Promise<HandoverActiveContact | null> {
   if (!task) return null
   const alerts =

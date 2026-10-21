@@ -55,8 +55,7 @@ const LIST_PATH = "/dashboard/contatti"
 
 /** What Next hands a page: the query string as a record. */
 type SearchParamsInput =
-  | Record<string, string | string[] | undefined>
-  | undefined
+  Record<string, string | string[] | undefined> | undefined
 
 /** The state of an address with no parameters: nothing is filtered. */
 export const defaultState: ContactsListState = {

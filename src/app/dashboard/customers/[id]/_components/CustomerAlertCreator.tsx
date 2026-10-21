@@ -181,7 +181,8 @@ export const CustomerAlertCreator = (props: Props) => {
                 </AlertTitle>
               ) : (
                 <AlertTitle>
-                  Scade {getTimeDifferenceFromNowAsDD(props.alert.deadline)}{" "}
+                  Scade{" "}
+                  {getTimeDifferenceFromNowAsDD(props.alert.deadline)}{" "}
                 </AlertTitle>
               )}
               {props.alert.message ? (
