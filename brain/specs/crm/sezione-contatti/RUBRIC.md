@@ -609,3 +609,80 @@ Nessuno. Il numero di passaggi (10) è alto ma ogni charter ha un concern solo e
 | v10 | Passaggio UI sulle superfici renderizzate (AC58, AC59, AC63–AC68) | medium | balanced (sonnet) |
 
 Nessun passaggio di movimento (P6). Nessun verificatore si collega al database di produzione, lancia uno script con `NODE_ENV=production` o esegue lo script SQL su un database remoto. Il passaggio UI usa un `next dev` locale sul DB di sviluppo, avviato dall'orchestratore.
+
+## [Round: 2026-10-21] PR6, seconda metà: la migrazione di T6.9 (delta)
+
+Round aggiunto: i round di PR1–PR5b e il primo round di PR6 (sopra) restano come sono. Questo copre **solo** la migrazione di riallineamento dei contatti attivi, che il primo round di PR6 aveva lasciato fuori perché non era ancora scritta.
+
+### Change set under review
+
+- **Scope:** spec implementation, un solo task (PLAN.md T6.9, seconda metà; T6.7 per la sessione di rilascio). Contratto: AC75, AC71 e il Constraint "Conteggio dell'export chiamate invariato" con l'eccezione A16/D29; decisioni D12, D14, D26, D27, D29, A6, A16, A17.
+- **Target:** branch `claude/pr6-resolution-e7198b`, un commit, non pushato.
+- **Compared:** `5bff346` → `15f0f80` (il codice è lo stesso a `3822ab2`, che cambia solo `brain/`).
+- **Files touched:** 7 file in `src/`, 2.439 righe aggiunte (1.823 sono lo snapshot generato di drizzle-kit): `src/server/db/migrations/20261021100457_contatti_contact_realign.sql` (84 righe), `meta/_journal.json` e `meta/20261021100457_snapshot.json`, i test `_test/contattiRealign.db.test.ts` (8), `contattiRealign.systemOperator.db.test.ts` (2) e `contattiRealign.pg.test.ts` (1, su un Postgres vero), e le due costanti in `src/test/db.ts`. Nessun file fuori da `src/` oltre alla documentazione di `brain/`.
+- **Gate eseguiti dall'orchestratore** sul working tree a `15f0f80`: ESLint su `src` (nel worktree `next lint` non parte per il conflitto dei plugin con l'`.eslintrc.cjs` della radice: `pnpm exec eslint --no-eslintrc -c .eslintrc.cjs src --ext .ts,.tsx`) e `tsc --noEmit` puliti; `pnpm run test --run` 127 file e 1973 test (3 file e 6 test saltati: i `.pg.test.ts`); `pnpm test:pg --run` 3 file e 6 test su un Postgres 15 locale in Docker. **Il gate pulito (`pnpm build`, `api:build`, `api:smoke`, copia senza `.env*`) non è ancora rifatto:** lo si fa a fine round, sul commit finale.
+- **Misure usate dal round:** conteggi di produzione in sola lettura del 2026-10-21 (69.787 contatti attivi; 1 da spostare; (a2) 0, (a2) esportabili 0, (b) 0, (c) 0), nel log di T6.9 del PLAN.
+
+### Routing rubric (review-classifier output)
+
+```json
+{
+  "taskType": "migration",
+  "secondaryType": "test",
+  "domainsTouched": ["crm"],
+  "adversarialVerifiers": {
+    "count": 5,
+    "passes": [
+      {
+        "id": "v1",
+        "charter": "Which rows the move statement changes, and what they look like after a run in a single session (no interleavings). File: src/server/db/migrations/20261021100457_contatti_contact_realign.sql. It must set task.operator_id to the customer's operator for exactly the active contacts whose customer has a non-NULL operator and whose own operator IS DISTINCT FROM it, a NULL contact operator included (AC75, D26). It must leave untouched: inactive tasks, tasks without a customer, and the (b)/(c) contacts of a customer with no operator. It never writes customers. On a moved row only operator_id changes; updated_at, state, closed_at, priority and alert_id stay as they were (A6). Check the schema and the earlier migrations for any trigger, rule or on-update default that would fire on this UPDATE. Confirm that, with the unique index on the active contact, no customer can yield two rows. The statement must be idempotent (a second run changes nothing). Its predicate must be identical to category (a) of src/server/db/scripts/contatti-operator-mismatch.sql, so the release-gate counts before and after the migration describe exactly what moved. Excludes the log rows and the guard (v2), concurrency and locks (v3), and the migrator (v4).",
+        "complexity": "high"
+      },
+      {
+        "id": "v2",
+        "charter": "The log trail and the calls-export accounting of the realignment (D29, AC75, A16, the 'export count unchanged' constraint). The INSERT must write exactly one task_event_log row for each contact the UPDATE actually changed, and none for any other. Each row has customer_id, task_id, action 'operator_reassign', source 'bulk', from_operator_id (NULL allowed), to_operator_id, and the system operator as actor. All values must be valid against the table's enums or checks, foreign keys and NOT NULL columns. The scalar subquery on user_id = 'system' must not be able to return more than one row: check whether user_id is unique. The DO-block guard must raise only when the system operator is missing AND rows must move, using a predicate identical to the move statement's, and must let the migration pass when nothing has to move. Then the export: closedCalls (src/server/services/export/calls.ts) attributes calls by task.operator_id and inner-joins operators. After the migration, only the moved contacts' closed calls may change operator. Contacts that had no operator may enter the export (A16; 0 in production on 2026-10-21). Inactive contacts keep whoever worked them. No other export row may appear, disappear or change. Excludes which task rows move (v1) and concurrency (v3).",
+        "complexity": "high"
+      },
+      {
+        "id": "v3",
+        "charter": "Concurrency and locking of the migration inside the real production batch while operators use the app. db:migrate:prod applies cron_run, then the index removals, then this realignment, all in one transaction. The index removals SET LOCAL lock_timeout = '5s' and hold an exclusive lock on task until COMMIT. Work out what the guard and the move statement lock: the task rows, the customers read, and the foreign-key checks of the task_event_log INSERT on customers, operators and task. Then work out how those locks meet app writers that take customer FOR UPDATE and then the active task FOR UPDATE (D12): deadlock, the 5 s lock_timeout aborting the whole batch, and readers blocked and for how long, with about 69,787 active contacts. Check the READ COMMITTED semantics of the data-modifying CTE. The UPDATE's recheck that the operator is still the one to_move read must skip a contact whose handover commits after that read, must never revert a handover, and must keep the skipped contact out of the log. Also check whether that interleaving can happen at all once the batch already holds the exclusive lock on task. Do not treat the green .pg.test.ts as proof: it runs the move statement alone, outside the batch. Never connect to production; reason from the code, or use a local Postgres only. Excludes the single-session end state (v1) and test fidelity (v5).",
+        "complexity": "high"
+      },
+      {
+        "id": "v4",
+        "charter": "The migration chain and the production migrator. The new _journal.json entry (idx 10, when, tag) must come after 20261019142325 in order. meta/20261021100457_snapshot.json must chain by prevId and leave the schema of the previous snapshot unchanged, since a custom migration changes no schema; read any difference against the known drift of the customers.id nanoid default literal in brain/tech-debt/crm/sezione-contatti.md. The SQL file must split into exactly two statements on '--> statement-breakpoint', and the DO $$ block must survive that split. With the drizzle-orm version actually installed (after the 0.45 upgrade, W1), confirm four things: db:migrate:prod applies only migrations whose when is greater than the last applied one; it applies the three pending ones (cron_run, index removals, realignment) in that order and in one transaction; a raise in the guard rolls back all three and records none in __drizzle_migrations; and a migration whose when is lower than the last applied one is skipped silently (the limited-merge risk in PLAN §13). Check that the SQL is valid on the production Postgres version. Do not run db:migrate:prod or db:migrate against any shared or remote database. Excludes SQL semantics (v1, v2) and locks (v3).",
+        "complexity": "high"
+      },
+      {
+        "id": "v5",
+        "charter": "Whether the test evidence can be trusted; the correctness of the SQL is out of scope here. Files: contattiRealign.db.test.ts, contattiRealign.systemOperator.db.test.ts, contattiRealign.pg.test.ts, and the BEFORE_REALIGN_SCHEMA_TAG / REALIGN_SCHEMA_TAG constants in src/test/db.ts. (1) Does the two-phase setup (migrateUpTo(BEFORE_REALIGN), seed, migrateUpTo(REALIGN)) model what db:migrate:prod does in production, including the batch with cron_run and the index removals in one transaction? (2) Does each assertion fail on the regression it claims to catch: a wrong predicate, <> instead of IS DISTINCT FROM, a missing is_active, updated_at touched, a missing guard, log rows for contacts that did not move, a missing recheck? Judge the mutant results recorded in the PLAN T6.9 log, the survivors in particular. (3) Which guarantees rest only on how PGlite behaves (a single connection, transaction semantics, error text) where a real Postgres could differ? (4) Does CI really run the .pg.test.ts: the ci.yml service container and TEST_DATABASE_URL, the vitest include pattern, the skipIf? Does the test's handover take locks in the same D12 order as the real handover? (5) Do the new constants leave the other migration tests (LEGACY_SCHEMA_TAG, CONTATTI_SCHEMA_TAG) as they were? Use the gate output the orchestrator supplies.",
+        "complexity": "medium"
+      }
+    ]
+  },
+  "taskComplexity": "high",
+  "reviewImpact": "critical",
+  "humanInLoop": true,
+  "nextStep": "1. Before fan-out, run git diff --name-status 5bff346..15f0f80 and confirm nothing outside the listed files changed; give v4 the snapshot JSON that the supplied diff leaves out. 2. Run the gates once in a clean checkout with the CI placeholders and give the output to v4 and v5: next lint, tsc --noEmit, pnpm run test --run, pnpm build, and pnpm test:pg against a local Postgres only. 3. Give each pass its diff slice plus the excerpt of AC75, D26, D27, D29, A6, A16 and T6.9, and give v3 and v4 the batch order and lock_timeout facts from T6.7/G5. 4. Run v1-v4 on the strongest model (Opus) and v5 on the balanced tier, each as an independent adversarial-verifier pass. 5. No pass may run db:migrate:prod, db:push:prod, any NODE_ENV=production script or pnpm db:migrate on the shared dev database, and none may connect to production; PGlite and a local Docker Postgres only. 6. Append a new round to the spec folder's RUBRIC.md and REPORT.md (review.location: spec-folder) without overwriting earlier rounds. 7. REPORT.md must end with a step-by-step checklist the owner follows in the release session: (a) re-run contatti-operator-mismatch.sql read-only right before migrating; any new (b) or exportable (a2) stops the gate until a written decision; (b) confirm the system operator exists; (c) have Cloud Run on the new revision first if BACKEND_URL is active (F13); (d) run db:migrate:prod as the only writer and know the retry path if the 5 s lock_timeout aborts the batch; (e) afterwards the script gives 0 on (a) and (b), and the new operator_reassign rows equal the contacts moved; (f) re-check the next morning, after the crons have run."
+}
+```
+
+### Classifier rationale
+
+Critico, con una persona nel loop: la migrazione riscrive righe di produzione di `task` e aggiunge righe a `task_event_log`, che alimenta l'export chiamate (attribuzione, vicina ai soldi), e la lancia una volta sola il proprietario dentro una transazione con altre due migrazioni, mentre gli operatori usano l'app. Due superfici sempre sensibili: una migrazione di dati in produzione e l'export. Il cambiamento è piccolo (un file SQL di 84 righe e i suoi test) ma ha cinque punti separati: quali righe si spostano (v1), la traccia nel log e l'export (v2), i lock dentro il lotto vero (v3), la catena di migrazioni e il migratore (v4) e se i test provano ciò che dicono (v5). v3 è scritto sul lotto vero e non sullo statement da solo, perché la migrazione degli indici tiene un lock esclusivo su `task` e un `lock_timeout` di 5 s fino al COMMIT: cambia sia il rischio di blocco sia il fatto che l'interleaving provato dal `.pg.test.ts` possa avvenire. Nessun passaggio per autenticazione, segreti, input non fidato, UI o movimento: non ci sono nel diff. In `brain/domains/crm/` non c'è un contratto di dominio: i riferimenti sono i criteri della SPEC, le decisioni del PLAN e il tech-debt.
+
+### Overrides applied
+
+Nessuno. Cinque passaggi, ognuno con un solo concern e senza sovrapposizioni; `reviewImpact: critical` e `humanInLoop: true` sono coerenti. Il testo del JSON qui sopra ha i caratteri `>` e `<` al posto delle entità HTML con cui il classificatore li ha restituiti.
+
+### Verification plan (derived)
+
+| Pass | Charter | Complexity | Model tier |
+|------|---------|------------|------------|
+| v1 | Quali righe sposta lo statement e come sono dopo (una sessione): predicato, idempotenza, trigger, uguaglianza con la categoria (a) dello script | high | strongest (opus) |
+| v2 | Le righe di log e l'export chiamate (D29, AC75, A16): una per contatto spostato, guardia, `user_id` unico | high | strongest (opus) |
+| v3 | Concorrenza e lock dentro il lotto vero di `db:migrate:prod` (D12, `lock_timeout` 5 s, READ COMMITTED della CTE) | high | strongest (opus) |
+| v4 | Catena di migrazioni e migratore: journal, snapshot, divisione in due statement, tutto-o-niente, versione di Postgres | high | strongest (opus) |
+| v5 | Se la prova nei test è affidabile: modello a due fasi, mutanti, PGlite contro Postgres vero, CI, costanti | medium | balanced (sonnet) |
+
+Nessun passaggio UI né di movimento. Nessun verificatore lancia `db:migrate:prod`, `db:push:prod`, script con `NODE_ENV=production` o `pnpm db:migrate` sul DB condiviso, né si collega a un database che non sia su `127.0.0.1`; il Postgres di prova è quello locale in Docker.
