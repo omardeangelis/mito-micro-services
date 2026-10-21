@@ -1,6 +1,6 @@
 #!/bin/sh
 # Deploys an image built by build.sh to mito-crm-staging:
-#   sh api/gcp/deploy-staging.sh <tag>
+#   sh apps/api/gcp/deploy-staging.sh <tag>
 # The values come from the STAGING_* secrets (load-staging-secrets.mjs), which
 # only the mito-crm-staging service account can read
 set -e
@@ -11,7 +11,7 @@ URL=https://mito-crm-staging-869830994359.europe-west3.run.app
 FRONTEND=https://staging-crm.dbmito.it
 INSTANCE=mito-crm:europe-west3:mito-crm-staging
 S=STAGING_
-# The crons (api/src/cron) take Cloud Scheduler's OIDC token for this URL and
+# The crons (apps/api/src/cron) take Cloud Scheduler's OIDC token for this URL and
 # service account; the alert cron may take up to 15 minutes, hence the timeout.
 # The Slack report reads the secret STAGING_CRON_SLACK_WEBHOOK_URL, which
 # slack-webhook-staging.sh creates.

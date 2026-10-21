@@ -2,10 +2,10 @@
 domain: platform
 phase: 0
 title: Setup monorepo
-status: not_started
+status: in_progress
 completed: false
 depends_on: []
-last_updated: 2026-06-11
+last_updated: 2026-10-21
 ---
 
 # Fase 0 — Setup monorepo
@@ -20,9 +20,9 @@ Ogni task ha un file di dettaglio operativo in `brain/chore/migration/fase-0/`, 
 
 | Task | File | Stato | Sintesi |
 |---|---|---|---|
-| F0.T1 | [t1-scaffold-workspace.md](./fase-0/t1-scaffold-workspace.md) | not_started | `pnpm-workspace.yaml`, `turbo.json`, package.json root |
+| F0.T1 | [t1-scaffold-workspace.md](./fase-0/t1-scaffold-workspace.md) | completed | `pnpm-workspace.yaml`, `turbo.json`, package.json root |
 | F0.T2 | [t2-spostamento-web-legacy.md](./fase-0/t2-spostamento-web-legacy.md) | not_started | `git mv` dell'app in `apps/web-legacy` + root directory Vercel (inventario file completo nel task) |
-| F0.T3 | [t3-packages-config.md](./fase-0/t3-packages-config.md) | not_started | tsconfig/eslint condivisi per i nuovi package |
+| F0.T3 | [t3-packages-config.md](./fase-0/t3-packages-config.md) | in_progress | tsconfig/eslint condivisi per i nuovi package |
 | F0.T4 | [t4-pulizia-dipendenze.md](./fase-0/t4-pulizia-dipendenze.md) | not_started | rimozione `better-sqlite3`/`@libsql`; `nodemailer` richiede verifica peer-dep NextAuth (dettagli nel task) |
 | F0.T5 | [t5-ci-workflows.md](./fase-0/t5-ci-workflows.md) | not_started | adeguare i 13 workflow esistenti (inclusi gli 8 cron schedulati su GitHub Actions) + nuova `ci.yml` turbo |
 
@@ -34,4 +34,15 @@ Ogni task ha un file di dettaglio operativo in `brain/chore/migration/fase-0/`, 
 
 ## Note di esecuzione
 
-_(da compilare durante l'esecuzione: deviazioni, problemi, decisioni prese)_
+**2026-10-21 — ordine rivisto.** Il piano a fasi resta il riferimento per l'inventario, ma il backend oggi è Hono su Cloud Run (`api/`), non Express/Railway, e l'app Next andrà in `apps/web`, non `apps/web-legacy`. Le PR, piccole e senza cambi di comportamento, sono:
+
+1. Scaffold workspace (F0.T1): `pnpm-workspace.yaml`, `turbo.json`, `turbo` in devDependencies. **La root resta l'app Next**: T1 e T2 non vanno più nello stesso PR, perché pnpm accetta la root come pacchetto del workspace. Turbo per ora non esegue nulla (nessun pacchetto in `apps/` o `packages/`).
+2. `packages/config`: tsconfig/eslint/prettier condivisi (F0.T3).
+3. `apps/api`: il backend Hono con package.json, Dockerfile e deploy propri; `pnpm dev` avvia Next e Hono insieme.
+4. `apps/web`: spostamento dell'app Next (F0.T2) e Root Directory dei progetti Vercel.
+5. `packages/db`: schema, migrazioni, client.
+6. `packages/server`: router tRPC e servizi oggi in `src/server`.
+
+Requisito: dopo ogni PR il backend Hono parte in locale con `pnpm api:dev`.
+
+**PR 3 (apps/api), 2026-10-21.** `git mv api apps/api`, pacchetto `@mito/api` senza dipendenze proprie: il bundle continua a risolvere i pacchetti dal `node_modules` della root e `src/` con l'alias `@/` del `tsconfig.json` root, che continua a controllare anche `apps/api`. Gli script `api:*` della root restano gli stessi, con i nuovi percorsi. `pnpm dev` = `turbo run dev dev:web`: Hono (`@mito/api#dev`, porta 4000, `.env.development.local` della root) e `next dev` (task di root `//#dev:web`, che è anche `pnpm dev:web`). `envMode: loose` in `turbo.json`: i task vedono tutto l'ambiente, come prima di turbo. Immagine: `apps/api/Dockerfile`, `apps/api/gcp/*`.

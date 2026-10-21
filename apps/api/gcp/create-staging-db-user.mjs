@@ -1,6 +1,6 @@
 // Creates the mito_app user of the staging Cloud SQL instance, with a random
 // password that goes only to the secret STAGING_CLOUDSQL_MITO_APP_PASSWORD:
-//   node api/gcp/create-staging-db-user.mjs
+//   node apps/api/gcp/create-staging-db-user.mjs
 //
 // The password never reaches a command line (gcloud keeps them in its logs),
 // the screen or a file: it goes to gcloud on stdin and to the Cloud SQL Admin

@@ -19,7 +19,8 @@ next-env.d.ts
 
 # production
 /build
-/api/dist
+/apps/api/dist
+.turbo
 /tmp/*
 !/tmp/.gitkeep
 

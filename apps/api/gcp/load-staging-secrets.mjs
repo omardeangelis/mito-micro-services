@@ -1,5 +1,5 @@
 // Loads the values of the staging secrets of mito-crm-staging into Secret
-// Manager. Run it from the repo root: node api/gcp/load-staging-secrets.mjs
+// Manager. Run it from the repo root: node apps/api/gcp/load-staging-secrets.mjs
 //
 // It reads only .env.development.local (the development database, as in
 // `pnpm api:dev`) and never prints a value: each one goes to gcloud on stdin.
