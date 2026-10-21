@@ -3,9 +3,9 @@ domain: crm
 type: review
 scope: spec
 spec: sezione-contatti
-review_target: "branch claude/pr6-resolution-e7198b — PR6: T6.1–T6.10, in due round (il codice senza la migrazione: do-not-ship al primo giro, 0 BLOCKER e 2 MAJOR, poi corretti o accettati come debito; la migrazione di T6.9: ship dopo le correzioni), round in fondo; round di PR1, PR2, PR3, PR4, PR5a e PR5b più sopra"
+review_target: "branch claude/pr6-resolution-e7198b — PR6: T6.1–T6.10, in tre round (il codice senza la migrazione: do-not-ship al primo giro, poi corretto o accettato come debito; la migrazione di T6.9: ship dopo le correzioni; PR6 completa, terzo giro richiesto da Omar: do-not-ship al primo esito, 0 BLOCKER e 4 MAJOR (un buco nei test dell'ordinamento di Clienti e tre frasi ereditate dei testi della massiva), poi ship perché Omar li ha accettati come debito), round in fondo; round di PR1, PR2, PR3, PR4, PR5a e PR5b più sopra"
 base_ref: 434b0474868eaa862c9c0e30d79d5163bd116ca8
-head_ref: 3c59e2dc3a9b14204d570f7933c1e54d065f27c7
+head_ref: 433ccb26fde9f2bf6dd94bb83354c490af39c5dc
 verdict: ship
 review_impact: critical
 human_in_loop: true
@@ -1327,4 +1327,184 @@ NIT non in tabella: v2: `created_at` del log è l'inizio della transazione del m
 - Durevoli: M1 (la CLI di drizzle-kit 0.31 non stampa gli errori: vale per ogni migrazione futura, non solo per T6.9; sta anche in T5.16 e in G4a) e il metodo di lettura in produzione (transazione `READ ONLY` con rollback) che il 2026-10-21 ha sostituito l'editor SQL di Supabase per i conteggi.
 - Corretti in PR6: M2–M14, tutti. Nessuno va nel debito.
 - Da fare fuori da questo round e fuori da PR6: la misura di "Assegna Clienti" con 100 e 500 clienti, l'A3, e il debito F1 (dialogo).
+- Backlink dalle pagine di dominio: n/a finché la spec non è conclusa.
+
+## [Round: 2026-10-21] PR6 completa, terzo giro (richiesto da Omar)
+
+Round aggiunto: i round precedenti restano come sono. Rivede tutta PR6 insieme, migrazione compresa (`434b047` → `433ccb2`), con un classificatore e 16 verificatori nuovi, che non hanno visto i verdetti dei due giri di PR6 sopra.
+
+### Verdict
+
+**DO NOT SHIP al primo esito; SHIP dopo la decisione di Omar** · impact: critical · 0 BLOCKER, 4 MAJOR (accettati come debito), 22 MINOR, 25 NIT (dopo aver unito i doppioni). 14 passaggi su 16 tornano SHIP; v9 e v14 tornano DO NOT SHIP, ognuno su MAJOR aperti.
+
+Il codice che scrive dati regge: lo stato finale di ogni scrittore, la concorrenza su un Postgres vero (circa 5.400 chiamate contemporanee, nessuna coppia separata), i permessi, il log e l'export, la migrazione (righe, lock, catena e migratore), l'input verso l'SQL e la superficie dell'API. Nessun verificatore ha trovato un dato sbagliato. Il verdetto è DO NOT SHIP per due motivi:
+
+- **v14, tre affermazioni dei testi per gli operatori smentite dal codice.** La guida e il dialogo dicono che "Crea/assegna contatti" crea un contatto per ogni cliente selezionato, ma i clienti in `chiamare`/`followup` o con un richiamo non confermato vengono solo riassegnati (`task/POST/index.ts:224-234`). Il riepilogo finale dice "N contatto/i creati" con N = clienti selezionati (`CustomerBulkDialog.tsx:216`, `:598-599`). L'avviso della guida dice che il caso 3 è "l'unico" che cambia lo stato di un cliente con un esito, ma anche la casella "Risolvi alert" lo cambia (`task/POST/index.ts:164-193`). **Tutte e tre c'erano già alla base** ("Crea una chiamata da fare per ogni cliente", "N chiamata/e create"): la ridenominazione di T6.3 e T6.6 le ha portate nei testi nuovi senza correggerle. Sono le frasi su cui un amministratore sceglie fra le due modalità.
+- **v9, la mappatura delle colonne ordinabili non è fissata dai test.** 12 dei 15 casi di `orderColumn` si possono scambiare senza che un test di `getAllCustomers.db.test.ts` fallisca, compreso `updatedAt`, che è l'ordinamento che la pagina manda di default (AC59). Il codice oggi è giusto.
+
+Obiezione più forte: le frasi della guida e del dialogo descrivono una scrittura che il codice non fa. I dati restano giusti, ma l'amministratore sceglie la modalità su quelle frasi e legge un riepilogo che conta contatti mai creati.
+
+**Decisione di Omar (2026-10-21): R1–R4 restano come debito, il codice e i testi non si toccano in PR6.** Le voci sono in `brain/tech-debt/crm/sezione-contatti.md` ("'Crea/assegna contatti': tre frasi della guida e del dialogo smentite dal codice" e "Clienti: la mappatura degli ordinamenti non è fissata dai test"). Con questa decisione nessun BLOCKER né MAJOR resta aperto, quindi il verdetto del round è SHIP con la lista per una persona qui sotto, come per F1 nel primo round. Neanche i controlli del rilascio R6–R10 entrano in T6.7: li porta la lista per una persona di questo round (punti 2–6), che è quella della sessione di rilascio (G5). I MINOR e i NIT restano aperti e nessuno blocca il merge: quelli che non si correggono li porta nel debito `docs-maintenance`.
+
+### Coverage
+
+- Passaggi eseguiti: 16/16. Su Opus v1–v7, v10 e v12; su Sonnet v8, v9, v11, v13, v15 e v16; su Haiku v14. Il classificatore ha chiesto 16 charter, nessuna sovrapposizione; nessun override.
+- Passaggio UI (v15): eseguito sul `next dev` locale (porta 3100, DB di sviluppo), avviato dall'orchestratore perché l'app l'aveva fermato, e lasciato acceso perché Omar l'aveva chiesto. Chromium 149 headless con due sessioni: un admin di prova e un'operatrice, entrate con il link di accesso che il server di sviluppo scrive nei suoi log. Superfici: Clienti, il dialogo dell'assegnazione massiva in ogni passo, la scheda cliente. Nessun passaggio di movimento (nessuna riga di movimento nel diff).
+- Mezzi: PGlite (PG 16.4) e il Postgres 15.19 locale in Docker (`pnpm db:local:up`, avviato dall'orchestratore), con database propri per ogni verificatore, tutti tolti alla fine. v7 e v12 hanno lanciato la CLI vera `drizzle-kit migrate` 0.31.11 su database privati. Nessuno ha toccato la produzione, il DB di sviluppo condiviso (salvo le letture del passaggio UI e le preferenze delle colonne che Clienti salva da sé all'apertura) o script con `NODE_ENV=production`.
+- Gate: vale la copia pulita a `3c59e2d` (round precedente), perché fra `3c59e2d` e `433ccb2` non cambia nessun file di `src/`, `api/`, `package.json`, lockfile né `.github/`: `pnpm install --frozen-lockfile`, `next lint`, `tsc --noEmit`, `pnpm run test --run` (127 file e 1.974 test, 3 file e 9 test saltati), `vitest --project pg` (3 file, 9 test), `pnpm build`, `pnpm api:build`, `pnpm api:smoke`, tutti con uscita 0. v11 ha riconciliato i numeri con l'albero.
+- Controlli dell'orchestratore sui rilievi: il mutante `case "updatedAt": return customers.id` lascia `getAllCustomers.db.test.ts` verde (24/24) in una copia privata (v9 confermato). I tre MAJOR di v14 sono veri sul codice e presenti alla base (`git show 434b047`). Confermati anche il `DialogContent` del passo del form senza scorrimento (v15) e l'id di un cliente di produzione nel log di T6.9 (v8).
+- Limiti dichiarati: nessuno ha potuto provare Postgres 15.6 in particolare, il catalogo di produzione (trigger, vincoli, se l'operatore 1008 ha un utente), le impostazioni di Vercel (Instant Rollback, Skew Protection), i log di Supabase, Mobile Safari, un clic vero su "Crea contatto" o sul passaggio di consegne (v15 ha simulato la risposta), il focus dopo "Crea contatto" da capo a capo né axe.
+
+### Findings
+
+Questo round non corregge niente. R1–R4 sono **accettati da Omar come debito** (2026-10-21); tutti gli altri sono **aperti**. "Preesistente" vuol dire che il problema c'era già alla base `434b047`.
+
+| # | Severity | Da | Dove | Problema | Correzione / evidenza |
+|---|----------|----|------|----------|-----------------------|
+| R1 | MAJOR | v9 | `customer/_test/getAllCustomers.db.test.ts`; `customer/GET/index.ts:247-283` | 12 casi su 15 di `orderColumn` si scambiano senza test rossi (`name→surname`, `email→comune`, `operators.name→operators.surname`, `createdAt→updatedAt`, `updatedAt→customers.id`…): le fixture hanno l'ordine della chiave uguale a quello degli id e della creazione. `updatedAt` è il default della pagina (`CustomerTableSection.tsx:18`) | Test a tabella sulle 15 colonne, `asc` e `desc`, con un ordine della chiave diverso da id e creazione, `name`/`surname` opposti e due operatori con nome e cognome in ordine opposto (prova dell'orchestratore: il mutante su `updatedAt` resta verde). **Accettato da Omar (2026-10-21): debito** |
+| R2 | MAJOR | v14 | `guida-assegnazione-massiva-e-alert.md:26`; `CustomerBulkDialog.tsx:241`, `:484-485` | "Crea un nuovo contatto da chiamare per ogni cliente selezionato": nel caso 4 di `bulkHandleTask` (`chiamare`/`followup`, o un alert non confermato) nessun contatto viene creato, solo riassegnato. Preesistente, conservato dalla ridenominazione | "Crea un contatto da chiamare per i clienti senza contatto attivo o con un esito; quelli da chiamare o con un richiamo non confermato vengono solo riassegnati", nei quattro punti. **Accettato da Omar (2026-10-21): debito** |
+| R3 | MAJOR | v14 | `CustomerBulkDialog.tsx:216`, `:598-599` | Il riepilogo dice "N contatto/i creati e assegnati" con N = clienti selezionati: due clienti in `chiamare` danno "2 contatto/i creati" e zero contatti nuovi. La guida (§3, Riepilogo) dice "assegnati". Preesistente ("N chiamata/e create") | Contare gli esiti che la procedura restituisce, oppure "N cliente/i assegnati a X". **Accettato da Omar (2026-10-21): debito** |
+| R4 | MAJOR | v14 | `guida-assegnazione-massiva-e-alert.md:48` | "Questo è l'unico caso in cui… può davvero cambiare lo stato di un cliente che aveva già un esito": con "Risolvi alert" spuntata il caso 4 crea un contatto con lo stato del form (`task/POST/index.ts:164-193`; test `bulkHandleTask.db.test.ts:106-135`). Preesistente | "Con un richiamo lo stato cambia solo se spuntate 'Risolvi alert' (caso 4)". **Accettato da Omar (2026-10-21): debito** |
+| R5 | MINOR | v15 | `CustomerBulkDialog.tsx:225` | Lo scorrimento per gli schermi bassi c'è solo nel passo di scelta; il passo del form di "Assegna Clienti", con la nota sull'export, è 60–80 px più alto della base e non scorre: a 320×256 titolo e pulsante restano fuori (WCAG 1.4.10); fra 329 e 388 px di altezza a 320 di larghezza taglia, prima no | `max-h-[calc(100dvh-2rem)] overflow-y-auto` anche su quel `DialogContent` |
+| R6 | MINOR | v12, v8 | `PLAN.md` T6.7 passi 1, 3 e 4 (3334-3337) | Lo script e le regole di stop si leggono prima del merge e del deploy; fra deploy e migrazione il codice vecchio può ancora cambiare cosa la migrazione sposta (un caso (c) diventa (a2)), e nessuno rilancia lo script. Dopo, nessun passo confronta le righe `operator_reassign` con l'elenco (a) salvato: la clausola di AC75 "ogni contatto spostato lascia la sua riga" non ha una prova in produzione oltre ad (a) = 0 | Rilanciare SELECT 1 e SELECT 3 subito prima del passo 3 (stop se `b` o `a2_esportabili` > 0, elenco salvato fuori dal repo); dopo, la query delle righe `operator_reassign`, `bulk`, attore `system`, dall'inizio della sessione, uguale all'elenco |
+| R7 | MINOR | v12 | `PLAN.md` T6.7 passo 2; `deploy-production.yaml:9-10` | "Deploy di Vercel verde" non prova che il codice nuovo serva: con un Instant Rollback attivo `vercel deploy --prod` non prende il dominio, e dopo il riallineamento il vecchio "Assegna Clienti" separa di nuovo le coppie. Il runbook di G2 lo controllava (`PLAN.md:699`) | Il controllo "Current, senza Instant Rollback"; aprire Clienti in produzione e vedere che "Stato Chiamate" non c'è; un minuto per le richieste in corso |
+| R8 | MINOR | v12 | `PLAN.md` T6.7 passi 1 e 3 | Rami di errore non eseguibili come scritti: cosa fare se (i)–(iii) danno un valore diverso; (iii) ammette solo `1791749278159`, T5.16 anche `1792353460148`; "manca l'operatore di sistema… si torna al passo 1" dopo il merge, senza nominare il rimedio (`pnpm create:system-operator`, solo Omar); nessun ramo per "stasera non si migra"; nessun ramo per uscita 0 con `max(created_at)` diverso da `1792577097768` (prova: da un checkout senza i file la CLI dice "applied successfully" ed esce 0); il checkout non è fissato (`main` al commit del merge, dopo `pnpm install --frozen-lockfile`: drizzle-kit passa da 0.24 a 0.31) | Una riga per ramo nel passo 3 |
+| R9 | MINOR | v12 | `PLAN.md` T5.16 passi 1 e 5 (2426, 2430) | T5.16 controlla ancora che il journal finisca con `20261019142325_blushing_roland_deschain` (falso al rilascio) e misura con `EXPLAIN` dopo il drop, ricreando l'indice oltre 500 ms; T6.7 passo 3 e G4a non hanno la misura | Un solo runbook, in T6.7, con l'`EXPLAIN` dopo il drop |
+| R10 | MINOR | v8 | `PLAN.md:3172`, 3334, 3337 | Il log di T6.9 riporta l'id di un cliente di produzione, il contatto, gli operatori, lo stato e la data della chiamata; il passo 1 dice "salva l'elenco" senza dire dove; le eccezioni (b) "elencate" nel log invitano a scrivere id o nomi. Nessun nome nel repo | "Gli elenchi restano fuori dal repository; il log tiene i conteggi, al più gli id dei contatti"; togliere l'id del cliente dalla riga 3172 |
+| R11 | MINOR | v8 | `contatti-operator-mismatch.sql:127`, `:170`; `operatorMismatch.db.test.ts:174-189` | L'ordine degli elenchi 3 (a) e 5 (b) non è fissato: il test confronta con `ids()`, che ordina; tolto l'`ORDER BY` o invertito, 8 test verdi. L'elenco 5 è quello su cui Omar decide (b) | Confrontare l'array senza `.sort()`, con id fuori dall'ordine di inserimento |
+| R12 | MINOR | v8 | `contatti-operator-mismatch.sql:103`, `:149`, `:189`; test `:426-452` | Gli spareggi che il nome del test promette ("e poi per id") non sono fissati negli elenchi 2, 4 e 6: le righe della fixture sono nell'ordine del heap | Nella fixture, `is_active` falso e poi vero sulla riga con l'id più basso (cambia l'ordine di lettura) |
+| R13 | MINOR | v8 | `operatorMismatch.db.test.ts:361-424` | La definizione di "esportabile" è provata contro l'attesa dell'autore, mai contro `closedCalls`: se l'export cambia filtro, la regola di stop su `a2_esportabili` diverge in silenzio. Oggi è giusta (differenziale del verificatore sulla griglia completa) | Aggiungere il differenziale con `closedCalls` al file |
+| R14 | MINOR | v7 | `contattiRealign.systemOperator.db.test.ts:113`, `:115` | Il terzo test lancia tutte le migrazioni e si aspetta esattamente tre in più: la prossima migrazione lo fa diventare rosso ("expected 12 to be 11") nella PR di qualcun altro | `migrateUpTo(REALIGN_SCHEMA_TAG)` |
+| R15 | MINOR | v1 | `operatorRule.db.test.ts:304-340`, `:442-526` | Con la regola attiva "Assegna Clienti" parte solo da coppie allineate: la riparazione di una coppia separata, il caso (b) e "Assegna a te" con il contatto già dell'attore non girano sotto la regola (il mutante che salta la riparazione resta verde, 25/25; lo ferma solo `bulkUpdateCustomers.db.test.ts:304`) | Seminare la coppia separata, poi installare la regola, e aggiungere i tre casi |
+| R16 | MINOR | v1, v16 | `operatorRule.db.test.ts:217-248`; `src/test/operatorRule.ts:73` | "Crea contatto" e la riapertura girano sotto la regola solo con l'attore uguale all'operatore del cliente, e nessun controllo negativo prova la gamba `INSERT` del trigger: `AFTER INSERT OR UPDATE` → `AFTER UPDATE` resta verde, e così i mutanti che danno il contatto nuovo all'attore (li fermano solo `createContact.db.test.ts` e `changeState.db.test.ts`). Il trigger vero scatta (prova) | Le due chiamate anche da ADMIN, e un controllo che inserisce un contatto attivo su un altro operatore |
+| R17 | MINOR | v16 | `operatorRule.db.test.ts:133` | Il titolo dice "(e il contrario)" ma il corpo mette a NULL solo il contatto: il mutante che salta il controllo con il cliente senza operatore (caso (b) di D26) resta verde | `update customers set operator_id = null` su un cliente con il contatto assegnato |
+| R18 | MINOR | v16 | `src/test/pg.ts:176` | Con `waitUntilBlocked` che torna subito i 7 test di `contattiRealign.pg.test.ts` e `pg.pg.test.ts` restano verdi: l'incrocio che quei test vogliono provare non è più garantito | In `pg.pg.test.ts`, `waitUntilBlocked(1, 100)` deve fallire quando niente è in attesa |
+| R19 | MINOR | v2 | `assignment.ts:228`; `src/test/lockRule.ts` | Nessun test fissa l'ordine dei lock D12: un `FOR UPDATE` sul contatto prima del cliente passa tutti i test PGlite (99) e su Postgres vero dà "deadlock detected" a `bulkUpdateCustomers` e al passaggio di consegne. Oggi l'ordine è giusto e il tipo `LockedCustomer` lo protegge | Un `*.pg.test.ts` con `holdCustomerLock`/`waitUntilBlocked`, oppure nominare `assignCustomers` e `handover` nella voce di D12 livello 2 (PR7) |
+| R20 | MINOR | v13 | `CustomersTable.tsx:181` | La metà "nessun ciclo di riscrittura" di AC60 dipende da un array di dipendenze che nessun test vede: toltolo, i 10 test restano verdi; con un router che aggiorna l'URL il mutante fa più di 20 `push` per URL. Il codice è giusto (1 `push`) | Un test con un router che aggiorna l'URL e alcuni rerender, che chiede un solo `push` |
+| R21 | MINOR | v13 | `CustomerCreateContact.tsx:110`; test `:36` | Il mock della mutazione ignora gli argomenti: `source: "list"` o l'id sbagliato del cliente passano tutti i test (AC66 vuole `state_change` con sorgente `detail`) | Leggere l'argomento e chiedere `{ customerId, source: "detail" }` |
+| R22 | MINOR | v13 | `CustomerBulkDialog.tsx:177`; `_test/CustomerBulkDialog.test.tsx` | Nessun test guarda il `FormData` dell'azione: `formData.append("type", "chiamate")` fisso (che farebbe creare contatti ad "Assegna Clienti") passa 9/9. Il diff di PR6 qui è solo testo | Controllare il `FormData` delle due modalità |
+| R23 | MINOR | v9 | `customer/GET/index.ts:292` | Un `orderBy` noto senza `sortedBy` dev'essere crescente: il mutante che lo rende decrescente passa i 24 test. La pagina manda sempre `sortedBy` | Un'asserzione con `{ orderBy: "surname" }` senza direzione |
+| R24 | MINOR | v14 | `guida-assegnazione-massiva-e-alert.md:22` | "Cliccate su 'Assegnazione Massiva'": il pulsante si chiama "Edit" (`CustomerColumns.tsx:80-84`); il §2 non dice che la massiva è solo degli amministratori, e la consiglia per le ferie di un operatore. Preesistente | Nominare "Edit" e scrivere "solo amministratori" |
+| R25 | MINOR | v14 | `guida-assegnazione-massiva-e-alert.md:50` | "(un alert non ancora scaduto né risolto)": anche un alert scaduto e non ancora chiuso dal controllo notturno fa scattare il caso 4 (`task/GET/index.ts:84-91`). Preesistente | "Un alert non ancora risolto (anche se scaduto, finché il controllo notturno non lo chiude)" |
+| R26 | MINOR | v14 | `guida-assegnazione-massiva-e-alert.md:163-164` | "Il programma ve lo segnala sempre prima e non lo tocca finché non spuntate la casella" è falso per "Assegna Clienti", che non mostra avvisi (`CustomerBulkDialog.tsx:111-114`, `:309-313`) e ora sposta anche il contatto con il richiamo. Frase preesistente, accanto alla FAQ riscritta | Limitare la frase a "Crea/assegna contatti" |
+
+NIT (non in tabella; tutti aperti):
+
+- **Codice e test.**
+  - v10: il commento di `PopoverFilter.tsx:150,160` dice che le righe malformate si saltano, ma un operatore sconosciuto resta (preesistente, già in A15).
+  - v3: dentro `assignCustomers` il controllo di `canReassign` viene dopo la ricerca dell'operatore e il lock del cliente, e con zero clienti non c'è del tutto (`assignment.ts:220-232`); nessun percorso tRPC ci arriva.
+  - v5: i test della migrazione confrontano i clienti al millisecondo, e il test della seconda esecuzione non li confronta (`contattiRealign.db.test.ts:332`, `:354-363`).
+  - v6: il commento "this changes nothing there" (`…realign.sql:30-32`, `contattiRealign.pg.test.ts:29-33`) vale solo con gli indici presenti; il test su Postgres vero copre solo un collega che arriva prima della migrazione.
+  - v8: `ultima_modifica` dell'elenco 3 non è fissata (`GREATEST` contro `updated_at`); lanciando tutto il file l'editor potrebbe mostrare solo l'ultimo SELECT (c).
+  - v11: la scheda cliente legge due volte lo stesso contatto attivo, in sequenza (`[id]/page.tsx:44-51`).
+  - v13: la protezione dal doppio clic di "Crea contatto" (`CustomerCreateContact.tsx:104`) non ha test; con `?order_by=name` senza `sorted_by` client e server partono da direzioni diverse (come alla base); la riscrittura dell'URL tiene i parametri tolti.
+  - v14: "con il loro contatto attivo" nel riepilogo di "Assegna Clienti" (`CustomerBulkDialog.tsx:600`) vale solo per chi ce l'ha e non è già dell'operatore.
+  - v15: con il contenuto più lungo il badge dello stato nel riepilogo esce dalla colonna fra 280 e 340 px (`CustomerContactSummary.tsx:63`; `grid-cols-1 sm:grid-cols-2 lg:grid-cols-4` provato nel DOM).
+  - v16: `UPDATE OF operator_id` e il controllo su tutti i clienti invece che su quello toccato sopravvivono; nessuna regola ESLint impedisce all'app di importare `@/test/*` (oggi nessuno lo fa); in CI niente controlla che il progetto `pg` abbia eseguito almeno un test, e il gate Test di `AGENTS.md` non dice che in locale i 3 file si saltano.
+  - v1: il caso 4 della guida con la casella non spuntata non gira sotto la regola, e le etichette dei test seguono la numerazione del codice, non della guida.
+- **Procedura di rilascio.**
+  - v4: la migrazione dà il contatto all'operatore del cliente qualunque sia, anche senza utente o di sistema (l'app li rifiuta): nel passo 1, unire l'operatore del cliente di (a) a `users` e fermarsi se manca. In produzione oggi: un contatto verso il 1008.
+  - v6: il passo 3(c) nomina solo il passaggio di consegne e "Assegna Clienti" come possibili deadlock con la migrazione; anche il cron alert, "Crea/assegna contatti" e la riassegnazione dell'admin sul cliente spostato. L'esito resta sicuro.
+  - v7: il controllo di `max(created_at)` salta le righe con `created_at` NULL, che il migratore invece legge come ultime: aggiungere `count(*) WHERE created_at IS NULL` = 0 (il runbook di PR2 lo aveva, `PLAN.md:721`).
+  - v12: per distinguere i fallimenti basta rilanciare il controllo (i) (la guardia scatta solo se non trova l'operatore di sistema; il lock timeout arriva dopo circa 5 s); non c'è un limite ai tentativi; il passo 3 non dice i suoi punti di non ritorno (dopo il COMMIT il riallineamento resta; un revert del codice dopo il passo 3 riporta il vecchio "Assegna Clienti" che separa le coppie) né la finestra dei cron da evitare (23:17–00:47 UTC); il ramo con `BACKEND_URL` oggi non ha né il controllo né il comando.
+- **Debito nei file che PR6 non tocca** (vanno nel tech-debt, non contro questa PR):
+  - v15: il contrasto di "Aggiornato" in `TableHeaders.tsx:26` (già registrato); il badge della priorità in hover a circa 1,84:1 (nuovo); la colonna di selezione che si allarga da 150 a 176 px quando si selezionano righe.
+  - v2: deadlock fra due `refreshPriorities`.
+  - v4: il caso 4 di `bulkHandleTask` cambia l'operatore del cliente senza una riga di log quando il contatto è già dell'operatore di destinazione.
+  - v8: la voce del tech-debt a `sezione-contatti.md:492` è superata, perché ora le colonne degli elenchi 4–6 sono tutte fissate.
+
+### What passed
+
+| Concern (verifier) | Evidence |
+|--------------------|----------|
+| v1 — stato finale degli scrittori | Elenco degli scrittori ricavato con `grep` (anche gli alias): tutti, da una coppia allineata, la lasciano allineata; "Assegna Clienti" sposta il contatto attivo in ogni stato, non crea contatti, lascia gli inattivi, ripara le coppie separate, non tocca quelle allineate; "Assegna a te" segue A16; il passaggio di consegne rifiuta lo stesso operatore prima di scrivere; i quattro casi della massiva usano lo stesso codice della base. 71/71 test |
+| v2 — concorrenza dell'app | Lettura: ogni scrittore blocca prima il cliente e poi il contatto. Postgres 15 vero: 12 semi, circa 5.400 chiamate contemporanee di 13 tipi su 6 clienti, fino a 8 sessioni in attesa: 0 coppie separate, 0 catene rotte, 0 secondi contatti attivi, nessun deadlock fra scrittori dell'app; i controlli negativi falliscono come devono. P19 (`concurrency: 1`), `Tx` (prova con `tsc`), lock rule su `assignCustomers` |
+| v3 — permessi | `adminProcedure` e `canReassign` per cliente; `findWorkingOperator` prima di scrivere; "Assegna a te" e "Crea contatto" controllati sulle righe bloccate; attore sempre dalla sessione; la lettura nuova della scheda è la stessa procedura del dettaglio di Contatti. 10 mutanti, tutti fermati |
+| v4 — log ed export | 445 righe di log da 120 chiamate casuali uguali all'oracolo; 25 semi della migrazione, una riga per contatto spostato; `closedCalls` prima e dopo: cambiano operatore solo i contatti attivi spostati, entrano solo quelli senza operatore (A16), nessuno esce; catene da→a ininterrotte mescolando app e migrazione, anche su Postgres vero |
+| v5 — la migrazione sui dati | Differenziale riga per riga (contenuto e `xmin`) su 7 semi contro un oracolo: si spostano solo i contatti di (a), solo `operator_id`, al microsecondo; nessun'altra riga scritta; seconda esecuzione nulla; stesso predicato della guardia e della categoria (a) dello script |
+| v6 — lock della migrazione | Inventario dei lock per istruzione, nel lotto e da sola; il limite di 5 s annulla tutte e tre (anche sull'attesa della chiave esterna); a 69.787 contatti attivi i lettori aspettano 179–293 ms nel lotto e niente da sola; nessuna coppia separata né storia riscritta, anche con gli indici già tolti; i deadlock finiscono sempre in sicurezza |
+| v7 — catena e migratore | Journal e snapshot giusti; quattro istruzioni, blocco `DO` intero; con la CLI vera: le tre in una transazione, un errore non ne registra nessuna, una con `when` minore viene saltata in silenzio; `SET LOCAL` vale per le istruzioni dopo |
+| v8 — script di sola lettura | Sei SELECT, solo `AccessShareLock`, uguali da sole e insieme, su PGlite e su PG 15; categorie e "esportabile" uguali all'export vero (differenziale); 171 mutanti, sopravvissuti solo quelli d'ordine ed equivalenti |
+| v9 — query di Clienti | Ordine, NULL in fondo, spareggio per id, pagine esatte (72 combinazioni), totale, nessuna moltiplicazione di righe e `signedPractices` uguali a un riferimento in JavaScript, su PGlite e su Postgres 15 |
+| v10 — input verso l'SQL | `orderBy` solo attraverso lo `switch` (72 combinazioni ostili, SQL identico al default); `sqlTaskFilter` e `status` tolti dallo schema; `sqlFilter` resta l'unico `sql.raw`, una volta per query; l'esposizione A15 è uguale o più stretta della base |
+| v11 — API e regole del server | Nessun chiamante delle procedure tolte (`grep`, confronto con le chiavi del router, prova HTTP); nessun import rimasto; ogni test tolto ha un sostituto; `runTrpc` ed Effect; i numeri del gate tornano con l'albero |
+| v12 — sessione di rilascio | Ordine dei passi giusto; valori attesi uguali al journal; le query (i)–(iii) girano; la CLI si comporta come dice il passo 3 nei tre esiti; nessun passo chiede a un agente di lanciare script di produzione |
+| v13 — comportamento del client | AC60: un solo `push` su 15 URL vecchi, nessun ciclo, nessun errore; Pratiche invariata (differenziale del filtro condiviso); scheda, focus, link di "Gestisci contatto" (D28) e passi del dialogo come da criteri; 35 mutanti, 331 test |
+| v14 — testi | La ridenominazione è completa; i testi nuovi su "Assegna Clienti" (scheda, descrizione, nota sull'export, §4, FAQ) corrispondono al codice; struttura di AC74 (§5, §6, sezione su Clienti e la scheda); messaggi di "Crea contatto"; FLOW.md cita i suoi AC |
+| v15 — UI | AC58, AC59, AC63, AC64–AC68 e i testi di AC75 osservati in Chromium per admin e operatrice; passo di scelta che scorre a 5 misure; anelli di focus interi; "Gestisci contatto" 138×36; contrasti del riepilogo ≥ 7,15:1; "Cliente non assegnato" con risposta simulata, nessun contatto creato |
+| v16 — infrastruttura di test | Il trigger della regola scatta al COMMIT, legge lo stato finale, copre le due tabelle, i NULL e gli inattivi (prove sul trigger vero); raggiungibile solo da PGlite; le costanti dello schema modellano il lotto; i `*.pg.test.ts` girano in CI e falliscono senza database |
+
+### Per-concern verdicts
+
+| Pass | Charter | Verdict | Rationale |
+|------|---------|---------|-----------|
+| v1 | Stato finale degli scrittori | SHIP | Stati finali giusti; due MINOR sulla copertura del file della regola |
+| v2 | Concorrenza dell'app | SHIP | Nessun deadlock né coppia separata su Postgres vero; un MINOR (ordine dei lock senza test) |
+| v3 | Permessi | SHIP | Ogni tentativo rifiutato prima di scrivere; un NIT |
+| v4 | Log ed export | SHIP | Righe e export come D29, AC75 e A16; due NIT |
+| v5 | Migrazione sui dati | SHIP | Differenziale pulito; un NIT sui test |
+| v6 | Lock della migrazione | SHIP | Tutto si serializza o fallisce in sicurezza; tre NIT di documentazione e test |
+| v7 | Catena e migratore | SHIP | Un MINOR (test che si rompe alla prossima migrazione) e un NIT sul runbook |
+| v8 | Script di sola lettura | SHIP | Conteggi e regole di stop giusti; cinque MINOR su ordine, differenziale, tempi e dati personali nel log |
+| v9 | Query di Clienti | DO NOT SHIP | La query è giusta; MAJOR: la mappatura delle colonne ordinabili non è fissata dai test |
+| v10 | Input verso l'SQL | SHIP | Esposizione non allargata; un NIT su un commento |
+| v11 | API e regole del server | SHIP | Nessun chiamante rimasto; un NIT di efficienza |
+| v12 | Sessione di rilascio | SHIP | Ordine giusto; quattro MINOR sui controlli fra un passo e l'altro |
+| v13 | Comportamento del client | SHIP | Criteri rispettati; tre MINOR sui test |
+| v14 | Testi per gli operatori | DO NOT SHIP | Tre MAJOR: frasi preesistenti smentite dal codice, conservate dalla ridenominazione |
+| v15 | UI | SHIP | Criteri UI rispettati per i due ruoli; un MINOR (passo del form senza scorrimento) |
+| v16 | Infrastruttura di test | SHIP | Trigger giusto; tre MINOR su controlli negativi mancanti |
+
+### Human Review Checklist
+
+`reviewImpact: critical`. La sessione di rilascio (G5) è di Omar; nessun agente lancia `db:migrate:prod`.
+
+1. **Prima del merge in `dev`:** i 4 MAJOR (R1–R4) sono decisi: Omar li ha accettati come debito il 2026-10-21, e le voci sono nel tech debt. Resta la CI verde sulla PR verso `dev`. I punti 2–6 portano i controlli R6–R10, che non entrano in T6.7: la sessione di rilascio segue questa lista.
+2. **Prima del merge in `main`, in sola lettura sulla produzione** (transazione `READ ONLY`, rollback):
+   - l'operatore di sistema c'è;
+   - `task` non ha trigger né regole;
+   - `SELECT max(created_at) FROM drizzle.__drizzle_migrations` vale `1791749278159` **e** nessuna riga ha `created_at` NULL;
+   - le tre migrazioni in sospeso sono nell'ordine del journal (`cron_run`, indici, riallineamento).
+3. **Deploy:** Vercel "Current", senza Instant Rollback; aprire Clienti in produzione e vedere che "Stato Chiamate" non c'è; aspettare un minuto per le richieste in corso. Con `BACKEND_URL` attiva: prima il frontend, poi il backend, e Cloud Run al 100% sulla revisione nuova prima della migrazione.
+4. **Subito prima di migrare** (dopo il deploy): rilanciare lo script. Fermarsi se `b` o `a2_esportabili` sono maggiori di zero, finché Omar non decide per iscritto; fermarsi se un operatore di destinazione di (a) non ha un utente. Salvare l'elenco (a) **fuori dal repository** e segnarsene il numero.
+5. **`pnpm db:migrate:prod`, solo Omar,** da `main` al commit del merge dopo `pnpm install --frozen-lockfile`, in un momento tranquillo e fuori dalla finestra dei cron (23:17–00:47 UTC). Il comando non stampa gli errori:
+   - uscita 1: `max(created_at)` vale ancora `1791749278159`; se l'operatore di sistema manca non si rilancia (lo crea Omar con `pnpm create:system-operator`), altrimenti è un lock timeout o un deadlock e si rilancia;
+   - uscita 0 con `max(created_at)` diverso da `1792577097768`: fermarsi e capire.
+   - Dopo il COMMIT il riallineamento resta. Un revert del codice da qui in poi riporta il vecchio "Assegna Clienti", che separa le coppie.
+6. **Subito dopo:**
+   - `max(created_at)` = `1792577097768`;
+   - `mito-deutsche_cron_run` esiste e i due indici non ci sono;
+   - `EXPLAIN ANALYZE` della prima pagina di Contatti sotto i 500 ms (T5.16 passo 5; se la supera si ricrea `task_priority_active_idx`);
+   - lo script dà 0 su (a) e su (b);
+   - le righe `operator_reassign`, sorgente `bulk`, attore `system`, dall'inizio della sessione sono esattamente l'elenco salvato al punto 4;
+   - Vercel e Sentry senza errori nuovi per 15 minuti.
+7. **La mattina dopo**, dopo i cron: lo script di nuovo, con (a) e (b) a zero.
+8. **Una persona, sul DB di sviluppo:** una passata con il ruolo OPERATORE; un clic vero su "Crea contatto" (anche il messaggio "ha già un contatto attivo" e dove va il focus dopo) e su "Passaggio di consegne".
+9. **A3 e misure:** `EXPLAIN ANALYZE` della prima pagina di Clienti su volumi reali (≤ 500 ms) e "Assegna Clienti" con 100 e 500 clienti (condizione per riprendere F1).
+
+### Acceptance criteria check (case B)
+
+| Criterio | Esito | Evidenza |
+|---|---|---|
+| AC58 | Met | v15: niente colonne né selettore di stato, nemmeno nel menu Colonne |
+| AC59 | Met | v15, v9, v10: niente filtri Stato e Contattato il; default `updatedAt` decrescente con spareggio per id. La mappatura delle colonne non è fissata dai test (R1, debito accettato) |
+| AC60 | Met | v13, v15: un solo `push`, nessun ciclo, nessun errore; il ciclo non è fissato dai test (R20) |
+| AC61 | Met | v9: pagine esatte e totale uguale ai clienti filtrati, su PGlite e su Postgres 15 |
+| AC63 | Met | v14, v15: ridenominazione completa; v1, v13: i quattro casi usano lo stesso codice della base. I testi ereditati della modalità sono smentiti dal codice (R2–R4, debito accettato) |
+| AC64, AC65 | Met | v15, v13, v3: riepilogo in sola lettura con "Gestisci contatto"; nessun controllo di stato, priorità o alert, per i due ruoli |
+| AC66 | Met | v3, v13, v15: visibilità solo ad admin e operatore del cliente, controllo sul server; il carico della mutazione non è fissato dai test (R21) |
+| AC67 | Met | v3, v13, v15: "Cliente non assegnato" non crea niente; "ha già un contatto attivo" (testo nel codice, non visto nel browser) |
+| AC68 | Met | v13, v15: note invariate |
+| AC71 | Met | v1, v2, v5, v6: nessun percorso crea un secondo contatto attivo, nemmeno con richieste contemporanee; la migrazione non cambia `is_active` |
+| AC72 | Met | v1, v2: cron e quattro casi con lo stesso codice della base |
+| AC74 | Met in struttura | v14: §5, §6 e la sezione su Clienti ci sono; tre frasi ereditate smentite dal codice (R2, R4, debito accettato) e tre imprecise (R24–R26) |
+| AC75 | Met | v1, v4, v5, v6, v14, v15: cliente e contatto attivo insieme, righe di log, export, inattivi, riallineamento con una riga per contatto; la prova in produzione delle righe richiede il confronto del punto 6 (R6) |
+| Constraint "export invariato" con A16/D29 | Met | v4, v8: `closedCalls` prima e dopo, solo le eccezioni accettate |
+| Constraint del rilascio | Met, con R6–R9 | v12: ordine giusto, controlli fra un passo e l'altro da aggiungere |
+
+### Notes for docs-maintenance
+
+- Durevoli, nei file che PR6 non tocca: il badge della priorità in hover (contrasto), la colonna di selezione che si allarga, il deadlock fra due `refreshPriorities`, il caso 4 di `bulkHandleTask` senza riga di log del cliente, la mancanza di un controllo in CI sul numero di test `pg` eseguiti e di una regola ESLint su `@/test/*`. Da togliere: la voce superata a `sezione-contatti.md:492`.
+- R1–R4: accettati da Omar come debito il 2026-10-21. Sono già scritti in `brain/tech-debt/crm/sezione-contatti.md`, in due voci nuove. La voce "Ordinamenti di `getAllCustomers`" dei piccoli debiti di PR6 è corretta: diceva che quattro colonne erano fissate dai test, e `updatedAt` e l'operatore non lo sono.
+- Gli altri MINOR e i NIT di questo round sono aperti. Quelli che non si correggono vanno nel debito: R24–R26 accanto alla voce di R2–R4, nella stessa guida; i controlli del rilascio R6–R10 sono nella lista per una persona.
 - Backlink dalle pagine di dominio: n/a finché la spec non è conclusa.

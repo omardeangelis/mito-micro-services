@@ -12,6 +12,13 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 
 <!-- Entries are appended by create-spec (spec creation) and docs-maintenance (ingest). Format:
 
+## [2026-10-21] review | Sezione Contatti — PR6 completa, terzo giro (richiesto da Omar)
+- Report: [[specs/crm/sezione-contatti/REPORT]] (round PR6 completa, terzo giro)
+- Scope: spec
+- Verdict: DO NOT SHIP al primo esito, poi SHIP. Il codice che scrive dati regge in tutti i passaggi. I 4 MAJOR (un buco nei test della mappatura dell'ordinamento di Clienti e tre frasi ereditate della guida e del dialogo di "Crea/assegna contatti" smentite dal codice) sono accettati da Omar come debito il 2026-10-21, con due voci nuove nel tech debt
+- Impact: critical
+- Verifiers: 16 (0 blocker, 4 major, 22 minor, 25 nit; 14 SHIP e 2 DO NOT SHIP)
+
 ## [2026-10-21] review | Sezione Contatti — PR6, seconda metà: la migrazione di T6.9
 - Report: [[specs/crm/sezione-contatti/REPORT]] (round PR6, seconda metà)
 - Scope: spec
