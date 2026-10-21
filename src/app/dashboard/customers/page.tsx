@@ -7,9 +7,8 @@ import { CustomerTableLoading } from "./_components/CustomerTableLoading"
 
 export const maxDuration = 60
 
-export default async function CustomersHome({
-  searchParams,
-}: ServerPageDefaultProps) {
+export default async function CustomersHome(props: ServerPageDefaultProps) {
+  const searchParams = await props.searchParams
   noStore()
 
   return (

@@ -34,8 +34,8 @@ describe("pagina Pratiche, search_by", () => {
     ]) {
       api.getAllPratiche.mockClear()
       await ParticheHome({
-        params: { slug: "" },
-        searchParams: { q: "PR-2026", search_by },
+        params: Promise.resolve({ slug: "" }),
+        searchParams: Promise.resolve({ q: "PR-2026", search_by }),
       })
       expect(api.getAllPratiche.mock.calls[0]?.[0]).toMatchObject({
         q: "PR-2026",
@@ -46,8 +46,11 @@ describe("pagina Pratiche, search_by", () => {
 
   it("con q ripetuto cerca il primo", async () => {
     await ParticheHome({
-      params: { slug: "" },
-      searchParams: { q: ["PR-2026", "PR-2025"], search_by: "praticaId" },
+      params: Promise.resolve({ slug: "" }),
+      searchParams: Promise.resolve({
+        q: ["PR-2026", "PR-2025"],
+        search_by: "praticaId",
+      }),
     })
     expect(api.getAllPratiche.mock.calls[0]?.[0]).toMatchObject({
       q: "PR-2026",

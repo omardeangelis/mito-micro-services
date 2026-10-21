@@ -6,7 +6,7 @@ import { takeReturnFocus } from "../_lib/returnFocus"
 
 type Props = {
   /** The table of the list, whose rows are marked with `data-contact-id` */
-  tableRef: React.RefObject<HTMLTableElement>
+  tableRef: React.RefObject<HTMLTableElement | null>
 }
 
 // Reachable by script, out of the tab order

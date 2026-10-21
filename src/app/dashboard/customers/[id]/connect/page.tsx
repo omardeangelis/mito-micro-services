@@ -4,9 +4,10 @@ import { type ServerPageProps } from "@/lib/types"
 import { Suspense } from "react"
 import NewPraticaForm from "./_components/NewPraticaForm"
 
-export default async function CustomersHome({
-  params,
-}: ServerPageProps<{ id: string }>) {
+export default async function CustomersHome(
+  props: ServerPageProps<{ id: string }>
+) {
+  const params = await props.params
   noStore()
   const { id } = params
   return (

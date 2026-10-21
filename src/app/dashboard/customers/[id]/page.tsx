@@ -34,12 +34,13 @@ async function getHandoverActiveContact(
   }
 }
 
-export default async function CustomerHome({
-  params,
-  searchParams,
-}: ServerPageProps<{
-  id: string
-}>) {
+export default async function CustomerHome(
+  props: ServerPageProps<{
+    id: string
+  }>
+) {
+  const searchParams = await props.searchParams
+  const params = await props.params
   const { id } = params
   const { limit } = searchParams ?? {}
   const customer = await api.customer.getCustomerById.query({ id: id })

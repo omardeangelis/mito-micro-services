@@ -63,7 +63,7 @@ export function useContactFilters(parsed: ContactsListState): {
   const parsedRef = useRef(parsed)
   // The filters on screen, for the code that must not wait for the next render
   const shown = useRef(filters)
-  const timer = useRef<ReturnType<typeof setTimeout>>()
+  const timer = useRef<ReturnType<typeof setTimeout>>(undefined)
   const searchInFlight = useRef<SearchInFlight>(NO_SEARCH)
 
   const address = serialize(parsed)

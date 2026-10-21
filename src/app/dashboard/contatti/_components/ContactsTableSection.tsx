@@ -1,6 +1,6 @@
 import { unstable_noStore as noStore } from "next/cache"
 
-import { type ServerPageDefaultProps } from "@/lib/types"
+import { type SearchParams } from "@/lib/types"
 import { api } from "@/trpc/server"
 import { parse, toContactsInput } from "../_lib/searchParams"
 import { ContactFilters } from "./ContactFilters"
@@ -10,7 +10,9 @@ import { HiddenColumnsProvider } from "./hiddenColumns"
 
 export async function ContactsTableSection({
   searchParams,
-}: Pick<ServerPageDefaultProps, "searchParams">) {
+}: {
+  searchParams?: SearchParams
+}) {
   noStore()
   const state = parse(searchParams)
 

@@ -41,7 +41,7 @@ async function signIn(userId: string) {
 const serverApi = (cookie: string | null) =>
   createTRPCProxyClient<AppRouter>({
     transformer,
-    links: [backendLink({ url: backendUrl, cookie: () => cookie })],
+    links: [backendLink({ url: backendUrl, cookie: async () => cookie })],
   })
 
 beforeAll(async () => {

@@ -78,7 +78,9 @@ export const CustomerTaskManager = (props: TaskManager) => {
   const priorityTriggerRef = useRef<HTMLButtonElement>(null)
   // The control the last gesture came from: it gets the focus back if the
   // refresh leaves it on the page
-  const lastControl = useRef<React.RefObject<HTMLButtonElement> | null>(null)
+  const lastControl = useRef<React.RefObject<HTMLButtonElement | null> | null>(
+    null
+  )
   // Where the focus goes when the refresh removed that control (a colleague
   // took the contact meanwhile): the heading of the card, always rendered,
   // while the read-only state may still wait for the operator's name
@@ -287,7 +289,7 @@ function PrioritySelect(props: {
   band: PriorityBand
   mode: "Manuale" | "Automatica"
   pending: boolean
-  triggerRef: React.RefObject<HTMLButtonElement>
+  triggerRef: React.RefObject<HTMLButtonElement | null>
   onChange: (choice: PriorityChoice) => void
 }) {
   const [open, setOpen] = useState(false)

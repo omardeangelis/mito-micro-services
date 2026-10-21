@@ -10,7 +10,10 @@ import { backendSession } from "./backendSession"
  * (BACKEND_URL) it comes from there, like the procedures of `@/trpc/server`:
  * once the database moves, only the backend reads it.
  */
-export const getPageSession = () =>
+export const getPageSession = async () =>
   env.BACKEND_URL
-    ? backendSession({ url: env.BACKEND_URL, cookie: headers().get("cookie") })
+    ? backendSession({
+        url: env.BACKEND_URL,
+        cookie: (await headers()).get("cookie"),
+      })
     : getServerAuthSession()

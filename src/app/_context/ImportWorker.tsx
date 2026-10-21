@@ -27,7 +27,7 @@ export const ImportWorkerProvider = ({
 }: {
   children: React.ReactNode
 }) => {
-  const workerRef = useRef<Worker>()
+  const workerRef = useRef<Worker>(undefined)
   const { setImportState } = useImportStore()
   const postWorkerMessage = useCallback(async (data: unknown) => {
     workerRef.current?.postMessage(data)

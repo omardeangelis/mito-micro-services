@@ -26,7 +26,7 @@ export const ExportWorkerProvider = ({
 }: {
   children: React.ReactNode
 }) => {
-  const workerRef = useRef<Worker>()
+  const workerRef = useRef<Worker>(undefined)
   const { setExportState, setResponse } = useExportStore()
   const postWorkerMessage = useCallback(async (data: unknown) => {
     workerRef.current?.postMessage(data)

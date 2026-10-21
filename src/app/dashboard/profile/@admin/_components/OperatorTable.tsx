@@ -111,7 +111,7 @@ export const OperatorTable = ({ data }: { data: OperatorWithRole[] }) => {
   const handleOperatorRoleChange = useCallback(async () => {
     setLoading(true)
     const res = await updateOperatorsRoleAction(operators)
-    if (res && res.error) {
+    if (res?.error) {
       toast({
         title: "Errore durante l'aggiornamento dei ruoli",
         duration: 2000,

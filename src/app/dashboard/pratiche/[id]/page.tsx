@@ -4,11 +4,12 @@ import { CollassableSection } from "@/components/custom/CollassableItem"
 import { CustomerSection } from "./_components/CustomerSection"
 import { api } from "@/trpc/server"
 
-export default async function SinglePratica({
-  params,
-}: ServerPageProps<{
-  id: string
-}>) {
+export default async function SinglePratica(
+  props: ServerPageProps<{
+    id: string
+  }>
+) {
+  const params = await props.params
   const { id } = params
 
   const pratica = await api.pratiche.getPraticaById.query({ id })

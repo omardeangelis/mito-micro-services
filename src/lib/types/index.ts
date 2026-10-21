@@ -1,18 +1,20 @@
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js"
 
+export type SearchParams = Record<string, string | string[] | undefined>
+
 export type ServerPageDefaultProps = {
-  params: { slug: string }
-  searchParams?: Record<string, string | string[] | undefined>
+  params: Promise<{ slug: string }>
+  searchParams?: Promise<SearchParams>
 }
 
 export type ServerPageProps<T> = {
-  params: T
-  searchParams?: Record<string, string | string[] | undefined>
+  params: Promise<T>
+  searchParams?: Promise<SearchParams>
 }
 
 export type DefaultLayoutProps<T> = {
   children: React.ReactNode
-  params: T
+  params: Promise<T>
 }
 
 // const searchValue = ["asc", "desc"] as const;

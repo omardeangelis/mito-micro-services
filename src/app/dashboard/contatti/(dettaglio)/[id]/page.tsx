@@ -8,10 +8,11 @@ import { ContactDetailContent } from "./_components/ContactDetailContent"
 import { ContactNotes } from "./_components/ContactNotes"
 import { ContactNotFound } from "./_components/ContactNotFound"
 
-export default async function ContactDetailPage({
-  params,
-  searchParams,
-}: ServerPageProps<{ id: string }>) {
+export default async function ContactDetailPage(
+  props: ServerPageProps<{ id: string }>
+) {
+  const searchParams = await props.searchParams
+  const params = await props.params
   noStore()
 
   // The state of the list this detail was opened from (see `detailHref`)

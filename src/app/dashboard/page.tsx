@@ -12,7 +12,7 @@ import { TimeFrameSelector } from "@/components/custom/date-picker"
 export default async function DashboardHome(
   props: ServerPageProps<{ x: never }>
 ) {
-  const { tf } = props.searchParams ?? { tf: DEFUALTTIMEFRAME }
+  const { tf } = (await props.searchParams) ?? { tf: DEFUALTTIMEFRAME }
   return (
     <main className="dashabord-container">
       <div className="dashabord-layout">

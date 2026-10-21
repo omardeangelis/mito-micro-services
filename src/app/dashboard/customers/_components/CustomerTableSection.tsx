@@ -1,6 +1,6 @@
 import { api } from "@/trpc/server"
 import { unstable_noStore as noStore } from "next/cache"
-import { type ServerPageDefaultProps } from "@/lib/types"
+import { type SearchParams } from "@/lib/types"
 import { CustomersTable } from "./CustomersTable"
 import { CustomerColumns } from "./CustomerColumns"
 import { getUrlParmsWithMultipleValue } from "@/lib/utils"
@@ -13,7 +13,9 @@ import { parseCustomerSearchBy } from "@/lib/constants/customerSearch"
 
 export async function CustomersTableSection({
   searchParams,
-}: Pick<ServerPageDefaultProps, "searchParams">) {
+}: {
+  searchParams?: SearchParams
+}) {
   noStore()
   const {
     page,

@@ -10,9 +10,8 @@ import { PRATICA_FILTER_QUERY_MAP } from "../customers/_constants"
 import { getTableName } from "drizzle-orm"
 import { practices } from "@/server/db/schema/pratiche"
 import { parsePraticaSearchBy } from "@/lib/constants/praticaSearch"
-export default async function ParticheHome({
-  searchParams,
-}: ServerPageDefaultProps) {
+export default async function ParticheHome(props: ServerPageDefaultProps) {
+  const searchParams = await props.searchParams
   noStore()
   const {
     page,

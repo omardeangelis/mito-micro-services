@@ -13,12 +13,12 @@ export const backendLink = ({
   cookie,
 }: {
   url: string
-  cookie: () => string | null
+  cookie: () => Promise<string | null>
 }) =>
   httpBatchLink<AppRouter>({
     url: new URL("/api/trpc", url).href,
-    headers: () => {
-      const value = cookie()
+    headers: async () => {
+      const value = await cookie()
       return { "x-trpc-source": "rsc", ...(value ? { cookie: value } : {}) }
     },
     // Next.js caches the fetch of a server component unless told otherwise:

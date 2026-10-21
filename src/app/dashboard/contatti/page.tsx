@@ -7,9 +7,10 @@ import { ContactsTableSection } from "./_components/ContactsTableSection"
 
 export const maxDuration = 60
 
-export default function ContactsHome({
-  searchParams,
-}: Pick<ServerPageDefaultProps, "searchParams">) {
+export default async function ContactsHome(
+  props: Pick<ServerPageDefaultProps, "searchParams">
+) {
+  const searchParams = await props.searchParams
   noStore()
 
   return (

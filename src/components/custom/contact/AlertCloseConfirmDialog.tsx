@@ -21,7 +21,7 @@ type AlertCloseConfirmDialogProps = {
   /** Annulla, Esc, a click on the overlay and the X. */
   onCancel: () => void
   /** The selector's trigger: the modal is opened from code, so it hands the focus back by hand. */
-  returnFocusRef: React.RefObject<HTMLElement>
+  returnFocusRef: React.RefObject<HTMLElement | null>
 }
 
 /**
