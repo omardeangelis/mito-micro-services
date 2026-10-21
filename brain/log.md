@@ -12,6 +12,13 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 
 <!-- Entries are appended by create-spec (spec creation) and docs-maintenance (ingest). Format:
 
+## [2026-10-21] review | Sezione Contatti — PR6, seconda metà: la migrazione di T6.9
+- Report: [[specs/crm/sezione-contatti/REPORT]] (round PR6, seconda metà)
+- Scope: spec
+- Verdict: SHIP; chiude anche il round di PR6 (il dialogo di "Assegna Clienti", F1, resta nel debito per scelta di Omar). Lista per la sessione di rilascio nel report: `drizzle-kit migrate` 0.31 non stampa il motivo di un fallimento
+- Impact: critical
+- Verifiers: 5, più una passata di conferma sul cambio del SQL (0 blocker; 1 major di documentazione e 11 minor, tutti corretti; il lock `LOCK TABLE` è arrivato dalla review)
+
 ## [2026-10-21] review | Sezione Contatti — PR6 "Clienti semplificata" (senza la migrazione di T6.9)
 - Report: [[specs/crm/sezione-contatti/REPORT]] (round PR6)
 - Scope: spec

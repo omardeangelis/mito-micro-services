@@ -3,10 +3,10 @@ domain: crm
 type: review
 scope: spec
 spec: sezione-contatti
-review_target: "branch claude/pr6-resolution-e7198b — PR6: T6.1–T6.10 senza la migrazione di T6.9 (do-not-ship al primo giro: 0 BLOCKER e 2 MAJOR, poi corretti o accettati come debito), round in fondo; round di PR1, PR2, PR3, PR4, PR5a e PR5b più sopra"
+review_target: "branch claude/pr6-resolution-e7198b — PR6: T6.1–T6.10, in due round (il codice senza la migrazione: do-not-ship al primo giro, 0 BLOCKER e 2 MAJOR, poi corretti o accettati come debito; la migrazione di T6.9: ship dopo le correzioni), round in fondo; round di PR1, PR2, PR3, PR4, PR5a e PR5b più sopra"
 base_ref: 434b0474868eaa862c9c0e30d79d5163bd116ca8
-head_ref: 6d6566d7ce6e5bdf9dea832ebf97ea23c217fe53
-verdict: do-not-ship
+head_ref: 3c59e2dc3a9b14204d570f7933c1e54d065f27c7
+verdict: ship
 review_impact: critical
 human_in_loop: true
 links:
@@ -1105,7 +1105,7 @@ Round aggiunto: i round di PR1, PR2, PR3, PR4, PR5a e PR5b sopra restano come so
 
 Obiezione bloccante più forte (v2, confermata sul codice dall'orchestratore): il dialogo "Assegna Clienti" manda una chiamata per cliente quando i clienti sono 30 o meno (`splitArray(ids, ceil(n/30))` passa la dimensione del blocco, non il numero di blocchi), le lancia tutte insieme con `Promise.all`, Next.js continua a eseguire quelle in coda dopo un rifiuto, e il `catch` fa solo `console.error`. Quindi "il primo errore ferma il resto" (P19) vale solo sul server dentro una chiamata, non per l'admin: dopo un errore i clienti dei blocchi successivi sono assegnati e il dialogo non dice niente. Il codice del dialogo è precedente a PR6 (T6.3 ha cambiato solo i testi) e ogni cliente resta allineato al suo contatto, ma P19 e il rischio di §13 descrivono un esito che il dialogo non produce. **Omar ha deciso il 2026-10-21 di lasciarlo nel debito (opzione A): il dialogo non si tocca in PR6.** (F1). Si riprende se la misura di "Assegna Clienti" con 100 e 500 clienti sul DB di sviluppo mostra chiamate lente (vicino ai 60 s) o se in produzione compaiono errori.
 
-L'altro MAJOR (v5, F2) era un buco del test dello script di sola lettura: i conteggi `b`, `c` e `a2_esportabili` valevano tutti 1 nella fixture, quindi scambiarli passava. Il SQL è giusto. Corretto nel test; una seconda passata di v5 ha trovato un altro MAJOR dello stesso tipo (F19: lo stato "esportabile" fissato con tre stati su sette), corretto anch'esso (vedi "Verifiche successive"). **Dopo le correzioni nessun BLOCKER né MAJOR è aperto**; F1 resta nel debito per scelta di Omar. Il verdetto SHIP del round di PR6 si scrive dopo il round sulla migrazione di T6.9.
+L'altro MAJOR (v5, F2) era un buco del test dello script di sola lettura: i conteggi `b`, `c` e `a2_esportabili` valevano tutti 1 nella fixture, quindi scambiarli passava. Il SQL è giusto. Corretto nel test; una seconda passata di v5 ha trovato un altro MAJOR dello stesso tipo (F19: lo stato "esportabile" fissato con tre stati su sette), corretto anch'esso (vedi "Verifiche successive"). **Dopo le correzioni nessun BLOCKER né MAJOR è aperto**; F1 resta nel debito per scelta di Omar. Il verdetto del round di PR6 è nel round seguente (la migrazione di T6.9).
 
 ### Verifiche successive (dopo le correzioni)
 
@@ -1113,7 +1113,7 @@ L'altro MAJOR (v5, F2) era un buco del test dello script di sola lettura: i cont
 
 Correzione (`6c29be9`) e prova dell'orchestratore: una batteria di 65 mutanti dello script, che comprende quelli del verificatore (lo stato con `NOT IN (…, 'chiamare')`, `'followup'`, `'caricato'`, `'erogata'` e la lista di tre stati in ognuno dei sei punti; `closed_at` tolto dal flag; la condizione dell'operatore del cliente tolta; `LEFT JOIN customers`; l'ordine; i nomi e le date), più i 19 di prima. **62 sono rossi.** Sopravvivono tre `LEFT JOIN customers` (liste 2, 3 e 4), equivalenti perché `c.operator_id IS NOT NULL` esclude già le righe senza cliente, e un mutante senza effetto (il testo cercato compare tre volte, non quattro). Suite: 125 file, 1963 test (15 in più di prima della review), `tsc` ed ESLint puliti.
 
-**Non rilanciati:** v2 (il MAJOR F1 è accettato da Omar come debito, nessun codice cambiato), v3, v4, v6, v9 e v10 sui loro buchi di test, chiusi con un mutante rosso ciascuno (verificati dall'orchestratore, non da un verificatore indipendente); v1, v7 e v8 non avevano rilievi da correggere. **v5 non è stato rilanciato una terza volta** dopo `6c29be9`: i mutanti del verificatore sono tutti rossi, ma la conferma indipendente manca. Nessun BLOCKER né MAJOR resta aperto; il verdetto SHIP del round di PR6 si scrive dopo il round sulla sola migrazione di T6.9.
+**Non rilanciati:** v2 (il MAJOR F1 è accettato da Omar come debito, nessun codice cambiato), v3, v4, v6, v9 e v10 sui loro buchi di test, chiusi con un mutante rosso ciascuno (verificati dall'orchestratore, non da un verificatore indipendente); v1, v7 e v8 non avevano rilievi da correggere. **v5 non è stato rilanciato una terza volta** dopo `6c29be9`: i mutanti del verificatore sono tutti rossi, ma la conferma indipendente manca. Nessun BLOCKER né MAJOR resta aperto; il verdetto del round di PR6 è nel round seguente (la sola migrazione di T6.9).
 
 ### Coverage
 
@@ -1226,4 +1226,105 @@ NIT (nessuno blocca; ognuno è del verificatore indicato):
 - Da correggere o accettare prima del merge: F2 (corretto) e F1 (accettato da Omar come debito, 2026-10-21). I MINOR di test (F3–F11, F14, F15) e di documentazione (F5, F6, F12, F13) si correggono in PR6 o vanno nel debito.
 - Probabilmente durevoli in ogni caso: F17 e F18 (preesistenti, file non toccati) e i NIT che nessuno corregge.
 - Il debito aperto da PR6 sul dialogo (F1, F6) va nella voce "Assegna Clienti su molti clienti" di `brain/tech-debt/crm/sezione-contatti.md`.
+- Backlink dalle pagine di dominio: n/a finché la spec non è conclusa.
+
+## [Round: 2026-10-21] PR6, seconda metà: la migrazione di T6.9 (delta)
+
+Round aggiunto: i round di PR1–PR5b e il primo round di PR6 (sopra) restano come sono. Questo copre **solo** la migrazione di riallineamento dei contatti attivi (`5bff346` → `15f0f80`, poi il cambio fatto dopo i primi cinque passaggi, `15f0f80` → `3c59e2d`). Il verdetto di questo round chiude anche quello di PR6.
+
+### Verdict
+
+**SHIP** · impact: critical · 0 BLOCKER, 1 MAJOR (di documentazione, corretto), 11 MINOR e 8 NIT (tutti corretti o dichiarati). Tutti e cinque i passaggi del round tornano SHIP e la passata di conferma sul cambio del SQL (v6) torna SHIP; nessuno dei sei lascia un BLOCKER aperto.
+
+Obiezione più forte, anche se nessuna blocca (v3, confermata dall'orchestratore su un Postgres vero): il controllo che la prima versione metteva nell'`UPDATE` (che l'operatore del contatto fosse ancora quello letto) non era la protezione che il file dichiarava. Un passaggio di consegne all'operatore che il contatto ha già sposta solo il cliente e passa il controllo: la migrazione da sola lasciava cliente B e contatto A con una riga di log falsa, e un contatto riaperto nel frattempo vedeva riscritta la sua storia. Nel lotto di rilascio non succede, perché il `DROP INDEX` della migrazione prima tiene un lock esclusivo su `task` fino al COMMIT, ma la sicurezza era di quel lock e non della migrazione. **Corretto:** la migrazione ora prende il suo `LOCK TABLE "mito-deutsche_task" IN EXCLUSIVE MODE` (con un `SET LOCAL lock_timeout = '5s'` prima) e il controllo è tolto; tre test su un Postgres vero tengono aperto uno scrittore mentre la migrazione aspetta.
+
+Il MAJOR (v4) non è sul file ma sulla procedura: **`drizzle-kit migrate` 0.31 non stampa il motivo di un fallimento** (esce con 1 dopo "applying migrations..."; la 0.24 usata per G2 lo stampava), quindi il "errore chiaro" della guardia, il lock timeout e il deadlock non si leggono da chi lancia `db:migrate:prod`. Il rollback è sicuro in ogni caso (nessuna delle tre migrazioni si applica, misurato con la CLI vera). **Corretto** in T6.7 (passi 1 e 3), T5.16 e T6.9: come riconoscere il fallimento, quando si rilancia e quando no.
+
+Il verdetto SHIP del round di PR6 vale con la lista per una persona qui sotto. Restano fuori dal verdetto, per scelta o perché non sono di un agente: F1 (il dialogo di "Assegna Clienti", accettato da Omar come debito il 2026-10-21), l'A3, la misura di "Assegna Clienti" con 100 e 500 clienti, e la conferma indipendente dei test dello script di sola lettura dopo `6c29be9` (la terza passata di v5 non è stata fatta).
+
+### Coverage
+
+- Passaggi eseguiti: 5/5 più la passata di conferma v6 sul cambio del SQL (v1, v2, v3, v4 e v6 su Opus; v5 su Sonnet). Il classificatore ha chiesto cinque charter, nessuna sovrapposizione; nessun override. v6 non era nel RUBRIC: l'ho aggiunta io dopo aver cambiato il SQL in risposta ai primi cinque, con un charter solo (il cambio), perché una migrazione che gira una sola volta in produzione non si lascia modificata dopo il parere senza un secondo parere indipendente.
+- Passaggi saltati o falliti: nessuno. Nessun passaggio UI né di movimento (non ci sono nel diff).
+- Verificatori e mezzi: PGlite (PG 16.4) e un Postgres 15.19 locale in Docker, con database propri per ogni verificatore. v4 ha lanciato la CLI vera `drizzle-kit migrate` 0.31.11 su database privati clonati dallo stato di produzione prima delle tre migrazioni; nessuno ha toccato produzione, `mito_local` degli altri o il DB di sviluppo condiviso.
+- Limiti dichiarati: nessuno ha potuto controllare Postgres 15.6 in particolare (le prove sono su 15.19), l'isolamento di default e il `deadlock_timeout` del ruolo che migra su Supabase, trigger su `customers` in produzione (il passo 1 controlla solo `task`), né istanze vecchie di Vercel che servono ancora azioni del server durante la finestra. Il tempo del lotto è misurato su dati sintetici (82.866 clienti, 69.787 contatti attivi), non sul piano di produzione.
+- Gate: eseguiti dall'orchestratore sul working tree (ESLint su `src`, `tsc --noEmit`, `pnpm run test --run` 127 file e 1974 test con 3 file e 9 test saltati, `pnpm test:pg` 3 file e 9 test) e in una copia pulita a `3c59e2d` (un `git worktree` fuori da `.claude/worktrees/`, senza `.env*`, con i segnaposto di `ci.yml`, poi tolto): `pnpm install --frozen-lockfile`, `next lint`, `tsc --noEmit`, `pnpm run test --run` (127 file, 1974 test, 3 file e 9 test saltati), i `.pg.test.ts` sul Postgres locale (3 file, 9 test), `pnpm build`, `pnpm api:build` e `pnpm api:smoke`, tutti con uscita 0.
+- Prove dei verificatori sul codice: v1 12 semi con circa 6.600 task contro un oracolo in JavaScript, su PGlite e su PG 15, più 4 mutanti; v2 10 mutanti e un confronto di `closedCalls` prima e dopo con 4 operatori; v3 undici esperimenti con più sessioni (S1, S2, B1–B6, V1, F-handover, F-reopen) e il lotto su 82.866 clienti; v4 la CLI vera in quattro scenari; v5 49 mutanti; v6 22 mutanti e 8 esperimenti sui lock.
+- Mutanti dell'orchestratore sul SQL finale: 26, **25 rossi**; l'unico vivo è il join con `moved` nell'`INSERT`, equivalente con il lock.
+
+### Findings
+
+| # | Severity | Da | Dove | Problema | Correzione / evidenza | Stato |
+|---|----------|----|------|----------|-----------------------|-------|
+| M1 | MAJOR (doc) | v4 | `PLAN.md` T6.7 passo 3, T5.16 passo 3, T6.9; `node_modules/drizzle-kit/bin.cjs:1457-1468` | `drizzle-kit migrate` 0.31 non stampa nessun errore: esce con 1 dopo "applying migrations...". Il piano promette un "errore chiaro" (guardia), un testo "canceling statement due to lock timeout" e un "si rilancia": chi lancia non distingue un lock timeout (si rilancia) da un operatore di sistema mancante (non si rilancia). Rollback sicuro in ogni caso | Riconoscere il fallimento da `max(created_at)`, leggere il motivo nei log di Postgres, regola su quando si rilancia | Corretto (PLAN, `c610950`) |
+| M2 | MINOR | v3, v2 | `…_contatti_contact_realign.sql` (UPDATE, versione `15f0f80`) | Il controllo "l'operatore del contatto è ancora quello letto" non protegge: un passaggio di consegne all'operatore che il contatto ha già sposta solo il cliente (S1: cliente B, contatto A, riga di log falsa); un contatto riaperto riscrive la storia (S2). Nel lotto non succede (lock esclusivo del `DROP INDEX`; ma `DROP INDEX IF EXISTS` su un indice assente non prende lock) | `LOCK TABLE … IN EXCLUSIVE MODE` prima di leggere, controllo tolto, tre test su Postgres vero | Corretto (`9916b64`) |
+| M3 | MINOR | v3 | `…_contatti_contact_realign.sql`, `blushing_roland_deschain.sql:27`, `PLAN.md` T6.7 passo 3 | Nel lotto l'`INSERT` nel log prende un lock sul cliente mentre la migrazione tiene il lock su `task`: un passaggio di consegne in corso su quel cliente (cliente, poi task) può incrociarsi: deadlock a 1 s, vittima la migrazione (rollback totale) o la chiamata. Il passo 3 nomina solo il lock di riga a 5 s | Nominare `deadlock detected` come errore sicuro e da rilanciare; non evitabile con l'ordine del journal | Corretto (PLAN, `c610950`) |
+| M4 | MINOR | v4 | `PLAN.md` T6.7 passo 3 | Nessun controllo del `max(created_at)` dopo il lotto di tre; i valori attesi di T5.16 sono vecchi. Se una migrazione viene saltata il comando dice "applied successfully" e termina con 0; lo script del passo 4 non vede un `cron_run` saltato | Valori di partenza e finali (`1791749278159`, `1792577097768`), `mito-deutsche_cron_run` presente, indici tolti; T5.16 rimanda a T6.7 | Corretto (PLAN, `c610950`) |
+| M5 | MINOR | v4, v5 | `contattiRealign*.db.test.ts`, `src/test/db.ts` | Il test partiva dalla migrazione prima (una sola in sospeso): il commento "as `db:migrate:prod` will run it" era falso, e il test non provava che le tre vanno insieme (`cron_run` assente, indici al loro posto dopo un rollback) | `BEFORE_REALIGN_SCHEMA_TAG` = l'ultima migrazione che la produzione ha; il test della guardia controlla le altre due | Corretto (`9916b64`) |
+| M6 | MINOR | v5 | `contattiRealign.db.test.ts` (fixture) | Un mutante che unisce per `customer_id` invece che per `id` riscriverebbe la storia inattiva di un cliente spostato e passava tutto: il cliente spostato non aveva storia inattiva sull'operatore vecchio | Una task inattiva sull'operatore vecchio nel cliente spostato, nella lista dei non toccati | Corretto (`9916b64`; mutante rosso) |
+| M7 | MINOR | v5 | `contattiRealign.*.test.ts` | L'operatore di sistema era il primo creato: `ORDER BY id LIMIT 1` e `min(id)` al posto della ricerca per `user_id` passavano | Creato in mezzo: il più basso e il più alto sbagliano | Corretto (`9916b64`; due mutanti rossi) |
+| M8 | MINOR | v5 | `contattiRealign.systemOperator.db.test.ts` | Il messaggio della guardia non si leggeva sull'errore giusto: il messaggio di Drizzle contiene il testo dell'istruzione, che ha un commento con "system operator"; il mio mutante senza guardia sopravviveva per questo | Il test legge l'errore che il driver lancia (`driverFailure`) e il testo della migrazione | Corretto (`9916b64`) |
+| M9 | MINOR | v5 | `contattiRealign.pg.test.ts` | Il test su Postgres vero copriva un interleaving che il lotto esclude e ne ometteva due che la migrazione da sola ammette | Tre test: consegna che sposta cliente e contatto, consegna che sposta solo il cliente, riapertura; intestazione che dice quando valgono | Corretto (`9916b64`) |
+| M10 | NIT | v1, v2, v5 | `contattiRealign.db.test.ts`, `…systemOperator…` | `updated_at` confrontato con le date di Drizzle (millisecondi): `+ 1 microsecondo` passava; la guardia con `<>` al posto di `IS DISTINCT FROM` sopravviveva (l'`INSERT` fallisce comunque per `NOT NULL`, cambia solo il messaggio) | Confronto della riga al microsecondo; test con soli contatti senza operatore | Corretto (`9916b64`; mutanti rossi) |
+| M11 | MINOR | v6 | `…_contatti_contact_realign.sql` (prima istruzione) | Da sola, la migrazione aspetta il lock senza limite e tutte le scritture su `task` si accodano; nel lotto copre il `lock_timeout` della migrazione degli indici | `SET LOCAL lock_timeout = '5s'` come istruzione a sé | Corretto (`3c59e2d`; mutanti rossi) |
+| M12 | NIT | v1 | `PLAN.md` T6.7 passo 1 | A6 per questa `UPDATE` dipende da trigger e regole di `task` in produzione: il solo riscontro è il controllo del 2026-09-29, che il passo 1 non ripete | Due query di sola lettura (`pg_trigger` con `NOT tgisinternal`, `pg_rules`) nel passo 1 | Corretto (PLAN, `c610950`) |
+| M13 | NIT | v5 | `contattiRealign.pg.test.ts:17` | Importava `REALIGN_SCHEMA_TAG` da `@/test/db`, che avvia un PGlite non usato in ogni esecuzione su Postgres | Il percorso della migrazione si trova leggendo la cartella | Corretto (`9916b64`) |
+| M14 | NIT | v5 | `PLAN.md` T6.9 log | Il log non nomina i 17 mutanti: non si può controllare | Elenco dei 24 mutanti finali nel log | Corretto (PLAN, `c610950`) |
+
+NIT non in tabella: v2: `created_at` del log è l'inizio della transazione del migratore e non il momento dello spostamento, come per gli altri scrittori: chi leggerà il log (D29) ordina gli eventi di una task per `id` (dichiarato nel log di T6.9, non cambiato). v6: il commento sul "recheck" descriveva un controllo che non esiste più (riscritto, `3c59e2d`). Dichiarato da v6 e dall'orchestratore: `ACCESS EXCLUSIVE` al posto di `EXCLUSIVE` è equivalente per i test (cade solo il test sul testo della prima istruzione) ma bloccherebbe anche le letture.
+
+### What passed
+
+| Concern (verifier) | Evidence |
+|--------------------|----------|
+| v1 — quali righe si spostano | Oracolo in JavaScript su 12 semi (circa 6.600 task, 752 spostati, 310 da operatore nullo) su PGlite e su PG 15: gli spostati sono esattamente la categoria (a), la lista dello script e i `task_id` del log; (b), (c), le task inattive, i contatti senza cliente, i clienti mancanti e il caso "solo maiuscole" non si toccano (anche per `xmin`); i clienti non si scrivono; solo `operator_id` cambia sulla riga (al microsecondo); idempotente (anche per `xmin`); nessun trigger, regola, policy o colonna generata su `task`. |
+| v2 — log ed export | Una riga di log per ogni contatto cambiato e nessuna altra; valori validi per enum, chiavi e `NOT NULL`; `user_id` è univoco (la sottoquery non può dare due righe; senza il vincolo fallirebbe); la guardia ha lo stesso predicato dello spostamento e passa senza contatti da spostare; le righe sono uguali a quelle di `assignCustomers` tranne l'attore; `closedCalls` prima e dopo come admin e come 4 operatori: entra solo il contatto che non aveva operatore, cambiano di operatore solo i contatti spostati, la storia inattiva resta. |
+| v3 — lock e concorrenza | Inventario dei lock (la guardia e la lettura non ne prendono; l'`UPDATE` blocca le righe spostate; l'`INSERT` prende `FOR KEY SHARE` su cliente, attore, da e a); nel lotto un passaggio di consegne in corso non si può chiudere durante la migrazione (B4); i deadlock sono tutti rollback sicuri (B1–B3); lotto su 82.866 clienti e 69.787 contatti attivi: `DROP` 2 ms, guardia 11 ms, spostamento 325 ms, lock tenuto 338 ms, un lettore di `task` attende 346 ms in più. |
+| v4 — catena e migratore | Journal in ordine (`when` 1792577097768 > 1792419805640); `prevId` collegato; differenze di snapshot solo chiavi vuote aggiunte, nessun nuovo difetto del `nanoid`; `drizzle-kit check` pulito; il file si divide in due (ora quattro) istruzioni e il blocco `DO $$` regge; con la CLI vera: le tre migrazioni in un'unica transazione (stesso `xmin`), una `RAISE` della guardia annulla tutte e tre e non ne registra nessuna, una con `when` minore viene saltata in silenzio ed esce con 0. |
+| v5 — fiducia nei test | 49 mutanti, i non equivalenti rossi; i `.pg.test.ts` girano in CI (servizio Postgres 15, `TEST_DATABASE_URL`, `skipIf`, `pg.setup.ts` fallisce senza URL); le costanti vecchie sono intatte (`LEGACY_SCHEMA_TAG`, `CONTATTI_SCHEMA_TAG`), 42 test delle altre migrazioni verdi. |
+| v6 — conferma sul lock | Tutti gli scrittori di `customers.operator_id` e di `task.operator_id`/`is_active` (elenco da `grep`, non dato) prendono un lock su `task` prima di scrivere il cliente: `handover`, `assignCustomers`, `assignToYourself` (`FOR UPDATE` anche senza contatto attivo), `reassign`, `bulkHandleTask`; l'importazione non cambia l'operatore; senza altri che tengano lock su `task` il ricontrollo non poteva scattare. Misure su PG 15.19: le letture non si bloccano, `SELECT FOR UPDATE` e l'`INSERT` nel log sì; 22 mutanti, rossi tranne gli equivalenti; `LOCK TABLE` regge nel migratore di PGlite e nella CLI vera. |
+
+### Per-concern verdicts
+
+| Pass | Charter | Verdict | Rationale |
+|------|---------|---------|-----------|
+| v1 | Quali righe si spostano | SHIP | Nessuna riga sbagliata o mancata su circa 6.600 task; due NIT (precisione dei test, controllo del catalogo in produzione) |
+| v2 | Log ed export | SHIP | Una riga per contatto, export come AC75 e A16; un rilievo di concorrenza passato a v3 |
+| v3 | Concorrenza e lock nel lotto | SHIP | Nessun dato sbagliato; due MINOR (controllo non protettivo se da sola; deadlock da descrivere) |
+| v4 | Catena di migrazioni e migratore | SHIP | File e catena giusti; MAJOR di documentazione sulla CLI che non stampa gli errori |
+| v5 | Fiducia nei test | SHIP | Buchi di fixture e di messaggio, tutti chiusi con un mutante rosso |
+| v6 | Conferma sul cambio del SQL (lock) | SHIP | Il lock serializza ogni scrittore dell'app; un MINOR (nessun limite di attesa da sola) |
+
+### Human Review Checklist
+
+`reviewImpact: critical`. La lista per la sessione di rilascio (G5) è di Omar; nessun agente lancia `db:migrate:prod`.
+
+1. **Prima del merge, in sola lettura sul database di produzione** (come il 2026-10-21: transazione `READ ONLY`, rollback):
+   - rilanciare `contatti-operator-mismatch.sql` subito prima di migrare; un (b) nuovo o un (a2) esportabile nuovo ferma il gate finché Omar non decide per iscritto; segnarsi il numero di (a), che è il numero di righe di log che la migrazione deve scrivere;
+   - l'operatore di sistema c'è (`SELECT id FROM "mito-deutsche_operator" WHERE user_id = 'system'`);
+   - `task` non ha trigger né regole (query di T6.7 passo 1);
+   - `SELECT max(created_at) FROM drizzle.__drizzle_migrations` vale `1791749278159`, e `git diff --stat origin/main..origin/dev -- src/server/db/migrations` mostra le tre migrazioni attese, nell'ordine del journal (`cron_run`, indici, riallineamento).
+2. **Deploy.** Con `BACKEND_URL` attiva in produzione: prima il frontend, poi il backend (A17), e Cloud Run sulla revisione nuova prima della migrazione (F13).
+3. **`pnpm db:migrate:prod`, solo Omar, in un momento tranquillo** (nessuna transazione lunga su `task`: `pg_stat_activity`, query di T2.4). **Il comando non stampa gli errori.** Se esce con 1: `max(created_at)` deve valere ancora `1791749278159`; il motivo è nei log di Postgres; si rilancia solo per un lock timeout o un deadlock (T6.7 passo 3); se manca l'operatore di sistema non si rilancia.
+4. **Subito dopo:** `max(created_at)` = `1792577097768`; `mito-deutsche_cron_run` esiste; `task_operator_active_idx` e `task_priority_active_idx` non ci sono; lo script dà 0 su (a) e su (b) (salvo eccezioni scritte da Omar); le righe `operator_reassign` con sorgente `bulk` e attore `system` create dalla migrazione sono tante quante il (a) segnato al passo 1; i log di Vercel e Sentry senza errori nuovi per 15 minuti.
+5. **La mattina dopo**, dopo la notte dei cron: lo script di nuovo. Se compaiono righe in (a) o (b), un percorso del codice separa ancora cliente e contatto: si apre una correzione e si riallinea (la migrazione non si rilancia, Drizzle non la rilegge).
+6. **A3, una persona:** `EXPLAIN ANALYZE` della prima pagina di Clienti su volumi reali (≤ 500 ms), e la misura di "Assegna Clienti" con 100 e 500 clienti (condizione per riprendere F1).
+7. **Passata a mano con un ruolo OPERATORE** (nessun verificatore l'ha fatta): "Crea contatto", Clienti senza colonna di selezione, "Gestisci contatto" e il ritorno alla lista; un clic vero su "Crea contatto" e "Passaggio di consegne" sul DB di sviluppo.
+8. **Testi del dialogo (T6.3) e annuncio agli operatori:** li rivede Omar al gate; il numero dei contatti riallineati nel testo è una stima (uno il 2026-10-21): il numero giusto è quello dello script il giorno del rilascio.
+
+### Acceptance criteria check (case B)
+
+| Criterio | Esito | Evidenza |
+|---|---|---|
+| AC75 (riallineamento) | Met | v1: stessa condizione della categoria (a) dello script; v2: una riga `operator_reassign` per contatto, `bulk`, attore `system`, da NULL incluso; v4: nella sessione di rilascio, nella stessa transazione dell'indice; v6: serializzata con ogni scrittore |
+| AC75 (cliente senza operatore e contatto assegnato) | Met | v1: (b) non si tocca; lo decide Omar per iscritto (produzione al 2026-10-21: 0) |
+| AC75 (inattivi) | Met | v1, v2, v6: la storia resta all'operatore che l'ha lavorata, anche con una riapertura mentre la migrazione aspetta |
+| AC71 | Met | v1: nessuna riga in più, l'indice univoco regge; la migrazione non crea né attiva contatti |
+| Constraint "export invariato" con A16/D29 | Met | v2: `closedCalls` prima e dopo; entra solo il contatto che non aveva operatore (in produzione 0) |
+
+### Notes for docs-maintenance
+
+- Durevoli: M1 (la CLI di drizzle-kit 0.31 non stampa gli errori: vale per ogni migrazione futura, non solo per T6.9; sta anche in T5.16 e in G4a) e il metodo di lettura in produzione (transazione `READ ONLY` con rollback) che il 2026-10-21 ha sostituito l'editor SQL di Supabase per i conteggi.
+- Corretti in PR6: M2–M14, tutti. Nessuno va nel debito.
+- Da fare fuori da questo round e fuori da PR6: la misura di "Assegna Clienti" con 100 e 500 clienti, l'A3, e il debito F1 (dialogo).
 - Backlink dalle pagine di dominio: n/a finché la spec non è conclusa.

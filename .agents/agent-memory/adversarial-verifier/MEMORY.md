@@ -45,9 +45,14 @@
 - [Probe the engine before calling a test vacuous](lesson_probe-engine-before-calling-a-test-vacuous.md) — 20-line PGlite probe settles tie-order/CTE claims; my tiebreak suspicion was a false positive
 - [Stale text after a ledger change](lesson_stale-text-after-ledger-change.md) — where plans keep old wording: Done tasks, headers, AC tables, verification logs
 - [Migration high-water mark and partial merges](lesson_migration-high-water-mark-and-partial-merges.md) — check limited-merge options against the migrator's created_at rule
+- [Real migrate CLI probe](feedback_real_migrate_cli_probe.md) — run drizzle-kit migrate itself on template-cloned DBs; 0.31 swallows errors; xmin proves one tx
 - [zsh/rg quoting](env_zsh-rg-quoting.md) — quote globs, use rg -g
 - [Release-order two-sided probe](feedback_release_order_two_sided_probe.md) — run old-client/new-server and new-client/old-server in private worktrees; diff router keys vs origin/main
 - [Equal-count swap mutants](feedback_equal_counts_swap_mutants.md) — counts row with equal values hides swapped FILTERs; per-list is_active/NULL-state fixture rows; export differential probe
 - [Rewrite-loop and allow-list probes](feedback_rewrite_loop_and_whitelist_probes.md) — stateful-router push count, per-entry uniqueName probe, revert-the-fix run; survivors were test gaps
 - [Sort fixture vacuity, runner race](feedback_sort_fixture_vacuity_and_runner_race.md) — JS-reference sweep for list order; key->id mutant; NULLS LAST only on desc; never start a mutant runner twice
+- [Data migration row differential](feedback_data_migration_row_differential.md) — to_jsonb minus col + xmin (xmax = FK KEY SHARE, not a write); ghost rows via replica role; oracle fuzz
 - [Force dialog states via React fiber](feedback_force_dialog_states_via_react_fiber.md) — dispatch pending/success hooks for loading/summary steps with no write; swap base copy into DOM to size a text regression
+- [Migration batch concurrency probes](feedback_migration_batch_concurrency_probes.md) — EPQ misses lock-only txs and CTE-only predicates; incidental batch AEL; FK-check deadlock; SHARE-lock pause
+- [Migration test-evidence battery](feedback_migration_test_evidence_battery.md) — SQL mutants x pg+PGlite files, fixture-gap survivors, BEFORE-tag batch mutant, regex matches statement text
+- [Table-lock migration probes](feedback_table_lock_migration_probes.md) — lock-mode mutants need a FOR UPDATE-only colleague; FK KEY SHARE vs NO KEY UPDATE; victim varies; standalone has no timeout
