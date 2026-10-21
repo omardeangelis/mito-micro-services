@@ -519,9 +519,9 @@ TB5 e TB6 sono in sequenza perché tutti e due toccano `types.ts`. TB6 lo usa e 
     - `alert` prima di `priority` viene rifiutato;
     - dopo un job fallito ogni corsa successiva viene rifiutata, e `manifest.runs` registra il fallimento. L'errore si forza su una pratica con un trigger scritto nel test sul database di destinazione: `@/test/failpoint` funziona solo su PGlite;
     - una corsa registrata come "iniziata" e mai chiusa conta come fallita.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done (2026-10-21, commit `5f1ed90`)
+- **log**: Worker sul modello dell'orchestratore, una sola passata. Il primo giro completo (seed a 300, le quattro corse di `cronJobs`, verifica) è passato senza correzioni a generatore e manifesto: nessuno scenario fallito, `completezza` compresa, nessun accesso al `db` globale. Contatori: alert 35 processati in 1 chiamata, update 15 pratiche e 4 clienti, cleanup 77 righe. Altri 5 test: AC28b (D+1 e 00:30 di Roma), le guardie di D6 (ordine, ripetizioni, `delete-export`, secondo `update`), un fallimento forzato con un trigger su Postgres che blocca le corse successive, una corsa `started` mai chiusa, due chiamate di `onManifest` per job. `jobs.ts` si importa con un percorso relativo (`apps/api` non esporta niente). Il campo `error` di una corsa riporta la catena delle cause, perché `Cause.pretty` da solo nasconde il messaggio del database.
+- **files edited/created**: `src/server/db/seeds/local/cron.ts`, `_test/cron.pg.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a (D9)
