@@ -112,6 +112,11 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 - Concepts written: <count>
 -->
 
+## [2026-10-21] plan | Seeder del database locale, con gli scenari dei cron
+- Plan: [[specs/crm/seeder-locale/PLAN]]; spec passata ad `approved`
+- Decisioni di Omar: servizi `update` e `cleanup-task-event-log` su Effect con `Db` (D1); giro completo a 10.000 anche in CI (D2); due PR, A (refactor + via i seed di oggi) e B (seeder) (D3)
+- T7.1c del piano di Contatti segnato "Sostituito"; T7.3 non lo aspetta più
+
 ## [2026-10-21] spec | Seeder del database locale, con gli scenari dei cron
 - Created spec: [[specs/crm/seeder-locale/SPEC]]
 - Domain: crm

@@ -7,7 +7,7 @@ links:
   - "[[chore/crm/design-contatti]]"
   - "[[chore/crm/guida-assegnazione-massiva-e-alert]]"
 created: 2026-09-24
-updated: 2026-10-20
+updated: 2026-10-21
 ---
 
 # Plan: Sezione Contatti e tabella Clienti semplificata
@@ -293,7 +293,7 @@ PR6  Clienti:    T6.2 ─┬─ T6.1                      (T6.1 dopo T6.2: la ta
                  T6.1, T6.3, T6.5, T6.6, T6.8b, T6.9, T6.10 ─ T6.7   [G5, rilascio unico con PR5]
 
 PR7  T7.1 ─┬─ T7.2 ──────────┬─ T7.3          (dopo il merge di PR3; bassa priorità)
-          └─ T7.1b ─ T7.1c ─┘                 (T7.1b e T7.1c non aspettano T7.2)
+          └─ T7.1b ─────────┘                 (T7.1b non aspetta T7.2; T7.1c sostituito da [[specs/crm/seeder-locale/PLAN]])
 ```
 
 ## 9. Task
@@ -3360,7 +3360,7 @@ Regole valide per tutta la PR:
 
 ### PR7 — Postgres vero: test di concorrenza e database locale (bassa priorità)
 
-**Stato: T7.1 e T7.1b fatte da Leonardo il 2026-10-20 (branch `chore/test-postgres-concorrenza`); T7.2, T7.1c e T7.3 da fare, bassa priorità** (D12, deciso da Omar il 2026-10-15). È il livello 2 della regola dei lock: T3.15 prova che il codice blocca il cliente, PR7 prova che con due connessioni vere le transazioni sullo stesso cliente si mettono in coda. Non blocca nessun'altra PR. Ha senso dopo il merge di PR3, così copre anche i suoi scrittori.
+**Stato: T7.1 e T7.1b fatte da Leonardo il 2026-10-20 (branch `chore/test-postgres-concorrenza`); T7.2 e T7.3 da fare, bassa priorità; T7.1c sostituito il 2026-10-21 da [[specs/crm/seeder-locale/SPEC]]** (D12, deciso da Omar il 2026-10-15). È il livello 2 della regola dei lock: T3.15 prova che il codice blocca il cliente, PR7 prova che con due connessioni vere le transazioni sullo stesso cliente si mettono in coda. Non blocca nessun'altra PR. Ha senso dopo il merge di PR3, così copre anche i suoi scrittori.
 
 **Database locale** (D24, chiesto da Omar il 2026-10-18). Lo stesso Postgres in Docker serve anche a provare le migrazioni su un database proprio invece che su sviluppo: T7.1b lo tira su e applica le migrazioni, T7.1c lo riempie di dati di Contatti. PR3 è in prod, quindi nulla impedisce di partire ora; T7.1b e T7.1c non dipendono da T7.2 e si possono fare prima dei test di concorrenza.
 
@@ -3450,7 +3450,7 @@ Branch: `chore/test-postgres-concorrenza` da `dev`, PR verso `dev`. Nessun cambi
 - **review_mode**: cli
 - **complexity**: medium
 
-#### T7.1c: Seeder di Contatti sul database locale
+#### T7.1c: Seeder di Contatti sul database locale — Sostituito
 - **depends_on**: [T7.1b]
 - **location**: `src/server/db/seeds/local.ts`, `src/server/db/seeds/_test/local.pg.test.ts`, `package.json` (script `seed:local`)
 - **description**: Un seeder che riempie `mito_local` con dati che esercitano Contatti, uguali a ogni lancio (`faker.seed`). Parte dai seed di oggi per operatori, utenti, prodotti, pratiche e chat, se girano ancora sullo schema attuale (da verificare nel task; se no, li aggiorna). Non riusa `createTasks`: crea `task` con `isActive` casuale, che l'indice unico `task_customer_active_uidx` può rifiutare, e non crea alert. `seed:db` e `seed:delete` non cambiano.
@@ -3458,7 +3458,7 @@ Branch: `chore/test-postgres-concorrenza` da `dev`, PR verso `dev`. Nessun cambi
   - Scrive con inserimenti diretti, non con i servizi: non c'è concorrenza né sessione, e le invarianti le controlla il test.
   - Svuota e riempie solo `mito_local` (guard di T7.1b).
 - **validation**: dopo `seed:local --customers 50`: nessun cliente ha più di un contatto attivo, ogni alert aperto appartiene a un contatto attivo, ogni `task_status` compare almeno una volta, ci sono contatti dei due tipi di D8 e richiami scaduti; due lanci di fila danno le stesse righe; con un DSN non locale si ferma prima di collegarsi; `pnpm seed:db` si comporta come prima; `next lint` accetta il nuovo file (la regola sugli import dei seed).
-- **status**: Planned
+- **status**: Sostituito il 2026-10-21 da [[specs/crm/seeder-locale/SPEC]] (decisione 3 di quella spec) e dal suo [[specs/crm/seeder-locale/PLAN|piano]]: un solo seeder, con gli scenari di Contatti assorbiti (AC17–AC26) e il caso D8 sostituito da AC19. Non si implementa.
 - **log**:
 - **files edited/created**:
 - **backlog_item_id**: n/a
@@ -3469,9 +3469,9 @@ Branch: `chore/test-postgres-concorrenza` da `dev`, PR verso `dev`. Nessun cambi
 - **complexity**: medium
 
 #### T7.3: Gate PR7
-- **depends_on**: [T7.2, T7.1b, T7.1c]
+- **depends_on**: [T7.2, T7.1b]
 - **location**: —
-- **description**: Gate CI, con i test `*.pg.test.ts` eseguiti e non saltati; a mano, da un Docker nuovo, `pnpm db:local:up`, `db:local:migrate` e `seed:local`. L'orchestratore chiude la voce di tech-debt "Nessun test esercita il lock del cliente" e aggiorna "Le migrazioni non ricostruiscono lo schema di produzione" (la contromisura ora è condivisa).
+- **description**: Gate CI, con i test `*.pg.test.ts` eseguiti e non saltati; a mano, da un Docker nuovo, `pnpm db:local:up` e `db:local:migrate`. Il seeder non è più qui: T7.1c è sostituito dalla [[specs/crm/seeder-locale/SPEC|spec del seeder locale]], che ha il suo piano e i suoi gate. L'orchestratore chiude la voce di tech-debt "Nessun test esercita il lock del cliente" e aggiorna "Le migrazioni non ricostruiscono lo schema di produzione" (la contromisura ora è condivisa).
 - **validation**: gate verdi; nel job Test i file `*.pg.test.ts` risultano eseguiti; il database locale si costruisce e si riempie da zero.
 - **status**: Planned
 - **log**:
@@ -3517,7 +3517,7 @@ In modo `sequential` l'ordine è: T3.1a, T3.1b, T3.1c, T3.2a, T3.16, T3.2b, T3.9
 | 6.2 | T6.1, T6.5, T6.8b, T6.3 | T6.1 ← T6.2 · T6.5 ← T6.2, T6.4 · T6.8b e T6.3 ← T6.8a (T6.8b dopo T6.8a: stesso file `assignment.ts`) |
 | 6.3 | T6.10, T6.6 | T6.10 ← T6.8a, T6.8b · T6.6 ← T6.2, T6.3, T6.4, T6.8a |
 | 6.4 | T6.7 → **merge PR6 in `dev`**, poi il rilascio unico di PR5a, PR5b e PR6 su `main` (G5) | Tutti gli altri task. La sessione di rilascio è di Omar |
-| 7 | T7.1 → T7.1b → T7.1c, T7.2 → T7.3 → **merge PR7** | Dopo il merge di PR3, quando c'è tempo (bassa priorità). T7.1b e T7.1c non aspettano T7.2 e toccano file diversi, ma `package.json` è in comune: in sequenza se le fa una sola persona |
+| 7 | T7.1 → T7.1b, T7.2 → T7.3 → **merge PR7** (T7.1c sostituito) | Dopo il merge di PR3, quando c'è tempo (bassa priorità). T7.1b e T7.1c non aspettano T7.2 e toccano file diversi, ma `package.json` è in comune: in sequenza se le fa una sola persona |
 
 PR4, PR5 e PR6 sono riscritte con `create-plan` 0.8.0 e ogni loro task ha una `complexity`. PR6 il 2026-10-20: T6.1, T6.8a, T6.9 e T6.10 `high`; T6.2, T6.3, T6.4, T6.5 e T6.8b `medium`; T6.6 `low`; T6.7 `medium`.
 

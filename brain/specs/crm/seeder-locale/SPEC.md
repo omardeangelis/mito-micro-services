@@ -1,8 +1,9 @@
 ---
 domain: crm
 type: spec
-status: draft
+status: approved
 links:
+  - "[[specs/crm/seeder-locale/PLAN]]"
   - "[[specs/crm/sezione-contatti/SPEC]]"
   - "[[specs/crm/sezione-contatti/PLAN]]"
   - "[[chore/migrazione-gcp]]"
