@@ -41,6 +41,12 @@ Sulla domanda aperta 5 (2026-10-21):
 
 > Toglili tutti e quattro, va bene il default
 
+Sulle altre domande aperte (2026-10-21):
+
+> Chiudiamo le domande aperte.
+
+Risposte di Omar: 1 = "Spec a parte, dopo"; 2 = "Vanno bene"; 3 = "50% / 25% / 25%"; 4 = "No, basta Context"; 6 = "Restano fuori".
+
 ---
 
 ## Context
@@ -77,7 +83,7 @@ I ruoli del prodotto che compaiono nei dati sono `OPERATORE` e `ADMIN` (vedi la 
 
 ## Non-Goals
 
-- **Far girare l'app (UI, login) su `mito_local`.** Lo vieta D24 del piano di Contatti: il login con Azure AD e lo storage restano quelli di sviluppo. Questa spec riempie il database e valida i cron. Usare l'app sui dati del seed è un seguito (domanda aperta 1).
+- **Far girare l'app (UI, login) su `mito_local`.** Lo vieta D24 del piano di Contatti: il login con Azure AD e lo storage restano quelli di sviluppo. Questa spec riempie il database e valida i cron. Usare l'app sui dati del seed sarà una spec a parte, dopo questa (domanda 1, chiusa).
 - **Il cron `delete-export`.** Lavora sui file dello storage sotto `export/`, non sul database, e `mito_local` non ha uno storage suo.
 - **La tabella `cron_run` e l'idempotenza del backend.** Il seeder la lascia vuota, così nessun cron viene saltato come "già girato oggi". L'idempotenza della rotta `/internal/cron/<job>` (autenticazione OIDC) resta coperta dai test di `api/src/cron/_test/`.
 - **Dati che violano le invarianti del dominio.** Non vengono generati: un alert aperto su un contatto non attivo, un alert collegato in un solo verso, un contatto senza cliente, un cliente con due contatti attivi, un contatto attivo con un operatore diverso da quello del cliente. Il comportamento dei cron su queste anomalie è già coperto dai test del cron `alert` e da quelli di `processDueAlerts`.
@@ -115,7 +121,11 @@ Un **legame** è una riga di `customers_to_pratiche`: un cliente, una pratica, u
   - ha al massimo un `Coobbligato` e al massimo un `Garante`, quindi da 1 a 3 clienti.
 
   Che lo stesso cliente non compaia due volte sulla pratica lo garantisce già la chiave primaria di `customers_to_pratiche`.
-- **AC10** — Fra i clienti con un solo legame, ognuno dei tre ruoli (`Intestatario`, `Coobbligato`, `Garante`) riguarda almeno 1/5 del gruppo.
+- **AC10** — Fra i `G` clienti con un solo legame:
+  - `floor(G/2)` sono `Intestatario`;
+  - `floor(G/4)` sono `Coobbligato`;
+  - gli altri sono `Garante`.
+  - Con `N` = 10.000, `G` = 5.001: sono 2.500, 1.250 e 1.251.
 - **AC11** — Combinazioni di ruoli fra i clienti con 2 o 3 legami. Ci sono almeno:
   - un cliente con soli legami `Intestatario`;
   - un cliente che è `Intestatario` su una pratica e `Garante` o `Coobbligato` su un'altra;
@@ -352,12 +362,12 @@ Gli script `seed:db`, `seed:delete`, `seed:delete:dev` e `seed:delete:test` svuo
 
 | # | Question | Affects | Owner | Status |
 |---|----------|---------|-------|--------|
-| 1 | Far girare l'app su `mito_local`, per vedere i dati del seed nelle liste e nella scheda cliente, va superato D24. Il login con il provider Email di `next dev` esiste già per gli utenti presenti nel database, ma lo storage resta quello di sviluppo. Default proposto: lo copre una spec a parte, dopo questa. | Non-Goals, AC16, AC17 | Omar | Open |
-| 2 | Le soglie di volume di AC30 (5.001 contatti con la stessa priorità, 1.000 alert scaduti, 200 pratiche, 100 compleanni, 1.000 righe di log vecchie) bastano per gli scenari di carico che servono? Default proposto: queste. | AC30 | Omar | Open |
-| 3 | La quota di ogni ruolo fra i clienti con una sola pratica: AC10 chiede almeno 1/5 per ruolo. Default proposto: metà `Intestatario`, un quarto `Coobbligato`, un quarto `Garante`. | AC10 | Omar | Open |
-| 4 | `paths.personas` non è configurato. Gli utenti di questa spec sono sviluppatori, chi fa QA e Omar: va aggiunta una pagina delle persone del progetto? Default proposto: no, per questa spec basta Context. | Context | Omar | Open |
+| 1 | Far girare l'app su `mito_local`, per vedere i dati del seed nelle liste e nella scheda cliente, va superato D24. Il login con il provider Email di `next dev` esiste già per gli utenti presenti nel database, ma lo storage resta quello di sviluppo. Default proposto: lo copre una spec a parte, dopo questa. | Non-Goals, AC16, AC17 | Omar | **Chiusa il 2026-10-21**: spec a parte, dopo questa |
+| 2 | Le soglie di volume di AC30 (5.001 contatti con la stessa priorità, 1.000 alert scaduti, 200 pratiche, 100 compleanni, 1.000 righe di log vecchie) bastano per gli scenari di carico che servono? Default proposto: queste. | AC30 | Omar | **Chiusa il 2026-10-21**: le soglie vanno bene |
+| 3 | La quota di ogni ruolo fra i clienti con una sola pratica: AC10 chiedeva almeno 1/5 per ruolo. Default proposto: metà `Intestatario`, un quarto `Coobbligato`, un quarto `Garante`. | AC10 | Omar | **Chiusa il 2026-10-21**: 50% / 25% / 25% (AC10) |
+| 4 | `paths.personas` non è configurato. Gli utenti di questa spec sono sviluppatori, chi fa QA e Omar: va aggiunta una pagina delle persone del progetto? Default proposto: no, per questa spec basta Context. | Context | Omar | **Chiusa il 2026-10-21**: no, basta Context |
 | 5 | Gli script di seed di oggi (AC31): si tolgono o si proteggono? Default proposto: si tolgono `seed:db`, `seed:delete`, `seed:delete:dev`, `seed:delete:test` con i file del seed di oggi in `src/server/db/seeds/`. Il seeder nuovo li sostituisce: riempie `mito_local` e lo svuota prima di scrivere (AC3). Svuotare il database di sviluppo condiviso non deve essere un comando a portata di mano. | AC31–AC33 | Omar | **Chiusa il 2026-10-21**: si tolgono tutti e quattro, con il default proposto |
-| 6 | `delete-export` e `cron_run` restano fuori dagli scenari (Non-Goals). La richiesta era "tutti gli scenari che servano per validare anche i cron". Default proposto: fuori. `delete-export` lavora sullo storage, che il database locale non ha, e `cron_run` riguarda solo la rotta del backend, già coperta dai suoi test. | Non-Goals | Omar | Open |
+| 6 | `delete-export` e `cron_run` restano fuori dagli scenari (Non-Goals). La richiesta era "tutti gli scenari che servano per validare anche i cron". Default proposto: fuori. `delete-export` lavora sullo storage, che il database locale non ha, e `cron_run` riguarda solo la rotta del backend, già coperta dai suoi test. | Non-Goals | Omar | **Chiusa il 2026-10-21**: restano fuori |
 
 ---
 
@@ -373,4 +383,5 @@ Gli script `seed:db`, `seed:delete`, `seed:delete:dev` e `seed:delete:test` svuo
 | Il seed rispetta le invarianti del dominio, anche dove un cron saprebbe gestire un'anomalia. | Le anomalie sono già coperte dai test dei cron. Un dataset che le contiene renderebbe le liste e i conteggi di Contatti diversi da quello che il prodotto garantisce. |
 | Gli esiti attesi descrivono il codice di oggi, difetti compresi. | Il seeder serve a validare i cron così come sono. Una correzione cambia insieme cron ed esiti attesi. |
 | Gli script di seed di oggi entrano nella spec e si tolgono tutti e quattro, `seed:db`, `seed:delete`, `seed:delete:dev` e `seed:delete:test`, con i loro file (AC31–AC33; richiesta e scelta di Omar, 2026-10-21). | `seed:db` svuota il database indicato dalla shell, e `seed:delete:dev` svuota quello di sviluppo. Un seeder locale protetto, accanto a script che non lo sono, lascerebbe il rischio dov'è. |
-| `delete-export` e `cron_run` restano fuori. | Il primo lavora sullo storage, che il database locale non ha. Il secondo riguarda solo la rotta del backend con OIDC, già coperta dai suoi test. |
+| `delete-export` e `cron_run` restano fuori (domanda 6, confermata da Omar il 2026-10-21). | Il primo lavora sullo storage, che il database locale non ha. Il secondo riguarda solo la rotta del backend con OIDC, già coperta dai suoi test. |
+| Le altre domande aperte le ha chiuse Omar il 2026-10-21, tutte con i default proposti: l'app su `mito_local` sarà una spec a parte (1); le soglie di AC30 restano (2); fra i clienti con una sola pratica i ruoli si dividono 50% / 25% / 25% (3, AC10); nessuna pagina delle persone (4). | Con queste soglie `priority` divide l'aggiornamento in blocchi e `alert` fa più chiamate. La divisione dei ruoli segue la prevalenza degli intestatari e lascia comunque gruppi grandi di coobbligati e garanti. |
