@@ -3,6 +3,7 @@ domain: crm
 type: plan
 links:
   - "[[specs/crm/seeder-locale/SPEC]]"
+  - "[[specs/crm/seeder-locale/REPORT]]"
   - "[[specs/crm/sezione-contatti/PLAN]]"
   - "[[chore/migrazione-gcp]]"
 created: 2026-10-21
@@ -12,6 +13,7 @@ updated: 2026-10-21
 # Plan: Seeder del database locale, con gli scenari dei cron
 
 **Spec:** [[specs/crm/seeder-locale/SPEC]]
+**Status:** Complete (review: [[specs/crm/seeder-locale/REPORT]], SHIP)
 **Generato:** 2026-10-21 con `create-plan`: grill → swarm-plan (con revisione del grafo) → tdd → adversarial-verifier. Nessun codice scritto. Le correzioni delle due revisioni sono nel §16.
 **Sostituisce:** T7.1c del [[specs/crm/sezione-contatti/PLAN|piano di Contatti]] (decisione 3 della spec).
 
@@ -219,9 +221,9 @@ TB5 e TB6 sono in sequenza perché tutti e due toccano `types.ts`. TB6 lo usa e 
   - In `cron.db.test.ts`, un caso nuovo per `update` e uno per `cleanup`: con un errore forzato del database (`failNextUpdateOf`, o un trigger come nei test esistenti) il job fallisce con `CronStepFailed` e lo step giusto.
   - Il file nuovo ha un suo `vi.mock("@/server/db")` con un proxy che lancia a ogni query, come `unset` di `src/test/pg.ts`. Non usa `@/test/factories` né il caller di test, che importano `db`. Inserisce con `testDb` (con il cast a `DbClient`). In queste condizioni i tre servizi, eseguiti con `Layer.succeed(Db, testDb)`, aggiornano o cancellano le righe giuste.
   - Passano `next lint`, `tsc --noEmit`, `pnpm api:build` e `pnpm api:smoke`.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done (2026-10-21, commit `7217d93`)
+- **log**: Worker sul modello dell'orchestratore, una sola passata. Revisione dell'orchestratore: diff dei tre servizi, delle rotte e di `jobs.ts`; nei test esistenti cambiano solo gli import. Suite completa con Postgres verde (141 file, 2.122 test), `next lint`, `tsc`, `api:build` e `api:smoke` verdi. In più rispetto al piano: anche `console.error` delle rotte stampa il `DbError`, quindi niente SQL con i dati dei clienti nemmeno nei log.
+- **files edited/created**: `src/server/services/cron/{updatePractices,updateCustomerAge,cleanupTaskEventLog}.ts`, `src/app/api/cron/update/route.ts`, `src/app/api/cron/cleanupTaskEventLog/route.ts`, `api/src/cron/jobs.ts`, `api/src/cron/_test/cron.db.test.ts`, `src/app/api/cron/update/_test/update.db.test.ts`, `src/app/api/cron/cleanupTaskEventLog/_test/cleanupTaskEventLog.db.test.ts`, nuovo `src/server/services/cron/_test/cronServices.db.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a (D9)
@@ -243,9 +245,9 @@ TB5 e TB6 sono in sequenza perché tutti e due toccano `types.ts`. TB6 lo usa e 
   - `git grep -n getRandomCustomerRole -- ':!brain'` non trova niente (AC31).
   - Fra gli script di `package.json` che svuotano o riempiono tabelle restano solo `db:local:reset`, `test:pg` e `test` (AC32; il seeder arriva con la PR B).
   - Lint, `tsc` e test verdi.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done (2026-10-21, commit `bff0ec3`)
+- **log**: Worker haiku, una sola passata. I due `git grep` sono vuoti. Correzione dell'orchestratore: il commento e il messaggio della regola ESLint dicevano ancora che i seed caricano le credenziali; ora dicono che svuotano un database. `delete:export*` resta fra gli script: AC32 esclude i cron.
+- **files edited/created**: `package.json`, i dieci file di `src/server/db/seeds/` (cancellati), `src/server/db/schema/relations/customerToPratica.ts`, `README.md`, `.env.example`, `src/lib/global/loadDbEnv.ts`, `.eslintrc.cjs`, `AGENTS.md`, `brain/chore/migration/fase-1/t2-packages-db.md`, `brain/chore/migration/fase-1-database-postgres.md`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a (D9)
@@ -261,8 +263,8 @@ TB5 e TB6 sono in sequenza perché tutti e due toccano `types.ts`. TB6 lo usa e 
   - La descrizione dice che il comportamento dei cron non cambia e che i seed tolti non hanno sostituti fino alla PR B.
   - Dopo il merge, la PR B riparte da `dev`.
 - **validation**: CI verde sulla testa della PR; merge in `dev`.
-- **status**: Planned
-- **log**:
+- **status**: Done: [PR #55](https://github.com/omardeangelis/mito-micro-services/pull/55) in `dev` il 2026-10-21
+- **log**: PR aperta dall'orchestratore (scelta di Omar sulle branch). CI verde sulla testa `344de83` (Lint, Test, Build, GitGuardian), review SHIP ([[specs/crm/seeder-locale/REPORT]]). Merge in `dev` su richiesta di Omar ("apri PR e mergia tutto su dev").
 - **files edited/created**:
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
@@ -293,9 +295,9 @@ TB5 e TB6 sono in sequenza perché tutti e due toccano `types.ts`. TB6 lo usa e 
     - mezzogiorno di Roma cade nello stesso giorno UTC anche il 29 marzo e il 25 ottobre 2026;
     - `subMonthsDay("2026-05-31", 3)` è `2026-02-28`, quello del `2028-05-31` è `2028-02-29`.
   - **`importRates`:** su almeno 1.000 combinazioni (liquidazioni nei due anni prima di D, anche il 29, 30 e 31 del mese, rate, D nei giorni difficili del §5) dà lo stesso risultato di `calculateDebitoResiduo(copia, ...)` con l'orologio a `romeNoon(D)`. Il confronto gira in un **processo figlio avviato con `TZ=Europe/Rome`**, perché vitest 1.6 usa i thread e un `TZ` impostato nel test non cambia il fuso delle `Date`. Il figlio controlla prima che l'offset di gennaio sia +60 minuti. Dopo la chiamata la data di liquidazione è invariata.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done (2026-10-21, commit `0a824b5`)
+- **log**: Worker sonnet, una sola passata. 23 test verdi; il confronto con `calculateDebitoResiduo` in un processo figlio con `TZ=Europe/Rome` copre 10.031 combinazioni senza differenze, anche intorno ai cambi dell'ora. `server-only` non serve: l'import di `src/app/api/import/_utils` gira sotto tsx senza condizioni. `chat_to_operator` non è nel `Dataset`: il seed non lo scrive.
+- **files edited/created**: `src/server/db/seeds/local/{day,importRates,types}.ts`, `_test/day.test.ts`, `_test/importRates.test.ts`, `_test/importRatesCases.ts`, `_test/importRatesChild.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a (D9)
@@ -325,9 +327,9 @@ TB5 e TB6 sono in sequenza perché tutti e due toccano `types.ts`. TB6 lo usa e 
   - due chiamate danno righe uguali con l'orologio alle 01:30 e alle 23:30 di Roma dello stesso giorno (AC5);
   - l'hash del dataset è uguale in un processo con `TZ=UTC` e in uno con `TZ=Europe/Rome`;
   - `n = 299` si ferma.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done (2026-10-21, commit `17c905f`)
+- **log**: Worker sonnet, una sola passata. 96 test del generatore (a 300, a 10.000 e a 300 con quattro D difficili), determinismo con l'orologio a due ore e con tre processi (in-process, `TZ=UTC`, `TZ=Europe/Rome`). A 10.000: 9.345 pratiche, 250 selezionate da `update`, 139 clienti nati nel giorno di D, generazione in 3,5 s. Revisione dell'orchestratore: nessuna pratica generica è selezionata da `update`; importi in euro interi. File in più rispetto al brief: `generate/links.ts`, `generate/scenarios.ts`.
+- **files edited/created**: `src/server/db/seeds/local/generate.ts`, `generate/{random,links,customers,practices,scenarios}.ts`, `_test/generate.test.ts`, `_test/generateHashChild.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a (D9)
@@ -349,9 +351,9 @@ TB5 e TB6 sono in sequenza perché tutti e due toccano `types.ts`. TB6 lo usa e 
 
   Il controllo di AC18 sui contatti attivi sta in TB4. Se non torna, TB4 corregge queste quote.
 - **validation**: test unitari a 300 e a 10.000: AC17; le email degli utenti (AC16); le quote di assegnazione dei clienti; determinismo.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done (2026-10-21, commit `01b827b`)
+- **log**: Worker sonnet, una sola passata. 28 utenti, 29 operatori (il sistema è l'ultimo, id 1028). Quote: 3% dei clienti senza operatore; un operatore al 35%; 18 fra 2,2% e 3,8%; 5 all'1,4%; uno senza clienti; admin al 2,4%, 1,6% e 1,2%. `ACTIVE_CONTACT_SHARE` = 0,8. Due asserzioni di TB2 ristrette perché ora utenti, operatori e `customers.operatorId` sono valorizzati.
+- **files edited/created**: `src/server/db/seeds/local/generate/operators.ts` (nuovo), `generate.ts`, `generate/customers.ts` (export di `slug`), `_test/operators.test.ts`, `_test/generate.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a (D9)
@@ -394,9 +396,9 @@ TB5 e TB6 sono in sequenza perché tutti e due toccano `types.ts`. TB6 lo usa e 
   - un indice in memoria prova che nessun cliente ha due contatti attivi e che ogni alert aperto è collegato nei due versi;
   - determinismo;
   - con i D difficili del §5, AC23–AC26 valgono ancora.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done (2026-10-21, commit `0c8ee7b`)
+- **log**: Worker sul modello dell'orchestratore, una sola passata. 116 test in `contacts.test.ts` (a 300, a 10.000 e a 300 con sei D difficili), con un classificatore per regola scritto nel test: ogni contatto o alert selezionato sta in uno e un solo scenario e la priorità di seed è diversa dall'attesa; provato rompendo il generatore due volte. A 10.000: 8.001 contatti attivi, 5.911 con priorità attesa 1, 1.150 alert aperti con scadenza entro D, 2.519 righe L1; carico dell'operatore principale 33,9%. I P5 hanno la storia della corsa di `alert` che li ha creati (alert risolto dal sistema e 2 righe `cron_alert` sul contatto sostituito).
+- **files edited/created**: `src/server/db/seeds/local/generate/{contacts,log,chats,clock}.ts` (nuovi), `generate.ts`, `generate/scenarios.ts`, `_test/contacts.test.ts`, `_test/generate.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a (D9)
@@ -428,9 +430,9 @@ TB5 e TB6 sono in sequenza perché tutti e due toccano `types.ts`. TB6 lo usa e 
   - per ogni riga selezionata da `priority`, la priorità del seed è diversa da `expected`;
   - P2, P8 e P9 registrano priorità e `updated_at` del seed come attesi invariati;
   - il manifesto è serializzabile in JSON ed è uguale fra due chiamate.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done (2026-10-21, commit `01f5c24`)
+- **log**: Worker sul modello dell'orchestratore, una sola passata. `manifest.ts` importa solo `day.ts`, i tipi e `SYSTEM_OPERATOR_USER_ID`: niente codice dei cron. 72 test (a 300, a 10.000 e a 300 con cinque D difficili): le righe selezionate, ricalcolate nel test con le regole della spec, coincidono con quelle del manifesto; sette rotture forzate (D10, D13, priorità di seed uguale all'attesa, import a 30 giorni, log sul giorno del confine) fanno fallire `buildManifest`. A 10.000: 5.911 righe P con atteso 1, 1.150 alert in A1–A3, 250 pratiche, 139 clienti, 2.519 righe L1. `types.ts` invariato; `newActiveContact`, `newLog` e `deleted` sono pseudo-colonne che TB7 legge.
+- **files edited/created**: `src/server/db/seeds/local/manifest.ts`, `_test/manifest.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a (D9)
@@ -458,9 +460,9 @@ TB5 e TB6 sono in sequenza perché tutti e due toccano `types.ts`. TB6 lo usa e 
   - un dataset con una riga invalida (FK mancante) fallisce e lascia le righe di prima;
   - con un client il cui `current_database()` restituisce un altro nome (un client finto), si ferma prima del TRUNCATE. Non si crea un database con un altro nome, che sfuggirebbe alla pulizia di `extraDatabase` e al controllo "No test database left" della CI;
   - imposta un `lock_timeout` (per esempio 10 s): con una transazione aperta su una tabella, per esempio da `db:studio` o da psql, si ferma con un messaggio invece di restare appeso.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done (2026-10-21, commit `95bf81a`)
+- **log**: Worker sonnet, una sola passata. 8 test su Postgres, sessione in UTC: AC3, conteggi per tabella, un solo contatto attivo per cliente, id oltre il massimo dopo il seed, rollback su una FK mancante (dump identico), client finto con `current_database()` = `mito_dev` fermato prima della transazione, `lock_timeout` (500 ms nel test) con un altro lock aperto. Scrittura a 10.000 in circa 10 s. `lock_timeout` impostato con `set_config(..., true)`, equivalente a `SET LOCAL` ma con parametro.
+- **files edited/created**: `src/server/db/seeds/local/write.ts`, `_test/write.pg.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a (D9)
@@ -487,9 +489,9 @@ TB5 e TB6 sono in sequenza perché tutti e due toccano `types.ts`. TB6 lo usa e 
   - scrivendo a mano 120 su ogni riga di P1, P1 passa;
   - cambiando una riga di P2, P2 fallisce e cita quella riga;
   - cambiando una riga che non è in nessuno scenario, "completezza" fallisce e la cita.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done (2026-10-21, commit `8064ca9`)
+- **log**: Worker sul modello dell'orchestratore, una sola passata. 11 test su Postgres: seed appena fatto (gli scenari con esito diverso dal seed falliscono, gli "invariati" e `completezza` passano), il tracciante su P1, una riga di P2 cambiata, righe fuori dal manifesto cambiate o aggiunte, A3 e A1 risolti a mano (A1 con una riga di log in più fallisce), `volumi` solo con `n` = 10.000. La verifica legge le 11 tabelle in una transazione `repeatable read`: 1,7 s a 10.000. Prettier ha solo riformattato due righe del test rosso.
+- **files edited/created**: `src/server/db/seeds/local/seed.ts`, `verify.ts`, `_test/verify.pg.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a (D9)
@@ -519,9 +521,9 @@ TB5 e TB6 sono in sequenza perché tutti e due toccano `types.ts`. TB6 lo usa e 
     - `alert` prima di `priority` viene rifiutato;
     - dopo un job fallito ogni corsa successiva viene rifiutata, e `manifest.runs` registra il fallimento. L'errore si forza su una pratica con un trigger scritto nel test sul database di destinazione: `@/test/failpoint` funziona solo su PGlite;
     - una corsa registrata come "iniziata" e mai chiusa conta come fallita.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done (2026-10-21, commit `5f1ed90`)
+- **log**: Worker sul modello dell'orchestratore, una sola passata. Il primo giro completo (seed a 300, le quattro corse di `cronJobs`, verifica) è passato senza correzioni a generatore e manifesto: nessuno scenario fallito, `completezza` compresa, nessun accesso al `db` globale. Contatori: alert 35 processati in 1 chiamata, update 15 pratiche e 4 clienti, cleanup 77 righe. Altri 5 test: AC28b (D+1 e 00:30 di Roma), le guardie di D6 (ordine, ripetizioni, `delete-export`, secondo `update`), un fallimento forzato con un trigger su Postgres che blocca le corse successive, una corsa `started` mai chiusa, due chiamate di `onManifest` per job. `jobs.ts` si importa con un percorso relativo (`apps/api` non esporta niente). Il campo `error` di una corsa riporta la catena delle cause, perché `Cause.pretty` da solo nasconde il messaggio del database.
+- **files edited/created**: `src/server/db/seeds/local/cron.ts`, `_test/cron.pg.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a (D9)
@@ -576,9 +578,9 @@ TB5 e TB6 sono in sequenza perché tutti e due toccano `types.ts`. TB6 lo usa e 
 
     Il test si salta, dicendolo, quando la porta 54329 è occupata (un `mito_local` acceso) e quando il giorno di Roma e quello UTC sono diversi.
   - `next lint` e `tsc` passano.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done (commit `34a5f49`)
+- **log**: Worker sul modello dell'orchestratore, test rossi scritti prima dall'orchestratore (`commands.pg`, `connection`, `imports`, `cronCli`). Revisione passata al primo giro. `pendingMigrations` confronta il `when` del journal con `created_at` e lo sha256 di ogni SQL con `hash`. `cronCli.test.ts` lancia `seed:local:cron` in un processo figlio con shell e `.env` ostili (AC28a). CI verde su `34a5f49`: Lint, Test, Build.
+- **files edited/created**: `src/server/db/scripts/localDb.ts`, `src/server/db/seeds/local/commands/{seed,cron,verify,manifestFile}.ts`, `src/server/db/seeds/local/{seed,cron,verify}.cli.ts`, `src/server/db/seeds/local/_test/{commands.pg,connection,imports,cronCli}.test.ts`, `package.json`, `.gitignore`, `README.md`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a (D9)
@@ -598,9 +600,9 @@ TB5 e TB6 sono in sequenza perché tutti e due toccano `types.ts`. TB6 lo usa e 
     - `cleanup` con almeno 1.000 righe cancellate.
   - Misura la durata del job Test in CI. La CI gira solo sulle PR verso `dev` e `main`, quindi la PR B va aperta in bozza. La misura definitiva si prende quando anche TB9 è sulla branch, per contare i suoi test. Se il job supera i 7 minuti, TB10 alza `timeout-minutes` e scrive la durata nel log del task.
 - **validation**: il test passa in CI e risulta eseguito, non saltato; la durata del job è nel log del task.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done (misura su `34a5f49`)
+- **log**: Il test è passato al primo lancio: il codice di TB2–TB8 bastava, quindi non c'è stata una fase rossa (scritto dall'orchestratore, senza worker). Locale: 23 s. CI sulla [PR #56](https://github.com/omardeangelis/mito-micro-services/pull/56), commit `6f7c841`: `fullRun.pg.test.ts` in 17 s, job Test 4 min 20 s. Con TB9 sulla branch, commit `34a5f49`: `fullRun.pg.test.ts` eseguito in 12,8 s, non saltato; suite 155 file in 158 s, job Test 3 min 21 s, sotto i 7 minuti: `timeout-minutes` resta 10.
+- **files edited/created**: `src/server/db/seeds/local/_test/fullRun.pg.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a (D9)
@@ -621,9 +623,9 @@ TB5 e TB6 sono in sequenza perché tutti e due toccano `types.ts`. TB6 lo usa e 
   - AC4 e AC28b li provano i test di TB1 e TB9: a mano basta il giro in un giorno normale.
   - Con `review.mode: total`, `implement-spec` lancia `adversarial-review` prima del merge.
 - **validation**: CI verde; il giro a mano passa e i tempi sono nelle note; `REPORT.md` SHIP.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done: [PR #56](https://github.com/omardeangelis/mito-micro-services/pull/56) in `dev` il 2026-10-21, dopo la A
+- **log**: Giro a mano su `mito_local` (Postgres 16 sulla 54329, TZ Europe/Rome, 4 core, 15 GB): `seed:local` a 10.000 in 16 s (AC6), `seed:local:cron` con i quattro job riusciti in 15 s, `seed:local:verify` 36 "passato" ed exit 0; un secondo `update` rifiutato. Review `adversarial-review`: SHIP, 6 verificatori, 0 blocker, 0 major, 7 minor in [[tech-debt/crm/seeder-locale]]. Dopo la review: test di `connectLocal` che non si salta (MINOR di v3 e v6). Dopo il merge della A, `dev` riportato nella B e CI di nuovo verde; merge in `dev` su richiesta di Omar.
+- **files edited/created**: `src/server/db/seeds/local/_test/connection.test.ts`, `brain/specs/crm/seeder-locale/{RUBRIC,REPORT}.md`, `brain/tech-debt/crm/seeder-locale.md`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a (D9)

@@ -34,7 +34,7 @@ git clone --config core.autocrlf=false https://github.com/S-P-A-Talo/mito-deutsc
 
 ## Database locale
 
-Il database locale è un Postgres 15 in Docker, come la produzione. Serve a due cose: provare una migrazione su un database proprio prima di applicarla allo sviluppo condiviso, e far girare i test su Postgres vero.
+Il database locale è un Postgres 15 in Docker, come la produzione. Serve a tre cose: provare una migrazione su un database proprio prima di applicarla allo sviluppo condiviso, far girare i test su Postgres vero e provare i cron su dati generati dal seeder.
 
 Comandi, dalla radice del repo:
 
@@ -43,8 +43,11 @@ Comandi, dalla radice del repo:
 - `pnpm db:local:reset`: elimina il database `mito_local` e lo ricrea vuoto.
 - `pnpm db:local:migrate`: applica a `mito_local` le migrazioni in sospeso e stampa quante ne ha applicate.
 - `pnpm test:pg`: esegue i test `*.pg.test.ts` su quel Postgres.
+- `pnpm seed:local [--customers N]`: riempie `mito_local` con i dati di prova (vedi sotto). È l'unico modo previsto per riempirlo.
+- `pnpm seed:local:cron [job…]`: esegue i cron di produzione su `mito_local`.
+- `pnpm seed:local:verify`: confronta `mito_local` con gli scenari del seed.
 
-Gli script `db:local:*` non leggono i file `.env*`: il DSN è scritto in `src/server/db/scripts/localDb.ts`, e si fermano prima di collegarsi se l'host non è `localhost` o `127.0.0.1` o se il database non è `mito_local`. Non possono arrivare al database di sviluppo né a quello di produzione.
+Gli script `db:local:*` e `seed:local*` non leggono i file `.env*`: il DSN è scritto in `src/server/db/scripts/localDb.ts`, e si fermano prima di collegarsi se l'host non è `localhost` o `127.0.0.1` o se il database non è `mito_local`. Non possono arrivare al database di sviluppo né a quello di produzione.
 
 ### Provare una migrazione prima di sviluppo
 
@@ -70,10 +73,27 @@ pnpm db:local:migrate
 docker compose exec postgres psql -U postgres -d mito_local
 ```
 
+### Provare i cron sul seed locale
+
+```bash
+pnpm db:local:up
+pnpm db:local:reset
+pnpm db:local:migrate
+pnpm seed:local                # 10.000 clienti; --customers N per cambiarli, minimo 300
+pnpm seed:local:cron           # priority, alert, update, cleanup-task-event-log, in ordine
+pnpm seed:local:verify         # "passato" o "fallito" per ogni scenario
+```
+
+- `seed:local` svuota tutte le tabelle di `mito_local` e scrive i dati del giorno di Roma in cui lo lanci. Si ferma prima di scrivere se `mito_local` non ha tutte le migrazioni del repo: lancia `pnpm db:local:migrate`.
+- `seed:local:cron` accetta anche solo alcuni job, per esempio `pnpm seed:local:cron priority alert`, ma sempre in quell'ordine e ognuno una volta sola. La verifica vuole tutte e quattro le corse riuscite.
+- Il seed vale solo per il suo giorno: rifallo ogni giorno, e dopo una corsa fallita o interrotta, perché `update` non è idempotente.
+- I tre comandi non partono fra mezzanotte e le 01:00 (le 02:00 con l'ora legale) a Roma: lì il giorno di Roma, usato da `alert`, e quello UTC, usato da `update`, sono diversi.
+- Il manifesto con gli scenari e le corse è `.local-seed/manifest.json`, nella cartella da cui lanci il comando (con `pnpm`, la radice del repo). È ignorato da git.
+
 ### Limiti
 
 - Lo schema viene dalle migrazioni del repo, più i pezzi che la produzione ha ricevuto da `db:push`. Non è una copia del database di sviluppo.
-- Dati, ruoli, estensioni e oggetti creati a mano non ci sono.
+- I dati del database di sviluppo, i ruoli, le estensioni e gli oggetti creati a mano non ci sono: i dati sono solo quelli generati da `seed:local`.
 - L'app non gira sul database locale: il login Azure AD e lo storage Supabase restano quelli di sviluppo.
 
 ### Test su Postgres vero

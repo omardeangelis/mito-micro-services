@@ -329,3 +329,15 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 - Verdict: DO NOT SHIP
 - Impact: critical
 - Verifiers: 13 (3 blockers, 11 major; 4 SHIP e 9 DO NOT SHIP)
+
+## [2026-10-21] review | Seeder del database locale (PR A + PR B)
+- Report: [[specs/crm/seeder-locale/REPORT]], rubric: [[specs/crm/seeder-locale/RUBRIC]]
+- Scope: spec
+- Verdict: SHIP
+- Impact: critical
+- Verifiers: 6 (0 blocker, 0 major, 7 minor; tutti SHIP). Le MINOR sono in [[tech-debt/crm/seeder-locale]]; quella su `connectLocal` è chiusa in parte da un test aggiunto dopo la review
+
+## [2026-10-21] implement | seeder-locale, PR A e PR B
+- Spec: [[specs/crm/seeder-locale/SPEC]], piano: [[specs/crm/seeder-locale/PLAN]], note: [[specs/crm/seeder-locale/IMPLEMENTATION-NOTES]]
+- PR A: servizi dei cron su un `Db` iniettato, seed vecchi rimossi. PR B: `seed:local`, `seed:local:cron`, `seed:local:verify` con manifesto e oracolo indipendente
+- Giro a mano a 10.000: seed 16 s, quattro cron riusciti, 36 "passato"; in CI il giro completo dura 12,8 s
