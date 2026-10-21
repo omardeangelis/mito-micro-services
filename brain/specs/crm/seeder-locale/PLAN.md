@@ -349,7 +349,7 @@ TB5 e TB6 sono in sequenza perché tutti e due toccano `types.ts`. TB6 lo usa e 
 
   Il controllo di AC18 sui contatti attivi sta in TB4. Se non torna, TB4 corregge queste quote.
 - **validation**: test unitari a 300 e a 10.000: AC17; le email degli utenti (AC16); le quote di assegnazione dei clienti; determinismo.
-- **status**: Done (2026-10-21)
+- **status**: Done (2026-10-21, commit `01b827b`)
 - **log**: Worker sonnet, una sola passata. 28 utenti, 29 operatori (il sistema è l'ultimo, id 1028). Quote: 3% dei clienti senza operatore; un operatore al 35%; 18 fra 2,2% e 3,8%; 5 all'1,4%; uno senza clienti; admin al 2,4%, 1,6% e 1,2%. `ACTIVE_CONTACT_SHARE` = 0,8. Due asserzioni di TB2 ristrette perché ora utenti, operatori e `customers.operatorId` sono valorizzati.
 - **files edited/created**: `src/server/db/seeds/local/generate/operators.ts` (nuovo), `generate.ts`, `generate/customers.ts` (export di `slug`), `_test/operators.test.ts`, `_test/generate.test.ts`
 - **backlog_item_id**: n/a
@@ -394,9 +394,9 @@ TB5 e TB6 sono in sequenza perché tutti e due toccano `types.ts`. TB6 lo usa e 
   - un indice in memoria prova che nessun cliente ha due contatti attivi e che ogni alert aperto è collegato nei due versi;
   - determinismo;
   - con i D difficili del §5, AC23–AC26 valgono ancora.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done (2026-10-21, commit `0c8ee7b`)
+- **log**: Worker sul modello dell'orchestratore, una sola passata. 116 test in `contacts.test.ts` (a 300, a 10.000 e a 300 con sei D difficili), con un classificatore per regola scritto nel test: ogni contatto o alert selezionato sta in uno e un solo scenario e la priorità di seed è diversa dall'attesa; provato rompendo il generatore due volte. A 10.000: 8.001 contatti attivi, 5.911 con priorità attesa 1, 1.150 alert aperti con scadenza entro D, 2.519 righe L1; carico dell'operatore principale 33,9%. I P5 hanno la storia della corsa di `alert` che li ha creati (alert risolto dal sistema e 2 righe `cron_alert` sul contatto sostituito).
+- **files edited/created**: `src/server/db/seeds/local/generate/{contacts,log,chats,clock}.ts` (nuovi), `generate.ts`, `generate/scenarios.ts`, `_test/contacts.test.ts`, `_test/generate.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a (D9)
