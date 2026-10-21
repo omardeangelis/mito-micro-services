@@ -10,3 +10,5 @@ The Bash tool runs zsh. An unquoted `--include=*.ts` fails with "no matches foun
 **Why:** lost one round of greps in the PR6 plan review to this.
 
 **How to apply:** quote every glob; prefer `rg -g` over `grep -r --include`.
+
+Also: `git show $r:src/...` breaks in zsh, because `:s` is a history modifier on `$r` ("ambiguous argument origin/dev/db/..."). Write `"${r}:src/..."`. `rg` skips dot-folders such as `.github`: add `--hidden`. There is no `timeout` command on this Mac.

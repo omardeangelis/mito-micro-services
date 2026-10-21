@@ -14,4 +14,8 @@ When a data migration takes `LOCK TABLE x IN <mode>` to serialize itself against
 - **Standalone vs batch:** a `SET LOCAL lock_timeout` from an earlier migration in the same migrator transaction caps the LOCK and the FK waits only in the batch. Run the migration alone too: with no cap it holds the table lock while waiting on a customer row, and every writer of the table stalls (measure with an unrelated writer).
 - **Isolation:** under a REPEATABLE READ default the batch snapshot predates the lock, but the log INSERT's RI crosscheck raised 40001 (safe). Probe with `BEGIN ISOLATION LEVEL repeatable read` before calling it a finding.
 
+- **Plain-read writers are not a hole by default.** A writer that locks the parent FOR UPDATE and reads the child *without* a lock gets a stale read under EXCLUSIVE, but if it must then write the child, the migration's FK FOR KEY SHARE on that parent closes a cycle: deadlock, never a stale commit. Probe it (both victims) before reporting a stale write.
+- **Victim by queue time, measured 3/3:** writer queued after the lock grant = writer dies; queued during the DDL/LOCK wait (>~0.7 s before grant) = whole batch dies. `SET LOCAL lock_timeout` also caps FK row waits on parents (customer or operator FOR UPDATE held 7 s = 55P03, all migrations rolled back).
+- **Harness:** manual runner with a beforeStmt hook to start the writer at statement k, plus the real node-postgres migrator for the rollback state (cron table, indexes, `__drizzle_migrations` count); one template clone per scenario.
+
 Related: [[migration-batch-concurrency-probes]], [[real-migrate-cli-probe]], [[mutant-battery-scratch-copy]].
