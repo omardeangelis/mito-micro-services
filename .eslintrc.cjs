@@ -46,10 +46,10 @@ const config = {
     ],
     // loadEnv loads the production credentials: never in a module Next.js
     // bundles, only in the database scripts (overrides below). The patterns
-    // take every static import of its module, loadDbEnv, and of the seeds and
-    // database scripts, which call it on import, by alias, relative or src/
-    // path; a dynamic import() or a direct dotenv call escapes them. `next
-    // lint` checks src/ only
+    // take every static import of its module, loadDbEnv, of the database
+    // scripts, which call it on import, and of the seeds, which empty a
+    // database, by alias, relative or src/ path; a dynamic import() or a
+    // direct dotenv call escapes them. `next lint` checks src/ only
     "no-restricted-imports": [
       "error",
       {
@@ -62,7 +62,7 @@ const config = {
           {
             group: ["**/seeds", "**/seeds/**", "**/db/scripts/**"],
             message:
-              "The seeds and the database scripts load the production credentials on import: the app never imports them",
+              "The database scripts load the production credentials on import, and the seeds empty a database: the app never imports them",
           },
         ],
       },

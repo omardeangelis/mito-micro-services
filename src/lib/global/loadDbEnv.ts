@@ -9,11 +9,11 @@ const PRODUCTION_DB_KEYS = [
 ] as const
 
 /**
- * Loads the env file of the database scripts (drizzle-kit, the seeds, the
- * system operator): `.env.prod.local` with NODE_ENV=production,
+ * Loads the env file of the database scripts (drizzle-kit, the system
+ * operator): `.env.prod.local` with NODE_ENV=production,
  * `.env.development.local` or `.env.test.local` with development or test, and
- * none without NODE_ENV (`db:generate`, `seed:db`: only `.env`, if drizzle-kit
- * loads it, and the shell). Any other NODE_ENV stops it: a `prod` or
+ * none without NODE_ENV (`db:generate`: only `.env`, if drizzle-kit loads it,
+ * and the shell). Any other NODE_ENV stops it: a `prod` or
  * `Production` typed by hand would otherwise skip the checks below. The app
  * doesn't call it: Next.js loads its own env files, and `.env.prod.local`
  * isn't one of them, so a local `next build` or `next start` gets the

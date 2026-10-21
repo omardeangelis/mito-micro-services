@@ -2,11 +2,11 @@
 domain: platform
 task: F1.T2
 phase: 1
-title: Creare packages/db (schema, migrazioni, client factory, seeds)
+title: Creare packages/db (schema, migrazioni, client factory)
 status: not_started
 completed: false
 depends_on: ["F0.T3"]
-last_updated: 2026-06-11
+last_updated: 2026-10-21
 ---
 
 # F1.T2 — `packages/db`
@@ -29,7 +29,7 @@ Estrarre il layer database in un package workspace `@mito/db`, consumabile da `w
 - Client: `src/server/db/index.ts` — singleton `postgres()` con `prepare: false` (richiesto dal pooler Supabase). *(Il fallback `PREVIEW_DB` è stato tolto il 2026-10-09.)*
 - Config: `drizzle.config.ts` alla root dell'app — dialect `postgresql`, `migrations.prefix: "supabase"`, out `./src/server/db/migrations`.
 - Migrazioni: `20240926195125_lucky_roughhouse.sql` + `meta/{_journal.json, 20240926195125_snapshot.json}` — **da spostare byte-per-byte, mai modificare**.
-- Seeds: `src/server/db/seeds/` (10 file, Faker). Importano `loadEnv` da `@/lib/global/loadDbEnv` (dotenv su `.env.development.local`, `.env.test.local` o `.env.prod.local`). Solo gli script del database possono importarlo (ESLint `no-restricted-imports`).
+- Seeds: i 10 file di seed di oggi in `src/server/db/seeds/` (Faker) sono rimossi dalla spec [[specs/crm/seeder-locale/SPEC]] (AC31): non c'è nulla da spostare in `packages/db`.
 - Prefisso tabelle: `pgTableCreator((name) => \`mito-deutsche_${name}\`)` — definito **due volte** (nei file schema e in `src/server/auth.ts:43` per l'adapter NextAuth).
 
 ## Struttura target
@@ -45,8 +45,7 @@ packages/db/
     ├── index.ts             # export client factory + schema + createTable
     ├── client.ts
     ├── table-creator.ts
-    ├── schema/              # spostato invariato (eccetto i 2 fix import)
-    └── seeds/
+    └── schema/              # spostato invariato (eccetto i 2 fix import)
 ```
 
 ## Step operativi
@@ -67,8 +66,6 @@ packages/db/
        "db:migrate": "drizzle-kit migrate",
        "db:push": "drizzle-kit push",
        "db:studio": "drizzle-kit studio",
-       "seed": "tsx src/seeds/index.ts",
-       "seed:delete": "tsx src/seeds/delete.ts",
        "typecheck": "tsc --noEmit"
      },
      "dependencies": {
@@ -135,15 +132,12 @@ packages/db/
    ```
    Niente più password separata. Rimuovere `drizzle.config.ts` e gli script `db:*` da `apps/web-legacy` (in F1.T3).
 
-7. Seeds: `git mv` in `src/seeds/`, sostituire `loadEnv()` con `config({ path: ".env" })` di dotenv (il package ha il suo `.env` locale, vedi `.env.example`) e il vecchio import del client con `createDb(process.env.DATABASE_URL!)`. I seeds restano **solo dev/test**: aggiungere un guard che rifiuta di girare se la URL non contiene `localhost` o un flag esplicito `ALLOW_SEED=true`.
-
-8. `src/index.ts`: `export * from "./schema"`, `export { createDb, type Database } from "./client"`, `export { createTable } from "./table-creator"`.
+7. `src/index.ts`: `export * from "./schema"`, `export { createDb, type Database } from "./client"`, `export { createTable } from "./table-creator"`.
 
 ## Verifica
 
 - [ ] `pnpm --filter @mito/db typecheck` verde.
 - [ ] Contro il Postgres Docker locale (F1.T1): `pnpm --filter @mito/db db:migrate` applica la migrazione esistente; poi `db:generate` risponde "No schema changes" (schema ↔ migrazioni allineati, inclusi i 2 fix import che NON devono cambiare il DDL).
-- [ ] `pnpm --filter @mito/db seed` popola il DB locale; `seed:delete` lo svuota; il guard blocca l'esecuzione contro un host remoto.
 - [ ] `git diff` sulle migrazioni: nessun byte cambiato.
 
 ## Note di esecuzione
