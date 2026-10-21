@@ -15,8 +15,23 @@
 -- without an operator of their own (cases (b) and (c) of the script; only the
 -- owner decides (b)). task.updated_at stays as it is (A6): the "Aggiornato"
 -- order doesn't change. Running it again changes nothing.
+--
+-- If it fails, nothing is applied (the migrator runs every pending migration
+-- in one transaction). The command prints no reason: see PLAN.md, T6.7, step 3.
 
--- 1. Without the system operator the rows of the log would have no actor: the
+-- 1. The application writes a customer's operator and its contact's together,
+-- and does it under the lock of the contact. The move below reads the pairs
+-- once: a handover that commits between that read and the UPDATE would be
+-- undone, and the pair split again (the UPDATE rechecks only the contact's own
+-- row, and a handover to the operator the contact already has changes only
+-- the customer). So the table is locked first: writes to task wait (reads
+-- don't), and the guard and the move below see every committed change.
+-- In the release session the index migration before this one already holds a
+-- stronger lock on task until the COMMIT, so this changes nothing there.
+LOCK TABLE "mito-deutsche_task" IN EXCLUSIVE MODE;
+--> statement-breakpoint
+
+-- 2. Without the system operator the rows of the log would have no actor: the
 -- migration stops instead, and rolls back with the others of the same run.
 DO $$
 BEGIN
@@ -35,14 +50,10 @@ BEGIN
 END $$;
 --> statement-breakpoint
 
--- 2. One statement: "to_move" reads the old operator (an UPDATE ... RETURNING
+-- 3. One statement: "to_move" reads the old operator (an UPDATE ... RETURNING
 -- would give only the new one, and the log wants both), and the UPDATE and the
--- INSERT both start from it, so they see the same rows.
---
--- The migration can run while operators work. A contact whose operator
--- changed after "to_move" was read (a handover or an assignment that
--- committed meanwhile, and moved the customer too) no longer has the operator
--- the UPDATE expects: it is skipped, and "moved" keeps it out of the log.
+-- INSERT both start from it, so they see the same rows. The log gets a row
+-- for each contact the UPDATE returned.
 WITH "to_move" AS (
   SELECT
     t."id" AS "task_id",
@@ -60,7 +71,6 @@ WITH "to_move" AS (
   SET "operator_id" = m."to_operator_id"
   FROM "to_move" m
   WHERE t."id" = m."task_id"
-    AND t."operator_id" IS NOT DISTINCT FROM m."from_operator_id"
   RETURNING t."id"
 )
 INSERT INTO "mito-deutsche_task_event_log" (

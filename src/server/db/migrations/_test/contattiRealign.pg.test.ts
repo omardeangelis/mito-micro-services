@@ -1,4 +1,4 @@
-import { readFileSync } from "fs"
+import { readdirSync, readFileSync } from "fs"
 import path from "path"
 import { beforeAll, beforeEach, describe, expect, it } from "vitest"
 import { asc, eq } from "drizzle-orm"
@@ -9,12 +9,11 @@ import {
   hasTestDatabase,
   holdCustomerLock,
   migrateUpTo,
-  pgDb,
   pgClient,
+  pgDb,
   resetDb,
   waitUntilBlocked,
 } from "@/test/pg"
-import { REALIGN_SCHEMA_TAG } from "@/test/db"
 import {
   createCustomer,
   createOperator,
@@ -22,22 +21,59 @@ import {
   createTask,
 } from "@/test/factories"
 
-// The realignment can run while operators work. On a real Postgres, a handover
-// that commits after the migration read its rows (the customer on A, the
-// contact on B) but before it updated them leaves the pair on the new
-// operator: the migration skips that contact and writes no row for it. PGlite
-// has one connection and can't show it.
+// The realignment while operators work, on a real Postgres (PGlite has one
+// connection and can't show it). The migration is run again on a database that
+// has it, statement by statement in one transaction as the migrator does, and
+// a colleague's call that has not committed yet is waiting on it.
+//
+// In the release session the index migration before this one already holds an
+// ACCESS EXCLUSIVE lock on task until the COMMIT, so no write to task gets in
+// between. These tests are for the migration run alone, where its own first
+// statement (LOCK TABLE) is what keeps a handover that commits after the move
+// read its rows from being undone.
 
-const MIGRATION = path.resolve(__dirname, `../${REALIGN_SCHEMA_TAG}.sql`)
+const MIGRATIONS = path.resolve(__dirname, "..")
+const statements = readFileSync(
+  path.join(
+    MIGRATIONS,
+    readdirSync(MIGRATIONS).find((file) =>
+      file.endsWith("_contatti_contact_realign.sql")
+    )!
+  ),
+  "utf8"
+).split("--> statement-breakpoint")
 
-/** The statement that moves the contacts and writes the log (the second). */
-const moveStatement = () => {
-  const statements = readFileSync(MIGRATION, "utf8").split(
-    "--> statement-breakpoint"
-  )
-  expect(statements).toHaveLength(2)
-  return statements[1]!
+/** The migration as the migrator runs it: every statement, one transaction. */
+const runMigration = () =>
+  pgClient.begin(async (tx) => {
+    for (const statement of statements) await tx.unsafe(statement)
+  })
+
+async function seedOperators() {
+  const anna = await createOperator({ name: "Anna" })
+  const system = await createSystemOperator()
+  const bruno = await createOperator({ name: "Bruno" })
+  const xavier = await createOperator({ name: "Xavier" })
+  return { anna, system, bruno, xavier }
 }
+
+/**
+ * Starts the migration while `colleague` holds its locks, waits until it is
+ * queued behind them, then lets the colleague commit and the migration end.
+ */
+async function migrateBehind(colleague: { release: () => Promise<void> }) {
+  const migrating = runMigration()
+  migrating.catch(() => undefined)
+  await waitUntilBlocked(1)
+  await colleague.release()
+  await migrating
+}
+
+const operatorOfTask = async (id: number) =>
+  (await pgDb.select().from(task).where(eq(task.id, id)))[0]!.operatorId
+const operatorOfCustomer = async (id: string) =>
+  (await pgDb.select().from(customers).where(eq(customers.id, id)))[0]!
+    .operatorId
 
 describe.skipIf(!hasTestDatabase)(
   "contatti_contact_realign su Postgres vero",
@@ -50,11 +86,15 @@ describe.skipIf(!hasTestDatabase)(
       await resetDb()
     })
 
+    it("divide in tre istruzioni: il lock, la guardia e lo spostamento", () => {
+      expect(statements).toHaveLength(3)
+      expect(statements[0]).toMatch(
+        /LOCK TABLE "mito-deutsche_task" IN EXCLUSIVE MODE/
+      )
+    })
+
     it("un passaggio di consegne che si chiude mentre la migrazione gira non viene sovrascritto, e non ha una riga di log", async () => {
-      const system = await createSystemOperator()
-      const anna = await createOperator({ name: "Anna" })
-      const bruno = await createOperator({ name: "Bruno" })
-      const xavier = await createOperator({ name: "Xavier" })
+      const { anna, system, bruno, xavier } = await seedOperators()
       const untouched = await createCustomer({ operatorId: anna.id })
       const untouchedTask = await createTask({
         customerId: untouched.id,
@@ -78,26 +118,13 @@ describe.skipIf(!hasTestDatabase)(
         .set({ operatorId: xavier.id })
         .where(eq(task.id, handedOverTask.id))
 
-      // The migration reads the committed rows (the contact of `handedOver` is
-      // still Bruno's, the customer's Anna) and waits for the contact's lock
-      const migrating = Promise.resolve(pgClient.unsafe(moveStatement()))
-      migrating.catch(() => undefined)
-      await waitUntilBlocked(1)
-      await handover.release()
-      await migrating
+      await migrateBehind(handover)
 
-      const rows = await pgDb.select().from(task).orderBy(asc(task.id))
-      const operatorOf = (id: number) =>
-        rows.find((row) => row.id === id)!.operatorId
       // Moved: nothing touched it
-      expect(operatorOf(untouchedTask.id)).toBe(anna.id)
+      expect(await operatorOfTask(untouchedTask.id)).toBe(anna.id)
       // Left as the handover wrote it: the pair is aligned on Xavier
-      expect(operatorOf(handedOverTask.id)).toBe(xavier.id)
-      const [customer] = await pgDb
-        .select()
-        .from(customers)
-        .where(eq(customers.id, handedOver.id))
-      expect(customer!.operatorId).toBe(xavier.id)
+      expect(await operatorOfTask(handedOverTask.id)).toBe(xavier.id)
+      expect(await operatorOfCustomer(handedOver.id)).toBe(xavier.id)
       // The log has the row of the contact that moved, and only that one
       expect(await pgDb.select().from(taskEventLog)).toMatchObject([
         {
@@ -110,6 +137,79 @@ describe.skipIf(!hasTestDatabase)(
           toOperatorId: anna.id,
         },
       ])
+    })
+
+    it("un passaggio di consegne all'operatore che il contatto ha già, che sposta solo il cliente, non viene annullato", async () => {
+      const { anna, bruno } = await seedOperators()
+      const customer = await createCustomer({ operatorId: anna.id })
+      const contact = await createTask({
+        customerId: customer.id,
+        operatorId: bruno.id,
+      })
+
+      // As the handover does: the customer, then the contact, which it only
+      // locks because it is Bruno's already; then the customer moves to Bruno
+      const handover = await holdCustomerLock(customer.id)
+      await handover.db
+        .select()
+        .from(task)
+        .where(eq(task.id, contact.id))
+        .for("update")
+      await handover.db
+        .update(customers)
+        .set({ operatorId: bruno.id })
+        .where(eq(customers.id, customer.id))
+
+      await migrateBehind(handover)
+
+      expect(await operatorOfCustomer(customer.id)).toBe(bruno.id)
+      expect(await operatorOfTask(contact.id)).toBe(bruno.id)
+      expect(await pgDb.select().from(taskEventLog)).toEqual([])
+    })
+
+    it("un contatto riaperto mentre la migrazione gira: quello non attivo resta com'era", async () => {
+      const { anna, bruno, xavier } = await seedOperators()
+      const customer = await createCustomer({ operatorId: anna.id })
+      const closed = await createTask({
+        customerId: customer.id,
+        operatorId: bruno.id,
+        state: "richiamare",
+      })
+
+      // The reopening (AC34) of a customer handed to Xavier: the old contact
+      // becomes inactive and a new active one is created for him
+      const reopening = await holdCustomerLock(customer.id)
+      await reopening.db
+        .update(task)
+        .set({ isActive: false })
+        .where(eq(task.id, closed.id))
+      const [reopened] = await reopening.db
+        .insert(task)
+        .values({
+          customerId: customer.id,
+          operatorId: xavier.id,
+          state: "chiamare",
+          isActive: true,
+        })
+        .returning()
+      await reopening.db
+        .update(customers)
+        .set({ operatorId: xavier.id })
+        .where(eq(customers.id, customer.id))
+
+      await migrateBehind(reopening)
+
+      // History keeps whoever worked it; the new contact is Xavier's, like
+      // the customer
+      expect(await operatorOfTask(closed.id)).toBe(bruno.id)
+      expect(await operatorOfTask(reopened!.id)).toBe(xavier.id)
+      expect(await operatorOfCustomer(customer.id)).toBe(xavier.id)
+      expect(await pgDb.select().from(taskEventLog)).toEqual([])
+      expect(
+        (await pgDb.select().from(task).orderBy(asc(task.id))).map(
+          (row) => row.isActive
+        )
+      ).toEqual([false, true])
     })
   }
 )

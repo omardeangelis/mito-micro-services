@@ -20,10 +20,12 @@ import {
   createTask,
 } from "@/test/factories"
 
-// The PR6 realignment (T6.9) on a database already in use, as `db:migrate:prod`
-// will run it: migrated up to the migration right before it, seeded with
-// active contacts that sit on another operator than their customer, then
-// migrated in one go. The read-only script lists what it will move first.
+// The PR6 realignment (T6.9) on a database already in use, as the release
+// session will leave it: migrated up to the last migration production has
+// (three are pending there: `cron_run`, the index removals and this one),
+// seeded with active contacts that sit on another operator than their
+// customer, then migrated in one go. The read-only script lists what it will
+// move first.
 
 const SCRIPT = path.resolve(
   __dirname,
@@ -34,8 +36,10 @@ const MIGRATION = path.resolve(__dirname, `../${REALIGN_SCHEMA_TAG}.sql`)
 const at = (day: string) => new Date(`2026-10-${day}T09:00:00.000Z`)
 
 async function seedMisaligned() {
-  const system = await createSystemOperator()
+  // The system operator is neither the first nor the last operator: a lookup
+  // by lowest or highest id would find another one
   const anna = await createOperator({ name: "Anna" })
+  const system = await createSystemOperator()
   const bruno = await createOperator({ name: "Bruno" })
   const carla = await createOperator({ name: "Carla" })
 
@@ -50,6 +54,14 @@ async function seedMisaligned() {
     operatorId: bruno.id,
     state: "richiamare",
     closedAt: at("14"),
+    ...dates,
+  })
+  // Its history: an inactive contact of the same customer on the operator the
+  // active one has now. Only the active one moves
+  const differsHistory = await createTask({
+    customerId: differs.id,
+    operatorId: bruno.id,
+    isActive: false,
     ...dates,
   })
   // (a2): the contact has no operator, with and without calls to export
@@ -132,6 +144,7 @@ async function seedMisaligned() {
       noOperatorOpen: noOperatorOpenTask,
       aligned: alignedTask,
       alignedHistory,
+      differsHistory,
       inactive: inactiveTask,
       noCustomerOperator: noCustomerOperatorTask,
       bothEmpty: bothEmptyTask,
@@ -147,6 +160,22 @@ const allCustomers = () =>
 const allEvents = () =>
   testDb.select().from(taskEventLog).orderBy(asc(taskEventLog.id))
 
+/**
+ * The task rows as the database holds them, to the microsecond: Drizzle reads
+ * timestamps to the millisecond. `rest` is the row without the operator.
+ */
+async function rawTasks() {
+  const { rows } = await testClient.query<{
+    id: number
+    row: string
+    rest: string
+  }>(
+    `SELECT id, to_jsonb(t)::text AS row, (to_jsonb(t) - 'operator_id')::text AS rest
+     FROM "mito-deutsche_task" t ORDER BY id`
+  )
+  return new Map(rows.map((row) => [row.id, row]))
+}
+
 /** The counts and the list of the read-only script, as it stands now. */
 async function runScript() {
   const [counts, , list] = await queryReadOnly(readFileSync(SCRIPT, "utf8"))
@@ -158,6 +187,7 @@ let seed: Awaited<ReturnType<typeof seedMisaligned>>
 let preview: Awaited<ReturnType<typeof runScript>>
 let before: {
   tasks: Awaited<ReturnType<typeof allTasks>>
+  raw: Awaited<ReturnType<typeof rawTasks>>
   customers: Awaited<ReturnType<typeof allCustomers>>
   events: Awaited<ReturnType<typeof allEvents>>
 }
@@ -167,6 +197,7 @@ beforeAll(async () => {
   seed = await seedMisaligned()
   before = {
     tasks: await allTasks(),
+    raw: await rawTasks(),
     customers: await allCustomers(),
     events: await allEvents(),
   }
@@ -262,6 +293,10 @@ describe("contatti_contact_realign", () => {
 
       expect(rest).toEqual(oldRest)
       expect(operatorId).not.toBe(oldOperatorId)
+      // To the microsecond, which Drizzle's dates can't tell
+      expect((await rawTasks()).get(moved.id)!.rest).toBe(
+        before.raw.get(moved.id)!.rest
+      )
     }
   })
 
@@ -271,17 +306,22 @@ describe("contatti_contact_realign", () => {
     for (const untouched of [
       tasks.aligned,
       tasks.alignedHistory,
+      tasks.differsHistory,
       tasks.inactive,
       tasks.noCustomerOperator,
       tasks.bothEmpty,
       tasks.orphan,
     ]) {
       expect(await taskAfter(untouched.id)).toEqual(taskBefore(untouched.id))
+      expect((await rawTasks()).get(untouched.id)!.row).toBe(
+        before.raw.get(untouched.id)!.row
+      )
     }
     // No row for any of them in the log, and none for the contact already
     // aligned
     const logged = (await newEvents()).map((row) => row.taskId)
     expect(logged).not.toContain(tasks.aligned.id)
+    expect(logged).not.toContain(tasks.differsHistory.id)
     expect(logged).not.toContain(tasks.inactive.id)
     expect(logged).not.toContain(tasks.noCustomerOperator.id)
     expect(logged).not.toContain(tasks.bothEmpty.id)
@@ -315,7 +355,8 @@ describe("contatti_contact_realign", () => {
     const tasksAfter = await allTasks()
     const eventsAfter = await allEvents()
 
-    await testClient.exec(readFileSync(MIGRATION, "utf8"))
+    // In a transaction, as the migrator runs it (LOCK TABLE needs one)
+    await testClient.exec(`BEGIN;\n${readFileSync(MIGRATION, "utf8")}\nCOMMIT;`)
 
     expect(await allTasks()).toEqual(tasksAfter)
     expect(await allEvents()).toEqual(eventsAfter)
