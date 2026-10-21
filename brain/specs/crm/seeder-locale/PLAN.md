@@ -458,9 +458,9 @@ TB5 e TB6 sono in sequenza perché tutti e due toccano `types.ts`. TB6 lo usa e 
   - un dataset con una riga invalida (FK mancante) fallisce e lascia le righe di prima;
   - con un client il cui `current_database()` restituisce un altro nome (un client finto), si ferma prima del TRUNCATE. Non si crea un database con un altro nome, che sfuggirebbe alla pulizia di `extraDatabase` e al controllo "No test database left" della CI;
   - imposta un `lock_timeout` (per esempio 10 s): con una transazione aperta su una tabella, per esempio da `db:studio` o da psql, si ferma con un messaggio invece di restare appeso.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done (2026-10-21, commit `95bf81a`)
+- **log**: Worker sonnet, una sola passata. 8 test su Postgres, sessione in UTC: AC3, conteggi per tabella, un solo contatto attivo per cliente, id oltre il massimo dopo il seed, rollback su una FK mancante (dump identico), client finto con `current_database()` = `mito_dev` fermato prima della transazione, `lock_timeout` (500 ms nel test) con un altro lock aperto. Scrittura a 10.000 in circa 10 s. `lock_timeout` impostato con `set_config(..., true)`, equivalente a `SET LOCAL` ma con parametro.
+- **files edited/created**: `src/server/db/seeds/local/write.ts`, `_test/write.pg.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a (D9)
