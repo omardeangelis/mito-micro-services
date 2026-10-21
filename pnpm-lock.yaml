@@ -29,7 +29,7 @@ importers:
     dependencies:
       '@auth/drizzle-adapter':
         specifier: ^0.9.0
-        version: 0.9.0(nodemailer@6.9.14)
+        version: 0.9.0(nodemailer@7.0.13)
       '@google-cloud/storage':
         specifier: ^7.22.0
         version: 7.22.0
@@ -188,10 +188,10 @@ importers:
         version: 14.2.35(@babel/core@7.29.7)(@opentelemetry/api@1.10.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       next-auth:
         specifier: ^4.24.15
-        version: 4.24.15(next@14.2.35(@babel/core@7.29.7)(@opentelemetry/api@1.10.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(nodemailer@6.9.14)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        version: 4.24.15(next@14.2.35(@babel/core@7.29.7)(@opentelemetry/api@1.10.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(nodemailer@7.0.13)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       nodemailer:
-        specifier: ^6.9.14
-        version: 6.9.14
+        specifier: ^7.0.13
+        version: 7.0.13
       papaparse:
         specifier: ^5.7.0
         version: 5.7.0
@@ -4965,8 +4965,8 @@ packages:
     resolution: {integrity: sha512-5qr2okC4ItAI0hG5SaV0HoYMpnM/Y6+Oqr7AmPYy/2uEoGvS+GbSKLeRxSS1uAdu59yz0ouzcuXievSgg///WA==}
     engines: {node: '>=18'}
 
-  nodemailer@6.9.14:
-    resolution: {integrity: sha512-Dobp/ebDKBvz91sbtRKhcznLThrKxKt97GI2FAlAyy+fk19j73Uz3sBXolVtmcXjaorivqsbbbjDY+Jkt4/bQA==}
+  nodemailer@7.0.13:
+    resolution: {integrity: sha512-PNDFSJdP+KFgdsG3ZzMXCgquO7I6McjY2vlqILjtJd0hy8wEvtugS9xKRF2NWlPNGxvLCXlTNIae4serI7dinw==}
     engines: {node: '>=6.0.0'}
 
   normalize-path@3.0.0:
@@ -6390,7 +6390,7 @@ snapshots:
       '@csstools/css-tokenizer': 3.0.4
       lru-cache: 10.4.3
 
-  '@auth/core@0.29.0(nodemailer@6.9.14)':
+  '@auth/core@0.29.0(nodemailer@7.0.13)':
     dependencies:
       '@panva/hkdf': 1.2.1
       '@types/cookie': 0.6.0
@@ -6400,11 +6400,11 @@ snapshots:
       preact: 10.11.3
       preact-render-to-string: 5.2.3(preact@10.11.3)
     optionalDependencies:
-      nodemailer: 6.9.14
+      nodemailer: 7.0.13
 
-  '@auth/drizzle-adapter@0.9.0(nodemailer@6.9.14)':
+  '@auth/drizzle-adapter@0.9.0(nodemailer@7.0.13)':
     dependencies:
-      '@auth/core': 0.29.0(nodemailer@6.9.14)
+      '@auth/core': 0.29.0(nodemailer@7.0.13)
     transitivePeerDependencies:
       - '@simplewebauthn/browser'
       - '@simplewebauthn/server'
@@ -11188,7 +11188,7 @@ snapshots:
 
   neo-async@2.6.2: {}
 
-  next-auth@4.24.15(next@14.2.35(@babel/core@7.29.7)(@opentelemetry/api@1.10.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(nodemailer@6.9.14)(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
+  next-auth@4.24.15(next@14.2.35(@babel/core@7.29.7)(@opentelemetry/api@1.10.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(nodemailer@7.0.13)(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
     dependencies:
       '@babel/runtime': 7.25.0
       '@panva/hkdf': 1.2.1
@@ -11203,7 +11203,7 @@ snapshots:
       react-dom: 18.3.1(react@18.3.1)
       uuid: 11.1.1
     optionalDependencies:
-      nodemailer: 6.9.14
+      nodemailer: 7.0.13
 
   next@14.2.35(@babel/core@7.29.7)(@opentelemetry/api@1.10.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
     dependencies:
@@ -11256,7 +11256,7 @@ snapshots:
 
   node-releases@2.0.59: {}
 
-  nodemailer@6.9.14: {}
+  nodemailer@7.0.13: {}
 
   normalize-path@3.0.0: {}
 
