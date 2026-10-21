@@ -6,12 +6,14 @@
 -- before writing the migration (the counts of the first SELECT decide whether
 -- the release can go on), right before the release session (the trace of what
 -- the migration moves) and right after it (expected: a = 0 and b = 0, except
--- the cases the owner accepted in writing).
+-- the cases the owner, Omar, accepted in writing; if not, a code path still
+-- separates customer and contact: open a fix and realign, PLAN T6.9).
 --
 -- The invariant (D26): a customer and its active contact have the same
 -- operator. The migration gives every active contact the operator of its
 -- customer when the customer has one. Two cases it can't decide, and the
--- release stops on either one until the owner has decided in writing:
+-- release stops on either one until the owner (Omar) has decided in writing.
+-- Whoever runs the script sends the counts and the lists to him:
 --   (b) the customer has no operator and the contact has one
 --       (`b` > 0: send the list of SELECT 5);
 --   (a2 exportable) the contact has no operator and the customer has one, with

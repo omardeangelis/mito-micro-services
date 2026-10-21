@@ -3,7 +3,7 @@ import path from "path"
 import { beforeAll, beforeEach, describe, expect, it } from "vitest"
 import { migrateUpTo, queryReadOnly, resetDb, testDb } from "@/test/db"
 import { createCustomer, createOperator, createTask } from "@/test/factories"
-import { task } from "@/server/db/schema/task"
+import { task, taskStatus } from "@/server/db/schema/task"
 
 // The lists saved before the realignment of PR6 (T6.9): the active contacts
 // whose operator differs from the customer's. The counts of its first SELECT
@@ -44,10 +44,12 @@ const ids = (rows: Record<string, unknown>[], column: string) =>
 async function seed(
   customerOperator: { id: number } | null,
   contactOperator: { id: number } | null,
-  contact: Partial<Parameters<typeof createTask>[0]> = {}
+  contact: Partial<Parameters<typeof createTask>[0]> = {},
+  customerValues: Partial<Parameters<typeof createCustomer>[0]> = {}
 ) {
   const customer = await createCustomer({
     operatorId: customerOperator?.id ?? null,
+    ...customerValues,
   })
   const created = await createTask({
     customerId: customer.id,
@@ -137,6 +139,12 @@ describe("contatti-operator-mismatch.sql", () => {
       isActive: true,
     })
     await createTask({ customerId: null, operatorId: bruno.id })
+    await createTask({
+      customerId: null,
+      operatorId: null,
+      state: "app.to",
+      closedAt,
+    })
     // A superseded contact of another operator doesn't count: the active one does
     const withHistory = await createCustomer({ operatorId: anna.id })
     await createTask({
@@ -205,45 +213,118 @@ describe("contatti-operator-mismatch.sql", () => {
   it("nelle liste di (a2) esportabili, (b) e (c) ogni riga porta le colonne che chi decide legge", async () => {
     const anna = await createOperator({ name: "Anna", surname: "Rossi" })
     const bruno = await createOperator({ name: "Bruno", surname: "Verdi" })
-    const a2 = await seed(anna, null, { state: "app.to", closedAt })
-    const b = await seed(null, bruno, { state: "richiamare", closedAt })
-    const c = await seed(null, null, { state: "non interessato", closedAt })
+    // A customer has a full name or only a name and a surname: both are read
+    const withFullName = { fullName: "Carla Neri S.r.l." }
+    const withoutFullName = {
+      name: "Dario",
+      surname: "Bianchi",
+      fullName: null,
+    }
+    const a2 = await seed(
+      anna,
+      null,
+      { state: "app.to", closedAt },
+      withFullName
+    )
+    const a2Plain = await seed(
+      anna,
+      null,
+      { state: "app.to", closedAt },
+      withoutFullName
+    )
+    const b = await seed(
+      null,
+      bruno,
+      { state: "richiamare", closedAt },
+      withFullName
+    )
+    const bPlain = await seed(
+      null,
+      bruno,
+      { state: "richiamare", closedAt },
+      withoutFullName
+    )
+    const c = await seed(
+      null,
+      null,
+      { state: "non interessato", closedAt },
+      withFullName
+    )
+    const cPlain = await seed(
+      null,
+      null,
+      { state: "non interessato", closedAt },
+      withoutFullName
+    )
 
     const { a2Exportable, b: bList, c: cList } = await runScript()
 
-    expect(a2Exportable).toHaveLength(1)
-    expect(a2Exportable[0]).toMatchObject({
-      cliente_id: a2.customer.id,
-      contatto_id: a2.contact.id,
-      stato: "app.to",
-      contattato_il: closedAt,
-      operatore_cliente_id: anna.id,
-      operatore_cliente: "Anna Rossi",
-    })
-    expect(bList).toHaveLength(1)
-    expect(bList[0]).toMatchObject({
-      cliente_id: b.customer.id,
-      contatto_id: b.contact.id,
-      stato: "richiamare",
-      operatore_contatto_id: bruno.id,
-      operatore_contatto: "Bruno Verdi",
-      contattato_il: closedAt,
-      esportabile: true,
-    })
-    expect(cList).toHaveLength(1)
-    expect(cList[0]).toMatchObject({
-      cliente_id: c.customer.id,
-      contatto_id: c.contact.id,
-      stato: "non interessato",
-      contattato_il: closedAt,
-    })
+    const rowOf = (rows: Record<string, unknown>[], id: number) =>
+      rows.find((row) => row.contatto_id === id)
+    expect(a2Exportable).toHaveLength(2)
+    for (const [created, cliente] of [
+      [a2, "Carla Neri S.r.l."],
+      [a2Plain, "Dario Bianchi"],
+    ] as const) {
+      expect(rowOf(a2Exportable, created.contact.id)).toMatchObject({
+        cliente_id: created.customer.id,
+        cliente,
+        stato: "app.to",
+        contattato_il: closedAt,
+        operatore_cliente_id: anna.id,
+        operatore_cliente: "Anna Rossi",
+      })
+    }
+    expect(bList).toHaveLength(2)
+    for (const [created, cliente] of [
+      [b, "Carla Neri S.r.l."],
+      [bPlain, "Dario Bianchi"],
+    ] as const) {
+      expect(rowOf(bList, created.contact.id)).toMatchObject({
+        cliente_id: created.customer.id,
+        cliente,
+        stato: "richiamare",
+        operatore_contatto_id: bruno.id,
+        operatore_contatto: "Bruno Verdi",
+        contattato_il: closedAt,
+        esportabile: true,
+      })
+    }
+    expect(cList).toHaveLength(2)
+    for (const [created, cliente] of [
+      [c, "Carla Neri S.r.l."],
+      [cPlain, "Dario Bianchi"],
+    ] as const) {
+      expect(rowOf(cList, created.contact.id)).toMatchObject({
+        cliente_id: created.customer.id,
+        cliente,
+        stato: "non interessato",
+        contattato_il: closedAt,
+      })
+    }
   })
 
   it("nell'elenco di (a) ogni contatto ha i due operatori e dice se è esportabile e se è senza operatore", async () => {
     const anna = await createOperator({ name: "Anna", surname: "Rossi" })
     const bruno = await createOperator({ name: "Bruno", surname: "Verdi" })
-    const differs = await seed(anna, bruno, { state: "richiamare", closedAt })
-    const noOperator = await seed(anna, null, { state: "app.to", closedAt })
+    const updatedAt = new Date("2026-10-05T10:00:00.000Z")
+    const differs = await seed(
+      anna,
+      bruno,
+      {
+        state: "richiamare",
+        closedAt,
+        createdAt: new Date("2026-09-01T08:00:00.000Z"),
+        updatedAt,
+      },
+      { fullName: "Anna Rossi S.r.l." }
+    )
+    const noOperator = await seed(
+      anna,
+      null,
+      { state: "app.to", closedAt },
+      { name: "Bruno", surname: "Verdi", fullName: null }
+    )
 
     const { list } = await runScript()
 
@@ -252,17 +333,23 @@ describe("contatti-operator-mismatch.sql", () => {
       list.find((r) => r.contatto_id === differs.contact.id)
     ).toMatchObject({
       cliente_id: differs.customer.id,
+      cliente: "Anna Rossi S.r.l.",
       stato: "richiamare",
       operatore_contatto_id: bruno.id,
       operatore_contatto: "Bruno Verdi",
       operatore_cliente_id: anna.id,
       operatore_cliente: "Anna Rossi",
+      contattato_il: closedAt,
+      // The later of the two dates
+      ultima_modifica: updatedAt,
       esportabile: true,
       senza_operatore: false,
     })
     expect(
       list.find((r) => r.contatto_id === noOperator.contact.id)
     ).toMatchObject({
+      // No full name: the name and the surname
+      cliente: "Bruno Verdi",
       operatore_contatto_id: null,
       operatore_contatto: null,
       operatore_cliente_id: anna.id,
@@ -271,14 +358,109 @@ describe("contatti-operator-mismatch.sql", () => {
     })
   })
 
-  it("il riepilogo di (a) è per coppia di operatori e per stato", async () => {
+  it("'esportabile' vale per ogni stato salvo nessuno, se c'è 'Contattato il': anche chiamare, di un contatto riaperto (AC34)", async () => {
     const anna = await createOperator({ name: "Anna" })
     const bruno = await createOperator({ name: "Bruno" })
+    // One contact of each kind for every state; the (b) ones also never closed
+    type Seeded = Awaited<ReturnType<typeof seed>>
+    const created: {
+      state: (typeof taskStatus)[number]
+      exportable: boolean
+      differs: Seeded
+      a2: Seeded
+      b: Seeded
+      bOpen: Seeded
+      c: Seeded
+    }[] = []
+    for (const state of taskStatus) {
+      created.push({
+        state,
+        exportable: state !== "nessuno",
+        differs: await seed(anna, bruno, { state, closedAt }),
+        a2: await seed(anna, null, { state, closedAt }),
+        b: await seed(null, bruno, { state, closedAt }),
+        bOpen: await seed(null, bruno, { state }),
+        c: await seed(null, null, { state, closedAt }),
+      })
+    }
+    const states = taskStatus.length
+    const exportable = taskStatus.filter((state) => state !== "nessuno").length
+
+    const result = await runScript()
+
+    expect(result.counts).toMatchObject({
+      a: 2 * states,
+      a2: states,
+      a2_esportabili: exportable,
+      b: 2 * states,
+      c: exportable,
+    })
+    const flag = (rows: Record<string, unknown>[], id: number) =>
+      rows.find((row) => row.contatto_id === id)?.esportabile
+    for (const { state, exportable, differs, a2, b, bOpen } of created) {
+      // The flag the lists carry follows the state
+      expect(flag(result.list, differs.contact.id), state).toBe(exportable)
+      expect(flag(result.list, a2.contact.id), state).toBe(exportable)
+      expect(flag(result.b, b.contact.id), state).toBe(exportable)
+      // Never closed: not exportable in any state
+      expect(flag(result.b, bOpen.contact.id), state).toBe(false)
+      // The summary counts the exportable ones of each state
+      expect(
+        result.byPair.find(
+          (r) =>
+            r.operatore_contatto_id === bruno.id &&
+            r.operatore_cliente_id === anna.id &&
+            r.stato === state
+        )
+      ).toMatchObject({ contatti: 1, esportabili: exportable ? 1 : 0 })
+    }
+    // The lists of the gate: every state but nessuno, and nothing else
+    const exportableOf = (key: "a2" | "c") =>
+      created.filter((c) => c.exportable).map((c) => c[key].contact.id)
+    expect(ids(result.a2Exportable, "contatto_id")).toEqual(
+      exportableOf("a2").sort()
+    )
+    expect(ids(result.c, "contatto_id")).toEqual(exportableOf("c").sort())
+  })
+
+  it("le liste di (a2) esportabili e di (c) vanno per 'Contattato il' e poi per id", async () => {
+    const anna = await createOperator({ name: "Anna" })
+    const seedClosed = (customerOperator: { id: number } | null, day: number) =>
+      seed(customerOperator, null, {
+        state: "app.to",
+        closedAt: new Date(Date.UTC(2026, 9, day, 9)),
+      })
+    const late = await seedClosed(anna, 3)
+    const early = await seedClosed(anna, 1)
+    const earlyToo = await seedClosed(anna, 1)
+    const lateC = await seedClosed(null, 3)
+    const earlyC = await seedClosed(null, 1)
+    const earlyCToo = await seedClosed(null, 1)
+
+    const { a2Exportable, c } = await runScript()
+
+    expect(a2Exportable.map((r) => r.contatto_id)).toEqual([
+      early.contact.id,
+      earlyToo.contact.id,
+      late.contact.id,
+    ])
+    expect(c.map((r) => r.contatto_id)).toEqual([
+      earlyC.contact.id,
+      earlyCToo.contact.id,
+      lateC.contact.id,
+    ])
+  })
+
+  it("il riepilogo di (a) è per coppia di operatori e per stato", async () => {
+    const anna = await createOperator({ name: "Anna", surname: "Rossi" })
+    const bruno = await createOperator({ name: "Bruno", surname: "Verdi" })
     await seed(anna, bruno, { state: "richiamare", closedAt })
     await seed(anna, bruno, { state: "richiamare" })
     await seed(anna, bruno, { state: "chiamare" })
     await seed(bruno, anna, { state: "chiamare" })
     await seed(bruno, null, { state: "app.to", closedAt })
+    // (b) is not a contact the migration moves: it is not in this summary
+    await seed(null, bruno, { state: "richiamare", closedAt })
     // No state: the export doesn't read it, whatever `closed_at` says
     await seed(anna, bruno, { state: null, closedAt })
     // An inactive contact of another operator is not a mismatch to move
@@ -305,6 +487,24 @@ describe("contatti-operator-mismatch.sql", () => {
           r.stato === state
       )
     expect(byPair).toHaveLength(5)
+    expect(byPair.every((r) => r.operatore_cliente_id !== null)).toBe(true)
+    // Most contacts first, then by the operator of the contact (none last), of
+    // the customer and by state (none last)
+    expect(byPair.map((r) => [r.operatore_contatto_id, r.stato])).toEqual([
+      [bruno.id, "richiamare"],
+      [anna.id, "chiamare"],
+      [bruno.id, "chiamare"],
+      [bruno.id, null],
+      [null, "app.to"],
+    ])
+    expect(row(bruno.id, anna.id, "richiamare")).toMatchObject({
+      operatore_contatto: "Bruno Verdi",
+      operatore_cliente: "Anna Rossi",
+    })
+    expect(row(null, bruno.id, "app.to")).toMatchObject({
+      operatore_contatto: null,
+      operatore_cliente: "Bruno Verdi",
+    })
     // Two `richiamare`, one of them with calls the export counts
     expect(row(bruno.id, anna.id, "richiamare")).toMatchObject({
       contatti: 2,
