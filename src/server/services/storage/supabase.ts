@@ -1,19 +1,22 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { Effect, Layer } from "effect"
-import { DEFAULT_SIGNED_URL_TTL_SECONDS } from "./config"
 import {
+  assertDeletablePrefix,
+  assertMaxBytes,
+  DEFAULT_SIGNED_URL_TTL_SECONDS,
+  Storage,
   StorageDeleteError,
   StorageDownloadError,
   StorageListError,
   StorageNotFoundError,
   StorageSignError,
   StorageUploadError,
-} from "./errors"
-import { Storage, type StorageObjectInfo, type StorageService } from "./storage"
-import { assertDeletablePrefix, assertMaxBytes } from "./validation"
+  type StorageObjectInfo,
+  type StorageService,
+} from "@s-p-a-talo/gcs-storage"
 
 /**
- * Not part of gcs-storage-kit: the Supabase bucket behind the same `Storage`
+ * Not part of @s-p-a-talo/gcs-storage: the Supabase bucket behind the same `Storage`
  * interface, for production until its storage moves to GCS.
  */
 export type SupabaseStorageOptions = {

@@ -10,7 +10,7 @@ if [ -n "$(git status --porcelain --untracked-files=no)" ]; then
   exit 1
 fi
 # What api/Dockerfile copies: an untracked file there would go in the image too
-if [ -n "$(git status --porcelain -- api src package.json pnpm-lock.yaml tsconfig.json)" ]; then
+if [ -n "$(git status --porcelain -- api src package.json pnpm-lock.yaml .npmrc tsconfig.json)" ]; then
   echo "Commit or remove the untracked files in api/ or src/: the tag is the commit" >&2
   exit 1
 fi

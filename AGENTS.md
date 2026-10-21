@@ -13,7 +13,7 @@ spec-driven skill suite live under `brain/` — start with `create-spec`, and re
 
 ## Project guidelines
 
-Package manager is **pnpm 9.9.0** on **Node 22.x**. The Node version is set once, in `engines.node` of `package.json`: Vercel builds and runs the functions on it, and every workflow reads it (`node-version-file: package.json`).
+Package manager is **pnpm 9.9.0** on **Node 22.x**. The private `@s-p-a-talo/*` packages come from GitHub Packages (`.npmrc`): `pnpm install` needs `GITHUB_PACKAGES_TOKEN`, a GitHub token with `read:packages` that sees the org S-P-A-Talo, in the shell, in the workflows (secret of the same name), on Vercel and in Cloud Build (secret `github-packages-token`). The Node version is set once, in `engines.node` of `package.json`: Vercel builds and runs the functions on it, and every workflow reads it (`node-version-file: package.json`).
 
 Every change must pass the gates CI runs on PRs to `dev` and `main` (`.github/workflows/ci.yml`, in this order; build runs alongside test). They are the checks `next build` runs on Vercel before a deploy:
 

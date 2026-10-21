@@ -4,10 +4,9 @@ import { createTestCaller } from "@/test/caller"
 // The bucket is a boundary: one in-memory store shared by every call of this file
 vi.mock("@/server/services/storage/layer", async () => {
   const { Effect, Layer } = await import("effect")
-  // Not the index: it re-exports this module
-  const { Storage } = await import("@/server/services/storage/storage")
-  const { makeMemoryStorageLayer } = await import(
-    "@/server/services/storage/memory"
+  // Not the index: it re-exports the mocked layer
+  const { Storage, makeMemoryStorageLayer } = await import(
+    "@s-p-a-talo/gcs-storage"
   )
   // Built once, so an upload is still there for the next call
   const service = Effect.runSync(

@@ -1,9 +1,7 @@
 # Storage
 
-Copia di `gcs-storage-kit` 0.1.0 (`~/Desktop/lavoro/gcs-storage-kit`, vedi `brain/chore/migrazione-gcp.md`). Un servizio Effect `Storage` con un Layer GCS (`makeGcsStorageLayer`), un Layer in memoria per i test (`makeMemoryStorageLayer`) e una facciata Promise (`createStorageClient`).
+Il servizio Effect `Storage` viene da [`@s-p-a-talo/gcs-storage`](https://github.com/S-P-A-Talo/packages/tree/main/packages/gcs-storage): un Layer GCS (`makeGcsStorageLayer`), un Layer in memoria per i test (`makeMemoryStorageLayer`) e una facciata Promise (`createStorageClient`). Le correzioni al servizio si fanno lì, con un changeset, e arrivano qui aggiornando la versione in `package.json`.
 
-Differenze dall'originale, solo di forma: import senza estensione `.js`, formattazione di questo repo, test in `_test/`.
+Il pacchetto è privato, su GitHub Packages: `pnpm install` legge `.npmrc` e ha bisogno di `GITHUB_PACKAGES_TOKEN` (un token GitHub con `read:packages` che vede l'org S-P-A-Talo) in locale, nella CI, su Vercel e in Cloud Build.
 
-Le correzioni vanno fatte anche nel kit, finché il kit non diventa una dipendenza del progetto.
-
-Solo di MITO, non del kit: `supabase.ts` (il bucket Supabase `mito-storage` dietro la stessa interfaccia, per la prod finché lo storage non passa a GCS) e `layer.ts` (`StorageLive`: GCS con `GCS_BUCKET`, altrimenti Supabase).
+Solo di MITO: `supabase.ts` (il bucket Supabase `mito-storage` dietro la stessa interfaccia, per la prod finché lo storage non passa a GCS) e `layer.ts` (`StorageLive`: GCS con `GCS_BUCKET`, altrimenti Supabase). L'indice riesporta il pacchetto, quindi `@/server/services/storage` resta l'import da usare.

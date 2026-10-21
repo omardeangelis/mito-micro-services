@@ -36,6 +36,8 @@ jobs:
       # nothing native is built
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --ignore-scripts
+        env:
+          GITHUB_PACKAGES_TOKEN: ${{ secrets.GITHUB_PACKAGES_TOKEN }}
       - name: Run update alerts script
         # The domain of the current production deployment. Only this step gets
         # the secret
