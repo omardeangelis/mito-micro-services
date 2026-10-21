@@ -598,9 +598,9 @@ TB5 e TB6 sono in sequenza perché tutti e due toccano `types.ts`. TB6 lo usa e 
     - `cleanup` con almeno 1.000 righe cancellate.
   - Misura la durata del job Test in CI. La CI gira solo sulle PR verso `dev` e `main`, quindi la PR B va aperta in bozza. La misura definitiva si prende quando anche TB9 è sulla branch, per contare i suoi test. Se il job supera i 7 minuti, TB10 alza `timeout-minutes` e scrive la durata nel log del task.
 - **validation**: il test passa in CI e risulta eseguito, non saltato; la durata del job è nel log del task.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: In progress: test fatto (commit `6f7c841`), manca la misura con TB9 sulla branch
+- **log**: Il test è passato al primo lancio: il codice di TB2–TB8 bastava, quindi non c'è stata una fase rossa (scritto dall'orchestratore, senza worker). Locale: 23 s. CI sulla [PR #56](https://github.com/omardeangelis/mito-micro-services/pull/56) in bozza, commit `6f7c841`: `fullRun.pg.test.ts` eseguito in 17 s, non saltato; job Test 4 min 20 s (151 file, 2.473 test), sotto i 7 minuti: `timeout-minutes` resta 10.
+- **files edited/created**: `src/server/db/seeds/local/_test/fullRun.pg.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a (D9)
