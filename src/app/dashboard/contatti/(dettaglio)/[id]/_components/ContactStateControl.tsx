@@ -10,7 +10,7 @@ import {
   useContactMutationFeedback,
 } from "@/components/custom/contact/useContactMutationFeedback"
 import { useSavingUntilRefreshed } from "@/components/custom/contact/useSavingUntilRefreshed"
-import { type TaskStatus } from "@/lib/types/schemas"
+import { type TaskStatus } from "@mito/domain/schemas"
 import { api } from "@/trpc/react"
 import { detailHrefFromDa } from "../../../_lib/detailHrefFromDa"
 import { useContactSheet } from "../../_components/ContactSheet"

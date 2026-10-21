@@ -1,6 +1,6 @@
 import { create } from "zustand"
 import { createSelectors } from "@/store/createSelectors"
-import { type OperatorWithRole } from "@/lib/types/schemas"
+import { type OperatorWithRole } from "@mito/domain/schemas"
 
 type OperatorItem = Pick<OperatorWithRole, "id" | "role">
 

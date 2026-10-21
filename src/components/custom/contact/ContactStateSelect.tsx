@@ -6,8 +6,8 @@ import { ChevronDown } from "lucide-react"
 import { TaskStatusBadge } from "@/components/custom/badge/TaskStatusBadge"
 import { LoadingSpinner } from "@/components/custom/loading-spinner"
 import { Button } from "@/components/ui/button"
-import { selectableStates } from "@/lib/domain/contact/status"
-import { type TaskStatus } from "@/lib/types/schemas"
+import { selectableStates } from "@mito/domain/contact/status"
+import { type TaskStatus } from "@mito/domain/schemas"
 
 type ContactStateSelectProps = {
   /** The saved state, `null` for a contact that has none (shown as `nessuno`). */

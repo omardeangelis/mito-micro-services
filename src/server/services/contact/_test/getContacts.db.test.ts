@@ -1,5 +1,5 @@
 import { beforeAll, beforeEach, describe, expect, it } from "vitest"
-import { type GetContactsInput } from "@/lib/domain/contact/listInput"
+import { type GetContactsInput } from "@mito/domain/contact/listInput"
 import { createTestCaller } from "@/test/caller"
 import { migrateUpTo, resetDb, tasksOf } from "@/test/db"
 import {

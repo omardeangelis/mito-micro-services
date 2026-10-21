@@ -5,8 +5,8 @@ import {
   type Actor,
   contactEditability,
   type OperatorRef,
-} from "@/lib/domain/contact/permissions"
-import { type Alert, type Task } from "@/lib/types/schemas"
+} from "@mito/domain/contact/permissions"
+import { type Alert, type Task } from "@mito/domain/schemas"
 import { customers } from "@mito/db/schema/customers"
 import { operators } from "@mito/db/schema/operators"
 import { alert, task } from "@mito/db/schema/task"

@@ -1,6 +1,6 @@
 import { operatorProcedure } from "@/server/api/trpc"
-import { insertMessageSchema } from "@/lib/types/schemas"
-import { insertChatToOperatorSchema } from "@/lib/types/schemas"
+import { insertMessageSchema } from "@mito/domain/schemas"
+import { insertChatToOperatorSchema } from "@mito/domain/schemas"
 import { chatToOperator } from "@mito/db/schema/index"
 import { chat, messages } from "@mito/db/schema/index"
 import { eq } from "drizzle-orm"

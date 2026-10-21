@@ -1,4 +1,4 @@
-import { getContactsInput } from "@/lib/domain/contact/listInput"
+import { getContactsInput } from "@mito/domain/contact/listInput"
 import { type ContactsListState } from "./searchParams"
 
 type Days = Pick<ContactsListState, "from" | "to">

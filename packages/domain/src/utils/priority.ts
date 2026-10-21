@@ -1,4 +1,4 @@
-import { type TaskStatus } from "../types/schemas"
+import { type TaskStatus } from "../schemas"
 
 export type TaskPriority = {
   id: number

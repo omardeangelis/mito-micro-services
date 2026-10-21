@@ -4,7 +4,10 @@ import { type ServerPageDefaultProps } from "@/lib/types"
 import { CustomersTable } from "./CustomersTable"
 import { CustomerColumns } from "./CustomerColumns"
 import { getUrlParmsWithMultipleValue } from "@/lib/utils"
-import { DEFAULT_PAGE, DEFAULT_PER_PAGE } from "@/lib/constants/pagination"
+import {
+  DEFAULT_PAGE,
+  DEFAULT_PER_PAGE,
+} from "@mito/domain/constants/pagination"
 import { createSQLQuery } from "@/lib/utils/filters"
 import {
   CUSTOMER_FILTER_QUERY_MAP,
@@ -13,7 +16,7 @@ import {
 } from "../_constants"
 import { getTableName } from "drizzle-orm"
 import { customers } from "@mito/db/schema/customers"
-import { parseCustomerSearchBy } from "@/lib/constants/customerSearch"
+import { parseCustomerSearchBy } from "@mito/domain/constants/customerSearch"
 
 const DEFAULT_SORTING = { orderBy: "updatedAt", sortedBy: "desc" } as const
 

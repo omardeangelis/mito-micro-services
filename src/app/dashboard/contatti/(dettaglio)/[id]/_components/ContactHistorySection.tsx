@@ -4,7 +4,7 @@ import Link from "next/link"
 import { useId } from "react"
 
 import { TaskStatusBadge } from "@/components/custom/badge/TaskStatusBadge"
-import { operatorDisplayName } from "@/lib/domain/contact/permissions"
+import { operatorDisplayName } from "@mito/domain/contact/permissions"
 import { formatDateAsDMY } from "@/lib/utils"
 import type { GetContactByIdResult } from "@/server/services/contact/getContactById"
 import { detailHrefFromDa } from "../../../_lib/detailHrefFromDa"

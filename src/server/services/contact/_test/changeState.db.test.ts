@@ -8,8 +8,8 @@ import {
   vi,
 } from "vitest"
 import { asc, eq } from "drizzle-orm"
-import { readContactError } from "@/lib/domain/contact/errors"
-import { type TaskStatus } from "@/lib/types/schemas"
+import { readContactError } from "@mito/domain/contact/errors"
+import { type TaskStatus } from "@mito/domain/schemas"
 import { customers } from "@mito/db/schema/customers"
 import { alert, task } from "@mito/db/schema/task"
 import { taskEventLog } from "@mito/db/schema/taskEventLog"

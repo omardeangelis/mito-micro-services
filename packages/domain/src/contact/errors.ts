@@ -1,4 +1,4 @@
-import type { TaskStatus } from "@/lib/types/schemas"
+import type { TaskStatus } from "../schemas"
 
 /**
  * The codes of the errors the contact and customer services return to the

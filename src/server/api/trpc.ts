@@ -18,9 +18,9 @@ import { driverError } from "@mito/db/driverError"
 import { operators } from "@mito/db/schema/operators"
 import { eq } from "drizzle-orm"
 import { users } from "@mito/db/schema/users"
-import { operatorSelectCompleteResponse } from "@/lib/constants/schema"
+import { operatorSelectCompleteResponse } from "@mito/domain/constants/schema"
 import { supabaseClient } from "../client/supabase"
-import { contactErrorFromCause } from "@/lib/domain/contact/errors"
+import { contactErrorFromCause } from "@mito/domain/contact/errors"
 
 /**
  * 1. CONTEXT

@@ -12,13 +12,13 @@ import {
   toContactsInput,
   withFilterChange,
 } from "@/app/dashboard/contatti/_lib/searchParams"
-import { DEFAULT_PER_PAGE, PER_PAGES } from "@/lib/constants/pagination"
+import { DEFAULT_PER_PAGE, PER_PAGES } from "@mito/domain/constants/pagination"
 import {
   MAX_OPERATOR_IDS,
   getContactsInput,
-} from "@/lib/domain/contact/listInput"
-import { priorityBands } from "@/lib/domain/contact/priority"
-import { allStates } from "@/lib/domain/contact/status"
+} from "@mito/domain/contact/listInput"
+import { priorityBands } from "@mito/domain/contact/priority"
+import { allStates } from "@mito/domain/contact/status"
 
 /** What Next hands a page for an address: its query string, as a record. */
 const toRecord = (query: string) =>

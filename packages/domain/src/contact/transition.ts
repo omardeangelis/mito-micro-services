@@ -1,4 +1,4 @@
-import type { TaskStatus } from "@/lib/types/schemas"
+import type { TaskStatus } from "../schemas"
 import { isAllowedChange, stateCategory } from "./status"
 
 type StateChangeInput = {

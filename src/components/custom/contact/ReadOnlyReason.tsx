@@ -1,5 +1,5 @@
 import { Badge } from "@/components/ui/badge"
-import { type ContactEditability } from "@/lib/domain/contact/permissions"
+import { type ContactEditability } from "@mito/domain/contact/permissions"
 
 type ReadOnlyEditability = Exclude<ContactEditability, { kind: "editable" }>
 

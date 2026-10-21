@@ -8,7 +8,7 @@ import {
   getChatIds,
   readJson,
 } from "./utils"
-import { type Message } from "@/lib/types/schemas"
+import { type Message } from "@mito/domain/schemas"
 import { type DateRangePickerValue } from "@tremor/react"
 
 export const generateCallWorkbook = async (

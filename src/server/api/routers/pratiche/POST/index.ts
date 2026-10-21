@@ -1,7 +1,7 @@
 import {
   insertCustomerToPraticaSchema,
   insertPracticeSchema,
-} from "@/lib/types/schemas"
+} from "@mito/domain/schemas"
 import { protectedProcedure } from "@/server/api/trpc"
 import { practices } from "@mito/db/schema/pratiche"
 import { customerToPratica } from "@mito/db/schema/relations/customerToPratica"

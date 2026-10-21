@@ -1,4 +1,4 @@
-import type { OperatorRef } from "@/lib/domain/contact/permissions"
+import type { OperatorRef } from "@mito/domain/contact/permissions"
 import type { GetContactByIdResult } from "@/server/services/contact/getContactById"
 import { ContactAlertSection } from "./ContactAlertSection"
 import { ContactCallbackForm } from "./ContactCallbackForm"

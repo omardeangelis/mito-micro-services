@@ -1,6 +1,6 @@
 import { protectedProcedure } from "@/server/api/trpc"
 import { customers } from "@mito/db/schema/customers"
-import { insertCustomerSchema } from "@/lib/types/schemas"
+import { insertCustomerSchema } from "@mito/domain/schemas"
 
 export const insertCustomer = protectedProcedure
   .input(insertCustomerSchema)

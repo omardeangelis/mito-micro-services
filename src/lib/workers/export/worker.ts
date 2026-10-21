@@ -1,6 +1,6 @@
 import { type DateRangePickerValue } from "@tremor/react"
 import type { WorkerGenericResponse } from "../../types/workers"
-import { type Operator, type User } from "@/lib/types/schemas"
+import { type Operator, type User } from "@mito/domain/schemas"
 // import {
 //   formatCurrencyColumn,
 //   formatTaskClosedAt,

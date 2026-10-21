@@ -18,9 +18,9 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
-import { canSetCallback } from "@/lib/domain/contact/status"
-import { isDueOrOverdue } from "@/lib/domain/contact/time"
-import { type TaskStatus } from "@/lib/types/schemas"
+import { canSetCallback } from "@mito/domain/contact/status"
+import { isDueOrOverdue } from "@mito/domain/contact/time"
+import { type TaskStatus } from "@mito/domain/schemas"
 import { formatDeadline } from "@/lib/utils/format"
 import { api } from "@/trpc/react"
 import { detailHrefFromDa } from "../../../_lib/detailHrefFromDa"

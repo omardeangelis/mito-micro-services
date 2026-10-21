@@ -1,5 +1,8 @@
-import { getProductLabel, type ProductMapKey } from "@/lib/constants/productMap"
-import { type Customer, type Practice } from "@/lib/types/schemas"
+import {
+  getProductLabel,
+  type ProductMapKey,
+} from "@mito/domain/constants/productMap"
+import { type Customer, type Practice } from "@mito/domain/schemas"
 import * as XLSX from "xlsx"
 import { amountCell, dateCell, numberCell } from "./cells"
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import * as XLSX from "xlsx"
-import { type Customer, type Practice } from "@/lib/types/schemas"
+import { type Customer, type Practice } from "@mito/domain/schemas"
 import { generateDefaultWorkbook } from "../defaultExport"
 
 // The rows as the dialog gets them from fetchDefault: JSON, so decimals and

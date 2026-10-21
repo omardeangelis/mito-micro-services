@@ -3,7 +3,7 @@ import { users } from "@mito/db/schema/users"
 import { operators } from "@mito/db/schema/operators"
 import { eq } from "drizzle-orm"
 import { z } from "zod"
-import { operatorSelectCompleteResponse } from "@/lib/constants/schema"
+import { operatorSelectCompleteResponse } from "@mito/domain/constants/schema"
 
 export const getAllUniqueOperators = protectedProcedure.query(
   async ({ ctx }) => {

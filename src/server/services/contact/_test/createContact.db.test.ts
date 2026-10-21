@@ -8,7 +8,7 @@ import {
   vi,
 } from "vitest"
 import { eq } from "drizzle-orm"
-import { readContactError } from "@/lib/domain/contact/errors"
+import { readContactError } from "@mito/domain/contact/errors"
 import { customers } from "@mito/db/schema/customers"
 import { task } from "@mito/db/schema/task"
 import { taskEventLog } from "@mito/db/schema/taskEventLog"

@@ -15,7 +15,7 @@ import {
 import {
   operatorDisplayName,
   type OperatorRef,
-} from "@/lib/domain/contact/permissions"
+} from "@mito/domain/contact/permissions"
 import { api } from "@/trpc/react"
 import { detailHrefFromDa } from "../../../_lib/detailHrefFromDa"
 import { useContactSheet } from "../../_components/ContactSheet"

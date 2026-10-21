@@ -7,7 +7,7 @@ import { ZodError } from "zod"
 import {
   type ContactErrorData,
   readContactError,
-} from "@/lib/domain/contact/errors"
+} from "@mito/domain/contact/errors"
 import { appRouter } from "@/server/api/root"
 import { createTRPCRouter, publicProcedure } from "@/server/api/trpc"
 import { DbError } from "@/server/effect/db"

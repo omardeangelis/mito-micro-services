@@ -14,7 +14,7 @@ import {
 import {
   type PraticaSearchBy,
   praticaSearchLabels,
-} from "@/lib/constants/praticaSearch"
+} from "@mito/domain/constants/praticaSearch"
 import { X } from "lucide-react"
 import React, { useCallback, useEffect } from "react"
 import { useForm } from "react-hook-form"

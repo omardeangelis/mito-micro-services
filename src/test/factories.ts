@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm"
 import { db } from "@mito/db"
-import { SYSTEM_OPERATOR_USER_ID } from "@/lib/constants/operator"
+import { SYSTEM_OPERATOR_USER_ID } from "@mito/domain/constants/operator"
 import { customers } from "@mito/db/schema/customers"
 import { practices } from "@mito/db/schema/pratiche"
 import { customerToPratica } from "@mito/db/schema/relations/customerToPratica"

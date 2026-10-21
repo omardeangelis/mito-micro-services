@@ -1,7 +1,7 @@
 import { adminProcedure, operatorProcedure } from "@/server/api/trpc"
 import { operators } from "@mito/db/schema/operators"
 import { eq, inArray } from "drizzle-orm"
-import { insertOperatorSchema } from "@/lib/types/schemas"
+import { insertOperatorSchema } from "@mito/domain/schemas"
 import { z } from "zod"
 import { users } from "@mito/db/schema/users"
 

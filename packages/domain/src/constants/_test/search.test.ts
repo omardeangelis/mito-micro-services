@@ -1,9 +1,6 @@
 import { describe, expect, it } from "vitest"
-import {
-  customerSearchBy,
-  parseCustomerSearchBy,
-} from "@/lib/constants/customerSearch"
-import { parsePraticaSearchBy } from "@/lib/constants/praticaSearch"
+import { customerSearchBy, parseCustomerSearchBy } from "../customerSearch"
+import { parsePraticaSearchBy } from "../praticaSearch"
 
 // Come le pagine Clienti e Pratiche leggono `search_by` dall'URL
 

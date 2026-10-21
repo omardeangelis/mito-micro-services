@@ -1,9 +1,9 @@
 import "server-only"
 import { Effect } from "effect"
 import { eq } from "drizzle-orm"
-import { type Actor } from "@/lib/domain/contact/permissions"
-import { canSetCallback } from "@/lib/domain/contact/status"
-import { isDueOrOverdue } from "@/lib/domain/contact/time"
+import { type Actor } from "@mito/domain/contact/permissions"
+import { canSetCallback } from "@mito/domain/contact/status"
+import { isDueOrOverdue } from "@mito/domain/contact/time"
 import { alert, task } from "@mito/db/schema/task"
 import { taskEventLog } from "@mito/db/schema/taskEventLog"
 import {

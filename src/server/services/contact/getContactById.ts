@@ -6,7 +6,7 @@ import {
   canReassign,
   contactEditability,
   type ContactEditability,
-} from "@/lib/domain/contact/permissions"
+} from "@mito/domain/contact/permissions"
 import { customers } from "@mito/db/schema/customers"
 import { operators } from "@mito/db/schema/operators"
 import { alert, task } from "@mito/db/schema/task"

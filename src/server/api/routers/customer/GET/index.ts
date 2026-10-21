@@ -22,14 +22,14 @@ import { TRPCError } from "@trpc/server"
 import { Effect } from "effect"
 import { practices } from "@mito/db/schema/pratiche"
 import { operators } from "@mito/db/schema/operators"
-import { type SupaBaseDb } from "@/lib/types"
+import { type SupaBaseDb } from "@mito/db/types"
 import { type PgColumn } from "drizzle-orm/pg-core"
 import { type Db, type DbError, query } from "@/server/effect/db"
 import { runTrpc } from "@/server/effect/trpc"
 import {
   type CustomerSearchBy,
   customerSearchBy,
-} from "@/lib/constants/customerSearch"
+} from "@mito/domain/constants/customerSearch"
 import { containsPattern } from "../../utils"
 
 const getCustomerByIdInput = z.object({

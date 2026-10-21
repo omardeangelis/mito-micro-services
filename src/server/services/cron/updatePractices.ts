@@ -1,7 +1,7 @@
 import { eq, sql } from "drizzle-orm"
 import { db } from "@mito/db"
 import { practices } from "@mito/db/schema/pratiche"
-import { DAYS_PER_RATE } from "@/lib/constants/practice"
+import { DAYS_PER_RATE } from "@mito/domain/constants/practice"
 
 /**
  * The `update` cron: adds the rate due `today` (yyyy-MM-dd) to the practices

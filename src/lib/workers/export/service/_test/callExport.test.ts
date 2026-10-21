@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 import * as XLSX from "xlsx"
 import { generateCallWorkbook } from "../callExport"
 import { type FetchTask, formatMessages, formatTaskClosedAt } from "../utils"
-import { type Message } from "@/lib/types/schemas"
+import { type Message } from "@mito/domain/schemas"
 
 // The rows as the dialog gets them from fetchCall, and the notes it then asks
 // getMessages for.

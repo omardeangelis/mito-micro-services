@@ -17,11 +17,11 @@ import {
   type SQL,
   type SQLWrapper,
 } from "drizzle-orm"
-import { type ContactsFilters } from "@/lib/domain/contact/listInput"
-import { type Actor } from "@/lib/domain/contact/permissions"
-import { bandRange } from "@/lib/domain/contact/priority"
-import { romeDayBounds } from "@/lib/domain/contact/time"
-import { type TaskStatus } from "@/lib/types/schemas"
+import { type ContactsFilters } from "@mito/domain/contact/listInput"
+import { type Actor } from "@mito/domain/contact/permissions"
+import { bandRange } from "@mito/domain/contact/priority"
+import { romeDayBounds } from "@mito/domain/contact/time"
+import { type TaskStatus } from "@mito/domain/schemas"
 import { customers, type blackListStatus } from "@mito/db/schema/customers"
 import { operators } from "@mito/db/schema/operators"
 import { alert, task } from "@mito/db/schema/task"

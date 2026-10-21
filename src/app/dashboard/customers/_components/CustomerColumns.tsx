@@ -21,7 +21,7 @@ import { cn, formatDateAsDMY } from "@/lib/utils"
 import { SortableHeader } from "@/components/custom/table/TableHeaders"
 import { seeContactsHref } from "@/app/dashboard/contatti/_lib/searchParams"
 import { handleCustomerBlackList } from "../_actions/handleCustomerBlackList"
-import { type Customer } from "@/lib/types/schemas"
+import { type Customer } from "@mito/domain/schemas"
 
 export type CustomerColumnSelectedProps = {
   id: string | null

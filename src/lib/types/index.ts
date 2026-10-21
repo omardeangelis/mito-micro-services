@@ -1,5 +1,3 @@
-import type { PostgresJsDatabase } from "drizzle-orm/postgres-js"
-
 export type ServerPageDefaultProps = {
   params: { slug: string }
   searchParams?: Record<string, string | string[] | undefined>
@@ -25,7 +23,4 @@ export type NullableAllObjectKeys<T> = {
   [K in keyof T]: Nullable<T[K]>
 }
 
-export type SupaBaseDb = PostgresJsDatabase<
-  // eslint-disable-next-line @typescript-eslint/consistent-type-imports
-  typeof import("@mito/db/schema/index")
->
+export type { SupaBaseDb } from "@mito/db/types"

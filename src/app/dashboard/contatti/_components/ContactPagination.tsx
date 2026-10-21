@@ -16,7 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { PER_PAGES } from "@/lib/constants/pagination"
+import { PER_PAGES } from "@mito/domain/constants/pagination"
 import { listHref } from "../_lib/listHref"
 import { withFilterChange, type ContactsListState } from "../_lib/searchParams"
 import { useContactsNavigation } from "./ContactsListShell"

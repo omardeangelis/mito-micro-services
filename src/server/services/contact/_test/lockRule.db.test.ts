@@ -9,7 +9,7 @@ import {
 } from "vitest"
 import { Cause, Exit } from "effect"
 import { eq } from "drizzle-orm"
-import { type TaskStatus } from "@/lib/types/schemas"
+import { type TaskStatus } from "@mito/domain/schemas"
 import { messages } from "@mito/db/schema/chat"
 import { customers } from "@mito/db/schema/customers"
 import { chatToOperator } from "@mito/db/schema/relations/chatToOperator"

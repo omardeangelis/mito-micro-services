@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation"
 import {
   type CustomerSearchBy,
   parseCustomerSearchBy,
-} from "@/lib/constants/customerSearch"
+} from "@mito/domain/constants/customerSearch"
 
 /**
  * Stato della ricerca nella pagina Clienti.

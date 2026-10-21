@@ -1,4 +1,4 @@
-import type { TaskCategory, TaskStatus } from "@/lib/types/schemas"
+import type { TaskCategory, TaskStatus } from "../schemas"
 
 /** The states that put the contact in the call queue. */
 export const callStates = [

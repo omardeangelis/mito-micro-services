@@ -2,7 +2,7 @@
 import * as schema from "@mito/db/schema/index"
 import { drizzle } from "drizzle-orm/postgres-js"
 import { loadEnv } from "@/lib/global/loadDbEnv"
-import { SYSTEM_OPERATOR_USER_ID } from "@/lib/constants/operator"
+import { SYSTEM_OPERATOR_USER_ID } from "@mito/domain/constants/operator"
 import { eq } from "drizzle-orm"
 import postgres from "postgres"
 

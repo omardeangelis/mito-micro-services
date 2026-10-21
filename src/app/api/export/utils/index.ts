@@ -1,5 +1,5 @@
 import type * as XLSX from "xlsx"
-import { type Message } from "@/lib/types/schemas"
+import { type Message } from "@mito/domain/schemas"
 import { type ZodIssue } from "zod"
 import { type StandardImportFile, type WaveFile } from "../../import/_types"
 

@@ -1,7 +1,7 @@
 import "server-only"
 import { Effect } from "effect"
 import { and, eq, inArray, not } from "drizzle-orm"
-import { calculatePriority } from "@/lib/utils/priority"
+import { calculatePriority } from "@mito/domain/utils/priority"
 import { practices } from "@mito/db/schema/pratiche"
 import { customerToPratica } from "@mito/db/schema/relations/customerToPratica"
 import { alert as alerts, task as tasks } from "@mito/db/schema/task"

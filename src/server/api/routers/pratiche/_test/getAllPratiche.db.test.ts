@@ -6,7 +6,7 @@ import {
   createOperator,
   createPractice,
 } from "@/test/factories"
-import { type PraticaSearchBy } from "@/lib/constants/praticaSearch"
+import { type PraticaSearchBy } from "@mito/domain/constants/praticaSearch"
 
 // La ricerca della pagina Pratiche (`?q=…&search_by=…`)
 

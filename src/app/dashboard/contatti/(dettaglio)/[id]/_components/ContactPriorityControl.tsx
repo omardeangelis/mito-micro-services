@@ -13,7 +13,7 @@ import {
   bandOf,
   priorityBands,
   type PriorityBand,
-} from "@/lib/domain/contact/priority"
+} from "@mito/domain/contact/priority"
 import { api } from "@/trpc/react"
 import { detailHrefFromDa } from "../../../_lib/detailHrefFromDa"
 import { priorityLabels } from "../../../_lib/priorityLabels"

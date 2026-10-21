@@ -2,7 +2,7 @@
 import type * as schema from "@mito/db/schema/index"
 import { products } from "@mito/db/schema/index"
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js"
-import { productMap } from "../../../lib/constants/productMap"
+import { productMap } from "@mito/domain/constants/productMap"
 import { loadEnv } from "@/lib/global/loadDbEnv"
 
 loadEnv()

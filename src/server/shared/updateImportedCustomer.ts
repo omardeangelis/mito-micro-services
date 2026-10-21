@@ -1,8 +1,8 @@
 import { customers } from "@mito/db/schema/customers"
 import { eq, or } from "drizzle-orm"
 import { type PgUpdateSetSource } from "drizzle-orm/pg-core"
-import { type SupaBaseDb } from "@/lib/types"
-import { type CustomerWrite } from "@/lib/types/schemas"
+import { type SupaBaseDb } from "@mito/db/types"
+import { type CustomerWrite } from "@mito/domain/schemas"
 
 type UpdateImportedCustomerParams = {
   db: SupaBaseDb
