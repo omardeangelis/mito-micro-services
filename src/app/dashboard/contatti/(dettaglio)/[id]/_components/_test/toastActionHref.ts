@@ -9,8 +9,7 @@ export const lastToastActionHref = (toast: {
   mock: { calls: unknown[][] }
 }): string | undefined => {
   const options = toast.mock.calls.at(-1)?.[0] as
-    | { action?: unknown }
-    | undefined
+    { action?: unknown } | undefined
   const action = options?.action
   if (!isValidElement(action)) return undefined
   const { children } = (action as ReactElement<{ children?: unknown }>).props
