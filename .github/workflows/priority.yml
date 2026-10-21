@@ -27,6 +27,8 @@ jobs:
       # nothing native is built
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --ignore-scripts
+        env:
+          GITHUB_PACKAGES_TOKEN: ${{ secrets.GITHUB_PACKAGES_TOKEN }}
       - name: Run update priority script
         # Staging: its own secret, and the bypass of Vercel's protection. Only
         # this step gets them

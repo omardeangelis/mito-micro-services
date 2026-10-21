@@ -8,7 +8,7 @@ import {
   makeSupabaseStorageLayer,
   type SupabaseStorageOptions,
 } from "../supabase"
-import { Storage, type StorageService } from "../storage"
+import { Storage, type StorageService } from "@s-p-a-talo/gcs-storage"
 
 // Every call the layer makes to Supabase lands in these mocks: no network.
 const supabase = vi.hoisted(() => ({ createClient: vi.fn() }))

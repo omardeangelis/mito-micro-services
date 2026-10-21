@@ -1,16 +1,18 @@
 import { createClient } from "@supabase/supabase-js"
 import { Config, Effect, Layer, Option } from "effect"
-import { storageConfigFromEnv } from "./config"
-import type { StorageConfigError } from "./errors"
-import { makeGcsStorageLayer } from "./gcs"
-import type { Storage } from "./storage"
+import {
+  makeGcsStorageLayer,
+  storageConfigFromEnv,
+  type Storage,
+  type StorageConfigError,
+} from "@s-p-a-talo/gcs-storage"
 import { makeSupabaseStorageLayer } from "./supabase"
 
 /** The Supabase bucket that holds MITO's files until storage moves to GCS. */
 export const SUPABASE_BUCKET = "mito-storage"
 
 /**
- * Not part of gcs-storage-kit: MITO's storage. With `GCS_BUCKET` set it is
+ * Not part of @s-p-a-talo/gcs-storage: MITO's storage. With `GCS_BUCKET` set it is
  * that GCS bucket (staging on Cloud Run), otherwise the Supabase bucket with
  * `NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_KEY`. The environment is read when
  * the layer is built, never on import.

@@ -12,6 +12,9 @@ export default defineConfig({
     // Server tests on the in-memory database (src/test/db.ts)
     environmentMatchGlobs: [["**/*.db.test.ts", "node"]],
     setupFiles: ["src/test/setup.ts"],
+    // Through Vite like the code under src/, so vi.mock reaches the clients it
+    // imports (@google-cloud/storage)
+    server: { deps: { inline: ["@s-p-a-talo/gcs-storage"] } },
     env: { TZ: "UTC", SKIP_ENV_VALIDATION: "true" },
     coverage: {
       // you can include other reporters, but 'json-summary' is required, json is recommended

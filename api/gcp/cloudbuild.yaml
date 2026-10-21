@@ -2,7 +2,23 @@
 # Registry. Started by api/gcp/build.sh, as the mito-crm-build service account
 steps:
   - name: gcr.io/cloud-builders/docker
-    args: ["build", "-f", "api/Dockerfile", "-t", "${_IMAGE}", "."]
+    # BuildKit, for the secret the Dockerfile mounts on pnpm install
+    env: ["DOCKER_BUILDKIT=1"]
+    secretEnv: ["GITHUB_PACKAGES_TOKEN"]
+    args:
+      - build
+      - --secret
+      - id=github_packages_token,env=GITHUB_PACKAGES_TOKEN
+      - -f
+      - api/Dockerfile
+      - -t
+      - ${_IMAGE}
+      - .
+# A GitHub token with read:packages, for the private @s-p-a-talo packages
+availableSecrets:
+  secretManager:
+    - versionName: projects/mito-crm/secrets/github-packages-token/versions/latest
+      env: GITHUB_PACKAGES_TOKEN
 images: ["${_IMAGE}"]
 serviceAccount: projects/mito-crm/serviceAccounts/mito-crm-build@mito-crm.iam.gserviceaccount.com
 options:

@@ -36,6 +36,8 @@ jobs:
           cache: pnpm
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+        env:
+          GITHUB_PACKAGES_TOKEN: ${{ secrets.GITHUB_PACKAGES_TOKEN }}
       # Same ESLint run as next build; `pnpm lint:dev` fixes what it reports
       - name: ESLint
         run: pnpm exec next lint
@@ -72,6 +74,8 @@ jobs:
           cache: pnpm
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+        env:
+          GITHUB_PACKAGES_TOKEN: ${{ secrets.GITHUB_PACKAGES_TOKEN }}
       # `pnpm test --run` fails: pnpm reads --run as its own option
       - name: Vitest
         run: pnpm run test --run
@@ -94,6 +98,8 @@ jobs:
           cache: pnpm
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+        env:
+          GITHUB_PACKAGES_TOKEN: ${{ secrets.GITHUB_PACKAGES_TOKEN }}
       # Without SENTRY_AUTH_TOKEN no source maps are uploaded
       - name: Next build
         run: pnpm build
