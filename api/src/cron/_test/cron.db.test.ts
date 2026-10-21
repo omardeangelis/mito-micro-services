@@ -8,8 +8,8 @@ import {
   it,
   vi,
 } from "vitest"
-import { Duration, Effect, Layer } from "effect"
-import { eq } from "drizzle-orm"
+import { Cause, Duration, Effect, Layer, Option } from "effect"
+import { eq, getTableName } from "drizzle-orm"
 import { Hono } from "hono"
 import {
   createLocalJWKSet,
@@ -22,9 +22,18 @@ import {
 import { customers } from "@/server/db/schema/customers"
 import { cronRun } from "@/server/db/schema/cronRun"
 import { practices } from "@/server/db/schema/pratiche"
+import { taskEventLog } from "@/server/db/schema/taskEventLog"
 import { ServerLive } from "@/server/effect/server"
-import { migrateUpTo, resetDb, testDb } from "@/test/db"
+import { failureTag } from "@/test/effect"
+import {
+  FAILPOINT_SCHEMA,
+  migrateUpTo,
+  resetDb,
+  testClient,
+  testDb,
+} from "@/test/db"
 import { reportedErrors } from "@/test/errorReporter"
+import { failNextUpdateOf } from "@/test/failpoint"
 import { createCustomer, createPractice } from "@/test/factories"
 import { cronAuth, cronAuthDisabled } from "../auth"
 import { alertJob, type CronJob, cronJobs } from "../jobs"
@@ -370,6 +379,70 @@ describe("cron del backend: una volta al giorno", () => {
       age: 41,
       ratePagate: 13,
       debitoResiduo: 8810,
+    })
+  })
+})
+
+describe("cron del backend: un errore del database", () => {
+  /** Runs the job of `cronJobs` as the routes do, and returns its error. */
+  const failureOf = async (job: string) => {
+    const exit = await Effect.runPromiseExit(
+      cronJobs[job]!.run.pipe(Effect.provide(ServerLive))
+    )
+    expect(failureTag(exit)).toBe("CronStepFailed")
+    return exit._tag === "Failure"
+      ? (Cause.failureOption(exit.cause).pipe(Option.getOrThrow) as {
+          step: string
+          cause: { _tag?: string }
+        })
+      : undefined
+  }
+
+  it.each([
+    ["updatePractices", () => failNextUpdateOf(practices)],
+    ["updateCustomerAge", () => failNextUpdateOf(customers)],
+  ])(
+    "update fallisce con CronStepFailed del passo %s",
+    async (step, failpoint) => {
+      const customer = await createCustomer({
+        age: 40,
+        birthdayDate: new Date("1986-10-14T00:00:00.000Z"),
+      })
+      await createPractice({
+        customerId: customer.id,
+        ratePagate: 12,
+        rateTotali: 84,
+        importoRata: "190.00",
+        debitoResiduo: "9000.00",
+        dataLiquidazione: new Date(
+          Date.parse("2026-10-14T08:00:00.000Z") - 12 * 30 * DAY
+        ),
+        lastImportUpdate: new Date(NOW.getTime() - 40 * DAY),
+      })
+      await failpoint()
+
+      expect(await failureOf("update")).toMatchObject({
+        step,
+        cause: { _tag: "DbError" },
+      })
+    }
+  )
+
+  it("cleanup-task-event-log fallisce con CronStepFailed del passo cleanupTaskEventLog", async () => {
+    // Every DELETE of the event log fails, rows or not
+    await testClient.exec(`
+      CREATE SCHEMA IF NOT EXISTS ${FAILPOINT_SCHEMA};
+      CREATE FUNCTION ${FAILPOINT_SCHEMA}.failpoint_delete_event_log() RETURNS trigger LANGUAGE plpgsql AS $$
+      BEGIN
+        RAISE EXCEPTION 'failpoint: delete of % failed', TG_TABLE_NAME;
+      END $$;
+      CREATE TRIGGER failpoint_delete_event_log BEFORE DELETE ON "public"."${getTableName(taskEventLog)}"
+        FOR EACH STATEMENT EXECUTE FUNCTION ${FAILPOINT_SCHEMA}.failpoint_delete_event_log();
+    `)
+
+    expect(await failureOf("cleanup-task-event-log")).toMatchObject({
+      step: "cleanupTaskEventLog",
+      cause: { _tag: "DbError" },
     })
   })
 })

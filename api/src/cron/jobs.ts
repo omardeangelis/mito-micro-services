@@ -8,7 +8,7 @@ import { deleteExportFiles } from "@/server/services/cron/deleteExport"
 import { updateCustomerAge } from "@/server/services/cron/updateCustomerAge"
 import { updatePractices } from "@/server/services/cron/updatePractices"
 
-/** A step of a job written as plain async code threw. */
+/** A step of a job failed: plain async code threw, or a service's DbError. */
 export class CronStepFailed extends Data.TaggedError("CronStepFailed")<{
   readonly step: string
   readonly cause: unknown
@@ -152,11 +152,18 @@ export const cronJobs: Record<string, CronJob> = {
     run: Effect.gen(function* () {
       // UTC, as on Vercel: the day of the run
       const date = yield* now
-      const practices = yield* step("updatePractices", () =>
-        updatePractices(utcDay(date))
+      const practices = yield* updatePractices(utcDay(date)).pipe(
+        Effect.mapError(
+          (cause) => new CronStepFailed({ step: "updatePractices", cause })
+        )
       )
-      const customers = yield* step("updateCustomerAge", () =>
-        updateCustomerAge(date.getUTCMonth() + 1, date.getUTCDate())
+      const customers = yield* updateCustomerAge(
+        date.getUTCMonth() + 1,
+        date.getUTCDate()
+      ).pipe(
+        Effect.mapError(
+          (cause) => new CronStepFailed({ step: "updateCustomerAge", cause })
+        )
       )
       return { practices, customers }
     }),
@@ -169,8 +176,10 @@ export const cronJobs: Record<string, CronJob> = {
     rerunnable: true,
     run: Effect.gen(function* () {
       const date = yield* now
-      const deleted = yield* step("cleanupTaskEventLog", () =>
-        cleanupTaskEventLog(date)
+      const deleted = yield* cleanupTaskEventLog(date).pipe(
+        Effect.mapError(
+          (cause) => new CronStepFailed({ step: "cleanupTaskEventLog", cause })
+        )
       )
       return { deleted }
     }),
