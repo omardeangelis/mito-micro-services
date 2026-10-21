@@ -23,6 +23,15 @@ export const LEGACY_SCHEMA_TAG = "20260902181440_nebulous_susan_delgado"
  */
 export const CONTATTI_SCHEMA_TAG = "20260929062408_contatti_operator_realign"
 
+/**
+ * The PR6 realignment of the active contacts (T6.9) and the migration right
+ * before it. Its tests migrate from the one to the other, as `db:migrate:prod`
+ * will run it: a later migration may change the rows they compare.
+ */
+export const BEFORE_REALIGN_SCHEMA_TAG =
+  "20261019142325_blushing_roland_deschain"
+export const REALIGN_SCHEMA_TAG = "20261021100457_contatti_contact_realign"
+
 /** In-memory Postgres standing in for `@/server/db` in `*.db.test.ts` files. */
 export const testClient = new PGlite()
 export const testDb = drizzle(testClient, { schema })
