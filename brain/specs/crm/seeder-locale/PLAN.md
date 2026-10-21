@@ -68,7 +68,9 @@ manifest.ts      buildManifest(dataset, day) → Manifest              puro: app
 write.ts         writeDataset(client, dataset)                       una transazione: TRUNCATE + INSERT
 verify.ts        verifyManifest(client, manifest, dataset) → esiti   "passato" o "fallito", per scenario
 cron.ts          runLocalCrons(client, manifest, jobs, now)          cronJobs con un Db iniettato
-commands.ts      seedLocal, cronLocal, verifyLocal (client e now iniettati: la logica dei comandi)
+commands/seed.ts    seedLocal   (client, now e percorso del manifesto iniettati)
+commands/cron.ts    cronLocal   (idem; l'unico modulo dei comandi che importa cron.ts)
+commands/verify.ts  verifyLocal (idem)
 seed.cli.ts      pnpm seed:local          connessione solo a mito_local, poi seedLocal
 cron.cli.ts      pnpm seed:local:cron     idem, poi cronLocal (unico entry con --conditions=react-server)
 verify.cli.ts    pnpm seed:local:verify   idem, poi verifyLocal
@@ -79,10 +81,10 @@ verify.cli.ts    pnpm seed:local:verify   idem, poi verifyLocal
 - **Il database serve solo dove serve.** Generatore e manifesto sono puri: i criteri di distribuzione (AC8–AC27, AC30) si testano in memoria a 300 e a 10.000. Il database serve per scrittura, corse e verifica.
 - **Le corse riusano `cronJobs`**, cioè le stesse funzioni di prod con lo stesso ciclo di `alert`.
   - Si eseguono con `Layer.succeed(Db, drizzle(conn, { schema }))`, sotto `tsx --conditions=react-server`: con quella condizione `server-only` risolve a `empty.js`, verificato il 2026-10-21 da tre esecuzioni indipendenti.
-  - Solo `cron.cli.ts` importa `cron.ts`. Seed e verifica non raggiungono né `server-only` né `src/server/db/index.ts`, e lo prova il test di D7.
+  - Solo `commands/cron.ts`, e quindi solo `cron.cli.ts`, importa `cron.ts`. Seed e verifica non raggiungono né `server-only` né `src/server/db/index.ts`, e lo prova il test di D7. Un `import()` dinamico non basterebbe: esbuild segue anche quelli letterali.
 - **La verifica controlla anche quello che nessuno scenario dice (D14).** Dopo le corse confronta il database con il dataset riga per riga:
   - ogni riga cambiata o cancellata deve essere una riga selezionata del manifesto;
-  - ogni riga nuova deve essere un followup di A1 o A2, o una sua riga di log.
+  - ogni riga nuova deve essere un followup di A1 o A2 con le sue 2 righe di log, oppure la riga `alert_resolved` di un alert di A3.
 
   Così una regola di selezione del manifesto diversa da quella del cron non passa in silenzio.
 
@@ -90,20 +92,20 @@ verify.cli.ts    pnpm seed:local:verify   idem, poi verifyLocal
 
 | # | Decisione | Fonte |
 |---|---|---|
-| D1 | `updatePractices`, `updateCustomerAge` e `cleanupTaskEventLog` diventano `Effect<number, DbError, Db>`, con le stesse query e senza transazione. `update.db.test.ts` controlla che le pratiche già scritte restino scritte quando una fallisce. Le rotte Next li eseguono con `DbLive` tramite `runPromiseExit` e passano a Sentry l'errore originale (`Cause.squash`), così ricevono lo stesso oggetto di oggi. `cronJobs` mappa `DbError` in `CronStepFailed` con lo stesso nome di step. Il comando locale passa un `Db` su `mito_local`. L'alternativa scartata era riscrivere le variabili d'ambiente prima dell'import. | Grill, Omar 2026-10-21 |
+| D1 | `updatePractices`, `updateCustomerAge` e `cleanupTaskEventLog` diventano `Effect<number, DbError, Db>`, con le stesse query e senza transazione. `update.db.test.ts` controlla che le pratiche già scritte restino scritte quando una fallisce. Le rotte Next li eseguono con `DbLive` tramite `runPromiseExit` e, in caso di errore, passano a Sentry `Cause.squash(exit.cause)`, cioè il `DbError`, e rispondono come oggi. **Il dato inviato a Sentry cambia, e lo accettiamo:** oggi arriva il `DrizzleQueryError`, il cui messaggio contiene SQL e parametri, quindi dati dei clienti (`driverError.ts`); dopo arriva il `DbError`, con il `PostgresError` come `cause`, come già fanno `ErrorReporter` e `src/server/effect/trpc.ts`. `cronJobs` mappa `DbError` in `CronStepFailed` con lo stesso nome di step. Il comando locale passa un `Db` su `mito_local`. L'alternativa scartata era riscrivere le variabili d'ambiente prima dell'import. | Grill, Omar 2026-10-21 |
 | D2 | Tre livelli di test:<br>- generatore e manifesto puri, a 300 e a 10.000;<br>- giro completo (seed, corse, verifica) su Postgres a 300 **e a 10.000 in CI**;<br>- AC6 (meno di 3 minuti) a mano su `mito_local`, perché dipende dalla macchina. | Grill, Omar 2026-10-21 |
 | D3 | Due PR verso `dev`: la A (D1 + AC31–AC33) e la B (il resto). La B si apre dopo il merge della A. TB1–TB7 possono partire prima, perché non toccano i file della A. | Grill, Omar 2026-10-21 |
 | D4 | Il codice nuovo sta in `src/server/db/seeds/local/`. La regola ESLint sugli import dei seed impedisce all'app di importarlo. | Dal codice |
-| D5 | Tre entry point, ognuno con il suo script:<br>- `seed:local [--customers N]` → `seed.cli.ts`, default 10.000, minimo 300;<br>- `seed:local:cron [job…]` → `cron.cli.ts`, di default i quattro in ordine, sotto `tsx --conditions=react-server`;<br>- `seed:local:verify` → `verify.cli.ts`.<br>Gli entry point si collegano e chiamano le funzioni di `commands.ts`, che ricevono `client` e `now`. I test passano da quelle funzioni. | Dal codice; revisioni |
-| D6 | Il manifesto è `.local-seed/manifest.json`, ignorato da git. Contiene D, `N`, gli scenari e le corse, ognuna con job, ora, esito e contatori del job.<br>- `seedLocal` cancella il manifesto prima di scrivere e lo riscrive solo dopo il commit.<br>- `cronLocal` salva il manifesto dopo ogni job, anche fallito.<br>- `cronLocal` rifiuta un job già tentato dopo il seed, un ordine diverso da `priority`, `alert`, `update`, `cleanup-task-event-log`, e qualsiasi corsa dopo un tentativo fallito.<br>- `verifyLocal` rifiuta un manifesto senza le quattro corse riuscite.<br>Dopo un fallimento serve un seed nuovo, perché `update` non è idempotente e scrive pratica per pratica. | Spec, Constraints; revisioni |
+| D5 | Tre entry point, ognuno con il suo script:<br>- `seed:local [--customers N]` → `seed.cli.ts`, default 10.000, minimo 300;<br>- `seed:local:cron [job…]` → `cron.cli.ts`, di default i quattro in ordine, sotto `tsx --conditions=react-server`;<br>- `seed:local:verify` → `verify.cli.ts`.<br>Gli entry point si collegano e chiamano le funzioni di `commands/seed.ts`, `commands/cron.ts` e `commands/verify.ts`, che ricevono `client` e `now`. Solo `commands/cron.ts` importa `cron.ts`. I test passano da quelle funzioni. | Dal codice; revisioni |
+| D6 | Il manifesto è `.local-seed/manifest.json`, **relativo alla cartella da cui si lancia il comando** (`process.cwd()`; `pnpm` lancia dalla radice del repo), ignorato da git. Contiene D, `N`, gli scenari e le corse, ognuna con job, ora, esito e contatori del job.<br>- Il manifesto si scrive sempre in modo atomico: file temporaneo, poi `rename`.<br>- `seedLocal` cancella il manifesto prima di scrivere e lo riscrive solo dopo il commit.<br>- `cronLocal` registra la corsa come "iniziata" **prima** di eseguire il job e la aggiorna con esito e contatori dopo, anche se il job fallisce. Un'interruzione a metà lascia quindi una corsa iniziata e mai chiusa, che conta come fallita.<br>- `cronLocal` rifiuta un job già tentato dopo il seed, un job che nell'ordine `priority`, `alert`, `update`, `cleanup-task-event-log` viene prima di uno già tentato, e qualsiasi corsa dopo un tentativo fallito. Saltare un job è ammesso (AC28: ognuno si può lanciare da solo); la verifica però vuole le quattro corse.<br>- `verifyLocal` rifiuta un manifesto senza le quattro corse riuscite.<br>Dopo un fallimento serve un seed nuovo, perché `update` non è idempotente e scrive pratica per pratica. | Spec, Constraints; revisioni |
 | D7 | Un test costruisce i tre entry point con esbuild (`bundle`, `metafile`, `write: false`, `packages: "external"`) e controlla tre cose:<br>- nessun grafo contiene `src/lib/global/loadDbEnv.ts`;<br>- nessuno importa il pacchetto esterno `dotenv`;<br>- i grafi di seed e verifica non contengono `src/server/db/index.ts`, che legge le variabili Supabase.<br>Controllo positivo: `createSystemOperator.ts` mostra sia `loadDbEnv.ts` sia `dotenv`. ESLint non basta: `no-restricted-imports` vede solo gli import diretti. | Dal codice; revisioni |
 | D8 | Gli id sono espliciti, scritti con `overridingSystemValue()` (Drizzle 0.45). I tipi delle righe usano `InferInsertModel<T, { dbColumnNames: false; override: true }>`: `$inferInsert` toglie gli id `GENERATED ALWAYS`. Dopo la scrittura, `setval(pg_get_serial_sequence('"public"."<tabella>"', 'id'), max)` per ogni tabella, con il nome fra virgolette perché contiene il trattino. Il manifesto cita le pratiche per `pratica_id`. | Dal codice; revisioni |
 | D9 | Nessun backlog, come D6 di Contatti: solo questo `PLAN.md`. | Convenzione del progetto |
 | D10 | Ogni riga che un cron selezionerà sta in **uno e un solo** scenario di quel cron. Il generatore non crea righe selezionate che nessuno scenario descrive. Esempi: un `richiamare` con "Contattato il" e senza alert (varrebbe 30); un `richiamare` senza "Contattato il" con un alert da domani; una pratica con `rate_pagate = 0` e la liquidazione in D. | Spec, "Scenari dei cron" |
-| D11 | AC14 lo calcola `importRates(liquidazione, rateTotali, importoRata, day)`, una funzione pura della regola delle Technical Notes della spec:<br>- un mese dopo la liquidazione, sul calendario di Roma;<br>- giorni fino a D arrotondati per eccesso, diviso 30;<br>- al massimo `rate_totali`.<br>Non chiama `calculateDebitoResiduo`, che legge `Date.now()`, modifica la data che riceve e dipende dal fuso del processo. Un test le confronta su molte pratiche con `vi.setSystemTime(romeNoon(D))`, passando all'import una copia della data. | Revisioni (BLOCKER B1) |
+| D11 | AC14 lo calcola `importRates(liquidazione, rateTotali, importoRata, day)`, una funzione pura che riproduce `calculateDebitoResiduo` valutato a mezzogiorno di Roma di D, con queste regole:<br>- un mese dopo la liquidazione come `setMonth(+1)` sul calendario di Roma, compreso lo sforamento: il 31 gennaio diventa il 3 marzo, non il 28 febbraio;<br>- differenza **in valore assoluto** fra quel giorno e D, in giorni interi arrotondati per eccesso; un cambio dell'ora nel mezzo aggiunge un giorno, come nell'import;<br>- `ratePagate = floor(giorni / 30)`, al massimo `rate_totali`;<br>- `debitoResiduo = (rateTotali − ratePagate) × importoRata` con 2 decimali, e `null` (con rate 0) se manca la liquidazione, `rateTotali` o `importoRata`.<br>Il generatore evita le liquidazioni a meno di un mese da D, dove il valore assoluto dà rate positive.<br>Non chiama `calculateDebitoResiduo`, che legge `Date.now()`, modifica la data che riceve e dipende dal fuso del processo. Un test le confronta su molte pratiche con `vi.setSystemTime(romeNoon(D))`, passando all'import una copia della data. | Revisioni (BLOCKER B1) |
 | D12 | **Importi interi.** Ogni pratica che `update` selezionerà ha `importo_rata` e `debito_residuo` in euro interi: la sottrazione in virgola mobile del cron è esatta. La verifica confronta comunque gli importi come numeri, con tolleranza 0,005. | Revisioni (M1) |
 | D13 | **Nessun conflitto fra cron sulla stessa riga.** Una riga che uno scenario dichiara invariata (P2, P8, P9, U3, U7a, U7b, U10a–c, U11, A4, A5, L2) non è selezionata da un altro cron che la scrive. Un test di TB5 compone, riga per riga, gli esiti dei quattro cron nell'ordine delle corse e segnala ogni colonna "invariata" scritta da un cron successivo. Esempio: un P8 `richiamare` con alert scaduto avrebbe `updated_at` cambiato da `alert`. | Revisioni (M2) |
-| D14 | **Completezza del manifesto.** Nei giri completi (TB8 a 300, TB10 a 10.000) la verifica confronta il database dopo le corse con il dataset:<br>- ogni riga cambiata o cancellata è `selected: true` nel manifesto;<br>- ogni riga nuova è un followup di A1 o A2, o una delle sue 2 righe di log.<br>È anche una parte di `verifyManifest`, quindi vale per `seed:local:verify`. | Revisioni (M4) |
+| D14 | **Completezza del manifesto.** Nei giri completi (TB8 a 300, TB10 a 10.000) la verifica confronta il database dopo le corse con il dataset:<br>- ogni riga cambiata o cancellata è `selected: true` nel manifesto. Negli scenari di `alert` sono `selected: true` sia l'alert sia il contatto di A1, A2 e A3, che il cron cambia tutti e due;<br>- ogni riga nuova è uno di questi casi: un followup di A1 o A2 con le sue 2 righe di log (`alert_resolved` e `state_change`), oppure l'unica riga `alert_resolved` di un alert di A3.<br>È anche una parte di `verifyManifest`, quindi vale per `seed:local:verify`. | Revisioni (M4) |
 | D15 | **Ore e tempi nei test.**<br>- I test fissano un D **nel passato** e l'orologio a mezzogiorno di Roma di D.<br>- Le righe che i cron inseriscono prendono `CURRENT_TIMESTAMP` del database, cioè la data vera: con un D futuro, `cleanup` (che usa l'orologio finto) cancellerebbe le righe di log appena scritte da `alert`.<br>- La verifica non confronta `created_at` né `updated_at` delle righe inserite o cambiate dai cron. Confronta gli `updated_at` solo dove la spec li vuole invariati.<br>- L'orologio finto ferma anche il `Clock` di Effect: il budget di 40 s di `alert` non scade, quindi le "più chiamate" di `alert` non si osservano in CI. I volumi di AC30 si controllano con i contatori dei job salvati in `manifest.runs`. | Revisioni |
 
 ## 5. Assunzioni e vincoli
@@ -140,6 +142,7 @@ verify.cli.ts    pnpm seed:local:verify   idem, poi verifyLocal
   - i giorni del cambio dell'ora (29 marzo e 25 ottobre 2026);
   - un D d'inverno con D − 3 mesi d'estate.
 - **Indipendenza dal fuso del processo.** Un test genera il dataset in due processi, con `TZ=UTC` e con `TZ=Europe/Rome`, e confronta l'hash.
+- **Effect e strumenti locali.** `AGENTS.md` chiede che il nuovo codice server stia in servizi Effect. I moduli del seeder sono strumenti locali: non girano nell'app né nel backend e nessuna rotta li chiama. Restano async, con `client` e `now` iniettati, che è la testabilità che la regola vuole ottenere. Le corse invece passano dai servizi Effect di prod (D1).
 - **CI.** Il job Test ha `timeout-minutes: 10`. TB10 misura la durata con il giro a 10.000 e alza il limite se il job supera i 7 minuti. Per misurarla bisogna fare push.
 
 ## 6. Findings dal codice
@@ -166,7 +169,7 @@ verify.cli.ts    pnpm seed:local:verify   idem, poi verifyLocal
 - **I test esistenti dei tre servizi** passano dalle rotte (`update.db.test.ts`, `cleanupTaskEventLog.db.test.ts`) e da `api/src/cron/_test/cron.db.test.ts`. Le rotte controllano le chiamate a `captureException`, non la forma dell'errore. `cron.db.test.ts` non ha un caso di errore per `update` né per `cleanup`.
 - **`server-only`.** vitest e `api/build.mjs` lo risolvono a `empty.js`. Sotto `tsx` serve `--conditions=react-server`. Il grafo di `jobs.ts` contiene `src/server/db/index.ts`, ma dopo D1 l'unico che lo usa è `DbLive`.
 - **Mock nei test.** `src/test/setup.ts` e `pg.setup.ts` simulano `@/server/db`. Un `vi.mock` nel file di test vince su quello del setup, come già in `updateCustomer.test.ts`. `src/test/pg.ts` ha un proxy `unset` da prendere come modello. `extraDatabase()` crea un database vuoto, da migrare con `migrateDatabase` di `localDb.ts`.
-- **`localDb.ts`.** `appliedMigrations` conta `drizzle.__drizzle_migrations`. Ogni riga ha `hash` e `created_at`, cioè il `when` della voce del journal.
+- **`localDb.ts`.** `appliedMigrations` conta `drizzle.__drizzle_migrations`. Ogni riga ha `hash` (sha256 del file SQL, calcolato da Drizzle: il journal non lo contiene) e `created_at`, cioè il `when` della voce del journal.
 - **ESLint.** `.eslintrc.cjs` spegne `no-restricted-imports` per `src/server/db/seeds/**` e `src/server/db/scripts/**`.
 - **Chi nomina i seed di oggi, fuori da `brain/`:** `package.json`, `README.md`, `.env.example`, `src/lib/global/loadDbEnv.ts`. `CLAUDE.md` è un link ad `AGENTS.md`. `getRandomCustomerRole` la usa solo `seeds/customerToPratica.ts`.
 
@@ -206,12 +209,13 @@ TB5 e TB6 sono in sequenza perché tutti e due toccano `types.ts`. TB6 lo usa e 
   - **nessuna transazione:** una pratica fallita lascia scritte le precedenti, come oggi.
 
   Chiamanti:
-  - **Rotte Next:** eseguono i programmi con `Effect.runPromiseExit(... .pipe(Effect.provide(DbLive)))`. In caso di errore passano a `Sentry.captureException` `Cause.squash` della causa, l'errore del driver, e rispondono come oggi.
+  - **Rotte Next:** eseguono i programmi con `Effect.runPromiseExit(... .pipe(Effect.provide(DbLive)))`. In caso di errore passano a `Sentry.captureException` `Cause.squash(exit.cause)`, cioè il `DbError` (D1), e rispondono come oggi.
   - **`cronJobs`:** in `update` e in `cleanup-task-event-log` usa i servizi direttamente e mappa `DbError` in `CronStepFailed({ step, cause })` con gli stessi nomi di step.
 
   Nessun altro file cambia, a parte i test.
 - **validation**:
   - Restano verdi senza cambiare le asserzioni `update.db.test.ts` (compreso il caso "un errore del database su una pratica lascia aggiornate quelle già scritte"), `cleanupTaskEventLog.db.test.ts`, `cron.db.test.ts` e `cronScripts.test.ts`.
+  - Nei test delle due rotte, un'asserzione nuova: con un errore del database, `captureException` riceve un `DbError` il cui `cause` è l'errore di Postgres, e nel suo messaggio non ci sono i parametri della query.
   - In `cron.db.test.ts`, un caso nuovo per `update` e uno per `cleanup`: con un errore forzato del database (`failNextUpdateOf`, o un trigger come nei test esistenti) il job fallisce con `CronStepFailed` e lo step giusto.
   - Il file nuovo ha un suo `vi.mock("@/server/db")` con un proxy che lancia a ogni query, come `unset` di `src/test/pg.ts`. Non usa `@/test/factories` né il caller di test, che importano `db`. Inserisce con `testDb` (con il cast a `DbClient`). In queste condizioni i tre servizi, eseguiti con `Layer.succeed(Db, testDb)`, aggiornano o cancellano le righe giuste.
   - Passano `next lint`, `tsc --noEmit`, `pnpm api:build` e `pnpm api:smoke`.
@@ -236,7 +240,7 @@ TB5 e TB6 sono in sequenza perché tutti e due toccano `types.ts`. TB6 lo usa e 
   - Aggiorna i due piani F1.T2 del brain: i seed da spostare in `packages/db` non ci sono più.
 - **validation**:
   - `git grep -nE "seed:(db|delete|clear)" -- ':!brain'` non trova niente (AC33).
-  - `git grep -n getRandomCustomerRole` non trova niente (AC31).
+  - `git grep -n getRandomCustomerRole -- ':!brain'` non trova niente (AC31).
   - Fra gli script di `package.json` che svuotano o riempiono tabelle restano solo `db:local:reset`, `test:pg` e `test` (AC32; il seeder arriva con la PR B).
   - Lint, `tsc` e test verdi.
 - **status**: Planned
@@ -288,7 +292,7 @@ TB5 e TB6 sono in sequenza perché tutti e due toccano `types.ts`. TB6 lo usa e 
     - le 22:30 UTC del 21 ottobre 2026 sono le 00:30 del 22 a Roma e fermano `assertSameRomeAndUtcDay`;
     - mezzogiorno di Roma cade nello stesso giorno UTC anche il 29 marzo e il 25 ottobre 2026;
     - `subMonthsDay("2026-05-31", 3)` è `2026-02-28`, quello del `2028-05-31` è `2028-02-29`.
-  - **`importRates`:** su almeno 1.000 combinazioni (liquidazioni nei due anni prima di D, rate, D nei giorni difficili del §5) dà lo stesso risultato di `calculateDebitoResiduo(copia, ...)` con l'orologio a `romeNoon(D)` e `TZ` del processo in Europe/Rome. Dopo la chiamata la data di liquidazione è invariata.
+  - **`importRates`:** su almeno 1.000 combinazioni (liquidazioni nei due anni prima di D, anche il 29, 30 e 31 del mese, rate, D nei giorni difficili del §5) dà lo stesso risultato di `calculateDebitoResiduo(copia, ...)` con l'orologio a `romeNoon(D)`. Il confronto gira in un **processo figlio avviato con `TZ=Europe/Rome`**, perché vitest 1.6 usa i thread e un `TZ` impostato nel test non cambia il fuso delle `Date`. Il figlio controlla prima che l'offset di gennaio sia +60 minuti. Dopo la chiamata la data di liquidazione è invariata.
 - **status**: Planned
 - **log**:
 - **files edited/created**:
@@ -335,7 +339,7 @@ TB5 e TB6 sono in sequenza perché tutti e due toccano `types.ts`. TB6 lo usa e 
 - **depends_on**: [TB2]
 - **location**: `src/server/db/seeds/local/generate.ts` (o `generate/operators.ts`), `_test/generate.test.ts`
 - **description**:
-  - **Utenti (AC17):** 25 utenti `OPERATORE` e 3 `ADMIN`, ognuno con la sua riga in `operator`, più l'operatore di sistema (`user_id = 'system'`, senza utente). `operator.updated_at` è valorizzato.
+  - **Utenti (AC17):** 25 utenti `OPERATORE` e 3 `ADMIN`, ognuno con la sua riga in `operator`, più l'operatore di sistema (`user_id = 'system'`, senza utente). `operator.updated_at` è valorizzato. Le email degli utenti sono su `.test` o `example.com` (AC16).
   - **Assegnazione dei clienti.** La quota di clienti con un contatto attivo vale per tutti gli operatori ed è una costante esportata, `ACTIVE_CONTACT_SHARE` (per esempio 0,80), che TB4 usa. Su questa base i clienti si assegnano così:
     - un operatore ha il 35% dei clienti con operatore;
     - 18 operatori si dividono quote fra il 2% e l'8%;
@@ -344,7 +348,7 @@ TB5 e TB6 sono in sequenza perché tutti e due toccano `types.ts`. TB6 lo usa e 
     - il 3% dei clienti non ha operatore.
 
   Il controllo di AC18 sui contatti attivi sta in TB4. Se non torna, TB4 corregge queste quote.
-- **validation**: test unitari a 300 e a 10.000: AC17; le quote di assegnazione dei clienti; determinismo.
+- **validation**: test unitari a 300 e a 10.000: AC17; le email degli utenti (AC16); le quote di assegnazione dei clienti; determinismo.
 - **status**: Planned
 - **log**:
 - **files edited/created**:
@@ -366,7 +370,7 @@ TB5 e TB6 sono in sequenza perché tutti e due toccano `types.ts`. TB6 lo usa e 
     - ogni `task_status` fra gli attivi, almeno 20 volte a 10.000;
     - priorità manuali 20, 60, 100 e 120.
   - **Storico e alert (AC23–AC24):**
-    - contatti non attivi con esito e `closed_at`, almeno 100 a 10.000 con un operatore diverso da quello del cliente;
+    - contatti non attivi con esito e `closed_at`, almeno 100 a 10.000 con un operatore diverso da quello del cliente. Nessun contatto, attivo o no, è dell'operatore senza carico, che non ha né clienti né contatti (AC18);
     - contatti riaperti;
     - alert aperti solo su `richiamare` attivi, collegati nei due versi, al massimo uno per cliente;
     - alert risolti con `resolved_by` su contatti non attivi.
@@ -377,6 +381,8 @@ TB5 e TB6 sono in sequenza perché tutti e due toccano `types.ts`. TB6 lo usa e 
     - P1–P12, A1–A5, L1–L2, comprese le righe sul confine di AC27;
     - la priorità scritta per ogni riga selezionata da `priority` è diversa dall'esito atteso;
     - nessuna combinazione fuori dalle tabelle (D10);
+    - nessun contatto attivo con `state` o `priority` vuoti: `not(and(state = 'chiamare', priority = 120))` vale NULL e il cron lo salterebbe senza dirlo;
+    - precedenza fra P3 e P10: le righe di P3 hanno una priorità di seed diversa da 10 e da 120, quelle di P10 hanno 120; così ogni `non interessato` sta in uno scenario solo;
     - nessuna riga "invariata" per uno scenario e scritta da un altro cron (D13): le righe di P2 e P8 sono senza alert scaduti.
   - **Volume (AC30):** a 10.000:
     - almeno 5.001 attivi con lo stesso esito di priorità;
@@ -437,6 +443,7 @@ TB5 e TB6 sono in sequenza perché tutti e due toccano `types.ts`. TB6 lo usa e 
 - **location**: `src/server/db/seeds/local/write.ts`, `_test/write.pg.test.ts`
 - **description**: `writeDataset(client, dataset)`, su un `DbClient`, in **una transazione**:
   - controlla `current_database()`: accetta solo `mito_local` o un nome che inizia con `mito_test_`;
+  - imposta `lock_timeout`, così un'altra sessione aperta non lo lascia appeso;
   - svuota tutte le tabelle di `public` con `TRUNCATE ... RESTART IDENTITY CASCADE` (AC3);
   - inserisce in ordine di FK (§6) a blocchi sotto i 65.535 parametri, con `overridingSystemValue()` dove l'id è identity;
   - alla fine, `setval` di ogni sequenza oltre il massimo (D8).
@@ -449,7 +456,8 @@ TB5 e TB6 sono in sequenza perché tutti e due toccano `types.ts`. TB6 lo usa e 
   - due scritture con l'orologio a due ore diverse danno un dump uguale di tutte le tabelle, id e timestamp compresi (AC5);
   - un inserimento successivo senza id riceve un id oltre il massimo;
   - un dataset con una riga invalida (FK mancante) fallisce e lascia le righe di prima;
-  - su un database che non si chiama `mito_test_*` o `mito_local`, si ferma prima del TRUNCATE.
+  - con un client il cui `current_database()` restituisce un altro nome (un client finto), si ferma prima del TRUNCATE. Non si crea un database con un altro nome, che sfuggirebbe alla pulizia di `extraDatabase` e al controllo "No test database left" della CI;
+  - imposta un `lock_timeout` (per esempio 10 s): con una transazione aperta su una tabella, per esempio da `db:studio` o da psql, si ferma con un messaggio invece di restare appeso.
 - **status**: Planned
 - **log**:
 - **files edited/created**:
@@ -473,7 +481,7 @@ TB5 e TB6 sono in sequenza perché tutti e due toccano `types.ts`. TB6 lo usa e 
     - L1: le righe sparite;
     - A6: da `manifest.runs`.
   - **Controllo di completezza (D14):** righe cambiate, cancellate o nuove fuori dal manifesto. Esce come scenario a sé, "completezza".
-  - **Contatori dei job (AC30):** quelli di `manifest.runs` contro le soglie di volume.
+  - **Contatori dei job (AC30):** quelli di `manifest.runs` contro le soglie di volume, **solo con `n` = 10.000**, come chiede AC30.
 - **validation**: test su Postgres a 300:
   - su un seed appena fatto, senza corse, gli scenari con un esito atteso diverso dal seed falliscono; quelli con esito "invariato" (P2, P8, P9, U3, U7a, U7b, U10a–c, U11, A4, A5, L2) passano;
   - scrivendo a mano 120 su ogni riga di P1, P1 passa;
@@ -496,7 +504,7 @@ TB5 e TB6 sono in sequenza perché tutti e due toccano `types.ts`. TB6 lo usa e 
   - controlla AC28b con `assertIsToday(manifest.day, now)` e `assertSameRomeAndUtcDay(now)`;
   - controlla D6: niente job già tentato, ordine rispettato, nessun tentativo fallito prima;
   - esegue `cronJobs[job].run` con `Layer.succeed(Db, client)` (un client `drizzle(conn, { schema })`) e un `ErrorReporter` che stampa e conta;
-  - aggiunge a `manifest.runs` job, ora, esito e contatori, e lo restituisce **dopo ogni job**: il chiamante salva il manifesto anche quando un job fallisce;
+  - prima di ogni job aggiunge a `manifest.runs` la corsa "iniziata", dopo la completa con esito e contatori. Passa il manifesto al chiamante in tutti e due i momenti, con una callback, così il chiamante lo salva anche se il job fallisce o il processo si interrompe (D6);
   - un job fallito ferma le corse.
 
   `delete-export` non è fra i job ammessi. Il modulo importa `api/src/cron/jobs.ts`.
@@ -509,7 +517,8 @@ TB5 e TB6 sono in sequenza perché tutti e due toccano `types.ts`. TB6 lo usa e 
   - **D6:**
     - una seconda corsa di `update` viene rifiutata;
     - `alert` prima di `priority` viene rifiutato;
-    - dopo un job fallito (errore forzato su una pratica) ogni corsa successiva viene rifiutata e `manifest.runs` registra il fallimento.
+    - dopo un job fallito ogni corsa successiva viene rifiutata, e `manifest.runs` registra il fallimento. L'errore si forza su una pratica con un trigger scritto nel test sul database di destinazione: `@/test/failpoint` funziona solo su PGlite;
+    - una corsa registrata come "iniziata" e mai chiusa conta come fallita.
 - **status**: Planned
 - **log**:
 - **files edited/created**:
@@ -522,20 +531,20 @@ TB5 e TB6 sono in sequenza perché tutti e due toccano `types.ts`. TB6 lo usa e 
 
 #### TB9: Comandi, guard e documentazione
 - **depends_on**: [TB8]
-- **location**: `src/server/db/seeds/local/commands.ts`, `seed.cli.ts`, `cron.cli.ts`, `verify.cli.ts`; `src/server/db/scripts/localDb.ts` (esporta `pendingMigrations(client)` e la funzione di connessione locale); `package.json`, `.gitignore`, `README.md` (sezione "Database locale"); `_test/commands.pg.test.ts`, `_test/connection.test.ts`, `_test/imports.test.ts`, `_test/cronCli.test.ts`
+- **location**: `src/server/db/seeds/local/commands/seed.ts`, `commands/cron.ts`, `commands/verify.ts`, `seed.cli.ts`, `cron.cli.ts`, `verify.cli.ts`; `src/server/db/scripts/localDb.ts` (esporta `pendingMigrations(client)` e la funzione di connessione locale); `package.json`, `.gitignore`, `README.md` (sezione "Database locale"); `_test/commands.pg.test.ts`, `_test/connection.test.ts`, `_test/imports.test.ts`, `_test/cronCli.test.ts`
 - **description**:
-  - **`commands.ts`** contiene la logica dei comandi, con `client`, `now` e il percorso del manifesto iniettati:
+  - **`commands/`** contiene la logica dei comandi, un file per comando, con `client`, `now` e il percorso del manifesto iniettati. Solo `commands/cron.ts` importa `cron.ts` (D7):
     - **`seedLocal({ client, now, n, manifestPath })`:**
       - controlla `n` ≥ 300 e AC4, poi `pendingMigrations`, prima di scrivere qualsiasi cosa;
       - se ci sono migrazioni da applicare si ferma e indica `pnpm db:local:migrate` (AC2);
       - cancella il vecchio manifesto, poi scrive il dataset con D = `romeDay(now)`, poi scrive il manifesto nuovo (D6).
-    - **`cronLocal({ client, now, jobs, manifestPath })`:** chiama `runLocalCrons` e salva il manifesto dopo ogni job.
+    - **`cronLocal({ client, now, jobs, manifestPath })`:** chiama `runLocalCrons` e salva il manifesto, in modo atomico, prima di ogni job (corsa "iniziata") e dopo (esito e contatori), come vuole D6.
     - **`verifyLocal({ client, now, manifestPath })`:**
       - controlla AC28b (oggi = D, Roma = UTC) e le quattro corse riuscite (D6);
       - rigenera il dataset da `n` e `day` del manifesto;
       - chiama `verifyManifest` e restituisce le righe da stampare e l'exit code.
-  - **`pendingMigrations`** (AC2) confronta le voci del journal (`when`, e `hash` quando c'è) con le righe di `drizzle.__drizzle_migrations`. Si ferma su una voce mancante, su una riga in più o su un `created_at` diverso.
-  - **I tre entry point** (D5) si collegano con `localConnection(LOCAL_DATABASE_URL, { database: "mito_local" })` passata come opzioni (AC1), poi chiamano `commands.ts`. Solo `cron.cli.ts` importa `cron.ts`.
+  - **`pendingMigrations`** (AC2) confronta le migrazioni del repo con le righe di `drizzle.__drizzle_migrations`. Per ogni voce del journal: il `when` contro `created_at` (che torna come stringa di un `bigint`), e lo sha256 del file SQL, calcolato come fa `readMigrationFiles` di Drizzle, contro `hash`. Si ferma su una voce mancante, su una riga in più o su un valore diverso.
+  - **I tre entry point** (D5) si collegano con `localConnection(LOCAL_DATABASE_URL, { database: "mito_local" })` passata come opzioni (AC1), poi chiamano il loro file di `commands/`.
   - **Script e documentazione:**
     - script in `package.json`;
     - `.local-seed/` in `.gitignore`;
@@ -545,7 +554,7 @@ TB5 e TB6 sono in sequenza perché tutti e due toccano `types.ts`. TB6 lo usa e 
     - la funzione di connessione rifiuta un host non locale, un database diverso da `mito_local` e un DSN con query string (AC1);
     - con `PGHOST`, `PGDATABASE`, `PGPORT`, `SUPABASE_*` e `INSTANCE_UNIX_SOCKET` ostili restituisce sempre `127.0.0.1:54329/mito_local` (AC28a);
     - `--customers 299` si ferma.
-  - **Su Postgres, con le funzioni di `commands.ts`:**
+  - **Su Postgres, con le funzioni di `commands/`:**
     - `seedLocal` alle 00:30 di Roma si ferma con il messaggio di AC4 e non scrive niente, nemmeno il manifesto;
     - su un database migrato fino a una migrazione precedente si ferma prima di scrivere, citando `pnpm db:local:migrate` (AC2);
     - con una riga di migrazione in più, oppure con un `created_at` diverso, si ferma;
@@ -558,8 +567,12 @@ TB5 e TB6 sono in sequenza perché tutti e due toccano `types.ts`. TB6 lo usa e 
     - il test lancia `tsx --conditions=react-server cron.cli.ts` come sottoprocesso;
     - la cartella di lavoro è temporanea e contiene `.env` e `.env.development.local` con `SUPABASE_DB_CONNECTION_STRING` verso un listener TCP del test;
     - l'ambiente punta allo stesso listener con `SUPABASE_*`, `PG*` e `INSTANCE_UNIX_SOCKET`;
-    - il manifesto è di oggi;
-    - **esito atteso:** il listener ostile non riceve connessioni, e un secondo listener sulla porta 54329 ne riceve almeno una.
+    - il manifesto è di oggi e sta nella cartella temporanea, che è la `cwd` del figlio. Il figlio riceve `--tsconfig <repo>/tsconfig.json`: senza, da un'altra cartella l'alias `@/` non si risolve;
+    - `INSTANCE_UNIX_SOCKET` punta a una cartella temporanea con un listener Unix su `.s.PGSQL.5432`;
+    - **esito atteso:**
+      - il listener TCP ostile e quello Unix non ricevono connessioni;
+      - un secondo listener sulla porta 54329 ne riceve almeno una;
+      - il `.local-seed/manifest.json` del repo, se esiste, ha lo stesso hash di prima.
 
     Il test si salta, dicendolo, quando la porta 54329 è occupata (un `mito_local` acceso) e quando il giorno di Roma e quello UTC sono diversi.
   - `next lint` e `tsc` passano.
@@ -579,11 +592,11 @@ TB5 e TB6 sono in sequenza perché tutti e due toccano `types.ts`. TB6 lo usa e 
 - **description**:
   - Un test su Postgres fa il giro completo a `N` = 10.000 (D2): `seedDatabase`, le quattro corse con `runLocalCrons`, `verifyManifest`. Usa D fisso nel passato, orologio fissato e un timeout proprio, per esempio 300 s.
   - Controlla i volumi di AC30 dal database e da `manifest.runs`:
-    - almeno 5.001 contatti con la stessa priorità finale;
+    - almeno 5.001 contatti selezionati da `priority` con lo stesso valore atteso nel manifesto, e quelle righe hanno davvero quel valore nel database;
     - `alert` con almeno 1.000 alert processati;
     - `update` con almeno 200 pratiche e almeno 100 clienti;
     - `cleanup` con almeno 1.000 righe cancellate.
-  - Fa push e misura la durata del job Test in CI. Se supera i 7 minuti alza `timeout-minutes` e scrive la durata nel log del task.
+  - Misura la durata del job Test in CI. La CI gira solo sulle PR verso `dev` e `main`, quindi la PR B va aperta in bozza. La misura definitiva si prende quando anche TB9 è sulla branch, per contare i suoi test. Se il job supera i 7 minuti, TB10 alza `timeout-minutes` e scrive la durata nel log del task.
 - **validation**: il test passa in CI e risulta eseguito, non saltato; la durata del job è nel log del task.
 - **status**: Planned
 - **log**:
@@ -639,7 +652,7 @@ TA2 e TB9 toccano tutti e due `package.json` e `README.md`. La PR B riparte da `
 
 - **Interfacce pubbliche testate:**
   - `importRates`, `generateDataset`, `buildManifest`, `writeDataset`, `seedDatabase`, `verifyManifest`, `runLocalCrons`;
-  - le funzioni di `commands.ts`, la funzione di connessione, l'entry point `cron.cli.ts` come sottoprocesso.
+  - le funzioni di `commands/`, la funzione di connessione, l'entry point `cron.cli.ts` come sottoprocesso.
 
   Nessun test su funzioni interne del generatore.
 - **Un tracciante per task:** ogni task parte dal suo `tdd_target` e aggiunge un test per volta. Le soglie di AC8–AC30 entrano una alla volta in TB2–TB5.
@@ -671,7 +684,7 @@ TA2 e TB9 toccano tutti e due `package.json` e `README.md`. La PR B riparte da `
 
 | Rischio | Mitigazione |
 |---|---|
-| Il refactor di TA1 cambia un comportamento dei cron di prod: un oggetto diverso a Sentry, una transazione che annulla le pratiche già scritte, uno step diverso nei report. | D1 fissa `runPromiseExit` con `Cause.squash`, nessuna transazione e la mappatura in `CronStepFailed`. Restano i test esistenti e se ne aggiungono per i fallimenti. `complexity: high`. La PR A è separata (D3). |
+| Il refactor di TA1 cambia un comportamento dei cron di prod: una transazione che annulla le pratiche già scritte, uno step diverso nei report. L'unico cambio voluto è il dato inviato a Sentry, `DbError` invece di `DrizzleQueryError` (D1). | D1 fissa nessuna transazione, la mappatura in `CronStepFailed` e il dato per Sentry, con un'asserzione. Restano i test esistenti e se ne aggiungono per i fallimenti. `complexity: high`. La PR A è separata (D3). |
 | Le rate di AC14 dipendono dall'ora o dal fuso del processo. | D11: funzione pura sul calendario di Roma, confrontata con l'import. Test su due ore e su due fusi. |
 | Debiti in virgola mobile: `876.5699999999999`. | D12: importi interi sulle pratiche selezionate, confronto con tolleranza. |
 | Una riga generica soddisfa per caso una regola di selezione che nessuno scenario descrive. | D10 e il test "uno e un solo scenario". |
@@ -730,7 +743,7 @@ Nessuna. Le domande della spec sono chiuse (2026-10-21) e quelle del piano sono 
 | **M4:** completezza del manifesto verificata solo con le regole del manifesto. | D14 e lo scenario "completezza" in TB7, TB8 e TB10. |
 | **M5:** il test di AC28a non toccava l'ambiente. | Proxy che lancia in TB8, sottoprocesso con `.env` ostili in TB9. |
 | **M6:** un solo `cli.ts` faceva cadere `seed:local` su `server-only`. | Tre entry point (D5); D7 esteso a `src/server/db/index.ts` e `dotenv`. |
-| **M7:** nessun test che i comandi chiamino i guard di AC4 e AC28b. | `commands.ts` con `client` e `now` iniettati; test in TB9. |
+| **M7:** nessun test che i comandi chiamino i guard di AC4 e AC28b. | `commands/` con `client` e `now` iniettati; test in TB9. |
 | **Minori sull'ordine e sui tipi:** ordine delle FK; `$inferInsert` senza id; `setval` con i nomi fra virgolette; `types.ts` toccato in parallelo. | §6, D8, TB5 e TB6 in sequenza. |
 | **Minori sull'orologio:** orologio finto contro tempi del database; "più chiamate" di `alert` non osservabile; righe di log sul confine all'ora sbagliata. | D15; contatori in `manifest.runs`; log a mezzogiorno di Roma. |
 | **Minori sulle validazioni:** la validation di TB7 su U3; A6 tautologico. | TB7 riscritto; A6 da `manifest.runs`. |
@@ -738,4 +751,19 @@ Nessuna. Le domande della spec sono chiuse (2026-10-21) e quelle del piano sono 
 | **Altri minori:** AC2 solo per conteggio; esenzione di AC14 e volumi di `update` assenti in TB2; AC18 diviso fra TB3 e TB4; difesa su `current_database()`; timeout dei test a 10.000. | TB9, TB2, TB3 e TB4, TB6, §5. |
 | **Dalla revisione del grafo:** TA1 senza test della mappatura `DbError` → `CronStepFailed`; senza divieto di transazione; con `runPromise` che cambia l'oggetto per Sentry; proxy e mock nel file. TB10 può andare in parallelo a TB9. | TA1 riscritto; grafo aggiornato. |
 
-Seconda verifica: vedi sotto.
+**2026-10-21, seconda verifica: DO NOT SHIP** (nessun BLOCKER, 5 MAJOR, 15 MINOR). Correzioni:
+
+| Problema | Correzione |
+|---|---|
+| **Un solo `commands.ts`:** seed e verifica avrebbero importato `jobs.ts` e `server-only` (contro D7). | `commands/seed.ts`, `commands/cron.ts`, `commands/verify.ts`; solo il secondo importa `cron.ts`. |
+| **D14 rifiutava la riga `alert_resolved` di A3,** che la spec richiede. | D14 la ammette e marca come selezionati alert e contatti di A1–A3. |
+| **D1 prometteva a Sentry "lo stesso oggetto":** falso, `Cause.squash` dà il `DbError`. | Il cambio è dichiarato e accettato (niente più SQL con i dati dei clienti a Sentry), con un'asserzione nei test delle rotte. |
+| **Il confronto di `importRates` sarebbe girato nel fuso dell'host** (vitest a thread); la regola di D11 non era quella dell'import. | Confronto in un processo figlio con `TZ=Europe/Rome`; le cinque regole dell'import scritte in D11. |
+| **Il test del sottoprocesso poteva scrivere una corsa fallita nel manifesto vero.** | Manifesto relativo alla `cwd`; il test usa una cartella temporanea e controlla che quello del repo non cambi. |
+| **Minori sul sottoprocesso:** `--tsconfig` per il figlio, un listener Unix per `INSTANCE_UNIX_SOCKET`. | TB9. |
+| **Minori sul manifesto e sui job:** `git grep` di TA2 che trovava il brain; soglie di AC30 a 300; corsa interrotta non registrata; ordine troppo rigido rispetto ad AC28; trigger su Postgres invece di `failpoint`. | TA2, TB7, D6, TB8. |
+| **Minori su database e migrazioni:** database con un altro nome nei test; `lock_timeout`; hash delle migrazioni. | TB6, TB9. |
+| **Minori di copertura:** operatore senza carico nello storico; email degli utenti; conteggio dei 5.001 sui selezionati; precedenza P3/P10; `state` NULL. | TB3, TB4, TB10. |
+| **Altri minori:** misura della CI con la PR in bozza; esenzione da Effect per gli strumenti locali. | TB10, §5. |
+
+Le correzioni della seconda verifica sono puntuali: la forma del piano non cambia e nessuna è un BLOCKER, quindi non serve una terza verifica.
