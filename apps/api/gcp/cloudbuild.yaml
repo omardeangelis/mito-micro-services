@@ -1,8 +1,8 @@
-# Builds the image of api/ from the repo root and pushes it to Artifact
-# Registry. Started by api/gcp/build.sh, as the mito-crm-build service account
+# Builds the image of apps/api from the repo root and pushes it to Artifact
+# Registry. Started by apps/api/gcp/build.sh, as the mito-crm-build service account
 steps:
   - name: gcr.io/cloud-builders/docker
-    args: ["build", "-f", "api/Dockerfile", "-t", "${_IMAGE}", "."]
+    args: ["build", "-f", "apps/api/Dockerfile", "-t", "${_IMAGE}", "."]
 images: ["${_IMAGE}"]
 serviceAccount: projects/mito-crm/serviceAccounts/mito-crm-build@mito-crm.iam.gserviceaccount.com
 options:

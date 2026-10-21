@@ -347,6 +347,8 @@ importers:
         specifier: ^1.6.1
         version: 1.6.1(@types/node@20.14.13)(jsdom@24.1.1)(terser@5.31.3)
 
+  apps/api: {}
+
   packages/config: {}
 
 packages:

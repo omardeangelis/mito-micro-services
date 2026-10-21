@@ -7,7 +7,7 @@ spec-driven skill suite live under `brain/` — start with `create-spec`, and re
 ## Repo map
 
 - `src/` — the MITO CRM app: T3 stack (Next.js 14 App Router, tRPC v10, Drizzle on Postgres, NextAuth v4), deployed on Vercel.
-- `api/` — the backend on Cloud Run (Hono). It hosts the same server code as `src/` (it imports it; it never copies it) and serves the same API on the same paths: `pnpm api:build` bundles it, `pnpm api:smoke` starts the bundle and calls it (CI runs both), `pnpm api:dev` runs it on the development database (`.env.development.local` only). With `BACKEND_URL` set at build time, Next.js rewrites `/api/trpc` to it and `@/trpc/server` calls it over HTTP; without it nothing changes. It runs on Cloud Run in the GCP project `mito-crm` (`mito-crm-staging`, later `mito-crm-prod`); `api/gcp/` builds and deploys it. Cloud Scheduler starts the crons at `/internal/cron/<job>` (`api/src/cron/`), with an OIDC token, at most once per job and UTC day (table `cron_run`); the jobs themselves are in `src/server/services/cron/`. The plan is `brain/chore/migrazione-gcp.md`.
+- `apps/api/` — the backend on Cloud Run (Hono), workspace package `@mito/api`. It hosts the same server code as `src/` (it imports it; it never copies it) and serves the same API on the same paths: `pnpm api:build` bundles it, `pnpm api:smoke` starts the bundle and calls it (CI runs both), `pnpm api:dev` runs it on the development database (`.env.development.local` only); `pnpm dev` starts it next to `next dev` (`pnpm dev:web` is Next.js alone). With `BACKEND_URL` set at build time, Next.js rewrites `/api/trpc` to it and `@/trpc/server` calls it over HTTP; without it nothing changes. It runs on Cloud Run in the GCP project `mito-crm` (`mito-crm-staging`, later `mito-crm-prod`); `apps/api/gcp/` builds and deploys it (`apps/api/Dockerfile`, from the repo root). Cloud Scheduler starts the crons at `/internal/cron/<job>` (`apps/api/src/cron/`), with an OIDC token, at most once per job and UTC day (table `cron_run`); the jobs themselves are in `src/server/services/cron/`. The plan is `brain/chore/migrazione-gcp.md`.
 - `brain/` — knowledge base. Existing design drafts and the monorepo migration plan live in `brain/chore/` (`crm/`, `migration_plan.md` + `migration/`); delivered HTML handovers in `brain/raw/assets/`. Project docs are written in Italian.
 - `.agents/skills/`, `.agents/agents/`, `.agents/agent-memory/` — spec-driven skills, advisor subagents and their project memories (symlinked into `.claude/`).
 
@@ -31,7 +31,7 @@ Database contract chain:
 
 ## Server code and the backend
 
-The server code is moving from the Next.js app to the backend in `api/`, one piece at a time, while features keep landing. Until the move ends both run the same files, so new server code has to run in both:
+The server code is moving from the Next.js app to the backend in `apps/api/`, one piece at a time, while features keep landing. Until the move ends both run the same files, so new server code has to run in both:
 
 - **No Next.js in `src/server/**`.** No `next/*`, no `next-auth` runtime calls, no `@/trpc/server`. The exception is `src/server/auth.ts`, which keeps NextAuth. Read the session with `getServerAuthSession` (the backend gives it the request's session through `requestSession`).
 - **New operations are tRPC procedures.** No new route handlers or server actions with logic in them: a server action only calls `@/trpc/server` and revalidates.

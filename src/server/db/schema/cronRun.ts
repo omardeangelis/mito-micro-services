@@ -16,7 +16,7 @@ export const cronRunStatus = ["running", "succeeded", "failed"] as const
 
 export const cronRunStatusEnum = pgEnum("cron_run_status", cronRunStatus)
 
-// The runs of the backend's crons (api/src/cron), one per job and UTC day: a
+// The runs of the backend's crons (apps/api/src/cron), one per job and UTC day: a
 // second call on the same day finds the row and doesn't run the job. It keeps
 // `update`, which adds a year to the ages at every run, to once a day, and
 // keeps two runs of a job from overlapping

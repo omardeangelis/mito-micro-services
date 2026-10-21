@@ -1,6 +1,8 @@
 {
   "$schema": "https://turbo.build/schema.json",
   "agentGuidance": false,
+  "ui": "stream",
+  "envMode": "loose",
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
@@ -11,6 +13,10 @@
       "dependsOn": ["^build"]
     },
     "dev": {
+      "cache": false,
+      "persistent": true
+    },
+    "//#dev:web": {
       "cache": false,
       "persistent": true
     }

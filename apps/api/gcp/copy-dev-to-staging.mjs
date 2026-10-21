@@ -1,7 +1,7 @@
 // Copies the development database into the database `mito` of the staging
 // Cloud SQL instance, then checks the copy. From the repo root, with Docker
 // running and gcloud logged in:
-//   node api/gcp/copy-dev-to-staging.mjs [--replace]
+//   node apps/api/gcp/copy-dev-to-staging.mjs [--replace]
 //
 // 1. pg_dump of the schemas public and drizzle, with the postgres:15 image (the
 //    archive of a newer pg_dump doesn't restore into Postgres 15). Through the

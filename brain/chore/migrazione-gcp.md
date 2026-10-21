@@ -69,8 +69,8 @@ browser ──► crm.dbmito.it (Vercel: Next.js, solo frontend)
   - alias `@sentry/nextjs` → un adattatore su `@sentry/node`.
 - **HTTP: Hono** (`@hono/node-server`). Route handler e tRPC (`fetchRequestHandler`) usano già `Request`/`Response` standard: Hono li monta così come sono, mentre Express richiederebbe una conversione a ogni richiesta. I test esistenti già eseguono le route handler in Node, con `new NextRequest(url)`.
 - **Contesto tRPC:** `createTRPCContext` riceve la sessione invece di chiamare `getServerAuthSession`. Next gli passa la sua, il backend la ricava dal cookie di NextAuth. Stessa forma: `{ user: { name, email, image, id }, expires }`.
-- **Auth:** NextAuth v4 resta, ma eseguita nel backend: lo stesso `NextAuth(authOptions)` con la firma del Pages Router, adattata a `Request`/`Response` in `api/src/auth.ts` (`next-auth/core` non è esportato dal pacchetto). Stesse tabelle, cookie, callback e provider (`azure-ad`): il client `next-auth/react` non si accorge di niente. Il passaggio ad Auth.js v5 è un'ondata a parte, dopo.
-- **Cron (`api/src/cron/`):** `POST /internal/cron/<job>` sul backend, fuori da `/api`, quindi nessuna rewrite di Vercel ci arriva. Lo chiama Cloud Scheduler con un token OIDC del suo service account. Il backend verifica firma di Google (solo RS256), scadenza, audience e email verificata del service account (`CRON_OIDC_AUDIENCE`, `CRON_OIDC_SERVICE_ACCOUNT`); senza le due variabili rifiuta ogni chiamata. Dentro:
+- **Auth:** NextAuth v4 resta, ma eseguita nel backend: lo stesso `NextAuth(authOptions)` con la firma del Pages Router, adattata a `Request`/`Response` in `apps/api/src/auth.ts` (`next-auth/core` non è esportato dal pacchetto). Stesse tabelle, cookie, callback e provider (`azure-ad`): il client `next-auth/react` non si accorge di niente. Il passaggio ad Auth.js v5 è un'ondata a parte, dopo.
+- **Cron (`apps/api/src/cron/`):** `POST /internal/cron/<job>` sul backend, fuori da `/api`, quindi nessuna rewrite di Vercel ci arriva. Lo chiama Cloud Scheduler con un token OIDC del suo service account. Il backend verifica firma di Google (solo RS256), scadenza, audience e email verificata del service account (`CRON_OIDC_AUDIENCE`, `CRON_OIDC_SERVICE_ACCOUNT`); senza le due variabili rifiuta ogni chiamata. Dentro:
   - **un run per job e giorno UTC**, nella tabella `cron_run`, con vincolo unico (job, giorno). Fa anche da lock: due chiamate insieme eseguono un run solo, e niente `pg_try_advisory_lock`, che con il pooler di Supabase resterebbe su una connessione condivisa. Una seconda chiamata nello stesso giorno risponde "già girato" e non esegue niente;
   - un run fallito si ripete lo stesso giorno ("Force run" dalla console) solo per i job che non fanno niente due volte. `update` mai: fa +1 all'età a ogni lancio;
   - zero retry nello scheduler, `TZ=UTC`;
@@ -81,7 +81,7 @@ browser ──► crm.dbmito.it (Vercel: Next.js, solo frontend)
   - Cloud Monitoring avvisa su Slack se un job non parte o va in errore.
 - **DB:** `postgres.js` come oggi. Su Cloud Run si collega via socket Unix (`INSTANCE_UNIX_SOCKET`, come sevedemo), in locale tramite Cloud SQL Auth Proxy. Pool fisso per istanza, `min-instances=1`.
 - **Effect:** l'infrastruttura nuova (sessione, storage, verifica OIDC, report dei cron, Slack) è fatta di servizi Effect con un Layer ciascuno. Le route Hono restano async semplici e mappano gli errori in un punto solo.
-- **Build e deploy (`api/gcp/`):**
+- **Build e deploy (`apps/api/gcp/`):**
   - `build.sh` costruisce l'immagine con Cloud Build, come service account `mito-crm-build`. L'immagine va in Artifact Registry (`mito-crm`) con il commit come tag. Lo script si ferma se dovesse caricare un file `.env`, che `.gcloudignore` già esclude.
   - `deploy-staging.sh` la mette su `mito-crm-staging`, con i valori presi dai segreti.
   - `setup-staging.sh` registra le risorse create una volta sola, e fa da ricetta per la prod.
@@ -153,7 +153,7 @@ Le dismissioni arrivano 2–4 settimane dopo.
   - colonne, indici e vincoli;
   - le impostazioni del database.
 
-  Per sviluppo → staging è un solo comando, `node api/gcp/copy-dev-to-staging.mjs [--replace]`. Le regole che ne sono uscite:
+  Per sviluppo → staging è un solo comando, `node apps/api/gcp/copy-dev-to-staging.mjs [--replace]`. Le regole che ne sono uscite:
   - **`pg_dump` mai attraverso il pooler.** Imposta `search_path = ''` per la sua sessione, e in transaction mode resterebbe su un backend che usa l'app. Si usa l'host diretto (`db.<ref>.supabase.co:5432`, utente `postgres`), che è solo IPv6.
   - **`pg_dump` e `pg_restore` della versione 15**, dall'immagine `postgres:15`. Il `pg_restore` 18 di Homebrew manda `SET transaction_timeout`, che Postgres 15 rifiuta, e un archivio del 18 non si apre con il 15. Docker su Mac non ha IPv6: un relay su 127.0.0.1 inoltra all'host diretto, con TLS da un capo all'altro.
   - **`--clean --if-exists`**, perché il dump contiene `CREATE SCHEMA public`.
@@ -205,7 +205,7 @@ Le dismissioni arrivano 2–4 settimane dopo.
   - In locale, con `next start` e la rewrite verso `mito-crm-staging`, regge: risposte di Cloud Run, batch in streaming identico alla chiamata diretta, body da 3 MB.
   - Resta da provare su Vercel.
 - **Stesso DB per Vercel staging e backend** (B2): il backend trova solo le sessioni del suo DB. Il progetto Vercel di staging ha un Supabase suo, diverso da quello di prod (il workflow lo controlla), e `mito-crm-staging` usa quello di `.env.development.local`. Prima di accendere la rewrite va verificato che coincidano.
-- **Auth nel backend** (B4): l'adattatore di `api/src/auth.ts` riproduce quello di NextAuth per il Pages Router. Va provato in staging con Azure ed email prima della prod.
+- **Auth nel backend** (B4): l'adattatore di `apps/api/src/auth.ts` riproduce quello di NextAuth per il Pages Router. Va provato in staging con Azure ed email prima della prod.
 - **Lavoro in parallelo con Omar:** conflitti sui file caldi. Si gestiscono con PR piccole e il codice condiviso, non copiato.
 - **Cron non idempotente** (`updateCustomerAge`): lock, registro per giorno, zero retry, mai due scheduler insieme.
 - **Il chiamante mattutino sconosciuto dei cron di prod** (sessione del 2026-10-13 in `brain/specs/crm/sezione-contatti/PLAN.md`).
@@ -224,7 +224,7 @@ Le dismissioni arrivano 2–4 settimane dopo.
 - 2026-10-18, staging su GCP:
   - creato il progetto `mito-crm` al posto di `mito-staging`/`mito-prod`. `mito-staging`, creato prima, è stato eliminato e si può recuperare per 30 giorni;
   - S1 fatto in parte: billing, API, Artifact Registry, Secret Manager, service account. Mancano il deploy automatico e il bucket GCS (B3);
-  - B2: `mito-api` gira su `mito-crm-staging` con il DB di sviluppo. Leonardo ha caricato i segreti con `api/gcp/load-staging-secrets.mjs`, che legge solo `.env.development.local` e non stampa i valori;
+  - B2: `mito-api` gira su `mito-crm-staging` con il DB di sviluppo. Leonardo ha caricato i segreti con `apps/api/gcp/load-staging-secrets.mjs`, che legge solo `.env.development.local` e non stampa i valori;
   - B2: la rewrite e `@/trpc/server` via HTTP sono nella PR di B2.
 - 2026-10-18, B5 (cron sul backend):
   - la migrazione `20261018195740_cron_run` aggiunge solo la tabella `cron_run` e il suo enum. In prod arriva con il primo rilascio successivo e resta inutilizzata fino alla fase P;
@@ -245,7 +245,7 @@ Le dismissioni arrivano 2–4 settimane dopo.
   - i job sono stati riattivati la sera stessa, e da lì contano le 7 notti del go/no-go. Gli esiti vanno solo nei log finché manca il webhook di Slack.
 - 2026-10-20:
   - prima notte dei job: `priority` e `alert` `skipped`, come previsto. Il giorno di `cron_run` è quello UTC, e i lanci a mano del 19 lo avevano già preso. `update` (43 clienti) e `delete-export` (1 file) `succeeded`. Le 7 notti piene contano dalla notte tra il 20 e il 21;
-  - W1 su staging (PR #27): `mito-crm-staging` gira con l'immagine `mito-api:40cdbcd` (revisione `00004`), costruita da `dev` con `api/gcp/build.sh`. `/health` 200. Un lancio a mano di `update` e `delete-export` risponde `skipped` senza cambiare `cron_run`. `priority` e `alert` non si lanciano a mano: prenderebbero il giorno UTC e salterebbero la notte;
+  - W1 su staging (PR #27): `mito-crm-staging` gira con l'immagine `mito-api:40cdbcd` (revisione `00004`), costruita da `dev` con `apps/api/gcp/build.sh`. `/health` 200. Un lancio a mano di `update` e `delete-export` risponde `skipped` senza cambiare `cron_run`. `priority` e `alert` non si lanciano a mano: prenderebbero il giorno UTC e salterebbero la notte;
   - il deploy di staging su Vercel da `dev` fallisce ancora per il limite di 12 funzioni del piano Hobby.
   - PR7, T7.1 e T7.1b (PR #30, su `dev`): i test `*.pg.test.ts` girano su Postgres 15 (servizio della CI, `docker-compose.yml` in locale), ognuno su un database `mito_test_<casuale>` che elimina alla fine. `db:local:reset` e `db:local:migrate` costruiscono `mito_local` dalle migrazioni con i pezzi di `PUSHED_SCHEMA` (`src/server/db/pushedSchema.ts`), con lo stesso schema dell'harness PGlite. Il guard sul DSN (`src/server/db/localDsn.ts`) serve anche agli script di B6 che lavoreranno su un Postgres locale. Il dettaglio è nel log dei due task in [[specs/crm/sezione-contatti/PLAN]].
   - B6, prova generale in locale:
@@ -253,24 +253,24 @@ Le dismissioni arrivano 2–4 settimane dopo.
     - dump di `public` e `drizzle` dall'host diretto: 19 MB in 15 s. Restore in `mito_local`: 2 s, senza errori;
     - `db:copy-check:dev` dà "Identico": 17 tabelle, 421.747 righe, 10 sequenze, stesso schema. Con un valore cambiato a mano dà "Diverso" ed esce con 1.
   - B6, Cloud SQL di staging:
-    - istanza `mito-crm-staging` (`mito-crm:europe-west3:mito-crm-staging`): Postgres 15, Enterprise, `db-g1-small`, zonale. Ha backup alle 03:00 UTC, PITR di 7 giorni e protezione dalla cancellazione. L'IP pubblico non ha reti autorizzate e il certificato client è obbligatorio, quindi entrano solo i connettori. I comandi sono in `api/gcp/setup-staging.sh`;
-    - l'utente `mito_app` viene da `api/gcp/create-staging-db-user.mjs`. La sua password esiste solo nel secret `STAGING_CLOUDSQL_MITO_APP_PASSWORD`;
-    - il database `mito` (di `mito_app`, `TimeZone = 'Europe/Rome'`) viene da `node api/gcp/copy-dev-to-staging.mjs --replace`: dump in 13 s, restore in 25 s, verifica "Identico";
+    - istanza `mito-crm-staging` (`mito-crm:europe-west3:mito-crm-staging`): Postgres 15, Enterprise, `db-g1-small`, zonale. Ha backup alle 03:00 UTC, PITR di 7 giorni e protezione dalla cancellazione. L'IP pubblico non ha reti autorizzate e il certificato client è obbligatorio, quindi entrano solo i connettori. I comandi sono in `apps/api/gcp/setup-staging.sh`;
+    - l'utente `mito_app` viene da `apps/api/gcp/create-staging-db-user.mjs`. La sua password esiste solo nel secret `STAGING_CLOUDSQL_MITO_APP_PASSWORD`;
+    - il database `mito` (di `mito_app`, `TimeZone = 'Europe/Rome'`) viene da `node apps/api/gcp/copy-dev-to-staging.mjs --replace`: dump in 13 s, restore in 25 s, verifica "Identico";
     - dopo B4: il backend su Cloud SQL via socket Unix (sotto, "B6, il backend su Cloud SQL"). Servono il ruolo `cloudsql.client` al service account di `mito-crm-staging` (con una condizione sull'istanza, perché non riceva ruoli su tutto il progetto), il secret della password leggibile solo da quel service account, e una copia fresca subito prima del passaggio. Prima di B4 il login di Vercel staging e il backend userebbero due database diversi;
     - restano da provare: un restore PITR (go/no-go S6) e il modo di mettere Supabase in sola lettura (runbook della prod).
   - B4 (auth sul backend):
-    - `/api/auth/*` sul backend esegue lo stesso `NextAuth(authOptions)` della route di Next, con la firma del Pages Router (`api/src/auth.ts`): `next-auth/core` non è fra gli `exports` del pacchetto, quindi non si importa. `/api/auth/user` è la route di Next montata così com'è;
+    - `/api/auth/*` sul backend esegue lo stesso `NextAuth(authOptions)` della route di Next, con la firma del Pages Router (`apps/api/src/auth.ts`): `next-auth/core` non è fra gli `exports` del pacchetto, quindi non si importa. `/api/auth/user` è la route di Next montata così com'è;
     - la rewrite di `/api/auth` si accende con `BACKEND_AUTH=true`, insieme a `BACKEND_URL` (`next.config.js`): è un passo a sé, dopo tRPC;
     - con `BACKEND_URL` le pagine che leggono la sessione sul server (login e pagina iniziale della dashboard) la chiedono al backend (`/api/auth/session`, `src/trpc/pageSession.ts`): così, dopo B6, Next non legge più la tabella delle sessioni;
     - **`NEXTAUTH_URL` del backend deve essere l'indirizzo pubblico del frontend** (`https://staging-crm.dbmito.it`), non quello di Cloud Run: NextAuth ne ricava callback, link delle email, redirect e il prefisso `__Secure-` dei cookie. Oggi `deploy-staging.sh` passa l'URL di Cloud Run: va cambiato prima di accendere `BACKEND_AUTH` (insieme a B6, dopo la PR del webhook Slack che tocca la riga accanto). Il login Azure dello staging resta legato al dominio, quindi al CNAME di S0;
-    - il bundle del backend importa `next/server.js` (alias in `api/build.mjs`): `next` non ha `exports` e Node risolve i suoi sottopercorsi solo con l'estensione.
+    - il bundle del backend importa `next/server.js` (alias in `apps/api/build.mjs`): `next` non ha `exports` e Node risolve i suoi sottopercorsi solo con l'estensione.
   - B3a (route REST sul backend, storage ancora su Supabase):
-    - `api/src/rest.ts` monta le route handler di import, export e `user/preferences` sugli stessi path, con lo stesso file: ogni richiesta diventa una `NextRequest`. Un metodo che la route non esporta risponde 405, una handler che non risponde niente 500, come in Next;
+    - `apps/api/src/rest.ts` monta le route handler di import, export e `user/preferences` sugli stessi path, con lo stesso file: ogni richiesta diventa una `NextRequest`. Un metodo che la route non esporta risponde 405, una handler che non risponde niente 500, come in Next;
     - la rewrite si accende con `BACKEND_REST=true`, insieme a `BACKEND_URL`: `/api/import`, `/api/export` e `/api/user`;
-    - nel backend `@/trpc/server` è `api/src/shims/trpcServer.ts` (alias in `api/build.mjs` e in `vitest.config.ts`): lo stesso `api`, con le procedure eseguite nel processo (`src/trpc/inProcessLink.ts`, condiviso con Next) e la sessione della richiesta. Quello vero usa `cache` della build server di React e `next/headers`, che fuori da Next non esistono.
+    - nel backend `@/trpc/server` è `apps/api/src/shims/trpcServer.ts` (alias in `apps/api/build.mjs` e in `vitest.config.ts`): lo stesso `api`, con le procedure eseguite nel processo (`src/trpc/inProcessLink.ts`, condiviso con Next) e la sessione della richiesta. Quello vero usa `cache` della build server di React e `next/headers`, che fuori da Next non esistono.
   - B6, il backend su Cloud SQL (codice pronto, da eseguire):
     - `src/server/db/index.ts` si collega al socket Unix di `INSTANCE_UNIX_SOCKET` (`/cloudsql/<istanza>/.s.PGSQL.5432`), passato come `path`: i due punti del nome dell'istanza, in un host, postgres.js li leggerebbe come porte. Senza la variabile niente cambia;
-    - `api/gcp/staging-db-access.sh`, una volta: `cloudsql.client` al service account `mito-crm-staging` con una condizione sull'istanza, e lettura del secret `STAGING_CLOUDSQL_MITO_APP_PASSWORD` solo a quel service account;
+    - `apps/api/gcp/staging-db-access.sh`, una volta: `cloudsql.client` al service account `mito-crm-staging` con una condizione sull'istanza, e lettura del secret `STAGING_CLOUDSQL_MITO_APP_PASSWORD` solo a quel service account;
     - `deploy-staging.sh` monta l'istanza (`--add-cloudsql-instances`), usa `mito_app` sul database `mito` con la password del suo secret, e passa `NEXTAUTH_URL=https://staging-crm.dbmito.it` (B4);
-    - ordine: `staging-db-access.sh` → copia fresca `node api/gcp/copy-dev-to-staging.mjs --replace` → build e `deploy-staging.sh` dell'immagine con B3a e B4 → `/health` e un lancio a mano di `update` (deve rispondere `skipped`, perché la copia porta con sé `cron_run`). Da lì il progetto Vercel di staging va acceso con `BACKEND_URL`, `BACKEND_AUTH` e `BACKEND_REST` insieme: Next non deve più leggere Supabase di sviluppo per le sessioni;
+    - ordine: `staging-db-access.sh` → copia fresca `node apps/api/gcp/copy-dev-to-staging.mjs --replace` → build e `deploy-staging.sh` dell'immagine con B3a e B4 → `/health` e un lancio a mano di `update` (deve rispondere `skipped`, perché la copia porta con sé `cron_run`). Da lì il progetto Vercel di staging va acceso con `BACKEND_URL`, `BACKEND_AUTH` e `BACKEND_REST` insieme: Next non deve più leggere Supabase di sviluppo per le sessioni;
     - rollback: `deploy-staging.sh` della revisione precedente (`gcloud run services update-traffic --to-revisions=<revisione>=100`).
