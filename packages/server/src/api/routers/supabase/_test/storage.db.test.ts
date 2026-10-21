@@ -6,9 +6,8 @@ vi.mock("../../../../services/storage/layer", async () => {
   const { Effect, Layer } = await import("effect")
   // Not the index: it re-exports this module
   const { Storage } = await import("../../../../services/storage/storage")
-  const { makeMemoryStorageLayer } = await import(
-    "../../../../services/storage/memory"
-  )
+  const { makeMemoryStorageLayer } =
+    await import("../../../../services/storage/memory")
   // Built once, so an upload is still there for the next call
   const service = Effect.runSync(
     Effect.provide(Storage, makeMemoryStorageLayer())
