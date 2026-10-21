@@ -1,0 +1,5 @@
+# The root is the Next.js app until it moves to apps/web; apps/ and packages/
+# take the backend and the shared code (brain/chore/migration/fase-0-monorepo-setup.md)
+packages:
+  - "apps/*"
+  - "packages/*"
