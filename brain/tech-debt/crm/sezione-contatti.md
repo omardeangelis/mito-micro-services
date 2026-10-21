@@ -246,16 +246,17 @@ Scoperto nel piano (A11, §15), dichiarato in PR3 (T3.15).
 
 **Da fare:** `refreshPriorities` con il lock per cliente, o con una condizione sul valore letto, quando PR5 ridisegna le priorità; massiva e cron su `resolveOpenAlert` (stesso comportamento più `updated_at`); la massiva riceve dalla modale gli id degli alert confermati e li confronta dopo il lock.
 
-## "Assegna Clienti" su molti clienti: una transazione ciascuno
+## "Assegna Clienti": il dialogo manda una chiamata per cliente e un errore non si vede
 
-Scoperto in PR6 (T6.8a), conseguenza di P19.
+Scoperto nella review di PR6 (v2, 2026-10-21). Sostituisce la voce di T6.8a ("Assegna Clienti su molti clienti"), che era sbagliata in due punti. Il codice del dialogo è precedente a PR6 (T6.3 ne ha cambiato solo i testi); lo rende visibile P19, che dice "il primo errore ferma il resto".
 
-- `assignCustomers` apre una transazione per cliente, in sequenza (come `bulkHandleTask`): per ogni cliente blocca il cliente e il contatto, scrive fino a due `UPDATE` e una riga di log, circa otto giri verso il DB. La versione di prima faceva tre query in tutto.
-- Il selettore delle righe di Clienti arriva a 500 per pagina (`PER_PAGES`, `src/lib/constants/pagination.ts`): selezionando tutta la pagina la chiamata fa 500 transazioni. Alla misura dello smoke di T1.8 (circa 0,2 s a transazione con 30 ms di latenza e circa 7 giri, [[specs/crm/sezione-contatti/IMPLEMENTATION-NOTES]]) sarebbero oltre i 60 s di una funzione Vercel per qualche centinaio di clienti: è una stima, non una misura di "Assegna Clienti". Un errore a metà lascia i clienti già fatti assegnati e il resto no (P19).
+- **Il server.** `assignCustomers` apre una transazione per cliente, in sequenza (come `bulkHandleTask`): per ognuno blocca il cliente e il contatto, scrive fino a due `UPDATE` e le righe di log, circa otto giri verso il DB. Dentro una chiamata il primo errore ferma il resto e i clienti già fatti restano assegnati; un cliente già allineato è un no-op, quindi riprovare è sicuro.
+- **Il dialogo** (`CustomerBulkDialog.tsx`, `onSubmit`) fa `splitArray(customerIds, Math.ceil(n / 30))`: `splitArray` vuole la dimensione del blocco, non il numero. Con 30 clienti o meno parte **una chiamata per cliente**; con 500 (il massimo di una pagina, `PER_PAGES`) partono 30 chiamate da 17.
+- Le chiamate partono insieme con `Promise.all`, e Next 14.2 continua a eseguire le azioni in coda dopo che una è stata rifiutata (`action-queue.js`). Il `catch` fa solo `console.error` e rimette il form senza un messaggio. Se l'admin lascia la pagina o preme Indietro mentre gira, le chiamate in coda si perdono in silenzio.
+- **Effetto oggi:** dopo un errore su un cliente i clienti dei blocchi successivi risultano assegnati e l'admin non lo sa. Ogni cliente resta allineato al suo contatto, quindi nessun dato si rompe; si ripete l'assegnazione e i già fatti non cambiano. Lo stesso vale per "Crea/assegna contatti" (`bulkHandleTask`), che usa lo stesso dialogo.
+- **Tempo.** A 500 clienti sono 30 chiamate da 17 clienti: circa 3,5 s ciascuna alla stima di 0,2 s a transazione (T1.8: 30 ms di latenza, circa 7 giri; è una stima, non una misura di "Assegna Clienti"), ben sotto i 60 s di `maxDuration` di `/dashboard/customers`. Ma la procedura non ha un tetto su `customerIds` e la dimensione del blocco cresce con la selezione: a 5.000 clienti sarebbero 167 per chiamata (circa 35 s), a 9.000 sarebbero 300 (circa 63 s).
 
-**Effetto oggi:** non misurato su prod. `bulkHandleTask` ha lo stesso costo per cliente e gira in prod dal 29/09.
-
-**Da fare fuori da questa spec:** misurare "Assegna Clienti" con 100 e 500 clienti sul DB di sviluppo; se supera il limite, spezzare la selezione in blocchi dal client, o scrivere la versione a insiemi (un `UPDATE` e un `INSERT … SELECT` per tutti i clienti, con i lock presi in ordine di id).
+**Da fare fuori da questa spec** (decisione di Omar, F1 del REPORT di PR6): blocchi di dimensione fissa inviati uno alla volta con `await`, che si fermano al primo rifiuto; l'azione restituisce `{ done, failedAt }` e il dialogo dice "X di N clienti assegnati; si è fermata a …; riprova"; `.max()` su `customerIds` di `bulkUpdateCustomers`; un test del dialogo con un blocco rifiutato. Misurare "Assegna Clienti" con 100 e 500 clienti sul DB di sviluppo.
 
 ## Con un caricamento diretto di Clienti l'admin non vede la colonna di selezione
 
@@ -469,6 +470,28 @@ Registrati nel Run 6 (2026-10-18). Nessuno blocca il rilascio.
 - **Contrasto dei primitivi condivisi** (passaggio UI del 2026-10-19, Haiku, misurato come admin): la traccia dell'interruttore spento (`#e5e5e5` su bianco, 1,26:1), la voce a fuoco dei menu (`#f5f5f5` su bianco, 1,09:1, unico segno del focus) e la X della Sheet (16×16, e non resta in vista quando il contenuto scorre).
 - **Clienti, preesistente e fuori da PR5b:** a 800 px la barra dei filtri non va a capo e metà dei filtri resta fuori dallo schermo; i selettori della barra non hanno nome accessibile; i due pulsanti con l'icona di ricerca e di filtro si chiamano "Toggle bold" e "Toggle italic" (`TableFilterSections.tsx`, `ToggleGroupDemo`).
 - **Nomi uguali:** il pulsante "Azioni per" di una riga e delle sue sotto-righe ha lo stesso nome (lo stesso cliente); due contatti precedenti dello stesso giorno e operatore hanno lo stesso testo nel dettaglio.
+
+## Clienti: la riga "Aggiornato" e il checkbox di riga (preesistenti, visti nella review di PR6)
+
+Dal passaggio UI di PR6 (v10, 2026-10-21). Sono file che PR6 non tocca; ora contano di più perché "Aggiornato" è l'ordinamento con cui si apre ogni Clienti (AC59).
+
+- `TableHeaders.tsx:26`: la colonna ordinata ha il testo `text-blue-500` (3,68:1 su bianco, WCAG 1.4.3 chiede 4,5:1) e il verso è dato solo dal colore e da una freccia senza nome; il `th` non ha `aria-sort`. Fix: `text-blue-600`, `aria-sort` sul `th`, `aria-hidden` sulla freccia.
+- `CustomerColumns.tsx:111-125`: il checkbox di riga risponde in 16×16 su un involucro di 48×48 (11% dell'area; WCAG 2.5.8 chiede 24 px). Il resto assorbe il clic con `stopPropagation` ma la riga mostra puntatore e hover, quindi un clic vicino non fa niente. Fix: un `<label>` sull'involucro, o il padding sul checkbox.
+- `/dashboard/customers/<id>` con un id che non esiste (per esempio il codice fiscale al posto dell'id del cliente) cade nel `customer!` di `[id]/page.tsx` invece di mostrare un "non trovato" (codice precedente a PR6).
+
+**Effetto oggi:** gli operatori usano il desktop con il mouse; conta per la tastiera, per il touch e per chi usa un lettore di schermo.
+
+## Piccoli debiti di PR6
+
+Dalla review di PR6 (2026-10-21), tutti NIT o MINOR su cui nessun verificatore ha trovato un difetto di dato. Nessuno blocca il rilascio.
+
+- **La regola "stesso operatore" non è garantita per uno scrittore aggiunto dopo** (D27 lo accetta): il trigger `assertContactOperatorMatchesCustomer` vive nei test e controlla solo gli scrittori che qualcuno chiama in `operatorRule.db.test.ts`. Un test statico che elenca i file che scrivono `operatorId` su `task` o `customers` e fallisce se uno non è nell'elenco lo chiuderebbe. Due varianti non girano in quel file e sono provate altrove: la coppia già disallineata riparata da "Assegna Clienti" (caso (b), cliente già sul bersaglio) e il ramo "alert non confermato" di `bulkHandleTask`.
+- **`@/test/*` si può importare dal codice dell'app**: ESLint non lo vieta (come per `failpoint.ts` e `lockRule.ts`); nessun rischio, il DDL gira solo su PGlite. Un `no-restricted-imports` su `@/test/*` fuori da `_test/` lo chiuderebbe.
+- **`assignCustomers` controlla `canReassign` dopo `findWorkingOperator` e il lock** del cliente: un non-admin che chiamasse il servizio senza la procedura potrebbe saggiare se un operatore o un cliente esistono (non è raggiungibile dalla procedura, che è `adminProcedure`). `operatorId: z.number()` della procedura non ha `.int()` (preesistente: 1.5 dà un 500 con il messaggio di Postgres, solo per l'admin).
+- **Ordinamenti di `getAllCustomers`:** la mappatura colonna → campo è fissata dai test solo per quattro colonne (cognome, operatore, `signedPractices`, `updatedAt`); la chiave `IS NULL` su `signedPractices` non serve (un `count` non è mai NULL) e fa valutare la sottoquery due volte per riga (173 ms contro 24–40 ms a 30.000 clienti ordinando per quella colonna).
+- **Script `contatti-operator-mismatch.sql`:** le colonne delle liste 4, 5 e 6 diverse da `contatto_id` non sono tutte asserite dal test.
+- **Parametri rimossi nell'URL di Clienti** (`filter_by=[status]=…`, `filter=state:…`): restano nell'indirizzo e si ricopiano a ogni `push`, ignorati dal server e dal client; solo l'ordinamento si riscrive. Un operatore sconosciuto con una colonna nota in `PopoverFilter` arriva al server (è l'esposizione di `sql.raw`, A15).
+- **Riepilogo del contatto nella scheda cliente:** `PriorityBadge` ripete con l'icona il testo accanto ("Bassa"), senza `aria-hidden` sull'icona.
 
 ## Dati di prova sul DB di sviluppo (PR5b)
 
