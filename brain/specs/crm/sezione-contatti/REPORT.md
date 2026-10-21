@@ -3,9 +3,9 @@ domain: crm
 type: review
 scope: spec
 spec: sezione-contatti
-review_target: "branch contatti/pr5b-interfaccia — PR5b: T5.4a–T5.12 (do-not-ship al primo giro: 3 BLOCKER e 11 MAJOR aperti), round in fondo; round di PR1, PR2, PR3, PR4 e PR5a più sopra"
-base_ref: 0daa1a35422629be16efaf59775f8ee929edfb83
-head_ref: working-tree
+review_target: "branch claude/pr6-resolution-e7198b — PR6: T6.1–T6.10 senza la migrazione di T6.9 (do-not-ship al primo giro: 0 BLOCKER e 2 MAJOR aperti), round in fondo; round di PR1, PR2, PR3, PR4, PR5a e PR5b più sopra"
+base_ref: 434b0474868eaa862c9c0e30d79d5163bd116ca8
+head_ref: 6d6566d7ce6e5bdf9dea832ebf97ea23c217fe53
 verdict: do-not-ship
 review_impact: critical
 human_in_loop: true
@@ -18,7 +18,7 @@ links:
 ingested: false
 last_ingested: null
 created: 2026-09-25
-updated: 2026-10-18
+updated: 2026-10-21
 ---
 
 # Review Report: Sezione Contatti — PR1 "Percorsi di creazione sicuri"
@@ -1093,3 +1093,126 @@ Affermazioni del piano o dei log che i verificatori hanno trovato false o troppo
 - Tutti i BLOCKER e MAJOR sono aperti: nessuno è ancora durevole. Quelli che non verranno corretti prima del merge lo diventano.
 - Probabilmente durevoli (nello stesso schema, da registrare nel debito se non corretti): la cache del router di Next che serve la lista vecchia dopo una scrittura (v6, v8); i formattatori di data che usano il fuso del processo nei Server Component e nei client renderizzati dal server; il Replay di Sentry che maschera solo `title` e `placeholder`; i test che dipendono dal fuso della macchina; i link `/dashboard/customers/${id}` senza codifica (v1); la barra sticky che copre il focus anche in Clienti e Pratiche (v12); i bordi dei primitivi sotto 3:1 e `hover` del `Badge` di priorità.
 - Backlink dalle pagine di dominio: n/a finché PR5 non è conclusa.
+
+
+## [Round: 2026-10-21] PR6 — "Clienti semplificata" (senza la migrazione di T6.9)
+
+Round aggiunto: i round di PR1, PR2, PR3, PR4, PR5a e PR5b sopra restano come sono. Questo round copre solo PR6 (`434b047` → `6d6566d`, T6.1–T6.10). **Non copre la migrazione di T6.9**, che non è ancora scritta (aspetta i conteggi dello script in produzione) e avrà un round suo, e **non copre PR5b**, che Omar ha dichiarato SHIP il 2026-10-20 (PLAN.md, T6.7).
+
+### Verdict
+
+**DO NOT SHIP al primo giro** · impact: critical · 0 BLOCKER, 2 MAJOR, 16 MINOR, NIT elencati sotto. Otto passaggi su dieci sono SHIP; v2 e v5 tornano DO NOT SHIP, uno per un MAJOR.
+
+Obiezione bloccante più forte (v2, confermata sul codice dall'orchestratore): il dialogo "Assegna Clienti" manda una chiamata per cliente quando i clienti sono 30 o meno (`splitArray(ids, ceil(n/30))` passa la dimensione del blocco, non il numero di blocchi), le lancia tutte insieme con `Promise.all`, Next.js continua a eseguire quelle in coda dopo un rifiuto, e il `catch` fa solo `console.error`. Quindi "il primo errore ferma il resto" (P19) vale solo sul server dentro una chiamata, non per l'admin: dopo un errore i clienti dei blocchi successivi sono assegnati e il dialogo non dice niente. Il codice del dialogo è precedente a PR6 (T6.3 ha cambiato solo i testi) e ogni cliente resta allineato al suo contatto, ma P19 e il rischio di §13 descrivono un esito che il dialogo non produce. **Da decidere da Omar** (F1).
+
+L'altro MAJOR (v5, F2) è un buco del test dello script di sola lettura: i conteggi `b`, `c` e `a2_esportabili` valgono tutti 1 nella fixture, quindi scambiarli passa. Il SQL è giusto. Si corregge nel test.
+
+### Coverage
+
+- Passaggi eseguiti: 10/10. v1, v2, v3, v4 e v7 su Opus; v5, v6, v8, v9 e v10 su Sonnet. Il classificatore ha chiesto dieci charter, nessuna sovrapposizione; nessun override.
+- Passaggi saltati o falliti: nessuno.
+- Passaggio UI (v10): eseguito su `next dev` locale (porta 3100, DB di sviluppo) avviato dall'orchestratore, con una sessione di browser già autenticata come admin (`review-ui-pr6`) e Chromium 149 headless. Superfici: Clienti, il dialogo dell'assegnazione massiva, la scheda cliente. Il server è stato fermato a fine passaggio. Nessun passaggio di movimento (P6: nessun movimento nuovo).
+- Limiti dichiarati dai verificatori: v10 non ha scritto dati (le 4 chiamate `task.createContact` hanno avuto risposta da mock; i 20 POST di preferenze li fa l'app al montaggio di Clienti), ha raggiunto i passaggi di caricamento e riepilogo del dialogo scrivendo lo stato React nella pagina, non con un invio vero, e non ha potuto provare "Crea contatto" e il passaggio del focus da capo a capo né il ruolo OPERATORE (nessuna sessione propria). v2 ha provato i lock su un Postgres 17 vero in un contenitore temporaneo (poi tolto); gli altri hanno usato PGlite. Nessuno ha toccato la produzione né eseguito script con `NODE_ENV=production`; lo script SQL non è stato eseguito fuori da PGlite.
+- Gate: eseguiti dall'orchestratore in una copia pulita a `197833e` (lo stesso `src/` di `6d6566d`): lint, `tsc --noEmit`, `pnpm run test --run` (125 file, 1948 test, 5 saltati), `pnpm build`, `pnpm api:build`, `pnpm api:smoke`, tutti verdi. v8 ha rilanciato `tsc`: verde.
+- Prove dei verificatori sul codice: v1 23 mutanti (tutti presi); v4 sonde riga per riga contro la base e misure di `closedCalls` prima e dopo; v6 un confronto con un riferimento in JavaScript su 63 casi e 37 mutanti; v9 23 mutanti e una sonda sul ciclo di riscrittura dell'URL; v7 504 chiamate con il testo SQL osservato.
+
+### Findings
+
+| # | Severity | Da | Dove | Problema | Correzione / evidenza | Stato |
+|---|----------|----|------|----------|-----------------------|-------|
+| F1 | MAJOR | v2 | `CustomerBulkDialog.tsx:164-165,189-198`, `_actions/customerBulkUpdate.ts:53-58` | "Il primo errore ferma il resto" (P19) non vale per l'admin: il dialogo manda un blocco da `ceil(n/30)` clienti (una chiamata per cliente fino a 30), le lancia tutte con `Promise.all`, Next continua la coda dopo un rifiuto, il `catch` fa solo `console.error` e il form ricompare senza messaggio. Con Indietro durante l'invio i blocchi restanti si perdono in silenzio. Sonda jsdom: chiamate `[c-1],[c-2],[c-3]`, la seconda rifiutata, nessun "Clienti assegnati", nessun `role=alert`. | Blocchi di dimensione fissa inviati uno alla volta con `await` che si fermano al primo rifiuto; l'azione restituisce `{done, failedAt}`; messaggio "X di N clienti assegnati; si è fermata a …; riprova"; un test del dialogo con un blocco rifiutato. Vale anche per "Crea/assegna contatti" (stesso dialogo). | **Da decidere (Omar)**: correggere in PR6 come task nuovo o rinviare con una voce nel debito |
+| F2 | MAJOR | v5 | `_test/operatorMismatch.db.test.ts:123-130` | Nel caso misto `b`, `c` e `a2_esportabili` valgono 1: sette mutanti che li scambiano o li uguagliano passano 5/5. `b > 0` e `a2_esportabili > 0` sono le due condizioni di stop del gate. | Numeri diversi per categoria nella fixture (per esempio 2 `b`, 3 `c`, 1 `a2_esportabili`) | Aperto |
+| F3 | MINOR | v5 | `operatorMismatch.db.test.ts`, SELECT 2, 4, 5, 6 | `is_active` non è fissato nelle liste: i mutanti che lo tolgono sopravvivono, nessuna riga inattiva può arrivare a quelle liste | Una riga inattiva per lista | Aperto |
+| F4 | MINOR | v5 | `contatti-operator-mismatch.sql` (CTE e liste 4 e 6) | `state` NULL non ha una fixture: `state IS DISTINCT FROM 'nessuno'` sopravvive (errore per eccesso: falso stop) | Un contatto attivo con `state` NULL e `closed_at` valorizzato, atteso non esportabile | Aperto |
+| F5 | MINOR | v5 | intestazione di `contatti-operator-mismatch.sql` (righe 6-38) | La regola di stop per `b` e `a2_esportabili` sta solo nei commenti dei singoli SELECT, non sul blocco dei conteggi; `c` non è detta informativa; l'intestazione chiama "(a2)" il sottoinsieme esportabile mentre la colonna `a2` è l'insieme intero; non dice chi decide né i due esiti | Una riga per conteggio sul blocco dei conteggi; rinominare "(a2)" in "(a2 esportabili)" | Aperto |
+| F6 | MINOR | v2 | `brain/tech-debt/crm/sezione-contatti.md:249-258` | La voce "Assegna Clienti su molti clienti" è sbagliata in due versi: il dialogo spezza già la selezione (a 500 per pagina, al più 17 clienti a chiamata, circa 3,5 s alla stima di 0,2 s, ben sotto `maxDuration = 60`), e "il resto no" è falso a livello di dialogo (F1) | Riscrivere la voce | Aperto |
+| F7 | MINOR | v3 | `_test/bulkUpdateCustomers.db.test.ts:540-545`, `PUT/index.ts:74` | Il test dell'OPERATORE asserisce solo `FORBIDDEN`, che ora esce anche dal controllo nel servizio: `adminProcedure` → `operatorProcedure` passa 133 test, e un operatore potrebbe saggiare se un cliente o un operatore esistono (nessuna scrittura) | Asserire `message: "admin-only"` o aggiungere la chiamata con lista vuota | Aperto |
+| F8 | MINOR | v3 | `CustomerCreateContact.tsx:97-101` | La regola di visibilità di "Crea contatto" non ha test: sostituire `!canCreateContact(...)` con `false` lascia 16 test verdi (il test del componente fissa l'attore su ADMIN). Il server rifiuta comunque. | Due casi: un OPERATORE non del cliente non vede il pulsante; l'operatore del cliente sì | Aperto |
+| F9 | MINOR | v4 | `_test/bulkUpdateCustomers.db.test.ts:337-366` | Il test di "i contatti non attivi restano" non distingue "muovi il contatto attivo" da "muovi la task più recente": la task inattiva è creata prima dell'attiva. Con la regola vecchia rimessa passano 98 test (sui dati veri la task inattiva è spesso la più recente). Lo stesso vale per il passaggio di consegne. | Creare la task inattiva dopo l'attiva e asserire `taskId: active.id` nella riga del contatto, anche per il passaggio di consegne | Aperto |
+| F10 | MINOR | v6 | `GET/index.ts:292-293`, `_test/getAllCustomers.db.test.ts` | "NULL in fondo" non è fissato in ordine decrescente: togliere la chiave `IS NULL` lascia 23 test verdi | Un caso con un cognome NULL, `sortedBy: "desc"`, riga NULL ultima e gruppo ordinato per id decrescente | Aperto |
+| F11 | MINOR | v6 | `getAllCustomers.db.test.ts:304-336`, `GET/index.ts:266-267` | L'ordine per `signedPractices` non è fissato: sostituirlo con `customers.id` passa 23/23, perché nella fixture l'ordine per id coincide | Creare per primo il cliente con 3 pratiche | Aperto |
+| F12 | MINOR | v8 | `PLAN.md:164`, `:3322`, `:3622` | A17 nomina una sola procedura mancante sul backend vecchio (`task.getContactById`); il confronto dei router con `origin/main` ne trova tre (`task.getContacts`, `task.getContactById`, `user.updateContactTableVisibleColumns`); il ripiego "rilasciare insieme e provare la scheda" non è nel passo 2 di T6.7 né nella riga di §13. Conta solo se `BACKEND_URL` è attiva in produzione (oggi solo staging, `migrazione-gcp.md:185`) | Nominare le tre procedure e portare il ripiego nel passo 2 e in §13 | Aperto |
+| F13 | MINOR | v8 | `PLAN.md:3323` | Il passo 3 ("prima il deploy, poi la migrazione") non richiede che Cloud Run giri sulla revisione nuova: con `BACKEND_URL` attiva il `bulkUpdateCustomers` vecchio rimetterebbe in disaccordo le coppie appena riallineate. Il deploy su Cloud Run è manuale | Aggiungere "Cloud Run sulla revisione nuova" alle precondizioni del passo 3 quando `BACKEND_URL` è attiva | Aperto |
+| F14 | MINOR | v9 | `CustomerTableSection.tsx:80-82`, `CustomersTable.tsx:117` | Nessun test usa `order_by=name,priority&sorted_by=asc,desc`: tre mutanti sopravvivono (`split(",")`, `.some`/`.every`). L'interfaccia non produce quel link; il codice di oggi lo gestisce | Un caso per ciascuno dei due file di test | Aperto |
+| F15 | MINOR | v9 | `CustomerCreateContact.tsx:34-35` | La guardia "sposta il focus solo se è perso" non ha test: toglierla lascia verdi i 3 test del componente | Un test che sposta il focus su un altro controllo prima della risposta e verifica che `activeElement` non cambi | Aperto |
+| F16 | MINOR | v10 | `CustomerBulkDialog.tsx:461` (`ModeChoice`, `max-w-xl`), `ui/dialog.tsx` | Il passo di scelta della modalità, sotto 640 px di larghezza e fra 458 e 558 px di altezza, è più alto di prima per la nota di export di AC75 (+100 px) e taglia: a 320×520 il riquadro va da y −19 a 539 e la X sta a y −2. Misura: 558 px a 320 di larghezza, 518 a 360 e 375 (entra). Nessun `max-h` né scorrimento. Gli operatori usano il desktop | `max-h-[calc(100dvh-2rem)] overflow-y-auto` su `DialogContent` | Aperto |
+| F17 | MINOR | v10 | `components/custom/table/TableHeaders.tsx:26` (file non toccato da PR6) | "Aggiornato", l'ordinamento di default di AC59, si vede solo per `text-blue-500` (3,68:1 su bianco, serve 4,5:1) e una freccia senza nome; `th` senza `aria-sort`. Preesistente, ma ora è lo stato iniziale di ogni apertura di Clienti | `text-blue-600`, `aria-sort`, `aria-hidden` sulla freccia | Preesistente: debito |
+| F18 | MINOR | v10 | `CustomerColumns.tsx:111-125` (non toccato) | Il checkbox di riga risponde in 16×16 su un involucro di 48×48 (11% dell'area): il resto assorbe il clic con `stopPropagation` ma la riga mostra puntatore e hover. Preesistente | Un `<label>` sull'involucro, o il padding sul checkbox | Preesistente: debito |
+
+NIT (nessuno blocca; ognuno è del verificatore indicato):
+- v1: lo scrittore aggiunto in futuro è controllato solo se qualcuno ne aggiunge la chiamata nel test (D27 lo accetta); due varianti (coppia già disallineata, ramo "alert non confermato" di `bulkHandleTask`) non girano nel test della regola ma sono provate in altri file.
+- v2: `customerIds` della procedura senza `.max()` (una chiamata diretta è senza limite; 9.000 clienti per chiamata superano i 60 s).
+- v3: in `assignCustomers` `canReassign` viene dopo `findWorkingOperator` e il lock (non raggiungibile dalla procedura); `operatorId: z.number()` senza `.int()` (preesistente: 1.5 dà un 500 per l'admin).
+- v4: titolo del test `bulkUpdateCustomers.db.test.ts:49` ancora sulla regola vecchia; i casi con più clienti controllano allineamento e conteggio ma non il contenuto delle righe.
+- v5: le colonne delle liste 4, 5 e 6 diverse da `contatto_id` non sono asserite; l'intestazione non dice che "esportabile" ignora l'intervallo di `closedCalls`.
+- v6: la mappatura colonna → campo degli ordinamenti espliciti è fissata solo per quattro colonne; la chiave `IS NULL` su `signedPractices` è morta e fa valutare la sottoquery due volte (173 ms contro 24–40 ms a 30.000 clienti).
+- v7: nulla impedisce a `src/app/**` di importare `@/test/operatorRule` (nessun rischio: il DDL gira solo su PGlite); manca un test con un nome di colonna "da iniezione" (`1=1) OR (1:eq:x`) su `CustomerTableSection`.
+- v8: A17, P18 e il finding 41 danno un solo motivo per rilasciare prima il frontend dove una sonda ne trova tre (mancano `tasks`/`priority`; un link salvato con `state` dà `column "state" does not exist`; la scheda vecchia chiama la `getActiveAlerts` tolta).
+- v9: il titolo del test di AC65 dice più di quello che asserisce; i parametri rimossi restano nell'URL (ignorati); in `PopoverFilter` un operatore sconosciuto con colonna nota passa al server (è l'esposizione A15, già assegnata alla sua review).
+- v10: il nome dell'operatore del riepilogo ha lo spazio finale (`getOperatorName` non fa il `trim`; 3 operatori su 22 lo hanno) e la virgola nuova lo mette prima della virgola; `PriorityBadge` ripete il testo con un'icona senza `aria-hidden`.
+
+### What passed
+
+| Concern (verifier) | Evidence |
+|--------------------|----------|
+| v1 — stesso operatore e un solo contatto attivo | Scrittori trovati con `grep` su `.update/.insert` di `task` e `customers` (src e api), non da un elenco; da una coppia allineata ognuno la lascia allineata. 23 mutanti, tutti presi dal test della regola, per lo più dal trigger a COMMIT dentro le transazioni dei servizi. Il secondo contatto attivo resta bloccato dall'indice univoco e da `replaceActiveContact`. "Assegna Clienti" non crea contatti e non tocca stato, priorità né alert. "Crea/assegna contatti": codice e test uguali alla base. |
+| v2 — transazioni e concorrenza | Ordine dei lock (cliente, poi task) uguale in tutti gli scrittori; i tipi lo impongono (`lockActiveContact` vuole un `LockedCustomer`). Su un Postgres 17 vero: coda dietro un contatto sostituito, riapertura e chiusura, due "Assegna" in ordine opposto su 6 clienti, "Assegna" contro `bulkHandleTask`, due "Assegna a te" più un "Assegna": nessun deadlock, un solo contatto attivo, tutto allineato. Una transazione per cliente con `concurrency: 1`; un mutante con concorrenza illimitata è preso. `moveCustomerAndContact` fuori da una transazione non compila. |
+| v3 — autorizzazione | Mutanti che tolgono o indeboliscono `canReassign`, `findWorkingOperator`, `canSelfAssign`, `canHandover`, `canCreateContact`: tutti presi. A16 non dà diritti di modifica oltre D2/AC50. `task.getContactById` non espone niente di più del dettaglio di Contatti, che ogni operatore apre. |
+| v4 — log e conti dell'export | "Assegna Clienti" su 8 scenari scrive esattamente 13 righe `bulk` (la base ne scriveva 6, solo del cliente); `task_id` NULL sul cliente; `from` giusto anche NULL; nulla se non si muove niente; stessa transazione (failpoint). Passaggio di consegne uguale alla base in 5 varianti. L'export (`calls.ts` invariato) cambia solo come dicono AC75 e A16: l'admin passa da 10 a 11 righe (il contatto che non aveva operatore), per operatore A 9→4, B 0→7, C 1→0. |
+| v5 — script di sola lettura | Solo SELECT, nessuna funzione con effetti, nessun lock che blocchi scrittori; nomi veri; categorie e "esportabile" uguali a D26, AC75, PLAN e `closedCalls` (prova differenziale su una griglia di 108 contatti: gli stessi 7 id entrano nell'export dopo il riallineamento). |
+| v6 — query di `getAllCustomers` | Ordine di default, pareggio sull'id nella stessa direzione, NULL in fondo, pagine esatte e totale sullo stesso `where` senza duplicazioni: 63 casi contro un riferimento in JavaScript e 37 mutanti; il join con `operator` è su chiave primaria, `signedPractices` è esatto. |
+| v7 — input verso l'SQL | I `sql.raw` attivi nel file passano da tre a uno (`GET/index.ts:354`), in un solo `where` per pagina e totale; `status` e `sqlTaskFilter` tolti; `orderBy` solo da uno `switch` chiuso (13 valori ostili, tutti sul default); la colonna di un link salvato è limitata alla mappa. Nessuna esposizione nuova né allargata. |
+| v8 — contratto tRPC e gate | Nessun chiamante resta delle procedure tolte o cambiate; `tsc` pulito; regole del server rispettate; l'ordine "prima il frontend" è giusto in tutte e due le direzioni. |
+| v9 — client non visivo | AC60 provato con un router con stato (nessun ciclo, un `push`, URL riscritto); elenco delle colonne ammesse su 8 colonne; Pratiche non regredisce (il test di `PopoverFilter` fallisce 7 su 8 sulla base); AC64–AC68. |
+| v10 — passaggio UI | AC58, AC59, AC60, AC63, AC64, AC65, AC66, AC67, AC68 e i testi di AC75 osservati in Chromium su dati veri; colonne tolte; barra dei filtri senza Stato; link salvato con parametri tolti; carte della modalità fra 280 e 1440 px; riepilogo a 2 e 4 colonne; "Gestisci contatto" 138×36, anello a 2 px, contrasto 19,8; messaggi di "Crea contatto" (con risposte simulate). |
+
+### Per-concern verdicts
+
+| Pass | Charter | Verdict | Rationale |
+|------|---------|---------|-----------|
+| v1 | Stesso operatore e un solo contatto attivo | SHIP | Nessun scrittore lascia coppie separate; due NIT sulla copertura futura |
+| v2 | Transazioni, lock e concorrenza | DO NOT SHIP | Il server regge; MAJOR F1 sul dialogo (il primo errore non ferma il resto e non si vede), voce di debito sbagliata |
+| v3 | Autorizzazione | SHIP | Due MINOR di test (F7, F8); i controlli sono solidi |
+| v4 | Log e conti dell'export | SHIP | Un MINOR di test (F9): la regola vecchia tornerebbe inosservata |
+| v5 | Script SQL di sola lettura | DO NOT SHIP | SQL giusto; MAJOR F2 sul test dei conteggi, più tre MINOR di test e intestazione |
+| v6 | Query di `getAllCustomers` | SHIP | Due MINOR di test (F10, F11); il codice è corretto |
+| v7 | Input verso l'SQL | SHIP | Nessuna esposizione nuova; due NIT |
+| v8 | Contratto tRPC e gate | SHIP | Due MINOR sul PLAN (F12, F13), che contano solo con `BACKEND_URL` attiva |
+| v9 | Client non visivo | SHIP | Due MINOR di test (F14, F15) |
+| v10 | Passaggio UI | SHIP | Un MINOR causato da PR6 (F16, dialogo che taglia su schermi stretti e bassi) e due preesistenti (F17, F18) |
+
+### Human Review Checklist
+
+`reviewImpact: critical`. Passi, nell'ordine:
+1. **Decidere F1** (dialogo "Assegna Clienti"): correggerlo in PR6 come task nuovo (blocchi fissi inviati in sequenza che si fermano al primo errore, messaggio all'admin, `.max()` sull'input) o rinviarlo con una voce nel debito. Vale anche per "Crea/assegna contatti".
+2. **Script di produzione, una persona (Omar):** lanciare `contatti-operator-mismatch.sql` in sola lettura sul DB di produzione e passare i conteggi (a), (a2), (a2 esportabili), (b), (c). Se (b) o (a2 esportabili) sono maggiori di zero decide Omar per iscritto, nel log di T6.7. Poi si scrive la migrazione di T6.9 e il suo round di review.
+3. **CI verde sulla PR verso `dev`** e gate in una copia pulita senza `.env*`, dopo la migrazione: `SKIP_ENV_VALIDATION=true pnpm exec next lint`, `pnpm exec tsc --noEmit`, `pnpm run test --run`, `pnpm build` con i segnaposto, `pnpm api:build`, `pnpm api:smoke`.
+4. **`BACKEND_URL` in produzione:** controllare il valore nel progetto Vercel di produzione. Se è attiva: prima il frontend e poi il backend (A17), con il ripiego "rilasciare insieme e provare la scheda" (F12), e Cloud Run sulla revisione nuova prima della migrazione di T6.9 (F13).
+5. **A3, una persona:** `EXPLAIN ANALYZE` della prima pagina di Clienti su volumi reali (≤ 500 ms), e la misura di "Assegna Clienti" con 100 e 500 clienti sul DB di sviluppo.
+6. **Passata a mano con un ruolo OPERATORE** (nessun verificatore l'ha fatta): "Crea contatto" per l'operatore del cliente, Clienti senza colonna di selezione, "Gestisci contatto" e il ritorno alla lista; e un clic vero su "Crea contatto" e "Passaggio di consegne" sul DB di sviluppo (v10 ha usato risposte simulate).
+7. **Testi del dialogo (T6.3) e dell'annuncio:** li rivede Omar al gate.
+8. **Nessuno script con `NODE_ENV=production`** lanciato da agenti, e nessun `db:migrate:prod` fuori dalla sessione di rilascio, che è di Omar.
+
+### Acceptance criteria check (case B)
+
+| Criterio | Esito | Evidenza |
+|---|---|---|
+| AC58 | Met | v10: intestazioni, righe e menu Colonne senza le tre colonne né il selettore di stato |
+| AC59 | Met | v10, v6: nessun filtro Stato; ordinamento di default `updatedAt` decrescente; query provata su 63 casi |
+| AC60 | Met | v9, v10, v7: link salvato con parametri tolti si apre ignorandoli, un solo `push`, nessun ciclo |
+| AC61 | Met | v6: pagine esatte e totale sullo stesso `where` (F10, F11 sono buchi di test) |
+| AC63 | Met | v1, v10: etichette nuove; i quattro casi non cambiano (codice e test uguali alla base) |
+| AC64, AC65 | Met | v9, v10, v3: riepilogo in sola lettura con "Gestisci contatto"; nessun controllo di stato, priorità o alert |
+| AC66 | Met | v3, v9, v10: visibilità e controllo del server; il test di visibilità manca (F8) |
+| AC67 | Met | v9, v10: "Cliente non assegnato" e "Questo cliente ha già un contatto attivo" |
+| AC68 | Met | v9: nessuna modifica alle note |
+| AC71 | Met | v1, v2: indice univoco, `replaceActiveContact`, 5 interleaving su Postgres vero |
+| AC72 | Met | v1, v4: percorsi non toccati, codice e test uguali alla base |
+| AC75 | **Met nel codice; non nel dialogo (F1); la parte di migrazione non è in questo round** | v1, v4: cliente e contatto attivo insieme, righe `bulk`, export come previsto; v2: dopo un errore il dialogo non lo dice e i blocchi successivi proseguono; il test dei contatti non attivi è debole (F9) |
+
+### Notes for docs-maintenance
+
+- Da correggere o accettare prima del merge: F1 (decisione di Omar) e F2. I MINOR di test (F3–F11, F14, F15) e di documentazione (F5, F6, F12, F13) si correggono in PR6 o vanno nel debito.
+- Probabilmente durevoli in ogni caso: F17 e F18 (preesistenti, file non toccati) e i NIT che nessuno corregge.
+- Il debito aperto da PR6 sul dialogo (F1, F6) va nella voce "Assegna Clienti su molti clienti" di `brain/tech-debt/crm/sezione-contatti.md`.
+- Backlink dalle pagine di dominio: n/a finché la spec non è conclusa.

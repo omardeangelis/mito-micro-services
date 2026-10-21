@@ -6,7 +6,7 @@ spec: sezione-contatti
 links:
   - "[[specs/crm/sezione-contatti/REPORT]]"
 created: 2026-09-25
-updated: 2026-10-18
+updated: 2026-10-21
 ---
 
 # Review Rubric: Sezione Contatti — PR1 "Percorsi di creazione sicuri"
@@ -501,3 +501,111 @@ Nessuno.
 | v11 | Modifiche condivise e punti d'ingresso (AC1, AC62) | low | fast (haiku) |
 | v12 | Passaggio UI sulla superficie renderizzata | medium | balanced (sonnet) |
 | v13 | Passaggio di movimento (P6, P13, P17) | low | fast (haiku) |
+
+## [Round: 2026-10-21] PR6 — "Clienti semplificata" (senza la migrazione di T6.9)
+
+Round aggiunto: le rubric di PR1, PR2, PR3, PR4, PR5a e PR5b sopra restano come sono. PR5b non rientra in questo round: Omar l'ha dichiarata SHIP il 2026-10-20 (PLAN.md, T6.7).
+
+### Change set under review
+
+- **Scope:** spec implementation, solo PR6 (PLAN.md §PR6: T6.1–T6.10; T6.7 è il gate). Contratto: AC58–AC61, AC63–AC68, AC71, AC75; decisioni D26, D27, D29, P19, A16, A17. **Non è in questo round la migrazione di T6.9** (il riallineamento dei contatti attivi), che aspetta i conteggi dello script in produzione: avrà un round suo, solo sulla migrazione e sul suo test.
+- **Target:** branch `claude/pr6-resolution-e7198b` (PR verso `dev`), 11 commit, non ancora pushata
+- **Compared:** `434b0474868eaa862c9c0e30d79d5163bd116ca8` (tip di `dev` con PR5a e PR5b) → `6d6566d7ce6e5bdf9dea832ebf97ea23c217fe53`
+- **Files touched:** 54 file in `src/` (3.914 righe aggiunte, 2.132 tolte; 7 file nuovi di test e 1 script SQL di sola lettura, 5 componenti e 2 test eliminati) e 6 file di documentazione in `brain/`. Nessun file fuori da `src/` e `brain/`: niente `package.json`, lockfile, `api/` né `.github/`. Domini: crm
+- **Gate eseguiti dall'orchestratore** in una copia pulita a `197833e` (il codice di `src/` a `6d6566d` è lo stesso; i due commit dopo cambiano solo `brain/`): `next lint`, `tsc --noEmit`, `pnpm run test --run` (125 file, 1948 test, 5 saltati), `pnpm build` con i segnaposto, `pnpm api:build`, `pnpm api:smoke`, tutti con uscita 0.
+
+### Routing rubric (review-classifier output)
+
+```json
+{
+  "taskType": "feature",
+  "secondaryType": "refactor",
+  "domainsTouched": ["crm"],
+  "adversarialVerifiers": {
+    "count": 10,
+    "passes": [
+      {
+        "id": "v1",
+        "charter": "Same-operator invariant and single active contact, checked as the end state each writer leaves (no interleavings). After every writer of a customer's or contact's operator, the customer and its active contact must have the same operator (AC75, D26/D27). The writers are handover, assignCustomers and assignToYourself in src/server/services/customer/assignment.ts, plus the unchanged task.createContact, changeState reopen, processDueAlerts, task.bulkHandleTask and task.reassign. Also check: no sequential path creates a second active contact (AC71). 'Assegna Clienti' creates no contacts. It moves the active contact in any state, leaves inactive contacts with their operator, and does not touch the moved contact's state, priority or alert. 'Assegna a te' gives a contact with no operator to the actor (A16) and leaves alone a contact already on the actor. The four 'Crea/assegna contatti' cases in the operators' guide behave as before (AC63). Then judge whether src/test/operatorRule.ts with operatorRule.db.test.ts really proves the rule for every writer: a writer missing from that test is a gap. Excludes concurrency, event-log rows and authorization.",
+        "complexity": "high"
+      },
+      {
+        "id": "v2",
+        "charter": "Transactions and concurrency of the assignment writes. Check the lock order: lockCustomerOrNotFound (customer FOR UPDATE), then lockActiveContact (task FOR UPDATE). It must follow D12 and match every other writer, so that 'Assegna Clienti', the handover, 'Assegna a te', createContact, the alert cron and bulkHandleTask on the same customer cannot deadlock, lose an update or leave customer and contact apart (AC71 under two concurrent requests, AC75). Check P19: one transaction per customer, run in sequence with concurrency 1. The first error stops the rest, the earlier customers stay committed, and the dialog reports that partial outcome truthfully. Check that moveCustomerAndContact cannot run outside a transaction (Tx). Check that one call, with the dialog's client-side batching, stays inside the function time limit (tech-debt entry 'Assegna Clienti su molti clienti'). PGlite has a single connection: work out interleavings from the code and do not treat green tests as proof. Excludes the end-state rules of v1 and the log rows of v4.",
+        "complexity": "high"
+      },
+      {
+        "id": "v3",
+        "charter": "Authorization on the changed paths. customer.bulkUpdateCustomers stays admin-only: adminProcedure plus canReassign inside assignCustomers, so a customer's own operator cannot use it. The target must be a working operator: findWorkingOperator rejects a missing or system operator before any write. 'Assegna a te' still refuses a customer that has an operator or whose contact is a colleague's, and its new A16 behaviour (it also takes a contact with no operator) grants no edit rights beyond D2/AC50 plus the accepted exception. The handover's permissions are unchanged. On the customer sheet, 'Crea contatto' shows only to admins and the customer's operator (AC66), and task.createContact enforces the same rule on the server. The sheet's new server-side call to task.getContactById must expose nothing the user could not already see. Excludes data outcomes and rendering.",
+        "complexity": "high"
+      },
+      {
+        "id": "v4",
+        "charter": "Event log and calls-export accounting (D29, AC75, A16). Every operator change of a customer or contact writes exactly the operator_reassign rows it should: task_id (null for the customer's row), from_operator_id (NULL included), to_operator_id, and source detail, bulk or self_assign. The rows go in the same transaction as the UPDATE, and nothing is written when nothing moved. Compare with the old bulkUpdateCustomers, which logged only the customer row. Then check that the calls export (src/server/services/export/calls.ts, closedCalls) changes only as AC75 allows. Calls on a moved active contact follow it to the new operator. Inactive contacts stay with whoever worked them. Contacts that gain an operator enter the export, as accepted in A16. No other count changes. Excludes the SQL diagnostic script.",
+        "complexity": "high"
+      },
+      {
+        "id": "v5",
+        "charter": "Read-only production diagnostic src/server/db/scripts/contatti-operator-mismatch.sql. Check that it is strictly read-only: SELECT only, no functions with side effects, no lock that would block production writers. Check that it uses the real table and column names. Check that its categories (a, a2, a2_esportabili, b, c) and its 'exportable' definition match invariant D26 and closedCalls, so the release-gate decision it drives is right, and that operatorMismatch.db.test.ts pins every category. Never run it against production or any remote database: read it, or run it on PGlite or a local DB only. The T6.9 realignment migration is not in this diff and is out of scope.",
+        "complexity": "medium"
+      },
+      {
+        "id": "v6",
+        "charter": "Correctness of the Clienti list query in getAllCustomers (AC59, AC61). The default order is updatedAt desc whatever sortedBy says. Every order ends with an id tie-break in the same direction, with the NULLs-last handling, so consecutive pages never repeat or skip a customer, including customers with equal updatedAt from a bulk assignment. Each page has exactly perPage rows except the last. The total counts exactly the customers that match the same filters: with the task and customerToPratica joins gone there must be no fan-out, and the signedPractices scalar subquery must be correct. The removed status filter and the removed sorts no longer affect results. getAllCustomers.db.test.ts actually pins all of this. Excludes the security of sqlFilter.",
+        "complexity": "medium"
+      },
+      {
+        "id": "v7",
+        "charter": "External input reaching SQL, changed lines only. Check that the getAllCustomers and CustomerTableSection rewrite does not widen what client input reaches raw SQL. sqlFilter must remain the only sql.raw site, now in one WHERE shared by the page and the count. sqlTaskFilter and filterBy.status must be gone from the input schema. orderBy must reach SQL only through the closed orderColumn switch (no prototype keys, no string interpolation). createSQLQuery is now called with the customers table name. No new sql.raw or string-built SQL appears anywhere else in the diff, and the DDL in src/test/operatorRule.ts must be test-only. The pre-existing sql.raw exposure has its own security review (brain/tech-debt/crm/search-by-explicit-map.md): record only new or widened exposure, and do not re-audit the known one.",
+        "complexity": "high"
+      },
+      {
+        "id": "v8",
+        "charter": "tRPC contract, backend compatibility and gates. Check that no caller is left in src/ or api/ for any removed or reshaped procedure. task.getActiveAlerts and task.getAllAvaibleTaskStatus are removed. getAllCustomers no longer returns tasks, activeTasks, closedAt or priority, and drops the status and sqlTaskFilter inputs and the orderBy default. bulkUpdateCustomers now returns void instead of the updated rows. Check that the frontend-before-backend release order (A17, when BACKEND_URL is set) is needed and written down. Check the project's server rules: no next/*, next-auth runtime calls or @/trpc/server in src/server/**; Effect services with Data.TaggedError mapped to TRPCError in one place through runTrpc and customerErrorToTrpc; @/trpc/server errors read in both the in-process and the HTTP shape. Check the gate results supplied by the orchestrator: lint, tsc --noEmit, pnpm run test --run, pnpm build with placeholder env, pnpm api:build, pnpm api:smoke.",
+        "complexity": "medium"
+      },
+      {
+        "id": "v9",
+        "charter": "Non-visual client behaviour of Clienti and the customer sheet. Saved links and preferences that name removed filters, sorts or columns must open ignoring them, with no crash and no URL rewrite loop (AC60). The code involved is the CustomerTableSection REMOVED_* lists and default sort, the initial sorting state of CustomersTable and the push back to the URL, the status chip in TableFilterSections, and useGetMultipleUrlParamsValues. The shared PopoverFilter now drops unknown or malformed filter entries: check there is no regression on the Pratiche page. On the customer sheet: the read-only summary appears when an active contact exists, otherwise 'Crea contatto' (AC64, AC66). Check the 'Cliente non assegnato' message and the 'contact already exists' message (AC67), the focus handoff to 'Gestisci contatto', and that link's way back to the customer's contact list (D28). No control is left that changes state, priority or alert (AC65), and the notes are unchanged (AC68). Excludes visual and static UI (v10) and server rules.",
+        "complexity": "medium"
+      },
+      {
+        "id": "v10",
+        "charter": "UI pass: run against the ui-review skill bar and probes (.agents/skills/ui-review/SKILL.md: the seven classes, the evidence gate, the falsification pass) on the changed rendered surfaces. Clienti table: the removed columns, the filter bar without Stato, the filter chips, the default sort indicator on 'Aggiornato il', the selection column. Bulk-assignment dialog: the 'Crea/assegna contatti' title and button, the mode cards with the long export note, the loading steps, the final summary. Customer sheet: the CustomerContactSummary definition-list grid at 2 and 4 columns, the 'Gestisci contatto' link styled as a button, the 'Crea contatto' card and its messages, and focus visibility after the handoff. Case B adds the UI criteria AC58, AC59, AC63, AC64, AC65, AC66, AC67 and AC68. Before flagging, read brain/chore/ui-review.md if it exists and the known tech debt on the sheet under 900 px and on the shared primitives. No motion code was added, so no motion-craft pass is chartered.",
+        "complexity": "medium"
+      }
+    ]
+  },
+  "taskComplexity": "high",
+  "reviewImpact": "critical",
+  "humanInLoop": true,
+  "nextStep": "Before fan-out, run git diff --name-status 434b047..HEAD -- . ':!src' ':!brain' to confirm nothing outside src/ and brain/ changed. If package.json, pnpm-lock.yaml, .github/ or api/ changed, add a dependency/CI pass. Run the gates once and give the output to all passes, v8 in particular: lint with the worktree workaround 'pnpm exec eslint --no-eslintrc -c .eslintrc.cjs src --ext .ts,.tsx' plus tsc --noEmit, pnpm run test --run, pnpm build with SKIP_ENV_VALIDATION=true and placeholder Supabase env, pnpm api:build, pnpm api:smoke. Then run v1-v10 as independent adversarial-verifier passes: high on the strongest model (Opus), medium on the balanced tier. v10 needs a browser. No pass may run NODE_ENV=production scripts or execute the SQL script against a remote database. REPORT.md must end with a human checklist: a person runs contatti-operator-mismatch.sql on production before the release and records the a, a2_esportabili and b counts; frontend ships before backend if BACKEND_URL is active (A17); the T6.9 migration is still pending its own review round; 'Assegna Clienti' still has to be measured with a full 500-row page."
+}
+```
+
+### Classifier rationale
+
+Critico, con una persona nel loop, per la scrittura di righe di produzione di `customers`, `task` e `task_event_log`: quest'ultima alimenta l'export chiamate, i cui conteggi possono cambiare solo come dice AC75. Tocca tre superfici sempre sensibili: l'autorizzazione (l'assegnazione massiva solo per l'admin e l'eccezione A16 di "Assegna a te"), l'input del client che arriva all'SQL e i conti dell'export. Ognuna ha un passaggio suo.
+
+La logica di assegnazione è divisa in due passaggi: lo stato finale che ogni scrittore lascia (v1) e ciò che scrittori contemporanei possono farsi (v2). Il tech-debt dice che PGlite non prova il lock D12, quindi la parte di concorrenza di AC71 si controlla leggendo il codice. v7 copre solo le righe cambiate attorno a `sql.raw`, perché l'esposizione già nota ha una sua review di sicurezza (`search-by-explicit-map.md`). Lo script SQL di sola lettura ha un passaggio suo (v5) perché lo lancia una persona in produzione come gate del rilascio. Nessun passaggio di movimento: il diff non aggiunge `transition`, `animation`, easing né durate. In `brain/domains/crm/` non c'è un contratto di dominio (solo `.gitkeep`): i riferimenti sono i criteri della SPEC, le decisioni del PLAN (D12, D26, D27, D29, P19, A16, A17) e `brain/tech-debt/crm/sezione-contatti.md`.
+
+### Overrides applied
+
+Nessuno. Il numero di passaggi (10) è alto ma ogni charter ha un concern solo e non si sovrappone agli altri; non l'ho cambiato a mano.
+
+### Verification plan (derived)
+
+| Pass | Charter | Complexity | Model tier |
+|------|---------|------------|------------|
+| v1 | Stesso operatore e un solo contatto attivo: lo stato finale di ogni scrittore (AC75, AC71, AC63) e se `operatorRule` li prova tutti | high | strongest (opus) |
+| v2 | Transazioni, lock (D12) e concorrenza delle scritture di assegnazione (P19, AC71) | high | strongest (opus) |
+| v3 | Autorizzazione sui percorsi cambiati (AC66, A16, D2) | high | strongest (opus) |
+| v4 | Righe di `task_event_log` e conti dell'export (D29, AC75, A16) | high | strongest (opus) |
+| v5 | Script SQL di sola lettura per la produzione (T6.9, prima metà) | medium | balanced (sonnet) |
+| v6 | Correttezza della query di `getAllCustomers` (AC59, AC61) | medium | balanced (sonnet) |
+| v7 | Input esterno che arriva all'SQL, solo le righe cambiate | high | strongest (opus) |
+| v8 | Contratto tRPC, compatibilità con il backend e gate (A17) | medium | balanced (sonnet) |
+| v9 | Comportamento non visivo di Clienti e della scheda cliente (AC60, AC64–AC68) | medium | balanced (sonnet) |
+| v10 | Passaggio UI sulle superfici renderizzate (AC58, AC59, AC63–AC68) | medium | balanced (sonnet) |
+
+Nessun passaggio di movimento (P6). Nessun verificatore si collega al database di produzione, lancia uno script con `NODE_ENV=production` o esegue lo script SQL su un database remoto. Il passaggio UI usa un `next dev` locale sul DB di sviluppo, avviato dall'orchestratore.
