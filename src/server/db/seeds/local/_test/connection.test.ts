@@ -1,6 +1,7 @@
 // @vitest-environment node
 import { afterEach, describe, expect, it } from "vitest"
 import {
+  connectLocal,
   LOCAL_DATABASE_URL,
   localSeedConnection,
 } from "../../../scripts/localDb"
@@ -68,6 +69,24 @@ describe("localSeedConnection", () => {
       database: "mito_local",
     })
     expect(options).not.toHaveProperty("path")
+  })
+})
+
+describe("connectLocal", () => {
+  it("builds the commands' client on 127.0.0.1:54329/mito_local whatever the environment says (AC28a)", async () => {
+    Object.assign(process.env, HOSTILE_ENV)
+
+    const { client } = connectLocal()
+
+    // postgres.js connects on the first query: reading the options opens nothing
+    expect(client.options).toMatchObject({
+      host: ["127.0.0.1"],
+      port: [54329],
+      database: "mito_local",
+      user: "postgres",
+    })
+    expect(client.options.path).toBeFalsy()
+    await client.end()
   })
 })
 
