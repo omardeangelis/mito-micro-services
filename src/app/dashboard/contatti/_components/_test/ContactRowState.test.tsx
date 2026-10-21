@@ -5,7 +5,7 @@ import { TRPCClientError } from "@trpc/client"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { describeContactError } from "@/components/custom/contact/describeContactError"
 import { type ContactErrorData } from "@mito/domain/contact/errors"
-import { type ContactRow } from "@/server/services/contact/getContacts"
+import { type ContactRow } from "@mito/server/services/contact/getContacts"
 import { defaultState, detailHref } from "../../_lib/searchParams"
 import { ContactRowState } from "../ContactRowState"
 

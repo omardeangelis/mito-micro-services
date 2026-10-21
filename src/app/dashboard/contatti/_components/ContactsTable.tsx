@@ -20,7 +20,7 @@ import { cn } from "@/lib/utils"
 import type {
   ContactRow,
   CustomerFilter,
-} from "@/server/services/contact/getContacts"
+} from "@mito/server/services/contact/getContacts"
 import { groupContacts } from "../_lib/groupContacts"
 import { detailHref, type ContactsListState } from "../_lib/searchParams"
 import {

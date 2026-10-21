@@ -1,5 +1,5 @@
 import NextAuth from "next-auth"
-import { authOptions } from "@/server/auth"
+import { authOptions } from "@mito/server/auth"
 
 // The Pages Router shapes NextAuth v4 reads and writes (next-auth/next,
 // NextAuthApiHandler): the handler the Next.js app serves at /api/auth/*, with

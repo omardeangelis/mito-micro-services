@@ -22,7 +22,7 @@ import {
 import { customers } from "@mito/db/schema/customers"
 import { cronRun } from "@mito/db/schema/cronRun"
 import { practices } from "@mito/db/schema/pratiche"
-import { ServerLive } from "@/server/effect/server"
+import { ServerLive } from "@mito/server/effect/server"
 import { migrateUpTo, resetDb, testDb } from "@/test/db"
 import { reportedErrors } from "@/test/errorReporter"
 import { createCustomer, createPractice } from "@/test/factories"

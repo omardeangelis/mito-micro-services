@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, vi } from "vitest"
-import type * as ErrorReporterModule from "@/server/effect/errorReporter"
+import type * as ErrorReporterModule from "@mito/server/effect/errorReporter"
 
 // Boundaries of the server code under test. The factories are lazy: a test
 // file that never imports these modules never starts the in-memory database.
@@ -11,17 +11,17 @@ vi.mock("@mito/db", async () => ({
 }))
 
 // Sessions come from `createTestCaller`
-vi.mock("@/server/auth", () => ({
+vi.mock("@mito/server/auth", () => ({
   authOptions: {},
   getServerAuthSession: vi.fn(async () => null),
 }))
 
 // Created on import from env vars the tests don't have
-vi.mock("@/server/client/supabase", () => ({ supabaseClient: {} }))
+vi.mock("@mito/server/client/supabase", () => ({ supabaseClient: {} }))
 
 // Sentry: failures reported with `ErrorReporter` land in `reportedErrors`
 // (src/test/errorReporter.ts) instead
-vi.mock("@/server/effect/errorReporter", async (importOriginal) => {
+vi.mock("@mito/server/effect/errorReporter", async (importOriginal) => {
   const original = await importOriginal<typeof ErrorReporterModule>()
   const { Effect, Layer } = await import("effect")
   const { reportedErrors } = await import("@/test/errorReporter")

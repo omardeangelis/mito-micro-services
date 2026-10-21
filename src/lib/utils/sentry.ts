@@ -21,7 +21,7 @@ export const sentryInitOptions = {
 
 /**
  * tRPC failures are reported once, where the procedure fails (`sentryMiddleware`
- * in `src/server/api/trpc.ts`), and only when they are server faults.
+ * in `packages/server/src/api/trpc.ts`), and only when they are server faults.
  *
  * Drops the rest: `TRPCError`s with a client code (UNAUTHORIZED, BAD_REQUEST,
  * NOT_FOUND, …) are expected outcomes, and a `TRPCClientError` is the caller's

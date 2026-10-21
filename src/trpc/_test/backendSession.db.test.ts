@@ -17,7 +17,7 @@ import { app } from "../../../apps/api/src/app"
 import { backendSession } from "../backendSession"
 
 // The real NextAuth configuration, as the backend runs it
-vi.unmock("@/server/auth")
+vi.unmock("@mito/server/auth")
 
 const DAY = 24 * 60 * 60 * 1000
 

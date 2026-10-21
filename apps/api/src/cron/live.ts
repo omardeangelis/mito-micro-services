@@ -1,5 +1,5 @@
 import { Layer } from "effect"
-import { ServerLive } from "@/server/effect/server"
+import { ServerLive } from "@mito/server/effect/server"
 import { cronAuth, cronAuthDisabled, googleKeys } from "./auth"
 import { logReport, slackReport } from "./report"
 import { type CronContext } from "./routes"

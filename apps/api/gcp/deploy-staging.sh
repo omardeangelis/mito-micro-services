@@ -19,7 +19,7 @@ S=STAGING_
 # the instance: user mito_app, database mito, password from its secret
 # (staging-db-access.sh lets the service account read it and connect)
 # Storage is the GCS bucket storage-staging.sh creates, with the ADC of the
-# service account (src/server/services/storage/layer.ts)
+# service account (packages/server/src/services/storage/layer.ts)
 gcloud run deploy mito-crm-staging --project=mito-crm --region=europe-west3 \
   --image=europe-west3-docker.pkg.dev/mito-crm/mito-crm/mito-api:$TAG \
   --add-cloudsql-instances=$INSTANCE \

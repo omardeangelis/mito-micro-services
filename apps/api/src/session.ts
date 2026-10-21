@@ -1,5 +1,5 @@
 import { type Session } from "next-auth"
-import { authOptions } from "@/server/auth"
+import { authOptions } from "@mito/server/auth"
 
 // NextAuth's cookie: `__Secure-` when the app runs on https, as in production
 // and staging; without the prefix on http, as in `next dev`

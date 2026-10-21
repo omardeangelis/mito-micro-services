@@ -60,6 +60,7 @@
     "@mito/db": "workspace:*",
     "@mito/domain": "workspace:*",
     "@mito/env": "workspace:*",
+    "@mito/server": "workspace:*",
     "@radix-ui/react-accordion": "^1.3.1",
     "@radix-ui/react-avatar": "^1.3.1",
     "@radix-ui/react-checkbox": "^1.4.1",
