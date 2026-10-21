@@ -29,8 +29,8 @@ import {
 // In the release session the index migration before this one already holds an
 // ACCESS EXCLUSIVE lock on task until the COMMIT, so no write to task gets in
 // between. These tests are for the migration run alone, where its own first
-// statement (LOCK TABLE) is what keeps a handover that commits after the move
-// read its rows from being undone.
+// statements (a limit on the wait, then LOCK TABLE) are what keep a handover
+// that commits after the move read its rows from being undone.
 
 const MIGRATIONS = path.resolve(__dirname, "..")
 const statements = readFileSync(
@@ -86,9 +86,10 @@ describe.skipIf(!hasTestDatabase)(
       await resetDb()
     })
 
-    it("divide in tre istruzioni: il lock, la guardia e lo spostamento", () => {
-      expect(statements).toHaveLength(3)
-      expect(statements[0]).toMatch(
+    it("divide in quattro istruzioni: il limite di attesa, il lock, la guardia e lo spostamento", () => {
+      expect(statements).toHaveLength(4)
+      expect(statements[0]).toMatch(/SET LOCAL lock_timeout = '5s'/)
+      expect(statements[1]).toMatch(
         /LOCK TABLE "mito-deutsche_task" IN EXCLUSIVE MODE/
       )
     })

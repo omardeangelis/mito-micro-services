@@ -22,12 +22,18 @@
 -- 1. The application writes a customer's operator and its contact's together,
 -- and does it under the lock of the contact. The move below reads the pairs
 -- once: a handover that commits between that read and the UPDATE would be
--- undone, and the pair split again (the UPDATE rechecks only the contact's own
--- row, and a handover to the operator the contact already has changes only
--- the customer). So the table is locked first: writes to task wait (reads
--- don't), and the guard and the move below see every committed change.
+-- undone, and the pair split again (at the UPDATE, READ COMMITTED re-reads only
+-- the contact's own row, and a handover to the operator the contact already
+-- has changes only the customer). So the table is locked first: writes to
+-- task wait (reads don't), and the guard and the move below see every
+-- committed change.
 -- In the release session the index migration before this one already holds a
--- stronger lock on task until the COMMIT, so this changes nothing there.
+-- stronger lock on task until the COMMIT, and has set the same limit, so this
+-- changes nothing there. Run alone, the wait for the lock is capped at 5 s:
+-- the migration gives up and rolls back, and can be run again.
+SET LOCAL lock_timeout = '5s';
+--> statement-breakpoint
+
 LOCK TABLE "mito-deutsche_task" IN EXCLUSIVE MODE;
 --> statement-breakpoint
 
