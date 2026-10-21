@@ -11,7 +11,18 @@ import { fileURLToPath } from "node:url"
 const root = fileURLToPath(new URL("../..", import.meta.url))
 
 // Paths the build resolves itself: the tsconfig alias and the `alias` below
-const ownPaths = /^(@\/|server-only$|@sentry\/nextjs$)/
+const ownPaths = /^(@\/|@mito\/|server-only$|@sentry\/nextjs$)/
+
+// The workspace packages (packages/*) ship TypeScript sources: they go in the
+// bundle like src/, while their own imports of packages stay external
+const workspacePackages = {
+  name: "workspace-packages",
+  setup(build) {
+    build.onResolve({ filter: /^@mito\// }, (args) => ({
+      path: fileURLToPath(import.meta.resolve(args.path)),
+    }))
+  },
+}
 
 // Node's rule: .cjs and .mjs decide, a .js follows the nearest package.json
 const isCommonJs = (file) => {
@@ -89,6 +100,6 @@ await build({
     // map, so Node resolves its subpaths only with the file's extension
     "next/server": "next/server.js",
   },
-  plugins: [cjsDefaultInterop],
+  plugins: [workspacePackages, cjsDefaultInterop],
   logLevel: "info",
 })

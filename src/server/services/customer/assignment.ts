@@ -7,9 +7,9 @@ import {
   canReassign,
   canSelfAssign,
 } from "@/lib/domain/contact/permissions"
-import { customers } from "@/server/db/schema/customers"
-import { task } from "@/server/db/schema/task"
-import { taskEventLog } from "@/server/db/schema/taskEventLog"
+import { customers } from "@mito/db/schema/customers"
+import { task } from "@mito/db/schema/task"
+import { taskEventLog } from "@mito/db/schema/taskEventLog"
 import {
   type Db,
   type DbError,

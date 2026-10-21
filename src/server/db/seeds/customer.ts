@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { faker } from "@faker-js/faker"
-import type * as schema from "../schema/index"
-import { customers } from "../schema/index"
+import type * as schema from "@mito/db/schema/index"
+import { customers } from "@mito/db/schema/index"
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js"
 import { nanoid } from "nanoid"
 import { loadEnv } from "@/lib/global/loadDbEnv"

@@ -27,5 +27,5 @@ export type NullableAllObjectKeys<T> = {
 
 export type SupaBaseDb = PostgresJsDatabase<
   // eslint-disable-next-line @typescript-eslint/consistent-type-imports
-  typeof import("@/server/db/schema/index")
+  typeof import("@mito/db/schema/index")
 >

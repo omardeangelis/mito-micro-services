@@ -1,6 +1,6 @@
 import { operatorProcedure, protectedProcedure } from "@/server/api/trpc"
-import { users } from "@/server/db/schema/users"
-import { operators } from "@/server/db/schema/operators"
+import { users } from "@mito/db/schema/users"
+import { operators } from "@mito/db/schema/operators"
 import { eq } from "drizzle-orm"
 import { z } from "zod"
 import { operatorSelectCompleteResponse } from "@/lib/constants/schema"

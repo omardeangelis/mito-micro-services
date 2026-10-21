@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { localConnection } from "@/server/db/localDsn"
+import { localConnection } from "@mito/db/localDsn"
 
 describe("localConnection", () => {
   it("un DSN locale dà la connessione, presa solo dal DSN", () => {

@@ -70,7 +70,7 @@ if (
   )
 }
 
-// The backend on Cloud Run (api/) serves the same API on the same paths. With
+// The backend on Cloud Run (apps/api) serves the same API on the same paths. With
 // BACKEND_URL set, Vercel sends the browser's tRPC calls there, and
 // @/trpc/server calls it over HTTP. The rewrite is fixed at build time, so a
 // change needs a new deploy. The session cookie travels to it: https only,
@@ -119,6 +119,10 @@ const REST_PREFIXES = ["/api/import", "/api/export", "/api/user"]
 /** @type {import("next").NextConfig} */
 const config = {
   reactStrictMode: true,
+  // The workspace packages ship TypeScript sources (packages/*)
+  transpilePackages: ["@mito/db"],
+  // `next lint` and the lint of `next build`: the app and the packages
+  eslint: { dirs: ["src", "packages"] },
   swcMinify: true,
   env: {
     // The same value whether or not Vercel sets NEXT_PUBLIC_VERCEL_ENV too.

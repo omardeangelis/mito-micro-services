@@ -4,8 +4,8 @@ import { eq } from "drizzle-orm"
 import { type Actor } from "@/lib/domain/contact/permissions"
 import { canSetCallback } from "@/lib/domain/contact/status"
 import { isDueOrOverdue } from "@/lib/domain/contact/time"
-import { alert, task } from "@/server/db/schema/task"
-import { taskEventLog } from "@/server/db/schema/taskEventLog"
+import { alert, task } from "@mito/db/schema/task"
+import { taskEventLog } from "@mito/db/schema/taskEventLog"
 import {
   type CustomerMissing,
   type Db,

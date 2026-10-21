@@ -3,9 +3,9 @@ import { Clock, Data, Effect } from "effect"
 import { and, asc, desc, eq, sql } from "drizzle-orm"
 import { SYSTEM_OPERATOR_USER_ID } from "@/lib/constants/operator"
 import { type Alert, type Task } from "@/lib/types/schemas"
-import { operators } from "@/server/db/schema/operators"
-import { alert as alerts, task as tasks } from "@/server/db/schema/task"
-import { taskEventLog } from "@/server/db/schema/taskEventLog"
+import { operators } from "@mito/db/schema/operators"
+import { alert as alerts, task as tasks } from "@mito/db/schema/task"
+import { taskEventLog } from "@mito/db/schema/taskEventLog"
 import {
   type CustomerMissing,
   type Db,

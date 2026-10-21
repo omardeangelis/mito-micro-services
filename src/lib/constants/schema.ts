@@ -1,4 +1,4 @@
-import { operators } from "@/server/db/schema/operators"
+import { operators } from "@mito/db/schema/operators"
 
 export const operatorSelectCompleteResponse = {
   id: operators.id,

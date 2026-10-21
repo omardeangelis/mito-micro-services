@@ -3,7 +3,7 @@ import { Effect } from "effect"
 import { eq } from "drizzle-orm"
 import { type Actor } from "@/lib/domain/contact/permissions"
 import { bandValue, type PriorityBand } from "@/lib/domain/contact/priority"
-import { task } from "@/server/db/schema/task"
+import { task } from "@mito/db/schema/task"
 import {
   type CustomerMissing,
   type Db,

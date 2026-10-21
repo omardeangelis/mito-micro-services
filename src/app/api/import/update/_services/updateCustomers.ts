@@ -1,6 +1,6 @@
 import { inArray, or } from "drizzle-orm"
-import { customers as customersSchema } from "@/server/db/schema/customers"
-import { db } from "@/server/db"
+import { customers as customersSchema } from "@mito/db/schema/customers"
+import { db } from "@mito/db"
 import { updateImportedCustomer } from "@/server/shared/updateImportedCustomer"
 import { cleanObject } from "@/lib/utils"
 import { type CustomerWriteWithInternalSort } from "../../process/_services/type"

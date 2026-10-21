@@ -1,5 +1,5 @@
 import { protectedProcedure } from "@/server/api/trpc"
-import { messages } from "@/server/db/schema/chat"
+import { messages } from "@mito/db/schema/chat"
 import { z } from "zod"
 import { eq } from "drizzle-orm"
 

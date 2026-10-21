@@ -1,10 +1,10 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { faker } from "@faker-js/faker"
-import type * as schema from "../schema/index"
-import { practices } from "../schema/index"
+import type * as schema from "@mito/db/schema/index"
+import { practices } from "@mito/db/schema/index"
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js"
 import { generateRandomProductKey } from "../../../lib/constants/productMap"
-import { stateEnum } from "../schema/pratiche"
+import { stateEnum } from "@mito/db/schema/pratiche"
 import { loadEnv } from "@/lib/global/loadDbEnv"
 
 loadEnv()

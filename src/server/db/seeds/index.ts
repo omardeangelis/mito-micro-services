@@ -3,7 +3,7 @@ import { createCustomers } from "./customer"
 import { createPratiche } from "./practice"
 import { createCustomerToPraticaRelations } from "./customerToPratica"
 import { createProducts } from "./products"
-import * as schema from "../schema/index"
+import * as schema from "@mito/db/schema/index"
 import { drizzle } from "drizzle-orm/postgres-js"
 import {
   createUsersAndOperators,

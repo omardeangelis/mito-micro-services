@@ -1,5 +1,5 @@
-import { db } from "@/server/db"
-import { practices } from "@/server/db/schema/pratiche"
+import { db } from "@mito/db"
+import { practices } from "@mito/db/schema/pratiche"
 import { eq, inArray } from "drizzle-orm"
 import { cleanObject } from "@/lib/utils"
 

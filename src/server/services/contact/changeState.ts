@@ -5,8 +5,8 @@ import { planStateChange } from "@/lib/domain/contact/transition"
 import { type Actor } from "@/lib/domain/contact/permissions"
 import { bandValue } from "@/lib/domain/contact/priority"
 import { type TaskStatus } from "@/lib/types/schemas"
-import { task } from "@/server/db/schema/task"
-import { taskEventLog } from "@/server/db/schema/taskEventLog"
+import { task } from "@mito/db/schema/task"
+import { taskEventLog } from "@mito/db/schema/taskEventLog"
 import {
   type CustomerMissing,
   type Db,

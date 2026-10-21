@@ -4,11 +4,14 @@ import postgres from "postgres"
 import { and, asc, eq } from "drizzle-orm"
 import { drizzle } from "drizzle-orm/postgres-js"
 import { migrate } from "drizzle-orm/postgres-js/migrator"
-import { localConnection } from "@/server/db/localDsn"
-import { migrateWithPushedSchema } from "@/server/db/pushedSchema"
-import * as schema from "@/server/db/schema/index"
+import { localConnection } from "@mito/db/localDsn"
+import { migrateWithPushedSchema } from "@mito/db/pushedSchema"
+import * as schema from "@mito/db/schema/index"
 
-const MIGRATIONS_FOLDER = path.resolve(__dirname, "../server/db/migrations")
+const MIGRATIONS_FOLDER = path.resolve(
+  __dirname,
+  "../../packages/db/migrations"
+)
 
 const dsn = process.env.TEST_DATABASE_URL
 
@@ -52,7 +55,7 @@ const unset = <T>() =>
   ) as T
 
 /**
- * A pool on the test database, standing in for `@/server/db` in
+ * A pool on the test database, standing in for `@mito/db` in
  * `*.pg.test.ts` files: calls made together take different connections, as in
  * production. It connects on the first query.
  */

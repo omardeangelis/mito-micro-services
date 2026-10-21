@@ -48,6 +48,9 @@ importers:
       '@libsql/client':
         specifier: ^0.10.0
         version: 0.10.0
+      '@mito/db':
+        specifier: workspace:*
+        version: link:packages/db
       '@radix-ui/react-accordion':
         specifier: ^1.1.2
         version: 1.2.0(@types/react-dom@18.3.0)(@types/react@18.3.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -347,9 +350,15 @@ importers:
         specifier: ^1.6.1
         version: 1.6.1(@types/node@20.14.13)(jsdom@24.1.1)(terser@5.31.3)
 
-  apps/api: {}
+  apps/api:
+    devDependencies:
+      '@mito/db':
+        specifier: workspace:*
+        version: link:../../packages/db
 
   packages/config: {}
+
+  packages/db: {}
 
 packages:
 

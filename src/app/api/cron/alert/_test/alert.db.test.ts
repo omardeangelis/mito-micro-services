@@ -9,8 +9,8 @@ import {
   vi,
 } from "vitest"
 import { eq, getTableName } from "drizzle-orm"
-import { alert as alerts, task } from "@/server/db/schema/task"
-import { taskEventLog } from "@/server/db/schema/taskEventLog"
+import { alert as alerts, task } from "@mito/db/schema/task"
+import { taskEventLog } from "@mito/db/schema/taskEventLog"
 import {
   activeTasksOf,
   logOf,

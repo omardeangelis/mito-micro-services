@@ -1,6 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, it } from "vitest"
 import { Effect } from "effect"
-import { task } from "@/server/db/schema/task"
+import { task } from "@mito/db/schema/task"
 import {
   type LockedCustomer,
   lockCustomer,

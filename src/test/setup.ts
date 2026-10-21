@@ -6,7 +6,7 @@ import type * as ErrorReporterModule from "@/server/effect/errorReporter"
 
 // Middlewares, cron routes and services import `db` from the module, not from
 // the tRPC context
-vi.mock("@/server/db", async () => ({
+vi.mock("@mito/db", async () => ({
   db: (await import("@/test/db")).testDb,
 }))
 

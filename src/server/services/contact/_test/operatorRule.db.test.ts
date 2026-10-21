@@ -10,8 +10,8 @@ import {
 import { Cause, Exit } from "effect"
 import { eq } from "drizzle-orm"
 import { type TaskStatus } from "@/lib/types/schemas"
-import { customers } from "@/server/db/schema/customers"
-import { task } from "@/server/db/schema/task"
+import { customers } from "@mito/db/schema/customers"
+import { task } from "@mito/db/schema/task"
 import { processDueAlerts } from "@/server/services/contact/processDueAlerts"
 import { createTestCaller } from "@/test/caller"
 import {

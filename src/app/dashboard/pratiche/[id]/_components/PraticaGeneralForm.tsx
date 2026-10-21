@@ -32,7 +32,7 @@ import { useFormState, useFormStatus } from "react-dom"
 import { type ProductMapKey, getProductLabel } from "@/lib/constants/productMap"
 import { currencyFormatter, formatDateAsDMY } from "@/lib/utils"
 import { useFormIssueManager } from "@/lib/hooks/useFormIssueManager"
-import { stateEnum } from "@/server/db/schema/pratiche"
+import { stateEnum } from "@mito/db/schema/pratiche"
 import { InputWithCopy } from "@/components/custom/input/InputWithCopy"
 import { useUserPreferenceContext } from "@/store/context/useUserPreferenceContext"
 

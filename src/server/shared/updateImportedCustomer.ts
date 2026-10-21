@@ -1,4 +1,4 @@
-import { customers } from "../db/schema/customers"
+import { customers } from "@mito/db/schema/customers"
 import { eq, or } from "drizzle-orm"
 import { type PgUpdateSetSource } from "drizzle-orm/pg-core"
 import { type SupaBaseDb } from "@/lib/types"

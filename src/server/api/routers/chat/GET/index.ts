@@ -1,7 +1,7 @@
 import { selectChatSchema } from "@/lib/types/schemas"
 import { operatorProcedure, protectedProcedure } from "@/server/api/trpc"
-import { chatToOperator } from "@/server/db/schema/relations/chatToOperator"
-import { messages, chat } from "@/server/db/schema/chat"
+import { chatToOperator } from "@mito/db/schema/relations/chatToOperator"
+import { messages, chat } from "@mito/db/schema/chat"
 import { count, desc, eq } from "drizzle-orm"
 import { z } from "zod"
 

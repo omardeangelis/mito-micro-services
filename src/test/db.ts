@@ -3,11 +3,14 @@ import { PGlite } from "@electric-sql/pglite"
 import { drizzle } from "drizzle-orm/pglite"
 import { migrate } from "drizzle-orm/pglite/migrator"
 import { and, asc, eq } from "drizzle-orm"
-import { driverError } from "@/server/db/driverError"
-import { migrateWithPushedSchema } from "@/server/db/pushedSchema"
-import * as schema from "@/server/db/schema/index"
+import { driverError } from "@mito/db/driverError"
+import { migrateWithPushedSchema } from "@mito/db/pushedSchema"
+import * as schema from "@mito/db/schema/index"
 
-const MIGRATIONS_FOLDER = path.resolve(__dirname, "../server/db/migrations")
+const MIGRATIONS_FOLDER = path.resolve(
+  __dirname,
+  "../../packages/db/migrations"
+)
 
 /**
  * Last migration before the unique index on active contacts (PR2). Tests that
@@ -34,7 +37,7 @@ export const BEFORE_REALIGN_SCHEMA_TAG =
   "20261011200758_task_updated_at_default"
 export const REALIGN_SCHEMA_TAG = "20261021100457_contatti_contact_realign"
 
-/** In-memory Postgres standing in for `@/server/db` in `*.db.test.ts` files. */
+/** In-memory Postgres standing in for `@mito/db` in `*.db.test.ts` files. */
 export const testClient = new PGlite()
 export const testDb = drizzle(testClient, { schema })
 

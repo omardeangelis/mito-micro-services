@@ -3,10 +3,10 @@ import { Context, Data, Effect, Exit, Layer, Option, Runtime } from "effect"
 import { eq, type ExtractTablesWithRelations } from "drizzle-orm"
 import { type PgDatabase } from "drizzle-orm/pg-core"
 import { type PostgresJsQueryResultHKT } from "drizzle-orm/postgres-js"
-import { db } from "@/server/db"
-import { driverError } from "@/server/db/driverError"
-import { customers } from "@/server/db/schema/customers"
-import type * as schema from "@/server/db/schema/index"
+import { db } from "@mito/db"
+import { driverError } from "@mito/db/driverError"
+import { customers } from "@mito/db/schema/customers"
+import type * as schema from "@mito/db/schema/index"
 
 /** The Drizzle client, or the transaction in progress: both run queries. */
 export type DbClient = PgDatabase<
@@ -15,7 +15,7 @@ export type DbClient = PgDatabase<
   ExtractTablesWithRelations<typeof schema>
 >
 
-/** The Drizzle client of `@/server/db`. */
+/** The Drizzle client of `@mito/db`. */
 export class Db extends Context.Tag("Db")<Db, DbClient>() {}
 
 export const DbLive = Layer.succeed(Db, db)

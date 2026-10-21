@@ -1,6 +1,6 @@
 import { Effect } from "effect"
 import { eq, sql } from "drizzle-orm"
-import { cronRun } from "@/server/db/schema/cronRun"
+import { cronRun } from "@mito/db/schema/cronRun"
 import { query } from "@/server/effect/db"
 
 /**

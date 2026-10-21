@@ -1,7 +1,7 @@
 import { beforeAll, beforeEach, describe, expect, it } from "vitest"
 import { asc, eq } from "drizzle-orm"
 import { readContactError } from "@/lib/domain/contact/errors"
-import { alert } from "@/server/db/schema/task"
+import { alert } from "@mito/db/schema/task"
 import { createTestCaller } from "@/test/caller"
 import { logOf, migrateUpTo, resetDb, tasksOf, testDb } from "@/test/db"
 import { afterNextWriteTo } from "@/test/failpoint"

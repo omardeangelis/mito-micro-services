@@ -8,8 +8,8 @@ import {
   vi,
 } from "vitest"
 import { eq } from "drizzle-orm"
-import { customers } from "@/server/db/schema/customers"
-import { taskEventLog } from "@/server/db/schema/taskEventLog"
+import { customers } from "@mito/db/schema/customers"
+import { taskEventLog } from "@mito/db/schema/taskEventLog"
 import { assignCustomers } from "@/server/services/customer/assignment"
 import { logOf, migrateUpTo, resetDb, tasksOf, testDb } from "@/test/db"
 import { createTestCaller } from "@/test/caller"

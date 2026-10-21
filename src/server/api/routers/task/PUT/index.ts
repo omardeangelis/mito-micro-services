@@ -1,5 +1,5 @@
 import { adminProcedure, operatorProcedure } from "@/server/api/trpc"
-import { taskStatus } from "@/server/db/schema/task"
+import { taskStatus } from "@mito/db/schema/task"
 import { z } from "zod"
 import { runTrpc } from "@/server/effect/trpc"
 import { actorOf } from "@/server/services/contact/actor"

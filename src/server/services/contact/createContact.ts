@@ -6,7 +6,7 @@ import {
   operatorDisplayName,
 } from "@/lib/domain/contact/permissions"
 import { bandValue } from "@/lib/domain/contact/priority"
-import { taskEventLog } from "@/server/db/schema/taskEventLog"
+import { taskEventLog } from "@mito/db/schema/taskEventLog"
 import { type Db, DbError, query, transaction } from "@/server/effect/db"
 import { activeTaskIdOf, replaceActiveContact } from "./activeContact"
 import { type ContactSource } from "./alert"

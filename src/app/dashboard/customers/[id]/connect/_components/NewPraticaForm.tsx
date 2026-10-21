@@ -34,9 +34,9 @@ import {
   SelectItem,
 } from "@/components/ui/select"
 import { getAllProductLabels } from "@/lib/constants/productMap"
-import { stateEnum } from "@/server/db/schema/pratiche"
+import { stateEnum } from "@mito/db/schema/pratiche"
 import { createNewPraticaAction } from "../../_actions/connectPratica"
-import { type CustomerRole, customerRoleEnum } from "@/server/db/schema/index"
+import { type CustomerRole, customerRoleEnum } from "@mito/db/schema/index"
 import { nanoid } from "nanoid"
 import { DatePickerFormItem } from "@/components/custom/date-picker"
 import { useRouter } from "next/navigation"

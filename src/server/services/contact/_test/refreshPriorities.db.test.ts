@@ -10,7 +10,7 @@ import {
 } from "vitest"
 import { Exit } from "effect"
 import { eq } from "drizzle-orm"
-import { task } from "@/server/db/schema/task"
+import { task } from "@mito/db/schema/task"
 import { migrateUpTo, resetDb, testDb } from "@/test/db"
 import { failureTag, runServer } from "@/test/effect"
 import { failNextUpdateOf } from "@/test/failpoint"

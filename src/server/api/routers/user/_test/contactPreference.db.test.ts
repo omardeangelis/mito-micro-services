@@ -1,6 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, it } from "vitest"
 import { eq } from "drizzle-orm"
-import { users } from "@/server/db/schema/users"
+import { users } from "@mito/db/schema/users"
 import { createTestCaller } from "@/test/caller"
 import { migrateUpTo, resetDb, testDb } from "@/test/db"
 import { createOperator } from "@/test/factories"

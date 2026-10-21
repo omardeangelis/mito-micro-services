@@ -1,8 +1,8 @@
 import { type SupaBaseDb } from "@/lib/types"
 import { type UserPreference } from "@/lib/types/schemas"
 import { protectedProcedure } from "@/server/api/trpc"
-import { operators } from "@/server/db/schema/operators"
-import { users } from "@/server/db/schema/users"
+import { operators } from "@mito/db/schema/operators"
+import { users } from "@mito/db/schema/users"
 import { eq } from "drizzle-orm"
 
 type RetrivePreferenceType = {

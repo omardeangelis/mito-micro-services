@@ -1,6 +1,6 @@
 // import { operatorProcedure } from "@/server/api/trpc"
 // import { insertChatToOperatorSchema } from "@/lib/types/schemas"
-// import { chatToOperator } from "@/server/db/schema/index"
+// import { chatToOperator } from "@mito/db/schema/index"
 // import { eq } from "drizzle-orm"
 
 // const addOperatorToChatSchema = insertChatToOperatorSchema.pick({

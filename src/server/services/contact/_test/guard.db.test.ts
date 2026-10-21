@@ -2,8 +2,8 @@ import { beforeAll, beforeEach, describe, expect, it } from "vitest"
 import { Effect, Exit } from "effect"
 import { eq } from "drizzle-orm"
 import { type Actor } from "@/lib/domain/contact/permissions"
-import { customers } from "@/server/db/schema/customers"
-import { task } from "@/server/db/schema/task"
+import { customers } from "@mito/db/schema/customers"
+import { task } from "@mito/db/schema/task"
 import {
   type LockedCustomer,
   lockCustomer,

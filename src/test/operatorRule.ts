@@ -1,6 +1,6 @@
 import { getTableName } from "drizzle-orm"
-import { customers } from "@/server/db/schema/customers"
-import { task } from "@/server/db/schema/task"
+import { customers } from "@mito/db/schema/customers"
+import { task } from "@mito/db/schema/task"
 import { FAILPOINT_SCHEMA, testClient } from "./db"
 
 const name = `${FAILPOINT_SCHEMA}.operator_rule`

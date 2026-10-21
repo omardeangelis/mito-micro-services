@@ -1,5 +1,5 @@
 import { adminProcedure, operatorProcedure } from "@/server/api/trpc"
-import { customers } from "@/server/db/schema/customers"
+import { customers } from "@mito/db/schema/customers"
 import { eq } from "drizzle-orm"
 import { insertCustomerSchema } from "@/lib/types/schemas"
 import { z } from "zod"

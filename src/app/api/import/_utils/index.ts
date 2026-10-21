@@ -14,7 +14,7 @@ import {
   type PracticeWrite,
   type CustomerWrite,
 } from "@/lib/types/schemas"
-import { type CustomerRole } from "@/server/db/schema/relations/customerToPratica"
+import { type CustomerRole } from "@mito/db/schema/relations/customerToPratica"
 import { DAYS_PER_RATE } from "../../_utils"
 
 //write a functions that infer if the type of the header is a WaveFile or a StandardImportFile

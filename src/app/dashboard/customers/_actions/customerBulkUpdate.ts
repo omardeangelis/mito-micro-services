@@ -1,5 +1,5 @@
 "use server"
-import { taskStatus } from "@/server/db/schema/task"
+import { taskStatus } from "@mito/db/schema/task"
 import { api } from "@/trpc/server"
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
