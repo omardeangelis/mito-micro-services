@@ -3,6 +3,7 @@ domain: crm
 type: plan
 links:
   - "[[specs/crm/seeder-locale/SPEC]]"
+  - "[[specs/crm/seeder-locale/REPORT]]"
   - "[[specs/crm/sezione-contatti/PLAN]]"
   - "[[chore/migrazione-gcp]]"
 created: 2026-10-21
@@ -12,6 +13,7 @@ updated: 2026-10-21
 # Plan: Seeder del database locale, con gli scenari dei cron
 
 **Spec:** [[specs/crm/seeder-locale/SPEC]]
+**Status:** Complete (review: [[specs/crm/seeder-locale/REPORT]], SHIP)
 **Generato:** 2026-10-21 con `create-plan`: grill → swarm-plan (con revisione del grafo) → tdd → adversarial-verifier. Nessun codice scritto. Le correzioni delle due revisioni sono nel §16.
 **Sostituisce:** T7.1c del [[specs/crm/sezione-contatti/PLAN|piano di Contatti]] (decisione 3 della spec).
 
@@ -261,8 +263,8 @@ TB5 e TB6 sono in sequenza perché tutti e due toccano `types.ts`. TB6 lo usa e 
   - La descrizione dice che il comportamento dei cron non cambia e che i seed tolti non hanno sostituti fino alla PR B.
   - Dopo il merge, la PR B riparte da `dev`.
 - **validation**: CI verde sulla testa della PR; merge in `dev`.
-- **status**: In progress: [PR #55](https://github.com/omardeangelis/mito-micro-services/pull/55) aperta verso `dev` il 2026-10-21
-- **log**: PR aperta dall'orchestratore (scelta di Omar sulle branch). In attesa della CI e della revisione.
+- **status**: Done: [PR #55](https://github.com/omardeangelis/mito-micro-services/pull/55) in `dev` il 2026-10-21
+- **log**: PR aperta dall'orchestratore (scelta di Omar sulle branch). CI verde sulla testa `344de83` (Lint, Test, Build, GitGuardian), review SHIP ([[specs/crm/seeder-locale/REPORT]]). Merge in `dev` su richiesta di Omar ("apri PR e mergia tutto su dev").
 - **files edited/created**:
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
@@ -576,9 +578,9 @@ TB5 e TB6 sono in sequenza perché tutti e due toccano `types.ts`. TB6 lo usa e 
 
     Il test si salta, dicendolo, quando la porta 54329 è occupata (un `mito_local` acceso) e quando il giorno di Roma e quello UTC sono diversi.
   - `next lint` e `tsc` passano.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done (commit `34a5f49`)
+- **log**: Worker sul modello dell'orchestratore, test rossi scritti prima dall'orchestratore (`commands.pg`, `connection`, `imports`, `cronCli`). Revisione passata al primo giro. `pendingMigrations` confronta il `when` del journal con `created_at` e lo sha256 di ogni SQL con `hash`. `cronCli.test.ts` lancia `seed:local:cron` in un processo figlio con shell e `.env` ostili (AC28a). CI verde su `34a5f49`: Lint, Test, Build.
+- **files edited/created**: `src/server/db/scripts/localDb.ts`, `src/server/db/seeds/local/commands/{seed,cron,verify,manifestFile}.ts`, `src/server/db/seeds/local/{seed,cron,verify}.cli.ts`, `src/server/db/seeds/local/_test/{commands.pg,connection,imports,cronCli}.test.ts`, `package.json`, `.gitignore`, `README.md`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a (D9)
@@ -598,8 +600,8 @@ TB5 e TB6 sono in sequenza perché tutti e due toccano `types.ts`. TB6 lo usa e 
     - `cleanup` con almeno 1.000 righe cancellate.
   - Misura la durata del job Test in CI. La CI gira solo sulle PR verso `dev` e `main`, quindi la PR B va aperta in bozza. La misura definitiva si prende quando anche TB9 è sulla branch, per contare i suoi test. Se il job supera i 7 minuti, TB10 alza `timeout-minutes` e scrive la durata nel log del task.
 - **validation**: il test passa in CI e risulta eseguito, non saltato; la durata del job è nel log del task.
-- **status**: In progress: test fatto (commit `6f7c841`), manca la misura con TB9 sulla branch
-- **log**: Il test è passato al primo lancio: il codice di TB2–TB8 bastava, quindi non c'è stata una fase rossa (scritto dall'orchestratore, senza worker). Locale: 23 s. CI sulla [PR #56](https://github.com/omardeangelis/mito-micro-services/pull/56) in bozza, commit `6f7c841`: `fullRun.pg.test.ts` eseguito in 17 s, non saltato; job Test 4 min 20 s (151 file, 2.473 test), sotto i 7 minuti: `timeout-minutes` resta 10.
+- **status**: Done (misura su `34a5f49`)
+- **log**: Il test è passato al primo lancio: il codice di TB2–TB8 bastava, quindi non c'è stata una fase rossa (scritto dall'orchestratore, senza worker). Locale: 23 s. CI sulla [PR #56](https://github.com/omardeangelis/mito-micro-services/pull/56), commit `6f7c841`: `fullRun.pg.test.ts` in 17 s, job Test 4 min 20 s. Con TB9 sulla branch, commit `34a5f49`: `fullRun.pg.test.ts` eseguito in 12,8 s, non saltato; suite 155 file in 158 s, job Test 3 min 21 s, sotto i 7 minuti: `timeout-minutes` resta 10.
 - **files edited/created**: `src/server/db/seeds/local/_test/fullRun.pg.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
@@ -621,9 +623,9 @@ TB5 e TB6 sono in sequenza perché tutti e due toccano `types.ts`. TB6 lo usa e 
   - AC4 e AC28b li provano i test di TB1 e TB9: a mano basta il giro in un giorno normale.
   - Con `review.mode: total`, `implement-spec` lancia `adversarial-review` prima del merge.
 - **validation**: CI verde; il giro a mano passa e i tempi sono nelle note; `REPORT.md` SHIP.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done: [PR #56](https://github.com/omardeangelis/mito-micro-services/pull/56) in `dev` il 2026-10-21, dopo la A
+- **log**: Giro a mano su `mito_local` (Postgres 16 sulla 54329, TZ Europe/Rome, 4 core, 15 GB): `seed:local` a 10.000 in 16 s (AC6), `seed:local:cron` con i quattro job riusciti in 15 s, `seed:local:verify` 36 "passato" ed exit 0; un secondo `update` rifiutato. Review `adversarial-review`: SHIP, 6 verificatori, 0 blocker, 0 major, 7 minor in [[tech-debt/crm/seeder-locale]]. Dopo la review: test di `connectLocal` che non si salta (MINOR di v3 e v6). Dopo il merge della A, `dev` riportato nella B e CI di nuovo verde; merge in `dev` su richiesta di Omar.
+- **files edited/created**: `src/server/db/seeds/local/_test/connection.test.ts`, `brain/specs/crm/seeder-locale/{RUBRIC,REPORT}.md`, `brain/tech-debt/crm/seeder-locale.md`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a (D9)

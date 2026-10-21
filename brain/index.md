@@ -44,7 +44,7 @@ _empty_
 |---|---|---|
 | crm | [[specs/crm/sezione-contatti/SPEC]] | Draft |
 | crm | [[specs/crm/filtri-sql-sicuri/SPEC]] | Draft |
-| crm | [[specs/crm/seeder-locale/SPEC]] | Approved (piano: [[specs/crm/seeder-locale/PLAN]]) |
+| crm | [[specs/crm/seeder-locale/SPEC]] | Implemented (piano: [[specs/crm/seeder-locale/PLAN]], review: [[specs/crm/seeder-locale/REPORT]]) |
 
 - [[specs/crm/crm-specs|crm-specs]] — CRM spec page map
 
@@ -68,6 +68,7 @@ _empty_
 - [[review/staging-accesso-sentry/REPORT|staging-accesso-sentry]] — standalone · do-not-ship · critical · 2026-10-09 (sesto giro)
 - [[review/cron-base-url/REPORT|cron-base-url]] — standalone · do-not-ship · critical · 2026-10-09 (sesto giro)
 - [[review/search-by-explicit-map/REPORT|search-by-explicit-map]] — standalone · ship (quinto giro; prima do-not-ship) · critical · 2026-10-15
+- [[specs/crm/seeder-locale/REPORT|crm/seeder-locale]] — spec · ship · critical · 2026-10-21
 
 ## Log
 

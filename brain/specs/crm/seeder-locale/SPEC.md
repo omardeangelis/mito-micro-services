@@ -1,9 +1,10 @@
 ---
 domain: crm
 type: spec
-status: approved
+status: implemented
 links:
   - "[[specs/crm/seeder-locale/PLAN]]"
+  - "[[specs/crm/seeder-locale/REPORT]]"
   - "[[specs/crm/sezione-contatti/SPEC]]"
   - "[[specs/crm/sezione-contatti/PLAN]]"
   - "[[chore/migrazione-gcp]]"
