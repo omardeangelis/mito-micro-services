@@ -1,12 +1,14 @@
-// Bundles the backend into api/dist/server.js. The code under src/ is bundled
-// (the `@/` alias comes from tsconfig.json); the packages stay in node_modules
+// Bundles the backend into apps/api/dist/server.js. The code under src/ is
+// bundled (the `@/` alias comes from tsconfig.json); the packages stay in
+// node_modules
 import { build } from "esbuild"
 import { existsSync, readFileSync } from "node:fs"
 import { isBuiltin } from "node:module"
 import { dirname, extname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 
-const root = fileURLToPath(new URL("..", import.meta.url))
+// The repo root: tsconfig.json, src/ and node_modules are there
+const root = fileURLToPath(new URL("../..", import.meta.url))
 
 // Paths the build resolves itself: the tsconfig alias and the `alias` below
 const ownPaths = /^(@\/|server-only$|@sentry\/nextjs$)/
@@ -68,8 +70,8 @@ const cjsDefaultInterop = {
 
 await build({
   absWorkingDir: root,
-  entryPoints: ["api/src/server.ts"],
-  outfile: "api/dist/server.js",
+  entryPoints: ["apps/api/src/server.ts"],
+  outfile: "apps/api/dist/server.js",
   bundle: true,
   platform: "node",
   target: "node22",
@@ -81,8 +83,8 @@ await build({
     // The server modules import it so that Next.js keeps them out of the
     // browser; outside Next.js its index throws (vitest.config.ts does the same)
     "server-only": "./node_modules/server-only/empty.js",
-    "@sentry/nextjs": "./api/src/shims/sentry.ts",
-    "@/trpc/server": "./api/src/shims/trpcServer.ts",
+    "@sentry/nextjs": "./apps/api/src/shims/sentry.ts",
+    "@/trpc/server": "./apps/api/src/shims/trpcServer.ts",
     // The route handlers answer with NextResponse. `next` has no `exports`
     // map, so Node resolves its subpaths only with the file's extension
     "next/server": "next/server.js",

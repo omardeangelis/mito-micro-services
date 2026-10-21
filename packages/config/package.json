@@ -1,0 +1,9 @@
+{
+  "name": "@mito/config",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Configurazione condivisa dei pacchetti del monorepo",
+  "exports": {
+    "./tsconfig.base.json": "./tsconfig.base.json"
+  }
+}

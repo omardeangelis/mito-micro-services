@@ -3,10 +3,10 @@ domain: platform
 task: F0.T3
 phase: 0
 title: Creare packages/config (tsconfig/eslint condivisi)
-status: not_started
+status: in_progress
 completed: false
 depends_on: ["F0.T2"]
-last_updated: 2026-06-11
+last_updated: 2026-10-21
 ---
 
 # F0.T3 — `packages/config`
@@ -64,4 +64,4 @@ Config TypeScript/ESLint condivise per i **nuovi** package e app del monorepo. `
 
 ## Note di esecuzione
 
-_(da compilare)_
+2026-10-21 (PR 2/6, prima di F0.T2): `packages/config` (`@mito/config`) con il solo `tsconfig.base.json`, le opzioni comuni del `tsconfig.json` root. Il root lo estende e tiene le sue (`lib` con il DOM, `jsx`, plugin Next, `paths`, `include`): `tsc --showConfig` dà la stessa configurazione e gli stessi 643 file di prima. `api/Dockerfile` copia `pnpm-workspace.yaml` e `packages/config` prima dell'install. ESLint e Prettier restano alla root finché l'app non è in `apps/web`: i plugin si risolvono dalla cartella del config, spostarli ora richiederebbe di duplicare le dipendenze.

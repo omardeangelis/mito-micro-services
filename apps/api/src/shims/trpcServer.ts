@@ -1,4 +1,4 @@
-// What the backend bundle loads in place of @/trpc/server (api/build.mjs). The
+// What the backend bundle loads in place of @/trpc/server (apps/api/build.mjs). The
 // route handlers it hosts call the procedures through `api`; outside Next.js
 // there is no request for next/headers, and the request's session is already
 // the backend's (requestSession), so they run in-process with that context

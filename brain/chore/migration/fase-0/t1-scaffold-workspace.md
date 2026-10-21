@@ -3,10 +3,10 @@ domain: platform
 task: F0.T1
 phase: 0
 title: Scaffold workspace pnpm + Turborepo
-status: not_started
-completed: false
+status: completed
+completed: true
 depends_on: []
-last_updated: 2026-06-11
+last_updated: 2026-10-21
 ---
 
 # F0.T1 — Scaffold workspace pnpm + Turborepo
@@ -85,9 +85,9 @@ Predisporre la struttura monorepo alla root del repo, senza ancora spostare l'ap
 
 ## Verifica
 
-- [ ] `pnpm install` dalla root completa senza errori (con il workspace ancora vuoto è quasi un no-op).
-- [ ] `pnpm turbo build --dry-run` non dà errori di configurazione.
+- [x] `pnpm install` dalla root completa senza errori (con il workspace ancora vuoto è quasi un no-op).
+- [x] `pnpm turbo build --dry-run` non dà errori di configurazione.
 
 ## Note di esecuzione
 
-_(da compilare)_
+2026-10-21: il `package.json` root **non** è stato sostituito: resta quello dell'app finché F0.T2 la sposta in `apps/web`, così il repo resta installabile e ogni script gira come prima. Aggiunti solo `pnpm-workspace.yaml`, `turbo.json`, `turbo@2.11.7` (versione esatta) e `.turbo` in `.gitignore`. Niente cartelle `apps/`/`packages/` vuote: arrivano con il primo pacchetto. Node resta `22.x` in `engines` (unica fonte per Vercel e i workflow).

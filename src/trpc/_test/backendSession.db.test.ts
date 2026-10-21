@@ -13,7 +13,7 @@ import { serve, type ServerType } from "@hono/node-server"
 import { sessions } from "@/server/db/schema/users"
 import { migrateUpTo, resetDb, testDb } from "@/test/db"
 import { createOperator } from "@/test/factories"
-import { app } from "../../../api/src/app"
+import { app } from "../../../apps/api/src/app"
 import { backendSession } from "../backendSession"
 
 // The real NextAuth configuration, as the backend runs it

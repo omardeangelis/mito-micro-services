@@ -2,7 +2,7 @@
 # The GCS bucket of staging (B3b in brain/chore/migrazione-gcp.md), which
 # replaces the Supabase bucket "mito-storage" there. Run it once, from a
 # shell where gcloud is signed in:
-#   sh api/gcp/storage-staging.sh
+#   sh apps/api/gcp/storage-staging.sh
 # A second run stops at the bucket, which already exists. The backend uses
 # it when GCS_BUCKET is set (src/server/services/storage/layer.ts).
 set -e

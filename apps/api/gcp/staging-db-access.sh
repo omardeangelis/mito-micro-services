@@ -1,7 +1,7 @@
 #!/bin/sh
 # Lets mito-crm-staging use Cloud SQL (B6), once, before the first
 # deploy-staging.sh on the database:
-#   sh api/gcp/staging-db-access.sh
+#   sh apps/api/gcp/staging-db-access.sh
 # - roles/cloudsql.client to the service account of the service, with a
 #   condition on the staging instance: no role on the rest of the project;
 # - read access to the secret with the password of mito_app, to that service

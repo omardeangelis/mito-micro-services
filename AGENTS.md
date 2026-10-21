@@ -7,13 +7,15 @@ spec-driven skill suite live under `brain/` — start with `create-spec`, and re
 ## Repo map
 
 - `src/` — the MITO CRM app: T3 stack (Next.js 14 App Router, tRPC v10, Drizzle on Postgres, NextAuth v4), deployed on Vercel.
-- `api/` — the backend on Cloud Run (Hono). It hosts the same server code as `src/` (it imports it; it never copies it) and serves the same API on the same paths: `pnpm api:build` bundles it, `pnpm api:smoke` starts the bundle and calls it (CI runs both), `pnpm api:dev` runs it on the development database (`.env.development.local` only). With `BACKEND_URL` set at build time, Next.js rewrites `/api/trpc` to it and `@/trpc/server` calls it over HTTP; without it nothing changes. It runs on Cloud Run in the GCP project `mito-crm` (`mito-crm-staging`, later `mito-crm-prod`); `api/gcp/` builds and deploys it. Cloud Scheduler starts the crons at `/internal/cron/<job>` (`api/src/cron/`), with an OIDC token, at most once per job and UTC day (table `cron_run`); the jobs themselves are in `src/server/services/cron/`. The plan is `brain/chore/migrazione-gcp.md`.
+- `apps/api/` — the backend on Cloud Run (Hono), workspace package `@mito/api`. It hosts the same server code as `src/` (it imports it; it never copies it) and serves the same API on the same paths: `pnpm api:build` bundles it, `pnpm api:smoke` starts the bundle and calls it (CI runs both), `pnpm api:dev` runs it on the development database (`.env.development.local` only); `pnpm dev` starts it next to `next dev` (`pnpm dev:web` is Next.js alone). With `BACKEND_URL` set at build time, Next.js rewrites `/api/trpc` to it and `@/trpc/server` calls it over HTTP; without it nothing changes. It runs on Cloud Run in the GCP project `mito-crm` (`mito-crm-staging`, later `mito-crm-prod`); `apps/api/gcp/` builds and deploys it (`apps/api/Dockerfile`, from the repo root). Cloud Scheduler starts the crons at `/internal/cron/<job>` (`apps/api/src/cron/`), with an OIDC token, at most once per job and UTC day (table `cron_run`); the jobs themselves are in `src/server/services/cron/`. The plan is `brain/chore/migrazione-gcp.md`.
 - `brain/` — knowledge base. Existing design drafts and the monorepo migration plan live in `brain/chore/` (`crm/`, `migration_plan.md` + `migration/`); delivered HTML handovers in `brain/raw/assets/`. Project docs are written in Italian.
 - `.agents/skills/`, `.agents/agents/`, `.agents/agent-memory/` — spec-driven skills, advisor subagents and their project memories (symlinked into `.claude/`).
 
 ## Project guidelines
 
 Package manager is **pnpm 9.9.0** on **Node 22.x**. The Node version is set once, in `engines.node` of `package.json`: Vercel builds and runs the functions on it, and every workflow reads it (`node-version-file: package.json`).
+
+The repo is becoming a pnpm workspace with Turborepo (`pnpm-workspace.yaml`, `turbo.json`), one PR at a time (`brain/chore/migration/fase-0-monorepo-setup.md`). Until the Next.js app moves to `apps/web`, the root `package.json` is still the app and its scripts run as before; a dependency of the root goes in with `pnpm add -w`. The TypeScript options every package shares are in `packages/config/tsconfig.base.json`, which the root `tsconfig.json` extends. The docs of the installed `turbo` are in `node_modules/turbo/docs/` (`agentGuidance` is off in `turbo.json`, so `turbo` doesn't write them into this file).
 
 Every change must pass the gates CI runs on PRs to `dev` and `main` (`.github/workflows/ci.yml`, in this order; build runs alongside test). They are the checks `next build` runs on Vercel before a deploy:
 
@@ -29,7 +31,7 @@ Database contract chain:
 
 ## Server code and the backend
 
-The server code is moving from the Next.js app to the backend in `api/`, one piece at a time, while features keep landing. Until the move ends both run the same files, so new server code has to run in both:
+The server code is moving from the Next.js app to the backend in `apps/api/`, one piece at a time, while features keep landing. Until the move ends both run the same files, so new server code has to run in both:
 
 - **No Next.js in `src/server/**`.** No `next/*`, no `next-auth` runtime calls, no `@/trpc/server`. The exception is `src/server/auth.ts`, which keeps NextAuth. Read the session with `getServerAuthSession` (the backend gives it the request's session through `requestSession`).
 - **New operations are tRPC procedures.** No new route handlers or server actions with logic in them: a server action only calls `@/trpc/server` and revalidates.
