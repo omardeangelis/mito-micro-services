@@ -10,8 +10,8 @@ if [ -n "$(git status --porcelain --untracked-files=no)" ]; then
   exit 1
 fi
 # What api/Dockerfile copies: an untracked file there would go in the image too
-if [ -n "$(git status --porcelain -- api src package.json pnpm-lock.yaml tsconfig.json)" ]; then
-  echo "Commit or remove the untracked files in api/ or src/: the tag is the commit" >&2
+if [ -n "$(git status --porcelain -- api src packages package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.json)" ]; then
+  echo "Commit or remove the untracked files in api/, src/ or packages/: the tag is the commit" >&2
   exit 1
 fi
 if gcloud meta list-files-for-upload . | grep -E '(^|/)\.env' | grep -vx '.env.example' >&2; then

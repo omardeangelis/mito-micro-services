@@ -15,7 +15,7 @@ spec-driven skill suite live under `brain/` — start with `create-spec`, and re
 
 Package manager is **pnpm 9.9.0** on **Node 22.x**. The Node version is set once, in `engines.node` of `package.json`: Vercel builds and runs the functions on it, and every workflow reads it (`node-version-file: package.json`).
 
-The repo is becoming a pnpm workspace with Turborepo (`pnpm-workspace.yaml`, `turbo.json`), one PR at a time (`brain/chore/migration/fase-0-monorepo-setup.md`). Until the Next.js app moves to `apps/web`, the root `package.json` is still the app and its scripts run as before; a dependency of the root goes in with `pnpm add -w`. The docs of the installed `turbo` are in `node_modules/turbo/docs/` (`agentGuidance` is off in `turbo.json`, so `turbo` doesn't write them into this file).
+The repo is becoming a pnpm workspace with Turborepo (`pnpm-workspace.yaml`, `turbo.json`), one PR at a time (`brain/chore/migration/fase-0-monorepo-setup.md`). Until the Next.js app moves to `apps/web`, the root `package.json` is still the app and its scripts run as before; a dependency of the root goes in with `pnpm add -w`. The TypeScript options every package shares are in `packages/config/tsconfig.base.json`, which the root `tsconfig.json` extends. The docs of the installed `turbo` are in `node_modules/turbo/docs/` (`agentGuidance` is off in `turbo.json`, so `turbo` doesn't write them into this file).
 
 Every change must pass the gates CI runs on PRs to `dev` and `main` (`.github/workflows/ci.yml`, in this order; build runs alongside test). They are the checks `next build` runs on Vercel before a deploy:
 
