@@ -46,3 +46,8 @@
 - [Stale text after a ledger change](lesson_stale-text-after-ledger-change.md) — where plans keep old wording: Done tasks, headers, AC tables, verification logs
 - [Migration high-water mark and partial merges](lesson_migration-high-water-mark-and-partial-merges.md) — check limited-merge options against the migrator's created_at rule
 - [zsh/rg quoting](env_zsh-rg-quoting.md) — quote globs, use rg -g
+- [Release-order two-sided probe](feedback_release_order_two_sided_probe.md) — run old-client/new-server and new-client/old-server in private worktrees; diff router keys vs origin/main
+- [Equal-count swap mutants](feedback_equal_counts_swap_mutants.md) — counts row with equal values hides swapped FILTERs; per-list is_active/NULL-state fixture rows; export differential probe
+- [Rewrite-loop and allow-list probes](feedback_rewrite_loop_and_whitelist_probes.md) — stateful-router push count, per-entry uniqueName probe, revert-the-fix run; survivors were test gaps
+- [Sort fixture vacuity, runner race](feedback_sort_fixture_vacuity_and_runner_race.md) — JS-reference sweep for list order; key->id mutant; NULLS LAST only on desc; never start a mutant runner twice
+- [Force dialog states via React fiber](feedback_force_dialog_states_via_react_fiber.md) — dispatch pending/success hooks for loading/summary steps with no write; swap base copy into DOM to size a text regression
