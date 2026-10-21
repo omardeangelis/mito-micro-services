@@ -1,7 +1,7 @@
 import "server-only"
 
 import { headers } from "next/headers"
-import { env } from "@/env"
+import { env } from "@mito/env"
 import { getServerAuthSession } from "@/server/auth"
 import { backendSession } from "./backendSession"
 

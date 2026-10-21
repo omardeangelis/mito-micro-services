@@ -1,5 +1,5 @@
 import type { ErrorEvent, EventHint } from "@sentry/nextjs"
-import { env, isProduction } from "@/env"
+import { env, isProduction } from "@mito/env"
 
 /**
  * The DSN of the production deployment, the only one that reports. Locally

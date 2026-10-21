@@ -42,7 +42,7 @@ jobs:
           rm -rf .vercel
           vercel pull --yes --environment=production
       # The build is production only with VERCEL_ENV=production and without
-      # APP_ENV (src/env.js). `vercel pull` writes VERCEL_ENV when the project
+      # APP_ENV (packages/env/src/index.js). `vercel pull` writes VERCEL_ENV when the project
       # exposes the system env vars. The build stops on a missing production
       # variable only without SKIP_ENV_VALIDATION
       - name: Check the build is production
