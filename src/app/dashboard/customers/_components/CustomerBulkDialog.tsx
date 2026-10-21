@@ -32,6 +32,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { api } from "@/trpc/react"
+import { operatorDisplayName } from "@/lib/domain/contact/permissions"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useCustomerTableStore } from "@/store/useCustomerTableStore"
 import { Input } from "@/components/ui/input"
@@ -116,7 +117,7 @@ export const CustomerBulkDialog = (props: BulkActionDialogProps) => {
   const getOperatorName = React.useCallback(
     (id: number) => {
       const operator = availableOperators?.find((t) => t.id === id)
-      return operator ? `${operator.name} ${operator.surname}` : ""
+      return operator ? operatorDisplayName(operator) : ""
     },
     [availableOperators]
   )
@@ -458,7 +459,9 @@ const ModeChoice = (props: {
   onChoose: (mode: BulkType) => void
 }) => {
   return (
-    <DialogContent className="max-w-xl bg-white">
+    // The export note makes the cards tall: on a short, narrow screen the
+    // dialog scrolls instead of running off the top and the bottom
+    <DialogContent className="max-h-[calc(100dvh-2rem)] max-w-xl overflow-y-auto bg-white">
       <DialogHeader>
         <DialogTitle>Cosa vuoi assegnare?</DialogTitle>
         <DialogDescription>

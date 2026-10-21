@@ -17,6 +17,8 @@ vi.mock("@/trpc/react", () => ({
           data: [
             { id: 1, name: "Anna", surname: "Verdi" },
             { id: 2, name: "Mario", surname: "Rossi" },
+            // Real operators carry trailing spaces in name and surname
+            { id: 3, name: "Francesca ", surname: "Colombo Zefinetti " },
           ],
           isLoading: false,
         }),
@@ -237,6 +239,24 @@ describe("CustomerBulkDialog, 'Assegna Clienti'", () => {
       )
     ).toBeTruthy()
     expectNoOldLabels()
+  })
+
+  it("il nome dell'operatore nel riepilogo non ha spazi in più, prima della virgola", async () => {
+    mocks.action.mockResolvedValue({})
+    const user = await setup()
+    await choose(user, "Assegna Clienti")
+    await pickOperator(user, "Francesca Colombo Zefinetti")
+
+    await user.click(screen.getByRole("button", { name: "Assegna clienti" }))
+
+    await waitFor(() =>
+      expect(screen.getByText("Clienti assegnati")).toBeTruthy()
+    )
+    expect(
+      screen.getByText(
+        "3 cliente/i assegnati a Francesca Colombo Zefinetti, con il loro contatto attivo."
+      )
+    ).toBeTruthy()
   })
 
   it("non aggiunge alert da risolvere né il passaggio 'Creazione dei contatti'", async () => {
