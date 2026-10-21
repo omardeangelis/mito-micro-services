@@ -24,7 +24,7 @@ const isLeap = (year: number) =>
 const monthDay = (day: Day) => day.slice(5)
 
 /** Slug for an email local part. */
-const slug = (text: string) =>
+export const slug = (text: string) =>
   text
     .normalize("NFD")
     .replace(/[^a-zA-Z0-9]/g, "")

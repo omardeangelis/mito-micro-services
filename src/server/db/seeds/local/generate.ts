@@ -1,9 +1,14 @@
 // Deterministic dataset of the local seed: customers, products, practices and
-// their links. Pure: the output depends only on `n` and `day` (no clock, no
-// `Math.random()`, no process time zone). Users, operators, contacts, alerts,
-// notes and the log are filled by later steps, so those arrays stay empty here.
+// their links, users and operators, and the assignment of customers to
+// operators. Pure: the output depends only on `n` and `day` (no clock, no
+// `Math.random()`, no process time zone). Contacts, alerts, notes and the log
+// are filled by later steps, so those arrays stay empty here.
 import { generateCustomers } from "./generate/customers"
 import { buildLinks } from "./generate/links"
+import {
+  assignCustomers,
+  generateUsersAndOperators,
+} from "./generate/operators"
 import { generatePractices, generateProducts } from "./generate/practices"
 import type { CustomerToPraticaRow, Dataset, Day } from "./types"
 
@@ -19,7 +24,8 @@ export function generateDataset({ n, day }: { n: number; day: Day }): Dataset {
     )
   }
 
-  const customers = generateCustomers({ n, day })
+  const { users, operators } = generateUsersAndOperators({ day })
+  const customers = assignCustomers(generateCustomers({ n, day }), operators)
   const { practiceCount, links } = buildLinks(n)
   const practices = generatePractices({ n, practiceCount, day })
   const customerToPratica: CustomerToPraticaRow[] = links.map((link) => ({
@@ -30,8 +36,8 @@ export function generateDataset({ n, day }: { n: number; day: Day }): Dataset {
 
   return {
     products: generateProducts(day),
-    users: [],
-    operators: [],
+    users,
+    operators,
     chats: [],
     messages: [],
     customers,

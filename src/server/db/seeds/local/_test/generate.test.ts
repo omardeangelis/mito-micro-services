@@ -368,7 +368,6 @@ function registerChecks(get: () => Dataset, n: number, day: Day) {
         expect(c.email).toMatch(/@(example\.com|[a-z-]+\.test)$/)
       }
       expect(c.chatId).toBeNull()
-      expect(c.operatorId).toBeNull()
     }
     expect(customers.some((c) => c.fiscalCode === null)).toBe(true)
     expect(customers.some((c) => c.fiscalCode !== null)).toBe(true)
@@ -394,8 +393,6 @@ function registerChecks(get: () => Dataset, n: number, day: Day) {
   it("leaves the arrays of later steps empty", () => {
     const dataset = get()
     for (const key of [
-      "users",
-      "operators",
       "chats",
       "messages",
       "alerts",
