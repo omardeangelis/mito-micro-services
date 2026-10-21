@@ -1,6 +1,6 @@
 import { httpBatchLink } from "@trpc/client"
 
-import { type AppRouter } from "@/server/api/root"
+import { type AppRouter } from "@mito/server/api/root"
 
 /**
  * The link of `@/trpc/server` when the backend on Cloud Run serves the API

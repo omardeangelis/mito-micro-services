@@ -1,9 +1,9 @@
 import * as Sentry from "@sentry/nextjs"
 import { Cause, Effect, Exit } from "effect"
 import { NextResponse } from "next/server"
-import { DbLive } from "@/server/effect/db"
-import { updateCustomerAge } from "@/server/services/cron/updateCustomerAge"
-import { updatePractices } from "@/server/services/cron/updatePractices"
+import { DbLive } from "@mito/server/effect/db"
+import { updateCustomerAge } from "@mito/server/services/cron/updateCustomerAge"
+import { updatePractices } from "@mito/server/services/cron/updatePractices"
 import { format } from "date-fns"
 import { authCheck } from "../../_utils/auth"
 

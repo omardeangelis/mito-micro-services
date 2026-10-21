@@ -20,7 +20,7 @@ import {
   type PropsWithChildren,
 } from "react"
 import { api } from "@/trpc/react"
-import { type Message } from "@/lib/types/schemas"
+import { type Message } from "@mito/domain/schemas"
 import { LoadingSpinner } from "@/components/custom/loading-spinner"
 import { useSavingUntilRefreshed } from "@/components/custom/contact/useSavingUntilRefreshed"
 import { updateChatAction } from "./_actions/updateChat"

@@ -1,10 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { splitCustomersArrayByUniqueId } from "../../_utils"
-import { db } from "@/server/db"
-import { customers } from "@/server/db/schema/customers"
+import { db } from "@mito/db"
+import { customers } from "@mito/db/schema/customers"
 import { type CustomerWriteWithInternalSort } from "../../process/_services/type"
 import { authCheck } from "@/app/api/_utils/auth"
-import { driverError } from "@/server/db/driverError"
+import { driverError } from "@mito/db/driverError"
 
 export const dynamic = "force-dynamic"
 export const maxDuration = 60

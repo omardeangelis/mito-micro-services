@@ -10,8 +10,8 @@ import {
 import { useActor } from "@/components/custom/contact/useActor"
 import { useSavingUntilRefreshed } from "@/components/custom/contact/useSavingUntilRefreshed"
 import { Button } from "@/components/ui/button"
-import { canCreateContact } from "@/lib/domain/contact/permissions"
-import { readContactError } from "@/lib/domain/contact/errors"
+import { canCreateContact } from "@mito/domain/contact/permissions"
+import { readContactError } from "@mito/domain/contact/errors"
 import { api } from "@/trpc/react"
 
 type CustomerCreateContactProps = {

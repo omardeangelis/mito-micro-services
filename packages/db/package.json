@@ -1,0 +1,11 @@
+{
+  "name": "@mito/db",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Schema Drizzle, migrazioni e client Postgres del CRM. Usa drizzle-orm, postgres, nanoid e next-auth della root (stessa istanza dell'app): le dipendenze proprie arrivano quando l'app lascia la root",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./*": "./src/*.ts"
+  }
+}

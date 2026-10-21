@@ -10,7 +10,7 @@ import {
   getProductLabel,
   getLabelColorByProductType,
   getProductType,
-} from "@/lib/constants/productMap"
+} from "@mito/domain/constants/productMap"
 import { Badge } from "@/components/ui/badge"
 
 import { SortableHeader } from "@/components/custom/table/TableHeaders"
@@ -23,7 +23,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu"
-import { stateEnum } from "@/server/db/schema/pratiche"
+import { stateEnum } from "@mito/db/schema/pratiche"
 
 export type PraticheColumnSelectedProps = {
   id: string | number

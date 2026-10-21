@@ -2,10 +2,10 @@
  * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially useful
  * for Docker builds.
  */
-await import("./src/env.js")
+await import("@mito/env")
 import { existsSync } from "node:fs"
 import { withSentryConfig } from "@sentry/nextjs"
-import { env, isProduction } from "./src/env.js"
+import { env, isProduction } from "@mito/env"
 
 // Next.js loads .env.production.local in every `next build` and `next start`:
 // with the production database in it, a local build would reach it. The
@@ -39,7 +39,7 @@ if (
 }
 
 // The bundles get NEXT_PUBLIC_VERCEL_ENV from VERCEL_ENV (env below), while
-// src/env.js reads NEXT_PUBLIC_VERCEL_ENV first: one defined by hand with
+// @mito/env reads NEXT_PUBLIC_VERCEL_ENV first: one defined by hand with
 // another value would make this config and the app disagree on production
 if (
   process.env.NEXT_PUBLIC_VERCEL_ENV !== undefined &&
@@ -52,7 +52,7 @@ if (
 
 // Staging is a production deployment of its own Vercel project, and only
 // APP_ENV=staging, set there and nowhere else, keeps it from being production
-// (src/env.js). Any other value would be a typo that makes staging production
+// (@mito/env). Any other value would be a typo that makes staging production
 if (process.env.APP_ENV !== undefined && process.env.APP_ENV !== "staging") {
   throw new Error(
     'APP_ENV is invalid: set it to "staging" in the staging project only, and nowhere else'
@@ -60,7 +60,7 @@ if (process.env.APP_ENV !== undefined && process.env.APP_ENV !== "staging") {
 }
 
 // Like NEXT_PUBLIC_VERCEL_ENV above: the bundles get NEXT_PUBLIC_APP_ENV from
-// APP_ENV, and src/env.js reads NEXT_PUBLIC_APP_ENV first
+// APP_ENV, and @mito/env reads NEXT_PUBLIC_APP_ENV first
 if (
   process.env.NEXT_PUBLIC_APP_ENV !== undefined &&
   process.env.NEXT_PUBLIC_APP_ENV !== process.env.APP_ENV
@@ -70,7 +70,7 @@ if (
   )
 }
 
-// The backend on Cloud Run (api/) serves the same API on the same paths. With
+// The backend on Cloud Run (apps/api) serves the same API on the same paths. With
 // BACKEND_URL set, Vercel sends the browser's tRPC calls there, and
 // @/trpc/server calls it over HTTP. The rewrite is fixed at build time, so a
 // change needs a new deploy. The session cookie travels to it: https only,
@@ -119,6 +119,10 @@ const REST_PREFIXES = ["/api/import", "/api/export", "/api/user"]
 /** @type {import("next").NextConfig} */
 const config = {
   reactStrictMode: true,
+  // The workspace packages ship TypeScript sources (packages/*)
+  transpilePackages: ["@mito/db", "@mito/domain", "@mito/env", "@mito/server"],
+  // `next lint` and the lint of `next build`: the app and the packages
+  eslint: { dirs: ["src", "packages"] },
   swcMinify: true,
   env: {
     // The same value whether or not Vercel sets NEXT_PUBLIC_VERCEL_ENV too.

@@ -1,12 +1,12 @@
-import { db } from "@/server/db"
-import { customers as customersSchema } from "@/server/db/schema/customers"
+import { db } from "@mito/db"
+import { customers as customersSchema } from "@mito/db/schema/customers"
 import {
   type PracticeWrite,
   type CustomerToPraticaWrite,
   type CustomerWrite,
-} from "@/lib/types/schemas"
+} from "@mito/domain/schemas"
 import { inArray, or } from "drizzle-orm"
-import { customerToPratica } from "@/server/db/schema/relations/customerToPratica"
+import { customerToPratica } from "@mito/db/schema/relations/customerToPratica"
 import { splitCustomerToPraticaArrayByUniqueId } from "../../../_utils"
 
 type Values = {

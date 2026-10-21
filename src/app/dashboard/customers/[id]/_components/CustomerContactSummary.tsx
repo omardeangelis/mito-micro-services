@@ -8,10 +8,10 @@ import { priorityLabels } from "@/app/dashboard/contatti/_lib/priorityLabels"
 import { PriorityBadge } from "@/components/custom/badge/priority"
 import { TaskStatusBadge } from "@/components/custom/badge/TaskStatusBadge"
 import { buttonVariants } from "@/components/ui/button"
-import { operatorDisplayName } from "@/lib/domain/contact/permissions"
-import { bandOf } from "@/lib/domain/contact/priority"
+import { operatorDisplayName } from "@mito/domain/contact/permissions"
+import { bandOf } from "@mito/domain/contact/priority"
 import { formatDateAsDMY } from "@/lib/utils"
-import type { GetContactByIdResult } from "@/server/services/contact/getContactById"
+import type { GetContactByIdResult } from "@mito/server/services/contact/getContactById"
 
 type CustomerContactSummaryProps = {
   customerId: string

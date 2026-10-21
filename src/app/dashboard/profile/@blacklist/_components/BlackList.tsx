@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
-import { type OperatorWithRole, type Customer } from "@/lib/types/schemas"
+import { type OperatorWithRole, type Customer } from "@mito/domain/schemas"
 import Link from "next/link"
 import { useCallback } from "react"
 

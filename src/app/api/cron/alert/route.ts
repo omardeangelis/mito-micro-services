@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server"
 import { Cause, Effect, Exit } from "effect"
-import { ErrorReporter } from "@/server/effect/errorReporter"
-import { ServerLive } from "@/server/effect/server"
-import { processDueAlerts } from "@/server/services/contact/processDueAlerts"
+import { ErrorReporter } from "@mito/server/effect/errorReporter"
+import { ServerLive } from "@mito/server/effect/server"
+import { processDueAlerts } from "@mito/server/services/contact/processDueAlerts"
 import { authCheck } from "../../_utils/auth"
 
 export const dynamic = "force-dynamic"

@@ -1,6 +1,6 @@
 import { type ClassValue, clsx } from "clsx"
 import { twMerge } from "tailwind-merge"
-import { type CustomerWrite, type Customer } from "../types/schemas"
+import { type CustomerWrite, type Customer } from "@mito/domain/schemas"
 import SparkMD5 from "spark-md5"
 
 // $ExpectType string

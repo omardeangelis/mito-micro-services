@@ -1,8 +1,8 @@
 import * as Sentry from "@sentry/nextjs"
 import { Cause, Effect, Exit } from "effect"
 import { NextResponse } from "next/server"
-import { DbLive } from "@/server/effect/db"
-import { cleanupTaskEventLog } from "@/server/services/cron/cleanupTaskEventLog"
+import { DbLive } from "@mito/server/effect/db"
+import { cleanupTaskEventLog } from "@mito/server/services/cron/cleanupTaskEventLog"
 import { authCheck } from "../../_utils/auth"
 
 export const dynamic = "force-dynamic"

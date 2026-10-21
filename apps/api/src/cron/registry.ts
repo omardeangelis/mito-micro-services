@@ -1,7 +1,7 @@
 import { Effect } from "effect"
 import { eq, sql } from "drizzle-orm"
-import { cronRun } from "@/server/db/schema/cronRun"
-import { query } from "@/server/effect/db"
+import { cronRun } from "@mito/db/schema/cronRun"
+import { query } from "@mito/server/effect/db"
 
 /**
  * Records the start of `job` on `day` (UTC, yyyy-MM-dd) and returns the id of

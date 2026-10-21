@@ -2,7 +2,7 @@
 
 import { api } from "@/trpc/server"
 import { revalidatePath } from "next/cache"
-import { insertOperatorSchema } from "@/lib/types/schemas"
+import { insertOperatorSchema } from "@mito/domain/schemas"
 
 const operatorInsertSchema = insertOperatorSchema.pick({
   name: true,

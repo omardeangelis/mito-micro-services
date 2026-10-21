@@ -2,7 +2,7 @@ import {
   type PracticeWrite,
   type CustomerToPraticaWrite,
   type CustomerWrite,
-} from "@/lib/types/schemas"
+} from "@mito/domain/schemas"
 import { cleanObject } from "@/lib/utils"
 
 export const mergeCustomers = (

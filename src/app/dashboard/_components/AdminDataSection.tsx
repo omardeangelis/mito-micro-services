@@ -3,7 +3,10 @@ import { FinanceCard } from "./FinanceCard"
 import { Skeleton } from "@/components/ui/skeleton"
 import { DonutCard } from "./DonutCard"
 import { CircleCard } from "./CircleCard"
-import { type TimeFrame, DEFUALTTIMEFRAME } from "@/lib/constants/timeframes"
+import {
+  type TimeFrame,
+  DEFUALTTIMEFRAME,
+} from "@mito/domain/constants/timeframes"
 
 export const AdminDataSection = async ({
   timeframe = DEFUALTTIMEFRAME,

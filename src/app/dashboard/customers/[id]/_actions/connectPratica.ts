@@ -1,9 +1,9 @@
 "use server"
 import { api } from "@/trpc/server"
 import { revalidatePath } from "next/cache"
-import { type CustomerToPraticaWrite } from "@/lib/types/schemas"
+import { type CustomerToPraticaWrite } from "@mito/domain/schemas"
 import { type CreateNewPraticaInput } from "../connect/_components/NewPraticaForm"
-import { getProductKey } from "@/lib/constants/productMap"
+import { getProductKey } from "@mito/domain/constants/productMap"
 
 const createPratica = async (input: CreateNewPraticaInput) => {
   const { pratica, customers, customerID } = input

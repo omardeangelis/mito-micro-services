@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { TRPCClientError } from "@trpc/client"
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest"
-import { type ContactErrorData } from "@/lib/domain/contact/errors"
+import { type ContactErrorData } from "@mito/domain/contact/errors"
 import { CustomerCreateContact } from "../CustomerCreateContact"
 
 // Dopo "Crea contatto" la pagina si aggiorna e al posto della card compare il

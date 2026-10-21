@@ -9,9 +9,9 @@ import {
 } from "vitest"
 import { NextRequest } from "next/server"
 import { type Session } from "next-auth"
-import { getServerAuthSession } from "@/server/auth"
-import { chat, messages } from "@/server/db/schema/chat"
-import { practices } from "@/server/db/schema/pratiche"
+import { getServerAuthSession } from "@mito/server/auth"
+import { chat, messages } from "@mito/db/schema/chat"
+import { practices } from "@mito/db/schema/pratiche"
 import { migrateUpTo, resetDb, testDb } from "@/test/db"
 import { reportedErrors } from "@/test/errorReporter"
 import {

@@ -1,7 +1,7 @@
 import { render, screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { beforeEach, describe, expect, it, vi } from "vitest"
-import { type GetContactByIdResult } from "@/server/services/contact/getContactById"
+import { type GetContactByIdResult } from "@mito/server/services/contact/getContactById"
 import { ContactDetailContent } from "../ContactDetailContent"
 
 const mocks = vi.hoisted(() => ({

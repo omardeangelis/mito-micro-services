@@ -6,14 +6,14 @@ import {
   type StandardImportType,
 } from "../../_types"
 import { type ProcessedFile } from "../../_types"
-import { type CustomerWrite, type PracticeWrite } from "@/lib/types/schemas"
+import { type CustomerWrite, type PracticeWrite } from "@mito/domain/schemas"
 import { getCustomerRole } from "../../_utils"
 import {
   insertCustomerSchemaWithVatOfFc,
   insertCustomerSchema,
   insertPracticeSchema,
   insertCustomerToPraticaSchema,
-} from "@/lib/types/schemas"
+} from "@mito/domain/schemas"
 import { z, type ZodIssue } from "zod"
 import { createPracticeObject, createCustomerObject } from "./standardFile"
 import { createWaveCustomerObject, createWavePracticeObject } from "./waveFile"

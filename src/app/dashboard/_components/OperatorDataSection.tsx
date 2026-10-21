@@ -2,7 +2,10 @@ import { api } from "@/trpc/server"
 import { FinanceCard } from "./FinanceCard"
 import { Skeleton } from "@/components/ui/skeleton"
 import { CircleCard } from "./CircleCard"
-import { type TimeFrame, DEFUALTTIMEFRAME } from "@/lib/constants/timeframes"
+import {
+  type TimeFrame,
+  DEFUALTTIMEFRAME,
+} from "@mito/domain/constants/timeframes"
 
 export const OperatorDataSection = async ({
   timeframe = DEFUALTTIMEFRAME,

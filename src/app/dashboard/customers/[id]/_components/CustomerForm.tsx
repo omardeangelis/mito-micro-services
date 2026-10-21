@@ -17,7 +17,7 @@ import {
   type Operator,
   insertCustomerSchema,
   type Customer,
-} from "@/lib/types/schemas"
+} from "@mito/domain/schemas"
 import {
   SelectContent,
   SelectLabel,
@@ -40,13 +40,13 @@ import {
   canHandover,
   canSelfAssign,
   operatorDisplayName,
-} from "@/lib/domain/contact/permissions"
+} from "@mito/domain/contact/permissions"
 import {
   CustomerHandoverDialog,
   type HandoverActiveContact,
 } from "./CustomerHandoverDialog"
 import { useUserPreferenceContext } from "@/store/context/useUserPreferenceContext"
-import { sourceValues } from "@/server/db/schema/customers"
+import { sourceValues } from "@mito/db/schema/customers"
 import { parseInputValue, parseStringToNumber } from "@/lib/utils/format"
 
 const customerformSchema = insertCustomerSchema

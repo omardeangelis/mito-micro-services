@@ -1,6 +1,6 @@
 import { create } from "zustand"
 import { createSelectors } from "./createSelectors"
-import { type TimeFrame } from "@/lib/constants/timeframes"
+import { type TimeFrame } from "@mito/domain/constants/timeframes"
 
 interface AnalitycsStore {
   timeframe: TimeFrame

@@ -1,6 +1,6 @@
 "use client"
 
-import { type OperatorWithRole } from "@/lib/types/schemas"
+import { type OperatorWithRole } from "@mito/domain/schemas"
 import {
   flexRender,
   getCoreRowModel,

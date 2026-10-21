@@ -19,11 +19,11 @@ import {
   type JWTPayload,
   SignJWT,
 } from "jose"
-import { customers } from "@/server/db/schema/customers"
-import { cronRun } from "@/server/db/schema/cronRun"
-import { practices } from "@/server/db/schema/pratiche"
-import { taskEventLog } from "@/server/db/schema/taskEventLog"
-import { ServerLive } from "@/server/effect/server"
+import { customers } from "@mito/db/schema/customers"
+import { cronRun } from "@mito/db/schema/cronRun"
+import { practices } from "@mito/db/schema/pratiche"
+import { taskEventLog } from "@mito/db/schema/taskEventLog"
+import { ServerLive } from "@mito/server/effect/server"
 import { failureTag } from "@/test/effect"
 import {
   FAILPOINT_SCHEMA,

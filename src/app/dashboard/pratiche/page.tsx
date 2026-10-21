@@ -4,12 +4,15 @@ import { PraticheTableColumns } from "./_components/TableColumn"
 import { api } from "@/trpc/server"
 import { type ServerPageDefaultProps } from "@/lib/types"
 import { getUrlParmsWithMultipleValue } from "@/lib/utils"
-import { DEFAULT_PAGE, DEFAULT_PER_PAGE } from "@/lib/constants/pagination"
+import {
+  DEFAULT_PAGE,
+  DEFAULT_PER_PAGE,
+} from "@mito/domain/constants/pagination"
 import { createSQLQuery } from "@/lib/utils/filters"
 import { PRATICA_FILTER_QUERY_MAP } from "../customers/_constants"
 import { getTableName } from "drizzle-orm"
-import { practices } from "@/server/db/schema/pratiche"
-import { parsePraticaSearchBy } from "@/lib/constants/praticaSearch"
+import { practices } from "@mito/db/schema/pratiche"
+import { parsePraticaSearchBy } from "@mito/domain/constants/praticaSearch"
 export default async function ParticheHome({
   searchParams,
 }: ServerPageDefaultProps) {

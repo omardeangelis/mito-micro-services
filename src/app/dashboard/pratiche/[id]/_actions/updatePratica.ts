@@ -2,7 +2,7 @@
 import { api } from "@/trpc/server"
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
-import { insertPracticeSchema } from "@/lib/types/schemas"
+import { insertPracticeSchema } from "@mito/domain/schemas"
 
 const updatePraticaFormData = insertPracticeSchema
   .merge(

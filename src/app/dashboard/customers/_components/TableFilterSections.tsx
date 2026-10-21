@@ -48,7 +48,7 @@ import {
   type CustomerSearchBy,
   customerSearchBy,
   customerSearchLabels,
-} from "@/lib/constants/customerSearch"
+} from "@mito/domain/constants/customerSearch"
 import { useCustomerSearch } from "@/lib/hooks/useCustomerSearch"
 
 const schema = z.object({

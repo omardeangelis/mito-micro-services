@@ -60,12 +60,12 @@ afterEach(() => {
   }
 })
 
-/** next.config.js, and isProduction from src/env.js, with these env vars. */
+/** next.config.js, and isProduction from @mito/env, with these env vars. */
 async function loadNextConfig(vars: Record<string, string>) {
   for (const [key, value] of Object.entries(vars)) vi.stubEnv(key, value)
   vi.resetModules()
   const built = (await import("../../next.config.js")).default as Built
-  const { isProduction } = await import("@/env")
+  const { isProduction } = await import("@mito/env")
   return { ...built, isProduction }
 }
 

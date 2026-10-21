@@ -1,6 +1,6 @@
 import { getTableName } from "drizzle-orm"
-import { customers } from "@/server/db/schema/customers"
-import { task } from "@/server/db/schema/task"
+import { customers } from "@mito/db/schema/customers"
+import { task } from "@mito/db/schema/task"
 import { FAILPOINT_SCHEMA, testClient } from "./db"
 
 const name = `${FAILPOINT_SCHEMA}.operator_rule`
@@ -10,7 +10,7 @@ const name = `${FAILPOINT_SCHEMA}.operator_rule`
  * belong to the same operator. Nothing in the database enforces it, in
  * production there is no trigger and no constraint for it: the guarantee is the
  * code of the writers and the test that runs each of them with this check on,
- * `src/server/services/contact/_test/operatorRule.db.test.ts`. A new writer of
+ * `packages/server/src/services/contact/_test/operatorRule.db.test.ts`. A new writer of
  * operators (of a customer or of a contact) is covered only if it adds its call
  * there. The day a customer has a manager (an admin) other than whoever
  * contacts them (the operators), this is the one rule to change.

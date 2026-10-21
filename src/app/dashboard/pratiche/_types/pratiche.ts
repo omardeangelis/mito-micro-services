@@ -1,4 +1,4 @@
-import { type stateEnum } from "@/server/db/schema/pratiche"
+import { type stateEnum } from "@mito/db/schema/pratiche"
 
 export type PraticaState = (typeof stateEnum)[number]
 

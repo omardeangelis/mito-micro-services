@@ -1,0 +1,21 @@
+import { protectedProcedure } from "../../../trpc"
+import { messages } from "@mito/db/schema/chat"
+import { z } from "zod"
+import { eq } from "drizzle-orm"
+
+export const getTasksmessages = protectedProcedure
+  .input(
+    z.object({
+      chatId: z.number(),
+    })
+  )
+  .query(async ({ input, ctx }) => {
+    const { chatId } = input
+    if (!chatId) return []
+    const customerMessages = await ctx.db
+      .select()
+      .from(messages)
+      .where(eq(messages.chatId, chatId))
+
+    return customerMessages
+  })

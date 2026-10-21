@@ -4,7 +4,7 @@ import {
   type Operator,
   type User,
   type UserPreference,
-} from "@/lib/types/schemas"
+} from "@mito/domain/schemas"
 export interface UserPreferenceStore {
   preferences?: UserPreference
   role?: User["role"]

@@ -1,6 +1,6 @@
 "use client"
 
-import { type Actor } from "@/lib/domain/contact/permissions"
+import { type Actor } from "@mito/domain/contact/permissions"
 import { useUserPreferenceContext } from "@/store/context/useUserPreferenceContext"
 
 /** The signed-in user as the permission rules see them, or null until known. */
