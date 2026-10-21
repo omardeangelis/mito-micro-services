@@ -37,6 +37,7 @@ updated: 2026-10-21
 - Prima di iniziare, `dev` è stato riportato sulla branch: portava TypeScript 5.9, Prettier 3.9 e la riformattazione.
 - **TA1, log delle rotte.** Le rotte passano a `console.error` lo stesso errore che passano a Sentry, il `DbError`. Anche i log, quindi, non contengono più SQL e parametri.
 - **TA2, regola ESLint.** Il testo della regola diceva che i seed caricano le credenziali di prod. Il seeder nuovo non lo fa; la regola resta perché un seed svuota un database, e il testo ora dice questo.
+- **`dev` ha spostato il backend in `apps/api`** (monorepo con Turborepo, PR #49 e #50), mentre la PR A era aperta. Il merge di `dev` nella A ha avuto un solo conflitto, in `package.json`: tenuti i percorsi nuovi, tolti di nuovo gli script dei seed. I percorsi `api/src/cron/...` del piano ora sono `apps/api/src/cron/...` (TB8). Il build vecchio `api/dist` rimasto in locale faceva fallire `tsc`: spostato nello scratchpad, in CI non esiste.
 - **TB1.** Importare `src/app/api/import/_utils` sotto tsx non richiede `--conditions=react-server`. Il confronto di `importRates` con l'import copre 10.031 combinazioni, anche con orari nel salto e nell'ora doppia dei cambi d'ora.
 
 ## Sanity Checks
@@ -46,8 +47,10 @@ updated: 2026-10-21
 | Suite completa prima di iniziare, con `TEST_DATABASE_URL` (Postgres 16 locale sulla 5432) | Pass | 140 file, 2.114 test |
 | PR A: `pnpm run test --run` con Postgres | Pass | 141 file, 2.122 test |
 | PR A: `next lint`, `tsc --noEmit`, `pnpm api:build`, `pnpm api:smoke` | Pass | |
-| PR A: `git grep -nE "seed:(db|delete|clear)" -- ':!brain'` e `git grep -n getRandomCustomerRole -- ':!brain'` | Pass | nessun risultato |
+| PR A: `git grep -nE "seed:(db\|delete\|clear)" -- ':!brain'` e `git grep -n getRandomCustomerRole -- ':!brain'` | Pass | nessun risultato |
 | TB1: `pnpm run test --run` su `day.test.ts` e `importRates.test.ts` | Pass | 23 test |
+| PR A dopo il merge di `dev` (monorepo): install, `next lint`, `tsc`, `api:build`, `api:smoke`, suite completa con Postgres | Pass | 141 file, 2.122 test |
+| TB2 e TB3: `pnpm run test --run src/server/db/seeds/local/_test`, `tsc`, `prettier --check` | Pass | 137 test |
 
 ## Acceptance Criteria Status
 

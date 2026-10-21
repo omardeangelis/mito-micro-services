@@ -325,9 +325,9 @@ TB5 e TB6 sono in sequenza perché tutti e due toccano `types.ts`. TB6 lo usa e 
   - due chiamate danno righe uguali con l'orologio alle 01:30 e alle 23:30 di Roma dello stesso giorno (AC5);
   - l'hash del dataset è uguale in un processo con `TZ=UTC` e in uno con `TZ=Europe/Rome`;
   - `n = 299` si ferma.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done (2026-10-21, commit `17c905f`)
+- **log**: Worker sonnet, una sola passata. 96 test del generatore (a 300, a 10.000 e a 300 con quattro D difficili), determinismo con l'orologio a due ore e con tre processi (in-process, `TZ=UTC`, `TZ=Europe/Rome`). A 10.000: 9.345 pratiche, 250 selezionate da `update`, 139 clienti nati nel giorno di D, generazione in 3,5 s. Revisione dell'orchestratore: nessuna pratica generica è selezionata da `update`; importi in euro interi. File in più rispetto al brief: `generate/links.ts`, `generate/scenarios.ts`.
+- **files edited/created**: `src/server/db/seeds/local/generate.ts`, `generate/{random,links,customers,practices,scenarios}.ts`, `_test/generate.test.ts`, `_test/generateHashChild.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a (D9)
@@ -349,9 +349,9 @@ TB5 e TB6 sono in sequenza perché tutti e due toccano `types.ts`. TB6 lo usa e 
 
   Il controllo di AC18 sui contatti attivi sta in TB4. Se non torna, TB4 corregge queste quote.
 - **validation**: test unitari a 300 e a 10.000: AC17; le email degli utenti (AC16); le quote di assegnazione dei clienti; determinismo.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done (2026-10-21)
+- **log**: Worker sonnet, una sola passata. 28 utenti, 29 operatori (il sistema è l'ultimo, id 1028). Quote: 3% dei clienti senza operatore; un operatore al 35%; 18 fra 2,2% e 3,8%; 5 all'1,4%; uno senza clienti; admin al 2,4%, 1,6% e 1,2%. `ACTIVE_CONTACT_SHARE` = 0,8. Due asserzioni di TB2 ristrette perché ora utenti, operatori e `customers.operatorId` sono valorizzati.
+- **files edited/created**: `src/server/db/seeds/local/generate/operators.ts` (nuovo), `generate.ts`, `generate/customers.ts` (export di `slug`), `_test/operators.test.ts`, `_test/generate.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a (D9)
