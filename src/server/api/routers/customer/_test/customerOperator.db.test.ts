@@ -181,6 +181,44 @@ describe("customer.handover, who and what moves", () => {
     expect(await logOf(customer.id)).toHaveLength(2)
   })
 
+  it("un contatto non attivo resta all'operatore che lo ha lavorato, anche se è il più recente: si sposta quello attivo", async () => {
+    const owner = await createOperator()
+    const colleague = await createOperator()
+    const customer = await createCustomer({ operatorId: owner.id })
+    const active = await createTask({
+      customerId: customer.id,
+      operatorId: owner.id,
+      state: "chiamare",
+    })
+    // La modifica più recente è del contatto superato: "la task più recente,
+    // attiva o no" sceglierebbe lui
+    const superseded = await createTask({
+      customerId: customer.id,
+      operatorId: owner.id,
+      state: "app.to",
+      isActive: false,
+      updatedAt: new Date(Date.now() + 60_000),
+    })
+
+    await createTestCaller(owner).customer.handover({
+      customerId: customer.id,
+      toOperatorId: colleague.id,
+    })
+
+    expect(await tasksOf(customer.id)).toMatchObject([
+      { id: active.id, operatorId: colleague.id },
+      { id: superseded.id, operatorId: owner.id },
+    ])
+    expect(await logOf(customer.id)).toMatchObject([
+      { taskId: null, fromOperatorId: owner.id, toOperatorId: colleague.id },
+      {
+        taskId: active.id,
+        fromOperatorId: owner.id,
+        toOperatorId: colleague.id,
+      },
+    ])
+  })
+
   it("su un cliente senza contatto attivo sposta solo il cliente, con una riga sola", async () => {
     const owner = await createOperator()
     const colleague = await createOperator()

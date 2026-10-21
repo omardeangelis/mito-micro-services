@@ -10,15 +10,25 @@
 --
 -- The invariant (D26): a customer and its active contact have the same
 -- operator. The migration gives every active contact the operator of its
--- customer when the customer has one. Two cases it can't decide:
---   (b) the customer has no operator and the contact has one;
---   (a2) the contact has no operator and the customer has one, with calls the
---        export would start to count (see "exportable" below).
+-- customer when the customer has one. Two cases it can't decide, and the
+-- release stops on either one until the owner has decided in writing:
+--   (b) the customer has no operator and the contact has one
+--       (`b` > 0: send the list of SELECT 5);
+--   (a2 exportable) the contact has no operator and the customer has one, with
+--       calls the export would start to count (see "exportable" below)
+--       (`a2_esportabili` > 0: send the list of SELECT 4). Two outcomes: accept
+--       it (the migration goes on, the calls enter the export, the operators'
+--       announcement says so) or don't release.
+-- Not a stop: `a` and `a2` (the migration moves them) and `c` (for
+-- information). Note that the count `a2` is every contact with no operator
+-- whose customer has one; only `a2_esportabili` is the stop.
 --
 -- "Exportable" is what the calls export reads (`closedCalls`,
 -- src/server/services/export/calls.ts): `closed_at` set and a state other than
--- `nessuno`. It inner-joins operators, so a contact with no operator is
--- left out today; once it has one, its calls come in.
+-- `nessuno` (a missing state is not exportable either). It ignores the dates
+-- of the export's interval, so "exportable" means closed in some interval. The
+-- export inner-joins operators, so a contact with no operator is left out
+-- today; once it has one, its calls come in.
 --
 -- Contacts without a customer, and inactive contacts, are never listed: the
 -- migration doesn't touch them either.
@@ -29,13 +39,15 @@
 --                    one or none: the migration moves these;
 --   a2               among (a), the contact has no operator;
 --   a2_esportabili   among (a2), the ones with exportable calls: they enter
---                    the export once moved (A16);
+--                    the export once moved (A16). STOP if > 0;
 --   b                the customer has no operator and the contact has one: the
---                    migration leaves these as they are, the owner decides;
+--                    migration leaves these as they are, the owner decides.
+--                    STOP if > 0;
 --   c                the customer and the contact have no operator, and the
 --                    contact has exportable calls: not touched by the
 --                    migration, but "Assegna Clienti", "Assegna a te" and the
---                    handover would bring them into the export (A16).
+--                    handover would bring them into the export (A16). For
+--                    information, never a stop.
 WITH "contatti" AS (
   SELECT
     t."operator_id" AS "operatore_contatto",

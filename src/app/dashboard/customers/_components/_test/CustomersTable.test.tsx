@@ -109,6 +109,9 @@ describe("CustomersTable, ordinamento", () => {
     ["?order_by=priority&sorted_by=asc"],
     ["?order_by=priority"],
     ["?order_by=colonnachenonc'e&sorted_by=asc"],
+    // A list of columns with one that is gone: the whole sort is the default
+    ["?order_by=name,priority&sorted_by=asc,desc"],
+    ["?order_by=contattato,name&sorted_by=asc,asc"],
   ])(
     "con %s riparte dal default e non riscrive i parametri tolti",
     (search) => {

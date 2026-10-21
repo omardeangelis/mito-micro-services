@@ -1,5 +1,5 @@
 import React, { useState } from "react"
-import { cleanup, render, screen, waitFor } from "@testing-library/react"
+import { act, cleanup, render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { TRPCClientError } from "@trpc/client"
@@ -13,10 +13,15 @@ import { CustomerCreateContact } from "../CustomerCreateContact"
 
 type Call = { resolve: () => void; reject: (error: unknown) => void }
 
+type TestActor = { role: "ADMIN" | "OPERATORE"; operatorId: number }
+
+const ADMIN: TestActor = { role: "ADMIN", operatorId: 1000 }
+
 const mocks = vi.hoisted(() => ({
   calls: [] as Call[],
   refresh: vi.fn(),
   toast: vi.fn(),
+  actor: null as TestActor | null,
 }))
 
 // `useMutation` vera, con una promessa che il test risolve a mano
@@ -46,12 +51,13 @@ vi.mock("@/components/ui/use-toast", () => ({
   useToast: () => ({ toast: mocks.toast }),
 }))
 vi.mock("@/components/custom/contact/useActor", () => ({
-  useActor: () => ({ role: "ADMIN", operatorId: 1000 }),
+  useActor: () => mocks.actor,
 }))
 
 beforeEach(() => {
   mocks.calls.length = 0
   mocks.toast.mockClear()
+  mocks.actor = ADMIN
 })
 afterEach(cleanup)
 
@@ -68,12 +74,17 @@ function Page({
   mocks.refresh.mockImplementation(() => {
     if (contactAfterRefresh) setHasContact(true)
   })
-  return hasContact ? (
-    <a href="/dashboard/contatti/321" data-contact-manage-link="">
-      Gestisci contatto
-    </a>
-  ) : (
-    <CustomerCreateContact customerId="customer-1" customerOperatorId={7} />
+  return (
+    <>
+      <input aria-label="Altro campo" />
+      {hasContact ? (
+        <a href="/dashboard/contatti/321" data-contact-manage-link="">
+          Gestisci contatto
+        </a>
+      ) : (
+        <CustomerCreateContact customerId="customer-1" customerOperatorId={7} />
+      )}
+    </>
   )
 }
 
@@ -140,6 +151,57 @@ describe("CustomerCreateContact, il focus dopo il successo", () => {
 
     await waitFor(() => expect(mocks.toast).toHaveBeenCalledTimes(1))
     expect(screen.queryByRole("link", { name: "Gestisci contatto" })).toBeNull()
+    expect(screen.getByRole("button", { name: /Crea contatto/ })).not.toBeNull()
+  })
+})
+
+describe("CustomerCreateContact, il focus non si ruba", () => {
+  it("se l'operatore ha già spostato il focus su un altro controllo, 'Gestisci contatto' non lo prende", async () => {
+    await clickCreate()
+    const other = screen.getByLabelText("Altro campo")
+    act(() => other.focus())
+    expect(document.activeElement).toBe(other)
+
+    mocks.calls[0]!.resolve()
+
+    await waitFor(() => expect(manageLink()).not.toBeNull())
+    // Il tempo che l'osservatore del focus avrebbe per muoverlo
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    expect(document.activeElement).toBe(other)
+  })
+})
+
+describe("CustomerCreateContact, chi vede il pulsante (AC66)", () => {
+  const renderCard = () =>
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <CustomerCreateContact customerId="customer-1" customerOperatorId={7} />
+      </QueryClientProvider>
+    )
+
+  it.each<[string, TestActor | null]>([
+    [
+      "un OPERATORE che non è l'operatore del cliente",
+      { role: "OPERATORE", operatorId: 99 },
+    ],
+    ["chi non ha ancora un operatore", null],
+  ])("%s non vede 'Crea contatto'", (_who, actor) => {
+    mocks.actor = actor
+    renderCard()
+
+    expect(screen.queryByRole("button", { name: /Crea contatto/ })).toBeNull()
+    expect(
+      screen.queryByText("Il cliente non ha un contatto attivo")
+    ).toBeNull()
+  })
+
+  it.each<[string, TestActor]>([
+    ["l'operatore del cliente", { role: "OPERATORE", operatorId: 7 }],
+    ["un amministratore", ADMIN],
+  ])("%s vede 'Crea contatto'", (_who, actor) => {
+    mocks.actor = actor
+    renderCard()
+
     expect(screen.getByRole("button", { name: /Crea contatto/ })).not.toBeNull()
   })
 })

@@ -46,8 +46,8 @@ async function seed() {
 }
 
 describe("customer.bulkUpdateCustomers", () => {
-  it("assegna il cliente e la sua task più recente, se è da chiamare", async () => {
-    const { previousOperator, nextOperator, caller } = await seed()
+  it("assegna il cliente e il suo contatto attivo da chiamare, con una riga di log per ciascuno", async () => {
+    const { admin, previousOperator, nextOperator, caller } = await seed()
     const customer = await createCustomer({ operatorId: previousOperator.id })
     const current = await createTask({
       customerId: customer.id,
@@ -65,6 +65,24 @@ describe("customer.bulkUpdateCustomers", () => {
     ).toMatchObject({ operatorId: nextOperator.id })
     expect(await tasksOf(customer.id)).toEqual([
       expect.objectContaining({ id: current.id, operatorId: nextOperator.id }),
+    ])
+    expect(await logOf(customer.id)).toEqual([
+      expect.objectContaining({
+        action: "operator_reassign",
+        source: "bulk",
+        taskId: null,
+        fromOperatorId: previousOperator.id,
+        toOperatorId: nextOperator.id,
+        actorOperatorId: admin.id,
+      }),
+      expect.objectContaining({
+        action: "operator_reassign",
+        source: "bulk",
+        taskId: current.id,
+        fromOperatorId: previousOperator.id,
+        toOperatorId: nextOperator.id,
+        actorOperatorId: admin.id,
+      }),
     ])
   })
 
@@ -334,19 +352,22 @@ describe("customer.bulkUpdateCustomers, cliente e contatto insieme (D14, D26, AC
     expect(await logOf(customer.id)).toEqual([])
   })
 
-  it("un contatto non attivo resta all'operatore che lo ha lavorato", async () => {
-    const { previousOperator, nextOperator, caller } = await seed()
+  it("un contatto non attivo resta all'operatore che lo ha lavorato, anche se è il più recente", async () => {
+    const { admin, previousOperator, nextOperator, caller } = await seed()
     const customer = await createCustomer({ operatorId: previousOperator.id })
+    const active = await createTask({
+      customerId: customer.id,
+      operatorId: previousOperator.id,
+      state: "chiamare",
+    })
+    // Il contatto superato ha la modifica più recente: la regola di prima
+    // ("la task più recente, attiva o no") sceglierebbe lui
     const superseded = await createTask({
       customerId: customer.id,
       operatorId: previousOperator.id,
       state: "app.to",
       isActive: false,
-    })
-    const active = await createTask({
-      customerId: customer.id,
-      operatorId: previousOperator.id,
-      state: "chiamare",
+      updatedAt: new Date(Date.now() + 60_000),
     })
 
     await caller.customer.bulkUpdateCustomers({
@@ -355,14 +376,31 @@ describe("customer.bulkUpdateCustomers, cliente e contatto insieme (D14, D26, AC
     })
 
     expect(await tasksOf(customer.id)).toEqual([
+      expect.objectContaining({ id: active.id, operatorId: nextOperator.id }),
       expect.objectContaining({
         id: superseded.id,
         operatorId: previousOperator.id,
       }),
-      expect.objectContaining({ id: active.id, operatorId: nextOperator.id }),
     ])
     // Una riga per il cliente e una per il contatto attivo, nessuna per l'altro
-    expect(await logOf(customer.id)).toHaveLength(2)
+    expect(await logOf(customer.id)).toEqual([
+      expect.objectContaining({
+        action: "operator_reassign",
+        source: "bulk",
+        taskId: null,
+        fromOperatorId: previousOperator.id,
+        toOperatorId: nextOperator.id,
+        actorOperatorId: admin.id,
+      }),
+      expect.objectContaining({
+        action: "operator_reassign",
+        source: "bulk",
+        taskId: active.id,
+        fromOperatorId: previousOperator.id,
+        toOperatorId: nextOperator.id,
+        actorOperatorId: admin.id,
+      }),
+    ])
   })
 
   it("più clienti: ognuno passa con il suo contatto", async () => {
@@ -542,7 +580,7 @@ describe("customer.bulkUpdateCustomers, permessi (P7)", () => {
         operatorId: nextOperator.id,
         customerIds: [customer.id],
       })
-    ).rejects.toMatchObject({ code: "FORBIDDEN" })
+    ).rejects.toMatchObject({ code: "FORBIDDEN", message: "admin-only" })
 
     expect(
       await createTestCaller(previousOperator).customer.getCustomerById({

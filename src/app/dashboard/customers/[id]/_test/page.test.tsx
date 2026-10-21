@@ -133,7 +133,7 @@ describe("la scheda cliente con un contatto attivo", () => {
     expect(summary!.props).toMatchObject({ alert: null })
   })
 
-  it("non ha più i controlli di stato, priorità e alert (AC65)", async () => {
+  it("con un contatto attivo la scheda non mostra la card 'Crea contatto'", async () => {
     expect(await elementsNamed("CustomerCreateContact")).toHaveLength(0)
   })
 

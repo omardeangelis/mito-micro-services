@@ -71,6 +71,17 @@ describe("CustomersTableSection, filtri tolti (AC60)", () => {
     expect(await savedSqlFilter("closed_at:gte:2026-09-01")).toBe("")
   })
 
+  it("scarta un filtro avanzato su un nome di colonna inventato, anche a forma di iniezione", async () => {
+    for (const filter of [
+      "1=1) OR (1:eq:x",
+      "comune ilike '%' OR 1=1 --:eq:x",
+      "__proto__:eq:x",
+      "constructor:eq:x",
+    ]) {
+      expect(await savedSqlFilter(filter)).toBe("")
+    }
+  })
+
   it("tiene i filtri avanzati sulle colonne del cliente accanto a quelli tolti", async () => {
     expect(
       await savedSqlFilter([
@@ -118,6 +129,16 @@ describe("CustomersTableSection, ordinamenti tolti (AC59, AC60)", () => {
       { order_by: "priority", sorted_by: "asc" },
       { order_by: "priority" },
     ] as Record<string, string>[]) {
+      api.getAllCustomers.mockClear()
+      expect(await queryFor(params)).toMatchObject(byDefault)
+    }
+  })
+
+  it("un ordinamento a più colonne con una tolta torna al default, con le direzioni", async () => {
+    for (const params of [
+      { order_by: "name,priority", sorted_by: "asc,desc" },
+      { order_by: "contattato,name", sorted_by: "asc,asc" },
+    ]) {
       api.getAllCustomers.mockClear()
       expect(await queryFor(params)).toMatchObject(byDefault)
     }

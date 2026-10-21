@@ -303,9 +303,10 @@ describe("customer.getAllCustomers, ordinamenti", () => {
 
   it("signedPractices ordina per numero di pratiche e lo restituisce", async () => {
     const { caller } = await seedByDate()
-    await createCustomer({ updatedAt: SAME_DATE })
-    const one = await createCustomer({ updatedAt: SAME_DATE })
+    // Chi ha più pratiche ha l'id più basso: l'ordine per id da solo non basta
     const three = await createCustomer({ updatedAt: SAME_DATE })
+    const one = await createCustomer({ updatedAt: SAME_DATE })
+    await createCustomer({ updatedAt: SAME_DATE })
     await createPractice({ customerId: one.id })
     for (let i = 0; i < 3; i++) await createPractice({ customerId: three.id })
 
@@ -333,6 +334,38 @@ describe("customer.getAllCustomers, ordinamenti", () => {
     expect(
       ascending.allCustomers.filter((c) => c.signedPractices === 0)
     ).toHaveLength(4)
+  })
+
+  it("i clienti senza valore nella colonna vanno in fondo, in ordine crescente e decrescente, con gli id a pareggio", async () => {
+    const operator = await createOperator({ name: "Operatore" })
+    const caller = createTestCaller(operator)
+    const zeta = await createCustomer({ surname: "Zeta" })
+    const aldo = await createCustomer({ surname: "Aldo" })
+    const firstWithout = await createCustomer({ surname: null })
+    const secondWithout = await createCustomer({ surname: null })
+    const surnames = async (sortedBy: "asc" | "desc") =>
+      (
+        await caller.customer.getAllCustomers({
+          page: 1,
+          perPage: 10,
+          orderBy: "surname",
+          sortedBy,
+        })
+      ).allCustomers.map((c) => c.id)
+
+    expect(await surnames("asc")).toEqual([
+      aldo.id,
+      zeta.id,
+      firstWithout.id,
+      secondWithout.id,
+    ])
+    // Postgres metterebbe i NULL in testa con `desc`, se la chiave non ci fosse
+    expect(await surnames("desc")).toEqual([
+      zeta.id,
+      aldo.id,
+      secondWithout.id,
+      firstWithout.id,
+    ])
   })
 
   it("ordina per cognome e per operatore, con gli id a pareggio", async () => {

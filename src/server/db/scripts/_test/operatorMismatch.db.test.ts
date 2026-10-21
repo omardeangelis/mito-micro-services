@@ -78,9 +78,18 @@ describe("contatti-operator-mismatch.sql", () => {
       closedAt,
     })
     const noOperatorOpen = await seed(bruno, null, { state: "chiamare" })
+    // `state` has no value: `closedCalls` leaves it out (`<> 'nessuno'` is not true)
+    const noOperatorNoState = await seed(anna, null, {
+      state: null,
+      closedAt,
+    })
     // (b): the customer has no operator, the contact has one
     const customerWithout = await seed(null, carla, {
       state: "app.to",
+      closedAt,
+    })
+    const customerWithoutNoState = await seed(null, bruno, {
+      state: null,
       closedAt,
     })
     // (c): neither has an operator, the contact has exportable calls
@@ -88,10 +97,34 @@ describe("contatti-operator-mismatch.sql", () => {
       state: "non interessato",
       closedAt,
     })
+    const neitherRichiamare = await seed(null, null, {
+      state: "richiamare",
+      closedAt,
+    })
+    const neitherAppTo = await seed(null, null, { state: "app.to", closedAt })
     // Not listed
     await seed(null, null, { state: "chiamare" })
     await seed(anna, anna, { state: "richiamare", closedAt })
     await seed(null, null, { state: "nessuno", closedAt })
+    await seed(null, null, { state: null, closedAt })
+    // Inactive contacts, one for each of the lists: none of them is listed
+    for (const [customerOperator, contactOperator] of [
+      [anna, bruno], // (a)
+      [anna, null], // (a2) with exportable calls
+      [null, bruno], // (b)
+      [null, null], // (c)
+    ] as const) {
+      const customer = await createCustomer({
+        operatorId: customerOperator?.id ?? null,
+      })
+      await createTask({
+        customerId: customer.id,
+        operatorId: contactOperator?.id ?? null,
+        state: "app.to",
+        closedAt,
+        isActive: false,
+      })
+    }
     const inactiveOnly = await createCustomer({ operatorId: anna.id })
     await createTask({
       customerId: inactiveOnly.id,
@@ -119,14 +152,16 @@ describe("contatti-operator-mismatch.sql", () => {
 
     const result = await runScript()
 
-    // 9 seeded + `inactiveOnly` active + `withHistory` active, each with a customer
+    // 14 seeded + `inactiveOnly` active + `withHistory` active, each with a
+    // customer. Each count has a value of its own, so a swap of two of them in
+    // the script can't pass: a=6, a2=4, a2_esportabili=1, b=2, c=3.
     expect(result.counts).toEqual({
-      contatti_attivi: 11,
-      a: 5,
-      a2: 3,
+      contatti_attivi: 16,
+      a: 6,
+      a2: 4,
       a2_esportabili: 1,
-      b: 1,
-      c: 1,
+      b: 2,
+      c: 3,
     })
     expect(ids(result.list, "contatto_id")).toEqual(
       [
@@ -134,14 +169,74 @@ describe("contatti-operator-mismatch.sql", () => {
         noOperatorExportable.contact.id,
         noOperatorNessuno.contact.id,
         noOperatorOpen.contact.id,
+        noOperatorNoState.contact.id,
         historyActive.id,
       ].sort()
     )
     expect(ids(result.a2Exportable, "contatto_id")).toEqual([
       noOperatorExportable.contact.id,
     ])
-    expect(ids(result.b, "contatto_id")).toEqual([customerWithout.contact.id])
-    expect(ids(result.c, "contatto_id")).toEqual([neitherExportable.contact.id])
+    expect(ids(result.b, "contatto_id")).toEqual(
+      [customerWithout.contact.id, customerWithoutNoState.contact.id].sort()
+    )
+    // "Exportable" is what the export reads: a state other than `nessuno`, set,
+    // and `closed_at`. A missing state, `nessuno` or no `closed_at` is not.
+    const exportable = (rows: Record<string, unknown>[], id: number) =>
+      rows.find((row) => row.contatto_id === id)?.esportabile
+    expect(exportable(result.list, noOperatorExportable.contact.id)).toBe(true)
+    for (const notExportable of [
+      noOperatorNessuno,
+      noOperatorOpen,
+      noOperatorNoState,
+    ]) {
+      expect(exportable(result.list, notExportable.contact.id)).toBe(false)
+    }
+    expect(exportable(result.b, customerWithout.contact.id)).toBe(true)
+    expect(exportable(result.b, customerWithoutNoState.contact.id)).toBe(false)
+    expect(ids(result.c, "contatto_id")).toEqual(
+      [
+        neitherExportable.contact.id,
+        neitherRichiamare.contact.id,
+        neitherAppTo.contact.id,
+      ].sort()
+    )
+  })
+
+  it("nelle liste di (a2) esportabili, (b) e (c) ogni riga porta le colonne che chi decide legge", async () => {
+    const anna = await createOperator({ name: "Anna", surname: "Rossi" })
+    const bruno = await createOperator({ name: "Bruno", surname: "Verdi" })
+    const a2 = await seed(anna, null, { state: "app.to", closedAt })
+    const b = await seed(null, bruno, { state: "richiamare", closedAt })
+    const c = await seed(null, null, { state: "non interessato", closedAt })
+
+    const { a2Exportable, b: bList, c: cList } = await runScript()
+
+    expect(a2Exportable).toHaveLength(1)
+    expect(a2Exportable[0]).toMatchObject({
+      cliente_id: a2.customer.id,
+      contatto_id: a2.contact.id,
+      stato: "app.to",
+      contattato_il: closedAt,
+      operatore_cliente_id: anna.id,
+      operatore_cliente: "Anna Rossi",
+    })
+    expect(bList).toHaveLength(1)
+    expect(bList[0]).toMatchObject({
+      cliente_id: b.customer.id,
+      contatto_id: b.contact.id,
+      stato: "richiamare",
+      operatore_contatto_id: bruno.id,
+      operatore_contatto: "Bruno Verdi",
+      contattato_il: closedAt,
+      esportabile: true,
+    })
+    expect(cList).toHaveLength(1)
+    expect(cList[0]).toMatchObject({
+      cliente_id: c.customer.id,
+      contatto_id: c.contact.id,
+      stato: "non interessato",
+      contattato_il: closedAt,
+    })
   })
 
   it("nell'elenco di (a) ogni contatto ha i due operatori e dice se è esportabile e se è senza operatore", async () => {
@@ -184,13 +279,24 @@ describe("contatti-operator-mismatch.sql", () => {
     await seed(anna, bruno, { state: "chiamare" })
     await seed(bruno, anna, { state: "chiamare" })
     await seed(bruno, null, { state: "app.to", closedAt })
+    // No state: the export doesn't read it, whatever `closed_at` says
+    await seed(anna, bruno, { state: null, closedAt })
+    // An inactive contact of another operator is not a mismatch to move
+    const inactiveCustomer = await createCustomer({ operatorId: anna.id })
+    await createTask({
+      customerId: inactiveCustomer.id,
+      operatorId: bruno.id,
+      state: "richiamare",
+      closedAt,
+      isActive: false,
+    })
 
     const { byPair } = await runScript()
 
     const row = (
       contactOperator: number | null,
       customerOperator: number,
-      state: string
+      state: string | null
     ) =>
       byPair.find(
         (r) =>
@@ -198,7 +304,7 @@ describe("contatti-operator-mismatch.sql", () => {
           r.operatore_cliente_id === customerOperator &&
           r.stato === state
       )
-    expect(byPair).toHaveLength(4)
+    expect(byPair).toHaveLength(5)
     // Two `richiamare`, one of them with calls the export counts
     expect(row(bruno.id, anna.id, "richiamare")).toMatchObject({
       contatti: 2,
@@ -212,6 +318,11 @@ describe("contatti-operator-mismatch.sql", () => {
     expect(row(null, bruno.id, "app.to")).toMatchObject({
       contatti: 1,
       esportabili: 1,
+    })
+    // No state: it is not exportable, closed or not
+    expect(row(bruno.id, anna.id, null)).toMatchObject({
+      contatti: 1,
+      esportabili: 0,
     })
   })
 
