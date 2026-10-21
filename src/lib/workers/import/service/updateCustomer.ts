@@ -7,7 +7,7 @@ import { cleanObject } from "@/lib/utils"
 import { db } from "@mito/db"
 import { eq } from "drizzle-orm"
 import { practices } from "@mito/db/schema/pratiche"
-import { updateImportedCustomer } from "@/server/shared/updateImportedCustomer"
+import { updateImportedCustomer } from "@mito/server/shared/updateImportedCustomer"
 
 export type HandleCustomerUpdateResponse = Promise<{
   customersToCreate: CustomerWrite[]

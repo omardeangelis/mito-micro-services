@@ -3,8 +3,8 @@ import { callProcedure } from "@trpc/server"
 import { observable } from "@trpc/server/observable"
 import { type TRPCErrorResponse } from "@trpc/server/rpc"
 
-import { appRouter, type AppRouter } from "@/server/api/root"
-import { type createTRPCContext } from "@/server/api/trpc"
+import { appRouter, type AppRouter } from "@mito/server/api/root"
+import { type createTRPCContext } from "@mito/server/api/trpc"
 
 /**
  * A link that invokes the procedures as functions, without HTTP: the server

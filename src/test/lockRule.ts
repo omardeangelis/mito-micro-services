@@ -12,7 +12,7 @@ const name = `${FAILPOINT_SCHEMA}.lock_rule`
  * From now on, every write (insert, update, delete) of a row of `task`,
  * `alert` or `task_event_log` fails with "lock rule: …" unless the current
  * transaction has locked the row's customer, as `lockCustomer` does
- * (`src/server/effect/db.ts`). `resetDb` removes the check.
+ * (`packages/server/src/effect/db.ts`). `resetDb` removes the check.
  *
  * The customer is `customer_id` for `task` and `task_event_log`, the customer
  * of the task in `task_id` for `alert`: the new row for an insert, the old one

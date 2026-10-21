@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import jwt from "jsonwebtoken"
 import { type Session } from "next-auth"
-import { getServerAuthSession } from "@/server/auth"
+import { getServerAuthSession } from "@mito/server/auth"
 import { authCheck } from "@/app/api/_utils/auth"
 
 // The check the cron, import and export routes run before anything else

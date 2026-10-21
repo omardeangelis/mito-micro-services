@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import {
   type CustomerFilter,
   type ContactRow,
-} from "@/server/services/contact/getContacts"
+} from "@mito/server/services/contact/getContacts"
 import { saveReturnFocus } from "../../_lib/returnFocus"
 import { defaultState, type ContactsListState } from "../../_lib/searchParams"
 import { ContactsListShell } from "../ContactsListShell"

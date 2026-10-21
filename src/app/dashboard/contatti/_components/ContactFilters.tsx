@@ -19,7 +19,7 @@ import {
 } from "@mito/domain/contact/permissions"
 import { priorityBands } from "@mito/domain/contact/priority"
 import { allStates } from "@mito/domain/contact/status"
-import type { CustomerFilter } from "@/server/services/contact/getContacts"
+import type { CustomerFilter } from "@mito/server/services/contact/getContacts"
 import { cn } from "@/lib/utils"
 import { priorityLabels } from "../_lib/priorityLabels"
 import { useContactFilters } from "../_lib/useContactFilters"

@@ -1,8 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { Cause, Effect, Exit } from "effect"
-import { ErrorReporter } from "@/server/effect/errorReporter"
-import { ServerLive } from "@/server/effect/server"
-import { refreshPriorities } from "@/server/services/contact/refreshPriorities"
+import { ErrorReporter } from "@mito/server/effect/errorReporter"
+import { ServerLive } from "@mito/server/effect/server"
+import { refreshPriorities } from "@mito/server/services/contact/refreshPriorities"
 import { authCheck } from "../../_utils/auth"
 
 export const dynamic = "force-dynamic"

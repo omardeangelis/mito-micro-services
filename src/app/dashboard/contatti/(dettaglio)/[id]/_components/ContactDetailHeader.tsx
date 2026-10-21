@@ -10,7 +10,7 @@ import {
   type OperatorRef,
 } from "@mito/domain/contact/permissions"
 import { formatDateAsDMY } from "@/lib/utils"
-import type { GetContactByIdResult } from "@/server/services/contact/getContactById"
+import type { GetContactByIdResult } from "@mito/server/services/contact/getContactById"
 import { ContactOperatorControl } from "./ContactOperatorControl"
 import { ContactPriorityControl } from "./ContactPriorityControl"
 import { ContactStateControl } from "./ContactStateControl"

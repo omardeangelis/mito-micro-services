@@ -1,4 +1,12 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest"
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest"
 import { eq } from "drizzle-orm"
 import { sessions } from "@mito/db/schema/users"
 import { migrateUpTo, resetDb, testDb } from "@/test/db"
@@ -7,7 +15,7 @@ import { app } from "../app"
 
 // The real NextAuth configuration: the backend reads sessions with its adapter
 // and its `session` callback
-vi.unmock("@/server/auth")
+vi.unmock("@mito/server/auth")
 
 const DAY = 24 * 60 * 60 * 1000
 

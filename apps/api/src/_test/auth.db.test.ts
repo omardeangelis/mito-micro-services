@@ -14,7 +14,7 @@ import { createOperator } from "@/test/factories"
 import { app } from "../app"
 
 // The real NextAuth configuration, as the Next.js route serves it
-vi.unmock("@/server/auth")
+vi.unmock("@mito/server/auth")
 
 const FRONTEND = "https://staging-crm.example.it"
 const DAY = 24 * 60 * 60 * 1000

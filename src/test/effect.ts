@@ -1,5 +1,5 @@
 import { Cause, Effect, Exit, Option } from "effect"
-import { type ServerContext, ServerLive } from "@/server/effect/server"
+import { type ServerContext, ServerLive } from "@mito/server/effect/server"
 
 /** Runs a server program with `ServerLive`, as the edges do. */
 export const runServer = <A, E>(program: Effect.Effect<A, E, ServerContext>) =>

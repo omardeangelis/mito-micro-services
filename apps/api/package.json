@@ -13,6 +13,7 @@
   "devDependencies": {
     "@mito/db": "workspace:*",
     "@mito/domain": "workspace:*",
-    "@mito/env": "workspace:*"
+    "@mito/env": "workspace:*",
+    "@mito/server": "workspace:*"
   }
 }

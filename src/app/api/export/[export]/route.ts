@@ -3,7 +3,7 @@
 // import { parseReadableStream } from "@/lib/utils/api"
 // import { handleDefaultExport } from "./services/defaultExport"
 // import { handleCallExport } from "./services/callExport"
-// import { getServerAuthSession } from "@/server/auth"
+// import { getServerAuthSession } from "@mito/server/auth"
 // import { db } from "@mito/db"
 // import { eq } from "drizzle-orm"
 // import { users } from "@mito/db/schema/users"

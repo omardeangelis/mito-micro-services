@@ -1,0 +1,15 @@
+{
+  "name": "@mito/server",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Il codice server: router tRPC, servizi Effect, auth (NextAuth), contesto. Lo usano l'app Next e apps/api. Usa le librerie della root, come @mito/db",
+  "type": "module",
+  "exports": {
+    "./*": "./src/*.ts"
+  },
+  "dependencies": {
+    "@mito/db": "workspace:*",
+    "@mito/domain": "workspace:*",
+    "@mito/env": "workspace:*"
+  }
+}

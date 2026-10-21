@@ -23,7 +23,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { TablePagination } from "../../../../components/custom/table/TablePagination"
 import { TableFilterSection } from "@/app/dashboard/pratiche/_components/TableFilterSection"
 import { useUserPreferenceContext } from "@/store/context/useUserPreferenceContext"
-// import { type Result } from "@/server/api/routers/pratiche/GET"
+// import { type Result } from "@mito/server/api/routers/pratiche/GET/index"
 // import { usePracticeTableStore } from "@/store/usePracticeTableStore"
 
 interface DataTableProps<TData, TValue> {

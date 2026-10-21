@@ -1,6 +1,6 @@
 "use server"
 
-import { getServerAuthSession } from "@/server/auth"
+import { getServerAuthSession } from "@mito/server/auth"
 import { NextResponse } from "next/server"
 import jwt from "jsonwebtoken"
 

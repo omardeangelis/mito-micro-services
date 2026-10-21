@@ -5,7 +5,7 @@ import {
   type UpdateContactTableVisibleColumnsInput,
   type UpdateDashboardCollapsedInput,
   type UpdatePracticesTableVisibleColumnsInput,
-} from "@/server/api/routers/user/PUT/updateUserPreference"
+} from "@mito/server/api/routers/user/PUT/updateUserPreference"
 
 export const dynamic = "force-dynamic"
 

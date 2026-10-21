@@ -4,7 +4,7 @@
 # shell where gcloud is signed in:
 #   sh apps/api/gcp/storage-staging.sh
 # A second run stops at the bucket, which already exists. The backend uses
-# it when GCS_BUCKET is set (src/server/services/storage/layer.ts).
+# it when GCS_BUCKET is set (packages/server/src/services/storage/layer.ts).
 set -e
 P=mito-crm
 R=europe-west3

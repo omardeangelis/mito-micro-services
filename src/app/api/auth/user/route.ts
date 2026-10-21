@@ -1,5 +1,5 @@
 import * as Sentry from "@sentry/nextjs"
-import { getServerAuthSession } from "@/server/auth"
+import { getServerAuthSession } from "@mito/server/auth"
 import { db } from "@mito/db"
 import { operators } from "@mito/db/schema/operators"
 import { users } from "@mito/db/schema/users"

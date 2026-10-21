@@ -6,7 +6,7 @@ import { useId } from "react"
 import { TaskStatusBadge } from "@/components/custom/badge/TaskStatusBadge"
 import { operatorDisplayName } from "@mito/domain/contact/permissions"
 import { formatDateAsDMY } from "@/lib/utils"
-import type { GetContactByIdResult } from "@/server/services/contact/getContactById"
+import type { GetContactByIdResult } from "@mito/server/services/contact/getContactById"
 import { detailHrefFromDa } from "../../../_lib/detailHrefFromDa"
 import { useContactSheet } from "../../_components/ContactSheet"
 

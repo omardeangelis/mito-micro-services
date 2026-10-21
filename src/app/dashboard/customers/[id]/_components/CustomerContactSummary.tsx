@@ -11,7 +11,7 @@ import { buttonVariants } from "@/components/ui/button"
 import { operatorDisplayName } from "@mito/domain/contact/permissions"
 import { bandOf } from "@mito/domain/contact/priority"
 import { formatDateAsDMY } from "@/lib/utils"
-import type { GetContactByIdResult } from "@/server/services/contact/getContactById"
+import type { GetContactByIdResult } from "@mito/server/services/contact/getContactById"
 
 type CustomerContactSummaryProps = {
   customerId: string

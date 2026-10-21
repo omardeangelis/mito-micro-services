@@ -1,6 +1,6 @@
 import { type ReactNode, useId } from "react"
 import { formatDateAsDMY } from "@/lib/utils"
-import type { GetContactByIdResult } from "@/server/services/contact/getContactById"
+import type { GetContactByIdResult } from "@mito/server/services/contact/getContactById"
 import { ContactAlertCloseButton } from "./ContactAlertCloseButton"
 
 type ClosedAlert = GetContactByIdResult["history"][number]
