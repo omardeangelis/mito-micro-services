@@ -1,5 +1,5 @@
-import { type SupaBaseDb } from "@/lib/types"
-import { type UserPreference } from "@/lib/types/schemas"
+import { type SupaBaseDb } from "@mito/db/types"
+import { type UserPreference } from "@mito/domain/schemas"
 import { protectedProcedure } from "@/server/api/trpc"
 import { operators } from "@mito/db/schema/operators"
 import { users } from "@mito/db/schema/users"

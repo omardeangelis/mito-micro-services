@@ -2,7 +2,10 @@ import { operatorProcedure, protectedProcedure } from "@/server/api/trpc"
 import { practices } from "@mito/db/schema/pratiche"
 import { eq, inArray } from "drizzle-orm"
 import { customers } from "@mito/db/schema/customers"
-import { insertCustomerSchema, insertPracticeSchema } from "@/lib/types/schemas"
+import {
+  insertCustomerSchema,
+  insertPracticeSchema,
+} from "@mito/domain/schemas"
 import { z } from "zod"
 import { updatePracticeUpdatedAt } from "@/server/shared/updateAt"
 

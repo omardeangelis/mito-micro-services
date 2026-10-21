@@ -9,7 +9,7 @@ import {
 } from "vitest"
 import { eq } from "drizzle-orm"
 import superjson from "superjson"
-import { readContactError } from "@/lib/domain/contact/errors"
+import { readContactError } from "@mito/domain/contact/errors"
 import { appRouter } from "@/server/api/root"
 import { customers } from "@mito/db/schema/customers"
 import { taskEventLog } from "@mito/db/schema/taskEventLog"

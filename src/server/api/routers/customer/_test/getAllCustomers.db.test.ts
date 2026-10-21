@@ -7,7 +7,7 @@ import {
   createPractice,
   createTask,
 } from "@/test/factories"
-import { type CustomerSearchBy } from "@/lib/constants/customerSearch"
+import { type CustomerSearchBy } from "@mito/domain/constants/customerSearch"
 
 // La lista della pagina Clienti: la ricerca (`?q=…&search_by=…`), le pagine,
 // gli ordinamenti e i filtri

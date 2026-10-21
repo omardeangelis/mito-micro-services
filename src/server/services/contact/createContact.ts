@@ -4,8 +4,8 @@ import {
   type Actor,
   canCreateContact,
   operatorDisplayName,
-} from "@/lib/domain/contact/permissions"
-import { bandValue } from "@/lib/domain/contact/priority"
+} from "@mito/domain/contact/permissions"
+import { bandValue } from "@mito/domain/contact/priority"
 import { taskEventLog } from "@mito/db/schema/taskEventLog"
 import { type Db, DbError, query, transaction } from "@/server/effect/db"
 import { activeTaskIdOf, replaceActiveContact } from "./activeContact"

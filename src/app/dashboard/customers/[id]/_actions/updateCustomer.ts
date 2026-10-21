@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache"
 import { api } from "@/trpc/server"
 import { z } from "zod"
-import { insertCustomerSchema } from "@/lib/types/schemas"
+import { insertCustomerSchema } from "@mito/domain/schemas"
 import { cleanObject } from "@/lib/utils"
 import { sanitizeRedditoValue } from "@/lib/utils/format"
 

@@ -1,8 +1,8 @@
 import React from "react"
 import { cva } from "class-variance-authority"
 import { Badge } from "@/components/ui/badge"
-import { stateCategory } from "@/lib/domain/contact/status"
-import { type TaskCategory, type TaskStatus } from "@/lib/types/schemas"
+import { stateCategory } from "@mito/domain/contact/status"
+import { type TaskCategory, type TaskStatus } from "@mito/domain/schemas"
 
 const activeVariants = cva("", {
   variants: {

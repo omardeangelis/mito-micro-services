@@ -24,7 +24,7 @@ import { useFormState, useFormStatus } from "react-dom"
 import {
   selectCustomerSchema,
   selectCustomerToPraticaSchema,
-} from "@/lib/types/schemas"
+} from "@mito/domain/schemas"
 import { useFormIssueManager } from "@/lib/hooks/useFormIssueManager"
 import { BlackListBadge } from "@/app/dashboard/customers/_components/BlackListBadge"
 import { InputWithCopy } from "@/components/custom/input/InputWithCopy"

@@ -2,7 +2,7 @@ import { act, render, screen, within } from "@testing-library/react"
 import * as React from "react"
 import userEvent from "@testing-library/user-event"
 import { describe, expect, it, vi } from "vitest"
-import { type TaskStatus } from "@/lib/types/schemas"
+import { type TaskStatus } from "@mito/domain/schemas"
 import { ContactStateSelect } from "../ContactStateSelect"
 
 const trigger = () => screen.getByRole("button", { name: /, cambia stato$/ })

@@ -4,7 +4,7 @@
 // import { practices } from "@mito/db/schema/pratiche"
 // import { type DateRangePickerValue } from "@tremor/react"
 // import { customerSheetHeader, practicesSheetHeader } from "../../utils"
-// import { getProductLabel, type ProductMapKey } from "@/lib/constants/productMap"
+// import { getProductLabel, type ProductMapKey } from "@mito/domain/constants/productMap"
 // import { between } from "drizzle-orm"
 // import { api } from "@/trpc/server"
 

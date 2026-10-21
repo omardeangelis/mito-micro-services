@@ -8,7 +8,7 @@ import {
   TIMEFRAMEDELTA,
   type TimeFrame,
   financeCardFormattingSettings,
-} from "@/lib/constants/timeframes"
+} from "@mito/domain/constants/timeframes"
 
 type ReferencePeriod = {
   total: number

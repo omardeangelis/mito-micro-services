@@ -13,7 +13,7 @@ import {
   type CustomerToPraticaWrite,
   type PracticeWrite,
   type CustomerWrite,
-} from "@/lib/types/schemas"
+} from "@mito/domain/schemas"
 import { type CustomerRole } from "@mito/db/schema/relations/customerToPratica"
 import { DAYS_PER_RATE } from "../../_utils"
 

@@ -2,7 +2,7 @@ import {
   type CustomerWrite,
   type Customer,
   type PracticeWrite,
-} from "@/lib/types/schemas"
+} from "@mito/domain/schemas"
 import { cleanObject } from "@/lib/utils"
 import { db } from "@mito/db"
 import { eq } from "drizzle-orm"

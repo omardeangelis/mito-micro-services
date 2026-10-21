@@ -6,7 +6,7 @@ import {
   type ContactErrorCause,
   type ContactErrorCode,
   type ContactErrorPayload,
-} from "@/lib/domain/contact/errors"
+} from "@mito/domain/contact/errors"
 import { type CustomerMissing } from "@/server/effect/db"
 
 /** The contact doesn't exist. */

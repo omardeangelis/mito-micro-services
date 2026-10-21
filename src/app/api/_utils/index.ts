@@ -1,4 +1,4 @@
-export { DAYS_PER_RATE } from "@/lib/constants/practice"
+export { DAYS_PER_RATE } from "@mito/domain/constants/practice"
 
 export const dateWithoutTimeZone = (date: Date | undefined | string) => {
   if (!date) return undefined

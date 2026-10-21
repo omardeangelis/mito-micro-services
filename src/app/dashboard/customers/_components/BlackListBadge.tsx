@@ -1,5 +1,5 @@
 import { Badge } from "@/components/ui/badge"
-import { type Customer } from "@/lib/types/schemas"
+import { type Customer } from "@mito/domain/schemas"
 import { CircleAlertIcon, ThumbsUpIcon } from "lucide-react"
 
 type BadgeProps = React.ComponentProps<typeof Badge>

@@ -32,7 +32,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { api } from "@/trpc/react"
-import { operatorDisplayName } from "@/lib/domain/contact/permissions"
+import { operatorDisplayName } from "@mito/domain/contact/permissions"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useCustomerTableStore } from "@/store/useCustomerTableStore"
 import { Input } from "@/components/ui/input"

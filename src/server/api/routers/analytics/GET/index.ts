@@ -16,7 +16,7 @@ import { customerToPratica } from "@mito/db/schema/relations/customerToPratica"
 import { customers } from "@mito/db/schema/customers"
 import { operators } from "@mito/db/schema/operators"
 import { z } from "zod"
-import { TIMEFRAMEDELTA, TIMEFRAMEMAP } from "@/lib/constants/timeframes"
+import { TIMEFRAMEDELTA, TIMEFRAMEMAP } from "@mito/domain/constants/timeframes"
 
 const timeFrameInput = z.object({
   timeFrame: z.enum(["30d", "90d", "365d"]).optional().default("30d"),

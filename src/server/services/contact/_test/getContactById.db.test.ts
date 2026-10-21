@@ -1,5 +1,5 @@
 import { beforeAll, beforeEach, describe, expect, it } from "vitest"
-import { readContactError } from "@/lib/domain/contact/errors"
+import { readContactError } from "@mito/domain/contact/errors"
 import { createTestCaller } from "@/test/caller"
 import { migrateUpTo, resetDb, tasksOf } from "@/test/db"
 import {

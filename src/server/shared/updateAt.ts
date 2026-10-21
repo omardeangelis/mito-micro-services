@@ -1,7 +1,7 @@
 import { practices } from "@mito/db/schema/pratiche"
 import { customers } from "@mito/db/schema/customers"
 import { eq } from "drizzle-orm"
-import { type SupaBaseDb } from "@/lib/types"
+import { type SupaBaseDb } from "@mito/db/types"
 
 type UpdateAtParams = {
   id: string

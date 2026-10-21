@@ -2,7 +2,7 @@ import {
   type PracticeWrite,
   type CustomerToPraticaWrite,
   type CustomerWrite,
-} from "@/lib/types/schemas"
+} from "@mito/domain/schemas"
 import { faker } from "@faker-js/faker"
 import { describe, test, expect } from "vitest"
 import {
@@ -13,7 +13,7 @@ import {
   mergeDuplicatePractices,
 } from "../merge"
 import { stateEnum } from "@mito/db/schema/pratiche"
-import { generateRandomProductKey } from "@/lib/constants/productMap"
+import { generateRandomProductKey } from "@mito/domain/constants/productMap"
 
 const customer1 = {
   id: "1",

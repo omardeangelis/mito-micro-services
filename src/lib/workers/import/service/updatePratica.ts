@@ -1,4 +1,4 @@
-import { type Practice, type PracticeWrite } from "@/lib/types/schemas"
+import { type Practice, type PracticeWrite } from "@mito/domain/schemas"
 import { cleanObject } from "@/lib/utils"
 
 export type HandlePracticesUpdateResponse = Promise<{

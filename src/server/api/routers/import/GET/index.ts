@@ -2,7 +2,10 @@ import { protectedProcedure } from "@/server/api/trpc"
 import { practices } from "@mito/db/schema/pratiche"
 import { eq, inArray, or } from "drizzle-orm"
 import { z } from "zod"
-import { insertCustomerSchema, insertPracticeSchema } from "@/lib/types/schemas"
+import {
+  insertCustomerSchema,
+  insertPracticeSchema,
+} from "@mito/domain/schemas"
 import { customers as customersSchema } from "@mito/db/schema/customers"
 import { updateImportedCustomer } from "@/server/shared/updateImportedCustomer"
 

@@ -4,16 +4,16 @@ import { operatorProcedure, protectedProcedure } from "@/server/api/trpc"
 import { practices, stateEnum } from "@mito/db/schema/pratiche"
 import { eq, count, desc, asc, and, ilike, inArray, sql } from "drizzle-orm"
 import { castAsNumber, containsPattern } from "../../utils"
-import { getProductKey } from "@/lib/constants/productMap"
+import { getProductKey } from "@mito/domain/constants/productMap"
 import { operators } from "@mito/db/schema/operators"
 import { customerToPratica } from "@mito/db/schema/relations/customerToPratica"
 import { customers } from "@mito/db/schema/customers"
 import { type PgColumn, union } from "drizzle-orm/pg-core"
-import { type Customer, type Practice } from "@/lib/types/schemas"
+import { type Customer, type Practice } from "@mito/domain/schemas"
 import {
   type PraticaSearchBy,
   praticaSearchBy,
-} from "@/lib/constants/praticaSearch"
+} from "@mito/domain/constants/praticaSearch"
 
 export type Result = Record<
   string,

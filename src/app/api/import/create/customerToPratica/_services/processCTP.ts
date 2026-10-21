@@ -4,7 +4,7 @@ import {
   type PracticeWrite,
   type CustomerToPraticaWrite,
   type CustomerWrite,
-} from "@/lib/types/schemas"
+} from "@mito/domain/schemas"
 import { inArray, or } from "drizzle-orm"
 import { customerToPratica } from "@mito/db/schema/relations/customerToPratica"
 import { splitCustomerToPraticaArrayByUniqueId } from "../../../_utils"

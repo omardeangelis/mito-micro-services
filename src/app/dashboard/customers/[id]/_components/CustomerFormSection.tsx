@@ -1,6 +1,6 @@
 import { api } from "@/trpc/server"
 import { CustomerForm } from "./CustomerForm"
-import type { Customer } from "@/lib/types/schemas"
+import type { Customer } from "@mito/domain/schemas"
 import type { HandoverActiveContact } from "./CustomerHandoverDialog"
 
 type Props = {

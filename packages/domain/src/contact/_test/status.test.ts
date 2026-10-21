@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import type { TaskCategory, TaskStatus } from "@/lib/types/schemas"
+import type { TaskCategory, TaskStatus } from "../../schemas"
 import { taskStatus } from "@mito/db/schema/task"
 import {
   allStates,

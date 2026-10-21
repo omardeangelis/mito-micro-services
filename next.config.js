@@ -120,7 +120,7 @@ const REST_PREFIXES = ["/api/import", "/api/export", "/api/user"]
 const config = {
   reactStrictMode: true,
   // The workspace packages ship TypeScript sources (packages/*)
-  transpilePackages: ["@mito/db"],
+  transpilePackages: ["@mito/db", "@mito/domain"],
   // `next lint` and the lint of `next build`: the app and the packages
   eslint: { dirs: ["src", "packages"] },
   swcMinify: true,

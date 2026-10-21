@@ -1,0 +1,13 @@
+{
+  "name": "@mito/domain",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Dominio condiviso da UI e server: regole dei contatti, schemi zod, costanti. Usa zod, drizzle-zod e drizzle-orm della root, come @mito/db",
+  "type": "module",
+  "exports": {
+    "./*": "./src/*.ts"
+  },
+  "dependencies": {
+    "@mito/db": "workspace:*"
+  }
+}

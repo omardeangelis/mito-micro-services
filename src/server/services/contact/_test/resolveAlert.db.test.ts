@@ -1,6 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, it } from "vitest"
 import { asc, eq } from "drizzle-orm"
-import { readContactError } from "@/lib/domain/contact/errors"
+import { readContactError } from "@mito/domain/contact/errors"
 import { alert } from "@mito/db/schema/task"
 import { createTestCaller } from "@/test/caller"
 import { logOf, migrateUpTo, resetDb, tasksOf, testDb } from "@/test/db"

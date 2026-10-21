@@ -1,7 +1,7 @@
 import "server-only"
 import { Effect } from "effect"
 import { eq } from "drizzle-orm"
-import { type Actor } from "@/lib/domain/contact/permissions"
+import { type Actor } from "@mito/domain/contact/permissions"
 import { alert } from "@mito/db/schema/task"
 import {
   type CustomerMissing,

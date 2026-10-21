@@ -1,5 +1,5 @@
 import { type WaveFile } from "../../_types"
-import { type CustomerWrite, type PracticeWrite } from "@/lib/types/schemas"
+import { type CustomerWrite, type PracticeWrite } from "@mito/domain/schemas"
 import {
   calculateDebitoResiduo,
   emailToLowercase,
@@ -12,7 +12,7 @@ import {
 import {
   type ProductMapKey,
   createCompatibleProductKey,
-} from "@/lib/constants/productMap"
+} from "@mito/domain/constants/productMap"
 
 import { nanoid } from "nanoid"
 import { createHashForCustomer, parseDateInput } from "@/lib/utils"

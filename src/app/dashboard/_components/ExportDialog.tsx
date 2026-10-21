@@ -30,7 +30,7 @@ import { it } from "date-fns/locale"
 import { addDays, format } from "date-fns"
 import { LoadingSpinner } from "@/components/custom/loading-spinner"
 import { type User } from "next-auth"
-import { type Operator } from "@/lib/types/schemas"
+import { type Operator } from "@mito/domain/schemas"
 import {
   adjustFromAndTo,
   createFilePath,

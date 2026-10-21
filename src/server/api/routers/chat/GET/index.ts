@@ -1,4 +1,4 @@
-import { selectChatSchema } from "@/lib/types/schemas"
+import { selectChatSchema } from "@mito/domain/schemas"
 import { operatorProcedure, protectedProcedure } from "@/server/api/trpc"
 import { chatToOperator } from "@mito/db/schema/relations/chatToOperator"
 import { messages, chat } from "@mito/db/schema/chat"

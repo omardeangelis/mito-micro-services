@@ -1,7 +1,7 @@
 import { adminProcedure, operatorProcedure } from "@/server/api/trpc"
 import { customers } from "@mito/db/schema/customers"
 import { eq } from "drizzle-orm"
-import { insertCustomerSchema } from "@/lib/types/schemas"
+import { insertCustomerSchema } from "@mito/domain/schemas"
 import { z } from "zod"
 import { updateCustomerUpdatedAt } from "@/server/shared/updateAt"
 import { runTrpc } from "@/server/effect/trpc"

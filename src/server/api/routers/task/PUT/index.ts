@@ -7,7 +7,7 @@ import { changeState as changeStateService } from "@/server/services/contact/cha
 import { contactErrorToTrpc } from "@/server/services/contact/errors"
 import { reassign as reassignService } from "@/server/services/contact/reassign"
 import { setPriority as setPriorityService } from "@/server/services/contact/setPriority"
-import { priorityBands } from "@/lib/domain/contact/priority"
+import { priorityBands } from "@mito/domain/contact/priority"
 
 const changeStateInput = z.object({
   taskId: z.number().int(),

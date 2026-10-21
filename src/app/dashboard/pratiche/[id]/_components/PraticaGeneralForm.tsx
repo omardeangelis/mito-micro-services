@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import React from "react"
 import { useHistoryBack } from "@/lib/hooks/useHistoryBack"
-import { selectPracticeSchema } from "@/lib/types/schemas"
+import { selectPracticeSchema } from "@mito/domain/schemas"
 import { updatePraticaAction } from "../_actions/updatePratica"
 
 import {
@@ -29,7 +29,10 @@ import {
   SelectItem,
 } from "@/components/ui/select"
 import { useFormState, useFormStatus } from "react-dom"
-import { type ProductMapKey, getProductLabel } from "@/lib/constants/productMap"
+import {
+  type ProductMapKey,
+  getProductLabel,
+} from "@mito/domain/constants/productMap"
 import { currencyFormatter, formatDateAsDMY } from "@/lib/utils"
 import { useFormIssueManager } from "@/lib/hooks/useFormIssueManager"
 import { stateEnum } from "@mito/db/schema/pratiche"

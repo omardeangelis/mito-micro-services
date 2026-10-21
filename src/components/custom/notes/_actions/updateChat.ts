@@ -1,5 +1,5 @@
 "use server"
-import { insertMessageSchema } from "@/lib/types/schemas"
+import { insertMessageSchema } from "@mito/domain/schemas"
 import { api } from "@/trpc/server"
 import { revalidatePath } from "next/cache"
 import { z } from "zod"

@@ -5,7 +5,7 @@ import {
   type Actor,
   canReassign,
   operatorDisplayName,
-} from "@/lib/domain/contact/permissions"
+} from "@mito/domain/contact/permissions"
 import { customers } from "@mito/db/schema/customers"
 import { task } from "@mito/db/schema/task"
 import { taskEventLog } from "@mito/db/schema/taskEventLog"

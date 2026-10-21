@@ -14,12 +14,14 @@ FROM base AS build
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY packages/config/package.json ./packages/config/
 COPY packages/db/package.json ./packages/db/
+COPY packages/domain/package.json ./packages/domain/
 COPY apps/api/package.json ./apps/api/
 # No install scripts: the backend loads no native package
 RUN pnpm install --frozen-lockfile --ignore-scripts
 # tsconfig.json extends the one of packages/config
 COPY packages/config ./packages/config
 COPY packages/db ./packages/db
+COPY packages/domain ./packages/domain
 COPY tsconfig.json ./
 COPY apps/api ./apps/api
 COPY src ./src
@@ -30,6 +32,7 @@ ENV NODE_ENV=production
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY packages/config/package.json ./packages/config/
 COPY packages/db/package.json ./packages/db/
+COPY packages/domain/package.json ./packages/domain/
 COPY apps/api/package.json ./apps/api/
 RUN pnpm install --prod --frozen-lockfile --ignore-scripts && pnpm store prune
 COPY --from=build /app/apps/api/dist ./apps/api/dist

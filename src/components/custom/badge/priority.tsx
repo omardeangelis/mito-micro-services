@@ -1,6 +1,6 @@
 import { Badge } from "@/components/ui/badge"
 import { ArrowDown, ArrowUpRight, Equal, ArrowUp } from "lucide-react"
-import { bandOf, type PriorityBand } from "@/lib/domain/contact/priority"
+import { bandOf, type PriorityBand } from "@mito/domain/contact/priority"
 
 type priorityType = PriorityBand
 

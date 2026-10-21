@@ -12,13 +12,13 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 import { Switch } from "@/components/ui/switch"
-import { MAX_OPERATOR_IDS } from "@/lib/domain/contact/listInput"
+import { MAX_OPERATOR_IDS } from "@mito/domain/contact/listInput"
 import {
   operatorDisplayName,
   type OperatorRef,
-} from "@/lib/domain/contact/permissions"
-import { priorityBands } from "@/lib/domain/contact/priority"
-import { allStates } from "@/lib/domain/contact/status"
+} from "@mito/domain/contact/permissions"
+import { priorityBands } from "@mito/domain/contact/priority"
+import { allStates } from "@mito/domain/contact/status"
 import type { CustomerFilter } from "@/server/services/contact/getContacts"
 import { cn } from "@/lib/utils"
 import { priorityLabels } from "../_lib/priorityLabels"

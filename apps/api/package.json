@@ -11,6 +11,7 @@
     "dev": "node build.mjs && node --enable-source-maps --env-file=../../.env.development.local dist/server.js"
   },
   "devDependencies": {
-    "@mito/db": "workspace:*"
+    "@mito/db": "workspace:*",
+    "@mito/domain": "workspace:*"
   }
 }

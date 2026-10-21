@@ -10,7 +10,7 @@ import {
 import {
   type ProductMapKey,
   createCompatibleProductKey,
-} from "@/lib/constants/productMap"
+} from "@mito/domain/constants/productMap"
 import { nanoid } from "nanoid"
 import { createHashForCustomer, parseDateInput } from "@/lib/utils"
 import type {

@@ -31,7 +31,7 @@ import {
   DEFUALTTIMEFRAME,
   type TimeFrame,
   TIMEFRAMEOPTIONS,
-} from "@/lib/constants/timeframes"
+} from "@mito/domain/constants/timeframes"
 import { useAnalitycsStore } from "@/store/useAnalitycsStore"
 import { useRouter, useSearchParams } from "next/navigation"
 import { type Matcher } from "react-day-picker"

@@ -1,4 +1,4 @@
-import { type Message } from "@/lib/types/schemas"
+import { type Message } from "@mito/domain/schemas"
 import type * as XLSX from "xlsx"
 import { type DateRange } from "react-day-picker"
 import { type ZodIssue } from "zod"

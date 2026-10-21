@@ -1,7 +1,7 @@
 import { z } from "zod"
-import { DEFAULT_PER_PAGE, PER_PAGES } from "@/lib/constants/pagination"
-import { priorityBands } from "@/lib/domain/contact/priority"
-import { allStates } from "@/lib/domain/contact/status"
+import { DEFAULT_PER_PAGE, PER_PAGES } from "../constants/pagination"
+import { priorityBands } from "./priority"
+import { allStates } from "./status"
 
 /** The largest value of a Postgres `integer` column. */
 const MAX_INTEGER = 2_147_483_647

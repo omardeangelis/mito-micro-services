@@ -1,4 +1,4 @@
-// import { type UserPreference } from "@/lib/types/schemas"
+// import { type UserPreference } from "@mito/domain/schemas"
 import { protectedProcedure } from "@/server/api/trpc"
 import { users } from "@mito/db/schema/users"
 import { eq } from "drizzle-orm"

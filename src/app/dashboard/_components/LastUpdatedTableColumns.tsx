@@ -10,7 +10,7 @@ import {
   getProductLabel,
   getLabelColorByProductType,
   getProductType,
-} from "@/lib/constants/productMap"
+} from "@mito/domain/constants/productMap"
 import { Badge } from "@/components/ui/badge"
 
 import { SortableHeader } from "@/components/custom/table/TableHeaders"
