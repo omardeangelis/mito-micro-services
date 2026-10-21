@@ -10,11 +10,6 @@ export const customerRoleEnum = [
 ] as const
 export const customerRole = pgEnum("CustomerRole", customerRoleEnum)
 
-export const getRandomCustomerRole = (): (typeof customerRoleEnum)[number] => {
-  const indiceCasuale = Math.floor(Math.random() * customerRoleEnum.length)
-  return customerRoleEnum[indiceCasuale] ?? "Intestatario"
-}
-
 export type CustomerRole = (typeof customerRoleEnum)[number]
 
 export const customerToPratica = pgTable(
