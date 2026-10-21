@@ -22,7 +22,7 @@ Ogni task ha un file di dettaglio operativo in `brain/chore/migration/fase-0/`, 
 |---|---|---|---|
 | F0.T1 | [t1-scaffold-workspace.md](./fase-0/t1-scaffold-workspace.md) | completed | `pnpm-workspace.yaml`, `turbo.json`, package.json root |
 | F0.T2 | [t2-spostamento-web-legacy.md](./fase-0/t2-spostamento-web-legacy.md) | not_started | `git mv` dell'app in `apps/web-legacy` + root directory Vercel (inventario file completo nel task) |
-| F0.T3 | [t3-packages-config.md](./fase-0/t3-packages-config.md) | not_started | tsconfig/eslint condivisi per i nuovi package |
+| F0.T3 | [t3-packages-config.md](./fase-0/t3-packages-config.md) | in_progress | tsconfig/eslint condivisi per i nuovi package |
 | F0.T4 | [t4-pulizia-dipendenze.md](./fase-0/t4-pulizia-dipendenze.md) | not_started | rimozione `better-sqlite3`/`@libsql`; `nodemailer` richiede verifica peer-dep NextAuth (dettagli nel task) |
 | F0.T5 | [t5-ci-workflows.md](./fase-0/t5-ci-workflows.md) | not_started | adeguare i 13 workflow esistenti (inclusi gli 8 cron schedulati su GitHub Actions) + nuova `ci.yml` turbo |
 
