@@ -88,16 +88,17 @@ I ruoli del prodotto che compaiono nei dati sono `OPERATORE` e `ADMIN` (vedi la 
 
 ## Acceptance Criteria
 
-Il seeder si lancia con una dimensione `N` (numero di clienti): di default è 10.000. Il **giorno di riferimento D** è il giorno di calendario di Europe/Rome al momento del lancio. Tutte le date relative ai cron sono calcolate da D. Per **contatto** si intende una riga `task`, come in Contatti.
+Il seeder si lancia con una dimensione `N` (numero di clienti): di default è 10.000, il minimo è 300, e sotto il minimo il seeder si ferma. I criteri che dipendono da `N` si verificano con `N` = 300 e con `N` = 10.000. Il **giorno di riferimento D** è il giorno di calendario di Europe/Rome al momento del lancio. Tutte le date relative ai cron sono calcolate da D. Per **contatto** si intende una riga `task`, come in Contatti.
 
 ### Sicurezza e lancio
 
 - **AC1** — Il seeder si ferma prima di collegarsi in tre casi: se l'host del DSN non è `localhost` o `127.0.0.1`, se il database non è `mito_local`, se il DSN ha una query string. Sono le regole di `localConnection` (T7.1b). Non legge file `.env*` né variabili Supabase.
+- **AC1a** — Il guard di AC1 e il controllo di AC4 stanno nel comando, non nel riempimento. Un test può riempire il proprio database `mito_test_<casuale>` con un giorno D scelto dal test. Gli esiti attesi dei cron valgono anche con la sessione del database in UTC, come nei test su Postgres.
 - **AC2** — Se `mito_local` non ha tutte le migrazioni del repo applicate, il seeder si ferma senza scrivere nulla. Il messaggio indica `pnpm db:local:migrate`.
 - **AC3** — Prima di scrivere, il seeder svuota tutte le tabelle di dati di `mito_local`, compresi `alert`, `task_event_log`, `cron_run`, `session`, `account`, `verificationToken` e gli utenti `ADMIN`. Alla fine nel database ci sono solo le righe del seed.
-- **AC4** — Si ferma senza scrivere quando il giorno di Europe/Rome e il giorno UTC sono diversi, cioè fra mezzanotte e l'01:00 o le 02:00 di Roma. Il messaggio spiega che `update` calcola il giorno in UTC e `alert` in Europe/Rome.
-- **AC5** — Due lanci con lo stesso `N` nello stesso giorno D producono le stesse righe, con gli stessi id e gli stessi valori.
-- **AC6** — Con `N` = 10.000, il seeder finisce in meno di 3 minuti su un portatile di sviluppo con il Postgres di `docker-compose.yml`.
+- **AC4** — Si ferma senza scrivere quando il giorno di Europe/Rome e il giorno UTC sono diversi, cioè fra mezzanotte e l'01:00 o le 02:00 di Roma. Il messaggio spiega che `alert` calcola il giorno in Europe/Rome, mentre `update` lo calcola in UTC sul backend e con l'ora della macchina sulle rotte Next.
+- **AC5** — Due lanci con lo stesso `N` nello stesso giorno D producono le stesse righe, con gli stessi id e gli stessi valori, timestamp compresi.
+- **AC6** — Con `N` = 10.000, il seeder finisce in meno di 3 minuti su una macchina con almeno 4 core e 16 GB di RAM, con il Postgres di `docker-compose.yml`.
 - **AC7** — `next lint` accetta i file nuovi: la regola `no-restricted-imports` sui seed e sugli script del database resta rispettata.
 
 ### Clienti e pratiche
@@ -111,8 +112,9 @@ Un **legame** è una riga di `customers_to_pratiche`: un cliente, una pratica, u
   - Con `N` = 10.000 sono 1.666, 3.333 e 5.001.
 - **AC9** — Ogni pratica:
   - ha esattamente un legame `Intestatario`;
-  - ha da 1 a 3 clienti in tutto;
-  - non ha lo stesso cliente due volte.
+  - ha al massimo un `Coobbligato` e al massimo un `Garante`, quindi da 1 a 3 clienti.
+
+  Che lo stesso cliente non compaia due volte sulla pratica lo garantisce già la chiave primaria di `customers_to_pratiche`.
 - **AC10** — Fra i clienti con un solo legame, ognuno dei tre ruoli (`Intestatario`, `Coobbligato`, `Garante`) riguarda almeno 1/5 del gruppo.
 - **AC11** — Combinazioni di ruoli fra i clienti con 2 o 3 legami. Ci sono almeno:
   - un cliente con soli legami `Intestatario`;
@@ -127,11 +129,7 @@ Un **legame** è una riga di `customers_to_pratiche`: un cliente, una pratica, u
   - ogni valore di `State` compare in almeno una pratica;
   - ogni codice prodotto di `productMap` compare in almeno una pratica, e la tabella `products` ha una riga per ogni prodotto;
   - `is_wave` vale `true` in alcune pratiche e `false` in altre.
-- **AC14** — Per ogni pratica valgono:
-  - `rate_pagate` ≤ `rate_totali`;
-  - gli importi obbligatori sono valorizzati.
-
-  Fuori dagli scenari di `update`, rate pagate, debito residuo e stato sono coerenti con la data di liquidazione, come li calcolerebbe l'import (rate da 30 giorni trascorse).
+- **AC14** — Per ogni pratica vale `rate_pagate` ≤ `rate_totali`. Fuori dagli scenari di `update`, rate pagate e debito residuo sono quelli che l'import calcolerebbe dalla data di liquidazione al giorno D (regola nelle Technical Notes). Lo stato è `Chiusa` quando le rate sono tutte pagate.
 - **AC15** — Varietà dei clienti:
   - ogni valore di `blacklist_status` e di `source` compare in almeno un cliente;
   - ogni cliente ha un codice fiscale di 16 caratteri o una partita IVA, e alcuni hanno solo la partita IVA;
@@ -141,13 +139,13 @@ Un **legame** è una riga di `customers_to_pratiche`: un cliente, una pratica, u
 ### Operatori, admin e assegnazione
 
 - **AC17** — Gli utenti sono 25 utenti `OPERATORE` e 3 utenti `ADMIN`, ognuno con la sua riga in `operator`. A questi si aggiunge l'operatore di sistema: `user_id = 'system'`, senza riga utente.
-- **AC18** — Distribuzione sbilanciata dei carichi:
-  - un operatore ha almeno il 30% dei contatti attivi;
-  - almeno 15 operatori hanno un carico fra l'1% e il 10%;
+- **AC18** — Distribuzione sbilanciata dei carichi. Il **carico** è la quota dei contatti attivi assegnati all'operatore.
+  - un utente `OPERATORE` ha almeno il 30% dei contatti attivi;
+  - almeno 15 utenti `OPERATORE` hanno un carico fra l'1% e il 10%;
   - un operatore non ha né clienti né contatti;
   - almeno un admin ha clienti assegnati;
   - almeno il 2% dei clienti non ha operatore.
-- **AC19** — Il contatto attivo di un cliente ha lo stesso operatore del cliente. Per un cliente senza operatore, anche il contatto attivo ne è senza (D26, AC75 di Contatti). Un contatto non attivo può avere un operatore diverso, quello che l'ha lavorato.
+- **AC19** — Il contatto attivo di un cliente ha lo stesso operatore del cliente. Per un cliente senza operatore, anche il contatto attivo ne è senza (AC75 della spec di Contatti, D26 del suo piano). I contatti non attivi possono avere un operatore diverso, quello che li ha lavorati, e ce ne sono almeno 100 con `N` = 10.000 e almeno uno con `N` = 300. Sostituiscono il caso "operatore del contatto diverso da quello del cliente" di T7.1c (D8), che D26 non permette più per i contatti attivi.
 
 ### Contatti, alert e note
 
@@ -159,16 +157,16 @@ Un **legame** è una riga di `customers_to_pratiche`: un cliente, una pratica, u
   - con `N` = 300, in almeno uno.
 - **AC22** — Priorità:
   - ci sono contatti attivi con priorità manuale (`custom_priority = true`) per ognuno dei valori 20, 60, 100 e 120;
-  - gli altri contatti attivi hanno la priorità calcolata.
+  - gli altri contatti attivi hanno `custom_priority = false`: la loro priorità la ricalcola il cron `priority`.
 - **AC23** — Storico dei contatti:
   - almeno il 20% dei clienti ha uno o più contatti non attivi, con un esito e "Contattato il" (`closed_at`) valorizzato;
   - ci sono contatti riaperti, cioè un contatto non attivo con esito seguito da un contatto attivo più recente che ne eredita "Contattato il" (AC34 di Contatti).
 - **AC24** — Alert:
-  - ogni alert aperto appartiene al contatto attivo del suo cliente, collegato nei due versi;
+  - ogni alert aperto appartiene al contatto attivo del suo cliente, collegato nei due versi, e quel contatto è `richiamare` ("Imposta richiamo" porta il contatto in `richiamare`, e ogni cambio di stato chiude l'alert: AC44 e AC36 di Contatti);
   - nessun cliente ha più di un alert aperto;
   - esistono alert risolti, con `resolved_by`, su contatti non attivi.
-- **AC25** — Note:
-  - nessun cliente ha più di una chat (AC77 di Contatti);
+- **AC25** — Note. Una nota è una riga di `messages`, in una chat.
+  - le chat stanno solo sui clienti (`customers.chat_id`), nessuna pratica ne ha una (`practices.chat_id` vuoto), e nessuna chat è di due clienti (AC77 di Contatti);
   - almeno il 5% dei clienti ha una chat con da 1 a 4 note.
 - **AC26** — `task_event_log`:
   - contiene righe di ogni `action` e di ogni `source`, coerenti con i contatti a cui si riferiscono: cambi di stato con stato di partenza e di arrivo, riassegnazioni con operatore di partenza e di arrivo, alert risolti con il loro alert;
@@ -176,27 +174,30 @@ Un **legame** è una riga di `customers_to_pratiche`: un cliente, una pratica, u
 
 ### Scenari dei cron
 
-Il seeder scrive un **manifesto degli esiti attesi**. Per ogni scenario sotto riporta:
+Il seeder scrive un **manifesto degli esiti attesi**, con il giorno D. Per ogni scenario sotto riporta:
 
 - l'identificativo;
-- quante righe il cron selezionerà;
-- gli id di quelle righe;
+- le righe dello scenario, con il loro id;
+- per ogni riga, se il cron la selezionerà o no;
 - l'esito atteso dopo **una corsa** del cron nel giorno D.
 
-Le corse seguono l'ordine di prod: `priority`, `alert`, `update`, `cleanup-task-event-log`. Il manifesto conta tutte le righe che il cron selezionerà, comprese quelle generiche che soddisfano per caso la condizione, non solo quelle create per lo scenario.
+Le righe generiche che per caso hanno le caratteristiche di uno scenario (per esempio una pratica la cui rata scade in D) entrano nel manifesto. Ognuna va in un solo scenario, quello di cui ha le caratteristiche.
 
-- **AC27** — Ogni scenario della tabella esiste con `N` = 300 e con `N` = 10.000, con almeno una riga.
+Le corse si fanno in quest'ordine: `priority`, `alert`, `update`, `cleanup-task-event-log`. I primi tre girano in quest'ordine anche in prod. La **corsa di `alert`** continua finché non restano alert da processare (`remaining` = 0), con al massimo 20 chiamate, come lo script di prod e il job del backend.
+
+- **AC27** — Con `N` = 300 e con `N` = 10.000 esiste almeno una riga per ogni caso nominato in una riga delle tabelle: ogni stato, valore, giorno o tipo di cliente elencato. Per L1 e L2 c'è anche una riga sul giorno di confine.
 - **AC28** — È possibile lanciare su `mito_local`, per il giorno D, ognuno dei quattro cron della tabella:
   - senza avviare l'app né il backend;
-  - con le stesse funzioni di servizio che usano le rotte di prod;
-  - senza poter raggiungere sviluppo o prod.
-- **AC29** — Dopo le quattro corse, fatte una volta ciascuna nell'ordine di prod, un comando di verifica confronta `mito_local` con il manifesto. Per un contatto toccato da più cron conta lo stato finale: per esempio, il contatto di A1 ha priorità 50 da `priority` ed è poi disattivato da `alert`. La verifica:
+  - con le stesse funzioni di servizio che usano le rotte di prod.
+- **AC28a** — Le corse dei cron di AC28 si collegano solo a `mito_local`, oppure si fermano prima di collegarsi, anche quando la shell contiene `SUPABASE_DB_CONNECTION_STRING`, `SUPABASE_MITO_PSW` o variabili `PG*` che puntano a un altro host, e anche quando esistono `.env.development.local` o `.env`. Lo prova un test.
+- **AC28b** — Le corse e la verifica di AC29 leggono D dal manifesto e si fermano con un messaggio in due casi: se il giorno di oggi a Roma non è D, oppure se il giorno di Roma e quello UTC sono diversi.
+- **AC29** — Dopo le quattro corse, fatte una volta ciascuna in quest'ordine, un comando di verifica confronta `mito_local` con il manifesto. Per un contatto toccato da più cron conta lo stato finale: per esempio, il contatto di A1 ha priorità 50 da `priority` ed è poi disattivato da `alert`. La verifica:
   - per ogni scenario stampa "passato" o "fallito", con le righe che non tornano;
   - esce con un codice diverso da zero se uno scenario fallisce.
 
   Sui dati di un seed appena fatto e con il codice di oggi, tutti gli scenari passano.
 - **AC30** — Volume, con `N` = 10.000:
-  - almeno 5.001 contatti attivi ricevono la stessa priorità calcolata, così `priority` deve dividere l'aggiornamento in più blocchi da 5.000 id;
+  - almeno 5.001 contatti attivi ricevono dal ricalcolo la stessa priorità, così `priority` deve dividere l'aggiornamento in più blocchi da 5.000 id;
   - almeno 1.000 alert aperti hanno la scadenza in D o prima;
   - almeno 200 pratiche sono selezionate da `update`;
   - almeno 100 clienti compiono gli anni in D;
@@ -204,11 +205,11 @@ Le corse seguono l'ordine di prod: `priority`, `alert`, `update`, `cleanup-task-
 
 #### `priority` — ricalcolo della priorità dei contatti attivi
 
-Il cron seleziona i contatti attivi con `custom_priority = false`, escluso chi è già `chiamare` con priorità 120.
+Il cron seleziona i contatti attivi con `custom_priority = false`, escluso chi è già `chiamare` con priorità 120. Nei casi in cui la riga è selezionata, la priorità scritta dal seed è diversa dall'esito atteso: così una riga che il cron salta non può passare.
 
 | ID | Dati nel seed | Esito atteso dopo la corsa |
 |---|---|---|
-| P1 | Contatto attivo `chiamare`, priorità calcolata diversa da 120 | priorità 120 |
+| P1 | Contatto attivo `chiamare`, priorità diversa da 120 | priorità 120 |
 | P2 | Contatto attivo `chiamare` con priorità 120 e `custom_priority = false` | non selezionato: priorità e `updated_at` invariati |
 | P3 | Contatto attivo `non interessato` | priorità 10 |
 | P4 | Contatti attivi `app.to`, `caricato`, `erogata`, `nessuno` | priorità 1 |
@@ -217,6 +218,9 @@ Il cron seleziona i contatti attivi con `custom_priority = false`, escluso chi �
 | P7 | Contatto attivo `richiamare` con "Contattato il" e alert aperto con scadenza da domani | priorità 30 |
 | P8 | Contatto attivo con `custom_priority = true` (20, 60, 100, 120) | non selezionato: priorità invariata |
 | P9 | Contatto non attivo, in qualunque stato | non selezionato: priorità invariata |
+| P10 | Contatto attivo `non interessato` con priorità 120 e `custom_priority = false` | selezionato: priorità 10 (solo `chiamare` a 120 è escluso) |
+| P11 | Contatto attivo `richiamare` senza "Contattato il" e senza alert | priorità 0 |
+| P12 | Contatto attivo `richiamare` senza "Contattato il", con alert aperto con scadenza prima di adesso | priorità 20 |
 
 #### `alert` — chiusura dei richiami scaduti
 
@@ -224,7 +228,7 @@ Il cron seleziona gli alert aperti collegati nei due versi con un contatto, con 
 
 | ID | Dati nel seed | Esito atteso dopo la corsa |
 |---|---|---|
-| A1 | Alert aperto con scadenza in D, su un contatto attivo di un cliente con operatore | alert risolto, `resolved_by` = operatore di sistema; contatto disattivato; nuovo contatto attivo `followup`, priorità 150, operatore del cliente, stesso "Contattato il" del precedente; 2 righe di log (`alert_resolved`, `state_change` verso `followup`, `source = cron_alert`) |
+| A1 | Alert aperto con scadenza in D, su un contatto attivo `richiamare` con "Contattato il", di un cliente con operatore | alert risolto, `resolved_by` = operatore di sistema; contatto disattivato; nuovo contatto attivo `followup`, priorità 150, operatore del cliente, stesso "Contattato il" del precedente; 2 righe di log (`alert_resolved`, `state_change` verso `followup`, `source = cron_alert`) |
 | A2 | Come A1, su un cliente senza operatore | come A1, con il nuovo contatto senza operatore |
 | A3 | Alert aperto con scadenza prima di D | alert risolto; il contatto resta attivo, senza alert (`alert_id` vuoto); 1 riga di log `alert_resolved`; nessun contatto nuovo |
 | A4 | Alert aperto con scadenza da D+1 in poi (un richiamo da domani, D22) | non selezionato: invariato |
@@ -233,20 +237,24 @@ Il cron seleziona gli alert aperti collegati nei due versi con un contatto, con 
 
 #### `update` — rate delle pratiche ed età dei clienti
 
-`updatePractices` seleziona le pratiche con data di liquidazione + `rate_pagate` × 30 giorni = D e le aggiorna solo se l'ultimo import è più vecchio di 30 giorni. `updateCustomerAge` seleziona i clienti nati nel mese e nel giorno di D. Date di liquidazione e di nascita cadono a mezzogiorno di Roma, così il giorno è lo stesso in Europe/Rome e in UTC.
+`updatePractices` seleziona le pratiche la cui **scadenza della rata** cade in D. La scadenza della rata è la data di liquidazione + `rate_pagate` × 30 giorni. Il cron le aggiorna solo se l'ultimo import è più vecchio di 30 giorni. `updateCustomerAge` seleziona i clienti nati nel mese e nel giorno di D. Date di liquidazione e di nascita cadono a mezzogiorno di Roma, così il giorno è lo stesso in Europe/Rome e in UTC.
 
 | ID | Dati nel seed | Esito atteso dopo la corsa |
 |---|---|---|
-| U1 | Pratica `Liquidata` sulla data di D, ultimo import 31+ giorni fa, `rate_pagate` < `rate_totali` − 1 | `rate_pagate` + 1; debito residuo meno una rata; stato invariato |
+| U1 | Pratica `Liquidata` con la scadenza della rata in D, ultimo import 31+ giorni fa, 1 ≤ `rate_pagate` < `rate_totali` − 1 | `rate_pagate` + 1; debito residuo meno una rata; stato invariato |
 | U2 | Come U1, con `rate_pagate` = `rate_totali` − 1 | `rate_pagate` = `rate_totali`; debito residuo meno una rata; stato `Chiusa` |
-| U3 | Pratica sulla data di D, ultimo import 29 giorni fa | selezionata ma non aggiornata: invariata |
-| U4 | Pratica sulla data di D con `rate_pagate` = `rate_totali` (già saldata), ultimo import 31+ giorni fa | `rate_pagate` invariato; debito residuo meno una rata; stato `Chiusa` |
-| U5 | Pratica sulla data di D in uno stato diverso da `Liquidata` (`Rifiutata`, `Estinta anticipata`, …), ultimo import 31+ giorni fa | aggiornata come U1 o U2: il cron non guarda lo stato |
-| U6 | Pratica sulla data di D con debito residuo vuoto, ultimo import 31+ giorni fa | debito residuo uguale a meno una rata (negativo) |
-| U7 | Pratiche con la data di D − 1 e di D + 1 | non selezionate: invariate |
+| U3 | Pratica con la scadenza della rata in D, ultimo import 29 giorni fa | selezionata ma non aggiornata: invariata |
+| U4 | Pratica con la scadenza della rata in D, con `rate_pagate` = `rate_totali` (già saldata), ultimo import 31+ giorni fa | `rate_pagate` invariato; debito residuo meno una rata; stato `Chiusa` |
+| U5 | Pratica con la scadenza della rata in D, in uno stato diverso da `Liquidata` (`Rifiutata`, `Estinta anticipata`, …), ultimo import 31+ giorni fa | aggiornata come U1 o U2: il cron non guarda lo stato |
+| U6 | Pratica con la scadenza della rata in D, con debito residuo vuoto, ultimo import 31+ giorni fa | debito residuo uguale a meno una rata (negativo) |
+| U7a | Pratica con la scadenza della rata in D − 1 | non selezionata: invariata |
+| U7b | Pratica con la scadenza della rata in D + 1 | non selezionata: invariata |
+| U11 | Pratica con la data di liquidazione in D e `rate_pagate` ≥ 1 (la scadenza della rata quindi non è D) | non selezionata: invariata |
 | U8 | Cliente nato nel mese e nel giorno di D, con età valorizzata | età + 1 |
 | U9 | Cliente nato nel mese e nel giorno di D, senza età | età 1 |
-| U10 | Clienti nati il giorno prima e il giorno dopo D, e clienti senza data di nascita | non selezionati: età invariata |
+| U10a | Cliente nato il giorno prima di D (mese e giorno) | non selezionato: età invariata |
+| U10b | Cliente nato il giorno dopo D (mese e giorno) | non selezionato: età invariata |
+| U10c | Cliente senza data di nascita | non selezionato: età invariata |
 
 #### `cleanup-task-event-log` — pulizia del log dei contatti
 
@@ -276,11 +284,11 @@ Gli script `seed:db`, `seed:delete`, `seed:delete:dev` e `seed:delete:test` svuo
 - **Solo `mito_local`** (decisione 1). Valgono le regole del database locale di T7.1b e di `AGENTS.md`:
   - nessuno script con `NODE_ENV=production`;
   - nessuna chiave del database in `.env`;
-  - il seeder e il comando di verifica non importano `loadEnv`.
+  - il seeder, le corse dei cron di AC28 e il comando di verifica non importano `loadEnv`.
 - **I dati dipendono dal giorno D.** Il giorno dopo, gli scenari dei cron vanno ricreati con un nuovo seed. `priority` e `update` leggono in parte l'orologio di sistema (Technical Notes), quindi non si può simulare un altro giorno.
 - **Le corse si validano una alla volta.** Le rotte Next di `update` non sono idempotenti: una seconda corsa nello stesso giorno aggiunge un altro anno e sottrae un'altra rata (U4). Il manifesto vale per una corsa sola per cron, dopo un seed appena fatto.
 - **Il fuso orario conta.** `mito_local` ha la sessione in Europe/Rome, come sviluppo e prod: `DATE()` ed `EXTRACT()` di `update` lavorano su quel fuso. I test su Postgres forzano UTC. Il seeder e la verifica usano il fuso di `mito_local`.
-- **Esistono dimensioni piccole per i test.** Con `N` = 300 ci sono tutti gli scenari, così un test su `mito_test_<casuale>` può usare il seeder senza il volume.
+- **Esistono dimensioni piccole per i test.** Con `N` = 300 ci sono tutti gli scenari, quindi un test su `mito_test_<casuale>` può riempire il suo database senza il volume (AC1a). Le parti dei cron che leggono l'orologio di sistema richiedono che il test fissi anche l'ora.
 
 ---
 
@@ -295,7 +303,9 @@ Gli script `seed:db`, `seed:delete`, `seed:delete:dev` e `seed:delete:test` svuo
   - `operator.user_id` senza FK verso `user`;
   - `messages` senza FK.
 
-  Il database controlla un solo vincolo: l'indice unico parziale `task_customer_active_uidx` (un contatto attivo per cliente).
+  Il database controlla due vincoli: l'indice unico parziale `task_customer_active_uidx` (un contatto attivo per cliente) e la chiave primaria di `customers_to_pratiche` (un ruolo per cliente e pratica).
+- **Come l'import calcola le rate pagate** (`calculateDebitoResiduo` in `src/app/api/import/_utils/index.ts`, AC14). Aggiunge un mese alla data di liquidazione e conta i giorni da lì al giorno D, arrotondando per eccesso. Poi divide per 30. Il risultato, al massimo `rate_totali`, sono le rate pagate. Il debito residuo è (rate rimanenti) × rata.
+- **Tre servizi dei cron prendono la connessione dall'ambiente.** `updatePractices`, `updateCustomerAge` e `cleanupTaskEventLog` scrivono attraverso il `db` globale (`src/server/db/index.ts`). Quel `db` si collega quando il modulo viene importato, con il DSN di `SUPABASE_DB_CONNECTION_STRING` passato così com'è a postgres.js. `cleanupTaskEventLog` cancella righe e `update` non è idempotente. Da qui AC28a.
 - **Colonne da valorizzare sempre:**
   - `customers.id`: il default è un `nanoid()` calcolato una volta sola, quindi una costante. Senza un id esplicito, al secondo cliente l'inserimento fallisce;
   - `customers.source`: obbligatoria e senza default;
@@ -339,6 +349,7 @@ Gli script `seed:db`, `seed:delete`, `seed:delete:dev` e `seed:delete:test` svuo
 | 3 | La quota di ogni ruolo fra i clienti con una sola pratica: AC10 chiede almeno 1/5 per ruolo. Default proposto: metà `Intestatario`, un quarto `Coobbligato`, un quarto `Garante`. | AC10 | Omar | Open |
 | 4 | `paths.personas` non è configurato. Gli utenti di questa spec sono sviluppatori, chi fa QA e Omar: va aggiunta una pagina delle persone del progetto? Default proposto: no, per questa spec basta Context. | Context | Omar | Open |
 | 5 | Gli script di seed di oggi (AC31): si tolgono o si proteggono? Default proposto: si tolgono `seed:db`, `seed:delete`, `seed:delete:dev`, `seed:delete:test` con i file del seed di oggi in `src/server/db/seeds/`. Il seeder nuovo li sostituisce: riempie `mito_local` e lo svuota prima di scrivere (AC3). Svuotare il database di sviluppo condiviso non deve essere un comando a portata di mano. | AC31–AC33 | Omar | **Chiusa il 2026-10-21**: si tolgono tutti e quattro, con il default proposto |
+| 6 | `delete-export` e `cron_run` restano fuori dagli scenari (Non-Goals). La richiesta era "tutti gli scenari che servano per validare anche i cron". Default proposto: fuori. `delete-export` lavora sullo storage, che il database locale non ha, e `cron_run` riguarda solo la rotta del backend, già coperta dai suoi test. | Non-Goals | Omar | Open |
 
 ---
 
@@ -350,7 +361,7 @@ Gli script `seed:db`, `seed:delete`, `seed:delete:dev` e `seed:delete:test` svuo
 | Le pratiche sono condivise: un Intestatario per pratica, coobbligati e garanti scelti fra gli altri clienti (decisione 2 di Omar, 2026-10-21). | È il modello reale dei file Wave (design-lavorazioni §6.1: "una pratica fino a tre persone con ruoli diversi"). Una pratica senza intestatario non la crea nessun import. |
 | Questa spec sostituisce T7.1c del piano di Contatti (decisione 3 di Omar, 2026-10-21). All'approvazione, T7.1c passa a "Sostituito" e rimanda qui; T7.3 punta a questa spec. | Un solo seeder, con gli scenari di Contatti assorbiti (AC20–AC26), evita due dataset da tenere allineati. |
 | 25 operatori e 3 admin con carichi sbilanciati, più l'operatore di sistema (decisione 4 di Omar, 2026-10-21). | Il carico di prod è sbilanciato (un operatore ha 8.584 contatti attivi): "Solo i miei" e i filtri per operatore vanno provati su quel caso. L'operatore di sistema serve al cron `alert`. |
-| Il giorno di riferimento D è il giorno di Roma del lancio, e non si può spostare. | `priority` e `update` leggono in parte l'orologio di sistema: un D diverso da oggi darebbe esiti che non tornano. |
+| Per il comando, il giorno di riferimento D è il giorno di Roma del lancio e non si può spostare. Solo un test può sceglierne un altro, e in quel caso fissa anche l'orologio (AC1a). | `priority` e `update` leggono in parte l'orologio di sistema: un D diverso da oggi darebbe esiti che non tornano. |
 | Il seed rispetta le invarianti del dominio, anche dove un cron saprebbe gestire un'anomalia. | Le anomalie sono già coperte dai test dei cron. Un dataset che le contiene renderebbe le liste e i conteggi di Contatti diversi da quello che il prodotto garantisce. |
 | Gli esiti attesi descrivono il codice di oggi, difetti compresi. | Il seeder serve a validare i cron così come sono. Una correzione cambia insieme cron ed esiti attesi. |
 | Gli script di seed di oggi entrano nella spec e si tolgono tutti e quattro, `seed:db`, `seed:delete`, `seed:delete:dev` e `seed:delete:test`, con i loro file (AC31–AC33; richiesta e scelta di Omar, 2026-10-21). | `seed:db` svuota il database indicato dalla shell, e `seed:delete:dev` svuota quello di sviluppo. Un seeder locale protetto, accanto a script che non lo sono, lascerebbe il rischio dov'è. |

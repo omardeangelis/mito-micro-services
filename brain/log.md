@@ -3,7 +3,7 @@ domain: _root
 type: index
 links: []
 created: 2026-09-24
-updated: 2026-10-20
+updated: 2026-10-21
 ---
 
 # Brain — Log
@@ -111,6 +111,11 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 - Flows written: <count>
 - Concepts written: <count>
 -->
+
+## [2026-10-21] spec | Seeder del database locale, con gli scenari dei cron
+- Created spec: [[specs/crm/seeder-locale/SPEC]]
+- Domain: crm
+- Status: Draft
 
 ## [2026-10-20] spec | Filtri avanzati sicuri di Clienti e Pratiche
 - Spec: [[specs/crm/filtri-sql-sicuri/SPEC]] (bozza, `status: draft`), da [[tech-debt/crm/search-by-explicit-map]]
