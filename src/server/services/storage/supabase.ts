@@ -88,15 +88,13 @@ const supabaseService = (
         (files ?? [])
           // `search` matches anywhere in the name, a prefix only at the start
           .filter((file) => file.name.startsWith(name))
-          .map(
-            (file): StorageObjectInfo => ({
-              key: joinKey(folder, file.name),
-              size: Number(
-                (file.metadata as { size?: number } | null)?.size ?? 0
-              ),
-              updated: new Date(file.updated_at ?? 0),
-            })
-          )
+          .map((file): StorageObjectInfo => ({
+            key: joinKey(folder, file.name),
+            size: Number(
+              (file.metadata as { size?: number } | null)?.size ?? 0
+            ),
+            updated: new Date(file.updated_at ?? 0),
+          }))
     )
   }
 
