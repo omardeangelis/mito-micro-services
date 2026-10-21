@@ -91,10 +91,8 @@ export const storageRouter = createTRPCRouter({
       }
 
       const file = result.right
-      const fileBuffer = file.buffer.slice(
-        file.byteOffset,
-        file.byteOffset + file.byteLength
-      )
+      // Copia in un ArrayBuffer proprio: è il BodyInit che Response accetta
+      const fileBuffer = new Uint8Array(file).buffer
 
       const headers = new Headers()
       headers.set("Content-Type", "application/octet-stream")
