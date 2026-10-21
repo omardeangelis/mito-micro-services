@@ -1,6 +1,5 @@
 import { customers } from "@/server/db/schema/customers"
 import { practices } from "@/server/db/schema/pratiche"
-import { task } from "@/server/db/schema/task"
 import { getTableColumns } from "drizzle-orm"
 import { type PgColumn } from "drizzle-orm/pg-core"
 
@@ -14,7 +13,6 @@ const {
   ambitoLavorativo,
   occupazione,
 } = getTableColumns(customers)
-const { state, closedAt } = getTableColumns(task)
 
 export const CUSTOMER_FILTER_MAP = new Map<string, PgColumn>([
   ["Compleanno", birthdayDate],
@@ -23,8 +21,6 @@ export const CUSTOMER_FILTER_MAP = new Map<string, PgColumn>([
   ["Comune", comune],
   ["Sede", sede],
   ["Telefono", phoneNumber],
-  ["Stato", state],
-  ["Contattato il", closedAt],
   ["Ambito", ambitoLavorativo],
   ["Occupazione", occupazione],
 ])
@@ -32,6 +28,22 @@ export const CUSTOMER_FILTER_MAP = new Map<string, PgColumn>([
 export const CUSTOMER_FILTER_QUERY_MAP = new Map<PgColumn["name"], PgColumn>(
   Array.from(CUSTOMER_FILTER_MAP).map(([_key, value]) => [value.name, value])
 )
+
+// Call-state columns and sorts that moved to Contatti. A saved preference or
+// link can still name them: the page ignores them (AC59, AC60)
+
+/** Ids of the table columns Clienti no longer has. */
+export const REMOVED_CUSTOMER_COLUMN_IDS: readonly string[] = [
+  "Stato Chiamate",
+  "Contattato il",
+  "Priorità",
+]
+
+/** Values of `order_by` that sorted by one of those columns. */
+export const REMOVED_CUSTOMER_ORDER_BY: readonly string[] = [
+  "contattato",
+  "priority",
+]
 
 const {
   dataLiquidazione,

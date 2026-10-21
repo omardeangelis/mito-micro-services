@@ -32,7 +32,6 @@ import {
   FileCombobox,
   OperatorSelector,
   SedeSelector,
-  TaskStatusSelector,
 } from "@/components/custom/table/CustomFilters"
 import { useGetMultipleUrlParamsValues } from "@/lib/hooks/useGetMultipleUrlParamsValues"
 import { DismissableFilterBadges } from "@/components/custom/table/DismissableFilterBadges"
@@ -124,6 +123,14 @@ export function TableFilterSections<TData>({ allColumns }: Props<TData>) {
       sede: [],
       jobs: [],
     })
+
+  // A saved link can still carry `status`: the filter moved to Contatti, so
+  // it neither filters nor shows a chip (AC59, AC60). The hook returns every
+  // key of the URL, not only the ones of `Filter`.
+  const shownFilters = useMemo(
+    () => arrayFilters.filter(({ key }) => String(key) !== "status"),
+    [arrayFilters]
+  )
 
   const handleSubmit = form.handleSubmit((data) => {
     const url = new URL(window.location.href)
@@ -271,11 +278,6 @@ export function TableFilterSections<TData>({ allColumns }: Props<TData>) {
             />
           </div>
           <div>
-            <TaskStatusSelector
-              onValueChange={(value) => handleSelectChange(value, "status")}
-            />
-          </div>
-          <div>
             <FileCombobox
               table="customers"
               onValueChange={(value) => handleSelectChange(value, "file")}
@@ -332,7 +334,7 @@ export function TableFilterSections<TData>({ allColumns }: Props<TData>) {
       ) : null}
       <div className="flex w-full flex-wrap gap-2">
         <DismissableFilterBadges
-          arrayFilters={arrayFilters}
+          arrayFilters={shownFilters}
           removeFilterSingleFilter={removeFilterSingleFilter}
         />
       </div>

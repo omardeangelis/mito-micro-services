@@ -14,6 +14,9 @@ Checks that worked on a filtered list query (Drizzle + Zod input):
 5. **PGlite pitfall:** ~65k bind params makes PGlite throw `RangeError: Invalid array length` and leaves the client broken for later tests in the same file; run that probe last or alone.
 6. **Seeding volume:** `testClient.exec` with `INSERT … SELECT … FROM generate_series` (give every NOT NULL column, e.g. customers `source`) seeds 70k rows in seconds; compare ratios, not absolute times.
 
+7. **"Input never reaches SQL" via a `testClient.query` spy:** a substring check false-positives (`status` is inside `blacklist_status`). Instead compare the sent text+params byte for byte with a reference call that omits the input: identical means the input had no effect.
+8. **"New or widened exposure" of a known `sql.raw`:** run the same hostile call (marker comment in `sqlFilter`, a CAST-to-int error that echoes a value, `false OR true` with `onlyMe`) in a base worktree and at head; compare the error message, the number of statements carrying the marker, and the totals. Drizzle `and()` does not parenthesize a raw chunk, so a top-level `OR` escapes sibling filters at base and head alike.
+
 **Why:** the code was correct but nothing pinned it, and the only real resource gap (duplicate bands) was invisible with identical duplicates.
 
 **How to apply:** for any new filter input, run 1–3 before judging; report the URL-bounded worst case with a measured ratio. Use a unique `mktemp -d` scratch dir: a generic `scratchpad/copy` was wiped by another verifier's `rsync --delete` mid-run ("No test files found").

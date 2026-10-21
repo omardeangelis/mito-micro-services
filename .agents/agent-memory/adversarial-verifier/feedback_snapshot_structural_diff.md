@@ -12,3 +12,5 @@ In the PR5a run the structural diff showed a `customers.id` default changed from
 **Why:** A targeted check (the two index names) passed. The full diff found the unrelated churn.
 
 **How to apply:** Any charter that touches `src/server/db/migrations/meta/*` gets the full structural diff. Keep the probe script in the clean copy and delete it afterwards.
+
+**Format-upgrade false positive (PR6 T6.9):** a drizzle-kit 0.31 `generate --custom` snapshot is the previous snapshot parsed through drizzle-kit's zod schema, so against an older-format previous snapshot the diff shows ADDED empty keys (`policies`, `checkConstraints`, `isRLSEnabled` per table; `views`, `roles`, `policies` at the top). That is not schema drift. Prove it two ways in a throwaway worktree: regenerate from base (`generate --custom`) and compare content minus `id`; then a plain `generate` must emit only the known `customers.id` literal.

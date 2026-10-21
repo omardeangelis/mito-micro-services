@@ -76,7 +76,7 @@ export const createContact = ({
           closedAt: null,
           priority: bandValue("urgent"),
         },
-        // "Assegna Clienti" picks the most recent task (F1)
+        // The readers that pick the most recent task (F1) must see this one
         mostRecent: true,
       })
       yield* query((client) =>

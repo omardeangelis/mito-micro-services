@@ -146,15 +146,21 @@ export const PopoverDateFilter = ({
     const url = new URL(window.location.href)
     const filters = url.searchParams.getAll("filter")
     if (filters.length > 0) {
+      // A saved link can name a column the map does not know (a filter that
+      // was removed, a made-up name) or be malformed: those rows are skipped
       setActiveFilter(
-        filters.map((f) => {
+        filters.flatMap((f) => {
           const filter = createFilterFromString(f)
-          return {
-            id: nanoid(),
-            name: getMapKeyFromValue(filter!.name) ?? "Nato il",
-            operator: filter?.operator ?? "eq",
-            value: filter?.value ?? "",
-          }
+          const name = filter ? getMapKeyFromValue(filter.name) : undefined
+          if (!filter || !name) return []
+          return [
+            {
+              id: nanoid(),
+              name,
+              operator: filter.operator,
+              value: filter.value,
+            },
+          ]
         })
       )
     }

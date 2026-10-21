@@ -14,15 +14,18 @@ import {
   or,
   isNull,
   max,
-  getTableColumns,
+  type SQL,
+  type SQLWrapper,
 } from "drizzle-orm"
 import { z } from "zod"
 import { TRPCError } from "@trpc/server"
+import { Effect } from "effect"
 import { practices } from "@/server/db/schema/pratiche"
 import { operators } from "@/server/db/schema/operators"
 import { type SupaBaseDb } from "@/lib/types"
 import { type PgColumn } from "drizzle-orm/pg-core"
-import { task, taskStatus } from "@/server/db/schema/task"
+import { type Db, type DbError, query } from "@/server/effect/db"
+import { runTrpc } from "@/server/effect/trpc"
 import {
   type CustomerSearchBy,
   customerSearchBy,
@@ -188,7 +191,8 @@ const getAllCustomersInput = z.object({
   q: z.string().optional(),
   onlyMe: z.boolean().optional(),
   showDM: z.boolean().optional(),
-  orderBy: z.string().optional().default("surname"),
+  // Senza `orderBy`, o con uno sconosciuto, vale l'ordine di default
+  orderBy: z.string().optional(),
   sortedBy: z.enum(["asc", "desc"]).optional(),
   filterBy: z
     .object({
@@ -197,22 +201,115 @@ const getAllCustomersInput = z.object({
       ambito: z.array(z.string()).optional(),
       jobs: z.array(z.string()).optional(),
       file: z.string().optional(),
-      status: z.array(z.enum(taskStatus)).optional(),
     })
     .optional(),
   sqlFilter: z.string().optional(),
-  sqlTaskFilter: z.string().optional(),
 })
 
-export const getAllCustomers = operatorProcedure
-  .input(getAllCustomersInput)
-  .query(async ({ ctx, input }) => {
-    const { db, operator } = ctx
+type GetAllCustomersInput = z.infer<typeof getAllCustomersInput>
+
+/** Una riga della lista Clienti: il cliente, il suo operatore e le pratiche. */
+type CustomerListRow = Pick<
+  typeof customers.$inferSelect,
+  | "id"
+  | "name"
+  | "surname"
+  | "fiscalCode"
+  | "email"
+  | "phoneNumber"
+  | "comune"
+  | "vatCode"
+  | "birthdayDate"
+  | "blackListStatus"
+  | "sede"
+  | "ambitoLavorativo"
+  | "occupazione"
+  | "createdAt"
+  | "updatedAt"
+> & {
+  operatore: Pick<
+    typeof operators.$inferSelect,
+    "id" | "name" | "surname"
+  > | null
+  signedPractices: number
+}
+
+// Le pratiche del cliente in una sottoquery: un join con `customerToPratica`
+// ripeterebbe il cliente per ogni pratica
+const signedPractices = sql<number>`(
+  select count(distinct ${customerToPratica.praticaId})
+  from ${customerToPratica}
+  where ${customerToPratica.customerId} = ${customers.id}
+)`.mapWith(Number)
+
+// La colonna di un `orderBy` noto; null per uno sconosciuto o tolto
+// (`priority`, `contattato`, `status`). Uno `switch` e non un oggetto, così
+// anche `toString` è sconosciuto
+const orderColumn = (orderBy: string | undefined): SQLWrapper | null => {
+  switch (orderBy) {
+    case "name":
+      return customers.name
+    case "surname":
+      return customers.surname
+    case "fiscalCode":
+      return customers.fiscalCode
+    case "email":
+      return customers.email
+    case "phoneNumber":
+      return customers.phoneNumber
+    case "comune":
+      return customers.comune
+    case "birthdayDate":
+      return customers.birthdayDate
+    case "operatore":
+      return operators.name
+    case "signedPractices":
+      return signedPractices
+    case "blackListStatus":
+      return customers.blackListStatus
+    case "sede":
+      return customers.sede
+    case "ambitoLavorativo":
+      return customers.ambitoLavorativo
+    case "occupazione":
+      return customers.occupazione
+    case "createdAt":
+      return customers.createdAt
+    case "updatedAt":
+      return customers.updatedAt
+    default:
+      return null
+  }
+}
+
+// Il default è l'ultima modifica, dalla più recente, qualunque sia `sortedBy`.
+// L'id del cliente chiude ogni ordinamento, nella stessa direzione: con valori
+// uguali (un'assegnazione massiva scrive lo stesso updatedAt) le pagine non
+// ripetono né saltano clienti
+const customersOrder = ({ orderBy, sortedBy }: GetAllCustomersInput): SQL[] => {
+  const column = orderColumn(orderBy)
+  if (!column) return [desc(customers.updatedAt), desc(customers.id)]
+  const sortedFn = sortedBy === "desc" ? desc : asc
+  return [sql`${column} IS NULL`, sortedFn(column), sortedFn(customers.id)]
+}
+
+/**
+ * Una pagina della lista Clienti, con il totale dei clienti che soddisfano i
+ * filtri. Senza join con la task: ogni cliente è una riga sola.
+ */
+const getAllCustomersPage = (
+  input: GetAllCustomersInput,
+  operatorId: number
+): Effect.Effect<
+  { allCustomers: CustomerListRow[]; total: number },
+  DbError,
+  Db
+> =>
+  Effect.gen(function* () {
     const { searchBy, q } = input
 
-    const queryLimit = input.perPage
     const operatorFilter = input.onlyMe
-      ? operator.id
+      ? operatorId
       : input.filterBy?.operatore
         ? input.filterBy.operatore
         : undefined
@@ -249,211 +346,65 @@ export const getAllCustomers = operatorProcedure
       input.filterBy?.file
         ? eq(customers.fileName, input.filterBy.file)
         : undefined
-      // input.sqlFilter ? sql.raw(`${input.sqlFilter}`) : undefined
     )
 
-    const sortedFn = input.sortedBy === "desc" ? desc : asc
+    // Lo stesso `where` per la pagina e per il totale
+    const where = and(
+      filterQuery,
+      input.sqlFilter ? sql.raw(`${input.sqlFilter}`) : undefined
+    )
 
-    const orderBy = () => {
-      switch (input.orderBy) {
-        case "name":
-          return customers.name
-        case "surname":
-          return customers.surname
-        case "fiscalCode":
-          return customers.fiscalCode
-        case "email":
-          return customers.email
-        case "phoneNumber":
-          return customers.phoneNumber
-        case "comune":
-          return customers.comune
-        case "birthdayDate":
-          return customers.birthdayDate
-        case "operatore":
-          return operators.name
-        case "signedPractices":
-          return count(customerToPratica.praticaId)
-        case "blackListStatus":
-          return customers.blackListStatus
-        case "sede":
-          return customers.sede
-        case "ambitoLavorativo":
-          return customers.ambitoLavorativo
-        case "occupazione":
-          return customers.occupazione
-        case "createdAt":
-          return customers.createdAt
-        case "updatedAt":
-          return customers.updatedAt
-        case "contattato":
-          return task.closedAt
-        case "priority":
-          return task.priority
-        default:
-          return task.priority
-      }
-    }
+    const allCustomers = query((client) =>
+      client
+        .select({
+          id: customers.id,
+          name: customers.name,
+          surname: customers.surname,
+          fiscalCode: customers.fiscalCode,
+          email: customers.email,
+          phoneNumber: customers.phoneNumber,
+          comune: customers.comune,
+          vatCode: customers.vatCode,
+          birthdayDate: customers.birthdayDate,
+          blackListStatus: customers.blackListStatus,
+          sede: customers.sede,
+          ambitoLavorativo: customers.ambitoLavorativo,
+          occupazione: customers.occupazione,
+          createdAt: customers.createdAt,
+          updatedAt: customers.updatedAt,
+          operatore: {
+            id: operators.id,
+            name: operators.name,
+            surname: operators.surname,
+          },
+          signedPractices,
+        })
+        .from(customers)
+        .leftJoin(operators, eq(customers.operatorId, operators.id))
+        .where(where)
+        .orderBy(...customersOrder(input))
+        .limit(input.perPage)
+        .offset((input.page - 1) * input.perPage)
+    )
 
-    const allCustomers = await db
-      .select({
-        id: customers.id,
-        name: customers.name,
-        surname: customers.surname,
-        fiscalCode: customers.fiscalCode,
-        email: customers.email,
-        phoneNumber: customers.phoneNumber,
-        comune: customers.comune,
-        vatCode: customers.vatCode,
-        birthdayDate: customers.birthdayDate,
-        blackListStatus: customers.blackListStatus,
-        sede: customers.sede,
-        ambitoLavorativo: customers.ambitoLavorativo,
-        occupazione: customers.occupazione,
-        createdAt: customers.createdAt,
-        updatedAt: customers.updatedAt,
-        operatore: {
-          id: operators.id,
-          name: operators.name,
-          surname: operators.surname,
-        },
-        signedPractices: countDistinct(customerToPratica.praticaId),
-        closedAt: task.closedAt,
-        priority: task.priority,
-        taskCustomerId: task.customerId,
-      })
-      .from(customers)
-      .leftJoin(
-        customerToPratica,
-        eq(customers.id, customerToPratica.customerId)
-      )
-      .leftJoin(operators, eq(customers.operatorId, operators.id))
-      .leftJoin(
-        task,
-        and(eq(customers.id, task.customerId), eq(task.isActive, true))
-      )
-      .where(
-        and(
-          filterQuery,
-          input.sqlFilter ? sql.raw(`${input.sqlFilter}`) : undefined,
-          input.filterBy?.status && input.filterBy.status.length > 0
-            ? inArray(task.state, input.filterBy.status)
-            : undefined
-          // input.sqlTaskFilter ? sql.raw(`${input.sqlTaskFilter}`) : undefined
-        )
-      )
-      .groupBy(
-        customers.id,
-        operators.id,
-        task.closedAt,
-        task.customerId,
-        task.priority
-      )
-      .limit(queryLimit)
-      .offset((input.page - 1) * input.perPage)
-      .orderBy(sql`${orderBy()} IS NULL`, sortedFn(orderBy()))
+    const total = query((client) =>
+      client
+        .select({ total: count(customers.id) })
+        .from(customers)
+        .where(where)
+    ).pipe(Effect.map(([row]) => row?.total ?? 0))
 
-    const customersId =
-      allCustomers.length > 0 ? allCustomers.map((c) => c.id) : undefined
-
-    const tasks = await db
-      .select({
-        ...getTableColumns(task),
-        // The contact's operator, shown on rows the user can't edit (AC51)
-        operatorName: operators.name,
-        operatorSurname: operators.surname,
-      })
-      .from(task)
-      .leftJoin(operators, eq(task.operatorId, operators.id))
-      .where(
-        and(
-          customersId ? inArray(task.customerId, customersId ?? []) : undefined,
-          input.sqlTaskFilter ? sql.raw(`${input.sqlTaskFilter}`) : undefined,
-          input.filterBy?.status && input.filterBy.status.length > 0
-            ? inArray(task.state, input.filterBy.status)
-            : undefined,
-          eq(task.isActive, true)
-        )
-      )
-      // Stesso criterio di getActiveTask (task/GET): la più recente per
-      // GREATEST(updatedAt, createdAt), così lista e dettaglio mostrano la
-      // stessa task quando un cliente ha più righe isActive=true.
-      .orderBy(
-        desc(sql`GREATEST(${task.updatedAt}, ${task.createdAt})`),
-        desc(task.id)
-      )
-
-    const newCustomers = allCustomers.map((c) => {
-      const activeTasks = tasks.filter((t) => t.customerId === c.id).length ?? 0
-      const userTasks =
-        tasks.filter((t) => t.customerId === c.id)[0] ??
-        ({} as (typeof tasks)[number])
-
-      return {
-        ...c,
-        activeTasks,
-        tasks: userTasks,
-      }
-    })
-
-    const generateUniqueCustomers = (
-      duplicatedCustomers: typeof newCustomers
-    ) => {
-      if (input.orderBy === "contattato") {
-        const sortOrder = input.sortedBy === "asc" ? 1 : -1
-        return Array.from(
-          new Map(
-            duplicatedCustomers
-              .sort((a, b) =>
-                a.tasks.closedAt! > b.tasks.closedAt! ? sortOrder : -sortOrder
-              )
-              .map((item) => [item.id, item])
-          ).values()
-        ).slice(0, input.perPage)
-      }
-      if (input.orderBy === "priority") {
-        const sortOrder = input.sortedBy === "asc" ? 1 : -1
-        return Array.from(
-          new Map(
-            duplicatedCustomers
-              .sort((a, b) =>
-                a.tasks.priority! > b.tasks.priority! ? sortOrder : -sortOrder
-              )
-              .map((item) => [item.id, item])
-          ).values()
-        ).slice(0, input.perPage)
-      }
-      return Array.from(
-        new Map(duplicatedCustomers.map((item) => [item.id, item])).values()
-      ).slice(0, input.perPage)
-    }
-
-    const uniqueCustomers = generateUniqueCustomers(newCustomers)
-
-    const total = await db
-      .select({
-        total: count(customers.id),
-      })
-      .from(customers)
-      .leftJoin(
-        task,
-        and(eq(customers.id, task.customerId), eq(task.isActive, true))
-      )
-      .where(
-        and(
-          filterQuery,
-          input.sqlFilter ? sql.raw(`${input.sqlFilter}`) : undefined,
-          input.filterBy?.status && input.filterBy.status.length > 0
-            ? inArray(task.state, input.filterBy.status)
-            : undefined
-        )
-      )
-
-    return {
-      allCustomers: uniqueCustomers,
-      total: total[0]?.total ?? 0,
-    }
+    return yield* Effect.all(
+      { allCustomers, total },
+      { concurrency: "unbounded" }
+    )
   })
+
+export const getAllCustomers = operatorProcedure
+  .input(getAllCustomersInput)
+  .query(({ ctx, input }) =>
+    runTrpc(getAllCustomersPage(input, ctx.operator.id))
+  )
 
 export const getAllAvailableComune = operatorProcedure.query(
   async ({ ctx }) => {

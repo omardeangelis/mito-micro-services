@@ -21,6 +21,7 @@ import { createTestCaller } from "@/test/caller"
 import { logOf, migrateUpTo, resetDb, tasksOf, testDb } from "@/test/db"
 import { failNextInsertInto } from "@/test/failpoint"
 import {
+  createAlert,
   createCustomer,
   createOperator,
   createSystemOperator,
@@ -178,6 +179,44 @@ describe("customer.handover, who and what moves", () => {
       ])
     )
     expect(await logOf(customer.id)).toHaveLength(2)
+  })
+
+  it("un contatto non attivo resta all'operatore che lo ha lavorato, anche se è il più recente: si sposta quello attivo", async () => {
+    const owner = await createOperator()
+    const colleague = await createOperator()
+    const customer = await createCustomer({ operatorId: owner.id })
+    const active = await createTask({
+      customerId: customer.id,
+      operatorId: owner.id,
+      state: "chiamare",
+    })
+    // La modifica più recente è del contatto superato: "la task più recente,
+    // attiva o no" sceglierebbe lui
+    const superseded = await createTask({
+      customerId: customer.id,
+      operatorId: owner.id,
+      state: "app.to",
+      isActive: false,
+      updatedAt: new Date(Date.now() + 60_000),
+    })
+
+    await createTestCaller(owner).customer.handover({
+      customerId: customer.id,
+      toOperatorId: colleague.id,
+    })
+
+    expect(await tasksOf(customer.id)).toMatchObject([
+      { id: active.id, operatorId: colleague.id },
+      { id: superseded.id, operatorId: owner.id },
+    ])
+    expect(await logOf(customer.id)).toMatchObject([
+      { taskId: null, fromOperatorId: owner.id, toOperatorId: colleague.id },
+      {
+        taskId: active.id,
+        fromOperatorId: owner.id,
+        toOperatorId: colleague.id,
+      },
+    ])
   })
 
   it("su un cliente senza contatto attivo sposta solo il cliente, con una riga sola", async () => {
@@ -454,7 +493,7 @@ describe("customer.assignToYourself", () => {
     expect(await logOf(customer.id)).toEqual([])
   })
 
-  it("'Assegna a te' su un cliente non assegnato lo dà all'operatore, scrive una riga self_assign e non tocca il contatto", async () => {
+  it("'Assegna a te' su un cliente non assegnato con il contatto attivo senza operatore li dà entrambi all'operatore, con due righe self_assign (D26, D29)", async () => {
     const operator = await createOperator()
     const { customer, contact } = await customerWithContact({
       operatorId: null,
@@ -468,7 +507,68 @@ describe("customer.assignToYourself", () => {
       operatorId: operator.id,
     })
     expect(await tasksOf(customer.id)).toMatchObject([
-      { id: contact.id, operatorId: null, isActive: true },
+      { id: contact.id, operatorId: operator.id, isActive: true },
+    ])
+    const reassign = {
+      action: "operator_reassign",
+      source: "self_assign",
+      fromOperatorId: null,
+      toOperatorId: operator.id,
+      actorOperatorId: operator.id,
+    }
+    expect(await logOf(customer.id)).toMatchObject([
+      { ...reassign, taskId: null },
+      { ...reassign, taskId: contact.id },
+    ])
+  })
+
+  it("'Assegna a te' non cambia lo stato, la priorità, la data di chiusura né l'alert del contatto che segue", async () => {
+    const operator = await createOperator()
+    const customer = await createCustomer({ operatorId: null })
+    const contact = await createTask({
+      customerId: customer.id,
+      operatorId: null,
+      state: "app.to",
+      priority: 70,
+      closedAt: new Date("2026-10-01T09:00:00Z"),
+    })
+    await createAlert({
+      taskId: contact.id,
+      deadline: new Date("2026-11-05T09:00:00Z"),
+    })
+    const before = (await tasksOf(customer.id))[0]!
+
+    await createTestCaller(operator).customer.assignToYourself({
+      id: customer.id,
+    })
+
+    expect(await tasksOf(customer.id)).toEqual([
+      {
+        ...before,
+        operatorId: operator.id,
+        updatedAt: expect.any(Date) as Date,
+      },
+    ])
+  })
+
+  it("'Assegna a te' su un cliente non assegnato senza contatto attivo dà all'operatore solo il cliente, con una riga sola, e lascia i contatti superati", async () => {
+    const operator = await createOperator()
+    const customer = await createCustomer({ operatorId: null })
+    const superseded = await createTask({
+      customerId: customer.id,
+      operatorId: null,
+      isActive: false,
+    })
+
+    await createTestCaller(operator).customer.assignToYourself({
+      id: customer.id,
+    })
+
+    expect(await customerRow(customer.id)).toMatchObject({
+      operatorId: operator.id,
+    })
+    expect(await tasksOf(customer.id)).toMatchObject([
+      { id: superseded.id, operatorId: null, isActive: false },
     ])
     expect(await logOf(customer.id)).toMatchObject([
       {
@@ -480,6 +580,22 @@ describe("customer.assignToYourself", () => {
         actorOperatorId: operator.id,
       },
     ])
+  })
+
+  it("se la riga di log del contatto non si scrive, cliente e contatto restano senza operatore e il log è vuoto", async () => {
+    const operator = await createOperator()
+    const seeded = await customerWithContact({ operatorId: null })
+    await failNextInsertInto(taskEventLog, { task_id: seeded.contact.id })
+    // runTrpc logs the database error
+    vi.spyOn(console, "error").mockImplementation(() => undefined)
+
+    await expect(
+      createTestCaller(operator).customer.assignToYourself({
+        id: seeded.customer.id,
+      })
+    ).rejects.toMatchObject({ code: "INTERNAL_SERVER_ERROR" })
+
+    await expectUntouched(seeded)
   })
 
   it.each([

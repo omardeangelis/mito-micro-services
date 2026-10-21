@@ -177,22 +177,6 @@ const formatDateSerialInDate = (serial: string) => {
   return resultDate
 }
 
-export const getTimeDifferenceFromNowAsDD = (date: Date) => {
-  const now = new Date(
-    new Date().toLocaleString("en-US", { timeZone: "Europe/Rome" })
-  )
-  const romeDate = new Date(
-    date.toLocaleString("en-US", { timeZone: "Europe/Rome" })
-  )
-  const diff = romeDate.getTime() - now.getTime()
-  const diffInDays = diff / (1000 * 3600 * 24)
-  const delta = Math.ceil(diffInDays)
-  if (delta < 1) {
-    return "Domani"
-  }
-  return `tra ${delta} giorni`
-}
-
 type HashForCustomer = Pick<Customer, "tempID" | "id">
 
 function createHashFromString({ tempId, id }: { tempId?: string; id: string }) {
