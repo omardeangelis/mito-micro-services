@@ -28,7 +28,7 @@ async function handler(req: NextRequest) {
       XLSX.write(request.workbook, {
         bookType: "xlsx",
         type: "array",
-      }) as WithImplicitCoercion<ArrayBuffer | SharedArrayBuffer>
+      }) as ArrayBuffer
     )
     // console.log("buffer: ", buffer)
 

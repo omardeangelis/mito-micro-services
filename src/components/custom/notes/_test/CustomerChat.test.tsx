@@ -32,8 +32,7 @@ const mocks = vi.hoisted(() => ({
   ),
   // The operator of the session, until `getUserOperator` loads it
   operator: { id: 11, role: "OPERATORE" } as
-    | { id: number; role: "ADMIN" | "OPERATORE" }
-    | undefined,
+    { id: number; role: "ADMIN" | "OPERATORE" } | undefined,
   // Called by each note at each of its renders
   noteRender: vi.fn(),
   // What the lookup of the author of a note answers
