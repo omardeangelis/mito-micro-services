@@ -37,6 +37,10 @@ Sulla proposta di attività "Guard the legacy seed:db against non-local DBs" (20
 
 > Includila nella spec
 
+Sulla domanda aperta 5 (2026-10-21):
+
+> Toglili tutti e quattro, va bene il default
+
 ---
 
 ## Context
@@ -255,14 +259,14 @@ Il cron cancella le righe di `task_event_log` create da più di 3 mesi di calend
 
 ### Gli script di seed di oggi
 
-Gli script `seed:db`, `seed:delete`, `seed:delete:dev` e `seed:delete:test` svuotano tabelle senza guard. Richiesta di Omar del 2026-10-21: questa spec li chiude.
+Gli script `seed:db`, `seed:delete`, `seed:delete:dev` e `seed:delete:test` svuotano tabelle senza guard. Richiesta di Omar del 2026-10-21: questa spec li toglie.
 
-- **AC31** — Nessuno di questi quattro script può scrivere o cancellare su un database diverso da quello locale. Per ognuno vale una delle due condizioni:
-  - si ferma prima di collegarsi, alle condizioni di AC1;
-  - non esiste più, né come script di `package.json` né come file.
+- **AC31** — I quattro script non esistono più in `package.json`. Con loro spariscono i file del seed di oggi in `src/server/db/seeds/`, compreso `generateRandomOperators.ts`. Nessun file del repo li importa più.
+- **AC32** — Gli unici script di `package.json` che svuotano tabelle o le riempiono di dati di prova restano due:
+  - il seeder di questa spec;
+  - i `db:local:*`.
 
-  La scelta per ogni script è la domanda aperta 5.
-- **AC32** — Lanciati con una shell che contiene il DSN di sviluppo o di prod (`SUPABASE_DB_CONNECTION_STRING`, `SUPABASE_MITO_PSW`), o con `.env.development.local` o `.env.test.local` presenti, gli script che restano non aprono connessioni verso quel database. Lo prova un test.
+  Tutti e due si fermano prima di collegarsi a un database non locale (AC1).
 - **AC33** — Il README (sezione "Database locale") e l'elenco degli script indicano il seeder nuovo come il modo di riempire `mito_local`. Non citano più come riempire o svuotare un database remoto con gli script di seed.
 
 ---
@@ -312,7 +316,7 @@ Gli script `seed:db`, `seed:delete`, `seed:delete:dev` e `seed:delete:test` svuo
   Da qui AC4 e il vincolo sul giorno D.
 - **Limiti di `alert`:** budget di 40 secondi per chiamata e fino a 20 chiamate. Con 1.000 alert scaduti (AC30) si vede se il ciclo di chiamate regge.
 - **`cleanup-task-event-log` non è schedulato da nessuna parte.** Nessun workflow e nessun job di Cloud Scheduler lo chiama. Gli scenari L1 e L2 lo validano comunque.
-- **I seed di oggi non hanno guard** (da qui AC31 e AC32):
+- **I seed di oggi non hanno guard** (per questo AC31 li toglie):
   - `seed:db` e `seed:delete` non impostano `NODE_ENV`, quindi `loadEnv()` non carica niente e il DSN viene dalla shell. Il primo svuota e riempie il database a cui punta la shell, il secondo lo svuota tutto, admin compresi;
   - `seed:delete:dev` carica `.env.development.local`, cioè il database di sviluppo condiviso, e lo svuota;
   - `seed:delete:test` carica `.env.test.local`;
@@ -334,7 +338,7 @@ Gli script `seed:db`, `seed:delete`, `seed:delete:dev` e `seed:delete:test` svuo
 | 2 | Le soglie di volume di AC30 (5.001 contatti con la stessa priorità, 1.000 alert scaduti, 200 pratiche, 100 compleanni, 1.000 righe di log vecchie) bastano per gli scenari di carico che servono? Default proposto: queste. | AC30 | Omar | Open |
 | 3 | La quota di ogni ruolo fra i clienti con una sola pratica: AC10 chiede almeno 1/5 per ruolo. Default proposto: metà `Intestatario`, un quarto `Coobbligato`, un quarto `Garante`. | AC10 | Omar | Open |
 | 4 | `paths.personas` non è configurato. Gli utenti di questa spec sono sviluppatori, chi fa QA e Omar: va aggiunta una pagina delle persone del progetto? Default proposto: no, per questa spec basta Context. | Context | Omar | Open |
-| 5 | Gli script di seed di oggi (AC31): si tolgono o si proteggono? Default proposto: si tolgono `seed:db`, `seed:delete`, `seed:delete:dev`, `seed:delete:test` con i file del seed di oggi in `src/server/db/seeds/`. Il seeder nuovo li sostituisce: riempie `mito_local` e lo svuota prima di scrivere (AC3). Svuotare il database di sviluppo condiviso non deve essere un comando a portata di mano. | AC31–AC33 | Omar | Open |
+| 5 | Gli script di seed di oggi (AC31): si tolgono o si proteggono? Default proposto: si tolgono `seed:db`, `seed:delete`, `seed:delete:dev`, `seed:delete:test` con i file del seed di oggi in `src/server/db/seeds/`. Il seeder nuovo li sostituisce: riempie `mito_local` e lo svuota prima di scrivere (AC3). Svuotare il database di sviluppo condiviso non deve essere un comando a portata di mano. | AC31–AC33 | Omar | **Chiusa il 2026-10-21**: si tolgono tutti e quattro, con il default proposto |
 
 ---
 
@@ -349,5 +353,5 @@ Gli script `seed:db`, `seed:delete`, `seed:delete:dev` e `seed:delete:test` svuo
 | Il giorno di riferimento D è il giorno di Roma del lancio, e non si può spostare. | `priority` e `update` leggono in parte l'orologio di sistema: un D diverso da oggi darebbe esiti che non tornano. |
 | Il seed rispetta le invarianti del dominio, anche dove un cron saprebbe gestire un'anomalia. | Le anomalie sono già coperte dai test dei cron. Un dataset che le contiene renderebbe le liste e i conteggi di Contatti diversi da quello che il prodotto garantisce. |
 | Gli esiti attesi descrivono il codice di oggi, difetti compresi. | Il seeder serve a validare i cron così come sono. Una correzione cambia insieme cron ed esiti attesi. |
-| Gli script di seed di oggi entrano nella spec: non devono più poter toccare un database non locale (AC31–AC33; richiesta di Omar, 2026-10-21). | `seed:db` svuota il database indicato dalla shell, e `seed:delete:dev` svuota quello di sviluppo. Un seeder locale protetto, accanto a script che non lo sono, lascerebbe il rischio dov'è. |
+| Gli script di seed di oggi entrano nella spec e si tolgono tutti e quattro, `seed:db`, `seed:delete`, `seed:delete:dev` e `seed:delete:test`, con i loro file (AC31–AC33; richiesta e scelta di Omar, 2026-10-21). | `seed:db` svuota il database indicato dalla shell, e `seed:delete:dev` svuota quello di sviluppo. Un seeder locale protetto, accanto a script che non lo sono, lascerebbe il rischio dov'è. |
 | `delete-export` e `cron_run` restano fuori. | Il primo lavora sullo storage, che il database locale non ha. Il secondo riguarda solo la rotta del backend con OIDC, già coperta dai suoi test. |
