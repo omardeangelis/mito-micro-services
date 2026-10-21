@@ -5,7 +5,7 @@ links:
   - "[[specs/crm/sezione-contatti/SPEC]]"
   - "[[specs/crm/sezione-contatti/IMPLEMENTATION-NOTES]]"
 created: 2026-09-25
-updated: 2026-10-20
+updated: 2026-10-21
 ---
 
 # Tech debt: Sezione Contatti
@@ -258,6 +258,28 @@ Scoperto nella review di PR6 (v2, 2026-10-21). Sostituisce la voce di T6.8a ("As
 
 **Da fare fuori da questa spec.** Omar ha deciso il 2026-10-21 di lasciarlo qui (F1 del REPORT di PR6, opzione A). Si riprende se la misura di "Assegna Clienti" con 100 e 500 clienti mostra chiamate lente (vicino ai 60 s) o se in produzione compaiono errori: blocchi di dimensione fissa inviati uno alla volta con `await`, che si fermano al primo rifiuto; l'azione restituisce `{ done, failedAt }` e il dialogo dice "X di N clienti assegnati; si è fermata a …; riprova"; `.max()` su `customerIds` di `bulkUpdateCustomers`; un test del dialogo con un blocco rifiutato. Misurare "Assegna Clienti" con 100 e 500 clienti sul DB di sviluppo.
 
+## "Crea/assegna contatti": tre frasi della guida e del dialogo smentite dal codice
+
+Scoperto nel terzo giro della review di PR6 (v14, 2026-10-21), preesistente. Le tre frasi c'erano già alla base `434b047` ("Crea una chiamata da fare per ogni cliente", "N chiamata/e create", "unico caso … Assegna Chiamate"). La ridenominazione di T6.3 e T6.6 le ha portate nei testi nuovi senza correggerle. I testi su "Assegna Clienti" scritti da PR6 sono giusti.
+
+- **"Crea un nuovo contatto da chiamare per ogni cliente selezionato"** (`guida-assegnazione-massiva-e-alert.md:26`; `CustomerBulkDialog.tsx:241`, `:484-485`). Per un cliente in `chiamare` o `followup`, o con un richiamo non confermato, `bulkHandleTask` non crea un contatto: riassegna solo quello attivo (`task/POST/index.ts:224-234`).
+- **Il riepilogo "N contatto/i creati e assegnati a X"** (`CustomerBulkDialog.tsx:216`, `:598-599`) conta i clienti selezionati. Con due clienti in `chiamare` dice "2 contatto/i creati", e di contatti nuovi non ne nasce nessuno. La guida (§3, Riepilogo) dice "assegnati".
+- **"Questo è l'unico caso in cui… può davvero cambiare lo stato di un cliente che aveva già un esito"** (guida :48). Anche con la casella "Risolvi alert" spuntata nasce un contatto con lo stato del form (`task/POST/index.ts:164-193`; test `bulkHandleTask.db.test.ts:106-135`).
+
+**Effetto oggi:** i dati restano giusti. Ma l'amministratore sceglie la modalità su queste frasi, e il riepilogo conta contatti mai creati.
+
+**Da fare fuori da PR6.** Omar ha deciso il 2026-10-21 di lasciarle qui (R2–R4 del terzo giro del REPORT di PR6). La correzione proposta:
+
+- nei quattro punti: "Crea un contatto da chiamare per i clienti senza contatto attivo o con un esito; quelli da chiamare o con un richiamo non confermato vengono solo riassegnati";
+- il riepilogo conta gli esiti che la procedura restituisce, o dice "N cliente/i assegnati a X";
+- "Con un richiamo lo stato cambia solo se spuntate 'Risolvi alert'".
+
+Nella stessa guida restano aperte, nel REPORT, tre frasi imprecise (R24–R26):
+
+- il pulsante si chiama "Edit", e la massiva è solo degli amministratori;
+- anche un alert scaduto, finché il controllo notturno non lo chiude, fa scattare il caso 4;
+- la frase del §7 vale solo per "Crea/assegna contatti".
+
 ## Con un caricamento diretto di Clienti l'admin non vede la colonna di selezione
 
 Scoperto nella passata browser di T6.3 (PR6, 2026-10-20), preesistente (da T3.14, PR3).
@@ -481,6 +503,24 @@ Dal passaggio UI di PR6 (v10, 2026-10-21). Sono file che PR6 non tocca; ora cont
 
 **Effetto oggi:** gli operatori usano il desktop con il mouse; conta per la tastiera, per il touch e per chi usa un lettore di schermo.
 
+## Clienti: la mappatura degli ordinamenti non è fissata dai test
+
+Scoperto nel terzo giro della review di PR6 (v9, 2026-10-21; il mutante su `updatedAt` è stato provato anche dall'orchestratore). I test di `getAllCustomers.db.test.ts` non fissano 12 dei 15 casi di `orderColumn` (`customer/GET/index.ts:247-283`): ognuno si può scambiare senza un test rosso (24/24 verdi). Esempi:
+
+- `name` → `surname`, `email` → `comune`, `createdAt` → `updatedAt`;
+- `operators.name` → `operators.surname`;
+- `updatedAt` → `customers.id`. Questo conta di più: `updatedAt` decrescente è l'ordinamento con cui si apre Clienti (AC59, `CustomerTableSection.tsx:18`).
+
+I test fissano solo il cognome, `signedPractices`, e `updatedAt` rispetto a `createdAt`. Le fixture creano i clienti con la chiave nello stesso ordine degli id e della data di creazione, e il test sull'operatore ne ha uno solo. Manca anche un test su un `orderBy` noto senza `sortedBy`, che dev'essere crescente (R23; la pagina manda sempre la direzione).
+
+**Effetto oggi:** nessuno. Il codice è giusto. Ma un errore in questi casi passerebbe la CI.
+
+**Da fare fuori da PR6.** Omar ha deciso il 2026-10-21 di lasciarlo qui (R1 del terzo giro del REPORT di PR6). Si chiude con un test a tabella sulle 15 colonne, in `asc` e `desc`. Nei dati:
+
+- la chiave in un ordine diverso da quello degli id e della creazione;
+- `name` e `surname` in ordine opposto;
+- due operatori con nome e cognome in ordine opposto.
+
 ## Piccoli debiti di PR6
 
 Dalla review di PR6 (2026-10-21), tutti NIT o MINOR su cui nessun verificatore ha trovato un difetto di dato. Nessuno blocca il rilascio.
@@ -488,7 +528,7 @@ Dalla review di PR6 (2026-10-21), tutti NIT o MINOR su cui nessun verificatore h
 - **La regola "stesso operatore" non è garantita per uno scrittore aggiunto dopo** (D27 lo accetta): il trigger `assertContactOperatorMatchesCustomer` vive nei test e controlla solo gli scrittori che qualcuno chiama in `operatorRule.db.test.ts`. Un test statico che elenca i file che scrivono `operatorId` su `task` o `customers` e fallisce se uno non è nell'elenco lo chiuderebbe. Due varianti non girano in quel file e sono provate altrove: la coppia già disallineata riparata da "Assegna Clienti" (caso (b), cliente già sul bersaglio) e il ramo "alert non confermato" di `bulkHandleTask`.
 - **`@/test/*` si può importare dal codice dell'app**: ESLint non lo vieta (come per `failpoint.ts` e `lockRule.ts`); nessun rischio, il DDL gira solo su PGlite. Un `no-restricted-imports` su `@/test/*` fuori da `_test/` lo chiuderebbe.
 - **`assignCustomers` controlla `canReassign` dopo `findWorkingOperator` e il lock** del cliente: un non-admin che chiamasse il servizio senza la procedura potrebbe saggiare se un operatore o un cliente esistono (non è raggiungibile dalla procedura, che è `adminProcedure`). `operatorId: z.number()` della procedura non ha `.int()` (preesistente: 1.5 dà un 500 con il messaggio di Postgres, solo per l'admin).
-- **Ordinamenti di `getAllCustomers`:** la mappatura colonna → campo è fissata dai test solo per quattro colonne (cognome, operatore, `signedPractices`, `updatedAt`); la chiave `IS NULL` su `signedPractices` non serve (un `count` non è mai NULL) e fa valutare la sottoquery due volte per riga (173 ms contro 24–40 ms a 30.000 clienti ordinando per quella colonna).
+- **Ordinamenti di `getAllCustomers`:** la mappatura colonna → campo è nella voce "Clienti: la mappatura degli ordinamenti non è fissata dai test" (questa riga diceva che erano fissate quattro colonne, ma `updatedAt` e l'operatore non lo sono). La chiave `IS NULL` su `signedPractices` non serve (un `count` non è mai NULL) e fa valutare la sottoquery due volte per riga (173 ms contro 24–40 ms a 30.000 clienti ordinando per quella colonna).
 - **Script `contatti-operator-mismatch.sql`:** le colonne delle liste 4, 5 e 6 diverse da `contatto_id` non sono tutte asserite dal test.
 - **Parametri rimossi nell'URL di Clienti** (`filter_by=[status]=…`, `filter=state:…`): restano nell'indirizzo e si ricopiano a ogni `push`, ignorati dal server e dal client; solo l'ordinamento si riscrive. Un operatore sconosciuto con una colonna nota in `PopoverFilter` arriva al server (è l'esposizione di `sql.raw`, A15).
 - **Riepilogo del contatto nella scheda cliente:** `PriorityBadge` ripete con l'icona il testo accanto ("Bassa"), senza `aria-hidden` sull'icona.
