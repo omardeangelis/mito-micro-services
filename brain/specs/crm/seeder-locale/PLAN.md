@@ -219,9 +219,9 @@ TB5 e TB6 sono in sequenza perché tutti e due toccano `types.ts`. TB6 lo usa e 
   - In `cron.db.test.ts`, un caso nuovo per `update` e uno per `cleanup`: con un errore forzato del database (`failNextUpdateOf`, o un trigger come nei test esistenti) il job fallisce con `CronStepFailed` e lo step giusto.
   - Il file nuovo ha un suo `vi.mock("@/server/db")` con un proxy che lancia a ogni query, come `unset` di `src/test/pg.ts`. Non usa `@/test/factories` né il caller di test, che importano `db`. Inserisce con `testDb` (con il cast a `DbClient`). In queste condizioni i tre servizi, eseguiti con `Layer.succeed(Db, testDb)`, aggiornano o cancellano le righe giuste.
   - Passano `next lint`, `tsc --noEmit`, `pnpm api:build` e `pnpm api:smoke`.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done (2026-10-21, commit `7217d93`)
+- **log**: Worker sul modello dell'orchestratore, una sola passata. Revisione dell'orchestratore: diff dei tre servizi, delle rotte e di `jobs.ts`; nei test esistenti cambiano solo gli import. Suite completa con Postgres verde (141 file, 2.122 test), `next lint`, `tsc`, `api:build` e `api:smoke` verdi. In più rispetto al piano: anche `console.error` delle rotte stampa il `DbError`, quindi niente SQL con i dati dei clienti nemmeno nei log.
+- **files edited/created**: `src/server/services/cron/{updatePractices,updateCustomerAge,cleanupTaskEventLog}.ts`, `src/app/api/cron/update/route.ts`, `src/app/api/cron/cleanupTaskEventLog/route.ts`, `api/src/cron/jobs.ts`, `api/src/cron/_test/cron.db.test.ts`, `src/app/api/cron/update/_test/update.db.test.ts`, `src/app/api/cron/cleanupTaskEventLog/_test/cleanupTaskEventLog.db.test.ts`, nuovo `src/server/services/cron/_test/cronServices.db.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a (D9)
@@ -243,9 +243,9 @@ TB5 e TB6 sono in sequenza perché tutti e due toccano `types.ts`. TB6 lo usa e 
   - `git grep -n getRandomCustomerRole -- ':!brain'` non trova niente (AC31).
   - Fra gli script di `package.json` che svuotano o riempiono tabelle restano solo `db:local:reset`, `test:pg` e `test` (AC32; il seeder arriva con la PR B).
   - Lint, `tsc` e test verdi.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done (2026-10-21, commit `bff0ec3`)
+- **log**: Worker haiku, una sola passata. I due `git grep` sono vuoti. Correzione dell'orchestratore: il commento e il messaggio della regola ESLint dicevano ancora che i seed caricano le credenziali; ora dicono che svuotano un database. `delete:export*` resta fra gli script: AC32 esclude i cron.
+- **files edited/created**: `package.json`, i dieci file di `src/server/db/seeds/` (cancellati), `src/server/db/schema/relations/customerToPratica.ts`, `README.md`, `.env.example`, `src/lib/global/loadDbEnv.ts`, `.eslintrc.cjs`, `AGENTS.md`, `brain/chore/migration/fase-1/t2-packages-db.md`, `brain/chore/migration/fase-1-database-postgres.md`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a (D9)
@@ -261,8 +261,8 @@ TB5 e TB6 sono in sequenza perché tutti e due toccano `types.ts`. TB6 lo usa e 
   - La descrizione dice che il comportamento dei cron non cambia e che i seed tolti non hanno sostituti fino alla PR B.
   - Dopo il merge, la PR B riparte da `dev`.
 - **validation**: CI verde sulla testa della PR; merge in `dev`.
-- **status**: Planned
-- **log**:
+- **status**: In progress: [PR #55](https://github.com/omardeangelis/mito-micro-services/pull/55) aperta verso `dev` il 2026-10-21
+- **log**: PR aperta dall'orchestratore (scelta di Omar sulle branch). In attesa della CI e della revisione.
 - **files edited/created**:
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
@@ -293,9 +293,9 @@ TB5 e TB6 sono in sequenza perché tutti e due toccano `types.ts`. TB6 lo usa e 
     - mezzogiorno di Roma cade nello stesso giorno UTC anche il 29 marzo e il 25 ottobre 2026;
     - `subMonthsDay("2026-05-31", 3)` è `2026-02-28`, quello del `2028-05-31` è `2028-02-29`.
   - **`importRates`:** su almeno 1.000 combinazioni (liquidazioni nei due anni prima di D, anche il 29, 30 e 31 del mese, rate, D nei giorni difficili del §5) dà lo stesso risultato di `calculateDebitoResiduo(copia, ...)` con l'orologio a `romeNoon(D)`. Il confronto gira in un **processo figlio avviato con `TZ=Europe/Rome`**, perché vitest 1.6 usa i thread e un `TZ` impostato nel test non cambia il fuso delle `Date`. Il figlio controlla prima che l'offset di gennaio sia +60 minuti. Dopo la chiamata la data di liquidazione è invariata.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done (2026-10-21, commit `0a824b5`)
+- **log**: Worker sonnet, una sola passata. 23 test verdi; il confronto con `calculateDebitoResiduo` in un processo figlio con `TZ=Europe/Rome` copre 10.031 combinazioni senza differenze, anche intorno ai cambi dell'ora. `server-only` non serve: l'import di `src/app/api/import/_utils` gira sotto tsx senza condizioni. `chat_to_operator` non è nel `Dataset`: il seed non lo scrive.
+- **files edited/created**: `src/server/db/seeds/local/{day,importRates,types}.ts`, `_test/day.test.ts`, `_test/importRates.test.ts`, `_test/importRatesCases.ts`, `_test/importRatesChild.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a (D9)
