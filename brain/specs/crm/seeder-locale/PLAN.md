@@ -487,9 +487,9 @@ TB5 e TB6 sono in sequenza perché tutti e due toccano `types.ts`. TB6 lo usa e 
   - scrivendo a mano 120 su ogni riga di P1, P1 passa;
   - cambiando una riga di P2, P2 fallisce e cita quella riga;
   - cambiando una riga che non è in nessuno scenario, "completezza" fallisce e la cita.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done (2026-10-21, commit `8064ca9`)
+- **log**: Worker sul modello dell'orchestratore, una sola passata. 11 test su Postgres: seed appena fatto (gli scenari con esito diverso dal seed falliscono, gli "invariati" e `completezza` passano), il tracciante su P1, una riga di P2 cambiata, righe fuori dal manifesto cambiate o aggiunte, A3 e A1 risolti a mano (A1 con una riga di log in più fallisce), `volumi` solo con `n` = 10.000. La verifica legge le 11 tabelle in una transazione `repeatable read`: 1,7 s a 10.000. Prettier ha solo riformattato due righe del test rosso.
+- **files edited/created**: `src/server/db/seeds/local/seed.ts`, `verify.ts`, `_test/verify.pg.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a (D9)
