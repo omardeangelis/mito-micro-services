@@ -102,6 +102,9 @@ importers:
       '@remixicon/react':
         specifier: ^4.2.0
         version: 4.2.0(react@18.3.1)
+      '@s-p-a-talo/gcs-storage':
+        specifier: ^0.1.0
+        version: 0.1.0(@google-cloud/storage@7.22.0)(effect@3.22.2)
       '@sentry/nextjs':
         specifier: ^8.11.0
         version: 8.20.0(@opentelemetry/api@1.9.0)(@opentelemetry/core@1.25.1(@opentelemetry/api@1.9.0))(@opentelemetry/instrumentation@0.52.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.25.1(@opentelemetry/api@1.9.0))(next@14.2.35(@babel/core@7.24.9)(@opentelemetry/api@1.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)(webpack@5.93.0(esbuild@0.28.2))
@@ -2333,6 +2336,13 @@ packages:
 
   '@rushstack/eslint-patch@1.10.4':
     resolution: {integrity: sha512-WJgX9nzTqknM393q1QJDJmoW28kUfEnybeTfVNcNAPnIx210RXm2DiXiHzfNPJNIUUb1tJnz/l4QGtJ30PgWmA==}
+
+  '@s-p-a-talo/gcs-storage@0.1.0':
+    resolution: {integrity: sha512-6w0Gsh7pez6KrOkAIqaf1tFl9iLb80sZGtfhPgseLrtLq9fxHgAi3RhRhS9nN66GBgc+HEzmAxMkp8MXD719Yg==, tarball: https://npm.pkg.github.com/download/@s-p-a-talo/gcs-storage/0.1.0/bb74f54936f731fdaf4526fce38a51790665b6b4}
+    engines: {node: '>=22'}
+    peerDependencies:
+      '@google-cloud/storage': ^7.22.0
+      effect: ^3.22.0
 
   '@sentry-internal/browser-utils@8.20.0':
     resolution: {integrity: sha512-GGYNiELnT4ByidHyS4/M8UF8Oxagm5R13QyTncQGq8nZcQhcFZ9mdxLnf1/R4+j44Fph2Cgzafe8jGP/AMA9zw==}
@@ -7895,6 +7905,11 @@ snapshots:
     optional: true
 
   '@rushstack/eslint-patch@1.10.4': {}
+
+  '@s-p-a-talo/gcs-storage@0.1.0(@google-cloud/storage@7.22.0)(effect@3.22.2)':
+    dependencies:
+      '@google-cloud/storage': 7.22.0
+      effect: 3.22.2
 
   '@sentry-internal/browser-utils@8.20.0':
     dependencies:
