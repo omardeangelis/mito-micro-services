@@ -32,14 +32,6 @@ GRANT CREATE ON SCHEMA public TO <role_name>;
 
 git clone --config core.autocrlf=false https://github.com/S-P-A-Talo/mito-deutsche.git
 
-### Comandi per svuotare db e ricaricarlo
-
-pnpm seed:clearRelationsTables
-pnpm seed:clearTables
-pnpm seed:pratiche
-pnpm seed:customers
-pnpm seed:customerToPratica
-
 ## Database locale
 
 Il database locale è un Postgres 15 in Docker, come la produzione. Serve a due cose: provare una migrazione su un database proprio prima di applicarla allo sviluppo condiviso, e far girare i test su Postgres vero.

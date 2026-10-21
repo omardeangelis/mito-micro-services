@@ -9,7 +9,7 @@ import {
   vi,
 } from "vitest"
 import * as Sentry from "@sentry/nextjs"
-import { eq } from "drizzle-orm"
+import { DrizzleQueryError, eq } from "drizzle-orm"
 import { customers } from "@mito/db/schema/customers"
 import { practices } from "@mito/db/schema/pratiche"
 import { migrateUpTo, resetDb, testDb } from "@/test/db"
@@ -236,6 +236,29 @@ describe("cron update: rate delle pratiche (comportamento attuale)", () => {
     // The error stops the job before the ages
     expect(await ageOf(birthday.id)).toBe(45)
     expect(vi.mocked(Sentry.captureException)).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe("cron update: cosa arriva a Sentry", () => {
+  it("un errore del database manda a Sentry il DbError con l'errore del driver, senza la query né i suoi parametri", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined)
+    const failing = await practiceDueToday()
+    await failNextUpdateOf(practices, { pratica_id: failing.praticaId })
+
+    expect(await runCron()).toEqual(FAILED)
+
+    expect(vi.mocked(Sentry.captureException)).toHaveBeenCalledTimes(1)
+    const [reported] = vi.mocked(Sentry.captureException).mock.calls[0]!
+    const error = reported as { _tag?: string; message: string; cause: unknown }
+    expect(error._tag).toBe("DbError")
+    expect(error.cause).toBeInstanceOf(Error)
+    expect(error.cause).not.toBeInstanceOf(DrizzleQueryError)
+    expect((error.cause as Error).message).toContain("failpoint")
+    for (const text of [error.message, (error.cause as Error).message]) {
+      expect(text).not.toContain("Failed query")
+      expect(text).not.toContain(failing.praticaId)
+      expect(text).not.toContain("2026-10-14")
+    }
   })
 })
 

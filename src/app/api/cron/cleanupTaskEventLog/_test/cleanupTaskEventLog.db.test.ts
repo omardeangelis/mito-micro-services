@@ -9,7 +9,7 @@ import {
   vi,
 } from "vitest"
 import * as Sentry from "@sentry/nextjs"
-import { asc, getTableName } from "drizzle-orm"
+import { asc, DrizzleQueryError, getTableName } from "drizzle-orm"
 import { taskEventLog } from "@mito/db/schema/taskEventLog"
 import {
   FAILPOINT_SCHEMA,
@@ -169,5 +169,26 @@ describe("cron cleanupTaskEventLog (comportamento attuale)", () => {
 
     expect(await remainingIds()).toEqual([old, recent])
     expect(vi.mocked(Sentry.captureException)).toHaveBeenCalledTimes(1)
+  })
+
+  it("un errore del database manda a Sentry il DbError con l'errore del driver, senza la query né i suoi parametri", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined)
+    await eventAt(new Date("2026-01-01T03:00:00.000Z"))
+    await failDeletesOfEventLog()
+
+    await runCron()
+
+    expect(vi.mocked(Sentry.captureException)).toHaveBeenCalledTimes(1)
+    const [reported] = vi.mocked(Sentry.captureException).mock.calls[0]!
+    const error = reported as { _tag?: string; message: string; cause: unknown }
+    expect(error._tag).toBe("DbError")
+    expect(error.cause).toBeInstanceOf(Error)
+    expect(error.cause).not.toBeInstanceOf(DrizzleQueryError)
+    expect((error.cause as Error).message).toContain("failpoint")
+    for (const text of [error.message, (error.cause as Error).message]) {
+      expect(text).not.toContain("Failed query")
+      // The cutoff, the parameter of the DELETE
+      expect(text).not.toContain("2026-07-14")
+    }
   })
 })
