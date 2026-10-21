@@ -39,10 +39,15 @@ Ogni task ha un file di dettaglio operativo in `brain/chore/migration/fase-0/`, 
 1. Scaffold workspace (F0.T1): `pnpm-workspace.yaml`, `turbo.json`, `turbo` in devDependencies. **La root resta l'app Next**: T1 e T2 non vanno più nello stesso PR, perché pnpm accetta la root come pacchetto del workspace. Turbo per ora non esegue nulla (nessun pacchetto in `apps/` o `packages/`).
 2. `packages/config`: tsconfig/eslint/prettier condivisi (F0.T3).
 3. `apps/api`: il backend Hono con package.json, Dockerfile e deploy propri; `pnpm dev` avvia Next e Hono insieme.
-4. `apps/web`: spostamento dell'app Next (F0.T2) e Root Directory dei progetti Vercel.
-5. `packages/db`: schema, migrazioni, client.
-6. `packages/server`: router tRPC e servizi oggi in `src/server`.
+4. `packages/db`: schema, migrazioni, client.
+5. `packages/server`: router tRPC e servizi oggi in `src/server`.
+6. `apps/web`: spostamento dell'app Next (F0.T2) e Root Directory dei progetti Vercel.
+
+Ordine cambiato il 2026-10-21 (prima `apps/web` era la 4): spostando l'app prima dei pacchetti, `apps/api` dipenderebbe dai file e dal `node_modules` di `apps/web`. Con db e server già pacchetti, l'app si sposta per ultima e il backend dipende solo da `packages/*`.
 
 Requisito: dopo ogni PR il backend Hono parte in locale con `pnpm api:dev`.
 
 **PR 3 (apps/api), 2026-10-21.** `git mv api apps/api`, pacchetto `@mito/api` senza dipendenze proprie: il bundle continua a risolvere i pacchetti dal `node_modules` della root e `src/` con l'alias `@/` del `tsconfig.json` root, che continua a controllare anche `apps/api`. Gli script `api:*` della root restano gli stessi, con i nuovi percorsi. `pnpm dev` = `turbo run dev dev:web`: Hono (`@mito/api#dev`, porta 4000, `.env.development.local` della root) e `next dev` (task di root `//#dev:web`, che è anche `pnpm dev:web`). `envMode: loose` in `turbo.json`: i task vedono tutto l'ambiente, come prima di turbo. Immagine: `apps/api/Dockerfile`, `apps/api/gcp/*`.
+
+
+**PR 4 (packages/db), 2026-10-21.** `@mito/db` con `src/` (client, schema, `driverError`, `localDsn`, `pushedSchema`) e `migrations/`. Import `@/server/db…` → `@mito/db…` in tutto il repo (anche `vi.mock`). Il pacchetto esporta sorgenti TypeScript (`exports`: `.` e `./*`): Next.js lo transpila (`transpilePackages`), `apps/api/build.mjs` lo mette nel bundle, vitest e tsx lo leggono direttamente. Non dichiara dipendenze: usa `drizzle-orm`, `postgres`, `nanoid`, `next-auth` della root, così l'istanza di drizzle resta una sola (con le peer dependencies pnpm ne installerebbe un'altra). Restano nell'app: script e seed del DB (`loadEnv`) e i test delle migrazioni (`src/server/db/_test/migrations`), che usano l'harness `@/test`. `next lint` controlla anche `packages/` (`eslint.dirs`).

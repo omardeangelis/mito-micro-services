@@ -1,7 +1,7 @@
 import { beforeAll, beforeEach, describe, expect, it } from "vitest"
 import { asc } from "drizzle-orm"
-import { task } from "@/server/db/schema/task"
-import { taskEventLog } from "@/server/db/schema/taskEventLog"
+import { task } from "@mito/db/schema/task"
+import { taskEventLog } from "@mito/db/schema/taskEventLog"
 import {
   BEFORE_REALIGN_SCHEMA_TAG,
   driverFailure,

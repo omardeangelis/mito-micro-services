@@ -3,8 +3,8 @@ import {
   insertPracticeSchema,
 } from "@/lib/types/schemas"
 import { protectedProcedure } from "@/server/api/trpc"
-import { practices } from "@/server/db/schema/pratiche"
-import { customerToPratica } from "@/server/db/schema/relations/customerToPratica"
+import { practices } from "@mito/db/schema/pratiche"
+import { customerToPratica } from "@mito/db/schema/relations/customerToPratica"
 
 export const insertPratica = protectedProcedure
   .input(insertPracticeSchema)

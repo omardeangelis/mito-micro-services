@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import type { TaskCategory, TaskStatus } from "@/lib/types/schemas"
-import { taskStatus } from "@/server/db/schema/task"
+import { taskStatus } from "@mito/db/schema/task"
 import {
   allStates,
   canSetCallback,

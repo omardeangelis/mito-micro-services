@@ -1,8 +1,8 @@
 import * as Sentry from "@sentry/nextjs"
 import { getServerAuthSession } from "@/server/auth"
-import { db } from "@/server/db"
-import { operators } from "@/server/db/schema/operators"
-import { users } from "@/server/db/schema/users"
+import { db } from "@mito/db"
+import { operators } from "@mito/db/schema/operators"
+import { users } from "@mito/db/schema/users"
 import { eq } from "drizzle-orm"
 import { NextResponse } from "next/server"
 

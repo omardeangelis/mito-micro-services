@@ -1,10 +1,10 @@
 import "server-only"
 import { Data, Effect } from "effect"
 import { and, between, eq, isNotNull, ne } from "drizzle-orm"
-import { customers } from "@/server/db/schema/customers"
-import { operators } from "@/server/db/schema/operators"
-import { task } from "@/server/db/schema/task"
-import { users } from "@/server/db/schema/users"
+import { customers } from "@mito/db/schema/customers"
+import { operators } from "@mito/db/schema/operators"
+import { task } from "@mito/db/schema/task"
+import { users } from "@mito/db/schema/users"
 import { query } from "@/server/effect/db"
 
 /** The session's user is no longer in the database. */

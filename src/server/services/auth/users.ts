@@ -2,8 +2,8 @@ import "server-only"
 import { Effect } from "effect"
 import { sql } from "drizzle-orm"
 import { type AdapterUser } from "next-auth/adapters"
-import { operators } from "@/server/db/schema/operators"
-import { users } from "@/server/db/schema/users"
+import { operators } from "@mito/db/schema/operators"
+import { users } from "@mito/db/schema/users"
 import { query, transaction } from "@/server/effect/db"
 
 /**

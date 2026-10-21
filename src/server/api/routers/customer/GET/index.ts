@@ -1,6 +1,6 @@
 import { operatorProcedure, protectedProcedure } from "@/server/api/trpc"
-import { customerToPratica } from "@/server/db/schema/relations/customerToPratica"
-import { customers } from "@/server/db/schema/customers"
+import { customerToPratica } from "@mito/db/schema/relations/customerToPratica"
+import { customers } from "@mito/db/schema/customers"
 import {
   count,
   eq,
@@ -20,8 +20,8 @@ import {
 import { z } from "zod"
 import { TRPCError } from "@trpc/server"
 import { Effect } from "effect"
-import { practices } from "@/server/db/schema/pratiche"
-import { operators } from "@/server/db/schema/operators"
+import { practices } from "@mito/db/schema/pratiche"
+import { operators } from "@mito/db/schema/operators"
 import { type SupaBaseDb } from "@/lib/types"
 import { type PgColumn } from "drizzle-orm/pg-core"
 import { type Db, type DbError, query } from "@/server/effect/db"

@@ -6,7 +6,7 @@ import { type EmailConfig } from "next-auth/providers/email"
 // The real NextAuth configuration, which the other tests get mocked
 vi.unmock("@/server/auth")
 // None of these cases reaches the database
-vi.mock("@/server/db", () => ({ db: {} }))
+vi.mock("@mito/db", () => ({ db: {} }))
 vi.mock("@auth/drizzle-adapter", () => ({ DrizzleAdapter: () => ({}) }))
 
 const AZURE = {

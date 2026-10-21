@@ -1,7 +1,7 @@
 import "server-only"
 import { and, desc, eq } from "drizzle-orm"
-import { operators } from "@/server/db/schema/operators"
-import { alert, task } from "@/server/db/schema/task"
+import { operators } from "@mito/db/schema/operators"
+import { alert, task } from "@mito/db/schema/task"
 import { type DbClient } from "@/server/effect/db"
 
 /**

@@ -2,9 +2,9 @@ import { readdirSync, readFileSync } from "fs"
 import path from "path"
 import { beforeAll, beforeEach, describe, expect, it } from "vitest"
 import { asc, eq } from "drizzle-orm"
-import { customers } from "@/server/db/schema/customers"
-import { task } from "@/server/db/schema/task"
-import { taskEventLog } from "@/server/db/schema/taskEventLog"
+import { customers } from "@mito/db/schema/customers"
+import { task } from "@mito/db/schema/task"
+import { taskEventLog } from "@mito/db/schema/taskEventLog"
 import {
   hasTestDatabase,
   holdCustomerLock,
@@ -32,7 +32,10 @@ import {
 // statements (a limit on the wait, then LOCK TABLE) are what keep a handover
 // that commits after the move read its rows from being undone.
 
-const MIGRATIONS = path.resolve(__dirname, "..")
+const MIGRATIONS = path.resolve(
+  __dirname,
+  "../../../../../packages/db/migrations"
+)
 const statements = readFileSync(
   path.join(
     MIGRATIONS,

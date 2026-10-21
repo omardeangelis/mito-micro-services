@@ -1,6 +1,6 @@
 // import { type UserPreference } from "@/lib/types/schemas"
 import { protectedProcedure } from "@/server/api/trpc"
-import { users } from "@/server/db/schema/users"
+import { users } from "@mito/db/schema/users"
 import { eq } from "drizzle-orm"
 import { z } from "zod"
 import { retrieveUserPrefercence } from "../GET/getUserPreference"

@@ -11,8 +11,8 @@ import { eq } from "drizzle-orm"
 import superjson from "superjson"
 import { readContactError } from "@/lib/domain/contact/errors"
 import { appRouter } from "@/server/api/root"
-import { customers } from "@/server/db/schema/customers"
-import { taskEventLog } from "@/server/db/schema/taskEventLog"
+import { customers } from "@mito/db/schema/customers"
+import { taskEventLog } from "@mito/db/schema/taskEventLog"
 import {
   CustomerAssignmentForbidden,
   customerErrorToTrpc,

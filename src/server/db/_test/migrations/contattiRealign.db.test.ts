@@ -2,9 +2,9 @@ import { readFileSync } from "fs"
 import path from "path"
 import { beforeAll, describe, expect, it } from "vitest"
 import { asc } from "drizzle-orm"
-import { customers } from "@/server/db/schema/customers"
-import { task } from "@/server/db/schema/task"
-import { taskEventLog } from "@/server/db/schema/taskEventLog"
+import { customers } from "@mito/db/schema/customers"
+import { task } from "@mito/db/schema/task"
+import { taskEventLog } from "@mito/db/schema/taskEventLog"
 import {
   BEFORE_REALIGN_SCHEMA_TAG,
   migrateUpTo,
@@ -31,7 +31,10 @@ const SCRIPT = path.resolve(
   __dirname,
   "../../scripts/contatti-operator-mismatch.sql"
 )
-const MIGRATION = path.resolve(__dirname, `../${REALIGN_SCHEMA_TAG}.sql`)
+const MIGRATION = path.resolve(
+  __dirname,
+  `../../../../../packages/db/migrations/${REALIGN_SCHEMA_TAG}.sql`
+)
 
 const at = (day: string) => new Date(`2026-10-${day}T09:00:00.000Z`)
 

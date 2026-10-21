@@ -49,7 +49,7 @@ import {
   Users,
 } from "lucide-react"
 import { customerBulkUpdateAction } from "../_actions/customerBulkUpdate"
-import { taskStatus } from "@/server/db/schema/task"
+import { taskStatus } from "@mito/db/schema/task"
 import { splitArray } from "@/app/api/import/_utils"
 
 const SPLIT_SIZE = 30

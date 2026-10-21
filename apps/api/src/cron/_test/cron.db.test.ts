@@ -19,9 +19,9 @@ import {
   type JWTPayload,
   SignJWT,
 } from "jose"
-import { customers } from "@/server/db/schema/customers"
-import { cronRun } from "@/server/db/schema/cronRun"
-import { practices } from "@/server/db/schema/pratiche"
+import { customers } from "@mito/db/schema/customers"
+import { cronRun } from "@mito/db/schema/cronRun"
+import { practices } from "@mito/db/schema/pratiche"
 import { ServerLive } from "@/server/effect/server"
 import { migrateUpTo, resetDb, testDb } from "@/test/db"
 import { reportedErrors } from "@/test/errorReporter"

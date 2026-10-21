@@ -1,6 +1,6 @@
 import { eq, sql } from "drizzle-orm"
-import { db } from "@/server/db"
-import { customers } from "@/server/db/schema/customers"
+import { db } from "@mito/db"
+import { customers } from "@mito/db/schema/customers"
 
 /**
  * The `update` cron: adds a year to the age of the customers born on this

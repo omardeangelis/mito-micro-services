@@ -2,9 +2,9 @@ import "server-only"
 import { Effect } from "effect"
 import { and, eq, inArray, not } from "drizzle-orm"
 import { calculatePriority } from "@/lib/utils/priority"
-import { practices } from "@/server/db/schema/pratiche"
-import { customerToPratica } from "@/server/db/schema/relations/customerToPratica"
-import { alert as alerts, task as tasks } from "@/server/db/schema/task"
+import { practices } from "@mito/db/schema/pratiche"
+import { customerToPratica } from "@mito/db/schema/relations/customerToPratica"
+import { alert as alerts, task as tasks } from "@mito/db/schema/task"
 import { type Db, type DbError, query, transaction } from "@/server/effect/db"
 
 /** Ids in one UPDATE: well under the 65,535 parameters of a Postgres query. */

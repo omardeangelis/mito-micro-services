@@ -1,5 +1,5 @@
 import { protectedProcedure } from "@/server/api/trpc"
-import { customers } from "@/server/db/schema/customers"
+import { customers } from "@mito/db/schema/customers"
 import { insertCustomerSchema } from "@/lib/types/schemas"
 
 export const insertCustomer = protectedProcedure

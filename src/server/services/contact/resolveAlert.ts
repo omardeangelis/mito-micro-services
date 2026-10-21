@@ -2,7 +2,7 @@ import "server-only"
 import { Effect } from "effect"
 import { eq } from "drizzle-orm"
 import { type Actor } from "@/lib/domain/contact/permissions"
-import { alert } from "@/server/db/schema/task"
+import { alert } from "@mito/db/schema/task"
 import {
   type CustomerMissing,
   type Db,

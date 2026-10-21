@@ -23,7 +23,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu"
-import { stateEnum } from "@/server/db/schema/pratiche"
+import { stateEnum } from "@mito/db/schema/pratiche"
 
 export type PraticheColumnSelectedProps = {
   id: string | number

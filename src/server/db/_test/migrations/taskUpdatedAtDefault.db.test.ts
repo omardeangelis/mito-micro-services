@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from "vitest"
 import { eq } from "drizzle-orm"
-import { task } from "@/server/db/schema/task"
+import { task } from "@mito/db/schema/task"
 import { CONTATTI_SCHEMA_TAG, migrateUpTo, testClient, testDb } from "@/test/db"
 import { createTask } from "@/test/factories"
 

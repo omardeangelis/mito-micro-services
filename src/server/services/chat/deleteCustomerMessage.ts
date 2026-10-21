@@ -1,9 +1,9 @@
 import "server-only"
 import { Data, Effect } from "effect"
 import { and, count, eq } from "drizzle-orm"
-import { chat, messages } from "@/server/db/schema/chat"
-import { customers } from "@/server/db/schema/customers"
-import { chatToOperator } from "@/server/db/schema/relations/chatToOperator"
+import { chat, messages } from "@mito/db/schema/chat"
+import { customers } from "@mito/db/schema/customers"
+import { chatToOperator } from "@mito/db/schema/relations/chatToOperator"
 import {
   type CustomerMissing,
   type Db,

@@ -1,9 +1,9 @@
 import { adminProcedure, operatorProcedure } from "@/server/api/trpc"
-import { operators } from "@/server/db/schema/operators"
+import { operators } from "@mito/db/schema/operators"
 import { eq, inArray } from "drizzle-orm"
 import { insertOperatorSchema } from "@/lib/types/schemas"
 import { z } from "zod"
-import { users } from "@/server/db/schema/users"
+import { users } from "@mito/db/schema/users"
 
 const operatorInsertSchema = insertOperatorSchema.pick({
   name: true,

@@ -2,7 +2,7 @@ import "server-only"
 import { Effect } from "effect"
 import { and, desc, eq, sql } from "drizzle-orm"
 import { type Task } from "@/lib/types/schemas"
-import { task } from "@/server/db/schema/task"
+import { task } from "@mito/db/schema/task"
 import {
   type Db,
   type DbError,

@@ -10,7 +10,7 @@ import {
 import { Cause, Data, Effect, Exit } from "effect"
 import { TRPCError } from "@trpc/server"
 import { sql } from "drizzle-orm"
-import { users } from "@/server/db/schema/users"
+import { users } from "@mito/db/schema/users"
 import { query, transaction } from "@/server/effect/db"
 import { forEachIsolated } from "@/server/effect/errorReporter"
 import { runTrpc } from "@/server/effect/trpc"

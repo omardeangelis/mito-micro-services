@@ -3,7 +3,7 @@ import path from "path"
 import { beforeAll, beforeEach, describe, expect, it } from "vitest"
 import { migrateUpTo, queryReadOnly, resetDb, testDb } from "@/test/db"
 import { createCustomer, createOperator, createTask } from "@/test/factories"
-import { task, taskStatus } from "@/server/db/schema/task"
+import { task, taskStatus } from "@mito/db/schema/task"
 
 // The lists saved before the realignment of PR6 (T6.9): the active contacts
 // whose operator differs from the customer's. The counts of its first SELECT

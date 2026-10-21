@@ -1,6 +1,6 @@
 import { eq, sql } from "drizzle-orm"
-import { db } from "@/server/db"
-import { practices } from "@/server/db/schema/pratiche"
+import { db } from "@mito/db"
+import { practices } from "@mito/db/schema/pratiche"
 import { DAYS_PER_RATE } from "@/lib/constants/practice"
 
 /**

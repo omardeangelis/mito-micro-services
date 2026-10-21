@@ -1,13 +1,13 @@
 import { z } from "zod"
 
 import { operatorProcedure, protectedProcedure } from "@/server/api/trpc"
-import { practices, stateEnum } from "@/server/db/schema/pratiche"
+import { practices, stateEnum } from "@mito/db/schema/pratiche"
 import { eq, count, desc, asc, and, ilike, inArray, sql } from "drizzle-orm"
 import { castAsNumber, containsPattern } from "../../utils"
 import { getProductKey } from "@/lib/constants/productMap"
-import { operators } from "@/server/db/schema/operators"
-import { customerToPratica } from "@/server/db/schema/relations/customerToPratica"
-import { customers } from "@/server/db/schema/customers"
+import { operators } from "@mito/db/schema/operators"
+import { customerToPratica } from "@mito/db/schema/relations/customerToPratica"
+import { customers } from "@mito/db/schema/customers"
 import { type PgColumn, union } from "drizzle-orm/pg-core"
 import { type Customer, type Practice } from "@/lib/types/schemas"
 import {

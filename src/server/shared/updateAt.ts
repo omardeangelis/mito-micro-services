@@ -1,5 +1,5 @@
-import { practices } from "../db/schema/pratiche"
-import { customers } from "../db/schema/customers"
+import { practices } from "@mito/db/schema/pratiche"
+import { customers } from "@mito/db/schema/customers"
 import { eq } from "drizzle-orm"
 import { type SupaBaseDb } from "@/lib/types"
 

@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, test, vi } from "vitest"
 import { recordedStatements } from "@/test/recordingDb"
 import { updateExistingCustomers } from "../updateCustomer"
 
-vi.mock("@/server/db", async () => ({
+vi.mock("@mito/db", async () => ({
   db: (await import("@/test/recordingDb")).recordingDb,
 }))
 

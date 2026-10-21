@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from "vitest"
 import { eq } from "drizzle-orm"
-import { alert } from "@/server/db/schema/task"
+import { alert } from "@mito/db/schema/task"
 import {
   activeTasksOf,
   LEGACY_SCHEMA_TAG,

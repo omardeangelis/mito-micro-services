@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
-import * as schema from "../schema/index"
+import * as schema from "@mito/db/schema/index"
 import { drizzle } from "drizzle-orm/postgres-js"
 import { loadEnv } from "@/lib/global/loadDbEnv"
 import { SYSTEM_OPERATOR_USER_ID } from "@/lib/constants/operator"

@@ -4,7 +4,7 @@ import { type createTRPCContext } from "@/server/api/trpc"
 import { recordedStatements, recordingDb } from "@/test/recordingDb"
 import importRouter from "../index"
 
-vi.mock("@/server/db", async () => ({
+vi.mock("@mito/db", async () => ({
   db: (await import("@/test/recordingDb")).recordingDb,
 }))
 vi.mock("@/server/auth", () => ({ getServerAuthSession: vi.fn() }))

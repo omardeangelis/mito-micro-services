@@ -12,7 +12,7 @@ import {
   megerPractices,
   mergeDuplicatePractices,
 } from "../merge"
-import { stateEnum } from "@/server/db/schema/pratiche"
+import { stateEnum } from "@mito/db/schema/pratiche"
 import { generateRandomProductKey } from "@/lib/constants/productMap"
 
 const customer1 = {

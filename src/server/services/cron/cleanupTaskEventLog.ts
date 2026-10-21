@@ -1,7 +1,7 @@
 import { lt } from "drizzle-orm"
 import { subMonths } from "date-fns"
-import { db } from "@/server/db"
-import { taskEventLog } from "@/server/db/schema/taskEventLog"
+import { db } from "@mito/db"
+import { taskEventLog } from "@mito/db/schema/taskEventLog"
 
 const RETENTION_MONTHS = 3
 

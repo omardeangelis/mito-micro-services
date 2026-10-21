@@ -1,9 +1,9 @@
 import { protectedProcedure } from "@/server/api/trpc"
-import { practices } from "@/server/db/schema/pratiche"
+import { practices } from "@mito/db/schema/pratiche"
 import { eq, inArray, or } from "drizzle-orm"
 import { z } from "zod"
 import { insertCustomerSchema, insertPracticeSchema } from "@/lib/types/schemas"
-import { customers as customersSchema } from "@/server/db/schema/customers"
+import { customers as customersSchema } from "@mito/db/schema/customers"
 import { updateImportedCustomer } from "@/server/shared/updateImportedCustomer"
 
 export const getExistingPractices = protectedProcedure

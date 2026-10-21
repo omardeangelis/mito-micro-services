@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-import * as schema from "../schema/index"
-import { customerToPratica, customers, practices } from "../schema/index"
+import * as schema from "@mito/db/schema/index"
+import { customerToPratica, customers, practices } from "@mito/db/schema/index"
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js"
 import { loadEnv } from "@/lib/global/loadDbEnv"
 

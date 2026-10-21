@@ -12,7 +12,7 @@ import {
   REMOVED_CUSTOMER_ORDER_BY,
 } from "../_constants"
 import { getTableName } from "drizzle-orm"
-import { customers } from "@/server/db/schema/customers"
+import { customers } from "@mito/db/schema/customers"
 import { parseCustomerSearchBy } from "@/lib/constants/customerSearch"
 
 const DEFAULT_SORTING = { orderBy: "updatedAt", sortedBy: "desc" } as const

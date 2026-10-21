@@ -1,5 +1,5 @@
-import { customers } from "@/server/db/schema/customers"
-import { practices } from "@/server/db/schema/pratiche"
+import { customers } from "@mito/db/schema/customers"
+import { practices } from "@mito/db/schema/pratiche"
 import { getTableColumns } from "drizzle-orm"
 import { type PgColumn } from "drizzle-orm/pg-core"
 

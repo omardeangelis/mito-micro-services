@@ -10,7 +10,7 @@ import {
   task,
   alert,
   type taskStatus,
-} from "@/server/db/schema/index"
+} from "@mito/db/schema/index"
 import { createSelectSchema, createInsertSchema } from "drizzle-zod"
 
 export type Operator = typeof operators.$inferSelect

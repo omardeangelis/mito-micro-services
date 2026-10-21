@@ -1,11 +1,11 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { splitPracticeArrayByUniqueId } from "../../_utils"
-import { db } from "@/server/db"
-import { practices } from "@/server/db/schema/pratiche"
+import { db } from "@mito/db"
+import { practices } from "@mito/db/schema/pratiche"
 
 import { type PracticeWriteWithInternalSort } from "../../process/_services/type"
 import { authCheck } from "@/app/api/_utils/auth"
-import { driverError } from "@/server/db/driverError"
+import { driverError } from "@mito/db/driverError"
 export const dynamic = "force-dynamic"
 export const maxDuration = 60
 

@@ -1,6 +1,6 @@
 import { drizzle } from "drizzle-orm/pg-proxy"
-import { type db } from "@/server/db"
-import * as schema from "@/server/db/schema/index"
+import { type db } from "@mito/db"
+import * as schema from "@mito/db/schema/index"
 
 /** Every statement `recordingDb` got, in order. Empty it before each test. */
 export const recordedStatements: { sql: string; params: unknown[] }[] = []

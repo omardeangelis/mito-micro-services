@@ -1,12 +1,12 @@
 import { eq } from "drizzle-orm"
-import { db } from "@/server/db"
+import { db } from "@mito/db"
 import { SYSTEM_OPERATOR_USER_ID } from "@/lib/constants/operator"
-import { customers } from "@/server/db/schema/customers"
-import { practices } from "@/server/db/schema/pratiche"
-import { customerToPratica } from "@/server/db/schema/relations/customerToPratica"
-import { operators } from "@/server/db/schema/operators"
-import { alert, task } from "@/server/db/schema/task"
-import { users } from "@/server/db/schema/users"
+import { customers } from "@mito/db/schema/customers"
+import { practices } from "@mito/db/schema/pratiche"
+import { customerToPratica } from "@mito/db/schema/relations/customerToPratica"
+import { operators } from "@mito/db/schema/operators"
+import { alert, task } from "@mito/db/schema/task"
+import { users } from "@mito/db/schema/users"
 
 // `db` is the test database of the project the file runs in: PGlite
 // (src/test/setup.ts) or Postgres (src/test/pg.setup.ts)

@@ -1,6 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, it } from "vitest"
 import { eq } from "drizzle-orm"
-import { task } from "@/server/db/schema/task"
+import { task } from "@mito/db/schema/task"
 import {
   activeTasksOf,
   driverFailure,

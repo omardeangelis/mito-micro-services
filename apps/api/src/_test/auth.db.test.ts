@@ -8,7 +8,7 @@ import {
   vi,
 } from "vitest"
 import { eq } from "drizzle-orm"
-import { sessions } from "@/server/db/schema/users"
+import { sessions } from "@mito/db/schema/users"
 import { migrateUpTo, resetDb, testDb } from "@/test/db"
 import { createOperator } from "@/test/factories"
 import { app } from "../app"

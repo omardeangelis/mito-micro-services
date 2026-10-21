@@ -1,9 +1,9 @@
 import { getTableName } from "drizzle-orm"
-import { messages } from "@/server/db/schema/chat"
-import { customers } from "@/server/db/schema/customers"
-import { chatToOperator } from "@/server/db/schema/relations/chatToOperator"
-import { alert, task } from "@/server/db/schema/task"
-import { taskEventLog } from "@/server/db/schema/taskEventLog"
+import { messages } from "@mito/db/schema/chat"
+import { customers } from "@mito/db/schema/customers"
+import { chatToOperator } from "@mito/db/schema/relations/chatToOperator"
+import { alert, task } from "@mito/db/schema/task"
+import { taskEventLog } from "@mito/db/schema/taskEventLog"
 import { FAILPOINT_SCHEMA, testClient } from "./db"
 
 const name = `${FAILPOINT_SCHEMA}.lock_rule`

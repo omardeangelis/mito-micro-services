@@ -4,9 +4,9 @@ import {
   type PracticeWrite,
 } from "@/lib/types/schemas"
 import { cleanObject } from "@/lib/utils"
-import { db } from "@/server/db"
+import { db } from "@mito/db"
 import { eq } from "drizzle-orm"
-import { practices } from "@/server/db/schema/pratiche"
+import { practices } from "@mito/db/schema/pratiche"
 import { updateImportedCustomer } from "@/server/shared/updateImportedCustomer"
 
 export type HandleCustomerUpdateResponse = Promise<{

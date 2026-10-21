@@ -4,10 +4,10 @@
 // import { handleDefaultExport } from "./services/defaultExport"
 // import { handleCallExport } from "./services/callExport"
 // import { getServerAuthSession } from "@/server/auth"
-// import { db } from "@/server/db"
+// import { db } from "@mito/db"
 // import { eq } from "drizzle-orm"
-// import { users } from "@/server/db/schema/users"
-// import { operators } from "@/server/db/schema/operators"
+// import { users } from "@mito/db/schema/users"
+// import { operators } from "@mito/db/schema/operators"
 // export const dynamic = "force-dynamic"
 // export const maxDuration = 60
 

@@ -1,6 +1,6 @@
 import { operatorProcedure } from "@/server/api/trpc"
-import { alert, task } from "@/server/db/schema/task"
-import { customers } from "@/server/db/schema/customers"
+import { alert, task } from "@mito/db/schema/task"
+import { customers } from "@mito/db/schema/customers"
 import { desc, eq, and, sql, inArray } from "drizzle-orm"
 import { selectCustomerSchema, selectTaskSchema } from "@/lib/types/schemas"
 import { z } from "zod"

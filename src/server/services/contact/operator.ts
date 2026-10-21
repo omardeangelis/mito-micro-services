@@ -1,8 +1,8 @@
 import "server-only"
 import { Effect } from "effect"
 import { eq } from "drizzle-orm"
-import { operators } from "@/server/db/schema/operators"
-import { users } from "@/server/db/schema/users"
+import { operators } from "@mito/db/schema/operators"
+import { users } from "@mito/db/schema/users"
 import { type Db, type DbError, query } from "@/server/effect/db"
 import { OperatorNotFound } from "./errors"
 

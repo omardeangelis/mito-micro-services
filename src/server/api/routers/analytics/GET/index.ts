@@ -1,6 +1,6 @@
 import { operatorProcedure, protectedProcedure } from "@/server/api/trpc"
-import { practices } from "@/server/db/schema/pratiche"
-import { task } from "@/server/db/schema/task"
+import { practices } from "@mito/db/schema/pratiche"
+import { task } from "@mito/db/schema/task"
 import {
   and,
   avg,
@@ -12,9 +12,9 @@ import {
   sum,
 } from "drizzle-orm"
 import { castAsNumber } from "../../utils"
-import { customerToPratica } from "@/server/db/schema/relations/customerToPratica"
-import { customers } from "@/server/db/schema/customers"
-import { operators } from "@/server/db/schema/operators"
+import { customerToPratica } from "@mito/db/schema/relations/customerToPratica"
+import { customers } from "@mito/db/schema/customers"
+import { operators } from "@mito/db/schema/operators"
 import { z } from "zod"
 import { TIMEFRAMEDELTA, TIMEFRAMEMAP } from "@/lib/constants/timeframes"
 

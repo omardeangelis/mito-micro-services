@@ -7,8 +7,8 @@ import {
   it,
   vi,
 } from "vitest"
-import { task } from "@/server/db/schema/task"
-import { taskEventLog } from "@/server/db/schema/taskEventLog"
+import { task } from "@mito/db/schema/task"
+import { taskEventLog } from "@mito/db/schema/taskEventLog"
 import { logOf, migrateUpTo, resetDb, tasksOf, testDb } from "@/test/db"
 import { createTestCaller } from "@/test/caller"
 import {

@@ -46,7 +46,7 @@ import {
   type HandoverActiveContact,
 } from "./CustomerHandoverDialog"
 import { useUserPreferenceContext } from "@/store/context/useUserPreferenceContext"
-import { sourceValues } from "@/server/db/schema/customers"
+import { sourceValues } from "@mito/db/schema/customers"
 import { parseInputValue, parseStringToNumber } from "@/lib/utils/format"
 
 const customerformSchema = insertCustomerSchema

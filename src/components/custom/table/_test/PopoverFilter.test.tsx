@@ -4,8 +4,8 @@ import userEvent from "@testing-library/user-event"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { getTableColumns } from "drizzle-orm"
 import { type PgColumn } from "drizzle-orm/pg-core"
-import { customers } from "@/server/db/schema/customers"
-import { practices } from "@/server/db/schema/pratiche"
+import { customers } from "@mito/db/schema/customers"
+import { practices } from "@mito/db/schema/pratiche"
 import { PopoverDateFilter } from "../PopoverFilter"
 
 // Il popover dei filtri avanzati legge `filter` dall'URL del browser da solo,

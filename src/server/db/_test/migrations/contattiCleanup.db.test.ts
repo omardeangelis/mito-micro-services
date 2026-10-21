@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from "vitest"
 import { asc } from "drizzle-orm"
-import { alert, task } from "@/server/db/schema/task"
-import { taskEventLog } from "@/server/db/schema/taskEventLog"
+import { alert, task } from "@mito/db/schema/task"
+import { taskEventLog } from "@mito/db/schema/taskEventLog"
 import {
   activeTasksOf,
   CONTATTI_SCHEMA_TAG,
