@@ -1,0 +1,21 @@
+---
+name: migration-test-evidence-battery
+description: How to judge the tests of a hand-written data migration - SQL mutant battery over PGlite and real-PG files, fixture-gap mutants, two-phase vs real batch, error-text regex, race-test scope
+metadata:
+  type: feedback
+---
+
+Checks that paid off when judging the test evidence of a custom data migration (CTE UPDATE + log INSERT, DO-block guard) that the owner runs once in a multi-migration batch:
+
+1. **Battery on the SQL file, three test files per mutant** (two PGlite files + the `*.pg.test.ts` on real Postgres). Record which FILE kills each mutant: the join with the UPDATE's CTE and the "operator unchanged" recheck die only in the pg file (PGlite has one connection), so locally without `TEST_DATABASE_URL` they are unguarded. ~48 mutants ran in about 10 minutes with a Python runner (exact old/new pair, `count == 1`, restore, per-mutant log). A mutant can also die in `beforeAll` of a sibling file (guard that raises on an empty database): read the failing test name before crediting it.
+2. **Fixture-gap mutants that survived although the SQL was right:** (a) the UPDATE joined on `customer_id` instead of `task.id` (needs a moved customer that also has an inactive task on the same operator as the contact; the fixture's moved customers had one task each); (b) actor lookup as `ORDER BY id LIMIT 1` or `min(id)` (the system operator was created first, so it had the lowest id); (c) a guard written with `<>` instead of `IS DISTINCT FROM` (a NOT NULL on the log's actor makes statement 2 fail anyway, so only the message differs). Prove the fix before reporting: patch a test copy (one history row, create the system operator last) and rerun the same mutants; (a) and (b) died.
+3. **Two-phase setup vs the real batch:** the test migrated to the tag right before the new migration, so phase 2 ran only one migration. Mutate the BEFORE constant to the tag before the first pending one (the real batch): the outcome tests stayed green and only a hard-coded `migrationsBefore + 1` broke. Also probe the batch rollback directly (seed at the older tag, no system operator, `migrateUpTo()`, assert the sibling migration's table is absent and its indexes remain).
+4. **`.rejects.toThrow(/text/)` on a drizzle 0.45 migrate failure matches the failing STATEMENT's text** (`err.message` starts "Failed query: <whole statement>"); the RAISE text is only in `err.cause.message`. The regex pins "the guard statement failed", not what a person would read. And the real `drizzle-kit migrate` prints no error at all (see [[feedback_real_migrate_cli_probe]]), so a "clear error" claim has no observer.
+6. **Future-migration break:** a test that calls `migrateUpTo()` (all) and asserts `migrationsBefore + N` goes red on the next migration anyone adds. To prove it, append a dummy `SELECT 1;` entry to the journal in a private worktree and rerun the file; then point to the pinned tag constant (`migrateUpTo(<TAG>)`).
+5. **Scope of a race test:** a competing writer parked after ALL its locks hides the intermediate states of the real writer (customer lock, then task lock, then writes); and a committing-writer interleaving can be impossible inside the migrator's batch when an earlier statement of the same transaction holds ACCESS EXCLUSIVE on the table. Say which run mode the test models; see [[feedback_migration_batch_concurrency_probes]]. Seen here: parked after the customer lock only, the log INSERT's FK check (KEY SHARE on the customer row) deadlocked with the writer's next lock (victim varied between runs), and a handover that moved only the customer (target = the contact's current operator) slipped past a recheck on the contact's operator.
+
+**Why:** the suite looked strong (every non-equivalent SQL mutant but three killed), and the weaknesses were in what the tests modelled, not in the SQL.
+
+**How to apply:** any custom data migration with a guard, a snapshot-sensitive CTE, and a concurrent-writer claim. Zsh: a variable holding `docker exec ... psql` does not word-split; define a function.
+
+Related: [[feedback_mutant_battery_scratch_copy]], [[feedback_lock_order_mutants]], [[feedback_index_drop_migration_checks]], [[feedback_vacuous_test_patterns]]

@@ -1,14 +1,13 @@
 import { adminProcedure, operatorProcedure } from "@/server/api/trpc"
 import { customers } from "@/server/db/schema/customers"
-import { eq, inArray, desc } from "drizzle-orm"
+import { eq } from "drizzle-orm"
 import { insertCustomerSchema } from "@/lib/types/schemas"
 import { z } from "zod"
 import { updateCustomerUpdatedAt } from "@/server/shared/updateAt"
-import { task } from "@/server/db/schema/task"
-import { taskEventLog } from "@/server/db/schema/taskEventLog"
 import { runTrpc } from "@/server/effect/trpc"
 import { actorOf } from "@/server/services/contact/actor"
 import {
+  assignCustomers as assignCustomersService,
   assignToYourself as assignToYourselfService,
   handover as handoverService,
 } from "@/server/services/customer/assignment"
@@ -70,65 +69,20 @@ const bulkAssignCustomerSchema = z.object({
   operatorId: z.number(),
   customerIds: z.array(z.string()),
 })
+
+/** "Assegna Clienti" (AC75, P19): see the `assignCustomers` service. */
 export const bulkUpdateCustomers = adminProcedure
   .input(bulkAssignCustomerSchema)
-  .mutation(async ({ input, ctx }) => {
-    const { db } = ctx
-
-    const customersBeforeUpdate = await db
-      .select({ id: customers.id, operatorId: customers.operatorId })
-      .from(customers)
-      .where(inArray(customers.id, input.customerIds))
-
-    const updateCustomer = await db
-      .update(customers)
-      .set({ operatorId: input.operatorId })
-      .where(inArray(customers.id, input.customerIds))
-      .returning({ id: customers.id })
-
-    const logRows = customersBeforeUpdate
-      .filter((c) => c.operatorId !== input.operatorId)
-      .map((c) => ({
-        customerId: c.id,
-        actorOperatorId: ctx.operator.id,
-        action: "operator_reassign" as const,
-        source: "bulk" as const,
-        fromOperatorId: c.operatorId,
+  .mutation(({ input, ctx }) =>
+    runTrpc(
+      assignCustomersService({
+        customerIds: input.customerIds,
         toOperatorId: input.operatorId,
-      }))
-    if (logRows.length > 0) {
-      await db.insert(taskEventLog).values(logRows)
-    }
-
-    const taskPromises = []
-
-    for (const customer of updateCustomer) {
-      taskPromises.push(
-        ctx.db
-          .select()
-          .from(task)
-          .where(eq(task.customerId, customer.id))
-          .orderBy(desc(task.updatedAt))
-          .limit(1)
-      )
-    }
-
-    const tasksToUpdate = await Promise.all(taskPromises)
-
-    const taskIds = tasksToUpdate
-      .filter((task) => task[0]?.id && task[0].state === "chiamare")
-      .map((task) => task[0]?.id)
-
-    // Without a WHERE the update would reach every task in the table
-    if (taskIds.length > 0) {
-      await ctx.db
-        .update(task)
-        .set({ operatorId: input.operatorId })
-        .where(inArray(task.id, taskIds as number[]))
-    }
-
-    return updateCustomer
-  })
+        actor: actorOf(ctx.operator),
+      }),
+      customerErrorToTrpc
+    )
+  )
 
 const handleCustomerBlackListSchema = insertCustomerSchema.pick({
   id: true,

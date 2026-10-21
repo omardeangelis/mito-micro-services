@@ -101,9 +101,11 @@ export async function authRoute(request: Request): Promise<Response> {
     send: (value) => {
       if (value === undefined || value === null) return
       body =
-        typeof value === "string" || value instanceof Uint8Array
+        typeof value === "string"
           ? value
-          : JSON.stringify(value)
+          : value instanceof Uint8Array
+            ? new Uint8Array(value)
+            : JSON.stringify(value)
     },
     end: () => undefined,
   }

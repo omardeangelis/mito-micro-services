@@ -5,7 +5,7 @@ links:
   - "[[specs/crm/sezione-contatti/SPEC]]"
   - "[[specs/crm/sezione-contatti/IMPLEMENTATION-NOTES]]"
 created: 2026-09-25
-updated: 2026-10-18
+updated: 2026-10-21
 ---
 
 # Tech debt: Sezione Contatti
@@ -48,6 +48,8 @@ Scoperto nella review di PR1 (F1, seconda verifica), preesistente.
 **Effetto oggi:** il cliente passa al nuovo operatore, il suo contatto attivo no. La guardia sul `WHERE` indefinito (PR1) evita solo che l'update tocchi tutta la tabella. In prod l'update su tutta la tabella è successo il 28/09/2026: tutte le task a un solo operatore. Il riallineamento all'operatore del cliente è in PR2 (T2.5) ([[specs/crm/sezione-contatti/PLAN]], §9, PR2); questa logica poi lo fa divergere di nuovo.
 
 **Da fare fuori da questa spec:** A7 lascia la logica invariata (non-goal). Un seguito può riassegnare la task attiva del cliente, con un criterio di spareggio.
+
+**Chiusa il 2026-10-20 (PR6, T6.8a).** "Assegna Clienti" non sceglie più per recenza: `assignCustomers` blocca il cliente e sposta il suo contatto attivo in ogni stato, con le righe `operator_reassign`. Il testo che segue è la storia.
 
 **Rientra nella spec dal 2026-10-15 (D14, AC75):** in PR6 T6.8 "Assegna Clienti" sposta il contatto attivo del cliente in ogni stato, con il servizio `handover`. Il 2026-10-15 in prod i contatti attivi con un operatore diverso da quello del cliente erano 1 su 69.783 (sola lettura). Si chiude con T6.8.
 
@@ -234,16 +236,60 @@ Scoperto nel piano (P6, rivisto con `design-engineer` il 2026-10-15), preesisten
 
 Scoperto nel piano (A11, §15), dichiarato in PR3 (T3.15).
 
-- La regola (D12): ogni transazione che scrive task, alert o log di un cliente blocca prima il cliente con `lockCustomer`. Tre scrittori ne sono fuori:
-  - `customer.bulkUpdateCustomers` ("Assegna Clienti"): aggiorna clienti e task senza lock (A7, logica invariata). T3.15 lo fissa come eccezione: il test aspetta il rifiuto;
+- La regola (D12): ogni transazione che scrive task, alert o log di un cliente blocca prima il cliente con `lockCustomer`. Due scrittori ne sono fuori ("Assegna Clienti" è dentro dal 2026-10-20: T6.8a, una transazione per cliente):
   - il cron `priority` (`refreshPriorities`): ricalcola `priority` delle task attive in blocco;
   - la pulizia di `task_event_log` (`cleanupTaskEventLog`): cancella righe vecchie.
 - La massiva (`task.bulkHandleTask`) e il cron degli alert prendono il lock ma chiudono l'alert con codice proprio invece di `resolveOpenAlert`: niente guardia `is_resolved = false` e niente `alert.updated_at`. Sotto il lock la guardia serve solo se una task punta a un alert già chiuso.
 - La conferma dell'alert nella massiva è legata al cliente, non all'alert (`task/POST/index.ts`, `resolveAlertCustomerIds`): l'admin conferma "l'alert di questo cliente", e la massiva chiude quello che legge dopo il lock. Se un collega lo sostituisce con `setCallback` fra la modale e il salvataggio, la massiva chiude il richiamo nuovo, che l'admin non ha visto. `changeState` e `setCallback` lo evitano con `confirmedAlertId` e `replacesAlertId` (AC37, AC44). Logica invariata da A7 (review di PR3, v2).
 
-**Effetto oggi:** `refreshPriorities` può sovrascrivere una priorità appena salvata da un operatore (l'ultima scrittura vince); "Assegna Clienti" in concorrenza con una mutation del contatto può lasciare il contatto attivo a un operatore diverso da quello del cliente (la stessa divergenza di "Assegna Clienti sceglie la task più recente anche se inattiva"). La pulizia del log non tocca righe recenti.
+**Effetto oggi:** `refreshPriorities` può sovrascrivere una priorità appena salvata da un operatore (l'ultima scrittura vince); La pulizia del log non tocca righe recenti. ("Assegna Clienti" in concorrenza con una mutation del contatto non può più separare cliente e contatto: T6.8a, 2026-10-20.)
 
-**Da fare:** `refreshPriorities` con il lock per cliente, o con una condizione sul valore letto, quando PR5 ridisegna le priorità; "Assegna Clienti" con T6.8 in PR6 (D14); massiva e cron su `resolveOpenAlert` (stesso comportamento più `updated_at`); la massiva riceve dalla modale gli id degli alert confermati e li confronta dopo il lock.
+**Da fare:** `refreshPriorities` con il lock per cliente, o con una condizione sul valore letto, quando PR5 ridisegna le priorità; massiva e cron su `resolveOpenAlert` (stesso comportamento più `updated_at`); la massiva riceve dalla modale gli id degli alert confermati e li confronta dopo il lock.
+
+## "Assegna Clienti": il dialogo manda una chiamata per cliente e un errore non si vede
+
+Scoperto nella review di PR6 (v2, 2026-10-21). Sostituisce la voce di T6.8a ("Assegna Clienti su molti clienti"), che era sbagliata in due punti. Il codice del dialogo è precedente a PR6 (T6.3 ne ha cambiato solo i testi); lo rende visibile P19, che dice "il primo errore ferma il resto".
+
+- **Il server.** `assignCustomers` apre una transazione per cliente, in sequenza (come `bulkHandleTask`): per ognuno blocca il cliente e il contatto, scrive fino a due `UPDATE` e le righe di log, circa otto giri verso il DB. Dentro una chiamata il primo errore ferma il resto e i clienti già fatti restano assegnati; un cliente già allineato è un no-op, quindi riprovare è sicuro.
+- **Il dialogo** (`CustomerBulkDialog.tsx`, `onSubmit`) fa `splitArray(customerIds, Math.ceil(n / 30))`: `splitArray` vuole la dimensione del blocco, non il numero. Con 30 clienti o meno parte **una chiamata per cliente**; con 500 (il massimo di una pagina, `PER_PAGES`) partono 30 chiamate da 17.
+- Le chiamate partono insieme con `Promise.all`, e Next 14.2 continua a eseguire le azioni in coda dopo che una è stata rifiutata (`action-queue.js`). Il `catch` fa solo `console.error` e rimette il form senza un messaggio. Se l'admin lascia la pagina o preme Indietro mentre gira, le chiamate in coda si perdono in silenzio.
+- **Effetto oggi:** dopo un errore su un cliente i clienti dei blocchi successivi risultano assegnati e l'admin non lo sa. Ogni cliente resta allineato al suo contatto, quindi nessun dato si rompe; si ripete l'assegnazione e i già fatti non cambiano. Lo stesso vale per "Crea/assegna contatti" (`bulkHandleTask`), che usa lo stesso dialogo.
+- **Tempo.** A 500 clienti sono 30 chiamate da 17 clienti: circa 3,5 s ciascuna alla stima di 0,2 s a transazione (T1.8: 30 ms di latenza, circa 7 giri; è una stima, non una misura di "Assegna Clienti"), ben sotto i 60 s di `maxDuration` di `/dashboard/customers`. Ma la procedura non ha un tetto su `customerIds` e la dimensione del blocco cresce con la selezione: a 5.000 clienti sarebbero 167 per chiamata (circa 35 s), a 9.000 sarebbero 300 (circa 63 s).
+
+**Da fare fuori da questa spec.** Omar ha deciso il 2026-10-21 di lasciarlo qui (F1 del REPORT di PR6, opzione A). Si riprende se la misura di "Assegna Clienti" con 100 e 500 clienti mostra chiamate lente (vicino ai 60 s) o se in produzione compaiono errori: blocchi di dimensione fissa inviati uno alla volta con `await`, che si fermano al primo rifiuto; l'azione restituisce `{ done, failedAt }` e il dialogo dice "X di N clienti assegnati; si è fermata a …; riprova"; `.max()` su `customerIds` di `bulkUpdateCustomers`; un test del dialogo con un blocco rifiutato. Misurare "Assegna Clienti" con 100 e 500 clienti sul DB di sviluppo.
+
+## "Crea/assegna contatti": tre frasi della guida e del dialogo smentite dal codice
+
+Scoperto nel terzo giro della review di PR6 (v14, 2026-10-21), preesistente. Le tre frasi c'erano già alla base `434b047` ("Crea una chiamata da fare per ogni cliente", "N chiamata/e create", "unico caso … Assegna Chiamate"). La ridenominazione di T6.3 e T6.6 le ha portate nei testi nuovi senza correggerle. I testi su "Assegna Clienti" scritti da PR6 sono giusti.
+
+- **"Crea un nuovo contatto da chiamare per ogni cliente selezionato"** (`guida-assegnazione-massiva-e-alert.md:26`; `CustomerBulkDialog.tsx:241`, `:484-485`). Per un cliente in `chiamare` o `followup`, o con un richiamo non confermato, `bulkHandleTask` non crea un contatto: riassegna solo quello attivo (`task/POST/index.ts:224-234`).
+- **Il riepilogo "N contatto/i creati e assegnati a X"** (`CustomerBulkDialog.tsx:216`, `:598-599`) conta i clienti selezionati. Con due clienti in `chiamare` dice "2 contatto/i creati", e di contatti nuovi non ne nasce nessuno. La guida (§3, Riepilogo) dice "assegnati".
+- **"Questo è l'unico caso in cui… può davvero cambiare lo stato di un cliente che aveva già un esito"** (guida :48). Anche con la casella "Risolvi alert" spuntata nasce un contatto con lo stato del form (`task/POST/index.ts:164-193`; test `bulkHandleTask.db.test.ts:106-135`).
+
+**Effetto oggi:** i dati restano giusti. Ma l'amministratore sceglie la modalità su queste frasi, e il riepilogo conta contatti mai creati.
+
+**Da fare fuori da PR6.** Omar ha deciso il 2026-10-21 di lasciarle qui (R2–R4 del terzo giro del REPORT di PR6). La correzione proposta:
+
+- nei quattro punti: "Crea un contatto da chiamare per i clienti senza contatto attivo o con un esito; quelli da chiamare o con un richiamo non confermato vengono solo riassegnati";
+- il riepilogo conta gli esiti che la procedura restituisce, o dice "N cliente/i assegnati a X";
+- "Con un richiamo lo stato cambia solo se spuntate 'Risolvi alert'".
+
+Nella stessa guida restano aperte, nel REPORT, tre frasi imprecise (R24–R26):
+
+- il pulsante si chiama "Edit", e la massiva è solo degli amministratori;
+- anche un alert scaduto, finché il controllo notturno non lo chiude, fa scattare il caso 4;
+- la frase del §7 vale solo per "Crea/assegna contatti".
+
+## Con un caricamento diretto di Clienti l'admin non vede la colonna di selezione
+
+Scoperto nella passata browser di T6.3 (PR6, 2026-10-20), preesistente (da T3.14, PR3).
+
+- `UserPreferenceProvider` crea lo store con `role: data?.role` e, dopo il primo render dei figli, lo aggiorna in un `useEffect`; da T3.14 il ruolo non è più nel browser. `CustomersTable` legge `role` una volta nell'inizializzatore di `useState` per la visibilità della colonna `select` (`role === "ADMIN"`): con un caricamento diretto di `/dashboard/customers` (o un ricaricamento) il ruolo è ancora `undefined`, la colonna non c'è, e con lei il pulsante "Edit" e il dialogo di assegnazione massiva.
+- Arrivandoci con un clic dalla barra (la query `getUserPreference` è già in cache) la colonna c'è. In più la visibilità, non il ruolo, finisce nelle preferenze salvate: la lista nascosta salvata dal caricamento diretto contiene `select`, e `CustomersTable` lo riscrive con il ruolo a ogni caricamento, quindi non resta.
+
+**Effetto oggi:** un admin che apre Clienti da un link diretto non può usare "Assegna Clienti" finché non passa da un'altra pagina. Non cambia con PR6.
+
+**Da fare fuori da questa spec:** far dipendere la visibilità di `select` dal ruolo corrente (un effetto, o `columnVisibility` calcolata dal ruolo) e non dal valore del primo render.
 
 ## `customer.insertCustomer` accetta l'operatore
 
@@ -251,7 +297,7 @@ Scoperto nella review di PR3 (T3.13), preesistente.
 
 - La creazione del cliente accetta `operatorId` dall'input, senza i controlli di "Passaggio di consegne" (D13) e senza riga `operator_reassign` nel log.
 - Lo stesso fa la rotta di import `/api/import/create/customers` (`route.ts:13-26`): `authCheck()` accetta qualunque sessione e inserisce i clienti dal corpo JSON, `operatorId` compreso, senza validazione (review di PR3, v1).
-- Le massive per gli admin (`bulkHandleTask`, `bulkUpdateCustomers`) accettano qualunque `operatorId` come destinazione, l'operatore di sistema compreso; `handover` e `reassign` lo rifiutano con `findWorkingOperator` (review di PR3, v1).
+- La massiva `bulkHandleTask` accetta qualunque `operatorId` come destinazione, l'operatore di sistema compreso; `handover`, `reassign` e, dal 2026-10-20, "Assegna Clienti" (`assignCustomers`, T6.8a) lo rifiutano con `findWorkingOperator` (review di PR3, v1).
 
 **Effetto oggi:** basso, la creazione e l'import non spostano contatti (un cliente nuovo non ne ha); le massive sono solo per gli admin.
 
@@ -446,6 +492,46 @@ Registrati nel Run 6 (2026-10-18). Nessuno blocca il rilascio.
 - **Contrasto dei primitivi condivisi** (passaggio UI del 2026-10-19, Haiku, misurato come admin): la traccia dell'interruttore spento (`#e5e5e5` su bianco, 1,26:1), la voce a fuoco dei menu (`#f5f5f5` su bianco, 1,09:1, unico segno del focus) e la X della Sheet (16×16, e non resta in vista quando il contenuto scorre).
 - **Clienti, preesistente e fuori da PR5b:** a 800 px la barra dei filtri non va a capo e metà dei filtri resta fuori dallo schermo; i selettori della barra non hanno nome accessibile; i due pulsanti con l'icona di ricerca e di filtro si chiamano "Toggle bold" e "Toggle italic" (`TableFilterSections.tsx`, `ToggleGroupDemo`).
 - **Nomi uguali:** il pulsante "Azioni per" di una riga e delle sue sotto-righe ha lo stesso nome (lo stesso cliente); due contatti precedenti dello stesso giorno e operatore hanno lo stesso testo nel dettaglio.
+
+## Clienti: la riga "Aggiornato" e il checkbox di riga (preesistenti, visti nella review di PR6)
+
+Dal passaggio UI di PR6 (v10, 2026-10-21). Sono file che PR6 non tocca; ora contano di più perché "Aggiornato" è l'ordinamento con cui si apre ogni Clienti (AC59).
+
+- `TableHeaders.tsx:26`: la colonna ordinata ha il testo `text-blue-500` (3,68:1 su bianco, WCAG 1.4.3 chiede 4,5:1) e il verso è dato solo dal colore e da una freccia senza nome; il `th` non ha `aria-sort`. Fix: `text-blue-600`, `aria-sort` sul `th`, `aria-hidden` sulla freccia.
+- `CustomerColumns.tsx:111-125`: il checkbox di riga risponde in 16×16 su un involucro di 48×48 (11% dell'area; WCAG 2.5.8 chiede 24 px). Il resto assorbe il clic con `stopPropagation` ma la riga mostra puntatore e hover, quindi un clic vicino non fa niente. Fix: un `<label>` sull'involucro, o il padding sul checkbox.
+- `/dashboard/customers/<id>` con un id che non esiste (per esempio il codice fiscale al posto dell'id del cliente) cade nel `customer!` di `[id]/page.tsx` invece di mostrare un "non trovato" (codice precedente a PR6).
+
+**Effetto oggi:** gli operatori usano il desktop con il mouse; conta per la tastiera, per il touch e per chi usa un lettore di schermo.
+
+## Clienti: la mappatura degli ordinamenti non è fissata dai test
+
+Scoperto nel terzo giro della review di PR6 (v9, 2026-10-21; il mutante su `updatedAt` è stato provato anche dall'orchestratore). I test di `getAllCustomers.db.test.ts` non fissano 12 dei 15 casi di `orderColumn` (`customer/GET/index.ts:247-283`): ognuno si può scambiare senza un test rosso (24/24 verdi). Esempi:
+
+- `name` → `surname`, `email` → `comune`, `createdAt` → `updatedAt`;
+- `operators.name` → `operators.surname`;
+- `updatedAt` → `customers.id`. Questo conta di più: `updatedAt` decrescente è l'ordinamento con cui si apre Clienti (AC59, `CustomerTableSection.tsx:18`).
+
+I test fissano solo il cognome, `signedPractices`, e `updatedAt` rispetto a `createdAt`. Le fixture creano i clienti con la chiave nello stesso ordine degli id e della data di creazione, e il test sull'operatore ne ha uno solo. Manca anche un test su un `orderBy` noto senza `sortedBy`, che dev'essere crescente (R23; la pagina manda sempre la direzione).
+
+**Effetto oggi:** nessuno. Il codice è giusto. Ma un errore in questi casi passerebbe la CI.
+
+**Da fare fuori da PR6.** Omar ha deciso il 2026-10-21 di lasciarlo qui (R1 del terzo giro del REPORT di PR6). Si chiude con un test a tabella sulle 15 colonne, in `asc` e `desc`. Nei dati:
+
+- la chiave in un ordine diverso da quello degli id e della creazione;
+- `name` e `surname` in ordine opposto;
+- due operatori con nome e cognome in ordine opposto.
+
+## Piccoli debiti di PR6
+
+Dalla review di PR6 (2026-10-21), tutti NIT o MINOR su cui nessun verificatore ha trovato un difetto di dato. Nessuno blocca il rilascio.
+
+- **La regola "stesso operatore" non è garantita per uno scrittore aggiunto dopo** (D27 lo accetta): il trigger `assertContactOperatorMatchesCustomer` vive nei test e controlla solo gli scrittori che qualcuno chiama in `operatorRule.db.test.ts`. Un test statico che elenca i file che scrivono `operatorId` su `task` o `customers` e fallisce se uno non è nell'elenco lo chiuderebbe. Due varianti non girano in quel file e sono provate altrove: la coppia già disallineata riparata da "Assegna Clienti" (caso (b), cliente già sul bersaglio) e il ramo "alert non confermato" di `bulkHandleTask`.
+- **`@/test/*` si può importare dal codice dell'app**: ESLint non lo vieta (come per `failpoint.ts` e `lockRule.ts`); nessun rischio, il DDL gira solo su PGlite. Un `no-restricted-imports` su `@/test/*` fuori da `_test/` lo chiuderebbe.
+- **`assignCustomers` controlla `canReassign` dopo `findWorkingOperator` e il lock** del cliente: un non-admin che chiamasse il servizio senza la procedura potrebbe saggiare se un operatore o un cliente esistono (non è raggiungibile dalla procedura, che è `adminProcedure`). `operatorId: z.number()` della procedura non ha `.int()` (preesistente: 1.5 dà un 500 con il messaggio di Postgres, solo per l'admin).
+- **Ordinamenti di `getAllCustomers`:** la mappatura colonna → campo è nella voce "Clienti: la mappatura degli ordinamenti non è fissata dai test" (questa riga diceva che erano fissate quattro colonne, ma `updatedAt` e l'operatore non lo sono). La chiave `IS NULL` su `signedPractices` non serve (un `count` non è mai NULL) e fa valutare la sottoquery due volte per riga (173 ms contro 24–40 ms a 30.000 clienti ordinando per quella colonna).
+- **Script `contatti-operator-mismatch.sql`:** le colonne delle liste 4, 5 e 6 diverse da `contatto_id` non sono tutte asserite dal test.
+- **Parametri rimossi nell'URL di Clienti** (`filter_by=[status]=…`, `filter=state:…`): restano nell'indirizzo e si ricopiano a ogni `push`, ignorati dal server e dal client; solo l'ordinamento si riscrive. Un operatore sconosciuto con una colonna nota in `PopoverFilter` arriva al server (è l'esposizione di `sql.raw`, A15).
+- **Riepilogo del contatto nella scheda cliente:** `PriorityBadge` ripete con l'icona il testo accanto ("Bassa"), senza `aria-hidden` sull'icona.
 
 ## Dati di prova sul DB di sviluppo (PR5b)
 

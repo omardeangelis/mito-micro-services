@@ -10,7 +10,7 @@
 - [Gate exit capture](feedback_gate_exit_capture.md) — zsh PIPESTATUS is empty: redirect gate logs; server-action bundling via export-name grep
 - [UI pass moving target](feedback_ui_pass_moving_target.md) — component can change mid-run (check mtime); EMAXCONN on shared dev server; select-all fails, use Backspace
 - [Live region and class checks](feedback_live_region_and_class_checks.md) — sr-only status repeat text is silent; class-string tests prove no reachability; compile Tailwind in scratchpad
-- [Lock order mutants](feedback_lock_order_mutants.md) — read-before-lock survives PGlite trigger tests; ask for statement-order evidence
+- [Lock order mutants](feedback_lock_order_mutants.md) — order mutants survive PGlite; real-PG random-mix stress with 2 negative controls; refresh-vs-refresh deadlock is noise
 - [Mutant harness hygiene](feedback_mutant_harness_hygiene.md) — re-sync src before each mutant; a wrong restore path contaminates the next run
 - [Live region host unmount](feedback_live_region_host_unmount.md) — announcements/focus inside a component the action can unmount never run; probe the swap
 - [Mutant apply verify](feedback_mutant_apply_verify.md) — grep-check a mutant applied before trusting green; Next action queue is serial
@@ -29,7 +29,7 @@
 - [Server-only vitest alias](feedback_server_only_vitest_alias.md) — vitest stubs server-only, so green tests prove no client reachability; tsx probe plus control
 - [Snapshot structural diff](feedback_snapshot_structural_diff.md) — diff consecutive Drizzle snapshots fully; SQL can omit a change the snapshot carries
 - [Touched procedure Effect wrap](feedback_touched_procedure_effect_wrap.md) — a procedure whose query was extracted must still go through query and runTrpc
-- [SQL input and cost probes](feedback_sql_input_and_cost_probes.md) — toSQL marker sweep; apostrophe kills sql.raw mutant; alternate array values for OR blowup
+- [SQL input and cost probes](feedback_sql_input_and_cost_probes.md) — toSQL marker sweep; apostrophe kills sql.raw mutant; OR blowup; spy byte-diff vs reference; base-vs-head raw probe
 - [List query mutant patterns](feedback_list_query_mutant_patterns.md) — seed rows passing the join filter; empty branch of found/missing; '' vs NULLS LAST; PGlite C collation; rerun survivors by hand
 - [Index-drop migration checks](feedback_index_drop_migration_checks.md) — regenerate from base; COALESCE proxy; pg_locks; real-PG Docker contention test via drizzle-kit CLI; IN-list test blind spot
 - [URL-state module checks](feedback_url_state_module_checks.md) — Number() coercion mutants; seeded fuzz; equivalent mutants; __proto__ record prototype; esbuild purity
@@ -41,3 +41,26 @@
 - [Client graph esbuild probe](feedback_client_graph_esbuild_probe.md) — bundle each "use client" file, stop at "use server", flag src/server, env, server-only; trpc/shared.ts is a known hit
 - [Focus loss and toast announce](feedback_focus_loss_and_toast_announce_probes.md) — controls that vanish on activation and Back drop focus to body; Radix toast announce escapes a modal's aria-hidden; webpack toast injection
 - [UI pass driver artifacts](feedback_ui_pass_driver_artifacts.md) — set viewport fires no resize (false stale popovers); portal/Sheet probes need hand measuring; sticky bar vs focus Tab loop
+- [Removed params, focus handoff, gates](feedback_removed_params_focus_handoff_gates.md) — URL writer vs reader names; client readers survive a server discard (popover crash); plan param literal vs real parser; gate cells vs task text; migrations in one tx
+- [Probe the engine before calling a test vacuous](lesson_probe-engine-before-calling-a-test-vacuous.md) — 20-line PGlite probe settles tie-order/CTE claims; my tiebreak suspicion was a false positive
+- [Stale text after a ledger change](lesson_stale-text-after-ledger-change.md) — where plans keep old wording: Done tasks, headers, AC tables, verification logs
+- [Migration high-water mark and partial merges](lesson_migration-high-water-mark-and-partial-merges.md) — check limited-merge options against the migrator's created_at rule
+- [Real migrate CLI probe](feedback_real_migrate_cli_probe.md) — run drizzle-kit migrate itself on template-cloned DBs; 0.31 swallows errors; xmin proves one tx; NULL created_at sorts first
+- [zsh/rg quoting](env_zsh-rg-quoting.md) — quote globs, use rg -g
+- [Release-order two-sided probe](feedback_release_order_two_sided_probe.md) — run old-client/new-server and new-client/old-server in private worktrees; diff router keys vs origin/main
+- [Equal-count swap mutants](feedback_equal_counts_swap_mutants.md) — counts row with equal values hides swapped FILTERs; per-list is_active/NULL-state fixture rows; export differential probe
+- [Rewrite-loop and allow-list probes](feedback_rewrite_loop_and_whitelist_probes.md) — stateful-router push count (cap the push or a loop hangs vitest), per-entry uniqueName probe, revert-the-fix run; mutation-payload survivors
+- [Sort fixture vacuity, runner race](feedback_sort_fixture_vacuity_and_runner_race.md) — JS-reference sweep for list order; key->id mutant; NULLS LAST only on desc; never start a mutant runner twice
+- [Data migration row differential](feedback_data_migration_row_differential.md) — to_jsonb minus col + xmin (xmax = FK KEY SHARE, not a write); ghost rows; oracle fuzz; tsx harness; EXPLAIN for CTE/triggers
+- [Force dialog states via React fiber](feedback_force_dialog_states_via_react_fiber.md) — dispatch pending/success hooks for loading/summary steps with no write; swap base copy into DOM to size a text regression
+- [Migration batch concurrency probes](feedback_migration_batch_concurrency_probes.md) — EPQ misses lock-only txs and CTE-only predicates; incidental batch AEL; FK-check deadlock; SHARE-lock pause
+- [Migration test-evidence battery](feedback_migration_test_evidence_battery.md) — SQL mutants x pg+PGlite files, fixture-gap survivors, BEFORE-tag batch mutant, regex matches statement text
+- [Table-lock migration probes](feedback_table_lock_migration_probes.md) — lock-mode mutants need a FOR UPDATE-only colleague; FK KEY SHARE vs NO KEY UPDATE; victim varies; standalone has no timeout
+- [Invariant trigger coverage](feedback_invariant_trigger_coverage_mutants.md) — check the trigger's message is the killer; actor = owner hides actor-operator mutants; aligned-only fixtures skip repair variants
+- [Operator guide branch audit](feedback_operator_guide_branch_audit.md) — map each guide/dialog claim to its procedure branch; superlatives and counts; renamed labels keep false claims
+- [API surface callers, gate reconcile](feedback_api_surface_caller_and_gate_reconcile.md) — git grep HEAD, router-key script, HTTP probe; reconcile gate counts with git ls-files; tsc rewrites tsbuildinfo
+- [Audit log chain probe](feedback_audit_log_chain_probe.md) — per-entity from/to chain over app actions + migration; export oracle checked on "before"; pg orderings
+- [Release runbook as procedure](feedback_release_runbook_as_procedure.md) — deploy green vs serving; extraction timing vs migration; failure branches; CLI time-to-fail; node lock-holder harness
+- [Deferred trigger and sync helper](feedback_deferred_trigger_and_sync_helper_mutants.md) — INSERT/NULL-direction/UPDATE OF mutants; trigger removal leaves 22/25 green; neutralised waitUntilBlocked survives; PGlite is PG16
+- [SQL report script checks](feedback_sql_report_script_checks.md) — READ ONLY allows LOCK TABLE; non-HOT update flips tie-break fixtures; column-NULL battery; closedCalls oracle; PGlite vs PG15 diff
+- [Multi-step dialog and fix validation](feedback_multistep_dialog_and_fix_validation.md) — measure every dialog step at short heights; base-text swap delta; test a candidate fix in the DOM first

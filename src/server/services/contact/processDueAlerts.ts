@@ -84,9 +84,9 @@ const processAlert = (
 
     if (italianDay(alert.deadline) === today) {
       // La nuova task attiva non deve nascere agganciata all'alert che stiamo
-      // risolvendo: altrimenti getActiveAlerts lo ripesca e lo mostra
-      // in "Attivo" come scaduto, duplicandolo con lo Storico. L'alert resta
-      // collegato (via alert.taskId) alla vecchia task per lo storico.
+      // risolvendo: l'alert è risolto, quindi il contatto non ha più un alert
+      // aperto e l'alert vive solo nello Storico, collegato (via alert.taskId)
+      // alla vecchia task.
       yield* replaceActiveContact({
         customer,
         values: {

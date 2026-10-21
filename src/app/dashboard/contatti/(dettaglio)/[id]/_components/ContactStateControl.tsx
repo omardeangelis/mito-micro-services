@@ -24,8 +24,8 @@ type Props = {
 }
 
 /**
- * The state of the contact in the detail (AC30–AC40): the same control and the
- * same wait as the Clienti table (`StateSelector`), with the source `detail`.
+ * The state of the contact in the detail (AC30–AC40): the same select and wait
+ * as the list row (`ContactRowState`), with the source `detail`.
  *
  * - The saved value is always on screen; the wait is the spinner of the
  *   selector, from the call until the new value is rendered. A second change is

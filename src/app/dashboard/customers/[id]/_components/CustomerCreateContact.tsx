@@ -5,7 +5,7 @@ import { LoadingSpinner } from "@/components/custom/loading-spinner"
 import { useContactMutationFeedback } from "@/components/custom/contact/useContactMutationFeedback"
 import {
   focusIsLost,
-  STATE_TRIGGER_SELECTOR,
+  MANAGE_LINK_SELECTOR,
 } from "@/components/custom/contact/focus"
 import { useActor } from "@/components/custom/contact/useActor"
 import { useSavingUntilRefreshed } from "@/components/custom/contact/useSavingUntilRefreshed"
@@ -22,31 +22,31 @@ type CustomerCreateContactProps = {
 
 type FocusRoot = Document | Element
 
-// How long the new state selector may take to appear after the refresh (the
-// task card waits for the operator before it shows its controls)
+// How long the "Gestisci contatto" link may take to appear after the refresh
+// (the page has to render the summary of the new contact)
 const FOCUS_WAIT_MS = 3000
 
 /**
- * Focuses the state selector of the new contact, only if the focus is lost.
- * Returns true when there is nothing left to do: the focus moved there, or
- * somewhere else on purpose.
+ * Focuses the "Gestisci contatto" link of the new contact, only if the focus is
+ * lost. Returns true when there is nothing left to do: the focus moved there,
+ * or somewhere else on purpose.
  */
-const focusStateTrigger = (root: FocusRoot): boolean => {
+const focusManageLink = (root: FocusRoot): boolean => {
   if (!focusIsLost()) return true
-  const trigger = root.querySelector<HTMLElement>(STATE_TRIGGER_SELECTOR)
-  if (!trigger) return false
-  trigger.focus({ preventScroll: true })
+  const link = root.querySelector<HTMLElement>(MANAGE_LINK_SELECTOR)
+  if (!link) return false
+  link.focus({ preventScroll: true })
   return true
 }
 
 /**
- * Once the card is gone, waits for the new selector to be rendered in the
- * sheet and focuses it. Gives up after `FOCUS_WAIT_MS`.
+ * Once the card is gone, waits for the link to be rendered in the sheet and
+ * focuses it. Gives up after `FOCUS_WAIT_MS`.
  */
 const focusWhenRendered = (root: FocusRoot) => {
-  if (focusStateTrigger(root)) return
+  if (focusManageLink(root)) return
   const observer = new MutationObserver(() => {
-    if (focusStateTrigger(root)) observer.disconnect()
+    if (focusManageLink(root)) observer.disconnect()
   })
   observer.observe(root instanceof Document ? root.body : root, {
     childList: true,
@@ -59,8 +59,8 @@ const focusWhenRendered = (root: FocusRoot) => {
  * "Crea contatto" in the customer sheet, shown when the customer has no active
  * contact (AC66, AC67): to admins and to the customer's operator only. It
  * creates an active contact in `chiamare` for the customer's operator, through
- * the same mutation as the Clienti row. The wait lasts until the refreshed
- * page is on screen, where the task card takes this card's place.
+ * `task.createContact`. The wait lasts until the refreshed
+ * page is on screen, where the summary of the contact takes this card's place.
  */
 export const CustomerCreateContact = (props: CustomerCreateContactProps) => {
   const actor = useActor()
@@ -70,7 +70,7 @@ export const CustomerCreateContact = (props: CustomerCreateContactProps) => {
   // is unmounted and its ref is empty
   const rootRef = useRef<FocusRoot | null>(null)
   // The customer has an active contact now (created, or already there): the
-  // focus goes to its state selector
+  // focus goes to the "Gestisci contatto" link of its summary
   const handoffFocus = useRef(false)
 
   // From the call until the refreshed page is rendered. The wait ends here
@@ -80,7 +80,7 @@ export const CustomerCreateContact = (props: CustomerCreateContactProps) => {
     useSavingUntilRefreshed(() => {
       if (!handoffFocus.current) return
       handoffFocus.current = false
-      focusStateTrigger(rootRef.current ?? document)
+      focusManageLink(rootRef.current ?? document)
     })
   const { onError } = useContactMutationFeedback({ refresh })
   const createContact = api.task.createContact.useMutation()

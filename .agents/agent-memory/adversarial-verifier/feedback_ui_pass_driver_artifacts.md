@@ -22,3 +22,8 @@ Driver artifacts met in a UI pass of a Next/Radix app (agent-browser 0.27.1, hea
 **How to apply:** before reporting an overlay/placement finding, reproduce it by hand once and name the engine; before reporting a probe result that contradicts the screenshot, suspect the driver.
 
 Related: [[feedback_ui_pass_moving_target]], [[feedback_ui_probe_side_effects]], [[feedback_ui_pass_mock_trpc_responses]]
+
+Added in the PR6 UI pass (2026-10-21):
+- `width-sweep` on a row inside a Sheet reported `overflowX:true` over the whole range when the page had just been opened with no screenshot (the Sheet sat at x = viewport width). After one throw-away screenshot the same sweep said `overflowX:false`. Take the screenshot before any sweep of Sheet content, and re-run a suspicious "overflow at every width".
+- The brief gave customer ids as tax codes (`ZZPR3TEST000C004`); the route id is `zzpr3-c4` (click the row and read `location`). An unknown id throws `customer!` and shows the Next error overlay, not a 404: read it as a bad input, not a defect of the change.
+- State of shared test rows drifts under parallel reviewers: scan candidates with `fetch('/dashboard/customers/<id>')` from the page and grep for a server-rendered string; client components ("Crea contatto") are not in that HTML, so a missing "Gestisci contatto" marks the no-contact rows.

@@ -6,8 +6,7 @@ import { CustomerFormSection } from "./_components/CustomerFormSection"
 import { Skeleton } from "@/components/ui/skeleton"
 import { CustomerChatSection } from "@/components/custom/notes/CustomerChatSection"
 import { api } from "@/trpc/server"
-import { CustomerActivities } from "./_components/CustomerActivities"
-import { CustomerTaskManager } from "./_components/CustomerTaskManager"
+import { CustomerContactSummary } from "./_components/CustomerContactSummary"
 import { CustomerCreateContact } from "./_components/CustomerCreateContact"
 import type { HandoverActiveContact } from "./_components/CustomerHandoverDialog"
 
@@ -44,6 +43,11 @@ export default async function CustomerHome({
   const customer = await api.customer.getCustomerById.query({ id: id })
   const customerTasks = await api.task.getActiveTask.query({ id: id })
   const activeContact = await getHandoverActiveContact(id, customerTasks[0])
+  // The summary of the active contact is read-only (AC64, AC65): the contact is
+  // read the way its detail reads it, with its operator and open alert
+  const activeContactDetail = customerTasks[0]
+    ? await api.task.getContactById.query({ id: String(customerTasks[0].id) })
+    : null
 
   return (
     <CustomerSheet id={id} blackListStatus={customer!.blackListStatus}>
@@ -53,13 +57,12 @@ export default async function CustomerHome({
           activeContact={activeContact}
         />
       </Suspense>
-      {customerTasks.length > 0 ? (
-        <Suspense>
-          <CustomerTaskManager
-            tasks={customerTasks}
-            customerOperatorId={customer!.operatorId}
-          />
-        </Suspense>
+      {activeContactDetail ? (
+        <CustomerContactSummary
+          customerId={id}
+          contact={activeContactDetail.contact}
+          alert={activeContactDetail.alert}
+        />
       ) : (
         <CustomerCreateContact
           customerId={id}
@@ -73,11 +76,6 @@ export default async function CustomerHome({
         <CustomerChatSection
           customerId={id}
           limit={limit ? Number(limit) : undefined}
-        />
-      </Suspense>
-      <Suspense fallback={<Skeleton className="h-80 w-full rounded-md" />}>
-        <CustomerActivities
-          customer={{ id, operatorId: customer!.operatorId }}
         />
       </Suspense>
     </CustomerSheet>

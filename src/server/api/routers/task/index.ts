@@ -4,9 +4,7 @@ import { changeState, setPriority, reassign } from "./PUT"
 import { resolveAlert } from "./DELETE"
 import {
   getTasksToExport,
-  getActiveAlerts,
   getCustomerAlerts,
-  getAllAvaibleTaskStatus,
   getTaskById,
   getActiveTask,
   getCustomersWithActiveAlerts,
@@ -23,10 +21,8 @@ export const taskRouter = createTRPCRouter({
   reassign,
   bulkHandleTask,
   resolveAlert,
-  getActiveAlerts,
   getCustomerAlerts,
   getTasksToExport,
-  getAllAvaibleTaskStatus,
   getActiveTask,
   getCustomersWithActiveAlerts,
   getContacts,

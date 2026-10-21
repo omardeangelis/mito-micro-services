@@ -47,38 +47,6 @@ export const getTasksToExport = operatorProcedure.query(async ({ ctx }) => {
   }
 })
 
-export const getAllAvaibleTaskStatus = operatorProcedure.query(
-  async ({ ctx }) => {
-    const { db } = ctx
-    return await db
-      .selectDistinct({ state: task.state })
-      .from(task)
-      .groupBy(task.state)
-  }
-)
-
-const getActiveAlertsInput = selectTaskSchema.pick({ alertId: true })
-
-export const getActiveAlerts = operatorProcedure
-  .input(getActiveAlertsInput)
-  .query(async ({ ctx, input }) => {
-    const { alertId } = input
-    const alerts = alertId
-      ? await ctx.db.select().from(alert).where(eq(alert.id, alertId))
-      : []
-
-    const lastAlertId = await ctx.db
-      .select()
-      .from(alert)
-      .orderBy(desc(alert.id))
-      .limit(1)
-
-    return {
-      alerts: alerts[0],
-      lastAlertId: lastAlertId[0]?.id ?? 0,
-    }
-  })
-
 const getCustomerAlertsInput = selectCustomerSchema.pick({ id: true })
 
 // Storico completo degli alert di un cliente (attivi e risolti), su tutte le

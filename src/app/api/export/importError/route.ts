@@ -53,7 +53,7 @@ async function handler(req: NextRequest) {
       XLSX.write(workbook, {
         bookType: "xlsx",
         type: "array",
-      }) as WithImplicitCoercion<ArrayBuffer | SharedArrayBuffer>
+      }) as ArrayBuffer
     )
 
     await api.supabase.uploadExportFile.mutate({

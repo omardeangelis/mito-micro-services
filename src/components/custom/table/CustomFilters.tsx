@@ -8,7 +8,6 @@ import {
   SelectTrigger,
 } from "@/components/ui/select"
 import { useGetFilterMap } from "@/lib/hooks/useGetMultipleUrlParamsValues"
-import { taskStatus } from "@/server/db/schema/task"
 import { api } from "@/trpc/react"
 import React, { useMemo } from "react"
 import { Button } from "@/components/ui/button"
@@ -328,40 +327,6 @@ export const FileCombobox = ({
           </Command>
         </PopoverContent>
       </Popover>
-    </>
-  )
-}
-
-export const TaskStatusSelector = ({
-  onValueChange,
-  ...rest
-}: SelectorProps) => {
-  const map = useGetFilterMap("filter_by")
-  const selectedStatus = map.get("status")
-  const unselectedStatus = useMemo(() => {
-    if (selectedStatus) {
-      return taskStatus.filter((s) => s !== selectedStatus)
-    }
-    return taskStatus
-  }, [selectedStatus])
-  return (
-    <>
-      <Select {...rest} onValueChange={onValueChange}>
-        <SelectTrigger value={"Stato"}>
-          <label>Stato</label>
-        </SelectTrigger>
-        <SelectContent>
-          <SelectGroup>
-            <SelectLabel>Stato</SelectLabel>
-            {unselectedStatus?.map((value) => (
-              <SelectItem key={value} value={value}>
-                {value}
-              </SelectItem>
-            ))}
-            <SelectItem value="all">Tutti</SelectItem>
-          </SelectGroup>
-        </SelectContent>
-      </Select>
     </>
   )
 }

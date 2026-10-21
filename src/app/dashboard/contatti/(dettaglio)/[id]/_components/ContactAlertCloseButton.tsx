@@ -34,9 +34,9 @@ const focusAfterClosing = () => {
 
 /**
  * The "X" of the open alert in the detail (AC29): it closes the alert, which
- * moves to the Storico with the user who closed it. The same call and the same
- * wait as the "X" of the customer's `CustomerAlertCreator`, with the source
- * `detail`.
+ * moves to the Storico with the user who closed it. It calls `resolveAlert`
+ * with the source `detail` and waits with `useSavingUntilRefreshed`, as the
+ * other controls of the contact do.
  *
  * - The alert stays on screen until the refreshed page replaces it; the wait
  *   is the spinner in place of the "X". A second click is ignored (AC39).

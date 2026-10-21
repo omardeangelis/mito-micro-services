@@ -80,8 +80,7 @@ describe("regola dei lock", () => {
 // `assertCustomerLockedOnWrite`, as the factories write without locks. A new
 // writer is covered only if it adds its call here.
 //
-// Outside the rule, so not covered here: "Assegna Clienti"
-// (`customer.bulkUpdateCustomers`, not converted), the `priority` cron
+// Outside the rule, so not covered here: the `priority` cron
 // (`refreshPriorities`) and the event-log cleanup (`cleanupTaskEventLog`).
 
 const deadline = new Date("2026-10-20T22:00:00Z")
@@ -294,10 +293,42 @@ describe("regola dei lock: l'operatore del cliente", () => {
     expect(await logOf(customer.id)).toHaveLength(2)
   })
 
-  it("customer.assignToYourself prende il lock del cliente", async () => {
+  it("customer.assignToYourself con il contatto senza operatore, che segue il cliente, prende il lock del cliente", async () => {
     const operator = await createOperator()
     const customer = await createCustomer({ operatorId: null })
-    await createTask({ customerId: customer.id, operatorId: null })
+    const contact = await createTask({
+      customerId: customer.id,
+      operatorId: null,
+    })
+    await assertCustomerLockedOnWrite()
+
+    await createTestCaller(operator).customer.assignToYourself({
+      id: customer.id,
+    })
+
+    expect(await tasksOf(customer.id)).toMatchObject([
+      { id: contact.id, operatorId: operator.id },
+    ])
+    expect(await logOf(customer.id)).toMatchObject([
+      {
+        action: "operator_reassign",
+        source: "self_assign",
+        taskId: null,
+        toOperatorId: operator.id,
+      },
+      {
+        action: "operator_reassign",
+        source: "self_assign",
+        taskId: contact.id,
+        fromOperatorId: null,
+        toOperatorId: operator.id,
+      },
+    ])
+  })
+
+  it("customer.assignToYourself senza contatto attivo prende il lock del cliente", async () => {
+    const operator = await createOperator()
+    const customer = await createCustomer({ operatorId: null })
     await assertCustomerLockedOnWrite()
 
     await createTestCaller(operator).customer.assignToYourself({
@@ -305,11 +336,7 @@ describe("regola dei lock: l'operatore del cliente", () => {
     })
 
     expect(await logOf(customer.id)).toMatchObject([
-      {
-        action: "operator_reassign",
-        source: "self_assign",
-        toOperatorId: operator.id,
-      },
+      { source: "self_assign", taskId: null, toOperatorId: operator.id },
     ])
   })
 })
@@ -457,21 +484,81 @@ describe("regola dei lock: il cron degli alert (processDueAlerts)", () => {
   })
 })
 
-describe("regola dei lock: fuori dalla regola", () => {
-  it("Assegna Clienti (customer.bulkUpdateCustomers) non prende il lock: la verifica la rifiuta", async () => {
-    vi.spyOn(console, "error").mockImplementation(() => undefined)
+// "Assegna Clienti" prende il lock del cliente (T6.8a, A11): una transazione per
+// cliente, con il contatto bloccato dopo il cliente
+describe("regola dei lock: customer.bulkUpdateCustomers", () => {
+  const seedAssign = async () => {
     const admin = await createOperator({ role: "ADMIN" })
     const previousOperator = await createOperator()
     const nextOperator = await createOperator()
-    const { customer } = await seedContact(previousOperator)
+    return { admin, previousOperator, nextOperator }
+  }
+
+  it("un cliente senza contatto: prende il lock del cliente", async () => {
+    const { admin, previousOperator, nextOperator } = await seedAssign()
+    const customer = await createCustomer({ operatorId: previousOperator.id })
     await assertCustomerLockedOnWrite()
 
-    await expect(
-      createTestCaller(admin).customer.bulkUpdateCustomers({
+    await createTestCaller(admin).customer.bulkUpdateCustomers({
+      operatorId: nextOperator.id,
+      customerIds: [customer.id],
+    })
+
+    expect(await logOf(customer.id)).toMatchObject([
+      { action: "operator_reassign", source: "bulk", taskId: null },
+    ])
+  })
+
+  it("un contatto in chiamare: prende il lock del cliente", async () => {
+    const { admin, previousOperator, nextOperator } = await seedAssign()
+    const { customer, contact } = await seedContact(previousOperator)
+    await assertCustomerLockedOnWrite()
+
+    await createTestCaller(admin).customer.bulkUpdateCustomers({
+      operatorId: nextOperator.id,
+      customerIds: [customer.id],
+    })
+
+    expect(await tasksOf(customer.id)).toMatchObject([
+      { id: contact.id, operatorId: nextOperator.id },
+    ])
+  })
+
+  it("un contatto in richiamare con l'alert aperto: prende il lock del cliente", async () => {
+    const { admin, previousOperator, nextOperator } = await seedAssign()
+    const { customer, contact } = await seedContact(
+      previousOperator,
+      "richiamare"
+    )
+    const open = await createAlert({ taskId: contact.id, deadline })
+    await assertCustomerLockedOnWrite()
+
+    await createTestCaller(admin).customer.bulkUpdateCustomers({
+      operatorId: nextOperator.id,
+      customerIds: [customer.id],
+    })
+
+    expect(await tasksOf(customer.id)).toMatchObject([
+      {
+        id: contact.id,
         operatorId: nextOperator.id,
-        customerIds: [customer.id],
-      })
-    ).rejects.toThrow("lock rule")
+        state: "richiamare",
+        alertId: open.id,
+      },
+    ])
+  })
+
+  it("cliente e contatto già allineati: passa senza scrivere", async () => {
+    const { admin, nextOperator } = await seedAssign()
+    const { customer } = await seedContact(nextOperator, "richiamare")
+    await assertCustomerLockedOnWrite()
+
+    await createTestCaller(admin).customer.bulkUpdateCustomers({
+      operatorId: nextOperator.id,
+      customerIds: [customer.id],
+    })
+
+    expect(await logOf(customer.id)).toEqual([])
   })
 })
 

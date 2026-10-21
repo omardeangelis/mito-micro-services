@@ -8,7 +8,6 @@ const filterWithMultipleValues = [
   "sede",
   "ambito",
   "jobs",
-  "status",
 ]
 
 export function useGetMultipleUrlParamsValues<T extends FilterType>(

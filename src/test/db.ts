@@ -23,6 +23,17 @@ export const LEGACY_SCHEMA_TAG = "20260902181440_nebulous_susan_delgado"
  */
 export const CONTATTI_SCHEMA_TAG = "20260929062408_contatti_operator_realign"
 
+/**
+ * The PR6 realignment of the active contacts (T6.9), and the last migration
+ * production has before the release: three are pending there (`cron_run`, the
+ * index removals and the realignment), which `db:migrate:prod` applies in one
+ * transaction. Its tests migrate from the one to the other, so the same three
+ * run together; a later migration may change the rows they compare.
+ */
+export const BEFORE_REALIGN_SCHEMA_TAG =
+  "20261011200758_task_updated_at_default"
+export const REALIGN_SCHEMA_TAG = "20261021100457_contatti_contact_realign"
+
 /** In-memory Postgres standing in for `@/server/db` in `*.db.test.ts` files. */
 export const testClient = new PGlite()
 export const testDb = drizzle(testClient, { schema })

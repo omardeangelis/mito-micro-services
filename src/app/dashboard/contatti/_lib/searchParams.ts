@@ -293,22 +293,31 @@ export const toContactsInput = (
 })
 
 /**
- * The link "Vedi contatti" of a customer (AC21): the list on that customer,
- * with the contacts a later one superseded, the newest created first. Built
- * with `serialize`, so `parse` reads it back as that state, as long as
- * `customerId` is one `parse` takes: not empty, at most 64 characters, no NUL.
- * For any other id the link is still a safe address of the list, but `parse`
- * drops the customer (an empty one is not written at all).
+ * The state of the list on one customer (AC21, D28): the contacts a later one
+ * superseded included, the newest created first. It is the state "Vedi
+ * contatti" links to and the one "Gestisci contatto" carries into the detail,
+ * so closing the detail leads back to that list.
+ */
+export const customerContactsState = (
+  customerId: string
+): ContactsListState => ({
+  ...defaultState,
+  customerId,
+  includeInactive: true,
+  orderBy: "createdAt",
+  sortedBy: "desc",
+})
+
+/**
+ * The link "Vedi contatti" of a customer (AC21): the list in the state of
+ * `customerContactsState`. Built with `serialize`, so `parse` reads it back as
+ * that state, as long as `customerId` is one `parse` takes: not empty, at most
+ * 64 characters, no NUL. For any other id the link is still a safe address of
+ * the list, but `parse` drops the customer (an empty one is not written at
+ * all).
  */
 export const seeContactsHref = (customerId: string): string =>
-  LIST_PATH +
-  serialize({
-    ...defaultState,
-    customerId,
-    includeInactive: true,
-    orderBy: "createdAt",
-    sortedBy: "desc",
-  })
+  LIST_PATH + serialize(customerContactsState(customerId))
 
 /**
  * Where closing a contact leads (AC25): the list with the state `da` carries.

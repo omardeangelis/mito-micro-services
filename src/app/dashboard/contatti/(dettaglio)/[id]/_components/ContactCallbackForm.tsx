@@ -42,8 +42,9 @@ type FormValues = {
 }
 
 /**
- * "Imposta richiamo" in the detail (AC44, AC45): the same form and the same
- * wait as the customer's `CustomerAlertCreator`, in the Prossimo alert section.
+ * "Imposta richiamo" in the detail (AC44, AC45): the form of the Prossimo
+ * alert section. It calls `setCallback` and waits with
+ * `useSavingUntilRefreshed`, as the other controls of the contact do.
  * It is mounted for an editable contact only, and renders nothing unless the
  * state has an outcome or is `nessuno` (AC46).
  *
