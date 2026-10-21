@@ -13,7 +13,7 @@ import type {
   task,
   taskEventLog,
   users,
-} from "@/server/db/schema/index"
+} from "@mito/db/schema/index"
 
 /** Giorno del calendario di Europe/Rome, "yyyy-MM-dd". */
 export type Day = string

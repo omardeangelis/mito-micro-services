@@ -3,7 +3,7 @@
 // assignment is given). Every timestamp is derived from D with `romeNoon`: the
 // DB defaults (`emailVerified`, `createdAt`) and `$onUpdate` (`updatedAt`) would
 // otherwise write "now".
-import { SYSTEM_OPERATOR_USER_ID } from "@/lib/constants/operator"
+import { SYSTEM_OPERATOR_USER_ID } from "@mito/domain/constants/operator"
 import { addDays, romeNoon } from "../day"
 import type { CustomerRow, Day, OperatorRow, UserRow } from "../types"
 import { slug } from "./customers"

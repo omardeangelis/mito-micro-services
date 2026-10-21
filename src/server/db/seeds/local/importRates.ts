@@ -2,7 +2,7 @@
 // fermo alle 12:00 di Europe/Rome del giorno D e il processo in
 // TZ=Europe/Rome, ma sul calendario di Roma e senza leggere l'orologio: stesso
 // risultato con qualsiasi fuso del processo. Non chiama l'originale.
-import { DAYS_PER_RATE } from "@/lib/constants/practice"
+import { DAYS_PER_RATE } from "@mito/domain/constants/practice"
 import { romeNoon, romeWallClock, romeWallToInstant } from "./day"
 import type { Day } from "./types"
 

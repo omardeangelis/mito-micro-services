@@ -3,14 +3,10 @@ import { execFileSync } from "node:child_process"
 import { createHash } from "node:crypto"
 import { resolve } from "node:path"
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest"
-import { DAYS_PER_RATE } from "@/lib/constants/practice"
-import { productMap } from "@/lib/constants/productMap"
-import {
-  blackListStatus,
-  sourceValues,
-  stateEnum,
-} from "@/server/db/schema/index"
-import { customerRoleEnum } from "@/server/db/schema/relations/customerToPratica"
+import { DAYS_PER_RATE } from "@mito/domain/constants/practice"
+import { productMap } from "@mito/domain/constants/productMap"
+import { blackListStatus, sourceValues, stateEnum } from "@mito/db/schema/index"
+import { customerRoleEnum } from "@mito/db/schema/relations/customerToPratica"
 import { addDays, romeDay, romeNoon, subMonthsDay } from "../day"
 import { type Dataset, type Day, type PracticeRow } from "../types"
 import { generateDataset, MIN_CUSTOMERS } from "../generate"

@@ -6,9 +6,9 @@
 // day) + `rate_pagate` x 30 days, is D, and updates it only if the last import
 // is older than 30 days. A generic practice is never selected: only the
 // scenario rows are.
-import { DAYS_PER_RATE } from "@/lib/constants/practice"
-import { productMap } from "@/lib/constants/productMap"
-import { stateEnum } from "@/server/db/schema/index"
+import { DAYS_PER_RATE } from "@mito/domain/constants/practice"
+import { productMap } from "@mito/domain/constants/productMap"
+import { stateEnum } from "@mito/db/schema/index"
 import { addDays, romeNoon, subMonthsDay } from "../day"
 import { importRates } from "../importRates"
 import type { Day, PracticeRow, ProductRow } from "../types"

@@ -3,7 +3,7 @@
 // numbered from 1000, so id order is time order, as in an append-only log.
 // Every row is at Rome noon, within the contact's lifetime, never on the day
 // D - 3 months (where `cleanup-task-event-log` would depend on the hour).
-import { taskStatus } from "@/server/db/schema/index"
+import { taskStatus } from "@mito/db/schema/index"
 import type { TaskEventLogRow } from "../types"
 import type { DayClock } from "./clock"
 import { SYSTEM_OPERATOR_ID } from "./operators"

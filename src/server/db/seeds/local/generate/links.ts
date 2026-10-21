@@ -1,6 +1,6 @@
 // Who is linked to which practice, and with which role (AC8-AC12). Pure and
 // seeded: the result depends only on `n`.
-import type { CustomerRole } from "@/server/db/schema/relations/customerToPratica"
+import type { CustomerRole } from "@mito/db/schema/relations/customerToPratica"
 import { createRandom, range } from "./random"
 
 const I: CustomerRole = "Intestatario"

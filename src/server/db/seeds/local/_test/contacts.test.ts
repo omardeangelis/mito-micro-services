@@ -4,7 +4,7 @@ import {
   taskEventAction,
   taskEventSource,
   taskStatus,
-} from "@/server/db/schema/index"
+} from "@mito/db/schema/index"
 import { addDays, romeDay, romeNoon, romeWallClock, subMonthsDay } from "../day"
 import { type AlertRow, type Dataset, type Day, type TaskRow } from "../types"
 import { generateDataset } from "../generate"

@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest"
-import { SYSTEM_OPERATOR_USER_ID } from "@/lib/constants/operator"
+import { SYSTEM_OPERATOR_USER_ID } from "@mito/domain/constants/operator"
 import { romeNoon } from "../day"
 import { type Dataset } from "../types"
 import { generateDataset } from "../generate"

@@ -9,7 +9,7 @@
 // P4 (priority 1 after the recalculation). Every open alert is on the active
 // `richiamare` contact of its customer, linked both ways; every resolved alert
 // (A5) is on a non-active contact.
-import { taskStatus } from "@/server/db/schema/index"
+import { taskStatus } from "@mito/db/schema/index"
 import { subMonthsDay } from "../day"
 import type {
   AlertRow,

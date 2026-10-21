@@ -1,7 +1,7 @@
 // Customers of the local seed (AC15, AC16 and the age scenarios U8-U10).
 // Pure and seeded: the result depends only on `n` and `day`. Dates are built
 // from day strings and `romeNoon`, never from the process time zone.
-import { blackListStatus, sourceValues } from "@/server/db/schema/index"
+import { blackListStatus, sourceValues } from "@mito/db/schema/index"
 import { createHash } from "node:crypto"
 import { addDays, romeNoon } from "../day"
 import type { CustomerRow, Day } from "../types"
