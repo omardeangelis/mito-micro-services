@@ -23,11 +23,11 @@ export default defineConfig({
   resolve: {
     alias: [
       // The real one runs only inside Next.js (`cache` of React's server
-      // build, next/headers): the tests load the backend's, as api/build.mjs
+      // build, next/headers): the tests load the backend's, as apps/api/build.mjs
       // does, before the @ alias. Tests of Next.js code mock it
       {
         find: /^@\/trpc\/server$/,
-        replacement: resolve(__dirname, "./api/src/shims/trpcServer.ts"),
+        replacement: resolve(__dirname, "./apps/api/src/shims/trpcServer.ts"),
       },
       { find: "@", replacement: resolve(__dirname, "./src") },
       // Server modules import it; outside the Next.js bundler its index throws

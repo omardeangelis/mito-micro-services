@@ -44,3 +44,5 @@ Ogni task ha un file di dettaglio operativo in `brain/chore/migration/fase-0/`, 
 6. `packages/server`: router tRPC e servizi oggi in `src/server`.
 
 Requisito: dopo ogni PR il backend Hono parte in locale con `pnpm api:dev`.
+
+**PR 3 (apps/api), 2026-10-21.** `git mv api apps/api`, pacchetto `@mito/api` senza dipendenze proprie: il bundle continua a risolvere i pacchetti dal `node_modules` della root e `src/` con l'alias `@/` del `tsconfig.json` root, che continua a controllare anche `apps/api`. Gli script `api:*` della root restano gli stessi, con i nuovi percorsi. `pnpm dev` = `turbo run dev dev:web`: Hono (`@mito/api#dev`, porta 4000, `.env.development.local` della root) e `next dev` (task di root `//#dev:web`, che è anche `pnpm dev:web`). `envMode: loose` in `turbo.json`: i task vedono tutto l'ambiente, come prima di turbo. Immagine: `apps/api/Dockerfile`, `apps/api/gcp/*`.

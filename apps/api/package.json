@@ -1,0 +1,13 @@
+{
+  "name": "@mito/api",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Il backend Hono su Cloud Run: bundla il codice server di src/ con build.mjs",
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "start": "node --enable-source-maps dist/server.js",
+    "smoke": "node smoke.mjs",
+    "dev": "node build.mjs && node --enable-source-maps --env-file=../../.env.development.local dist/server.js"
+  }
+}

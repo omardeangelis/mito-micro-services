@@ -1,7 +1,7 @@
 #!/bin/sh
 # Connects the cron reports of mito-crm-staging to #mito-cron-staging. Run it
 # once the Slack Incoming Webhook exists, and again to replace it:
-#   sh api/gcp/slack-webhook-staging.sh
+#   sh apps/api/gcp/slack-webhook-staging.sh
 # It asks for the webhook URL without echoing it, so it stays out of the shell
 # history and the repo. It stores the URL in the secret
 # STAGING_CRON_SLACK_WEBHOOK_URL (readable by the service account of staging

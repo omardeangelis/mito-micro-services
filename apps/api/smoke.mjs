@@ -1,11 +1,15 @@
-// Starts api/dist/server.js as Cloud Run does and checks that it answers. It
-// catches what breaks only in the bundle, like a package Node loads differently
-// from Next.js. The env holds placeholders only, so nothing connects
+// Starts apps/api/dist/server.js as Cloud Run does and checks that it answers.
+// It catches what breaks only in the bundle, like a package Node loads
+// differently from Next.js. The env holds placeholders only, so nothing connects
 import { spawn } from "node:child_process"
+import { fileURLToPath } from "node:url"
 
 const child = spawn(
   process.execPath,
-  ["--enable-source-maps", "api/dist/server.js"],
+  [
+    "--enable-source-maps",
+    fileURLToPath(new URL("dist/server.js", import.meta.url)),
+  ],
   {
     env: {
       PATH: process.env.PATH,

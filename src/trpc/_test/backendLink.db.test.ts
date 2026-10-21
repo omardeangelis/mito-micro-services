@@ -16,7 +16,7 @@ import { type AppRouter } from "@/server/api/root"
 import { sessions } from "@/server/db/schema/users"
 import { migrateUpTo, resetDb, testDb } from "@/test/db"
 import { createOperator } from "@/test/factories"
-import { app } from "../../../api/src/app"
+import { app } from "../../../apps/api/src/app"
 import { backendLink } from "../backendLink"
 import { transformer } from "../shared"
 
