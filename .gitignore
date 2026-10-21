@@ -20,6 +20,7 @@ next-env.d.ts
 # production
 /build
 /api/dist
+.turbo
 /tmp/*
 !/tmp/.gitkeep
 
