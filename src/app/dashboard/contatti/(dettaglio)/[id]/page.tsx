@@ -1,6 +1,6 @@
 import { unstable_noStore as noStore } from "next/cache"
 
-import { readContactError } from "@/lib/domain/contact/errors"
+import { readContactError } from "@mito/domain/contact/errors"
 import { type ServerPageProps } from "@/lib/types"
 import { api } from "@/trpc/server"
 import { parseChatLimit } from "../../_lib/chatLimit"

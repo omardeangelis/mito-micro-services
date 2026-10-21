@@ -2,7 +2,7 @@ import { type CustomerWriteWithInternalSort } from "@/app/api/import/process/_se
 import { NextResponse, type NextRequest } from "next/server"
 import { handleCustomerUpdate } from "../_services/updateCustomers"
 import { authCheck } from "@/app/api/_utils/auth"
-import { driverError } from "@/server/db/driverError"
+import { driverError } from "@mito/db/driverError"
 
 export const dynamic = "force-dynamic"
 export const maxDuration = 60

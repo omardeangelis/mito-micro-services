@@ -14,7 +14,7 @@ loadEnv()
 // } satisfies Config
 
 export default defineConfig({
-  schema: "./src/server/db/schema/*",
+  schema: "./packages/db/src/schema/*",
   dialect: "postgresql",
   migrations: {
     prefix: "supabase"
@@ -24,5 +24,5 @@ export default defineConfig({
     url: process.env.SUPABASE_DB_CONNECTION_STRING!,
     password: process.env.SUPABASE_MITO_PSW!,
   },
-  out: "./src/server/db/migrations",
+  out: "./packages/db/migrations",
 })

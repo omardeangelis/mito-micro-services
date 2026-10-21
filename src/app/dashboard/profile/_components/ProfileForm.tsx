@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { convertNullToUndefined } from "@/lib/utils/form"
-import { type Operator } from "@/lib/types/schemas"
+import { type Operator } from "@mito/domain/schemas"
 import { Button } from "@/components/ui/button"
 import { useFormState, useFormStatus } from "react-dom"
 import { updateOperatorInfo } from "../_actions/updateOperatorInfo"

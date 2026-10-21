@@ -26,7 +26,7 @@
 -- whose customer has one; only `a2_esportabili` is the stop.
 --
 -- "Exportable" is what the calls export reads (`closedCalls`,
--- src/server/services/export/calls.ts): `closed_at` set and a state other than
+-- packages/server/src/services/export/calls.ts): `closed_at` set and a state other than
 -- `nessuno` (a missing state is not exportable either). It ignores the dates
 -- of the export's interval, so "exportable" means closed in some interval. The
 -- export inner-joins operators, so a contact with no operator is left out

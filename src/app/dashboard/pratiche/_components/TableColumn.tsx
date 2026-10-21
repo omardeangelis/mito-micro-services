@@ -11,7 +11,7 @@ import {
   getProductLabel,
   getLabelColorByProductType,
   getProductType,
-} from "@/lib/constants/productMap"
+} from "@mito/domain/constants/productMap"
 import { Badge } from "@/components/ui/badge"
 import { SortableHeader } from "@/components/custom/table/TableHeaders"
 import {
@@ -22,8 +22,8 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu"
-import { stateEnum } from "@/server/db/schema/pratiche"
-import type { Practice } from "@/lib/types/schemas"
+import { stateEnum } from "@mito/db/schema/pratiche"
+import type { Practice } from "@mito/domain/schemas"
 
 export type PraticheColumnSelectedProps = {
   id: string | number

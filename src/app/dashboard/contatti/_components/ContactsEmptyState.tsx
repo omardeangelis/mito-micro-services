@@ -3,7 +3,7 @@
 import Link from "next/link"
 
 import { buttonVariants } from "@/components/ui/button"
-import type { CustomerFilter } from "@/server/services/contact/getContacts"
+import type { CustomerFilter } from "@mito/server/services/contact/getContacts"
 import { listHref } from "../_lib/listHref"
 import {
   activeFilters,

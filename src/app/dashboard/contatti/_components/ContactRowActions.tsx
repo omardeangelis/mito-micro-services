@@ -11,7 +11,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import type { ContactRow } from "@/server/services/contact/getContacts"
+import type { ContactRow } from "@mito/server/services/contact/getContacts"
 import { contactActionsId, customerNameId } from "../_lib/ids"
 import { detailHref, type ContactsListState } from "../_lib/searchParams"
 

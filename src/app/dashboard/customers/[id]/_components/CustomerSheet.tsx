@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/sheet"
 import { useHistoryBack } from "@/lib/hooks/useHistoryBack"
 
-import { type Customer } from "@/lib/types/schemas"
+import { type Customer } from "@mito/domain/schemas"
 import { BlackListBadge } from "../../_components/BlackListBadge"
 
 type Props = PropsWithChildren<Pick<Customer, "id" | "blackListStatus">>

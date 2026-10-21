@@ -2,7 +2,7 @@
 
 import { TRPCClientError } from "@trpc/client"
 import { TRPCError } from "@trpc/server"
-import { type AppRouter } from "@/server/api/root"
+import { type AppRouter } from "@mito/server/api/root"
 import { api } from "@/trpc/server"
 import { revalidatePath } from "next/cache"
 import { z } from "zod"

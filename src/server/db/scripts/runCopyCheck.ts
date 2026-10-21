@@ -5,7 +5,7 @@
 // Prints the differences and exits 1 if there is any.
 import postgres from "postgres"
 import { loadEnv } from "@/lib/global/loadDbEnv"
-import { localConnection } from "../localDsn"
+import { localConnection } from "@mito/db/localDsn"
 import { compareFingerprints, fingerprint } from "./copyCheck"
 import { LOCAL_DATABASE_URL } from "./localDb"
 

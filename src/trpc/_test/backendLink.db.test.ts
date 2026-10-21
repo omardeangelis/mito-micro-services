@@ -12,8 +12,8 @@ import { once } from "node:events"
 import { type AddressInfo } from "node:net"
 import { serve, type ServerType } from "@hono/node-server"
 import { createTRPCProxyClient, TRPCClientError } from "@trpc/client"
-import { type AppRouter } from "@/server/api/root"
-import { sessions } from "@/server/db/schema/users"
+import { type AppRouter } from "@mito/server/api/root"
+import { sessions } from "@mito/db/schema/users"
 import { migrateUpTo, resetDb, testDb } from "@/test/db"
 import { createOperator } from "@/test/factories"
 import { app } from "../../../apps/api/src/app"
@@ -21,7 +21,7 @@ import { backendLink } from "../backendLink"
 import { transformer } from "../shared"
 
 // The real NextAuth configuration: the backend reads sessions with its adapter
-vi.unmock("@/server/auth")
+vi.unmock("@mito/server/auth")
 
 const DAY = 24 * 60 * 60 * 1000
 

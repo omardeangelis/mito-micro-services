@@ -10,14 +10,14 @@ import {
 import { once } from "node:events"
 import { type AddressInfo } from "node:net"
 import { serve, type ServerType } from "@hono/node-server"
-import { sessions } from "@/server/db/schema/users"
+import { sessions } from "@mito/db/schema/users"
 import { migrateUpTo, resetDb, testDb } from "@/test/db"
 import { createOperator } from "@/test/factories"
 import { app } from "../../../apps/api/src/app"
 import { backendSession } from "../backendSession"
 
 // The real NextAuth configuration, as the backend runs it
-vi.unmock("@/server/auth")
+vi.unmock("@mito/server/auth")
 
 const DAY = 24 * 60 * 60 * 1000
 

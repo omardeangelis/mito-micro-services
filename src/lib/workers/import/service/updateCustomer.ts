@@ -2,12 +2,12 @@ import {
   type CustomerWrite,
   type Customer,
   type PracticeWrite,
-} from "@/lib/types/schemas"
+} from "@mito/domain/schemas"
 import { cleanObject } from "@/lib/utils"
-import { db } from "@/server/db"
+import { db } from "@mito/db"
 import { eq } from "drizzle-orm"
-import { practices } from "@/server/db/schema/pratiche"
-import { updateImportedCustomer } from "@/server/shared/updateImportedCustomer"
+import { practices } from "@mito/db/schema/pratiche"
+import { updateImportedCustomer } from "@mito/server/shared/updateImportedCustomer"
 
 export type HandleCustomerUpdateResponse = Promise<{
   customersToCreate: CustomerWrite[]

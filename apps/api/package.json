@@ -9,5 +9,11 @@
     "start": "node --enable-source-maps dist/server.js",
     "smoke": "node smoke.mjs",
     "dev": "node build.mjs && node --enable-source-maps --env-file=../../.env.development.local dist/server.js"
+  },
+  "devDependencies": {
+    "@mito/db": "workspace:*",
+    "@mito/domain": "workspace:*",
+    "@mito/env": "workspace:*",
+    "@mito/server": "workspace:*"
   }
 }

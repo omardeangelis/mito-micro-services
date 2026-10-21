@@ -21,7 +21,7 @@ import {
   DEFAULT_PAGE,
   DEFAULT_PER_PAGE,
   PER_PAGES,
-} from "@/lib/constants/pagination"
+} from "@mito/domain/constants/pagination"
 
 export const TablePagination = ({ itemCount }: { itemCount: number }) => {
   const searchParams = useSearchParams()

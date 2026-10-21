@@ -1,6 +1,6 @@
-import { appRouter } from "@/server/api/root"
-import { type createTRPCContext } from "@/server/api/trpc"
-import { db } from "@/server/db"
+import { appRouter } from "@mito/server/api/root"
+import { type createTRPCContext } from "@mito/server/api/trpc"
+import { db } from "@mito/db"
 
 type Context = Awaited<ReturnType<typeof createTRPCContext>>
 

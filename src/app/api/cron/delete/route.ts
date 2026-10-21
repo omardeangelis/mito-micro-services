@@ -1,6 +1,6 @@
 import * as Sentry from "@sentry/nextjs"
 import { NextResponse } from "next/server"
-import { deleteExportFiles } from "@/server/services/cron/deleteExport"
+import { deleteExportFiles } from "@mito/server/services/cron/deleteExport"
 import { authCheck } from "../../_utils/auth"
 
 export const dynamic = "force-dynamic"

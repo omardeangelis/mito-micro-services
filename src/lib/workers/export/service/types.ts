@@ -2,7 +2,7 @@ import {
   type CustomerToPraticaWrite,
   type CustomerWrite,
   type PracticeWrite,
-} from "@/lib/types/schemas"
+} from "@mito/domain/schemas"
 import { type NullableAllObjectKeys } from "@/lib/types"
 import { type ZodIssue } from "zod"
 

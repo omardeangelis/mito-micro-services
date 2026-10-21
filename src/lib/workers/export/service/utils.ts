@@ -1,9 +1,9 @@
-import { type Message } from "@/lib/types/schemas"
+import { type Message } from "@mito/domain/schemas"
 import type * as XLSX from "xlsx"
 import { type DateRange } from "react-day-picker"
 import { type ZodIssue } from "zod"
 import { type StandardImportFile, type WaveFile } from "./types"
-import { type ClosedCall } from "@/server/services/export/calls"
+import { type ClosedCall } from "@mito/server/services/export/calls"
 
 const formatFileName = (filename: string, name: string) => {
   if (name === "") return filename

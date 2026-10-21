@@ -1,7 +1,10 @@
 import { api } from "@/trpc/server"
 import { AdminDataSection } from "./AdminDataSection"
 import { OperatorDataSection } from "./OperatorDataSection"
-import { type TimeFrame, DEFUALTTIMEFRAME } from "@/lib/constants/timeframes"
+import {
+  type TimeFrame,
+  DEFUALTTIMEFRAME,
+} from "@mito/domain/constants/timeframes"
 
 export const DataSection = async ({
   timeframe = DEFUALTTIMEFRAME,

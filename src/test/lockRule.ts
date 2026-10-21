@@ -1,9 +1,9 @@
 import { getTableName } from "drizzle-orm"
-import { messages } from "@/server/db/schema/chat"
-import { customers } from "@/server/db/schema/customers"
-import { chatToOperator } from "@/server/db/schema/relations/chatToOperator"
-import { alert, task } from "@/server/db/schema/task"
-import { taskEventLog } from "@/server/db/schema/taskEventLog"
+import { messages } from "@mito/db/schema/chat"
+import { customers } from "@mito/db/schema/customers"
+import { chatToOperator } from "@mito/db/schema/relations/chatToOperator"
+import { alert, task } from "@mito/db/schema/task"
+import { taskEventLog } from "@mito/db/schema/taskEventLog"
 import { FAILPOINT_SCHEMA, testClient } from "./db"
 
 const name = `${FAILPOINT_SCHEMA}.lock_rule`
@@ -12,7 +12,7 @@ const name = `${FAILPOINT_SCHEMA}.lock_rule`
  * From now on, every write (insert, update, delete) of a row of `task`,
  * `alert` or `task_event_log` fails with "lock rule: …" unless the current
  * transaction has locked the row's customer, as `lockCustomer` does
- * (`src/server/effect/db.ts`). `resetDb` removes the check.
+ * (`packages/server/src/effect/db.ts`). `resetDb` removes the check.
  *
  * The customer is `customer_id` for `task` and `task_event_log`, the customer
  * of the task in `task_id` for `alert`: the new row for an insert, the old one

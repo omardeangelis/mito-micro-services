@@ -13,7 +13,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { z } from "zod"
 import { Button } from "@/components/ui/button"
-import { type Operator, insertCustomerSchema } from "@/lib/types/schemas"
+import { type Operator, insertCustomerSchema } from "@mito/domain/schemas"
 import {
   SelectContent,
   SelectLabel,
@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/select"
 import { DatePickerFormItem } from "@/components/custom/date-picker"
 import { nanoid } from "nanoid"
-import { sourceValues } from "@/server/db/schema/index"
+import { sourceValues } from "@mito/db/schema/index"
 import { api } from "@/trpc/react"
 import { useRouter } from "next/navigation"
 import {

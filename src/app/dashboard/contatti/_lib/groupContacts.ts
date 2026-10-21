@@ -1,4 +1,4 @@
-import { type ContactRow } from "@/server/services/contact/getContacts"
+import { type ContactRow } from "@mito/server/services/contact/getContacts"
 
 /** A row of the table: a contact, and whether it hangs under another. */
 export type ContactEntry = { contact: ContactRow; nested: boolean }

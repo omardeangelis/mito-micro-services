@@ -10,7 +10,7 @@ import {
 } from "vitest"
 import * as Sentry from "@sentry/nextjs"
 import { asc, DrizzleQueryError, getTableName } from "drizzle-orm"
-import { taskEventLog } from "@/server/db/schema/taskEventLog"
+import { taskEventLog } from "@mito/db/schema/taskEventLog"
 import {
   FAILPOINT_SCHEMA,
   migrateUpTo,

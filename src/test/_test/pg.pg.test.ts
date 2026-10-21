@@ -16,7 +16,10 @@ import {
 
 const journal = JSON.parse(
   fs.readFileSync(
-    path.resolve(__dirname, "../../server/db/migrations/meta/_journal.json"),
+    path.resolve(
+      __dirname,
+      "../../../packages/db/migrations/meta/_journal.json"
+    ),
     "utf8"
   )
 ) as { entries: unknown[] }

@@ -2,8 +2,8 @@ import { fileURLToPath } from "url"
 import postgres from "postgres"
 import { drizzle } from "drizzle-orm/postgres-js"
 import { migrate } from "drizzle-orm/postgres-js/migrator"
-import { localConnection } from "../localDsn"
-import { migrateWithPushedSchema } from "../pushedSchema"
+import { localConnection } from "@mito/db/localDsn"
+import { migrateWithPushedSchema } from "@mito/db/pushedSchema"
 
 /**
  * The local database, in the Postgres of docker-compose.yml. Written here: the
@@ -14,7 +14,7 @@ export const LOCAL_DATABASE_URL =
   "postgres://postgres:local@127.0.0.1:54329/mito_local"
 
 const MIGRATIONS_FOLDER = fileURLToPath(
-  new URL("../migrations", import.meta.url)
+  new URL("../../../../packages/db/migrations", import.meta.url)
 )
 
 const connect = (database: string) =>

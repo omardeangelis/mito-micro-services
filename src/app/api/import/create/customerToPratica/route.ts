@@ -2,11 +2,11 @@ import {
   type CustomerToPraticaWrite,
   type PracticeWrite,
   type CustomerWrite,
-} from "@/lib/types/schemas"
+} from "@mito/domain/schemas"
 import { NextResponse, type NextRequest } from "next/server"
 import { handleCTPImport } from "./_services/processCTP"
 import { authCheck } from "@/app/api/_utils/auth"
-import { driverError } from "@/server/db/driverError"
+import { driverError } from "@mito/db/driverError"
 
 export const dynamic = "force-dynamic"
 export const maxDuration = 60

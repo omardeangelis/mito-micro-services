@@ -8,9 +8,9 @@ import { buttonVariants } from "@/components/ui/button"
 import {
   operatorDisplayName,
   type OperatorRef,
-} from "@/lib/domain/contact/permissions"
+} from "@mito/domain/contact/permissions"
 import { formatDateAsDMY } from "@/lib/utils"
-import type { GetContactByIdResult } from "@/server/services/contact/getContactById"
+import type { GetContactByIdResult } from "@mito/server/services/contact/getContactById"
 import { ContactOperatorControl } from "./ContactOperatorControl"
 import { ContactPriorityControl } from "./ContactPriorityControl"
 import { ContactStateControl } from "./ContactStateControl"

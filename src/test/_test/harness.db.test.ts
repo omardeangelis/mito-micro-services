@@ -1,5 +1,5 @@
 import { beforeAll, beforeEach, describe, expect, it } from "vitest"
-import { task } from "@/server/db/schema/task"
+import { task } from "@mito/db/schema/task"
 import { driverFailure, migrateUpTo, resetDb } from "@/test/db"
 import { createTestCaller } from "@/test/caller"
 import {

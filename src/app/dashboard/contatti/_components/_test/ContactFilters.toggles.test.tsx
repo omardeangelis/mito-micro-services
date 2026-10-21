@@ -1,7 +1,7 @@
 import { cleanup, render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { beforeEach, describe, expect, it, vi } from "vitest"
-import { type CustomerFilter } from "@/server/services/contact/getContacts"
+import { type CustomerFilter } from "@mito/server/services/contact/getContacts"
 import {
   defaultState,
   seeContactsHref,

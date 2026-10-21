@@ -1,7 +1,7 @@
 // import * as XLSX from "xlsx"
 // import { customerSheetHeader, practicesSheetHeader } from "../../utils"
-// import { getProductLabel, type ProductMapKey } from "@/lib/constants/productMap"
-// import { type Customer, type Practice } from "@/lib/types/schemas"
+// import { getProductLabel, type ProductMapKey } from "@mito/domain/constants/productMap"
+// import { type Customer, type Practice } from "@mito/domain/schemas"
 // import { NextResponse, type NextRequest } from "next/server"
 // import { parseReadableStream } from "@/lib/utils/api"
 

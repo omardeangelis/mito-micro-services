@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { TRPCClientError } from "@trpc/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-import { type ContactErrorData } from "@/lib/domain/contact/errors"
+import { type ContactErrorData } from "@mito/domain/contact/errors"
 import { formatDeadline } from "@/lib/utils/format"
 import { ContactCallbackForm } from "../ContactCallbackForm"
 

@@ -1,4 +1,4 @@
-import { type PriorityBand } from "@/lib/domain/contact/priority"
+import { type PriorityBand } from "@mito/domain/contact/priority"
 
 /** What each priority band is called: the filter and the detail say the same. */
 export const priorityLabels = {

@@ -1,6 +1,6 @@
-// import { db } from "@/server/db"
+// import { db } from "@mito/db"
 // import * as XLSX from "xlsx"
-// import { messages } from "@/server/db/schema/chat"
+// import { messages } from "@mito/db/schema/chat"
 // import { type DateRangePickerValue } from "@tremor/react"
 // import { eq } from "drizzle-orm"
 // import {

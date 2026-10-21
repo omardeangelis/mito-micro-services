@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server"
 import { handlePracticesUpdate } from "../_services/updatePractices"
 import { type PracticeWriteWithInternalSort } from "../../process/_services/type"
 import { authCheck } from "@/app/api/_utils/auth"
-import { driverError } from "@/server/db/driverError"
+import { driverError } from "@mito/db/driverError"
 
 export const dynamic = "force-dynamic"
 export const maxDuration = 60

@@ -1,4 +1,4 @@
-import { readContactError } from "@/lib/domain/contact/errors"
+import { readContactError } from "@mito/domain/contact/errors"
 
 /** What the user reads when the error is not a contact error (network, server). */
 const GENERIC_MESSAGE = "Modifica non salvata, riprova"

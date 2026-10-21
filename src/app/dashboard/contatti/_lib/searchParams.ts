@@ -1,13 +1,16 @@
 import { type z } from "zod"
-import { DEFAULT_PAGE, DEFAULT_PER_PAGE } from "@/lib/constants/pagination"
+import {
+  DEFAULT_PAGE,
+  DEFAULT_PER_PAGE,
+} from "@mito/domain/constants/pagination"
 import {
   type ContactsFilters,
   type GetContactsInput,
   MAX_OPERATOR_IDS,
   getContactsInput,
-} from "@/lib/domain/contact/listInput"
-import { type PriorityBand, priorityBands } from "@/lib/domain/contact/priority"
-import { allStates } from "@/lib/domain/contact/status"
+} from "@mito/domain/contact/listInput"
+import { type PriorityBand, priorityBands } from "@mito/domain/contact/priority"
+import { allStates } from "@mito/domain/contact/status"
 
 /**
  * The URL state of the list of contacts (`/dashboard/contatti`): what the

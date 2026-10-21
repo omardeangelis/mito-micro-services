@@ -2,7 +2,7 @@ import {
   type CustomerToPraticaWrite,
   type CustomerWrite,
   type PracticeWrite,
-} from "@/lib/types/schemas"
+} from "@mito/domain/schemas"
 
 export type PracticeWriteWithInternalSort = PracticeWrite & {
   _internal_sort: number

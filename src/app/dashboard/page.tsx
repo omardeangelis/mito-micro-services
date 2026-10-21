@@ -6,7 +6,10 @@ import { WorkerImportDialog } from "./_components/WorkerImportDialog"
 import { ExportDialog } from "./_components/ExportDialog"
 import { DataSectionSkeleton } from "./_components/AdminDataSection"
 import { type ServerPageProps } from "@/lib/types"
-import { DEFUALTTIMEFRAME, type TimeFrame } from "@/lib/constants/timeframes"
+import {
+  DEFUALTTIMEFRAME,
+  type TimeFrame,
+} from "@mito/domain/constants/timeframes"
 import { TimeFrameSelector } from "@/components/custom/date-picker"
 
 export default async function DashboardHome(

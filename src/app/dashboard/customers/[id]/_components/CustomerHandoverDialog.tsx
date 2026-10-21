@@ -22,9 +22,9 @@ import {
 } from "@/components/ui/select"
 import { LoadingSpinner } from "@/components/custom/loading-spinner"
 import { useContactMutationFeedback } from "@/components/custom/contact/useContactMutationFeedback"
-import { SYSTEM_OPERATOR_USER_ID } from "@/lib/constants/operator"
-import { operatorDisplayName } from "@/lib/domain/contact/permissions"
-import { type Operator } from "@/lib/types/schemas"
+import { SYSTEM_OPERATOR_USER_ID } from "@mito/domain/constants/operator"
+import { operatorDisplayName } from "@mito/domain/contact/permissions"
+import { type Operator } from "@mito/domain/schemas"
 import { formatDeadline } from "@/lib/utils/format"
 import { api } from "@/trpc/react"
 

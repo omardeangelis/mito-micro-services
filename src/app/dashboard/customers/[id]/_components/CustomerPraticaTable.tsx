@@ -11,7 +11,7 @@ import {
   getLabelColorByProductType,
   getProductLabel,
   getProductType,
-} from "@/lib/constants/productMap"
+} from "@mito/domain/constants/productMap"
 import { Badge } from "@/components/ui/badge"
 import {
   Table,
@@ -22,7 +22,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { useRouter } from "next/navigation"
-import type { CustomerToPratica, Practice } from "@/lib/types/schemas"
+import type { CustomerToPratica, Practice } from "@mito/domain/schemas"
 import { formatDateAsDMY } from "@/lib/utils"
 
 type Pratica = Practice

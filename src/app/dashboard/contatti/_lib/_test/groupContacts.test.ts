@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { type ContactRow } from "@/server/services/contact/getContacts"
+import { type ContactRow } from "@mito/server/services/contact/getContacts"
 import { groupContacts } from "../groupContacts"
 
 const row = (
