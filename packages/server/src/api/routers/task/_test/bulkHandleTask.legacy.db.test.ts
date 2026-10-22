@@ -1,5 +1,11 @@
 import { beforeAll, beforeEach, describe, expect, it } from "vitest"
-import { LEGACY_SCHEMA_TAG, migrateUpTo, resetDb, tasksOf } from "@/test/db"
+import {
+  LEGACY_SCHEMA_TAG,
+  migrateUpTo,
+  resetDb,
+  tasksOf,
+  testClient,
+} from "@/test/db"
 import { createTestCaller } from "@/test/caller"
 import { createCustomer, createOperator, createTask } from "@/test/factories"
 
@@ -8,6 +14,11 @@ import { createCustomer, createOperator, createTask } from "@/test/factories"
 
 beforeAll(async () => {
   await migrateUpTo(LEGACY_SCHEMA_TAG)
+  // The code of today reads the users' disabled columns (gestione-operatori),
+  // which come with a later migration: only they are added here
+  await testClient.exec(
+    `ALTER TABLE "mito-deutsche_user" ADD COLUMN "disabled_at" timestamp with time zone, ADD COLUMN "disabled_by" integer`
+  )
 })
 
 beforeEach(async () => {

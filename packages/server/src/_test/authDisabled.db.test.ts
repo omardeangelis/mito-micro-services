@@ -1,5 +1,14 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest"
-import { sessions } from "@mito/db/schema/users"
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest"
+import { type User } from "next-auth"
+import { sessions, users } from "@mito/db/schema/users"
 import { authOptions } from "../auth"
 import { migrateUpTo, resetDb, testDb } from "@/test/db"
 import { createOperator } from "@/test/factories"
@@ -50,5 +59,45 @@ describe("adapter.getSessionAndUser", () => {
 
     expect(found?.user.id).toBe(operator.userId)
     expect(found?.session.sessionToken).toBe(token)
+  })
+})
+
+describe("signIn di un utente disattivato", () => {
+  const signIn = (user: { id: string; email: string }) =>
+    authOptions.callbacks!.signIn!({ user: user as User, account: null })
+
+  it("lo rifiuta riconosciuto per id, l'utente dell'adapter di un account collegato", async () => {
+    const operator = await createOperator({ disabledAt: new Date() })
+
+    expect(
+      await signIn({
+        id: operator.userId,
+        email: `${operator.userId}@test.local`,
+      })
+    ).toBe(false)
+  })
+
+  it("lo rifiuta riconosciuto per email, anche con altre maiuscole, con l'id del provider", async () => {
+    const operator = await createOperator({ disabledAt: new Date() })
+    const email = `${operator.userId}@test.local`
+
+    expect(await signIn({ id: "provider-id", email })).toBe(false)
+    expect(
+      await signIn({ id: "provider-id", email: email.toUpperCase() })
+    ).toBe(false)
+    expect(await testDb.select({ id: users.id }).from(users)).toEqual([
+      { id: operator.userId },
+    ])
+  })
+
+  it("fa ancora entrare un utente attivo già nel database", async () => {
+    const operator = await createOperator()
+
+    expect(
+      await signIn({
+        id: operator.userId,
+        email: `${operator.userId}@test.local`,
+      })
+    ).toBe(true)
   })
 })

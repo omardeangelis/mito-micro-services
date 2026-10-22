@@ -14,6 +14,7 @@ import { db } from "@mito/db"
 import { type Db } from "./effect/db"
 import { ServerLive } from "./effect/server"
 import { requestSession } from "./requestSession"
+import { isUserDisabled } from "./services/auth/disabled"
 import { createUserWithOperator, matchUserEmail } from "./services/auth/users"
 import { pgTableCreator } from "drizzle-orm/pg-core"
 
@@ -124,6 +125,12 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     // Also called before the email login sends its link
     signIn: async ({ user }) => {
+      // A deactivated user stays out, in production too (AC17). NextAuth
+      // passes the database user when the account is linked, otherwise the
+      // provider's profile, found by its email
+      if (await runAuth(isUserDisabled({ id: user.id, email: user.email }))) {
+        return false
+      }
       if (isProduction) return true
       const email = user.email
       if (!email) return false
@@ -158,6 +165,17 @@ export const authOptions: NextAuthOptions = {
     // still calls it without the id (core/lib/callback-handler)
     createUser: (user: Omit<AdapterUser, "id">) =>
       runAuth(createUserWithOperator(user)),
+    // The session of a deactivated user is no session, for getServerSession
+    // and for the backend (sessionFromRequest) alike (AC16). The adapter's
+    // tables don't know users.disabled_at, hence one more read by primary
+    // key. Whatever replaces NextAuth must keep this check (TD4,
+    // brain/chore/migrazione-effect.md §7)
+    getSessionAndUser: async (sessionToken) => {
+      const found = await DBAdapter.getSessionAndUser!(sessionToken)
+      if (!found) return null
+      if (await runAuth(isUserDisabled({ id: found.user.id }))) return null
+      return found
+    },
   },
   providers,
 }

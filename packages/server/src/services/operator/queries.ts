@@ -1,15 +1,17 @@
 import "server-only"
 import { Effect } from "effect"
-import { eq } from "drizzle-orm"
+import { eq, isNull } from "drizzle-orm"
 import { operators } from "@mito/db/schema/operators"
 import { users } from "@mito/db/schema/users"
 import { operatorSelectCompleteResponse } from "@mito/domain/constants/schema"
 import { query } from "../../effect/db"
 
 /**
- * The operators that can work: those with a user row, with their role. The
- * system operator has no user, so it is not listed. "Active" is "with a user
- * row" for now; the deactivation spec will add its filter here.
+ * The operators that can work, with their role: those with a user row that
+ * is not deactivated (gestione-operatori, AC14). The system operator has no
+ * user, so it is not listed. The filters, the assignment pickers and the
+ * admin table read this list; `getOperatorById` still finds a deactivated
+ * operator, for the history.
  */
 export const listActiveOperators = () =>
   query((client) =>
@@ -20,6 +22,7 @@ export const listActiveOperators = () =>
       })
       .from(operators)
       .innerJoin(users, eq(operators.userId, users.id))
+      .where(isNull(users.disabledAt))
   )
 
 /**
