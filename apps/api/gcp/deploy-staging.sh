@@ -1,8 +1,9 @@
 #!/bin/sh
-# Deploys an image of apps/api to mito-crm-staging:
-#   sh apps/api/gcp/deploy-staging.sh <tag>
-# The workflow deploy-api-staging.yml runs it on each merge into dev, with the
-# image it built; by hand, the tag is the commit build.sh printed.
+# Deploys an image of apps/api to mito-crm-staging, by digest:
+#   sh apps/api/gcp/deploy-staging.sh <image>@sha256:<digest>
+# The workflow deploy-staging.yaml runs it on each merge into dev, after the
+# CI, with the image it built; by hand, the image is the one build.sh printed.
+# A digest, not a tag: a tag can be moved, the digest is the image.
 # 1. The migrations job applies the pending migrations with the new image
 #    (apps/api/src/migrate.ts). If they fail it stops here, and the service
 #    keeps its revision. The old revision keeps serving while they run, so a
@@ -13,10 +14,13 @@
 # The values come from the STAGING_* secrets (load-staging-secrets.mjs), which
 # only the mito-crm-staging service account can read
 set -e
-TAG=${1:?usage: deploy-staging.sh <tag>, the commit build.sh printed}
+IMAGE=${1:?usage: deploy-staging.sh <image>@sha256:<digest>, as build.sh prints it}
+case "$IMAGE" in
+  europe-west3-docker.pkg.dev/mito-crm/mito-crm-staging/*@sha256:*) ;;
+  *) echo "Not an image of staging's repository by digest: $IMAGE" >&2; exit 1 ;;
+esac
 P=mito-crm
 R=europe-west3
-IMAGE=europe-west3-docker.pkg.dev/mito-crm/mito-crm/mito-api:$TAG
 URL=https://mito-crm-staging-869830994359.europe-west3.run.app
 # NextAuth builds callbacks, email links and cookies from NEXTAUTH_URL: the
 # public address of the frontend, which the Vercel rewrites send here
@@ -44,8 +48,9 @@ gcloud run jobs execute mito-crm-staging-migrate --project=$P --region=$R \
 # STAGING_CRON_SLACK_WEBHOOK_URL, which slack-webhook-staging.sh creates.
 # Storage is the GCS bucket storage-staging.sh creates, with the ADC of the
 # service account (packages/server/src/services/storage/layer.ts)
-# A revision tag starts with a letter
-REVISION_TAG=sha-$TAG
+# A revision tag starts with a letter: d- and the digest's first 12 characters
+DIGEST=${IMAGE##*@sha256:}
+REVISION_TAG=d-$(printf %s "$DIGEST" | cut -c1-12)
 gcloud run deploy mito-crm-staging --project=$P --region=$R \
   --image=$IMAGE \
   --add-cloudsql-instances=$INSTANCE \
