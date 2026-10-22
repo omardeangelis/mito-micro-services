@@ -64,6 +64,11 @@ gcloud artifacts repositories set-cleanup-policies mito-crm-staging \
 gcloud artifacts repositories add-iam-policy-binding mito-crm-staging \
   --project=$P --location=$R --member=serviceAccount:$DEPLOYER \
   --role=roles/artifactregistry.writer --condition=None >/dev/null
+# build.sh, by hand, builds there too, with Cloud Build's service account
+gcloud artifacts repositories add-iam-policy-binding mito-crm-staging \
+  --project=$P --location=$R \
+  --member=serviceAccount:mito-crm-build@$P.iam.gserviceaccount.com \
+  --role=roles/artifactregistry.writer --condition=None >/dev/null
 
 gcloud run services add-iam-policy-binding mito-crm-staging --project=$P \
   --region=$R --member=serviceAccount:$DEPLOYER --role=roles/run.developer \
