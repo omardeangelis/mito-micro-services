@@ -1,0 +1,64 @@
+name: Deploy API to Staging
+# On each merge into dev that changes the backend: builds the image of
+# apps/api, pushes it to Artifact Registry, then apps/api/gcp/deploy-staging.sh
+# runs the migrations job and deploys mito-crm-staging, which takes the traffic
+# only if its /health answers. GCP access is Workload Identity Federation for
+# the branch dev (apps/api/gcp/setup-ci-deploy.sh): no key in the repo
+on:
+  push:
+    branches:
+      - dev
+    # What apps/api/Dockerfile copies, and this pipeline
+    paths:
+      - apps/api/**
+      - packages/**
+      - src/**
+      - package.json
+      - pnpm-lock.yaml
+      - pnpm-workspace.yaml
+      - tsconfig.json
+      - .github/workflows/deploy-api-staging.yml
+  workflow_dispatch:
+# One deploy at a time, and never stopped halfway through the migrations
+concurrency:
+  group: deploy-api-staging
+  cancel-in-progress: false
+permissions:
+  contents: read
+  # GitHub's OIDC token, which Workload Identity Federation exchanges
+  id-token: write
+env:
+  REGISTRY: europe-west3-docker.pkg.dev
+  IMAGE: europe-west3-docker.pkg.dev/mito-crm/mito-crm/mito-api
+jobs:
+  Deploy-API-Staging:
+    # Until setup-ci-deploy.sh has run and its values are repository variables
+    if: vars.GCP_WORKLOAD_IDENTITY_PROVIDER != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    environment:
+      name: staging-api
+      url: https://mito-crm-staging-869830994359.europe-west3.run.app/health
+    steps:
+      - uses: actions/checkout@v4
+      # The tag is the commit, as build.sh
+      - id: tag
+        run: echo "tag=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOYER_SERVICE_ACCOUNT }}
+      - uses: google-github-actions/setup-gcloud@v2
+      - run: gcloud auth configure-docker "$REGISTRY" --quiet
+      - uses: docker/setup-buildx-action@v3
+      # Built from the checkout, which has no env file
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/api/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: ${{ env.IMAGE }}:${{ steps.tag.outputs.tag }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - run: sh apps/api/gcp/deploy-staging.sh "${{ steps.tag.outputs.tag }}"
