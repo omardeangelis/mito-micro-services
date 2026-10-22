@@ -24,14 +24,19 @@ const ONE_YEAR_IN_SECONDS = 60 * 60 * 24 * 365
 const isStringArray = (value: unknown): value is string[] =>
   Array.isArray(value) && value.every((item) => typeof item === "string")
 
+/** Whether `value` has the type the preference `key` holds. */
+export function isPreferenceValue(key: PreferenceKey, value: unknown) {
+  return key === "dashboardCollapsed"
+    ? typeof value === "boolean"
+    : isStringArray(value)
+}
+
 /** The value of a cookie, or `undefined` when it is unreadable. Never throws. */
 function parseValue(key: PreferenceKey, raw: string | undefined) {
   if (raw === undefined) return undefined
   try {
     const value: unknown = JSON.parse(decodeURIComponent(raw))
-    if (key === "dashboardCollapsed")
-      return typeof value === "boolean" ? value : undefined
-    return isStringArray(value) ? value : undefined
+    return isPreferenceValue(key, value) ? value : undefined
   } catch {
     return undefined
   }
