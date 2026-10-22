@@ -66,7 +66,7 @@ Dopo il confronto con la "Mappa servizi backend MITO" del 21/10 (2026-10-22):
 - **Cambiare il trasporto** (L3 di [[chore/migrazione-effect]]): le procedure restano tRPC, con le stesse firme e la stessa UI.
 - **Cambiare il ruolo di default `ADMIN` alla registrazione.** È un problema di sicurezza vicino a questo, ma separato: vedi Open Questions OQ2.
 - **Sincronizzare le preferenze di layout fra dispositivi o browser** (decisione 5): ogni browser ha le sue.
-- **Togliere la colonna `users.preferences`.** Dopo la PR P2 nessuno la legge, ma eliminarla è una migrazione distruttiva: va nei follow-up.
+- **Togliere la colonna `users.preferences`.** Dopo la PR P2 nessuno la legge, ma eliminarla è una migrazione distruttiva: è il debito TD1 di [[chore/migrazione-effect]] §7.
 - **Controllare la destinazione nell'assegnazione delle pratiche** (`pratiche.PUT`, inline) **e in `customer.insertCustomer`.** Quei router seguono `filtri-sql-sicuri`. Il rischio resta basso, perché l'elenco della UI non contiene più i disattivati (AC14). Va nei follow-up. "Assegna chiamate" invece è in scope (AC15), perché crea e sposta contatti attivi.
 
 ## Acceptance Criteria
@@ -175,7 +175,7 @@ Dopo il confronto con la "Mappa servizi backend MITO" del 21/10 (2026-10-22):
   - `FORBIDDEN` `admin-only`.
 
   In più, dalla PR 3: `UNAUTHORIZED` per l'utente disattivato (AC16).
-- **AC26**: Comportamento invariato, verificato dai test di caratterizzazione della PR 1. Restano verdi con le stesse asserzioni dopo la PR 2, che **non contiene nessun cambio voluto** (D10). Comprendono le stranezze di oggi, conservate di proposito e messe nei follow-up:
+- **AC26**: Comportamento invariato, verificato dai test di caratterizzazione della PR 1. Restano verdi con le stesse asserzioni dopo la PR 2, che **non contiene nessun cambio voluto** (D10). Comprendono le stranezze di oggi, conservate di proposito e registrate come debito TD3 di [[chore/migrazione-effect]] §7:
   - `getOperatorById` senza `id`, con un solo operatore nel database, restituisce quello. La query non ha `ORDER BY`, quindi con più operatori il risultato non è definito e non si testa; `id: 0` vale come "nessun id";
   - `updateOperatorInfo` restituisce l'operatore **prima** dell'aggiornamento;
   - `getUserPreference` di un utente senza operatore restituisce `{ preferences: {}, role: undefined, operatorId: undefined }`.
@@ -228,7 +228,7 @@ Dopo il confronto con la "Mappa servizi backend MITO" del 21/10 (2026-10-22):
   ```
 
   Il portafoglio non torna indietro.
-- **Requisito per il sostituto di NextAuth.** La PR 4 aggiunge due comportamenti a `auth.ts`: `signIn` rifiuta i disattivati (AC17) e l'override di `getSessionAndUser` invalida le loro sessioni (AC16). La spec che sostituirà NextAuth (passo "Auth e contesto tRPC" di [[chore/migrazione-effect]]) li deve conservare, con gli stessi test.
+- **Requisito per il sostituto di NextAuth.** La PR 4 aggiunge due comportamenti a `auth.ts`: `signIn` rifiuta i disattivati (AC17) e l'override di `getSessionAndUser` invalida le loro sessioni (AC16). La spec che sostituirà NextAuth (passo "Auth e contesto tRPC" di [[chore/migrazione-effect]]) li deve conservare, con gli stessi test. È il debito TD4 di [[chore/migrazione-effect]] §7.
 - **Perché cookie e non localStorage o IndexedDB (D9).**
   - Clienti, Pratiche e Contatti sono server component: il server costruisce la tabella e deve sapere quali colonne nascondere. localStorage e IndexedDB il server non li vede. Le tabelle uscirebbero con tutte le colonne, che poi sparirebbero all'idratazione, oppure andrebbero rese solo sul client, perdendo il render del server.
   - Un cookie resta solo nel browser come localStorage: non c'è niente sul database e nessuna richiesta in più, perché viaggia con la richiesta della pagina. Il server lo legge nel render senza query.

@@ -93,7 +93,7 @@ operator/errors.ts      NotAnOperator, OperatorDisabled, OperatorIsAdmin, Cannot
 | D6 | Caratterizzazione in una PR separata, prima del refactor | AGENTS.md: "Existing tests must stay green with unchanged assertions" |
 | D7 | Migrazione in una PR sua, con il merge in `main` e applicata da Omar prima che inizi la PR 4; file congelato dopo | AC30; migrator di Drizzle; gli agenti non lanciano `db:migrate:prod` |
 | D8 | Disattivati controllati in `getSessionAndUser`, più `resolveActor` e `findWorkingOperator` | SPEC D8; il backend usa lo stesso adapter (`apps/api/src/session.ts:49`) |
-| D9 | Le stranezze di AC26 si conservano e vanno nei follow-up | Refactor a comportamento invariato |
+| D9 | Le stranezze di AC26 si conservano e vanno nel debito della migrazione (TD3 di [[chore/migrazione-effect]] §7) | Refactor a comportamento invariato |
 | D10 | Regola dei lock "prima gli utenti, poi i clienti"; `findWorkingOperator` in `FOR KEY SHARE OF users` dentro ogni transazione | AC7, AC11; review del 2026-10-22 (M1, M3) |
 | D11 | Un solo task (T4.1) è il proprietario di `operator/errors.ts` e dei codici di dominio della PR 4 | Review M10: niente modifiche parallele a uno switch esaustivo |
 | D12 | Preferenze di layout in cookie del browser; P1 client, P2 rimozione lato server dopo 2 settimane; la colonna `users.preferences` resta | SPEC D9, decisione 5 dell'utente |
@@ -280,7 +280,7 @@ Il ramo delle preferenze è indipendente. L'unico punto di contatto è `getUserP
   - Gate di CI (AC29).
   - `adversarial-review` (caso B), con il focus "comportamento invariato, senza eccezioni".
   - Revisione di Leonardo (AC29a): la PR cambia i middleware dei permessi.
-  - Spunta la checklist.
+  - Spunta la checklist; in §7 TD3 (stranezze di AC26) passa da `[PREVISTO]` a `[OPEN]`, più le voci che la review trova.
   - Merge in `dev`, fuori da una release di cutover.
 - **validation**: CI verde; REPORT SHIP; `git diff dev -- '*/_test/*'` sui file di T1.x mostra solo aggiunte.
 - **status**: Planned
@@ -508,18 +508,16 @@ Parte quando la migrazione è applicata a staging e prod (G3).
 
 #### T5.2: Gate, merge e docs
 - **depends_on**: [T5.1]
-- **location**: `brain/specs/crm/crm-specs.md`, `brain/log.md`, `<techDebt>/crm/gestione-operatori.md`
+- **location**: `brain/specs/crm/crm-specs.md`, `brain/log.md`, `<techDebt>/crm/gestione-operatori.md`, `brain/chore/migrazione-effect.md` §7
 - **description**:
   - Gate di CI e `adversarial-review` con il pass UI.
   - Merge.
   - `docs-maintenance`.
-  - Follow-up in tech debt:
-    - le stranezze di AC26;
+  - **Debito della feature**, in `<techDebt>/crm/gestione-operatori.md`:
     - la destinazione di `pratiche.PUT` e `customer.insertCustomer`;
     - OQ3;
-    - la riattivazione dalla UI;
-    - togliere la colonna `users.preferences` (dopo P2) e rinominare `getUserPreference`, che restituisce solo chi è l'utente;
-    - nella spec del sostituto di NextAuth, i due comportamenti di `auth.ts` della PR 4 (SPEC, Technical Notes).
+    - la riattivazione dalla UI.
+  - **Debito della migrazione**, in [[chore/migrazione-effect]] §7: TD4 (`auth.ts` per il sostituto di NextAuth) passa da `[PREVISTO]` a `[OPEN]`, e si aggiunge quello che le review trovano sul passaggio a Effect.
 - **validation**: CI verde; REPORT SHIP; spec `implemented`.
 - **status**: Planned
 - **log**:
@@ -597,8 +595,8 @@ Parte quando la migrazione è applicata a staging e prod (G3).
 
 #### TP2.2: Gate e merge della PR P2
 - **depends_on**: [TP2.1]
-- **location**: `brain/chore/migrazione-effect.md` §5 (checklist: route REST di `user`)
-- **description**: Gate di CI; merge in `dev`; il backend con P2 va in prod solo dopo P1 (AC35).
+- **location**: `brain/chore/migrazione-effect.md` §5 (checklist: route REST di `user`) e §7 (TD1, TD2)
+- **description**: Gate di CI; merge in `dev`; il backend con P2 va in prod solo dopo P1 (AC35). In [[chore/migrazione-effect]] §7, TD1 (colonna `users.preferences`) e TD2 (nome di `getUserPreference`) passano da `[PREVISTO]` a `[OPEN]`.
 - **validation**: CI verde.
 - **status**: Planned
 - **log**:
@@ -737,3 +735,4 @@ La prima versione del piano ha avuto DO NOT SHIP dall'`adversarial-verifier`. Co
 - **Preferenze nel browser (D12).** Nuove PR P1 e P2. Le 4 `update*` non si migrano su Effect né si caratterizzano: sarebbe lavoro su codice che va tolto.
 - **Revisione di Leonardo** sulle PR 2 e 4 (D14).
 - **Follow-up:** i due comportamenti di `auth.ts` della PR 4 diventano un requisito della spec del sostituto di NextAuth.
+- **Debito della migrazione** (decisione di Omar): sta in [[chore/migrazione-effect]] §7, non in `<techDebt>/crm/gestione-operatori.md`. Da questo piano vengono TD1 (colonna `users.preferences`), TD2 (nome di `getUserPreference`), TD3 (stranezze di AC26) e TD4 (`auth.ts`). Il debito della disattivazione resta in `<techDebt>`.

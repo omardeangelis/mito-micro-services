@@ -352,3 +352,7 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 - Fonte: "Mappa servizi backend MITO" del 21/10 (https://claude.ai/artifact/TGtCT8MXcmTryd5DmoYaZL)
 - [[chore/migrazione-effect]]: ordine per rischio della Mappa (customer, import, pratiche e task, chat, analytics, export, auth per ultimo), `user` e `operator` anticipati per la disattivazione; passo 0 con quello che resta; cron segnati come fatti; import rivalutato a L con le 6 route REST; nuovo §6 sulle 13 route REST servite tramite `NextRequest`; D1 di [[chore/migration_plan]] segnata come superata
 - [[specs/crm/gestione-operatori/SPEC]] e [[specs/crm/gestione-operatori/PLAN]]: PR 2 refactor puro (AC20 nella PR 4, ex AC27 tolto); preferenze di layout in cookie del browser (AC31–AC35, PR P1 e P2); revisione di Leonardo sulle PR 2 e 4; i comportamenti di `auth.ts` della PR 4 diventano requisito del sostituto di NextAuth
+
+## [2026-10-22] plan | debito tecnico della migrazione accanto al piano
+- [[chore/migrazione-effect]] §7: registro del debito che la migrazione genera (TD1 colonna `users.preferences`, TD2 nome di `getUserPreference`, TD3 stranezze conservate di `operator` e `user`, TD4 `auth.ts` per il sostituto di NextAuth, TD5 cron legacy, TD6 residui del passo 0). Decisione di Omar: il debito della migrazione sta lì, quello delle feature resta in `brain/tech-debt/`
+- Confermato da Omar: endpoint delle preferenze rimossi, preferenze di layout nei cookie (PR P1 e P2 di [[specs/crm/gestione-operatori/PLAN]])
