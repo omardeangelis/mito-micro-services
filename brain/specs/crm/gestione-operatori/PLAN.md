@@ -432,9 +432,9 @@ Si scrive e si prova in locale subito. Arriva su un ambiente solo quando la migr
   - **Regole:** caso aggiunto a `lockRule.db.test.ts` e a `operatorRule.db.test.ts`.
   - **Su Postgres reale con `holdCustomerLock` e `waitUntilBlocked`:** disattivazione contro handover sullo stesso cliente; handover verso X durante la disattivazione di X; due disattivazioni di X; X→Y insieme a Y→Z. Esiti come in AC7, nessun deadlock.
   - **Scala (AC12):** 5.000 clienti e 5.000 contatti attivi; conteggi giusti, tempo stampato.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done (corretto dopo la review)
+- **log**: 2026-10-22, worker sul modello più forte, review passata; poi la review avversariale della PR 4 (primo giro DO NOT SHIP) ha trovato che log e spostamenti venivano da statement diversi: corretto in a0b45b4 con un solo statement a CTE. 5.000 clienti + 5.000 contatti in circa 0,4 s. Un contatto attivo senza cliente si sposta senza riga di log (deviazione da AC9, in IMPLEMENTATION-NOTES).
+- **files edited/created**: `services/operator/deactivate.ts`, test `services/operator/_test/deactivate.{db,pg}.test.ts`, casi in `services/contact/_test/{lockRule,operatorRule}.db.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -449,9 +449,9 @@ Si scrive e si prova in locale subito. Arriva su un ambiente solo quando la migr
 - **validation**:
   - Un test di contratto per ogni errore: codice, messaggio, `cause`.
   - `OPERATORE` → `FORBIDDEN`.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-10-22, worker `haiku`, review passata al primo giro. Dopo la review della PR 4: id degli input limitati a int32 positivi (a0b45b4).
+- **files edited/created**: `api/routers/operator/{index,GET/index,PUT/index}.ts`, `services/operator/queries.ts` (`listDeactivationTargets`), test `api/routers/operator/_test/deactivate.db.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -472,9 +472,9 @@ Si scrive e si prova in locale subito. Arriva su un ambiente solo quando la migr
   - CI verde; REPORT SHIP.
   - Su staging, un utente di prova disattivato con `operator.deactivate` chiamato a mano viene buttato fuori al refresh e non rientra con Azure.
   - Misura della latenza in più sulla lettura della sessione.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: In progress: secondo giro della review da fare
+- **log**: 2026-10-22: gate di CI verdi dopo T4.6 (2618 test). `adversarial-review` primo giro: DO NOT SHIP (v4 dati, v7 test; v1, v2, v3, v5, v6 SHIP), [[specs/crm/gestione-operatori/REPORT]]. Correzioni di tutti i findings in a0b45b4 (worker sul modello più forte): unit 885 test e pg 68 test verdi, tsc verde. **Prossimo passo:** rilanciare v4 e v7 sul diff `e2c…a0b45b4` (o sull'intera PR), gate completi, poi merge di `-pr4` in `-pr5`. Revisione di Leonardo e prova su staging restano umane; OQ2 blocca la prod.
+- **files edited/created**: –
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -495,9 +495,9 @@ Si scrive e si prova in locale subito. Arriva su un ambiente solo quando la migr
 - **validation**:
   - **Test di componente:** "Conferma" disabilitato senza destinazione; un messaggio per ogni codice; nome accessibile; errore `LAST_ADMIN` nel cambio di ruolo.
   - **`agent-browser`** su `pnpm dev` con il seed locale: disattivazione di un operatore con clienti, riga sparita, toast con i conteggi, focus restituito.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Codice fatto; manca la prova `agent-browser` e il merge della PR 4 corretta nel branch
+- **log**: 2026-10-22, worker `sonnet`, review passata (corretto io un cast inutile nel tracciante). Branch `-pr5` (a5edefe) impilato su `-pr4` prima delle correzioni della review: va aggiornato con `git merge claude/great-carson-o6qn17-pr4`.
+- **files edited/created**: `src/app/dashboard/profile/@admin/{page.tsx,_components/{OperatorTable,DeactivateOperatorDialog}.tsx,_actions/{deactivateOperator,updateOperatorsRole}.ts,_lib/describeActionError.ts}` e test
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a

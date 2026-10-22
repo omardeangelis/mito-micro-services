@@ -35,6 +35,9 @@ updated: 2026-10-22
 - **La PR 3 arriva su un ambiente solo dopo la migrazione applicata lì.** Il piano diceva "nessun codice la legge", ma Drizzle elenca tutte le colonne dello schema in ogni `INSERT` su `users` (il signup di `createUserWithOperator` compreso) e in ogni `select()` senza colonne: provato con un test su un database fermo alla migrazione precedente, che fallisce anche rendendo espliciti `returning` e `select`. Il codice della PR 3 è quindi già "codice che legge" le colonne. Ordine per Omar: applicare `20261022182741_colossal_lilith` su staging, poi far arrivare la PR 3 (e le successive) su staging; lo stesso per prod. Il rischio di D7 (il migrator salta una migrazione con data più vecchia dell'ultima applicata) si controlla al momento dell'applicazione: nessuna PR aperta deve avere una migrazione generata prima del 2026-10-22 18:27.
 - **Riassegnazione dei contatti dentro la regola "prima gli utenti"** (T4.3): il piano elencava handover, Assegna Clienti e Assegna chiamate, ma anche `reassign` controlla una destinazione dopo il lock del cliente, e con la disattivazione l'ordine opposto poteva dare un deadlock.
 - **AC24, controllo `git grep drizzle-orm`:** si legge "codice del router", test esclusi: i test di caratterizzazione leggono il database. La forma `runTrpc(program, operatorErrorToTrpc | userErrorToTrpc)` vale dove il servizio ha errori tipizzati: `userErrorToTrpc` non esiste, perché `getCurrentUser` fallisce solo con `DbError` e `runTrpc` in quel caso non accetta un mapper.
+- **AC9, contatti senza cliente:** un contatto attivo con `customer_id` null si sposta alla destinazione (conta in `contactsMoved` e in `deactivationImpact`) ma non ha riga di log: `task_event_log.customer_id` è NOT NULL e le migrazioni di questa spec sono solo additive. Da accettare da Omar (checklist della review della PR 4).
+- **"Assegna a te" dentro la regola dei lock** (review della PR 4): prende il lock della riga utente dell'attore prima del cliente; un attore disattivato riceve `OperatorNotFound`.
+- **LastAdmin conta solo gli admin con un operatore** (review della PR 4): un utente ADMIN senza riga operatore non può usare le procedure admin, quindi non tiene in vita il vincolo.
 - **Caratterizzazione di `getUserPreference` in un file suo** (`user/_test/getUserPreference.db.test.ts`), non in `contactPreference.db.test.ts`: la PR P2 cancella quel file, e i casi di `role` e `operatorId` devono sopravvivere.
 
 ## Surprises and Decisions
@@ -64,6 +67,11 @@ updated: 2026-10-22
 | | | |
 
 ## Remaining Work
+
+- **Ripresa (stato al 2026-10-22, prima della compattazione):**
+  - PR 4 (`-pr4`, a0b45b4): rilanciare i verificatori v4 (dati) e v7 (test) della review sulle correzioni, poi gate completi e secondo giro nel REPORT.
+  - PR 5 (`-pr5`, worktree `/home/user/wt-pr5`): `git merge claude/great-carson-o6qn17-pr4`, gate, prova `agent-browser` del dialog (seed di `mito_local`, sessione inserita in `session` + cookie `next-auth.session-token`; `next dev` funziona in un worktree con `node_modules` puliti), poi T5.2 (review con il pass UI, `docs-maintenance`, tech debt della feature, TD4 `[OPEN]`).
+  - Acceptance audit finale e finalizzazione della spec.
 
 - PR P2 (TP2.1, TP2.2): almeno 2 settimane dopo P1 in prod (AC34, AC35).
 
