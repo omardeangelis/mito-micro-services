@@ -346,3 +346,4 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 - Spec: [[specs/crm/gestione-operatori/SPEC]] (draft), piano: [[specs/crm/gestione-operatori/PLAN]]
 - Strategia: [[chore/migrazione-effect]]: L1 servizi e L2 procedure adapter router per router, L3 (tRPC → Effect RPC) rinviato a dopo Effect 4 stabile e fase P del piano GCP
 - Decisioni: disattivazione (non cancellazione), portafoglio a una destinazione scelta dall'admin, solo `OPERATORE`, "mai l'ultimo admin" sul cambio di ruolo
+- Verifica del piano (`adversarial-verifier`): DO NOT SHIP alla prima passata (2 blocker, 10 major), correzioni nel §16 del piano: log con `INSERT ... SELECT`, regola dei lock "prima gli utenti", migrazione in una PR sua, OQ1 chiusa con "il cliente vince"
