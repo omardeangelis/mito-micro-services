@@ -59,4 +59,23 @@ describe("operatorProcedure", () => {
       code: "BAD_REQUEST",
     })
   })
+
+  it("answers with the default message of BAD_REQUEST, none of its own", async () => {
+    const user = await createUser()
+    const caller = createTestCaller({ id: user.id })
+
+    await expect(caller.operator.getUserOperator()).rejects.toMatchObject({
+      code: "BAD_REQUEST",
+      message: "BAD_REQUEST",
+    })
+  })
+
+  it("checks the operator before the role: an ADMIN user without operator gets BAD_REQUEST on an adminProcedure", async () => {
+    const user = await createUser({ role: "ADMIN" })
+    const caller = createTestCaller({ id: user.id })
+
+    await expect(caller.operator.updateOperatorsRole([])).rejects.toMatchObject(
+      { code: "BAD_REQUEST" }
+    )
+  })
 })
