@@ -760,7 +760,7 @@ describe("the contract with getContacts (T5.1)", () => {
   it("writes and passes on the lists of a state built by hand in a fixed order, once each item", () => {
     const state: ContactsListState = {
       ...defaultState,
-      // Twice each, backwards first: 16 states and 8 bands are more than the
+      // Twice each, backwards first: 18 states and 8 bands are more than the
       // server takes as they are, and 200 ids are twice what it takes
       states: [...allStates].reverse().concat(allStates),
       priorities: [...priorityBands].reverse().concat(priorityBands),
@@ -779,7 +779,7 @@ describe("the contract with getContacts (T5.1)", () => {
     expect(serialize(state)).toBe(serialize({ ...state, ...canonical }))
     expect(serialize(state)).toBe(
       "?operatore=0,1,2,3,4,5,6,7,8,9,10,11,12" +
-        "&stato=chiamare,non+interessato,app.to,caricato,richiamare,erogata,nessuno,followup" +
+        "&stato=chiamare,non+interessato,app.to,caricato,richiamare,non+risponde,erogata,nessuno,followup" +
         "&priorita=bassa,media,alta,urgente"
     )
   })

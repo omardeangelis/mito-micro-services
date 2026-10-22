@@ -13,6 +13,7 @@ export const outcomeStates = [
   "erogata",
   "non interessato",
   "richiamare",
+  "non risponde",
 ] as const satisfies readonly TaskStatus[]
 
 /**
@@ -26,6 +27,7 @@ export const allStates = [
   "app.to",
   "caricato",
   "richiamare",
+  "non risponde",
   "erogata",
   "nessuno",
   "followup",

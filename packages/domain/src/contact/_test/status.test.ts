@@ -17,6 +17,7 @@ describe("stateCategory", () => {
     erogata: "close",
     "non interessato": "close",
     richiamare: "close",
+    "non risponde": "close",
     nessuno: "idle",
   }
 
@@ -42,6 +43,7 @@ describe("selectableStates", () => {
       "app.to",
       "caricato",
       "richiamare",
+      "non risponde",
       "erogata",
       "nessuno",
     ])
@@ -53,6 +55,7 @@ describe("selectableStates", () => {
       "app.to",
       "caricato",
       "richiamare",
+      "non risponde",
       "erogata",
       "nessuno",
     ])
@@ -64,6 +67,7 @@ describe("selectableStates", () => {
       "non interessato",
       "caricato",
       "richiamare",
+      "non risponde",
       "erogata",
       "nessuno",
     ])
@@ -76,6 +80,7 @@ describe("selectableStates", () => {
       "app.to",
       "caricato",
       "richiamare",
+      "non risponde",
       "erogata",
     ])
   })
@@ -92,6 +97,7 @@ describe("canSetCallback", () => {
     ["erogata", true],
     ["non interessato", true],
     ["richiamare", true],
+    ["non risponde", true],
     ["nessuno", true],
     ["chiamare", false],
     ["followup", false],
