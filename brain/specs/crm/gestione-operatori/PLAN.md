@@ -12,7 +12,7 @@ updated: 2026-10-22
 # Plan: Gestione operatori: user e operator su Effect, disattivazione da admin
 
 **Spec:** [[specs/crm/gestione-operatori/SPEC]]
-**Status:** Planned. Nessun codice scritto.
+**Status:** In progress (implement-spec dal 2026-10-22; vedi `IMPLEMENTATION-NOTES.md`).
 **Generato:** 2026-10-22 con `create-plan`: grill (4 decisioni) → task graph → tdd → `adversarial-verifier`. La prima verifica era DO NOT SHIP (2 blocker, 10 major); le correzioni sono nel §16. Rivisto lo stesso giorno dopo il confronto con la "Mappa servizi backend MITO" del 21/10 e la decisione sulle preferenze (§16, revisione 2).
 **Strategia di contesto:** [[chore/migrazione-effect]]. Questo è il passo 1 dell'ordine dei router (§4).
 
@@ -319,7 +319,7 @@ Il ramo delle preferenze è indipendente. L'unico punto di contatto è `getUserP
 
 ### PR 4: Disattivazione, backend
 
-Parte quando la migrazione è applicata a staging e prod (G3).
+Si scrive e si prova in locale subito. Arriva su un ambiente solo quando la migrazione è applicata su quell'ambiente (G3): prima staging, poi prod.
 
 #### T4.1: Errori e codici di dominio
 - **depends_on**: [T3.1]
@@ -616,8 +616,8 @@ Parte quando la migrazione è applicata a staging e prod (G3).
 | 2 | T1.3 (PR 1) | T1.1 e T1.2 fatti |
 | 3 | T2.1, T2.2, T2.3 | PR 1 in `dev`. T2.1 crea `operator/errors.ts`, T2.2 lo usa: se finisce prima, si allinea in T2.4 |
 | 4 | T2.4 (PR 2) | Wave 3 fatta, nessun cutover GCP nella stessa release |
-| 5 | T3.1 (PR 3) | PR 2 in `dev`. Poi Omar applica la migrazione a staging e prod |
-| 6 | T4.1 | Migrazione applicata (G3) |
+| 5 | T3.1 (PR 3) | PR 2 scritta. Poi Omar applica la migrazione su staging, e su prod prima del rilascio in prod della PR 4 |
+| 6 | T4.1 | PR 3 scritta e applicata in locale; G3 vale per il rilascio, non per il codice |
 | 7 | T4.2, T4.3, T4.4 | T4.1 fatto. File diversi: T4.2 auth, T4.3 contact, customer e task, T4.4 roles |
 | 8 | T4.5 | T4.3 fatto |
 | 9 | T4.6 → T4.7 (PR 4) | T4.2, T4.4 e T4.5 fatti |
@@ -648,7 +648,7 @@ Parte quando la migrazione è applicata a staging e prod (G3).
 |---|---|---|
 | G1 | Merge PR 1 | CI verde; solo file di test |
 | G2 | Merge PR 2 | CI verde; asserzioni di T1.x invariate; nessun cambio voluto; AC24 (`git grep` su `operator`) vuoto; REPORT SHIP; revisione di Leonardo |
-| G3 | Prima di T4.1 | PR 3 in `main`; migrazione applicata da Omar a staging e prod; file congelato |
+| G3 | Prima che la PR 4 arrivi su un ambiente | PR 3 applicata da Omar su quell'ambiente (staging prima, prod poi); file congelato dalla prima applicazione. Il codice della PR 4 si scrive e si prova in locale prima (revisione del 2026-10-22, obiettivo staging) |
 | G4 | Merge e rilascio PR 4 | CI verde; REPORT SHIP; revisione di Leonardo; prova su staging (T4.7); **OQ2 chiusa prima della prod** |
 | G5 | Merge PR 5 | CI verde; REPORT SHIP con il pass UI; prova browser |
 | GP1 | Merge PR P1 | CI verde; REPORT SHIP con il pass UI; prova browser senza richieste di layout |
@@ -736,3 +736,7 @@ La prima versione del piano ha avuto DO NOT SHIP dall'`adversarial-verifier`. Co
 - **Revisione di Leonardo** sulle PR 2 e 4 (D14).
 - **Follow-up:** i due comportamenti di `auth.ts` della PR 4 diventano un requisito della spec del sostituto di NextAuth.
 - **Debito della migrazione** (decisione di Omar): sta in [[chore/migrazione-effect]] §7, non in `<techDebt>/crm/gestione-operatori.md`. Da questo piano vengono TD1 (colonna `users.preferences`), TD2 (nome di `getUserPreference`), TD3 (stranezze di AC26) e TD4 (`auth.ts`). Il debito della disattivazione resta in `<techDebt>`.
+
+### Revisione 3 (2026-10-22): obiettivo staging
+
+- **G3 vale per l'ambiente, non per il codice** (Omar: "Lavoriamo per migrare tutto su staging"). Il rischio che G3 copre è il codice della PR 4 che legge `users.disabled_at` su un database dove la colonna non c'è, più il migrator di Drizzle che salta le migrazioni con data precedente all'ultima applicata. Basta che la PR 3 sia applicata su un ambiente prima che la PR 4 ci arrivi. Le PR 4 e 5 si scrivono e si provano subito, in locale.
