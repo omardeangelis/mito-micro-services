@@ -29,13 +29,20 @@ import { useOperatorTableStore } from "../_store/useOperatorTableStore"
 import { Button } from "@/components/ui/button"
 import { updateOperatorsRoleAction } from "../_actions/updateOperatorsRole"
 import { useToast } from "@/components/ui/use-toast"
-import { useCallback, useState } from "react"
+import { useCallback, useMemo, useState } from "react"
+import { DeactivateOperatorDialog } from "./DeactivateOperatorDialog"
+import {
+  describeActionError,
+  isContactErrorCode,
+} from "../_lib/describeActionError"
 
 type MockedOperator = Pick<OperatorWithRole, "id" | "name" | "role" | "surname">
 
 export type OperatorColumnSelectedProps = MockedOperator
 
-const operatorColumns: ColumnDef<OperatorColumnSelectedProps>[] = [
+const buildColumns = (
+  currentOperatorId: number | undefined
+): ColumnDef<OperatorColumnSelectedProps>[] => [
   {
     id: "id",
     header: "ID",
@@ -89,9 +96,34 @@ const operatorColumns: ColumnDef<OperatorColumnSelectedProps>[] = [
       )
     },
   },
+  {
+    id: "deactivate",
+    header: () => <span className="sr-only">Disattiva</span>,
+    cell: ({ row }) => {
+      const { id, name, surname, role } = row.original
+      if (role !== "OPERATORE" || id === currentOperatorId) return null
+      return (
+        <div className="flex w-full justify-end">
+          <DeactivateOperatorDialog
+            operator={{ id, name: name ?? "", surname: surname ?? "" }}
+          />
+        </div>
+      )
+    },
+  },
 ]
 
-export const OperatorTable = ({ data }: { data: OperatorWithRole[] }) => {
+export const OperatorTable = ({
+  data,
+  currentOperatorId,
+}: {
+  data: OperatorWithRole[]
+  currentOperatorId?: number
+}) => {
+  const operatorColumns = useMemo(
+    () => buildColumns(currentOperatorId),
+    [currentOperatorId]
+  )
   const table = useReactTable({
     columns: operatorColumns,
     data: data,
@@ -106,26 +138,30 @@ export const OperatorTable = ({ data }: { data: OperatorWithRole[] }) => {
   const { toast } = useToast()
 
   const operators = useOperatorTableStore.use.operatorsToEdit()
+  const clearOperatorsToEdit = useOperatorTableStore.use.clearOperatorsToEdit()
   const [loading, setLoading] = useState(false)
 
   const handleOperatorRoleChange = useCallback(async () => {
     setLoading(true)
     const res = await updateOperatorsRoleAction(operators)
-    if (res && res.error) {
+    setLoading(false)
+    if (res.error) {
       toast({
-        title: "Errore durante l'aggiornamento dei ruoli",
+        title: isContactErrorCode(res.error)
+          ? describeActionError(res.error)
+          : "Errore durante l'aggiornamento dei ruoli",
         duration: 2000,
         variant: "destructive",
       })
+      return
     }
     toast({
       title: "Ruoli aggiornati",
       duration: 2000,
       variant: "success",
     })
-    setLoading(false)
-    useOperatorTableStore.use.clearOperatorsToEdit()
-  }, [operators, toast])
+    clearOperatorsToEdit()
+  }, [operators, toast, clearOperatorsToEdit])
 
   const disabled = !operators.length || loading
 
