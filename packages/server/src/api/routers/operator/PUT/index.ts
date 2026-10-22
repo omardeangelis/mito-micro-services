@@ -3,6 +3,7 @@ import { insertOperatorSchema } from "@mito/domain/schemas"
 import { z } from "zod"
 import { runTrpc } from "../../../../effect/trpc"
 import { updateOperatorInfo as updateOperatorInfoService } from "../../../../services/operator/profile"
+import { deactivateOperator } from "../../../../services/operator/deactivate"
 import { operatorErrorToTrpc } from "../../../../services/operator/errors"
 import { updateOperatorsRole as updateOperatorsRoleService } from "../../../../services/operator/roles"
 
@@ -31,4 +32,18 @@ export const updateOperatorsRole = adminProcedure
   .input(updateOperatorsRoleInput)
   .mutation(({ input }) =>
     runTrpc(updateOperatorsRoleService(input), operatorErrorToTrpc)
+  )
+
+const deactivateInput = z.object({
+  operatorId: z.number().int(),
+  toOperatorId: z.number().int(),
+})
+
+export const deactivate = adminProcedure
+  .input(deactivateInput)
+  .mutation(({ ctx, input }) =>
+    runTrpc(
+      deactivateOperator({ ...input, actor: ctx.actor }),
+      operatorErrorToTrpc
+    )
   )

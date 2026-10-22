@@ -1,6 +1,6 @@
 import "server-only"
 import { Effect } from "effect"
-import { eq, isNull } from "drizzle-orm"
+import { and, asc, eq, isNull, ne } from "drizzle-orm"
 import { operators } from "@mito/db/schema/operators"
 import { users } from "@mito/db/schema/users"
 import { operatorSelectCompleteResponse } from "@mito/domain/constants/schema"
@@ -23,6 +23,25 @@ export const listActiveOperators = () =>
       .from(operators)
       .innerJoin(users, eq(operators.userId, users.id))
       .where(isNull(users.disabledAt))
+  )
+
+/**
+ * The operators a portfolio can be handed to when `operatorId` is deactivated:
+ * the active ones (as `listActiveOperators`), but not `operatorId` itself, by
+ * surname then name (gestione-operatori, AC21). Only what the select lists.
+ */
+export const listDeactivationTargets = (operatorId: number) =>
+  query((client) =>
+    client
+      .select({
+        id: operators.id,
+        name: operators.name,
+        surname: operators.surname,
+      })
+      .from(operators)
+      .innerJoin(users, eq(operators.userId, users.id))
+      .where(and(isNull(users.disabledAt), ne(operators.id, operatorId)))
+      .orderBy(asc(operators.surname), asc(operators.name), asc(operators.id))
   )
 
 /**
