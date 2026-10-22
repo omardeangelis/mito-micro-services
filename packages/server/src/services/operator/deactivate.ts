@@ -151,7 +151,10 @@ export type DeactivationResult = {
  *   operator), and writes the `operator_reassign` rows (source
  *   `deactivation`) of exactly the rows it moved: one per customer (no
  *   task), then one per contact. A row that became the operator's after the
- *   locks (a writer outside the lock rule) moves and is logged alike.
+ *   locks moves and is logged alike only if its writer committed before this
+ *   statement started; a writer outside the lock rule that commits later
+ *   leaves it on the disabled operator. Only the check on the writer's side
+ *   (`findWorkingOperator`) closes that.
  * - An active contact of the operator without a customer (`task.customer_id`
  *   is nullable) moves to the destination and counts in `contactsMoved`, but
  *   has no log row: `task_event_log.customer_id` is required.
@@ -244,7 +247,7 @@ export const deactivateOperator = ({
 
       // 4. One statement moves the customers and the contacts and logs them:
       // its CTEs share one snapshot, so the log has a row for exactly what
-      // moved, rows that became the operator's after the locks included
+      // moved, rows committed by other writers before it started included
       const [moved] = yield* query((client) => {
         const ctes = moveAndLog(client, {
           operatorId,

@@ -248,7 +248,10 @@ describe.skipIf(!hasTestDatabase)("deactivateOperator su Postgres vero", () => {
     // the users and the customer, then waits on the contact. Before freeing
     // it, the writer adds a customer of X with an active contact of X and
     // commits: the deactivation locked neither, and its next statement, the
-    // move, is the first to see them
+    // move, is the first to see them. The writer commits before every write
+    // of the deactivation, so this test passes with the log and the moves in
+    // separate statements too: what guards "one statement" is the test on the
+    // shape of the SQL in deactivate.db.test.ts
     let release!: () => void
     let onLocked!: () => void
     const gate = new Promise<void>((resolve) => (release = resolve))
