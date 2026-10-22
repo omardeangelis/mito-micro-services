@@ -187,6 +187,64 @@ describe("task.changeState: transizioni", () => {
     expect(after!.closedAt!.getTime()).toBeLessThanOrEqual(Date.now())
   })
 
+  it("passare da chiamare a non risponde lascia il contatto in coda: niente 'Contattato il', stessa priorità, una state_change", async () => {
+    const operator = await createOperator()
+    const customer = await createCustomer({ operatorId: operator.id })
+    const contact = await createTask({
+      customerId: customer.id,
+      operatorId: operator.id,
+      state: "chiamare",
+      priority: 120,
+    })
+
+    await expect(
+      createTestCaller(operator).task.changeState({
+        taskId: contact.id,
+        toState: "non risponde",
+        source: "list",
+        confirmedAlertId: null,
+      })
+    ).resolves.toEqual({ taskId: contact.id, reopened: false })
+
+    expect(await tasksOf(customer.id)).toMatchObject([
+      {
+        id: contact.id,
+        state: "non risponde",
+        closedAt: null,
+        priority: 120,
+        isActive: true,
+      },
+    ])
+    expect(await logOf(customer.id)).toMatchObject([
+      {
+        action: "state_change",
+        taskId: contact.id,
+        fromState: "chiamare",
+        toState: "non risponde",
+        actorOperatorId: operator.id,
+      },
+    ])
+  })
+
+  it("passare da non risponde a un esito valorizza 'Contattato il' (AC31)", async () => {
+    const operator = await createOperator()
+    const { customer, contact } = await seedContact({
+      state: "non risponde",
+      customerOperatorId: operator.id,
+    })
+
+    await createTestCaller(operator).task.changeState({
+      taskId: contact.id,
+      toState: "app.to",
+      source: "detail",
+      confirmedAlertId: null,
+    })
+
+    const [after] = await tasksOf(customer.id)
+    expect(after).toMatchObject({ id: contact.id, state: "app.to" })
+    expect(after!.closedAt).not.toBeNull()
+  })
+
   it("un contatto senza stato passa ad app.to e scrive una state_change con fromState null", async () => {
     const operator = await createOperator()
     const customer = await createCustomer({ operatorId: operator.id })

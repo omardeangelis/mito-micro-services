@@ -137,6 +137,14 @@ describe("cron priority (comportamento attuale)", () => {
     expect(priorities).toEqual([120, 50, 30, 0, 10, 1, 1])
   })
 
+  it("un contatto non risponde resta in coda, subito dopo quelli da chiamare: 100", async () => {
+    const noAnswer = await contact({ state: "non risponde", priority: 120 })
+
+    await runCron()
+
+    expect((await rowOf(noAnswer.id)).priority).toBe(100)
+  })
+
   it("segna come aggiornati i contatti che ricalcola, e solo quelli", async () => {
     const refreshed = await contact({ state: "non interessato", priority: 0 })
     const urgent = await contact({ state: "chiamare", priority: 120 })

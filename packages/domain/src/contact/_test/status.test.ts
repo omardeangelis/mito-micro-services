@@ -17,7 +17,7 @@ describe("stateCategory", () => {
     erogata: "close",
     "non interessato": "close",
     richiamare: "close",
-    "non risponde": "close",
+    "non risponde": "open",
     nessuno: "idle",
   }
 
@@ -97,7 +97,7 @@ describe("canSetCallback", () => {
     ["erogata", true],
     ["non interessato", true],
     ["richiamare", true],
-    ["non risponde", true],
+    ["non risponde", false],
     ["nessuno", true],
     ["chiamare", false],
     ["followup", false],

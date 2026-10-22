@@ -43,13 +43,7 @@ const OTHER_OPERATOR_SHARE = 0.45
 const MANUAL_A5_SHARE = 0.15
 
 export const MANUAL_PRIORITIES = [20, 60, 100, 120] as const
-const P4_STATES = [
-  "app.to",
-  "caricato",
-  "erogata",
-  "nessuno",
-  "non risponde",
-] as const
+const P4_STATES = ["app.to", "caricato", "erogata", "nessuno"] as const
 const P8_STATES = taskStatus.filter((state) => state !== "richiamare")
 
 const ALERT_MESSAGES = [
@@ -65,7 +59,8 @@ type P4State = (typeof P4_STATES)[number]
 /** The scenario of an active contact. */
 type Plan =
   | {
-      kind: "P1" | "P2" | "P3" | "P10" | "P5" | "P11" | "A1" | "A2" | "A4"
+      kind:
+        "P1" | "P2" | "P3" | "P10" | "P13" | "P5" | "P11" | "A1" | "A2" | "A4"
     }
   | { kind: "P4"; state: P4State }
   | { kind: "A3"; closed: boolean }
@@ -141,6 +136,7 @@ export function generateContacts({
     ...repeat(counts.P2, () => ({ kind: "P2" })),
     ...repeat(counts.P3, () => ({ kind: "P3" })),
     ...repeat(counts.P10, () => ({ kind: "P10" })),
+    ...repeat(counts.P13, () => ({ kind: "P13" })),
     ...repeat(counts.P5, () => ({ kind: "P5" })),
     ...repeat(counts.A3, (k) => ({ kind: "A3", closed: k % 2 === 0 })),
     ...repeat(counts.A4, () => ({ kind: "A4" })),
@@ -161,11 +157,10 @@ export function generateContacts({
         filler < P4_STATES.length
           ? P4_STATES[filler]!
           : rng.weighted<P4State>([
-              ["nessuno", 40],
+              ["nessuno", 55],
               ["app.to", 15],
               ["caricato", 15],
               ["erogata", 15],
-              ["non risponde", 15],
             ]),
     }
   })
@@ -478,6 +473,10 @@ export function generateContacts({
       case "P3":
         state = "non interessato"
         priority = rng.pick([0, 1, 30, 50, 80])
+        break
+      case "P13":
+        state = "non risponde"
+        priority = rng.pick([0, 1, 20, 120])
         break
       case "P10":
         state = "non interessato"

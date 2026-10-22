@@ -4,6 +4,7 @@ import type { TaskCategory, TaskStatus } from "../schemas"
 export const callStates = [
   "chiamare",
   "followup",
+  "non risponde",
 ] as const satisfies readonly TaskStatus[]
 
 /** The states that record an outcome of a call. */
@@ -13,7 +14,6 @@ export const outcomeStates = [
   "erogata",
   "non interessato",
   "richiamare",
-  "non risponde",
 ] as const satisfies readonly TaskStatus[]
 
 /**

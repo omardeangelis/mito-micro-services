@@ -49,6 +49,7 @@ export const SCENARIO_CRONS = {
   P10: "priority",
   P11: "priority",
   P12: "priority",
+  P13: "priority",
   A1: "alert",
   A2: "alert",
   A3: "alert",
@@ -257,7 +258,6 @@ const P4_STATES: ReadonlySet<string> = new Set([
   "caricato",
   "erogata",
   "nessuno",
-  "non risponde",
 ])
 
 function addPriorityScenarios(context: Context, dataset: Dataset) {
@@ -300,6 +300,7 @@ function addPriorityScenarios(context: Context, dataset: Dataset) {
         return priority === 120 ? ["P10", 10] : ["P3", 10]
       }
       if (P4_STATES.has(state)) return ["P4", 1]
+      if (state === "non risponde") return ["P13", 100]
       if (state === "followup" && priority === 150) return ["P5", 1]
       if (state === "richiamare") {
         const linked = openAlertOf(task, alerts)

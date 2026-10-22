@@ -223,7 +223,7 @@ describe.each([
 
 const SCENARIO_IDS = [
   ...["P1", "P2", "P3", "P4", "P5", "P6", "P7", "P8", "P9", "P10", "P11"],
-  ...["P12", "A1", "A2", "A3", "A4", "A5", "A6"],
+  ...["P12", "P13", "A1", "A2", "A3", "A4", "A5", "A6"],
   ...["U1", "U2", "U3", "U4", "U5", "U6", "U7a", "U7b", "U11"],
   ...["U8", "U9", "U10a", "U10b", "U10c", "L1", "L2"],
 ]
@@ -380,6 +380,7 @@ function registerChecks(
       P10: 10,
       P11: 0,
       P12: 20,
+      P13: 100,
     }
     for (const [id, priority] of Object.entries(priorities)) {
       for (const row of only(id, "task")) {

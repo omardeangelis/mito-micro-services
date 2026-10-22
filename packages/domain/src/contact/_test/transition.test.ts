@@ -23,13 +23,14 @@ const states = [
   "app.to",
   "caricato",
   "richiamare",
+  "non risponde",
   "erogata",
   "nessuno",
   "followup",
 ] as const
 
 // Written out by hand from the rules, not computed from the module.
-const toCall: State[] = ["chiamare", "followup"]
+const toCall: State[] = ["chiamare", "followup", "non risponde"]
 const outcome: State[] = [
   "app.to",
   "caricato",
