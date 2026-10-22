@@ -341,3 +341,8 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 - Spec: [[specs/crm/seeder-locale/SPEC]], piano: [[specs/crm/seeder-locale/PLAN]], note: [[specs/crm/seeder-locale/IMPLEMENTATION-NOTES]]
 - PR A: servizi dei cron su un `Db` iniettato, seed vecchi rimossi. PR B: `seed:local`, `seed:local:cron`, `seed:local:verify` con manifesto e oracolo indipendente
 - Giro a mano a 10.000: seed 16 s, quattro cron riusciti, 36 "passato"; in CI il giro completo dura 12,8 s
+
+## [2026-10-22] plan | gestione-operatori
+- Spec: [[specs/crm/gestione-operatori/SPEC]] (draft), piano: [[specs/crm/gestione-operatori/PLAN]]
+- Strategia: [[chore/migrazione-effect]]: L1 servizi e L2 procedure adapter router per router, L3 (tRPC → Effect RPC) rinviato a dopo Effect 4 stabile e fase P del piano GCP
+- Decisioni: disattivazione (non cancellazione), portafoglio a una destinazione scelta dall'admin, solo `OPERATORE`, "mai l'ultimo admin" sul cambio di ruolo
