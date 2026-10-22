@@ -7,6 +7,9 @@ domain: platform
 > Documento di riferimento ad alto livello. Il dettaglio operativo di ogni fase è in `brain/chore/migration/fase-N-*.md`.
 > Ogni file di fase ha un frontmatter con `status` e `completed`: **gli agent che eseguono una fase devono aggiornare il frontmatter e spuntare le checkbox dei task man mano che procedono.**
 
+> [!warning] In parte superato (2026-10-22)
+> Il backend oggi è Hono su Cloud Run ([[chore/migrazione-gcp]]), non Express su Railway. La D1 ("tenere tRPC") è superata da [[chore/migrazione-effect]]: l'obiettivo è "solo Effect", con tRPC fino alla fine di L1 e L2 e poi Effect RPC. Restano validi l'inventario, il pacchetto di dominio con la logica di import e cron coperta da test prima di toccarla, e la domanda sull'import come API REST per consumatori esterni (§6 di [[chore/migrazione-effect]]).
+
 ## Stato delle fasi
 
 | Fase | Documento | Stato |
@@ -55,7 +58,7 @@ mito/                          (monorepo pnpm workspaces + Turborepo)
 
 | # | Decisione | Motivazione |
 |---|---|---|
-| D1 | **Tenere tRPC** sul backend Express (`@trpc/server/adapters/express`) | Le ~72 procedure e gli hook client `@trpc/react-query` migrano quasi invariati; riscrivere in REST triplicherebbe il costo delle fasi 2-3. REST resta per il servizio import (consumatori esterni). |
+| D1 | ~~**Tenere tRPC** sul backend Express~~ **Superata il 2026-10-22** da [[chore/migrazione-effect]]: "solo Effect", Effect RPC dopo L1 e L2. Testo originale: (`@trpc/server/adapters/express`) | Le ~72 procedure e gli hook client `@trpc/react-query` migrano quasi invariati; riscrivere in REST triplicherebbe il costo delle fasi 2-3. REST resta per il servizio import (consumatori esterni). |
 | D2 | **Auth.js (`@auth/express`)** al posto di NextAuth v4 | Riusa `@auth/drizzle-adapter`, le stesse tabelle e gli stessi provider: la migrazione auth è configurazione, non riscrittura. Nota: il provider `azure-ad` in Auth.js v5 si chiama `microsoft-entra-id`. |
 | D3 | **Storage S3-compatibile** (AWS S3 / Cloudflare R2 / MinIO) dietro interfaccia in `packages/storage` | I file sono export temporanei: qualunque object store va bene; l'interfaccia rende la scelta reversibile. |
 | D4 | **React Router (library mode)** per la SPA | Mappatura diretta delle 18 pagine App Router; hook equivalenti a `next/navigation`. Le parallel routes `@admin`/`@blacklist` diventano tab nella pagina profilo. |

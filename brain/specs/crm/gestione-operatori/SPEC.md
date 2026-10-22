@@ -30,6 +30,11 @@ Decisioni (2026-10-22), dalle domande di chiarimento:
 > 3. **Portafoglio** = "Admin sceglie a chi passarli".
 > 4. **Vincoli** = "Mai l'ultimo admin" e "Mai sé stessi". Non scelti: "Admin può rimuovere admin" (quindi si disattivano solo gli `OPERATORE`) e "Riattivazione".
 
+Dopo il confronto con la "Mappa servizi backend MITO" del 21/10 (2026-10-22):
+
+> 5. **Preferenze di layout**: "Vorrei anche proporre di gestire le preferenze solo su IndexDb o localstorage per evitare di sincare il server con scelte di layout che rallentino il funzionamento della piattaforma." Le preferenze restano nel browser, in un cookie (D9), e il server non le salva più.
+> 6. **Refactor e correzioni separati**: la PR del passaggio a Effect non cambia comportamento. Ogni correzione va in un'altra PR (D10).
+
 ## Context
 
 - **La rimozione oggi non esiste.** La tabella admin (`/dashboard/profile`, tab admin, `OperatorTable.tsx`) cambia solo il ruolo, con `operator.updateOperatorsRole`.
@@ -47,6 +52,11 @@ Decisioni (2026-10-22), dalle domande di chiarimento:
 - **Stato del codice.**
   - `user` (5 procedure) e `operator` (6 procedure) hanno tutta la logica inline in Drizzle. I middleware `operatorProcedure` e `adminProcedure` di `api/trpc.ts` fanno query inline.
   - `operator` non ha test. `user` ne ha uno, sulle preferenze dei Contatti (`user/_test/contactPreference.db.test.ts`).
+- **Le preferenze di layout passano dal server a ogni uso.** Sono 4 chiavi (`UserPreference` di `@mito/domain/schemas`): sidebar chiusa e colonne nascoste di Clienti, Pratiche e Contatti, salvate come testo JSON in `users.preferences`.
+  - **In lettura,** le pagine Clienti e Pratiche chiamano `user.getUserPreference` **dopo** la query dei dati, in serie: un giro in più a ogni caricamento, via HTTP verso Cloud Run quando `BACKEND_URL` è impostata.
+  - **In scrittura,** ogni click passa da `POST /api/user/preferences`, una route di Next.js che il backend serve costruendo una `NextRequest` (`apps/api/src/rest.ts`) e che richiama tRPC su sé stesso (`@/trpc/server`). La sidebar e le colonne di Clienti e Pratiche cambiano solo **dopo** la risposta del server. Contatti cambia subito, ma poi fa `router.refresh()`, che rigenera la pagina e rilancia la query dei contatti.
+  - **Il browser le ha già:** lo store zustand `userPreference-storage` (`src/store/userPreferences.ts`) le salva in localStorage. Il server serve solo a fare il primo render delle tabelle con le colonne giuste.
+  - `getUserPreference` restituisce anche `role` e `operatorId`, che `UserPreferenceProvider`, `DataSection` e il layout del profilo usano per sapere chi è l'utente.
 
 ## Non-Goals
 
@@ -55,6 +65,8 @@ Decisioni (2026-10-22), dalle domande di chiarimento:
 - **Disattivare un `ADMIN`.** Va prima declassato a `OPERATORE` (decisione 4).
 - **Cambiare il trasporto** (L3 di [[chore/migrazione-effect]]): le procedure restano tRPC, con le stesse firme e la stessa UI.
 - **Cambiare il ruolo di default `ADMIN` alla registrazione.** È un problema di sicurezza vicino a questo, ma separato: vedi Open Questions OQ2.
+- **Sincronizzare le preferenze di layout fra dispositivi o browser** (decisione 5): ogni browser ha le sue.
+- **Togliere la colonna `users.preferences`.** Dopo la PR P2 nessuno la legge, ma eliminarla è una migrazione distruttiva: va nei follow-up.
 - **Controllare la destinazione nell'assegnazione delle pratiche** (`pratiche.PUT`, inline) **e in `customer.insertCustomer`.** Quei router seguono `filtri-sql-sicuri`. Il rischio resta basso, perché l'elenco della UI non contiene più i disattivati (AC14). Va nei follow-up. "Assegna chiamate" invece è in scope (AC15), perché crea e sposta contatti attivi.
 
 ## Acceptance Criteria
@@ -135,7 +147,7 @@ Decisioni (2026-10-22), dalle domande di chiarimento:
   - Due admin che si declassano a vicenda insieme: uno riesce, l'altro riceve `LastAdmin`.
   - Le righe `ADMIN` vengono bloccate in ordine di id prima del conteggio.
 - **AC19**: `updateOperatorsRole` con un operatore disattivato nel batch lo rifiuta con `OperatorNotFound`, e non cambia nulla dell'intero batch. Oggi un batch con id sconosciuti li salta in silenzio. Il comportamento resta lo stesso per gli id inesistenti, cambia solo per i disattivati (D7).
-- **AC20**: Il batch è atomico. Oggi gli update sono uno per uno, fuori transazione. È un cambio voluto di comportamento della PR 2 (AC27).
+- **AC20**: Il batch è atomico. Oggi gli update sono uno per uno, fuori transazione. È un cambio di comportamento e va nella PR 4 (D10), dove `LastAdmin` (AC18) ha bisogno comunque della transazione.
 - **AC20a**: Gli errori di AC18 arrivano all'utente. Oggi `handleOperatorRoleChange` (`OperatorTable.tsx`) mostra il toast di successo anche quando il server action fallisce. Il server action restituisce `{ error: code }` invece di lanciare, e la tabella mostra il messaggio.
 
 ### UI admin
@@ -155,26 +167,40 @@ Decisioni (2026-10-22), dalle domande di chiarimento:
 
 ### Migrazione su Effect (L1 + L2)
 
-- **AC24**: Le 11 procedure di `user` e `operator`, più le due nuove di lettura e `deactivate`, sono adapter. Non contengono query Drizzle: input zod → servizio in `packages/server/src/services/{user,operator}/` → `runTrpc(program, operatorErrorToTrpc | userErrorToTrpc)`. Controllo: `git grep drizzle-orm packages/server/src/api/routers/{user,operator}` è vuoto.
+- **AC24**: Le procedure di `operator` (6, più le due nuove di lettura e `deactivate`) e `user.getUserPreference` sono adapter. Non contengono query Drizzle: input zod → servizio in `packages/server/src/services/{user,operator}/` → `runTrpc(program, operatorErrorToTrpc | userErrorToTrpc)`.
+  - Le 4 `update*` di `user` non si migrano: la PR P2 le elimina (AC34).
+  - Controllo: `git grep drizzle-orm packages/server/src/api/routers/operator` è vuoto dopo la PR 2, `.../routers/user` dopo la PR P2.
 - **AC25**: `protectedProcedure` resta com'è: controlla solo che ci sia una sessione, e il controllo dei disattivati sta nell'adapter (AC16). `operatorProcedure` e `adminProcedure` di `api/trpc.ts` usano un servizio `resolveActor` in `services/auth/`, in Effect, che restituisce l'operatore e l'`Actor` (con `actorOf` di `services/contact/actor.ts`). Codici e messaggi restano gli stessi:
   - `BAD_REQUEST` senza operatore;
   - `FORBIDDEN` `admin-only`.
 
   In più, dalla PR 3: `UNAUTHORIZED` per l'utente disattivato (AC16).
-- **AC26**: Comportamento invariato, verificato dai test di caratterizzazione della PR 1. Restano verdi con le stesse asserzioni dopo la PR 2. Comprendono le stranezze di oggi, conservate di proposito e messe nei follow-up:
+- **AC26**: Comportamento invariato, verificato dai test di caratterizzazione della PR 1. Restano verdi con le stesse asserzioni dopo la PR 2, che **non contiene nessun cambio voluto** (D10). Comprendono le stranezze di oggi, conservate di proposito e messe nei follow-up:
   - `getOperatorById` senza `id`, con un solo operatore nel database, restituisce quello. La query non ha `ORDER BY`, quindi con più operatori il risultato non è definito e non si testa; `id: 0` vale come "nessun id";
   - `updateOperatorInfo` restituisce l'operatore **prima** dell'aggiornamento;
   - `getUserPreference` di un utente senza operatore restituisce `{ preferences: {}, role: undefined, operatorId: undefined }`.
-- **AC27**: Le quattro `update*` delle preferenze usano un solo servizio, `updatePreferences(userId, patch)`. Legge e scrive la riga di `users` sotto `FOR UPDATE`, in una transazione.
-  - Due aggiornamenti simultanei di chiavi diverse si conservano entrambi. Oggi l'ultimo vince e cancella l'altro.
-  - Per un utente senza operatore, il merge conserva le altre chiavi. Oggi la `innerJoin` con `operators` le legge vuote e le cancella.
-
-  Con AC20, sono i soli cambi voluti di comportamento della PR 2. I test di caratterizzazione di questi casi descrivono il comportamento nuovo e lo dicono nel nome.
+- **AC27**: Sostituito dalla sezione "Preferenze di layout nel browser" (AC31–AC35). Le scritture concorrenti delle preferenze spariscono con il loro endpoint, invece di essere corrette.
 - **AC28**: Nei servizi nuovi non compare `TRPCError`. Compare solo nelle funzioni `*ErrorToTrpc` e in `effect/trpc.ts`.
+
+### Preferenze di layout nel browser
+
+- **AC31**: Le 4 preferenze stanno in cookie del browser, uno per chiave, scritti dal client. Nessuna scelta di layout fa una richiesta al server:
+  - la sidebar si apre e si chiude subito;
+  - mostrare o nascondere una colonna di Clienti, Pratiche o Contatti cambia subito la tabella, senza `router.refresh()`.
+- **AC32**: Le pagine Clienti, Pratiche e Contatti fanno il primo render con le colonne scelte, leggendo i cookie della richiesta (`cookies()` di `next/headers`). Nessuna colonna appare e poi sparisce, e le pagine non chiamano più `user.getUserPreference` per le colonne.
+  - Tornando su una pagina entro i 30 secondi della router cache si vedono le colonne scelte per ultime, non quelle del render in cache: le tabelle leggono lo stato dallo store del client, e la prop del server vale solo per il primo render.
+- **AC33**: Il logout cancella i cookie delle preferenze, insieme allo store (`logout` di `LogoutFloatingButton`): chi entra dopo nello stesso browser parte dal layout di default. Resta un caso accettato: una sessione scaduta senza logout lascia i cookie al prossimo utente di quel browser, che vede solo quali colonne erano nascoste, nessun dato. Una lista che nomina colonne non più esistenti non nasconde nulla, come oggi (`REMOVED_CUSTOMER_COLUMN_IDS`), e un cookie illeggibile vale come assente.
+- **AC34**: Le preferenze già salvate non si perdono. Nella PR P1, se un cookie manca, il client lo scrive una volta con il valore che `getUserPreference` restituisce ancora. La PR P2, almeno 2 settimane dopo il rilascio in prod della P1, toglie lato server:
+  - le 4 procedure `update*` e i loro tipi esportati;
+  - la route `/api/user/preferences` e la sua voce in `apps/api/src/rest.ts`;
+  - il campo `preferences` dalla risposta di `getUserPreference`, che resta per `role` e `operatorId`;
+  - `user/_test/contactPreference.db.test.ts`.
+- **AC35**: Ordine di rilascio: P1 in prod su Vercel prima che P2 arrivi al backend. Una scheda rimasta aperta con il codice vecchio che chiama una `update*` già tolta non si rompe: la scelta resta a schermo e l'errore va solo in console, come oggi per un salvataggio fallito.
 
 ### Gate
 
 - **AC29**: Ogni PR passa i gate di CI: `next lint`, `tsc --noEmit`, `pnpm run test --run` con i `*.pg.test.ts`, `pnpm build`, `pnpm api:build`, `pnpm api:smoke`.
+- **AC29a**: Le PR 2 e 4 hanno anche la revisione di Leonardo: la 2 tocca i middleware dei permessi, la 4 ruoli, login e sessioni.
 - **AC30**: La migrazione dello schema è solo additiva: due colonne nullable e un valore di enum.
   - Va in una PR sua, con il merge in `dev` e `main`, e la applica Omar (gli agenti non lanciano `db:migrate:prod`) prima che inizi il codice che la legge.
   - Una volta applicata, il file non cambia più. Il migrator di Drizzle salta le migrazioni più vecchie dell'ultima applicata, quindi non si applica mai una migrazione che non è ancora in `main`.
@@ -202,6 +228,14 @@ Decisioni (2026-10-22), dalle domande di chiarimento:
   ```
 
   Il portafoglio non torna indietro.
+- **Requisito per il sostituto di NextAuth.** La PR 4 aggiunge due comportamenti a `auth.ts`: `signIn` rifiuta i disattivati (AC17) e l'override di `getSessionAndUser` invalida le loro sessioni (AC16). La spec che sostituirà NextAuth (passo "Auth e contesto tRPC" di [[chore/migrazione-effect]]) li deve conservare, con gli stessi test.
+- **Perché cookie e non localStorage o IndexedDB (D9).**
+  - Clienti, Pratiche e Contatti sono server component: il server costruisce la tabella e deve sapere quali colonne nascondere. localStorage e IndexedDB il server non li vede. Le tabelle uscirebbero con tutte le colonne, che poi sparirebbero all'idratazione, oppure andrebbero rese solo sul client, perdendo il render del server.
+  - Un cookie resta solo nel browser come localStorage: non c'è niente sul database e nessuna richiesta in più, perché viaggia con la richiesta della pagina. Il server lo legge nel render senza query.
+  - IndexedDB è asincrono e pensato per molti dati: per 4 chiavi piccole costa più di quello che dà.
+  - **Dimensioni:** Clienti ha circa 32 colonne. Una lista di id nascosti resta sotto 1 KB, lontano dai 4 KB di un cookie. Si usa un cookie per chiave.
+  - Quando il frontend diventerà solo client (fuori da Next.js), il cookie resta leggibile da `document.cookie`, e la scelta non va rifatta.
+  - Lo store zustand che già oggi le tiene in localStorage passa a scrivere nei cookie, così c'è una sola copia nel browser.
 - **Utenti senza operatore.** Il "disattivato" sta su `users`, non su `operators`, perché il login e le sessioni sono dell'utente.
 - **Lettura della sessione e AC16.** NextAuth v4 con strategy `database` chiama `adapter.getSessionAndUser`. L'override sta accanto a `createUser`: se l'utente ha `disabled_at`, restituisce `null`, come una sessione inesistente.
   - L'adapter è costruito con `pgTableCreator` e non conosce le colonne nuove. L'override aggiunge quindi una lettura per chiave primaria di `users.disabled_at` a ogni lettura di sessione, su Vercel e su Cloud Run.
@@ -225,3 +259,5 @@ Decisioni (2026-10-22), dalle domande di chiarimento:
 | D6 | Sorgente di log nuova `deactivation`, non `bulk` | Nell'export e nello storico si capisce perché il cliente è passato |
 | D7 | Nei batch dei ruoli, un id disattivato è un errore e un id inesistente resta saltato | Non cambiare il comportamento di oggi oltre il necessario (AC26) |
 | D8 | Il controllo dei disattivati sta nella lettura della sessione (adapter), più `findWorkingOperator` | Un solo punto copre Next.js, backend, `protectedProcedure` e assegnazioni |
+| D9 | Preferenze di layout in cookie del browser, non più sul server; due PR (P1 client, P2 rimozione lato server) | Decisione 5: nessuna richiesta per una scelta di layout. Cookie e non localStorage perché il server deve fare il primo render delle tabelle (Technical Notes). Si perde la sincronizzazione fra dispositivi, accettata |
+| D10 | La PR 2 è un refactor puro. AC20 va nella PR 4; la correzione delle preferenze (ex AC27) è sostituita da D9 | Decisione 6; CLAUDE.md "Behavior stays the same"; proposta della Mappa del 21/10 |

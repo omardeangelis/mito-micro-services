@@ -7,6 +7,7 @@ links:
   - "[[specs/crm/gestione-operatori/SPEC]]"
   - "[[specs/crm/gestione-operatori/PLAN]]"
   - "[[specs/crm/filtri-sql-sicuri/SPEC]]"
+  - "[[chore/migration_plan]]"
 created: 2026-10-22
 updated: 2026-10-22
 ---
@@ -17,6 +18,10 @@ updated: 2026-10-22
 
 Questa pagina ordina il lavoro sui **servizi di dominio**. Il piano GCP ([[chore/migrazione-gcp]]) ordina invece **dove** gira il codice. I due piani sono indipendenti: il backend importa gli stessi file, quindi spostare la logica in Effect non cambia niente nei cutover.
 
+**Fonti.** Questa pagina parte dalla ["Mappa servizi backend MITO"](https://claude.ai/artifact/TGtCT8MXcmTryd5DmoYaZL) del 21/10/2026 (analisi del branch `dev` a `11d423a`: 81 procedure in 10 router, 13 route REST, quota Effect, test e rischio per servizio). Ne riprende il metodo e l'ordine per rischio, con tre differenze: l'obiettivo finale (§3), `user` e `operator` anticipati per la disattivazione (§4) e le route REST come filone a sé (§6).
+
+**Supera la D1 di [[chore/migration_plan]]** ("tenere tRPC"). Quella decisione valeva per un backend Express con il frontend da portare in fretta. L'obiettivo ora è "solo Effect" (domanda di partenza): tRPC resta finché L1 e L2 non sono finiti, poi si cambia trasporto una volta sola (§3).
+
 ## 1. Tre livelli, in quest'ordine
 
 "Solo Effect" vuol dire tre cose diverse. Ognuna costa poco solo se la precedente è finita.
@@ -25,7 +30,7 @@ Questa pagina ordina il lavoro sui **servizi di dominio**. Il piano GCP ([[chore
 |---|---|---|---|
 | **L1: Logica** | Query Drizzle, regole, errori attesi (`Data.TaggedError`), dipendenze (`Context.Tag` + `Layer`) in `packages/server/src/services/<dominio>/` | Nessuno: è un refactor interno | Fatto per contact, task, chat, cron, storage, `customer/assignment`. Manca per user, operator, import, analytics, il resto di customer e pratiche |
 | **L2: Bordo** | Le procedure tRPC diventano adapter senza logica: input zod → servizio → `runTrpc(program, xErrorToTrpc)`. Anche i middleware `operatorProcedure` e `adminProcedure` | Nessuno: firme e codici di errore invariati | Quasi nessuno. I middleware di `packages/server/src/api/trpc.ts` fanno ancora query Drizzle inline |
-| **L3: Trasporto** | tRPC → Effect RPC: `RpcGroup` con payload, successo ed errori in `Schema`, un middleware che fornisce `CurrentUser`, client tipizzato nella UI | La UI: 76 procedure usate in 57 file, i server action via `@/trpc/server`, `createTestCaller` dei test | Da non iniziare ora (§3) |
+| **L3: Trasporto** | tRPC → Effect RPC: `RpcGroup` con payload, successo ed errori in `Schema`, un middleware che fornisce `CurrentUser`, client tipizzato nella UI. Le route REST rimaste diventano `HttpApi` o procedure RPC (§6) | La UI: 76 procedure usate in 57 file, i server action via `@/trpc/server`, `createTestCaller` dei test | Da non iniziare ora (§3) |
 
 **Perché quest'ordine.** Il costo di L3 cresce con la logica che sta ancora dentro le procedure. Se ogni procedura è un adapter di tre righe, cambiare trasporto vuol dire riscrivere adapter, non logica. Altrimenti ogni router va rifatto due volte: una per togliere tRPC e una per scrivere i servizi. Per questo L1 e L2 si fanno router per router, insieme, e L3 si fa una volta sola, alla fine.
 
@@ -56,27 +61,46 @@ Valgono per ogni router portato a L1 e L2:
 - Gli schemi zod condivisi passano a `Schema`. Effect Schema espone Standard Schema, quindi i form possono usarlo con lo stesso resolver.
 - tRPC si toglie quando l'ultimo router è passato.
 
-## 4. Ordine dei router per L1 e L2
+## 4. Ordine dei passi per L1 e L2
 
-| # | Router | Perché qui | Prerequisito |
-|---|---|---|---|
-| 1 | `user`, `operator`, middleware di `trpc.ts` | Piccoli. I middleware servono a tutti i router dopo. La disattivazione degli operatori ci si appoggia | Test di caratterizzazione (`operator` non ne ha) |
-| 2 | `import` | 5 procedure, nessuna chiamata HTTP verso sé stesso | Caratterizzazione (51 righe di test oggi) |
-| 3 | `analytics` | Solo query di lettura, nessun effetto collaterale | Baseline di output sul seed di `mito_local` |
-| 4 | `customer` (il resto) e `pratiche` | La rete di test di customer è la migliore (1.870 righe) | `filtri-sql-sicuri` in `dev`: riscrive proprio le GET con `sql.raw` |
-| 5 | `chat`, `task`, `supabase` | Già su servizi: resta da togliere la logica residua dalle procedure | – |
-| 6 | `export` | Escluso per ora | Il suo spostamento nel piano GCP |
+L'ordine segue il rischio della Mappa del 21/10, con un'eccezione: `user` e `operator` vanno per primi perché la disattivazione degli operatori ci si appoggia.
 
-**Vincoli comuni.** Nessun refactor di router nella stessa release di un cutover GCP, né durante le 2 settimane di osservazione di S6. Una PR per router. Le asserzioni dei test esistenti restano le stesse.
+| # | Passo | Taglia | Perché qui | Prerequisito |
+|---|---|---|---|---|
+| 0 | Base comune | S (resto) | Senza, ogni riscrittura si porta dietro gli shim di Next.js | – |
+| ✓ | Cron `update`, `cleanup`, `delete-export` | fatto | I 4 job sono programmi Effect con `Db` iniettato, `step()` non c'è più ([PR #55](https://github.com/omardeangelis/mito-micro-services/pull/55)). Restano da togliere `src/app/api/cron/*` e gli 8 workflow GitHub, dopo il passaggio dei cron di prod a Cloud Scheduler (piano GCP) | – |
+| 1 | `user`, `operator`, middleware di `trpc.ts` | S | Piccoli; la disattivazione ci si appoggia; i middleware servono a tutti i router dopo. Le preferenze di layout vanno nel browser invece di essere migrate | [[specs/crm/gestione-operatori/PLAN]] |
+| 2 | `customer` (il resto) | L | Il router non convertito che cambia più spesso (12 commit, 3 fix) ed è l'entità centrale. Mancano test su ricerca, filtri e modifica anagrafica | `filtri-sql-sicuri` in `dev`: riscrive le GET con `sql.raw`. Se tarda, si fa prima il passo 3 |
+| 3 | `import`: 4 procedure **e le 6 route REST `/api/import/*`** | L | Circa 2.000 righe: body letto con un cast senza zod, batch fuori transazione (un errore a metà lascia un import parziale), `xlsx` 0.18.5 abbandonato con 2 CVE. Il danno potenziale più grande | Caratterizzazione sui file xlsx dei test; decisione REST o RPC (§6) |
+| 4 | `pratiche` e le 7 query di `task/GET` | M | Chiude i due domini principali. Scritture con `input.id!`, alcune come `protectedProcedure` | Dopo `customer` |
+| 5 | `chat`, `supabase` → `storage` | S | Già quasi su servizi | – |
+| 6 | `analytics` | M | 8 query di sola lettura, zero test, date con `new Date()` nel corpo: oggi non si testa. Basso rischio e basso valore | Prima i test con un `Clock` fisso |
+| 7 | `export` | M | Escluso per ora | Il suo spostamento nel piano GCP; route REST (§6) |
+| 8 | Auth e contesto tRPC | M, critico | Per ultimo, insieme all'uscita del frontend da Next.js e alla scelta del sostituto di NextAuth. Ogni PR qui ha la revisione di Leonardo | Il sostituto di NextAuth deve conservare i comportamenti della disattivazione (login rifiutato, sessioni invalidate) |
+
+**Passo 0, cosa resta.** Effect (`Db`, `Tx`, `runTrpc`, `ErrorReporter`), schema e codice server sono già in pacchetti (`@mito/db`, `@mito/server`), e lo storage è il kit `gcs-storage`. Restano:
+- `server-only` importato da 26 file di `packages/server/src`;
+- `@sentry/nextjs` in `api/trpc.ts` ed `effect/errorReporter.ts`;
+- il router `supabase` da rinominare `storage`;
+- `supabaseClient` nel contesto tRPC.
+
+Si fa a pezzi, dentro il passo che tocca quei file, o in una PR piccola sua. Non blocca il passo 1.
+
+**Vincoli comuni.**
+- Nessun refactor di router nella stessa release di un cutover GCP, né durante le 2 settimane di osservazione di S6.
+- Una PR per router. Le asserzioni dei test esistenti restano le stesse.
+- **Refactor e correzioni in PR diverse.** I test di caratterizzazione fissano anche i difetti (es. `getCustomerById` senza id restituisce il primo cliente). La PR che porta il router su Effect non li corregge: ogni correzione va in una PR piccola dopo.
+- Le PR che toccano permessi, ruoli o auth hanno la revisione di Leonardo.
 
 ## 5. Checklist L2 (aggiornare a ogni merge)
 
 | Router | L1 servizi | L2 adapter | Note |
 |---|---|---|---|
+| base comune (passo 0) | parziale | – | `server-only`, `@sentry/nextjs`, rename `supabase` |
 | middleware `trpc.ts` | ☐ | ☐ | [[specs/crm/gestione-operatori/PLAN]] |
-| user | ☐ | ☐ | [[specs/crm/gestione-operatori/PLAN]] |
+| user | ☐ | ☐ | [[specs/crm/gestione-operatori/PLAN]]; le 4 `update*` si tolgono (PR P2) |
 | operator | ☐ | ☐ | [[specs/crm/gestione-operatori/PLAN]] |
-| import | ☐ | ☐ | |
+| import | ☐ | ☐ | più le 6 route REST |
 | analytics | ☐ | ☐ | |
 | customer | parziale | parziale | `PUT` handover e assegnazioni già fatti |
 | pratiche | ☐ | ☐ | dopo `filtri-sql-sicuri` |
@@ -84,3 +108,16 @@ Valgono per ogni router portato a L1 e L2:
 | task | ☑ | parziale | |
 | supabase | ☑ | parziale | |
 | export | ☐ | ☐ | escluso |
+| cron | ☑ | – | restano le route `/api/cron/*` e i workflow GitHub |
+
+## 6. Le route REST servite tramite Next.js
+
+Il backend serve 13 route REST importando i route handler di `src/app/api/**` e costruendo una `NextRequest` (`apps/api/src/rest.ts`, che importa `next/server`). Bloccano "solo Effect" e "frontend solo client" quanto tRPC:
+
+| Route | Quante | Destino |
+|---|---|---|
+| `/api/import/*` | 6 | Passo 3. Va deciso se servono a consumatori esterni (fase 4 di [[chore/migration_plan]]: API REST con API key). Se sì, `HttpApi` con OpenAPI; se no, procedure come le altre |
+| `/api/export/*` | 6 | Passo 7. Oggi richiamano tRPC su sé stesse via `@/trpc/server` per arrivare allo storage |
+| `/api/user/preferences` | 1 | Eliminata dalla PR P2 di [[specs/crm/gestione-operatori/PLAN]]: le preferenze di layout stanno nel browser |
+
+Finché restano, una route REST si migra come una procedura: logica in un servizio Effect, route handler come adapter. Il cambio da `NextRequest` a route Hono native (o `HttpApi`) si fa per gruppo, quando il gruppo è su servizi, e mai nella stessa release di un cutover GCP.

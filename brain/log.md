@@ -347,3 +347,8 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 - Strategia: [[chore/migrazione-effect]]: L1 servizi e L2 procedure adapter router per router, L3 (tRPC → Effect RPC) rinviato a dopo Effect 4 stabile e fase P del piano GCP
 - Decisioni: disattivazione (non cancellazione), portafoglio a una destinazione scelta dall'admin, solo `OPERATORE`, "mai l'ultimo admin" sul cambio di ruolo
 - Verifica del piano (`adversarial-verifier`): DO NOT SHIP alla prima passata (2 blocker, 10 major), correzioni nel §16 del piano: log con `INSERT ... SELECT`, regola dei lock "prima gli utenti", migrazione in una PR sua, OQ1 chiusa con "il cliente vince"
+
+## [2026-10-22] plan | gestione-operatori, revisione 2, e migrazione-effect allineata alla Mappa del 21/10
+- Fonte: "Mappa servizi backend MITO" del 21/10 (https://claude.ai/artifact/TGtCT8MXcmTryd5DmoYaZL)
+- [[chore/migrazione-effect]]: ordine per rischio della Mappa (customer, import, pratiche e task, chat, analytics, export, auth per ultimo), `user` e `operator` anticipati per la disattivazione; passo 0 con quello che resta; cron segnati come fatti; import rivalutato a L con le 6 route REST; nuovo §6 sulle 13 route REST servite tramite `NextRequest`; D1 di [[chore/migration_plan]] segnata come superata
+- [[specs/crm/gestione-operatori/SPEC]] e [[specs/crm/gestione-operatori/PLAN]]: PR 2 refactor puro (AC20 nella PR 4, ex AC27 tolto); preferenze di layout in cookie del browser (AC31–AC35, PR P1 e P2); revisione di Leonardo sulle PR 2 e 4; i comportamenti di `auth.ts` della PR 4 diventano requisito del sostituto di NextAuth

@@ -13,7 +13,7 @@ updated: 2026-10-22
 
 **Spec:** [[specs/crm/gestione-operatori/SPEC]]
 **Status:** Planned. Nessun codice scritto.
-**Generato:** 2026-10-22 con `create-plan`: grill (4 decisioni) → task graph → tdd → `adversarial-verifier`. La prima verifica era DO NOT SHIP (2 blocker, 10 major); le correzioni sono nel §16.
+**Generato:** 2026-10-22 con `create-plan`: grill (4 decisioni) → task graph → tdd → `adversarial-verifier`. La prima verifica era DO NOT SHIP (2 blocker, 10 major); le correzioni sono nel §16. Rivisto lo stesso giorno dopo il confronto con la "Mappa servizi backend MITO" del 21/10 e la decisione sulle preferenze (§16, revisione 2).
 **Strategia di contesto:** [[chore/migrazione-effect]]. Questo è il passo 1 dell'ordine dei router (§4).
 
 ---
@@ -21,6 +21,7 @@ updated: 2026-10-22
 ## 1. Situazione iniziale
 
 - **`user`** ha 5 procedure (`getUserPreference` e 4 `update*`), tutte inline. Le `update*` rifanno lo stesso read-modify-write sul testo JSON di `users.preferences`, letto con una `innerJoin` su `operators`. Test: `user/_test/contactPreference.db.test.ts` (177 righe).
+- **Le preferenze di layout** passano dal server a ogni caricamento e a ogni click (SPEC, Context). Le `update*` si chiamano solo da `POST /api/user/preferences` (`DashboardLayout`, `CustomersTable`, `PraticesTable`, `ContactColumnsMenu`). `getUserPreference` serve anche a sapere `role` e `operatorId` (`UserPreferenceProvider`, `DataSection`, layout del profilo). Lo store zustand `userPreference-storage` tiene già una copia in localStorage.
 - **`operator`** ha 6 procedure, tutte inline. Nessun test.
 - **I middleware** `operatorProcedure` e `adminProcedure` di `packages/server/src/api/trpc.ts` fanno query Drizzle sul `db` globale.
 - **Infrastruttura Effect già pronta:**
@@ -48,22 +49,26 @@ updated: 2026-10-22
 
 ## 3. Forma della soluzione
 
-Cinque PR in sequenza:
+Cinque PR in sequenza per operatori e disattivazione, più due PR indipendenti per le preferenze:
 
 | PR | Contenuto | Comportamento |
 |---|---|---|
 | **PR 1: Caratterizzazione** | Solo test, sulle procedure di oggi | Nessun cambio |
-| **PR 2: user e operator su Effect** | Servizi, `resolveActor`, adapter, errori | Invariato, salvo AC20 e AC27 |
+| **PR 2: user e operator su Effect** | Servizi, `resolveActor`, adapter, errori. Le 4 `update*` non si toccano | **Invariato**, senza eccezioni (D13) |
 | **PR 3: Migrazione** | Due colonne nullable e un valore di enum, applicati da Omar | Nessun cambio (le colonne non si leggono) |
-| **PR 4: Disattivazione, backend** | Errori e codici, guard (sessione, login, liste), regola "prima gli utenti", `LastAdmin`, `deactivateOperator`, procedure | Nuovo |
+| **PR 4: Disattivazione, backend** | Errori e codici, guard (sessione, login, liste), regola "prima gli utenti", cambio di ruolo atomico con `LastAdmin`, `deactivateOperator`, procedure | Nuovo |
 | **PR 5: Disattivazione, UI** | Dialog nella tabella admin, errori del cambio di ruolo | Nuovo |
+| **PR P1: Preferenze nel browser** | Cookie scritti dal client, render delle tabelle dai cookie, copia una tantum delle preferenze salvate | Nuovo: nessuna richiesta per il layout |
+| **PR P2: Preferenze, rimozione lato server** | Via le 4 `update*`, la route `/api/user/preferences` e `preferences` da `getUserPreference` | Solo codice tolto |
+
+P1 non dipende dalle altre e può partire subito. P2 parte almeno 2 settimane dopo il rilascio in prod di P1 (AC34, AC35).
 
 **Struttura dei servizi** (`packages/server/src/services/`):
 
 ```
 auth/actor.ts           resolveActor(userId): Effect<{ operator, actor: Actor }, NotAnOperator | OperatorDisabled | DbError, Db>
 auth/disabled.ts        isUserDisabled({ id?, email }): per signIn e getSessionAndUser
-user/preferences.ts     getPreferences(userId), updatePreferences(userId, patch)
+user/current.ts         getCurrentUser(userId): la forma di getUserPreference (preferences, role, operatorId); dopo P2 solo role e operatorId
 operator/queries.ts     listActiveOperators, getOperatorById, getPublicOperator(userId)
 operator/profile.ts     updateOperatorInfo(operatorId, { name, surname })
 operator/roles.ts       updateOperatorsRole(changes): + LastAdmin
@@ -91,6 +96,9 @@ operator/errors.ts      NotAnOperator, OperatorDisabled, OperatorIsAdmin, Cannot
 | D9 | Le stranezze di AC26 si conservano e vanno nei follow-up | Refactor a comportamento invariato |
 | D10 | Regola dei lock "prima gli utenti, poi i clienti"; `findWorkingOperator` in `FOR KEY SHARE OF users` dentro ogni transazione | AC7, AC11; review del 2026-10-22 (M1, M3) |
 | D11 | Un solo task (T4.1) è il proprietario di `operator/errors.ts` e dei codici di dominio della PR 4 | Review M10: niente modifiche parallele a uno switch esaustivo |
+| D12 | Preferenze di layout in cookie del browser; P1 client, P2 rimozione lato server dopo 2 settimane; la colonna `users.preferences` resta | SPEC D9, decisione 5 dell'utente |
+| D13 | PR 2 refactor puro: il cambio di ruolo atomico (AC20) va in T4.4, la correzione delle preferenze (ex AC27) non si fa | SPEC D10; proposta della Mappa del 21/10 |
+| D14 | Revisione di Leonardo sulle PR 2 e 4 | SPEC AC29a; la Mappa la chiede per permessi e auth |
 
 ## 5. Assunzioni e vincoli
 
@@ -135,6 +143,12 @@ T1.2 ─┴─ T1.3 (PR 1) ─┬─ T2.1 ─┐
 
 T4.5 dipende da T4.3 (la regola dei lock e `findWorkingOperator`), oltre che da T4.1.
 
+```
+TP1.1 ─ TP1.2 (PR P1) ─ [P1 in prod da 2 settimane] ─ TP2.1 ─ TP2.2 (PR P2)
+```
+
+Il ramo delle preferenze è indipendente. L'unico punto di contatto è `getUserPreference`: se la PR 2 è già in `dev`, TP2.1 toglie `preferences` dal servizio `getCurrentUser`; altrimenti dalla procedura inline.
+
 ## 9. Task
 
 ### PR 1: Caratterizzazione
@@ -167,8 +181,8 @@ T4.5 dipende da T4.3 (la regola dei lock e `findWorkingOperator`), oltre che da 
 - **location**: nuovo `packages/server/src/api/_test/procedures.db.test.ts`; `user/_test/contactPreference.db.test.ts` (solo casi nuovi, nessuna asserzione cambiata)
 - **description**:
   - **Middleware:** `UNAUTHORIZED` senza sessione; `BAD_REQUEST` per un utente senza operatore su un `operatorProcedure`; `FORBIDDEN` `admin-only` per un `OPERATORE` su un `adminProcedure`.
-  - **User:** `getUserPreference` di un utente senza operatore restituisce preferenze vuote e `role` e `operatorId` undefined. Le 4 `update*` scrivono la propria chiave e lasciano le altre.
-  - **Non si caratterizzano** i casi che la PR 2 cambia di proposito (AC20, AC27): li scrive T2.2 e T2.3 con il comportamento nuovo.
+  - **User:** `getUserPreference` restituisce `preferences`, `role` e `operatorId`; per un utente senza operatore, preferenze vuote e `role` e `operatorId` undefined (AC26).
+  - **Non si caratterizzano** le 4 `update*`: la PR P2 le elimina. Resta il test che c'è già (`contactPreference.db.test.ts`), fino a P2.
 - **validation**: test verdi su `dev` così com'è.
 - **status**: Planned
 - **log**:
@@ -224,11 +238,10 @@ T4.5 dipende da T4.3 (la regola dei lock e `findWorkingOperator`), oltre che da 
 - **location**: nuovi `services/operator/{queries,profile,roles}.ts` e `_test/`; `api/routers/operator/{GET,PUT}/index.ts`
 - **description**:
   - Porta le 6 procedure sui servizi (§3). Le stranezze di AC26 restano.
-  - `updateOperatorsRole` diventa atomico, in una `transaction` (AC20, cambio voluto). Gli id inesistenti restano saltati.
+  - `updateOperatorsRole` resta com'è: update uno per uno, id inesistenti saltati. La transazione arriva in T4.4 (D13).
   - Usa `operatorErrorToTrpc` di T2.1. Se T2.1 non è ancora in `dev`, crea solo la propria parte del file e il merge si risolve in T2.4.
 - **validation**:
   - T1.1 resta verde senza cambiare le asserzioni.
-  - Un test con `failNextUpdateOf(users)` sul secondo update del batch non lascia cambiato il primo (AC20).
   - `git grep drizzle-orm packages/server/src/api/routers/operator` è vuoto (AC24).
 - **status**: Planned
 - **log**:
@@ -236,39 +249,37 @@ T4.5 dipende da T4.3 (la regola dei lock e `findWorkingOperator`), oltre che da 
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
-- **tdd_target**: "un batch di due cambi di ruolo con il secondo update fallito lascia il primo utente con il ruolo di prima".
+- **tdd_target**: "`updateOperatorInfo` via servizio restituisce ancora l'operatore di prima dell'update".
 - **review_mode**: cli
 - **complexity**: medium
 
-#### T2.3: Servizio preferenze e adapter `user`
+#### T2.3: `getUserPreference` su un servizio
 - **depends_on**: [T1.3]
-- **location**: nuovo `services/user/preferences.ts`, `_test/preferences.db.test.ts`; `api/routers/user/{GET,PUT}/*`
+- **location**: nuovo `services/user/current.ts`, `_test/current.db.test.ts`; `api/routers/user/GET/getUserPreference.ts`
 - **description**:
-  - `getPreferences(userId)` restituisce la stessa forma di `retrieveUserPrefercence`, con la stessa `innerJoin`.
-  - `updatePreferences(userId, patch: Partial<UserPreference>)` lavora in una `transaction`: `SELECT preferences FROM users ... FOR UPDATE`, merge, update.
-  - Le 4 procedure restano, con input zod ed export dei tipi invariati, e chiamano lo stesso servizio con la propria chiave.
-  - `retrieveUserPrefercence` va tolto. Prima si controlla con `git grep` che nessun altro lo importi.
+  - `getCurrentUser(userId)` restituisce la stessa forma di `retrieveUserPrefercence`, con la stessa `innerJoin`.
+  - `getUserPreference` diventa un adapter.
+  - `retrieveUserPrefercence` resta, perché le 4 `update*` lo usano ancora: la PR P2 toglie entrambi. Le `update*` non si toccano (AC24).
 - **validation**:
   - `contactPreference.db.test.ts` e T1.2 restano verdi senza cambiare le asserzioni.
-  - **Concorrenza (AC27):** in un `*.db.test.ts`, la prima `updatePreferences` viene fermata con `beforeNextLockOf(users, ...)` mentre parte la seconda. Alla fine ci sono tutte e due le chiavi.
-  - **Utente senza operatore (AC27):** una `update*` conserva le altre chiavi.
-  - `git grep drizzle-orm packages/server/src/api/routers/user` è vuoto.
+  - `GET/getUserPreference.ts` non importa `drizzle-orm`.
 - **status**: Planned
 - **log**:
 - **files edited/created**:
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
-- **tdd_target**: "due aggiornamenti simultanei di `contactTableVisibleColumns` e `dashboardCollapsed` lasciano salvate entrambe le chiavi".
+- **tdd_target**: "`getCurrentUser` di un utente senza operatore restituisce preferenze vuote, `role` e `operatorId` undefined".
 - **review_mode**: cli
-- **complexity**: medium
+- **complexity**: low
 
 #### T2.4: Gate e merge della PR 2
 - **depends_on**: [T2.1, T2.2, T2.3]
 - **location**: `brain/chore/migrazione-effect.md` §5 (checklist)
 - **description**:
   - Gate di CI (AC29).
-  - `adversarial-review` (caso B), con il focus "comportamento invariato salvo AC20 e AC27".
+  - `adversarial-review` (caso B), con il focus "comportamento invariato, senza eccezioni".
+  - Revisione di Leonardo (AC29a): la PR cambia i middleware dei permessi.
   - Spunta la checklist.
   - Merge in `dev`, fuori da una release di cutover.
 - **validation**: CI verde; REPORT SHIP; `git diff dev -- '*/_test/*'` sui file di T1.x mostra solo aggiunte.
@@ -381,12 +392,13 @@ Parte quando la migrazione è applicata a staging e prod (G3).
 #### T4.4: `LastAdmin` e disattivati nel cambio di ruolo
 - **depends_on**: [T4.1]
 - **location**: `services/operator/roles.ts`; `_test/roles.db.test.ts`, `_test/roles.pg.test.ts`
-- **description**: Nella transazione di T2.2:
+- **description**: `updateOperatorsRole` passa in una `transaction` (AC20, cambio voluto spostato qui dalla PR 2). Dentro:
   1. lock, in ordine di id, delle righe `users` degli admin attivi e di quelle del batch (`FOR UPDATE`);
   2. un disattivato nel batch → `OperatorNotFound` (AC19);
   3. conteggio degli admin dopo il cambio, e `LastAdmin` se è 0 (AC18).
 - **validation**:
   - Declassare l'unico admin, anche sé stessi, dà `LastAdmin` e non cambia nulla.
+  - **Atomicità (AC20):** con `failNextUpdateOf(users)` sul secondo update del batch, il primo utente resta con il ruolo di prima.
   - Su Postgres con due connessioni: due admin che si declassano a vicenda in parallelo, uno riesce e l'altro riceve `LastAdmin`; alla fine c'è un admin.
 - **status**: Planned
 - **log**:
@@ -453,6 +465,7 @@ Parte quando la migrazione è applicata a staging e prod (G3).
 - **description**:
   - Gate di CI.
   - `adversarial-review` (caso B, impatto atteso `critical`: auth, sessioni, lock).
+  - Revisione di Leonardo (AC29a).
   - Merge in `dev`.
   - **Rilascio in prod solo con OQ2 chiusa** (G4).
 - **validation**:
@@ -504,7 +517,9 @@ Parte quando la migrazione è applicata a staging e prod (G3).
     - le stranezze di AC26;
     - la destinazione di `pratiche.PUT` e `customer.insertCustomer`;
     - OQ3;
-    - la riattivazione dalla UI.
+    - la riattivazione dalla UI;
+    - togliere la colonna `users.preferences` (dopo P2) e rinominare `getUserPreference`, che restituisce solo chi è l'utente;
+    - nella spec del sostituto di NextAuth, i due comportamenti di `auth.ts` della PR 4 (SPEC, Technical Notes).
 - **validation**: CI verde; REPORT SHIP; spec `implemented`.
 - **status**: Planned
 - **log**:
@@ -517,11 +532,89 @@ Parte quando la migrazione è applicata a staging e prod (G3).
 - **assigned_skills**: [agent-browser]
 - **complexity**: low
 
+### PR P1: Preferenze nel browser
+
+#### TP1.1: Cookie delle preferenze, render dai cookie, copia una tantum
+- **depends_on**: []
+- **location**: `src/store/userPreferences.ts`, `src/store/context/UserPreferenceContext.tsx`; nuovo `src/lib/preferences/cookies.ts` (lettura e scrittura, client e server); `src/app/_components/DashboardLayout.tsx`; `src/app/dashboard/customers/_components/{CustomerTableSection,CustomersTable}.tsx`; `src/app/dashboard/pratiche/{page.tsx,_components/PraticesTable.tsx}`; `src/app/dashboard/contatti/_components/{ContactsTableSection,ContactColumnsMenu}.tsx`; `src/app/dashboard/profile/_components/LogoutFloatingButton.tsx`; test in `_test/` accanto
+- **description**:
+  - **Un modulo per i cookie** (`mito-pref-ds`, `-ct`, `-pt`, `-cot`): parse tollerante (illeggibile = assente), scrittura con `path=/`, `SameSite=Lax`, scadenza 1 anno. Lo usano lo store sul client e `cookies()` nei server component.
+  - **Lo store zustand** scrive nei cookie invece che in localStorage (`persist` con uno storage sui cookie, oppure i setter che scrivono il cookie). `logout` cancella i cookie (AC33).
+  - **Le 4 scritture** (`DashboardLayout`, `CustomersTable`, `PraticesTable`, `ContactColumnsMenu`) aggiornano lo store e il cookie, subito, senza `fetch` e senza `router.refresh()` (AC31).
+  - **I server component** di Clienti, Pratiche e Contatti leggono i cookie per le colonne nascoste e non chiamano più `getUserPreference` (AC32). Le tabelle prendono lo stato dallo store dopo il primo render.
+  - **Copia una tantum (AC34):** in `UserPreferenceProvider`, per ogni chiave senza cookie, si scrive il cookie con il valore di `getUserPreference`, che il provider legge già per `role` e `operatorId`.
+- **validation**:
+  - **Test di componente:** la sidebar cambia senza richieste di rete; una colonna nascosta in Clienti sparisce subito e il cookie contiene il suo id; il logout cancella i cookie.
+  - **Server component:** con il cookie `mito-pref-ct` nella richiesta, la tabella Clienti esce già senza quella colonna; con un cookie illeggibile, con tutte.
+  - **Copia:** senza cookie e con preferenze sul server, il provider scrive i cookie una volta; con i cookie già presenti non li sovrascrive.
+  - `git grep "/api/user/preferences" src` è vuoto.
+  - **`agent-browser`** su `pnpm dev`: nascondere una colonna di Contatti, aprire un contatto e tornare indietro entro 30 secondi; la colonna resta nascosta, e nella scheda Network non c'è nessuna richiesta per il layout.
+- **status**: Planned
+- **log**:
+- **files edited/created**:
+- **backlog_item_id**: n/a
+- **backlog_item_url**: n/a
+- **relation_mode**: n/a
+- **tdd_target**: "nascondere una colonna di Clienti la toglie dalla tabella e scrive il cookie senza nessuna `fetch`".
+- **review_mode**: mixed
+- **assigned_skills**: [agent-browser]
+- **complexity**: medium
+
+#### TP1.2: Gate e merge della PR P1
+- **depends_on**: [TP1.1]
+- **location**: –
+- **description**: Gate di CI (AC29) e `adversarial-review` con il pass UI. Merge in `dev`, poi rilascio in prod su Vercel. Si annota la data del rilascio: da lì partono le 2 settimane di P2.
+- **validation**: CI verde; REPORT SHIP; data del rilascio in prod nel log del task.
+- **status**: Planned
+- **log**:
+- **files edited/created**:
+- **backlog_item_id**: n/a
+- **backlog_item_url**: n/a
+- **relation_mode**: n/a
+- **tdd_target**: n/a
+- **review_mode**: mixed
+- **complexity**: low
+
+### PR P2: Preferenze, rimozione lato server
+
+#### TP2.1: Via le `update*`, la route REST e `preferences`
+- **depends_on**: [TP1.2, almeno 2 settimane di P1 in prod]
+- **location**: `packages/server/src/api/routers/user/{index.ts,PUT/updateUserPreference.ts,GET/getUserPreference.ts,_test/contactPreference.db.test.ts}`; `services/user/current.ts` se la PR 2 è in `dev`; `src/app/api/user/preferences/`; `apps/api/src/rest.ts`; `src/store/context/UserPreferenceContext.tsx` (via la copia una tantum)
+- **description**: Toglie quello che elenca AC34. `getUserPreference` (o `getCurrentUser`) restituisce solo `role` e `operatorId`. La colonna `users.preferences` resta (SPEC, Non-Goals).
+- **validation**:
+  - `git grep -n "updateCustomerTableVisibleColumns\|updateContactTableVisibleColumns\|updatePracticesTableVisibleColumns\|updateDashboardCollapsed\|retrieveUserPrefercence"` è vuoto.
+  - `git grep drizzle-orm packages/server/src/api/routers/user` è vuoto (AC24).
+  - `pnpm api:smoke` passa senza la route.
+- **status**: Planned
+- **log**:
+- **files edited/created**:
+- **backlog_item_id**: n/a
+- **backlog_item_url**: n/a
+- **relation_mode**: n/a
+- **tdd_target**: "`user.getUserPreference` restituisce `role` e `operatorId` e nessun campo `preferences`".
+- **review_mode**: cli
+- **complexity**: low
+
+#### TP2.2: Gate e merge della PR P2
+- **depends_on**: [TP2.1]
+- **location**: `brain/chore/migrazione-effect.md` §5 (checklist: route REST di `user`)
+- **description**: Gate di CI; merge in `dev`; il backend con P2 va in prod solo dopo P1 (AC35).
+- **validation**: CI verde.
+- **status**: Planned
+- **log**:
+- **files edited/created**:
+- **backlog_item_id**: n/a
+- **backlog_item_url**: n/a
+- **relation_mode**: n/a
+- **tdd_target**: n/a
+- **review_mode**: cli
+- **complexity**: low
+
 ## 10. Wave di esecuzione
 
 | Wave | Task | Quando parte |
 |---|---|---|
-| 1 | T1.1, T1.2 | Subito |
+| 1 | T1.1, T1.2, TP1.1 | Subito. TP1.1 tocca solo file della UI, nessun conflitto con la PR 1 |
 | 2 | T1.3 (PR 1) | T1.1 e T1.2 fatti |
 | 3 | T2.1, T2.2, T2.3 | PR 1 in `dev`. T2.1 crea `operator/errors.ts`, T2.2 lo usa: se finisce prima, si allinea in T2.4 |
 | 4 | T2.4 (PR 2) | Wave 3 fatta, nessun cutover GCP nella stessa release |
@@ -531,6 +624,8 @@ Parte quando la migrazione è applicata a staging e prod (G3).
 | 8 | T4.5 | T4.3 fatto |
 | 9 | T4.6 → T4.7 (PR 4) | T4.2, T4.4 e T4.5 fatti |
 | 10 | T5.1 → T5.2 (PR 5) | PR 4 in `dev` |
+| – | TP1.2 (PR P1) | TP1.1 fatto, in qualunque momento |
+| – | TP2.1 → TP2.2 (PR P2) | P1 in prod da almeno 2 settimane |
 
 ## 11. Strategia di test (fase TDD)
 
@@ -547,17 +642,19 @@ Parte quando la migrazione è applicata a staging e prod (G3).
   - `*.pg.test.ts` con due connessioni reali (`holdCustomerLock`, `waitUntilBlocked`) per concorrenza e scala (AC7, AC11, AC12, AC18). `lockRule` non vede i deadlock e non basta;
   - browser solo in T4.7, T5.1 e T5.2.
 - **Un tracciante per task**, dal suo `tdd_target`.
-- **Regola della PR 2:** nessuna asserzione dei test di T1.x cambia. I cambi voluti (AC20, AC27) hanno test nuovi, con il nome che dice il comportamento nuovo. Se un altro test va cambiato, il refactor ha cambiato comportamento: ci si ferma e si decide.
+- **Regola della PR 2:** nessuna asserzione dei test di T1.x cambia e non ci sono cambi voluti (D13). Se un test va cambiato, il refactor ha cambiato comportamento: ci si ferma e si decide. Il cambio di ruolo atomico ha il suo test in T4.4.
 
 ## 12. Gate di rilascio
 
 | Gate | Quando | Che cosa |
 |---|---|---|
 | G1 | Merge PR 1 | CI verde; solo file di test |
-| G2 | Merge PR 2 | CI verde; asserzioni di T1.x invariate; AC24 (`git grep`) vuoto; REPORT SHIP |
+| G2 | Merge PR 2 | CI verde; asserzioni di T1.x invariate; nessun cambio voluto; AC24 (`git grep` su `operator`) vuoto; REPORT SHIP; revisione di Leonardo |
 | G3 | Prima di T4.1 | PR 3 in `main`; migrazione applicata da Omar a staging e prod; file congelato |
-| G4 | Merge e rilascio PR 4 | CI verde; REPORT SHIP; prova su staging (T4.7); **OQ2 chiusa prima della prod** |
+| G4 | Merge e rilascio PR 4 | CI verde; REPORT SHIP; revisione di Leonardo; prova su staging (T4.7); **OQ2 chiusa prima della prod** |
 | G5 | Merge PR 5 | CI verde; REPORT SHIP con il pass UI; prova browser |
+| GP1 | Merge PR P1 | CI verde; REPORT SHIP con il pass UI; prova browser senza richieste di layout |
+| GP2 | Merge PR P2 | P1 in prod da almeno 2 settimane; CI verde; `api:smoke` senza la route |
 
 ## 13. Rischi e mitigazioni
 
@@ -573,6 +670,9 @@ Parte quando la migrazione è applicata a staging e prod (G3).
 | Il login Azure ricrea l'utente | `signIn` controlla prima di `isProduction` (AC17) |
 | Una migrazione di un altro branch viene saltata in prod | D7: PR della migrazione in `main` prima di applicarla, file congelato, controllo del journal in T3.1 |
 | Ogni nuovo utente del tenant è `ADMIN` e può disattivare colleghi | OQ2, gate prima del rilascio in prod della PR 4 (G4) |
+| Un utente perde il layout salvato sul server | Copia una tantum nei cookie in P1 (AC34); P2 dopo 2 settimane. Chi non entra in quella finestra riparte dal default: è solo layout |
+| Il backend senza le `update*` va in prod prima del frontend con P1 | Ordine di rilascio (AC35); una scheda vecchia mostra comunque la scelta e scrive l'errore in console |
+| Due operatori sullo stesso browser vedono il layout dell'altro | Il logout cancella i cookie (AC33); resta il caso della sessione scaduta, accettato perché riguarda solo le colonne |
 
 ## 14. Tracciabilità AC → task
 
@@ -584,13 +684,17 @@ Parte quando la migrazione è applicata a staging e prod (G3).
 | AC14, AC16, AC17 | T4.2 |
 | AC15 | T4.3 |
 | AC18, AC19 | T4.4 |
-| AC20 | T2.2 |
+| AC20 | T4.4 |
 | AC20a, AC21–AC23 | T5.1 (codici: T4.1) |
-| AC24, AC28 | T2.1, T2.2, T2.3, T4.6 |
+| AC24, AC28 | T2.1, T2.2, T2.3, T4.6, TP2.1 |
 | AC25 | T2.1, T4.2 |
 | AC26 | T1.1, T1.2, T2.2, T2.3 |
-| AC27 | T2.3 |
-| AC29 | T1.3, T2.4, T3.1, T4.7, T5.2 |
+| AC27 | sostituito da AC31–AC35 |
+| AC29 | T1.3, T2.4, T3.1, T4.7, T5.2, TP1.2, TP2.2 |
+| AC29a | T2.4, T4.7 |
+| AC31–AC33 | TP1.1 |
+| AC34 | TP1.1 (copia), TP2.1 (rimozione) |
+| AC35 | TP1.2, TP2.2 |
 | AC30 | T3.1, G3 |
 
 ## 15. Domande aperte
@@ -626,3 +730,10 @@ La prima versione del piano ha avuto DO NOT SHIP dall'`adversarial-verifier`. Co
   - soglia di tempo solo in locale;
   - lettura in più sulla sessione dichiarata.
 - **NIT:** mock `@mito/db`; `moveCustomerAndContact` privata; riuso di `actorOf`; tipo di `resolveActor` unico; `trpc.ts` può importare `drizzle-orm`.
+
+### Revisione 2 (2026-10-22): confronto con la Mappa del 21/10 e preferenze
+
+- **PR 2 refactor puro (D13).** Il cambio di ruolo atomico (AC20) passa a T4.4, dove `LastAdmin` ha comunque bisogno della transazione. La correzione delle preferenze concorrenti (ex AC27, ex T2.3) non si fa più: il suo endpoint sparisce con P2.
+- **Preferenze nel browser (D12).** Nuove PR P1 e P2. Le 4 `update*` non si migrano su Effect né si caratterizzano: sarebbe lavoro su codice che va tolto.
+- **Revisione di Leonardo** sulle PR 2 e 4 (D14).
+- **Follow-up:** i due comportamenti di `auth.ts` della PR 4 diventano un requisito della spec del sostituto di NextAuth.
