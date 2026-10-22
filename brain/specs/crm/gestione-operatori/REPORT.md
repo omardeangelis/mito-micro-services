@@ -5,8 +5,8 @@ scope: spec
 spec: gestione-operatori
 review_target: "spec implementation, per PR (un round per PR)"
 base_ref: claude/great-carson-o6qn17-pr3
-head_ref: claude/great-carson-o6qn17-pr4
-verdict: do-not-ship
+head_ref: claude/great-carson-o6qn17-pr4 (a0b45b4)
+verdict: ship
 review_impact: critical
 human_in_loop: true
 links:
@@ -212,3 +212,66 @@ Obiezione più forte (v4): il log e gli spostamenti della disattivazione scelgon
 | AC10–AC12 | Met | tetto dei retry da fissare con un test |
 | AC14–AC20 | Met | |
 | AC22 (codici), AC24–AC28 | Met | |
+
+## [Round: 2026-10-22 — PR 4, disattivazione backend, secondo giro]
+
+### Verdict
+
+**SHIP** · impact: critical. I due verificatori del primo giro con MAJOR (v4 dati, v7 test) danno SHIP sulle correzioni di a0b45b4, con 2 MINOR e 2 NIT. Restano le condizioni umane del primo giro: revisione di Leonardo, prova su staging, OQ2 prima della prod.
+
+### Coverage
+
+- Rubric passes run: 2/2 (v4, v7, modello più forte). v1, v2, v3, v5, v6: SHIP al primo giro, non rilanciati per scelta di Omar.
+- Gate di CI su a0b45b4, in un worktree senza file di env reali: `next lint` e `tsc --noEmit` verdi; `pnpm run test --run` con `TEST_DATABASE_URL` su Postgres 15: 180 file e 2643 test verdi, `*.pg.test.ts` girati e nessuno saltato; `pnpm build`, `api:build`, `api:smoke` verdi.
+- Un test saltato per costruzione: `cronCli.test.ts` vuole la porta 54329 libera, e in locale lì c'è il Postgres dei test. In CI il Postgres è sulla 5432 e il test gira.
+- v7 ha eseguito 22 mutanti in una copia del codice: tutti presi dai test.
+
+### Findings
+
+| Severity | Concern (verifier) | Location | Problem | Required fix / evidence | Durable? |
+|----------|--------------------|----------|---------|-------------------------|----------|
+| MINOR | v4 | `services/operator/deactivate.ts:153-154`, `:245-247` | Il commento dice che una riga diventata di X dopo i lock "si sposta e si registra allo stesso modo". Vale solo se lo scrittore conferma prima che lo statement `moveAndLog` prenda la sua fotografia: un contatto confermato su X dopo la fine della disattivazione resta sul disattivato (sonda su Postgres 15). Il log resta coerente; il buco è degli scrittori fuori dalla regola dei lock (`customer.insertCustomer`), già nel debito previsto da T5.2 | Commento limitato a "confermata prima dello statement di spostamento", con il rimando al controllo lato scrittore | no |
+| MINOR | v7 | `services/operator/_test/deactivate.pg.test.ts:241` | Il test "scritti e confermati dopo i lock" passa anche sul codice di prima (log e spostamenti in statement separati): l'altra connessione conferma prima di ogni scrittura. La garanzia di AC9 sotto race la tiene il test sulla forma del SQL (`deactivate.db.test.ts:746-760`: un solo statement scrive clienti, task e log) | Commento del test che non lo presenta come test di regressione e rimanda al test sulla forma del SQL | no |
+| MINOR | v4 | deviazione da AC9 | Il contatto attivo senza cliente si sposta senza riga di log: fa esattamente quello che è dichiarato (spostato, contato, sotto lock, niente log) e non nasconde altro. È scritta in IMPLEMENTATION-NOTES ma non ancora accettata da Omar né nel debito | Accettazione di Omar (checklist), poi voce in `brain/tech-debt/crm/gestione-operatori.md` (T5.2) | sì |
+| NIT | v7 | `deactivate.pg.test.ts`, `operatorLock.pg.test.ts` | Quando un'asserzione di lock fallisce, la transazione tenuta non viene rilasciata: un mutante fa fallire 10–19 test per timeout e nasconde il fallimento vero | Rilascio in `onTestFinished` | no |
+| NIT | v7 | `operatorLock.pg.test.ts:289` | La riassegnazione dei contatti contro la disattivazione vera "già partita" non ha un test: c'è solo contro un sostituto scritto a mano. AC7 non la elenca e il mutante M8 è preso | — | no |
+
+### What passed
+
+| Concern (verifier) | Evidence |
+|--------------------|----------|
+| v4: dati | Controlli di AC3–AC6 prima di ogni scrittura, ognuno con un test che verifica che non cambia nulla. AC8c con `coalesce(nullif(customer.operator_id, X), dest)` sulla riga della fotografia, i quattro casi del cliente coperti. Log costruito dai `RETURNING` dei due UPDATE: `to_operator_id` è quello scritto davvero. Tre sonde a due connessioni (contatto spostato altrove durante l'attesa, solo stato cambiato, cliente cambiato): nessuno spostamento senza log, nessun log senza spostamento. AC10, AC13 (`count()` con zero clienti), conteggi di `deactivationImpact` uguali agli spostamenti. 5.000 clienti + 5.000 contatti in 367 ms |
+| v4: retry | `Effect.retry({ times: 2, while: isDeadlock })` attorno all'intera transazione, nuova transazione a ogni tentativo; SQLSTATE letto attraverso `DrizzleQueryError` |
+| v7: failpoint (AC8) | Senza transazione e con la transazione spezzata in due (spostamenti, poi `users` e sessioni) i casi tardivi falliscono; il failpoint al commit usa un trigger di vincolo differito |
+| v7: ordine dei lock (AC7, AC11) | Mutanti presi: "Assegna a te" con il cliente prima (M4) o senza lock dell'utente (M5), Assegna Clienti (M6), Assegna chiamate (M7), riassegnazione (M8), disattivazione con i clienti prima (M9), senza `FOR UPDATE OF users` (M10), `FOR NO KEY UPDATE` (M11), `findWorkingOperator` senza `KEY SHARE` (M12). Le attese sono sugli statement dichiarati |
+| v7: tetto dei retry | 3 ripetizioni, 1, nessuna e retry su ogni `DbError`: tutti presi |
+| v7: test non indeboliti | Le asserzioni rimosse fissavano il disegno a due statement e sono sostituite da asserzioni più strette; nessun `skip`, `only` o asserzione condizionale |
+| Orchestratore: punti scoperti dal classificatore | "Assegna a te": ordine dei lock preso da M4/M5; `OperatorNotFound` mappato da `customerErrorToTrpc` (tsc). `getOperatorsForDeactivation` e `getDeactivationImpact` usano `deactivationInput` con id int32 positivi |
+
+### Human Review Checklist
+
+1. Revisione di Leonardo (AC29a): ruoli (`services/operator/roles.ts`, compresa la regola nuova di `LastAdmin`: contano solo gli admin con un operatore), login e sessioni (`auth.ts`, `services/auth/{disabled,actor}.ts`), "Assegna a te" che ora blocca la riga utente dell'attore.
+2. **OQ2 chiusa prima della prod:** chiunque del tenant Azure entra come ADMIN e può, via `/api/trpc`, declassare e disattivare altri senza riattivazione dalla UI.
+3. Ordine di rilascio: migrazione della PR 3 applicata sull'ambiente prima che ci arrivino le PR 3 e 4.
+4. Su staging: un utente di prova disattivato con `operator.deactivate` viene buttato fuori al refresh, su Vercel e su Cloud Run, e non rientra con Azure; misurare la lettura in più della sessione.
+5. Gate di CI verdi sulla PR, con i `*.pg.test.ts`.
+6. Deviazione da AC9 da accettare: un contatto attivo senza cliente si sposta senza riga di log.
+
+### Acceptance criteria check (secondo giro)
+
+| Criterion | Met / Unmet / Blocked | Notes |
+|-----------|-----------------------|-------|
+| AC1–AC6, AC13 | Met | |
+| AC7 | Met | "Assegna a te" dentro la regola dei lock; resta il buco degli scrittori fuori dalla regola (`insertCustomer`), debito previsto da T5.2 |
+| AC8 | Met | failpoint tardivi |
+| AC9 | Met con una deviazione | contatti senza cliente senza riga di log, da accettare |
+| AC10–AC12 | Met | tetto dei retry fissato |
+| AC14–AC20 | Met | primo giro; `LastAdmin` corretto e testato |
+| AC22 (codici), AC24–AC28 | Met | primo giro |
+| AC29 | Met | gate completi su a0b45b4 |
+| AC29a | Blocked | revisione di Leonardo, umana |
+
+### Notes for docs-maintenance
+
+- Durable: la deviazione di AC9 (contatti senza cliente) e il buco degli scrittori fuori dalla regola dei lock (`customer.insertCustomer`, `pratiche.PUT`) vanno nel debito della feature.
+- La regola dei lock "prima gli utenti, poi i clienti" ora vale anche per "Assegna a te".

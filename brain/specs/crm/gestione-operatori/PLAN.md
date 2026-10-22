@@ -472,8 +472,8 @@ Si scrive e si prova in locale subito. Arriva su un ambiente solo quando la migr
   - CI verde; REPORT SHIP.
   - Su staging, un utente di prova disattivato con `operator.deactivate` chiamato a mano viene buttato fuori al refresh e non rientra con Azure.
   - Misura della latenza in più sulla lettura della sessione.
-- **status**: In progress: secondo giro della review da fare
-- **log**: 2026-10-22: gate di CI verdi dopo T4.6 (2618 test). `adversarial-review` primo giro: DO NOT SHIP (v4 dati, v7 test; v1, v2, v3, v5, v6 SHIP), [[specs/crm/gestione-operatori/REPORT]]. Correzioni di tutti i findings in a0b45b4 (worker sul modello più forte): unit 885 test e pg 68 test verdi, tsc verde. **Prossimo passo:** rilanciare v4 e v7 sul diff `e2c…a0b45b4` (o sull'intera PR), gate completi, poi merge di `-pr4` in `-pr5`. Revisione di Leonardo e prova su staging restano umane; OQ2 blocca la prod.
+- **status**: Done in locale: review SHIP al secondo giro; revisione di Leonardo, PR, merge e prova su staging da fare (Omar); OQ2 blocca la prod
+- **log**: 2026-10-22: gate di CI verdi dopo T4.6 (2618 test). `adversarial-review` primo giro: DO NOT SHIP (v4 dati, v7 test; v1, v2, v3, v5, v6 SHIP), [[specs/crm/gestione-operatori/REPORT]]. Correzioni di tutti i findings in a0b45b4 (worker sul modello più forte): unit 885 test e pg 68 test verdi, tsc verde. Secondo giro (sessione locale, stesso giorno) sul diff `a583a8e..a0b45b4`: v4 e v7 SHIP, 0 BLOCKER e 0 MAJOR, 3 MINOR e 2 NIT; v7 ha preso 22 mutanti su 22. Gate completi su a0b45b4 verdi in un worktree senza env reali: lint, tsc, 2643 test con i `*.pg.test.ts` su Postgres 15 (saltato solo `cronCli.test.ts`, che vuole la porta 54329 libera), build, `api:build`, `api:smoke`. Revisione di Leonardo e prova su staging restano umane; OQ2 blocca la prod.
 - **files edited/created**: –
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a

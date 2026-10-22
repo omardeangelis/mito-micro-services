@@ -42,6 +42,7 @@ updated: 2026-10-22
 
 ## Surprises and Decisions
 
+- **Ripresa in locale (2026-10-22, sessione desktop):** stato dei branch uguale a quello dei documenti. Il log di T4.7 citava il diff `e2c…a0b45b4`: il diff delle correzioni è `a583a8e..a0b45b4`. `origin/dev` è andato avanti (job delle migrazioni, deploy staging) senza toccare file della pila. Gate e prove in worktree senza file di env reali; i `*.pg.test.ts` su un Postgres 15 in Docker (porta 54329).
 - **`next dev` in questo container:** in un worktree i cui `node_modules` erano stati usati da un `next dev` fallito, `next build` non risolveva `@sentry/core`; dopo `rm -rf node_modules && pnpm install --offline` tutto verde. Non è un problema del codice (stessi file su un worktree pulito di `dev`: build verde).
 - **Prova nel browser senza login via email:** una riga in `session` di `mito_local` e il cookie `next-auth.session-token` impostato in `agent-browser`; le righe sono state cancellate a fine prova.
 - **Telemetria di `runTrpc` (review della PR 2):** sugli errori del database Sentry riceve un `DbError` attorno al `PostgresError`, e c'è una riga di log in più. È così per ogni procedura già su `runTrpc`; il client vede lo stesso.
@@ -59,6 +60,8 @@ updated: 2026-10-22
 | `agent-browser` sulla P1 (`next dev`, seed) | AC31–AC34 verificati | mio controllo e pass v1 della review |
 | `adversarial-review` PR 2 | SHIP, 0 BLOCKER, 0 MAJOR | |
 | `adversarial-review` P1 | SHIP, 0 BLOCKER, 0 MAJOR | MINOR corretti in 1471ece |
+| Gate di CI completi sulla PR 4 (`-pr4`, a0b45b4) | verdi: 2643 test, build, `api:build`, `api:smoke` | Postgres 15 in Docker sulla 54329; `cronCli.test.ts` saltato per costruzione (porta occupata dal Postgres dei test) |
+| `adversarial-review` PR 4 | primo giro DO NOT SHIP; secondo giro (v4, v7) SHIP, 0 BLOCKER, 0 MAJOR | 3 MINOR: due commenti che promettono troppo, la deviazione di AC9 da accettare |
 
 ## Acceptance Criteria Status
 
@@ -69,8 +72,8 @@ updated: 2026-10-22
 ## Remaining Work
 
 - **Ripresa (stato al 2026-10-22, prima della compattazione):**
-  - PR 4 (`-pr4`, a0b45b4): rilanciare i verificatori v4 (dati) e v7 (test) della review sulle correzioni, poi gate completi e secondo giro nel REPORT.
-  - PR 5 (`-pr5`, worktree `/home/user/wt-pr5`): `git merge claude/great-carson-o6qn17-pr4`, gate, prova `agent-browser` del dialog (seed di `mito_local`, sessione inserita in `session` + cookie `next-auth.session-token`; `next dev` funziona in un worktree con `node_modules` puliti), poi T5.2 (review con il pass UI, `docs-maintenance`, tech debt della feature, TD4 `[OPEN]`).
+  - PR 4 (`-pr4`, a0b45b4): secondo giro della review fatto (SHIP), gate completi verdi. In attesa di Omar per i due MINOR sui commenti e per accettare la deviazione di AC9.
+  - PR 5 (`-pr5`, worktree della sessione cloud, non più disponibile): `git merge claude/great-carson-o6qn17-pr4`, gate, prova `agent-browser` del dialog (seed di `mito_local`, sessione inserita in `session` + cookie `next-auth.session-token`; `next dev` funziona in un worktree con `node_modules` puliti), poi T5.2 (review con il pass UI, `docs-maintenance`, tech debt della feature, TD4 `[OPEN]`).
   - Acceptance audit finale e finalizzazione della spec.
 
 - PR P2 (TP2.1, TP2.2): almeno 2 settimane dopo P1 in prod (AC34, AC35).

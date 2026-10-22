@@ -145,3 +145,44 @@ Three generic risk surfaces at once (sign-in and the session read of every reque
 ### Overrides applied
 
 None.
+
+## [Round: 2026-10-22 — PR 4, disattivazione backend, secondo giro]
+
+### Change set under review
+
+- **Scope:** correzioni della review del primo giro della PR 4
+- **Target:** branch `claude/great-carson-o6qn17-pr4`, testa a0b45b4
+- **Compared:** `a583a8e` → `a0b45b4` (15 file, +883/−112)
+
+### Routing rubric (review-classifier output)
+
+```json
+{
+  "taskType": "bugfix",
+  "secondaryType": "test",
+  "domainsTouched": ["crm"],
+  "adversarialVerifiers": {
+    "count": 2,
+    "passes": [
+      { "id": "v4", "charter": "Deactivation data: what deactivateOperator writes vs AC3–AC6, AC8–AC10, AC12, AC13; the single CTE statement (moveAndLog) makes log rows consistent with the moves; contacts without a customer (deviation from AC9, moved without a log row because task_event_log.customer_id is NOT NULL); retry; impact counts equal the moves.", "complexity": "high" },
+      { "id": "v7", "charter": "Test integrity: the tests prove the ACs — the AC8 failpoint now fails late (after moves, users update, commit), the real-Postgres lock-order tests for Assegna chiamate, Assegna Clienti, reassign and Assegna a te actually interleave and would fail under the mutation, the 2-retry cap on 40P01 is pinned; no existing test weakened.", "complexity": "high" }
+    ]
+  },
+  "taskComplexity": "high",
+  "reviewImpact": "critical",
+  "humanInLoop": true,
+  "nextStep": "Run v4 and v7 on the strongest model against fix.diff, the AC1–AC13 excerpt and the checkout at a0b45b4; v7 needs a reachable test Postgres and must say so if the pg suites are skipped. Before merging, a human checks the items the rationale lists as uncovered."
+}
+```
+
+### Classifier rationale
+
+Il diff riscrive come la disattivazione sposta clienti, contatti e log sotto lock di riga, e tocca la lettura della sessione in `auth.ts`: impatto critical, umano nel giro. Tutte e due le passate sul modello più forte (semantica delle CTE che modificano dati, interleaving a due connessioni). Il classificatore segnala tre punti che nessuna delle due passate copre:
+
+- l'ordine dei lock di "Assegna a te" nel codice di produzione e il mapping di `OperatorNotFound` della procedura;
+- la regola di `LastAdmin` cambiata (solo gli admin con un operatore) dopo lo SHIP di v3;
+- i limiti int32 degli input di `getOperatorsForDeactivation`.
+
+### Overrides applied
+
+Perimetro deciso da Omar: solo v4 e v7, gli altri verificatori del primo giro hanno dato SHIP. I tre punti scoperti sono stati controllati dall'orchestratore e sono nel REPORT: l'ordine dei lock di "Assegna a te" è preso dai mutanti M4 e M5 di v7; `OperatorNotFound` passa da `customerErrorToTrpc`, vincolato da tsc; `getOperatorsForDeactivation` usa `deactivationInput` con `operatorIdInput` limitato. La regola nuova di `LastAdmin` resta nella checklist umana (revisione di Leonardo).

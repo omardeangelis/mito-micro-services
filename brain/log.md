@@ -12,6 +12,13 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 
 <!-- Entries are appended by create-spec (spec creation) and docs-maintenance (ingest). Format:
 
+## [2026-10-22] review | Gestione operatori — PR 4, disattivazione backend, secondo giro
+- Report: [[specs/crm/gestione-operatori/REPORT]] (round PR 4, primo e secondo giro)
+- Scope: spec
+- Verdict: DO NOT SHIP al primo giro (5 MAJOR: log e spostamenti da statement diversi, "Assegna a te" fuori dalla regola dei lock, failpoint troppo presto, ordine dei lock senza test, deviazione di AC9), SHIP al secondo dopo le correzioni di a0b45b4. Gate completi verdi (2643 test con i `*.pg.test.ts`)
+- Impact: critical; revisione di Leonardo, prova su staging e OQ2 prima della prod restano umane
+- Verifiers: 7 al primo giro, 2 al secondo (v4, v7: 0 blocker, 0 major, 3 minor, 2 nit; 22 mutanti presi)
+
 ## [2026-10-22] review | Gestione operatori — PR 2, user e operator su Effect
 - Report: [[specs/crm/gestione-operatori/REPORT]] (round PR 2)
 - Scope: spec
