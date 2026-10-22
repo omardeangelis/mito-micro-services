@@ -76,7 +76,8 @@ updated: 2026-10-22
 
 - **Ripresa (stato al 2026-10-22, prima della compattazione):**
   - PR 4 (`-pr4`, a0b45b4): secondo giro della review fatto (SHIP), gate completi verdi. In attesa di Omar per i due MINOR sui commenti e per accettare la deviazione di AC9.
-  - PR 5 (`-pr5`, 001e861): merge di `-pr4`, gate e prova `agent-browser` fatti. Resta T5.2: review con il pass UI, `docs-maintenance`, tech debt della feature, TD4 `[OPEN]`.
+  - PR 5 (`-pr5`, 001e861): merge di `-pr4`, gate e prova `agent-browser` fatti. Review primo giro DO NOT SHIP (REPORT): correzioni da fare dopo la decisione di Omar sul contrasto dei token condivisi, poi secondo giro di v3 e v4. Poi `docs-maintenance`, tech debt della feature, TD4 `[OPEN]`.
+  - `mito_local`: Arduino Pace (1004) e Romana Penzo (1006) disattivati dalle prove; due righe in `session` (un ADMIN, un OPERATORE) da cancellare a fine prova.
   - Acceptance audit finale e finalizzazione della spec.
 
 - PR P2 (TP2.1, TP2.2): almeno 2 settimane dopo P1 in prod (AC34, AC35).

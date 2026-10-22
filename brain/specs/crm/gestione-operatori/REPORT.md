@@ -4,9 +4,9 @@ type: review
 scope: spec
 spec: gestione-operatori
 review_target: "spec implementation, per PR (un round per PR)"
-base_ref: claude/great-carson-o6qn17-pr3
-head_ref: claude/great-carson-o6qn17-pr4 (a0b45b4)
-verdict: ship
+base_ref: claude/great-carson-o6qn17-pr4 (97b8ae6)
+head_ref: claude/great-carson-o6qn17-pr5 (001e861)
+verdict: do-not-ship
 review_impact: critical
 human_in_loop: true
 links:
@@ -275,3 +275,66 @@ Obiezione più forte (v4): il log e gli spostamenti della disattivazione scelgon
 
 - Durable: la deviazione di AC9 (contatti senza cliente) e il buco degli scrittori fuori dalla regola dei lock (`customer.insertCustomer`, `pratiche.PUT`) vanno nel debito della feature.
 - La regola dei lock "prima gli utenti, poi i clienti" ora vale anche per "Assegna a te".
+
+## [Round: 2026-10-22 — PR 5, disattivazione UI, primo giro]
+
+### Verdict
+
+**DO NOT SHIP** · impact: critical. Due verificatori su quattro (v3 stato del client, v4 UI) con MAJOR; v1 (contratto d'errore) e v2 (autorizzazione) SHIP.
+
+Obiezione più forte (v3 e v4, trovata in modo indipendente): `handleConfirm` del dialog non ha `try/finally`. Se la chiamata al server action viene rifiutata (rete, timeout della funzione, action non trovata dopo un deploy), `submitting` resta vero: select, "Annulla" e "Conferma" disabilitati, `Esc` e la X ignorati, nessun messaggio. Si esce solo ricaricando la pagina. Riprodotto nel browser con la POST interrotta.
+
+### Coverage
+
+- Rubric passes run: 4/4 (v1, v2 sul modello più forte; v3, v4 su quello bilanciato).
+- Gate di CI su 001e861: verdi (2669 test con i `*.pg.test.ts`, build, `api:build`, `api:smoke`).
+- v4 sul server `next dev` di `-pr5` con `mito_local` (seed di 10.000 clienti), Chromium headless, da 280 a 1440 px. Non provati: Safari mobile, il singolare "1 cliente" a schermo, la disattivazione dell'ultima riga.
+- v1 ha provato le due forme dell'errore dal vivo: `inProcessLink` e `backendLink` contro il backend Hono vero.
+- v2 ha chiamato il server action con una sessione OPERATORE, senza cookie e con header falsi: sempre rifiutato, database invariato.
+
+### Findings
+
+| Severity | Concern (verifier) | Location | Problem | Required fix / evidence | Durable? |
+|----------|--------------------|----------|---------|-------------------------|----------|
+| MAJOR | v3, v4 | `DeactivateOperatorDialog.tsx:63-78` | Un rifiuto della chiamata al server action lascia il dialog bloccato per sempre (vedi Verdict) | `try/catch/finally`: `setSubmitting(false)` sempre, `describeActionError("UNKNOWN")` sul rifiuto; test con `mockRejectedValue` che vede l'alert e chiude con `Esc` | no |
+| MAJOR | v3 | `OperatorTable.tsx:144-164`, `useOperatorTableStore` | Una modifica di ruolo in sospeso sopravvive alla disattivazione del suo operatore: il prossimo "Salva" manda il suo id, il server rifiuta tutto il batch con `OPERATOR_NOT_FOUND` (AC19) e la modifica non si può più togliere perché la riga non c'è | Togliere quell'id dalle modifiche in sospeso dopo la disattivazione; test del flusso combinato | no |
+| MAJOR | v4 | `DeactivateOperatorDialog.tsx:156-160` | Messaggio d'errore `text-destructive` a 3,21:1 su `#ededed` (WCAG 1.4.3 chiede 4,5) | Token di testo più scuro; vedi la decisione sui primitivi condivisi | da decidere |
+| MAJOR | v4 | toast `variant: "success"` | Testo a 2,14:1 (`#fafafa` su `rgb(49,196,142)`); variante condivisa con gli altri toast di successo | Token del primitivo | da decidere |
+| MAJOR | v4 | bottone "Conferma" (`bg-destructive`) | 3,61:1, 3,30:1 in hover; è il contrasto già registrato in `tech-debt/crm/sezione-contatti.md` ("Contrasto e nomi nei primitivi condivisi") | `#dc2626` o più scuro nella variante `destructive` | sì (già nel debito) |
+| MINOR | v3, v1 | `OperatorTable.tsx:146-147` | Anche il cambio di ruolo resta in `loading` se l'action viene rifiutata (difetto di prima, funzione riscritta) | `try/finally` | no |
+| MINOR | v3, v2 | `OperatorTable.tsx:104,119-121` | `currentOperatorId` opzionale: senza, "Disattiva" appare anche sulla riga dell'utente corrente (il server rifiuta comunque) | Prop obbligatoria | no |
+| MINOR | v3 | `DeactivateOperatorDialog.tsx:64-67` | Destinazione sparita dopo un refetch: "Conferma" abilitato non fa nulla, nessun messaggio | Messaggio e reset della destinazione | no |
+| MINOR | v4 | `OperatorTable.tsx:202-206` | Righe con chiave = indice: dopo il successo il nodo della riga tolta viene riusato e il focus va al bottone dell'operatore successivo | `getRowId` sull'id dell'operatore, focus spostato di proposito | no |
+| MINOR | v4 | `DeactivateOperatorDialog.tsx:115` | Se le query di lettura falliscono, "Caricamento..." resta per sempre, senza messaggio | Stato d'errore delle query con `role=alert` | no |
+| MINOR | v4 | dialog | Il dialog, centrato, salta di ±20 px quando arrivano i conteggi e quando compare l'errore | Altezza riservata per i conteggi e per l'errore | no |
+| MINOR | v1 | `_actions/_test/actions.test.ts` | I test costruiscono solo la forma in-process dell'errore, con il messaggio uguale al codice, e non c'è il caso UNKNOWN per `updateOperatorsRole`: un lettore che ignora `data.contactError` (BACKEND_URL) o che restituisce il messaggio passa tutti i test. Il codice oggi è corretto in tutte e due le forme | Fixture con `{ data: { contactError } }`, messaggio diverso dal codice, caso UNKNOWN | no |
+| MINOR | v2 | `_actions/_test/actions.test.ts:19-26` | Nessun test lega l'action alla sessione di chi chiama; la prova dal vivo è l'unica | Un `*.db.test.ts` che chiama l'action con una sessione OPERATORE | no |
+| MINOR | v4 | `components/ui/dialog.tsx` (condiviso) | Sotto 640 px il dialog tocca i bordi e i bottoni del footer si toccano; la X ha nome "Close" su `lang="it"` ed è ultima nell'ordine del Tab; testo muted a 4,05:1 | Passata sui primitivi `ui/` | sì |
+| NIT | v1 | `_actions/*.ts` | `revalidatePath` dentro il `try`: se lanciasse dopo una mutazione riuscita, l'action direbbe UNKNOWN | Fuori dal `try` | no |
+| NIT | v2 | `@admin/page.tsx:9`, layout | La lista degli operatori arriva nel payload RSC anche agli OPERATORE (era così anche prima); `getAllUniqueOperators` è `protectedProcedure` | Voce nel debito | sì |
+
+### What passed
+
+| Concern (verifier) | Evidence |
+|--------------------|----------|
+| v1: contratto d'errore | Dal vivo in tutte e due le forme: `OPERATOR_IS_ADMIN`, `CANNOT_DEACTIVATE_SELF`, `OPERATOR_NOT_FOUND`, `HANDOVER_SAME_OPERATOR`, `LAST_ADMIN` tornano come `{ error: code }`; un id oltre int32 dà `UNKNOWN`; nessun throw; `revalidatePath("/dashboard/profile")` solo sul successo. Mutanti su rethrow, ordine del revalidate, path sbagliato, `INVALID_INPUT` presi |
+| v2: autorizzazione | In-process passano gli header della richiesta, con `backendLink` solo il cookie di chi chiama. Server action chiamato con la sessione OPERATORE, senza cookie e con header falsi: `admin-only` / `UNAUTHORIZED` nel log, database identico (AC2). Il payload RSC aggiunge solo l'id dell'operatore di chi chiama |
+| v3: stato del client | Nessun toast di successo dopo un errore, `clearOperatorsToEdit` solo sul successo, guardie su admin e utente corrente, mappatura della destinazione, chiusura dopo il successo, conteggi del toast nei campi giusti (AC13), messaggi dei codici: ognuno con un mutante preso |
+| v4: UI | AC21 (titolo, conteggi con lo stato di caricamento, destinazioni senza il target, "Conferma" disabilitato senza destinazione), successo di AC22 (dialog chiuso, riga tolta, toast con i conteggi), AC23 (focus sul select, `Esc`, focus al bottone della riga con `:focus-visible`, nomi accessibili), label collegata al select, bottone di riga 84×36 px con anello di focus pieno e contrasto 19,8:1, nessun overflow del dialog da 280 a 1440 px |
+
+### Human Review Checklist
+
+1. Decidere il perimetro delle correzioni (contrasto dei token condivisi in questa PR o nel debito dei primitivi).
+2. Dopo le correzioni: secondo giro di v3 e v4.
+3. Su staging: una disattivazione vera di un operatore di prova, con i conteggi spostati alla destinazione; `LAST_ADMIN` dall'editor dei ruoli.
+4. Se `BACKEND_URL` è attivo sull'ambiente, un errore di dominio dal dialog arriva con il suo messaggio italiano.
+5. Le condizioni della PR 4 valgono anche qui: revisione di Leonardo, OQ2 chiusa prima della prod.
+
+### Acceptance criteria check (primo giro)
+
+| Criterion | Met / Unmet / Blocked | Notes |
+|-----------|-----------------------|-------|
+| AC20a | Met | toast "Deve restare almeno un admin" provato nel browser; `loading` resta bloccato solo su un rifiuto della chiamata |
+| AC21 | Met | |
+| AC22 | Unmet | dialog bloccato su un rifiuto della chiamata; messaggio d'errore sotto la soglia di contrasto |
+| AC23 | Met | il focus dopo il successo va alla riga successiva: AC23 lo chiede solo per `Esc` |

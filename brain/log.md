@@ -12,6 +12,13 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 
 <!-- Entries are appended by create-spec (spec creation) and docs-maintenance (ingest). Format:
 
+## [2026-10-22] review | Gestione operatori — PR 5, disattivazione UI, primo giro
+- Report: [[specs/crm/gestione-operatori/REPORT]] (round PR 5, primo giro)
+- Scope: spec
+- Verdict: DO NOT SHIP. Il dialog si blocca se la chiamata al server action viene rifiutata; una modifica di ruolo in sospeso sopravvive alla disattivazione del suo operatore; tre contrasti sotto 4,5:1 (messaggio d'errore, toast di successo, bottone `destructive`)
+- Impact: critical
+- Verifiers: 4 (0 blocker, 5 major, 9 minor, 2 nit; 2 SHIP e 2 DO NOT SHIP)
+
 ## [2026-10-22] review | Gestione operatori — PR 4, disattivazione backend, secondo giro
 - Report: [[specs/crm/gestione-operatori/REPORT]] (round PR 4, primo e secondo giro)
 - Scope: spec

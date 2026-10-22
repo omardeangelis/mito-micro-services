@@ -186,3 +186,42 @@ Il diff riscrive come la disattivazione sposta clienti, contatti e log sotto loc
 ### Overrides applied
 
 Perimetro deciso da Omar: solo v4 e v7, gli altri verificatori del primo giro hanno dato SHIP. I tre punti scoperti sono stati controllati dall'orchestratore e sono nel REPORT: l'ordine dei lock di "Assegna a te" è preso dai mutanti M4 e M5 di v7; `OperatorNotFound` passa da `customerErrorToTrpc`, vincolato da tsc; `getOperatorsForDeactivation` usa `deactivationInput` con `operatorIdInput` limitato. La regola nuova di `LastAdmin` resta nella checklist umana (revisione di Leonardo).
+
+## [Round: 2026-10-22 — PR 5, disattivazione UI]
+
+### Change set under review
+
+- **Scope:** spec implementation (PR 5 del piano: T5.1)
+- **Target:** branch `claude/great-carson-o6qn17-pr5`, testa 001e861
+- **Compared:** `97b8ae6` (testa di `-pr4`) → `001e861` (10 file, +727/−16, tutti in `src/app/dashboard/profile/@admin/`)
+
+### Routing rubric (review-classifier output, charter abbreviati)
+
+```json
+{
+  "taskType": "ui",
+  "secondaryType": "feature",
+  "domainsTouched": ["crm"],
+  "adversarialVerifiers": {
+    "count": 4,
+    "passes": [
+      { "id": "v1", "charter": "Error contract of the server actions deactivateOperator and updateOperatorsRole (AC20a, AC22): { error: code }, never throw, every domain code, both link modes (in-process and BACKEND_URL); UNKNOWN/INVALID_INPUT; revalidatePath only on success, on /dashboard/profile; describeActionError messages; tests catch breakage.", "complexity": "high" },
+      { "id": "v2", "charter": "Auth on the new privileged entry point: deactivateOperatorAction passes the caller's own session in both link modes so adminProcedure decides; row gating is display only; page.tsx's getUserOperator in the @admin slot (server-rendered for every role) exposes nothing new and adds no failure mode.", "complexity": "high" },
+      { "id": "v3", "charter": "Client state in OperatorTable and DeactivateOperatorDialog: loading and toasts on every path, clearOperatorsToEdit only on success, currentOperatorId undefined, destination mapping, stale targets, double submit, dismiss while submitting, rejected action, reset after success, toast counts (AC13); tests catch each defect.", "complexity": "medium" },
+      { "id": "v4", "charter": "UI pass: ui-review skill on the Admin tab of /dashboard/profile (sr-only column, row button, dialog) against AC21–AC23 and the skill's bar: label linked to the Select trigger, Italian wording, focus after success, target size, destructive and disabled states.", "complexity": "medium" }
+    ]
+  },
+  "taskComplexity": "medium",
+  "reviewImpact": "critical",
+  "humanInLoop": true,
+  "nextStep": "v1 and v2 on the strongest model, v3 and v4 balanced, v4 on the running dev server. Human checklist: a real deactivation with counts, LAST_ADMIN in the role editor, a non-admin session cannot use deactivateOperatorAction, the error mapping with BACKEND_URL if that mode is deployed."
+}
+```
+
+### Classifier rationale
+
+Il diff è quasi tutto UI, ma aggiunge un server action che chiunque può chiamare con un POST e che avvia uno spostamento di massa: per questo impatto critical, una passata dedicata all'autorizzazione e la firma umana. Il buco più probabile è la forma dell'errore via `BACKEND_URL`, che AC22 nomina e che i test non costruiscono. Nessun codice di animazione: nessuna passata di motion.
+
+### Overrides applied
+
+Nessuno. Per v2 l'orchestratore ha fornito due sessioni di `mito_local` (un ADMIN e un OPERATORE) per provare l'accesso dal vivo.

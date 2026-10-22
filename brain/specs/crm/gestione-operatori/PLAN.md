@@ -519,8 +519,8 @@ Si scrive e si prova in locale subito. Arriva su un ambiente solo quando la migr
     - la riattivazione dalla UI.
   - **Debito della migrazione**, in [[chore/migrazione-effect]] §7: TD4 (`auth.ts` per il sostituto di NextAuth) passa da `[PREVISTO]` a `[OPEN]`, e si aggiunge quello che le review trovano sul passaggio a Effect.
 - **validation**: CI verde; REPORT SHIP; spec `implemented`.
-- **status**: Planned
-- **log**:
+- **status**: In progress: review primo giro DO NOT SHIP, in attesa della decisione di Omar sul perimetro delle correzioni
+- **log**: 2026-10-22: `adversarial-review` primo giro sulla PR 5 (001e861): v1 e v2 SHIP, v3 e v4 DO NOT SHIP (5 MAJOR: dialog bloccato su un rifiuto della chiamata, modifica di ruolo orfana dopo la disattivazione, contrasto del messaggio d'errore, del toast di successo e del bottone `destructive`), [[specs/crm/gestione-operatori/REPORT]].
 - **files edited/created**:
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
