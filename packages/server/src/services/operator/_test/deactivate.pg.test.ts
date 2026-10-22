@@ -7,12 +7,18 @@ import { task } from "@mito/db/schema/task"
 import { taskEventLog } from "@mito/db/schema/taskEventLog"
 import { users } from "@mito/db/schema/users"
 import { Db, type DbClient } from "../../../effect/db"
-import { handover } from "../../customer/assignment"
+import {
+  assignCustomers,
+  assignToYourself,
+  handover,
+} from "../../customer/assignment"
 import { deactivateOperator } from "../deactivate"
 import { updateOperatorsRole } from "../roles"
+import { createTestCaller } from "@/test/caller"
 import { failureTag, runServer } from "@/test/effect"
 import { createCustomer, createOperator, createTask } from "@/test/factories"
 import {
+  activeTasksOf,
   hasTestDatabase,
   holdCustomerLock,
   migrateUpTo,
@@ -47,6 +53,21 @@ const waitingQueries = async () =>
       SELECT query FROM pg_stat_activity
       WHERE datname = current_database() AND wait_event_type = 'Lock'`
   ).map(({ query }) => query.trim())
+
+/** Whether another transaction holds the customer's row lock right now. */
+const isCustomerLocked = (customerId: string) =>
+  pgDb
+    .transaction((tx) =>
+      tx
+        .select({ id: customers.id })
+        .from(customers)
+        .where(eq(customers.id, customerId))
+        .for("update", { noWait: true })
+    )
+    .then(
+      () => false,
+      () => true
+    )
 
 const operatorOfCustomer = async (id: string) =>
   (await pgDb.select().from(customers).where(eq(customers.id, id)))[0]!
@@ -216,6 +237,254 @@ describe.skipIf(!hasTestDatabase)("deactivateOperator su Postgres vero", () => {
       ["deactivation", leaving.id, target.id],
     ])
   })
+
+  it("un cliente e un contatto attivo di X scritti e confermati da un'altra connessione dopo i lock: si spostano e hanno la loro riga di log, e su X non resta niente (AC9)", async () => {
+    const admin = await createOperator({ role: "ADMIN" })
+    const leaving = await createOperator({ name: "Xavier" })
+    const target = await createOperator({ name: "Zoe" })
+    const { customer, contact } = await seedCustomer(leaving.id)
+
+    // A writer outside the lock rule holds X's contact: the deactivation locks
+    // the users and the customer, then waits on the contact. Before freeing
+    // it, the writer adds a customer of X with an active contact of X and
+    // commits: the deactivation locked neither, and its next statement, the
+    // move, is the first to see them
+    let release!: () => void
+    let onLocked!: () => void
+    const gate = new Promise<void>((resolve) => (release = resolve))
+    const locked = new Promise<void>((resolve) => (onLocked = resolve))
+    const writer = pgClient.begin(async (tx) => {
+      await tx`SELECT id FROM "mito-deutsche_task" WHERE id = ${contact.id} FOR UPDATE`
+      onLocked()
+      await gate
+      await tx`
+        INSERT INTO "mito-deutsche_customers"
+          (id, name, surname, temp_id, unique_hash, source, operator_id)
+        VALUES ('late', 'Anna', 'late', 'late', 'late', 'inbound', ${leaving.id})`
+      return tx<{ id: number }[]>`
+        INSERT INTO "mito-deutsche_task" (customer_id, operator_id, state, is_active)
+        VALUES ('late', ${leaving.id}, 'chiamare', true)
+        RETURNING id`
+    })
+    await locked
+
+    const deactivating = deactivate(leaving.id, target.id, admin)
+    await waitUntilBlocked(1)
+    expect(await waitingQueries()).toEqual([
+      expect.stringMatching(
+        /^select "id" from "mito-deutsche_task" .* for update$/
+      ),
+    ])
+    release()
+    const [late] = await writer
+    const exit = await deactivating
+
+    expect(exit).toEqual(
+      Exit.succeed({ customersMoved: 2, contactsMoved: 2, practicesMoved: 0 })
+    )
+    // What moved is what was logged: one row per customer and per contact
+    const logged = await pgDb
+      .select()
+      .from(taskEventLog)
+      .where(eq(taskEventLog.source, "deactivation"))
+      .orderBy(asc(taskEventLog.id))
+    expect(logged).toHaveLength(2 + 2)
+    expect(
+      logged.map((row) => [
+        row.customerId,
+        row.taskId,
+        row.fromOperatorId,
+        row.toOperatorId,
+      ])
+    ).toEqual(
+      expect.arrayContaining([
+        [customer.id, null, leaving.id, target.id],
+        [customer.id, contact.id, leaving.id, target.id],
+        ["late", null, leaving.id, target.id],
+        ["late", late!.id, leaving.id, target.id],
+      ])
+    )
+    expect(await operatorOfCustomer("late")).toBe(target.id)
+    expect(await operatorOfTask(late!.id)).toBe(target.id)
+    // Nothing is left on X
+    const [onCustomers] = await pgDb
+      .select({ n: count() })
+      .from(customers)
+      .where(eq(customers.operatorId, leaving.id))
+    const [onContacts] = await pgDb
+      .select({ n: count() })
+      .from(task)
+      .where(and(eq(task.isActive, true), eq(task.operatorId, leaving.id)))
+    expect([onCustomers!.n, onContacts!.n]).toEqual([0, 0])
+  })
+
+  it("Assegna a te di X partito prima della disattivazione di X finisce, e la disattivazione sposta il cliente preso (AC7)", async () => {
+    const admin = await createOperator({ role: "ADMIN" })
+    const leaving = await createOperator({ name: "Xavier" })
+    const target = await createOperator({ name: "Zoe" })
+    const customer = await createCustomer({ operatorId: null })
+    const contact = await createTask({
+      customerId: customer.id,
+      operatorId: null,
+      state: "chiamare",
+    })
+
+    // The self-assign holds X's user row (KEY SHARE), waiting on the customer
+    const held = await holdCustomerLock(customer.id)
+    const taking = runServer(
+      assignToYourself({
+        customerId: customer.id,
+        actor: { role: "OPERATORE", operatorId: leaving.id },
+      })
+    )
+    await waitUntilBlocked(1)
+    // The deactivation waits on X's user row
+    const deactivating = deactivate(leaving.id, target.id, admin)
+    await waitUntilBlocked(2)
+    expect(await waitingQueries()).toEqual(
+      expect.arrayContaining([
+        expect.stringMatching(/ for update of "mito-deutsche_user"$/),
+      ])
+    )
+
+    await held.release()
+    const [taken, deactivated] = await Promise.all([taking, deactivating])
+
+    expect(failureTag(taken)).toBeUndefined()
+    expect(deactivated).toEqual(
+      Exit.succeed({ customersMoved: 1, contactsMoved: 1, practicesMoved: 0 })
+    )
+    expect(await operatorOfCustomer(customer.id)).toBe(target.id)
+    expect(await operatorOfTask(contact.id)).toBe(target.id)
+    expect(
+      (await logOf(customer.id)).map((row) => [
+        row.source,
+        row.fromOperatorId,
+        row.toOperatorId,
+      ])
+    ).toEqual([
+      ["self_assign", null, leaving.id],
+      ["self_assign", null, leaving.id],
+      ["deactivation", leaving.id, target.id],
+      ["deactivation", leaving.id, target.id],
+    ])
+  })
+
+  it("Assegna a te di X partito durante la disattivazione di X attende e riceve OperatorNotFound: il cliente resta senza operatore (AC7)", async () => {
+    const admin = await createOperator({ role: "ADMIN" })
+    const leaving = await createOperator({ name: "Xavier" })
+    const target = await createOperator({ name: "Zoe" })
+    const ofLeaving = await seedCustomer(leaving.id)
+    const free = await createCustomer({ operatorId: null })
+    const freeContact = await createTask({
+      customerId: free.id,
+      operatorId: null,
+      state: "chiamare",
+    })
+
+    // The deactivation holds X's user row, waiting on X's customer
+    const held = await holdCustomerLock(ofLeaving.customer.id)
+    const deactivating = deactivate(leaving.id, target.id, admin)
+    await waitUntilBlocked(1)
+    const taking = runServer(
+      assignToYourself({
+        customerId: free.id,
+        actor: { role: "OPERATORE", operatorId: leaving.id },
+      })
+    )
+    await waitUntilBlocked(2)
+    expect(await waitingQueries()).toEqual(
+      expect.arrayContaining([
+        expect.stringMatching(/ for key share of "mito-deutsche_user"$/),
+      ])
+    )
+    expect(await isCustomerLocked(free.id)).toBe(false)
+
+    await held.release()
+    const [deactivated, taken] = await Promise.all([deactivating, taking])
+
+    expect(deactivated).toEqual(
+      Exit.succeed({ customersMoved: 1, contactsMoved: 1, practicesMoved: 0 })
+    )
+    expect(failureTag(taken)).toBe("OperatorNotFound")
+    expect(await operatorOfCustomer(free.id)).toBeNull()
+    expect(await operatorOfTask(freeContact.id)).toBeNull()
+    expect(await logOf(free.id)).toEqual([])
+  })
+
+  it.each([
+    [
+      "un Assegna chiamate (task.bulkHandleTask)",
+      (admin: { userId: string }, customerId: string, toOperatorId: number) =>
+        createTestCaller(admin)
+          .task.bulkHandleTask({
+            operatorId: toOperatorId,
+            customerIds: [customerId],
+          })
+          .then(
+            () => undefined,
+            (error: unknown) => error
+          ),
+    ],
+    [
+      "un Assegna Clienti (assignCustomers)",
+      async (admin: { id: number }, customerId: string, toOperatorId: number) =>
+        failureTag(
+          await runServer(
+            assignCustomers({
+              customerIds: [customerId],
+              toOperatorId,
+              actor: { role: "ADMIN", operatorId: admin.id },
+            })
+          )
+        ),
+    ],
+  ])(
+    "%s verso X che tiene già il KEY SHARE quando parte la disattivazione di X finisce per primo, e la disattivazione sposta il suo cliente",
+    async (_, write) => {
+      const admin = await createOperator({ role: "ADMIN" })
+      const leaving = await createOperator({ name: "Xavier" })
+      const target = await createOperator({ name: "Zoe" })
+      const owner = await createOperator({ name: "Walter" })
+      const { customer } = await seedCustomer(owner.id)
+
+      // The writer holds X's user row (KEY SHARE), waiting on the customer
+      const held = await holdCustomerLock(customer.id)
+      const writing = write(admin, customer.id, leaving.id)
+      await waitUntilBlocked(1)
+      // The deactivation waits on X's user row
+      const deactivating = deactivate(leaving.id, target.id, admin)
+      await waitUntilBlocked(2)
+      expect(await waitingQueries()).toEqual(
+        expect.arrayContaining([
+          expect.stringMatching(/ for update of "mito-deutsche_user"$/),
+          expect.stringMatching(
+            /^select "id", "operator_id" from "mito-deutsche_customers" .* for update$/
+          ),
+        ])
+      )
+
+      await held.release()
+      const [written, deactivated] = await Promise.all([writing, deactivating])
+
+      expect(written).toBeUndefined()
+      expect(deactivated).toEqual(
+        Exit.succeed({ customersMoved: 1, contactsMoved: 1, practicesMoved: 0 })
+      )
+      expect(await operatorOfCustomer(customer.id)).toBe(target.id)
+      expect(
+        (await activeTasksOf(customer.id)).map((row) => row.operatorId)
+      ).toEqual([target.id])
+      expect(
+        (await logOf(customer.id))
+          .filter((row) => row.source === "deactivation")
+          .map((row) => [row.fromOperatorId, row.toOperatorId])
+      ).toEqual([
+        [leaving.id, target.id],
+        [leaving.id, target.id],
+      ])
+    }
+  )
 
   it("due disattivazioni simultanee dello stesso operatore: una sola riesce, l'altra riceve OperatorNotFound", async () => {
     const admin = await createOperator({ role: "ADMIN" })

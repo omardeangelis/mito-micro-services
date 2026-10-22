@@ -1,10 +1,14 @@
 import { beforeAll, beforeEach, describe, expect, it } from "vitest"
 import { Effect } from "effect"
 import { eq } from "drizzle-orm"
+import { readContactError } from "@mito/domain/contact/errors"
 import { customers } from "@mito/db/schema/customers"
 import { task } from "@mito/db/schema/task"
+import { taskEventLog } from "@mito/db/schema/taskEventLog"
 import { Db, type DbClient } from "../../../effect/db"
 import { assignCustomers, handover } from "../../customer/assignment"
+import { reassign } from "../reassign"
+import { createTestCaller } from "@/test/caller"
 import { failureTag, runServer } from "@/test/effect"
 import { createCustomer, createOperator, createTask } from "@/test/factories"
 import {
@@ -89,6 +93,67 @@ async function seedCustomer(operatorId: number) {
   })
   return { customer, contact }
 }
+
+type Seeded = Awaited<ReturnType<typeof seedCustomer>>
+
+/**
+ * The writers that move a customer or contact to `target`, other than
+ * "Passaggio di consegne": each resolves to its error (the tag of the
+ * service's, the code a procedure's carries), or to undefined when it
+ * succeeds; then the error it gets for a target that is not working.
+ */
+const writers: [
+  string,
+  (args: {
+    admin: { id: number; userId: string }
+    target: { id: number }
+    seeded: Seeded
+  }) => Promise<string | undefined>,
+  string,
+][] = [
+  [
+    "un Assegna chiamate (task.bulkHandleTask)",
+    ({ admin, target, seeded }) =>
+      createTestCaller(admin)
+        .task.bulkHandleTask({
+          operatorId: target.id,
+          customerIds: [seeded.customer.id],
+        })
+        .then(
+          () => undefined,
+          (error: unknown) => readContactError(error)?.code ?? String(error)
+        ),
+    "OPERATOR_NOT_FOUND",
+  ],
+  [
+    "un Assegna Clienti (assignCustomers)",
+    async ({ admin, target, seeded }) =>
+      failureTag(
+        await runServer(
+          assignCustomers({
+            customerIds: [seeded.customer.id],
+            toOperatorId: target.id,
+            actor: { role: "ADMIN", operatorId: admin.id },
+          })
+        )
+      ),
+    "OperatorNotFound",
+  ],
+  [
+    "una riassegnazione del contatto (reassign)",
+    async ({ admin, target, seeded }) =>
+      failureTag(
+        await runServer(
+          reassign({
+            taskId: seeded.contact.id,
+            operatorId: target.id,
+            actor: { role: "ADMIN", operatorId: admin.id },
+          })
+        )
+      ),
+    "OperatorNotFound",
+  ],
+]
 
 describe.skipIf(!hasTestDatabase)(
   "findWorkingOperator e la disattivazione su Postgres vero",
@@ -204,6 +269,8 @@ describe.skipIf(!hasTestDatabase)(
       expect(await waitingQueries()).toEqual([
         expect.stringMatching(/ for key share of "mito-deutsche_user"$/),
       ])
+      // Users first, then customers: the second customer is not locked yet
+      expect(await isCustomerLocked(seeded[1]!.customer.id)).toBe(false)
       await deactivating!.disable()
       const exit = await assigning
 
@@ -219,5 +286,39 @@ describe.skipIf(!hasTestDatabase)(
         expect(await operatorOfTask(untouched.contact.id)).toBe(previous.id)
       }
     })
+    it.each(writers)(
+      "%s verso X attende la disattivazione di X, senza il lock del cliente, poi riceve OperatorNotFound",
+      async (_, write, notFound) => {
+        const admin = await createOperator({ role: "ADMIN" })
+        const owner = await createOperator({ name: "Anna" })
+        const target = await createOperator({ name: "Xavier" })
+        const seeded = await seedCustomer(owner.id)
+
+        const deactivating = deactivation(target.userId)
+        await deactivating.locked
+
+        const writing = write({ admin, target, seeded })
+        await waitUntilBlocked(1)
+
+        // It waits on the user row, with the lock of findWorkingOperator, and
+        // has not locked the customer yet: users first, then customers
+        expect(await waitingQueries()).toEqual([
+          expect.stringMatching(/ for key share of "mito-deutsche_user"$/),
+        ])
+        expect(await isCustomerLocked(seeded.customer.id)).toBe(false)
+
+        await deactivating.disable()
+
+        expect(await writing).toBe(notFound)
+        expect(await operatorOfCustomer(seeded.customer.id)).toBe(owner.id)
+        expect(await operatorOfTask(seeded.contact.id)).toBe(owner.id)
+        expect(
+          await pgDb
+            .select()
+            .from(taskEventLog)
+            .where(eq(taskEventLog.customerId, seeded.customer.id))
+        ).toEqual([])
+      }
+    )
   }
 )

@@ -91,6 +91,25 @@ describe("operator.deactivate: il contratto", () => {
     })
   })
 
+  it("un id oltre gli interi di Postgres è BAD_REQUEST di validazione, non un errore del database", async () => {
+    const admin = await createOperator({ role: "ADMIN" })
+    const target = await createOperator()
+    const caller = createTestCaller(admin)
+
+    await expect(
+      caller.operator.deactivate({
+        operatorId: 2_147_483_648,
+        toOperatorId: target.id,
+      })
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" })
+    await expect(
+      caller.operator.getDeactivationImpact({ operatorId: 2_147_483_648 })
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" })
+    await expect(
+      caller.operator.getOperatorsForDeactivation({ operatorId: 2_147_483_648 })
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" })
+  })
+
   it("un operatore gia' disattivato risponde OPERATOR_NOT_FOUND", async () => {
     const admin = await createOperator({ role: "ADMIN" })
     const gone = await createOperator({ disabledAt: new Date() })

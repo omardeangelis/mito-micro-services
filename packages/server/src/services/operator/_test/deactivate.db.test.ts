@@ -1,30 +1,40 @@
-import { beforeAll, beforeEach, describe, expect, it } from "vitest"
-import { Exit } from "effect"
-import { actorOf } from "../../contact/actor"
-import { logOf, migrateUpTo, resetDb, tasksOf, testDb } from "@/test/db"
-import { runServer } from "@/test/effect"
-import { createCustomer, createOperator, createTask } from "@/test/factories"
-import { customers } from "@mito/db/schema/customers"
-import { eq } from "drizzle-orm"
-import { deactivateOperator } from "../deactivate"
-import { vi } from "vitest"
-import { asc, inArray } from "drizzle-orm"
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest"
+import { Effect, Exit } from "effect"
+import { asc, eq, inArray } from "drizzle-orm"
 import { chat } from "@mito/db/schema/chat"
+import { customers } from "@mito/db/schema/customers"
 import { operators } from "@mito/db/schema/operators"
 import { practices } from "@mito/db/schema/pratiche"
 import { chatToOperator } from "@mito/db/schema/relations/chatToOperator"
 import { alert, task } from "@mito/db/schema/task"
 import { taskEventLog } from "@mito/db/schema/taskEventLog"
 import { accounts, sessions, users } from "@mito/db/schema/users"
-import { testClient } from "@/test/db"
-import { failureTag } from "@/test/effect"
-import { failNextInsertInto } from "@/test/failpoint"
+import { Db, type DbClient } from "../../../effect/db"
+import { actorOf } from "../../contact/actor"
+import { deactivateOperator, deactivationImpact } from "../deactivate"
+import {
+  logOf,
+  migrateUpTo,
+  resetDb,
+  tasksOf,
+  testClient,
+  testDb,
+} from "@/test/db"
+import { failureTag, runServer } from "@/test/effect"
 import {
   createAlert,
+  createCustomer,
+  createOperator,
   createPractice,
   createSystemOperator,
+  createTask,
 } from "@/test/factories"
-import { deactivationImpact } from "../deactivate"
+import {
+  countStatementsOn,
+  failAtCommit,
+  failNextInsertInto,
+  failNextUpdateOf,
+} from "@/test/failpoint"
 
 // La disattivazione di un operatore (gestione-operatori, AC8, AC9, AC13)
 
@@ -593,6 +603,64 @@ describe("deactivateOperator: cosa sposta e cosa no", () => {
     vi.restoreAllMocks()
   })
 
+  it.each([
+    [
+      "l'ultimo UPDATE, quello dell'utente,",
+      (seed: Awaited<ReturnType<typeof seedAll>>) =>
+        failNextUpdateOf(users, { id: seed.leaving.userId }),
+    ],
+    ["il COMMIT", () => failAtCommit(users)],
+  ])(
+    "se %s fallisce dopo gli spostamenti, il database resta com'era: utente attivo, sessioni presenti (AC8)",
+    async (_, fail) => {
+      vi.spyOn(console, "error").mockImplementation(() => undefined)
+      const seed = await seedAll()
+      const before = await snapshot()
+      // The practices move after customers, contacts and log: one UPDATE of
+      // them shows the moves ran before the failure
+      const practicesUpdates = await countStatementsOn(practices, "UPDATE")
+      await fail(seed)
+
+      const exit = await run(seed)
+
+      expect(failureTag(exit)).toBe("DbError")
+      expect(await practicesUpdates()).toBe(1)
+      expect(await snapshot()).toEqual(before)
+      expect((await userOf(seed.leaving.id)).disabledAt).toBeNull()
+      expect(await sessionsOf(seed.leaving.userId)).toHaveLength(2)
+      vi.restoreAllMocks()
+    }
+  )
+
+  it("un contatto attivo dell'operatore senza cliente passa alla destinazione e conta in contactsMoved e nell'impatto, senza riga nel log", async () => {
+    const admin = await createOperator({ role: "ADMIN" })
+    const leaving = await createOperator()
+    const target = await createOperator()
+    const loose = await createTask({ customerId: null, operatorId: leaving.id })
+
+    expect(await runServer(deactivationImpact(leaving.id))).toEqual(
+      Exit.succeed({ customers: 0, contacts: 1, practices: 0 })
+    )
+    const exit = await runServer(
+      deactivateOperator({
+        operatorId: leaving.id,
+        toOperatorId: target.id,
+        actor: actorOf(admin),
+      })
+    )
+
+    expect(exit).toEqual(
+      Exit.succeed({ customersMoved: 0, contactsMoved: 1, practicesMoved: 0 })
+    )
+    const [moved] = await testDb
+      .select()
+      .from(task)
+      .where(eq(task.id, loose.id))
+    expect(moved).toMatchObject({ operatorId: target.id, isActive: true })
+    // `task_event_log.customer_id` is required: no row for it
+    expect(await testDb.select().from(taskEventLog)).toEqual([])
+  })
+
   it("un operatore senza clienti, contatti né pratiche si disattiva con zero spostamenti", async () => {
     const admin = await createOperator({ role: "ADMIN" })
     const leaving = await createOperator()
@@ -673,12 +741,23 @@ describe("deactivateOperator: le query", () => {
     const contactsLock = index(
       /^select "id" from "mito-deutsche_task" .*order by "mito-deutsche_task"\."id" for update$/
     )
-    const logInsert = index(/^\s*insert into "mito-deutsche_task_event_log"/)
-    const customersUpdate = index(/^update "mito-deutsche_customers"/)
+    // Customers, contacts and log in one statement, after the locks: its
+    // CTEs share one snapshot, so the log rows are what the updates moved
+    const move = index(/^with "moved_customers" as \(/)
     expect(usersLock).toBeLessThan(customersLock)
     expect(customersLock).toBeLessThan(contactsLock)
-    expect(contactsLock).toBeLessThan(logInsert)
-    expect(logInsert).toBeLessThan(customersUpdate)
+    expect(contactsLock).toBeLessThan(move)
+    expect(sqls[move]).toMatch(
+      /\(\s*update "mito-deutsche_customers"\s.*\(\s*update "mito-deutsche_task"\s.*\(\s*insert into "mito-deutsche_task_event_log"/s
+    )
+    // No other statement writes the customers, the contacts or the log
+    expect(
+      sqls.filter((s) =>
+        /\b(update|insert into) "mito-deutsche_(customers|task|task_event_log)"/.test(
+          s
+        )
+      )
+    ).toEqual([sqls[move]])
     // A lock on a join always names its table
     for (const statement of sqls.filter((s) => / join .*for update/.test(s))) {
       expect(statement).toMatch(/for update of "mito-deutsche_user"$/)
@@ -692,6 +771,78 @@ describe("deactivateOperator: le query", () => {
     for (const { params } of recorded.statements) {
       expect(params.length).toBeLessThan(10)
     }
+  })
+})
+
+describe("deactivateOperator: i deadlock", () => {
+  /** `testDb`, counting the transactions opened on it. */
+  const countingDb = () => {
+    const counter = { transactions: 0 }
+    const client = new Proxy(testDb, {
+      get(target, property, receiver) {
+        if (property !== "transaction") {
+          return Reflect.get(target, property, receiver) as unknown
+        }
+        return (...args: Parameters<typeof testDb.transaction>) => {
+          counter.transactions += 1
+          return target.transaction(...args)
+        }
+      },
+    }) as unknown as DbClient
+    return { client, counter }
+  }
+
+  /** An operator with a customer, whose log row is the first insert. */
+  const seedDeadlocks = async (deadlocks: number) => {
+    const admin = await createOperator({ role: "ADMIN" })
+    const leaving = await createOperator()
+    const target = await createOperator()
+    await createCustomer({ operatorId: leaving.id })
+    // Each failpoint fails one attempt: the first insert it sees
+    for (let i = 0; i < deadlocks; i++) {
+      await failNextInsertInto(taskEventLog, {}, { sqlstate: "40P01" })
+    }
+    return { admin, leaving, target }
+  }
+
+  it("un deadlock a ogni tentativo: tre transazioni (due ripetizioni al massimo), poi il DbError 40P01, e niente cambia", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined)
+    const { admin, leaving, target } = await seedDeadlocks(4)
+    const before = await snapshot()
+    const { client, counter } = countingDb()
+
+    const exit = await runServer(
+      deactivateOperator({
+        operatorId: leaving.id,
+        toOperatorId: target.id,
+        actor: actorOf(admin),
+      }).pipe(Effect.provideService(Db, client))
+    )
+
+    expect(counter.transactions).toBe(3)
+    expect(exit).toEqual(
+      Exit.fail(expect.objectContaining({ _tag: "DbError", code: "40P01" }))
+    )
+    expect(await snapshot()).toEqual(before)
+    vi.restoreAllMocks()
+  })
+
+  it("due deadlock: la terza transazione riesce", async () => {
+    const { admin, leaving, target } = await seedDeadlocks(2)
+    const { client, counter } = countingDb()
+
+    const exit = await runServer(
+      deactivateOperator({
+        operatorId: leaving.id,
+        toOperatorId: target.id,
+        actor: actorOf(admin),
+      }).pipe(Effect.provideService(Db, client))
+    )
+
+    expect(counter.transactions).toBe(3)
+    expect(exit).toEqual(
+      Exit.succeed({ customersMoved: 1, contactsMoved: 0, practicesMoved: 0 })
+    )
   })
 })
 

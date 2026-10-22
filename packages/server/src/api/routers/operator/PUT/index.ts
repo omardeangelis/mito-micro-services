@@ -34,9 +34,15 @@ export const updateOperatorsRole = adminProcedure
     runTrpc(updateOperatorsRoleService(input), operatorErrorToTrpc)
   )
 
+/**
+ * An operator id. It is a Postgres `integer`: a larger one fails validation
+ * (BAD_REQUEST) instead of the query (a 500).
+ */
+const operatorIdInput = z.number().int().positive().max(2_147_483_647)
+
 const deactivateInput = z.object({
-  operatorId: z.number().int(),
-  toOperatorId: z.number().int(),
+  operatorId: operatorIdInput,
+  toOperatorId: operatorIdInput,
 })
 
 export const deactivate = adminProcedure

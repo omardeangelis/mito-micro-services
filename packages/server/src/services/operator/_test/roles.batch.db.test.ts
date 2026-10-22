@@ -4,7 +4,8 @@ import { Exit } from "effect"
 import { users } from "@mito/db/schema/users"
 import { migrateUpTo, resetDb, testDb } from "@/test/db"
 import { failureTag, runServer } from "@/test/effect"
-import { createOperator } from "@/test/factories"
+import { createTestCaller } from "@/test/caller"
+import { createOperator, createUser } from "@/test/factories"
 import { failNextUpdateOf } from "@/test/failpoint"
 import { updateOperatorsRole } from "../roles"
 
@@ -114,6 +115,55 @@ describe("updateOperatorsRole, l'ultimo admin (AC18)", () => {
   })
 })
 
+describe("updateOperatorsRole, l'ultimo admin: i casi limite (AC18)", () => {
+  it("con lo stesso id due volte vale la prima modifica: l'unico admin che prima si declassa riceve LastAdmin", async () => {
+    const admin = await createOperator({ role: "ADMIN" })
+
+    const exit = await runServer(
+      updateOperatorsRole([
+        { id: admin.id, role: "OPERATORE" },
+        { id: admin.id, role: "ADMIN" },
+      ])
+    )
+
+    expect(failureTag(exit)).toBe("LastAdmin")
+    expect(await roleOf(admin.userId)).toBe("ADMIN")
+  })
+
+  it("con lo stesso id due volte vale la prima modifica: l'unico admin che prima resta ADMIN non riceve LastAdmin", async () => {
+    const admin = await createOperator({ role: "ADMIN" })
+    const input = [
+      { id: admin.id, role: "ADMIN" as const },
+      { id: admin.id, role: "OPERATORE" as const },
+    ]
+
+    const exit = await runServer(updateOperatorsRole(input))
+
+    expect(exit).toEqual(Exit.succeed(input))
+    expect(await roleOf(admin.userId)).toBe("ADMIN")
+  })
+
+  it("un utente ADMIN senza operatore non conta: l'ultimo admin vero che si declassa riceve LastAdmin", async () => {
+    const admin = await createOperator({ role: "ADMIN" })
+    const withoutOperator = await createUser({ role: "ADMIN" })
+
+    const exit = await runServer(
+      updateOperatorsRole([{ id: admin.id, role: "OPERATORE" }])
+    )
+
+    expect(failureTag(exit)).toBe("LastAdmin")
+    expect(await roleOf(admin.userId)).toBe("ADMIN")
+    expect(await roleOf(withoutOperator.id)).toBe("ADMIN")
+  })
+
+  it("un batch vuoto riesce e non cambia nulla", async () => {
+    const admin = await createOperator({ role: "ADMIN" })
+
+    expect(await runServer(updateOperatorsRole([]))).toEqual(Exit.succeed([]))
+    expect(await roleOf(admin.userId)).toBe("ADMIN")
+  })
+})
+
 describe("updateOperatorsRole, gli operatori disattivati (AC19)", () => {
   it("un disattivato nel batch riceve OperatorNotFound e l'altro operatore del batch non cambia", async () => {
     await createOperator({ role: "ADMIN" })
@@ -132,6 +182,26 @@ describe("updateOperatorsRole, gli operatori disattivati (AC19)", () => {
 
     expect(failureTag(exit)).toBe("OperatorNotFound")
     expect(await roleOf(other.userId)).toBe("OPERATORE")
+    expect(await roleOf(disabled.userId)).toBe("OPERATORE")
+  })
+})
+
+describe("operator.updateOperatorsRole, gli operatori disattivati (AC19)", () => {
+  it("un disattivato nel batch risponde BAD_REQUEST con il codice OPERATOR_NOT_FOUND", async () => {
+    const admin = await createOperator({ role: "ADMIN" })
+    const disabled = await createOperator({
+      role: "OPERATORE",
+      disabledAt: new Date(),
+    })
+
+    await expect(
+      createTestCaller(admin).operator.updateOperatorsRole([
+        { id: disabled.id, role: "ADMIN" },
+      ])
+    ).rejects.toMatchObject({
+      code: "BAD_REQUEST",
+      cause: { code: "OPERATOR_NOT_FOUND" },
+    })
     expect(await roleOf(disabled.userId)).toBe("OPERATORE")
   })
 })

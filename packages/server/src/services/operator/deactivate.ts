@@ -8,7 +8,13 @@ import { practices } from "@mito/db/schema/pratiche"
 import { task } from "@mito/db/schema/task"
 import { taskEventLog } from "@mito/db/schema/taskEventLog"
 import { sessions, users } from "@mito/db/schema/users"
-import { type Db, DbError, query, transaction } from "../../effect/db"
+import {
+  type Db,
+  type DbClient,
+  DbError,
+  query,
+  transaction,
+} from "../../effect/db"
 import { OperatorNotFound } from "../contact/errors"
 import { findWorkingOperator } from "../contact/operator"
 import { HandoverSameOperator } from "../customer/errors"
@@ -19,6 +25,90 @@ const DEADLOCK_RETRIES = 2
 
 const isDeadlock = (error: unknown) =>
   error instanceof DbError && error.code === "40P01"
+
+const MOVED_CUSTOMERS = "moved_customers"
+const MOVED_CONTACTS = "moved_contacts"
+
+/** A column by its bare name, as a SET list and an INSERT list want it. */
+const name = (column: { name: string }) => sql.identifier(column.name)
+
+/**
+ * The CTEs of the move, for one statement: all of them see the snapshot the
+ * statement starts with, and none sees what another one writes, so the log
+ * has a row for exactly what the two updates moved.
+ * - `moved_customers`: the customers of the operator go to the destination.
+ * - `moved_contacts`: the operator's active contacts go to the operator their
+ *   customer has after that move, computed from the customer's row as it was:
+ *   the destination when the customer was the operator's or has no operator
+ *   (and keeps none), or when there is no customer; else the customer's
+ *   operator.
+ * - `logged`: the `operator_reassign` rows (source `deactivation`) of the rows
+ *   those two returned, in one INSERT … SELECT, ordered by customer with its
+ *   own row (no task) before its contact's. A contact without a customer has
+ *   none: `customer_id` is required in the log.
+ *
+ * `updatedAt` is set as Drizzle's `$onUpdate` sets it, from the JS clock.
+ * Every parameter is a constant: none grows with the rows.
+ */
+const moveAndLog = (
+  client: DbClient,
+  {
+    operatorId,
+    toOperatorId,
+    actor,
+  }: { operatorId: number; toOperatorId: number; actor: Actor }
+) => {
+  const now = new Date()
+  const movedCustomers = client.$with(MOVED_CUSTOMERS, {
+    customerId: sql<string>`customer_id`,
+  }).as(sql`
+      update ${customers}
+      set ${name(customers.operatorId)} = ${toOperatorId},
+        ${name(customers.updatedAt)} = ${sql.param(now, customers.updatedAt)}
+      where ${customers.operatorId} = ${operatorId}
+      returning ${customers.id} as customer_id,
+        ${customers.operatorId}::integer as to_operator_id
+    `)
+  const movedContacts = client.$with(MOVED_CONTACTS, {}).as(sql`
+    update ${task}
+    set ${name(task.operatorId)} = coalesce(
+        (
+          select nullif(customer.${name(customers.operatorId)}, ${operatorId})::integer
+          from ${customers} as customer
+          where customer.${name(customers.id)} = ${task.customerId}
+        ),
+        ${toOperatorId}::integer
+      ),
+      ${name(task.updatedAt)} = ${sql.param(now, task.updatedAt)}
+    where ${task.isActive} and ${task.operatorId} = ${operatorId}
+    returning ${task.customerId} as customer_id, ${task.id} as task_id,
+      ${task.operatorId} as to_operator_id
+  `)
+  const logged = client.$with("logged", {}).as(sql`
+    insert into ${taskEventLog} (
+      ${name(taskEventLog.customerId)},
+      ${name(taskEventLog.taskId)},
+      ${name(taskEventLog.actorOperatorId)},
+      ${name(taskEventLog.action)},
+      ${name(taskEventLog.source)},
+      ${name(taskEventLog.fromOperatorId)},
+      ${name(taskEventLog.toOperatorId)}
+    )
+    select moved.customer_id, moved.task_id, ${actor.operatorId}::integer,
+      'operator_reassign', 'deactivation', ${operatorId}::integer,
+      moved.to_operator_id
+    from (
+      select customer_id, null::integer as task_id, to_operator_id
+      from ${sql.identifier(MOVED_CUSTOMERS)}
+      union all
+      select customer_id, task_id, to_operator_id
+      from ${sql.identifier(MOVED_CONTACTS)}
+      where customer_id is not null
+    ) as moved
+    order by moved.customer_id, moved.task_id nulls first
+  `)
+  return [movedCustomers, movedContacts, logged] as const
+}
 
 export type DeactivationResult = {
   customersMoved: number
@@ -34,9 +124,12 @@ export type DeactivationResult = {
  * Locks, users first and then customers (the lock rule of `lockCustomer`):
  * 1. in one statement ordered by `users.id`, the user rows of the operator
  *    and of the destination, `FOR UPDATE OF users`. Every writer that moves
- *    something to an operator checks it with `findWorkingOperator` (`FOR KEY
- *    SHARE OF users`), and a role change locks the same rows: they finish
- *    before, or find the operator disabled.
+ *    something to an operator ("Passaggio di consegne", "Assegna Clienti",
+ *    "Assegna chiamate", "Assegna a te", the reassignment of a contact)
+ *    checks it with `findWorkingOperator` (`FOR KEY SHARE OF users`), and a
+ *    role change locks the same rows: they finish before, or find the
+ *    operator disabled. A key-strength lock is needed: `FOR NO KEY UPDATE`
+ *    doesn't conflict with `FOR KEY SHARE`.
  * 2. ordered by id, the customers of the operator and those with an active
  *    contact of theirs; then, ordered by id, those active contacts.
  *
@@ -51,15 +144,17 @@ export type DeactivationResult = {
  *
  * Writes, each set-based (one statement for all the rows, no ids as
  * parameters, so 5,000 customers fit; 65,535 is the limit of a query):
- * - the `operator_reassign` rows (source `deactivation`), first, as they read
- *   the operators before the updates: one per customer of the operator (no
- *   task), one per active contact of theirs, to the operator its customer has
- *   after the move. A contact without a customer has no row (`customer_id` is
- *   required in the log), but moves.
- * - the customers of the operator go to the destination;
- * - their active contacts go to the operator of their customer, after that
- *   move: the destination when the customer was the operator's or has no
- *   operator (which then stays without one), else the customer's operator;
+ * - one statement (`moveAndLog`) moves the customers of the operator to the
+ *   destination and their active contacts to the operator their customer has
+ *   after the move (the destination when the customer was the operator's or
+ *   has no operator, which then stays without one; else the customer's
+ *   operator), and writes the `operator_reassign` rows (source
+ *   `deactivation`) of exactly the rows it moved: one per customer (no
+ *   task), then one per contact. A row that became the operator's after the
+ *   locks (a writer outside the lock rule) moves and is logged alike.
+ * - An active contact of the operator without a customer (`task.customer_id`
+ *   is nullable) moves to the destination and counts in `contactsMoved`, but
+ *   has no log row: `task_event_log.customer_id` is required.
  * - their practices go to the destination, without a log row;
  * - the user is disabled (`disabled_at`, `disabled_by` = the actor) and its
  *   sessions deleted.
@@ -147,63 +242,25 @@ export const deactivateOperator = ({
           .for("update")
       )
 
-      // 4. The log, before the updates: it reads the operators as they were
-      yield* query((client) =>
-        client.execute(sql`
-          insert into ${taskEventLog} (
-            ${sql.identifier(taskEventLog.customerId.name)},
-            ${sql.identifier(taskEventLog.taskId.name)},
-            ${sql.identifier(taskEventLog.actorOperatorId.name)},
-            ${sql.identifier(taskEventLog.action.name)},
-            ${sql.identifier(taskEventLog.source.name)},
-            ${sql.identifier(taskEventLog.fromOperatorId.name)},
-            ${sql.identifier(taskEventLog.toOperatorId.name)}
-          )
-          select moved.customer_id, moved.task_id, ${actor.operatorId}::integer,
-            'operator_reassign', 'deactivation', ${operatorId}::integer,
-            moved.to_operator_id
-          from (
-            select ${customers.id} as customer_id, null::integer as task_id,
-              ${target.id}::integer as to_operator_id
-            from ${customers}
-            where ${customers.operatorId} = ${operatorId}
-            union all
-            select ${task.customerId}, ${task.id},
-              case
-                when ${customers.operatorId} is null
-                  or ${customers.operatorId} = ${operatorId}
-                then ${target.id}::integer
-                else ${customers.operatorId}::integer
-              end
-            from ${task}
-            inner join ${customers} on ${customers.id} = ${task.customerId}
-            where ${task.isActive} and ${task.operatorId} = ${operatorId}
-          ) as moved
-          order by moved.customer_id, moved.task_id nulls first
-        `)
-      )
-
-      // 5. The customers, then the contacts (which read the customers after
-      // their move), then the practices
-      const movedCustomers = yield* query((client) =>
-        client
-          .update(customers)
-          .set({ operatorId: target.id })
-          .where(eq(customers.operatorId, operatorId))
-          .returning({ id: customers.id })
-      )
-      const movedContacts = yield* query((client) =>
-        client
-          .update(task)
-          .set({
-            operatorId: sql`coalesce((
-              select ${customers.operatorId}::integer from ${customers}
-              where ${customers.id} = ${task.customerId}
-            ), ${target.id}::integer)`,
+      // 4. One statement moves the customers and the contacts and logs them:
+      // its CTEs share one snapshot, so the log has a row for exactly what
+      // moved, rows that became the operator's after the locks included
+      const [moved] = yield* query((client) => {
+        const ctes = moveAndLog(client, {
+          operatorId,
+          toOperatorId: target.id,
+          actor,
+        })
+        return client
+          .with(...ctes)
+          .select({
+            customers: count(),
+            contacts: sql<number>`(select count(*) from ${sql.identifier(MOVED_CONTACTS)})::integer`,
           })
-          .where(activeContactsOfOperator)
-          .returning({ id: task.id })
-      )
+          .from(ctes[0])
+      })
+
+      // 5. The practices, without a log row
       const movedPractices = yield* query((client) =>
         client
           .update(practices)
@@ -224,8 +281,8 @@ export const deactivateOperator = ({
       )
 
       return {
-        customersMoved: movedCustomers.length,
-        contactsMoved: movedContacts.length,
+        customersMoved: moved?.customers ?? 0,
+        contactsMoved: moved?.contacts ?? 0,
         practicesMoved: movedPractices.length,
       }
     })

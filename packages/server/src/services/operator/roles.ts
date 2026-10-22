@@ -19,8 +19,9 @@ type RoleChange = { id: number; role: "ADMIN" | "OPERATORE" }
  *   deactivation of one user never both pass on a stale `disabled_at`.
  * - An operator of the batch whose user is deactivated is `OperatorNotFound`;
  *   an id with no operator is skipped without an error.
- * - If the change would leave no active admin, it is `LastAdmin`. Nothing
- *   changes in either case.
+ * - If the change would leave no active admin with an operator row (the
+ *   only ones `adminProcedure` lets in), it is `LastAdmin`. Nothing changes in
+ *   either case.
  */
 export const updateOperatorsRole = (
   changes: readonly RoleChange[]
@@ -77,9 +78,16 @@ export const updateOperatorsRole = (
           }
 
           if (batch.length > 0) {
+            // Only an admin with an operator row can use the admin pages
+            // (adminProcedure): an ADMIN user without one doesn't count
             const admins = new Set(
               locked
-                .filter((row) => row.role === "ADMIN" && !row.disabledAt)
+                .filter(
+                  (row) =>
+                    row.role === "ADMIN" &&
+                    !row.disabledAt &&
+                    row.operatorId !== null
+                )
                 .map((row) => row.userId)
             )
             for (const row of batch) {

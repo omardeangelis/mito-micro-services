@@ -163,9 +163,13 @@ export type LockedCustomer = {
  * row does it before it locks any customer. The deactivation of an operator
  * holds it with `FOR UPDATE OF users`, and every writer that moves customers
  * or contacts to an operator ("Passaggio di consegne", "Assegna Clienti",
- * "Assegna chiamate", the reassignment of a contact) checks it with
- * `findWorkingOperator` (`FOR KEY SHARE OF users`) inside its transaction and
- * before this call. In the other order the two would deadlock.
+ * "Assegna chiamate", "Assegna a te", the reassignment of a contact) checks
+ * it with `findWorkingOperator` (`FOR KEY SHARE OF users`) inside its
+ * transaction and before this call. In the other order the two would
+ * deadlock. The rule needs the disabler to hold a key-strength lock, `FOR
+ * UPDATE`: `FOR NO KEY UPDATE`, or a bare UPDATE of `disabled_at` (which takes
+ * `FOR NO KEY UPDATE`), doesn't conflict with `FOR KEY SHARE`, and would let a
+ * writer through on the row as it was before the deactivation.
  *
  * The rule is tested in `packages/server/src/services/contact/_test/lockRule.db.test.ts`:
  * with a test trigger, a write of a customer's tasks, alerts or event log fails

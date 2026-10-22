@@ -4,11 +4,13 @@ import { readContactError } from "@mito/domain/contact/errors"
 import { customers } from "@mito/db/schema/customers"
 import { createTestCaller } from "@/test/caller"
 import { logOf, migrateUpTo, resetDb, tasksOf, testDb } from "@/test/db"
+import { failureTag, runServer } from "@/test/effect"
 import { createCustomer, createOperator, createTask } from "@/test/factories"
+import { assignToYourself } from "../../../../services/customer/assignment"
 
-// "Passaggio di consegne" and "Assegna Clienti" check their target like the
-// other assignments: a deactivated operator is not one someone can work as
-// (gestione-operatori, AC15)
+// "Passaggio di consegne", "Assegna Clienti" and "Assegna a te" check their
+// target like the other assignments: a deactivated operator is not one someone
+// can work as (gestione-operatori, AC7, AC15)
 
 const customerRow = async (customerId: string) =>
   (
@@ -118,5 +120,41 @@ describe("customer.bulkUpdateCustomers verso un operatore disattivato", () => {
     })
     await expectUntouched(first)
     await expectUntouched(second)
+  })
+})
+
+describe("assignToYourself di un operatore disattivato", () => {
+  // The middleware already stops a disabled operator: the service's own check
+  // covers one deactivated while the call runs (gestione-operatori, AC7)
+  it("riceve OperatorNotFound e il cliente resta senza operatore", async () => {
+    const disabled = await createOperator({ disabledAt: new Date() })
+    const customer = await createCustomer({ operatorId: null })
+    const contact = await createTask({
+      customerId: customer.id,
+      operatorId: null,
+    })
+
+    const exit = await runServer(
+      assignToYourself({
+        customerId: customer.id,
+        actor: { role: "OPERATORE", operatorId: disabled.id },
+      })
+    )
+
+    expect(failureTag(exit)).toBe("OperatorNotFound")
+    await expectUntouched({ customer, contact })
+  })
+
+  it("su un cliente inesistente riceve ancora CustomerNotFound, prima del proprio stato", async () => {
+    const disabled = await createOperator({ disabledAt: new Date() })
+
+    const exit = await runServer(
+      assignToYourself({
+        customerId: "missing",
+        actor: { role: "OPERATORE", operatorId: disabled.id },
+      })
+    )
+
+    expect(failureTag(exit)).toBe("CustomerNotFound")
   })
 })
