@@ -35,7 +35,7 @@ updated: 2026-10-22
 - **La PR 3 arriva su un ambiente solo dopo la migrazione applicata lì.** Il piano diceva "nessun codice la legge", ma Drizzle elenca tutte le colonne dello schema in ogni `INSERT` su `users` (il signup di `createUserWithOperator` compreso) e in ogni `select()` senza colonne: provato con un test su un database fermo alla migrazione precedente, che fallisce anche rendendo espliciti `returning` e `select`. Il codice della PR 3 è quindi già "codice che legge" le colonne. Ordine per Omar: applicare `20261022182741_colossal_lilith` su staging, poi far arrivare la PR 3 (e le successive) su staging; lo stesso per prod. Il rischio di D7 (il migrator salta una migrazione con data più vecchia dell'ultima applicata) si controlla al momento dell'applicazione: nessuna PR aperta deve avere una migrazione generata prima del 2026-10-22 18:27.
 - **Riassegnazione dei contatti dentro la regola "prima gli utenti"** (T4.3): il piano elencava handover, Assegna Clienti e Assegna chiamate, ma anche `reassign` controlla una destinazione dopo il lock del cliente, e con la disattivazione l'ordine opposto poteva dare un deadlock.
 - **AC24, controllo `git grep drizzle-orm`:** si legge "codice del router", test esclusi: i test di caratterizzazione leggono il database. La forma `runTrpc(program, operatorErrorToTrpc | userErrorToTrpc)` vale dove il servizio ha errori tipizzati: `userErrorToTrpc` non esiste, perché `getCurrentUser` fallisce solo con `DbError` e `runTrpc` in quel caso non accetta un mapper.
-- **AC9, contatti senza cliente:** un contatto attivo con `customer_id` null si sposta alla destinazione (conta in `contactsMoved` e in `deactivationImpact`) ma non ha riga di log: `task_event_log.customer_id` è NOT NULL e le migrazioni di questa spec sono solo additive. Da accettare da Omar (checklist della review della PR 4).
+- **AC9, contatti senza cliente:** un contatto attivo con `customer_id` null si sposta alla destinazione (conta in `contactsMoved` e in `deactivationImpact`) ma non ha riga di log: `task_event_log.customer_id` è NOT NULL e le migrazioni di questa spec sono solo additive. Accettata da Omar il 2026-10-22, dopo il secondo giro della review della PR 4.
 - **"Assegna a te" dentro la regola dei lock** (review della PR 4): prende il lock della riga utente dell'attore prima del cliente; un attore disattivato riceve `OperatorNotFound`.
 - **LastAdmin conta solo gli admin con un operatore** (review della PR 4): un utente ADMIN senza riga operatore non può usare le procedure admin, quindi non tiene in vita il vincolo.
 - **Caratterizzazione di `getUserPreference` in un file suo** (`user/_test/getUserPreference.db.test.ts`), non in `contactPreference.db.test.ts`: la PR P2 cancella quel file, e i casi di `role` e `operatorId` devono sopravvivere.
@@ -44,6 +44,7 @@ updated: 2026-10-22
 
 - **Ripresa in locale (2026-10-22, sessione desktop):** stato dei branch uguale a quello dei documenti. Il log di T4.7 citava il diff `e2c…a0b45b4`: il diff delle correzioni è `a583a8e..a0b45b4`. `origin/dev` è andato avanti (job delle migrazioni, deploy staging) senza toccare file della pila. Gate e prove in worktree senza file di env reali; i `*.pg.test.ts` su un Postgres 15 in Docker (porta 54329).
 - **`next dev` in questo container:** in un worktree i cui `node_modules` erano stati usati da un `next dev` fallito, `next build` non risolveva `@sentry/core`; dopo `rm -rf node_modules && pnpm install --offline` tutto verde. Non è un problema del codice (stessi file su un worktree pulito di `dev`: build verde).
+- **`mito_local` ricreato** (2026-10-22): aveva `20261021100457_contatti_contact_realign` registrata con un hash diverso dal file (da un altro branch); `db:local:reset`, `db:local:migrate` (12 migrazioni) e `seed:local`.
 - **Prova nel browser senza login via email:** una riga in `session` di `mito_local` e il cookie `next-auth.session-token` impostato in `agent-browser`; le righe sono state cancellate a fine prova.
 - **Telemetria di `runTrpc` (review della PR 2):** sugli errori del database Sentry riceve un `DbError` attorno al `PostgresError`, e c'è una riga di log in più. È così per ogni procedura già su `runTrpc`; il client vede lo stesso.
 - In questo container non c'è Docker: i `*.pg.test.ts` girano su un Postgres 16 installato con apt sulla porta 54329 (in CI e in prod è il 15). Le differenze fra 15 e 16 non toccano i lock di riga né `ALTER TYPE ... ADD VALUE`.
@@ -61,6 +62,8 @@ updated: 2026-10-22
 | `adversarial-review` PR 2 | SHIP, 0 BLOCKER, 0 MAJOR | |
 | `adversarial-review` P1 | SHIP, 0 BLOCKER, 0 MAJOR | MINOR corretti in 1471ece |
 | Gate di CI completi sulla PR 4 (`-pr4`, a0b45b4) | verdi: 2643 test, build, `api:build`, `api:smoke` | Postgres 15 in Docker sulla 54329; `cronCli.test.ts` saltato per costruzione (porta occupata dal Postgres dei test) |
+| Gate di CI completi sulla PR 5 (`-pr5`, 001e861) | verdi: 2669 test, build, `api:build`, `api:smoke` | dopo il merge di `-pr4` |
+| `agent-browser` sulla PR 5 (`next dev`, `mito_local`) | AC20a–AC23 verificati | dettagli nel log di T5.1 |
 | `adversarial-review` PR 4 | primo giro DO NOT SHIP; secondo giro (v4, v7) SHIP, 0 BLOCKER, 0 MAJOR | 3 MINOR: due commenti che promettono troppo, la deviazione di AC9 da accettare |
 
 ## Acceptance Criteria Status
@@ -73,7 +76,7 @@ updated: 2026-10-22
 
 - **Ripresa (stato al 2026-10-22, prima della compattazione):**
   - PR 4 (`-pr4`, a0b45b4): secondo giro della review fatto (SHIP), gate completi verdi. In attesa di Omar per i due MINOR sui commenti e per accettare la deviazione di AC9.
-  - PR 5 (`-pr5`, worktree della sessione cloud, non più disponibile): `git merge claude/great-carson-o6qn17-pr4`, gate, prova `agent-browser` del dialog (seed di `mito_local`, sessione inserita in `session` + cookie `next-auth.session-token`; `next dev` funziona in un worktree con `node_modules` puliti), poi T5.2 (review con il pass UI, `docs-maintenance`, tech debt della feature, TD4 `[OPEN]`).
+  - PR 5 (`-pr5`, 001e861): merge di `-pr4`, gate e prova `agent-browser` fatti. Resta T5.2: review con il pass UI, `docs-maintenance`, tech debt della feature, TD4 `[OPEN]`.
   - Acceptance audit finale e finalizzazione della spec.
 
 - PR P2 (TP2.1, TP2.2): almeno 2 settimane dopo P1 in prod (AC34, AC35).
@@ -84,3 +87,4 @@ updated: 2026-10-22
 |------|----------|---------|
 | 2026-10-22 | "Perché PR4 e 5 sono bloccate dalla migrazione su prod? Lavoriamo per migrare tutto su staging" | G3 diventa "PR 3 applicata sull'ambiente prima della PR 4"; PR 4 e 5 entrano nel perimetro |
 | 2026-10-22 | Un branch per PR | Branch impilati, elencati in Execution Mode |
+| 2026-10-22 | "correggi i due commenti sulla PR 4, accetto la deviazione di AC9, poi procedi con la PR 5" | 97b8ae6 su `-pr4`, merge in `-pr5`; AC9 con la deviazione dei contatti senza cliente |
