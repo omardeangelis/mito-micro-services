@@ -159,6 +159,14 @@ export type LockedCustomer = {
  * rule: the `priority` cron (`refreshPriorities`) and the event-log cleanup
  * (`cleanupTaskEventLog`). A new writer calls this first.
  *
+ * Users first, then customers: a transaction that locks an operator's `users`
+ * row does it before it locks any customer. The deactivation of an operator
+ * holds it with `FOR UPDATE OF users`, and every writer that moves customers
+ * or contacts to an operator ("Passaggio di consegne", "Assegna Clienti",
+ * "Assegna chiamate", the reassignment of a contact) checks it with
+ * `findWorkingOperator` (`FOR KEY SHARE OF users`) inside its transaction and
+ * before this call. In the other order the two would deadlock.
+ *
  * The rule is tested in `packages/server/src/services/contact/_test/lockRule.db.test.ts`:
  * with a test trigger, a write of a customer's tasks, alerts or event log fails
  * unless the transaction holds this lock. A new writer is covered only if it

@@ -1,5 +1,5 @@
 import "server-only"
-import { Effect } from "effect"
+import { Effect, Either } from "effect"
 import { and, eq } from "drizzle-orm"
 import {
   type Actor,
@@ -20,7 +20,7 @@ import {
 } from "../../effect/db"
 import { type CustomerNotFound, type OperatorNotFound } from "../contact/errors"
 import { lockCustomerOrNotFound } from "../contact/guard"
-import { findWorkingOperator } from "../contact/operator"
+import { findWorkingOperator, lockWorkingOperator } from "../contact/operator"
 import { CustomerAssignmentForbidden, HandoverSameOperator } from "./errors"
 
 type ActiveContact = { id: number; operatorId: number | null }
@@ -137,8 +137,11 @@ const moveCustomerAndContact = ({
  * operator only their own. The calls already recorded on the contact follow
  * it in the export.
  *
- * - The target must be an operator with a user, as the operator middleware
- *   requires (the system operator has none): else `OperatorNotFound`.
+ * - The target must be a working operator (`findWorkingOperator`): one with
+ *   a user that is not disabled, as the operator middleware requires (the
+ *   system operator has none): else `OperatorNotFound`. Its user row is
+ *   locked before the customer (the lock rule of `lockCustomer`), but its
+ *   error comes after the customer's and the permission's.
  * - It always changes the customer's operator: a target that is already the
  *   customer's is `HandoverSameOperator`, for admins too.
  * - Writes one `operator_reassign` row for the customer and, when the contact
@@ -163,12 +166,15 @@ export const handover = ({
 > =>
   transaction(
     Effect.gen(function* () {
+      // Users first, then customers: the target before the customer
+      const working = yield* lockWorkingOperator(toOperatorId)
       const customer = yield* lockCustomerOrNotFound(customerId)
       if (!canHandover(actor, customer)) {
         return yield* new CustomerAssignmentForbidden()
       }
 
-      const target = yield* findWorkingOperator(toOperatorId)
+      if (Either.isLeft(working)) return yield* Effect.fail(working.left)
+      const target = working.right
       if (customer.operatorId === target.id) {
         return yield* new HandoverSameOperator()
       }
@@ -192,10 +198,13 @@ export const handover = ({
  * the inactive ones stay with the operator who worked them. The calls already
  * recorded on the contact follow it in the export.
  *
- * - The target is checked once, before any customer changes: a missing
- *   operator or the system operator is `OperatorNotFound` and nothing moves.
  * - One transaction per customer, in the order given, like `bulkHandleTask`.
  *   The first error stops the rest; the customers before it stay assigned.
+ * - Each transaction checks the target first (`findWorkingOperator`), before
+ *   it locks the customer (the lock rule of `lockCustomer`): a missing,
+ *   disabled or system operator is `OperatorNotFound`. On the first customer
+ *   nothing moves; a target disabled while the assignment runs stops it at
+ *   the next customer.
  * - A customer and contact already on the target write nothing and are not an
  *   error, unlike `handover`.
  * - Each change writes its `operator_reassign` rows with source `bulk`
@@ -214,33 +223,31 @@ export const assignCustomers = ({
   CustomerNotFound | CustomerAssignmentForbidden | OperatorNotFound | DbError,
   Db
 > =>
-  Effect.gen(function* () {
-    const target = yield* findWorkingOperator(toOperatorId)
+  Effect.forEach(
+    customerIds,
+    (customerId) =>
+      transaction(
+        Effect.gen(function* () {
+          // Users first, then customers: the target before the customer
+          const target = yield* findWorkingOperator(toOperatorId)
+          const customer = yield* lockCustomerOrNotFound(customerId)
+          // Not `canHandover`: it also lets the customer's own operator in
+          if (!canReassign(actor)) {
+            return yield* new CustomerAssignmentForbidden()
+          }
 
-    yield* Effect.forEach(
-      customerIds,
-      (customerId) =>
-        transaction(
-          Effect.gen(function* () {
-            const customer = yield* lockCustomerOrNotFound(customerId)
-            // Not `canHandover`: it also lets the customer's own operator in
-            if (!canReassign(actor)) {
-              return yield* new CustomerAssignmentForbidden()
-            }
-
-            const contact = yield* lockActiveContact(customer)
-            yield* moveCustomerAndContact({
-              customer,
-              contact,
-              toOperatorId: target.id,
-              actor,
-              source: "bulk",
-            })
+          const contact = yield* lockActiveContact(customer)
+          yield* moveCustomerAndContact({
+            customer,
+            contact,
+            toOperatorId: target.id,
+            actor,
+            source: "bulk",
           })
-        ),
-      { concurrency: 1, discard: true }
-    )
-  })
+        })
+      ),
+    { concurrency: 1, discard: true }
+  )
 
 /**
  * "Assegna a te" (P4, D26, D29): the actor takes a customer with no operator.
