@@ -40,7 +40,9 @@ vi.mock("../TableFilterSections", () => ({
       </p>
       <button
         onClick={() =>
-          allColumns.find((column) => column.id === "email")!.toggleVisibility(false)
+          allColumns
+            .find((column) => column.id === "email")!
+            .toggleVisibility(false)
         }
       >
         nascondi email
@@ -110,7 +112,8 @@ describe("CustomersTable, colonne nascoste nel cookie (AC31)", () => {
     expect(screen.getByTestId("visible").textContent).toContain("email")
 
     await user.click(screen.getByRole("button", { name: "nascondi email" }))
-    await act(async () => {})
+    // Let the effects of the click run
+    await act(() => Promise.resolve())
 
     expect(screen.getByTestId("visible").textContent).not.toContain("email")
     const saved = cookie("mito-pref-ct")

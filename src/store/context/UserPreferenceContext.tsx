@@ -11,6 +11,13 @@ import {
   type UserPreferenceStoreType,
 } from "../userPreferences"
 import { api } from "@/trpc/react"
+import {
+  PREFERENCE_COOKIES,
+  readBrowserPreferences,
+  writePreferenceCookie,
+  type PreferenceKey,
+} from "@/lib/preferences/cookies"
+import { type UserPreference } from "@mito/domain/schemas"
 import { TableSkeleton } from "@/components/custom/table/TableSkeleton"
 
 export const UserPreferenceContext =
@@ -18,12 +25,19 @@ export const UserPreferenceContext =
 
 export const UserPreferenceProvider: FC<PropsWithChildren> = ({ children }) => {
   const { data, isLoading } = api.user.getUserPreference.useQuery()
-  const prefStore = createUserPreferenceStore({
+  const storeRef = useRef<UserPreferenceStoreType>()
+  storeRef.current ??= createUserPreferenceStore({
     preferences: data?.preferences,
     role: data?.role,
     operatorId: data?.operatorId,
   })
-  const store = useRef(prefStore).current
+  const store = storeRef.current
+  // Before the children render, so a table seeds from the copied columns
+  const copiedFrom = useRef<unknown>()
+  if (data && copiedFrom.current !== data.preferences) {
+    copiedFrom.current = data.preferences
+    copyServerPreferences(store, data.preferences)
+  }
   const role = data?.role
   const operatorId = data?.operatorId
   // Who the user is comes from the session, never from the browser: another
@@ -37,6 +51,30 @@ export const UserPreferenceProvider: FC<PropsWithChildren> = ({ children }) => {
       {children}
     </UserPreferenceContext.Provider>
   )
+}
+
+/**
+ * What an operator saved before the preferences moved to cookies: a key with no
+ * cookie gets the server's value, once. A cookie that is there is never
+ * overwritten.
+ */
+function copyServerPreferences(
+  store: UserPreferenceStoreType,
+  server: Partial<UserPreference> | null | undefined
+) {
+  if (!server) return
+  const inBrowser = readBrowserPreferences()
+  const copied: Partial<UserPreference> = {}
+  for (const key of Object.keys(PREFERENCE_COOKIES) as PreferenceKey[]) {
+    const value = server[key]
+    if (inBrowser[key] !== undefined || value === undefined) continue
+    writePreferenceCookie(key, value as never)
+    ;(copied as Record<PreferenceKey, unknown>)[key] = value
+  }
+  if (Object.keys(copied).length === 0) return
+  store.setState((state) => ({
+    preferences: { ...state.preferences, ...copied },
+  }))
 }
 
 function GenericLoading() {

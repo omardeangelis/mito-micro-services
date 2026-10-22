@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useCallback, useMemo } from "react"
+import React, { useMemo } from "react"
 import {
   type ColumnDef,
   flexRender,
@@ -47,29 +47,18 @@ export function PracticesTable<TData, TValue>({
   const setPracticesTableVisibleColumns = useUserPreferenceContext(
     (state) => state.setPracticesTableVisibleColumns
   )
-  const updateFn = useCallback(
-    (columns: string[]) => {
-      fetch("/api/user/preferences?pref=pt", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          preferences: {
-            customerTableVisibleColumns: columns,
-          },
-        }),
-      })
-        .then((_) => {
-          setPracticesTableVisibleColumns(columns)
-        })
-        .catch(console.error)
-    },
-    [setPracticesTableVisibleColumns]
+  // The store has the last choice, the server prop only the one of the
+  // render in the router cache: it seeds the first render of a visit
+  const storedColumns = useUserPreferenceContext(
+    (state) => state.preferences?.practicesTableVisibleColumns
   )
 
   const [columnVisibility, setColumnVisibility] =
-    React.useState<VisibilityState>(dafaultColumns ?? {})
+    React.useState<VisibilityState>(() =>
+      storedColumns
+        ? Object.fromEntries(storedColumns.map((column) => [column, false]))
+        : (dafaultColumns ?? {})
+    )
 
   const [sorting, setSorting] = React.useState<SortingState>(() => {
     const orderBy = searchParams.get("order_by")?.split(",") ?? []
@@ -136,9 +125,13 @@ export function PracticesTable<TData, TValue>({
     [columnVisibility]
   )
 
+  // The cookie is written when the operator changes the columns, not on mount
+  const savedColumns = React.useRef(arrayOfHiddenColumns)
   React.useEffect(() => {
-    updateFn(arrayOfHiddenColumns)
-  }, [arrayOfHiddenColumns, updateFn])
+    if (savedColumns.current === arrayOfHiddenColumns) return
+    savedColumns.current = arrayOfHiddenColumns
+    setPracticesTableVisibleColumns(arrayOfHiddenColumns)
+  }, [arrayOfHiddenColumns, setPracticesTableVisibleColumns])
 
   return (
     <div className="relative h-[inherit]">
