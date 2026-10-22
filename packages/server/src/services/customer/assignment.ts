@@ -263,6 +263,12 @@ export const assignCustomers = ({
  *   contact's with `from` null.
  * - Never touches the inactive contacts, nor the state, priority or alert of
  *   the active one.
+ * - The actor is its target: their user row is locked with
+ *   `findWorkingOperator` before the customer (the lock rule of
+ *   `lockCustomer`), so a deactivation of the actor either waits for it and
+ *   then moves the customer, or runs first and the actor, now disabled, gets
+ *   `OperatorNotFound` and nothing moves. That error comes after the
+ *   customer's and the permission's.
  */
 export const assignToYourself = ({
   customerId,
@@ -272,16 +278,19 @@ export const assignToYourself = ({
   actor: Actor
 }): Effect.Effect<
   void,
-  CustomerNotFound | CustomerAssignmentForbidden | DbError,
+  CustomerNotFound | CustomerAssignmentForbidden | OperatorNotFound | DbError,
   Db
 > =>
   transaction(
     Effect.gen(function* () {
+      // Users first, then customers: the actor before the customer
+      const working = yield* lockWorkingOperator(actor.operatorId)
       const customer = yield* lockCustomerOrNotFound(customerId)
       const contact = yield* lockActiveContact(customer)
       if (!canSelfAssign(actor, customer, contact)) {
         return yield* new CustomerAssignmentForbidden()
       }
+      if (Either.isLeft(working)) return yield* Effect.fail(working.left)
 
       yield* moveCustomerAndContact({
         customer,

@@ -46,7 +46,7 @@ describe("operatorErrorToTrpc, one TRPCError per operator error", () => {
     })
   })
 
-  it("OperatorDisabled è UNAUTHORIZED senza messaggio personalizzato", () => {
+  it("OperatorDisabled è UNAUTHORIZED con il messaggio Utente disattivato e il codice OPERATOR_DISABLED", () => {
     const error = operatorErrorToTrpc(new OperatorDisabled())
 
     expect(error.code).toBe("UNAUTHORIZED")

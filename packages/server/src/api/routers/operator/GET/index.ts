@@ -34,8 +34,14 @@ export const getUserPublicOperator = protectedProcedure.query(({ ctx }) =>
   runTrpc(getPublicOperator(ctx.session.user.id))
 )
 
+/**
+ * An operator id. It is a Postgres `integer`: a larger one fails validation
+ * (BAD_REQUEST) instead of the query (a 500).
+ */
+const operatorIdInput = z.number().int().positive().max(2_147_483_647)
+
 const deactivationInput = z.object({
-  operatorId: z.number().int(),
+  operatorId: operatorIdInput,
 })
 
 export const getDeactivationImpact = adminProcedure

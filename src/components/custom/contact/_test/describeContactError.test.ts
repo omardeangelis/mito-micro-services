@@ -89,6 +89,26 @@ describe("describeContactError, one message per code", () => {
       "Operatore non valido",
     ],
     [
+      "OPERATOR_DISABLED",
+      { code: "OPERATOR_DISABLED", payload: {} },
+      "Utente disattivato",
+    ],
+    [
+      "OPERATOR_IS_ADMIN",
+      { code: "OPERATOR_IS_ADMIN", payload: {} },
+      "Declassa l'admin a operatore prima di disattivarlo",
+    ],
+    [
+      "CANNOT_DEACTIVATE_SELF",
+      { code: "CANNOT_DEACTIVATE_SELF", payload: {} },
+      "Non puoi disattivare te stesso",
+    ],
+    [
+      "LAST_ADMIN",
+      { code: "LAST_ADMIN", payload: {} },
+      "Deve restare almeno un admin",
+    ],
+    [
       "CONTACT_NOT_FOUND",
       { code: "CONTACT_NOT_FOUND", payload: {} },
       "Contatto non trovato",

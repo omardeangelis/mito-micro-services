@@ -78,12 +78,13 @@ const allowedEmails = new Set(
  * failure is logged here and thrown without its message, which NextAuth puts
  * in the URL of its error page.
  */
-async function runAuth<A, E>(program: Effect.Effect<A, E, Db>): Promise<A> {
+async function runAuth<A, E>(
+  program: Effect.Effect<A, E, Db>,
+  label = "Sign-in database step failed"
+): Promise<A> {
   const exit = await Effect.runPromiseExit(
     program.pipe(
-      Effect.tapErrorCause((cause) =>
-        Effect.logError("Sign-in database step failed", cause)
-      ),
+      Effect.tapErrorCause((cause) => Effect.logError(label, cause)),
       Effect.provide(ServerLive)
     )
   )
@@ -171,9 +172,21 @@ export const authOptions: NextAuthOptions = {
     // key. Whatever replaces NextAuth must keep this check (TD4,
     // brain/chore/migrazione-effect.md §7)
     getSessionAndUser: async (sessionToken) => {
-      const found = await DBAdapter.getSessionAndUser!(sessionToken)
+      // The database sessions, which the backend reads too
+      // (apps/api/src/session.ts)
+      if (!DBAdapter.getSessionAndUser) {
+        throw new Error("The NextAuth adapter has no database sessions")
+      }
+      const found = await DBAdapter.getSessionAndUser(sessionToken)
       if (!found) return null
-      if (await runAuth(isUserDisabled({ id: found.user.id }))) return null
+      if (
+        await runAuth(
+          isUserDisabled({ id: found.user.id }),
+          "Session database step failed"
+        )
+      ) {
+        return null
+      }
       return found
     },
   },
