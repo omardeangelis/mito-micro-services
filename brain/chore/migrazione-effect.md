@@ -97,9 +97,9 @@ Si fa a pezzi, dentro il passo che tocca quei file, o in una PR piccola sua. Non
 | Router | L1 servizi | L2 adapter | Note |
 |---|---|---|---|
 | base comune (passo 0) | parziale | – | `server-only`, `@sentry/nextjs`, rename `supabase` |
-| middleware `trpc.ts` | ☐ | ☐ | [[specs/crm/gestione-operatori/PLAN]] |
-| user | ☐ | ☐ | [[specs/crm/gestione-operatori/PLAN]]; le 4 `update*` si tolgono (PR P2) |
-| operator | ☐ | ☐ | [[specs/crm/gestione-operatori/PLAN]] |
+| middleware `trpc.ts` | ☑ | ☑ | `resolveActor`; PR 2 di [[specs/crm/gestione-operatori/PLAN]] (branch `-pr2`, in attesa di Leonardo e del merge) |
+| user | parziale | parziale | `getUserPreference` su `getCurrentUser` (PR 2); le 4 `update*` si tolgono (PR P2) |
+| operator | ☑ | ☑ | PR 2 di [[specs/crm/gestione-operatori/PLAN]] (branch `-pr2`, in attesa del merge) |
 | import | ☐ | ☐ | più le 6 route REST |
 | analytics | ☐ | ☐ | |
 | customer | parziale | parziale | `PUT` handover e assegnazioni già fatti |
@@ -134,7 +134,7 @@ Regole:
 |---|---|---|---|---|---|---|
 | TD1 | `[PREVISTO]` | Colonna `users.preferences` (testo JSON) non più letta né scritta | PR P2 di [[specs/crm/gestione-operatori/PLAN]]: le preferenze di layout passano ai cookie | Toglierla è una migrazione distruttiva: si aspetta di essere sicuri che nessuno la legga e che non serva tornare indietro | Migrazione `ALTER TABLE ... DROP COLUMN preferences`, poi `pnpm db:generate`; schema `packages/db/src/schema/users.ts`; la applica Omar, come le altre | P2 in prod da almeno un mese, `git grep "preferences"` su `@mito/db` e `@mito/server` senza letture della colonna, e in una release senza cutover GCP |
 | TD2 | `[PREVISTO]` | `user.getUserPreference` restituisce solo `role` e `operatorId`, con un nome che parla di preferenze, e doppia in parte `operator.getUserOperator` | PR P2 | Rinominarla tocca 5 file della UI per nessun cambio di comportamento | Un'unica lettura "utente corrente", che sostituisce le due | Con L3, quando le procedure si riscrivono comunque come `RpcGroup` |
-| TD3 | `[PREVISTO]` | Stranezze di `operator` e `user` fissate dai test di caratterizzazione: `getOperatorById` senza id restituisce un operatore qualunque (query senza `WHERE` né `ORDER BY`, `id: 0` vale come "nessun id"); `updateOperatorInfo` restituisce l'operatore di prima dell'update; `getUserPreference` di un utente senza operatore restituisce `role` e `operatorId` undefined | PR 1 e 2 di [[specs/crm/gestione-operatori/PLAN]] (AC26) | Il refactor non cambia comportamento | Una PR piccola per stranezza, ognuna con il test di caratterizzazione aggiornato e il nome che dice il comportamento nuovo | Dopo la PR 2 |
+| TD3 | `[OPEN]` | Stranezze di `operator` e `user` fissate dai test di caratterizzazione: `getOperatorById` senza id restituisce un operatore qualunque (query senza `WHERE` né `ORDER BY`, `id: 0` vale come "nessun id"); `updateOperatorInfo` restituisce l'operatore di prima dell'update; `getUserPreference` di un utente senza operatore restituisce `role` e `operatorId` undefined | PR 1 e 2 di [[specs/crm/gestione-operatori/PLAN]] (AC26) | Il refactor non cambia comportamento | Una PR piccola per stranezza, ognuna con il test di caratterizzazione aggiornato e il nome che dice il comportamento nuovo | Dopo la PR 2 |
 | TD4 | `[PREVISTO]` | `auth.ts` rifiuta il login dei disattivati e l'override di `getSessionAndUser` ne invalida le sessioni | PR 4 di [[specs/crm/gestione-operatori/PLAN]] (AC16, AC17) | È codice NextAuth v4, che il passo 8 sostituisce | La spec del sostituto di NextAuth li conserva, con gli stessi test sull'adapter e su `sessionFromRequest` | Passo 8 |
 | TD5 | `[OPEN]` | Route `src/app/api/cron/*`, script `scheduled/*.js` e 8 workflow GitHub dei cron | Passo "cron" (§4) | La prod usa ancora GitHub Actions finché i cron non passano a Cloud Scheduler | Toglierli tutti insieme | Dopo il passaggio dei cron di prod a Cloud Scheduler ([[chore/migrazione-gcp]]) |
 | TD6 | `[OPEN]` | Residui del passo 0: `server-only` in 26 file, `@sentry/nextjs` in 2, router `supabase`, `supabaseClient` nel contesto | Passo 0 (§4) | Si tolgono dentro il passo che tocca quei file, senza allargare i diff | Come nel §4 | A ogni passo |

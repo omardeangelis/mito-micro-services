@@ -71,6 +71,7 @@ _empty_
 - [[review/cron-base-url/REPORT|cron-base-url]] — standalone · do-not-ship · critical · 2026-10-09 (sesto giro)
 - [[review/search-by-explicit-map/REPORT|search-by-explicit-map]] — standalone · ship (quinto giro; prima do-not-ship) · critical · 2026-10-15
 - [[specs/crm/seeder-locale/REPORT|crm/seeder-locale]] — spec · ship · critical · 2026-10-21
+- [[specs/crm/gestione-operatori/REPORT|crm/gestione-operatori — PR 2]] — spec · ship (4 verificatori, 0 BLOCKER e 0 MAJOR; revisione di Leonardo da fare) · critical · 2026-10-22
 
 ## Log
 

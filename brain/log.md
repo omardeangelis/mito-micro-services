@@ -12,6 +12,13 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 
 <!-- Entries are appended by create-spec (spec creation) and docs-maintenance (ingest). Format:
 
+## [2026-10-22] review | Gestione operatori — PR 2, user e operator su Effect
+- Report: [[specs/crm/gestione-operatori/REPORT]] (round PR 2)
+- Scope: spec
+- Verdict: SHIP. Refactor puro confermato: corpo delle risposte identico misurato con l'handler HTTP, test della PR 1 con diff vuoto. Cambia solo la telemetria degli errori del database, come per ogni procedura già su `runTrpc`. Le lacune di test segnalate sono chiuse in `ac85739`
+- Impact: critical (middleware dei permessi); revisione di Leonardo richiesta (AC29a)
+- Verifiers: 4 (0 blocker, 0 major, 5 minor, 2 nit; 4 SHIP)
+
 ## [2026-10-21] review | Sezione Contatti — PR6 completa, terzo giro (richiesto da Omar)
 - Report: [[specs/crm/sezione-contatti/REPORT]] (round PR6 completa, terzo giro)
 - Scope: spec

@@ -166,9 +166,9 @@ Il ramo delle preferenze è indipendente. L'unico punto di contatto è `getUserP
 
   Nessun codice di produzione cambia.
 - **validation**: test verdi su `dev` così com'è.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-10-22, worker `haiku`, review passata al primo giro. 13 casi sulle 6 procedure, stranezze di AC26 comprese, verdi sul codice di `dev`.
+- **files edited/created**: `packages/server/src/api/routers/operator/_test/operator.db.test.ts` (nuovo)
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -184,9 +184,9 @@ Il ramo delle preferenze è indipendente. L'unico punto di contatto è `getUserP
   - **User:** `getUserPreference` restituisce `preferences`, `role` e `operatorId`; per un utente senza operatore, preferenze vuote e `role` e `operatorId` undefined (AC26).
   - **Non si caratterizzano** le 4 `update*`: la PR P2 le elimina. Resta il test che c'è già (`contactPreference.db.test.ts`), fino a P2.
 - **validation**: test verdi su `dev` così com'è.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-10-22, worker `haiku`, review passata al primo giro. Caratterizzazione di `getUserPreference` in un file suo e non in `contactPreference.db.test.ts`, che la P2 cancella (IMPLEMENTATION-NOTES, Deviations).
+- **files edited/created**: `packages/server/src/api/_test/procedures.db.test.ts` (nuovo), `packages/server/src/api/routers/user/_test/getUserPreference.db.test.ts` (nuovo)
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -199,9 +199,9 @@ Il ramo delle preferenze è indipendente. L'unico punto di contatto è `getUserP
 - **location**: –
 - **description**: Gate di CI (AC29), merge in `dev`.
 - **validation**: CI verde; il diff contiene solo file `_test/`.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done in locale; PR e merge in `dev` da fare (Omar)
+- **log**: 2026-10-22: `next lint`, `tsc`, test di `packages/server/src/api` verdi; diff di soli file `_test/` (3 file, 346 righe). Branch `claude/great-carson-o6qn17-pr1` (e360f4b), base `origin/dev`.
+- **files edited/created**: –
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -223,9 +223,9 @@ Il ramo delle preferenze è indipendente. L'unico punto di contatto è `getUserP
   - T1.2 resta verde senza cambiare le asserzioni.
   - Test del servizio con `Db` iniettato.
   - Nessuna query Drizzle nei middleware: `enforceIsActiveOperator` ed `enforceIsAdmin` non usano `db`. `trpc.ts` può ancora importare `drizzle-orm` per `createTRPCContext`.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-10-22, worker `sonnet`, review passata al primo giro. `adminProcedure` è `operatorProcedure.use(...)` su `ctx.actor.role`: l'ordine operatore-poi-ruolo lo impongono i tipi.
+- **files edited/created**: `services/auth/actor.ts`, `services/auth/_test/actor.db.test.ts`, `services/operator/errors.ts` (nuovi); `api/trpc.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -243,9 +243,9 @@ Il ramo delle preferenze è indipendente. L'unico punto di contatto è `getUserP
 - **validation**:
   - T1.1 resta verde senza cambiare le asserzioni.
   - `git grep drizzle-orm packages/server/src/api/routers/operator` è vuoto (AC24).
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-10-22, worker `sonnet`, review passata al primo giro (corretto io il formato del tracciante). `updateOperatorInfo` del servizio non restituisce nulla: l'adapter restituisce `ctx.operator`, come oggi. Il controllo `git grep drizzle-orm` di AC24 si fa escludendo `_test/`, perché la caratterizzazione legge il database.
+- **files edited/created**: `services/operator/{queries,profile,roles}.ts` e `_test/{queries,profile,roles}.db.test.ts` (nuovi); `api/routers/operator/{GET,PUT}/index.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -263,9 +263,9 @@ Il ramo delle preferenze è indipendente. L'unico punto di contatto è `getUserP
 - **validation**:
   - `contactPreference.db.test.ts` e T1.2 restano verdi senza cambiare le asserzioni.
   - `GET/getUserPreference.ts` non importa `drizzle-orm`.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-10-22, worker `haiku`, review passata al primo giro. `retrieveUserPrefercence` spostata, privata, in `PUT/updateUserPreference.ts`, così `GET/getUserPreference.ts` non importa Drizzle.
+- **files edited/created**: `services/user/current.ts`, `services/user/_test/current.db.test.ts` (nuovi); `api/routers/user/GET/getUserPreference.ts`, `api/routers/user/PUT/updateUserPreference.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -283,9 +283,9 @@ Il ramo delle preferenze è indipendente. L'unico punto di contatto è `getUserP
   - Spunta la checklist; in §7 TD3 (stranezze di AC26) passa da `[PREVISTO]` a `[OPEN]`, più le voci che la review trova.
   - Merge in `dev`, fuori da una release di cutover.
 - **validation**: CI verde; REPORT SHIP; `git diff dev -- '*/_test/*'` sui file di T1.x mostra solo aggiunte.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done in locale; revisione di Leonardo, PR e merge da fare
+- **log**: 2026-10-22: gate di CI tutti verdi (2520 test con i `*.pg.test.ts`, build, `api:build`, `api:smoke`). `adversarial-review`: SHIP, 4 verificatori, 0 BLOCKER e 0 MAJOR ([[specs/crm/gestione-operatori/REPORT]], round PR 2). Le lacune di test segnalate chiuse con 4 casi in `ac85739`, verdi anche sul codice della PR 1. Checklist di `migrazione-effect` §5 aggiornata, TD3 passa a `[OPEN]`. Branch `claude/great-carson-o6qn17-pr2`, base `-pr1`.
+- **files edited/created**: `api/_test/{procedures,driverError}.db.test.ts` (solo aggiunte); `brain/chore/migrazione-effect.md`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -547,9 +547,9 @@ Si scrive e si prova in locale subito. Arriva su un ambiente solo quando la migr
   - **Copia:** senza cookie e con preferenze sul server, il provider scrive i cookie una volta; con i cookie già presenti non li sovrascrive.
   - `git grep "/api/user/preferences" src` è vuoto.
   - **`agent-browser`** su `pnpm dev`: nascondere una colonna di Contatti, aprire un contatto e tornare indietro entro 30 secondi; la colonna resta nascosta, e nella scheda Network non c'è nessuna richiesta per il layout.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Codice fatto; manca la prova `agent-browser`
+- **log**: 2026-10-22, worker `sonnet`, review passata al primo giro (corretti io due errori di lint del tracciante). Store senza `persist`, cookie per chiave, copia una tantum in render prima dei figli, hook `useOptionalUserPreferenceContext` per le tabelle senza provider. Test che asserivano la vecchia richiesta al server aggiornati (elenco nel commit d6d9667). Suite intera verde nel worktree.
+- **files edited/created**: nuovi `src/lib/preferences/{cookies,server}.ts`, `src/store/context/useOptionalUserPreferenceContext.ts` e 7 test; modificati `src/store/userPreferences.ts`, `UserPreferenceContext.tsx`, `DashboardLayout.tsx`, `CustomersTable.tsx`, `CustomerTableSection.tsx`, `PraticesTable.tsx`, `pratiche/page.tsx`, `ContactColumnsMenu.tsx`, `ContactsTableSection.tsx`, `hiddenColumns.tsx` e 7 test esistenti
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
