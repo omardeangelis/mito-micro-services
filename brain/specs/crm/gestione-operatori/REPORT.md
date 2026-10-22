@@ -4,9 +4,9 @@ type: review
 scope: spec
 spec: gestione-operatori
 review_target: "spec implementation, per PR (un round per PR)"
-base_ref: origin/dev
-head_ref: claude/great-carson-o6qn17-p1
-verdict: ship
+base_ref: claude/great-carson-o6qn17-pr3
+head_ref: claude/great-carson-o6qn17-pr4
+verdict: do-not-ship
 review_impact: critical
 human_in_loop: true
 links:
@@ -148,3 +148,67 @@ Per Leonardo (AC29a: la PR cambia i middleware dei permessi), prima del merge in
 ### Notes for docs-maintenance
 
 - Durable findings: l'invariante "niente sotto `UserPreferenceProvider` è reso dal server" (finding v1), da tenere presente a chi cambierà il rendering del dashboard.
+
+## [Round: 2026-10-22 — PR 4, disattivazione backend, primo giro]
+
+### Verdict
+
+**DO NOT SHIP** · impact: critical. Due verificatori su sette (v4, v7) con MAJOR; le correzioni sono in corso (secondo giro sotto, quando arriva).
+
+Obiezione più forte (v4): il log e gli spostamenti della disattivazione scelgono le righe con due statement diversi, quindi un writer che non passa dalla regola dei lock ("Assegna a te", `insertCustomer` con X) può far spostare un cliente senza riga di log, o lasciarlo sul disattivato. Riprodotto su Postgres reale.
+
+### Coverage
+
+- Rubric passes run: 7/7 (v1–v5 sul modello più forte, v6–v7 su quello bilanciato).
+- Gate di CI sulla testa della PR 4 (dopo T4.6): verdi, 2618 test con i `*.pg.test.ts`, build, `api:build`, `api:smoke`.
+
+### Findings
+
+| Severity | Concern (verifier) | Location | Problem | Required fix / evidence | Durable? |
+|----------|--------------------|----------|---------|-------------------------|----------|
+| MAJOR | v4 (anche v5) | `services/operator/deactivate.ts` | Log `INSERT ... SELECT` e `UPDATE` scelgono le righe per predicato in statement separati: un cliente che diventa di X fra i due si sposta senza riga di log | Log e spostamenti in un solo statement (CTE che modificano dati), test a due connessioni | no (in correzione) |
+| MAJOR | v4 (anche v5) | `services/customer/assignment.ts` `assignToYourself` | "Assegna a te" non prende il lock della riga utente: in una race lascia un cliente sul disattivato (AC7) | `findWorkingOperator(actor.operatorId)` prima del lock del cliente; test a due connessioni | no (in correzione) |
+| MAJOR | v4 | `deactivate.ts` | Un contatto attivo senza cliente si sposta senza riga di log: `task_event_log.customer_id` è NOT NULL e le migrazioni sono solo additive. AC9 dice "ogni contatto" | Decisione: resta così, documentato, con un test; nota per Omar (deviazione da AC9) | sì |
+| MAJOR | v7 | `deactivate.db.test.ts` | Il failpoint di AC8 fa fallire la prima scrittura: il test passerebbe anche senza transazione | Failpoint dopo gli spostamenti (update di `users`, commit) | no (in correzione) |
+| MAJOR | v7 (anche v5) | test di concorrenza | Nessun test dell'ordine dei lock per Assegna chiamate, Assegna Clienti (manca il controllo "cliente non bloccato") e riassegnazione: spostare il controllo dopo il lock del cliente non fa fallire nulla | Test su Postgres reale gemelli di quelli dell'handover; uno con la disattivazione vera | no (in correzione) |
+| MINOR | v3 | `services/operator/roles.ts` | Un ADMIN senza operatore conta come admin, ma non può usare le procedure admin: l'ultimo admin vero potrebbe declassarsi | Contare solo gli admin con operatore; test su id duplicati, batch vuoto, errore alla procedura | no (in correzione) |
+| MINOR | v7, v5 | `deactivate.pg.test.ts` | Il tetto di 2 ripetizioni su 40P01 non è fissato da un test | Test con deadlock a ogni tentativo: 3 transazioni, poi errore | no (in correzione) |
+| MINOR | v4 | router `operator` | `z.number().int()` senza limiti: un id oltre int32 dà 500 invece di `OperatorNotFound` | `.positive().max(2147483647)` | no (in correzione) |
+| MINOR | v6 | `auth.ts:174` | `DBAdapter.getSessionAndUser!` | Guard senza `!` | no (in correzione) |
+| MINOR | v6 | test | Testi di `describeContactError` per i codici nuovi non asseriti; forma HTTP degli errori simulata a mano | Asserzioni aggiunte | no (in correzione) |
+| MINOR | v1 | `authDisabled*.db.test.ts` | "Nessun utente nuovo" chiamando il callback direttamente non prova nulla da solo: la garanzia viene dal flusso di NextAuth (verificato nel sorgente: AccessDenied prima di `createUser`) | Accettato; nota nel test | no |
+| MAJOR (release) | v2 | OQ2 | Ogni utente del tenant Azure è ADMIN: via HTTP può declassare un admin (purché ne resti uno) e disattivarlo, e non c'è riattivazione dalla UI | Chiudere OQ2 prima della prod (checklist) | sì: blocca il rilascio in prod |
+| NIT | v1, v2, v5, v6, v7 | vari | Commento di `signIn` sul flusso email, etichetta del log di `runAuth`, nome di un test, import duplicati, finestra time-of-check sull'attore, il cron `priority` fuori dalla regola come vittima di un 40P01 | Corretti dove sono codice di questa PR; gli altri annotati | no |
+
+### What passed
+
+| Concern (verifier) | Evidence |
+|--------------------|----------|
+| v1: autenticazione | Seguito il flusso reale di NextAuth v4: il disattivato è rifiutato prima del ramo prod, il link email non parte e non si usa, nessun `createUser`; l'adapter sovrascritto è quello usato da `getServerSession` e da `sessionFromRequest`; errori del database chiudono |
+| v2: autorizzazione | Le tre procedure nuove sono `adminProcedure`; un disattivato riceve `UNAUTHORIZED` anche con la sessione già letta; `protectedProcedure` identico; nessun altro percorso accetta un attore disattivato |
+| v3: ruoli | LastAdmin, disattivati nel batch, id sconosciuti, atomicità, doppia retrocessione simultanea su Postgres reale; 10 casi in più provati a parte |
+| v4: dati | Ordine dei controlli, transazione unica, "il cliente vince", scrittura per insiemi a 5.000 righe, retry con il SQLSTATE vero, conteggi del dialog uguali agli spostamenti |
+| v5: concorrenza | Verificato a due connessioni che Postgres ricontrolla la riga utente dopo l'attesa (EvalPlanQual); nessun writer blocca un cliente prima dell'utente; nessun deadlock negli scenari di AC7 |
+| v6: errori | Mappatura esaustiva (tsc), codici leggibili in tutte e due le forme, AC24 e AC28 rispettati |
+| v7: test | Nessun test esistente indebolito; i `*.pg.test.ts` girano in CI e non si possono saltare; molti mutanti presi |
+
+### Human Review Checklist
+
+1. Revisione di Leonardo (AC29a): ruoli (`services/operator/roles.ts`), login e sessioni (`auth.ts`, `services/auth/{disabled,actor}.ts`).
+2. **OQ2 chiusa prima della prod:** oggi chiunque del tenant Azure entra come ADMIN e può, via `/api/trpc`, declassare e disattivare altri senza possibilità di riattivarli dalla UI.
+3. Ordine di rilascio: migrazione della PR 3 applicata sull'ambiente prima che ci arrivino le PR 3 e 4 (IMPLEMENTATION-NOTES, Deviations).
+4. Su staging: un utente di prova disattivato con `operator.deactivate` viene buttato fuori al refresh, su Vercel e su Cloud Run, e non rientra con Azure; misurare la lettura in più della sessione.
+5. Gate di CI verdi sulla PR, con i `*.pg.test.ts`.
+6. Deviazione da AC9 da accettare: un contatto attivo senza cliente si sposta senza riga di log.
+
+### Acceptance criteria check (primo giro)
+
+| Criterion | Met / Unmet / Blocked | Notes |
+|-----------|-----------------------|-------|
+| AC1–AC6, AC13 | Met | |
+| AC7 | Unmet | "Assegna a te" in race (in correzione) |
+| AC8 | Met nel codice, test insufficiente | in correzione |
+| AC9 | Unmet | log e spostamenti da statement diversi (in correzione); contatti senza cliente (deviazione) |
+| AC10–AC12 | Met | tetto dei retry da fissare con un test |
+| AC14–AC20 | Met | |
+| AC22 (codici), AC24–AC28 | Met | |

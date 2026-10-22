@@ -103,3 +103,45 @@ Critical because the change moves stored user data (the server stops being the s
 ### Overrides applied
 
 None.
+
+## [Round: 2026-10-22 — PR 4, disattivazione backend]
+
+### Change set under review
+
+- **Scope:** spec implementation (PR 4 del piano: T4.1–T4.6)
+- **Target:** branch `claude/great-carson-o6qn17-pr4`
+- **Compared:** `claude/great-carson-o6qn17-pr3` → `claude/great-carson-o6qn17-pr4` (39 file, +3500/−87)
+
+### Routing rubric (review-classifier output, charter abbreviati)
+
+```json
+{
+  "taskType": "feature",
+  "secondaryType": "security",
+  "domainsTouched": ["crm"],
+  "adversarialVerifiers": {
+    "count": 7,
+    "passes": [
+      { "id": "v1", "charter": "Authentication: a deactivated user can neither sign in nor keep a session (AC16 adapter half, AC17); signIn placement, id vs email, email-link flow, adapter override used by Next.js and the backend, fail closed.", "complexity": "high" },
+      { "id": "v2", "charter": "Authorization: who may call the operator procedures (AC2, AC16 resolveActor half, AC25); every new procedure is adminProcedure; no other path accepts a disabled actor; OQ2 exposure.", "complexity": "high" },
+      { "id": "v3", "charter": "Role batch: updateOperatorsRole vs AC18–AC20 and D7, LastAdmin computation, duplicates, unknown ids, atomicity, the edited PR 2 test.", "complexity": "high" },
+      { "id": "v4", "charter": "Deactivation data: what deactivateOperator writes vs AC3–AC6, AC8–AC10, AC12, AC13; log rows consistent with the moves; retry; impact counts.", "complexity": "high" },
+      { "id": "v5", "charter": "Concurrency: the users-first lock rule on every writer (AC7, AC11), EvalPlanQual re-check, deadlocks, the pg tests really interleave.", "complexity": "high" },
+      { "id": "v6", "charter": "Error contract and conventions: operatorErrorToTrpc, domain codes in both shapes, describeContactError, AC24, AC28, Effect rules.", "complexity": "medium" },
+      { "id": "v7", "charter": "Test integrity: the tests prove the ACs, no existing test weakened, pg tests in CI, mutants.", "complexity": "medium" }
+    ]
+  },
+  "taskComplexity": "high",
+  "reviewImpact": "critical",
+  "humanInLoop": true,
+  "nextStep": "v1–v5 on the strongest model, v6–v7 balanced; human checklist with Leonardo's review, OQ2 before prod, gates, a staging check of a disabled user's session on Next.js and Cloud Run."
+}
+```
+
+### Classifier rationale
+
+Three generic risk surfaces at once (sign-in and the session read of every request, admin authorization, bulk data moves under row locks), plus AC29a naming Leonardo and OQ2 open. No UI or motion pass: the only `src/` change is a message lookup.
+
+### Overrides applied
+
+None.
