@@ -14,8 +14,10 @@
 #   secrets: the service account of staging reads them at runtime.
 # - The migrations job mito-crm-staging-migrate, with Google's sample image:
 #   the workflow gives it the image and the settings of each deploy.
-# Then the values the workflow needs are printed: set them as repository
-# variables (Settings > Secrets and variables > Actions > Variables).
+# Then the values the workflow needs are printed: set them as variables of the
+# GitHub environment staging (Settings > Environments > staging > Environment
+# variables). Prod's environment, production, will have the same names with
+# its own values.
 # A second run stops at the first resource that already exists.
 set -e
 P=mito-crm
@@ -86,6 +88,6 @@ gcloud run jobs add-iam-policy-binding mito-crm-staging-migrate --project=$P \
   --region=$R --member=serviceAccount:$DEPLOYER --role=roles/run.developer \
   >/dev/null
 
-echo "Done. Repository variables for the deploy workflow:"
+echo "Done. Variables of the GitHub environment staging:"
 echo "  GCP_WORKLOAD_IDENTITY_PROVIDER=projects/$NUMBER/locations/global/workloadIdentityPools/github/providers/mito-crm-staging"
 echo "  GCP_DEPLOYER_SERVICE_ACCOUNT=$DEPLOYER"
