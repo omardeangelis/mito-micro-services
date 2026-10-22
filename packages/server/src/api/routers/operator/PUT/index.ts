@@ -3,6 +3,7 @@ import { insertOperatorSchema } from "@mito/domain/schemas"
 import { z } from "zod"
 import { runTrpc } from "../../../../effect/trpc"
 import { updateOperatorInfo as updateOperatorInfoService } from "../../../../services/operator/profile"
+import { operatorErrorToTrpc } from "../../../../services/operator/errors"
 import { updateOperatorsRole as updateOperatorsRoleService } from "../../../../services/operator/roles"
 
 const operatorInsertSchema = insertOperatorSchema.pick({
@@ -28,4 +29,6 @@ const updateOperatorsRoleInput = z.array(
 
 export const updateOperatorsRole = adminProcedure
   .input(updateOperatorsRoleInput)
-  .mutation(({ input }) => runTrpc(updateOperatorsRoleService(input)))
+  .mutation(({ input }) =>
+    runTrpc(updateOperatorsRoleService(input), operatorErrorToTrpc)
+  )

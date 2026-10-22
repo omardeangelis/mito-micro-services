@@ -40,6 +40,8 @@ describe("updateOperatorsRole", () => {
   })
 
   it("skips an id that doesn't exist and still changes the others", async () => {
+    // Another admin stays: demoting the only one is LastAdmin (AC18)
+    await createOperator({ role: "ADMIN" })
     const operator = await createOperator({ role: "ADMIN" })
     const input = [
       { id: operator.id + 1, role: "OPERATORE" as const },
