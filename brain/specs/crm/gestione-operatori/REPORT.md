@@ -4,8 +4,8 @@ type: review
 scope: spec
 spec: gestione-operatori
 review_target: "spec implementation, per PR (un round per PR)"
-base_ref: claude/great-carson-o6qn17-pr1
-head_ref: claude/great-carson-o6qn17-pr2
+base_ref: origin/dev
+head_ref: claude/great-carson-o6qn17-p1
 verdict: ship
 review_impact: critical
 human_in_loop: true
@@ -92,3 +92,59 @@ Per Leonardo (AC29a: la PR cambia i middleware dei permessi), prima del merge in
 
 - Durable findings: nessuno nel debito della feature. La differenza di telemetria su `runTrpc` è comune a tutta la migrazione: va in [[chore/migrazione-effect]] §7 se si decide di correggerla.
 - Domain pages that should backlink this review: nessuna ancora (`brain/domains/crm/` non esiste).
+
+## [Round: 2026-10-22 — PR P1, preferenze di layout nel browser]
+
+### Verdict
+
+**SHIP** · impact: critical. Le correzioni minori della review sono in un commit dopo d6d9667 (sotto).
+
+### Coverage
+
+- Rubric passes run: 4/4 (v1 e v2 sul modello più forte, v3 e v4 su quello bilanciato).
+- v1 ha lavorato sull'app servita (`next dev` sul seed di `mito_local`), con `agent-browser`, la console, il log del server e l'HTML servito.
+- Gate di CI sul branch (d6d9667, dopo la reinstallazione dei `node_modules` del worktree): `next lint`, `tsc`, 2530 test con i `*.pg.test.ts`, `pnpm build`, `api:build`, `api:smoke`, tutti verdi.
+
+### Findings
+
+| Severity | Concern (verifier) | Location | Problem | Required fix / evidence | Durable? |
+|----------|--------------------|----------|---------|-------------------------|----------|
+| MINOR | v2 | `src/store/context/UserPreferenceContext.tsx` | La copia una tantum gira nel render anche dopo che i figli sono montati (getUserPreference fallisce, poi un refetch riesce): avviso di React "Cannot update a component while rendering" | Copia nel render solo prima che i figli montino, poi in un effect; test del percorso caricamento → dati ed errore → successo | no (corretto) |
+| MINOR | v2 | stesso file | La copia non controlla il tipo del valore del server: una stringa al posto di una lista diventa un cookie illeggibile e rompe la tabella | Stesso controllo del parser dei cookie prima di copiare | no (corretto) |
+| MINOR | v4 | `PraticesTable.tsx` | Nessun test per la tabella Pratiche, cambiata come quella dei Clienti | Test gemelli di quelli dei Clienti | no (corretto) |
+| MINOR | v1 | `UserPreferenceProvider` | Le tabelle e la sidebar non sono mai rese dal server: il provider mostra lo scheletro finché la query carica, e la query non è prefetchata. Quindi la lettura dei cookie della richiesta (AC32) serve solo da seme. Se un giorno il dashboard venisse reso dal server, sidebar e chiavi copiate non combacerebbero all'idratazione | Commento nel provider che fissa l'invariante; seminare lo store dai cookie della richiesta se cambia | sì: nota per chi toccherà il rendering del dashboard |
+| MINOR | v2 | localStorage `userPreference-storage` | Tolto senza leggerlo: un valore della sidebar più nuovo di quello del server (salvataggio fallito, un altro dispositivo) si perde una volta | Accettato: è solo layout, e quel valore non era per utente (Run 3 di sezione-contatti) | no |
+| MINOR | v4 | `src/app/api/user/preferences/route.ts` | La route e le `update*` restano, senza più chiamanti nel client | Voluto: le toglie la P2 (AC34, AC35) | no |
+| NIT | v2 | vecchio `PraticesTable` | Il vecchio codice salvava le colonne di Pratiche sotto la chiave sbagliata, e il server non le ha mai tenute: la copia non ne riporta | Una riga nella descrizione della PR | no |
+| NIT | v3 | `cookies.ts` | Nessun `Secure`; nessun limite di dimensione; un cookie duplicato su un altro path verrebbe letto diverso da server e client | Nessuna: liste sotto 300 byte, contenuto non sensibile | no |
+| NIT | v1 | `CustomersTable.tsx` | Nel cookie finiscono anche `id` e `select`, sempre sovrascritti | Come prima sul server | no |
+
+### What passed
+
+| Concern (verifier) | Evidence |
+|--------------------|----------|
+| v1: render e router cache | Nessun avviso di idratazione (console, intercettazione di `console.error`, log del server); tracce con un MutationObserver: nessuna colonna appare e sparisce, la sidebar chiusa non si apre al ricaricamento; router cache entro 30 s su Contatti, Clienti e Pratiche con 0 richieste RSC: si vede l'ultima scelta |
+| v2: preferenze salvate | La copia scrive solo i cookie mancanti, una volta, prima che i figli seminino, anche con i dati in arrivo dopo; nessun effetto doppio in StrictMode; route, `update*` e `preferences` di `getUserPreference` intatti, quindi una scheda vecchia continua a funzionare (AC35) |
+| v3: codifica | Valori illeggibili (encoding, JSON, tipi) assenti senza eccezioni, lato server e client; il giro decode/encode con il parser vero di next 14.2.35 è senza perdite (%, unicode, `;`, `,`); `__proto__` e `constructor` innocui; nessun dato di identità nei cookie |
+| v4: store e logout | Ogni setter scrive solo il suo cookie; nessun consumatore rotto da `Partial<UserPreference>`; il logout pulisce i 4 cookie, lo store, ruolo e operatore; ruolo e operatore solo dalla sessione; nessuna scrittura al mount; i test cambiati tolgono solo le asserzioni sul vecchio giro al server |
+
+### Human Review Checklist
+
+1. Annotare la data del rilascio in prod della P1 su Vercel: la P2 arriva al backend almeno 2 settimane dopo (AC34, AC35).
+2. Dopo il rilascio, con un utente che ha preferenze salvate solo sul server, controllare che al primo accesso le ritrovi (sidebar e colonne di Clienti e Contatti; quelle di Pratiche il server non le ha mai tenute).
+3. In un browser condiviso, controllare che dopo "Esci dal gestionale" non restino cookie `mito-pref-*`.
+4. Gate di CI verdi sulla PR.
+
+### Acceptance criteria check
+
+| Criterion | Met / Unmet / Blocked | Notes |
+|-----------|-----------------------|-------|
+| AC31 | Met | Verificato nel browser: nessuna richiesta, cambio immediato |
+| AC32 | Met | Le pagine leggono i cookie della richiesta; la tabella però appare solo dopo il caricamento del provider (finding v1) |
+| AC33 | Met | Logout verificato nel browser |
+| AC34 | Met (parte P1) | Copia verificata nel browser con due utenti del seed |
+| AC35 | Met (parte P1) | La parte P2 è un passo di rilascio |
+
+### Notes for docs-maintenance
+
+- Durable findings: l'invariante "niente sotto `UserPreferenceProvider` è reso dal server" (finding v1), da tenere presente a chi cambierà il rendering del dashboard.

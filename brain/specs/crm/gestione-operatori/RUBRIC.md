@@ -63,3 +63,43 @@ None.
 | v2 | Migrated procedures parity | medium | balanced |
 | v3 | Error-path parity | high | strongest |
 | v4 | Conventions and gates | medium | balanced |
+
+## [Round: 2026-10-22 — PR P1, preferenze di layout nel browser]
+
+### Change set under review
+
+- **Scope:** spec implementation (PR P1 del piano)
+- **Target:** branch `claude/great-carson-o6qn17-p1`
+- **Compared:** `origin/dev` → `claude/great-carson-o6qn17-p1` (d6d9667)
+- **Files touched:** 27 in `src/` (store, provider, modulo dei cookie, 4 componenti client, 3 server component, test), dominio `crm`
+
+### Routing rubric (review-classifier output, charter abbreviati)
+
+```json
+{
+  "taskType": "feature",
+  "secondaryType": "data",
+  "domainsTouched": ["crm"],
+  "adversarialVerifiers": {
+    "count": 4,
+    "passes": [
+      { "id": "v1", "charter": "Server render vs first client render for Clienti, Pratiche, Contatti and the sidebar (AC32), hydration warnings, column flashes, sidebar flash, 30 s router cache, on the seeded dev server.", "complexity": "high" },
+      { "id": "v2", "charter": "Saved preferences survive and release order holds (AC34, AC35): the render-phase one-time copy, StrictMode, setState during render, the dropped localStorage item, the old pref=pt bug, the server surface left in place.", "complexity": "high" },
+      { "id": "v3", "charter": "Cookie codec and untrusted cookie input (AC31, AC33): tolerance, server decode/encode round-trip on next 14.2, attributes, size, __proto__ ids, no PII.", "complexity": "medium" },
+      { "id": "v4", "charter": "Client store, logout semantics, no server write left (AC31, AC33): setters, Partial<UserPreference> consumers, logout, identity from the session only, mount writes, leftovers, changed tests.", "complexity": "medium" }
+    ]
+  },
+  "taskComplexity": "high",
+  "reviewImpact": "critical",
+  "humanInLoop": true,
+  "nextStep": "v1 and v2 on the strongest model, v3 and v4 balanced; v1 on the seeded dev server. Human checklist on release order and on the first visit of a user with server-saved preferences."
+}
+```
+
+### Classifier rationale
+
+Critical because the change moves stored user data (the server stops being the store, with a one-time copy whose success depends on the release order) and because server components now render from client-written cookies. No UI or motion-craft pass: no markup, style, ARIA or animation lines change; the rendered effects are behavioural and v1 checks them in the browser.
+
+### Overrides applied
+
+None.
