@@ -65,9 +65,7 @@ describe("operator.getAllUniqueOperators", () => {
     const rows = await caller.operator.getAllUniqueOperators()
 
     expect(
-      rows
-        .map(({ id, role }) => ({ id, role }))
-        .sort((a, b) => a.id - b.id)
+      rows.map(({ id, role }) => ({ id, role })).sort((a, b) => a.id - b.id)
     ).toEqual([
       { id: admin.id, role: "ADMIN" },
       { id: operator.id, role: "OPERATORE" },
