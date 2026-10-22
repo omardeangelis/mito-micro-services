@@ -307,9 +307,9 @@ Il ramo delle preferenze è indipendente. L'unico punto di contatto è `getUserP
   - La suite resta verde senza altri cambi.
   - `seed:local` e `seed:local:verify` passano.
   - Nel journal la migrazione è l'ultima, e nessuna PR aperta ne genera una con una data precedente.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done in locale; PR, merge e applicazione su staging da fare (Omar)
+- **log**: 2026-10-22, worker `haiku`, due correzioni proposte da me (attempt 2 della scala, stesso worker). (1) `db:generate` aggiunge sempre `ALTER ... customers.id SET DEFAULT '<casuale>'` per `default(nanoid())`: tolta a mano, snapshot con il valore di prima, come da convenzione (`migrazione-gcp.md`). (2) L'INSERT di Drizzle elenca tutte le colonne dello schema, quindi i test che migrano a una tag vecchia e creano utenti con le factory falliscono: `createUser` scrive con le colonne di prima quando non servono le nuove. Il test del riallineamento conta le migrazioni fino alla sua tag. Il seed esclude `deactivation` dalle sorgenti coperte. Migrazione applicata a `mito_local`, `seed:local` + `seed:local:cron` + `seed:local:verify` passano. Gate di CI verdi (2526 test). **Scoperta:** anche il codice della PR 3 nomina le colonne nuove (ogni INSERT su `users`, il signup compreso): la PR 3 arriva su un ambiente solo dopo la migrazione applicata lì (IMPLEMENTATION-NOTES).
+- **files edited/created**: `packages/db/src/schema/{users,taskEventLog}.ts`, `packages/db/migrations/20261022182741_colossal_lilith.sql`, `meta/20261022182741_snapshot.json`, `meta/_journal.json`, `src/test/factories.ts`, `src/test/_test/factories.db.test.ts` (nuovo), `src/server/db/seeds/local/_test/contacts.test.ts`, `src/server/db/_test/migrations/contattiRealign.systemOperator.db.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -332,9 +332,9 @@ Si scrive e si prova in locale subito. Arriva su un ambiente solo quando la migr
     - `OperatorIsAdmin`, `CannotDeactivateSelf` e `LastAdmin` → `BAD_REQUEST`, con i messaggi della spec;
     - quelli condivisi passano a `contactErrorToTrpc`.
 - **validation**: per ogni tag, codice, messaggio e un `cause` che `readContactError` legge sia in-process sia nella forma HTTP.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-10-22, worker `haiku`, review passata (corretto io: `OperatorDisabled` senza messaggio dava un `UNAUTHORIZED` con messaggio vuoto, ora "Utente disattivato"). `describeContactError` ha i messaggi dei 4 codici nuovi, richiesti da tsc.
+- **files edited/created**: `services/operator/errors.ts`, `services/operator/_test/errors.test.ts` (nuovo), `packages/domain/src/contact/errors.ts`, `src/components/custom/contact/describeContactError.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -355,9 +355,9 @@ Si scrive e si prova in locale subito. Arriva su un ambiente solo quando la migr
   - **Caller:** un utente disattivato su un `operatorProcedure` riceve `UNAUTHORIZED`.
   - **Login:** `signIn` con `isProduction` simulato `true` restituisce `false` per un disattivato, e non c'è un utente nuovo in `users`.
   - **Liste:** `getAllUniqueOperators` non contiene il disattivato; `getOperatorById` sì.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-10-22, worker sul modello più forte, review passata. Due test esistenti cambiati da me per il cambio voluto: `auth.test.ts` simula `isUserDisabled` (non tocca il database per costruzione); il test legacy di `bulkHandleTask` aggiunge le due colonne allo schema vecchio. Costo: una lettura per chiave primaria in più a ogni lettura della sessione; in prod `signIn` ora legge il database.
+- **files edited/created**: `packages/server/src/auth.ts`, `services/auth/{actor,disabled}.ts`, `services/operator/queries.ts`, test nuovi `_test/authDisabled{,.prod}.db.test.ts`, `apps/api/src/_test/authDisabled.db.test.ts`, `api/_test/procedures.disabled.db.test.ts`, `services/auth/_test/disabled.db.test.ts`, `services/operator/_test/queries.disabled.db.test.ts`; cambiati `_test/auth.test.ts`, `api/routers/task/_test/bulkHandleTask.legacy.db.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -379,9 +379,9 @@ Si scrive e si prova in locale subito. Arriva su un ambiente solo quando la migr
   - I test esistenti di contact, customer e task, compresi `lockRule.db.test.ts` e `operatorRule.db.test.ts`, restano verdi.
   - Casi nuovi: handover, Assegna Clienti e Assegna chiamate verso un disattivato → `OperatorNotFound`.
   - Su Postgres, un `assignCustomers` di 3 clienti con la destinazione disattivata dopo il primo: il primo è spostato, il secondo riceve `OperatorNotFound`.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-10-22, worker sul modello più forte, review passata al primo giro. Aggiunta al piano la riassegnazione dei contatti (`reassign`), che controllava la destinazione dopo il lock del cliente: con la regola nuova poteva andare in deadlock con la disattivazione. `lockWorkingOperator` prende il lock subito e restituisce l'errore dopo, così l'ordine degli errori resta quello di prima. Test su Postgres reale dell'ordine dei lock e di un Assegna Clienti lungo; le mutazioni (senza `KEY SHARE`, cliente prima dell'operatore) li fanno fallire.
+- **files edited/created**: `services/contact/{operator,reassign}.ts`, `services/customer/assignment.ts`, `api/routers/task/POST/index.ts`, `effect/db.ts`; test nuovi `api/routers/task/_test/bulkHandleTask.disabled.db.test.ts`, `api/routers/customer/_test/assignment.disabled.db.test.ts`, `services/contact/_test/{reassign.disabled.db,operatorLock.pg}.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -400,9 +400,9 @@ Si scrive e si prova in locale subito. Arriva su un ambiente solo quando la migr
   - Declassare l'unico admin, anche sé stessi, dà `LastAdmin` e non cambia nulla.
   - **Atomicità (AC20):** con `failNextUpdateOf(users)` sul secondo update del batch, il primo utente resta con il ruolo di prima.
   - Su Postgres con due connessioni: due admin che si declassano a vicenda in parallelo, uno riesce e l'altro riceve `LastAdmin`; alla fine c'è un admin.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-10-22, worker `sonnet`, review passata. Un test di servizio della PR 2 declassava l'unico admin: ora ne crea un altro (con AC18 quel batch è `LastAdmin`). L'atomicità usa `failNextUpdateOf(users, { id })` sul secondo update.
+- **files edited/created**: `services/operator/roles.ts`, `api/routers/operator/PUT/index.ts`, test nuovi `services/operator/_test/{roles.lastAdmin.db,roles.batch.db,roles.pg}.test.ts`; cambiato `services/operator/_test/roles.db.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -547,9 +547,9 @@ Si scrive e si prova in locale subito. Arriva su un ambiente solo quando la migr
   - **Copia:** senza cookie e con preferenze sul server, il provider scrive i cookie una volta; con i cookie già presenti non li sovrascrive.
   - `git grep "/api/user/preferences" src` è vuoto.
   - **`agent-browser`** su `pnpm dev`: nascondere una colonna di Contatti, aprire un contatto e tornare indietro entro 30 secondi; la colonna resta nascosta, e nella scheda Network non c'è nessuna richiesta per il layout.
-- **status**: Codice fatto; manca la prova `agent-browser`
-- **log**: 2026-10-22, worker `sonnet`, review passata al primo giro (corretti io due errori di lint del tracciante). Store senza `persist`, cookie per chiave, copia una tantum in render prima dei figli, hook `useOptionalUserPreferenceContext` per le tabelle senza provider. Test che asserivano la vecchia richiesta al server aggiornati (elenco nel commit d6d9667). Suite intera verde nel worktree.
-- **files edited/created**: nuovi `src/lib/preferences/{cookies,server}.ts`, `src/store/context/useOptionalUserPreferenceContext.ts` e 7 test; modificati `src/store/userPreferences.ts`, `UserPreferenceContext.tsx`, `DashboardLayout.tsx`, `CustomersTable.tsx`, `CustomerTableSection.tsx`, `PraticesTable.tsx`, `pratiche/page.tsx`, `ContactColumnsMenu.tsx`, `ContactsTableSection.tsx`, `hiddenColumns.tsx` e 7 test esistenti
+- **status**: Done
+- **log**: 2026-10-22, worker `sonnet`, review passata al primo giro (corretti io due errori di lint del tracciante). Store senza `persist`, cookie per chiave, copia una tantum nel render prima dei figli, `useOptionalUserPreferenceContext` per le tabelle senza provider. Prova `agent-browser` su `next dev` con il seed di `mito_local` (worktree con il codice della P1): copia una tantum verificata, sidebar e colonne senza richieste, router cache entro 30 s su Contatti, logout che toglie i cookie. Correzioni della review in 1471ece (worker `sonnet`).
+- **files edited/created**: nuovi `src/lib/preferences/{cookies,server}.ts`, `src/store/context/useOptionalUserPreferenceContext.ts` e 8 test; modificati `src/store/userPreferences.ts`, `UserPreferenceContext.tsx`, `DashboardLayout.tsx`, `CustomersTable.tsx`, `CustomerTableSection.tsx`, `PraticesTable.tsx`, `pratiche/page.tsx`, `ContactColumnsMenu.tsx`, `ContactsTableSection.tsx`, `hiddenColumns.tsx` e 7 test esistenti
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -563,9 +563,9 @@ Si scrive e si prova in locale subito. Arriva su un ambiente solo quando la migr
 - **location**: –
 - **description**: Gate di CI (AC29) e `adversarial-review` con il pass UI. Merge in `dev`, poi rilascio in prod su Vercel. Si annota la data del rilascio: da lì partono le 2 settimane di P2.
 - **validation**: CI verde; REPORT SHIP; data del rilascio in prod nel log del task.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done in locale; PR, merge e rilascio in prod da fare (Omar)
+- **log**: 2026-10-22: gate di CI verdi (2530 test con i `*.pg.test.ts`, build, `api:build`, `api:smoke`) dopo la reinstallazione dei `node_modules` del worktree, che un `next dev` fallito aveva lasciato in uno stato rotto (`Can't resolve '@sentry/core'`; su un worktree pulito di `dev` con gli stessi file la build passava). `adversarial-review`: SHIP, 4 verificatori, 0 BLOCKER e 0 MAJOR ([[specs/crm/gestione-operatori/REPORT]], round P1); i MINOR corretti in 1471ece. La data del rilascio in prod va annotata qui: da lì partono le 2 settimane della P2.
+- **files edited/created**: –
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
