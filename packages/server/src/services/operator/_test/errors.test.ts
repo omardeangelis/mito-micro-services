@@ -50,8 +50,7 @@ describe("operatorErrorToTrpc, one TRPCError per operator error", () => {
     const error = operatorErrorToTrpc(new OperatorDisabled())
 
     expect(error.code).toBe("UNAUTHORIZED")
-    // No message is passed: tRPC takes the empty message of the cause
-    expect(error.message).toBe("")
+    expect(error.message).toBe("Utente disattivato")
     const overHttp = { data: { contactError: error.cause } }
     expect(readContactError(overHttp)).toEqual({
       code: "OPERATOR_DISABLED",
