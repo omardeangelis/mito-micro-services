@@ -24,7 +24,9 @@ describe("listActiveOperators", () => {
     expect(Exit.isSuccess(exit)).toBe(true)
     if (!Exit.isSuccess(exit)) return
     expect(
-      exit.value.map(({ id, role }) => ({ id, role })).sort((a, b) => a.id - b.id)
+      exit.value
+        .map(({ id, role }) => ({ id, role }))
+        .sort((a, b) => a.id - b.id)
     ).toEqual([
       { id: admin.id, role: "ADMIN" },
       { id: operator.id, role: "OPERATORE" },
