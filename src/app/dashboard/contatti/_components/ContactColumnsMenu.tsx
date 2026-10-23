@@ -1,7 +1,6 @@
 "use client"
 
 import { Columns3 } from "lucide-react"
-import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -21,11 +20,10 @@ type Props = {
 
 /**
  * The "Colonne" menu of the list (AC5), an icon at the end of the filter bar: one checkbox per column the operator
- * can hide. The choice reaches the table at once, the store, and the server,
- * which keeps it for the operator (so it follows them to another device).
+ * can hide. The choice reaches the table at once and the store, which keeps it
+ * in a cookie of the browser: no request to the server.
  */
 export function ContactColumnsMenu({ hidden, onChange }: Props) {
-  const router = useRouter()
   const setContactTableVisibleColumns = useUserPreferenceContext(
     (state) => state.setContactTableVisibleColumns
   )
@@ -37,26 +35,6 @@ export function ContactColumnsMenu({ hidden, onChange }: Props) {
 
     onChange(next)
     setContactTableVisibleColumns(next)
-    // A failed save must not break the screen: the choice stays on it
-    fetch("/api/user/preferences?pref=cot", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        preferences: { contactTableVisibleColumns: next },
-      }),
-    })
-      .then((response) => {
-        if (!response.ok) {
-          console.error(
-            new Error(`Colonne non salvate (risposta ${response.status})`)
-          )
-          return
-        }
-        // The router cache keeps this page, with the old columns, for 30
-        // seconds: coming back from a contact would show them again
-        router.refresh()
-      })
-      .catch(console.error)
   }
 
   return (

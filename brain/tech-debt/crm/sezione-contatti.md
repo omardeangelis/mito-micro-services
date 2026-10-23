@@ -5,7 +5,7 @@ links:
   - "[[specs/crm/sezione-contatti/SPEC]]"
   - "[[specs/crm/sezione-contatti/IMPLEMENTATION-NOTES]]"
 created: 2026-09-25
-updated: 2026-10-21
+updated: 2026-10-23
 ---
 
 # Tech debt: Sezione Contatti
@@ -397,13 +397,17 @@ Scoperto nel passaggio browser di PR3 (T3.14, 2026-10-15), preesistente: la stes
 
 Scoperto nel passaggio UI della review di PR3 (v6, 2026-10-15), preesistente: sono i primitivi in `src/components/ui/`, che PR3 non tocca.
 
-- Toast `destructive`: testo `#fafafa` su `#ef4444`, circa 3,6:1 (WCAG 1.4.3 chiede 4,5). È il toast dei rifiuti di AC52.
 - Il pulsante di chiusura del toast non ha un nome accessibile.
-- La "X" della Dialog è 16×16 ed è l'ultima nell'ordine di tabulazione, dopo i pulsanti del footer; a 320 px il pulsante principale del footer sta sopra "Annulla".
+- A 320 px il pulsante principale del footer della Dialog sta sopra "Annulla" (`flex-col-reverse`).
+- Nel toast `default` e `info` l'anello di focus della "X" e di `ToastAction` è il blu di Tailwind al 50 %, non `--ring`: 1,74:1 sullo sfondo, sotto il 3:1 di WCAG 1.4.11 (review della PR 5 di gestione-operatori, v6, 2026-10-23).
+- `ToastAction` non ha override per la variante `success`: in hover il testo bianco va su `bg-secondary`, 1,07:1. Oggi nessun toast di successo ha un'azione (stessa review).
+- In `ExportDialog` le card dei tab "Standard" e "Chiamate" forzano il contenuto a circa 451 px: sotto i 500 px escono dal dialog e il titolo, centrato su quella larghezza, va sotto la "X" (da 280 a 368 px). C'era già prima della PR 5, che l'ha allargato di qualche pixel con il margine di 16 px (stessa review, v5).
 
-**Effetto oggi:** il messaggio di rifiuto si legge, ma sotto la soglia di contrasto; chi usa un lettore di schermo sente un pulsante senza nome.
+**Risolto dalla PR 5 di [[specs/crm/gestione-operatori/PLAN]] (2026-10-23):** il token `--destructive` è il rosso 700 (6,19:1 col testo, era 3,6:1), `--success` il verde 700 (5,34:1, era 2,14:1), `--muted-foreground` il grigio al 40 % (4,91:1 sullo sfondo, era 4,05:1). La "X" della Dialog si chiama "Chiudi", misura 24×24 ed è la prima nell'ordine di tabulazione, senza cambiare il focus iniziale; la Dialog lascia 16 px dai bordi sotto i 640 px e i pulsanti del footer hanno 8 px fra loro.
 
-**Da fare fuori da questa spec:** la stessa passata sui primitivi `ui/` di "Lacune dei primitivi di movimento": `bg-red-600` o più scuro nella variante `destructive`, `aria-label="Chiudi"` sul pulsante del toast, area della "X" di almeno 24 px.
+**Effetto oggi:** chi usa un lettore di schermo sente un pulsante del toast senza nome; chi usa la tastiera vede appena il focus nei toast normali; su un telefono stretto l'export ha le card fuori dal riquadro.
+
+**Da fare fuori da questa spec:** la stessa passata sui primitivi `ui/` di "Lacune dei primitivi di movimento": `aria-label="Chiudi"` sul pulsante del toast, l'anello di focus del toast su `--ring`, gli override `success` di `ToastAction` quando servirà, le card di `ExportDialog` che vanno a capo (`flex-col sm:flex-row`, `min-w-0`), e l'ordine del footer a 320 px se si decide che il pulsante principale va in fondo.
 
 ## La scheda cliente non regge sotto i 900 px
 

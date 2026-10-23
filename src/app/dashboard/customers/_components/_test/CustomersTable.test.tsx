@@ -87,12 +87,10 @@ function mount(search: string, defaultColumns?: Record<string, boolean>) {
 
 beforeEach(() => {
   nav.router.push.mockClear()
-  vi.stubGlobal("fetch", vi.fn().mockResolvedValue({}))
 })
 
 afterEach(() => {
   cleanup()
-  vi.unstubAllGlobals()
   window.history.replaceState(null, "", "/")
 })
 

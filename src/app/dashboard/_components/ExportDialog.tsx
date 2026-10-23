@@ -465,7 +465,7 @@ export const CompleteDialog = () => {
       <DialogTrigger asChild>
         <Button variant="outline">Esporta</Button>
       </DialogTrigger>
-      <DialogContent className="w-full max-w-2xl">
+      <DialogContent className="max-w-2xl">
         {isLoading ? (
           <LoadingUpdate />
         ) : error ? (
