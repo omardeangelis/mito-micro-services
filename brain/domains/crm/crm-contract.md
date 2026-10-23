@@ -10,13 +10,19 @@ links:
   - "[[domains/crm/concepts/regola-dei-lock]]"
   - "[[domains/crm/concepts/preferenze-di-layout]]"
   - "[[tech-debt/crm/gestione-operatori]]"
+  - "[[specs/crm/export-chiamate/SPEC]]"
+  - "[[domains/crm/concepts/chiamata]]"
+  - "[[domains/crm/concepts/periodo-dell-export]]"
+  - "[[domains/crm/concepts/stato-del-contatto]]"
+  - "[[domains/crm/flows/export-chiamate-per-operatore-admin]]"
+  - "[[tech-debt/crm/export-chiamate]]"
 created: 2026-10-23
 updated: 2026-10-23
 ---
 
 # CRM — Contratto del dominio
 
-Confini e invarianti del dominio `crm`. Questa versione copre solo quello che stabilisce [[specs/crm/gestione-operatori/SPEC]], la prima spec ingerita. Le altre spec del CRM (Contatti, filtri, seeder) entreranno con il loro ingest.
+Confini e invarianti del dominio `crm`. Questa versione copre quello che stabiliscono [[specs/crm/gestione-operatori/SPEC]] e [[specs/crm/export-chiamate/SPEC]]. Le altre spec del CRM (Contatti, filtri, seeder) entreranno con il loro ingest.
 
 ## Owns
 
@@ -26,6 +32,9 @@ Confini e invarianti del dominio `crm`. Questa versione copre solo quello che st
 - **L'esclusione dei disattivati** dalle sessioni, dal login e dalle liste degli operatori. Vedi [[domains/crm/flows/accesso-utente-disattivato]].
 - **La regola dei lock "prima gli utenti, poi i clienti"** per ogni writer che assegna qualcosa a un operatore. Vedi [[domains/crm/concepts/regola-dei-lock]].
 - **Le preferenze di layout** (sidebar e colonne nascoste di Clienti, Pratiche e Contatti), tenute nei cookie del browser. Vedi [[domains/crm/concepts/preferenze-di-layout]].
+- **La definizione di chiamata effettuata**, risposta, non risposta e appuntamento fissato, contata dal registro dei cambi di stato. Vedi [[domains/crm/concepts/chiamata]].
+- **Lo stato `non risponde`** e le sue transizioni. Vedi [[domains/crm/concepts/stato-del-contatto]] e [[domains/crm/flows/esito-non-risponde-e-ritorno-in-coda]].
+- **L'export delle chiamate per operatore** (totali, grafici, file Excel) e il periodo che può coprire. Vedi [[domains/crm/flows/export-chiamate-per-operatore-admin]] e [[domains/crm/concepts/periodo-dell-export]].
 
 ## Does Not Own
 
@@ -35,6 +44,9 @@ Confini e invarianti del dominio `crm`. Questa versione copre solo quello che st
 - **Il trasporto delle procedure.** Restano tRPC; il passaggio a Effect RPC (L3) è di [[chore/migrazione-effect]], per tutto il backend.
 - **Il sostituto di NextAuth.** Deve però conservare il rifiuto dei disattivati nel login e nella lettura della sessione (TD4 di [[chore/migrazione-effect]] §7).
 - **La sincronizzazione delle preferenze di layout** fra dispositivi o browser.
+- **L'export "default" (clienti e pratiche) e l'elenco delle chiamate chiuse con note:** non esistono più (AC15 di export-chiamate).
+- **Le chiamate precedenti al 15/09/2026**, data da cui esiste il registro dei cambi di stato.
+- **Il ritorno automatico in coda o il richiamo automatico** dei contatti `non risponde`.
 - **Il controllo della destinazione in `pratiche.PUT` e `customer.insertCustomer`:** fuori dalla spec, nel debito ([[tech-debt/crm/gestione-operatori]]).
 
 ## Invariants
@@ -49,3 +61,9 @@ Confini e invarianti del dominio `crm`. Questa versione copre solo quello che st
 - **Un disattivato non ha una sessione valida e non può fare login**, su Vercel e su Cloud Run. Non viene mai ricreato come utente nuovo.
 - **Chi blocca la riga utente di un operatore lo fa prima di bloccare qualunque cliente**, e le righe dello stesso tipo si bloccano in ordine di id.
 - **Nessuna scelta di layout fa una richiesta al server.** Le preferenze di layout non contengono dati di identità.
+- **Solo un admin attivo ottiene i dati dell'export delle chiamate**, con o senza riga operatore: un altro utente, compreso un admin disattivato, riceve `FORBIDDEN`, e senza sessione la risposta è `UNAUTHORIZED`. Ai non admin non compaiono né il comando né la sezione.
+- **L'export delle chiamate contiene solo totali per operatore:** nessun dato di clienti, telefoni o note.
+- **Le chiamate si contano dal registro dei cambi di stato manuali:** azioni massive e cambi del sistema non sono chiamate. Effettuate = risposte + non risposte, e un appuntamento fissato è anche una risposta.
+- **Il periodo dell'export è in giorni di Roma**, estremi inclusi, e non va oltre 3 mesi indietro. Indicatori, grafici e file mostrano gli stessi numeri per lo stesso periodo.
+- **Da `non risponde` non si torna a `chiamare` né a `followup`.** Un contatto `non risponde` resta in coda e conserva il suo operatore.
+- **Sotto `export/` nel bucket un utente scarica solo i file di errore dell'import.**
