@@ -4,8 +4,8 @@ type: review
 scope: spec
 spec: gestione-operatori
 review_target: "spec implementation, per PR (un round per PR)"
-base_ref: claude/great-carson-o6qn17-pr5 (dcea416)
-head_ref: claude/great-carson-o6qn17-pr5 (6eb42e0)
+base_ref: claude/great-carson-o6qn17-pr5 (6eb42e0)
+head_ref: claude/great-carson-o6qn17-pr5 (a5c808a)
 verdict: do-not-ship
 review_impact: critical
 human_in_loop: true
@@ -468,3 +468,58 @@ Obiezione più forte (v5): il focus iniziale nuovo prova i candidati e si ferma 
 ### Notes for docs-maintenance
 
 - I MINOR marcati "Durable? sì" (card di `ExportDialog`, `ToastAction` nella variante `success`, anello di focus del toast `default` e `info`) vanno nella voce "Contrasto e nomi nei primitivi condivisi" di [[tech-debt/crm/sezione-contatti]] se non si correggono qui.
+
+## [Round: 2026-10-23 — PR 5, quarto giro]
+
+### Verdict
+
+**DO NOT SHIP** · impact: critical. Due verificatori su tre SHIP (v5 Dialog condivisa, v3 stato del client); v4 (UI del dialog) con un MAJOR introdotto da questo giro. Il MAJOR del terzo giro (focus iniziale di `ExportDialog`) è chiuso.
+
+Obiezione più forte (v4): il padding simmetrico di `DialogHeader` sotto i 640 px (`px-5`) aggiunge 20 px, 25 px con il testo a 1,25, alla larghezza minima dell'header. `DialogContent` è una griglia con una sola colonna: un titolo con una parola lunga la allarga oltre il dialog, e tutti i controlli escono dal riquadro. A 280 px con il testo a 1,25: "Disattiva Pierfrancesco Russo" esce di 7 px, "Disattiva Massimiliano Mastrogiovanni" di 22 px. Con il padding del terzo giro gli stessi nomi ci stavano o quasi (fino a 1,6 px). I 21 nomi del seed ci stanno tutti. Misurato dal vivo con nomi iniettati nel DOM.
+
+### Coverage
+
+- Rubric passes run: 3/3 (v5, v4 sul modello più forte; v3 su quello bilanciato).
+- Gate di CI su a5c808a: verdi (2706 test con i `*.pg.test.ts`, lint, tsc, build, `api:build`, `api:smoke`).
+- v4 e v5 sul server `next dev` di a5c808a con `mito_local`, Chromium headless, da 280 a 1440 px, con il testo a 1 e a 1,25. v5 ha confrontato la regola del focus con `focus-scope@1.3.1` nel codice e con un harness che applica la regola di Radix allo stesso DOM. Non provati: Safari; gli stati di caricamento, successo ed errore di Export e Import e il caricamento di Bulk (richiedono una scrittura); `BulkActionDialog` e `CommandDialog` non sono montati.
+- v3 con 8 mutanti su `wt-mut-v3` a a5c808a; la copia è tornata pulita.
+- Effetti sul database locale: v4 ha disattivato Zetico Salvatore (1022) verso Iride Oliviero (1023), 136 clienti e 109 contatti. v5 non ha scritto nulla.
+
+### Findings
+
+| Severity | Concern (verifier) | Location | Problem | Required fix / evidence | Durable? |
+|----------|--------------------|----------|---------|-------------------------|----------|
+| MAJOR | v4 | `components/ui/dialog.tsx:106` | Con il testo a 1,25 e un nome lungo, il padding simmetrico dell'header allarga la colonna della griglia oltre il dialog (vedi Verdict) | Colonna che non cresce oltre il dialog (`grid-cols-[minmax(0,1fr)]` su `DialogContent`) e titolo che può andare a capo dentro una parola (`hyphens-auto` o `[overflow-wrap:anywhere]` su `DialogTitle`); provato dal vivo: nessuna sporgenza, titolo centrato | no |
+| MINOR | v5 | `dialog.tsx:106`, `CustomerBulkDialog.tsx:228` | Sotto i 640 px il bottone "Cambia tipo di assegnazione" rientra di 20 px rispetto al form e va a capo prima (a 320 px su due righe); a 280 px con il testo a 1,25 l'header è 4 px più largo del dialog | Bottone fuori dall'header con padding, o `-ml-5 sm:ml-0`; rimisurare a 280 px | no |
+| MINOR | v4 | `DeactivateOperatorDialog.tsx:147` | Con il testo a 1,25 sotto i 320 px `[overflow-wrap:anywhere]` spezza le parole a metà ("Impossib / ile") | Con la colonna che non cresce, la riga può andare a capo senza spezzare le lettere (`hyphens-auto`, o la riga in colonna sotto `sm`) | no |
+| MINOR (preesistente) | v5 | `CustomerBulkDialog.tsx:590` | Da 640 px `sm:text-left` della base vince su `text-center` del consumer: una descrizione su due righe è allineata a sinistra sotto icona e titolo centrati | `sm:text-center` su quell'header | no |
+| MINOR | v3 | `OperatorTable.tsx:164` | Il filtro nel memo è ridondante con l'effetto che pota lo store: React esegue l'effetto prima del prossimo evento, quindi nessun test lo vede (mutante sopravvissuto) | Tenerlo come difesa o toglierlo | no |
+| NIT | v5 | `_test/dialog.test.tsx` | Nessun test copre il filtro `!el.hidden` | Test con `<button hidden>` prima dell'input | no |
+| NIT | v3 | `useOperatorTableStore.ts:46` | `pruneOperatorsToEdit` crea sempre un array nuovo; con un genitore client che crea `data` a ogni render darebbe un loop. Il genitore vero è un server component | Restituire lo stato invariato quando non pota nulla | no |
+| NIT (preesistente) | v4 | `DeactivateOperatorDialog.tsx:227` | Durante la richiesta "Conferma" è spento e il focus cade sul body finché il dialog non si chiude | Facoltativo: `aria-disabled` | no |
+
+### What passed
+
+| Concern (verifier) | Evidence |
+|--------------------|----------|
+| v5: Dialog condivisa | Regola del focus uguale a `focusFirst` di Radix nel codice e in ogni caso provato dal vivo; `ExportDialog` sul tab attivo ("Standard", o "Chiamate" se scelto prima); Import sul campo del file, Bulk sulla prima card, sul bottone indietro e su "Chiudi" nel successo; gli `onOpenAutoFocus` dei consumer vincono; footer a 8 px, margine di 16 px, X 24×24 con anello intero, Tab ed Esc nel modale; titoli sull'asse sotto i 640 px; 1058 test dei consumer verdi |
+| v4: UI del dialog | Riga d'errore senza sporgenze a 16 px da 280 a 1440 px e a 1,25 con i nomi del seed; altezza identica fra errore, caricamento e caricato a 16 px; spazio dell'errore di conferma su due righe senza crescita; focus iniziale sul select, Esc al bottone della riga 6 volte su 6; disattivazione da tastiera con il focus sul titolo e l'anello visibile; contrasti invariati |
+| v3: stato del client | La modifica di una riga sparita esce dallo store e non torna con la riga; una modifica fatta fra il render e l'effetto sopravvive (il filtro legge lo stato più recente); nessun loop di render; 7 mutanti su 8 uccisi; 56 test di `@admin` verdi |
+
+### Human Review Checklist
+
+1. Decidere: correggere il MAJOR di v4 e i MINOR di questo giro nella PR 5, poi un quinto giro di v4 e v5.
+2. I punti 2–5 del checklist del secondo giro restano validi.
+
+### Acceptance criteria check (quarto giro)
+
+| Criterion | Met / Unmet / Blocked | Notes |
+|-----------|-----------------------|-------|
+| AC20a | Met | |
+| AC21 | Met | con il testo a 1,25 e nomi lunghi i controlli escono dal dialog a 280 px (MAJOR) |
+| AC22 | Met | |
+| AC23 | Met | |
+
+### Notes for docs-maintenance
+
+- I MINOR preesistenti del terzo giro sono nel debito: [[tech-debt/crm/gestione-operatori]] ("Modifiche di ruolo in sospeso fuori dalla vista") e [[tech-debt/crm/sezione-contatti]] ("Contrasto e nomi nei primitivi condivisi": anello del toast, `ToastAction` di successo, card di `ExportDialog`). v5 misura le card di `ExportDialog` fino a 368 px, non 359.

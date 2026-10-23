@@ -64,3 +64,14 @@ Scoperto nella review della PR 5 (v2, 2026-10-22), preesistente.
 **Effetto oggi:** un OPERATORE può leggere nome, cognome e ruolo di tutti gli operatori. Non può cambiare nulla: le mutazioni sono `adminProcedure` (provato in review).
 
 **Da fare fuori da questa spec:** controllare il ruolo nella pagina di `@admin` prima di leggere la lista, o una lettura admin-only per la tabella.
+
+## Modifiche di ruolo in sospeso fuori dalla vista
+
+Scoperto nella review della PR 5 (v3, terzo giro, 2026-10-23), preesistente: lo store zustand delle modifiche di ruolo è globale e la tabella non lo svuota.
+
+- Cambiare tab nel profilo smonta la tabella. Tornando, lo store ha ancora le modifiche, i select mostrano i ruoli originali e "Salva" è attivo: manda modifiche che l'admin non vede.
+- Durante un salvataggio i select dei ruoli restano attivi. Un ruolo scelto in quel momento viene cancellato da `clearOperatorsToEdit()` senza essere mandato, e il select continua a mostrarlo.
+
+**Effetto oggi:** basso, serve un cambio di tab con modifiche non salvate o una scelta nei pochi istanti del salvataggio. Il server rifiuta comunque un batch che lascia zero admin (AC19).
+
+**Da fare fuori da questa spec:** svuotare lo store quando la tabella si smonta, e spegnere i select durante il salvataggio (o togliere dallo store solo gli id mandati).

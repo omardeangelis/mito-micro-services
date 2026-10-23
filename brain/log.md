@@ -12,6 +12,13 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 
 <!-- Entries are appended by create-spec (spec creation) and docs-maintenance (ingest). Format:
 
+## [2026-10-23] review | Gestione operatori — PR 5, quarto giro
+- Report: [[specs/crm/gestione-operatori/REPORT]] (round PR 5, quarto giro)
+- Scope: spec
+- Verdict: DO NOT SHIP. Il focus iniziale di `ExportDialog` è corretto; il padding simmetrico dell'header, con il testo a 1,25 e un nome lungo a 280 px, allarga la griglia della Dialog e i controlli escono dal riquadro
+- Impact: critical
+- Verifiers: 3 (0 blocker, 1 major, 5 minor, 3 nit; 2 SHIP e 1 DO NOT SHIP)
+
 ## [2026-10-23] review | Gestione operatori — PR 5, terzo giro
 - Report: [[specs/crm/gestione-operatori/REPORT]] (round PR 5, terzo giro)
 - Scope: spec

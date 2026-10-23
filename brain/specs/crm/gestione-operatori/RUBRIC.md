@@ -304,3 +304,41 @@ Il checklist del secondo giro chiedeva un terzo giro di v4, v5 e v6 sulle correz
 ### Overrides applied
 
 Classificatore non rilanciato: un giro di correzioni con le stesse carte, come il secondo giro della PR 4. I mutanti di v3 girano su `wt-mut-v3`, portata a 6eb42e0.
+
+## [Round: 2026-10-23 — PR 5, correzioni del terzo giro]
+
+### Change set under review
+
+- **Scope:** spec implementation (PR 5 del piano: correzioni del terzo giro, T5.2)
+- **Target:** branch `claude/great-carson-o6qn17-pr5`, testa a5c808a
+- **Compared:** `6eb42e0` → `a5c808a` (7 file, +150/−13): focus iniziale e header della Dialog condivisa, header di successo di `CustomerBulkDialog`, riga d'errore del dialog "Disattiva", store delle modifiche di ruolo, test
+
+### Routing rubric (carte del terzo giro, ristrette alle correzioni)
+
+```json
+{
+  "taskType": "bugfix",
+  "secondaryType": "ui",
+  "domainsTouched": ["crm/gestione-operatori", "primitivi UI condivisi"],
+  "adversarialVerifiers": {
+    "count": 3,
+    "passes": [
+      { "id": "v5", "charter": "UI pass: shared Dialog across every consumer: initial focus with Radix focusFirst semantics (stop when focus moves, links and hidden skipped, select only on the focused input), ExportDialog on the active tab; symmetric header padding below sm and the CustomerBulkDialog success header; last round's passes.", "complexity": "high" },
+      { "id": "v4", "charter": "UI pass on the deactivation dialog: query-error row at root font 16 and 20 px, 280-1440 px, nothing past the content box; header padding; last round's passes including a real deactivation by keyboard.", "complexity": "high" },
+      { "id": "v3", "charter": "Client state: pruneOperatorsToEdit from an effect on data; edits of gone rows removed and not resurfacing, edits of present rows untouched; mutants.", "complexity": "medium" }
+    ]
+  },
+  "taskComplexity": "high",
+  "reviewImpact": "critical",
+  "humanInLoop": true,
+  "nextStep": "v5 and v4 on the strongest model, v3 balanced; v4 and v5 share the live dev server read-only."
+}
+```
+
+### Classifier rationale
+
+Il checklist del terzo giro chiedeva un quarto giro di v5 e v4; v3 si aggiunge per lo store. v6 non gira: `toast.tsx` non cambia.
+
+### Overrides applied
+
+Classificatore non rilanciato, come nei giri di correzione precedenti. v3 sul modello bilanciato: la modifica allo store è una funzione e un effetto.

@@ -68,6 +68,8 @@ updated: 2026-10-23
 | `adversarial-review` PR 5, secondo giro | DO NOT SHIP: 0 BLOCKER, 2 MAJOR (spaziatura del footer della Dialog, X del toast di successo) | i 5 MAJOR del primo giro chiusi |
 | Gate di CI completi sulle correzioni del secondo giro (`-pr5`, 6eb42e0) | verdi: 2702 test con i `*.pg.test.ts`, lint, tsc, build, `api:build`, `api:smoke` | |
 | `adversarial-review` PR 5, terzo giro | DO NOT SHIP: 0 BLOCKER, 1 MAJOR (focus iniziale di `ExportDialog`) | i 2 MAJOR del secondo giro chiusi |
+| Gate di CI completi sulle correzioni del terzo giro (`-pr5`, a5c808a) | verdi: 2706 test con i `*.pg.test.ts`, lint, tsc, build, `api:build`, `api:smoke` | |
+| `adversarial-review` PR 5, quarto giro | DO NOT SHIP: 0 BLOCKER, 1 MAJOR (header della Dialog con il testo a 1,25) | il MAJOR del terzo giro chiuso |
 | `adversarial-review` PR 4 | primo giro DO NOT SHIP; secondo giro (v4, v7) SHIP, 0 BLOCKER, 0 MAJOR | 3 MINOR: due commenti che promettono troppo, la deviazione di AC9 da accettare |
 
 ## Acceptance Criteria Status
@@ -80,10 +82,10 @@ updated: 2026-10-23
 
 - **Ripresa (stato al 2026-10-22, prima della compattazione):**
   - PR 4 (`-pr4`, a0b45b4): secondo giro della review fatto (SHIP), gate completi verdi. In attesa di Omar per i due MINOR sui commenti e per accettare la deviazione di AC9.
-  - PR 5 (`-pr5`, 6eb42e0): correzioni del primo e del secondo giro fatte. Terzo giro DO NOT SHIP con 1 MAJOR nel focus iniziale della Dialog condivisa (`ExportDialog`), 3 MINOR nuovi e 5 preesistenti o latenti (REPORT): correzioni in attesa della decisione di Omar, poi quarto giro di v5 e v4. Poi `docs-maintenance`.
+  - PR 5 (`-pr5`, a5c808a): correzioni dei primi tre giri fatte; i MINOR preesistenti del terzo giro nel debito. Quarto giro DO NOT SHIP con 1 MAJOR (header della Dialog che con il testo a 1,25 e nomi lunghi allarga la griglia) e 4 MINOR (REPORT): correzioni in attesa della decisione di Omar, poi quinto giro di v4 e v5. Poi `docs-maintenance`.
   - Debito della feature scritto in [[tech-debt/crm/gestione-operatori]]; voce "Contrasto e nomi nei primitivi condivisi" di [[tech-debt/crm/sezione-contatti]] aggiornata.
   - TD4 di [[chore/migrazione-effect]] §7 resta `[PREVISTO]`: la regola del §7 lo porta a `[OPEN]` quando la PR 4 è in `dev`.
-  - `mito_local`: Arduino Pace (1004), Romana Penzo (1006), Oddone Capecchi (1007) e Leonilda Licciardello (1026) disattivati dalle prove; due righe in `session` (un ADMIN, un OPERATORE) da cancellare a fine prova.
+  - `mito_local`: Arduino Pace (1004), Romana Penzo (1006), Oddone Capecchi (1007), Leonilda Licciardello (1026) e Zetico Salvatore (1022) disattivati dalle prove; due righe in `session` (un ADMIN, un OPERATORE) da cancellare a fine prova.
   - Acceptance audit finale e finalizzazione della spec.
 
 - PR P2 (TP2.1, TP2.2): almeno 2 settimane dopo P1 in prod (AC34, AC35).
@@ -97,3 +99,4 @@ updated: 2026-10-23
 | 2026-10-22 | "correggi i due commenti sulla PR 4, accetto la deviazione di AC9, poi procedi con la PR 5" | 97b8ae6 su `-pr4`, merge in `-pr5`; AC9 con la deviazione dei contatti senza cliente |
 | 2026-10-23 | "Correggi i major i minor e i contrasti token qui" | dcea416 su `-pr5`: correzioni della feature, token `destructive`, `success`, `muted-foreground` e Dialog condivisa nella PR 5 |
 | 2026-10-23 | "Correggi Major e minor" (del secondo giro) | 6eb42e0 su `-pr5`: i 2 MAJOR e i MINOR del secondo giro, più il NIT dell'errore che resta al cambio di destinazione |
+| 2026-10-23 | "correggi il MAJOR di v5 e i 3 MINOR nuovi; i preesistenti mettili nel debito" | a5c808a su `-pr5`; preesistenti in [[tech-debt/crm/gestione-operatori]] e [[tech-debt/crm/sezione-contatti]] |
