@@ -6,12 +6,18 @@ export type JobResult = "success" | "failure" | "cancelled" | "skipped"
  * each step, so when the job fails it names the step that failed.
  */
 export type ApiPhase =
-  "immagine" | "migrazioni" | "revisione Cloud Run" | "/health"
+  "immagine" | "backup" | "migrazioni" | "revisione Cloud Run" | "/health"
 
 export type DeployRun = {
   /** staging, later prod: the first word of every message */
   environment: string
   ci: JobResult
+  /** The job that lists the migrations the deploy brings */
+  plan: JobResult
+  /** How many migrations the deploy brings: they wait for an approval */
+  pending: number
+  /** The approval of the migrations, skipped when there are none */
+  approve: JobResult
   api: JobResult
   /** Empty when the API job never started */
   apiPhase: ApiPhase | ""
@@ -21,6 +27,8 @@ export type DeployRun = {
   actor: string
   /** The revision serving the traffic, once the backend is deployed */
   revision: string
+  /** The Cloud SQL backup taken before the migrations, if any */
+  backup: string
   runUrl: string
 }
 
@@ -46,6 +54,9 @@ const OUTCOMES = {
 /** The job that didn't succeed first, in the workflow's order, and its phase. */
 function stoppedAt(run: DeployRun) {
   if (run.ci !== "success") return { result: run.ci, phase: "CI" }
+  if (run.plan !== "success") return { result: run.plan, phase: "migrazioni" }
+  if (run.pending > 0 && run.approve !== "success")
+    return { result: run.approve, phase: "approvazione" }
   if (run.api !== "success")
     return { result: run.api, phase: run.apiPhase || "immagine" }
   if (run.vercel !== "success") return { result: run.vercel, phase: "Vercel" }
@@ -74,6 +85,25 @@ export function deployReport(run: DeployRun): DeployReport {
     `• avviato da: ${run.actor}`,
   ]
   if (!stop && run.revision) lines.push(`• revisione: ${run.revision}`)
+  if (!stop) lines.push(`• migrazioni applicate: ${run.pending}`)
+  if (run.backup) lines.push(`• backup: ${run.backup}`)
   lines.push(`• run: <${run.runUrl}|GitHub Actions>`)
   return { outcome, phase: stop?.phase, text: lines.join("\n") }
+}
+
+/** The message of a deploy that waits for its migrations to be approved. */
+export function waitingReport(
+  run: Pick<
+    DeployRun,
+    "environment" | "pending" | "commit" | "actor" | "runUrl"
+  >
+) {
+  return [
+    `:hourglass_flowing_sand: *${run.environment} · deploy in attesa di approvazione*: ${run.pending} ${
+      run.pending === 1 ? "migrazione" : "migrazioni"
+    } da applicare`,
+    `• commit: \`${run.commit.sha.slice(0, 7)}\` ${run.commit.title}`,
+    `• avviato da: ${run.actor}`,
+    `• SQL e approvazione: <${run.runUrl}|GitHub Actions>`,
+  ].join("\n")
 }
