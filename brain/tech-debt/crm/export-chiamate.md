@@ -20,3 +20,15 @@ Il cambio (PR #65) è uscito con verdetto SHIP. Queste voci non violano un crite
   - Fix: cutoff = `periodBounds({ from: selectableDays(now).first, to: … }).start`, oppure schedule fissato fuori da quella fascia e scritto in `apps/api/gcp/`.
 - **[FOLLOW-UP]** Nessun test HTTP su Hono per `export.callStats` (FORBIDDEN senza ruolo admin, UNAUTHORIZED senza sessione). Oggi è coperto per costruzione: apps/api monta lo stesso `appRouter`.
   - Fix: un caso in `apps/api/src/_test/app.db.test.ts`.
+
+## [2026-10-23] From review [[specs/crm/export-chiamate/REPORT]] (PR C+D)
+
+- **[FOLLOW-UP]** `supabase.downloadExportFile` è `protectedProcedure` e legge qualunque nome sotto `export/` (`packages/server/src/api/routers/supabase/route.ts`). Dopo la PR D serve solo per gli `error-import-*` dell'import.
+  - Fix: accettare solo `error-import-<gg-mm-aaaa>.xlsx` (cambia le asserzioni di `storage.db.test.ts`, quindi va concordato).
+- **[FOLLOW-UP]** `supabase.deleteExportFile` è `protectedProcedure` e non ha chiamanti: qualunque utente può svuotare `export/`.
+  - Fix: rimuoverla (il cron usa `deleteExportFiles` direttamente) o passarla ad `adminSessionProcedure`.
+- **[FOLLOW-UP]** Un admin senza riga operatore non vede la sezione "Chiamate per operatore": `CallsSection` legge il ruolo da `user.getUserPreference`, che fa `innerJoin` su `operators`.
+  - Fix: leggere `users.role` con una `leftJoin`, come fa `enforceIsAdmin`.
+- **[CLEANUP]** `exceljs` in `package.json` non ha import. `Storage.signedUploadUrl` non ha più chiamanti dopo la rimozione di `createExportUploadUrl`.
+- **[CLEANUP]** `brain/chore/migration/fase-2-backend-express.md` e `fase-3-frontend-spa.md` citano ancora le rotte `/api/export/[export]/*`, che non esistono più.
+

@@ -356,3 +356,9 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 - Rubric: [[specs/crm/export-chiamate/RUBRIC]]; report: [[specs/crm/export-chiamate/REPORT]]
 - 3 pass, tutti SHIP; corretti due rilievi (test AC21, ordine tra omonimi), due in [[tech-debt/crm/export-chiamate]]
 - PR di permessi: la rivede Leonardo
+
+## [2026-10-23] review | Export chiamate T6–T8 (PR #66 + #67)
+- Report: [[specs/crm/export-chiamate/REPORT]] (seconda sezione)
+- 3 pass (permessi su Opus, UI su Sonnet, rimozione su Haiku): SHIP dopo la correzione di 1 MAJOR e 2 MINOR
+- Follow-up sui permessi dello storage in [[tech-debt/crm/export-chiamate]]
+

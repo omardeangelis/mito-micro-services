@@ -45,7 +45,7 @@ _empty_
 | crm | [[specs/crm/sezione-contatti/SPEC]] | Draft |
 | crm | [[specs/crm/filtri-sql-sicuri/SPEC]] | Draft |
 | crm | [[specs/crm/seeder-locale/SPEC]] | Implemented (piano: [[specs/crm/seeder-locale/PLAN]], review: [[specs/crm/seeder-locale/REPORT]]) |
-| crm | [[specs/crm/export-chiamate/SPEC]] | Draft (piano: [[specs/crm/export-chiamate/PLAN]], review T1–T5: [[specs/crm/export-chiamate/REPORT]]) |
+| crm | [[specs/crm/export-chiamate/SPEC]] | Implemented, PR in revisione (piano: [[specs/crm/export-chiamate/PLAN]], review: [[specs/crm/export-chiamate/REPORT]]) |
 
 - [[specs/crm/crm-specs|crm-specs]] — CRM spec page map
 
@@ -71,6 +71,7 @@ _empty_
 - [[review/search-by-explicit-map/REPORT|search-by-explicit-map]] — standalone · ship (quinto giro; prima do-not-ship) · critical · 2026-10-15
 - [[specs/crm/seeder-locale/REPORT|crm/seeder-locale]] — spec · ship · critical · 2026-10-21
 - [[specs/crm/export-chiamate/REPORT|crm/export-chiamate — T1–T5]] — spec · ship (0 BLOCKER, 0 MAJOR; 2 rilievi corretti, 2 in tech debt) · critical · 2026-10-23
+- [[specs/crm/export-chiamate/REPORT|crm/export-chiamate — T6–T8]] — spec · ship (1 MAJOR corretto; follow-up sui permessi dello storage) · critical · 2026-10-23
 
 ## Log
 

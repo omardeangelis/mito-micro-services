@@ -194,7 +194,7 @@ src/app/dashboard/_components/export/     sezione admin: periodo, indicatori, gr
 - **location**: `src/lib/export/callStatsWorkbook.ts` + `_test/`
 - **description**: `buildCallStatsWorkbook(stats, period)` → workbook con un foglio, colonne "Operatore", "Chiamate effettuate", "Risposte", "Appuntamenti fissati", "Non risposte", righe ordinate e riga dei totali; `callStatsFileName(period)` = `chiamate_<da>_<a>.xlsx`.
 - **validation**: test che rilegge il workbook con `xlsx` e confronta celle e nome del foglio (AC13).
-- **status**: Planned
+- **status**: Done
 - **log**:
 - **files edited/created**:
 - **backlog_item_id**: —
@@ -210,7 +210,7 @@ src/app/dashboard/_components/export/     sezione admin: periodo, indicatori, gr
 - **location**: `src/app/dashboard/_components/export/AdminExportSection.tsx`, `AdminDataSection.tsx`, `src/app/dashboard/page.tsx` + `_test/`
 - **description**: contenitore della sezione nel ramo admin di `DataSection`; `ExportDialog` esce da `page.tsx`, quindi nessun comando di export per gli operatori (AC6, AC20).
 - **validation**: test: con un operatore la dashboard non mostra comando di export né sezione; con un admin sì.
-- **status**: Planned
+- **status**: Done
 - **log**:
 - **files edited/created**:
 - **backlog_item_id**: —
@@ -226,7 +226,7 @@ src/app/dashboard/_components/export/     sezione admin: periodo, indicatori, gr
 - **location**: `src/app/dashboard/_components/export/ExportPeriod.tsx`, `ExportKpis.tsx` + `_test/`
 - **description**: selettore del periodo coi limiti di T1, avviso "Dati completi solo dal 15/09/2026" (AC11b); una sola richiesta a `export.callStats` per il periodo, condivisa da indicatori, grafici e file (AC19); quattro indicatori coi totali (AC16).
 - **validation**: test: giorni fuori limite non selezionabili; avviso col periodo prima del 15/09/2026; indicatori uguali alla riga dei totali.
-- **status**: Planned
+- **status**: Done
 - **log**:
 - **files edited/created**:
 - **backlog_item_id**: —
@@ -243,7 +243,7 @@ src/app/dashboard/_components/export/     sezione admin: periodo, indicatori, gr
 - **location**: `src/app/dashboard/_components/export/ExportCharts.tsx` + `_test/`
 - **description**: barre impilate risposte/non risposte per operatore (AC17) e classifica della quota appuntamenti/risposte con l'ordinamento di T2 (AC18), con Tremor.
 - **validation**: test: serie del grafico e ordine della classifica dai dati; 0% per un operatore senza risposte; controllo nel browser.
-- **status**: Planned
+- **status**: Done
 - **log**:
 - **files edited/created**:
 - **backlog_item_id**: —
@@ -260,7 +260,7 @@ src/app/dashboard/_components/export/     sezione admin: periodo, indicatori, gr
 - **location**: `src/app/dashboard/_components/export/ExportDownload.tsx` + `_test/`
 - **description**: pulsante che genera il file con `buildCallStatsWorkbook` sugli stessi dati mostrati (AC13, AC19); periodo senza chiamate → "Nessuna chiamata nel periodo" e nessun file (AC14).
 - **validation**: test: il download passa a `buildCallStatsWorkbook` i dati in pagina e il nome di `callStatsFileName`; periodo vuoto senza download.
-- **status**: Planned
+- **status**: Done
 - **log**:
 - **files edited/created**:
 - **backlog_item_id**: —
@@ -277,7 +277,7 @@ src/app/dashboard/_components/export/     sezione admin: periodo, indicatori, gr
 - **location**: `src/app/dashboard/_components/ExportDialog.tsx`; `src/app/_context/ExportWorker.tsx`; il provider in `src/app/dashboard/layout.tsx` e `useHandleExportWorkerStates` in `src/app/_components/DashboardLayout.tsx` (con il `vi.mock` in `src/app/_components/_test/DashboardLayout.test.tsx`); `src/lib/workers/export/**` (compreso `service/utils.ts`, che importa `ClosedCall`); `src/app/api/export/[export]/**`; `packages/server/src/services/export/calls.ts`; `export.getTasksmessages`; `createExportUploadUrl` in `packages/server/src/api/routers/supabase/route.ts` e i suoi casi in `storage.db.test.ts`; `useExportStore` se non ha altri usi
 - **description**: cancella file e import morti. Restano `src/app/api/export/importError`, `src/app/api/export/download` se lo usa l'import, il cron `delete-export` e la sua pulizia dello storage (D7).
 - **validation**: nessun import (non testo) di `ExportDialog`, `ExportWorker`, `@/lib/workers/export`, `services/export/calls`, `getTasksmessages`, `createExportUploadUrl` (`grep -rn "from .*<nome>"`); i commenti che li citano si aggiornano; gate completi verdi (AC15). Prima di cancellare un file, cercarne gli import: un uso fuori da questa lista ferma il task (regola di stop).
-- **status**: Planned
+- **status**: Done
 - **log**:
 - **files edited/created**:
 - **backlog_item_id**: —

@@ -60,6 +60,17 @@ updated: 2026-10-23
 
 Adversarial review su #65: SHIP dai tre pass, report in [[specs/crm/export-chiamate/REPORT]]. Correzioni in 6567319.
 
+### PR C (#66) e PR D (#67)
+
+- T6 e T7a–T7d inline (Opus); T8 su Haiku (regola di Leonardo del 23/10: token ottimizzati). Haiku si è fermato correttamente sulla regola di stop quando `apps/api/src/rest.ts` importava le rotte da rimuovere; approvato il perimetro allargato al backend.
+- Deviazione: la sezione è un blocco proprio della dashboard (`CallsSection`, titolo "Chiamate per operatore") e non sta dentro `AdminDataSection`, perché ha un periodo suo, diverso dal timeframe di "Analisi Andamento".
+- Deviazione: T6 inline invece che su Haiku (budget di sub-agent per richiesta già usato dalla review di B).
+- Il test del backend "su una porta vera" usava `getMessages`; ora usa `POST /api/user/preferences`.
+- Periodo di default: ultimi 30 giorni (`defaultPeriod`). `xlsx` si carica solo al click: `/dashboard` passa da 291 kB a 300 kB.
+- Review di C+D: SHIP, un MAJOR (stato d'errore) corretto in 42e5972. Vedi [[specs/crm/export-chiamate/REPORT]].
+
 ## Remaining Work
 
-- PR C (T6, T7a–T7d) e PR D (T8), da unire insieme (D11).
+- Revisione di Leonardo su #65, #66 e #67 (permessi), poi merge in ordine fino al go/no-go.
+- Controllo nel browser con un login reale (admin e operatore).
+- Follow-up in [[tech-debt/crm/export-chiamate]].

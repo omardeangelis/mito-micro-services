@@ -1,7 +1,7 @@
 ---
 domain: crm
 type: spec
-status: draft
+status: implemented
 links:
   - "[[specs/crm/sezione-contatti/SPEC]]"
   - "[[specs/crm/seeder-locale/SPEC]]"
