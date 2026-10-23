@@ -141,11 +141,8 @@ export const DeactivateOperatorDialog = ({
         <div className="space-y-4">
           <div className="min-h-[3.75rem]">
             {impact.isError || targets.isError ? (
-              <div className="flex items-center justify-between gap-3">
-                <p
-                  role="alert"
-                  className="min-w-0 text-sm text-destructive [overflow-wrap:anywhere]"
-                >
+              <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+                <p role="alert" className="text-sm text-destructive">
                   Impossibile caricare i dati dell&apos;operatore
                 </p>
                 <Button

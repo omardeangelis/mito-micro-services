@@ -152,7 +152,7 @@ export const OperatorTable = ({
 
   const { toast } = useToast()
 
-  const pendingOperators = useOperatorTableStore.use.operatorsToEdit()
+  const operators = useOperatorTableStore.use.operatorsToEdit()
   const clearOperatorsToEdit = useOperatorTableStore.use.clearOperatorsToEdit()
   const pruneOperatorsToEdit = useOperatorTableStore.use.pruneOperatorsToEdit()
   const [loading, setLoading] = useState(false)
@@ -160,11 +160,6 @@ export const OperatorTable = ({
   useEffect(() => {
     pruneOperatorsToEdit(data.map((row) => row.id))
   }, [data, pruneOperatorsToEdit])
-  // The effect runs after the render: until then, hide edits of gone rows
-  const operators = useMemo(
-    () => pendingOperators.filter((op) => data.some((row) => row.id === op.id)),
-    [pendingOperators, data]
-  )
 
   const handleOperatorRoleChange = useCallback(async () => {
     setLoading(true)
