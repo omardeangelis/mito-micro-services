@@ -4,8 +4,8 @@ type: review
 scope: spec
 spec: gestione-operatori
 review_target: "spec implementation, per PR (un round per PR)"
-base_ref: claude/great-carson-o6qn17-pr5 (001e861)
-head_ref: claude/great-carson-o6qn17-pr5 (dcea416)
+base_ref: claude/great-carson-o6qn17-pr5 (dcea416)
+head_ref: claude/great-carson-o6qn17-pr5 (6eb42e0)
 verdict: do-not-ship
 review_impact: critical
 human_in_loop: true
@@ -407,3 +407,64 @@ Obiezione più forte (v5): il footer della Dialog passa da `sm:space-x-2` a `gap
 - Il debito "Contrasto e nomi nei primitivi condivisi" di [[tech-debt/crm/sezione-contatti]] è aggiornato: token e X della Dialog risolti; resta il nome del bottone di chiusura del toast.
 - La lista degli operatori nel payload RSC degli OPERATORE è in [[tech-debt/crm/gestione-operatori]].
 
+## [Round: 2026-10-23 — PR 5, terzo giro]
+
+### Verdict
+
+**DO NOT SHIP** · impact: critical. Tre verificatori su quattro SHIP (v3 stato del client, v4 UI del dialog, v6 toast); v5 (Dialog condivisa) con un MAJOR introdotto da questo giro. I due MAJOR del secondo giro sono chiusi.
+
+Obiezione più forte (v5): il focus iniziale nuovo prova i candidati e si ferma solo quando il focus è sull'elemento provato. In `ExportDialog` il primo candidato è la lista dei tab di Radix, che passa il focus al tab attivo: il ciclo la considera fallita e va avanti, e il focus finisce sul bottone delle date, il terzo controllo. Radix e dcea416 lo mettevano sul tab "Standard". Misurato dal vivo.
+
+### Coverage
+
+- Rubric passes run: 4/4 (v3, v4, v5 sul modello più forte; v6 su quello bilanciato).
+- Gate di CI su 6eb42e0: verdi (2702 test con i `*.pg.test.ts`, lint, tsc, build, `api:build`, `api:smoke`).
+- v4, v5, v6 sul server `next dev` di 6eb42e0 con `mito_local`, Chromium headless, da 280 a 1440 px; v4 anche con il testo a 1,25. axe non installato. Non provati: Safari; gli stati di caricamento e di successo di `CustomerBulkDialog` e quelli di caricamento ed errore di `WorkerImportDialog` ed `ExportDialog` (richiedono una scrittura o un import: solo codice e repliche nel DOM); `BulkActionDialog` e `CommandDialog` non sono montati. v6 ha misurato il toast su nodi iniettati con le classi esatte di `toast.tsx`, non su un toast Radix vero.
+- v3 con 15 mutanti su `wt-mut-v3` a 6eb42e0; la copia è tornata pulita.
+- Effetti sul database locale: v4 ha disattivato Leonilda Licciardello (1026) verso Severiano Coniglio (1014), 136 clienti e 109 contatti; ha chiuso e riaperto la sidebar dell'admin (preferenza tornata com'era).
+
+### Findings
+
+| Severity | Concern (verifier) | Location | Problem | Required fix / evidence | Durable? |
+|----------|--------------------|----------|---------|-------------------------|----------|
+| MAJOR | v5 | `components/ui/dialog.tsx:70` | Focus iniziale di `ExportDialog` sul bottone delle date invece che sul tab attivo (vedi Verdict) | Ricordare l'elemento con il focus prima del ciclo e fermarsi appena il focus si sposta, come `focusFirst` di Radix; `select()` solo sull'input che ha preso il focus; saltare i link come Radix. Test con un `Tabs.List` come primo figlio | no |
+| MINOR | v4 | `DeactivateOperatorDialog.tsx:144` | Con il testo a 1,25 e da 280 a 317 px la riga d'errore delle query (testo e "Riprova" affiancati) è più larga del dialog: select e bottoni escono di 38 px, il titolo va sotto la X | `min-w-0` e `[overflow-wrap:anywhere]` sul messaggio, poi rimisurare l'altezza riservata a 1,25 | no |
+| MINOR | v4, v5 | `dialog.tsx:98` | `pr-6` su `DialogHeader`: sotto i 640 px titoli e descrizioni centrati stanno 12 px a sinistra dell'asse del dialog, in ogni consumer; nell'header di successo di `CustomerBulkDialog` icona e titolo 12 px a sinistra del bottone sotto | Padding simmetrico mentre è centrato: `px-6 sm:pl-0 sm:pr-6` | no |
+| MINOR | v3 | `OperatorTable.tsx:151`, `_store/useOperatorTableStore.ts` | La modifica di una riga sparita è nascosta ma resta nello store: se la riga torna (riattivazione a mano) "Salva" la manda senza mostrarla | Togliere dallo store le modifiche degli id assenti da `data`; test con la riga che sparisce e torna | no |
+| MINOR (preesistente) | v3 | `_store/useOperatorTableStore.ts`, `profile/layout.tsx` | Cambiare tab smonta la tabella; tornando, lo store ha ancora le modifiche, i select mostrano i ruoli originali e "Salva" le manda | Svuotare lo store al montaggio o allo smontaggio della tabella | no |
+| MINOR (preesistente) | v3 | `OperatorTable.tsx:71-80` | Un ruolo scelto mentre il salvataggio è in corso viene cancellato da `clearOperatorsToEdit()` senza essere mandato; il select mostra il ruolo nuovo | Select spenti durante `loading`, o togliere solo gli id mandati | no |
+| MINOR (preesistente) | v5 | `ExportDialog.tsx:489` | Le card dei tab forzano il contenuto a 451 px: sotto i 500 px escono dal dialog e il titolo va sotto la X (prima da 280 a 334 px, ora fino a 359) | Card che vanno a capo (`flex-col sm:flex-row`, `min-w-0`), o debito | sì |
+| MINOR (latente) | v6 | `toast.tsx:68` (`ToastAction`) | Nella variante `success` l'azione in hover ha testo bianco su `bg-secondary`, 1,07:1; nessun toast di successo ha un'azione oggi | Override `group-[.success]:` quando serve | sì |
+| MINOR (preesistente) | v6 | `ToastClose`, `ToastAction` in `default` e `info` | L'anello di focus è il blu di Tailwind al 50%, 1,74:1 | Fuori da questa PR | sì |
+| NIT | v4 | dialog | Due `role=alert` insieme (errore di conferma e refetch fallito) | Uno solo | no |
+| NIT | v4 | `DeactivateOperatorDialog.tsx:204` | Con il testo a 1,25 il messaggio della destinazione sparita va su tre righe sotto i 340 px | Facoltativo | no |
+| NIT | v5 | `CustomerBulkDialog.tsx:227` | Il bottone "Cambia tipo di assegnazione" non tocca più la X, ma va a capo sotto i 309 px | Nessuna | no |
+| NIT | v6 | `ToastClose` | La X è invisibile finché il toast non ha il puntatore o il focus: chi usa il touch non la vede | Nessuna | no |
+
+### What passed
+
+| Concern (verifier) | Evidence |
+|--------------------|----------|
+| v3: stato del client | Modifiche delle righe sparite né mandate né contate per "Salva" (test e mutanti F1–F7 uccisi); salvataggio parziale riuscito che svuota tutto. Uccisi anche i mutanti sopravvissuti al secondo giro (M1, M2, M8, M9), il FORBIDDEN al posto di UNKNOWN su tutti e due i server action, il ruolo ADMIN sempre rifiutato nel test con la sessione, e il messaggio d'errore che resta dopo un cambio di destinazione. 55 test di `@admin` e 79 del router e dei servizi verdi |
+| v4: UI del dialog | Altezza e posizione del dialog identiche fra caricamento, conteggi ed errore delle query in 22 larghezze da 280 a 1440 px; due righe d'errore sotto `sm` senza crescita; titolo lontano dalla X (12,8 px minimo, anche con nomi lunghi iniettati); disattivazione vera da tastiera con il focus sul titolo, anello `focus-visible` a 19,8:1; i passaggi del secondo giro confermati (contrasti, X 24×24 prima nel Tab, margini e footer) |
+| v5: Dialog condivisa | Footer di `AlertCloseConfirmDialog`, `CustomerHandoverDialog` e `DeactivateOperatorDialog` con 8 px affiancati da 640 px e in colonna sotto; `ExportDialog` con 16 px di margine sotto i 640 px; gli `onOpenAutoFocus` dei consumer vincono sempre; Import e Bulk con il focus iniziale di 001e861; nessun input di testo come primo controllo, quindi `select()` non cambia nulla oggi; Tab, Shift+Tab ed Esc restano nel modale; 1054 test dei consumer verdi |
+| v6: toast | X del toast di successo a 4,01:1 col puntatore sul toast, 5,33:1 col puntatore sulla X e col focus; anello di focus del toast `destructive` da 1,74:1 a 6,20:1; `default` e `info` identici a dcea416 in 8 stati; le classi nuove valgono solo sotto `.group.success` e `.group.destructive` |
+
+### Human Review Checklist
+
+1. Decidere: correggere il MAJOR di v5 e i MINOR nuovi di questo giro (riga d'errore a 1,25, padding dell'header, modifica nascosta nello store) in questa PR, poi un quarto giro di v5 e v4.
+2. Decidere i MINOR preesistenti di v3 (cambio di tab, ruolo scelto durante il salvataggio): qui o nel debito della feature.
+3. I punti 2–5 del checklist del secondo giro restano validi (colori nuovi a occhio, ogni dialog dell'app, staging, Leonardo e OQ2).
+
+### Acceptance criteria check (terzo giro)
+
+| Criterion | Met / Unmet / Blocked | Notes |
+|-----------|-----------------------|-------|
+| AC20a | Met | "Salva" torna attivo dopo un errore; le modifiche delle righe sparite non partono |
+| AC21 | Met | |
+| AC22 | Met | |
+| AC23 | Met | focus sul titolo dopo la disattivazione, ora visibile da tastiera |
+
+### Notes for docs-maintenance
+
+- I MINOR marcati "Durable? sì" (card di `ExportDialog`, `ToastAction` nella variante `success`, anello di focus del toast `default` e `info`) vanno nella voce "Contrasto e nomi nei primitivi condivisi" di [[tech-debt/crm/sezione-contatti]] se non si correggono qui.

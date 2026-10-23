@@ -265,3 +265,42 @@ Le correzioni della feature si ricontrollano con v3 e v4. Le due modifiche ai pr
 ### Overrides applied
 
 Nessuno. I mutanti di v3 e v7 girano su copie del checkout (`wt-mut-v3`, `wt-mut-v7`), perché `next dev` serve `wt-code` alle passate UI nello stesso momento.
+
+## [Round: 2026-10-23 — PR 5, correzioni del secondo giro]
+
+### Change set under review
+
+- **Scope:** spec implementation (PR 5 del piano: correzioni del secondo giro, T5.2)
+- **Target:** branch `claude/great-carson-o6qn17-pr5`, testa 6eb42e0
+- **Compared:** `dcea416` → `6eb42e0` (12 file, +224/−20): focus iniziale e header della Dialog condivisa, X e anelli di focus del toast, footer di `AlertCloseConfirmDialog` e `CustomerHandoverDialog`, larghezza di `ExportDialog`, dialog e tabella di `@admin/`, test
+
+### Routing rubric (carte del secondo giro, ristrette alle correzioni)
+
+```json
+{
+  "taskType": "bugfix",
+  "secondaryType": "ui",
+  "domainsTouched": ["crm/gestione-operatori", "primitivi UI condivisi"],
+  "adversarialVerifiers": {
+    "count": 4,
+    "passes": [
+      { "id": "v3", "charter": "Client state and test evidence: pending edits of rows gone from data are not sent and do not resurface; previous-round surviving mutants (M1, M2, M8, M9, FORBIDDEN instead of UNKNOWN) now killed; destination change clears the error.", "complexity": "high" },
+      { "id": "v4", "charter": "UI pass on the deactivation dialog: no height change across loading, counts and query error at 280-1440 px; two-line confirm error below sm; title clear of the X; visible keyboard focus on the heading after a real deactivation; last round's passes still hold.", "complexity": "high" },
+      { "id": "v5", "charter": "UI pass: shared Dialog across every consumer: new initial-focus loop vs Radix focusFirst and vs 001e861, select() on inputs, footer gap in the two consumers, DialogHeader right padding, ExportDialog inset, focus trap and Esc, consumer tests.", "complexity": "high" },
+      { "id": "v6", "charter": "UI pass: toast close button and focus rings in success and destructive against the new tokens (WCAG 1.4.11); default and info unchanged; class precedence.", "complexity": "medium" }
+    ]
+  },
+  "taskComplexity": "high",
+  "reviewImpact": "critical",
+  "humanInLoop": true,
+  "nextStep": "v3, v4, v5 on the strongest model, v6 balanced; v4-v6 share the live dev server read-only."
+}
+```
+
+### Classifier rationale
+
+Il checklist del secondo giro chiedeva un terzo giro di v4, v5 e v6 sulle correzioni; v3 si aggiunge perché il filtro delle modifiche in sospeso e i test dei mutanti sono stato del client. Le carte sono quelle del secondo giro, ristrette a quello che cambia. v7 non gira: i test nuovi dei server action li prova v3 con i mutanti, e nessuna riga di produzione dei server action cambia.
+
+### Overrides applied
+
+Classificatore non rilanciato: un giro di correzioni con le stesse carte, come il secondo giro della PR 4. I mutanti di v3 girano su `wt-mut-v3`, portata a 6eb42e0.

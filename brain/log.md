@@ -12,6 +12,13 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 
 <!-- Entries are appended by create-spec (spec creation) and docs-maintenance (ingest). Format:
 
+## [2026-10-23] review | Gestione operatori — PR 5, terzo giro
+- Report: [[specs/crm/gestione-operatori/REPORT]] (round PR 5, terzo giro)
+- Scope: spec
+- Verdict: DO NOT SHIP. I 2 MAJOR del secondo giro sono chiusi; il focus iniziale nuovo della Dialog condivisa non riconosce la lista dei tab che passa il focus al tab attivo, e in `ExportDialog` salta la scelta del tipo di export
+- Impact: critical
+- Verifiers: 4 (0 blocker, 1 major, 9 minor, 4 nit; 3 SHIP e 1 DO NOT SHIP)
+
 ## [2026-10-23] review | Gestione operatori — PR 5, secondo giro
 - Report: [[specs/crm/gestione-operatori/REPORT]] (round PR 5, secondo giro)
 - Scope: spec
