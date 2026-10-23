@@ -587,7 +587,7 @@ const SuccessUpdate = (props: {
   const isChiamate = props.mode === "chiamate"
   return (
     <DialogContent className="max-w-md bg-white">
-      <DialogHeader className="items-center text-center">
+      <DialogHeader className="items-center text-center sm:pl-5">
         <div className="mb-2 flex h-14 w-14 items-center justify-center rounded-full bg-green-100">
           <CircleCheck className="h-8 w-8 text-success" />
         </div>

@@ -142,12 +142,16 @@ export const DeactivateOperatorDialog = ({
           <div className="min-h-[3.75rem]">
             {impact.isError || targets.isError ? (
               <div className="flex items-center justify-between gap-3">
-                <p role="alert" className="text-sm text-destructive">
+                <p
+                  role="alert"
+                  className="min-w-0 text-sm text-destructive [overflow-wrap:anywhere]"
+                >
                   Impossibile caricare i dati dell&apos;operatore
                 </p>
                 <Button
                   variant="outline"
                   size="sm"
+                  className="shrink-0"
                   onClick={() => {
                     void impact.refetch()
                     void targets.refetch()

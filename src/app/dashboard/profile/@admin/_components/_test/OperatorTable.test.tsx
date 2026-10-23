@@ -284,4 +284,26 @@ describe("OperatorTable", () => {
       true
     )
   })
+
+  it("una modifica di una riga sparita non torna quando la riga ricompare", async () => {
+    mocks.updateRole.mockResolvedValue({})
+    const user = userEvent.setup()
+    const { rerender } = render(
+      <OperatorTable data={data} currentOperatorId={1} />
+    )
+    await user.click(screen.getAllByRole("combobox")[1]!)
+    await user.click(await screen.findByRole("option", { name: "Admin" }))
+
+    // Bruno deactivated elsewhere, then re-enabled by hand
+    rerender(
+      <OperatorTable data={[data[0]!, data[2]!]} currentOperatorId={1} />
+    )
+    rerender(<OperatorTable data={data} currentOperatorId={1} />)
+
+    expect(useOperatorTableStore.getState().operatorsToEdit).toEqual([])
+    expect(screen.getByRole("button", { name: "Salva" })).toHaveProperty(
+      "disabled",
+      true
+    )
+  })
 })

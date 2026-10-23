@@ -9,6 +9,7 @@ interface OperatorTableStore {
   addOperatorToEdit: (operator: OperatorItem) => void
   removeOperatorToEdit: (id: number) => void
   clearOperatorsToEdit: () => void
+  pruneOperatorsToEdit: (ids: number[]) => void
 }
 
 const useOperatorTableStoreBase = create<OperatorTableStore>((set) => ({
@@ -37,6 +38,12 @@ const useOperatorTableStoreBase = create<OperatorTableStore>((set) => ({
       operatorsToEdit: state.operatorsToEdit.filter((op) => op.id !== id),
     })),
   clearOperatorsToEdit: () => set({ operatorsToEdit: [] }),
+  pruneOperatorsToEdit: (ids) =>
+    set((state) => ({
+      operatorsToEdit: state.operatorsToEdit.filter((op) =>
+        ids.includes(op.id)
+      ),
+    })),
 }))
 
 export const useOperatorTableStore = createSelectors(useOperatorTableStoreBase)

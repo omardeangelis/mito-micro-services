@@ -29,7 +29,14 @@ import { useOperatorTableStore } from "../_store/useOperatorTableStore"
 import { Button } from "@/components/ui/button"
 import { updateOperatorsRoleAction } from "../_actions/updateOperatorsRole"
 import { useToast } from "@/components/ui/use-toast"
-import { useCallback, useMemo, useRef, useState, type RefObject } from "react"
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type RefObject,
+} from "react"
 import { DeactivateOperatorDialog } from "./DeactivateOperatorDialog"
 import {
   describeActionError,
@@ -147,8 +154,13 @@ export const OperatorTable = ({
 
   const pendingOperators = useOperatorTableStore.use.operatorsToEdit()
   const clearOperatorsToEdit = useOperatorTableStore.use.clearOperatorsToEdit()
+  const pruneOperatorsToEdit = useOperatorTableStore.use.pruneOperatorsToEdit()
   const [loading, setLoading] = useState(false)
-  // An edit whose row is gone (deactivated elsewhere) must not be sent
+  // An edit whose row is gone must not come back with the row: drop it
+  useEffect(() => {
+    pruneOperatorsToEdit(data.map((row) => row.id))
+  }, [data, pruneOperatorsToEdit])
+  // The effect runs after the render: until then, hide edits of gone rows
   const operators = useMemo(
     () => pendingOperators.filter((op) => data.some((row) => row.id === op.id)),
     [pendingOperators, data]

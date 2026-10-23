@@ -44,9 +44,11 @@ const DialogContent = React.forwardRef<
       onOpenAutoFocus={(event) => {
         onOpenAutoFocus?.(event)
         if (event.defaultPrevented) return
-        // The close button comes first in the DOM: keep the initial focus on
-        // the first control of the content, like Radix's focusFirst, with the
-        // close button as the last resort before the content itself
+        // The close button comes first in the DOM: like Radix's focusFirst,
+        // focus the first tabbable control (links skipped, as removeLinks
+        // does) until focus moves, with the close button as the last resort
+        // before the content itself. A control that hands focus on (the
+        // active tab of a Tabs.List) counts as success
         event.preventDefault()
         const content = event.currentTarget as HTMLElement
         const candidates = Array.from(
@@ -54,6 +56,8 @@ const DialogContent = React.forwardRef<
         ).filter(
           (el) =>
             el.tabIndex >= 0 &&
+            el.tagName !== "A" &&
+            !el.hidden &&
             !(el as HTMLButtonElement).disabled &&
             !(el instanceof HTMLInputElement && el.type === "hidden")
         )
@@ -64,13 +68,17 @@ const DialogContent = React.forwardRef<
           ...candidates.filter((el) => el !== closeButton),
           ...(closeButton ? [closeButton] : []),
         ]
+        const previouslyFocused = document.activeElement
         for (const el of ordered) {
-          // A hidden candidate does not take focus: move on to the next one
+          const prev = document.activeElement
           el.focus({ preventScroll: true })
-          if (document.activeElement === el) {
-            if (el instanceof HTMLInputElement) el.select()
-            return
-          }
+          if (
+            el !== prev &&
+            el instanceof HTMLInputElement &&
+            document.activeElement === el
+          )
+            el.select()
+          if (document.activeElement !== previouslyFocused) return
         }
         content.focus()
       }}
@@ -95,7 +103,7 @@ const DialogHeader = ({
 }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
     className={cn(
-      "flex flex-col space-y-1.5 pr-6 text-center sm:text-left",
+      "flex flex-col space-y-1.5 px-5 text-center sm:pl-0 sm:pr-5 sm:text-left",
       className
     )}
     {...props}
