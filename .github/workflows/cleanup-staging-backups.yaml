@@ -1,0 +1,39 @@
+# Every Monday, deletes the backups the deploy of staging took before its
+# migrations (deploy-staging.sh), older than 7 days, keeping the last 3, and
+# posts how many on the deploy channel (apps/api/gcp/cleanup-staging-backups.ts).
+# Automated backups and those taken by hand stay. It runs as
+# mito-crm-backup-cleaner, which only this workflow on dev may become
+# (apps/api/gcp/setup-backup-cleanup.sh); restoring a backup is in
+# apps/api/gcp/RESTORE-STAGING.md
+name: Cleanup staging backups
+on:
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  Cleanup:
+    if: github.ref == 'refs/heads/dev'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: apps/api/gcp
+      # Staging's provider: its id is no secret, and the variable with it is
+      # in the environment staging, which this job doesn't use
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: projects/869830994359/locations/global/workloadIdentityPools/github/providers/mito-crm-staging
+          service_account: mito-crm-backup-cleaner@mito-crm.iam.gserviceaccount.com
+      - uses: google-github-actions/setup-gcloud@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: package.json
+      - run: npx --yes tsx@4.23.15 apps/api/gcp/cleanup-staging-backups.ts
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_DEPLOY_WEBHOOK_URL }}
