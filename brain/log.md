@@ -3,7 +3,7 @@ domain: _root
 type: index
 links: []
 created: 2026-09-24
-updated: 2026-10-21
+updated: 2026-10-23
 ---
 
 # Brain — Log
@@ -11,6 +11,13 @@ updated: 2026-10-21
 Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest when over.
 
 <!-- Entries are appended by create-spec (spec creation) and docs-maintenance (ingest). Format:
+
+## [2026-10-23] ingest | Gestione operatori: user e operator su Effect, disattivazione da admin
+- Source: [[specs/crm/gestione-operatori/SPEC]]
+- Flows written: 4
+- Concepts written: 3
+- Review ingested: [[specs/crm/gestione-operatori/REPORT]] (finding durevoli già nel debito o corretti; contabilità in [[tech-debt/crm/gestione-operatori]])
+- Primo ingest del dominio: [[domains/crm/crm]] e [[domains/crm/crm-contract]]. Spec `implemented` sui branch, tranne la P2; audit di accettazione e checklist per gli umani in [[specs/crm/gestione-operatori/IMPLEMENTATION-NOTES]]
 
 ## [2026-10-23] implement | Gestione operatori — PR 5, correzioni del quarto giro
 - [[specs/crm/gestione-operatori/REPORT]] (round PR 5, quarto giro → Correzioni dopo il quarto giro): cb51313 su `-pr5`, MAJOR e MINOR del quarto giro corretti; layout verificato dal vivo, nessun quinto giro per decisione di Omar ("e poi basta")

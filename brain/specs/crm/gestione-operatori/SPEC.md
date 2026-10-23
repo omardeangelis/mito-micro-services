@@ -1,14 +1,16 @@
 ---
 domain: crm
 type: spec
-status: draft
+status: implemented
+ingested: true
+last_ingested: 2026-10-23
 links:
   - "[[specs/crm/gestione-operatori/PLAN]]"
   - "[[chore/migrazione-effect]]"
   - "[[chore/migrazione-gcp]]"
   - "[[specs/crm/sezione-contatti/SPEC]]"
 created: 2026-10-22
-updated: 2026-10-22
+updated: 2026-10-23
 ---
 
 # Spec: Gestione operatori: user e operator su Effect, disattivazione da admin

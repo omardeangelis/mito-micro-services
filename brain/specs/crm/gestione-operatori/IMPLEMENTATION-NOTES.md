@@ -5,8 +5,19 @@ spec: gestione-operatori
 links:
   - "[[specs/crm/gestione-operatori/SPEC]]"
   - "[[specs/crm/gestione-operatori/PLAN]]"
-ingested: false
-last_ingested: null
+  - "[[domains/crm/crm]]"
+  - "[[domains/crm/crm-contract]]"
+  - "[[domains/crm/flows/disattivazione-operatore]]"
+  - "[[domains/crm/flows/cambio-ruolo-operatori]]"
+  - "[[domains/crm/flows/accesso-utente-disattivato]]"
+  - "[[domains/crm/flows/preferenze-di-layout-nel-browser]]"
+  - "[[domains/crm/concepts/operatore]]"
+  - "[[domains/crm/concepts/regola-dei-lock]]"
+  - "[[domains/crm/concepts/preferenze-di-layout]]"
+  - "[[specs/crm/gestione-operatori/REPORT]]"
+  - "[[tech-debt/crm/gestione-operatori]]"
+ingested: true
+last_ingested: 2026-10-23
 created: 2026-10-22
 updated: 2026-10-23
 ---
@@ -16,6 +27,9 @@ updated: 2026-10-23
 ## Summary
 
 - Esecuzione avviata il 2026-10-22 con `implement-spec`. Perimetro deciso con Omar: tutte le PR tranne la P2 (bloccata dalle 2 settimane di P1 in prod), con obiettivo **staging**.
+- Chiusa il 2026-10-23. Tutte le PR del perimetro sono scritte, con gate completi verdi e review sui branch: PR 1 `-pr1` (e360f4b), PR 2 `-pr2` (ac85739), PR 3 `-pr3` (40e2e37), PR 4 `-pr4` (97b8ae6), PR 5 `-pr5` (cb51313), P1 `-p1` (1471ece). Nessuna PR aperta su GitHub: le apre Omar.
+- Review: PR 2, P1 e PR 4 SHIP. PR 5: quattro giri; il MAJOR e i MINOR del quarto sono corretti in cb51313 senza un quinto giro, per decisione di Omar, quindi l'ultimo verdetto registrato resta DO NOT SHIP.
+- Restano agli umani: la revisione di Leonardo (PR 2 e 4), l'applicazione della migrazione su staging prima della PR 3, le PR e i merge, OQ2. La P2 parte almeno 2 settimane dopo la P1 in prod.
 
 ## Execution Mode
 
@@ -26,7 +40,7 @@ updated: 2026-10-23
   - I documenti (questo file, `PLAN.md`) restano su `claude/great-carson-o6qn17`.
 - Delegation: `supervised`. Il supervisore scrive il tracciante RED di ogni task, un worker sul tier della `complexity` scrive il resto, il supervisore rivede.
 - Escalations: nessuna salita di tier. Due volte la scala si è fermata al secondo tentativo (stesso worker, con una proposta di correzione): T3.1 (la riga di `customers.id` di `db:generate`, poi le factory sugli schemi vecchi).
-- Tier usati: `haiku` per T1.1, T1.2, T2.3, T3.1, T4.1; `sonnet` per T2.1, T2.2, TP1.1, T4.4 e le correzioni della review della P1; il modello più forte per T4.2, T4.3, T4.5.
+- Tier usati: `haiku` per T1.1, T1.2, T2.3, T3.1, T4.1, T4.6; `sonnet` per T2.1, T2.2, TP1.1, T4.4, T5.1, le correzioni della review della P1 e dei primi tre giri della PR 5; il modello più forte per T4.2, T4.3, T4.5. Le correzioni del quarto giro della PR 5 (cb51313, sole classi e un filtro tolto) le ho scritte io.
 - Difetti banali corretti da me in review (lint dei miei traccianti, il messaggio vuoto di `OperatorDisabled`, una riga di un test di migrazione): registrati nel log dei task.
 
 ## Deviations From the Plan
@@ -75,21 +89,63 @@ updated: 2026-10-23
 
 ## Acceptance Criteria Status
 
+Audit del 2026-10-23 sui branch della pila, con i criteri di `SPEC.md` (la spec non ha `FLOW.md`). Le prove sono nei giri di [[specs/crm/gestione-operatori/REPORT]] e nei log dei task di `PLAN.md`.
+
 | Criterion | Status | Notes |
 |-----------|--------|-------|
-| | | |
+| AC1 | Met | PR 4; `deactivate.db.test.ts`, review PR 4 |
+| AC2 | Met | `adminProcedure`; anche dai server action (`actions.db.test.ts`) |
+| AC3 | Met | `OperatorIsAdmin` |
+| AC4 | Met | `CannotDeactivateSelf` |
+| AC5 | Met | `OperatorNotFound` per inesistente, di sistema e già disattivato |
+| AC6 | Met | destinazione da `findWorkingOperator`; `HandoverSameOperator` |
+| AC7 | Met | `*.pg.test.ts` con due connessioni; "Assegna a te" portato dentro la regola. Fuori dalla regola restano `pratiche.PUT` e `customer.insertCustomer`, lasciati fuori dalla spec: [[tech-debt/crm/gestione-operatori]] |
+| AC8 | Met | failpoint su ogni passo, anche i tardivi (review PR 4, secondo giro) |
+| AC9 | Met con una deviazione | contatto attivo senza cliente spostato senza riga di log, accettata da Omar il 2026-10-22 (Deviations, debito) |
+| AC10 | Met | |
+| AC11 | Met | regola "prima gli utenti, poi i clienti" e commento in `effect/db.ts` |
+| AC12 | Met | test a 5.000 clienti e 5.000 contatti; retry su 40P01 con tetto fissato da un test |
+| AC13 | Met | |
+| AC14 | Met | i filtri sui dati storici non mostrano i disattivati: OQ3 nel debito |
+| AC15 | Met | anche `task.bulkHandleTask` e la riassegnazione dei contatti |
+| AC16 | Met | |
+| AC17 | Met | |
+| AC18 | Met | `LastAdmin` conta solo gli admin con un operatore (Deviations) |
+| AC19 | Met | |
+| AC20 | Met | batch in una transazione, PR 4 |
+| AC20a | Met | toast con il messaggio del server; "Salva" torna attivo dopo un errore |
+| AC21 | Met | dialog verificato da 280 a 1440 px, con il testo a 1 e a 1,25 (correzioni del quarto giro misurate da me, senza quinto giro) |
+| AC22 | Met | |
+| AC23 | Met | focus sul select all'apertura, `Esc` torna al bottone della riga, nome accessibile |
+| AC24 | Met | router `operator` e `getUserPreference` senza Drizzle; `userErrorToTrpc` non esiste (Deviations) |
+| AC25 | Met | |
+| AC26 | Met | test di caratterizzazione della PR 1 con diff vuoto |
+| AC27 | Met | sostituito da AC31–AC35 |
+| AC28 | Met | |
+| AC29 | Met | gate completi verdi su ogni branch della pila (Sanity Checks); la CI di GitHub gira quando si aprono le PR |
+| AC29a | Blocked | revisione di Leonardo sulle PR 2 e 4, umana |
+| AC30 | Met | `20261022182741_colossal_lilith`: due colonne nullable, un valore di enum e la foreign key di `disabled_by` |
+| AC31 | Met | |
+| AC32 | Met | i cookie della richiesta seminano lo store; la tabella appare dopo il caricamento del provider, senza colonne che compaiono e spariscono (review P1) |
+| AC33 | Met | |
+| AC34 | Met per la P1; Blocked per la P2 | la P2 toglie le `update*` almeno 2 settimane dopo la P1 in prod |
+| AC35 | Met per la P1; Blocked per la P2 | ordine di rilascio, passo umano |
 
 ## Remaining Work
 
-- **Ripresa (stato al 2026-10-22, prima della compattazione):**
-  - PR 4 (`-pr4`, a0b45b4): secondo giro della review fatto (SHIP), gate completi verdi. In attesa di Omar per i due MINOR sui commenti e per accettare la deviazione di AC9.
-  - PR 5 (`-pr5`, cb51313): correzioni dei quattro giri fatte; i MINOR preesistenti del terzo giro nel debito. Il MAJOR e i MINOR del quarto giro sono corretti senza un quinto giro (Omar: "e poi basta"): l'ultimo verdetto registrato resta DO NOT SHIP. Poi `docs-maintenance`.
-  - Debito della feature scritto in [[tech-debt/crm/gestione-operatori]]; voce "Contrasto e nomi nei primitivi condivisi" di [[tech-debt/crm/sezione-contatti]] aggiornata.
-  - TD4 di [[chore/migrazione-effect]] §7 resta `[PREVISTO]`: la regola del §7 lo porta a `[OPEN]` quando la PR 4 è in `dev`.
-  - `mito_local`: Arduino Pace (1004), Romana Penzo (1006), Oddone Capecchi (1007), Leonilda Licciardello (1026) e Zetico Salvatore (1022) disattivati dalle prove; due righe in `session` (un ADMIN, un OPERATORE) da cancellare a fine prova.
-  - Acceptance audit finale e finalizzazione della spec.
+Checklist per gli umani, in ordine. Ogni passo dipende da quelli prima.
 
-- PR P2 (TP2.1, TP2.2): almeno 2 settimane dopo P1 in prod (AC34, AC35).
+1. **OQ2** (Omar): decidere chi diventa admin e chi può disattivare. Non blocca il codice, ma va deciso prima di dare la funzione agli admin di prod.
+2. **Revisione di Leonardo** (AC29a): PR 2 (`-pr2`, middleware dei permessi) e PR 4 (`-pr4`, ruoli, login, sessioni, disattivazione). Le cose da guardare per prime: `resolveActor`, il guard della sessione in `auth.ts`, la regola "prima gli utenti, poi i clienti", la deviazione di AC9.
+3. **PR su GitHub** (Omar), una per branch, verso `dev`, nell'ordine della pila: PR 1, PR 2, PR 3, PR 4, PR 5. La P1 è indipendente. La CI di GitHub rifà i gate (AC29).
+4. **Migrazione su staging prima della PR 3** (Omar): `20261022182741_colossal_lilith` applicata su staging, poi il merge della PR 3. Al momento di applicarla, nessuna PR aperta deve avere una migrazione generata prima del 2026-10-22 18:27 (D7). Stesso ordine per prod.
+5. **Dopo il merge della PR 4 in `dev`**: TD4 di [[chore/migrazione-effect]] §7 passa da `[PREVISTO]` a `[OPEN]`.
+6. **Prova a occhio su staging, colori** (PR 5 cambia tre token per tutta l'app): `--destructive` da `0 84.2% 60.2%` a `0 73.7% 41.8%` (rosso più scuro: bottoni di eliminazione, messaggi d'errore, toast d'errore), `--success` da `158 60% 48%` a `163 94% 24%` (verde più scuro: toast di successo, icone), `--muted-foreground` da 45,1% a 40% di luminosità (testi secondari un po' più scuri). Il contrasto ora passa WCAG; resta da approvare l'effetto.
+7. **Prova a occhio su staging, dialog** (PR 5 cambia la Dialog condivisa: margine di 16 px sotto i 640 px, footer con spazio fra i bottoni, X "Chiudi" prima nell'ordine del Tab, focus iniziale sul primo controllo, titolo che va a capo): aprire, da desktop e da telefono, `DeactivateOperatorDialog`, `AlertCloseConfirmDialog`, `CustomerHandoverDialog`, `CustomerBulkDialog` (scelta, form, successo), `ExportDialog` (tutti e due i tab), `WorkerImportDialog`, `BulkActionDialog` e la palette di `CommandDialog`. Gli ultimi due la review non li ha visti montati. Safari non è stato provato.
+8. **PR 5:** le correzioni del quarto giro (cb51313) non hanno un quinto giro di review. Il passo 7 le copre; in alternativa si chiede una review alla PR.
+9. **PR P2** (TP2.1, TP2.2): almeno 2 settimane dopo la P1 in prod (AC34, AC35).
+
+Stato locale: in `mito_local` cinque operatori restano disattivati dalle prove (1004, 1006, 1007, 1022, 1026); `db:local:reset` e `seed:local` li riportano indietro. Le righe di sessione di prova sono cancellate.
 
 ## Steering
 
@@ -102,3 +158,4 @@ updated: 2026-10-23
 | 2026-10-23 | "Correggi Major e minor" (del secondo giro) | 6eb42e0 su `-pr5`: i 2 MAJOR e i MINOR del secondo giro, più il NIT dell'errore che resta al cambio di destinazione |
 | 2026-10-23 | "correggi il MAJOR di v5 e i 3 MINOR nuovi; i preesistenti mettili nel debito" | a5c808a su `-pr5`; preesistenti in [[tech-debt/crm/gestione-operatori]] e [[tech-debt/crm/sezione-contatti]] |
 | 2026-10-23 | "Correggi minor e major e poi basta" | cb51313 su `-pr5`: MAJOR e MINOR del quarto giro; niente quinto giro di review |
+| 2026-10-23 | "Procedi con la chiusura: docs-maintenance, audit di accettazione, finalizzazione della spec e checklist per gli umani" | ingest nel dominio `crm`, audit, spec `implemented` |

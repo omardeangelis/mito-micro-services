@@ -14,8 +14,8 @@ links:
   - "[[specs/crm/gestione-operatori/SPEC]]"
   - "[[specs/crm/gestione-operatori/PLAN]]"
   - "[[specs/crm/gestione-operatori/IMPLEMENTATION-NOTES]]"
-ingested: false
-last_ingested: null
+ingested: true
+last_ingested: 2026-10-23
 created: 2026-10-22
 updated: 2026-10-23
 ---

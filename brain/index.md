@@ -37,7 +37,9 @@ Migrated from `docs/` on 2026-09-24. Source material for future `create-spec` ru
 
 > Domain pages (`domains/<domain>/<domain>.md` + `<domain>-contract.md` + `concepts/` + `flows/` + `decisions/`) are created by the `docs-maintenance` flow when a spec in that domain is ready to be ingested. Until then a domain appears here only via its spec map.
 
-_empty_
+| Domain | Map | Contract | Concepts | Flows |
+|---|---|---|---|---|
+| crm | [[domains/crm/crm]] | [[domains/crm/crm-contract]] | 3 | 4 |
 
 ## Specs (per domain)
 
@@ -46,7 +48,7 @@ _empty_
 | crm | [[specs/crm/sezione-contatti/SPEC]] | Draft |
 | crm | [[specs/crm/filtri-sql-sicuri/SPEC]] | Draft |
 | crm | [[specs/crm/seeder-locale/SPEC]] | Implemented (piano: [[specs/crm/seeder-locale/PLAN]], review: [[specs/crm/seeder-locale/REPORT]]) |
-| crm | [[specs/crm/gestione-operatori/SPEC]] | Draft (piano: [[specs/crm/gestione-operatori/PLAN]]) |
+| crm | [[specs/crm/gestione-operatori/SPEC]] | Implemented sui branch, tranne la P2 (piano: [[specs/crm/gestione-operatori/PLAN]], review: [[specs/crm/gestione-operatori/REPORT]]) |
 
 - [[specs/crm/crm-specs|crm-specs]] — CRM spec page map
 
