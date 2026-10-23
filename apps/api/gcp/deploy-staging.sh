@@ -4,6 +4,10 @@
 # The workflow deploy-staging.yaml runs it on each merge into dev, after the
 # CI, with the image it built; by hand, the image is the one build.sh printed.
 # A digest, not a tag: a tag can be moved, the digest is the image.
+# 0. With BACKUP=1 (the workflow sets it when the deploy brings migrations,
+#    once they are approved) an on-demand backup of the Cloud SQL instance,
+#    described as "deploy <COMMIT_SHA>", before the migrations: restoring it
+#    is in RESTORE-STAGING.md. If it fails the deploy stops here
 # 1. The migrations job applies the pending migrations with the new image
 #    (apps/api/src/migrate.ts). If they fail it stops here, and the service
 #    keeps its revision. The old revision keeps serving while they run, so a
@@ -11,6 +15,8 @@
 #    in the deploy of the code that stops using it.
 # 2. The new revision is deployed without traffic, tagged, and its /health is
 #    checked on the tag's URL. Only then does it take the traffic.
+# With COMMIT_SHA set the revision carries the label deployed-sha, which the
+# next deploy reads to know the migrations it brings (plan-migrations.ts).
 # The values come from the STAGING_* secrets (load-staging-secrets.mjs), which
 # only the mito-crm-staging service account can read
 set -e
@@ -33,7 +39,27 @@ S=STAGING_
 DB_SECRETS=SUPABASE_MITO_PSW=${S}CLOUDSQL_MITO_APP_PASSWORD:latest
 DB_ENV=SUPABASE_DB_CONNECTION_STRING=postgres://mito_app@localhost/mito,INSTANCE_UNIX_SOCKET=/cloudsql/$INSTANCE
 
+# The workflow reads where the deploy stopped, and the revision serving the
+# traffic, for its Slack message (send-deploy-report.ts): it sets these files
+phase() {
+  if [ -n "$PHASE_FILE" ]; then printf %s "$1" > "$PHASE_FILE"; fi
+}
+
+# 0. The backup (setup-deploy-backup.sh lets the deployer take it). Its id,
+# for the Slack message, in BACKUP_FILE when the workflow sets it
+if [ "$BACKUP" = 1 ]; then
+  phase backup
+  gcloud sql backups create --instance=mito-crm-staging --project=$P \
+    --description="deploy ${COMMIT_SHA:?BACKUP=1 needs COMMIT_SHA}"
+  BACKUP_ID=$(gcloud sql backups list --instance=mito-crm-staging --project=$P \
+    --filter="description='deploy $COMMIT_SHA'" --sort-by=~windowStartTime \
+    --limit=1 --format='value(id)')
+  echo "backup $BACKUP_ID"
+  if [ -n "$BACKUP_FILE" ]; then printf %s "$BACKUP_ID" > "$BACKUP_FILE"; fi
+fi
+
 # 1. The migrations job (setup-ci-deploy.sh created it), with the database only
+phase migrazioni
 gcloud run jobs update mito-crm-staging-migrate --project=$P --region=$R \
   --image=$IMAGE --command=node --args=apps/api/dist/migrate.js \
   --set-cloudsql-instances=$INSTANCE \
@@ -49,6 +75,7 @@ gcloud run jobs execute mito-crm-staging-migrate --project=$P --region=$R \
 # Storage is the GCS bucket storage-staging.sh creates, with the ADC of the
 # service account (packages/server/src/services/storage/layer.ts)
 # A revision tag starts with a letter: d- and the digest's first 12 characters
+phase "revisione Cloud Run"
 DIGEST=${IMAGE##*@sha256:}
 REVISION_TAG=d-$(printf %s "$DIGEST" | cut -c1-12)
 gcloud run deploy mito-crm-staging --project=$P --region=$R \
@@ -58,6 +85,7 @@ gcloud run deploy mito-crm-staging --project=$P --region=$R \
   --set-env-vars=$DB_ENV,NEXT_PUBLIC_APP_ENV=staging,NEXTAUTH_URL=$FRONTEND,TZ=UTC,CRON_OIDC_AUDIENCE=$URL,CRON_OIDC_SERVICE_ACCOUNT=mito-crm-scheduler-staging@mito-crm.iam.gserviceaccount.com,CRON_REPORT_ENV=staging,GCS_BUCKET=mito-crm-staging-storage \
   --timeout=1800 \
   --no-traffic --tag=$REVISION_TAG \
+  ${COMMIT_SHA:+--update-labels=deployed-sha=$COMMIT_SHA} \
   --quiet
 TAG_URL=$(gcloud run services describe mito-crm-staging --project=$P \
   --region=$R --format=json | node -e '
@@ -67,13 +95,20 @@ TAG_URL=$(gcloud run services describe mito-crm-staging --project=$P \
       if (!t?.url) process.exit(1)
       console.log(t.url)
     })' $REVISION_TAG)
+phase /health
 if ! curl -fsS --retry 3 --retry-all-errors -o /dev/null -w "new revision /health %{http_code}\n" "$TAG_URL/health"; then
   echo "The new revision doesn't answer: the traffic stays on the old one" >&2
   exit 1
 fi
 # --no-traffic leaves the traffic pinned to a revision: back to the latest
+phase "revisione Cloud Run"
 gcloud run services update-traffic mito-crm-staging --project=$P --region=$R \
   --to-latest --quiet
 gcloud run services update-traffic mito-crm-staging --project=$P --region=$R \
   --remove-tags=$REVISION_TAG --quiet
+phase /health
 curl -fsS -o /dev/null -w "/health %{http_code}\n" "$URL/health"
+if [ -n "$REVISION_FILE" ]; then
+  gcloud run services describe mito-crm-staging --project=$P --region=$R \
+    --format='value(status.latestReadyRevisionName)' > "$REVISION_FILE"
+fi

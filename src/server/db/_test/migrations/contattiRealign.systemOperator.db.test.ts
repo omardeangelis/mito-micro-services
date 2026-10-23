@@ -4,8 +4,8 @@ import { task } from "@mito/db/schema/task"
 import { taskEventLog } from "@mito/db/schema/taskEventLog"
 import {
   BEFORE_REALIGN_SCHEMA_TAG,
-  REALIGN_SCHEMA_TAG,
   driverFailure,
+  REALIGN_SCHEMA_TAG,
   migrateUpTo,
   resetDb,
   testClient,
@@ -70,9 +70,7 @@ describe("contatti_contact_realign senza operatore di sistema", () => {
 
     // The driver's error carries the failed statement, comments included,
     // which also says "system operator": the message is on the error it wraps
-    await expect(
-      driverFailure(migrateUpTo(REALIGN_SCHEMA_TAG))
-    ).rejects.toThrow(GUARD_MESSAGE)
+    await expect(driverFailure(migrateUpTo())).rejects.toThrow(GUARD_MESSAGE)
 
     expect(await testDb.select().from(task).orderBy(asc(task.id))).toEqual(
       tasksBefore
@@ -92,9 +90,7 @@ describe("contatti_contact_realign senza operatore di sistema", () => {
     const customer = await createCustomer({ operatorId: anna.id })
     await createTask({ customerId: customer.id, operatorId: null })
 
-    await expect(
-      driverFailure(migrateUpTo(REALIGN_SCHEMA_TAG))
-    ).rejects.toThrow(GUARD_MESSAGE)
+    await expect(driverFailure(migrateUpTo())).rejects.toThrow(GUARD_MESSAGE)
   })
 
   it("senza contatti da spostare passa anche senza l'operatore di sistema, con le altre due migrazioni", async () => {
@@ -115,6 +111,7 @@ describe("contatti_contact_realign senza operatore di sistema", () => {
     })
     const migrationsBefore = await appliedMigrations()
 
+    // Up to the realignment: the migrations after it are not part of the case
     await migrateUpTo(REALIGN_SCHEMA_TAG)
 
     expect(await appliedMigrations()).toBe(migrationsBefore + 3)

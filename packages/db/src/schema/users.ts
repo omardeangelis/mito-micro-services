@@ -26,6 +26,9 @@ export const users = createTable("user", {
   role: userRoles("role").notNull().default("ADMIN"),
   image: varchar("image", { length: 255 }),
   preferences: text("preferences"),
+  // Chi ha disattivato l'utente e quando: null = attivo (gestione-operatori).
+  disabledAt: timestamp("disabled_at", { mode: "date", withTimezone: true }),
+  disabledBy: integer("disabled_by").references(() => operators.id),
 })
 
 export const usersRelations = relations(users, ({ one, many }) => ({

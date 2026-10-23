@@ -85,6 +85,19 @@ describe("export.callStats", () => {
     ).rejects.toMatchObject({ code: "FORBIDDEN" })
   })
 
+  it("refuses a deactivated admin with FORBIDDEN, with or without an operator row", async () => {
+    const disabledAt = new Date("2026-10-20T10:00:00.000Z")
+    const withRow = await createOperator({ role: "ADMIN", disabledAt })
+    const withoutRow = await createUser({ role: "ADMIN", disabledAt })
+
+    await expect(
+      createTestCaller(withRow).export.callStats(PERIOD)
+    ).rejects.toMatchObject({ code: "FORBIDDEN" })
+    await expect(
+      createTestCaller({ userId: withoutRow.id }).export.callStats(PERIOD)
+    ).rejects.toMatchObject({ code: "FORBIDDEN" })
+  })
+
   it("refuses a request without session with UNAUTHORIZED (AC8)", async () => {
     const anonymous = appRouter.createCaller({
       session: null,

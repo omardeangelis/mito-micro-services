@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   refresh: vi.fn(),
 }))
 
+// The menu does not use the router any more: a call would be a refresh
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ refresh: mocks.refresh }),
 }))
@@ -58,7 +59,7 @@ describe("la voce per nascondere le colonne (AC5)", () => {
     ])
   })
 
-  it("nascondere una colonna: la tabella lo sa subito, lo store pure, e il server la salva con ?pref=cot", async () => {
+  it("nascondere una colonna: la tabella lo sa subito e lo store pure, senza nessuna richiesta al server", async () => {
     const { user, onChange } = setup([])
     await openMenu(user)
 
@@ -68,13 +69,8 @@ describe("la voce per nascondere le colonne (AC5)", () => {
     expect(mocks.setContactTableVisibleColumns).toHaveBeenCalledWith([
       "Telefono",
     ])
-    expect(mocks.fetch).toHaveBeenCalledTimes(1)
-    const [url, init] = mocks.fetch.mock.calls[0] as [string, RequestInit]
-    expect(url).toBe("/api/user/preferences?pref=cot")
-    expect(init.method).toBe("POST")
-    expect(JSON.parse(init.body as string)).toEqual({
-      preferences: { contactTableVisibleColumns: ["Telefono"] },
-    })
+    expect(mocks.fetch).not.toHaveBeenCalled()
+    expect(mocks.refresh).not.toHaveBeenCalled()
   })
 
   it("mostrare una colonna nascosta la toglie dall'elenco, senza toccare le altre", async () => {
@@ -84,13 +80,9 @@ describe("la voce per nascondere le colonne (AC5)", () => {
     await user.click(screen.getByRole("menuitemcheckbox", { name: "CF" }))
 
     expect(onChange).toHaveBeenCalledWith(["Telefono"])
-    expect(
-      JSON.parse(
-        (mocks.fetch.mock.calls[0] as [string, RequestInit])[1].body as string
-      )
-    ).toEqual({
-      preferences: { contactTableVisibleColumns: ["Telefono"] },
-    })
+    expect(mocks.setContactTableVisibleColumns).toHaveBeenCalledWith([
+      "Telefono",
+    ])
   })
 
   it("conserva i nomi che non conosce (una colonna di domani)", async () => {
@@ -100,41 +92,6 @@ describe("la voce per nascondere le colonne (AC5)", () => {
     await user.click(screen.getByRole("menuitemcheckbox", { name: "CF" }))
 
     expect(onChange).toHaveBeenCalledWith(["colonna-futura", "CF"])
-  })
-
-  it("dopo il salvataggio rinfresca la pagina: tornando dal dettaglio la lista non usa la copia vecchia della cache del router", async () => {
-    const { user } = setup([])
-    await openMenu(user)
-
-    await user.click(screen.getByRole("menuitemcheckbox", { name: "Telefono" }))
-
-    await waitFor(() => expect(mocks.refresh).toHaveBeenCalledTimes(1))
-  })
-
-  it("se il server rifiuta il salvataggio (500, 401) non rinfresca e lo segnala nella console", async () => {
-    mocks.fetch.mockResolvedValue({ ok: false, status: 500 })
-    const spy = vi.spyOn(console, "error").mockImplementation(() => undefined)
-    const { user, onChange } = setup([])
-    await openMenu(user)
-
-    await user.click(screen.getByRole("menuitemcheckbox", { name: "Telefono" }))
-
-    await waitFor(() => expect(spy).toHaveBeenCalled())
-    expect(onChange).toHaveBeenCalledWith(["Telefono"])
-    expect(mocks.refresh).not.toHaveBeenCalled()
-    spy.mockRestore()
-  })
-
-  it("se il server non risponde non si rompe: la scelta resta a schermo", async () => {
-    mocks.fetch.mockRejectedValue(new TypeError("fetch failed"))
-    const spy = vi.spyOn(console, "error").mockImplementation(() => undefined)
-    const { user, onChange } = setup([])
-    await openMenu(user)
-
-    await user.click(screen.getByRole("menuitemcheckbox", { name: "Telefono" }))
-
-    expect(onChange).toHaveBeenCalledWith(["Telefono"])
-    spy.mockRestore()
   })
 })
 

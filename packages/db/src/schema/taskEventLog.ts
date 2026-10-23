@@ -27,6 +27,7 @@ export const taskEventSource = [
   "bulk",
   "self_assign",
   "cron_alert",
+  "deactivation",
 ] as const
 
 export const taskEventSourceEnum = pgEnum("task_event_source", taskEventSource)

@@ -1,4 +1,5 @@
-import { eq } from "drizzle-orm"
+import { eq, sql } from "drizzle-orm"
+import { pgTableCreator, text, timestamp, varchar } from "drizzle-orm/pg-core"
 import { db } from "@mito/db"
 import { SYSTEM_OPERATOR_USER_ID } from "@mito/domain/constants/operator"
 import { customers } from "@mito/db/schema/customers"
@@ -7,7 +8,7 @@ import { customerToPratica } from "@mito/db/schema/relations/customerToPratica"
 import { operators } from "@mito/db/schema/operators"
 import { alert, task } from "@mito/db/schema/task"
 import { taskEventLog } from "@mito/db/schema/taskEventLog"
-import { users } from "@mito/db/schema/users"
+import { userRoles, users } from "@mito/db/schema/users"
 
 // `db` is the test database of the project the file runs in: PGlite
 // (src/test/setup.ts) or Postgres (src/test/pg.setup.ts)
@@ -17,21 +18,69 @@ const nextId = (prefix: string) => `${prefix}-${++sequence}`
 
 type Role = "ADMIN" | "OPERATORE"
 
+// The users table as it was before the disabled_at / disabled_by columns.
+// Tests that migrate to an older tag seed users through createUser, and an
+// insert through `users` lists the new columns, which that database lacks.
+const usersBeforeDisabled = pgTableCreator((name) => `mito-deutsche_${name}`)(
+  "user",
+  {
+    id: varchar("id", { length: 255 }).notNull().primaryKey(),
+    name: varchar("name", { length: 255 }),
+    email: varchar("email", { length: 255 }).notNull(),
+    emailVerified: timestamp("emailVerified", { mode: "date" }).default(
+      sql`CURRENT_TIMESTAMP`
+    ),
+    role: userRoles("role").notNull().default("ADMIN"),
+    image: varchar("image", { length: 255 }),
+    preferences: text("preferences"),
+  }
+)
+
 /** A user without an operator row: the operator middleware rejects it. */
-export async function createUser(values: { role?: Role } = {}) {
+export async function createUser(
+  values: { role?: Role; disabledAt?: Date; disabledBy?: number } = {}
+): Promise<typeof users.$inferSelect> {
   const id = nextId("user")
+  const email = `${id}@test.local`
+  const role = values.role ?? "OPERATORE"
+  if (values.disabledAt === undefined && values.disabledBy === undefined) {
+    const [user] = await db
+      .insert(usersBeforeDisabled)
+      .values({ id, email, role })
+      .returning()
+    return { ...user!, disabledAt: null, disabledBy: null }
+  }
   const [user] = await db
     .insert(users)
-    .values({ id, email: `${id}@test.local`, role: values.role ?? "OPERATORE" })
+    .values({
+      id,
+      email,
+      role,
+      disabledAt: values.disabledAt ?? null,
+      disabledBy: values.disabledBy ?? null,
+    })
     .returning()
   return user!
 }
 
-/** A user with its operator row. `userId` is what a session carries. */
+/**
+ * A user with its operator row. `userId` is what a session carries. A
+ * `disabledAt` makes the user deactivated (null, active, by default).
+ */
 export async function createOperator(
-  values: { role?: Role; name?: string; surname?: string } = {}
+  values: {
+    role?: Role
+    name?: string
+    surname?: string
+    disabledAt?: Date
+    disabledBy?: number
+  } = {}
 ) {
-  const user = await createUser({ role: values.role })
+  const user = await createUser({
+    role: values.role,
+    disabledAt: values.disabledAt,
+    disabledBy: values.disabledBy,
+  })
   const [operator] = await db
     .insert(operators)
     .values({

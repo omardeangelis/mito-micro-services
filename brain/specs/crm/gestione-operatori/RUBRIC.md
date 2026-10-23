@@ -1,0 +1,344 @@
+---
+domain: crm
+type: review-rubric
+scope: spec
+spec: gestione-operatori
+links:
+  - "[[specs/crm/gestione-operatori/REPORT]]"
+created: 2026-10-22
+updated: 2026-10-23
+---
+
+# Review Rubric: gestione-operatori
+
+Una sezione per ogni round: la spec si consegna in più PR, e ognuna ha la sua review.
+
+## [Round: 2026-10-22 — PR 2, user e operator su Effect]
+
+### Change set under review
+
+- **Scope:** spec implementation (PR 2 del piano: refactor puro)
+- **Target:** branch `claude/great-carson-o6qn17-pr2`
+- **Compared:** `claude/great-carson-o6qn17-pr1` (e360f4b) → `claude/great-carson-o6qn17-pr2`
+- **Files touched:** 16 in `packages/server/src` (middleware `api/trpc.ts`, router `operator` e `user`, servizi nuovi `auth/actor`, `operator/*`, `user/current`, i loro test), dominio `crm`
+
+### Routing rubric (review-classifier output)
+
+```json
+{
+  "taskType": "refactor",
+  "secondaryType": "security",
+  "domainsTouched": ["crm"],
+  "adversarialVerifiers": {
+    "count": 4,
+    "passes": [
+      { "id": "v1", "charter": "Authorization middleware parity (AC25): operatorProcedure/adminProcedure via resolveActor grant and deny exactly the same callers as before; protectedProcedure byte-identical; BAD_REQUEST without message for no operator; FORBIDDEN admin-only after the operator check; role from ctx.actor vs the old users lookup; ctx.operator shape for downstream consumers; tests really exercise the new path; mutants caught.", "complexity": "high" },
+      { "id": "v2", "charter": "Behavior parity of the migrated procedures (AC24, AC26): operator GET/PUT and user.getUserPreference/getCurrentUser, quirks kept, retrieveUserPrefercence moved with identical logic; PR 1 characterization tests unchanged and green; any input whose return value or DB side effect differs.", "complexity": "medium" },
+      { "id": "v3", "charter": "Error-path parity at the runTrpc edge: DbError vs raw driver error, malformed JSON as defect; same code and message for the client, no SQL leak; Sentry cause, dropExpectedTrpcErrors, Effect.logError PII; D10 vs accepted cost of runTrpc.", "complexity": "high" },
+      { "id": "v4", "charter": "Structure and conventions conformance (AC24 shape, AC28, root rules) plus build portability and the AC29 gates.", "complexity": "medium" }
+    ]
+  },
+  "taskComplexity": "high",
+  "reviewImpact": "critical",
+  "humanInLoop": true,
+  "nextStep": "v1 and v3 on the strongest model, v2 and v4 on a balanced model, in parallel. Any behavior difference v1–v3 find is a BLOCKER under D10. The REPORT ends with a checklist for Leonardo (AC29a) before merge."
+}
+```
+
+The charters are abridged here; the verifiers received the full text.
+
+### Classifier rationale
+
+The diff rewrites `operatorProcedure` and `adminProcedure`, the authorization middlewares of every router: the auth surface forces `critical`, and AC29a already names Leonardo as reviewer. Four isolated passes: the authorization logic (the role now comes from the operator join instead of a second lookup), the parity of the moved logic and its quirks, the error path (the least obvious way to break "pure refactor"), and the conventions and gates. No UI or motion pass: the diff is server-only.
+
+### Overrides applied
+
+None.
+
+### Verification plan (derived)
+
+| Pass | Charter | Complexity | Model tier |
+|------|---------|------------|------------|
+| v1 | Authorization middleware parity | high | strongest |
+| v2 | Migrated procedures parity | medium | balanced |
+| v3 | Error-path parity | high | strongest |
+| v4 | Conventions and gates | medium | balanced |
+
+## [Round: 2026-10-22 — PR P1, preferenze di layout nel browser]
+
+### Change set under review
+
+- **Scope:** spec implementation (PR P1 del piano)
+- **Target:** branch `claude/great-carson-o6qn17-p1`
+- **Compared:** `origin/dev` → `claude/great-carson-o6qn17-p1` (d6d9667)
+- **Files touched:** 27 in `src/` (store, provider, modulo dei cookie, 4 componenti client, 3 server component, test), dominio `crm`
+
+### Routing rubric (review-classifier output, charter abbreviati)
+
+```json
+{
+  "taskType": "feature",
+  "secondaryType": "data",
+  "domainsTouched": ["crm"],
+  "adversarialVerifiers": {
+    "count": 4,
+    "passes": [
+      { "id": "v1", "charter": "Server render vs first client render for Clienti, Pratiche, Contatti and the sidebar (AC32), hydration warnings, column flashes, sidebar flash, 30 s router cache, on the seeded dev server.", "complexity": "high" },
+      { "id": "v2", "charter": "Saved preferences survive and release order holds (AC34, AC35): the render-phase one-time copy, StrictMode, setState during render, the dropped localStorage item, the old pref=pt bug, the server surface left in place.", "complexity": "high" },
+      { "id": "v3", "charter": "Cookie codec and untrusted cookie input (AC31, AC33): tolerance, server decode/encode round-trip on next 14.2, attributes, size, __proto__ ids, no PII.", "complexity": "medium" },
+      { "id": "v4", "charter": "Client store, logout semantics, no server write left (AC31, AC33): setters, Partial<UserPreference> consumers, logout, identity from the session only, mount writes, leftovers, changed tests.", "complexity": "medium" }
+    ]
+  },
+  "taskComplexity": "high",
+  "reviewImpact": "critical",
+  "humanInLoop": true,
+  "nextStep": "v1 and v2 on the strongest model, v3 and v4 balanced; v1 on the seeded dev server. Human checklist on release order and on the first visit of a user with server-saved preferences."
+}
+```
+
+### Classifier rationale
+
+Critical because the change moves stored user data (the server stops being the store, with a one-time copy whose success depends on the release order) and because server components now render from client-written cookies. No UI or motion-craft pass: no markup, style, ARIA or animation lines change; the rendered effects are behavioural and v1 checks them in the browser.
+
+### Overrides applied
+
+None.
+
+## [Round: 2026-10-22 — PR 4, disattivazione backend]
+
+### Change set under review
+
+- **Scope:** spec implementation (PR 4 del piano: T4.1–T4.6)
+- **Target:** branch `claude/great-carson-o6qn17-pr4`
+- **Compared:** `claude/great-carson-o6qn17-pr3` → `claude/great-carson-o6qn17-pr4` (39 file, +3500/−87)
+
+### Routing rubric (review-classifier output, charter abbreviati)
+
+```json
+{
+  "taskType": "feature",
+  "secondaryType": "security",
+  "domainsTouched": ["crm"],
+  "adversarialVerifiers": {
+    "count": 7,
+    "passes": [
+      { "id": "v1", "charter": "Authentication: a deactivated user can neither sign in nor keep a session (AC16 adapter half, AC17); signIn placement, id vs email, email-link flow, adapter override used by Next.js and the backend, fail closed.", "complexity": "high" },
+      { "id": "v2", "charter": "Authorization: who may call the operator procedures (AC2, AC16 resolveActor half, AC25); every new procedure is adminProcedure; no other path accepts a disabled actor; OQ2 exposure.", "complexity": "high" },
+      { "id": "v3", "charter": "Role batch: updateOperatorsRole vs AC18–AC20 and D7, LastAdmin computation, duplicates, unknown ids, atomicity, the edited PR 2 test.", "complexity": "high" },
+      { "id": "v4", "charter": "Deactivation data: what deactivateOperator writes vs AC3–AC6, AC8–AC10, AC12, AC13; log rows consistent with the moves; retry; impact counts.", "complexity": "high" },
+      { "id": "v5", "charter": "Concurrency: the users-first lock rule on every writer (AC7, AC11), EvalPlanQual re-check, deadlocks, the pg tests really interleave.", "complexity": "high" },
+      { "id": "v6", "charter": "Error contract and conventions: operatorErrorToTrpc, domain codes in both shapes, describeContactError, AC24, AC28, Effect rules.", "complexity": "medium" },
+      { "id": "v7", "charter": "Test integrity: the tests prove the ACs, no existing test weakened, pg tests in CI, mutants.", "complexity": "medium" }
+    ]
+  },
+  "taskComplexity": "high",
+  "reviewImpact": "critical",
+  "humanInLoop": true,
+  "nextStep": "v1–v5 on the strongest model, v6–v7 balanced; human checklist with Leonardo's review, OQ2 before prod, gates, a staging check of a disabled user's session on Next.js and Cloud Run."
+}
+```
+
+### Classifier rationale
+
+Three generic risk surfaces at once (sign-in and the session read of every request, admin authorization, bulk data moves under row locks), plus AC29a naming Leonardo and OQ2 open. No UI or motion pass: the only `src/` change is a message lookup.
+
+### Overrides applied
+
+None.
+
+## [Round: 2026-10-22 — PR 4, disattivazione backend, secondo giro]
+
+### Change set under review
+
+- **Scope:** correzioni della review del primo giro della PR 4
+- **Target:** branch `claude/great-carson-o6qn17-pr4`, testa a0b45b4
+- **Compared:** `a583a8e` → `a0b45b4` (15 file, +883/−112)
+
+### Routing rubric (review-classifier output)
+
+```json
+{
+  "taskType": "bugfix",
+  "secondaryType": "test",
+  "domainsTouched": ["crm"],
+  "adversarialVerifiers": {
+    "count": 2,
+    "passes": [
+      { "id": "v4", "charter": "Deactivation data: what deactivateOperator writes vs AC3–AC6, AC8–AC10, AC12, AC13; the single CTE statement (moveAndLog) makes log rows consistent with the moves; contacts without a customer (deviation from AC9, moved without a log row because task_event_log.customer_id is NOT NULL); retry; impact counts equal the moves.", "complexity": "high" },
+      { "id": "v7", "charter": "Test integrity: the tests prove the ACs — the AC8 failpoint now fails late (after moves, users update, commit), the real-Postgres lock-order tests for Assegna chiamate, Assegna Clienti, reassign and Assegna a te actually interleave and would fail under the mutation, the 2-retry cap on 40P01 is pinned; no existing test weakened.", "complexity": "high" }
+    ]
+  },
+  "taskComplexity": "high",
+  "reviewImpact": "critical",
+  "humanInLoop": true,
+  "nextStep": "Run v4 and v7 on the strongest model against fix.diff, the AC1–AC13 excerpt and the checkout at a0b45b4; v7 needs a reachable test Postgres and must say so if the pg suites are skipped. Before merging, a human checks the items the rationale lists as uncovered."
+}
+```
+
+### Classifier rationale
+
+Il diff riscrive come la disattivazione sposta clienti, contatti e log sotto lock di riga, e tocca la lettura della sessione in `auth.ts`: impatto critical, umano nel giro. Tutte e due le passate sul modello più forte (semantica delle CTE che modificano dati, interleaving a due connessioni). Il classificatore segnala tre punti che nessuna delle due passate copre:
+
+- l'ordine dei lock di "Assegna a te" nel codice di produzione e il mapping di `OperatorNotFound` della procedura;
+- la regola di `LastAdmin` cambiata (solo gli admin con un operatore) dopo lo SHIP di v3;
+- i limiti int32 degli input di `getOperatorsForDeactivation`.
+
+### Overrides applied
+
+Perimetro deciso da Omar: solo v4 e v7, gli altri verificatori del primo giro hanno dato SHIP. I tre punti scoperti sono stati controllati dall'orchestratore e sono nel REPORT: l'ordine dei lock di "Assegna a te" è preso dai mutanti M4 e M5 di v7; `OperatorNotFound` passa da `customerErrorToTrpc`, vincolato da tsc; `getOperatorsForDeactivation` usa `deactivationInput` con `operatorIdInput` limitato. La regola nuova di `LastAdmin` resta nella checklist umana (revisione di Leonardo).
+
+## [Round: 2026-10-22 — PR 5, disattivazione UI]
+
+### Change set under review
+
+- **Scope:** spec implementation (PR 5 del piano: T5.1)
+- **Target:** branch `claude/great-carson-o6qn17-pr5`, testa 001e861
+- **Compared:** `97b8ae6` (testa di `-pr4`) → `001e861` (10 file, +727/−16, tutti in `src/app/dashboard/profile/@admin/`)
+
+### Routing rubric (review-classifier output, charter abbreviati)
+
+```json
+{
+  "taskType": "ui",
+  "secondaryType": "feature",
+  "domainsTouched": ["crm"],
+  "adversarialVerifiers": {
+    "count": 4,
+    "passes": [
+      { "id": "v1", "charter": "Error contract of the server actions deactivateOperator and updateOperatorsRole (AC20a, AC22): { error: code }, never throw, every domain code, both link modes (in-process and BACKEND_URL); UNKNOWN/INVALID_INPUT; revalidatePath only on success, on /dashboard/profile; describeActionError messages; tests catch breakage.", "complexity": "high" },
+      { "id": "v2", "charter": "Auth on the new privileged entry point: deactivateOperatorAction passes the caller's own session in both link modes so adminProcedure decides; row gating is display only; page.tsx's getUserOperator in the @admin slot (server-rendered for every role) exposes nothing new and adds no failure mode.", "complexity": "high" },
+      { "id": "v3", "charter": "Client state in OperatorTable and DeactivateOperatorDialog: loading and toasts on every path, clearOperatorsToEdit only on success, currentOperatorId undefined, destination mapping, stale targets, double submit, dismiss while submitting, rejected action, reset after success, toast counts (AC13); tests catch each defect.", "complexity": "medium" },
+      { "id": "v4", "charter": "UI pass: ui-review skill on the Admin tab of /dashboard/profile (sr-only column, row button, dialog) against AC21–AC23 and the skill's bar: label linked to the Select trigger, Italian wording, focus after success, target size, destructive and disabled states.", "complexity": "medium" }
+    ]
+  },
+  "taskComplexity": "medium",
+  "reviewImpact": "critical",
+  "humanInLoop": true,
+  "nextStep": "v1 and v2 on the strongest model, v3 and v4 balanced, v4 on the running dev server. Human checklist: a real deactivation with counts, LAST_ADMIN in the role editor, a non-admin session cannot use deactivateOperatorAction, the error mapping with BACKEND_URL if that mode is deployed."
+}
+```
+
+### Classifier rationale
+
+Il diff è quasi tutto UI, ma aggiunge un server action che chiunque può chiamare con un POST e che avvia uno spostamento di massa: per questo impatto critical, una passata dedicata all'autorizzazione e la firma umana. Il buco più probabile è la forma dell'errore via `BACKEND_URL`, che AC22 nomina e che i test non costruiscono. Nessun codice di animazione: nessuna passata di motion.
+
+### Overrides applied
+
+Nessuno. Per v2 l'orchestratore ha fornito due sessioni di `mito_local` (un ADMIN e un OPERATORE) per provare l'accesso dal vivo.
+
+## [Round: 2026-10-23 — PR 5, correzioni del primo giro]
+
+### Change set under review
+
+- **Scope:** spec implementation (PR 5 del piano: correzioni della review, T5.2)
+- **Target:** branch `claude/great-carson-o6qn17-pr5`, testa dcea416
+- **Compared:** `001e861` → `dcea416` (12 file, +578/−85): `@admin/` (dialog, tabella, store, test dei server action), il primitivo condiviso `components/ui/dialog.tsx` e tre token `:root` di `styles/globals.css`
+
+### Routing rubric (review-classifier output, charter abbreviati)
+
+```json
+{
+  "taskType": "bugfix",
+  "secondaryType": "ui",
+  "domainsTouched": ["crm/gestione-operatori", "primitivi UI condivisi", "crm/sezione-contatti"],
+  "adversarialVerifiers": {
+    "count": 5,
+    "passes": [
+      { "id": "v3", "charter": "Client state re-check: rejected action resets submitting, pending role edit removed after deactivation, rows keyed by id, loading never stuck in the role change, currentOperatorId required, stale destination; lifecycle of deactivatedRef and unmount before close.", "complexity": "high" },
+      { "id": "v4", "charter": "UI pass re-check on the admin deactivation surface: rendered contrast of error text, Conferma in every state and success toast; query error state with Riprova; no layout jump; focus after a real deactivation on the heading; the X 'Chiudi' first in Tab, 24x24; 280-1440 px.", "complexity": "high" },
+      { "id": "v5", "charter": "UI pass: regression of the shared Dialog across every other consumer: initial focus unchanged vs 001e861, composition with consumers' own onOpenAutoFocus, gaps in the focusable selector, focus trap with the X first, X overlap, footer gap, width under 640 px, leftover 'Close' selectors; animation classes byte-identical.", "complexity": "high" },
+      { "id": "v6", "charter": "UI pass: app-wide regression of --destructive, --success, --muted-foreground: every consumer and state against WCAG 1.4.3 / 1.4.11, tints and opacity variants, divergence of .dark.", "complexity": "medium" },
+      { "id": "v7", "charter": "Test evidence for the round-1 v1/v2 MINORs: no production line of the actions changed; mutants on both error shapes, message vs code, UNKNOWN, and a non-admin procedure must be killed; the db test reaches the procedure context and runs in CI.", "complexity": "medium" }
+    ]
+  },
+  "taskComplexity": "high",
+  "reviewImpact": "critical",
+  "humanInLoop": true,
+  "nextStep": "v3, v4, v5 on the strongest model, v6 and v7 balanced; v4-v6 share the live dev server read-only. Human checklist: sign off the new red, green and grey across the main screens; open every Dialog consumer; a real deactivation with focus on the heading; record the change against the shared-primitives tech-debt entry."
+}
+```
+
+### Classifier rationale
+
+Le correzioni della feature si ricontrollano con v3 e v4. Le due modifiche ai primitivi condivisi arrivano fuori da questa spec, quindi hanno una passata ciascuna: v5 per il focus iniziale della Dialog, che ora gira in ogni dialog dell'app, e v6 per i tre token, usati in circa 17 file. I server action cambiano solo nei test: v7 è una passata sui test con i mutanti, e restano validi gli SHIP del primo giro su contratto d'errore e autorizzazione. Impatto critical perché il colore di ogni bottone `destructive` e di ogni toast di successo del CRM cambia: il contrasto si misura, la resa visiva la approva una persona.
+
+### Overrides applied
+
+Nessuno. I mutanti di v3 e v7 girano su copie del checkout (`wt-mut-v3`, `wt-mut-v7`), perché `next dev` serve `wt-code` alle passate UI nello stesso momento.
+
+## [Round: 2026-10-23 — PR 5, correzioni del secondo giro]
+
+### Change set under review
+
+- **Scope:** spec implementation (PR 5 del piano: correzioni del secondo giro, T5.2)
+- **Target:** branch `claude/great-carson-o6qn17-pr5`, testa 6eb42e0
+- **Compared:** `dcea416` → `6eb42e0` (12 file, +224/−20): focus iniziale e header della Dialog condivisa, X e anelli di focus del toast, footer di `AlertCloseConfirmDialog` e `CustomerHandoverDialog`, larghezza di `ExportDialog`, dialog e tabella di `@admin/`, test
+
+### Routing rubric (carte del secondo giro, ristrette alle correzioni)
+
+```json
+{
+  "taskType": "bugfix",
+  "secondaryType": "ui",
+  "domainsTouched": ["crm/gestione-operatori", "primitivi UI condivisi"],
+  "adversarialVerifiers": {
+    "count": 4,
+    "passes": [
+      { "id": "v3", "charter": "Client state and test evidence: pending edits of rows gone from data are not sent and do not resurface; previous-round surviving mutants (M1, M2, M8, M9, FORBIDDEN instead of UNKNOWN) now killed; destination change clears the error.", "complexity": "high" },
+      { "id": "v4", "charter": "UI pass on the deactivation dialog: no height change across loading, counts and query error at 280-1440 px; two-line confirm error below sm; title clear of the X; visible keyboard focus on the heading after a real deactivation; last round's passes still hold.", "complexity": "high" },
+      { "id": "v5", "charter": "UI pass: shared Dialog across every consumer: new initial-focus loop vs Radix focusFirst and vs 001e861, select() on inputs, footer gap in the two consumers, DialogHeader right padding, ExportDialog inset, focus trap and Esc, consumer tests.", "complexity": "high" },
+      { "id": "v6", "charter": "UI pass: toast close button and focus rings in success and destructive against the new tokens (WCAG 1.4.11); default and info unchanged; class precedence.", "complexity": "medium" }
+    ]
+  },
+  "taskComplexity": "high",
+  "reviewImpact": "critical",
+  "humanInLoop": true,
+  "nextStep": "v3, v4, v5 on the strongest model, v6 balanced; v4-v6 share the live dev server read-only."
+}
+```
+
+### Classifier rationale
+
+Il checklist del secondo giro chiedeva un terzo giro di v4, v5 e v6 sulle correzioni; v3 si aggiunge perché il filtro delle modifiche in sospeso e i test dei mutanti sono stato del client. Le carte sono quelle del secondo giro, ristrette a quello che cambia. v7 non gira: i test nuovi dei server action li prova v3 con i mutanti, e nessuna riga di produzione dei server action cambia.
+
+### Overrides applied
+
+Classificatore non rilanciato: un giro di correzioni con le stesse carte, come il secondo giro della PR 4. I mutanti di v3 girano su `wt-mut-v3`, portata a 6eb42e0.
+
+## [Round: 2026-10-23 — PR 5, correzioni del terzo giro]
+
+### Change set under review
+
+- **Scope:** spec implementation (PR 5 del piano: correzioni del terzo giro, T5.2)
+- **Target:** branch `claude/great-carson-o6qn17-pr5`, testa a5c808a
+- **Compared:** `6eb42e0` → `a5c808a` (7 file, +150/−13): focus iniziale e header della Dialog condivisa, header di successo di `CustomerBulkDialog`, riga d'errore del dialog "Disattiva", store delle modifiche di ruolo, test
+
+### Routing rubric (carte del terzo giro, ristrette alle correzioni)
+
+```json
+{
+  "taskType": "bugfix",
+  "secondaryType": "ui",
+  "domainsTouched": ["crm/gestione-operatori", "primitivi UI condivisi"],
+  "adversarialVerifiers": {
+    "count": 3,
+    "passes": [
+      { "id": "v5", "charter": "UI pass: shared Dialog across every consumer: initial focus with Radix focusFirst semantics (stop when focus moves, links and hidden skipped, select only on the focused input), ExportDialog on the active tab; symmetric header padding below sm and the CustomerBulkDialog success header; last round's passes.", "complexity": "high" },
+      { "id": "v4", "charter": "UI pass on the deactivation dialog: query-error row at root font 16 and 20 px, 280-1440 px, nothing past the content box; header padding; last round's passes including a real deactivation by keyboard.", "complexity": "high" },
+      { "id": "v3", "charter": "Client state: pruneOperatorsToEdit from an effect on data; edits of gone rows removed and not resurfacing, edits of present rows untouched; mutants.", "complexity": "medium" }
+    ]
+  },
+  "taskComplexity": "high",
+  "reviewImpact": "critical",
+  "humanInLoop": true,
+  "nextStep": "v5 and v4 on the strongest model, v3 balanced; v4 and v5 share the live dev server read-only."
+}
+```
+
+### Classifier rationale
+
+Il checklist del terzo giro chiedeva un quarto giro di v5 e v4; v3 si aggiunge per lo store. v6 non gira: `toast.tsx` non cambia.
+
+### Overrides applied
+
+Classificatore non rilanciato, come nei giri di correzione precedenti. v3 sul modello bilanciato: la modifica allo store è una funzione e un effetto.

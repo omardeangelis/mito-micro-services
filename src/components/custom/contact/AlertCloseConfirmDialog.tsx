@@ -85,7 +85,7 @@ export function AlertCloseConfirmDialog({
             {shown.message}
           </p>
         ) : null}
-        <DialogFooter className="gap-2 sm:gap-0">
+        <DialogFooter>
           <Button ref={cancelRef} variant="outline" onClick={onCancel}>
             Annulla
           </Button>
