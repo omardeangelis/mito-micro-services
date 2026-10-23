@@ -13,20 +13,32 @@ export function ExportDownload({
   period: ExportPeriod
 }) {
   const [saving, setSaving] = useState(false)
+  const [failed, setFailed] = useState(false)
   const download = async () => {
     setSaving(true)
+    setFailed(false)
     try {
       // `xlsx` is heavy: it loads only when an admin asks for the file
       const { downloadCallStats } =
         await import("@/lib/export/callStatsWorkbook")
       downloadCallStats(stats, period)
+    } catch (error) {
+      console.error("Export download failed:", error)
+      setFailed(true)
     } finally {
       setSaving(false)
     }
   }
   return (
-    <Button onClick={download} disabled={saving}>
-      Scarica Excel
-    </Button>
+    <div className="flex items-center gap-2">
+      {failed && (
+        <span role="alert" className="text-sm text-red-600">
+          File non creato, riprova
+        </span>
+      )}
+      <Button onClick={download} disabled={saving}>
+        Scarica Excel
+      </Button>
+    </div>
   )
 }

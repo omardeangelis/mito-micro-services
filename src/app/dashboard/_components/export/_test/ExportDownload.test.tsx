@@ -57,4 +57,22 @@ describe("ExportDownload", () => {
       ["Totale", 4, 3, 1, 1],
     ])
   })
+
+  it("says so when the file can't be made", async () => {
+    mocks.writeFile.mockImplementationOnce(() => {
+      throw new Error("disk full")
+    })
+    vi.spyOn(console, "error").mockImplementation(() => undefined)
+    render(
+      <ExportDownload
+        stats={stats}
+        period={{ from: "2026-09-24", to: "2026-10-23" }}
+      />
+    )
+    await userEvent.click(screen.getByRole("button", { name: "Scarica Excel" }))
+
+    expect((await screen.findByRole("alert")).textContent).toBe(
+      "File non creato, riprova"
+    )
+  })
 })
