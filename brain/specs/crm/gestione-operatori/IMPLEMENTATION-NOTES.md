@@ -27,7 +27,7 @@ updated: 2026-10-23
 ## Summary
 
 - Esecuzione avviata il 2026-10-22 con `implement-spec`. Perimetro deciso con Omar: tutte le PR tranne la P2 (bloccata dalle 2 settimane di P1 in prod), con obiettivo **staging**.
-- Chiusa il 2026-10-23. Tutte le PR del perimetro sono scritte, con gate completi verdi e review sui branch: PR 1 `-pr1` (e360f4b), PR 2 `-pr2` (ac85739), PR 3 `-pr3` (40e2e37), PR 4 `-pr4` (97b8ae6), PR 5 `-pr5` (cb51313), P1 `-p1` (1471ece). Nessuna PR aperta su GitHub: le apre Omar.
+- Chiusa il 2026-10-23. Tutte le PR del perimetro sono scritte, con gate completi verdi e review sui branch: PR 1 `-pr1` (e360f4b), PR 2 `-pr2` (ac85739), PR 3 `-pr3` (40e2e37), PR 4 `-pr4` (97b8ae6), PR 5 `-pr5` (cb51313), P1 `-p1` (1471ece). Il 2026-10-23, su richiesta di Omar, la pila (PR 1 → PR 5), la P1 e la documentazione sono unite con merge nel branch `claude/great-carson-o6qn17`, aperto verso `dev` come una sola PR: [#62](https://github.com/omardeangelis/mito-micro-services/pull/62). Gate completi verdi sull'albero unito a `dev` (2756 test).
 - Review: PR 2, P1 e PR 4 SHIP. PR 5: quattro giri; il MAJOR e i MINOR del quarto sono corretti in cb51313 senza un quinto giro, per decisione di Omar, quindi l'ultimo verdetto registrato resta DO NOT SHIP.
 - Restano agli umani: la revisione di Leonardo (PR 2 e 4), l'applicazione della migrazione su staging prima della PR 3, le PR e i merge, OQ2. La P2 parte almeno 2 settimane dopo la P1 in prod.
 
@@ -137,7 +137,7 @@ Checklist per gli umani, in ordine. Ogni passo dipende da quelli prima.
 
 1. **OQ2** (Omar): decidere chi diventa admin e chi può disattivare. Non blocca il codice, ma va deciso prima di dare la funzione agli admin di prod.
 2. **Revisione di Leonardo** (AC29a): PR 2 (`-pr2`, middleware dei permessi) e PR 4 (`-pr4`, ruoli, login, sessioni, disattivazione). Le cose da guardare per prime: `resolveActor`, il guard della sessione in `auth.ts`, la regola "prima gli utenti, poi i clienti", la deviazione di AC9.
-3. **PR su GitHub** (Omar), una per branch, verso `dev`, nell'ordine della pila: PR 1, PR 2, PR 3, PR 4, PR 5. La P1 è indipendente. La CI di GitHub rifà i gate (AC29).
+3. **PR su GitHub:** aperta una sola PR verso `dev` con la pila, la P1 e la documentazione: [#62](https://github.com/omardeangelis/mito-micro-services/pull/62). La CI di GitHub rifà i gate (AC29); il merge resta a Omar, dopo i passi 2 e 4.
 4. **Migrazione su staging prima della PR 3** (Omar): `20261022182741_colossal_lilith` applicata su staging, poi il merge della PR 3. Al momento di applicarla, nessuna PR aperta deve avere una migrazione generata prima del 2026-10-22 18:27 (D7). Stesso ordine per prod.
 5. **Dopo il merge della PR 4 in `dev`**: TD4 di [[chore/migrazione-effect]] §7 passa da `[PREVISTO]` a `[OPEN]`.
 6. **Prova a occhio su staging, colori** (PR 5 cambia tre token per tutta l'app): `--destructive` da `0 84.2% 60.2%` a `0 73.7% 41.8%` (rosso più scuro: bottoni di eliminazione, messaggi d'errore, toast d'errore), `--success` da `158 60% 48%` a `163 94% 24%` (verde più scuro: toast di successo, icone), `--muted-foreground` da 45,1% a 40% di luminosità (testi secondari un po' più scuri). Il contrasto ora passa WCAG; resta da approvare l'effetto.
