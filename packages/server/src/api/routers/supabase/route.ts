@@ -1,5 +1,4 @@
 import { createTRPCRouter, protectedProcedure } from "../../trpc"
-import { deleteExportFiles } from "../../../services/cron/deleteExport"
 import { Storage, StorageLive } from "../../../services/storage/index"
 import { Effect, Either } from "effect"
 import { z } from "zod"
@@ -9,6 +8,13 @@ const XLSX_CONTENT_TYPE =
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
 const exportKey = (filePathName: string) => `${EXPORT_PATH}/${filePathName}`
+
+/**
+ * The files under export/ a user may download: the errors of an import
+ * (`formatFileNameDate("error-import")`). The old exports of calls and
+ * notes, still in the bucket until the nightly cleanup, stay out of reach.
+ */
+const IMPORT_ERROR_FILE = /^error-import-\d{2}-\d{2}-\d{4}\.xlsx$/
 
 /** Runs a storage program; a failure comes back as `Left`, not thrown. */
 const runStorage = <A, E>(program: Effect.Effect<A, E, Storage>) =>
@@ -46,6 +52,8 @@ export const storageRouter = createTRPCRouter({
       const { filePathName } = input
       if (!filePathName)
         return new Response("File name not provided", { status: 400 })
+      if (!IMPORT_ERROR_FILE.test(filePathName))
+        return new Response("File not found", { status: 404 })
 
       const result = await runStorage(
         Effect.flatMap(Storage, (storage) =>
@@ -72,7 +80,4 @@ export const storageRouter = createTRPCRouter({
         headers: headers,
       }
     }),
-  deleteExportFile: protectedProcedure.mutation(async () => {
-    await deleteExportFiles()
-  }),
 })
