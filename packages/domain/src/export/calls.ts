@@ -51,7 +51,9 @@ export type OperatorCalls = CallTotals & {
 }
 
 const byName = (a: OperatorCalls, b: OperatorCalls) =>
-  a.surname.localeCompare(b.surname, "it") || a.name.localeCompare(b.name, "it")
+  a.surname.localeCompare(b.surname, "it") ||
+  a.name.localeCompare(b.name, "it") ||
+  a.operatorId - b.operatorId
 
 /** The rows in the order of the export: more calls first, then by surname and name (AC12). */
 export const sortByCalls = (rows: readonly OperatorCalls[]): OperatorCalls[] =>

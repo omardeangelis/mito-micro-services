@@ -71,6 +71,14 @@ describe("sortByCalls", () => {
       "Verdi Anna",
     ])
   })
+
+  it("orders namesakes by operator id, so the order never depends on the query", () => {
+    const rows = [
+      row("Rossi", { operatorId: 9 }),
+      row("Rossi", { operatorId: 3 }),
+    ]
+    expect(sortByCalls(rows).map((r) => r.operatorId)).toEqual([3, 9])
+  })
 })
 
 describe("rankByAppointmentRate", () => {

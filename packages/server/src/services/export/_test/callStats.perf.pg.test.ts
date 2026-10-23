@@ -35,8 +35,8 @@ describe.skipIf(!hasTestDatabase || !process.env.PERF)(
         SELECT ${customer.id},
                (${ids}::int[])[1 + g % ${OPERATORS}],
                'state_change',
-               (ARRAY['list', 'detail', 'bulk'])[1 + g % 3]::task_event_source,
-               (ARRAY['chiamare', 'richiamare', 'app.to'])[1 + g % 3]::task_status,
+               (ARRAY['list', 'detail', 'bulk'])[1 + (g / 7) % 3]::task_event_source,
+               (ARRAY['chiamare', 'richiamare', 'app.to'])[1 + (g / 11) % 3]::task_status,
                (ARRAY['app.to', 'non risponde', 'richiamare', 'caricato'])[1 + g % 4]::task_status,
                now() - (g % 90) * interval '1 day' - (g % 1440) * interval '1 minute'
         FROM generate_series(1, ${ROWS}) AS g`
@@ -48,7 +48,11 @@ describe.skipIf(!hasTestDatabase || !process.env.PERF)(
       const caller = createTestCaller(admin)
       const period = { from: first, to: last }
 
-      await caller.export.callStats(period)
+      // The warm-up also proves the query counts the seed, so a query that
+      // returns nothing can't pass on speed alone.
+      const warmUp = await caller.export.callStats(period)
+      expect(warmUp.rows).toHaveLength(30)
+      expect(warmUp.totals.calls).toBeGreaterThan(0)
       const times: number[] = []
       for (let i = 0; i < 10; i++) {
         const started = performance.now()
