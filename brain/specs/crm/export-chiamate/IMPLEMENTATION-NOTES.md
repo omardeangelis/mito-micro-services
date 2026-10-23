@@ -86,6 +86,6 @@ Adversarial review su #65: SHIP dai tre pass, report in [[specs/crm/export-chiam
 
 ## Remaining Work
 
-- Revisione di Leonardo su #65, #66 e #67 (permessi), poi merge in ordine fino al go/no-go.
+- Unite su dev il 23/10/2026 con l'ok di Leonardo (#57, #61, #65, #67 con dentro #66). Prod dopo il go/no-go della migrazione GCP.
 - Controllo nel browser con un login reale (admin e operatore).
 - Follow-up in [[tech-debt/crm/export-chiamate]].
