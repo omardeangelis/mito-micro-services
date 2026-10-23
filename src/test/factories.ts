@@ -6,6 +6,7 @@ import { practices } from "@mito/db/schema/pratiche"
 import { customerToPratica } from "@mito/db/schema/relations/customerToPratica"
 import { operators } from "@mito/db/schema/operators"
 import { alert, task } from "@mito/db/schema/task"
+import { taskEventLog } from "@mito/db/schema/taskEventLog"
 import { users } from "@mito/db/schema/users"
 
 // `db` is the test database of the project the file runs in: PGlite
@@ -120,5 +121,29 @@ export async function createAlert(
     .update(task)
     .set({ alertId: created!.id })
     .where(eq(task.id, values.taskId))
+  return created!
+}
+
+/**
+ * A row of the contacts log: by default a manual change of state from the
+ * list, on a new customer, at the current time.
+ */
+export async function createTaskEvent(
+  values: Partial<typeof taskEventLog.$inferInsert> & {
+    actorOperatorId: number
+  }
+) {
+  const customerId = values.customerId ?? (await createCustomer()).id
+  const [created] = await db
+    .insert(taskEventLog)
+    .values({
+      action: "state_change",
+      source: "list",
+      fromState: "chiamare",
+      toState: "app.to",
+      ...values,
+      customerId,
+    })
+    .returning()
   return created!
 }

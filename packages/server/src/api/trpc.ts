@@ -183,3 +183,9 @@ const enforceIsAdmin = t.middleware(async ({ ctx, next }) => {
 })
 
 export const adminProcedure = operatorProcedure.use(enforceIsAdmin)
+
+/**
+ * An admin, with or without an operator row: every other signed-in user gets
+ * FORBIDDEN. For procedures that don't need `ctx.operator`.
+ */
+export const adminSessionProcedure = protectedProcedure.use(enforceIsAdmin)
