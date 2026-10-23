@@ -57,19 +57,19 @@ CI ─▶ Plan ─┬─(migrazioni nuove)─▶ Approve [env staging-db] ─▶
 | # | Decisione | Fonte |
 |---|---|---|
 | D1 | Approvazione + backup solo quando il deploy porta migrazioni nuove | Leonardo, card del 23/10 |
-| D2 | Un messaggio Slack a ogni deploy, riuscito, fallito o annullato, su un canale nuovo dedicato a staging | Leonardo, 23/10 |
+| D2 | Un messaggio Slack a ogni deploy, riuscito, fallito o annullato, su un canale nuovo dei deploy, unico per staging e prod, con l'ambiente in ogni messaggio | Leonardo, 23/10 |
 | D3 | Pulizia settimanale, 7 giorni, sempre gli ultimi 3 | Leonardo, 23/10 ("ok") |
 | D4 | Le migrazioni "nuove" si calcolano dal repo (diff dal commit deployato, label sul servizio), non dal DB | Il DB lo legge solo il job migrazioni; il controllo d'ordine (PR A) copre il caso in cui il repo e il DB non coincidono |
 | D5 | Approvazione con environment GitHub `staging-db` a reviewer obbligatori | Repo pubblico: disponibile nel piano gratuito; nessuna dipendenza esterna |
 | D6 | Backup con ruolo custom (`cloudsql.backupRuns.create`, `.get`, `cloudsql.instances.get`) condizionato all'istanza di staging; pulizia con un service account suo (`backupRuns.list`, `.delete`) | AC15, AC17d: nessun ruolo predefinito è così stretto |
-| D7 | Webhook Slack come secret di repository `SLACK_DEPLOY_STAGING_WEBHOOK_URL`, letto solo da Plan, Report e pulizia | AC23; i job di deploy non ne hanno bisogno |
+| D7 | Webhook Slack come secret di repository `SLACK_DEPLOY_WEBHOOK_URL`, letto solo da Plan, Report e pulizia | AC23; i job di deploy non ne hanno bisogno |
 | D8 | Logica testabile (pending, messaggio, scelta dei backup da cancellare) in moduli TypeScript puri sotto `apps/api/gcp/lib/`, eseguiti con `tsx`; YAML e shell solo come colla | `tdd`: test sull'interfaccia pubblica |
 | D9 | Nessun backlog esterno: il progetto non ne usa uno; `backlog_item_*` = n/a | Come i piani precedenti |
 | D10 | Scadenza dell'approvazione: quella di GitHub (30 giorni), non 24 ore. **Da confermare con Leonardo** | GitHub non offre una scadenza più corta per i reviewer obbligatori; un deploy in attesa blocca solo quelli dopo, e il messaggio di AC21 lo rende visibile. AC11 resta valido |
 
 ## 5. Assunzioni e vincoli
 
-- Omar crea: environment `staging-db` (reviewer Leonardo e Omar, branch `dev`), environment `staging-backups` (branch `dev`), il secret `SLACK_DEPLOY_STAGING_WEBHOOK_URL`, e "Require branches to be up to date" nel ruleset di `dev`.
+- Omar crea: environment `staging-db` (reviewer Leonardo e Omar, branch `dev`), environment `staging-backups` (branch `dev`), il secret `SLACK_DEPLOY_WEBHOOK_URL`, e "Require branches to be up to date" nel ruleset di `dev`.
 - Leonardo crea il canale Slack e il webhook, poi esegue dal Mac `setup-ci-deploy.sh` (ruolo backup, label) e `setup-backup-cleanup.sh` (PR D).
 - Il provider WIF accetta solo `repository_id` 1268249182 e `refs/heads/dev`: i workflow pianificati girano su `dev`, quindi la pulizia rientra.
 - Il repo è pubblico: i riepiloghi contengono solo nomi e SQL delle migrazioni (già pubblici) e l'id del backup.
@@ -333,7 +333,7 @@ Ondate: A e B si possono scrivere in parallelo; C dopo B; D dopo C. Esecuzione `
 | AC16 | TC4 |
 | AC17a–AC17c | TD1, TD2 |
 | AC17d | TD2, TD3 |
-| AC18–AC20, AC22, AC23 | TB1, TB2 |
+| AC18–AC20, AC18a, AC22, AC23 | TB1, TB2 |
 | AC21 | TC3 |
 
 ## 11. Strategia di test

@@ -37,6 +37,8 @@ Scelta sulla proposta (approvazione manuale prima delle migrazioni): **"Approvaz
 
 > il cron puo girare anche ogni settimana
 
+> pensavo che il canale puo esser euno solo e poi ci facciamo loggare dentro sia staging che prod, e lo indichiamo nel messaggio che vinene loggato
+
 ---
 
 ## Context
@@ -98,7 +100,8 @@ Ruoli coinvolti: gli sviluppatori che uniscono su `dev` (Leonardo, Omar), che ap
 
 ### Avvisi Slack
 
-- **AC18.** Ogni run del deploy di staging avviata da un merge su `dev` o a mano termina con un solo messaggio finale sul canale Slack dedicato ai deploy di staging, sia che riesca, sia che fallisca, sia che venga annullata. Il messaggio di attesa di AC21 si aggiunge a quello finale.
+- **AC18.** Ogni run del deploy di staging avviata da un merge su `dev` o a mano termina con un solo messaggio finale sul canale Slack dei deploy (unico per staging e prod), con l'ambiente indicato nel messaggio, sia che riesca, sia che fallisca, sia che venga annullata. Il messaggio di attesa di AC21 si aggiunge a quello finale.
+- **AC18a.** Ogni messaggio indica l'ambiente (staging) nella prima riga.
 - **AC19.** Il messaggio di un deploy riuscito contiene: il commit (sha breve e titolo), chi ha avviato la run (chi ha unito, o chi l'ha lanciata a mano), la revisione Cloud Run che serve il traffico, quante migrazioni sono state applicate, l'identificativo del backup se creato, e il link alla run.
 - **AC20.** Il messaggio di un deploy fallito o annullato contiene la fase in cui si è fermato, il commit, chi ha avviato la run e il link alla run. Le fasi distinte sono: CI, immagine, approvazione, backup, migrazioni, revisione Cloud Run, `/health`, Vercel.
 - **AC21.** Quando il deploy si ferma ad attendere l'approvazione (AC7), viene inviato anche un messaggio che lo dice, con il numero di migrazioni in attesa e il link alla run.
@@ -114,7 +117,7 @@ Ruoli coinvolti: gli sviluppatori che uniscono su `dev` (Leonardo, Omar), che ap
 - Le migrazioni restano solo additive: la revisione precedente continua a servire mentre girano.
 - Un solo deploy di staging alla volta, e al massimo uno in coda: mentre un deploy attende l'approvazione, quello in coda aspetta, e un merge successivo lo sostituisce (la run sostituita risulta annullata). Il deploy che parte dopo porta comunque tutto il codice di `dev`.
 - Niente chiavi di service account: l'accesso a GCP resta tramite Workload Identity Federation.
-- Gli avvisi usano un Incoming Webhook di Slack, come i report dei cron, su un canale nuovo dedicato ai deploy di staging. Prod avrà un suo canale gemello, nella sua spec.
+- Gli avvisi usano un Incoming Webhook di Slack, come i report dei cron, su un canale nuovo dei deploy, unico per staging e prod: ogni messaggio dice l'ambiente.
 
 ---
 
@@ -133,7 +136,7 @@ Ruoli coinvolti: gli sviluppatori che uniscono su `dev` (Leonardo, Omar), che ap
 
 | # | Question | Affects | Owner | Status |
 |---|----------|---------|-------|--------|
-| 1 | Su quale canale Slack vanno gli avvisi? | AC18–AC21 | Leonardo | Chiusa: canale nuovo dedicato ai deploy di staging, duplicato poi per prod |
+| 1 | Su quale canale Slack vanno gli avvisi? | AC18–AC21 | Leonardo | Chiusa: un canale nuovo dei deploy, unico per staging e prod, con l'ambiente nel messaggio |
 | 2 | Dopo quanto scade un'approvazione non data? GitHub la fa scadere dopo 30 giorni e non permette una scadenza più corta (vedi D10 del piano). Proposta: tenere i 30 giorni. | AC11 | Leonardo | Open |
 | 3 | Per quanto si tengono i backup creati dal deploy? | AC17a | Leonardo | Chiusa: li cancella un job pianificato di GitHub. Una volta a settimana, 7 giorni, sempre gli ultimi 3 (Leonardo, "ok") |
 
@@ -148,5 +151,5 @@ Ruoli coinvolti: gli sviluppatori che uniscono su `dev` (Leonardo, Omar), che ap
 | Messaggio Slack a ogni deploy, riuscito o fallito | Leonardo, 23/10/2026: "logga sempre, sia che vada bene o male". Un messaggio mancante è anch'esso un segnale, come per i cron. |
 | Prima del merge Claude controlla e rigenera le migrazioni | Leonardo, 23/10/2026: lui e Omar uniscono solo tramite Claude. Regola in `AGENTS.md` (PR #68); questa spec aggiunge i controlli automatici. |
 | Chi unisce può approvare il proprio deploy | Con due sviluppatori, richiedere l'altro bloccherebbe staging quando uno dei due è assente. |
-| Canale Slack dedicato ai deploy di staging | Leonardo, 23/10/2026: "ne facciamo uno ad hoc, che poi duplicheremo per prod". |
+| Un canale Slack dei deploy, unico per staging e prod, con l'ambiente nel messaggio | Leonardo, 23/10/2026: prima "ne facciamo uno ad hoc, che poi duplicheremo per prod", poi "il canale puo essere uno solo [...] e lo indichiamo nel messaggio". |
 | Pulizia dei backup con un job pianificato di GitHub, con un'identità separata | Leonardo, 23/10/2026: "una volta ogni tot gira un cron di github che li elimina". L'identità separata mantiene il deployer senza permesso di cancellare. |
