@@ -346,3 +346,8 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 - Created spec: [[specs/crm/export-chiamate/SPEC]]
 - Domain: crm
 - Status: Draft
+
+## [2026-10-23] plan | Export chiamate per operatore, solo admin
+- Plan: [[specs/crm/export-chiamate/PLAN]]
+- 12 task in 4 PR (A: #61; B: dominio, servizio, procedura; C+D: UI e rimozione del vecchio export)
+- Gate: SHIP al secondo giro

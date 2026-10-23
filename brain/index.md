@@ -45,7 +45,7 @@ _empty_
 | crm | [[specs/crm/sezione-contatti/SPEC]] | Draft |
 | crm | [[specs/crm/filtri-sql-sicuri/SPEC]] | Draft |
 | crm | [[specs/crm/seeder-locale/SPEC]] | Implemented (piano: [[specs/crm/seeder-locale/PLAN]], review: [[specs/crm/seeder-locale/REPORT]]) |
-| crm | [[specs/crm/export-chiamate/SPEC]] | Draft |
+| crm | [[specs/crm/export-chiamate/SPEC]] | Draft (piano: [[specs/crm/export-chiamate/PLAN]]) |
 
 - [[specs/crm/crm-specs|crm-specs]] — CRM spec page map
 
