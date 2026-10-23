@@ -2,6 +2,7 @@ import { unstable_noStore as noStore } from "next/cache"
 import { PracticesTable } from "@/app/dashboard/pratiche/_components/PraticesTable"
 import { PraticheTableColumns } from "./_components/TableColumn"
 import { api } from "@/trpc/server"
+import { readRequestPreferences } from "@/lib/preferences/server"
 import { type ServerPageDefaultProps } from "@/lib/types"
 import { getUrlParmsWithMultipleValue } from "@/lib/utils"
 import {
@@ -69,7 +70,7 @@ export default async function ParticheHome({
     filter: filter,
   })
 
-  const { preferences } = await api.user.getUserPreference.query()
+  const preferences = readRequestPreferences()
 
   const defaultColumns = preferences?.practicesTableVisibleColumns?.reduce(
     (acc, column) => {

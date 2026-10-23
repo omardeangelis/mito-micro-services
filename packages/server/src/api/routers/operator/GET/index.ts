@@ -1,22 +1,20 @@
-import { operatorProcedure, protectedProcedure } from "../../../trpc"
-import { users } from "@mito/db/schema/users"
-import { operators } from "@mito/db/schema/operators"
-import { eq } from "drizzle-orm"
+import {
+  adminProcedure,
+  operatorProcedure,
+  protectedProcedure,
+} from "../../../trpc"
 import { z } from "zod"
-import { operatorSelectCompleteResponse } from "@mito/domain/constants/schema"
+import { runTrpc } from "../../../../effect/trpc"
+import { deactivationImpact } from "../../../../services/operator/deactivate"
+import {
+  getOperatorById as getOperatorByIdService,
+  getPublicOperator,
+  listActiveOperators,
+  listDeactivationTargets,
+} from "../../../../services/operator/queries"
 
-export const getAllUniqueOperators = protectedProcedure.query(
-  async ({ ctx }) => {
-    const { db } = ctx
-    const allOperators = await db
-      .selectDistinct({
-        ...operatorSelectCompleteResponse,
-        role: users.role,
-      })
-      .from(operators)
-      .innerJoin(users, eq(operators.userId, users.id))
-    return allOperators
-  }
+export const getAllUniqueOperators = protectedProcedure.query(() =>
+  runTrpc(listActiveOperators())
 )
 
 const getOperatorByIdInput = z.object({
@@ -25,35 +23,31 @@ const getOperatorByIdInput = z.object({
 
 export const getOperatorById = protectedProcedure
   .input(getOperatorByIdInput)
-  .query(async ({ ctx, input }) => {
-    const { db } = ctx
-    const operator = await db
-      .select({
-        ...operatorSelectCompleteResponse,
-        role: users.role,
-      })
-      .from(operators)
-      .innerJoin(users, eq(operators.userId, users.id))
-      .where(input.id ? eq(operators.id, input.id) : undefined)
-    return operator[0]
-  })
+  .query(({ input }) => runTrpc(getOperatorByIdService(input.id)))
 
 export const getUserOperator = operatorProcedure.query(async ({ ctx }) => {
   const { operator } = ctx
   return operator
 })
 
-export const getUserPublicOperator = protectedProcedure.query(
-  async ({ ctx }) => {
-    const { db, session } = ctx
-    const operator = await db
-      .select({
-        id: operators.id,
-        name: operators.name,
-        surname: operators.surname,
-      })
-      .from(operators)
-      .where(eq(operators.userId, session.user.id))
-    return operator[0]
-  }
+export const getUserPublicOperator = protectedProcedure.query(({ ctx }) =>
+  runTrpc(getPublicOperator(ctx.session.user.id))
 )
+
+/**
+ * An operator id. It is a Postgres `integer`: a larger one fails validation
+ * (BAD_REQUEST) instead of the query (a 500).
+ */
+const operatorIdInput = z.number().int().positive().max(2_147_483_647)
+
+const deactivationInput = z.object({
+  operatorId: operatorIdInput,
+})
+
+export const getDeactivationImpact = adminProcedure
+  .input(deactivationInput)
+  .query(({ input }) => runTrpc(deactivationImpact(input.operatorId)))
+
+export const getOperatorsForDeactivation = adminProcedure
+  .input(deactivationInput)
+  .query(({ input }) => runTrpc(listDeactivationTargets(input.operatorId)))

@@ -36,6 +36,14 @@ export const describeContactError = (error: unknown): string => {
       return "Non puoi cambiare l'operatore di questo cliente"
     case "HANDOVER_SAME_OPERATOR":
       return "Il cliente è già assegnato a questo operatore"
+    case "OPERATOR_DISABLED":
+      return "Utente disattivato"
+    case "OPERATOR_IS_ADMIN":
+      return "Declassa l'admin a operatore prima di disattivarlo"
+    case "CANNOT_DEACTIVATE_SELF":
+      return "Non puoi disattivare te stesso"
+    case "LAST_ADMIN":
+      return "Deve restare almeno un admin"
     case "OPERATOR_NOT_FOUND":
       return "Operatore non valido"
     case "CONTACT_NOT_FOUND":

@@ -39,14 +39,27 @@ function Actor() {
   return <p>{actor ? `${actor.role} ${actor.operatorId}` : "nessuno"}</p>
 }
 
-const stored = () =>
-  JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "null") as {
-    state: Record<string, unknown>
-  } | null
+const cookie = (name: string) => {
+  const value = document.cookie
+    .split("; ")
+    .find((entry) => entry.startsWith(`${name}=`))
+    ?.slice(name.length + 1)
+  return value === undefined
+    ? undefined
+    : (JSON.parse(decodeURIComponent(value)) as unknown)
+}
+
+const clearCookies = () => {
+  for (const entry of document.cookie.split("; ")) {
+    const name = entry.split("=")[0]
+    if (name) document.cookie = `${name}=; path=/; max-age=0`
+  }
+}
 
 describe("UserPreferenceProvider", () => {
   beforeEach(() => {
     localStorage.clear()
+    clearCookies()
     mocks.query = { data: undefined, isLoading: true }
   })
 
@@ -107,7 +120,7 @@ describe("UserPreferenceProvider", () => {
     expect(screen.getByText("ADMIN 1000")).not.toBeNull()
   })
 
-  it("keeps the table preferences in the browser, not who the user is", () => {
+  it("keeps the table preferences in the cookies, not who the user is", () => {
     mocks.query = {
       data: { role: "ADMIN", operatorId: 1000, preferences },
       isLoading: false,
@@ -118,9 +131,10 @@ describe("UserPreferenceProvider", () => {
       </UserPreferenceProvider>
     )
 
-    const state = stored()?.state
-    expect(state?.preferences).toEqual(preferences)
-    expect(state).not.toHaveProperty("role")
-    expect(state).not.toHaveProperty("operatorId")
+    expect(cookie("mito-pref-ds")).toBe(false)
+    expect(cookie("mito-pref-ct")).toEqual(["id"])
+    expect(cookie("mito-pref-pt")).toEqual([])
+    expect(document.cookie).not.toContain("ADMIN")
+    expect(localStorage.getItem(STORAGE_KEY)).toBeNull()
   })
 })

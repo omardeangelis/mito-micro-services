@@ -44,6 +44,10 @@ jobs:
         run: pnpm exec next lint
       - name: Type check
         run: pnpm exec tsc --noEmit
+      # Two branches that each generated a migration from the same schema:
+      # the migrator would skip one (packages/db/src/checkMigrations.ts)
+      - name: Migrations
+        run: pnpm db:check
 
   test:
     name: Test
