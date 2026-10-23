@@ -10,13 +10,9 @@ import {
   noAnswerState,
   sortByCalls,
   totalsOf,
-  type CallTotals,
-  type OperatorCalls,
+  type CallStats,
 } from "@mito/domain/export/calls"
 import { query } from "../../effect/db"
-
-/** The calls export of a period: one row per operator with calls, and the totals. */
-export type CallStats = { rows: OperatorCalls[]; totals: CallTotals }
 
 /** The changes made by hand: from the list or the detail of a contact. */
 const manualSources = ["detail", "list"] as const

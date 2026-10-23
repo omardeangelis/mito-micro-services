@@ -3,7 +3,7 @@ import { Suspense } from "react"
 import { DataSection } from "./_components/DataSection"
 import { TableSkeleton } from "@/components/custom/table/TableSkeleton"
 import { WorkerImportDialog } from "./_components/WorkerImportDialog"
-import { ExportDialog } from "./_components/ExportDialog"
+import { CallsSection } from "./_components/export/CallsSection"
 import { DataSectionSkeleton } from "./_components/AdminDataSection"
 import { type ServerPageProps } from "@/lib/types"
 import {
@@ -23,7 +23,6 @@ export default async function DashboardHome(
           <div className="dashboard-content rounded-lg bg-white">
             <div className="flex items-center justify-end gap-4">
               <WorkerImportDialog />
-              <ExportDialog />
             </div>
             <div className="mt-8">
               <div className="flex items-center gap-4">
@@ -36,6 +35,9 @@ export default async function DashboardHome(
                 </Suspense>
               </div>
             </div>
+            <Suspense fallback={<TableSkeleton rows={5} />}>
+              <CallsSection />
+            </Suspense>
             <div className="mt-8">
               <h2 className="text-2xl">Ultime Pratiche Aggiornate</h2>
               <div className="mt-4">

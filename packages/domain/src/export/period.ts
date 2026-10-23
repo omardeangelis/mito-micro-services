@@ -51,6 +51,12 @@ export function selectableDays(now: Date): { first: string; last: string } {
   }
 }
 
+/** The period the export opens on: the last 30 days, today included. */
+export function defaultPeriod(now: Date): ExportPeriod {
+  const today = romeDay(now)
+  return { from: addDays(today, -29), to: today }
+}
+
 /** The instants of a period: midnight in Rome of `from`, up to the midnight after `to` (excluded). */
 export function periodBounds(period: ExportPeriod): { start: Date; end: Date } {
   return {

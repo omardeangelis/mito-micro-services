@@ -1,7 +1,5 @@
 import { createTRPCRouter, protectedProcedure } from "../../trpc"
-import { deleteExportFiles } from "../../../services/cron/deleteExport"
 import { Storage, StorageLive } from "../../../services/storage/index"
-import { TRPCError } from "@trpc/server"
 import { Effect, Either } from "effect"
 import { z } from "zod"
 
@@ -11,12 +9,12 @@ const XLSX_CONTENT_TYPE =
 
 const exportKey = (filePathName: string) => `${EXPORT_PATH}/${filePathName}`
 
-// A name under export/: the date in it has slashes, but no ".." and no leading "/"
-const exportFileName = z
-  .string()
-  .min(1)
-  .max(300)
-  .refine((name) => !name.startsWith("/") && !name.split("/").includes(".."))
+/**
+ * The files under export/ a user may download: the errors of an import
+ * (`formatFileNameDate("error-import")`). The old exports of calls and
+ * notes, still in the bucket until the nightly cleanup, stay out of reach.
+ */
+const IMPORT_ERROR_FILE = /^error-import-\d{2}-\d{2}-\d{4}\.xlsx$/
 
 /** Runs a storage program; a failure comes back as `Left`, not thrown. */
 const runStorage = <A, E>(program: Effect.Effect<A, E, Storage>) =>
@@ -44,30 +42,6 @@ export const storageRouter = createTRPCRouter({
       // The bucket is private: the name, not a public URL, finds the file again
       return Either.isRight(result) ? filePathName : undefined
     }),
-  /**
-   * A signed URL where the browser uploads an export (PUT, with exactly this
-   * content type), instead of writing to the bucket with a public key.
-   */
-  createExportUploadUrl: protectedProcedure
-    .input(z.object({ filePathName: exportFileName }))
-    .mutation(async ({ input }) => {
-      const result = await runStorage(
-        Effect.flatMap(Storage, (storage) =>
-          storage.signedUploadUrl(exportKey(input.filePathName), {
-            contentType: XLSX_CONTENT_TYPE,
-          })
-        )
-      )
-      if (Either.isLeft(result)) {
-        console.error("Error signing the upload URL:", result.left.message)
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: "Upload URL not available",
-          cause: result.left,
-        })
-      }
-      return { url: result.right, contentType: XLSX_CONTENT_TYPE }
-    }),
   downloadExportFile: protectedProcedure
     .input(
       z.object({
@@ -78,6 +52,8 @@ export const storageRouter = createTRPCRouter({
       const { filePathName } = input
       if (!filePathName)
         return new Response("File name not provided", { status: 400 })
+      if (!IMPORT_ERROR_FILE.test(filePathName))
+        return new Response("File not found", { status: 404 })
 
       const result = await runStorage(
         Effect.flatMap(Storage, (storage) =>
@@ -104,7 +80,4 @@ export const storageRouter = createTRPCRouter({
         headers: headers,
       }
     }),
-  deleteExportFile: protectedProcedure.mutation(async () => {
-    await deleteExportFiles()
-  }),
 })
