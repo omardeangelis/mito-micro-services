@@ -14,13 +14,14 @@ import { ZodError } from "zod"
 
 import { getServerAuthSession } from "../auth"
 import { db } from "@mito/db"
-import { driverError } from "@mito/db/driverError"
-import { operators } from "@mito/db/schema/operators"
-import { eq } from "drizzle-orm"
 import { users } from "@mito/db/schema/users"
-import { operatorSelectCompleteResponse } from "@mito/domain/constants/schema"
+import { eq } from "drizzle-orm"
+import { driverError } from "@mito/db/driverError"
 import { supabaseClient } from "../client/supabase"
 import { contactErrorFromCause } from "@mito/domain/contact/errors"
+import { runTrpc } from "../effect/trpc"
+import { resolveActor } from "../services/auth/actor"
+import { operatorErrorToTrpc } from "../services/operator/errors"
 
 /**
  * 1. CONTEXT
@@ -144,48 +145,43 @@ export const protectedProcedure = publicProcedure.use(async ({ ctx, next }) => {
 })
 
 const enforceIsActiveOperator = t.middleware(async ({ ctx, next }) => {
-  const user = ctx.session!.user
-  const operator = await db
-    .select({
-      ...operatorSelectCompleteResponse,
-      role: users.role,
-    })
-    .from(operators)
-    .innerJoin(users, eq(operators.userId, users.id))
-    .where(eq(operators.userId, user.id))
-
-  if (!operator[0]) {
-    throw new TRPCError({ code: "BAD_REQUEST" })
-  }
+  const { operator, actor } = await runTrpc(
+    resolveActor(ctx.session!.user.id),
+    operatorErrorToTrpc
+  )
   return next({
     ctx: {
       ...ctx,
-      operator: operator[0],
+      operator,
+      actor,
     },
   })
 })
 
 export const operatorProcedure = protectedProcedure.use(enforceIsActiveOperator)
 
-const enforceIsAdmin = t.middleware(async ({ ctx, next }) => {
-  const user = ctx.session!.user
-  const admin = await db
-    .select({
-      role: users.role,
-    })
-    .from(users)
-    .where(eq(users.id, user.id))
-
-  if (!admin[0] || admin[0].role !== "ADMIN") {
+export const adminProcedure = operatorProcedure.use(async ({ ctx, next }) => {
+  if (ctx.actor.role !== "ADMIN") {
     throw new TRPCError({ code: "FORBIDDEN", message: "admin-only" })
   }
   return next()
 })
 
-export const adminProcedure = operatorProcedure.use(enforceIsAdmin)
+const enforceIsActiveAdmin = t.middleware(async ({ ctx, next }) => {
+  const [user] = await db
+    .select({ role: users.role, disabledAt: users.disabledAt })
+    .from(users)
+    .where(eq(users.id, ctx.session!.user.id))
+  if (user?.role !== "ADMIN" || user.disabledAt !== null) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "admin-only" })
+  }
+  return next()
+})
 
 /**
- * An admin, with or without an operator row: every other signed-in user gets
- * FORBIDDEN. For procedures that don't need `ctx.operator`.
+ * An active admin, with or without an operator row: every other signed-in
+ * user, a deactivated admin included, gets FORBIDDEN. For procedures that
+ * don't need `ctx.operator`.
  */
-export const adminSessionProcedure = protectedProcedure.use(enforceIsAdmin)
+export const adminSessionProcedure =
+  protectedProcedure.use(enforceIsActiveAdmin)

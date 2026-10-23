@@ -5,14 +5,21 @@ import ParticheHome from "../page"
 
 const api = vi.hoisted(() => ({
   getAllPratiche: vi.fn<[Record<string, unknown>], Promise<unknown>>(),
-  getUserPreference: vi.fn(),
+  cookies: new Map<string, string>(),
 }))
 
 vi.mock("@/trpc/server", () => ({
   api: {
     pratiche: { getAllPratiche: { query: api.getAllPratiche } },
-    user: { getUserPreference: { query: api.getUserPreference } },
   },
+}))
+vi.mock("next/headers", () => ({
+  cookies: () => ({
+    get: (name: string) => {
+      const value = api.cookies.get(name)
+      return value === undefined ? undefined : { name, value }
+    },
+  }),
 }))
 vi.mock("@/app/dashboard/pratiche/_components/PraticesTable", () => ({
   PracticesTable: () => null,
@@ -21,7 +28,7 @@ vi.mock("../_components/TableColumn", () => ({ PraticheTableColumns: [] }))
 
 beforeEach(() => {
   api.getAllPratiche.mockReset().mockResolvedValue({ data: [], total: [] })
-  api.getUserPreference.mockReset().mockResolvedValue({ preferences: null })
+  api.cookies.clear()
 })
 
 describe("pagina Pratiche, search_by", () => {
@@ -53,5 +60,30 @@ describe("pagina Pratiche, search_by", () => {
       q: "PR-2026",
       searchBy: "praticaId",
     })
+  })
+})
+
+describe("pagina Pratiche, colonne nascoste nel cookie (AC32)", () => {
+  const defaultColumnsFor = async (cookie: string | undefined) => {
+    api.cookies.clear()
+    if (cookie !== undefined) api.cookies.set("mito-pref-pt", cookie)
+    const element = (await ParticheHome({
+      params: { slug: "" },
+      searchParams: {},
+    })) as {
+      props: { children: { props: { dafaultColumns: unknown } } }
+    }
+    return element.props.children.props.dafaultColumns
+  }
+
+  it("nasconde le colonne del cookie, senza chiedere le preferenze al server", async () => {
+    expect(await defaultColumnsFor(JSON.stringify(["Sede"]))).toEqual({
+      Sede: false,
+    })
+  })
+
+  it("un cookie illeggibile vale come assente", async () => {
+    expect(await defaultColumnsFor("{non json")).toBeUndefined()
+    expect(await defaultColumnsFor(undefined)).toBeUndefined()
   })
 })

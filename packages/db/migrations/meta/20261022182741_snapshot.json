@@ -1,5 +1,5 @@
 {
-  "id": "c118a8cf-f73b-49d1-83bb-46928ea11ddd",
+  "id": "19d2b61b-2363-428d-8a9f-13c2cdc66fc4",
   "prevId": "e32b5b13-180f-40a7-bbc9-857cabb2a1d1",
   "version": "7",
   "dialect": "postgresql",
@@ -191,7 +191,10 @@
         "cron_run_job_day": {
           "name": "cron_run_job_day",
           "nullsNotDistinct": false,
-          "columns": ["job", "run_day"]
+          "columns": [
+            "job",
+            "run_day"
+          ]
         }
       },
       "policies": {},
@@ -207,7 +210,7 @@
           "type": "varchar",
           "primaryKey": true,
           "notNull": true,
-          "default": "'PklllWpNt7IV2Unfy6_8a'"
+          "default": "'kcpdEJfKBvN6rZvfZ1zTX'"
         },
         "fullname": {
           "name": "fullname",
@@ -412,8 +415,12 @@
           "name": "mito-deutsche_customers_chat_id_mito-deutsche_chat_id_fk",
           "tableFrom": "mito-deutsche_customers",
           "tableTo": "mito-deutsche_chat",
-          "columnsFrom": ["chat_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "chat_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -421,8 +428,12 @@
           "name": "mito-deutsche_customers_operator_id_mito-deutsche_operator_id_fk",
           "tableFrom": "mito-deutsche_customers",
           "tableTo": "mito-deutsche_operator",
-          "columnsFrom": ["operator_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "operator_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -432,12 +443,16 @@
         "mito-deutsche_customers_temp_id_unique": {
           "name": "mito-deutsche_customers_temp_id_unique",
           "nullsNotDistinct": false,
-          "columns": ["temp_id"]
+          "columns": [
+            "temp_id"
+          ]
         },
         "mito-deutsche_customers_unique_hash_unique": {
           "name": "mito-deutsche_customers_unique_hash_unique",
           "nullsNotDistinct": false,
-          "columns": ["unique_hash"]
+          "columns": [
+            "unique_hash"
+          ]
         }
       },
       "policies": {},
@@ -648,8 +663,12 @@
           "name": "mito-deutsche_practices_operator_id_mito-deutsche_operator_id_fk",
           "tableFrom": "mito-deutsche_practices",
           "tableTo": "mito-deutsche_operator",
-          "columnsFrom": ["operator_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "operator_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -657,8 +676,12 @@
           "name": "mito-deutsche_practices_chat_id_mito-deutsche_chat_id_fk",
           "tableFrom": "mito-deutsche_practices",
           "tableTo": "mito-deutsche_chat",
-          "columnsFrom": ["chat_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "chat_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -762,8 +785,12 @@
           "name": "mito-deutsche_account_userId_mito-deutsche_user_id_fk",
           "tableFrom": "mito-deutsche_account",
           "tableTo": "mito-deutsche_user",
-          "columnsFrom": ["userId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -771,7 +798,10 @@
       "compositePrimaryKeys": {
         "mito-deutsche_account_provider_providerAccountId_pk": {
           "name": "mito-deutsche_account_provider_providerAccountId_pk",
-          "columns": ["provider", "providerAccountId"]
+          "columns": [
+            "provider",
+            "providerAccountId"
+          ]
         }
       },
       "uniqueConstraints": {},
@@ -824,8 +854,12 @@
           "name": "mito-deutsche_session_userId_mito-deutsche_user_id_fk",
           "tableFrom": "mito-deutsche_session",
           "tableTo": "mito-deutsche_user",
-          "columnsFrom": ["userId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -884,10 +918,36 @@
           "type": "text",
           "primaryKey": false,
           "notNull": false
+        },
+        "disabled_at": {
+          "name": "disabled_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "disabled_by": {
+          "name": "disabled_by",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
         }
       },
       "indexes": {},
-      "foreignKeys": {},
+      "foreignKeys": {
+        "mito-deutsche_user_disabled_by_mito-deutsche_operator_id_fk": {
+          "name": "mito-deutsche_user_disabled_by_mito-deutsche_operator_id_fk",
+          "tableFrom": "mito-deutsche_user",
+          "tableTo": "mito-deutsche_operator",
+          "columnsFrom": [
+            "disabled_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
@@ -922,7 +982,10 @@
       "compositePrimaryKeys": {
         "mito-deutsche_verificationToken_identifier_token_pk": {
           "name": "mito-deutsche_verificationToken_identifier_token_pk",
-          "columns": ["identifier", "token"]
+          "columns": [
+            "identifier",
+            "token"
+          ]
         }
       },
       "uniqueConstraints": {},
@@ -1051,7 +1114,9 @@
         "mito-deutsche_operator_user_id_unique": {
           "name": "mito-deutsche_operator_user_id_unique",
           "nullsNotDistinct": false,
-          "columns": ["user_id"]
+          "columns": [
+            "user_id"
+          ]
         }
       },
       "policies": {},
@@ -1147,8 +1212,12 @@
           "name": "mito-deutsche_alert_resolved_by_mito-deutsche_operator_id_fk",
           "tableFrom": "mito-deutsche_alert",
           "tableTo": "mito-deutsche_operator",
-          "columnsFrom": ["resolved_by"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "resolved_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1286,8 +1355,12 @@
           "name": "mito-deutsche_task_customer_id_mito-deutsche_customers_id_fk",
           "tableFrom": "mito-deutsche_task",
           "tableTo": "mito-deutsche_customers",
-          "columnsFrom": ["customer_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "customer_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -1295,8 +1368,12 @@
           "name": "mito-deutsche_task_operator_id_mito-deutsche_operator_id_fk",
           "tableFrom": "mito-deutsche_task",
           "tableTo": "mito-deutsche_operator",
-          "columnsFrom": ["operator_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "operator_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -1304,8 +1381,12 @@
           "name": "mito-deutsche_task_alert_id_mito-deutsche_alert_id_fk",
           "tableFrom": "mito-deutsche_task",
           "tableTo": "mito-deutsche_alert",
-          "columnsFrom": ["alert_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "alert_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1446,8 +1527,12 @@
           "name": "mito-deutsche_task_event_log_customer_id_mito-deutsche_customers_id_fk",
           "tableFrom": "mito-deutsche_task_event_log",
           "tableTo": "mito-deutsche_customers",
-          "columnsFrom": ["customer_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "customer_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -1455,8 +1540,12 @@
           "name": "mito-deutsche_task_event_log_task_id_mito-deutsche_task_id_fk",
           "tableFrom": "mito-deutsche_task_event_log",
           "tableTo": "mito-deutsche_task",
-          "columnsFrom": ["task_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "task_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -1464,8 +1553,12 @@
           "name": "mito-deutsche_task_event_log_alert_id_mito-deutsche_alert_id_fk",
           "tableFrom": "mito-deutsche_task_event_log",
           "tableTo": "mito-deutsche_alert",
-          "columnsFrom": ["alert_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "alert_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -1473,8 +1566,12 @@
           "name": "mito-deutsche_task_event_log_actor_operator_id_mito-deutsche_operator_id_fk",
           "tableFrom": "mito-deutsche_task_event_log",
           "tableTo": "mito-deutsche_operator",
-          "columnsFrom": ["actor_operator_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "actor_operator_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -1482,8 +1579,12 @@
           "name": "mito-deutsche_task_event_log_from_operator_id_mito-deutsche_operator_id_fk",
           "tableFrom": "mito-deutsche_task_event_log",
           "tableTo": "mito-deutsche_operator",
-          "columnsFrom": ["from_operator_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "from_operator_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -1491,8 +1592,12 @@
           "name": "mito-deutsche_task_event_log_to_operator_id_mito-deutsche_operator_id_fk",
           "tableFrom": "mito-deutsche_task_event_log",
           "tableTo": "mito-deutsche_operator",
-          "columnsFrom": ["to_operator_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "to_operator_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1533,8 +1638,12 @@
           "name": "customers_to_pratiche_customer_id_mito-deutsche_customers_id_fk",
           "tableFrom": "customers_to_pratiche",
           "tableTo": "mito-deutsche_customers",
-          "columnsFrom": ["customer_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "customer_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -1542,8 +1651,12 @@
           "name": "customers_to_pratiche_pratica_id_mito-deutsche_practices_pratica_id_fk",
           "tableFrom": "customers_to_pratiche",
           "tableTo": "mito-deutsche_practices",
-          "columnsFrom": ["pratica_id"],
-          "columnsTo": ["pratica_id"],
+          "columnsFrom": [
+            "pratica_id"
+          ],
+          "columnsTo": [
+            "pratica_id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1551,7 +1664,10 @@
       "compositePrimaryKeys": {
         "customers_to_pratiche_customer_id_pratica_id_pk": {
           "name": "customers_to_pratiche_customer_id_pratica_id_pk",
-          "columns": ["customer_id", "pratica_id"]
+          "columns": [
+            "customer_id",
+            "pratica_id"
+          ]
         }
       },
       "uniqueConstraints": {},
@@ -1582,8 +1698,12 @@
           "name": "chat_to_operator_chat_id_mito-deutsche_chat_id_fk",
           "tableFrom": "chat_to_operator",
           "tableTo": "mito-deutsche_chat",
-          "columnsFrom": ["chat_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "chat_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -1591,8 +1711,12 @@
           "name": "chat_to_operator_operator_id_mito-deutsche_operator_id_fk",
           "tableFrom": "chat_to_operator",
           "tableTo": "mito-deutsche_operator",
-          "columnsFrom": ["operator_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "operator_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1600,7 +1724,10 @@
       "compositePrimaryKeys": {
         "chat_to_operator_chat_id_operator_id_pk": {
           "name": "chat_to_operator_chat_id_operator_id_pk",
-          "columns": ["chat_id", "operator_id"]
+          "columns": [
+            "chat_id",
+            "operator_id"
+          ]
         }
       },
       "uniqueConstraints": {},
@@ -1613,12 +1740,20 @@
     "public.cron_run_status": {
       "name": "cron_run_status",
       "schema": "public",
-      "values": ["running", "succeeded", "failed"]
+      "values": [
+        "running",
+        "succeeded",
+        "failed"
+      ]
     },
     "public.blacklist_status": {
       "name": "blacklist_status",
       "schema": "public",
-      "values": ["blacklisted", "whitelisted", "review"]
+      "values": [
+        "blacklisted",
+        "whitelisted",
+        "review"
+      ]
     },
     "public.source_value": {
       "name": "source_value",
@@ -1652,7 +1787,10 @@
     "public.UserRole": {
       "name": "UserRole",
       "schema": "public",
-      "values": ["ADMIN", "OPERATORE"]
+      "values": [
+        "ADMIN",
+        "OPERATORE"
+      ]
     },
     "public.task_status": {
       "name": "task_status",
@@ -1663,7 +1801,6 @@
         "app.to",
         "caricato",
         "richiamare",
-        "non risponde",
         "erogata",
         "nessuno",
         "followup"
@@ -1672,17 +1809,32 @@
     "public.task_event_action": {
       "name": "task_event_action",
       "schema": "public",
-      "values": ["state_change", "operator_reassign", "alert_resolved"]
+      "values": [
+        "state_change",
+        "operator_reassign",
+        "alert_resolved"
+      ]
     },
     "public.task_event_source": {
       "name": "task_event_source",
       "schema": "public",
-      "values": ["detail", "list", "bulk", "self_assign", "cron_alert"]
+      "values": [
+        "detail",
+        "list",
+        "bulk",
+        "self_assign",
+        "cron_alert",
+        "deactivation"
+      ]
     },
     "public.CustomerRole": {
       "name": "CustomerRole",
       "schema": "public",
-      "values": ["Intestatario", "Coobbligato", "Garante"]
+      "values": [
+        "Intestatario",
+        "Coobbligato",
+        "Garante"
+      ]
     }
   },
   "schemas": {},

@@ -2,6 +2,7 @@ import { unstable_noStore as noStore } from "next/cache"
 
 import { type ServerPageDefaultProps } from "@/lib/types"
 import { api } from "@/trpc/server"
+import { readRequestPreferences } from "@/lib/preferences/server"
 import { parse, toContactsInput } from "../_lib/searchParams"
 import { ContactFilters } from "./ContactFilters"
 import { ContactsListShell } from "./ContactsListShell"
@@ -14,15 +15,12 @@ export async function ContactsTableSection({
   noStore()
   const state = parse(searchParams)
 
-  const [
-    { contacts, previous, total, customerFilter },
-    { preferences },
-    operators,
-  ] = await Promise.all([
-    api.task.getContacts.query(toContactsInput(state)),
-    api.user.getUserPreference.query(),
-    api.operator.getAllUniqueOperators.query(),
-  ])
+  const [{ contacts, previous, total, customerFilter }, operators] =
+    await Promise.all([
+      api.task.getContacts.query(toContactsInput(state)),
+      api.operator.getAllUniqueOperators.query(),
+    ])
+  const preferences = readRequestPreferences()
 
   const hiddenColumns = preferences?.contactTableVisibleColumns ?? []
 
