@@ -56,6 +56,10 @@ updated: 2026-10-23
 | AC21 | met | T5 (#65) |
 | AC6, AC13–AC20 | open | PR C e D |
 
+## Review
+
+Adversarial review su #65: SHIP dai tre pass, report in [[specs/crm/export-chiamate/REPORT]]. Correzioni in 6567319.
+
 ## Remaining Work
 
 - PR C (T6, T7a–T7d) e PR D (T8), da unire insieme (D11).

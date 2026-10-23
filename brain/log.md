@@ -351,3 +351,8 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 - Plan: [[specs/crm/export-chiamate/PLAN]]
 - 12 task in 4 PR (A: #61; B: dominio, servizio, procedura; C+D: UI e rimozione del vecchio export)
 - Gate: SHIP al secondo giro
+
+## [2026-10-23] review | Export chiamate T1–T5 (PR #65)
+- Rubric: [[specs/crm/export-chiamate/RUBRIC]]; report: [[specs/crm/export-chiamate/REPORT]]
+- 3 pass, tutti SHIP; corretti due rilievi (test AC21, ordine tra omonimi), due in [[tech-debt/crm/export-chiamate]]
+- PR di permessi: la rivede Leonardo
