@@ -6,7 +6,7 @@ spec: gestione-operatori
 links:
   - "[[specs/crm/gestione-operatori/REPORT]]"
 created: 2026-10-22
-updated: 2026-10-22
+updated: 2026-10-23
 ---
 
 # Review Rubric: gestione-operatori
@@ -225,3 +225,43 @@ Il diff è quasi tutto UI, ma aggiunge un server action che chiunque può chiama
 ### Overrides applied
 
 Nessuno. Per v2 l'orchestratore ha fornito due sessioni di `mito_local` (un ADMIN e un OPERATORE) per provare l'accesso dal vivo.
+
+## [Round: 2026-10-23 — PR 5, correzioni del primo giro]
+
+### Change set under review
+
+- **Scope:** spec implementation (PR 5 del piano: correzioni della review, T5.2)
+- **Target:** branch `claude/great-carson-o6qn17-pr5`, testa dcea416
+- **Compared:** `001e861` → `dcea416` (12 file, +578/−85): `@admin/` (dialog, tabella, store, test dei server action), il primitivo condiviso `components/ui/dialog.tsx` e tre token `:root` di `styles/globals.css`
+
+### Routing rubric (review-classifier output, charter abbreviati)
+
+```json
+{
+  "taskType": "bugfix",
+  "secondaryType": "ui",
+  "domainsTouched": ["crm/gestione-operatori", "primitivi UI condivisi", "crm/sezione-contatti"],
+  "adversarialVerifiers": {
+    "count": 5,
+    "passes": [
+      { "id": "v3", "charter": "Client state re-check: rejected action resets submitting, pending role edit removed after deactivation, rows keyed by id, loading never stuck in the role change, currentOperatorId required, stale destination; lifecycle of deactivatedRef and unmount before close.", "complexity": "high" },
+      { "id": "v4", "charter": "UI pass re-check on the admin deactivation surface: rendered contrast of error text, Conferma in every state and success toast; query error state with Riprova; no layout jump; focus after a real deactivation on the heading; the X 'Chiudi' first in Tab, 24x24; 280-1440 px.", "complexity": "high" },
+      { "id": "v5", "charter": "UI pass: regression of the shared Dialog across every other consumer: initial focus unchanged vs 001e861, composition with consumers' own onOpenAutoFocus, gaps in the focusable selector, focus trap with the X first, X overlap, footer gap, width under 640 px, leftover 'Close' selectors; animation classes byte-identical.", "complexity": "high" },
+      { "id": "v6", "charter": "UI pass: app-wide regression of --destructive, --success, --muted-foreground: every consumer and state against WCAG 1.4.3 / 1.4.11, tints and opacity variants, divergence of .dark.", "complexity": "medium" },
+      { "id": "v7", "charter": "Test evidence for the round-1 v1/v2 MINORs: no production line of the actions changed; mutants on both error shapes, message vs code, UNKNOWN, and a non-admin procedure must be killed; the db test reaches the procedure context and runs in CI.", "complexity": "medium" }
+    ]
+  },
+  "taskComplexity": "high",
+  "reviewImpact": "critical",
+  "humanInLoop": true,
+  "nextStep": "v3, v4, v5 on the strongest model, v6 and v7 balanced; v4-v6 share the live dev server read-only. Human checklist: sign off the new red, green and grey across the main screens; open every Dialog consumer; a real deactivation with focus on the heading; record the change against the shared-primitives tech-debt entry."
+}
+```
+
+### Classifier rationale
+
+Le correzioni della feature si ricontrollano con v3 e v4. Le due modifiche ai primitivi condivisi arrivano fuori da questa spec, quindi hanno una passata ciascuna: v5 per il focus iniziale della Dialog, che ora gira in ogni dialog dell'app, e v6 per i tre token, usati in circa 17 file. I server action cambiano solo nei test: v7 è una passata sui test con i mutanti, e restano validi gli SHIP del primo giro su contratto d'errore e autorizzazione. Impatto critical perché il colore di ogni bottone `destructive` e di ogni toast di successo del CRM cambia: il contrasto si misura, la resa visiva la approva una persona.
+
+### Overrides applied
+
+Nessuno. I mutanti di v3 e v7 girano su copie del checkout (`wt-mut-v3`, `wt-mut-v7`), perché `next dev` serve `wt-code` alle passate UI nello stesso momento.

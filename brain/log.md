@@ -12,6 +12,13 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 
 <!-- Entries are appended by create-spec (spec creation) and docs-maintenance (ingest). Format:
 
+## [2026-10-23] review | Gestione operatori — PR 5, secondo giro
+- Report: [[specs/crm/gestione-operatori/REPORT]] (round PR 5, secondo giro)
+- Scope: spec
+- Verdict: DO NOT SHIP. I 5 MAJOR del primo giro sono chiusi; la passata sui primitivi condivisi trova i bottoni del footer attaccati in `AlertCloseConfirmDialog` e `CustomerHandoverDialog` da 640 px in su, e la X del toast di successo a 2,10:1 sul verde nuovo
+- Impact: critical
+- Verifiers: 5 (0 blocker, 2 major, 9 minor, 4 nit; 3 SHIP e 2 DO NOT SHIP)
+
 ## [2026-10-22] review | Gestione operatori — PR 5, disattivazione UI, primo giro
 - Report: [[specs/crm/gestione-operatori/REPORT]] (round PR 5, primo giro)
 - Scope: spec

@@ -8,7 +8,7 @@ links:
 ingested: false
 last_ingested: null
 created: 2026-10-22
-updated: 2026-10-22
+updated: 2026-10-23
 ---
 
 # Implementation Notes
@@ -64,6 +64,8 @@ updated: 2026-10-22
 | Gate di CI completi sulla PR 4 (`-pr4`, a0b45b4) | verdi: 2643 test, build, `api:build`, `api:smoke` | Postgres 15 in Docker sulla 54329; `cronCli.test.ts` saltato per costruzione (porta occupata dal Postgres dei test) |
 | Gate di CI completi sulla PR 5 (`-pr5`, 001e861) | verdi: 2669 test, build, `api:build`, `api:smoke` | dopo il merge di `-pr4` |
 | `agent-browser` sulla PR 5 (`next dev`, `mito_local`) | AC20a–AC23 verificati | dettagli nel log di T5.1 |
+| Gate di CI completi sulle correzioni della PR 5 (`-pr5`, dcea416) | verdi: 2692 test con i `*.pg.test.ts`, lint, tsc, build, `api:build`, `api:smoke` | |
+| `adversarial-review` PR 5, secondo giro | DO NOT SHIP: 0 BLOCKER, 2 MAJOR (spaziatura del footer della Dialog, X del toast di successo) | i 5 MAJOR del primo giro chiusi |
 | `adversarial-review` PR 4 | primo giro DO NOT SHIP; secondo giro (v4, v7) SHIP, 0 BLOCKER, 0 MAJOR | 3 MINOR: due commenti che promettono troppo, la deviazione di AC9 da accettare |
 
 ## Acceptance Criteria Status
@@ -76,8 +78,10 @@ updated: 2026-10-22
 
 - **Ripresa (stato al 2026-10-22, prima della compattazione):**
   - PR 4 (`-pr4`, a0b45b4): secondo giro della review fatto (SHIP), gate completi verdi. In attesa di Omar per i due MINOR sui commenti e per accettare la deviazione di AC9.
-  - PR 5 (`-pr5`, 001e861): merge di `-pr4`, gate e prova `agent-browser` fatti. Review primo giro DO NOT SHIP (REPORT): correzioni da fare dopo la decisione di Omar sul contrasto dei token condivisi, poi secondo giro di v3 e v4. Poi `docs-maintenance`, tech debt della feature, TD4 `[OPEN]`.
-  - `mito_local`: Arduino Pace (1004) e Romana Penzo (1006) disattivati dalle prove; due righe in `session` (un ADMIN, un OPERATORE) da cancellare a fine prova.
+  - PR 5 (`-pr5`, dcea416): correzioni del primo giro fatte (MAJOR, MINOR, token condivisi e Dialog). Secondo giro DO NOT SHIP con 2 MAJOR nei primitivi condivisi e 9 MINOR (REPORT): correzioni in attesa della decisione di Omar, poi terzo giro di v4, v5 e v6. Poi `docs-maintenance`.
+  - Debito della feature scritto in [[tech-debt/crm/gestione-operatori]]; voce "Contrasto e nomi nei primitivi condivisi" di [[tech-debt/crm/sezione-contatti]] aggiornata.
+  - TD4 di [[chore/migrazione-effect]] §7 resta `[PREVISTO]`: la regola del §7 lo porta a `[OPEN]` quando la PR 4 è in `dev`.
+  - `mito_local`: Arduino Pace (1004), Romana Penzo (1006) e Oddone Capecchi (1007) disattivati dalle prove; due righe in `session` (un ADMIN, un OPERATORE) da cancellare a fine prova.
   - Acceptance audit finale e finalizzazione della spec.
 
 - PR P2 (TP2.1, TP2.2): almeno 2 settimane dopo P1 in prod (AC34, AC35).
@@ -89,3 +93,4 @@ updated: 2026-10-22
 | 2026-10-22 | "Perché PR4 e 5 sono bloccate dalla migrazione su prod? Lavoriamo per migrare tutto su staging" | G3 diventa "PR 3 applicata sull'ambiente prima della PR 4"; PR 4 e 5 entrano nel perimetro |
 | 2026-10-22 | Un branch per PR | Branch impilati, elencati in Execution Mode |
 | 2026-10-22 | "correggi i due commenti sulla PR 4, accetto la deviazione di AC9, poi procedi con la PR 5" | 97b8ae6 su `-pr4`, merge in `-pr5`; AC9 con la deviazione dei contatti senza cliente |
+| 2026-10-23 | "Correggi i major i minor e i contrasti token qui" | dcea416 su `-pr5`: correzioni della feature, token `destructive`, `success`, `muted-foreground` e Dialog condivisa nella PR 5 |

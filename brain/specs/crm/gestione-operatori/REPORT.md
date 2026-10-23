@@ -4,8 +4,8 @@ type: review
 scope: spec
 spec: gestione-operatori
 review_target: "spec implementation, per PR (un round per PR)"
-base_ref: claude/great-carson-o6qn17-pr4 (97b8ae6)
-head_ref: claude/great-carson-o6qn17-pr5 (001e861)
+base_ref: claude/great-carson-o6qn17-pr5 (001e861)
+head_ref: claude/great-carson-o6qn17-pr5 (dcea416)
 verdict: do-not-ship
 review_impact: critical
 human_in_loop: true
@@ -17,7 +17,7 @@ links:
 ingested: false
 last_ingested: null
 created: 2026-10-22
-updated: 2026-10-22
+updated: 2026-10-23
 ---
 
 # Review Report: gestione-operatori
@@ -338,3 +338,72 @@ Obiezione più forte (v3 e v4, trovata in modo indipendente): `handleConfirm` de
 | AC21 | Met | |
 | AC22 | Unmet | dialog bloccato su un rifiuto della chiamata; messaggio d'errore sotto la soglia di contrasto |
 | AC23 | Met | il focus dopo il successo va alla riga successiva: AC23 lo chiede solo per `Esc` |
+
+## [Round: 2026-10-23 — PR 5, secondo giro]
+
+### Verdict
+
+**DO NOT SHIP** · impact: critical. Tre verificatori su cinque SHIP (v3 stato del client, v4 UI del dialog, v7 test dei server action); v5 (Dialog condivisa) e v6 (token) con un MAJOR ciascuno, tutti e due nei primitivi condivisi. I cinque MAJOR del primo giro sono chiusi.
+
+Obiezione più forte (v5): il footer della Dialog passa da `sm:space-x-2` a `gap-2`, ma `AlertCloseConfirmDialog` (la conferma di AC36) e `CustomerHandoverDialog` passavano `gap-2 sm:gap-0` per annullare la spaziatura vecchia. Ora quella classe toglie ogni spazio: da 640 px in su i due bottoni si toccano e l'anello di focus di "Annulla" entra nel bottone accanto. Misurato dal vivo.
+
+### Coverage
+
+- Rubric passes run: 5/5 (v3, v4, v5 sul modello più forte; v6, v7 su quello bilanciato).
+- Gate di CI su dcea416: verdi (2692 test con i `*.pg.test.ts`, lint, tsc, build, `api:build`, `api:smoke`).
+- v4, v5, v6 sul server `next dev` di dcea416 con `mito_local`, Chromium headless, da 280 a 1440 px. axe non installato: contrasto dal probe e dai pixel degli screenshot. Non provati: Safari, gli stati di caricamento di `WorkerImportDialog` e `CustomerBulkDialog` (richiedono un import o un aggiornamento vero), `BulkActionDialog` e `CommandDialog` (non montati: solo codice).
+- v3 e v7 con i mutanti su copie del checkout; le copie sono tornate pulite.
+- Effetti sul database locale: v4 ha disattivato Oddone Capecchi (1007) verso Pietro Cardini; v6 ha salvato per errore un'email non valida sul cliente C009961 e l'ha ripristinata.
+
+### Findings
+
+| Severity | Concern (verifier) | Location | Problem | Required fix / evidence | Durable? |
+|----------|--------------------|----------|---------|-------------------------|----------|
+| MAJOR | v5 | `components/ui/dialog.tsx:97`, `AlertCloseConfirmDialog.tsx:88`, `CustomerHandoverDialog.tsx:204` | Bottoni del footer attaccati da 640 px in su (vedi Verdict) | Togliere `gap-2 sm:gap-0` dai due consumer | no |
+| MAJOR | v6 | `components/ui/toast.tsx` (`ToastClose`) | La X del toast di successo è `text-foreground/50`: sul verde nuovo fa 2,10:1 in hover e col focus (prima 3,04:1), 3,56:1 col puntatore sopra (prima 8,86:1). WCAG 1.4.11 chiede 3:1. La causa è il token nuovo | Override `group-[.success]:` come quelli di `destructive`, poi misura dal vivo | no |
+| MINOR | v4 | `DeactivateOperatorDialog.tsx:142` | L'altezza riservata (60 px) è sotto quella dello stato d'errore delle query (64 px, di più quando il testo va a capo): il dialog si sposta di 2 px, 12 px sotto i 340 px | Riservare l'altezza vera, o messaggio e "Riprova" su una riga | no |
+| MINOR | v4 | `DeactivateOperatorDialog.tsx:201` | Lo spazio dell'errore tiene una riga: due messaggi vanno a capo sotto i 400 e i 450 px e il dialog cresce di 20 px | `min-h-10` sotto `sm`, `sm:min-h-5` | no |
+| MINOR | v4, v5 | `dialog.tsx:66,83` | La X da 24 px copre il titolo con nomi del seed da 280 a 336 px, e il bottone "indietro" di `CustomerBulkDialog` sotto i 298 px (un clic lì chiude il dialog) | `pr-8` su `DialogHeader`, o spazio a destra nell'header di `CustomerBulkDialog` | no |
+| MINOR | v4 | `OperatorTable.tsx:190` | Dopo una disattivazione il focus va al titolo, ma `focus:outline-none` lo rende invisibile (WCAG 2.4.7) | Togliere `focus:outline-none` o un anello `focus-visible` | no |
+| MINOR | v5 | `dialog.tsx:55-60` | Il focus iniziale prova un solo candidato: con il primo controllo nascosto il focus resta fuori dal modale; con la sola X va al contenitore invece che alla X (stato di caricamento di `WorkerImportDialog` e `CustomerBulkDialog`); il testo di un input non viene selezionato | Provare i candidati finché il focus si sposta, poi la X, poi il contenitore, con `select()` sugli input | no |
+| MINOR | v5 | `ExportDialog.tsx:468` | `w-full` annulla il margine di 16 px sotto i 640 px; ora con gli angoli arrotondati contro il bordo | Togliere `w-full` | no |
+| MINOR | v3 | `OperatorTable.tsx:128-131` | Una modifica di ruolo in sospeso resta orfana se la riga sparisce per altre vie (un altro admin disattiva l'operatore, o la chiamata viene rifiutata dopo il commit): "Salva" manda l'id e AC19 rifiuta tutto il batch | Filtrare le modifiche sugli id di `data` prima del salvataggio; test con la riga tolta | no |
+| MINOR | v3 | test della tabella e del dialog | Quattro mutanti sopravvivono: `removeOperatorToEdit` che svuota tutto, `onDeactivated` prima del controllo dell'errore, `setLoading(false)` solo nel `catch`, reset di `deactivatedRef` tolto | Le sonde di v3 come test (una modifica su un altro operatore sopravvive; `onDeactivated` non chiamato sugli errori; "Salva" riattivo dopo LAST_ADMIN; focus al bottone dopo un successo senza smontaggio) | no |
+| MINOR | v7 | `_actions/_test/actions.test.ts` | Manca la forma HTTP di un errore senza codice di dominio (`contactError: null`): sopravvive un mutante che restituisce `FORBIDDEN` invece di UNKNOWN; il cambio ruolo non ha un caso ADMIN riuscito nel test con la sessione (lo coprono i test del router) | Fixture `contactError: null`; caso ADMIN che cambia un ruolo | no |
+| NIT | v3 | `DeactivateOperatorDialog.tsx:182` | Dopo un errore, scegliere un'altra destinazione lascia il messaggio vecchio | `setError(null)` nel cambio di destinazione | no |
+| NIT | v4 | dialog | Un errore di conferma e un refetch fallito possono mostrare due `role=alert` insieme | Uno solo | no |
+| NIT | v5 | `ExportDialog`, `WorkerImportDialog`, `CustomerBulkDialog` | In alcuni stati ci sono due bottoni "Chiudi" (la X e quello del dialog) | Nessuna, o un nome diverso per uno dei due | no |
+| NIT | v7 | `actions.db.test.ts` | Nessun test prova che `resetDb` isola i casi (vale per costruzione) | Nessuna | no |
+
+### What passed
+
+| Concern (verifier) | Evidence |
+|--------------------|----------|
+| v3: stato del client | I cinque punti del primo giro chiusi: `finally` resetta sempre `submitting`; la modifica in sospeso esce dallo store anche se la riga si smonta prima della risposta; con `getRowId` il valore del select segue l'id; `loading` mai bloccato; `currentOperatorId` obbligatorio; destinazione sparita gestita. Mutanti uccisi: M3–M7, M10 |
+| v4: UI del dialog | AC20a, AC21–AC23 dal vivo. Contrasti: errore 5,53:1, "Conferma" 6,2:1 (hover 5,48, focus 6,2), toast di successo 5,33:1, descrizione 4,9:1, X 7,11:1. Stato d'errore delle query con `role=alert` e "Riprova" che recupera. Dopo una disattivazione vera la riga sparisce e il focus va al titolo, non all'operatore successivo. X "Chiudi" prima nel Tab, 24×24, anello di focus intero; 16 px di margine e footer con 8 px sotto i 640 px |
+| v5: Dialog condivisa | Focus iniziale uguale a 001e861 in ogni stato aperto dal vivo (Export, Import, Bulk, Handover, AlertConfirm); i `preventDefault` dei consumer rispettati (mutante ucciso); Tab e Shift+Tab restano nel modale; nessun test cerca più "Close"; classi di animazione identiche; 796 test dei consumer verdi |
+| v6: token | Ogni coppia migliora: `text-destructive` 6,46:1 su bianco e 5,53:1 sullo sfondo, `destructive-foreground` 6,19:1, toast di successo 5,34:1, `muted-foreground` da 4,91 a 5,74:1; nessun elemento muted sotto 4,5 nelle schermate principali; `.dark` non raggiungibile e non divergente |
+| v7: test dei server action | Nessuna riga di produzione dei server action cambiata. Mutanti uccisi: lettore che ignora `data.contactError`, messaggio al posto del codice, UNKNOWN sbagliato, procedure non admin, sessione nulla, ADMIN senza effetti sul database. I due file girano nel gate di CI (`*.db.test.ts` in node) |
+
+### Human Review Checklist
+
+1. Decidere: correggere i due MAJOR e i MINOR in questa PR, poi un terzo giro di v4, v5 e v6.
+2. Approvare a occhio il rosso, il verde e il grigio nuovi nelle schermate principali (bottoni `destructive`, toast, testo muted): il contrasto si misura, la resa la decide una persona.
+3. Aprire ogni dialog dell'app e controllare focus iniziale e X "Chiudi".
+4. Su staging: una disattivazione vera di un operatore di prova; `LAST_ADMIN` dall'editor dei ruoli; con `BACKEND_URL` attivo, un errore di dominio dal dialog.
+5. Le condizioni della PR 4 valgono anche qui: revisione di Leonardo, OQ2 chiusa prima della prod.
+
+### Acceptance criteria check (secondo giro)
+
+| Criterion | Met / Unmet / Blocked | Notes |
+|-----------|-----------------------|-------|
+| AC20a | Met | un rifiuto della chiamata mostra il toast generico e "Salva" torna attivo |
+| AC21 | Met | |
+| AC22 | Met | un rifiuto della chiamata lascia il dialog aperto e usabile; messaggio d'errore a 5,53:1 |
+| AC23 | Met | dopo una disattivazione il focus va al titolo (invisibile: MINOR) |
+
+### Notes for docs-maintenance
+
+- Il debito "Contrasto e nomi nei primitivi condivisi" di [[tech-debt/crm/sezione-contatti]] è aggiornato: token e X della Dialog risolti; resta il nome del bottone di chiusura del toast.
+- La lista degli operatori nel payload RSC degli OPERATORE è in [[tech-debt/crm/gestione-operatori]].
+
