@@ -43,7 +43,13 @@ const OTHER_OPERATOR_SHARE = 0.45
 const MANUAL_A5_SHARE = 0.15
 
 export const MANUAL_PRIORITIES = [20, 60, 100, 120] as const
-const P4_STATES = ["app.to", "caricato", "erogata", "nessuno"] as const
+const P4_STATES = [
+  "app.to",
+  "caricato",
+  "erogata",
+  "nessuno",
+  "non risponde",
+] as const
 const P8_STATES = taskStatus.filter((state) => state !== "richiamare")
 
 const ALERT_MESSAGES = [
@@ -155,10 +161,11 @@ export function generateContacts({
         filler < P4_STATES.length
           ? P4_STATES[filler]!
           : rng.weighted<P4State>([
-              ["nessuno", 55],
+              ["nessuno", 40],
               ["app.to", 15],
               ["caricato", 15],
               ["erogata", 15],
+              ["non risponde", 15],
             ]),
     }
   })

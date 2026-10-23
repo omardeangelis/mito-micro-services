@@ -257,6 +257,7 @@ const P4_STATES: ReadonlySet<string> = new Set([
   "caricato",
   "erogata",
   "nessuno",
+  "non risponde",
 ])
 
 function addPriorityScenarios(context: Context, dataset: Dataset) {

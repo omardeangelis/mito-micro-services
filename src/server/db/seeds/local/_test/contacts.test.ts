@@ -122,7 +122,7 @@ describe("contacts determinism (AC5)", () => {
 type PriorityMatch = { task: TaskRow; id: string; expected: number }
 type AlertMatch = { alert: AlertRow; id: string }
 
-const P4_STATES = ["app.to", "caricato", "erogata", "nessuno"]
+const P4_STATES = ["app.to", "caricato", "erogata", "nessuno", "non risponde"]
 
 function classify(dataset: Dataset, day: Day) {
   const tasks = new Map(dataset.tasks.map((task) => [task.id, task]))
