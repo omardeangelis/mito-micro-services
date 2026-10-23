@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 import {
+  defaultPeriod,
   exportPeriodInput,
   periodBounds,
   selectableDays,
@@ -38,6 +39,16 @@ describe("selectableDays", () => {
       first: "2026-10-16",
       last: "2027-01-15",
     })
+  })
+})
+
+describe("defaultPeriod", () => {
+  it("opens on the last 30 days of Rome, a valid input", () => {
+    // 00:30 in Rome is still the day before in UTC
+    const now = rome("2026-10-01T00:30:00", "+02:00")
+    const period = defaultPeriod(now)
+    expect(period).toEqual({ from: "2026-09-02", to: "2026-10-01" })
+    expect(exportPeriodInput(now).safeParse(period).success).toBe(true)
   })
 })
 
