@@ -1,3 +1,4 @@
+import { createRef } from "react"
 import { render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { beforeEach, describe, expect, it, vi } from "vitest"
@@ -5,26 +6,33 @@ import { DeactivateOperatorDialog } from "../DeactivateOperatorDialog"
 
 // Errori, successo e tastiera del dialog "Disattiva" (AC21–AC23)
 
+type Query<T> = {
+  data: T | undefined
+  isLoading: boolean
+  isError: boolean
+  refetch: () => void
+}
+
+const loaded = <T,>(data: T): Query<T> => ({
+  data,
+  isLoading: false,
+  isError: false,
+  refetch: vi.fn(),
+})
+
 const mocks = vi.hoisted(() => ({
   action: vi.fn(),
   toast: vi.fn(),
+  onDeactivated: vi.fn(),
+  impact: undefined as unknown,
+  targets: undefined as unknown,
 }))
 
 vi.mock("@/trpc/react", () => ({
   api: {
     operator: {
-      getDeactivationImpact: {
-        useQuery: () => ({
-          data: { customers: 3, contacts: 2, practices: 1 },
-          isLoading: false,
-        }),
-      },
-      getOperatorsForDeactivation: {
-        useQuery: () => ({
-          data: [{ id: 2, name: "Luca", surname: "Bianchi" }],
-          isLoading: false,
-        }),
-      },
+      getDeactivationImpact: { useQuery: () => mocks.impact },
+      getOperatorsForDeactivation: { useQuery: () => mocks.targets },
     },
   },
 }))
@@ -40,16 +48,30 @@ vi.mock("@/components/ui/use-toast", () => ({
 beforeEach(() => {
   mocks.action.mockReset()
   mocks.toast.mockReset()
+  mocks.onDeactivated.mockReset()
+  mocks.impact = loaded({ customers: 3, contacts: 2, practices: 1 })
+  mocks.targets = loaded([{ id: 2, name: "Luca", surname: "Bianchi" }])
 })
+
+const heading = createRef<HTMLHeadingElement>()
+
+const dialog = () => (
+  <>
+    <h1 ref={heading} tabIndex={-1}>
+      Gestisci operatori
+    </h1>
+    <DeactivateOperatorDialog
+      operator={{ id: 1, name: "Mario", surname: "Rossi" }}
+      onDeactivated={mocks.onDeactivated}
+      returnFocusTo={heading}
+    />
+  </>
+)
 
 const setup = () => {
   const user = userEvent.setup()
-  render(
-    <DeactivateOperatorDialog
-      operator={{ id: 1, name: "Mario", surname: "Rossi" }}
-    />
-  )
-  return user
+  const { rerender } = render(dialog())
+  return Object.assign(user, { rerender: () => rerender(dialog()) })
 }
 
 const rowButton = () =>
@@ -108,6 +130,7 @@ describe("DeactivateOperatorDialog", () => {
     await user.click(screen.getByRole("button", { name: "Conferma" }))
 
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull())
+    expect(mocks.onDeactivated).toHaveBeenCalledWith(1)
     expect(mocks.toast).toHaveBeenCalledTimes(1)
     expect(mocks.toast).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -115,6 +138,71 @@ describe("DeactivateOperatorDialog", () => {
           "Operatore disattivato: 3 clienti, 2 contatti, 1 pratica passati a Luca Bianchi",
       })
     )
+  })
+
+  it("se la chiamata viene rifiutata mostra l'errore e il dialog si chiude con Esc", async () => {
+    mocks.action.mockRejectedValue(new Error("Failed to fetch"))
+    const user = setup()
+    await openAndPick(user)
+
+    await user.click(screen.getByRole("button", { name: "Conferma" }))
+
+    expect((await screen.findByRole("alert")).textContent).toBe(
+      "Modifica non salvata, riprova"
+    )
+    expect(screen.getByRole("button", { name: "Conferma" })).toHaveProperty(
+      "disabled",
+      false
+    )
+    expect(mocks.onDeactivated).not.toHaveBeenCalled()
+    await user.keyboard("{Escape}")
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull())
+  })
+
+  it("se la destinazione scelta non è più nella lista lo dice e la toglie", async () => {
+    const user = setup()
+    await openAndPick(user)
+    // A refetch while the dialog is open: Luca is no longer a destination
+    mocks.targets = loaded([{ id: 3, name: "Sara", surname: "Verdi" }])
+    user.rerender()
+
+    await user.click(screen.getByRole("button", { name: "Conferma" }))
+
+    expect((await screen.findByRole("alert")).textContent).toBe(
+      "L'operatore scelto non è più disponibile: scegline un altro"
+    )
+    expect(mocks.action).not.toHaveBeenCalled()
+    expect(screen.getByRole("button", { name: "Conferma" })).toHaveProperty(
+      "disabled",
+      true
+    )
+  })
+
+  it("se i dati non arrivano lo dice e Riprova li richiede", async () => {
+    const impact = loaded(undefined)
+    mocks.impact = { ...impact, isError: true }
+    const user = setup()
+    await user.click(rowButton())
+
+    expect((await screen.findByRole("alert")).textContent).toBe(
+      "Impossibile caricare i dati dell'operatore"
+    )
+    expect(screen.queryByText("Caricamento...")).toBeNull()
+    await user.click(screen.getByRole("button", { name: "Riprova" }))
+    expect(impact.refetch).toHaveBeenCalled()
+  })
+
+  it("dopo la conferma il focus va dove dice la tabella", async () => {
+    mocks.action.mockResolvedValue({
+      result: { customersMoved: 0, contactsMoved: 0, practicesMoved: 0 },
+    })
+    const user = setup()
+    await openAndPick(user)
+
+    await user.click(screen.getByRole("button", { name: "Conferma" }))
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull())
+    await waitFor(() => expect(document.activeElement).toBe(heading.current))
   })
 
   it("all'apertura il focus è sul select della destinazione", async () => {

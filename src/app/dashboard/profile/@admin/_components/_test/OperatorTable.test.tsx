@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react"
+import { render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { type OperatorWithRole } from "@mito/domain/schemas"
@@ -9,6 +9,7 @@ import { OperatorTable } from "../OperatorTable"
 
 const mocks = vi.hoisted(() => ({
   updateRole: vi.fn(),
+  deactivate: vi.fn(),
   toast: vi.fn(),
 }))
 
@@ -16,17 +17,25 @@ vi.mock("@/trpc/react", () => ({
   api: {
     operator: {
       getDeactivationImpact: {
-        useQuery: () => ({ data: undefined, isLoading: true }),
+        useQuery: () => ({
+          data: { customers: 0, contacts: 0, practices: 0 },
+          isLoading: false,
+          isError: false,
+        }),
       },
       getOperatorsForDeactivation: {
-        useQuery: () => ({ data: undefined, isLoading: true }),
+        useQuery: () => ({
+          data: [{ id: 3, name: "Carla", surname: "Test" }],
+          isLoading: false,
+          isError: false,
+        }),
       },
     },
   },
 }))
 
 vi.mock("../../_actions/deactivateOperator", () => ({
-  deactivateOperatorAction: vi.fn(),
+  deactivateOperatorAction: mocks.deactivate,
 }))
 
 vi.mock("../../_actions/updateOperatorsRole", () => ({
@@ -48,6 +57,7 @@ const data = [
 
 beforeEach(() => {
   mocks.updateRole.mockReset()
+  mocks.deactivate.mockReset()
   mocks.toast.mockReset()
   useOperatorTableStore.getState().clearOperatorsToEdit()
 })
@@ -125,5 +135,90 @@ describe("OperatorTable", () => {
       })
     )
     expect(useOperatorTableStore.getState().operatorsToEdit).toHaveLength(0)
+  })
+
+  it("se la chiamata del cambio ruolo viene rifiutata mostra l'errore e Salva torna attivo", async () => {
+    mocks.updateRole.mockRejectedValue(new Error("Failed to fetch"))
+    const user = userEvent.setup()
+    render(<OperatorTable data={data} currentOperatorId={3} />)
+
+    await changeRoleAndSave(user)
+
+    await waitFor(() =>
+      expect(mocks.toast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: "Errore durante l'aggiornamento dei ruoli",
+          variant: "destructive",
+        })
+      )
+    )
+    expect(screen.getByRole("button", { name: "Salva" })).toHaveProperty(
+      "disabled",
+      false
+    )
+  })
+
+  const deactivateBruno = async (user: ReturnType<typeof userEvent.setup>) => {
+    await user.click(
+      screen.getByRole("button", { name: "Disattiva Bruno Test" })
+    )
+    await screen.findByRole("dialog")
+    await user.click(screen.getByRole("combobox", { name: "Passa a" }))
+    await user.click(await screen.findByRole("option", { name: "Carla Test" }))
+    await user.click(screen.getByRole("button", { name: "Conferma" }))
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull())
+  }
+
+  it("disattivare un operatore toglie la sua modifica di ruolo in sospeso", async () => {
+    mocks.deactivate.mockResolvedValue({
+      result: { customersMoved: 0, contactsMoved: 0, practicesMoved: 0 },
+    })
+    const user = userEvent.setup()
+    render(<OperatorTable data={data} currentOperatorId={1} />)
+    // Row of Bruno: OPERATORE -> ADMIN, not saved
+    await user.click(screen.getAllByRole("combobox")[1]!)
+    await user.click(await screen.findByRole("option", { name: "Admin" }))
+
+    await deactivateBruno(user)
+
+    expect(useOperatorTableStore.getState().operatorsToEdit).toEqual([])
+    expect(screen.getByRole("button", { name: "Salva" })).toHaveProperty(
+      "disabled",
+      true
+    )
+  })
+
+  it("dopo una disattivazione il focus va al titolo della tabella", async () => {
+    mocks.deactivate.mockResolvedValue({
+      result: { customersMoved: 0, contactsMoved: 0, practicesMoved: 0 },
+    })
+    const user = userEvent.setup()
+    render(<OperatorTable data={data} currentOperatorId={1} />)
+
+    await deactivateBruno(user)
+
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole("heading", { name: "Gestisci operatori" })
+      )
+    )
+  })
+
+  it("quando una riga sparisce la modifica in sospeso non passa alla riga dopo", async () => {
+    const user = userEvent.setup()
+    const { rerender } = render(
+      <OperatorTable data={data} currentOperatorId={1} />
+    )
+    // Row of Bruno: OPERATORE -> ADMIN, not saved
+    await user.click(screen.getAllByRole("combobox")[1]!)
+    await user.click(await screen.findByRole("option", { name: "Admin" }))
+
+    // Bruno deactivated: the page comes back without his row
+    rerender(
+      <OperatorTable data={[data[0]!, data[2]!]} currentOperatorId={1} />
+    )
+
+    // The row of Carla shows her role, not Bruno's pending one
+    expect(screen.getAllByRole("combobox")[1]!.textContent).toBe("operatore")
   })
 })

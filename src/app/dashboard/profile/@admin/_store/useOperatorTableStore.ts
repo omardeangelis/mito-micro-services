@@ -7,6 +7,7 @@ type OperatorItem = Pick<OperatorWithRole, "id" | "role">
 interface OperatorTableStore {
   operatorsToEdit: OperatorItem[]
   addOperatorToEdit: (operator: OperatorItem) => void
+  removeOperatorToEdit: (id: number) => void
   clearOperatorsToEdit: () => void
 }
 
@@ -31,6 +32,10 @@ const useOperatorTableStoreBase = create<OperatorTableStore>((set) => ({
       }
       return { operatorsToEdit: [...state.operatorsToEdit, operator] }
     }),
+  removeOperatorToEdit: (id) =>
+    set((state) => ({
+      operatorsToEdit: state.operatorsToEdit.filter((op) => op.id !== id),
+    })),
   clearOperatorsToEdit: () => set({ operatorsToEdit: [] }),
 }))
 

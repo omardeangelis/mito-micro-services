@@ -34,6 +34,8 @@ describe("DeactivateOperatorDialog", () => {
     render(
       <DeactivateOperatorDialog
         operator={{ id: 1, name: "Mario", surname: "Rossi" }}
+        onDeactivated={vi.fn()}
+        returnFocusTo={{ current: null }}
       />
     )
 

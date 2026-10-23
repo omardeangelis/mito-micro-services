@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useState } from "react"
+import { useRef, useState, type RefObject } from "react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -25,6 +25,8 @@ import { describeActionError } from "../_lib/describeActionError"
 
 type DeactivateOperatorDialogProps = {
   operator: { id: number; name: string; surname: string }
+  onDeactivated: (operatorId: number) => void
+  returnFocusTo: RefObject<HTMLElement>
 }
 
 const plural = (n: number, one: string, many: string) =>
@@ -32,6 +34,8 @@ const plural = (n: number, one: string, many: string) =>
 
 export const DeactivateOperatorDialog = ({
   operator,
+  onDeactivated,
+  returnFocusTo,
 }: DeactivateOperatorDialogProps) => {
   const fullName = `${operator.name} ${operator.surname}`
   const [open, setOpen] = useState(false)
@@ -39,6 +43,7 @@ export const DeactivateOperatorDialog = ({
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const selectRef = useRef<HTMLButtonElement>(null)
+  const deactivatedRef = useRef(false)
   const { toast } = useToast()
 
   const impact = api.operator.getDeactivationImpact.useQuery(
@@ -64,18 +69,33 @@ export const DeactivateOperatorDialog = ({
     const destinationOperator = targets.data?.find(
       (target) => String(target.id) === destination
     )
-    if (!destinationOperator) return
+    if (!destinationOperator) {
+      // The list was refetched and no longer contains the chosen operator
+      setDestination("")
+      setError("L'operatore scelto non è più disponibile: scegline un altro")
+      return
+    }
     setSubmitting(true)
     setError(null)
-    const res = await deactivateOperatorAction({
-      operatorId: operator.id,
-      toOperatorId: destinationOperator.id,
-    })
-    setSubmitting(false)
+    let res: Awaited<ReturnType<typeof deactivateOperatorAction>>
+    try {
+      res = await deactivateOperatorAction({
+        operatorId: operator.id,
+        toOperatorId: destinationOperator.id,
+      })
+    } catch {
+      // The call itself failed: network, timeout, action gone after a deploy
+      setError(describeActionError("UNKNOWN"))
+      return
+    } finally {
+      setSubmitting(false)
+    }
     if (res.error !== undefined) {
       setError(describeActionError(res.error))
       return
     }
+    onDeactivated(operator.id)
+    deactivatedRef.current = true
     setOpen(false)
     setDestination("")
     const { customersMoved, contactsMoved, practicesMoved } = res.result
@@ -103,6 +123,13 @@ export const DeactivateOperatorDialog = ({
           event.preventDefault()
           selectRef.current?.focus()
         }}
+        onCloseAutoFocus={(event) => {
+          // The row is gone after a deactivation: focus goes where the table says
+          if (!deactivatedRef.current) return
+          event.preventDefault()
+          deactivatedRef.current = false
+          returnFocusTo.current?.focus()
+        }}
       >
         <DialogHeader>
           <DialogTitle>{`Disattiva ${fullName}`}</DialogTitle>
@@ -112,21 +139,39 @@ export const DeactivateOperatorDialog = ({
         </DialogHeader>
 
         <div className="space-y-4">
-          {impact.isLoading || !impact.data ? (
-            <p className="text-sm text-muted-foreground">Caricamento...</p>
-          ) : (
-            <ul className="text-sm">
-              <li>{plural(impact.data.customers, "cliente", "clienti")}</li>
-              <li>
-                {plural(
-                  impact.data.contacts,
-                  "contatto attivo",
-                  "contatti attivi"
-                )}
-              </li>
-              <li>{plural(impact.data.practices, "pratica", "pratiche")}</li>
-            </ul>
-          )}
+          <div className="min-h-[3.75rem]">
+            {impact.isError || targets.isError ? (
+              <div className="space-y-2">
+                <p role="alert" className="text-sm text-destructive">
+                  Impossibile caricare i dati dell&apos;operatore
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    void impact.refetch()
+                    void targets.refetch()
+                  }}
+                >
+                  Riprova
+                </Button>
+              </div>
+            ) : impact.data ? (
+              <ul className="text-sm">
+                <li>{plural(impact.data.customers, "cliente", "clienti")}</li>
+                <li>
+                  {plural(
+                    impact.data.contacts,
+                    "contatto attivo",
+                    "contatti attivi"
+                  )}
+                </li>
+                <li>{plural(impact.data.practices, "pratica", "pratiche")}</li>
+              </ul>
+            ) : (
+              <p className="text-sm text-muted-foreground">Caricamento...</p>
+            )}
+          </div>
 
           <div className="space-y-2">
             <label htmlFor={`deactivate-to-${operator.id}`} className="text-sm">
@@ -153,11 +198,13 @@ export const DeactivateOperatorDialog = ({
             </Select>
           </div>
 
-          {error && (
-            <p role="alert" className="text-sm text-destructive">
-              {error}
-            </p>
-          )}
+          <div className="min-h-5">
+            {error && (
+              <p role="alert" className="text-sm text-destructive">
+                {error}
+              </p>
+            )}
+          </div>
         </div>
 
         <DialogFooter>

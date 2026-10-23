@@ -29,7 +29,7 @@ import { useOperatorTableStore } from "../_store/useOperatorTableStore"
 import { Button } from "@/components/ui/button"
 import { updateOperatorsRoleAction } from "../_actions/updateOperatorsRole"
 import { useToast } from "@/components/ui/use-toast"
-import { useCallback, useMemo, useState } from "react"
+import { useCallback, useMemo, useRef, useState, type RefObject } from "react"
 import { DeactivateOperatorDialog } from "./DeactivateOperatorDialog"
 import {
   describeActionError,
@@ -41,7 +41,9 @@ type MockedOperator = Pick<OperatorWithRole, "id" | "name" | "role" | "surname">
 export type OperatorColumnSelectedProps = MockedOperator
 
 const buildColumns = (
-  currentOperatorId: number | undefined
+  currentOperatorId: number,
+  headingRef: RefObject<HTMLElement>,
+  onDeactivated: (operatorId: number) => void
 ): ColumnDef<OperatorColumnSelectedProps>[] => [
   {
     id: "id",
@@ -106,6 +108,8 @@ const buildColumns = (
         <div className="flex w-full justify-end">
           <DeactivateOperatorDialog
             operator={{ id, name: name ?? "", surname: surname ?? "" }}
+            onDeactivated={onDeactivated}
+            returnFocusTo={headingRef}
           />
         </div>
       )
@@ -118,15 +122,19 @@ export const OperatorTable = ({
   currentOperatorId,
 }: {
   data: OperatorWithRole[]
-  currentOperatorId?: number
+  currentOperatorId: number
 }) => {
+  const headingRef = useRef<HTMLHeadingElement>(null)
+  const removeOperatorToEdit = useOperatorTableStore.use.removeOperatorToEdit()
   const operatorColumns = useMemo(
-    () => buildColumns(currentOperatorId),
-    [currentOperatorId]
+    () => buildColumns(currentOperatorId, headingRef, removeOperatorToEdit),
+    [currentOperatorId, removeOperatorToEdit]
   )
   const table = useReactTable({
     columns: operatorColumns,
     data: data,
+    // Keyed by id: with index keys the next row reuses the removed row's DOM
+    getRowId: (row) => String(row.id),
     getCoreRowModel: getCoreRowModel(),
     state: {
       columnVisibility: {
@@ -143,24 +151,33 @@ export const OperatorTable = ({
 
   const handleOperatorRoleChange = useCallback(async () => {
     setLoading(true)
-    const res = await updateOperatorsRoleAction(operators)
-    setLoading(false)
-    if (res.error) {
+    try {
+      const res = await updateOperatorsRoleAction(operators)
+      if (res.error) {
+        toast({
+          title: isContactErrorCode(res.error)
+            ? describeActionError(res.error)
+            : "Errore durante l'aggiornamento dei ruoli",
+          duration: 2000,
+          variant: "destructive",
+        })
+        return
+      }
       toast({
-        title: isContactErrorCode(res.error)
-          ? describeActionError(res.error)
-          : "Errore durante l'aggiornamento dei ruoli",
+        title: "Ruoli aggiornati",
+        duration: 2000,
+        variant: "success",
+      })
+      clearOperatorsToEdit()
+    } catch {
+      toast({
+        title: "Errore durante l'aggiornamento dei ruoli",
         duration: 2000,
         variant: "destructive",
       })
-      return
+    } finally {
+      setLoading(false)
     }
-    toast({
-      title: "Ruoli aggiornati",
-      duration: 2000,
-      variant: "success",
-    })
-    clearOperatorsToEdit()
   }, [operators, toast, clearOperatorsToEdit])
 
   const disabled = !operators.length || loading
@@ -168,7 +185,13 @@ export const OperatorTable = ({
   return (
     <div>
       <div className="flex items-center justify-between">
-        <h1 className="text-lg font-medium">Gestisci operatori</h1>
+        <h1
+          ref={headingRef}
+          tabIndex={-1}
+          className="text-lg font-medium focus:outline-none"
+        >
+          Gestisci operatori
+        </h1>
         <Button
           variant={disabled ? "disabled" : "default"}
           disabled={disabled}

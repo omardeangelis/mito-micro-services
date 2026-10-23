@@ -27,21 +27,43 @@ vi.mock("@/trpc/server", () => ({
 
 vi.mock("next/cache", () => ({ revalidatePath: mocks.revalidatePath }))
 
-/** An in-process failure: a TRPCClientError whose cause is the TRPCError. */
-const rejection = (code: ContactErrorCode) =>
-  new TRPCClientError(code, {
+// The message differs from the code: the action must read the code, not the
+// text the server wrote
+
+/** In process (`rscLink`): a TRPCClientError whose cause is the TRPCError. */
+const inProcess = (code: ContactErrorCode) =>
+  new TRPCClientError("Messaggio del server", {
     cause: new TRPCError({
       code: "FORBIDDEN",
-      message: code,
+      message: "Messaggio del server",
       cause: { [CONTACT_ERROR_MARKER]: true, code, payload: {} } as never,
     }),
   })
+
+/** With `BACKEND_URL` (`backendLink`): the code is in `data.contactError`. */
+const overHttp = (code: ContactErrorCode) =>
+  TRPCClientError.from({
+    error: {
+      message: "Messaggio del server",
+      code: -32603,
+      data: {
+        code: "FORBIDDEN",
+        httpStatus: 403,
+        contactError: { code, payload: {} },
+      },
+    },
+  })
+
+const shapes = [
+  ["in-process", inProcess],
+  ["BACKEND_URL", overHttp],
+] as const
 
 beforeEach(() => {
   vi.clearAllMocks()
 })
 
-describe("deactivateOperatorAction", () => {
+describe.each(shapes)("deactivateOperatorAction, errore %s", (_, rejection) => {
   it.each([
     "OPERATOR_IS_ADMIN",
     "CANNOT_DEACTIVATE_SELF",
@@ -57,6 +79,24 @@ describe("deactivateOperatorAction", () => {
     })
 
     expect(res).toEqual({ error: code })
+    expect(mocks.revalidatePath).not.toHaveBeenCalled()
+  })
+})
+
+describe("deactivateOperatorAction", () => {
+  it("restituisce UNKNOWN per un errore tRPC senza codice di dominio", async () => {
+    mocks.deactivate.mockRejectedValue(
+      new TRPCClientError("Forbidden", {
+        cause: new TRPCError({ code: "FORBIDDEN", message: "admin-only" }),
+      })
+    )
+
+    const res = await deactivateOperatorAction({
+      operatorId: 1,
+      toOperatorId: 2,
+    })
+
+    expect(res).toEqual({ error: "UNKNOWN" })
     expect(mocks.revalidatePath).not.toHaveBeenCalled()
   })
 
@@ -96,13 +136,32 @@ describe("deactivateOperatorAction", () => {
   })
 })
 
+describe.each(shapes)(
+  "updateOperatorsRoleAction, errore %s",
+  (_, rejection) => {
+    it.each(["LAST_ADMIN", "OPERATOR_NOT_FOUND"] as const)(
+      "restituisce { error: %s } e non lancia",
+      async (code) => {
+        mocks.updateRole.mockRejectedValue(rejection(code))
+
+        const res = await updateOperatorsRoleAction([
+          { id: 1, role: "OPERATORE" },
+        ])
+
+        expect(res).toEqual({ error: code })
+        expect(mocks.revalidatePath).not.toHaveBeenCalled()
+      }
+    )
+  }
+)
+
 describe("updateOperatorsRoleAction", () => {
-  it("restituisce { error: LAST_ADMIN } e non lancia", async () => {
-    mocks.updateRole.mockRejectedValue(rejection("LAST_ADMIN"))
+  it("restituisce UNKNOWN per un errore che non è del dominio", async () => {
+    mocks.updateRole.mockRejectedValue(new Error("boom"))
 
     const res = await updateOperatorsRoleAction([{ id: 1, role: "OPERATORE" }])
 
-    expect(res).toEqual({ error: "LAST_ADMIN" })
+    expect(res).toEqual({ error: "UNKNOWN" })
     expect(mocks.revalidatePath).not.toHaveBeenCalled()
   })
 
