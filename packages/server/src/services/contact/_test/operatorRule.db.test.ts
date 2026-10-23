@@ -13,6 +13,7 @@ import { type TaskStatus } from "@mito/domain/schemas"
 import { customers } from "@mito/db/schema/customers"
 import { task } from "@mito/db/schema/task"
 import { processDueAlerts } from "../processDueAlerts"
+import { deactivateOperator } from "../../operator/deactivate"
 import { createTestCaller } from "@/test/caller"
 import {
   activeTasksOf,
@@ -546,5 +547,51 @@ describe("regola «stesso operatore»: il cron degli alert (processDueAlerts)", 
     expect(active).toMatchObject([
       { state: "followup", operatorId: operator.id },
     ])
+  })
+})
+
+describe("regola «stesso operatore»: deactivateOperator", () => {
+  it("i clienti dell'operatore passano alla destinazione con i loro contatti attivi, con le righe dei contatti", async () => {
+    const admin = await createOperator({ role: "ADMIN" })
+    const leaving = await createOperator()
+    const target = await createOperator()
+    const first = await seedContact(leaving, "richiamare")
+    const second = await seedContact(leaving, "app.to")
+    const bare = await createCustomer({ operatorId: leaving.id })
+    const ofTarget = await seedContact(target)
+    await assertContactOperatorMatchesCustomer()
+
+    const exit = await runServer(
+      deactivateOperator({
+        operatorId: leaving.id,
+        toOperatorId: target.id,
+        actor: { role: "ADMIN", operatorId: admin.id },
+      })
+    )
+
+    if (Exit.isFailure(exit)) throw new Error(Cause.pretty(exit.cause))
+    expect(exit.value).toEqual({
+      customersMoved: 3,
+      contactsMoved: 2,
+      practicesMoved: 0,
+    })
+    for (const { customer, contact } of [first, second]) {
+      const { customer: after } = await expectAligned(customer.id)
+      expect(after.operatorId).toBe(target.id)
+      expect(await reassignRows(customer.id)).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            taskId: contact.id,
+            source: "deactivation",
+            fromOperatorId: leaving.id,
+            toOperatorId: target.id,
+          }),
+        ])
+      )
+    }
+    const { customer: bareAfter } = await expectAligned(bare.id)
+    expect(bareAfter.operatorId).toBe(target.id)
+    await expectAligned(ofTarget.customer.id)
+    expect(await logOf(ofTarget.customer.id)).toEqual([])
   })
 })

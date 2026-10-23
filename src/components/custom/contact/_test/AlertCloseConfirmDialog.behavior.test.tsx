@@ -70,7 +70,7 @@ describe("AlertCloseConfirmDialog", () => {
     const onConfirm = vi.fn()
     render(<Harness onConfirm={onConfirm} />)
 
-    await user.click(screen.getByRole("button", { name: "Close" }))
+    await user.click(screen.getByRole("button", { name: "Chiudi" }))
 
     expect(onConfirm).not.toHaveBeenCalled()
     expect(screen.queryByRole("dialog")).toBeNull()

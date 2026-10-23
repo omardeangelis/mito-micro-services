@@ -32,33 +32,9 @@ export function DashboardLayout() {
     (state) => state.setDashboardCollapsed
   )
 
-  const updateFn = useCallback(
-    (collpsed: boolean) => {
-      fetch("/api/user/preferences?pref=ds", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          preferences: {
-            dashboardCollapsed: collpsed,
-          },
-        }),
-      })
-        .then((_) => {
-          updatedCollapsed(collpsed)
-        })
-        .catch(console.error)
-    },
-    [updatedCollapsed]
-  )
-  const toggleCollapse = useCallback(async () => {
-    try {
-      updateFn(!preference?.dashboardCollapsed)
-    } catch (error) {
-      console.error(error)
-    }
-  }, [preference?.dashboardCollapsed, updateFn])
+  const toggleCollapse = useCallback(() => {
+    updatedCollapsed(!preference?.dashboardCollapsed)
+  }, [preference?.dashboardCollapsed, updatedCollapsed])
 
   const isDashboard = pathname === "/dashboard/" || pathname === "/dashboard"
   const isCustomers = pathname.includes("dashboard/customers")

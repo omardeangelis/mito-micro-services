@@ -3,7 +3,7 @@ domain: _root
 type: index
 links: []
 created: 2026-09-24
-updated: 2026-10-21
+updated: 2026-10-23
 ---
 
 # Brain — Log
@@ -11,6 +11,58 @@ updated: 2026-10-21
 Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest when over.
 
 <!-- Entries are appended by create-spec (spec creation) and docs-maintenance (ingest). Format:
+
+## [2026-10-23] ingest | Gestione operatori: user e operator su Effect, disattivazione da admin
+- Source: [[specs/crm/gestione-operatori/SPEC]]
+- Flows written: 4
+- Concepts written: 3
+- Review ingested: [[specs/crm/gestione-operatori/REPORT]] (finding durevoli già nel debito o corretti; contabilità in [[tech-debt/crm/gestione-operatori]])
+- Primo ingest del dominio: [[domains/crm/crm]] e [[domains/crm/crm-contract]]. Spec `implemented` sui branch, tranne la P2; audit di accettazione e checklist per gli umani in [[specs/crm/gestione-operatori/IMPLEMENTATION-NOTES]]
+
+## [2026-10-23] implement | Gestione operatori — PR 5, correzioni del quarto giro
+- [[specs/crm/gestione-operatori/REPORT]] (round PR 5, quarto giro → Correzioni dopo il quarto giro): cb51313 su `-pr5`, MAJOR e MINOR del quarto giro corretti; layout verificato dal vivo, nessun quinto giro per decisione di Omar ("e poi basta")
+
+## [2026-10-23] review | Gestione operatori — PR 5, quarto giro
+- Report: [[specs/crm/gestione-operatori/REPORT]] (round PR 5, quarto giro)
+- Scope: spec
+- Verdict: DO NOT SHIP. Il focus iniziale di `ExportDialog` è corretto; il padding simmetrico dell'header, con il testo a 1,25 e un nome lungo a 280 px, allarga la griglia della Dialog e i controlli escono dal riquadro
+- Impact: critical
+- Verifiers: 3 (0 blocker, 1 major, 5 minor, 3 nit; 2 SHIP e 1 DO NOT SHIP)
+
+## [2026-10-23] review | Gestione operatori — PR 5, terzo giro
+- Report: [[specs/crm/gestione-operatori/REPORT]] (round PR 5, terzo giro)
+- Scope: spec
+- Verdict: DO NOT SHIP. I 2 MAJOR del secondo giro sono chiusi; il focus iniziale nuovo della Dialog condivisa non riconosce la lista dei tab che passa il focus al tab attivo, e in `ExportDialog` salta la scelta del tipo di export
+- Impact: critical
+- Verifiers: 4 (0 blocker, 1 major, 9 minor, 4 nit; 3 SHIP e 1 DO NOT SHIP)
+
+## [2026-10-23] review | Gestione operatori — PR 5, secondo giro
+- Report: [[specs/crm/gestione-operatori/REPORT]] (round PR 5, secondo giro)
+- Scope: spec
+- Verdict: DO NOT SHIP. I 5 MAJOR del primo giro sono chiusi; la passata sui primitivi condivisi trova i bottoni del footer attaccati in `AlertCloseConfirmDialog` e `CustomerHandoverDialog` da 640 px in su, e la X del toast di successo a 2,10:1 sul verde nuovo
+- Impact: critical
+- Verifiers: 5 (0 blocker, 2 major, 9 minor, 4 nit; 3 SHIP e 2 DO NOT SHIP)
+
+## [2026-10-22] review | Gestione operatori — PR 5, disattivazione UI, primo giro
+- Report: [[specs/crm/gestione-operatori/REPORT]] (round PR 5, primo giro)
+- Scope: spec
+- Verdict: DO NOT SHIP. Il dialog si blocca se la chiamata al server action viene rifiutata; una modifica di ruolo in sospeso sopravvive alla disattivazione del suo operatore; tre contrasti sotto 4,5:1 (messaggio d'errore, toast di successo, bottone `destructive`)
+- Impact: critical
+- Verifiers: 4 (0 blocker, 5 major, 9 minor, 2 nit; 2 SHIP e 2 DO NOT SHIP)
+
+## [2026-10-22] review | Gestione operatori — PR 4, disattivazione backend, secondo giro
+- Report: [[specs/crm/gestione-operatori/REPORT]] (round PR 4, primo e secondo giro)
+- Scope: spec
+- Verdict: DO NOT SHIP al primo giro (5 MAJOR: log e spostamenti da statement diversi, "Assegna a te" fuori dalla regola dei lock, failpoint troppo presto, ordine dei lock senza test, deviazione di AC9), SHIP al secondo dopo le correzioni di a0b45b4. Gate completi verdi (2643 test con i `*.pg.test.ts`)
+- Impact: critical; revisione di Leonardo, prova su staging e OQ2 prima della prod restano umane
+- Verifiers: 7 al primo giro, 2 al secondo (v4, v7: 0 blocker, 0 major, 3 minor, 2 nit; 22 mutanti presi)
+
+## [2026-10-22] review | Gestione operatori — PR 2, user e operator su Effect
+- Report: [[specs/crm/gestione-operatori/REPORT]] (round PR 2)
+- Scope: spec
+- Verdict: SHIP. Refactor puro confermato: corpo delle risposte identico misurato con l'handler HTTP, test della PR 1 con diff vuoto. Cambia solo la telemetria degli errori del database, come per ogni procedura già su `runTrpc`. Le lacune di test segnalate sono chiuse in `ac85739`
+- Impact: critical (middleware dei permessi); revisione di Leonardo richiesta (AC29a)
+- Verifiers: 4 (0 blocker, 0 major, 5 minor, 2 nit; 4 SHIP)
 
 ## [2026-10-21] review | Sezione Contatti — PR6 completa, terzo giro (richiesto da Omar)
 - Report: [[specs/crm/sezione-contatti/REPORT]] (round PR6 completa, terzo giro)
@@ -341,3 +393,18 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 - Spec: [[specs/crm/seeder-locale/SPEC]], piano: [[specs/crm/seeder-locale/PLAN]], note: [[specs/crm/seeder-locale/IMPLEMENTATION-NOTES]]
 - PR A: servizi dei cron su un `Db` iniettato, seed vecchi rimossi. PR B: `seed:local`, `seed:local:cron`, `seed:local:verify` con manifesto e oracolo indipendente
 - Giro a mano a 10.000: seed 16 s, quattro cron riusciti, 36 "passato"; in CI il giro completo dura 12,8 s
+
+## [2026-10-22] plan | gestione-operatori
+- Spec: [[specs/crm/gestione-operatori/SPEC]] (draft), piano: [[specs/crm/gestione-operatori/PLAN]]
+- Strategia: [[chore/migrazione-effect]]: L1 servizi e L2 procedure adapter router per router, L3 (tRPC → Effect RPC) rinviato a dopo Effect 4 stabile e fase P del piano GCP
+- Decisioni: disattivazione (non cancellazione), portafoglio a una destinazione scelta dall'admin, solo `OPERATORE`, "mai l'ultimo admin" sul cambio di ruolo
+- Verifica del piano (`adversarial-verifier`): DO NOT SHIP alla prima passata (2 blocker, 10 major), correzioni nel §16 del piano: log con `INSERT ... SELECT`, regola dei lock "prima gli utenti", migrazione in una PR sua, OQ1 chiusa con "il cliente vince"
+
+## [2026-10-22] plan | gestione-operatori, revisione 2, e migrazione-effect allineata alla Mappa del 21/10
+- Fonte: "Mappa servizi backend MITO" del 21/10 (https://claude.ai/artifact/TGtCT8MXcmTryd5DmoYaZL)
+- [[chore/migrazione-effect]]: ordine per rischio della Mappa (customer, import, pratiche e task, chat, analytics, export, auth per ultimo), `user` e `operator` anticipati per la disattivazione; passo 0 con quello che resta; cron segnati come fatti; import rivalutato a L con le 6 route REST; nuovo §6 sulle 13 route REST servite tramite `NextRequest`; D1 di [[chore/migration_plan]] segnata come superata
+- [[specs/crm/gestione-operatori/SPEC]] e [[specs/crm/gestione-operatori/PLAN]]: PR 2 refactor puro (AC20 nella PR 4, ex AC27 tolto); preferenze di layout in cookie del browser (AC31–AC35, PR P1 e P2); revisione di Leonardo sulle PR 2 e 4; i comportamenti di `auth.ts` della PR 4 diventano requisito del sostituto di NextAuth
+
+## [2026-10-22] plan | debito tecnico della migrazione accanto al piano
+- [[chore/migrazione-effect]] §7: registro del debito che la migrazione genera (TD1 colonna `users.preferences`, TD2 nome di `getUserPreference`, TD3 stranezze conservate di `operator` e `user`, TD4 `auth.ts` per il sostituto di NextAuth, TD5 cron legacy, TD6 residui del passo 0). Decisione di Omar: il debito della migrazione sta lì, quello delle feature resta in `brain/tech-debt/`
+- Confermato da Omar: endpoint delle preferenze rimossi, preferenze di layout nei cookie (PR P1 e P2 di [[specs/crm/gestione-operatori/PLAN]])
