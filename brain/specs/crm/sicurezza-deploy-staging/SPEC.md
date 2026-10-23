@@ -31,6 +31,9 @@ Scelta sulla proposta (approvazione manuale prima delle migrazioni): **"Approvaz
 
 > si scrivi la spec, prima di unire la 68 fai pull da dev ri cordiati poi alla fine di fare /docs-mainteninace
 
+> canale slack ne facciamo uno ad hoc, che poi duplicheremo per prod 
+> magari facciamo che una volta ogni tot gira un cron di github che li elimina
+
 ---
 
 ## Context
@@ -54,7 +57,6 @@ Ruoli coinvolti: gli sviluppatori che uniscono su `dev` (Leonardo, Omar), che ap
 - Il ripristino automatico da backup: il restore resta un'operazione manuale, documentata.
 - Il rollback automatico di Cloud Run o di Vercel.
 - Le notifiche della CI sulle PR, dei cron o di altri workflow.
-- La pulizia automatica dei backup creati dal deploy.
 - Correggere il default `nanoid()` di `customers.id` nello schema (vedi Technical Notes).
 
 ---
@@ -86,10 +88,14 @@ Ruoli coinvolti: gli sviluppatori che uniscono su `dev` (Leonardo, Omar), che ap
 - **AC15.** L'identità che esegue il deploy può creare backup dell'istanza di staging, ma non può ripristinarli, cancellarli o modificare l'istanza.
 - **AC16.** Nel repo c'è una procedura scritta per ripristinare staging da uno di questi backup, che uno sviluppatore può seguire dal proprio Mac.
 - **AC17.** Quando il deploy non porta migrazioni nuove, non viene creato nessun backup.
+- **AC17a.** Un job pianificato su GitHub cancella i backup creati dal deploy più vecchi di 7 giorni, tenendo sempre almeno i 3 più recenti.
+- **AC17b.** La pulizia non cancella mai i backup automatici dell'istanza né quelli creati a mano da uno sviluppatore.
+- **AC17c.** Ogni esecuzione della pulizia invia un messaggio sullo stesso canale Slack con quanti backup ha cancellato, o la causa se è fallita.
+- **AC17d.** L'identità che esegue la pulizia è diversa da quella del deploy, e quella del deploy resta senza permesso di cancellare (AC15).
 
 ### Avvisi Slack
 
-- **AC18.** Ogni run del deploy di staging avviata da un merge su `dev` o a mano termina con un solo messaggio finale sul canale Slack scelto, sia che riesca, sia che fallisca, sia che venga annullata. Il messaggio di attesa di AC21 si aggiunge a quello finale.
+- **AC18.** Ogni run del deploy di staging avviata da un merge su `dev` o a mano termina con un solo messaggio finale sul canale Slack dedicato ai deploy di staging, sia che riesca, sia che fallisca, sia che venga annullata. Il messaggio di attesa di AC21 si aggiunge a quello finale.
 - **AC19.** Il messaggio di un deploy riuscito contiene: il commit (sha breve e titolo), chi ha avviato la run (chi ha unito, o chi l'ha lanciata a mano), la revisione Cloud Run che serve il traffico, quante migrazioni sono state applicate, l'identificativo del backup se creato, e il link alla run.
 - **AC20.** Il messaggio di un deploy fallito o annullato contiene la fase in cui si è fermato, il commit, chi ha avviato la run e il link alla run. Le fasi distinte sono: CI, immagine, approvazione, backup, migrazioni, revisione Cloud Run, `/health`, Vercel.
 - **AC21.** Quando il deploy si ferma ad attendere l'approvazione (AC7), viene inviato anche un messaggio che lo dice, con il numero di migrazioni in attesa e il link alla run.
@@ -105,7 +111,7 @@ Ruoli coinvolti: gli sviluppatori che uniscono su `dev` (Leonardo, Omar), che ap
 - Le migrazioni restano solo additive: la revisione precedente continua a servire mentre girano.
 - Un solo deploy di staging alla volta, e al massimo uno in coda: mentre un deploy attende l'approvazione, quello in coda aspetta, e un merge successivo lo sostituisce (la run sostituita risulta annullata). Il deploy che parte dopo porta comunque tutto il codice di `dev`.
 - Niente chiavi di service account: l'accesso a GCP resta tramite Workload Identity Federation.
-- Gli avvisi usano un Incoming Webhook di Slack, come i report dei cron.
+- Gli avvisi usano un Incoming Webhook di Slack, come i report dei cron, su un canale nuovo dedicato ai deploy di staging. Prod avrà un suo canale gemello, nella sua spec.
 
 ---
 
@@ -124,9 +130,9 @@ Ruoli coinvolti: gli sviluppatori che uniscono su `dev` (Leonardo, Omar), che ap
 
 | # | Question | Affects | Owner | Status |
 |---|----------|---------|-------|--------|
-| 1 | Su quale canale Slack vanno gli avvisi? Proposta: lo stesso dei report cron, riusando lo stesso webhook. | AC18–AC21 | Leonardo | Open |
+| 1 | Su quale canale Slack vanno gli avvisi? | AC18–AC21 | Leonardo | Chiusa: canale nuovo dedicato ai deploy di staging, duplicato poi per prod |
 | 2 | Dopo quanto scade un'approvazione non data? Proposta: 24 ore, poi il deploy fallisce come in AC11. | AC11 | Leonardo | Open |
-| 3 | Per quanto si tengono i backup creati dal deploy? Proposta: finché non li cancella uno sviluppatore; pulizia in una spec a parte se il costo cresce. | AC12 | Leonardo | Open |
+| 3 | Per quanto si tengono i backup creati dal deploy? | AC17a | Leonardo | Chiusa: li cancella un job pianificato di GitHub. Proposti 7 giorni, tenendo sempre gli ultimi 3, e un'esecuzione al giorno |
 
 ---
 
@@ -139,3 +145,5 @@ Ruoli coinvolti: gli sviluppatori che uniscono su `dev` (Leonardo, Omar), che ap
 | Messaggio Slack a ogni deploy, riuscito o fallito | Leonardo, 23/10/2026: "logga sempre, sia che vada bene o male". Un messaggio mancante è anch'esso un segnale, come per i cron. |
 | Prima del merge Claude controlla e rigenera le migrazioni | Leonardo, 23/10/2026: lui e Omar uniscono solo tramite Claude. Regola in `AGENTS.md` (PR #68); questa spec aggiunge i controlli automatici. |
 | Chi unisce può approvare il proprio deploy | Con due sviluppatori, richiedere l'altro bloccherebbe staging quando uno dei due è assente. |
+| Canale Slack dedicato ai deploy di staging | Leonardo, 23/10/2026: "ne facciamo uno ad hoc, che poi duplicheremo per prod". |
+| Pulizia dei backup con un job pianificato di GitHub, con un'identità separata | Leonardo, 23/10/2026: "una volta ogni tot gira un cron di github che li elimina". L'identità separata mantiene il deployer senza permesso di cancellare. |
