@@ -1,3 +1,9 @@
+# Each push to dev (a merged PR: dev only takes PRs) goes to staging in three
+# steps, each only if the one before passed:
+# 1. ci: the checks of the PRs (ci.yml), on the merged code;
+# 2. api: the backend (apps/api) to Cloud Run, migrations first
+#    (apps/api/gcp/deploy-staging.sh);
+# 3. web: the frontend to Vercel, after the API it calls.
 name: Deploy Platform to Staging
 env:
   VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
@@ -12,12 +18,62 @@ on:
   push:
     branches:
       - dev
-# One deploy at a time, so the alias ends on the last push
-concurrency: deploy-staging
+  workflow_dispatch:
+# One deploy at a time, so the alias ends on the last push, and never stopped
+# halfway through the migrations
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: false
 permissions:
   contents: read
 jobs:
+  CI:
+    uses: ./.github/workflows/ci.yml
+
+  # Builds the image of apps/api, pushes it to staging's repository and
+  # deploys it by digest. GCP access is Workload Identity Federation for jobs
+  # of this repository on dev in the environment staging
+  # (apps/api/gcp/setup-ci-deploy.sh): no key in the repo
+  API-Deploy-Staging:
+    needs: CI
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    environment:
+      name: staging
+      url: https://mito-crm-staging-869830994359.europe-west3.run.app/health
+    permissions:
+      contents: read
+      # GitHub's OIDC token, which Workload Identity Federation exchanges
+      id-token: write
+    env:
+      IMAGE: europe-west3-docker.pkg.dev/mito-crm/mito-crm-staging/mito-api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOYER_SERVICE_ACCOUNT }}
+      - uses: google-github-actions/setup-gcloud@v2
+      - run: gcloud auth configure-docker europe-west3-docker.pkg.dev --quiet
+      - uses: docker/setup-buildx-action@v3
+      # Built from the checkout, which has no env file. The tag is the commit,
+      # for people; the deploy takes the digest
+      - id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/api/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: ${{ env.IMAGE }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - run: sh apps/api/gcp/deploy-staging.sh "$IMAGE@$DIGEST"
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+
   Vercel-Deploy-Staging:
+    needs: API-Deploy-Staging
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:

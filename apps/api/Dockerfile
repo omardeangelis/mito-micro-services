@@ -12,6 +12,8 @@ WORKDIR /app
 
 FROM base AS build
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+# xlsx comes from a tarball in the repo (package.json)
+COPY vendor ./vendor
 COPY packages/config/package.json ./packages/config/
 COPY packages/db/package.json ./packages/db/
 COPY packages/domain/package.json ./packages/domain/
@@ -34,6 +36,8 @@ RUN pnpm api:build
 FROM base AS runtime
 ENV NODE_ENV=production
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+# xlsx comes from a tarball in the repo (package.json)
+COPY vendor ./vendor
 COPY packages/config/package.json ./packages/config/
 COPY packages/db/package.json ./packages/db/
 COPY packages/domain/package.json ./packages/domain/
@@ -42,6 +46,8 @@ COPY packages/server/package.json ./packages/server/
 COPY apps/api/package.json ./apps/api/
 RUN pnpm install --prod --frozen-lockfile --ignore-scripts && pnpm store prune
 COPY --from=build /app/apps/api/dist ./apps/api/dist
+# For dist/migrate.js, the job that applies them before each deploy
+COPY packages/db/migrations ./packages/db/migrations
 USER node
 # Cloud Run sends requests to PORT
 ENV PORT=8080
