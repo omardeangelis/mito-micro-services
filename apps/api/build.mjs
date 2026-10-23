@@ -1,4 +1,5 @@
-// Bundles the backend into apps/api/dist/server.js. The code under src/ is
+// Bundles the backend into apps/api/dist/server.js, and the migrations job into
+// apps/api/dist/migrate.js. The code under src/ is
 // bundled (the `@/` alias comes from tsconfig.json); the packages stay in
 // node_modules
 import { build } from "esbuild"
@@ -81,8 +82,8 @@ const cjsDefaultInterop = {
 
 await build({
   absWorkingDir: root,
-  entryPoints: ["apps/api/src/server.ts"],
-  outfile: "apps/api/dist/server.js",
+  entryPoints: ["apps/api/src/server.ts", "apps/api/src/migrate.ts"],
+  outdir: "apps/api/dist",
   bundle: true,
   platform: "node",
   target: "node22",

@@ -18,9 +18,14 @@ if gcloud meta list-files-for-upload . | grep -E '(^|/)\.env' | grep -vx '.env.e
   echo "Stopped: these env files would be uploaded" >&2
   exit 1
 fi
-TAG=$(git rev-parse --short HEAD)
+TAG=$(git rev-parse HEAD)
+# Staging's repository (setup-ci-deploy.sh), as the deploy workflow
+IMAGE=europe-west3-docker.pkg.dev/mito-crm/mito-crm-staging/mito-api
 gcloud builds submit . --project=mito-crm --region=europe-west3 \
   --config=apps/api/gcp/cloudbuild.yaml \
-  --substitutions=_IMAGE=europe-west3-docker.pkg.dev/mito-crm/mito-crm/mito-api:$TAG \
+  --substitutions=_IMAGE=$IMAGE:$TAG \
   --gcs-source-staging-dir=gs://mito-crm-build-source/source
-echo "Image mito-api:$TAG. Deploy it with: sh apps/api/gcp/deploy-staging.sh $TAG"
+DIGEST=$(gcloud artifacts docker images describe "$IMAGE:$TAG" \
+  --format='value(image_summary.digest)')
+echo "Image $IMAGE:$TAG. Deploy it with:"
+echo "  sh apps/api/gcp/deploy-staging.sh $IMAGE@$DIGEST"

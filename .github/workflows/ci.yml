@@ -8,11 +8,14 @@ name: CI
 on:
   pull_request:
     branches: [dev, main]
+  # From the deploy workflows, on the merged code, before anything is deployed
+  workflow_call:
 
-# A new push to the PR cancels the run still in progress
+# A new push to the PR cancels the run still in progress. Called by a deploy,
+# the run is its commit's, and nothing cancels it
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
-  cancel-in-progress: true
+  group: ci-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
