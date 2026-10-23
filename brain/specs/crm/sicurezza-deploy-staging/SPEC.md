@@ -34,6 +34,8 @@ Scelta sulla proposta (approvazione manuale prima delle migrazioni): **"Approvaz
 > canale slack ne facciamo uno ad hoc, che poi duplicheremo per prod 
 > magari facciamo che una volta ogni tot gira un cron di github che li elimina
 
+> il cron puo girare anche ogni settimana
+
 ---
 
 ## Context
@@ -88,7 +90,7 @@ Ruoli coinvolti: gli sviluppatori che uniscono su `dev` (Leonardo, Omar), che ap
 - **AC15.** L'identità che esegue il deploy può creare backup dell'istanza di staging, ma non può ripristinarli, cancellarli o modificare l'istanza.
 - **AC16.** Nel repo c'è una procedura scritta per ripristinare staging da uno di questi backup, che uno sviluppatore può seguire dal proprio Mac.
 - **AC17.** Quando il deploy non porta migrazioni nuove, non viene creato nessun backup.
-- **AC17a.** Un job pianificato su GitHub cancella i backup creati dal deploy più vecchi di 7 giorni, tenendo sempre almeno i 3 più recenti.
+- **AC17a.** Un job pianificato su GitHub, una volta a settimana, cancella i backup creati dal deploy più vecchi di 7 giorni, tenendo sempre almeno i 3 più recenti.
 - **AC17b.** La pulizia non cancella mai i backup automatici dell'istanza né quelli creati a mano da uno sviluppatore.
 - **AC17c.** Ogni esecuzione della pulizia invia un messaggio sullo stesso canale Slack con quanti backup ha cancellato, o la causa se è fallita.
 - **AC17d.** L'identità che esegue la pulizia è diversa da quella del deploy, e quella del deploy resta senza permesso di cancellare (AC15).
@@ -132,7 +134,7 @@ Ruoli coinvolti: gli sviluppatori che uniscono su `dev` (Leonardo, Omar), che ap
 |---|----------|---------|-------|--------|
 | 1 | Su quale canale Slack vanno gli avvisi? | AC18–AC21 | Leonardo | Chiusa: canale nuovo dedicato ai deploy di staging, duplicato poi per prod |
 | 2 | Dopo quanto scade un'approvazione non data? Proposta: 24 ore, poi il deploy fallisce come in AC11. | AC11 | Leonardo | Open |
-| 3 | Per quanto si tengono i backup creati dal deploy? | AC17a | Leonardo | Chiusa: li cancella un job pianificato di GitHub. Proposti 7 giorni, tenendo sempre gli ultimi 3, e un'esecuzione al giorno |
+| 3 | Per quanto si tengono i backup creati dal deploy? | AC17a | Leonardo | Chiusa: li cancella un job pianificato di GitHub. Una volta a settimana (Leonardo); proposti 7 giorni, tenendo sempre gli ultimi 3 |
 
 ---
 
