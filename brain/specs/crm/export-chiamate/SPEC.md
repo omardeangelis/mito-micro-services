@@ -8,6 +8,8 @@ links:
   - "[[chore/migrazione-gcp]]"
 created: 2026-10-23
 updated: 2026-10-23
+ingested: true
+last_ingested: 2026-10-23
 ---
 
 # Spec: Export chiamate per operatore, solo admin

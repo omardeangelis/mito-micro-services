@@ -6,6 +6,8 @@ spec: export-chiamate
 links: ["[[export-chiamate/RUBRIC]]", "[[export-chiamate/SPEC]]", "[[tech-debt/crm/export-chiamate]]"]
 created: 2026-10-23
 updated: 2026-10-23
+ingested: true
+last_ingested: 2026-10-23
 ---
 # Review Report: export-chiamate T1–T5 (callStats lato server)
 

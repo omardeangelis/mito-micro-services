@@ -3,7 +3,7 @@ domain: _root
 type: index
 links: []
 created: 2026-09-24
-updated: 2026-10-21
+updated: 2026-10-23
 ---
 
 # Brain — Log
@@ -111,6 +111,12 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 - Flows written: <count>
 - Concepts written: <count>
 -->
+
+## [2026-10-23] ingest | Export chiamate per operatore, solo admin
+- Source: [[specs/crm/export-chiamate/SPEC]]
+- Flows written: 2
+- Concepts written: 3
+- Review ingested: [[specs/crm/export-chiamate/REPORT]]
 
 ## [2026-10-21] plan | Seeder del database locale, con gli scenari dei cron
 - Plan: [[specs/crm/seeder-locale/PLAN]]; spec passata ad `approved`
@@ -361,4 +367,3 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 - Report: [[specs/crm/export-chiamate/REPORT]] (seconda sezione)
 - 3 pass (permessi su Opus, UI su Sonnet, rimozione su Haiku): SHIP dopo la correzione di 1 MAJOR e 2 MINOR
 - Follow-up sui permessi dello storage in [[tech-debt/crm/export-chiamate]]
-

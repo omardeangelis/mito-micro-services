@@ -4,6 +4,14 @@ type: implementation-notes
 links:
   - "[[specs/crm/export-chiamate/SPEC]]"
   - "[[specs/crm/export-chiamate/PLAN]]"
+  - "[[domains/crm/flows/esito-non-risponde-e-ritorno-in-coda]]"
+  - "[[domains/crm/flows/export-chiamate-per-operatore-admin]]"
+  - "[[domains/crm/concepts/chiamata]]"
+  - "[[domains/crm/concepts/periodo-dell-export]]"
+  - "[[domains/crm/concepts/stato-del-contatto]]"
+  - "[[specs/crm/export-chiamate/REPORT]]"
+ingested: true
+last_ingested: 2026-10-23
 created: 2026-10-23
 updated: 2026-10-23
 ---
@@ -52,9 +60,10 @@ updated: 2026-10-23
 | AC1b, AC2b | met | T0 (#61) |
 | AC7, AC8 | met | T4 (#65) |
 | AC9–AC12, AC22 | met | T2, T3, T4 (#65) |
-| AC11b | met lato server | T1, T4; la UI in T7b |
+| AC11b | met | T1, T4 (#65), T7b (#66) |
 | AC21 | met | T5 (#65) |
-| AC6, AC13–AC20 | open | PR C e D |
+| AC6, AC13, AC14, AC16–AC20 | met | T6, T7a–T7d (#66); test dei componenti, controllo nel browser ancora da fare |
+| AC15 | met | T8 (#67) |
 
 ## Review
 

@@ -36,7 +36,9 @@ Migrated from `docs/` on 2026-09-24. Source material for future `create-spec` ru
 
 > Domain pages (`domains/<domain>/<domain>.md` + `<domain>-contract.md` + `concepts/` + `flows/` + `decisions/`) are created by the `docs-maintenance` flow when a spec in that domain is ready to be ingested. Until then a domain appears here only via its spec map.
 
-_empty_
+| Domain | Concepts | Flows | Spec ingerite |
+|---|---|---|---|
+| [[domains/crm/crm|crm]] (sintesi parziale: solo export-chiamate) | 3 | 2 | [[specs/crm/export-chiamate/SPEC]] |
 
 ## Specs (per domain)
 
@@ -51,7 +53,7 @@ _empty_
 
 ## Tech debt
 
-_empty_
+- [[tech-debt/crm/export-chiamate]] — export chiamate (cron UTC/Roma, permessi dello storage, admin senza riga operatore)
 
 ## Reviews
 
