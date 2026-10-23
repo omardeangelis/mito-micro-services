@@ -12,6 +12,13 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 
 <!-- Entries are appended by create-spec (spec creation) and docs-maintenance (ingest). Format:
 
+## [2026-10-23] spec | Import di clienti e pratiche, riscritto
+- Created spec: [[specs/crm/import-pratiche/SPEC]]
+- Domain: crm
+- Status: Draft
+- Gate di qualità (charter di `adversarial-verifier` in un agente a contesto pulito, 2 giri): primo giro DO NOT SHIP (2 blocker, 4 major), secondo giro DO NOT SHIP (1 blocker e 1 major rimasti, 1 major nuovo); tutti corretti senza terzo giro (budget di 2 tentativi): date seriali di Excel aggiunte a OQ2, attesa delle scritture concorrenti, uguaglianza di AC32 limitata alla conversione di una riga
+- 7 domande aperte per Leonardo, con i default
+
 ## [2026-10-23] ingest | Sicurezza del deploy di staging
 - Source: [[specs/crm/sicurezza-deploy-staging/SPEC]]
 - Flows written: 2 (deploy-di-staging, pulizia-dei-backup-di-staging)
@@ -249,11 +256,6 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 - Domain: crm
 - Status: Draft
 - Source: [[chore/crm/design-contatti]]
-
-## [2026-09-24] migration | docs/ → brain/
-- Moved 5 CRM design/analysis docs → `chore/crm/`; `migration_plan.md` + `migration/` (15 files) → `chore/`; 2 HTML deliverables → `raw/assets/`
-- Rewrote `docs/…` path references; added `domain:` frontmatter (`crm`, `platform`); `docs/` removed
-- Nothing ingested into `domains/` yet — run `create-spec` from a `chore/crm/` draft, then `docs-maintenance`
 
 ## [2026-09-29] review | Sezione Contatti — PR2 "Pulizia e vincolo DB"
 - Report: [[specs/crm/sezione-contatti/REPORT]] (round PR2)
