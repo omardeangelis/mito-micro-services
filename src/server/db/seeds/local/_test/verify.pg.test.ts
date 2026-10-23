@@ -60,7 +60,7 @@ describe.skipIf(!hasTestDatabase)("verifyManifest", () => {
       "completezza",
     ])
     const failing = [
-      ...["P1", "P3", "P4", "P5", "P6", "P7", "P10", "P11", "P12"],
+      ...["P1", "P3", "P4", "P5", "P6", "P7", "P10", "P11", "P12", "P13"],
       ...["A1", "A2", "A3", "A6", "U1", "U2", "U4", "U5", "U6", "U8", "U9"],
       "L1",
     ]

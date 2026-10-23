@@ -122,7 +122,7 @@ describe("contacts determinism (AC5)", () => {
 type PriorityMatch = { task: TaskRow; id: string; expected: number }
 type AlertMatch = { alert: AlertRow; id: string }
 
-const P4_STATES = ["app.to", "caricato", "erogata", "nessuno", "non risponde"]
+const P4_STATES = ["app.to", "caricato", "erogata", "nessuno"]
 
 function classify(dataset: Dataset, day: Day) {
   const tasks = new Map(dataset.tasks.map((task) => [task.id, task]))
@@ -166,6 +166,7 @@ function classify(dataset: Dataset, day: Day) {
       ["P3", s === "non interessato" && p !== 120, 10],
       ["P10", s === "non interessato" && p === 120, 10],
       ["P4", P4_STATES.includes(s ?? ""), 1],
+      ["P13", s === "non risponde", 100],
       ["P5", s === "followup" && p === 150, 1],
       ["P6", s === "richiamare" && closed && past, 50],
       ["P7", s === "richiamare" && closed && future, 30],
@@ -593,6 +594,7 @@ function registerChecks(get: () => Dataset, n: number, day: Day) {
       "P10",
       "P11",
       "P12",
+      "P13",
     ]) {
       expect(ids, id).toContain(id)
     }

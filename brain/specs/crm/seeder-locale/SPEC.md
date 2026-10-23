@@ -233,6 +233,7 @@ Il cron seleziona i contatti attivi con `custom_priority = false`, escluso chi �
 | P10 | Contatto attivo `non interessato` con priorità 120 e `custom_priority = false` | selezionato: priorità 10 (solo `chiamare` a 120 è escluso) |
 | P11 | Contatto attivo `richiamare` senza "Contattato il" e senza alert | priorità 0 |
 | P12 | Contatto attivo `richiamare` senza "Contattato il", con alert aperto con scadenza prima di adesso | priorità 20 |
+| P13 | Contatto attivo `non risponde` con `custom_priority = false` | priorità 100 (resta in coda, subito dopo `chiamare`) |
 
 #### `alert` — chiusura dei richiami scaduti
 

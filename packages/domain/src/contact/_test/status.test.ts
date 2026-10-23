@@ -17,7 +17,7 @@ describe("stateCategory", () => {
     erogata: "close",
     "non interessato": "close",
     richiamare: "close",
-    "non risponde": "close",
+    "non risponde": "open",
     nessuno: "idle",
   }
 
@@ -85,6 +85,17 @@ describe("selectableStates", () => {
     ])
   })
 
+  it("from non risponde offers the outcomes and nessuno, never chiamare or followup (AC1b)", () => {
+    expect(selectableStates("non risponde")).toEqual([
+      "non interessato",
+      "app.to",
+      "caricato",
+      "richiamare",
+      "erogata",
+      "nessuno",
+    ])
+  })
+
   it("from null behaves as nessuno", () => {
     expect(selectableStates(null)).toEqual(selectableStates("nessuno"))
   })
@@ -97,7 +108,7 @@ describe("canSetCallback", () => {
     ["erogata", true],
     ["non interessato", true],
     ["richiamare", true],
-    ["non risponde", true],
+    ["non risponde", false],
     ["nessuno", true],
     ["chiamare", false],
     ["followup", false],
