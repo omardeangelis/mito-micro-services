@@ -1,7 +1,7 @@
 import { fileURLToPath } from "node:url"
 import { Cause, Effect, Exit } from "effect"
 import { connect } from "@mito/db/connect"
-import { applyMigrations } from "@mito/db/migrate"
+import { applyMigrations, MigrationOutOfOrder } from "@mito/db/migrate"
 
 // Applies the pending migrations to the app's database and exits: the Cloud
 // Run Job that runs before each deploy of the backend, with the image, the
@@ -21,6 +21,12 @@ await client.end({ timeout: 5 })
 if (Exit.isSuccess(exit)) {
   console.log(`Migrations applied: ${exit.value}`)
 } else {
-  console.error("Migrations failed:", Cause.squash(exit.cause))
+  const error = Cause.squash(exit.cause)
+  console.error(
+    error instanceof MigrationOutOfOrder
+      ? `Migrations out of order, none applied: ${error.tags.join(", ")} would be skipped. Generate them again on top of dev (pnpm db:generate)`
+      : "Migrations failed:",
+    error
+  )
   process.exitCode = 1
 }
