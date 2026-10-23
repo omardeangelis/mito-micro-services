@@ -3,6 +3,7 @@ domain: crm
 type: spec
 status: draft
 links:
+  - "[[specs/crm/sicurezza-deploy-staging/PLAN]]"
   - "[[chore/migrazione-gcp]]"
   - "[[specs/crm/seeder-locale/SPEC]]"
 created: 2026-10-23
@@ -133,8 +134,8 @@ Ruoli coinvolti: gli sviluppatori che uniscono su `dev` (Leonardo, Omar), che ap
 | # | Question | Affects | Owner | Status |
 |---|----------|---------|-------|--------|
 | 1 | Su quale canale Slack vanno gli avvisi? | AC18–AC21 | Leonardo | Chiusa: canale nuovo dedicato ai deploy di staging, duplicato poi per prod |
-| 2 | Dopo quanto scade un'approvazione non data? Proposta: 24 ore, poi il deploy fallisce come in AC11. | AC11 | Leonardo | Open |
-| 3 | Per quanto si tengono i backup creati dal deploy? | AC17a | Leonardo | Chiusa: li cancella un job pianificato di GitHub. Una volta a settimana (Leonardo); proposti 7 giorni, tenendo sempre gli ultimi 3 |
+| 2 | Dopo quanto scade un'approvazione non data? GitHub la fa scadere dopo 30 giorni e non permette una scadenza più corta (vedi D10 del piano). Proposta: tenere i 30 giorni. | AC11 | Leonardo | Open |
+| 3 | Per quanto si tengono i backup creati dal deploy? | AC17a | Leonardo | Chiusa: li cancella un job pianificato di GitHub. Una volta a settimana, 7 giorni, sempre gli ultimi 3 (Leonardo, "ok") |
 
 ---
 

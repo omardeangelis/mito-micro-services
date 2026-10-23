@@ -414,3 +414,9 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 - Domain: crm
 - Status: Draft
 - Gate di qualità (`adversarial-verifier`, eseguito inline perché l'agente non è disponibile in questa sessione): nessun blocker; corretti la run annullata nei messaggi Slack, chi avvia la run a mano e il comportamento della coda dei deploy durante l'attesa dell'approvazione
+
+## [2026-10-23] plan | sicurezza-deploy-staging
+- Spec: [[specs/crm/sicurezza-deploy-staging/SPEC]], piano: [[specs/crm/sicurezza-deploy-staging/PLAN]]
+- 4 PR: A controlli sulle migrazioni, B avvisi Slack, C approvazione e backup, D pulizia settimanale dei backup
+- Decisioni: migrazioni nuove calcolate dal repo (label `deployed-sha` sul servizio), environment `staging-db` per l'approvazione, ruoli custom per backup e pulizia, scadenza dell'approvazione di GitHub (30 giorni) da confermare
+- Gate di qualità (charter di `adversarial-verifier` inline): 2 major e 1 minor corretti, SHIP
