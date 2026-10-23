@@ -9,7 +9,7 @@ import {
   type SortingState,
   type Row,
 } from "@tanstack/react-table"
-import React, { useCallback, useMemo } from "react"
+import React, { useMemo } from "react"
 
 import {
   Table,
@@ -37,6 +37,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { PlusSquareIcon } from "lucide-react"
+import { REMOVED_CUSTOMER_COLUMN_IDS } from "../_constants"
 
 /** Last modified first: the id of the "Aggiornato il" column. */
 const DEFAULT_SORTING: SortingState = [{ id: "Aggiornato il", desc: true }]
@@ -60,30 +61,21 @@ export function CustomersTable<TData, TValue>({
     (state) => state.setCustomerTableVisibleColumns
   )
 
-  const updateFn = useCallback(
-    (columns: string[]) => {
-      fetch("/api/user/preferences?pref=ct", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          preferences: {
-            customerTableVisibleColumns: columns,
-          },
-        }),
-      })
-        .then((_) => {
-          setCustomerTableVisibleColumns(columns)
-        })
-        .catch(console.error)
-    },
-    [setCustomerTableVisibleColumns]
+  // The store has the last choice, the server prop only the one of the
+  // render in the router cache: it seeds the first render of a visit
+  const storedColumns = useUserPreferenceContext(
+    (state) => state.preferences?.customerTableVisibleColumns
   )
 
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>(() => ({
-      ...defaultColumns,
+      ...(storedColumns
+        ? Object.fromEntries(
+            storedColumns
+              .filter((column) => !REMOVED_CUSTOMER_COLUMN_IDS.includes(column))
+              .map((column) => [column, false])
+          )
+        : defaultColumns),
       id: false,
       select: role === "ADMIN",
     }))
@@ -93,9 +85,13 @@ export function CustomersTable<TData, TValue>({
     [columnVisibility]
   )
 
+  // The cookie is written when the operator changes the columns, not on mount
+  const savedColumns = React.useRef(arrayOfHiddenColumns)
   React.useEffect(() => {
-    updateFn(arrayOfHiddenColumns)
-  }, [arrayOfHiddenColumns, updateFn])
+    if (savedColumns.current === arrayOfHiddenColumns) return
+    savedColumns.current = arrayOfHiddenColumns
+    setCustomerTableVisibleColumns(arrayOfHiddenColumns)
+  }, [arrayOfHiddenColumns, setCustomerTableVisibleColumns])
 
   const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({})
   const searchParams = useSearchParams()

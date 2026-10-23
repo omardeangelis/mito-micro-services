@@ -503,7 +503,11 @@ function registerChecks(get: () => Dataset, n: number, day: Day) {
     const { dataset, tasks, alerts } = index()
     const rows = dataset.taskEventLog
     expect(new Set(rows.map((r) => r.action))).toEqual(new Set(taskEventAction))
-    expect(new Set(rows.map((r) => r.source))).toEqual(new Set(taskEventSource))
+    // "deactivation" has no writer yet (gestione-operatori): the seed covers
+    // the sources the app writes today
+    expect(new Set(rows.map((r) => r.source))).toEqual(
+      new Set(taskEventSource.filter((s) => s !== "deactivation"))
+    )
     const from = romeNoon(subMonthsDay(day, 6)).getTime()
     const lastState = new Map<number, string>()
     const lastOperator = new Map<number, number>()

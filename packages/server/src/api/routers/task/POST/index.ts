@@ -13,6 +13,7 @@ import { replaceActiveContact } from "../../../../services/contact/activeContact
 import { actorOf } from "../../../../services/contact/actor"
 import { createContact as createContactService } from "../../../../services/contact/createContact"
 import { contactErrorToTrpc } from "../../../../services/contact/errors"
+import { findWorkingOperator } from "../../../../services/contact/operator"
 import { setCallback as setCallbackService } from "../../../../services/contact/setCallback"
 
 const createContactInput = z.object({
@@ -70,6 +71,12 @@ type LogRow = typeof taskEventLog.$inferInsert
  * Assigns one customer, in its own transaction, following the four cases of
  * the operators' guide (brain/chore/crm/guida-assegnazione-massiva-e-alert.md).
  * The case is decided on the data read after the customer is locked.
+ *
+ * The target must be a working operator (`findWorkingOperator`): a missing,
+ * disabled or system operator is `OperatorNotFound` and the customer is left
+ * as it is. It is checked in each transaction, before the customer's lock (the
+ * lock rule of `lockCustomer`), so a target disabled while the run goes on
+ * stops it at the next customer.
  */
 const assignCustomer = ({
   customerId,
@@ -86,6 +93,8 @@ const assignCustomer = ({
   actorOperatorId: number
 }) =>
   Effect.gen(function* () {
+    // Users first, then customers: the target before the customer
+    yield* findWorkingOperator(operatorId)
     const customer = yield* lockCustomer(customerId)
     // With more than one active task, the most recently updated one
     const [customerTask] = yield* query((client) =>

@@ -1,9 +1,37 @@
-// import { type UserPreference } from "@mito/domain/schemas"
+import { type SupaBaseDb } from "@mito/db/types"
+import { type UserPreference } from "@mito/domain/schemas"
 import { protectedProcedure } from "../../../trpc"
+import { operators } from "@mito/db/schema/operators"
 import { users } from "@mito/db/schema/users"
 import { eq } from "drizzle-orm"
 import { z } from "zod"
-import { retrieveUserPrefercence } from "../GET/getUserPreference"
+
+type RetrivePreferenceType = {
+  id: string
+  db: SupaBaseDb
+}
+
+const retrieveUserPrefercence = async ({ db, id }: RetrivePreferenceType) => {
+  const userPreference = await db
+    .select({
+      preference: users.preferences,
+      role: users.role,
+      operatorId: operators.id,
+    })
+    .from(users)
+    .innerJoin(operators, eq(users.id, operators.userId))
+    .where(eq(users.id, id))
+
+  const preferences = JSON.parse(
+    userPreference[0]?.preference ?? "{}"
+  ) as UserPreference
+
+  return {
+    preferences,
+    role: userPreference[0]?.role,
+    operatorId: userPreference[0]?.operatorId,
+  }
+}
 
 const updateUserTableVisibleColumnsInput = z.object({
   preferences: z.object({

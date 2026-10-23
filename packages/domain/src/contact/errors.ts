@@ -19,6 +19,10 @@ export const contactErrorCodes = [
   "OPERATOR_NOT_FOUND",
   "CUSTOMER_ASSIGNMENT_FORBIDDEN",
   "HANDOVER_SAME_OPERATOR",
+  "OPERATOR_DISABLED",
+  "OPERATOR_IS_ADMIN",
+  "CANNOT_DEACTIVATE_SELF",
+  "LAST_ADMIN",
 ] as const
 
 export type ContactErrorCode = (typeof contactErrorCodes)[number]
@@ -55,6 +59,10 @@ export type ContactErrorPayloads = {
   OPERATOR_NOT_FOUND: NoPayload
   CUSTOMER_ASSIGNMENT_FORBIDDEN: NoPayload
   HANDOVER_SAME_OPERATOR: NoPayload
+  OPERATOR_DISABLED: NoPayload
+  OPERATOR_IS_ADMIN: NoPayload
+  CANNOT_DEACTIVATE_SELF: NoPayload
+  LAST_ADMIN: NoPayload
 }
 
 export type ContactErrorPayload<C extends ContactErrorCode> =
