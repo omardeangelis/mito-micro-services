@@ -8,6 +8,7 @@
     "db:push": " cross-env NODE_ENV=development drizzle-kit push",
     "db:push:prod": "cross-env NODE_ENV=production drizzle-kit push",
     "db:generate": "drizzle-kit generate",
+    "db:check": "tsx packages/db/scripts/check-migrations.ts",
     "db:studio": "drizzle-kit studio",
     "db:studio:dev": "cross-env NODE_ENV=development drizzle-kit studio",
     "db:migrate": "cross-env NODE_ENV=development drizzle-kit migrate",
