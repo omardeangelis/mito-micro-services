@@ -3,7 +3,7 @@ domain: _root
 type: index
 links: []
 created: 2026-09-24
-updated: 2026-10-21
+updated: 2026-10-23
 ---
 
 # Brain — Master Map
@@ -45,6 +45,7 @@ _empty_
 | crm | [[specs/crm/sezione-contatti/SPEC]] | Draft |
 | crm | [[specs/crm/filtri-sql-sicuri/SPEC]] | Draft |
 | crm | [[specs/crm/seeder-locale/SPEC]] | Implemented (piano: [[specs/crm/seeder-locale/PLAN]], review: [[specs/crm/seeder-locale/REPORT]]) |
+| crm | [[specs/crm/export-chiamate/SPEC]] | Draft |
 
 - [[specs/crm/crm-specs|crm-specs]] — CRM spec page map
 
