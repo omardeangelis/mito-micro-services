@@ -20,15 +20,15 @@
     --secondary-foreground: 0 0% 9%;
 
     --muted: 0 0% 96.1%;
-    --muted-foreground: 0 0% 45.1%;
+    --muted-foreground: 0 0% 40%;
 
     --accent: 0 0% 96.1%;
     --accent-foreground: 0 0% 9%;
 
-    --destructive: 0 84.2% 60.2%;
+    --destructive: 0 73.7% 41.8%;
     --destructive-foreground: 0 0% 98%;
 
-    --success: 158 60% 48%;
+    --success: 163 94% 24%;
     --success-foreground: 0 0% 98%;
 
     --border: 0 0% 89.8%;
