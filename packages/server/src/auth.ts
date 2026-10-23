@@ -14,6 +14,7 @@ import { db } from "@mito/db"
 import { type Db } from "./effect/db"
 import { ServerLive } from "./effect/server"
 import { requestSession } from "./requestSession"
+import { isUserDisabled } from "./services/auth/disabled"
 import { createUserWithOperator, matchUserEmail } from "./services/auth/users"
 import { pgTableCreator } from "drizzle-orm/pg-core"
 
@@ -77,12 +78,13 @@ const allowedEmails = new Set(
  * failure is logged here and thrown without its message, which NextAuth puts
  * in the URL of its error page.
  */
-async function runAuth<A, E>(program: Effect.Effect<A, E, Db>): Promise<A> {
+async function runAuth<A, E>(
+  program: Effect.Effect<A, E, Db>,
+  label = "Sign-in database step failed"
+): Promise<A> {
   const exit = await Effect.runPromiseExit(
     program.pipe(
-      Effect.tapErrorCause((cause) =>
-        Effect.logError("Sign-in database step failed", cause)
-      ),
+      Effect.tapErrorCause((cause) => Effect.logError(label, cause)),
       Effect.provide(ServerLive)
     )
   )
@@ -124,6 +126,12 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     // Also called before the email login sends its link
     signIn: async ({ user }) => {
+      // A deactivated user stays out, in production too (AC17). NextAuth
+      // passes the database user when the account is linked, otherwise the
+      // provider's profile, found by its email
+      if (await runAuth(isUserDisabled({ id: user.id, email: user.email }))) {
+        return false
+      }
       if (isProduction) return true
       const email = user.email
       if (!email) return false
@@ -158,6 +166,29 @@ export const authOptions: NextAuthOptions = {
     // still calls it without the id (core/lib/callback-handler)
     createUser: (user: Omit<AdapterUser, "id">) =>
       runAuth(createUserWithOperator(user)),
+    // The session of a deactivated user is no session, for getServerSession
+    // and for the backend (sessionFromRequest) alike (AC16). The adapter's
+    // tables don't know users.disabled_at, hence one more read by primary
+    // key. Whatever replaces NextAuth must keep this check (TD4,
+    // brain/chore/migrazione-effect.md §7)
+    getSessionAndUser: async (sessionToken) => {
+      // The database sessions, which the backend reads too
+      // (apps/api/src/session.ts)
+      if (!DBAdapter.getSessionAndUser) {
+        throw new Error("The NextAuth adapter has no database sessions")
+      }
+      const found = await DBAdapter.getSessionAndUser(sessionToken)
+      if (!found) return null
+      if (
+        await runAuth(
+          isUserDisabled({ id: found.user.id }),
+          "Session database step failed"
+        )
+      ) {
+        return null
+      }
+      return found
+    },
   },
   providers,
 }

@@ -5,6 +5,7 @@ import { taskEventLog } from "@mito/db/schema/taskEventLog"
 import {
   BEFORE_REALIGN_SCHEMA_TAG,
   driverFailure,
+  REALIGN_SCHEMA_TAG,
   migrateUpTo,
   resetDb,
   testClient,
@@ -110,7 +111,8 @@ describe("contatti_contact_realign senza operatore di sistema", () => {
     })
     const migrationsBefore = await appliedMigrations()
 
-    await migrateUpTo()
+    // Up to the realignment: the migrations after it are not part of the case
+    await migrateUpTo(REALIGN_SCHEMA_TAG)
 
     expect(await appliedMigrations()).toBe(migrationsBefore + 3)
     expect(await batchState()).toEqual({ cronRunTable: true, indexes: [] })

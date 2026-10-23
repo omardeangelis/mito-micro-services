@@ -1,4 +1,5 @@
 import { api } from "@/trpc/server"
+import { readRequestPreferences } from "@/lib/preferences/server"
 import { unstable_noStore as noStore } from "next/cache"
 import { type ServerPageDefaultProps } from "@/lib/types"
 import { CustomersTable } from "./CustomersTable"
@@ -105,7 +106,7 @@ export async function CustomersTableSection({
     sqlFilter: sqlQuery,
   })
 
-  const { preferences } = await api.user.getUserPreference.query()
+  const preferences = readRequestPreferences()
 
   // The saved list is the one of the hidden columns: it can still name the
   // ones Clienti no longer has, which hide nothing
