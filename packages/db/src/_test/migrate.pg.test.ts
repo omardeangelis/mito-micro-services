@@ -5,7 +5,7 @@ import { beforeAll, describe, expect, it } from "vitest"
 import { Effect, Exit } from "effect"
 import { hasTestDatabase, migrateUpTo, pgClient } from "@/test/pg"
 import { failureTag } from "@/test/effect"
-import { applyMigrations } from "../migrate"
+import { applyMigrations, MigrationOutOfOrder } from "../migrate"
 
 // The job that runs before each deploy of the backend (apps/api/src/migrate.ts),
 // on a database migrated up to the migration before the last one, as staging
@@ -41,6 +41,27 @@ function folderWithFailingMigration() {
     JSON.stringify({ ...journal, entries })
   )
   return copy
+}
+
+/**
+ * A copy of the migrations with one more, never applied, dated just before
+ * the last one: a branch that merged a migration generated before it.
+ */
+function folderWithOlderMigration() {
+  const copy = fs.mkdtempSync(path.join(os.tmpdir(), "migrations-"))
+  fs.cpSync(FOLDER, copy, { recursive: true })
+  const tag = "20261021000000_older"
+  fs.writeFileSync(path.join(copy, `${tag}.sql`), "SELECT 1;")
+  const entries = [
+    ...journal.entries.slice(0, -1),
+    { ...last!, when: last!.when - 1, tag },
+    { ...last!, idx: last!.idx + 1 },
+  ]
+  fs.writeFileSync(
+    path.join(copy, "meta/_journal.json"),
+    JSON.stringify({ ...journal, entries })
+  )
+  return { copy, tag }
 }
 
 describe.skipIf(!hasTestDatabase)("applyMigrations", () => {
@@ -80,5 +101,17 @@ describe.skipIf(!hasTestDatabase)("applyMigrations", () => {
     const exit = await Effect.runPromiseExit(applyMigrations(pgClient, FOLDER))
 
     expect(exit).toStrictEqual(Exit.succeed(0))
+  })
+
+  it("fails on a pending migration older than the last one applied", async () => {
+    const before = await appliedCount()
+    const { copy, tag } = folderWithOlderMigration()
+
+    const exit = await Effect.runPromiseExit(applyMigrations(pgClient, copy))
+
+    expect(exit).toStrictEqual(
+      Exit.fail(new MigrationOutOfOrder({ tags: [tag] }))
+    )
+    expect(await appliedCount()).toBe(before)
   })
 })
