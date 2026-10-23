@@ -88,10 +88,12 @@ describe("checkMigrations", () => {
   })
 
   it("reports a journal entry without its SQL", () => {
-    const copy = copyWith((entries) => entries)
-    const last = JSON.parse(
-      fs.readFileSync(path.join(copy, "meta/_journal.json"), "utf8")
-    ).entries.at(-1) as Entry
+    let last: Entry | undefined
+    const copy = copyWith((entries) => {
+      last = entries.at(-1)
+      return entries
+    })
+    if (!last) throw new Error("The journal has no entries")
     fs.rmSync(path.join(copy, `${last.tag}.sql`))
 
     expect(checkMigrations(copy)).toStrictEqual([

@@ -60,14 +60,12 @@ const checkOrder = (client: postgres.Sql, folder: string) =>
     if (applied.length === 0) return
     const first = Math.min(...applied)
     const last = Math.max(...applied)
-    const { entries } = yield* attempt(async () =>
-      JSON.parse(
-        fs.readFileSync(path.join(folder, "meta/_journal.json"), "utf8")
-      )
-    ) as Effect.Effect<
-      { entries: { when: number; tag: string }[] },
-      MigrationError
-    >
+    const { entries } = yield* attempt(
+      async () =>
+        JSON.parse(
+          fs.readFileSync(path.join(folder, "meta/_journal.json"), "utf8")
+        ) as { entries: { when: number; tag: string }[] }
+    )
     const tags = entries
       .filter(
         ({ when }) => when > first && when < last && !applied.includes(when)
