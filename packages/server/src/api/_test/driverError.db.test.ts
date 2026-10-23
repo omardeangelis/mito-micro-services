@@ -3,6 +3,8 @@ import { TRPCError } from "@trpc/server"
 import { DrizzleQueryError } from "drizzle-orm"
 import { createTRPCRouter, publicProcedure } from "../trpc"
 import { customers } from "@mito/db/schema/customers"
+import { users } from "@mito/db/schema/users"
+import { eq } from "drizzle-orm"
 import { createTestCaller } from "@/test/caller"
 import { migrateUpTo, resetDb, testDb } from "@/test/db"
 import { createCustomer, createOperator } from "@/test/factories"
@@ -35,6 +37,36 @@ describe("errori del database nelle procedure tRPC", () => {
     expect(error).toMatchObject({ code: "INTERNAL_SERVER_ERROR" })
     expect((error as Error).message).toMatch(/^failpoint: update of/)
     expect((error as Error).message).not.toMatch(/Failed query|params/)
+  })
+
+  it("una query rifiutata dal driver in una procedura di operator arriva con il suo messaggio", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined)
+    const operator = await createOperator()
+
+    const error = await createTestCaller(operator)
+      // Out of the range of an integer column: Postgres rejects the parameter
+      .operator.getOperatorById({ id: 3_000_000_000 })
+      .catch((e: unknown) => e)
+
+    expect(error).toMatchObject({ code: "INTERNAL_SERVER_ERROR" })
+    expect((error as Error).message).toMatch(/out of range/)
+    expect((error as Error).message).not.toMatch(/Failed query|params/)
+  })
+
+  it("preferenze salvate come JSON rovinato: INTERNAL_SERVER_ERROR con il messaggio del parser", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined)
+    const operator = await createOperator()
+    await testDb
+      .update(users)
+      .set({ preferences: "{rotto" })
+      .where(eq(users.id, operator.userId))
+
+    const error = await createTestCaller(operator)
+      .user.getUserPreference()
+      .catch((e: unknown) => e)
+
+    expect(error).toMatchObject({ code: "INTERNAL_SERVER_ERROR" })
+    expect((error as Error).message).toMatch(/JSON/)
   })
 
   it("un TRPCError con un messaggio suo resta com'è", async () => {
