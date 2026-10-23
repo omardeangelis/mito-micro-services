@@ -65,9 +65,11 @@ jobs:
           rev=$(gcloud run services describe mito-crm-staging "${svc[@]}" --format=json |
             jq -r '[.status.traffic[] | select(.percent == 100)][0].revisionName // empty')
           sha=""
-          if [ -n "$rev" ]; then
-            sha=$(gcloud run revisions describe "$rev" "${svc[@]}" \
-              --format='value(metadata.labels.deployed-sha)')
+          # Unknown, every migration counts: the plan lists more, never fewer
+          if [ -n "$rev" ] && ! sha=$(gcloud run revisions describe "$rev" "${svc[@]}" \
+            --format='value(metadata.labels.deployed-sha)'); then
+            echo "::warning::Can't read the revision $rev: every migration counts"
+            sha=""
           fi
           echo "Staging serves $rev, commit ${sha:-unknown}"
           echo "sha=$sha" >> "$GITHUB_OUTPUT"
