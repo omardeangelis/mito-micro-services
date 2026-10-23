@@ -1,9 +1,12 @@
 ---
 domain: crm
 type: spec
-status: draft
+status: implemented
+ingested: true
+last_ingested: 2026-10-23
 links:
   - "[[specs/crm/sicurezza-deploy-staging/PLAN]]"
+  - "[[specs/crm/sicurezza-deploy-staging/IMPLEMENTATION-NOTES]]"
   - "[[chore/migrazione-gcp]]"
   - "[[specs/crm/seeder-locale/SPEC]]"
 created: 2026-10-23

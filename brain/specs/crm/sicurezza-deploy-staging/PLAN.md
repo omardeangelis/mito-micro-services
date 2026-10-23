@@ -110,7 +110,7 @@ Ondate: A e B si possono scrivere in parallelo; C dopo B; D dopo C. Esecuzione `
 - **location**: `packages/db/src/checkMigrations.ts`, `packages/db/scripts/check-migrations.ts`, `package.json`, `.github/workflows/ci.yml`
 - **description**: Ripartire dal branch WIP. Problemi: snapshot con `prevId` diverso dall'`id` precedente, `when` non crescente, `.sql` o snapshot mancante, `idx` fuori sequenza. Messaggio con il nome della migrazione e il rimedio. Step "Migrations" nel job Lint della CI.
 - **validation**: test unitari verdi; `pnpm db:check` passa su `dev`; su una copia con due migrazioni dallo stesso snapshot la CI fallisce col nome della seconda.
-- **status**: Planned
+- **status**: Done
 - **log**:
 - **files edited/created**:
 - **backlog_item_id**: n/a
@@ -125,7 +125,7 @@ Ondate: A e B si possono scrivere in parallelo; C dopo B; D dopo C. Esecuzione `
 - **location**: `packages/db/src/migrate.ts`, `packages/db/src/_test/migrate.pg.test.ts`, `apps/api/src/migrate.ts`
 - **description**: `MigrationOutOfOrder` (TaggedError) quando una voce del journal non applicata ha data tra la prima e l'ultima applicate; niente applicato. `migrate.ts` stampa i nomi ed esce con 1.
 - **validation**: test pg: migrazione più vecchia mai applicata → `MigrationOutOfOrder` con il suo nome e nessuna riga nuova; i quattro test esistenti invariati; DB migrato fino in fondo → nessun errore (AC6).
-- **status**: Planned
+- **status**: Done
 - **log**:
 - **files edited/created**:
 - **backlog_item_id**: n/a
@@ -140,7 +140,7 @@ Ondate: A e B si possono scrivere in parallelo; C dopo B; D dopo C. Esecuzione `
 - **location**: PR verso `dev`
 - **description**: Lint, test, build verdi; revisione di Leonardo; merge con la regola di `AGENTS.md`. Il primo deploy dopo il merge mostra `Migrations applied: 0` e nessun errore d'ordine su staging (AC6).
 - **validation**: run di deploy verde dopo il merge.
-- **status**: Planned
+- **status**: Done
 - **log**:
 - **files edited/created**:
 - **backlog_item_id**: n/a
@@ -157,7 +157,7 @@ Ondate: A e B si possono scrivere in parallelo; C dopo B; D dopo C. Esecuzione `
 - **location**: `apps/api/gcp/lib/deployReport.ts`, `apps/api/gcp/lib/_test/deployReport.test.ts`
 - **description**: Funzione pura: dai risultati dei job (`success`, `failure`, `cancelled`, `skipped`) e dagli output (commit, attore, revisione, migrazioni applicate, backup, URL della run) restituisce esito, fase e testo. Fasi: CI, immagine, approvazione, backup, migrazioni, revisione Cloud Run, `/health`, Vercel.
 - **validation**: test per riuscito, fallito in ciascuna fase, annullato, run manuale (attore = chi l'ha lanciata).
-- **status**: Planned
+- **status**: Done
 - **log**:
 - **files edited/created**:
 - **backlog_item_id**: n/a
@@ -172,7 +172,7 @@ Ondate: A e B si possono scrivere in parallelo; C dopo B; D dopo C. Esecuzione `
 - **location**: `.github/workflows/deploy-staging.yaml`, `apps/api/gcp/deploy-staging.sh`, `apps/api/gcp/send-deploy-report.ts`
 - **description**: Gli step di `deploy-staging.sh` scrivono la fase raggiunta e la revisione in `$GITHUB_OUTPUT` (solo se esiste); il job API la espone come output. Job `Report` con `if: always()` e `needs` su tutti, che invia il messaggio; un errore HTTP è `::warning::`. Il webhook non viene mai stampato. `actionlint` sul workflow.
 - **validation**: `actionlint` pulito; run di prova su `dev` dopo il merge: un messaggio ✅ nel canale.
-- **status**: Planned
+- **status**: Done
 - **log**:
 - **files edited/created**:
 - **backlog_item_id**: n/a
@@ -187,7 +187,7 @@ Ondate: A e B si possono scrivere in parallelo; C dopo B; D dopo C. Esecuzione `
 - **location**: PR verso `dev`
 - **description**: Prerequisiti: canale e webhook (Leonardo), secret (Omar). Merge, poi controllo del primo messaggio.
 - **validation**: messaggio ✅ del deploy della PR B nel canale.
-- **status**: Planned
+- **status**: Done
 - **log**:
 - **files edited/created**:
 - **backlog_item_id**: n/a
@@ -204,7 +204,7 @@ Ondate: A e B si possono scrivere in parallelo; C dopo B; D dopo C. Esecuzione `
 - **location**: `apps/api/gcp/lib/pendingMigrations.ts` + test
 - **description**: Funzione pura: journal del commit deployato (o assente) e journal della run → migrazioni nuove con nome e SQL. Journal deployato assente → tutte.
 - **validation**: test: nessuna nuova; una nuova; due nuove in ordine; label assente.
-- **status**: Planned
+- **status**: Done
 - **log**:
 - **files edited/created**:
 - **backlog_item_id**: n/a
@@ -219,7 +219,7 @@ Ondate: A e B si possono scrivere in parallelo; C dopo B; D dopo C. Esecuzione `
 - **location**: `apps/api/gcp/setup-deploy-backup.sh` (script a parte: `setup-ci-deploy.sh` si ferma alla prima risorsa esistente, quindi non si può rilanciare)
 - **description**: Ruolo custom `mitoStagingBackupCreator` (D6) dato al deployer con condizione sull'istanza `mito-crm-staging`. Idempotente come il resto dello script.
 - **validation**: dopo l'esecuzione sul Mac, il deployer crea un backup e non può cancellarlo né fare restore (`gcloud ... --impersonate-service-account`, solo comandi di prova sull'istanza di staging).
-- **status**: Planned
+- **status**: Done
 - **log**:
 - **files edited/created**:
 - **backlog_item_id**: n/a
@@ -234,7 +234,7 @@ Ondate: A e B si possono scrivere in parallelo; C dopo B; D dopo C. Esecuzione `
 - **location**: `.github/workflows/deploy-staging.yaml`, `apps/api/gcp/deploy-staging.sh`, `apps/api/gcp/plan-migrations.ts`
 - **description**: Plan: checkout con storia, legge `deployed-sha`, calcola le migrazioni, riepilogo, output `pending`, messaggio di attesa (AC21). Approve con `environment: staging-db`, `if: pending > 0`. API: `needs: [Plan, Approve]` con `if` che accetta Approve saltato; con `BACKUP=1` crea il backup (`deploy <sha>`), lo espone, si ferma se fallisce; a fine deploy aggiorna `deployed-sha`. Report legge approvazione e backup.
 - **validation**: `actionlint`; run con migrazione nuova: attesa, SQL nel riepilogo, approvazione, backup creato, migrazione applicata, messaggio ✅ con l'id del backup; run senza migrazioni: nessuna attesa né backup; rifiuto: nulla applicato, Vercel saltato, messaggio 🚨 "approvazione".
-- **status**: Planned
+- **status**: Done
 - **log**:
 - **files edited/created**:
 - **backlog_item_id**: n/a
@@ -249,7 +249,7 @@ Ondate: A e B si possono scrivere in parallelo; C dopo B; D dopo C. Esecuzione `
 - **location**: `apps/api/gcp/RESTORE-STAGING.md`
 - **description**: Passi dal Mac: elencare i backup del deploy, ripristinare su staging, cosa succede alle migrazioni e alla label, come rideployare.
 - **validation**: Leonardo la legge e la ritiene eseguibile; i comandi sono quelli di `gcloud sql backups`.
-- **status**: Planned
+- **status**: Done
 - **log**:
 - **files edited/created**:
 - **backlog_item_id**: n/a
@@ -264,7 +264,7 @@ Ondate: A e B si possono scrivere in parallelo; C dopo B; D dopo C. Esecuzione `
 - **location**: PR verso `dev`
 - **description**: Prerequisiti: `staging-db` creato da Omar, setup eseguito da Leonardo. Merge, poi una migrazione di prova innocua (per esempio un commento su una tabella) per percorrere tutto il flusso con approvazione e backup.
 - **validation**: i tre scenari di TC3 osservati su staging.
-- **status**: Planned
+- **status**: Done
 - **log**:
 - **files edited/created**:
 - **backlog_item_id**: n/a
@@ -281,7 +281,7 @@ Ondate: A e B si possono scrivere in parallelo; C dopo B; D dopo C. Esecuzione `
 - **location**: `apps/api/gcp/lib/backupsToDelete.ts` + test
 - **description**: Funzione pura: lista dei backup (id, tipo, descrizione, data) e "adesso" → quelli da cancellare: solo `ON_DEMAND` con descrizione `deploy `, più vecchi di 7 giorni, esclusi i 3 più recenti del deploy.
 - **validation**: test: automatici e manuali mai scelti; con 4 backup del deploy vecchi ne restano 3; nessuno vecchio → lista vuota.
-- **status**: Planned
+- **status**: Done
 - **log**:
 - **files edited/created**:
 - **backlog_item_id**: n/a
@@ -296,7 +296,7 @@ Ondate: A e B si possono scrivere in parallelo; C dopo B; D dopo C. Esecuzione `
 - **location**: `apps/api/gcp/setup-backup-cleanup.sh`, `.github/workflows/cleanup-staging-backups.yaml`
 - **description**: SA `mito-crm-backup-cleaner` con ruolo custom (list, delete) condizionato all'istanza, legato al `job_workflow_ref` di `cleanup-staging-backups.yaml` su `dev` (D11), senza environment GitHub. Workflow settimanale + `workflow_dispatch`, cancella, scrive su Slack quanti o perché è fallito.
 - **validation**: `actionlint`; `workflow_dispatch` dopo il merge: messaggio "0 cancellati" o il numero giusto.
-- **status**: Planned
+- **status**: Done
 - **log**:
 - **files edited/created**:
 - **backlog_item_id**: n/a
@@ -311,7 +311,7 @@ Ondate: A e B si possono scrivere in parallelo; C dopo B; D dopo C. Esecuzione `
 - **location**: PR verso `dev`
 - **description**: Prerequisiti: setup sul Mac (Leonardo). Merge e prima esecuzione manuale.
 - **validation**: messaggio della pulizia nel canale; deployer ancora senza permesso di cancellare.
-- **status**: Planned
+- **status**: Done
 - **log**:
 - **files edited/created**:
 - **backlog_item_id**: n/a
