@@ -5,7 +5,7 @@ scope: spec
 spec: gestione-operatori
 review_target: "spec implementation, per PR (un round per PR)"
 base_ref: claude/great-carson-o6qn17-pr5 (6eb42e0)
-head_ref: claude/great-carson-o6qn17-pr5 (a5c808a)
+head_ref: claude/great-carson-o6qn17-pr5 (a5c808a); correzioni senza review in cb51313
 verdict: do-not-ship
 review_impact: critical
 human_in_loop: true
@@ -519,6 +519,18 @@ Obiezione più forte (v4): il padding simmetrico di `DialogHeader` sotto i 640 p
 | AC21 | Met | con il testo a 1,25 e nomi lunghi i controlli escono dal dialog a 280 px (MAJOR) |
 | AC22 | Met | |
 | AC23 | Met | |
+
+### Correzioni dopo il quarto giro
+
+Omar: "Correggi minor e major e poi basta". Correzioni in cb51313 su `-pr5`, senza un quinto giro di review: le misure qui sotto sono dell'orchestratore, non di un verificatore.
+
+- MAJOR: `DialogContent` ha la colonna `minmax(0,1fr)`, che non cresce oltre il dialog; `DialogTitle` va a capo dentro una parola solo quando la parola non sta sulla riga (`break-words`). A 280 px con il testo a 1,25, "Disattiva Massimiliano Mastrogiovanni" e "Disattiva Pierfrancesco Russo" restano nel dialog (nessun elemento fuori dal riquadro, colonna di 178 px); il secondo va a capo come "Pierfrancesc / o Russo". `hyphens-auto` scartato: sillaberebbe anche i titoli che oggi vanno a capo fra le parole.
+- MINOR del bottone "Cambia tipo di assegnazione": `-ml-5 sm:ml-0`, allineato al form a 280 px (testo a 1,25), 375 e 800 px.
+- MINOR della riga d'errore: la riga va a capo (`flex-wrap`) invece di spezzare le parole. A 280 px con il testo a 1,25 e a 320 px "Riprova" scende sotto il messaggio, senza parole spezzate; a 1280 px resta sulla stessa riga.
+- MINOR preesistente dell'header di successo di `CustomerBulkDialog`: `sm:text-center`. Non provato dal vivo (serve un'assegnazione vera).
+- MINOR del filtro ridondante: tolto, le modifiche le pota solo l'effetto; i test di `OperatorTable` restano verdi.
+- I NIT restano aperti.
+- Gate su cb51313: 2706 test con i `*.pg.test.ts`, lint, tsc, build, `api:build`, `api:smoke`.
 
 ### Notes for docs-maintenance
 

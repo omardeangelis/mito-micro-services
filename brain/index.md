@@ -74,7 +74,7 @@ _empty_
 - [[specs/crm/gestione-operatori/REPORT|crm/gestione-operatori — PR 2]] — spec · ship (4 verificatori, 0 BLOCKER e 0 MAJOR; revisione di Leonardo da fare) · critical · 2026-10-22
 - [[specs/crm/gestione-operatori/REPORT|crm/gestione-operatori — PR P1]] — spec · ship (4 verificatori, 0 BLOCKER e 0 MAJOR) · critical · 2026-10-22
 - [[specs/crm/gestione-operatori/REPORT|crm/gestione-operatori — PR 4]] — spec · ship al secondo giro (primo giro do-not-ship, 5 MAJOR corretti; secondo giro v4 e v7, 0 BLOCKER e 0 MAJOR; revisione di Leonardo, staging e OQ2 da fare) · critical · 2026-10-22
-- [[specs/crm/gestione-operatori/REPORT|crm/gestione-operatori — PR 5]] — spec · do-not-ship al quarto giro (5, 2 e 1 MAJOR dei giri precedenti corretti; quarto giro 3 verificatori, 0 BLOCKER e 1 MAJOR: header della Dialog che con il testo a 1,25 allarga la griglia) · critical · 2026-10-23
+- [[specs/crm/gestione-operatori/REPORT|crm/gestione-operatori — PR 5]] — spec · do-not-ship al quarto giro (5, 2 e 1 MAJOR dei giri precedenti corretti; quarto giro 3 verificatori, 0 BLOCKER e 1 MAJOR: header della Dialog che con il testo a 1,25 allarga la griglia; MAJOR e MINOR corretti in cb51313 senza quinto giro) · critical · 2026-10-23
 
 ## Log
 

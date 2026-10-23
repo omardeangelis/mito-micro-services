@@ -12,6 +12,9 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 
 <!-- Entries are appended by create-spec (spec creation) and docs-maintenance (ingest). Format:
 
+## [2026-10-23] implement | Gestione operatori — PR 5, correzioni del quarto giro
+- [[specs/crm/gestione-operatori/REPORT]] (round PR 5, quarto giro → Correzioni dopo il quarto giro): cb51313 su `-pr5`, MAJOR e MINOR del quarto giro corretti; layout verificato dal vivo, nessun quinto giro per decisione di Omar ("e poi basta")
+
 ## [2026-10-23] review | Gestione operatori — PR 5, quarto giro
 - Report: [[specs/crm/gestione-operatori/REPORT]] (round PR 5, quarto giro)
 - Scope: spec
