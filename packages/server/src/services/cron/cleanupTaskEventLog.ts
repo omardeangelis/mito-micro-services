@@ -2,9 +2,8 @@ import { Effect } from "effect"
 import { lt } from "drizzle-orm"
 import { subMonths } from "date-fns"
 import { taskEventLog } from "@mito/db/schema/taskEventLog"
+import { LOG_RETENTION_MONTHS as RETENTION_MONTHS } from "@mito/domain/export/period"
 import { type Db, type DbError, query } from "@mito/server/effect/db"
-
-const RETENTION_MONTHS = 3
 
 /**
  * The `cleanupTaskEventLog` cron: deletes the event log rows older than three

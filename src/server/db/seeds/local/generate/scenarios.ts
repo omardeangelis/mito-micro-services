@@ -51,6 +51,7 @@ export function contactScenarioCounts(n: number) {
     P2: scaled(120, 2, n),
     P3: scaled(150, 2, n),
     P10: scaled(40, 1, n),
+    P13: scaled(100, 2, n),
     P5: scaled(250, 2, n),
     A1: scaled(350, 2, n),
     A2: scaled(40, 1, n),

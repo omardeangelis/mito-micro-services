@@ -86,7 +86,7 @@ describe("la barra dei filtri", () => {
 
     await user.click(screen.getByRole("button", { name: "Stato" }))
 
-    expect(screen.getAllByRole("checkbox")).toHaveLength(8)
+    expect(screen.getAllByRole("checkbox")).toHaveLength(9)
   })
 
   it("filtra per operatore, con 'Non assegnato' fra le voci", async () => {

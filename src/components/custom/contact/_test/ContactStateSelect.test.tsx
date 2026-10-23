@@ -52,6 +52,7 @@ describe("ContactStateSelect", () => {
       "app.to",
       "caricato",
       "richiamare",
+      "non risponde",
       "erogata",
       "nessuno",
     ])
