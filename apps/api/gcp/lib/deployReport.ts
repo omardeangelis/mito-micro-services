@@ -85,7 +85,7 @@ export function deployReport(run: DeployRun): DeployReport {
     `• avviato da: ${run.actor}`,
   ]
   if (!stop && run.revision) lines.push(`• revisione: ${run.revision}`)
-  if (!stop) lines.push(`• migrazioni applicate: ${run.pending}`)
+  if (!stop) lines.push(`• migrazioni nuove: ${run.pending}`)
   if (run.backup) lines.push(`• backup: ${run.backup}`)
   lines.push(`• run: <${run.runUrl}|GitHub Actions>`)
   return { outcome, phase: stop?.phase, text: lines.join("\n") }

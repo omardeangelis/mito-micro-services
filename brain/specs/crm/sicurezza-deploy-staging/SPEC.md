@@ -102,7 +102,7 @@ Ruoli coinvolti: gli sviluppatori che uniscono su `dev` (Leonardo, Omar), che ap
 
 - **AC18.** Ogni run del deploy di staging avviata da un merge su `dev` o a mano termina con un solo messaggio finale sul canale Slack dei deploy (unico per staging e prod), con l'ambiente indicato nel messaggio, sia che riesca, sia che fallisca, sia che venga annullata. Il messaggio di attesa di AC21 si aggiunge a quello finale.
 - **AC18a.** Ogni messaggio indica l'ambiente (staging) nella prima riga.
-- **AC19.** Il messaggio di un deploy riuscito contiene: il commit (sha breve e titolo), chi ha avviato la run (chi ha unito, o chi l'ha lanciata a mano), la revisione Cloud Run che serve il traffico, quante migrazioni sono state applicate, l'identificativo del backup se creato, e il link alla run.
+- **AC19.** Il messaggio di un deploy riuscito contiene: il commit (sha breve e titolo), chi ha avviato la run (chi ha unito, o chi l'ha lanciata a mano), la revisione Cloud Run che serve il traffico, quante migrazioni nuove porta (approvate, quando sono più di zero), l'identificativo del backup se creato, e il link alla run.
 - **AC20.** Il messaggio di un deploy fallito o annullato contiene la fase in cui si è fermato, il commit, chi ha avviato la run e il link alla run. Le fasi distinte sono: CI, immagine, approvazione, backup, migrazioni, revisione Cloud Run, `/health`, Vercel.
 - **AC21.** Quando il deploy si ferma ad attendere l'approvazione (AC7), viene inviato anche un messaggio che lo dice, con il numero di migrazioni in attesa e il link alla run.
 - **AC22.** Un errore nell'invio a Slack non cambia l'esito del deploy.
