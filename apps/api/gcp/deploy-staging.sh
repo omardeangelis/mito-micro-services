@@ -33,7 +33,14 @@ S=STAGING_
 DB_SECRETS=SUPABASE_MITO_PSW=${S}CLOUDSQL_MITO_APP_PASSWORD:latest
 DB_ENV=SUPABASE_DB_CONNECTION_STRING=postgres://mito_app@localhost/mito,INSTANCE_UNIX_SOCKET=/cloudsql/$INSTANCE
 
+# The workflow reads where the deploy stopped, and the revision serving the
+# traffic, for its Slack message (send-deploy-report.ts): it sets these files
+phase() {
+  if [ -n "$PHASE_FILE" ]; then printf %s "$1" > "$PHASE_FILE"; fi
+}
+
 # 1. The migrations job (setup-ci-deploy.sh created it), with the database only
+phase migrazioni
 gcloud run jobs update mito-crm-staging-migrate --project=$P --region=$R \
   --image=$IMAGE --command=node --args=apps/api/dist/migrate.js \
   --set-cloudsql-instances=$INSTANCE \
@@ -49,6 +56,7 @@ gcloud run jobs execute mito-crm-staging-migrate --project=$P --region=$R \
 # Storage is the GCS bucket storage-staging.sh creates, with the ADC of the
 # service account (packages/server/src/services/storage/layer.ts)
 # A revision tag starts with a letter: d- and the digest's first 12 characters
+phase "revisione Cloud Run"
 DIGEST=${IMAGE##*@sha256:}
 REVISION_TAG=d-$(printf %s "$DIGEST" | cut -c1-12)
 gcloud run deploy mito-crm-staging --project=$P --region=$R \
@@ -67,13 +75,20 @@ TAG_URL=$(gcloud run services describe mito-crm-staging --project=$P \
       if (!t?.url) process.exit(1)
       console.log(t.url)
     })' $REVISION_TAG)
+phase /health
 if ! curl -fsS --retry 3 --retry-all-errors -o /dev/null -w "new revision /health %{http_code}\n" "$TAG_URL/health"; then
   echo "The new revision doesn't answer: the traffic stays on the old one" >&2
   exit 1
 fi
 # --no-traffic leaves the traffic pinned to a revision: back to the latest
+phase "revisione Cloud Run"
 gcloud run services update-traffic mito-crm-staging --project=$P --region=$R \
   --to-latest --quiet
 gcloud run services update-traffic mito-crm-staging --project=$P --region=$R \
   --remove-tags=$REVISION_TAG --quiet
+phase /health
 curl -fsS -o /dev/null -w "/health %{http_code}\n" "$URL/health"
+if [ -n "$REVISION_FILE" ]; then
+  gcloud run services describe mito-crm-staging --project=$P --region=$R \
+    --format='value(status.latestReadyRevisionName)' > "$REVISION_FILE"
+fi
