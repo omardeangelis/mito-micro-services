@@ -408,3 +408,9 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 ## [2026-10-22] plan | debito tecnico della migrazione accanto al piano
 - [[chore/migrazione-effect]] §7: registro del debito che la migrazione genera (TD1 colonna `users.preferences`, TD2 nome di `getUserPreference`, TD3 stranezze conservate di `operator` e `user`, TD4 `auth.ts` per il sostituto di NextAuth, TD5 cron legacy, TD6 residui del passo 0). Decisione di Omar: il debito della migrazione sta lì, quello delle feature resta in `brain/tech-debt/`
 - Confermato da Omar: endpoint delle preferenze rimossi, preferenze di layout nei cookie (PR P1 e P2 di [[specs/crm/gestione-operatori/PLAN]])
+
+## [2026-10-23] spec | Sicurezza del deploy di staging
+- Created spec: [[specs/crm/sicurezza-deploy-staging/SPEC]]
+- Domain: crm
+- Status: Draft
+- Gate di qualità (`adversarial-verifier`, eseguito inline perché l'agente non è disponibile in questa sessione): nessun blocker; corretti la run annullata nei messaggi Slack, chi avvia la run a mano e il comportamento della coda dei deploy durante l'attesa dell'approvazione
