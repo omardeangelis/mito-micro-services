@@ -1,6 +1,7 @@
 "use client"
-import { useMemo, useState } from "react"
+import { useState } from "react"
 import { api } from "@/trpc/react"
+import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
   COMPLETE_DATA_SINCE,
@@ -22,13 +23,17 @@ const italianDay = (day: string) => day.split("-").reverse().join("/")
  * (AC16, AC19).
  */
 export function AdminExportSection() {
-  const now = useMemo(() => new Date(), [])
+  // Read at every render: a page left open past midnight moves on to the new day
+  const now = new Date()
   const { first, last } = selectableDays(now)
   const [period, setPeriod] = useState(() => defaultPeriod(now))
   const valid = exportPeriodInput(now).safeParse(period).success
-  const { data, isLoading } = api.export.callStats.useQuery(period, {
-    enabled: valid,
-  })
+  const { data, isLoading, isError, refetch } = api.export.callStats.useQuery(
+    period,
+    {
+      enabled: valid,
+    }
+  )
 
   return (
     <div className="space-y-4">
@@ -52,6 +57,16 @@ export function AdminExportSection() {
         <p role="alert" className="text-sm text-red-600">
           Scegli un periodo tra il {italianDay(first)} e il {italianDay(last)}
         </p>
+      ) : isError ? (
+        <div
+          role="alert"
+          className="flex items-center gap-4 text-sm text-red-600"
+        >
+          Non è stato possibile caricare le chiamate del periodo
+          <Button variant="outline" size="sm" onClick={() => void refetch()}>
+            Riprova
+          </Button>
+        </div>
       ) : isLoading || !data ? (
         <Skeleton className="h-48 w-full rounded-md" />
       ) : (

@@ -26,6 +26,8 @@ const empty: CallStats = {
 
 const mocks = vi.hoisted(() => ({
   data: undefined as CallStats | undefined,
+  isError: false,
+  refetch: vi.fn(),
   calls: [] as Array<{ input: ExportPeriod; enabled: boolean }>,
 }))
 
@@ -35,7 +37,12 @@ vi.mock("@/trpc/react", () => ({
       callStats: {
         useQuery: (input: ExportPeriod, options: { enabled: boolean }) => {
           mocks.calls.push({ input, enabled: options.enabled })
-          return { data: mocks.data, isLoading: false }
+          return {
+            data: mocks.data,
+            isLoading: false,
+            isError: mocks.isError,
+            refetch: mocks.refetch,
+          }
         },
       },
     },
@@ -51,6 +58,8 @@ beforeEach(() => {
   vi.setSystemTime(new Date("2026-10-23T10:00:00Z"))
   mocks.data = stats
   mocks.calls = []
+  mocks.isError = false
+  mocks.refetch.mockClear()
 })
 
 afterEach(() => {
@@ -111,5 +120,23 @@ describe("AdminExportSection", () => {
     expect(screen.getByRole("alert").textContent).toBe(
       "Scegli un periodo tra il 24/07/2026 e il 23/10/2026"
     )
+  })
+
+  it("when the request fails says so and offers to retry", () => {
+    mocks.data = undefined
+    mocks.isError = true
+    render(<AdminExportSection />)
+    expect(screen.getByRole("alert").textContent).toContain(
+      "Non è stato possibile caricare le chiamate del periodo"
+    )
+    fireEvent.click(screen.getByRole("button", { name: "Riprova" }))
+    expect(mocks.refetch).toHaveBeenCalledTimes(1)
+  })
+
+  it("after midnight in Rome today becomes selectable without a reload", () => {
+    const { rerender } = render(<AdminExportSection />)
+    vi.setSystemTime(new Date("2026-10-23T22:30:00Z")) // 00:30 of the 24th in Rome
+    rerender(<AdminExportSection />)
+    expect(to().getAttribute("max")).toBe("2026-10-24")
   })
 })
