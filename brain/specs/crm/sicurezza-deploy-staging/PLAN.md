@@ -46,9 +46,9 @@ CI ─▶ Plan ─┬─(migrazioni nuove)─▶ Approve [env staging-db] ─▶
             └─(nessuna)──────────────────────────────────────▶ API (migrazioni → Cloud Run) ─────────▶ Vercel ─▶ Report
 ```
 
-- **Plan** (environment `staging`, WIF): legge la label `deployed-sha` del servizio Cloud Run, elenca i `.sql` del journal aggiunti tra quel commit e quello della run, scrive nome e SQL nel riepilogo della run, manda il messaggio di attesa su Slack se ce ne sono. Label assente o commit non trovato: tutte le migrazioni del journal contano come da approvare (prudente).
+- **Plan** (environment `staging`, WIF): legge la label `deployed-sha` della revisione che serve tutto il traffico (non dell'ultima deployata: dopo un `/health` fallito o un rollback differiscono), elenca i `.sql` del journal aggiunti tra quel commit e quello della run, scrive nome e SQL nel riepilogo della run, manda il messaggio di attesa su Slack se ce ne sono. Label assente, revisione illeggibile o commit non trovato: tutte le migrazioni del journal contano come da approvare (prudente).
 - **Approve**: job vuoto con environment `staging-db` (reviewer Leonardo e Omar, self-review permessa), saltato quando Plan non trova migrazioni.
-- **API**: con migrazioni nuove, `deploy-staging.sh` crea il backup on-demand prima del job migrazioni; dopo il traffico imposta la label `deployed-sha`.
+- **API**: con migrazioni nuove, `deploy-staging.sh` crea il backup on-demand prima del job migrazioni; la nuova revisione porta la label `deployed-sha` (`--update-labels` nel `gcloud run deploy`).
 - **Report** (`if: always()`): calcola esito e fase da `needs.*` e dagli output dei job, manda un solo messaggio finale. Un errore di Slack è un warning, non un fallimento.
 - **Pulizia** (PR D): workflow pianificato settimanale, identità GCP sua, cancella solo i backup on-demand con descrizione `deploy <sha>` più vecchi di 7 giorni, tenendo gli ultimi 3, e scrive l'esito su Slack.
 
@@ -59,18 +59,19 @@ CI ─▶ Plan ─┬─(migrazioni nuove)─▶ Approve [env staging-db] ─▶
 | D1 | Approvazione + backup solo quando il deploy porta migrazioni nuove | Leonardo, card del 23/10 |
 | D2 | Un messaggio Slack a ogni deploy, riuscito, fallito o annullato, su un canale nuovo dei deploy, unico per staging e prod, con l'ambiente in ogni messaggio | Leonardo, 23/10 |
 | D3 | Pulizia settimanale, 7 giorni, sempre gli ultimi 3 | Leonardo, 23/10 ("ok") |
-| D4 | Le migrazioni "nuove" si calcolano dal repo (diff dal commit deployato, label sul servizio), non dal DB | Il DB lo legge solo il job migrazioni; il controllo d'ordine (PR A) copre il caso in cui il repo e il DB non coincidono |
+| D4 | Le migrazioni "nuove" si calcolano dal repo (diff dal commit deployato, label della revisione che serve il traffico), non dal DB | Il DB lo legge solo il job migrazioni; il controllo d'ordine (PR A) copre il caso in cui il repo e il DB non coincidono |
 | D5 | Approvazione con environment GitHub `staging-db` a reviewer obbligatori | Repo pubblico: disponibile nel piano gratuito; nessuna dipendenza esterna |
-| D6 | Backup con ruolo custom (`cloudsql.backupRuns.create`, `.get`, `cloudsql.instances.get`) condizionato all'istanza di staging; pulizia con un service account suo (`backupRuns.list`, `.delete`) | AC15, AC17d: nessun ruolo predefinito è così stretto |
+| D6 | Backup con ruolo custom (`cloudsql.backupRuns.create`, `.get`, `.list`, `cloudsql.instances.get`; `.list` serve a leggere l'id del backup appena creato) condizionato all'istanza di staging; pulizia con un service account suo (`backupRuns.list`, `.get`, `.delete`, `instances.get`), che solo il workflow di pulizia su `dev` può impersonare (attributo `job_workflow_ref` del provider WIF, D11) | AC15, AC17d: nessun ruolo predefinito è così stretto |
 | D7 | Webhook Slack come secret di repository `SLACK_DEPLOY_WEBHOOK_URL`, letto solo da Plan, Report e pulizia | AC23; i job di deploy non ne hanno bisogno |
 | D8 | Logica testabile (pending, messaggio, scelta dei backup da cancellare) in moduli TypeScript puri sotto `apps/api/gcp/lib/`, eseguiti con `tsx`; YAML e shell solo come colla | `tdd`: test sull'interfaccia pubblica |
 | D9 | Nessun backlog esterno: il progetto non ne usa uno; `backlog_item_*` = n/a | Come i piani precedenti |
 | D10 | Scadenza dell'approvazione: quella di GitHub (30 giorni), non 24 ore. **Da confermare con Leonardo** | GitHub non offre una scadenza più corta per i reviewer obbligatori; un deploy in attesa blocca solo quelli dopo, e il messaggio di AC21 lo rende visibile. AC11 resta valido |
+| D11 | Niente environment `staging-backups`: il provider WIF di staging mappa anche `job_workflow_ref`, e il service account della pulizia accetta solo `omardeangelis/mito-micro-services/.github/workflows/cleanup-staging-backups.yaml@refs/heads/dev` | Un environment in meno da creare (richiesta di Omar, 23/10/2026); l'identità resta legata a un solo workflow, e il deploy non può impersonarla (AC17d) |
 
 ## 5. Assunzioni e vincoli
 
-- Omar crea: environment `staging-db` (reviewer Leonardo e Omar, branch `dev`), environment `staging-backups` (branch `dev`), il secret `SLACK_DEPLOY_WEBHOOK_URL`, e "Require branches to be up to date" nel ruleset di `dev`.
-- Leonardo crea il canale Slack e il webhook, poi esegue dal Mac `setup-ci-deploy.sh` (ruolo backup, label) e `setup-backup-cleanup.sh` (PR D).
+- Omar crea: environment `staging-db` (reviewer Leonardo e Omar, branch `dev`), il secret `SLACK_DEPLOY_WEBHOOK_URL`, e "Require branches to be up to date" nel ruleset di `dev`.
+- Leonardo crea il canale Slack e il webhook, poi esegue dal Mac `setup-deploy-backup.sh` (ruolo backup, PR C) e `setup-backup-cleanup.sh` (PR D).
 - Il provider WIF accetta solo `repository_id` 1268249182 e `refs/heads/dev`: i workflow pianificati girano su `dev`, quindi la pulizia rientra.
 - Il repo è pubblico: i riepiloghi contengono solo nomi e SQL delle migrazioni (già pubblici) e l'id del backup.
 - Nessun NODE_ENV=production, nessun accesso a prod.
@@ -215,7 +216,7 @@ Ondate: A e B si possono scrivere in parallelo; C dopo B; D dopo C. Esecuzione `
 
 #### TC2: Permessi GCP (backup e label)
 - **depends_on**: []
-- **location**: `apps/api/gcp/setup-ci-deploy.sh`
+- **location**: `apps/api/gcp/setup-deploy-backup.sh` (script a parte: `setup-ci-deploy.sh` si ferma alla prima risorsa esistente, quindi non si può rilanciare)
 - **description**: Ruolo custom `mitoStagingBackupCreator` (D6) dato al deployer con condizione sull'istanza `mito-crm-staging`. Idempotente come il resto dello script.
 - **validation**: dopo l'esecuzione sul Mac, il deployer crea un backup e non può cancellarlo né fare restore (`gcloud ... --impersonate-service-account`, solo comandi di prova sull'istanza di staging).
 - **status**: Planned
@@ -293,7 +294,7 @@ Ondate: A e B si possono scrivere in parallelo; C dopo B; D dopo C. Esecuzione `
 #### TD2: Identità e workflow pianificato
 - **depends_on**: [TD1]
 - **location**: `apps/api/gcp/setup-backup-cleanup.sh`, `.github/workflows/cleanup-staging-backups.yaml`
-- **description**: SA `mito-crm-backup-cleaner` con ruolo custom (list, delete) condizionato all'istanza, legato al subject dell'environment `staging-backups`. Workflow settimanale + `workflow_dispatch`, cancella, scrive su Slack quanti o perché è fallito.
+- **description**: SA `mito-crm-backup-cleaner` con ruolo custom (list, delete) condizionato all'istanza, legato al `job_workflow_ref` di `cleanup-staging-backups.yaml` su `dev` (D11), senza environment GitHub. Workflow settimanale + `workflow_dispatch`, cancella, scrive su Slack quanti o perché è fallito.
 - **validation**: `actionlint`; `workflow_dispatch` dopo il merge: messaggio "0 cancellati" o il numero giusto.
 - **status**: Planned
 - **log**:
@@ -308,7 +309,7 @@ Ondate: A e B si possono scrivere in parallelo; C dopo B; D dopo C. Esecuzione `
 #### TD3: Gate e merge della PR D
 - **depends_on**: [TD2]
 - **location**: PR verso `dev`
-- **description**: Prerequisiti: environment `staging-backups` (Omar), setup sul Mac (Leonardo). Merge e prima esecuzione manuale.
+- **description**: Prerequisiti: setup sul Mac (Leonardo). Merge e prima esecuzione manuale.
 - **validation**: messaggio della pulizia nel canale; deployer ancora senza permesso di cancellare.
 - **status**: Planned
 - **log**:
