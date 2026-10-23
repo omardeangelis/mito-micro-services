@@ -12,6 +12,28 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 
 <!-- Entries are appended by create-spec (spec creation) and docs-maintenance (ingest). Format:
 
+## [2026-10-23] ingest | Sicurezza del deploy di staging
+- Source: [[specs/crm/sicurezza-deploy-staging/SPEC]]
+- Flows written: 2 (deploy-di-staging, pulizia-dei-backup-di-staging)
+- Concepts written: 2 (migrazioni-nuove-del-deploy, backup-di-deploy)
+- Review ingested: none
+
+## [2026-10-23] implement | sicurezza-deploy-staging
+- PR A (#69) unita. PR B (#70) in merge. PR C e D nei branch `…-deploy-approval` e `…-backup-cleanup`
+- Deviazioni dal piano: la label `deployed-sha` si legge dalla revisione che serve il traffico; il ruolo del backup è in `setup-deploy-backup.sh`, con `backupRuns.list`; niente environment `staging-backups`, la pulizia si lega al `job_workflow_ref` del suo workflow (D11)
+
+## [2026-10-23] plan | sicurezza-deploy-staging
+- Spec: [[specs/crm/sicurezza-deploy-staging/SPEC]], piano: [[specs/crm/sicurezza-deploy-staging/PLAN]]
+- 4 PR: A controlli sulle migrazioni, B avvisi Slack, C approvazione e backup, D pulizia settimanale dei backup
+- Decisioni: migrazioni nuove calcolate dal repo (label `deployed-sha` sul servizio), environment `staging-db` per l'approvazione, ruoli custom per backup e pulizia, scadenza dell'approvazione di GitHub (30 giorni) da confermare
+- Gate di qualità (charter di `adversarial-verifier` inline): 2 major e 1 minor corretti, SHIP
+
+## [2026-10-23] spec | Sicurezza del deploy di staging
+- Created spec: [[specs/crm/sicurezza-deploy-staging/SPEC]]
+- Domain: crm
+- Status: Draft
+- Gate di qualità (`adversarial-verifier`, eseguito inline perché l'agente non è disponibile in questa sessione): nessun blocker; corretti la run annullata nei messaggi Slack, chi avvia la run a mano e il comportamento della coda dei deploy durante l'attesa dell'approvazione
+
 ## [2026-10-23] ingest | Gestione operatori: user e operator su Effect, disattivazione da admin
 - Source: [[specs/crm/gestione-operatori/SPEC]]
 - Flows written: 4
@@ -302,109 +324,3 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 - Verdict: DO NOT SHIP
 - Impact: critical
 - Verifiers: 3 rilanciati su 6 (2 major, tutte e due nei testi)
-
-## [2026-10-09] review | Staging su Vercel, accesso fuori produzione, Sentry solo in prod — quarto giro
-- Report: [[review/staging-accesso-sentry/REPORT]] (quarto giro)
-- Scope: standalone
-- Verdict: DO NOT SHIP
-- Impact: critical
-- Verifiers: 4 rilanciati su 9 (1 major); durante il giro il proprietario porta lo staging sull'ambiente Production del suo progetto, distinto con `APP_ENV=staging`
-
-## [2026-10-09] review | Indirizzo dei cron da `CRON_BASE_URL` — quinto giro
-- Report: [[review/cron-base-url/REPORT]] (quinto giro)
-- Scope: standalone
-- Verdict: DO NOT SHIP
-- Impact: critical
-- Verifiers: 2 rilanciati su 6 (2 major, tutte e due nei testi: protezione dei progetti senza fonte, indirizzo "sbagliato" non provato)
-
-## [2026-10-09] review | Staging su Vercel, accesso fuori produzione, Sentry solo in prod — quinto giro
-- Report: [[review/staging-accesso-sentry/REPORT]] (quinto giro)
-- Scope: standalone
-- Verdict: SHIP (prima: DO NOT SHIP)
-- Impact: critical
-- Verifiers: 5 rilanciati su 9 sul deploy `--prod` con `APP_ENV=staging` (0 blocker, 0 major); arriva su `dev` dopo `chore/cron-indirizzo` e dopo G2
-
-## [2026-10-09] review | Indirizzo dei cron da `CRON_BASE_URL` — sesto giro
-- Report: [[review/cron-base-url/REPORT]] (sesto giro)
-- Scope: standalone
-- Verdict: DO NOT SHIP
-- Impact: critical
-- Verifiers: 3 rilanciati su 6 (v3 e v4 SHIP; v6 con 2 major, tutte e due nella voce di tech-debt sul secret del repository: titolo al presente, premesse senza fonte)
-
-## [2026-10-09] review | Staging su Vercel, accesso fuori produzione, Sentry solo in prod — sesto giro
-- Report: [[review/staging-accesso-sentry/REPORT]] (sesto giro)
-- Scope: standalone
-- Verdict: DO NOT SHIP (prima: SHIP)
-- Impact: critical
-- Verifiers: 5 rilanciati su 9 (v3, v4, v5, v6 SHIP; v8 con 1 major nella checklist: il controllo di `/monitoring` non può fallire)
-
-## [2026-10-15] review | Sezione Contatti — PR3 "Regole del contatto sul server, usate da Clienti"
-- Report: [[specs/crm/sezione-contatti/REPORT]] (round PR3)
-- Scope: spec
-- Verdict: DO NOT SHIP (prima verifica)
-- Impact: critical
-- Verifiers: 7 (1 blocker, 8 major; v2, v3, v4 SHIP)
-
-## [2026-10-15] review | Sezione Contatti — PR3, verifiche dopo le correzioni
-- Report: [[specs/crm/sezione-contatti/REPORT]] (round PR3, "Verifiche successive")
-- Scope: spec
-- Verdict: SHIP (prima: DO NOT SHIP)
-- Impact: critical
-- Verifiers: 4 rilanciati su 7 (v1, v5, v6 SHIP; v7 DO NOT SHIP due volte, per il registro non committato e poi per la prova dello spinner, chiusi in `4fae91b` e `afb2975`)
-
-## [2026-10-15] review | Sezione Contatti — PR4 "Chat con proprietario esplicito"
-- Report: [[specs/crm/sezione-contatti/REPORT]] (round PR4)
-- Scope: spec
-- Verdict: DO NOT SHIP (prima verifica)
-- Impact: critical
-- Verifiers: 6 (4 major; v2, v3, v6 SHIP)
-
-## [2026-10-15] review | Sezione Contatti — PR4, verifiche dopo le correzioni
-- Report: [[specs/crm/sezione-contatti/REPORT]] (round PR4, "Verifiche successive")
-- Scope: spec
-- Verdict: SHIP (prima: DO NOT SHIP)
-- Impact: critical
-- Verifiers: 3 rilanciati su 6 (v4 e v5 SHIP; v1 SHIP alla quarta passata, dopo il passaggio a uno store per cliente della nota non inviata)
-
-## [2026-10-16] implement | sezione-contatti PR4, T4.5
-- Spec: [[specs/crm/sezione-contatti/SPEC]] (AC77 nuovo), piano: [[specs/crm/sezione-contatti/PLAN]] (T4.5, D19)
-- "Avvia una chat" crea al massimo una chat per cliente, in una transazione; attesa con spinner fino alla chat a schermo, fallimento con "Chat non avviata, riprova"
-- Prod, in sola lettura: nessuna pratica con una chat; 19 chat orfane (7 con 13 messaggi), pulizia nel tech-debt
-
-## [2026-10-16] implement | sezione-contatti PR4, T4.6
-- Spec: [[specs/crm/sezione-contatti/SPEC]] (AC78 nuovo), piano: [[specs/crm/sezione-contatti/PLAN]] (T4.6, D20)
-- Chat: "Invio…" e spinner durante l'invio, eliminazione con spinner e toast in caso di errore, lista che si apre e resta sulle note più recenti, cestino raggiungibile da tastiera
-
-## [2026-10-18] review | Sezione Contatti — PR5b "Interfaccia"
-- Report: [[specs/crm/sezione-contatti/REPORT]]
-- Scope: spec
-- Verdict: DO NOT SHIP
-- Impact: critical
-- Verifiers: 13 (3 blockers, 11 major; 4 SHIP e 9 DO NOT SHIP)
-
-## [2026-10-21] review | Seeder del database locale (PR A + PR B)
-- Report: [[specs/crm/seeder-locale/REPORT]], rubric: [[specs/crm/seeder-locale/RUBRIC]]
-- Scope: spec
-- Verdict: SHIP
-- Impact: critical
-- Verifiers: 6 (0 blocker, 0 major, 7 minor; tutti SHIP). Le MINOR sono in [[tech-debt/crm/seeder-locale]]; quella su `connectLocal` è chiusa in parte da un test aggiunto dopo la review
-
-## [2026-10-21] implement | seeder-locale, PR A e PR B
-- Spec: [[specs/crm/seeder-locale/SPEC]], piano: [[specs/crm/seeder-locale/PLAN]], note: [[specs/crm/seeder-locale/IMPLEMENTATION-NOTES]]
-- PR A: servizi dei cron su un `Db` iniettato, seed vecchi rimossi. PR B: `seed:local`, `seed:local:cron`, `seed:local:verify` con manifesto e oracolo indipendente
-- Giro a mano a 10.000: seed 16 s, quattro cron riusciti, 36 "passato"; in CI il giro completo dura 12,8 s
-
-## [2026-10-22] plan | gestione-operatori
-- Spec: [[specs/crm/gestione-operatori/SPEC]] (draft), piano: [[specs/crm/gestione-operatori/PLAN]]
-- Strategia: [[chore/migrazione-effect]]: L1 servizi e L2 procedure adapter router per router, L3 (tRPC → Effect RPC) rinviato a dopo Effect 4 stabile e fase P del piano GCP
-- Decisioni: disattivazione (non cancellazione), portafoglio a una destinazione scelta dall'admin, solo `OPERATORE`, "mai l'ultimo admin" sul cambio di ruolo
-- Verifica del piano (`adversarial-verifier`): DO NOT SHIP alla prima passata (2 blocker, 10 major), correzioni nel §16 del piano: log con `INSERT ... SELECT`, regola dei lock "prima gli utenti", migrazione in una PR sua, OQ1 chiusa con "il cliente vince"
-
-## [2026-10-22] plan | gestione-operatori, revisione 2, e migrazione-effect allineata alla Mappa del 21/10
-- Fonte: "Mappa servizi backend MITO" del 21/10 (https://claude.ai/artifact/TGtCT8MXcmTryd5DmoYaZL)
-- [[chore/migrazione-effect]]: ordine per rischio della Mappa (customer, import, pratiche e task, chat, analytics, export, auth per ultimo), `user` e `operator` anticipati per la disattivazione; passo 0 con quello che resta; cron segnati come fatti; import rivalutato a L con le 6 route REST; nuovo §6 sulle 13 route REST servite tramite `NextRequest`; D1 di [[chore/migration_plan]] segnata come superata
-- [[specs/crm/gestione-operatori/SPEC]] e [[specs/crm/gestione-operatori/PLAN]]: PR 2 refactor puro (AC20 nella PR 4, ex AC27 tolto); preferenze di layout in cookie del browser (AC31–AC35, PR P1 e P2); revisione di Leonardo sulle PR 2 e 4; i comportamenti di `auth.ts` della PR 4 diventano requisito del sostituto di NextAuth
-
-## [2026-10-22] plan | debito tecnico della migrazione accanto al piano
-- [[chore/migrazione-effect]] §7: registro del debito che la migrazione genera (TD1 colonna `users.preferences`, TD2 nome di `getUserPreference`, TD3 stranezze conservate di `operator` e `user`, TD4 `auth.ts` per il sostituto di NextAuth, TD5 cron legacy, TD6 residui del passo 0). Decisione di Omar: il debito della migrazione sta lì, quello delle feature resta in `brain/tech-debt/`
-- Confermato da Omar: endpoint delle preferenze rimossi, preferenze di layout nei cookie (PR P1 e P2 di [[specs/crm/gestione-operatori/PLAN]])

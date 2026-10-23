@@ -30,7 +30,7 @@ describe("deployReport", () => {
         "• commit: `fcfdcfe` fix(api): copy vendor/",
         "• avviato da: leonardodemarco00",
         "• revisione: mito-crm-staging-00011-cew",
-        "• migrazioni applicate: 0",
+        "• migrazioni nuove: 0",
         "• run: <https://github.com/omardeangelis/mito-micro-services/actions/runs/1|GitHub Actions>",
       ].join("\n"),
     })
@@ -104,7 +104,7 @@ describe("deployReport", () => {
     expect(report.text).toContain("• avviato da: omardeangelis")
   })
 
-  it("reports the migrations applied and the backup taken before them", () => {
+  it("reports the new migrations and the backup taken before them", () => {
     const report = deployReport({
       ...succeeded,
       pending: 2,
@@ -112,7 +112,7 @@ describe("deployReport", () => {
       backup: "1729700000000",
     })
 
-    expect(report.text).toContain("• migrazioni applicate: 2")
+    expect(report.text).toContain("• migrazioni nuove: 2")
     expect(report.text).toContain("• backup: 1729700000000")
   })
 
@@ -168,7 +168,7 @@ describe("deployReport", () => {
     })
 
     expect(report.text).toContain("• backup: 1729700000000")
-    expect(report.text).not.toContain("migrazioni applicate")
+    expect(report.text).not.toContain("migrazioni nuove")
   })
 })
 
