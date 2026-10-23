@@ -3,7 +3,7 @@ domain: crm
 type: review-rubric
 scope: spec
 spec: export-chiamate
-links: ["[[export-chiamate/REPORT]]"]
+links: ["[[specs/crm/export-chiamate/REPORT]]"]
 created: 2026-10-23
 updated: 2026-10-23
 ---

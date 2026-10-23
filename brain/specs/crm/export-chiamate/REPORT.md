@@ -3,7 +3,7 @@ domain: crm
 type: review-report
 scope: spec
 spec: export-chiamate
-links: ["[[export-chiamate/RUBRIC]]", "[[export-chiamate/SPEC]]", "[[tech-debt/crm/export-chiamate]]"]
+links: ["[[specs/crm/export-chiamate/RUBRIC]]", "[[specs/crm/export-chiamate/SPEC]]", "[[tech-debt/crm/export-chiamate]]"]
 created: 2026-10-23
 updated: 2026-10-23
 ingested: true
