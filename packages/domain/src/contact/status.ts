@@ -52,15 +52,17 @@ export const stateCategory = (state: TaskStatus | null): TaskCategory => {
 
 /**
  * Whether a manual change from `from` to `to` is allowed (AC30): `followup`
- * is only set by the cron, and from `followup` there is no way back to
- * `chiamare`.
+ * is only set by the cron, and from `followup` or `non risponde` (already in
+ * the queue) there is no way back to `chiamare`.
  */
 export const isAllowedChange = (
   from: TaskStatus | null,
   to: TaskStatus
 ): boolean => {
   if (to === "followup") return false
-  if (from === "followup" && to === "chiamare") return false
+  if (to === "chiamare" && (from === "followup" || from === "non risponde")) {
+    return false
+  }
   return true
 }
 

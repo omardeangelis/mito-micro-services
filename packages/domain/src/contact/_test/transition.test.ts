@@ -43,6 +43,7 @@ const expectedKind = (from: State, to: State): Expected => {
   if (from === to) return "noop"
   if (to === "followup") return "reject"
   if (from === "followup" && to === "chiamare") return "reject"
+  if (from === "non risponde" && to === "chiamare") return "reject"
   if (toCall.includes(from) && outcome.includes(to)) return "close"
   if (outcome.includes(from) && to === "chiamare") return "reopen"
   return "persist"

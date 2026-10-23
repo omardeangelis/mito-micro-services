@@ -85,6 +85,17 @@ describe("selectableStates", () => {
     ])
   })
 
+  it("from non risponde offers the outcomes and nessuno, never chiamare or followup (AC1b)", () => {
+    expect(selectableStates("non risponde")).toEqual([
+      "non interessato",
+      "app.to",
+      "caricato",
+      "richiamare",
+      "erogata",
+      "nessuno",
+    ])
+  })
+
   it("from null behaves as nessuno", () => {
     expect(selectableStates(null)).toEqual(selectableStates("nessuno"))
   })

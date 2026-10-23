@@ -136,6 +136,8 @@ describe("task.changeState: transizioni", () => {
     ["chiamare", "followup"],
     ["app.to", "followup"],
     ["followup", "chiamare"],
+    ["non risponde", "chiamare"],
+    ["non risponde", "followup"],
   ] as const)(
     "rifiuta il passaggio da %s a %s con CONTACT_TRANSITION_REJECTED e non modifica nulla (AC30)",
     async (from, to) => {
@@ -223,6 +225,29 @@ describe("task.changeState: transizioni", () => {
         toState: "non risponde",
         actorOperatorId: operator.id,
       },
+    ])
+  })
+
+  it("passare da richiamare a non risponde lascia 'Contattato il' com'è", async () => {
+    const operator = await createOperator()
+    const customer = await createCustomer({ operatorId: operator.id })
+    const calledAt = new Date("2026-10-01T08:00:00.000Z")
+    const contact = await createTask({
+      customerId: customer.id,
+      operatorId: operator.id,
+      state: "richiamare",
+      closedAt: calledAt,
+    })
+
+    await createTestCaller(operator).task.changeState({
+      taskId: contact.id,
+      toState: "non risponde",
+      source: "list",
+      confirmedAlertId: null,
+    })
+
+    expect(await tasksOf(customer.id)).toMatchObject([
+      { id: contact.id, state: "non risponde", closedAt: calledAt },
     ])
   })
 
