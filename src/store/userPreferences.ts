@@ -1,12 +1,17 @@
 import { create } from "zustand"
-import { persist } from "zustand/middleware"
 import {
   type Operator,
   type User,
   type UserPreference,
 } from "@mito/domain/schemas"
+import {
+  clearPreferenceCookies,
+  readBrowserPreferences,
+  writePreferenceCookie,
+} from "@/lib/preferences/cookies"
+
 export interface UserPreferenceStore {
-  preferences?: UserPreference
+  preferences?: Partial<UserPreference>
   role?: User["role"]
   operatorId?: Operator["id"]
   setOperatorId: (operatorId: Operator["id"]) => void
@@ -19,108 +24,88 @@ export interface UserPreferenceStore {
 }
 
 export type UserPreferenceInitProps = {
-  preferences?: UserPreference
+  preferences?: Partial<UserPreference>
   role?: User["role"]
   operatorId?: Operator["id"]
+}
+
+/** The item the preferences were kept in before they moved to cookies. */
+const LEGACY_STORAGE_KEY = "userPreference-storage"
+
+function removeLegacyStorage() {
+  try {
+    localStorage.removeItem(LEGACY_STORAGE_KEY)
+  } catch {
+    // Storage can be blocked: there is nothing to remove then
+  }
 }
 
 export const createUserPreferenceStore = (
   initProps: UserPreferenceInitProps
 ) => {
-  return create(
-    persist<
-      UserPreferenceStore,
-      [],
-      [],
-      Pick<UserPreferenceStore, "preferences">
-    >(
-      (set) => ({
-        setRole: (role: User["role"]) => set({ role }),
-        setOperatorId: (operatorId: Operator["id"]) => set({ operatorId }),
-        logout: () => {
-          set(
-            (state) => ({
-              ...state,
-              preferences: state.preferences,
-              role: undefined,
-              operatorId: undefined,
-            }),
-            true
-          )
-        },
-        preferences: initProps.preferences,
-        role: initProps.role,
-        operatorId: initProps.operatorId,
-        setDashboardCollapsed: (collapsed: boolean) =>
-          set((state) => ({
-            ...state,
-            preferences: {
-              ...state.preferences,
-              dashboardCollapsed: collapsed,
-              practicesTableVisibleColumns:
-                state.preferences?.practicesTableVisibleColumns ?? [],
-              customerTableVisibleColumns:
-                state.preferences?.customerTableVisibleColumns ?? [],
-            },
-          })),
-        setCustomerTableVisibleColumns: (columns: string[]) => {
-          set((state) => ({
-            ...state,
-            preferences: {
-              ...state.preferences,
-              practicesTableVisibleColumns:
-                state.preferences?.practicesTableVisibleColumns ?? [],
-              dashboardCollapsed:
-                state.preferences?.dashboardCollapsed ?? false,
-              customerTableVisibleColumns: columns,
-            },
-          }))
-        },
-        setPracticesTableVisibleColumns: (columns: string[]) => {
-          set((state) => ({
-            ...state,
-            preferences: {
-              ...state.preferences,
-              dashboardCollapsed:
-                state.preferences?.dashboardCollapsed ?? false,
-              customerTableVisibleColumns:
-                state.preferences?.customerTableVisibleColumns ?? [],
-              practicesTableVisibleColumns: columns,
-            },
-          }))
-        },
-        setContactTableVisibleColumns: (columns: string[]) => {
-          set((state) => ({
-            ...state,
-            preferences: {
-              ...state.preferences,
-              dashboardCollapsed:
-                state.preferences?.dashboardCollapsed ?? false,
-              customerTableVisibleColumns:
-                state.preferences?.customerTableVisibleColumns ?? [],
-              practicesTableVisibleColumns:
-                state.preferences?.practicesTableVisibleColumns ?? [],
-              contactTableVisibleColumns: columns,
-            },
-          }))
-        },
-      }),
-      {
-        name: "userPreference-storage",
-        // name of the item in the storage (must be unique)
-        // Only the table preferences stay in the browser: the role and the
-        // operator come from the session (`UserPreferenceProvider`), and the
-        // ones an earlier sign-in saved here are ignored
-        partialize: (state) => ({ preferences: state.preferences }),
-        merge: (persisted, current) => ({
-          ...current,
-          preferences:
-            (persisted as Partial<UserPreferenceStore> | undefined)
-              ?.preferences ?? current.preferences,
+  removeLegacyStorage()
+  // The cookies of the browser win over what the server gave
+  const cookiePreferences = readBrowserPreferences()
+  const hasPreferences =
+    initProps.preferences !== undefined ||
+    Object.keys(cookiePreferences).length > 0
+  const initial = hasPreferences
+    ? { ...initProps.preferences, ...cookiePreferences }
+    : undefined
+
+  return create<UserPreferenceStore>((set) => ({
+    setRole: (role: User["role"]) => set({ role }),
+    setOperatorId: (operatorId: Operator["id"]) => set({ operatorId }),
+    logout: () => {
+      // The next sign-in in this browser starts from the default layout
+      clearPreferenceCookies()
+      set(
+        (state) => ({
+          ...state,
+          preferences: undefined,
+          role: undefined,
+          operatorId: undefined,
         }),
-      }
-    )
-  )
+        true
+      )
+    },
+    preferences: initial,
+    role: initProps.role,
+    operatorId: initProps.operatorId,
+    setDashboardCollapsed: (collapsed: boolean) => {
+      writePreferenceCookie("dashboardCollapsed", collapsed)
+      set((state) => ({
+        preferences: { ...state.preferences, dashboardCollapsed: collapsed },
+      }))
+    },
+    setCustomerTableVisibleColumns: (columns: string[]) => {
+      writePreferenceCookie("customerTableVisibleColumns", columns)
+      set((state) => ({
+        preferences: {
+          ...state.preferences,
+          customerTableVisibleColumns: columns,
+        },
+      }))
+    },
+    setPracticesTableVisibleColumns: (columns: string[]) => {
+      writePreferenceCookie("practicesTableVisibleColumns", columns)
+      set((state) => ({
+        preferences: {
+          ...state.preferences,
+          practicesTableVisibleColumns: columns,
+        },
+      }))
+    },
+    setContactTableVisibleColumns: (columns: string[]) => {
+      writePreferenceCookie("contactTableVisibleColumns", columns)
+      set((state) => ({
+        preferences: {
+          ...state.preferences,
+          contactTableVisibleColumns: columns,
+        },
+      }))
+    },
+  }))
 }
 
 export type UserPreferenceStoreType = ReturnType<

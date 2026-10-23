@@ -16,6 +16,7 @@ import { chatToOperator } from "@mito/db/schema/relations/chatToOperator"
 import { task } from "@mito/db/schema/task"
 import { query, transaction } from "../../../effect/db"
 import { processDueAlerts } from "../processDueAlerts"
+import { deactivateOperator } from "../../operator/deactivate"
 import { createTestCaller } from "@/test/caller"
 import {
   activeTasksOf,
@@ -622,5 +623,57 @@ describe("regola dei lock: chat del cliente", () => {
     await createTestCaller(operator).chat.deleteMessage({ id: saved!.id })
 
     expect(await testDb.select().from(chatToOperator)).toEqual([])
+  })
+})
+
+// The deactivation of an operator locks, after the two users, every customer
+// it moves or whose active contact it moves, then those contacts (AC11)
+describe("regola dei lock: deactivateOperator", () => {
+  it("clienti dell'operatore, un cliente senza operatore e uno di un collega con un suo contatto attivo: prende il lock di ogni cliente", async () => {
+    const admin = await createOperator({ role: "ADMIN" })
+    const leaving = await createOperator()
+    const target = await createOperator()
+    const colleague = await createOperator()
+    const { customer: own, contact } = await seedContact(leaving, "richiamare")
+    await createAlert({ taskId: contact.id, deadline })
+    const bare = await createCustomer({ operatorId: leaving.id })
+    const orphan = await createCustomer({ operatorId: null })
+    const orphanContact = await createTask({
+      customerId: orphan.id,
+      operatorId: leaving.id,
+    })
+    const ofColleague = await createCustomer({ operatorId: colleague.id })
+    const colleagueContact = await createTask({
+      customerId: ofColleague.id,
+      operatorId: leaving.id,
+    })
+    await assertCustomerLockedOnWrite()
+
+    const exit = await runServer(
+      deactivateOperator({
+        operatorId: leaving.id,
+        toOperatorId: target.id,
+        actor: { role: "ADMIN", operatorId: admin.id },
+      })
+    )
+
+    if (Exit.isFailure(exit)) throw new Error(Cause.pretty(exit.cause))
+    expect(exit.value).toEqual({
+      customersMoved: 2,
+      contactsMoved: 3,
+      practicesMoved: 0,
+    })
+    expect(await tasksOf(own.id)).toMatchObject([
+      { id: contact.id, operatorId: target.id },
+    ])
+    expect(await tasksOf(orphan.id)).toMatchObject([
+      { id: orphanContact.id, operatorId: target.id },
+    ])
+    expect(await tasksOf(ofColleague.id)).toMatchObject([
+      { id: colleagueContact.id, operatorId: colleague.id },
+    ])
+    expect(await logOf(bare.id)).toMatchObject([
+      { source: "deactivation", taskId: null, toOperatorId: target.id },
+    ])
   })
 })

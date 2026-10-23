@@ -12,6 +12,106 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 
 <!-- Entries are appended by create-spec (spec creation) and docs-maintenance (ingest). Format:
 
+## [2026-10-23] ingest | Export chiamate per operatore, solo admin
+- Source: [[specs/crm/export-chiamate/SPEC]]
+- Flows written: 2
+- Concepts written: 3
+- Review ingested: [[specs/crm/export-chiamate/REPORT]]
+
+## [2026-10-23] review | Export chiamate T6–T8 (PR #66 + #67)
+- Report: [[specs/crm/export-chiamate/REPORT]] (seconda sezione)
+- 3 pass (permessi su Opus, UI su Sonnet, rimozione su Haiku): SHIP dopo la correzione di 1 MAJOR e 2 MINOR
+- Follow-up sui permessi dello storage in [[tech-debt/crm/export-chiamate]]
+
+## [2026-10-23] review | Export chiamate T1–T5 (PR #65)
+- Rubric: [[specs/crm/export-chiamate/RUBRIC]]; report: [[specs/crm/export-chiamate/REPORT]]
+- 3 pass, tutti SHIP; corretti due rilievi (test AC21, ordine tra omonimi), due in [[tech-debt/crm/export-chiamate]]
+- PR di permessi: la rivede Leonardo
+
+## [2026-10-23] plan | Export chiamate per operatore, solo admin
+- Plan: [[specs/crm/export-chiamate/PLAN]]
+- 12 task in 4 PR (A: #61; B: dominio, servizio, procedura; C+D: UI e rimozione del vecchio export)
+- Gate: SHIP al secondo giro
+
+## [2026-10-23] spec | Export chiamate per operatore, solo admin
+- Created spec: [[specs/crm/export-chiamate/SPEC]]
+- Domain: crm
+- Status: Draft
+
+## [2026-10-23] ingest | Sicurezza del deploy di staging
+- Source: [[specs/crm/sicurezza-deploy-staging/SPEC]]
+- Flows written: 2 (deploy-di-staging, pulizia-dei-backup-di-staging)
+- Concepts written: 2 (migrazioni-nuove-del-deploy, backup-di-deploy)
+- Review ingested: none
+
+## [2026-10-23] implement | sicurezza-deploy-staging
+- PR A (#69) unita. PR B (#70) in merge. PR C e D nei branch `…-deploy-approval` e `…-backup-cleanup`
+- Deviazioni dal piano: la label `deployed-sha` si legge dalla revisione che serve il traffico; il ruolo del backup è in `setup-deploy-backup.sh`, con `backupRuns.list`; niente environment `staging-backups`, la pulizia si lega al `job_workflow_ref` del suo workflow (D11)
+
+## [2026-10-23] plan | sicurezza-deploy-staging
+- Spec: [[specs/crm/sicurezza-deploy-staging/SPEC]], piano: [[specs/crm/sicurezza-deploy-staging/PLAN]]
+- 4 PR: A controlli sulle migrazioni, B avvisi Slack, C approvazione e backup, D pulizia settimanale dei backup
+- Decisioni: migrazioni nuove calcolate dal repo (label `deployed-sha` sul servizio), environment `staging-db` per l'approvazione, ruoli custom per backup e pulizia, scadenza dell'approvazione di GitHub (30 giorni) da confermare
+- Gate di qualità (charter di `adversarial-verifier` inline): 2 major e 1 minor corretti, SHIP
+
+## [2026-10-23] spec | Sicurezza del deploy di staging
+- Created spec: [[specs/crm/sicurezza-deploy-staging/SPEC]]
+- Domain: crm
+- Status: Draft
+- Gate di qualità (`adversarial-verifier`, eseguito inline perché l'agente non è disponibile in questa sessione): nessun blocker; corretti la run annullata nei messaggi Slack, chi avvia la run a mano e il comportamento della coda dei deploy durante l'attesa dell'approvazione
+
+## [2026-10-23] ingest | Gestione operatori: user e operator su Effect, disattivazione da admin
+- Source: [[specs/crm/gestione-operatori/SPEC]]
+- Flows written: 4
+- Concepts written: 3
+- Review ingested: [[specs/crm/gestione-operatori/REPORT]] (finding durevoli già nel debito o corretti; contabilità in [[tech-debt/crm/gestione-operatori]])
+- Primo ingest del dominio: [[domains/crm/crm]] e [[domains/crm/crm-contract]]. Spec `implemented` sui branch, tranne la P2; audit di accettazione e checklist per gli umani in [[specs/crm/gestione-operatori/IMPLEMENTATION-NOTES]]
+
+## [2026-10-23] implement | Gestione operatori — PR 5, correzioni del quarto giro
+- [[specs/crm/gestione-operatori/REPORT]] (round PR 5, quarto giro → Correzioni dopo il quarto giro): cb51313 su `-pr5`, MAJOR e MINOR del quarto giro corretti; layout verificato dal vivo, nessun quinto giro per decisione di Omar ("e poi basta")
+
+## [2026-10-23] review | Gestione operatori — PR 5, quarto giro
+- Report: [[specs/crm/gestione-operatori/REPORT]] (round PR 5, quarto giro)
+- Scope: spec
+- Verdict: DO NOT SHIP. Il focus iniziale di `ExportDialog` è corretto; il padding simmetrico dell'header, con il testo a 1,25 e un nome lungo a 280 px, allarga la griglia della Dialog e i controlli escono dal riquadro
+- Impact: critical
+- Verifiers: 3 (0 blocker, 1 major, 5 minor, 3 nit; 2 SHIP e 1 DO NOT SHIP)
+
+## [2026-10-23] review | Gestione operatori — PR 5, terzo giro
+- Report: [[specs/crm/gestione-operatori/REPORT]] (round PR 5, terzo giro)
+- Scope: spec
+- Verdict: DO NOT SHIP. I 2 MAJOR del secondo giro sono chiusi; il focus iniziale nuovo della Dialog condivisa non riconosce la lista dei tab che passa il focus al tab attivo, e in `ExportDialog` salta la scelta del tipo di export
+- Impact: critical
+- Verifiers: 4 (0 blocker, 1 major, 9 minor, 4 nit; 3 SHIP e 1 DO NOT SHIP)
+
+## [2026-10-23] review | Gestione operatori — PR 5, secondo giro
+- Report: [[specs/crm/gestione-operatori/REPORT]] (round PR 5, secondo giro)
+- Scope: spec
+- Verdict: DO NOT SHIP. I 5 MAJOR del primo giro sono chiusi; la passata sui primitivi condivisi trova i bottoni del footer attaccati in `AlertCloseConfirmDialog` e `CustomerHandoverDialog` da 640 px in su, e la X del toast di successo a 2,10:1 sul verde nuovo
+- Impact: critical
+- Verifiers: 5 (0 blocker, 2 major, 9 minor, 4 nit; 3 SHIP e 2 DO NOT SHIP)
+
+## [2026-10-22] review | Gestione operatori — PR 5, disattivazione UI, primo giro
+- Report: [[specs/crm/gestione-operatori/REPORT]] (round PR 5, primo giro)
+- Scope: spec
+- Verdict: DO NOT SHIP. Il dialog si blocca se la chiamata al server action viene rifiutata; una modifica di ruolo in sospeso sopravvive alla disattivazione del suo operatore; tre contrasti sotto 4,5:1 (messaggio d'errore, toast di successo, bottone `destructive`)
+- Impact: critical
+- Verifiers: 4 (0 blocker, 5 major, 9 minor, 2 nit; 2 SHIP e 2 DO NOT SHIP)
+
+## [2026-10-22] review | Gestione operatori — PR 4, disattivazione backend, secondo giro
+- Report: [[specs/crm/gestione-operatori/REPORT]] (round PR 4, primo e secondo giro)
+- Scope: spec
+- Verdict: DO NOT SHIP al primo giro (5 MAJOR: log e spostamenti da statement diversi, "Assegna a te" fuori dalla regola dei lock, failpoint troppo presto, ordine dei lock senza test, deviazione di AC9), SHIP al secondo dopo le correzioni di a0b45b4. Gate completi verdi (2643 test con i `*.pg.test.ts`)
+- Impact: critical; revisione di Leonardo, prova su staging e OQ2 prima della prod restano umane
+- Verifiers: 7 al primo giro, 2 al secondo (v4, v7: 0 blocker, 0 major, 3 minor, 2 nit; 22 mutanti presi)
+
+## [2026-10-22] review | Gestione operatori — PR 2, user e operator su Effect
+- Report: [[specs/crm/gestione-operatori/REPORT]] (round PR 2)
+- Scope: spec
+- Verdict: SHIP. Refactor puro confermato: corpo delle risposte identico misurato con l'handler HTTP, test della PR 1 con diff vuoto. Cambia solo la telemetria degli errori del database, come per ogni procedura già su `runTrpc`. Le lacune di test segnalate sono chiuse in `ac85739`
+- Impact: critical (middleware dei permessi); revisione di Leonardo richiesta (AC29a)
+- Verifiers: 4 (0 blocker, 0 major, 5 minor, 2 nit; 4 SHIP)
+
 ## [2026-10-21] review | Sezione Contatti — PR6 completa, terzo giro (richiesto da Omar)
 - Report: [[specs/crm/sezione-contatti/REPORT]] (round PR6 completa, terzo giro)
 - Scope: spec
@@ -111,12 +211,6 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 - Flows written: <count>
 - Concepts written: <count>
 -->
-
-## [2026-10-23] ingest | Export chiamate per operatore, solo admin
-- Source: [[specs/crm/export-chiamate/SPEC]]
-- Flows written: 2
-- Concepts written: 3
-- Review ingested: [[specs/crm/export-chiamate/REPORT]]
 
 ## [2026-10-21] plan | Seeder del database locale, con gli scenari dei cron
 - Plan: [[specs/crm/seeder-locale/PLAN]]; spec passata ad `approved`
@@ -221,149 +315,3 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 - Verdict: DO NOT SHIP
 - Impact: critical
 - Verifiers: 6 (1 blocker, 8 major, più 1 major già presente in `authCheck`)
-
-## [2026-10-09] review | Staging su Vercel, accesso fuori produzione, Sentry solo in prod — secondo giro
-- Report: [[review/staging-accesso-sentry/REPORT]] (secondo giro)
-- Scope: standalone
-- Verdict: DO NOT SHIP
-- Impact: critical
-- Verifiers: 9 (3 blocker, 3 major)
-
-## [2026-10-09] review | Indirizzo dei cron da `CRON_BASE_URL` — secondo giro
-- Report: [[review/cron-base-url/REPORT]] (secondo giro)
-- Scope: standalone
-- Verdict: DO NOT SHIP
-- Impact: critical
-- Verifiers: 6 (1 blocker, 2 major); più 1 verificatore sulla correzione di `authCheck` (SHIP)
-
-## [2026-10-09] review | Indirizzo dei cron da `CRON_BASE_URL` — terzo giro
-- Report: [[review/cron-base-url/REPORT]] (terzo giro)
-- Scope: standalone
-- Verdict: DO NOT SHIP
-- Impact: critical
-- Verifiers: 5 rilanciati su 6 (1 blocker, 1 major)
-
-## [2026-10-09] review | Staging su Vercel, accesso fuori produzione, Sentry solo in prod — terzo giro
-- Report: [[review/staging-accesso-sentry/REPORT]] (terzo giro)
-- Scope: standalone
-- Verdict: DO NOT SHIP
-- Impact: critical
-- Verifiers: 6 rilanciati su 9 (3 major); durante il giro il proprietario sposta lo staging sul progetto Vercel `staging-mito-micro-services`
-
-## [2026-10-09] review | Indirizzo dei cron da `CRON_BASE_URL` — quarto giro
-- Report: [[review/cron-base-url/REPORT]] (quarto giro)
-- Scope: standalone
-- Verdict: DO NOT SHIP
-- Impact: critical
-- Verifiers: 3 rilanciati su 6 (2 major, tutte e due nei testi)
-
-## [2026-10-09] review | Staging su Vercel, accesso fuori produzione, Sentry solo in prod — quarto giro
-- Report: [[review/staging-accesso-sentry/REPORT]] (quarto giro)
-- Scope: standalone
-- Verdict: DO NOT SHIP
-- Impact: critical
-- Verifiers: 4 rilanciati su 9 (1 major); durante il giro il proprietario porta lo staging sull'ambiente Production del suo progetto, distinto con `APP_ENV=staging`
-
-## [2026-10-09] review | Indirizzo dei cron da `CRON_BASE_URL` — quinto giro
-- Report: [[review/cron-base-url/REPORT]] (quinto giro)
-- Scope: standalone
-- Verdict: DO NOT SHIP
-- Impact: critical
-- Verifiers: 2 rilanciati su 6 (2 major, tutte e due nei testi: protezione dei progetti senza fonte, indirizzo "sbagliato" non provato)
-
-## [2026-10-09] review | Staging su Vercel, accesso fuori produzione, Sentry solo in prod — quinto giro
-- Report: [[review/staging-accesso-sentry/REPORT]] (quinto giro)
-- Scope: standalone
-- Verdict: SHIP (prima: DO NOT SHIP)
-- Impact: critical
-- Verifiers: 5 rilanciati su 9 sul deploy `--prod` con `APP_ENV=staging` (0 blocker, 0 major); arriva su `dev` dopo `chore/cron-indirizzo` e dopo G2
-
-## [2026-10-09] review | Indirizzo dei cron da `CRON_BASE_URL` — sesto giro
-- Report: [[review/cron-base-url/REPORT]] (sesto giro)
-- Scope: standalone
-- Verdict: DO NOT SHIP
-- Impact: critical
-- Verifiers: 3 rilanciati su 6 (v3 e v4 SHIP; v6 con 2 major, tutte e due nella voce di tech-debt sul secret del repository: titolo al presente, premesse senza fonte)
-
-## [2026-10-09] review | Staging su Vercel, accesso fuori produzione, Sentry solo in prod — sesto giro
-- Report: [[review/staging-accesso-sentry/REPORT]] (sesto giro)
-- Scope: standalone
-- Verdict: DO NOT SHIP (prima: SHIP)
-- Impact: critical
-- Verifiers: 5 rilanciati su 9 (v3, v4, v5, v6 SHIP; v8 con 1 major nella checklist: il controllo di `/monitoring` non può fallire)
-
-## [2026-10-15] review | Sezione Contatti — PR3 "Regole del contatto sul server, usate da Clienti"
-- Report: [[specs/crm/sezione-contatti/REPORT]] (round PR3)
-- Scope: spec
-- Verdict: DO NOT SHIP (prima verifica)
-- Impact: critical
-- Verifiers: 7 (1 blocker, 8 major; v2, v3, v4 SHIP)
-
-## [2026-10-15] review | Sezione Contatti — PR3, verifiche dopo le correzioni
-- Report: [[specs/crm/sezione-contatti/REPORT]] (round PR3, "Verifiche successive")
-- Scope: spec
-- Verdict: SHIP (prima: DO NOT SHIP)
-- Impact: critical
-- Verifiers: 4 rilanciati su 7 (v1, v5, v6 SHIP; v7 DO NOT SHIP due volte, per il registro non committato e poi per la prova dello spinner, chiusi in `4fae91b` e `afb2975`)
-
-## [2026-10-15] review | Sezione Contatti — PR4 "Chat con proprietario esplicito"
-- Report: [[specs/crm/sezione-contatti/REPORT]] (round PR4)
-- Scope: spec
-- Verdict: DO NOT SHIP (prima verifica)
-- Impact: critical
-- Verifiers: 6 (4 major; v2, v3, v6 SHIP)
-
-## [2026-10-15] review | Sezione Contatti — PR4, verifiche dopo le correzioni
-- Report: [[specs/crm/sezione-contatti/REPORT]] (round PR4, "Verifiche successive")
-- Scope: spec
-- Verdict: SHIP (prima: DO NOT SHIP)
-- Impact: critical
-- Verifiers: 3 rilanciati su 6 (v4 e v5 SHIP; v1 SHIP alla quarta passata, dopo il passaggio a uno store per cliente della nota non inviata)
-
-## [2026-10-16] implement | sezione-contatti PR4, T4.5
-- Spec: [[specs/crm/sezione-contatti/SPEC]] (AC77 nuovo), piano: [[specs/crm/sezione-contatti/PLAN]] (T4.5, D19)
-- "Avvia una chat" crea al massimo una chat per cliente, in una transazione; attesa con spinner fino alla chat a schermo, fallimento con "Chat non avviata, riprova"
-- Prod, in sola lettura: nessuna pratica con una chat; 19 chat orfane (7 con 13 messaggi), pulizia nel tech-debt
-
-## [2026-10-16] implement | sezione-contatti PR4, T4.6
-- Spec: [[specs/crm/sezione-contatti/SPEC]] (AC78 nuovo), piano: [[specs/crm/sezione-contatti/PLAN]] (T4.6, D20)
-- Chat: "Invio…" e spinner durante l'invio, eliminazione con spinner e toast in caso di errore, lista che si apre e resta sulle note più recenti, cestino raggiungibile da tastiera
-
-## [2026-10-18] review | Sezione Contatti — PR5b "Interfaccia"
-- Report: [[specs/crm/sezione-contatti/REPORT]]
-- Scope: spec
-- Verdict: DO NOT SHIP
-- Impact: critical
-- Verifiers: 13 (3 blockers, 11 major; 4 SHIP e 9 DO NOT SHIP)
-
-## [2026-10-21] review | Seeder del database locale (PR A + PR B)
-- Report: [[specs/crm/seeder-locale/REPORT]], rubric: [[specs/crm/seeder-locale/RUBRIC]]
-- Scope: spec
-- Verdict: SHIP
-- Impact: critical
-- Verifiers: 6 (0 blocker, 0 major, 7 minor; tutti SHIP). Le MINOR sono in [[tech-debt/crm/seeder-locale]]; quella su `connectLocal` è chiusa in parte da un test aggiunto dopo la review
-
-## [2026-10-21] implement | seeder-locale, PR A e PR B
-- Spec: [[specs/crm/seeder-locale/SPEC]], piano: [[specs/crm/seeder-locale/PLAN]], note: [[specs/crm/seeder-locale/IMPLEMENTATION-NOTES]]
-- PR A: servizi dei cron su un `Db` iniettato, seed vecchi rimossi. PR B: `seed:local`, `seed:local:cron`, `seed:local:verify` con manifesto e oracolo indipendente
-- Giro a mano a 10.000: seed 16 s, quattro cron riusciti, 36 "passato"; in CI il giro completo dura 12,8 s
-
-## [2026-10-23] spec | Export chiamate per operatore, solo admin
-- Created spec: [[specs/crm/export-chiamate/SPEC]]
-- Domain: crm
-- Status: Draft
-
-## [2026-10-23] plan | Export chiamate per operatore, solo admin
-- Plan: [[specs/crm/export-chiamate/PLAN]]
-- 12 task in 4 PR (A: #61; B: dominio, servizio, procedura; C+D: UI e rimozione del vecchio export)
-- Gate: SHIP al secondo giro
-
-## [2026-10-23] review | Export chiamate T1–T5 (PR #65)
-- Rubric: [[specs/crm/export-chiamate/RUBRIC]]; report: [[specs/crm/export-chiamate/REPORT]]
-- 3 pass, tutti SHIP; corretti due rilievi (test AC21, ordine tra omonimi), due in [[tech-debt/crm/export-chiamate]]
-- PR di permessi: la rivede Leonardo
-
-## [2026-10-23] review | Export chiamate T6–T8 (PR #66 + #67)
-- Report: [[specs/crm/export-chiamate/REPORT]] (seconda sezione)
-- 3 pass (permessi su Opus, UI su Sonnet, rimozione su Haiku): SHIP dopo la correzione di 1 MAJOR e 2 MINOR
-- Follow-up sui permessi dello storage in [[tech-debt/crm/export-chiamate]]

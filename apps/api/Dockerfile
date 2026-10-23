@@ -12,6 +12,8 @@ WORKDIR /app
 
 FROM base AS build
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+# xlsx comes from a tarball in the repo (package.json)
+COPY vendor ./vendor
 COPY packages/config/package.json ./packages/config/
 COPY packages/db/package.json ./packages/db/
 COPY packages/domain/package.json ./packages/domain/
@@ -34,6 +36,8 @@ RUN pnpm api:build
 FROM base AS runtime
 ENV NODE_ENV=production
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+# xlsx comes from a tarball in the repo (package.json)
+COPY vendor ./vendor
 COPY packages/config/package.json ./packages/config/
 COPY packages/db/package.json ./packages/db/
 COPY packages/domain/package.json ./packages/domain/

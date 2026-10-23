@@ -5,14 +5,22 @@ import { CustomersTableSection } from "../CustomerTableSection"
 
 const api = vi.hoisted(() => ({
   getAllCustomers: vi.fn<[Record<string, unknown>], Promise<unknown>>(),
-  getUserPreference: vi.fn(),
+  // The cookies of the request, by name: the layout preferences are in them
+  cookies: new Map<string, string>(),
 }))
 
 vi.mock("@/trpc/server", () => ({
   api: {
     customer: { getAllCustomers: { query: api.getAllCustomers } },
-    user: { getUserPreference: { query: api.getUserPreference } },
   },
+}))
+vi.mock("next/headers", () => ({
+  cookies: () => ({
+    get: (name: string) => {
+      const value = api.cookies.get(name)
+      return value === undefined ? undefined : { name, value }
+    },
+  }),
 }))
 vi.mock("../CustomersTable", () => ({ CustomersTable: () => null }))
 vi.mock("../CustomerColumns", () => ({ CustomerColumns: [] }))
@@ -22,7 +30,7 @@ beforeEach(() => {
     allCustomers: [],
     total: 0,
   })
-  api.getUserPreference.mockReset().mockResolvedValue({ preferences: null })
+  api.cookies.clear()
 })
 
 async function queryFor(searchParams: Record<string, string | string[]>) {
@@ -155,33 +163,46 @@ describe("CustomersTableSection, ordinamenti tolti (AC59, AC60)", () => {
   })
 })
 
-describe("CustomersTableSection, colonne rimosse nelle preferenze", () => {
-  const defaultColumnsFor = async (hidden: string[] | undefined) => {
-    api.getUserPreference.mockResolvedValue({
-      preferences: { customerTableVisibleColumns: hidden },
-    })
+describe("CustomersTableSection, colonne nascoste nel cookie (AC32, AC33)", () => {
+  const defaultColumnsFor = async (cookie: string | undefined) => {
+    api.cookies.clear()
+    // Next gives the value of a cookie already decoded
+    if (cookie !== undefined) api.cookies.set("mito-pref-ct", cookie)
     const element = (await CustomersTableSection({ searchParams: {} })) as {
       props: { defaultColumns: unknown }
     }
     return element.props.defaultColumns
   }
 
+  it("nasconde le colonne del cookie, senza chiedere le preferenze al server", async () => {
+    expect(await defaultColumnsFor(JSON.stringify(["Sede", "Email"]))).toEqual({
+      Sede: false,
+      Email: false,
+    })
+  })
+
   it("ignora le tre colonne tolte e tiene le altre nascoste", async () => {
     expect(
-      await defaultColumnsFor([
-        "Stato Chiamate",
-        "Sede",
-        "Contattato il",
-        "Priorità",
-      ])
+      await defaultColumnsFor(
+        JSON.stringify(["Stato Chiamate", "Sede", "Contattato il", "Priorità"])
+      )
     ).toEqual({ Sede: false })
   })
 
   it("con solo colonne tolte non nasconde niente: la tabella non resta vuota", async () => {
-    expect(await defaultColumnsFor(["Stato Chiamate", "Priorità"])).toEqual({})
+    expect(
+      await defaultColumnsFor(JSON.stringify(["Stato Chiamate", "Priorità"]))
+    ).toEqual({})
   })
 
-  it("senza preferenze lascia le colonne di default", async () => {
+  it("senza cookie lascia le colonne di default", async () => {
     expect(await defaultColumnsFor(undefined)).toBeUndefined()
   })
+
+  it.each(["{non json", '"Sede"', "[1, 2]", '{"Sede":true}'])(
+    "un cookie illeggibile (%s) vale come assente: nessuna colonna nascosta",
+    async (cookie) => {
+      expect(await defaultColumnsFor(cookie)).toBeUndefined()
+    }
+  )
 })

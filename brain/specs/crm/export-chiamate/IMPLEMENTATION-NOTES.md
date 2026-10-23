@@ -78,6 +78,12 @@ Adversarial review su #65: SHIP dai tre pass, report in [[specs/crm/export-chiam
 - Periodo di default: ultimi 30 giorni (`defaultPeriod`). `xlsx` si carica solo al click: `/dashboard` passa da 291 kB a 300 kB.
 - Review di C+D: SHIP, un MAJOR (stato d'errore) corretto in 42e5972. Vedi [[specs/crm/export-chiamate/REPORT]].
 
+### Allineamento a dev (23/10 sera)
+
+- dev ha portato altre migrazioni (`20261022182741_colossal_lilith`): la migrazione di "non risponde" è rigenerata dopo di loro, come `20261023201234_task_status_non_risponde` (stessa SQL, `customers.id SET DEFAULT` tolto), su #57.
+- dev ha spostato `adminProcedure` su `resolveActor` e introdotto la disattivazione degli utenti (gestione-operatori). `adminSessionProcedure` ora legge `users.role` e `users.disabled_at`: un admin disattivato riceve `FORBIDDEN` anche senza riga operatore (test nuovo).
+- Su #67, con il vecchio export tolto, `downloadExportFile` accetta solo `error-import-<gg-mm-aaaa>.xlsx` (gli altri nomi danno 404) e `deleteExportFile` è rimossa.
+
 ## Remaining Work
 
 - Revisione di Leonardo su #65, #66 e #67 (permessi), poi merge in ordine fino al go/no-go.

@@ -1,5 +1,5 @@
 import "server-only"
-import { Effect } from "effect"
+import { Effect, Either } from "effect"
 import { eq } from "drizzle-orm"
 import {
   type Actor,
@@ -23,13 +23,16 @@ import {
   type OperatorNotFound,
 } from "./errors"
 import { loadEditableContact, touchCustomer } from "./guard"
-import { findWorkingOperator } from "./operator"
+import { lockWorkingOperator } from "./operator"
 
 /**
  * Moves an active contact and its customer to `operatorId` (AC47). Only an
  * admin may (AC50): any other actor is `ContactForbidden`, with the contact's
  * operator. The contact must still be active (AC27); the target an operator
- * someone can work as (`findWorkingOperator`).
+ * someone can work as (`findWorkingOperator`), not a disabled one. The
+ * target's user row is locked before the customer (the lock rule of
+ * `lockCustomer`), but its error comes after the contact's and the
+ * permission's.
  *
  * Each of the two changes only when it isn't the target's already, with one
  * `operator_reassign` row for it: the contact's with its `taskId`, the
@@ -56,6 +59,8 @@ export const reassign = ({
 > =>
   transaction(
     Effect.gen(function* () {
+      // Users first, then customers: the target before the contact's customer
+      const working = yield* lockWorkingOperator(operatorId)
       const {
         customer,
         task: contact,
@@ -68,7 +73,8 @@ export const reassign = ({
             taskOperator === null ? null : operatorDisplayName(taskOperator),
         })
       }
-      const target = yield* findWorkingOperator(operatorId)
+      if (Either.isLeft(working)) return yield* Effect.fail(working.left)
+      const target = working.right
 
       const contactChanged = contact.operatorId !== target.id
       const customerChanged = customer.operatorId !== target.id

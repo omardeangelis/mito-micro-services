@@ -23,9 +23,9 @@ Il cambio (PR #65) è uscito con verdetto SHIP. Queste voci non violano un crite
 
 ## [2026-10-23] From review [[specs/crm/export-chiamate/REPORT]] (PR C+D)
 
-- **[FOLLOW-UP]** `supabase.downloadExportFile` è `protectedProcedure` e legge qualunque nome sotto `export/` (`packages/server/src/api/routers/supabase/route.ts`). Dopo la PR D serve solo per gli `error-import-*` dell'import.
+- **[RISOLTO 2026-10-23, a4f73d6 in #67]** `supabase.downloadExportFile` è `protectedProcedure` e legge qualunque nome sotto `export/` (`packages/server/src/api/routers/supabase/route.ts`). Dopo la PR D serve solo per gli `error-import-*` dell'import.
   - Fix: accettare solo `error-import-<gg-mm-aaaa>.xlsx` (cambia le asserzioni di `storage.db.test.ts`, quindi va concordato).
-- **[FOLLOW-UP]** `supabase.deleteExportFile` è `protectedProcedure` e non ha chiamanti: qualunque utente può svuotare `export/`.
+- **[RISOLTO 2026-10-23, a4f73d6 in #67: rimossa]** `supabase.deleteExportFile` è `protectedProcedure` e non ha chiamanti: qualunque utente può svuotare `export/`.
   - Fix: rimuoverla (il cron usa `deleteExportFiles` direttamente) o passarla ad `adminSessionProcedure`.
 - **[FOLLOW-UP]** Un admin senza riga operatore non vede la sezione "Chiamate per operatore": `CallsSection` legge il ruolo da `user.getUserPreference`, che fa `innerJoin` su `operators`.
   - Fix: leggere `users.role` con una `leftJoin`, come fa `enforceIsAdmin`.

@@ -26,6 +26,7 @@ Migrated from `docs/` on 2026-09-24. Source material for future `create-spec` ru
 
 - [[chore/migration_plan|migration_plan]] — Next.js → monorepo (Express + React SPA + Postgres) plan, phase status and decision log D1–D9
 - `chore/migration/` — per-phase overviews (`fase-0` … `fase-5`), per-task files for phases 0–1, and `attivita-manuali-provider.md`
+- [[chore/migrazione-effect|migrazione-effect]] — verso "solo Effect": servizi (L1), bordo tRPC come adapter (L2), trasporto Effect RPC (L3, rinviato); ordine dei router e checklist (draft)
 
 ## Raw sources
 
@@ -36,9 +37,9 @@ Migrated from `docs/` on 2026-09-24. Source material for future `create-spec` ru
 
 > Domain pages (`domains/<domain>/<domain>.md` + `<domain>-contract.md` + `concepts/` + `flows/` + `decisions/`) are created by the `docs-maintenance` flow when a spec in that domain is ready to be ingested. Until then a domain appears here only via its spec map.
 
-| Domain | Concepts | Flows | Spec ingerite |
-|---|---|---|---|
-| [[domains/crm/crm|crm]] (sintesi parziale: solo export-chiamate) | 3 | 2 | [[specs/crm/export-chiamate/SPEC]] |
+| Domain | Map | Contract | Concepts | Flows |
+|---|---|---|---|---|
+| crm | [[domains/crm/crm]] | [[domains/crm/crm-contract]] | 8 | 8 |
 
 ## Specs (per domain)
 
@@ -47,6 +48,8 @@ Migrated from `docs/` on 2026-09-24. Source material for future `create-spec` ru
 | crm | [[specs/crm/sezione-contatti/SPEC]] | Draft |
 | crm | [[specs/crm/filtri-sql-sicuri/SPEC]] | Draft |
 | crm | [[specs/crm/seeder-locale/SPEC]] | Implemented (piano: [[specs/crm/seeder-locale/PLAN]], review: [[specs/crm/seeder-locale/REPORT]]) |
+| crm | [[specs/crm/gestione-operatori/SPEC]] | Implemented sui branch, tranne la P2 (piano: [[specs/crm/gestione-operatori/PLAN]], review: [[specs/crm/gestione-operatori/REPORT]]) |
+| crm | [[specs/crm/sicurezza-deploy-staging/SPEC]] | Implemented, ingested (piano: [[specs/crm/sicurezza-deploy-staging/PLAN]]) |
 | crm | [[specs/crm/export-chiamate/SPEC]] | Implemented, PR in revisione (piano: [[specs/crm/export-chiamate/PLAN]], review: [[specs/crm/export-chiamate/REPORT]]) |
 
 - [[specs/crm/crm-specs|crm-specs]] — CRM spec page map
@@ -72,6 +75,10 @@ Migrated from `docs/` on 2026-09-24. Source material for future `create-spec` ru
 - [[review/cron-base-url/REPORT|cron-base-url]] — standalone · do-not-ship · critical · 2026-10-09 (sesto giro)
 - [[review/search-by-explicit-map/REPORT|search-by-explicit-map]] — standalone · ship (quinto giro; prima do-not-ship) · critical · 2026-10-15
 - [[specs/crm/seeder-locale/REPORT|crm/seeder-locale]] — spec · ship · critical · 2026-10-21
+- [[specs/crm/gestione-operatori/REPORT|crm/gestione-operatori — PR 2]] — spec · ship (4 verificatori, 0 BLOCKER e 0 MAJOR; revisione di Leonardo da fare) · critical · 2026-10-22
+- [[specs/crm/gestione-operatori/REPORT|crm/gestione-operatori — PR P1]] — spec · ship (4 verificatori, 0 BLOCKER e 0 MAJOR) · critical · 2026-10-22
+- [[specs/crm/gestione-operatori/REPORT|crm/gestione-operatori — PR 4]] — spec · ship al secondo giro (primo giro do-not-ship, 5 MAJOR corretti; secondo giro v4 e v7, 0 BLOCKER e 0 MAJOR; revisione di Leonardo, staging e OQ2 da fare) · critical · 2026-10-22
+- [[specs/crm/gestione-operatori/REPORT|crm/gestione-operatori — PR 5]] — spec · do-not-ship al quarto giro (5, 2 e 1 MAJOR dei giri precedenti corretti; quarto giro 3 verificatori, 0 BLOCKER e 1 MAJOR: header della Dialog che con il testo a 1,25 allarga la griglia; MAJOR e MINOR corretti in cb51313 senza quinto giro) · critical · 2026-10-23
 - [[specs/crm/export-chiamate/REPORT|crm/export-chiamate — T1–T5]] — spec · ship (0 BLOCKER, 0 MAJOR; 2 rilievi corretti, 2 in tech debt) · critical · 2026-10-23
 - [[specs/crm/export-chiamate/REPORT|crm/export-chiamate — T6–T8]] — spec · ship (1 MAJOR corretto; follow-up sui permessi dello storage) · critical · 2026-10-23
 

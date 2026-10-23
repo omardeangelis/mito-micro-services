@@ -8,6 +8,12 @@ vi.unmock("@mito/server/auth")
 // None of these cases reaches the database
 vi.mock("@mito/db", () => ({ db: {} }))
 vi.mock("@auth/drizzle-adapter", () => ({ DrizzleAdapter: () => ({}) }))
+// The check of a deactivated user reads the database: here nobody is one
+// (that check has its own tests, authDisabled*.db.test.ts)
+vi.mock("../services/auth/disabled", async () => {
+  const { Effect } = await import("effect")
+  return { isUserDisabled: () => Effect.succeed(false) }
+})
 
 const AZURE = {
   AZURE_AD_CLIENT_ID: "client-id",

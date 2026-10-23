@@ -68,7 +68,8 @@ Gates dopo le correzioni: lint, tsc, `pnpm run test --run`, `pnpm build`, `pnpm 
 
 ## Checklist per Leonardo (PR #66 + #67, da unire insieme)
 - [ ] Da operatore la dashboard non mostra "Chiamate per operatore", da admin sì (login reale)
-- [ ] Al deploy in prod, lanciare subito il cron `delete-export`, così gli export vecchi spariscono dal bucket prima che qualcuno li cerchi; oppure decidere di limitare `downloadExportFile` ai file `error-import-*`
-- [ ] Decidere se `deleteExportFile` va tolta o passata ad admin (follow-up)
+- [x] `downloadExportFile` limitata ai file `error-import-*` (a4f73d6): gli export vecchi nel bucket non si scaricano più, anche prima del cron
+- [x] `deleteExportFile` rimossa (a4f73d6)
+- [ ] Un admin disattivato riceve FORBIDDEN dall'export (aggiunto dopo il merge di dev): va bene così?
 - [ ] Un admin senza riga operatore resta senza sezione: va bene finché tutti gli admin hanno una riga operatore?
 
