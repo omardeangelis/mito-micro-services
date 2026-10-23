@@ -12,7 +12,7 @@ updated: 2026-10-23
 # Plan: Export chiamate per operatore, solo admin
 
 **Spec:** [[specs/crm/export-chiamate/SPEC]]
-**Status:** Planned (gate `adversarial-verifier`: DO NOT SHIP al primo giro, 2 MAJOR corretti; SHIP al secondo)
+**Status:** In progress (gate `adversarial-verifier`: DO NOT SHIP al primo giro, 2 MAJOR corretti; SHIP al secondo)
 **Generato:** 2026-10-23 con `create-plan`: grill → swarm-plan → tdd → adversarial-verifier. Nessun codice scritto.
 
 ---
@@ -98,8 +98,8 @@ src/app/dashboard/_components/export/     sezione admin: periodo, indicatori, gr
 - **location**: `packages/domain/src/contact/status.ts`, `packages/domain/src/contact/_test/status.test.ts`, `packages/domain/src/contact/_test/transition.test.ts`, `packages/server/src/services/contact/_test/changeState.db.test.ts` (branch di #61)
 - **description**: `isAllowedChange` rifiuta `non risponde` → `chiamare`. `followup` è già vietato come destinazione. `selectableStates("non risponde")` non offre `chiamare`.
 - **validation**: test di dominio e `task.changeState` da `non risponde` a `chiamare` → `CONTACT_TRANSITION_REJECTED`, nessuna modifica; gate completi.
-- **status**: Planned
-- **log**:
+- **status**: Done
+- **log**: 2026-10-23, commit 4000b9c su #61
 - **files edited/created**:
 - **backlog_item_id**: —
 - **backlog_item_url**: —
@@ -114,8 +114,8 @@ src/app/dashboard/_components/export/     sezione admin: periodo, indicatori, gr
 - **location**: `packages/domain/src/export/period.ts` + `_test/`
 - **description**: funzioni pure: limiti selezionabili dato `now` (primo = giorno dopo quello di 3 mesi fa, ultimo = oggi, AC11b); conversione di `{ from, to }` (giorni `AAAA-MM-GG`) in `[start, end)` UTC con `romeDayBounds`; schema zod che rifiuta periodi fuori limite o invertiti; flag "prima del 15/09/2026" per l'avviso.
 - **validation**: test unitari su giorni normali, cambio d'ora (marzo/ottobre), bordo dei 3 mesi, fine mese (31 → mese corto).
-- **status**: Planned
-- **log**:
+- **status**: Done
+- **log**: 2026-10-23, #65
 - **files edited/created**:
 - **backlog_item_id**: —
 - **backlog_item_url**: —
@@ -130,8 +130,8 @@ src/app/dashboard/_components/export/     sezione admin: periodo, indicatori, gr
 - **location**: `packages/domain/src/export/calls.ts` + `_test/`
 - **description**: insiemi esportati `callFromStates` (`chiamare`, `followup`, `non risponde`, `richiamare`) e `callToStates` (esiti + `non risponde`), `isCall(from, to)`, `noAnswerState`, `appointmentState`; ordinamento delle righe (effettuate decrescenti, poi cognome e nome, AC12) e della classifica (quota appuntamenti/risposte decrescente, 0% senza risposte, poi cognome e nome, AC18); riga dei totali.
 - **validation**: test su ogni coppia di stati scritta a mano (come `transition.test.ts`), esempi di AC10.
-- **status**: Planned
-- **log**:
+- **status**: Done
+- **log**: 2026-10-23, #65
 - **files edited/created**:
 - **backlog_item_id**: —
 - **backlog_item_url**: —
@@ -146,8 +146,8 @@ src/app/dashboard/_components/export/     sezione admin: periodo, indicatori, gr
 - **location**: `packages/server/src/services/export/callStats.ts` + `_test/callStats.db.test.ts`; factory `createTaskEvent` in `src/test/factories.ts`
 - **description**: `callStats({ start, end })`: `Effect<CallStats, DbError, Db>` con una query aggregata come in §3; restituisce righe `{ operatorId, name, surname, calls, answered, appointments, noAnswer }` già ordinate (T2) e la riga dei totali. Solo totali, nessun dato di clienti (AC22).
 - **validation**: test db: conteggi per operatore (AC9), esclusioni di AC10 (esito→esito, esito→`chiamare`, `bulk`, `cron_alert`, `self_assign`), bordi di Roma (AC11, 23:59 e 00:00 del giorno dopo), operatori senza chiamate assenti, totali (AC12), periodo vuoto → nessuna riga.
-- **status**: Planned
-- **log**:
+- **status**: Done
+- **log**: 2026-10-23, #65
 - **files edited/created**:
 - **backlog_item_id**: —
 - **backlog_item_url**: —
@@ -162,8 +162,8 @@ src/app/dashboard/_components/export/     sezione admin: periodo, indicatori, gr
 - **location**: `packages/server/src/api/trpc.ts` (`adminSessionProcedure`, D10), `packages/server/src/api/routers/export/` + `_test/callStats.db.test.ts`; eventuale caller senza sessione in `src/test/caller.ts`
 - **description**: `adminSessionProcedure` (D10), input = schema del periodo di T1 (validato con `now` del server), esegue `callStats` con `runPromiseExit` e mappa `DbError` a `INTERNAL_SERVER_ERROR` in un punto solo. Toglie `getTasksmessages` solo in T8.
 - **validation**: test: admin → dati; operatore → `FORBIDDEN` senza dati (AC7); utente non admin senza riga operatore → `FORBIDDEN`; senza sessione → `UNAUTHORIZED` (AC8); periodo fuori limite → `BAD_REQUEST`. Revisione riga per riga di Opus e di Leonardo.
-- **status**: Planned
-- **log**:
+- **status**: Done
+- **log**: 2026-10-23, #65 (`adminSessionProcedure`)
 - **files edited/created**:
 - **backlog_item_id**: —
 - **backlog_item_url**: —
@@ -178,8 +178,8 @@ src/app/dashboard/_components/export/     sezione admin: periodo, indicatori, gr
 - **location**: `packages/server/src/services/export/_test/callStats.perf.pg.test.ts` (saltato senza `PERF=1`; si lancia con `PERF=1 pnpm test:pg`); eventuale migrazione in `packages/db/migrations/`
 - **description**: inserisce 100.000 `state_change` su 30 operatori in 3 mesi, una richiesta di riscaldamento, poi 10 richieste alla procedura `export.callStats` via `createTestCaller` (middleware compreso, AC21); mediana < 500 ms. Se non passa: indice parziale (D6), `pnpm db:generate`, rimisura.
 - **validation**: output della misura riportato nella PR; se c'è una migrazione, solo additiva.
-- **status**: Planned
-- **log**:
+- **status**: Done
+- **log**: 2026-10-23, #65: mediana 22,2 ms, nessun indice
 - **files edited/created**:
 - **backlog_item_id**: —
 - **backlog_item_url**: —
