@@ -117,6 +117,7 @@ describe("DeactivateOperatorDialog", () => {
         toOperatorId: 2,
       })
       expect(mocks.toast).not.toHaveBeenCalled()
+      expect(mocks.onDeactivated).not.toHaveBeenCalled()
     }
   )
 
@@ -224,5 +225,38 @@ describe("DeactivateOperatorDialog", () => {
 
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull())
     expect(document.activeElement).toBe(rowButton())
+  })
+
+  it("scegliere un'altra destinazione toglie il messaggio d'errore", async () => {
+    const user = setup()
+    await openAndPick(user)
+    mocks.targets = loaded([{ id: 3, name: "Sara", surname: "Verdi" }])
+    user.rerender()
+    await user.click(screen.getByRole("button", { name: "Conferma" }))
+    await screen.findByRole("alert")
+
+    await user.click(screen.getByRole("combobox"))
+    await user.click(await screen.findByRole("option", { name: "Sara Verdi" }))
+
+    expect(screen.queryByRole("alert")).toBeNull()
+  })
+
+  it("dopo una disattivazione riuscita, la volta dopo Esc riporta il focus al bottone della riga", async () => {
+    mocks.action.mockResolvedValue({
+      result: { customersMoved: 0, contactsMoved: 0, practicesMoved: 0 },
+    })
+    const user = setup()
+    await openAndPick(user)
+    await user.click(screen.getByRole("button", { name: "Conferma" }))
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull())
+    await waitFor(() => expect(document.activeElement).toBe(heading.current))
+
+    // Same instance: the row is still mounted
+    await user.click(rowButton())
+    await screen.findByRole("dialog")
+    await user.keyboard("{Escape}")
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull())
+    await waitFor(() => expect(document.activeElement).toBe(rowButton()))
   })
 })

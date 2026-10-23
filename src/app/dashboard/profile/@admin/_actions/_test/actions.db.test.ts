@@ -97,4 +97,17 @@ describe("updateOperatorsRoleAction con la sessione di chi chiama", () => {
     expect(res).toEqual({ error: "UNKNOWN" })
     expect((await userOf(other)).role).toBe("OPERATORE")
   })
+
+  it("un ADMIN cambia il ruolo", async () => {
+    const caller = await createOperator({ role: "ADMIN" })
+    const other = await createOperator({ role: "OPERATORE" })
+    signIn(caller)
+
+    const res = await updateOperatorsRoleAction([
+      { id: other.id, role: "ADMIN" },
+    ])
+
+    expect(res).toEqual({})
+    expect((await userOf(other)).role).toBe("ADMIN")
+  })
 })

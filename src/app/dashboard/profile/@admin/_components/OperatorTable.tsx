@@ -145,9 +145,14 @@ export const OperatorTable = ({
 
   const { toast } = useToast()
 
-  const operators = useOperatorTableStore.use.operatorsToEdit()
+  const pendingOperators = useOperatorTableStore.use.operatorsToEdit()
   const clearOperatorsToEdit = useOperatorTableStore.use.clearOperatorsToEdit()
   const [loading, setLoading] = useState(false)
+  // An edit whose row is gone (deactivated elsewhere) must not be sent
+  const operators = useMemo(
+    () => pendingOperators.filter((op) => data.some((row) => row.id === op.id)),
+    [pendingOperators, data]
+  )
 
   const handleOperatorRoleChange = useCallback(async () => {
     setLoading(true)
@@ -188,7 +193,7 @@ export const OperatorTable = ({
         <h1
           ref={headingRef}
           tabIndex={-1}
-          className="text-lg font-medium focus:outline-none"
+          className="rounded-sm text-lg font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         >
           Gestisci operatori
         </h1>

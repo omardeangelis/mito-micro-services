@@ -54,6 +54,16 @@ const overHttp = (code: ContactErrorCode) =>
     },
   })
 
+/** With `BACKEND_URL`, an error without a domain code: `contactError: null`. */
+const overHttpWithoutCode = () =>
+  TRPCClientError.from({
+    error: {
+      message: "admin-only",
+      code: -32603,
+      data: { code: "FORBIDDEN", httpStatus: 403, contactError: null },
+    },
+  })
+
 const shapes = [
   ["in-process", inProcess],
   ["BACKEND_URL", overHttp],
@@ -98,6 +108,17 @@ describe("deactivateOperatorAction", () => {
 
     expect(res).toEqual({ error: "UNKNOWN" })
     expect(mocks.revalidatePath).not.toHaveBeenCalled()
+  })
+
+  it("restituisce UNKNOWN per un errore HTTP senza codice di dominio", async () => {
+    mocks.deactivate.mockRejectedValue(overHttpWithoutCode())
+
+    const res = await deactivateOperatorAction({
+      operatorId: 1,
+      toOperatorId: 2,
+    })
+
+    expect(res).toEqual({ error: "UNKNOWN" })
   })
 
   it("restituisce UNKNOWN per un errore che non è del dominio", async () => {
@@ -156,6 +177,14 @@ describe.each(shapes)(
 )
 
 describe("updateOperatorsRoleAction", () => {
+  it("restituisce UNKNOWN per un errore HTTP senza codice di dominio", async () => {
+    mocks.updateRole.mockRejectedValue(overHttpWithoutCode())
+
+    const res = await updateOperatorsRoleAction([{ id: 1, role: "OPERATORE" }])
+
+    expect(res).toEqual({ error: "UNKNOWN" })
+  })
+
   it("restituisce UNKNOWN per un errore che non è del dominio", async () => {
     mocks.updateRole.mockRejectedValue(new Error("boom"))
 

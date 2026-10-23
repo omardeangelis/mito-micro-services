@@ -29,9 +29,6 @@ const DialogOverlay = React.forwardRef<
 ))
 DialogOverlay.displayName = DialogPrimitive.Overlay.displayName
 
-const FOCUSABLE =
-  'button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]'
-
 const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
@@ -48,16 +45,34 @@ const DialogContent = React.forwardRef<
         onOpenAutoFocus?.(event)
         if (event.defaultPrevented) return
         // The close button comes first in the DOM: keep the initial focus on
-        // the first control of the content, as before
+        // the first control of the content, like Radix's focusFirst, with the
+        // close button as the last resort before the content itself
         event.preventDefault()
         const content = event.currentTarget as HTMLElement
-        // tabIndex >= 0 skips the hidden native inputs Radix adds inside forms
-        const first = Array.from(
-          content.querySelectorAll<HTMLElement>(FOCUSABLE)
-        ).find(
-          (el) => el.tabIndex >= 0 && !el.hasAttribute("data-dialog-close")
+        const candidates = Array.from(
+          content.querySelectorAll<HTMLElement>("*")
+        ).filter(
+          (el) =>
+            el.tabIndex >= 0 &&
+            !(el as HTMLButtonElement).disabled &&
+            !(el instanceof HTMLInputElement && el.type === "hidden")
         )
-        ;(first ?? content).focus()
+        const closeButton = content.querySelector<HTMLElement>(
+          "[data-dialog-close]"
+        )
+        const ordered = [
+          ...candidates.filter((el) => el !== closeButton),
+          ...(closeButton ? [closeButton] : []),
+        ]
+        for (const el of ordered) {
+          // A hidden candidate does not take focus: move on to the next one
+          el.focus({ preventScroll: true })
+          if (document.activeElement === el) {
+            if (el instanceof HTMLInputElement) el.select()
+            return
+          }
+        }
+        content.focus()
       }}
       {...props}
     >
@@ -80,7 +95,7 @@ const DialogHeader = ({
 }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
     className={cn(
-      "flex flex-col space-y-1.5 text-center sm:text-left",
+      "flex flex-col space-y-1.5 pr-6 text-center sm:text-left",
       className
     )}
     {...props}

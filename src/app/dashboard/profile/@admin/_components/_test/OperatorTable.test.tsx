@@ -102,6 +102,10 @@ describe("OperatorTable", () => {
     )
     // The edits stay, so the admin can retry
     expect(useOperatorTableStore.getState().operatorsToEdit).toHaveLength(1)
+    expect(screen.getByRole("button", { name: "Salva" })).toHaveProperty(
+      "disabled",
+      false
+    )
   })
 
   it("con un errore non di dominio mostra il titolo generico", async () => {
@@ -220,5 +224,64 @@ describe("OperatorTable", () => {
 
     // The row of Carla shows her role, not Bruno's pending one
     expect(screen.getAllByRole("combobox")[1]!.textContent).toBe("operatore")
+  })
+
+  it("disattivare un operatore lascia le modifiche in sospeso degli altri", async () => {
+    mocks.deactivate.mockResolvedValue({
+      result: { customersMoved: 0, contactsMoved: 0, practicesMoved: 0 },
+    })
+    const user = userEvent.setup()
+    render(<OperatorTable data={data} currentOperatorId={1} />)
+    // Carla and Bruno: OPERATORE -> ADMIN, not saved
+    await user.click(screen.getAllByRole("combobox")[2]!)
+    await user.click(await screen.findByRole("option", { name: "Admin" }))
+    await user.click(screen.getAllByRole("combobox")[1]!)
+    await user.click(await screen.findByRole("option", { name: "Admin" }))
+
+    await deactivateBruno(user)
+
+    expect(useOperatorTableStore.getState().operatorsToEdit).toEqual([
+      { id: 3, role: "ADMIN" },
+    ])
+  })
+
+  it("Salva non manda le modifiche delle righe sparite per altre vie", async () => {
+    mocks.updateRole.mockResolvedValue({})
+    const user = userEvent.setup()
+    const { rerender } = render(
+      <OperatorTable data={data} currentOperatorId={1} />
+    )
+    // Bruno and Carla: OPERATORE -> ADMIN, not saved
+    await user.click(screen.getAllByRole("combobox")[1]!)
+    await user.click(await screen.findByRole("option", { name: "Admin" }))
+    await user.click(screen.getAllByRole("combobox")[2]!)
+    await user.click(await screen.findByRole("option", { name: "Admin" }))
+
+    // Another admin deactivated Bruno: the page comes back without his row
+    rerender(
+      <OperatorTable data={[data[0]!, data[2]!]} currentOperatorId={1} />
+    )
+    await user.click(screen.getByRole("button", { name: "Salva" }))
+
+    await waitFor(() => expect(mocks.updateRole).toHaveBeenCalledTimes(1))
+    expect(mocks.updateRole).toHaveBeenCalledWith([{ id: 3, role: "ADMIN" }])
+  })
+
+  it("con la sola modifica di una riga sparita Salva resta spento", async () => {
+    const user = userEvent.setup()
+    const { rerender } = render(
+      <OperatorTable data={data} currentOperatorId={1} />
+    )
+    await user.click(screen.getAllByRole("combobox")[1]!)
+    await user.click(await screen.findByRole("option", { name: "Admin" }))
+
+    rerender(
+      <OperatorTable data={[data[0]!, data[2]!]} currentOperatorId={1} />
+    )
+
+    expect(screen.getByRole("button", { name: "Salva" })).toHaveProperty(
+      "disabled",
+      true
+    )
   })
 })

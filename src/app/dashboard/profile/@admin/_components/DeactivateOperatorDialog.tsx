@@ -141,7 +141,7 @@ export const DeactivateOperatorDialog = ({
         <div className="space-y-4">
           <div className="min-h-[3.75rem]">
             {impact.isError || targets.isError ? (
-              <div className="space-y-2">
+              <div className="flex items-center justify-between gap-3">
                 <p role="alert" className="text-sm text-destructive">
                   Impossibile caricare i dati dell&apos;operatore
                 </p>
@@ -179,7 +179,10 @@ export const DeactivateOperatorDialog = ({
             </label>
             <Select
               value={destination}
-              onValueChange={setDestination}
+              onValueChange={(value) => {
+                setDestination(value)
+                setError(null)
+              }}
               disabled={submitting}
             >
               <SelectTrigger
@@ -198,7 +201,7 @@ export const DeactivateOperatorDialog = ({
             </Select>
           </div>
 
-          <div className="min-h-5">
+          <div className="min-h-10 sm:min-h-5">
             {error && (
               <p role="alert" className="text-sm text-destructive">
                 {error}
