@@ -2,10 +2,6 @@ import { Hono } from "hono"
 import { NextRequest } from "next/server"
 import * as importError from "@/app/api/export/importError/route"
 import * as exportDownload from "@/app/api/export/download/route"
-import * as fetchCall from "@/app/api/export/[export]/fetchCall/route"
-import * as fetchDefault from "@/app/api/export/[export]/fetchDefault/route"
-import * as getMessages from "@/app/api/export/[export]/getMessages/route"
-import * as saveExport from "@/app/api/export/[export]/saveExport/route"
 import * as createCustomerToPratica from "@/app/api/import/create/customerToPratica/route"
 import * as createCustomers from "@/app/api/import/create/customers/route"
 import * as createPractices from "@/app/api/import/create/practices/route"
@@ -22,16 +18,10 @@ type RouteHandler = (
 
 type RouteModule = Partial<Record<(typeof METHODS)[number], unknown>>
 
-// The route handlers of the Next.js app, on the same paths. The dynamic
-// segment of /api/export/[export] is read by none of them; the static routes
-// next to it come first, as in Next.js
+// The route handlers of the Next.js app, on the same paths
 const ROUTES: [string, RouteModule][] = [
   ["/api/export/download", exportDownload],
   ["/api/export/importError", importError],
-  ["/api/export/:export/fetchCall", fetchCall],
-  ["/api/export/:export/fetchDefault", fetchDefault],
-  ["/api/export/:export/getMessages", getMessages],
-  ["/api/export/:export/saveExport", saveExport],
   ["/api/import/create/customerToPratica", createCustomerToPratica],
   ["/api/import/create/customers", createCustomers],
   ["/api/import/create/practices", createPractices],

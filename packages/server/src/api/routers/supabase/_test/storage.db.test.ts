@@ -16,7 +16,6 @@ vi.mock("../../../../services/storage/layer", async () => {
 })
 
 const caller = () => createTestCaller({ userId: "user-1" })
-const XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
 beforeEach(() => {
   vi.spyOn(console, "log").mockImplementation(() => undefined)
@@ -25,38 +24,6 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.restoreAllMocks()
-})
-
-describe("supabase.createExportUploadUrl", () => {
-  it("firma un upload sotto export/ con il content type dell'xlsx", async () => {
-    const result = await caller().supabase.createExportUploadUrl({
-      filePathName: "export_20/10/2026.xlsx",
-    })
-
-    expect(result.contentType).toBe(XLSX)
-    expect(result.url).toContain("export/export_20/10/2026.xlsx")
-    expect(result.url).toContain("action=write")
-  })
-
-  it.each(["", "/root.xlsx", "../segreto.xlsx", "a/../../b.xlsx"])(
-    "rifiuta il nome %j",
-    async (filePathName) => {
-      await expect(
-        caller().supabase.createExportUploadUrl({ filePathName })
-      ).rejects.toMatchObject({ code: "BAD_REQUEST" })
-    }
-  )
-
-  it("senza sessione risponde UNAUTHORIZED", async () => {
-    const { appRouter } = await import("../../../root")
-    const anonymous = appRouter.createCaller({
-      session: null,
-    } as unknown as Parameters<typeof appRouter.createCaller>[0])
-
-    await expect(
-      anonymous.supabase.createExportUploadUrl({ filePathName: "a.xlsx" })
-    ).rejects.toMatchObject({ code: "UNAUTHORIZED" })
-  })
 })
 
 describe("supabase upload e download dell'export", () => {
