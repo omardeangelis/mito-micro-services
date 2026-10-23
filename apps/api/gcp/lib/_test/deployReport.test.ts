@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest"
-import { type DeployRun, deployReport } from "../deployReport"
+import { type DeployRun, deployReport, waitingReport } from "../deployReport"
 
 const succeeded: DeployRun = {
   environment: "staging",
   ci: "success",
+  plan: "success",
+  pending: 0,
+  approve: "skipped",
   api: "success",
   apiPhase: "/health",
   vercel: "success",
@@ -13,6 +16,7 @@ const succeeded: DeployRun = {
   },
   actor: "leonardodemarco00",
   revision: "mito-crm-staging-00011-cew",
+  backup: "",
   runUrl: "https://github.com/omardeangelis/mito-micro-services/actions/runs/1",
 }
 
@@ -26,6 +30,7 @@ describe("deployReport", () => {
         "• commit: `fcfdcfe` fix(api): copy vendor/",
         "• avviato da: leonardodemarco00",
         "• revisione: mito-crm-staging-00011-cew",
+        "• migrazioni applicate: 0",
         "• run: <https://github.com/omardeangelis/mito-micro-services/actions/runs/1|GitHub Actions>",
       ].join("\n"),
     })
@@ -35,6 +40,7 @@ describe("deployReport", () => {
     const report = deployReport({
       ...succeeded,
       ci: "failure",
+      plan: "skipped",
       api: "skipped",
       apiPhase: "",
       vercel: "skipped",
@@ -50,6 +56,7 @@ describe("deployReport", () => {
 
   it.each([
     "immagine",
+    "backup",
     "migrazioni",
     "revisione Cloud Run",
     "/health",
@@ -95,5 +102,91 @@ describe("deployReport", () => {
     const report = deployReport({ ...succeeded, actor: "omardeangelis" })
 
     expect(report.text).toContain("• avviato da: omardeangelis")
+  })
+
+  it("reports the migrations applied and the backup taken before them", () => {
+    const report = deployReport({
+      ...succeeded,
+      pending: 2,
+      approve: "success",
+      backup: "1729700000000",
+    })
+
+    expect(report.text).toContain("• migrazioni applicate: 2")
+    expect(report.text).toContain("• backup: 1729700000000")
+  })
+
+  it("names the approval when the migrations were rejected", () => {
+    const report = deployReport({
+      ...succeeded,
+      pending: 1,
+      approve: "failure",
+      api: "skipped",
+      apiPhase: "",
+      vercel: "skipped",
+      revision: "",
+    })
+
+    expect(report).toMatchObject({ outcome: "failed", phase: "approvazione" })
+  })
+
+  it("names the approval when the run was cancelled while waiting", () => {
+    const report = deployReport({
+      ...succeeded,
+      pending: 1,
+      approve: "cancelled",
+      api: "skipped",
+      vercel: "skipped",
+    })
+
+    expect(report).toMatchObject({
+      outcome: "cancelled",
+      phase: "approvazione",
+    })
+  })
+
+  it("names the migrations when they couldn't be listed", () => {
+    const report = deployReport({
+      ...succeeded,
+      plan: "failure",
+      api: "skipped",
+      vercel: "skipped",
+    })
+
+    expect(report).toMatchObject({ outcome: "failed", phase: "migrazioni" })
+  })
+
+  it("keeps the backup in the message of a deploy that failed after it", () => {
+    const report = deployReport({
+      ...succeeded,
+      pending: 1,
+      approve: "success",
+      api: "failure",
+      apiPhase: "migrazioni",
+      vercel: "skipped",
+      backup: "1729700000000",
+    })
+
+    expect(report.text).toContain("• backup: 1729700000000")
+    expect(report.text).not.toContain("migrazioni applicate")
+  })
+})
+
+describe("waitingReport", () => {
+  it("says how many migrations wait and where to approve them", () => {
+    expect(
+      waitingReport({
+        environment: "staging",
+        pending: 2,
+        commit: succeeded.commit,
+        actor: "omardeangelis",
+        runUrl: succeeded.runUrl,
+      }).split("\n")
+    ).toStrictEqual([
+      ":hourglass_flowing_sand: *staging · deploy in attesa di approvazione*: 2 migrazioni da applicare",
+      "• commit: `fcfdcfe` fix(api): copy vendor/",
+      "• avviato da: omardeangelis",
+      "• SQL e approvazione: <https://github.com/omardeangelis/mito-micro-services/actions/runs/1|GitHub Actions>",
+    ])
   })
 })

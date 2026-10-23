@@ -1,9 +1,14 @@
-# Each push to dev (a merged PR: dev only takes PRs) goes to staging in three
+# Each push to dev (a merged PR: dev only takes PRs) goes to staging in these
 # steps, each only if the one before passed:
 # 1. ci: the checks of the PRs (ci.yml), on the merged code;
-# 2. api: the backend (apps/api) to Cloud Run, migrations first
+# 2. plan: the migrations the deploy brings, with their SQL in the summary of
+#    the run (apps/api/gcp/plan-migrations.ts);
+# 3. approve: only when there are some, a person approves them (environment
+#    staging-db, whose reviewers are the approvers);
+# 4. api: the backend (apps/api) to Cloud Run, after a backup of the database
+#    when there are migrations, then the migrations
 #    (apps/api/gcp/deploy-staging.sh);
-# 3. web: the frontend to Vercel, after the API it calls;
+# 5. web: the frontend to Vercel, after the API it calls;
 # then a Slack message with how it went, in every case.
 name: Deploy Platform to Staging
 env:
@@ -31,12 +36,74 @@ jobs:
   CI:
     uses: ./.github/workflows/ci.yml
 
+  # The migrations this deploy brings: the journal of this commit against the
+  # one of the commit staging runs, the label deployed-sha of its revision
+  Plan:
+    needs: CI
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: staging
+    permissions:
+      contents: read
+      id-token: write
+    outputs:
+      pending: ${{ steps.plan.outputs.pending }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOYER_SERVICE_ACCOUNT }}
+      - uses: google-github-actions/setup-gcloud@v2
+      # The revision serving all the traffic, not the last one deployed: after
+      # a failed /health or a rollback (RESTORE-STAGING.md) they differ
+      - id: deployed
+        run: |
+          svc=(--project=mito-crm --region=europe-west3)
+          rev=$(gcloud run services describe mito-crm-staging "${svc[@]}" --format=json |
+            jq -r '[.status.traffic[] | select(.percent == 100)][0].revisionName // empty')
+          sha=""
+          if [ -n "$rev" ]; then
+            sha=$(gcloud run revisions describe "$rev" "${svc[@]}" \
+              --format='value(metadata.labels.deployed-sha)')
+          fi
+          echo "Staging serves $rev, commit ${sha:-unknown}"
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: package.json
+      - id: plan
+        run: npx --yes tsx@4.23.15 apps/api/gcp/plan-migrations.ts
+        env:
+          DEPLOYED_SHA: ${{ steps.deployed.outputs.sha }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_DEPLOY_WEBHOOK_URL }}
+          DEPLOY_ENVIRONMENT: staging
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+
+  # Waits for a reviewer of the environment staging-db to approve the
+  # migrations listed in the summary of the run. A rejection, or 30 days
+  # without an answer, stops the deploy before anything changes
+  Approve:
+    needs: Plan
+    if: needs.Plan.outputs.pending != '0'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: staging-db
+    steps:
+      - run: echo "Migrations approved"
+
   # Builds the image of apps/api, pushes it to staging's repository and
   # deploys it by digest. GCP access is Workload Identity Federation for jobs
   # of this repository on dev in the environment staging
   # (apps/api/gcp/setup-ci-deploy.sh): no key in the repo
   API-Deploy-Staging:
-    needs: CI
+    needs: [Plan, Approve]
+    # Without migrations Approve is skipped; with them it must have succeeded
+    if: >-
+      !cancelled() && needs.Plan.result == 'success' &&
+      (needs.Plan.outputs.pending == '0' || needs.Approve.result == 'success')
     runs-on: ubuntu-latest
     timeout-minutes: 40
     environment:
@@ -52,9 +119,15 @@ jobs:
       # Slack message (deploy-staging.sh writes them)
       PHASE_FILE: /tmp/deploy-phase
       REVISION_FILE: /tmp/deploy-revision
+      BACKUP_FILE: /tmp/deploy-backup
+      # A backup before the migrations, when there are some; the label the
+      # next Plan reads
+      BACKUP: ${{ needs.Plan.outputs.pending != '0' && '1' || '0' }}
+      COMMIT_SHA: ${{ github.sha }}
     outputs:
       phase: ${{ steps.report.outputs.phase }}
       revision: ${{ steps.report.outputs.revision }}
+      backup: ${{ steps.report.outputs.backup }}
     steps:
       - run: printf immagine > "$PHASE_FILE"
       - uses: actions/checkout@v4
@@ -83,8 +156,11 @@ jobs:
       - id: report
         if: always()
         run: |
-          echo "phase=$(cat "$PHASE_FILE" 2>/dev/null)" >> "$GITHUB_OUTPUT"
-          echo "revision=$(cat "$REVISION_FILE" 2>/dev/null)" >> "$GITHUB_OUTPUT"
+          {
+            echo "phase=$(cat "$PHASE_FILE" 2>/dev/null)"
+            echo "revision=$(cat "$REVISION_FILE" 2>/dev/null)"
+            echo "backup=$(cat "$BACKUP_FILE" 2>/dev/null)"
+          } >> "$GITHUB_OUTPUT"
 
   Vercel-Deploy-Staging:
     needs: API-Deploy-Staging
@@ -302,7 +378,7 @@ jobs:
   # on the channel of every environment's deploys (send-deploy-report.ts).
   # Slack not answering leaves the run as it is
   Report:
-    needs: [CI, API-Deploy-Staging, Vercel-Deploy-Staging]
+    needs: [CI, Plan, Approve, API-Deploy-Staging, Vercel-Deploy-Staging]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -318,8 +394,12 @@ jobs:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_DEPLOY_WEBHOOK_URL }}
           DEPLOY_ENVIRONMENT: staging
           CI_RESULT: ${{ needs.CI.result }}
+          PLAN_RESULT: ${{ needs.Plan.result }}
+          PENDING: ${{ needs.Plan.outputs.pending }}
+          APPROVE_RESULT: ${{ needs.Approve.result }}
           API_RESULT: ${{ needs.API-Deploy-Staging.result }}
           API_PHASE: ${{ needs.API-Deploy-Staging.outputs.phase }}
           API_REVISION: ${{ needs.API-Deploy-Staging.outputs.revision }}
+          API_BACKUP: ${{ needs.API-Deploy-Staging.outputs.backup }}
           VERCEL_RESULT: ${{ needs.Vercel-Deploy-Staging.result }}
           COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
