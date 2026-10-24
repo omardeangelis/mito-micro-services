@@ -1,4 +1,5 @@
 import { eq } from "drizzle-orm"
+import { Effect } from "effect"
 import { customers } from "@mito/db/schema/customers"
 import { query } from "../../effect/db"
 
@@ -34,7 +35,7 @@ export const updateCustomerProfile = (
       .returning({ id: customers.id })
   )
 
-/** Sets the customer's blacklist status. Returns the driver's result as is. */
+/** Sets the customer's blacklist status. */
 export const setBlackListStatus = (
   id: string,
   status: NonNullable<BlackListStatus>
@@ -44,16 +45,13 @@ export const setBlackListStatus = (
       .update(customers)
       .set({ blackListStatus: status })
       .where(eq(customers.id, id))
-  )
+  ).pipe(Effect.asVoid)
 
-/**
- * Marks the customer as just modified (sets its `updatedAt`). Returns the
- * driver's result as is.
- */
+/** Marks the customer as just modified (sets its `updatedAt`). */
 export const markCustomerUpdated = (id: string) =>
   query((client) =>
     client
       .update(customers)
       .set({ updatedAt: new Date() })
       .where(eq(customers.id, id))
-  )
+  ).pipe(Effect.asVoid)

@@ -315,8 +315,7 @@ describe("customer.handleCustomerBlackList", () => {
       blackListStatus: "blacklisted",
     })
 
-    // Nessun returning: la risposta e il risultato grezzo del driver (PGlite)
-    expect(response).toEqual({ rows: [], fields: [], affectedRows: 1 })
+    expect(response).toBeUndefined()
     await expectWritten(pair, { blackListStatus: "blacklisted" })
   })
 
@@ -385,8 +384,7 @@ describe("customer.updateLastEdit", () => {
       id: pair.written.id,
     })
 
-    // Nessun returning: la risposta e il risultato grezzo del driver (PGlite)
-    expect(response).toEqual({ rows: [], fields: [], affectedRows: 1 })
+    expect(response).toBeUndefined()
     await expectWritten(pair, {})
   })
 })
@@ -433,7 +431,7 @@ describe("customer.handleCustomerBlackList, ogni transizione", () => {
         blackListStatus: to,
       })
 
-      expect(response).toEqual({ rows: [], fields: [], affectedRows: 1 })
+      expect(response).toBeUndefined()
       await expectWritten(pair, { blackListStatus: to })
     }
   )
@@ -462,11 +460,11 @@ describe("customer.handleCustomerBlackList, ogni transizione", () => {
       name: 123,
     } as never)
 
-    expect(response).toEqual({ rows: [], fields: [], affectedRows: 1 })
+    expect(response).toBeUndefined()
     await expectWritten(pair, { blackListStatus: "blacklisted" })
   })
 
-  it("con un id che non esiste risponde senza errore con il risultato grezzo del driver (0 righe) e non cambia nessun cliente", async () => {
+  it("con un id che non esiste risponde senza errore e senza dati (TD8 h) e non cambia nessun cliente", async () => {
     const pair = await seedPair()
     callAtT1()
 
@@ -475,13 +473,13 @@ describe("customer.handleCustomerBlackList, ogni transizione", () => {
       blackListStatus: "blacklisted",
     })
 
-    expect(response).toEqual({ rows: [], fields: [], affectedRows: 0 })
+    expect(response).toBeUndefined()
     await expectUntouched(pair)
   })
 })
 
 describe("customer.updateLastEdit, con un id che non esiste", () => {
-  it("risponde senza errore con il risultato grezzo del driver (0 righe) e non cambia nessun cliente", async () => {
+  it("risponde senza errore e senza dati (TD8 h) e non cambia nessun cliente", async () => {
     const pair = await seedPair()
     callAtT1()
 
@@ -489,7 +487,7 @@ describe("customer.updateLastEdit, con un id che non esiste", () => {
       id: "id-inesistente",
     })
 
-    expect(response).toEqual({ rows: [], fields: [], affectedRows: 0 })
+    expect(response).toBeUndefined()
     await expectUntouched(pair)
   })
 })

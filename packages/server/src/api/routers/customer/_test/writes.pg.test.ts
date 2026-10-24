@@ -36,7 +36,7 @@ describe.skipIf(!hasTestDatabase)(
     })
 
     describe("con id", () => {
-      it("`handleCustomerBlackList` risponde con la RowList del driver (array vuoto, `count` 1, `command` UPDATE) e cambia solo quel cliente", async () => {
+      it("`handleCustomerBlackList` non restituisce niente (TD8 h) e cambia solo quel cliente", async () => {
         const { operator, first, second } = await seed()
 
         const result = await createTestCaller(
@@ -46,12 +46,7 @@ describe.skipIf(!hasTestDatabase)(
           blackListStatus: "blacklisted",
         })
 
-        expect(result).toEqual([])
-        // `count` e `command` non sono enumerabili: toEqual non li vede
-        expect((result as unknown as { count: number }).count).toBe(1)
-        expect((result as unknown as { command: string }).command).toBe(
-          "UPDATE"
-        )
+        expect(result).toBeUndefined()
         const after = await allCustomers()
         const updated = after.find((row) => row.id === first.id)!
         expect({ ...updated, updatedAt: first.updatedAt }).toEqual({
@@ -64,18 +59,14 @@ describe.skipIf(!hasTestDatabase)(
         expect(after.find((row) => row.id === second.id)).toEqual(second)
       })
 
-      it("`updateLastEdit` risponde con la RowList del driver (array vuoto, `count` 1, `command` UPDATE) e aggiorna solo `updatedAt` di quel cliente", async () => {
+      it("`updateLastEdit` non restituisce niente (TD8 h) e aggiorna solo `updatedAt` di quel cliente", async () => {
         const { operator, first, second } = await seed()
 
         const result = await createTestCaller(operator).customer.updateLastEdit(
           { id: first.id }
         )
 
-        expect(result).toEqual([])
-        expect((result as unknown as { count: number }).count).toBe(1)
-        expect((result as unknown as { command: string }).command).toBe(
-          "UPDATE"
-        )
+        expect(result).toBeUndefined()
         const after = await allCustomers()
         const updated = after.find((row) => row.id === first.id)!
         expect({ ...updated, updatedAt: first.updatedAt }).toEqual(first)
@@ -112,7 +103,7 @@ describe.skipIf(!hasTestDatabase)(
     })
 
     describe("con un id che non esiste", () => {
-      it("`handleCustomerBlackList` risponde senza errore con la RowList del driver (array vuoto, `count` 0, `command` UPDATE) e non cambia nessun cliente", async () => {
+      it("`handleCustomerBlackList` risponde senza errore e senza dati e non cambia nessun cliente", async () => {
         const { operator } = await seed()
         const before = await allCustomers()
 
@@ -123,15 +114,11 @@ describe.skipIf(!hasTestDatabase)(
           blackListStatus: "blacklisted",
         })
 
-        expect(result).toEqual([])
-        expect((result as unknown as { count: number }).count).toBe(0)
-        expect((result as unknown as { command: string }).command).toBe(
-          "UPDATE"
-        )
+        expect(result).toBeUndefined()
         expect(await allCustomers()).toEqual(before)
       })
 
-      it("`updateLastEdit` risponde senza errore con la RowList del driver (array vuoto, `count` 0, `command` UPDATE) e non cambia nessun cliente", async () => {
+      it("`updateLastEdit` risponde senza errore e senza dati e non cambia nessun cliente", async () => {
         const { operator } = await seed()
         const before = await allCustomers()
 
@@ -139,11 +126,7 @@ describe.skipIf(!hasTestDatabase)(
           { id: "id-inesistente" }
         )
 
-        expect(result).toEqual([])
-        expect((result as unknown as { count: number }).count).toBe(0)
-        expect((result as unknown as { command: string }).command).toBe(
-          "UPDATE"
-        )
+        expect(result).toBeUndefined()
         expect(await allCustomers()).toEqual(before)
       })
     })
