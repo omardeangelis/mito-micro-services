@@ -14,7 +14,7 @@ updated: 2026-10-24
 # Plan: Import di clienti e pratiche, riscritto
 
 **Spec:** [[specs/crm/import-pratiche/SPEC]] (approvata da Leonardo il 2026-10-24)
-**Status:** Planned
+**Status:** In progress (PR A, #77)
 **Generato:** 2026-10-24 con `create-plan`: grill (una domanda a Leonardo, D1) → swarm-plan → tdd → adversarial-verifier (primo giro DO NOT SHIP con 2 blocker; secondo giro DO NOT SHIP senza blocker, 3 major e 8 minor; tutti corretti in questa versione, senza un terzo giro per il limite di 2 tentativi). Nessun codice scritto.
 
 ---
@@ -149,9 +149,9 @@ T0 è una prova senza PR; T12b è la prova finale su staging dopo F e G.
 - **location**: `src/app/api/import/process/_test/characterization.test.ts` (nuovo; T4 lo sposta)
 - **description**: test sul codice di oggi (`processFile` su workbook costruiti nel test con `XLSX.utils.aoa_to_sheet`), con l'orologio fissato e `process.env.TZ = "Europe/Rome"` (l'admin in Italia). Per Wave e Standard fissano i valori di cliente, pratica e ruolo per: rate pagate, rate residue, debito residuo; stato; codice prodotto; sede; nome e cognome; maiuscole; email; codice fiscale o partita IVA; importi in formato italiano; date (seriale Excel, `AAAAMMGG`, `M/G/AA`, illeggibile); nome del file (`MMAA_`, `-` → `_`); i difetti di OQ2 (Wave +1 mese, estinzione = oggi, illeggibile = oggi, seriale +1 giorno); la regola delle righe Wave solo cliente; la fusione nel file (stesso CF e codice cliente, ultimo valore non vuoto); un CAP con zeri iniziali (com'è oggi dopo papaparse).
 - **validation**: test verdi sul codice di oggi; un caso per ogni voce di AC32 e di OQ2.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-10-24, #77. 50 test verdi sul codice di oggi. Il fuso resta UTC (vitest non lo cambia per file): date verificate come mezzanotte locale; ambiente `node` (il `File` di jsdom non ha `arrayBuffer()`). Casi in più: CAP, importi in testo italiano, CF minuscolo, GG/MM/AAAA, riga Wave senza Garante né Coobbligato, riga Standard senza CF né P.IVA, data illeggibile Standard (pratica scartata in silenzio, non oggi)
+- **files edited/created**: `src/app/api/import/process/_test/characterization.test.ts`
 - **backlog_item_id**: —
 - **backlog_item_url**: —
 - **relation_mode**: body-links
@@ -165,9 +165,9 @@ T0 è una prova senza PR; T12b è la prova finale su staging dopo F e G.
 - **location**: `src/app/api/import/update/_test/identity.db.test.ts` (nuovo)
 - **description**: test su database di `handleCustomerUpdate` + `updateImportedCustomer`: cliente con codice fiscale riconosciuto per codice fiscale; cliente senza codice fiscale per partita IVA; un altro cliente con lo stesso codice cliente aggiornato anche lui; una riga senza partita IVA aggiorna anche i clienti con la partita IVA del primo cliente riconosciuto (§1); codice cliente mai cambiato; operatore e data di creazione invariati; `last_import_update` impostata. Fissa la regola che T8a, T8b e T9 devono rispettare (D11).
 - **validation**: test verdi sul codice di oggi; ogni caso ha un gemello in T8a, T8b o T9 prima che T20 cancelli questo file.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-10-24, #77. 7 test verdi su PGlite. Il cliente aggiornato per errore prende anche la data di creazione del primo (codice cliente e operatore restano)
+- **files edited/created**: `src/app/api/import/update/_test/identity.db.test.ts`
 - **backlog_item_id**: —
 - **backlog_item_url**: —
 - **relation_mode**: body-links
