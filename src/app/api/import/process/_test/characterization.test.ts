@@ -617,6 +617,24 @@ describe("file Standard", () => {
     }
   )
 
+  test.each([
+    { format: "testo illeggibile", value: "non so" },
+    { format: "testo GG/MM/AAAA", value: "15/01/2024" },
+  ])(
+    "'DATA_LIQUIDAZIONE' come $format: la pratica sparisce, il cliente resta, nessun errore",
+    async ({ value }) => {
+      const { customers, practices, links, errors } = await convert(
+        standardFile(standardRow({ DATA_LIQUIDAZIONE: value }))
+      )
+
+      // Defect: the rates paid come out NaN and the practice fails validation
+      expect(customers).toHaveLength(1)
+      expect(practices).toEqual([])
+      expect(links).toEqual([])
+      expect(errors).toEqual([])
+    }
+  )
+
   test("una riga senza CF né P.IVA sparisce: nessun cliente, nessuna pratica, nessun errore", async () => {
     const { customers, practices, links, errors } = await convert(
       standardFile(standardRow({ CODICE_FISCALE_CLI: null }))
