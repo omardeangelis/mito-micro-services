@@ -45,6 +45,9 @@ export type ClassifiedRow =
   | { kind: "customerOnly"; customer: ConvertedCustomer }
   | { kind: "discarded"; reasons: string[] }
 
+/** A classified row with its number in the sheet, as Excel shows it. */
+export type NumberedRow = ClassifiedRow & { row: number }
+
 /** The data a row needs to be imported with its practice (AC9). */
 export const requiredColumns = {
   standard: [
@@ -327,6 +330,21 @@ export function classifyRow(
     if (customerOnly) return { kind: "customerOnly", customer }
   }
   return { kind: "discarded", reasons: [...new Set(found)] }
+}
+
+/** The rows of a file, blank ones left out (they aren't rows, AC8). */
+export function classifyRows(
+  format: ImportFormat,
+  rows: readonly { row: number; cells: Cells }[],
+  now: Date,
+  fileName: string
+): NumberedRow[] {
+  return rows
+    .filter(({ cells }) => !isBlankRow(cells))
+    .map(({ row, cells }) => ({
+      ...classifyRow(format, cells, now, fileName),
+      row,
+    }))
 }
 
 type Problem =
