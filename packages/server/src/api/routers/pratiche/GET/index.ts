@@ -2,7 +2,7 @@ import { z } from "zod"
 
 import { operatorProcedure, protectedProcedure } from "../../../trpc"
 import { practices, stateEnum } from "@mito/db/schema/pratiche"
-import { eq, count, desc, asc, and, ilike, inArray, sql } from "drizzle-orm"
+import { eq, count, desc, asc, and, ilike, inArray } from "drizzle-orm"
 import { castAsNumber, containsPattern } from "../../utils/index"
 import { getProductKey } from "@mito/domain/constants/productMap"
 import { operators } from "@mito/db/schema/operators"
@@ -18,6 +18,8 @@ import {
   type PraticaSearchBy,
   praticaSearchBy,
 } from "@mito/domain/constants/praticaSearch"
+import { advancedFiltersWhere } from "../../utils/advancedFilters"
+import { PRATICA_FILTER_QUERY_MAP } from "@mito/domain/filters/advanced"
 
 export type Result = Record<
   string,
@@ -50,8 +52,12 @@ const getAllPraticheInput = z.object({
     })
     .optional(),
   q: z.string().optional(),
-  sqlFilter: z.string().optional(),
-  filter: z.union([z.string(), z.array(z.string()), z.undefined()]),
+  // Stringhe libere: una voce non valida si scarta nel server, non rende
+  // invalida la richiesta. Senza `.strict()`: il `sqlFilter` e il `filter` di
+  // un frontend vecchio si ignorano
+  advancedFilters: z
+    .array(z.object({ field: z.string(), op: z.string(), value: z.string() }))
+    .optional(),
 })
 
 export const getAllAvailableRegion = operatorProcedure.query(
@@ -92,7 +98,7 @@ const getAllPratichePage = (
       filterBy?.onlyMe && operator.role === "OPERATORE"
         ? eq(customers.operatorId, operator.id)
         : undefined,
-      input.sqlFilter ? sql.raw(`${input.sqlFilter}`) : undefined
+      advancedFiltersWhere(input.advancedFilters, PRATICA_FILTER_QUERY_MAP)
     )
 
     const sortedFn = sortedBy === "desc" ? desc : asc

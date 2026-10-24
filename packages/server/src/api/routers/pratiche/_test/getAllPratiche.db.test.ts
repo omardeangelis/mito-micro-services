@@ -40,7 +40,6 @@ async function seed() {
       perPage: 10,
       searchBy,
       q,
-      filter: undefined,
     })
     return { praticaIds: data.map((p) => p.praticaId), total }
   }
@@ -91,14 +90,13 @@ describe("pratiche.getAllPratiche, ricerca", () => {
 type GetAllPratiche = ReturnType<
   typeof createTestCaller
 >["pratiche"]["getAllPratiche"]
-type ListInput = Omit<Parameters<GetAllPratiche>[0], "filter" | "sqlFilter">
+type ListInput = Omit<Parameters<GetAllPratiche>[0], "advancedFilters">
 
-// Le chiamate nuove non nominano `filter` né `sqlFilter`: `filter` è una chiave
-// obbligatoria del tipo, ma zod accetta anche che manchi
+// Senza filtri avanzati: questi casi fissano il resto della procedura
 const list = (
   caller: { pratiche: { getAllPratiche: GetAllPratiche } },
   input: ListInput
-) => caller.pratiche.getAllPratiche(input as Parameters<GetAllPratiche>[0])
+) => caller.pratiche.getAllPratiche(input)
 
 // Ogni chiave di ordinamento ha valori distinti tra le cinque pratiche, così
 // nessun ordine dipende da come il database risolve i pari merito.
