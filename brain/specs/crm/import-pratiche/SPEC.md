@@ -180,7 +180,7 @@ Le persone del progetto non sono ancora descritte (`paths.personas` è vuoto): i
 | 4 | Quanto sono grandi i file veri? Fino a 20.000 righe (Leonardo, 2026-10-24): restano 20.000 righe e 15 MB per file. | AC5, AC18, AC25 | Leonardo | Resolved |
 | 5 | Chi può importare? Tutti gli utenti `ADMIN` (Leonardo, 2026-10-24); un permesso più fine si può aggiungere dopo. | AC1, AC22 | Leonardo | Resolved |
 | 6 | Dove vive l'import? In una pagina "Import" nel menu degli admin, con storico e nuovo import; il pulsante "Nuovo import" della dashboard porta lì (Leonardo, 2026-10-24). | AC1, AC28 | Leonardo | Resolved |
-| 7 | L'API per sistemi esterni di [[chore/migration/fase-4-import-api]] è ancora prevista? Default proposto: fuori da questa spec; la logica resta riusabile (Constraints). | Constraints | Leonardo | Open |
+| 7 | L'API per sistemi esterni di [[chore/migration/fase-4-import-api]] è ancora prevista? Sì, ma in una spec a parte (Leonardo, 2026-10-24): resta fuori da questa, e la logica dell'import non dipende da file e trasporto, così la futura API la riusa (Constraints, Riuso). | Constraints | Leonardo | Resolved |
 
 ---
 
@@ -196,6 +196,7 @@ Le persone del progetto non sono ancora descritte (`paths.personas` è vuoto): i
 | Report errori senza storage | Il report serve all'admin che sta caricando il file. Non tenerlo sul server toglie dati personali dallo storage e il cron che li pulisce. |
 | Deroga a "refactor e correzioni in PR diverse" ([[chore/migrazione-effect]] §4) per l'orchestrazione | Leonardo chiede di rivedere la logica. I difetti stanno nell'orchestrazione, che viene sostituita: conservarli in una versione Effect intermedia vorrebbe dire scriverla due volte. Le regole di conversione invece seguono il §4 (AC32, OQ2). |
 | Riconoscimento dei clienti invariato in questa fase (Leonardo, 2026-10-24) | La riscrittura cambia come si importa; chi è lo stesso cliente si rivede dopo, con i suoi difetti (OQ1). Cambia solo la gestione del conflitto sul codice cliente (AC11b), che oggi blocca l'import a metà e con il tutto o niente lo farebbe fallire intero. |
+| API per sistemi esterni prevista, ma in una spec a parte (Leonardo, 2026-10-24) | Tiene questa spec contenuta senza chiudere la porta: scrivere la logica indipendente da file e trasporto costa poco ora (Constraints, Riuso). |
 | Difetti delle date conservati, corretti dopo in PR a parte (Leonardo, 2026-10-24) | Coerente con le regole di conversione invariate: ogni correzione si verifica da sola e decide cosa fare delle pratiche già importate. |
 | Regole di conversione invariate | Cambiarle ricalcolerebbe pratiche già importate e il ricalcolo notturno delle rate ([[specs/crm/seeder-locale/SPEC]]). La riscrittura cambia come si importa, non che cosa si salva. |
 | Le vecchie rotte e procedure si tolgono subito | Le usa solo la UI, che passa tutta alla versione nuova; tenerle lascerebbe aperti i permessi di AC2. |
