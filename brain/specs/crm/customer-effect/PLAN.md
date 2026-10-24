@@ -392,9 +392,11 @@ G0 ─┬─ T1  ─┐
   - `git diff -M --stat` mostra 4 rinomine;
   - `packages/server/src/api/routers/utils/` non esiste;
   - `git grep -nE '\.\./utils(/index|/advancedFilters)?"' -- packages/server/src` non trova niente (AC13). Gli import sono relativi: cercare `routers/utils` non troverebbe niente nemmeno oggi.
-- **status**: Planned
+- **status**: Done (2026-10-24)
 - **log**:
-- **files edited/created**:
+  1. Worker haiku. Quattro `git mv`; cambiano solo gli import (`./index` → `./sql` in `advancedFilters.ts`, `../index` → `../sql` in `containsPattern.test.ts`, cinque righe nei tre router). `lower` e `upper` tolte da `shared/sql.ts`.
+  2. Rivisto dall'orchestratore: `git diff -M --stat` mostra 4 rinomine, `advancedFilters.pg.test.ts` al 100%; `utils/` non esiste più; il `grep` sugli import relativi non trova niente; `tsc` verde; suite intera verde (3071 su PGlite, 95 su Postgres).
+- **files edited/created**: `packages/server/src/shared/sql.ts`, `shared/advancedFilters.ts`, `shared/_test/advancedFilters.pg.test.ts`, `shared/_test/containsPattern.test.ts` (rinominati da `api/routers/utils/`); import in `api/routers/customer/GET/index.ts`, `pratiche/GET/index.ts`, `analytics/GET/index.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -465,9 +467,11 @@ G0 ─┬─ T1  ─┐
   - per `assignment.ts`, anche gli altri test che passano dalle assegnazioni: `bulkUpdateCustomers.db`, `assignment.disabled.db`, `lockRule`, `operatorRule`, `changeState`, `driverError.db`, `contact/_test/operatorLock.pg`, `operator/_test/deactivate.pg`;
   - `git grep -nE '@mito/db|ctx\.db|drizzle-orm|shared/updateAt' -- packages/server/src/api/routers/customer/PUT packages/server/src/api/routers/customer/POST` non trova niente;
   - `git grep -n updateCustomerUpdatedAt -- packages src apps` non trova niente.
-- **status**: Planned
+- **status**: Done (2026-10-24)
 - **log**:
-- **files edited/created**:
+  1. Worker sonnet. `profile.ts` con `createCustomer`, `updateCustomerProfile`, `setBlackListStatus`, `markCustomerUpdated` su `query`; i tipi sono derivati da Drizzle (`NewCustomer`, `CustomerProfileValues`, `BlackListStatus`). Gli adapter passano `input.id!`, e `updateCustomerFromDashboard` passa ancora l'input intero a `set`.
+  2. Rivisto dall'orchestratore: query identiche a quelle inline; `No values to set` e l'errore di chiave duplicata restano `INTERNAL_SERVER_ERROR` con lo stesso messaggio, perché `query` cattura anche il `throw` sincrono di Drizzle; i `grep` di T9 non trovano niente; suite intera verde, compresi `writes.pg`, `operatorLock.pg` e `deactivate.pg`.
+- **files edited/created**: `packages/server/src/services/customer/profile.ts` (nuovo), `services/customer/assignment.ts`, `api/routers/customer/PUT/index.ts`, `api/routers/customer/POST/index.ts`, `shared/updateAt.ts`, `services/contact/guard.ts` (commento)
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
