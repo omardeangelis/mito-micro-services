@@ -60,6 +60,7 @@ const customerformSchema = insertCustomerSchema
   })
   .merge(
     z.object({
+      id: z.string(),
       operatorId: z.string(),
       sede: z.string(),
       fiscalCode: z

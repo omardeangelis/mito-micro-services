@@ -203,45 +203,31 @@ describe("customer.insertCustomer", () => {
     expect(await allCustomers()).toHaveLength(2)
   })
 
-  it("senza id usa il default del database, che e una costante: il secondo inserimento senza id fallisce per chiave duplicata e non scrive nulla", async () => {
-    const caller = createTestCaller(await createUser())
+  it.each([
+    ["senza id", {}],
+    ["con id vuoto", { id: "" }],
+  ] as const)(
+    "%s riceve BAD_REQUEST e non scrive nulla (TD8 d)",
+    async (_which, id) => {
+      const caller = createTestCaller(await createUser())
 
-    const first = await caller.customer.insertCustomer({
-      name: "Primo",
-      tempID: "temp-primo",
-      uniqueHash: "hash-primo",
-      source: "inbound",
-    })
+      const error = await rejectionOf(
+        caller.customer.insertCustomer(
+          // @ts-expect-error -- `id` è obbligatorio: la richiesta di un client vecchio
+          {
+            name: "Primo",
+            tempID: "temp-primo",
+            uniqueHash: "hash-primo",
+            source: "inbound",
+            ...id,
+          }
+        )
+      )
 
-    // L'id e il default scritto nella migrazione, non quello dello schema
-    // generato a ogni avvio: qui basta che esista
-    expect(first).toEqual([{ id: expect.any(String) as string }])
-    expect(first[0]!.id).not.toBe("")
-    const firstRow = await customerRow(first[0]!.id)
-    expect(firstRow).toMatchObject({
-      name: "Primo",
-      tempID: "temp-primo",
-      blackListStatus: "whitelisted",
-      operatorId: null,
-    })
-
-    const error = await rejectionOf(
-      caller.customer.insertCustomer({
-        name: "Secondo",
-        tempID: "temp-secondo",
-        uniqueHash: "hash-secondo",
-        source: "inbound",
-      })
-    )
-
-    expect(error).toMatchObject({
-      code: "INTERNAL_SERVER_ERROR",
-      message:
-        'duplicate key value violates unique constraint "mito-deutsche_customers_pkey"',
-      cause: { code: "23505" },
-    })
-    expect(await allCustomers()).toEqual([firstRow])
-  })
+      expect(error).toMatchObject({ code: "BAD_REQUEST" })
+      expect(await allCustomers()).toEqual([])
+    }
+  )
 })
 
 describe("customer.updateCustomerFromDashboard", () => {
