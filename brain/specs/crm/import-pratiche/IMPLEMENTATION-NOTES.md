@@ -57,7 +57,7 @@ Difetti in più rispetto alla spec, fissati dai test e non corretti:
 
 ## Pre-existing Issues
 
-- I difetti elencati sopra, tutti in produzione oggi.
+- I difetti elencati sopra, tutti in produzione oggi: in [[tech-debt/crm/import-pratiche]], una PR per difetto dopo la riscrittura.
 
 ## Out of Scope Observations
 
