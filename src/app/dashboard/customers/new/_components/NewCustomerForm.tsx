@@ -163,25 +163,24 @@ export const NewCustomerForm = (props: Props) => {
   const onSubmit = form.handleSubmit(
     async (data) => {
       const operatorID = Number(data.operatorId)
-      const customer = await getCustomer({
+      const existing = await getCustomer({
         fiscalCode: data.fiscalCode,
         vatCode: data.vatCode,
         tempID: data.tempID,
       })
-      if (customer[0]) {
-        if (data.tempID) {
-          form.setError("tempID", {
-            message: "Cliente già esistente",
-          })
+      if (existing.length > 0) {
+        // Segna solo i codici che appartengono già a un cliente. Il codice
+        // fiscale torna dal database con gli spazi del char(16), da cui il trim
+        for (const code of ["tempID", "fiscalCode", "vatCode"] as const) {
+          const value = data[code]?.trim()
+          if (
+            value &&
+            existing.some((customer) => customer[code]?.trim() === value)
+          )
+            form.setError(code, {
+              message: "Cliente già esistente",
+            })
         }
-        if (data.fiscalCode)
-          form.setError("fiscalCode", {
-            message: "Cliente già esistente",
-          })
-        if (data.vatCode)
-          form.setError("vatCode", {
-            message: "Cliente già esistente",
-          })
         return
       }
 

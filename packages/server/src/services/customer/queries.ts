@@ -1,4 +1,4 @@
-import { eq, inArray, countDistinct, or } from "drizzle-orm"
+import { eq, inArray, countDistinct, or, sql } from "drizzle-orm"
 import { Effect } from "effect"
 import { customerToPratica } from "@mito/db/schema/relations/customerToPratica"
 import { customers } from "@mito/db/schema/customers"
@@ -7,7 +7,7 @@ import { operators } from "@mito/db/schema/operators"
 import { query } from "../../effect/db"
 import { PracticeWithoutCustomers } from "./errors"
 
-/** The codes that identify a customer; `findCustomersByCode` reads one. */
+/** The codes that identify a customer; `findCustomersByCode` reads them. */
 export type CustomerCodes = {
   fiscalCode?: string
   vatCode?: string
@@ -27,23 +27,24 @@ export const getCustomerById = (id: string | undefined) =>
   ).pipe(Effect.map((customer) => customer[0]))
 
 /**
- * The customers that match a code: the `tempID` if there is one, else the
- * fiscal code, else the VAT code.
+ * The customers that match any of the codes passed. Empty codes match nobody,
+ * so without a code the list is empty.
  */
-export const findCustomersByCode = (input: CustomerCodes) => {
-  const getFilterQuery = () => {
-    if (input.tempID) {
-      return eq(customers.tempID, input.tempID)
-    }
-    if (input.fiscalCode) {
-      return eq(customers.fiscalCode, input.fiscalCode)
-    }
-    return eq(customers.vatCode, input.vatCode!)
-  }
-  return query((client) =>
-    client.select().from(customers).where(getFilterQuery())
+export const findCustomersByCode = (input: CustomerCodes) =>
+  query((client) =>
+    client
+      .select()
+      .from(customers)
+      .where(
+        or(
+          input.tempID ? eq(customers.tempID, input.tempID) : undefined,
+          input.fiscalCode
+            ? eq(customers.fiscalCode, input.fiscalCode)
+            : undefined,
+          input.vatCode ? eq(customers.vatCode, input.vatCode) : undefined
+        ) ?? sql`false`
+      )
   )
-}
 
 /** The practices a customer signed, each with the customer's role in it. */
 export const listPracticesOfCustomer = (customerId: string) =>

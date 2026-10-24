@@ -66,11 +66,12 @@ updated: 2026-10-24
 - **Due `toMatchObject` su righe** sono rimasti, tutti e due su controlli secondari: la riga del primo insert senza `id` (T3) e la riga scritta da `handleCustomerBlackList` su postgres-js (T5). La riga intera di quelle scritture la fissano gli altri test di T3, con `toEqual`.
 
 - **Il primo salvataggio nel browser non partiva** (nessun `POST`, il modale si chiudeva). La stessa prova sulla base `bc7aa2e` (porta 3006, stesso `mito_local`) salvava. Ripetuta sul branch con una sessione nuova di `agent-browser`, salvava anche lì: era lo stato della prima sessione, aperta direttamente sull'URL del modale, non il codice.
-- **Nuovo cliente non segnala il codice fiscale già presente.** Il form manda sempre il "Codice Cliente (NDG)" come `tempID`, e `getCustomersByFiscalCodeOrVatCode` con un `tempID` non vuoto cerca solo per `tempID` (AC9). Così un cliente con il codice fiscale di un altro si crea senza errore. È il comportamento di `bc7aa2e`, fissato dal test di T1 "con tempID di A e codice fiscale di B cerca solo per tempID"; la conseguenza per l'utente è aggiunta alla voce di TD8.
+- **Nuovo cliente non segnala il codice fiscale già presente.** Il form manda sempre il "Codice Cliente (NDG)" come `tempID`, e `getCustomersByFiscalCodeOrVatCode` con un `tempID` non vuoto cerca solo per `tempID` (AC9). Così un cliente con il codice fiscale di un altro si crea senza errore. È il comportamento di `bc7aa2e`, fissato dal test di T1 "con tempID di A e codice fiscale di B cerca solo per tempID". Corretto dopo il refactor, su richiesta di Omar (Deviations).
 
 ## Deviations From the Plan
 
 - **`$simplify` non è girato.** `implement-spec` lo chiede dopo i task. Qui le query sono copiate dal router così come sono, apposta (AC2, D5), e la regola del §4 di [[chore/migrazione-effect]] vuole refactor e pulizie in PR diverse. Una passata di semplificazione sui servizi nuovi va in una PR a parte, dopo il merge.
+- **La ricerca per codici è corretta in questa PR**, non in una a parte come chiedono la SPEC (Fuori scope) e la regola del §4 di [[chore/migrazione-effect]]: l'ha chiesto Omar il 2026-10-24, dopo la review. È un commit a sé, dopo il refactor, quindi si può spostare in una PR sua. `findCustomersByCode` trova chi ha uno qualunque dei codici passati (`tempID`, codice fiscale, partita IVA); un codice vuoto non trova nessuno. Nuovo cliente segna "Cliente già esistente" solo sui codici già presi. I test di priorità di `queries.db.test.ts` cambiano asserzione apposta: ora fissano la ricerca per tutti i codici. TD8 (b) tiene solo il `refine` che vuole codice fiscale o partita IVA.
 - **TD8 resta `[PREVISTO]` nel commit della PR.** Il PLAN (T10.6 e il NIT del §16) la portava a `[OPEN]` nel commit della PR; AC12 della SPEC dice `[OPEN]` al merge in `dev`, e vince la SPEC (rilievo MAJOR di v7). Va portata a `[OPEN]` quando la PR è unita.
 - **Asserzioni cambiate in test di questo branch, dopo `dac26d9`.** Non sono asserzioni preesistenti, e AC11 vale per quelle. (1) `838198c`: `expect.any(String) as string` in `writes.db.test.ts`, un cast di tipo chiesto da `next lint`, che esbuild cancella. (2) `2ab01de`, le correzioni della review (sotto), verdi sul codice di `dac26d9`: in `writes.pg.test.ts` i due `toMatchObject` sulle righe scritte da `handleCustomerBlackList` e `updateCustomerFromDashboard` diventano confronti con la riga intera, e l'input `source` di `updateCustomerFromDashboard` passa da `inbound` (uguale al seed, quindi invisibile) a `digital`; in `writes.db.test.ts` e `queries.db.test.ts` si aggiunge un test ciascuno. Nessuna asserzione dei test che c'erano a `bc7aa2e` è cambiata.
 - **Correzioni dopo la review** (verdi sia su `dac26d9` sia sul branch):
@@ -101,7 +102,7 @@ updated: 2026-10-24
 | AC6 | Met | `grep` vuoto |
 | AC7 | Met | Righe intere per le 18 procedure e per le scritture; rafforzate in tre giri |
 | AC8 | Met | `procedures.db.test.ts`, `queries.db.test.ts` |
-| AC9 | Met | Tutte le stranezze fissate |
+| AC9 | Met | Tutte le stranezze fissate; la priorità fra i codici poi corretta (Deviations) |
 | AC10 | Met | `writes.pg.test.ts`, 8 test |
 | AC11 | Met | Nessuna asserzione dei test di `bc7aa2e` cambiata; le eccezioni sono in test di questo branch (Deviations) |
 | AC12 | Met | TD8 `[PREVISTO]`; diventa `[OPEN]` al merge in `dev` |

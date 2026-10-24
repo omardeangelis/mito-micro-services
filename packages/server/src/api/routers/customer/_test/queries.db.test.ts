@@ -14,7 +14,8 @@ import {
 
 // Caratterizzazione delle query di lettura del router `customer` (GET), prima
 // del refactor verso Effect: ogni test fissa la risposta che il codice da
-// oggi restituisce, riga intera compresa
+// oggi restituisce, riga intera compresa. La ricerca per codici cerca per
+// tutti i codici passati (TD8 b, corretto dopo il refactor)
 
 /** La riga del cliente come la tiene il database. */
 const customerRow = async (customerId: string) => {
@@ -155,18 +156,19 @@ describe("customer.getCustomersByFiscalCodeOrVatCode", () => {
     expect(result).toEqual([await customerRow(bruno.id)])
   })
 
-  it("con codice fiscale di A e partita IVA di B cerca solo per codice fiscale", async () => {
+  it("con codice fiscale di A e partita IVA di B trova tutti e due", async () => {
     const operator = await createOperator()
     const anna = await createCustomer({
       id: "cliente-anna",
       fiscalCode: "RSSNNA80A41H501Z",
       vatCode: "IT01234567890",
     })
-    await createCustomer({
+    const bruno = await createCustomer({
       id: "cliente-bruno",
       fiscalCode: "BNCLRA85M50F205K",
       vatCode: "IT09876543210",
     })
+    await createCustomer({ id: "cliente-carla", fiscalCode: "CRLVRD90C41L219X" })
 
     const result = await createTestCaller(
       operator
@@ -175,63 +177,26 @@ describe("customer.getCustomersByFiscalCodeOrVatCode", () => {
       vatCode: "IT09876543210",
     })
 
-    expect(result).toEqual([await customerRow(anna.id)])
-  })
-
-  it("con tempID di A e codice fiscale di B cerca solo per tempID", async () => {
-    const operator = await createOperator()
-    const anna = await createCustomer({
-      id: "cliente-anna",
-      tempID: "TMP-ANNA",
-      fiscalCode: "RSSNNA80A41H501Z",
-    })
-    await createCustomer({
-      id: "cliente-bruno",
-      tempID: "TMP-BRUNO",
-      fiscalCode: "BNCLRA85M50F205K",
-    })
-
-    const result = await createTestCaller(
-      operator
-    ).customer.getCustomersByFiscalCodeOrVatCode({
-      tempID: "TMP-ANNA",
-      fiscalCode: "BNCLRA85M50F205K",
-    })
-
-    expect(result).toEqual([await customerRow(anna.id)])
-  })
-
-  it("con tempID di A e partita IVA di B cerca solo per tempID", async () => {
-    const operator = await createOperator()
-    const anna = await createCustomer({
-      id: "cliente-anna",
-      tempID: "TMP-ANNA",
-      vatCode: "01234567890",
-    })
-    await createCustomer({
-      id: "cliente-bruno",
-      tempID: "TMP-BRUNO",
-      vatCode: "09876543210",
-    })
-
-    const result = await createTestCaller(
-      operator
-    ).customer.getCustomersByFiscalCodeOrVatCode({
-      tempID: "TMP-ANNA",
-      vatCode: "09876543210",
-    })
-
-    expect(result).toEqual([await customerRow(anna.id)])
+    expect(result.sort(byId)).toEqual([
+      await customerRow(anna.id),
+      await customerRow(bruno.id),
+    ])
   })
 
   it.each([
-    ["codice fiscale", { fiscalCode: "BNCLRA85M50F205K" }],
-    ["partita IVA", { vatCode: "09876543210" }],
+    ["il codice fiscale", { fiscalCode: "BNCLRA85M50F205K" }],
+    ["la partita IVA", { vatCode: "09876543210" }],
   ])(
-    "con un tempID che non trova nessuno e la %s di B restituisce una lista vuota",
+    "con tempID di A e %s di B trova tutti e due",
     async (_code, codes) => {
       const operator = await createOperator()
-      await createCustomer({
+      const anna = await createCustomer({
+        id: "cliente-anna",
+        tempID: "TMP-ANNA",
+        fiscalCode: "RSSNNA80A41H501Z",
+        vatCode: "01234567890",
+      })
+      const bruno = await createCustomer({
         id: "cliente-bruno",
         tempID: "TMP-BRUNO",
         fiscalCode: "BNCLRA85M50F205K",
@@ -241,13 +206,120 @@ describe("customer.getCustomersByFiscalCodeOrVatCode", () => {
       const result = await createTestCaller(
         operator
       ).customer.getCustomersByFiscalCodeOrVatCode({
-        tempID: "TMP-NESSUNO",
+        tempID: "TMP-ANNA",
         ...codes,
       })
 
-      expect(result).toEqual([])
+      expect(result.sort(byId)).toEqual([
+        await customerRow(anna.id),
+        await customerRow(bruno.id),
+      ])
     }
   )
+
+  it.each([
+    ["il codice fiscale", { fiscalCode: "BNCLRA85M50F205K" }],
+    ["la partita IVA", { vatCode: "09876543210" }],
+  ])(
+    "con un tempID nuovo e %s di un cliente esistente trova quel cliente",
+    async (_code, codes) => {
+      const operator = await createOperator()
+      const bruno = await createCustomer({
+        id: "cliente-bruno",
+        tempID: "TMP-BRUNO",
+        fiscalCode: "BNCLRA85M50F205K",
+        vatCode: "09876543210",
+      })
+
+      const result = await createTestCaller(
+        operator
+      ).customer.getCustomersByFiscalCodeOrVatCode({
+        tempID: "TMP-NUOVO",
+        ...codes,
+      })
+
+      expect(result).toEqual([await customerRow(bruno.id)])
+    }
+  )
+
+  it("con tempID, codice fiscale e partita IVA tutti nuovi restituisce una lista vuota", async () => {
+    const operator = await createOperator()
+    await createCustomer({
+      id: "cliente-bruno",
+      tempID: "TMP-BRUNO",
+      fiscalCode: "BNCLRA85M50F205K",
+      vatCode: "09876543210",
+    })
+
+    const result = await createTestCaller(
+      operator
+    ).customer.getCustomersByFiscalCodeOrVatCode({
+      tempID: "TMP-NUOVO",
+      fiscalCode: "RSSNNA80A41H501Z",
+      vatCode: "01234567890",
+    })
+
+    expect(result).toEqual([])
+  })
+
+  it("trova per tempID anche quando codice fiscale e partita IVA non trovano nessuno", async () => {
+    const operator = await createOperator()
+    const anna = await createCustomer({
+      id: "cliente-anna",
+      tempID: "TMP-ANNA",
+      fiscalCode: "RSSNNA80A41H501Z",
+    })
+
+    const result = await createTestCaller(
+      operator
+    ).customer.getCustomersByFiscalCodeOrVatCode({
+      tempID: "TMP-ANNA",
+      fiscalCode: "BNCLRA85M50F205K",
+      vatCode: "09876543210",
+    })
+
+    expect(result).toEqual([await customerRow(anna.id)])
+  })
+
+  it("un cliente che corrisponde a più codici compare una volta sola", async () => {
+    const operator = await createOperator()
+    const anna = await createCustomer({
+      id: "cliente-anna",
+      tempID: "TMP-ANNA",
+      fiscalCode: "RSSNNA80A41H501Z",
+      vatCode: "01234567890",
+    })
+
+    const result = await createTestCaller(
+      operator
+    ).customer.getCustomersByFiscalCodeOrVatCode({
+      tempID: "TMP-ANNA",
+      fiscalCode: "RSSNNA80A41H501Z",
+      vatCode: "01234567890",
+    })
+
+    expect(result).toEqual([await customerRow(anna.id)])
+  })
+
+  it("un codice vuoto non trova i clienti che hanno quel codice vuoto", async () => {
+    const operator = await createOperator()
+    await createCustomer({
+      id: "cliente-anna",
+      tempID: "TMP-ANNA",
+      fiscalCode: "RSSNNA80A41H501Z",
+      vatCode: "",
+    })
+
+    const result = await createTestCaller(
+      operator
+    ).customer.getCustomersByFiscalCodeOrVatCode({
+      tempID: "",
+      fiscalCode: "BNCLRA85M50F205K",
+      vatCode: "   ",
+    })
+
+    expect(result).toEqual([])
+  })
 
   it("con un codice fiscale di soli spazi cerca per partita IVA", async () => {
     const operator = await createOperator()
