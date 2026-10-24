@@ -131,7 +131,7 @@ export const listCustomersOfPractice = (praticaId: string) =>
 
 /**
  * The customers in review or blacklisted, with their operator and the number
- * of practices they signed, oldest update first.
+ * of practices they signed, oldest update first and, on the same date, by id.
  */
 export const listCustomersUnderReview = () =>
   query((client) =>
@@ -164,5 +164,5 @@ export const listCustomersUnderReview = () =>
       )
       .leftJoin(operators, eq(customers.operatorId, operators.id))
       .groupBy(customers.id, operators.id)
-      .orderBy(customers.updatedAt)
+      .orderBy(customers.updatedAt, customers.id)
   )
