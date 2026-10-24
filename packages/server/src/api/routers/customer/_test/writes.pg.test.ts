@@ -155,7 +155,7 @@ describe.skipIf(!hasTestDatabase)(
         expect(after.find((row) => row.id === second.id)).toEqual(second)
       })
 
-      it("`updateCustomerFromDashboard` risponde con `[{ id }]` e cambia solo i campi passati di quel cliente", async () => {
+      it("`updateCustomerFromDashboard` risponde con `[{ id }]` e scrive i campi passati di quel cliente (le colonne lasciate fuori le fissa `writes.db.test.ts`, che parte da righe senza `null`)", async () => {
         const { operator, first, second } = await seed()
 
         const result = await createTestCaller(

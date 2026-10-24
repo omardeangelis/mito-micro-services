@@ -56,13 +56,22 @@ updated: 2026-10-24
 ## Deviations From the Plan
 
 - **TD8 resta `[PREVISTO]` nel commit della PR.** Il PLAN (T10.6 e il NIT del §16) la portava a `[OPEN]` nel commit della PR; AC12 della SPEC dice `[OPEN]` al merge in `dev`, e vince la SPEC (rilievo MAJOR di v7). Va portata a `[OPEN]` quando la PR è unita.
-- **Due righe di asserzione cambiate in test di questo branch, dopo `dac26d9`.** Non sono asserzioni preesistenti, e AC11 vale per quelle: (1) `expect.any(String) as string` in `writes.db.test.ts` (`838198c`), un cast di tipo chiesto da `next lint`, che esbuild cancella; (2) le correzioni della review (sotto), che rendono più forti i test e sono verdi sul codice di `dac26d9`. Nessuna asserzione dei test che c'erano a `bc7aa2e` è cambiata.
+- **Asserzioni cambiate in test di questo branch, dopo `dac26d9`.** Non sono asserzioni preesistenti, e AC11 vale per quelle. (1) `838198c`: `expect.any(String) as string` in `writes.db.test.ts`, un cast di tipo chiesto da `next lint`, che esbuild cancella. (2) `2ab01de`, le correzioni della review (sotto), verdi sul codice di `dac26d9`: in `writes.pg.test.ts` i due `toMatchObject` sulle righe scritte da `handleCustomerBlackList` e `updateCustomerFromDashboard` diventano confronti con la riga intera, e l'input `source` di `updateCustomerFromDashboard` passa da `inbound` (uguale al seed, quindi invisibile) a `digital`; in `writes.db.test.ts` e `queries.db.test.ts` si aggiunge un test ciascuno. Nessuna asserzione dei test che c'erano a `bc7aa2e` è cambiata.
 - **Correzioni dopo la review** (verdi sia su `dac26d9` sia sul branch):
   - `writes.db.test.ts`: `updateCustomerFromDashboard` con solo `name` e `source`, che fissa la riga intera (MAJOR di v5). Uccide il mutante che scrive `null` nelle colonne non passate (`email: input.email ?? null`), che prima sopravviveva a tutti i test.
   - `queries.db.test.ts`: `tempID` di A e partita IVA di B cerca solo per `tempID` (NIT di v5). Uccide `if (input.tempID && !input.vatCode)`.
   - `writes.pg.test.ts`: le righe dopo `handleCustomerBlackList` e `updateCustomerFromDashboard` con `id` sono confrontate intere, con `updatedAt` che avanza (MINOR di v5, NIT di v3). Il seed di questo file lascia `null` molte colonne, quindi un mutante che scrive `null` in una di quelle sopravvive qui: lo uccide `writes.db.test.ts`, che parte da righe senza `null`.
-  - [[chore/migrazione-effect]]: TD8 di nuovo `[PREVISTO]`; la riga 2 del §4 non dice più "Mancano test" (MINOR di v7).
+  - Secondo giro di v5 (verdi su `dac26d9` con 187 test su PGlite e 6 su Postgres, e sul branch):
+    - `queries.db.test.ts`: gli id del fixture di `getCustomerUnderReview` vanno in ordine inverso a `updatedAt` (`a-cliente-review` più recente di `z-cliente-blacklisted`), così l'ordine viene solo da `updatedAt` (MAJOR: togliere l'`orderBy`, o ordinare per `id`, prima restava verde). Più tre casi di priorità: un `tempID` che non trova nessuno con il codice fiscale o la partita IVA di un altro dà `[]`, e un codice fiscale di soli spazi cerca per partita IVA.
+    - `writes.db.test.ts`: un secondo input parziale senza `name`.
+    - `writes.pg.test.ts`: il titolo del test con `id` di `updateCustomerFromDashboard` dice che le colonne lasciate fuori le fissa `writes.db.test.ts`.
+    - Mutanti di quel giro, tutti uccisi: nessun `orderBy` e `orderBy(id)` in `listCustomersUnderReview`, il ricadere su codice fiscale o partita IVA quando il `tempID` non trova niente, `fiscalCode !== undefined`, `name` a `null` se manca.
+  - [[chore/migrazione-effect]]: TD8 di nuovo `[PREVISTO]`; la riga 2 del §4 non dice più "Mancano test"; §1 dice che `operator` e i middleware sono nella PR 2 di gestione-operatori, ancora da unire; la voce (e) di TD8 dice che la scelta fra le due correzioni resta aperta (MINOR e NIT di v7).
   - [[tech-debt/crm/search-by-explicit-map]]: il percorso di `containsPattern` è `packages/server/src/shared/sql.ts` (NIT di v7).
+
+## Known limits of the tests
+
+- **L'`ORDER BY` delle quattro liste dei filtri non si vede nei test.** Con poche righe Postgres fa `Sort` + `Unique` per il `DISTINCT` e restituisce le righe ordinate anche senza `orderBy`: togliere l'`orderBy` resta verde, invertirlo (`desc`) no. Servirebbe una tabella abbastanza grande da far scegliere al planner un `HashAggregate`. Il codice dell'`orderBy` è identico a quello inline (review v2, confronto fra base e branch).
 
 ## Pre-existing Issues
 

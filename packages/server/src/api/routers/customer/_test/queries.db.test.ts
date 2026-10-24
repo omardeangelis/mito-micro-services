@@ -223,6 +223,54 @@ describe("customer.getCustomersByFiscalCodeOrVatCode", () => {
     expect(result).toEqual([await customerRow(anna.id)])
   })
 
+  it.each([
+    ["codice fiscale", { fiscalCode: "BNCLRA85M50F205K" }],
+    ["partita IVA", { vatCode: "09876543210" }],
+  ])(
+    "con un tempID che non trova nessuno e la %s di B restituisce una lista vuota",
+    async (_code, codes) => {
+      const operator = await createOperator()
+      await createCustomer({
+        id: "cliente-bruno",
+        tempID: "TMP-BRUNO",
+        fiscalCode: "BNCLRA85M50F205K",
+        vatCode: "09876543210",
+      })
+
+      const result = await createTestCaller(
+        operator
+      ).customer.getCustomersByFiscalCodeOrVatCode({
+        tempID: "TMP-NESSUNO",
+        ...codes,
+      })
+
+      expect(result).toEqual([])
+    }
+  )
+
+  it("con un codice fiscale di soli spazi cerca per partita IVA", async () => {
+    const operator = await createOperator()
+    await createCustomer({
+      id: "cliente-anna",
+      tempID: "TMP-ANNA",
+      fiscalCode: "RSSNNA80A41H501Z",
+    })
+    const bruno = await createCustomer({
+      id: "cliente-bruno",
+      tempID: "TMP-BRUNO",
+      vatCode: "09876543210",
+    })
+
+    const result = await createTestCaller(
+      operator
+    ).customer.getCustomersByFiscalCodeOrVatCode({
+      fiscalCode: "   ",
+      vatCode: "09876543210",
+    })
+
+    expect(result).toEqual([await customerRow(bruno.id)])
+  })
+
   it("con tempID vuoto cerca per codice fiscale e trova B", async () => {
     const operator = await createOperator()
     await createCustomer({
@@ -445,9 +493,10 @@ describe("customer.getAllCustomerForPratica", () => {
 describe("customer.getCustomerUnderReview", () => {
   it("restituisce solo i clienti in review o in blacklist, dal più vecchio `updatedAt`", async () => {
     const operator = await createOperator({ name: "Giulia", surname: "Verdi" })
-    // Inseriti in ordine inverso rispetto al loro `updatedAt`
+    // Inseriti in ordine inverso rispetto al loro `updatedAt`, con gli id
+    // in ordine inverso anche loro: l'ordine giusto viene solo da `updatedAt`
     const review = await createCustomer({
-      id: "cliente-review",
+      id: "a-cliente-review",
       name: "Luca",
       surname: "Neri",
       fiscalCode: "NRELCU75C10H501W",
@@ -463,7 +512,7 @@ describe("customer.getCustomerUnderReview", () => {
       updatedAt: new Date("2026-10-02T10:00:00.000Z"),
     })
     const blacklisted = await createCustomer({
-      id: "cliente-blacklisted",
+      id: "z-cliente-blacklisted",
       name: "Sara",
       surname: "Bruni",
       fiscalCode: "BRNSRA82D41L219Y",
@@ -487,7 +536,7 @@ describe("customer.getCustomerUnderReview", () => {
 
     expect(result).toEqual([
       {
-        id: "cliente-blacklisted",
+        id: "z-cliente-blacklisted",
         name: "Sara",
         surname: "Bruni",
         fiscalCode: "BRNSRA82D41L219Y",
@@ -499,7 +548,7 @@ describe("customer.getCustomerUnderReview", () => {
         signedPractices: 0,
       },
       {
-        id: "cliente-review",
+        id: "a-cliente-review",
         name: "Luca",
         surname: "Neri",
         fiscalCode: "NRELCU75C10H501W",

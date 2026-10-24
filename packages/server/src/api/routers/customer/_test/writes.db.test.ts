@@ -308,6 +308,19 @@ describe("customer.updateCustomerFromDashboard", () => {
     await expectWritten(pair, { name: "Solo nome", source: "digital" })
   })
 
+  it("con solo cognome e provenienza lascia com'era anche il nome", async () => {
+    const pair = await seedPair()
+    callAtT1()
+
+    await pair.caller.customer.updateCustomerFromDashboard({
+      id: pair.written.id,
+      surname: "Solo cognome",
+      source: "digital",
+    })
+
+    await expectWritten(pair, { surname: "Solo cognome", source: "digital" })
+  })
+
   it("con un id che non esiste risponde con una lista vuota e non cambia nessun cliente", async () => {
     const pair = await seedPair()
     callAtT1()
