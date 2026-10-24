@@ -233,7 +233,7 @@ describe("customer.insertCustomer", () => {
 
     // L'id e il default scritto nella migrazione, non quello dello schema
     // generato a ogni avvio: qui basta che esista
-    expect(first).toEqual([{ id: expect.any(String) }])
+    expect(first).toEqual([{ id: expect.any(String) as string }])
     expect(first[0]!.id).not.toBe("")
     const firstRow = await customerRow(first[0]!.id)
     expect(firstRow).toMatchObject({
