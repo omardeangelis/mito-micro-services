@@ -78,3 +78,5 @@
 - [Union-branch mutants, pg binding capture](feedback_union_branch_mutants_and_pg_binding_capture.md) — mutate each statement; postgres-js debug hook; NUL text param = 500
 - [Raw-SQL to structured filter differential](feedback_raw_sql_to_structured_filter_differential.md) — probeSql hook, per-kind value battery, PG15 prepare:false Rome vs PGlite PG16, LIKE backslash
 - [Validator bounds, runner selector](feedback_validator_bounds_and_runner_selector.md) — lower-bound mutants survive; CI-line proof for pg file; NULL-row fixture; west-of-UTC date validator
+- [Refactor spec AC checks](feedback_refactor_spec_ac_checks.md) — vacuous grep ACs, mutation writes, zod rule; plan: old-test row gaps, unscoped greps, RowList toEqual
+- [PGlite clock and fake Date](feedback_pglite_clock_and_fake_date.md) — ms timestamps tie; now() follows faked Date.now, so freeze-before-seed makes updatedAt checks vacuous

@@ -7,9 +7,10 @@ links:
   - "[[specs/crm/gestione-operatori/SPEC]]"
   - "[[specs/crm/gestione-operatori/PLAN]]"
   - "[[specs/crm/filtri-sql-sicuri/SPEC]]"
+  - "[[specs/crm/customer-effect/SPEC]]"
   - "[[chore/migration_plan]]"
 created: 2026-10-22
-updated: 2026-10-22
+updated: 2026-10-24
 ---
 
 # Verso "solo Effect": servizi, bordo, trasporto
@@ -70,7 +71,7 @@ L'ordine segue il rischio della Mappa del 21/10, con un'eccezione: `user` e `ope
 | 0 | Base comune | S (resto) | Senza, ogni riscrittura si porta dietro gli shim di Next.js | – |
 | ✓ | Cron `update`, `cleanup`, `delete-export` | fatto | I 4 job sono programmi Effect con `Db` iniettato, `step()` non c'è più ([PR #55](https://github.com/omardeangelis/mito-micro-services/pull/55)). Restano da togliere `src/app/api/cron/*` e gli 8 workflow GitHub, dopo il passaggio dei cron di prod a Cloud Scheduler (piano GCP) | – |
 | 1 | `user`, `operator`, middleware di `trpc.ts` | S | Piccoli; la disattivazione ci si appoggia; i middleware servono a tutti i router dopo. Le preferenze di layout vanno nel browser invece di essere migrate | [[specs/crm/gestione-operatori/PLAN]] |
-| 2 | `customer` (il resto) | L | Il router non convertito che cambia più spesso (12 commit, 3 fix) ed è l'entità centrale. Mancano test su ricerca, filtri e modifica anagrafica | `filtri-sql-sicuri` in `dev`: riscrive le GET con `sql.raw`. Se tarda, si fa prima il passo 3 |
+| 2 | `customer` (il resto) | L | Il router non convertito che cambia più spesso (12 commit, 3 fix) ed è l'entità centrale. Mancano test su ricerca, filtri e modifica anagrafica | `filtri-sql-sicuri` in `dev`: fatto il 2026-10-24 (PR #76) |
 | 3 | `import`: 4 procedure **e le 6 route REST `/api/import/*`** | L | Circa 2.000 righe: body letto con un cast senza zod, batch fuori transazione (un errore a metà lascia un import parziale), `xlsx` 0.18.5 abbandonato con 2 CVE. Il danno potenziale più grande | Caratterizzazione sui file xlsx dei test; decisione REST o RPC (§6) |
 | 4 | `pratiche` e le 7 query di `task/GET` | M | Chiude i due domini principali. Scritture con `input.id!`, alcune come `protectedProcedure` | Dopo `customer` |
 | 5 | `chat`, `supabase` → `storage` | S | Già quasi su servizi | – |
@@ -102,8 +103,8 @@ Si fa a pezzi, dentro il passo che tocca quei file, o in una PR piccola sua. Non
 | operator | ☑ | ☑ | PR 2 di [[specs/crm/gestione-operatori/PLAN]] (branch `-pr2`, in attesa del merge) |
 | import | ☐ | ☐ | più le 6 route REST |
 | analytics | ☐ | ☐ | |
-| customer | parziale | parziale | `PUT` handover e assegnazioni già fatti |
-| pratiche | parziale | parziale | `getAllPratiche` su Effect (`query`, `runTrpc`) in [[specs/crm/filtri-sql-sicuri/PLAN]] (branch `claude/filtri-sql-sicuri`, in attesa di Leo e del merge); `getAllAvailableRegion` no |
+| customer | parziale | parziale | `PUT` handover e assegnazioni già fatti; il resto in [[specs/crm/customer-effect/PLAN]] (branch `claude/migrazione-customer`, Planned) |
+| pratiche | parziale | parziale | `getAllPratiche` su Effect (`query`, `runTrpc`) con [[specs/crm/filtri-sql-sicuri/PLAN]], in `dev` dalla PR #76; `getAllAvailableRegion` no |
 | chat | ☑ | parziale | |
 | task | ☑ | parziale | |
 | supabase | ☑ | parziale | |
@@ -139,3 +140,4 @@ Regole:
 | TD5 | `[OPEN]` | Route `src/app/api/cron/*`, script `scheduled/*.js` e 8 workflow GitHub dei cron | Passo "cron" (§4) | La prod usa ancora GitHub Actions finché i cron non passano a Cloud Scheduler | Toglierli tutti insieme | Dopo il passaggio dei cron di prod a Cloud Scheduler ([[chore/migrazione-gcp]]) |
 | TD6 | `[OPEN]` | Residui del passo 0: `server-only` in 26 file, `@sentry/nextjs` in 2, router `supabase`, `supabaseClient` nel contesto | Passo 0 (§4) | Si tolgono dentro il passo che tocca quei file, senza allargare i diff | Come nel §4 | A ogni passo |
 | TD7 | `[OPEN]` | Stranezze di `getAllPratiche` fissate dai test di caratterizzazione: `total` conta le pratiche senza join, anche quelle senza clienti, mentre `data` no; `onlyMe` per un OPERATORE e `orderBy=operatore` danno `INTERNAL_SERVER_ERROR` | [[specs/crm/filtri-sql-sicuri/PLAN]] (F6, AC12) | Il passaggio a Effect non cambia comportamento | Una PR piccola per stranezza, ognuna con il test di caratterizzazione aggiornato | Dopo il merge di `filtri-sql-sicuri` |
+| TD8 | `[PREVISTO]` | Stranezze di `customer` fissate dai test di caratterizzazione: (a) `getCustomerById` senza `id` (o con `""`) restituisce un cliente qualunque; (b) `getCustomersByFiscalCodeOrVatCode` vuole `fiscalCode` o `vatCode` anche quando cerca per `tempID`, e con un `tempID` non vuoto ignora `fiscalCode`, con `fiscalCode` ignora `vatCode`; (c) `getAllCustomerForPratica` risponde `NOT_FOUND` per una pratica senza clienti, `getAllPraticaByCustomer` `[]`; (d) `insertCustomer` senza `id` usa il default costante del database (il secondo insert fallisce); (e) `insertCustomer` accetta `operatorId` da ogni utente con una sessione; (f) le tre `update` hanno `id` opzionale e `id!` (senza `id`, su postgres-js, `INTERNAL_SERVER_ERROR`); (g) `handleCustomerBlackList` senza `blackListStatus` risponde `INTERNAL_SERVER_ERROR` (`No values to set`); (h) `handleCustomerBlackList` e `updateLastEdit` restituiscono il risultato grezzo del driver, diverso fra PGlite e postgres-js; (i) sei letture sono `protectedProcedure`: `getCustomerById`, `getCustomersByFiscalCodeOrVatCode`, `getAllPraticaByCustomer`, `getAllCustomerForPratica`, `getAllFileName`, `getCustomerUnderReview`; (j) `getCustomerUnderReview` ordina per `updatedAt` senza pareggio | [[specs/crm/customer-effect/PLAN]] (§14; AC9, AC10 e AC12 della SPEC) | Il passaggio a Effect non cambia comportamento | Una PR piccola per voce, con il test di caratterizzazione aggiornato: (a) `id` obbligatorio; (b) decidere se la priorità è voluta e scriverla nello schema, altrimenti cercare per tutti i codici passati; (c) `[]` in tutti e due i casi, con il dettaglio della pratica che lo gestisce; (d) `id` obbligatorio nell'input o generato dal servizio; (e) la correzione del debito già aperto in [[tech-debt/crm/gestione-operatori]] e [[tech-debt/crm/sezione-contatti]]; (f) `id` obbligatorio nell'input; (g) `blackListStatus` obbligatorio nell'input; (h) `void` o `{ id }`, in L3 con l'output in `Schema`; (i) `operatorProcedure`, dopo aver controllato i chiamanti; (j) l'id a pareggio. (e) e (i) toccano i permessi: revisione di Leonardo | Dopo il merge del passo 2; (h) con L3 |

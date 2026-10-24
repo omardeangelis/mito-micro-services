@@ -12,6 +12,17 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 
 <!-- Entries are appended by create-spec (spec creation) and docs-maintenance (ingest). Format:
 
+## [2026-10-24] plan | Router `customer` su Effect (passo 2 della migrazione)
+- Spec: [[specs/crm/customer-effect/SPEC]] (rivista dopo la verifica: DO NOT SHIP, 0 blocker, 5 major), piano: [[specs/crm/customer-effect/PLAN]]
+- 11 task in una PR, dopo il gate G0, verificati dall'`adversarial-verifier` (DO NOT SHIP, 0 blocker, 2 major, corretti): caratterizzazione di risposte, righe intere, righe scritte, errori e middleware delle 18 procedure con i mutanti sul codice inline, `*.pg.test.ts` sulle `update` senza `id`, utility in `shared/`, servizi `list`, `queries`, `filterOptions`, `profile`, gate con mutanti, prova nel browser e review
+- Debito della migrazione: TD8 `[PREVISTO]` in [[chore/migrazione-effect]]
+- G0 chiuso: SPEC approvata da Omar il 2026-10-24, con D7 (test sulle procedure), D9 (codice morto tolto), D10 (niente zod nei servizi, tipi con nome del dominio ammessi) e D11 (niente revisione obbligatoria di Leonardo)
+
+## [2026-10-24] spec | Router `customer` su Effect (passo 2 della migrazione)
+- Created spec: [[specs/crm/customer-effect/SPEC]]
+- Domain: crm
+- Status: Draft
+
 ## [2026-10-24] ingest | Filtri avanzati sicuri di Clienti e Pratiche
 - Source: [[specs/crm/filtri-sql-sicuri/SPEC]]
 - Flows written: 1
@@ -302,17 +313,3 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 - Verdict: SHIP (dopo le correzioni)
 - Impact: critical
 - Verifiers: 3 nella seconda verifica, poi 4 su v9 (0 blocker aperti)
-
-## [2026-09-29] review | Sezione Contatti — PR2, runbook G2 senza via libera degli admin
-- Report: [[specs/crm/sezione-contatti/REPORT]] (round PR2, Verifiche successive)
-- Scope: spec
-- Verdict: SHIP (dopo le correzioni)
-- Impact: critical
-- Verifiers: 1, in due passate (2 major, poi 0)
-
-## [2026-10-09] review | Staging su Vercel, accesso fuori produzione, Sentry solo in prod
-- Report: [[review/staging-accesso-sentry/REPORT]]
-- Scope: standalone
-- Verdict: DO NOT SHIP
-- Impact: critical
-- Verifiers: 7 (2 blocker, 6 major)

@@ -46,10 +46,11 @@ Migrated from `docs/` on 2026-09-24. Source material for future `create-spec` ru
 | Domain | Spec | Status |
 |---|---|---|
 | crm | [[specs/crm/sezione-contatti/SPEC]] | Draft |
-| crm | [[specs/crm/filtri-sql-sicuri/SPEC]] | Implemented, ingested, PR #76 verso `dev` (piano: [[specs/crm/filtri-sql-sicuri/PLAN]], review: [[specs/crm/filtri-sql-sicuri/REPORT]]) |
+| crm | [[specs/crm/filtri-sql-sicuri/SPEC]] | Implemented, ingested, unita su `dev` con la PR #76 (piano: [[specs/crm/filtri-sql-sicuri/PLAN]], review: [[specs/crm/filtri-sql-sicuri/REPORT]]) |
 | crm | [[specs/crm/seeder-locale/SPEC]] | Implemented (piano: [[specs/crm/seeder-locale/PLAN]], review: [[specs/crm/seeder-locale/REPORT]]) |
 | crm | [[specs/crm/gestione-operatori/SPEC]] | Implemented sui branch, tranne la P2 (piano: [[specs/crm/gestione-operatori/PLAN]], review: [[specs/crm/gestione-operatori/REPORT]]) |
 | crm | [[specs/crm/sicurezza-deploy-staging/SPEC]] | Implemented, ingested (piano: [[specs/crm/sicurezza-deploy-staging/PLAN]]) |
+| crm | [[specs/crm/customer-effect/SPEC]] | Approved (piano: [[specs/crm/customer-effect/PLAN]]) |
 | crm | [[specs/crm/export-chiamate/SPEC]] | Implemented, unita su dev il 23/10/2026 (piano: [[specs/crm/export-chiamate/PLAN]], review: [[specs/crm/export-chiamate/REPORT]]) |
 
 - [[specs/crm/crm-specs|crm-specs]] — CRM spec page map

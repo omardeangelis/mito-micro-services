@@ -17,7 +17,7 @@ Tutto preesistente: la review del cambio `search_by` l'ha trovato, ma non l'ha i
 
 ### Sicurezza: filtri tradotti in SQL grezzo
 
-> **[CLOSED 2026-10-24]** Chiusa da [[specs/crm/filtri-sql-sicuri/SPEC]] sul branch `claude/filtri-sql-sicuri` (review SHIP: [[specs/crm/filtri-sql-sicuri/REPORT]]). Le due procedure ricevono `advancedFilters` come dati, validati sul server contro mappe chiuse e tradotti con gli operatori di Drizzle e parametri legati; `sqlFilter` non ha più effetto e `createSQLQuery` non c'è più. In prod arriva con il rilascio insieme a PR5a, PR5b e PR6. Le voci sotto restano come storia.
+> **[CLOSED 2026-10-24]** Chiusa da [[specs/crm/filtri-sql-sicuri/SPEC]], in `dev` dalla PR #76 (review SHIP: [[specs/crm/filtri-sql-sicuri/REPORT]]). Le due procedure ricevono `advancedFilters` come dati, validati sul server contro mappe chiuse e tradotti con gli operatori di Drizzle e parametri legati; `sqlFilter` non ha più effetto e `createSQLQuery` non c'è più. In prod arriva con il rilascio insieme a PR5a, PR5b e PR6. Le voci sotto restano come storia.
 
 - **[FOLLOW-UP, sicurezza]** `input.sqlFilter` arriva a `sql.raw` — `src/server/api/routers/customer/GET/index.ts:354` (dopo T6.1 di PR6 è scritto una volta sola, nel `where` condiviso da pagina e conteggio; prima erano due righe, 338 e 445), `src/server/api/routers/pratiche/GET/index.ts:85`. Lo stesso valeva per `input.sqlTaskFilter` (`customer/GET/index.ts:371`), che T6.1 ha tolto dall'input: in prod sparisce con il rilascio di PR6.
   - Perché resta: la stringa SQL la costruisce la pagina (`createSQLQuery`) e la manda come input della procedura tRPC. Il server la esegue senza validarla. Chiunque possa chiamare la procedura può quindi mandare un frammento SQL qualsiasi.
