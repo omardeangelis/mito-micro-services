@@ -114,7 +114,7 @@ Le persone del progetto non sono ancora descritte (`paths.personas` è vuoto): i
 
 ### Storico
 
-- AC28. La pagina "Import" elenca gli import dal più recente, 20 per pagina, con: data e ora di inizio, admin, nome del file, formato, stato ("In corso", "Completato", "Fallito", "Interrotto"), durata, e i numeri del riepilogo (clienti nuovi e aggiornati, pratiche nuove e aggiornate, legami nuovi, righe scartate).
+- AC28. La pagina "Import", raggiungibile da una voce del menu visibile solo agli admin e dal pulsante "Nuovo import" della dashboard, permette di fare un nuovo import ed elenca gli import dal più recente, 20 per pagina, con: data e ora di inizio, admin, nome del file, formato, stato ("In corso", "Completato", "Fallito", "Interrotto"), durata, e i numeri del riepilogo (clienti nuovi e aggiornati, pratiche nuove e aggiornate, legami nuovi, righe scartate).
 - AC29. Un import fallito compare come "Fallito" con un motivo leggibile, e non ha scritto nulla.
 - AC30. Un import non finito 30 minuti dopo l'inizio viene annullato: non scrive nulla, compare come "Interrotto", e solo da quel momento un nuovo import può partire. Lo stesso esito ha un import il cui server si ferma a metà (es. riavvio).
 - AC31. Lo storico contiene solo i dati di AC28: nessun dato delle righe del file (nomi, codici fiscali, telefoni, importi).
@@ -179,7 +179,7 @@ Le persone del progetto non sono ancora descritte (`paths.personas` è vuoto): i
 | 3 | Import che continua a scheda chiusa (AC20) e storico (AC28–AC31) sono nel perimetro? Sì (Leonardo, 2026-10-24): richiedono una tabella nuova. | AC20, AC21, AC28–AC31 | Leonardo | Resolved |
 | 4 | Quanto sono grandi i file veri? Fino a 20.000 righe (Leonardo, 2026-10-24): restano 20.000 righe e 15 MB per file. | AC5, AC18, AC25 | Leonardo | Resolved |
 | 5 | Chi importa oggi: tutti gli admin o una persona sola? Default proposto: tutti gli admin. | AC1, AC22 | Leonardo | Open |
-| 6 | Dove vive l'import? Default proposto: una pagina "Import" nel menu degli admin con storico e nuovo import; il pulsante "Nuovo import" della dashboard porta lì. | AC1, AC28 | Leonardo | Open |
+| 6 | Dove vive l'import? In una pagina "Import" nel menu degli admin, con storico e nuovo import; il pulsante "Nuovo import" della dashboard porta lì (Leonardo, 2026-10-24). | AC1, AC28 | Leonardo | Resolved |
 | 7 | L'API per sistemi esterni di [[chore/migration/fase-4-import-api]] è ancora prevista? Default proposto: fuori da questa spec; la logica resta riusabile (Constraints). | Constraints | Leonardo | Open |
 
 ---
