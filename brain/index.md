@@ -3,7 +3,7 @@ domain: _root
 type: index
 links: []
 created: 2026-09-24
-updated: 2026-10-23
+updated: 2026-10-24
 ---
 
 # Brain — Master Map
@@ -46,7 +46,7 @@ Migrated from `docs/` on 2026-09-24. Source material for future `create-spec` ru
 | Domain | Spec | Status |
 |---|---|---|
 | crm | [[specs/crm/sezione-contatti/SPEC]] | Draft |
-| crm | [[specs/crm/filtri-sql-sicuri/SPEC]] | Draft |
+| crm | [[specs/crm/filtri-sql-sicuri/SPEC]] | Approved (piano: [[specs/crm/filtri-sql-sicuri/PLAN]]) |
 | crm | [[specs/crm/seeder-locale/SPEC]] | Implemented (piano: [[specs/crm/seeder-locale/PLAN]], review: [[specs/crm/seeder-locale/REPORT]]) |
 | crm | [[specs/crm/gestione-operatori/SPEC]] | Implemented sui branch, tranne la P2 (piano: [[specs/crm/gestione-operatori/PLAN]], review: [[specs/crm/gestione-operatori/REPORT]]) |
 | crm | [[specs/crm/sicurezza-deploy-staging/SPEC]] | Implemented, ingested (piano: [[specs/crm/sicurezza-deploy-staging/PLAN]]) |

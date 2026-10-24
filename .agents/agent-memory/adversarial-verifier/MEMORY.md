@@ -6,7 +6,7 @@
 - [Motion exception scope](feedback_motion_exception_scope.md) — exceptions bind to named consumers; class guards miss descendants; browser claims need a probe record
 - [Mock tRPC in UI pass](feedback_ui_pass_mock_trpc_responses.md) — show dialogs/toasts via stream-format mock, audit POSTs after; list load POSTs preferences
 - [Storage draft checks](feedback_storage_draft_checks.md) — remount race, own-success wipe, empty-submit flag, sign-out x in-flight, mutation runner
-- [Server action boundary](feedback_server_action_boundary_checks.md) — tsx zod probe recipe, revalidatePath is a literal tag, compare with /api/trpc exposure
+- [Server action boundary](feedback_server_action_boundary_checks.md) — tsx zod probe, revalidatePath literal tag, live Next-Action POST + dev log, RSC slot grep
 - [Gate exit capture](feedback_gate_exit_capture.md) — zsh PIPESTATUS is empty: redirect gate logs; server-action bundling via export-name grep
 - [UI pass moving target](feedback_ui_pass_moving_target.md) — component can change mid-run (check mtime); EMAXCONN on shared dev server; select-all fails, use Backspace
 - [Live region and class checks](feedback_live_region_and_class_checks.md) — sr-only status repeat text is silent; class-string tests prove no reachability; compile Tailwind in scratchpad
@@ -64,3 +64,13 @@
 - [Deferred trigger and sync helper](feedback_deferred_trigger_and_sync_helper_mutants.md) — INSERT/NULL-direction/UPDATE OF mutants; trigger removal leaves 22/25 green; neutralised waitUntilBlocked survives; PGlite is PG16
 - [SQL report script checks](feedback_sql_report_script_checks.md) — READ ONLY allows LOCK TABLE; non-HOT update flips tie-break fixtures; column-NULL battery; closedCalls oracle; PGlite vs PG15 diff
 - [Multi-step dialog and fix validation](feedback_multistep_dialog_and_fix_validation.md) — measure every dialog step at short heights; base-text swap delta; test a candidate fix in the DOM first
+- [CTE snapshot probes](feedback_cte_snapshot_probes.md) — move+log in one statement: probe EPQ window and post-snapshot commit separately
+- [PG lock mutant runs](feedback_pg_lock_mutant_runs.md) — pnpm @mito links into copy; cascade timeouts, isolate with -t; pre-fix file as mutant
+- [Action error shape probes](feedback_action_error_shape_probes.md) — probe both link modes; code-as-message fixture hides mutants; disabled-actor divergence is a probe artifact
+- [Dialog action UI probes](feedback_dialog_action_ui_probes.md) — abort POST for stuck dialog, index-keyed rows move focus, inject alert for contrast/jump, toast ratio computed
+- [Shared primitive regression](feedback_shared_primitive_regression_checks.md) — twMerge consumers; focus loop must compare to prior activeElement (roving tablist); live Radix-rule harness
+- [Query error and pixel probes](feedback_query_error_and_pixel_probes.md) — fail only dialog queries via QueryClient refetch; node PNG pixel contrast; title-vs-X Range scan
+- [Filter-on-read probes](feedback_filter_on_read_probes.md) — derived-from-props fix leaves store entry; probe vanish-then-return and remount; button-after-click asserts loading
+- [Grid min-content at text scale](feedback_grid_min_content_text_scale.md) — flex row or header padding widens grid track at root 20px; inject long words; old classes inline
+- [Dialog harness ordering](feedback_dialog_harness_ordering_and_state_forcing.md) — injector before stopImmediatePropagation; fiber-dispatch write-gated steps; merge split text rects
+- [Injection test payloads, param binding](feedback_injection_test_payload_and_param_binding.md) — TRUE payloads pass on vulnerable code; date params need non-UTC session; versions from worktree lockfile

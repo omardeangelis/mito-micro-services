@@ -4,8 +4,9 @@ type: tech-debt
 links:
   - "[[review/search-by-explicit-map/REPORT]]"
   - "[[specs/crm/sezione-contatti/PLAN]]"
+  - "[[specs/crm/filtri-sql-sicuri/SPEC]]"
 created: 2026-10-15
-updated: 2026-10-20
+updated: 2026-10-24
 ---
 
 # Tech debt: ricerca `search_by` di Clienti e Pratiche
@@ -176,3 +177,20 @@ Una sessione dedicata: `create-spec` (con criteri di accettazione di sicurezza),
 ### Legame con PR6
 
 T6.2 aggiunge la lista bianca dei nomi di colonna solo per non rompere i link salvati; T6.1 toglie `sqlTaskFilter` dall'input e lascia `sqlFilter` libero; `PopoverFilter.tsx` scarta le voci con nome ignoto. La riforma assorbe la lista bianca e il resto.
+
+## [2026-10-24] La falla è stata usata in prod? (OQ1 di [[specs/crm/filtri-sql-sicuri/SPEC]])
+
+Nessuna traccia. Controllo di sola lettura, autorizzato da Omar, in una transazione `READ ONLY` sul database di prod e su Sentry.
+
+- **`pg_stat_statements`** (Postgres 15.1, azzerato l'ultima volta il 2024-06-13): 4942 forme di query, 2317 su clienti o pratiche.
+  - Tutte le 86 forme dell'app con un filtro grezzo hanno la forma che produce `createSQLFilter`: `colonna operatore $n`, unite da `AND`, solo su colonne delle due mappe. Le più usate: `sede ilike`, `comune ilike`, `state =`.
+  - In nessuna query dell'app ci sono funzioni di sistema (`pg_sleep`, `pg_*`, `current_setting`, `version()`), cataloghi (`information_schema`), commenti, `;` o confronti fra due parametri come `$1=$2`. L'unico confronto fra parametri è la query del cron sulle rate (`DATE("data_liquidazione") + INTERVAL … = $2`).
+  - Le altre forme anomale vengono dall'editor di tabelle di Supabase (`-- source: dashboard`, `_base_query`, `json_populate_record`).
+- **Sentry** (`javascript-nextjs`): nessun errore con `syntax error`, `operator does not exist`, `invalid input syntax` o `canceling statement` in 90 giorni.
+
+**Limiti.** Non è una prova di assenza.
+- `pg_stat_statements` ha `max` 5000 ed è stato potato 25 volte: un'iniezione eseguita una volta sola può essere stata espulsa.
+- Registra solo le query riuscite: i tentativi falliti non ci sono.
+- Sentry registra pochissimi errori (circa 20 in 90 giorni), quindi pesa poco.
+
+Fuori tema, non è un'iniezione: ci sono 14 `delete from "mito-deutsche_customers"` e 14 `delete from "mito-deutsche_practices"` senza `where`. Sono istruzioni a sé, che `sql.raw` dentro una `SELECT` con parametri non può generare, e nel codice di oggi non c'è nessun `.delete(customers)`. Da dove vengano non si può ricostruire: `pg_stat_statements` non tiene date.
