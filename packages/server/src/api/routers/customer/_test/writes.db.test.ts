@@ -320,18 +320,18 @@ describe("customer.handleCustomerBlackList", () => {
     await expectWritten(pair, { blackListStatus: "blacklisted" })
   })
 
-  it("senza blackListStatus fallisce con INTERNAL_SERVER_ERROR `No values to set` e non cambia nessun cliente", async () => {
+  it("senza blackListStatus riceve BAD_REQUEST e non cambia nessun cliente (TD8 g)", async () => {
     const pair = await seedPair()
     callAtT1()
 
     const error = await rejectionOf(
-      pair.caller.customer.handleCustomerBlackList({ id: pair.written.id })
+      pair.caller.customer.handleCustomerBlackList(
+        // @ts-expect-error -- `blackListStatus` è obbligatorio: la richiesta di un client vecchio
+        { id: pair.written.id }
+      )
     )
 
-    expect(error).toMatchObject({
-      code: "INTERNAL_SERVER_ERROR",
-      message: "No values to set",
-    })
+    expect(error).toMatchObject({ code: "BAD_REQUEST" })
     await expectUntouched(pair)
   })
 })

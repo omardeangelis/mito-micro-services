@@ -83,6 +83,7 @@ export const bulkUpdateCustomers = adminProcedure
 
 const handleCustomerBlackListSchema = insertCustomerSchema
   .pick({ blackListStatus: true })
+  .required()
   .extend({ id: z.string().min(1) })
 
 export const handleCustomerBlackList = operatorProcedure

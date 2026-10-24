@@ -34,12 +34,11 @@ export const updateCustomerProfile = (
       .returning({ id: customers.id })
   )
 
-/**
- * Sets the customer's blacklist status. Returns the driver's result as is.
- * An `undefined` status makes Drizzle throw `No values to set`, which
- * `query` turns into a `DbError`.
- */
-export const setBlackListStatus = (id: string, status: BlackListStatus) =>
+/** Sets the customer's blacklist status. Returns the driver's result as is. */
+export const setBlackListStatus = (
+  id: string,
+  status: NonNullable<BlackListStatus>
+) =>
   query((client) =>
     client
       .update(customers)
