@@ -6,6 +6,10 @@ import { getTableColumns } from "drizzle-orm"
 import { type PgColumn } from "drizzle-orm/pg-core"
 import { customers } from "@mito/db/schema/customers"
 import { practices } from "@mito/db/schema/pratiche"
+import {
+  CUSTOMER_FILTER_MAP,
+  PRATICA_FILTER_MAP,
+} from "@mito/domain/filters/advanced"
 import { PopoverDateFilter } from "../PopoverFilter"
 
 // Il popover dei filtri avanzati legge `filter` dall'URL del browser da solo,
@@ -105,4 +109,101 @@ describe("PopoverDateFilter, filtri nell'URL che la mappa non conosce", () => {
       expect(emptyMessage()).not.toBeNull()
     }
   )
+})
+
+// Gli operatori offerti per tipo di colonna e la forma `nome:op:valore` che
+// il popover scrive nell'URL restano quelli di prima (AC6, AC9), con le
+// mappe vere di Clienti e Pratiche
+
+const operatorOptions = async (
+  filterMap: Map<string, PgColumn>,
+  filter: string
+) => {
+  await openPopover(filterMap, [filter])
+  const user = userEvent.setup()
+  // Il secondo selettore della riga è l'operatore
+  const operator = screen.getAllByRole("combobox")[1]!
+  await user.click(operator)
+  const options = screen.getAllByRole("option").map((o) => o.textContent)
+  await user.keyboard("{Escape}")
+  return options
+}
+
+describe("PopoverDateFilter, operatori per tipo di colonna", () => {
+  const ALL = ["=", ">", "<", ">=", "<="]
+
+  it.each([
+    ["Rata, un importo", "importo_rata:gt:150", ALL],
+    ["Rate pagate, un intero", "rate_pagate:gte:10", ALL],
+    ["Liquidato il, una data", "data_liquidazione:gte:2026-01-01", ALL],
+    ["Regione, un testo", "region:eq:Lazio", ["="]],
+    ["Stato, un enum", "state:eq:Liquidata", ["="]],
+  ])("in Pratiche %s offre %j", async (_name, filter, expected) => {
+    expect(await operatorOptions(PRATICA_FILTER_MAP, filter)).toEqual(expected)
+  })
+
+  it.each([
+    ["Età, un intero", "age:gte:40", ALL],
+    ["Compleanno, una data", "birthday_date:lt:1980-01-01", ALL],
+    ["Comune, un testo", "comune:eq:Roma", ["="]],
+    ["Fonte, un enum", "source:eq:inbound", ["="]],
+  ])("in Clienti %s offre %j", async (_name, filter, expected) => {
+    expect(await operatorOptions(CUSTOMER_FILTER_MAP, filter)).toEqual(expected)
+  })
+})
+
+describe("PopoverDateFilter, controllo del valore per tipo di colonna", () => {
+  it("su un enum il valore è un selettore, non un campo di testo", async () => {
+    await openPopover(PRATICA_FILTER_MAP, ["state:eq:Liquidata"])
+    // Colonna, operatore e valore
+    expect(screen.getAllByRole("combobox")).toHaveLength(3)
+    expect(screen.queryByRole("textbox")).toBeNull()
+  })
+
+  it("su una data il campo ha il segnaposto aaaa-mm-gg, su un testo no", async () => {
+    await openPopover(CUSTOMER_FILTER_MAP, ["birthday_date:lt:1980-01-01"])
+    expect(screen.getByPlaceholderText("aaaa-mm-gg")).toBeTruthy()
+    cleanup()
+
+    await openPopover(CUSTOMER_FILTER_MAP, ["comune:eq:Roma"])
+    expect(screen.getByRole("textbox")).toBeTruthy()
+    expect(screen.queryByPlaceholderText("aaaa-mm-gg")).toBeNull()
+  })
+})
+
+describe("PopoverDateFilter, filtri scritti nell'URL", () => {
+  it("scrive nome:op:valore, con la data completata degli zeri", async () => {
+    router.push.mockClear()
+    await openPopover(PRATICA_FILTER_MAP, [
+      "importo_rata:gt:150",
+      "data_liquidazione:gte:2026-1-5",
+      "region:eq:Lazio",
+    ])
+    await userEvent
+      .setup()
+      .click(screen.getByRole("button", { name: "Applica" }))
+
+    const [pushed] = router.push.mock.calls.at(-1) as [string]
+    expect(new URL(pushed).searchParams.getAll("filter")).toEqual([
+      "importo_rata:gt:150",
+      "data_liquidazione:gte:2026-01-05",
+      "region:eq:Lazio",
+    ])
+  })
+
+  it("una data non valida resta fuori dall'URL", async () => {
+    router.push.mockClear()
+    await openPopover(CUSTOMER_FILTER_MAP, [
+      "birthday_date:lt:2026-13-01",
+      "comune:eq:Roma",
+    ])
+    await userEvent
+      .setup()
+      .click(screen.getByRole("button", { name: "Applica" }))
+
+    const [pushed] = router.push.mock.calls.at(-1) as [string]
+    expect(new URL(pushed).searchParams.getAll("filter")).toEqual([
+      "comune:eq:Roma",
+    ])
+  })
 })

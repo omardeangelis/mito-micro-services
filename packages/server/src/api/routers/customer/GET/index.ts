@@ -31,6 +31,11 @@ import {
   customerSearchBy,
 } from "@mito/domain/constants/customerSearch"
 import { containsPattern } from "../../utils/index"
+import { advancedFiltersWhere } from "../../utils/advancedFilters"
+import {
+  advancedFilterSchema,
+  CUSTOMER_FILTER_QUERY_MAP,
+} from "@mito/domain/filters/advanced"
 
 const getCustomerByIdInput = z.object({
   id: z.string().optional(),
@@ -203,7 +208,8 @@ const getAllCustomersInput = z.object({
       file: z.string().optional(),
     })
     .optional(),
-  sqlFilter: z.string().optional(),
+  // Senza `.strict()`: il `sqlFilter` di un frontend vecchio si ignora
+  advancedFilters: z.array(advancedFilterSchema).optional(),
 })
 
 type GetAllCustomersInput = z.infer<typeof getAllCustomersInput>
@@ -351,7 +357,7 @@ const getAllCustomersPage = (
     // Lo stesso `where` per la pagina e per il totale
     const where = and(
       filterQuery,
-      input.sqlFilter ? sql.raw(`${input.sqlFilter}`) : undefined
+      advancedFiltersWhere(input.advancedFilters, CUSTOMER_FILTER_QUERY_MAP)
     )
 
     const allCustomers = query((client) =>
