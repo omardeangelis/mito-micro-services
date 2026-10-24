@@ -32,7 +32,10 @@ import {
 } from "@mito/domain/constants/customerSearch"
 import { containsPattern } from "../../utils/index"
 import { advancedFiltersWhere } from "../../utils/advancedFilters"
-import { CUSTOMER_FILTER_QUERY_MAP } from "@mito/domain/filters/advanced"
+import {
+  advancedFilterSchema,
+  CUSTOMER_FILTER_QUERY_MAP,
+} from "@mito/domain/filters/advanced"
 
 const getCustomerByIdInput = z.object({
   id: z.string().optional(),
@@ -205,12 +208,8 @@ const getAllCustomersInput = z.object({
       file: z.string().optional(),
     })
     .optional(),
-  // Stringhe libere: una voce non valida si scarta nel server, non rende
-  // invalida la richiesta. Senza `.strict()`: il `sqlFilter` di un frontend
-  // vecchio si ignora
-  advancedFilters: z
-    .array(z.object({ field: z.string(), op: z.string(), value: z.string() }))
-    .optional(),
+  // Senza `.strict()`: il `sqlFilter` di un frontend vecchio si ignora
+  advancedFilters: z.array(advancedFilterSchema).optional(),
 })
 
 type GetAllCustomersInput = z.infer<typeof getAllCustomersInput>

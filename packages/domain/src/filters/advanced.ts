@@ -2,6 +2,7 @@ import { customers } from "@mito/db/schema/customers"
 import { practices } from "@mito/db/schema/pratiche"
 import { getTableColumns } from "drizzle-orm"
 import { type PgColumn } from "drizzle-orm/pg-core"
+import { z } from "zod"
 
 // Filtri avanzati di Clienti e Pratiche: le colonne ammesse, il tipo di
 // ciascuna, gli operatori per tipo e la lettura del parametro
@@ -111,8 +112,18 @@ export function operatorsFor(column: PgColumn): readonly FilterOperator[] {
   }
 }
 
-/** Un filtro letto dall'URL, ancora da validare (lo fa il server). */
-export type AdvancedFilter = { field: string; op: string; value: string }
+/**
+ * Un filtro letto dall'URL, ancora da validare (lo fa il server). Stringhe
+ * libere: nell'input delle procedure una voce non valida si scarta, non rende
+ * invalida la richiesta
+ */
+export const advancedFilterSchema = z.object({
+  field: z.string(),
+  op: z.string(),
+  value: z.string(),
+})
+
+export type AdvancedFilter = z.infer<typeof advancedFilterSchema>
 
 // Legge `nome:op:valore`. Tiene le prime tre parti, come oggi: `a:eq:10:30`
 // dà il valore `10`. Una parte mancante o vuota non è un filtro.

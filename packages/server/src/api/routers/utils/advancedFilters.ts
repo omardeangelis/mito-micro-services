@@ -75,6 +75,20 @@ function dateValue(value: string): SQL | undefined {
   return bound(date)
 }
 
+/** Il valore di una colonna numerica o di data, legato; `undefined` se non è valido. */
+function comparableValue(column: PgColumn, value: string): SQL | undefined {
+  switch (filterKindOf(column)) {
+    case "integer":
+      return integerValue(column, value)
+    case "decimal":
+      return decimalValue(value)
+    case "date":
+      return dateValue(value)
+    default:
+      return undefined
+  }
+}
+
 /** La condizione della voce, `undefined` se non è valida. */
 function filterCondition(
   { field, op, value }: AdvancedFilter,
@@ -84,8 +98,7 @@ function filterCondition(
   const column = columns.get(field)
   if (!column) return undefined
   const operator = operatorsFor(column).find((allowed) => allowed === op)
-  const compare = operator && COMPARE.get(operator)
-  if (!compare) return undefined
+  if (!operator) return undefined
 
   switch (filterKindOf(column)) {
     case "enum":
@@ -95,20 +108,11 @@ function filterCondition(
       return value.length > 0
         ? ilike(column, containsPattern(value))
         : undefined
-    case "integer": {
-      const bindValue = integerValue(column, value)
-      return bindValue && compare(column, bindValue)
+    default: {
+      const bindValue = comparableValue(column, value)
+      const compare = COMPARE.get(operator)
+      return bindValue && compare?.(column, bindValue)
     }
-    case "decimal": {
-      const bindValue = decimalValue(value)
-      return bindValue && compare(column, bindValue)
-    }
-    case "date": {
-      const bindValue = dateValue(value)
-      return bindValue && compare(column, bindValue)
-    }
-    default:
-      return undefined
   }
 }
 
@@ -120,9 +124,8 @@ export function advancedFiltersWhere(
   filters: readonly AdvancedFilter[] | undefined,
   columns: ReadonlyMap<string, PgColumn>
 ): SQL | undefined {
-  if (!filters) return undefined
   return and(
-    ...filters
+    ...(filters ?? [])
       .slice(0, MAX_FILTERS)
       .map((filter) => filterCondition(filter, columns))
   )

@@ -19,7 +19,10 @@ import {
   praticaSearchBy,
 } from "@mito/domain/constants/praticaSearch"
 import { advancedFiltersWhere } from "../../utils/advancedFilters"
-import { PRATICA_FILTER_QUERY_MAP } from "@mito/domain/filters/advanced"
+import {
+  advancedFilterSchema,
+  PRATICA_FILTER_QUERY_MAP,
+} from "@mito/domain/filters/advanced"
 
 export type Result = Record<
   string,
@@ -52,12 +55,9 @@ const getAllPraticheInput = z.object({
     })
     .optional(),
   q: z.string().optional(),
-  // Stringhe libere: una voce non valida si scarta nel server, non rende
-  // invalida la richiesta. Senza `.strict()`: il `sqlFilter` e il `filter` di
-  // un frontend vecchio si ignorano
-  advancedFilters: z
-    .array(z.object({ field: z.string(), op: z.string(), value: z.string() }))
-    .optional(),
+  // Senza `.strict()`: il `sqlFilter` e il `filter` di un frontend vecchio si
+  // ignorano
+  advancedFilters: z.array(advancedFilterSchema).optional(),
 })
 
 export const getAllAvailableRegion = operatorProcedure.query(
@@ -190,7 +190,6 @@ const getAllPratichePage = (
             eq(practices.praticaId, customerToPratica.praticaId)
           )
           .innerJoin(customers, eq(customers.id, customerToPratica.customerId))
-
           .where(filterQuery)
       )
         .limit(perPage)

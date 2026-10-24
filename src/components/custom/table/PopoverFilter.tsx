@@ -296,7 +296,7 @@ const AdvancedFilter = ({ filtro }: { filtro: CustomFilter }) => {
           </SelectGroup>
         </SelectContent>
       </Select>
-      {filterMap.get(filtro.name)?.columnType === "PgEnumColumn" ? (
+      {filterKindOf(filterMap.get(filtro.name)!) === "enum" ? (
         <Select
           value={filtro.value}
           onValueChange={(value: FilterOperator) => {
