@@ -195,3 +195,74 @@ describe("customer.getAllFileName", () => {
     ])
   })
 })
+
+describe("customer.getAllFileName, il segnaposto 'Nessuno' distingue maiuscole e minuscole", () => {
+  it("per i clienti esclude solo 'Nessuno' esatto: 'nessuno', 'NESSUNO' e 'Nessuno ' (con lo spazio) sono file come gli altri", async () => {
+    const operator = await createOperator()
+    await createCustomer({
+      fileName: "clienti-a.xlsx",
+      lastImportUpdate: new Date("2026-01-10T10:00:00.000Z"),
+    })
+    await createCustomer({
+      fileName: "nessuno",
+      lastImportUpdate: new Date("2026-04-01T10:00:00.000Z"),
+    })
+    await createCustomer({
+      fileName: "NESSUNO",
+      lastImportUpdate: new Date("2026-03-01T10:00:00.000Z"),
+    })
+    await createCustomer({
+      fileName: "Nessuno ",
+      lastImportUpdate: new Date("2026-02-01T10:00:00.000Z"),
+    })
+    await createCustomer({
+      fileName: "Nessuno",
+      lastImportUpdate: new Date("2026-05-01T10:00:00.000Z"),
+    })
+
+    const result =
+      await createTestCaller(operator).customer.getAllFileName("customers")
+
+    // Dal piu recente: 'Nessuno' esatto (maggio) manca
+    expect(result).toEqual([
+      { fileName: "nessuno" },
+      { fileName: "NESSUNO" },
+      { fileName: "Nessuno " },
+      { fileName: "clienti-a.xlsx" },
+    ])
+  })
+
+  it("per le pratiche esclude solo 'Nessuno' esatto: 'nessuno' e 'NESSUNO' sono file come gli altri", async () => {
+    const operator = await createOperator()
+    const customer = await createCustomer()
+    await createPractice({
+      customerId: customer.id,
+      fileName: "pratiche-p1.xlsx",
+      lastImportUpdate: new Date("2026-01-05T10:00:00.000Z"),
+    })
+    await createPractice({
+      customerId: customer.id,
+      fileName: "nessuno",
+      lastImportUpdate: new Date("2026-04-01T10:00:00.000Z"),
+    })
+    await createPractice({
+      customerId: customer.id,
+      fileName: "NESSUNO",
+      lastImportUpdate: new Date("2026-03-01T10:00:00.000Z"),
+    })
+    await createPractice({
+      customerId: customer.id,
+      fileName: "Nessuno",
+      lastImportUpdate: new Date("2026-05-01T10:00:00.000Z"),
+    })
+
+    const result =
+      await createTestCaller(operator).customer.getAllFileName("practices")
+
+    expect(result).toEqual([
+      { fileName: "nessuno" },
+      { fileName: "NESSUNO" },
+      { fileName: "pratiche-p1.xlsx" },
+    ])
+  })
+})

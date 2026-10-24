@@ -381,3 +381,207 @@ describe("customer.updateLastEdit", () => {
     await expectWritten(pair, {})
   })
 })
+
+// Mutanti sopravvissuti: le altre transizioni di `blackListStatus`, un id che
+// non esiste, le chiavi extra dell'input e le stringhe vuote o con spazi.
+
+type BlackListStatus = CustomerRow["blackListStatus"]
+
+const BLACKLIST_STATUSES: BlackListStatus[] = [
+  "whitelisted",
+  "review",
+  "blacklisted",
+]
+
+/**
+ * Come `seedPair`, ma il cliente su cui si scrive parte da `from` (`seedPair`
+ * lo crea in `review`). Il cliente di controllo resta com'e.
+ */
+const seedPairFrom = async (from: BlackListStatus) => {
+  const pair = await seedPair()
+  await testDb
+    .update(customers)
+    .set({ blackListStatus: from, updatedAt: T0 })
+    .where(eq(customers.id, pair.written.id))
+  const written = await customerRow(pair.written.id)
+  expect(written).toEqual({ ...pair.written, blackListStatus: from })
+  return { ...pair, written }
+}
+
+describe("customer.handleCustomerBlackList, ogni transizione", () => {
+  const transitions = BLACKLIST_STATUSES.flatMap((from) =>
+    BLACKLIST_STATUSES.map((to) => [from, to] as const)
+  )
+
+  it.each(transitions)(
+    "da %s a %s scrive esattamente lo stato richiesto (riga intera, updatedAt a T1, altro cliente intatto)",
+    async (from, to) => {
+      const pair = await seedPairFrom(from)
+      callAtT1()
+
+      const response = await pair.caller.customer.handleCustomerBlackList({
+        id: pair.written.id,
+        blackListStatus: to,
+      })
+
+      expect(response).toEqual({ rows: [], fields: [], affectedRows: 1 })
+      await expectWritten(pair, { blackListStatus: to })
+    }
+  )
+
+  it("ignora un `name` nella richiesta (lo schema lo scarta): scrive solo lo stato", async () => {
+    const pair = await seedPair()
+    callAtT1()
+
+    await pair.caller.customer.handleCustomerBlackList({
+      id: pair.written.id,
+      blackListStatus: "whitelisted",
+      name: "Nome intruso",
+    } as never)
+
+    await expectWritten(pair, { blackListStatus: "whitelisted" })
+    expect((await customerRow(pair.written.id)).name).toBe(pair.written.name)
+  })
+
+  it("un `name` che non e nemmeno una stringa non fa fallire la richiesta: lo schema non lo conosce e lo scarta", async () => {
+    const pair = await seedPair()
+    callAtT1()
+
+    const response = await pair.caller.customer.handleCustomerBlackList({
+      id: pair.written.id,
+      blackListStatus: "blacklisted",
+      name: 123,
+    } as never)
+
+    expect(response).toEqual({ rows: [], fields: [], affectedRows: 1 })
+    await expectWritten(pair, { blackListStatus: "blacklisted" })
+  })
+
+  it("con un id che non esiste risponde senza errore con il risultato grezzo del driver (0 righe) e non cambia nessun cliente", async () => {
+    const pair = await seedPair()
+    callAtT1()
+
+    const response = await pair.caller.customer.handleCustomerBlackList({
+      id: "id-inesistente",
+      blackListStatus: "blacklisted",
+    })
+
+    expect(response).toEqual({ rows: [], fields: [], affectedRows: 0 })
+    await expectUntouched(pair)
+  })
+})
+
+describe("customer.updateLastEdit, con un id che non esiste", () => {
+  it("risponde senza errore con il risultato grezzo del driver (0 righe) e non cambia nessun cliente", async () => {
+    const pair = await seedPair()
+    callAtT1()
+
+    const response = await pair.caller.customer.updateLastEdit({
+      id: "id-inesistente",
+    })
+
+    expect(response).toEqual({ rows: [], fields: [], affectedRows: 0 })
+    await expectUntouched(pair)
+  })
+})
+
+describe("customer.updateCustomerFromDashboard, chiavi extra", () => {
+  it("ignora un `blackListStatus` nella richiesta (lo schema lo scarta): lo stato del cliente resta quello di prima", async () => {
+    const pair = await seedPair()
+    expect(pair.written.blackListStatus).toBe("review")
+    callAtT1()
+
+    const response = await pair.caller.customer.updateCustomerFromDashboard({
+      id: pair.written.id,
+      name: "Nome nuovo",
+      source: "digital",
+      blackListStatus: "blacklisted",
+    } as never)
+
+    expect(response).toEqual([{ id: pair.written.id }])
+    await expectWritten(pair, { name: "Nome nuovo", source: "digital" })
+    expect((await customerRow(pair.written.id)).blackListStatus).toBe("review")
+  })
+})
+
+describe("customer.insertCustomer, stringhe vuote e con spazi", () => {
+  it("salva le stringhe vuote come vuote (non null) e gli spazi attorno ai valori com'erano, riga intera", async () => {
+    const operator = await createOperator()
+    const customerChat = await createChat()
+    const input = {
+      id: "cliente-spazi",
+      fullName: "  Anna Rossi  ",
+      name: "  Anna  ",
+      sede: "",
+      surname: "Rossi ",
+      fiscalCode: "RSSNNA80A41F205Z",
+      vatCode: "",
+      email: " anna@test.local ",
+      birthdayDate: new Date("1980-01-01T00:00:00.000Z"),
+      age: 45,
+      phoneNumber: " 0212345678 ",
+      address: "",
+      cap: " 2010",
+      blackListStatus: "whitelisted",
+      comune: "  Milano",
+      provincia: "",
+      tempID: "  temp-spazi  ",
+      fileName: "",
+      uniqueHash: "hash-spazi ",
+      reddito: "1500.25",
+      occupazione: "",
+      ambitoLavorativo: " Servizi ",
+      tipoContratto: "",
+      createdAt: new Date("2026-08-01T10:00:00.000Z"),
+      updatedAt: new Date("2026-08-02T10:00:00.000Z"),
+      lastImportUpdate: new Date("2026-08-03T10:00:00.000Z"),
+      chatId: customerChat.id,
+      operatorId: operator.id,
+      source: "banca",
+    } satisfies Required<typeof customers.$inferInsert>
+
+    const response =
+      await createTestCaller(operator).customer.insertCustomer(input)
+
+    expect(response).toEqual([{ id: "cliente-spazi" }])
+    expect(await customerRow("cliente-spazi")).toEqual(input)
+    expect(await allCustomers()).toHaveLength(1)
+  })
+})
+
+describe("customer.updateCustomerFromDashboard, stringhe vuote e con spazi", () => {
+  it("scrive le stringhe vuote come vuote (non null, non ignorate) e gli spazi attorno ai valori com'erano, riga intera", async () => {
+    const pair = await seedPair()
+    callAtT1()
+    const values = {
+      name: "  Nome con spazi  ",
+      surname: "Cognome ",
+      email: " spazi@test.local",
+      phoneNumber: " 0211122233 ",
+      address: "",
+      cap: " 123 ",
+      comune: "  Firenze  ",
+      provincia: "",
+      occupazione: "",
+      ambitoLavorativo: " Sanita ",
+      sede: "",
+      source: "digital",
+    } as const
+
+    const response = await pair.caller.customer.updateCustomerFromDashboard({
+      id: pair.written.id,
+      ...values,
+    })
+
+    expect(response).toEqual([{ id: pair.written.id }])
+    await expectWritten(pair, values)
+    // Le vuote hanno sostituito i valori pieni di prima
+    expect(pair.written.address).not.toBe("")
+    expect(await customerRow(pair.written.id)).toMatchObject({
+      address: "",
+      provincia: "",
+      occupazione: "",
+      sede: "",
+    })
+  })
+})

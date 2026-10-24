@@ -180,5 +180,42 @@ describe.skipIf(!hasTestDatabase)(
         expect(after.find((row) => row.id === second.id)).toEqual(second)
       })
     })
+
+    describe("con un id che non esiste", () => {
+      it("`handleCustomerBlackList` risponde senza errore con la RowList del driver (array vuoto, `count` 0, `command` UPDATE) e non cambia nessun cliente", async () => {
+        const { operator } = await seed()
+        const before = await allCustomers()
+
+        const result = await createTestCaller(
+          operator
+        ).customer.handleCustomerBlackList({
+          id: "id-inesistente",
+          blackListStatus: "blacklisted",
+        })
+
+        expect(result).toEqual([])
+        expect((result as unknown as { count: number }).count).toBe(0)
+        expect((result as unknown as { command: string }).command).toBe(
+          "UPDATE"
+        )
+        expect(await allCustomers()).toEqual(before)
+      })
+
+      it("`updateLastEdit` risponde senza errore con la RowList del driver (array vuoto, `count` 0, `command` UPDATE) e non cambia nessun cliente", async () => {
+        const { operator } = await seed()
+        const before = await allCustomers()
+
+        const result = await createTestCaller(operator).customer.updateLastEdit(
+          { id: "id-inesistente" }
+        )
+
+        expect(result).toEqual([])
+        expect((result as unknown as { count: number }).count).toBe(0)
+        expect((result as unknown as { command: string }).command).toBe(
+          "UPDATE"
+        )
+        expect(await allCustomers()).toEqual(before)
+      })
+    })
   }
 )

@@ -1,5 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, it } from "vitest"
 import { eq } from "drizzle-orm"
+import { TRPCError } from "@trpc/server"
 import { readContactError } from "@mito/domain/contact/errors"
 import { customers } from "@mito/db/schema/customers"
 import { customerToPratica } from "@mito/db/schema/relations/customerToPratica"
@@ -559,5 +560,163 @@ describe("customer.getCustomerUnderReview", () => {
         signedPractices: 2,
       },
     ])
+  })
+})
+
+// Mutanti sopravvissuti alla prima caratterizzazione: le query pescano solo
+// ciò che appartiene alla chiave richiesta. Qui nel database ci sono anche
+// pratiche e clienti che NON c'entrano, e non devono comparire.
+
+describe("customer.getCustomersByFiscalCodeOrVatCode, spazi attorno alla partita IVA", () => {
+  it("trova il cliente anche con spazi attorno alla partita IVA, che lo schema toglie", async () => {
+    const operator = await createOperator()
+    const bruno = await createCustomer({
+      id: "cliente-bruno",
+      vatCode: "IT09876543210",
+    })
+    await createCustomer({ id: "cliente-anna", vatCode: "IT01234567890" })
+
+    const result = await createTestCaller(
+      operator
+    ).customer.getCustomersByFiscalCodeOrVatCode({
+      vatCode: "  IT09876543210  ",
+    })
+
+    expect(result).toEqual([await customerRow(bruno.id)])
+  })
+
+  it("con una partita IVA di soli spazi (e nient'altro) riceve BAD_REQUEST, perché dopo il trim è vuota", async () => {
+    const operator = await createOperator()
+    await createCustomer({ id: "cliente-anna", vatCode: "   " })
+
+    const error = await rejectionOf(
+      createTestCaller(operator).customer.getCustomersByFiscalCodeOrVatCode({
+        vatCode: "   ",
+      })
+    )
+
+    expect(error).toMatchObject({ code: "BAD_REQUEST" })
+  })
+})
+
+describe("customer.getAllPraticaByCustomer, con pratiche di altri clienti", () => {
+  it("restituisce solo le pratiche del cliente chiesto, non quelle di un altro cliente", async () => {
+    const operator = await createOperator()
+    const anna = await createCustomer({ id: "cliente-anna" })
+    const bruno = await createCustomer({ id: "cliente-bruno" })
+    const sua = await createPractice({
+      customerId: anna.id,
+      praticaId: "PR-ANNA",
+      productId: "PS",
+      state: "Liquidata",
+      dataLiquidazione: new Date("2026-02-10T00:00:00.000Z"),
+    })
+    // Pratiche di Bruno, con nessun legame con Anna
+    await createPractice({ customerId: bruno.id, praticaId: "PR-BRUNO-1" })
+    await createPractice({ customerId: bruno.id, praticaId: "PR-BRUNO-2" })
+
+    const result = await createTestCaller(
+      operator
+    ).customer.getAllPraticaByCustomer({ id: anna.id })
+
+    expect(result).toEqual([
+      {
+        id: sua.id,
+        praticaId: "PR-ANNA",
+        productId: "PS",
+        state: "Liquidata",
+        dataLiquidazione: new Date("2026-02-10T00:00:00.000Z"),
+        customerRole: "Intestatario",
+      },
+    ])
+  })
+
+  it("un cliente senza pratiche riceve una lista vuota anche se ce ne sono di altri clienti", async () => {
+    const operator = await createOperator()
+    const anna = await createCustomer({ id: "cliente-anna" })
+    const bruno = await createCustomer({ id: "cliente-bruno" })
+    await createPractice({ customerId: bruno.id, praticaId: "PR-BRUNO-1" })
+
+    const result = await createTestCaller(
+      operator
+    ).customer.getAllPraticaByCustomer({ id: anna.id })
+
+    expect(result).toEqual([])
+  })
+})
+
+describe("customer.getAllCustomerForPratica, con clienti di altre pratiche", () => {
+  it("restituisce solo i clienti della pratica chiesta, non quelli di un'altra pratica né quelli senza pratiche", async () => {
+    const operator = await createOperator({ name: "Giulia", surname: "Verdi" })
+    const anna = await createCustomer({
+      id: "cliente-anna",
+      name: "Anna",
+      surname: "Rossi",
+      email: "anna.rossi@example.com",
+      fiscalCode: "RSSNNA80A41H501Z",
+      vatCode: null,
+      phoneNumber: "3331112222",
+      blackListStatus: "whitelisted",
+      operatorId: operator.id,
+    })
+    const bruno = await createCustomer({ id: "cliente-bruno" })
+    await createCustomer({ id: "cliente-carlo" })
+    await createPractice({ customerId: anna.id, praticaId: "PR-ANNA" })
+    await createPractice({ customerId: bruno.id, praticaId: "PR-BRUNO" })
+
+    const result = await createTestCaller(
+      operator
+    ).customer.getAllCustomerForPratica({ id: "PR-ANNA" })
+
+    expect(result).toEqual([
+      {
+        id: "cliente-anna",
+        name: "Anna",
+        surname: "Rossi",
+        email: "anna.rossi@example.com",
+        fiscalCode: "RSSNNA80A41H501Z",
+        vatCode: null,
+        phoneNumber: "3331112222",
+        blackListStatus: "whitelisted",
+        operatorId: operator.id,
+        operatorName: "Giulia",
+        operatorSurname: "Verdi",
+        customerRole: "Intestatario",
+      },
+    ])
+  })
+
+  it("di una pratica senza clienti risponde NOT_FOUND anche se altre pratiche ne hanno", async () => {
+    const operator = await createOperator()
+    const anna = await createCustomer({ id: "cliente-anna" })
+    await createPractice({ customerId: anna.id, praticaId: "PR-ANNA" })
+
+    const error = await rejectionOf(
+      createTestCaller(operator).customer.getAllCustomerForPratica({
+        id: "PR-SENZA-CLIENTI",
+      })
+    )
+
+    expect(error).toMatchObject({
+      code: "NOT_FOUND",
+      message: "No customers found for this pratica",
+    })
+  })
+
+  it("l'errore NOT_FOUND e un TRPCError senza `cause` (non porta l'errore interno), con `contactError` null", async () => {
+    const operator = await createOperator()
+    const anna = await createCustomer({ id: "cliente-anna" })
+    await createPractice({ customerId: anna.id, praticaId: "PR-ANNA" })
+
+    const error = await rejectionOf(
+      createTestCaller(operator).customer.getAllCustomerForPratica({
+        id: "PR-SENZA-CLIENTI",
+      })
+    )
+
+    expect(error).toBeInstanceOf(TRPCError)
+    expect((error as TRPCError).code).toBe("NOT_FOUND")
+    expect((error as TRPCError).cause).toBeUndefined()
+    expect(readContactError(error)).toBeNull()
   })
 })
