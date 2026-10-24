@@ -1,20 +1,14 @@
 import { beforeAll, beforeEach, describe, expect, it } from "vitest"
 import { asc } from "drizzle-orm"
 import { customers } from "@mito/db/schema/customers"
-import { createTestCaller, rejectionOf } from "@/test/caller"
+import { createTestCaller } from "@/test/caller"
 import { createCustomer, createOperator } from "@/test/factories"
 import { hasTestDatabase, migrateUpTo, pgDb, resetDb } from "@/test/pg"
 
 // Caratterizzazione, su postgres-js come in produzione, delle tre scritture
-// di `customer` che prendono `id` opzionale dallo schema e lo usano come
-// `input.id!` (updateCustomerFromDashboard, handleCustomerBlackList,
-// updateLastEdit): oggi senza `id` il driver rifiuta il parametro `undefined`
-// e la procedura risponde INTERNAL_SERVER_ERROR (AC10). Pinna il comportamento
-// di oggi, prima del refactor.
-
-// Il messaggio di postgres-js (UNDEFINED_VALUE) per un parametro `undefined`
-const UNDEFINED_VALUE_MESSAGE =
-  "UNDEFINED_VALUE: Undefined values are not allowed"
+// di `customer` che prendono un `id` (updateCustomerFromDashboard,
+// handleCustomerBlackList, updateLastEdit). Senza `id` lo schema le rifiuta
+// prima del driver (TD8 f): lo prova `writes.db.test.ts`
 
 /** Tutte le righe dei clienti, per confrontare prima e dopo. */
 const allCustomers = () =>
@@ -39,61 +33,6 @@ describe.skipIf(!hasTestDatabase)(
 
     beforeEach(async () => {
       await resetDb()
-    })
-
-    describe("senza id", () => {
-      it("su postgres-js, `updateLastEdit` senza `id` risponde `INTERNAL_SERVER_ERROR` con il messaggio del driver e non cambia nessun cliente", async () => {
-        const { operator } = await seed()
-        const before = await allCustomers()
-
-        const error = await rejectionOf(
-          createTestCaller(operator).customer.updateLastEdit({})
-        )
-
-        expect(error).toMatchObject({
-          code: "INTERNAL_SERVER_ERROR",
-          message: UNDEFINED_VALUE_MESSAGE,
-          cause: { code: "UNDEFINED_VALUE" },
-        })
-        expect(await allCustomers()).toEqual(before)
-      })
-
-      it("su postgres-js, `handleCustomerBlackList` senza `id` risponde `INTERNAL_SERVER_ERROR` con il messaggio del driver e non cambia nessun cliente", async () => {
-        const { operator } = await seed()
-        const before = await allCustomers()
-
-        const error = await rejectionOf(
-          createTestCaller(operator).customer.handleCustomerBlackList({
-            blackListStatus: "blacklisted",
-          })
-        )
-
-        expect(error).toMatchObject({
-          code: "INTERNAL_SERVER_ERROR",
-          message: UNDEFINED_VALUE_MESSAGE,
-          cause: { code: "UNDEFINED_VALUE" },
-        })
-        expect(await allCustomers()).toEqual(before)
-      })
-
-      it("su postgres-js, `updateCustomerFromDashboard` senza `id` risponde `INTERNAL_SERVER_ERROR` con il messaggio del driver e non cambia nessun cliente", async () => {
-        const { operator } = await seed()
-        const before = await allCustomers()
-
-        const error = await rejectionOf(
-          createTestCaller(operator).customer.updateCustomerFromDashboard({
-            name: "Cambiato",
-            source: "inbound",
-          })
-        )
-
-        expect(error).toMatchObject({
-          code: "INTERNAL_SERVER_ERROR",
-          message: UNDEFINED_VALUE_MESSAGE,
-          cause: { code: "UNDEFINED_VALUE" },
-        })
-        expect(await allCustomers()).toEqual(before)
-      })
     })
 
     describe("con id", () => {

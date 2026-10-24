@@ -21,6 +21,7 @@ import { createCustomer, createOperator, createUser } from "@/test/factories"
 // passaggio a Effect.
 
 type CustomerRow = typeof customers.$inferSelect
+type Caller = ReturnType<typeof createTestCaller>
 
 /** Istante in cui nascono i clienti. */
 const T0 = new Date("2026-10-01T09:00:00.000Z")
@@ -333,6 +334,46 @@ describe("customer.handleCustomerBlackList", () => {
     })
     await expectUntouched(pair)
   })
+})
+
+describe("le tre modifiche senza id (TD8 f)", () => {
+  it.each([
+    [
+      "updateCustomerFromDashboard",
+      (caller: Caller) =>
+        caller.customer.updateCustomerFromDashboard(
+          // @ts-expect-error -- `id` è obbligatorio: la richiesta di un client vecchio
+          { name: "Cambiato", source: "inbound" }
+        ),
+    ],
+    [
+      "handleCustomerBlackList",
+      (caller: Caller) =>
+        caller.customer.handleCustomerBlackList(
+          // @ts-expect-error -- `id` è obbligatorio: la richiesta di un client vecchio
+          { blackListStatus: "blacklisted" }
+        ),
+    ],
+    [
+      "updateLastEdit",
+      (caller: Caller) =>
+        caller.customer.updateLastEdit(
+          // @ts-expect-error -- `id` è obbligatorio: la richiesta di un client vecchio
+          {}
+        ),
+    ],
+  ] as const)(
+    "`%s` riceve BAD_REQUEST e non cambia nessun cliente",
+    async (_name, call) => {
+      const pair = await seedPair()
+      callAtT1()
+
+      const error = await rejectionOf(call(pair.caller))
+
+      expect(error).toMatchObject({ code: "BAD_REQUEST" })
+      await expectUntouched(pair)
+    }
+  )
 })
 
 describe("customer.updateLastEdit", () => {

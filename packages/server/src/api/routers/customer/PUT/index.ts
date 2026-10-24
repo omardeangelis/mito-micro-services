@@ -15,23 +15,25 @@ import {
   updateCustomerProfile,
 } from "../../../../services/customer/profile"
 
-const updateCustomerFromDashboardSchema = insertCustomerSchema.pick({
-  id: true,
-  name: true,
-  surname: true,
-  email: true,
-  phoneNumber: true,
-  address: true,
-  cap: true,
-  comune: true,
-  provincia: true,
-  birthdayDate: true,
-  reddito: true,
-  occupazione: true,
-  ambitoLavorativo: true,
-  sede: true,
-  source: true,
-})
+const updateCustomerFromDashboardSchema = insertCustomerSchema
+  .pick({
+    id: true,
+    name: true,
+    surname: true,
+    email: true,
+    phoneNumber: true,
+    address: true,
+    cap: true,
+    comune: true,
+    provincia: true,
+    birthdayDate: true,
+    reddito: true,
+    occupazione: true,
+    ambitoLavorativo: true,
+    sede: true,
+    source: true,
+  })
+  .extend({ id: z.string().min(1) })
 
 /**
  * Saves the customer's master data from the form. The operator changes only
@@ -39,7 +41,7 @@ const updateCustomerFromDashboardSchema = insertCustomerSchema.pick({
  */
 export const updateCustomerFromDashboard = operatorProcedure
   .input(updateCustomerFromDashboardSchema)
-  .mutation(({ input }) => runTrpc(updateCustomerProfile(input.id!, input)))
+  .mutation(({ input }) => runTrpc(updateCustomerProfile(input.id, input)))
 
 const handoverInput = z.object({
   customerId: z.string(),
@@ -79,15 +81,14 @@ export const bulkUpdateCustomers = adminProcedure
     )
   )
 
-const handleCustomerBlackListSchema = insertCustomerSchema.pick({
-  id: true,
-  blackListStatus: true,
-})
+const handleCustomerBlackListSchema = insertCustomerSchema
+  .pick({ blackListStatus: true })
+  .extend({ id: z.string().min(1) })
 
 export const handleCustomerBlackList = operatorProcedure
   .input(handleCustomerBlackListSchema)
   .mutation(({ input }) =>
-    runTrpc(setBlackListStatus(input.id!, input.blackListStatus))
+    runTrpc(setBlackListStatus(input.id, input.blackListStatus))
   )
 
 /** "Assegna a te" (P4): see the `assignToYourself` service. */
@@ -103,10 +104,8 @@ export const assignToYourself = operatorProcedure
     )
   )
 
-const updateLastEditInput = insertCustomerSchema.pick({
-  id: true,
-})
+const updateLastEditInput = z.object({ id: z.string().min(1) })
 
 export const updateLastEdit = operatorProcedure
   .input(updateLastEditInput)
-  .mutation(({ input }) => runTrpc(markCustomerUpdated(input.id!)))
+  .mutation(({ input }) => runTrpc(markCustomerUpdated(input.id)))
