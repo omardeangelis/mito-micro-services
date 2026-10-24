@@ -6,6 +6,7 @@ import {
   type StandardImportType,
 } from "../../_types"
 import { type ProcessedFile } from "../../_types"
+import { parseFileName as parseFileNameAt } from "@mito/domain/import/convert/fileName"
 import { type CustomerWrite, type PracticeWrite } from "@mito/domain/schemas"
 import { getCustomerRole } from "../../_utils"
 import {
@@ -44,25 +45,8 @@ const customCTPSchema = insertCustomerToPraticaSchema.extend({
   _internal_sort: z.number(),
 })
 
-export const parseFileName = (fileName: string) => {
-  const fileNameWithNoDash = fileName.replace(/-/g, "_")
-  return addMMYYToFileName(fileNameWithNoDash)
-}
-
-const addMMYYToFileName = (fileName: string) => {
-  const fileNameFirst4Chars = fileName.slice(0, 4)
-  const isNumber = !isNaN(Number(fileNameFirst4Chars))
-  if (isNumber) {
-    return fileName
-  }
-  const date = new Date()
-  const romeDate = new Date(
-    date.toLocaleString("en-US", { timeZone: "Europe/Rome" })
-  )
-  const mm = String(romeDate.getMonth() + 1).padStart(2, "0")
-  const yy = romeDate.getFullYear().toString().slice(-2)
-  return `${mm}${yy}_${fileName}`
-}
+export const parseFileName = (fileName: string) =>
+  parseFileNameAt(fileName, new Date())
 
 export function parsePratica<T extends StandardImportFile | WaveFile>(
   file: Paparenzo.ParseResult<T>,
