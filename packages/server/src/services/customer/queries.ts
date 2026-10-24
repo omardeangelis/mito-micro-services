@@ -14,16 +14,10 @@ export type CustomerCodes = {
   tempID?: string
 }
 
-/**
- * The customer with this id, or `undefined` if there is none. Without an `id`
- * the query has no `where`: it returns the first customer.
- */
-export const getCustomerById = (id: string | undefined) =>
+/** The customer with this id, or `undefined` if there is none. */
+export const getCustomerById = (id: string) =>
   query((client) =>
-    client
-      .select()
-      .from(customers)
-      .where(id ? eq(customers.id, id) : undefined)
+    client.select().from(customers).where(eq(customers.id, id))
   ).pipe(Effect.map((customer) => customer[0]))
 
 /**

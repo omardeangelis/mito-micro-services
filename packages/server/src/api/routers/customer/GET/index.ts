@@ -21,7 +21,7 @@ import {
 } from "../../../../services/customer/queries"
 
 const getCustomerByIdInput = z.object({
-  id: z.string().optional(),
+  id: z.string().min(1),
 })
 
 export const getCustomerById = protectedProcedure

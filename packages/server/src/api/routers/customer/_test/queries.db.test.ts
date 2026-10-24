@@ -65,15 +65,19 @@ describe("customer.getCustomerById", () => {
     ["senza id", {}],
     ["con id vuoto", { id: "" }],
   ] as const)(
-    "%s e con un solo cliente nel database restituisce quel cliente",
+    "%s riceve BAD_REQUEST, anche con un solo cliente nel database (TD8 a)",
     async (_which, input) => {
       const operator = await createOperator()
-      const only = await createCustomer({ id: "cliente-unico" })
+      await createCustomer({ id: "cliente-unico" })
 
-      const result =
-        await createTestCaller(operator).customer.getCustomerById(input)
+      const error = await rejectionOf(
+        createTestCaller(operator).customer.getCustomerById(
+          // @ts-expect-error -- `id` è obbligatorio: la richiesta di un client vecchio
+          input
+        )
+      )
 
-      expect(result).toEqual(await customerRow(only.id))
+      expect(error).toMatchObject({ code: "BAD_REQUEST" })
     }
   )
 })
