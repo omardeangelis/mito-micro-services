@@ -12,7 +12,7 @@ links:
   - "[[chore/crm/report-frontend-riorganizzazione]]"
   - "[[chore/migration/fase-4-import-api]]"
 created: 2026-10-23
-updated: 2026-10-23
+updated: 2026-10-24
 ---
 
 # Spec: Import di clienti e pratiche, riscritto
@@ -176,7 +176,7 @@ Le persone del progetto non sono ancora descritte (`paths.personas` è vuoto): i
 |---|----------|---------|-------|--------|
 | 1 | Come riconosciamo un cliente esistente? Default proposto (Definizioni, AC11b, AC38): per codice fiscale; senza codice fiscale, per partita IVA. Il codice cliente del file (NDG o CLIENTE) non identifica il cliente; una riga il cui codice cliente è di un altro cliente, o la cui identità corrisponde a più clienti, è scartata con il motivo. | AC11b, AC35, AC38, Definizioni | Leonardo | Open |
 | 2 | Quattro difetti delle date (Technical Notes): Wave salva la data di liquidazione con un mese in più e, quando manca, la data di estinzione uguale al giorno dell'import; una data di liquidazione illeggibile diventa il giorno dell'import; una data in formato seriale di Excel diventa il giorno dopo. Sono voluti? Default proposto: la riscrittura li conserva (AC32) e, se li confermi come difetti, si correggono in una PR separata dopo. | AC32 | Leonardo | Open |
-| 3 | Import che continua a scheda chiusa (AC20) e storico (AC28–AC31) sono nel perimetro? Default proposto: sì; richiedono una tabella nuova. | AC20, AC21, AC28–AC31 | Leonardo | Open |
+| 3 | Import che continua a scheda chiusa (AC20) e storico (AC28–AC31) sono nel perimetro? Sì (Leonardo, 2026-10-24): richiedono una tabella nuova. | AC20, AC21, AC28–AC31 | Leonardo | Resolved |
 | 4 | Quanto sono grandi i file veri, e ogni quanto si importa? Default proposto: fino a 20.000 righe e 15 MB per file, qualche import al mese. | AC5, AC18, AC25 | Leonardo | Open |
 | 5 | Chi importa oggi: tutti gli admin o una persona sola? Default proposto: tutti gli admin. | AC1, AC22 | Leonardo | Open |
 | 6 | Dove vive l'import? Default proposto: una pagina "Import" nel menu degli admin con storico e nuovo import; il pulsante "Nuovo import" della dashboard porta lì. | AC1, AC28 | Leonardo | Open |
@@ -189,6 +189,7 @@ Le persone del progetto non sono ancora descritte (`paths.personas` è vuoto): i
 | Decision | Rationale |
 |----------|-----------|
 | tRPC come trasporto, niente rotte REST | Oggi l'import lo usa solo la UI. Un'API per terzi, se arriva, avvolgerà la stessa logica ([[chore/migrazione-effect]] §6). |
+| Import che continua a scheda chiusa e storico degli import nel perimetro (Leonardo, 2026-10-24) | Oggi il danno più grande viene da un import interrotto a metà; senza storico nessuno sa se un import è finito e chi l'ha fatto. |
 | Tutto o niente, non a blocchi | Un import parziale non si vede e non si riprende: è il danno più grande di oggi. |
 | Un import alla volta | Due import insieme sugli stessi clienti darebbero numeri dell'anteprima sbagliati e scritture che si accavallano; gli import sono pochi al mese. |
 | Ogni riga finisce in una categoria | Una riga persa in silenzio è un cliente o una pratica che manca senza che nessuno lo sappia. |
