@@ -5,7 +5,6 @@ import { customers } from "@mito/db/schema/customers"
 import { practices } from "@mito/db/schema/pratiche"
 import { operators } from "@mito/db/schema/operators"
 import { query } from "../../effect/db"
-import { PracticeWithoutCustomers } from "./errors"
 
 /** The codes that identify a customer; `findCustomersByCode` reads them. */
 export type CustomerCodes = {
@@ -82,10 +81,7 @@ export const listPracticesOfCustomer = (customerId: string) =>
     }))
   })
 
-/**
- * The customers of a practice, each with the operator and the role in it.
- * Fails with `PracticeWithoutCustomers` if the practice has none.
- */
+/** The customers of a practice, each with the operator and the role in it. */
 export const listCustomersOfPractice = (praticaId: string) =>
   Effect.gen(function* () {
     const customersIDs = yield* query((client) =>
@@ -99,7 +95,7 @@ export const listCustomersOfPractice = (praticaId: string) =>
     )
 
     if (customersIDs.length === 0) {
-      return yield* new PracticeWithoutCustomers()
+      return []
     }
 
     const praticaCustomers = yield* query((client) =>

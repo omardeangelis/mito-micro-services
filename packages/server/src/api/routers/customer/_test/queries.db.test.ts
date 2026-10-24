@@ -1,7 +1,5 @@
 import { beforeAll, beforeEach, describe, expect, it } from "vitest"
 import { eq } from "drizzle-orm"
-import { TRPCError } from "@trpc/server"
-import { readContactError } from "@mito/domain/contact/errors"
 import { customerToPratica } from "@mito/db/schema/relations/customerToPratica"
 import { createTestCaller, rejectionOf } from "@/test/caller"
 import { customerRow, migrateUpTo, resetDb, testDb } from "@/test/db"
@@ -527,7 +525,7 @@ describe("customer.getAllCustomerForPratica", () => {
     ])
   })
 
-  it("di una pratica senza clienti risponde NOT_FOUND con il messaggio `No customers found for this pratica` e nessun `contactError`", async () => {
+  it("di una pratica senza clienti restituisce una lista vuota (TD8 c)", async () => {
     const operator = await createOperator()
     const anna = await createCustomer({ id: "cliente-anna" })
     await createPractice({ customerId: anna.id, praticaId: "PR-ORFANA" })
@@ -536,17 +534,13 @@ describe("customer.getAllCustomerForPratica", () => {
       .delete(customerToPratica)
       .where(eq(customerToPratica.praticaId, "PR-ORFANA"))
 
-    const error = await rejectionOf(
-      createTestCaller(operator).customer.getAllCustomerForPratica({
-        id: "PR-ORFANA",
-      })
-    )
-
-    expect(error).toMatchObject({
-      code: "NOT_FOUND",
-      message: "No customers found for this pratica",
+    const result = await createTestCaller(
+      operator
+    ).customer.getAllCustomerForPratica({
+      id: "PR-ORFANA",
     })
-    expect(readContactError(error)).toBeNull()
+
+    expect(result).toEqual([])
   })
 })
 
@@ -745,37 +739,17 @@ describe("customer.getAllCustomerForPratica, con clienti di altre pratiche", () 
     ])
   })
 
-  it("di una pratica senza clienti risponde NOT_FOUND anche se altre pratiche ne hanno", async () => {
+  it("di una pratica senza clienti restituisce una lista vuota anche se altre pratiche ne hanno (TD8 c)", async () => {
     const operator = await createOperator()
     const anna = await createCustomer({ id: "cliente-anna" })
     await createPractice({ customerId: anna.id, praticaId: "PR-ANNA" })
 
-    const error = await rejectionOf(
-      createTestCaller(operator).customer.getAllCustomerForPratica({
-        id: "PR-SENZA-CLIENTI",
-      })
-    )
-
-    expect(error).toMatchObject({
-      code: "NOT_FOUND",
-      message: "No customers found for this pratica",
+    const result = await createTestCaller(
+      operator
+    ).customer.getAllCustomerForPratica({
+      id: "PR-SENZA-CLIENTI",
     })
-  })
 
-  it("l'errore NOT_FOUND e un TRPCError senza `cause` (non porta l'errore interno), con `contactError` null", async () => {
-    const operator = await createOperator()
-    const anna = await createCustomer({ id: "cliente-anna" })
-    await createPractice({ customerId: anna.id, praticaId: "PR-ANNA" })
-
-    const error = await rejectionOf(
-      createTestCaller(operator).customer.getAllCustomerForPratica({
-        id: "PR-SENZA-CLIENTI",
-      })
-    )
-
-    expect(error).toBeInstanceOf(TRPCError)
-    expect((error as TRPCError).code).toBe("NOT_FOUND")
-    expect((error as TRPCError).cause).toBeUndefined()
-    expect(readContactError(error)).toBeNull()
+    expect(result).toEqual([])
   })
 })

@@ -3,7 +3,6 @@ import { z } from "zod"
 import { runTrpc } from "../../../../effect/trpc"
 import { customerSearchBy } from "@mito/domain/constants/customerSearch"
 import { advancedFilterSchema } from "@mito/domain/filters/advanced"
-import { customerErrorToTrpc } from "../../../../services/customer/errors"
 import {
   listAmbiti,
   listComuni,
@@ -54,9 +53,7 @@ export const getAllPraticaByCustomer = protectedProcedure
 
 export const getAllCustomerForPratica = protectedProcedure
   .input(getAllCustomerForPraticaInput)
-  .query(({ input }) =>
-    runTrpc(listCustomersOfPractice(input.id), customerErrorToTrpc)
-  )
+  .query(({ input }) => runTrpc(listCustomersOfPractice(input.id)))
 
 const getAllCustomersInput = z.object({
   page: z.number(),
