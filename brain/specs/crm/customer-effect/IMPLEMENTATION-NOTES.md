@@ -34,6 +34,14 @@ updated: 2026-10-24
 | `writes.pg.test.ts` con `pnpm run test:pg` | 6/6 | |
 | Mutanti della wave 1 sul codice inline (`scratchpad/mutate.py`, uno alla volta, file ripristinato con `git checkout`) | 40 uccisi su 41 | Il sopravvissuto è equivalente (T1, `countDistinct` → `count`) |
 | `prettier --check` sui file di test nuovi | verde | |
+| T6, T9, T7, T8: suite intera dopo ogni task | verde | 3071 test su PGlite, 95 su Postgres; `tsc --noEmit` verde |
+| T10.1, `grep` di AC1, AC3, AC4, AC5, AC6, AC13, AC14 a `30270b7` | vuoti | AC3 trova solo `services/customer/errors.ts` |
+| T10.1, AC11: `git diff -M dac26d9.. -- '**/_test/**'` | solo T6 e un fix di lint | Le rinomine di T6 (un import cambiato) e `expect.any(String) as string` in `writes.db.test.ts` (`838198c`) |
+| T10.1, AC15: `git diff --stat bc7aa2e.. -- src/app src/components packages/db packages/domain` | solo `customerSearch.ts` | Il commento della mappa delle colonne |
+| T10.2, mutanti sui servizi (`scratchpad/mutants-services.json`) | 41 uccisi su 42 | Gli stessi di T1–T5, rimappati su `queries.ts`, `filterOptions.ts`, `list.ts`, `profile.ts`, `errors.ts` e gli adapter, più `cause` aggiunto a `PracticeWithoutCustomers`. Sopravvive lo stesso equivalente |
+| T10.3, gate di CI in un worktree di scratchpad senza `.env*`, a `30270b7` | rosso su lint | `next lint` (e quindi `pnpm build`) si fermava su `no-unsafe-assignment` per `expect.any(String)` in `writes.db.test.ts`. Corretto in `838198c` con `as string`, come `customerOperator.db.test.ts:549` |
+| T10.3, a `838198c` | verde | `next lint`, `tsc --noEmit`, `pnpm db:check` (Migrations OK), `pnpm run test --run` con `TEST_DATABASE_URL` (3192 passati, 2 saltati), `pnpm build` con i placeholder, `pnpm api:build`, `pnpm api:smoke` (session 200, providers 200, export 401). `psql` non c'è su questa macchina, quindi il controllo dei database `mito_test_%` rimasti non è girato |
+| T10.4, prova nel browser su `mito_local` (10.000 clienti), `next dev` del worktree di gate, sessione con una riga in `session` e il cookie in `agent-browser` | verde | Clienti (ricerca per codice fiscale, filtro per sede, elenco dei file), dettaglio di un cliente con le sue pratiche, dettaglio di una pratica (`getAllCustomerForPratica`), Profilo → blacklist (`getCustomerUnderReview`), modifica anagrafica salvata (`updateCustomerFromDashboard`, riga scritta), cliente messo in blacklist (`handleCustomerBlackList`, `review`), Nuovo cliente (`getCustomersByFiscalCodeOrVatCode` + `insertCustomer`). Nessun errore dalle procedure di `customer`. Non provata: `updateLastEdit` dalla chat. A fine prova, il cliente creato e la riga di sessione sono stati cancellati, e C000002 è tornato com'era |
 
 ## Surprises and Decisions
 
@@ -42,6 +50,10 @@ updated: 2026-10-24
 - **Il default di `customers.id`** è la costante scritta nella migrazione. Il `nanoid()` dello schema cambia a ogni avvio del processo, quindi il test non può confrontarli: controlla solo che il secondo insert senza `id` fallisca per chiave duplicata.
 - **Due `toMatchObject` su righe** sono rimasti, tutti e due su controlli secondari: la riga del primo insert senza `id` (T3) e la riga scritta da `handleCustomerBlackList` su postgres-js (T5). La riga intera di quelle scritture la fissano gli altri test di T3, con `toEqual`.
 
+- **Il primo salvataggio nel browser non partiva** (nessun `POST`, il modale si chiudeva). La stessa prova sulla base `bc7aa2e` (porta 3006, stesso `mito_local`) salvava. Ripetuta sul branch con una sessione nuova di `agent-browser`, salvava anche lì: era lo stato della prima sessione, aperta direttamente sull'URL del modale, non il codice.
+- **Nuovo cliente non segnala il codice fiscale già presente.** Il form manda sempre il "Codice Cliente (NDG)" come `tempID`, e `getCustomersByFiscalCodeOrVatCode` con un `tempID` non vuoto cerca solo per `tempID` (AC9). Così un cliente con il codice fiscale di un altro si crea senza errore. È il comportamento di `bc7aa2e`, fissato dal test di T1 "con tempID di A e codice fiscale di B cerca solo per tempID"; la conseguenza per l'utente è aggiunta alla voce di TD8.
+
 ## Pre-existing Issues
 
+- **`export.callStats` fallisce su `mito_local`** con `invalid input value for enum task_status: "non risponde"`: la home lo chiama. Il router `export` non è toccato dal passo.
 - **ESLint non gira in questo worktree.** `.claude/worktrees/<nome>` sta dentro il checkout principale, quindi ESLint carica anche il suo `.eslintrc.cjs` e si ferma con `Plugin "prettier" was conflicted`. Il gate di T10 gira in un worktree di scratchpad fuori dal repo.
