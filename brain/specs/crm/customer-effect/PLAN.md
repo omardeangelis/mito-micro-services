@@ -442,9 +442,11 @@ G0 ─┬─ T1  ─┐
   - T1, T2, T4, i test esistenti di `customer/_test/` e quelli che leggono `getCustomerById` da fuori (`task/_test/bulkHandleTask.db`, `contact/_test/reassign.db`) verdi senza cambiare asserzioni;
   - `git grep -nE '@mito/db|ctx\.db|drizzle-orm|TRPCError' -- packages/server/src/api/routers/customer/GET` non trova niente;
   - `git grep -n "getCustomerByFC" -- packages src apps` non trova niente.
-- **status**: Planned
+- **status**: Done (2026-10-24)
 - **log**:
-- **files edited/created**:
+  1. Worker sonnet. `queries.ts` e `filterOptions.ts` con le query di oggi; le due letture con due query restano due `yield* query(...)` in serie. `PracticeWithoutCustomers` entra in `CustomerError` con un `case` suo (`NOT_FOUND`, nessun `cause`); `server-only` esce da `errors.ts`; `getCustomerByFC` tolta.
+  2. Rivisto dall'orchestratore: query, mappatura dei ruoli e `return []` invariati; `tsc` verde; suite intera verde (3071 su PGlite, 95 su Postgres); i `grep` di AC1, AC3, AC4, AC5, AC6, AC13 e AC14 non trovano niente (AC3 solo `errors.ts`); nei test cambia solo l'import di T6.
+- **files edited/created**: `packages/server/src/services/customer/queries.ts` (nuovo), `services/customer/filterOptions.ts` (nuovo), `services/customer/errors.ts`, `api/routers/customer/GET/index.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
