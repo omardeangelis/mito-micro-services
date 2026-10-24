@@ -12,6 +12,12 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 
 <!-- Entries are appended by create-spec (spec creation) and docs-maintenance (ingest). Format:
 
+## [2026-10-24] implement | Router `customer` su Effect (passo 2 della migrazione)
+- Spec: [[specs/crm/customer-effect/SPEC]] → `implemented`; note: [[specs/crm/customer-effect/IMPLEMENTATION-NOTES]]; review: [[specs/crm/customer-effect/REPORT]] (SHIP dopo le correzioni; prima DO NOT SHIP, 0 blocker)
+- Caratterizzazione prima del refactor (`dac26d9`), poi utility in `shared/`, servizi `profile`, `list`, `queries`, `filterOptions`; le 18 procedure sono adapter. Gate di CI e prova nel browser su `mito_local` verdi
+- La review ha rafforzato i test in tre giri (input parziali, ordine, righe estranee, parametri di `getAllCustomers`, `id` inesistenti); TD8 resta `[PREVISTO]` fino al merge
+- Da fare: `docs-maintenance` (percorsi delle pagine del dominio, AC16), PR verso `dev`
+
 ## [2026-10-24] plan | Router `customer` su Effect (passo 2 della migrazione)
 - Spec: [[specs/crm/customer-effect/SPEC]] (rivista dopo la verifica: DO NOT SHIP, 0 blocker, 5 major), piano: [[specs/crm/customer-effect/PLAN]]
 - 11 task in una PR, dopo il gate G0, verificati dall'`adversarial-verifier` (DO NOT SHIP, 0 blocker, 2 major, corretti): caratterizzazione di risposte, righe intere, righe scritte, errori e middleware delle 18 procedure con i mutanti sul codice inline, `*.pg.test.ts` sulle `update` senza `id`, utility in `shared/`, servizi `list`, `queries`, `filterOptions`, `profile`, gate con mutanti, prova nel browser e review
@@ -306,10 +312,3 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 - Verdict: DO NOT SHIP (prima verifica)
 - Impact: critical
 - Verifiers: 9 (2 blockers, 8 major)
-
-## [2026-09-29] review | Sezione Contatti — PR2, verifiche successive
-- Report: [[specs/crm/sezione-contatti/REPORT]] (round PR2)
-- Scope: spec
-- Verdict: SHIP (dopo le correzioni)
-- Impact: critical
-- Verifiers: 3 nella seconda verifica, poi 4 su v9 (0 blocker aperti)

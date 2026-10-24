@@ -84,3 +84,4 @@
 - [Inline to runTrpc error diff](feedback_inline_to_runtrpc_error_differential.md) — DbError mirrors code so cause.code tests are blind; base/head probe of cause keys, HTTP body, logs
 - [Router type contract differential](feedback_router_type_contract_differential.md) — print inferRouterInputs/Outputs via TS API in base+head, diff; print literals first or enums vanish
 - [ORDER BY removal survivors](feedback_order_by_removal_survivors.md) — alphabetical ids hide a missing orderBy; DISTINCT on tiny tables sorts anyway; unmatched-key fallthrough mutant
+- [Two-row fixtures, id-order sorts](feedback_two_row_fixtures_and_id_order.md) — no distractor rows and id-ordered sort fixtures hide filter-removal and sort-column mutants

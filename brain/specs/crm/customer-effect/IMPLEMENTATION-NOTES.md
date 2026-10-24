@@ -5,6 +5,7 @@ spec: customer-effect
 links:
   - "[[specs/crm/customer-effect/SPEC]]"
   - "[[specs/crm/customer-effect/PLAN]]"
+  - "[[specs/crm/customer-effect/REPORT]]"
   - "[[chore/migrazione-effect]]"
 ingested: false
 last_ingested: null
@@ -16,13 +17,24 @@ updated: 2026-10-24
 
 ## Summary
 
-- Branch `claude/migrazione-customer`, da `dev` a `bc7aa2e`. Il primo commit (`ae5f63d`) porta SPEC, PLAN e TD8 `[PREVISTO]`.
+- Branch `claude/migrazione-customer`, da `dev` a `bc7aa2e`, non pushato. Il primo commit (`ae5f63d`) porta SPEC, PLAN e TD8 `[PREVISTO]`.
+- Un commit per fase:
+  - `dac26d9`: la caratterizzazione (T1–T5), prima di ogni cambio di produzione;
+  - `99e363c`: T6, utility in `shared/`;
+  - `4166150`: T9, `profile.ts`;
+  - `bb9e777`: T7, `list.ts`;
+  - `30270b7`: T8, `queries.ts`, `filterOptions.ts` e `PracticeWithoutCustomers`;
+  - `838198c`: fix di lint in un test;
+  - `28ee611`: note e TD8;
+  - `2ab01de`, `c2ed77a`, `7cb62a9`: le correzioni della review.
+- Le 18 procedure di `customer` sono adapter dei servizi di `packages/server/src/services/customer/`, a comportamento invariato. Lo provano i test di caratterizzazione, verdi sul codice di `dac26d9` e sul branch, e i confronti fra base e branch della review.
+- Review avversariale: **SHIP** dopo le correzioni. Al primo giro era DO NOT SHIP, con 0 BLOCKER ([[specs/crm/customer-effect/REPORT]]).
 
 ## Execution Mode
 
 - Mode: `parallel`, per le wave del PLAN §10.
 - Delegation: `supervised`. `complexity` → tier: `low` → haiku, `medium` → sonnet. I worker della wave 1 scrivono solo i file di test e li fanno girare sul codice di `bc7aa2e`. I mutanti li applica e li fa girare l'orchestratore, uno alla volta: i worker lavorano in parallelo sullo stesso albero, e un mutante di uno romperebbe i test degli altri.
-- Escalations: nessuna, per ora.
+- Escalations: nessuna. Nessun worker ha avuto bisogno di una proposta di correzione. Le correzioni della review sono andate a un worker sonnet (il terzo giro) o all'orchestratore (i primi due, pochi test).
 
 ## Sanity Checks
 
@@ -34,6 +46,9 @@ updated: 2026-10-24
 | `writes.pg.test.ts` con `pnpm run test:pg` | 6/6 | |
 | Mutanti della wave 1 sul codice inline (`scratchpad/mutate.py`, uno alla volta, file ripristinato con `git checkout`) | 40 uccisi su 41 | Il sopravvissuto è equivalente (T1, `countDistinct` → `count`) |
 | `prettier --check` sui file di test nuovi | verde | |
+| Test rafforzati dopo la review, sul codice di `dac26d9` (worktree di scratchpad con i test del branch) | verdi | Giro 1: 27 + 6; giro 2: 187 + 6; giro 3: 249 + 8 (PGlite + Postgres) |
+| Mutanti della review: quelli sopravvissuti a v5 nei tre giri, rifatti dall'orchestratore | tutti uccisi | Giro 1: 4 (due vivi solo sul file `pg`, dove il seed ha colonne `null`; li uccide `writes.db`); giro 2: 5 su 5; giro 3: 42 su 42 (le liste e lo script di v5) |
+| Gate a `7cb62a9`, nel worktree di gate | verde | `next lint`, `tsc --noEmit`, `pnpm db:check`, `pnpm run test --run` con `TEST_DATABASE_URL` (3262 passati, 2 saltati). `pnpm build`, `api:build` e `api:smoke` sono di `838198c`: dopo cambiano solo test e documenti |
 | T6, T9, T7, T8: suite intera dopo ogni task | verde | 3071 test su PGlite, 95 su Postgres; `tsc --noEmit` verde |
 | T10.1, `grep` di AC1, AC3, AC4, AC5, AC6, AC13, AC14 a `30270b7` | vuoti | AC3 trova solo `services/customer/errors.ts` |
 | T10.1, AC11: `git diff -M dac26d9.. -- '**/_test/**'` | solo T6 e un fix di lint | Le rinomine di T6 (un import cambiato) e `expect.any(String) as string` in `writes.db.test.ts` (`838198c`) |
@@ -55,6 +70,7 @@ updated: 2026-10-24
 
 ## Deviations From the Plan
 
+- **`$simplify` non è girato.** `implement-spec` lo chiede dopo i task. Qui le query sono copiate dal router così come sono, apposta (AC2, D5), e la regola del §4 di [[chore/migrazione-effect]] vuole refactor e pulizie in PR diverse. Una passata di semplificazione sui servizi nuovi va in una PR a parte, dopo il merge.
 - **TD8 resta `[PREVISTO]` nel commit della PR.** Il PLAN (T10.6 e il NIT del §16) la portava a `[OPEN]` nel commit della PR; AC12 della SPEC dice `[OPEN]` al merge in `dev`, e vince la SPEC (rilievo MAJOR di v7). Va portata a `[OPEN]` quando la PR è unita.
 - **Asserzioni cambiate in test di questo branch, dopo `dac26d9`.** Non sono asserzioni preesistenti, e AC11 vale per quelle. (1) `838198c`: `expect.any(String) as string` in `writes.db.test.ts`, un cast di tipo chiesto da `next lint`, che esbuild cancella. (2) `2ab01de`, le correzioni della review (sotto), verdi sul codice di `dac26d9`: in `writes.pg.test.ts` i due `toMatchObject` sulle righe scritte da `handleCustomerBlackList` e `updateCustomerFromDashboard` diventano confronti con la riga intera, e l'input `source` di `updateCustomerFromDashboard` passa da `inbound` (uguale al seed, quindi invisibile) a `digital`; in `writes.db.test.ts` e `queries.db.test.ts` si aggiunge un test ciascuno. Nessuna asserzione dei test che c'erano a `bc7aa2e` è cambiata.
 - **Correzioni dopo la review** (verdi sia su `dac26d9` sia sul branch):
@@ -73,7 +89,37 @@ updated: 2026-10-24
 
 - **L'`ORDER BY` delle quattro liste dei filtri non si vede nei test.** Con poche righe Postgres fa `Sort` + `Unique` per il `DISTINCT` e restituisce le righe ordinate anche senza `orderBy`: togliere l'`orderBy` resta verde, invertirlo (`desc`) no. Servirebbe una tabella abbastanza grande da far scegliere al planner un `HashAggregate`. Il codice dell'`orderBy` è identico a quello inline (review v2, confronto fra base e branch).
 
+## Acceptance Criteria Status
+
+| Criterion | Status | Notes |
+|-----------|--------|-------|
+| AC1 | Met | `grep` vuoto |
+| AC2 | Met | Confronti fra base e branch di v1, v2 e v3 (tipi, 958 letture, 21 scritture, errori via HTTP) |
+| AC3 | Met | `TRPCError` solo in `services/customer/errors.ts` |
+| AC4 | Met | `grep` vuoto |
+| AC5 | Met | `grep` vuoto; parametri espliciti, nessun `actor` nei servizi delle `protectedProcedure` |
+| AC6 | Met | `grep` vuoto |
+| AC7 | Met | Righe intere per le 18 procedure e per le scritture; rafforzate in tre giri |
+| AC8 | Met | `procedures.db.test.ts`, `queries.db.test.ts` |
+| AC9 | Met | Tutte le stranezze fissate |
+| AC10 | Met | `writes.pg.test.ts`, 8 test |
+| AC11 | Met | Nessuna asserzione dei test di `bc7aa2e` cambiata; le eccezioni sono in test di questo branch (Deviations) |
+| AC12 | Met | TD8 `[PREVISTO]`; diventa `[OPEN]` al merge in `dev` |
+| AC13 | Met | |
+| AC14 | Met | |
+| AC15 | Met | Solo il commento di `customerSearch.ts` |
+| AC16 | Unmet in part | [[chore/migrazione-effect]] aggiornato; le due pagine del dominio citano ancora `api/routers/utils/advancedFilters.ts`: le aggiorna `docs-maintenance`, che non è ancora girato |
+| AC17 | Met | Gate verdi (sopra) |
+
 ## Pre-existing Issues
 
 - **`export.callStats` fallisce su `mito_local`** con `invalid input value for enum task_status: "non risponde"`: la home lo chiama. Il router `export` non è toccato dal passo.
 - **ESLint non gira in questo worktree.** `.claude/worktrees/<nome>` sta dentro il checkout principale, quindi ESLint carica anche il suo `.eslintrc.cjs` e si ferma con `Plugin "prettier" was conflicted`. Il gate di T10 gira in un worktree di scratchpad fuori dal repo.
+
+## Remaining Work
+
+- **`docs-maintenance`** sulla cartella: i percorsi delle due pagine del dominio (AC16) e l'ingest di `REPORT.md`.
+- **La PR verso `dev`**, quando Omar la chiede. Prima: il merge di `dev` nel branch, con i test ripetuti se `dev` ha toccato `customer/` (PLAN §5). Nessuna migrazione nel diff.
+- **Al merge:** TD8 a `[OPEN]` in [[chore/migrazione-effect]].
+- **Leonardo** guarda i test di AC9 su `insertCustomer` (checklist del REPORT, punto 5).
+- **Non provato nel browser:** `updateLastEdit` dalla chat.

@@ -1,9 +1,11 @@
 ---
 domain: crm
 type: spec
-status: approved
+status: implemented
 links:
   - "[[specs/crm/customer-effect/PLAN]]"
+  - "[[specs/crm/customer-effect/IMPLEMENTATION-NOTES]]"
+  - "[[specs/crm/customer-effect/REPORT]]"
   - "[[chore/migrazione-effect]]"
   - "[[specs/crm/filtri-sql-sicuri/SPEC]]"
   - "[[specs/crm/gestione-operatori/SPEC]]"
