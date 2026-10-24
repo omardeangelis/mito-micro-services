@@ -30,8 +30,8 @@ import {
   type CustomerSearchBy,
   customerSearchBy,
 } from "@mito/domain/constants/customerSearch"
-import { containsPattern } from "../../utils/index"
-import { advancedFiltersWhere } from "../../utils/advancedFilters"
+import { containsPattern } from "../../../../shared/sql"
+import { advancedFiltersWhere } from "../../../../shared/advancedFilters"
 import {
   advancedFilterSchema,
   CUSTOMER_FILTER_QUERY_MAP,

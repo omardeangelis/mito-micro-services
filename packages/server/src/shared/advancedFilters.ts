@@ -18,7 +18,7 @@ import {
   operatorsFor,
   validateAndFormatDate,
 } from "@mito/domain/filters/advanced"
-import { containsPattern } from "./index"
+import { containsPattern } from "./sql"
 
 // I filtri avanzati `{ field, op, value }` tradotti in condizioni drizzle.
 // Colonna e operatore si cercano in `Map` chiuse, il valore arriva al SQL
