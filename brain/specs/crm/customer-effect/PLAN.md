@@ -513,7 +513,7 @@ G0 ─┬─ T1  ─┐
      - `IMPLEMENTATION-NOTES.md`.
   7. **PR verso `dev`** solo quando Omar la chiede, dopo il merge di `dev` nel branch (§5).
 - **validation**: tutti i punti annotati in `IMPLEMENTATION-NOTES.md`; REPORT SHIP.
-- **status**: Done (2026-10-24), tranne `docs-maintenance` e la PR, che aspettano Omar
+- **status**: Done (2026-10-24), tranne la PR, che aspetta Omar; `docs-maintenance` girato il 2026-10-24
 - **log**:
   1. T10.1: i `grep` della SPEC e i controlli di AC11 e AC15 a `30270b7`, vuoti o come previsti (dettaglio in `IMPLEMENTATION-NOTES.md`).
   2. T10.2: 42 mutanti sui servizi e sugli adapter, 41 uccisi; sopravvive lo stesso equivalente di T1.

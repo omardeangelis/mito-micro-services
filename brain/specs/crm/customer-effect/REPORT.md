@@ -14,8 +14,8 @@ links:
   - "[[specs/crm/customer-effect/SPEC]]"
   - "[[specs/crm/customer-effect/PLAN]]"
   - "[[specs/crm/customer-effect/IMPLEMENTATION-NOTES]]"
-ingested: false
-last_ingested: null
+ingested: true
+last_ingested: 2026-10-24
 created: 2026-10-24
 updated: 2026-10-24
 ---

@@ -12,6 +12,7 @@ links:
   - "[[tech-debt/crm/filtri-sql-sicuri]]"
   - "[[domains/crm/concepts/filtro-avanzato]]"
   - "[[domains/crm/concepts/colonne-filtrabili]]"
+  - "[[specs/crm/customer-effect/SPEC]]"
 created: 2026-10-24
 updated: 2026-10-24
 ---
@@ -63,7 +64,7 @@ flowchart TD
 - Le date si legano come testo `aaaa-mm-gg`, senza l'encoder della colonna: Postgres le converte nel fuso della sessione (`Europe/Rome`), come il letterale di prima (D11).
 - `getAllPratiche` è passata a Effect a comportamento invariato fuori dai filtri (AC12), provata da test di caratterizzazione scritti prima.
 - Rispetto a prima cambiano per scelta alcuni risultati: l'elenco è in [[domains/crm/concepts/filtro-avanzato]] e nel §13 di [[specs/crm/filtri-sql-sicuri/PLAN]].
-- Codice: `packages/domain/src/filters/advanced.ts` (mappe, tipi, operatori, lettura dell'URL), `packages/server/src/api/routers/utils/advancedFilters.ts` (traduttore), `src/components/custom/table/PopoverFilter.tsx` (popover).
+- Codice: `packages/domain/src/filters/advanced.ts` (mappe, tipi, operatori, lettura dell'URL), `packages/server/src/shared/advancedFilters.ts` (traduttore; spostato da `api/routers/utils/` con [[specs/crm/customer-effect/SPEC]]), `src/components/custom/table/PopoverFilter.tsx` (popover).
 
 ## [Source: REPORT]
 

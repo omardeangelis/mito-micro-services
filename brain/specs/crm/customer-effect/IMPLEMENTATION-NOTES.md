@@ -7,8 +7,13 @@ links:
   - "[[specs/crm/customer-effect/PLAN]]"
   - "[[specs/crm/customer-effect/REPORT]]"
   - "[[chore/migrazione-effect]]"
-ingested: false
-last_ingested: null
+  - "[[domains/crm/flows/controllo-dei-duplicati-di-un-cliente-nuovo]]"
+  - "[[domains/crm/flows/filtro-avanzato-di-clienti-e-pratiche]]"
+  - "[[domains/crm/concepts/codici-del-cliente]]"
+  - "[[domains/crm/concepts/filtro-avanzato]]"
+  - "[[tech-debt/crm/customer-effect]]"
+ingested: true
+last_ingested: 2026-10-24
 created: 2026-10-24
 updated: 2026-10-24
 ---
@@ -111,7 +116,7 @@ updated: 2026-10-24
 | AC13 | Met | |
 | AC14 | Met | |
 | AC15 | Met | Solo il commento di `customerSearch.ts` |
-| AC16 | Unmet in part | [[chore/migrazione-effect]] aggiornato; le due pagine del dominio citano ancora `api/routers/utils/advancedFilters.ts`: le aggiorna `docs-maintenance`, che non è ancora girato |
+| AC16 | Met | [[chore/migrazione-effect]] aggiornato; le due pagine del dominio citano `packages/server/src/shared/advancedFilters.ts` (`docs-maintenance` del 2026-10-24) |
 | AC17 | Met | Gate verdi (sopra) |
 
 ## Pre-existing Issues
@@ -121,8 +126,7 @@ updated: 2026-10-24
 
 ## Remaining Work
 
-- **`docs-maintenance`** sulla cartella: i percorsi delle due pagine del dominio (AC16) e l'ingest di `REPORT.md`.
-- **La PR verso `dev`**, quando Omar la chiede. Prima: il merge di `dev` nel branch, con i test ripetuti se `dev` ha toccato `customer/` (PLAN §5). Nessuna migrazione nel diff.
+- **La PR verso `dev`**, quando Omar la chiede. La descrizione deve dire che la correzione della ricerca per codici (`b033b65`) è un cambio di comportamento voluto, in un commit a sé. Prima: il merge di `dev` nel branch, con i test ripetuti se `dev` ha toccato `customer/` (PLAN §5). Nessuna migrazione nel diff.
 - **Al merge:** TD8 a `[OPEN]` in [[chore/migrazione-effect]].
 - **Leonardo** guarda i test di AC9 su `insertCustomer` (checklist del REPORT, punto 5).
 

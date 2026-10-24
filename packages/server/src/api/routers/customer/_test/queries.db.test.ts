@@ -150,7 +150,10 @@ describe("customer.getCustomersByFiscalCodeOrVatCode", () => {
       fiscalCode: "BNCLRA85M50F205K",
       vatCode: "IT09876543210",
     })
-    await createCustomer({ id: "cliente-carla", fiscalCode: "CRLVRD90C41L219X" })
+    await createCustomer({
+      id: "cliente-carla",
+      fiscalCode: "CRLVRD90C41L219X",
+    })
 
     const result = await createTestCaller(
       operator
@@ -168,36 +171,33 @@ describe("customer.getCustomersByFiscalCodeOrVatCode", () => {
   it.each([
     ["il codice fiscale", { fiscalCode: "BNCLRA85M50F205K" }],
     ["la partita IVA", { vatCode: "09876543210" }],
-  ])(
-    "con tempID di A e %s di B trova tutti e due",
-    async (_code, codes) => {
-      const operator = await createOperator()
-      const anna = await createCustomer({
-        id: "cliente-anna",
-        tempID: "TMP-ANNA",
-        fiscalCode: "RSSNNA80A41H501Z",
-        vatCode: "01234567890",
-      })
-      const bruno = await createCustomer({
-        id: "cliente-bruno",
-        tempID: "TMP-BRUNO",
-        fiscalCode: "BNCLRA85M50F205K",
-        vatCode: "09876543210",
-      })
+  ])("con tempID di A e %s di B trova tutti e due", async (_code, codes) => {
+    const operator = await createOperator()
+    const anna = await createCustomer({
+      id: "cliente-anna",
+      tempID: "TMP-ANNA",
+      fiscalCode: "RSSNNA80A41H501Z",
+      vatCode: "01234567890",
+    })
+    const bruno = await createCustomer({
+      id: "cliente-bruno",
+      tempID: "TMP-BRUNO",
+      fiscalCode: "BNCLRA85M50F205K",
+      vatCode: "09876543210",
+    })
 
-      const result = await createTestCaller(
-        operator
-      ).customer.getCustomersByFiscalCodeOrVatCode({
-        tempID: "TMP-ANNA",
-        ...codes,
-      })
+    const result = await createTestCaller(
+      operator
+    ).customer.getCustomersByFiscalCodeOrVatCode({
+      tempID: "TMP-ANNA",
+      ...codes,
+    })
 
-      expect(result.sort(byId)).toEqual([
-        await customerRow(anna.id),
-        await customerRow(bruno.id),
-      ])
-    }
-  )
+    expect(result.sort(byId)).toEqual([
+      await customerRow(anna.id),
+      await customerRow(bruno.id),
+    ])
+  })
 
   it.each([
     ["il codice fiscale", { fiscalCode: "BNCLRA85M50F205K" }],

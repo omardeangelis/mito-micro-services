@@ -12,6 +12,7 @@ links:
   - "[[tech-debt/crm/filtri-sql-sicuri]]"
   - "[[domains/crm/flows/filtro-avanzato-di-clienti-e-pratiche]]"
   - "[[domains/crm/concepts/colonne-filtrabili]]"
+  - "[[specs/crm/customer-effect/SPEC]]"
 created: 2026-10-24
 updated: 2026-10-24
 ---
@@ -57,5 +58,5 @@ AC4 e AC7 vincono sulla parità dei link salvati (AC9):
 - Prima della riforma il browser componeva una stringa SQL (`createSQLQuery`) che le procedure eseguivano con `sql.raw`: iniezione arbitraria per qualunque operatore, con il ruolo owner del database. `sqlFilter` è sparito dall'input, e in `src/lib/utils/filters.ts` non c'è più un costruttore di SQL (AC1, AC10, AC11).
 - Lo schema zod (`advancedFilterSchema`) accetta stringhe libere, perché una voce non valida si scarta invece di invalidare la richiesta. Un `value` non stringa fa però fallire l'intera richiesta: fallisce chiuso, follow-up in [[tech-debt/crm/filtri-sql-sicuri]].
 - `validateAndFormatDate` rilegge la data in UTC: con i getter locali, a ovest di UTC rifiutava ogni data (correzione della review, `9c0d770`).
-- Codice: `packages/domain/src/filters/advanced.ts` (`advancedFilterSchema`, `parseFilterParam`, `parseFilterParams`, `validateAndFormatDate`), `packages/server/src/api/routers/utils/advancedFilters.ts` (`advancedFiltersWhere`).
+- Codice: `packages/domain/src/filters/advanced.ts` (`advancedFilterSchema`, `parseFilterParam`, `parseFilterParams`, `validateAndFormatDate`), `packages/server/src/shared/advancedFilters.ts` (`advancedFiltersWhere`; fino al passo 2 di [[chore/migrazione-effect]] era in `packages/server/src/api/routers/utils/`, spostato da [[specs/crm/customer-effect/SPEC]]).
 - Review SHIP, critical: [[specs/crm/filtri-sql-sicuri/REPORT]].

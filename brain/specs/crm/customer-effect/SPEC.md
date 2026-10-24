@@ -10,6 +10,8 @@ links:
   - "[[specs/crm/filtri-sql-sicuri/SPEC]]"
   - "[[specs/crm/gestione-operatori/SPEC]]"
   - "[[specs/crm/sezione-contatti/SPEC]]"
+ingested: true
+last_ingested: 2026-10-24
 created: 2026-10-24
 updated: 2026-10-24
 ---

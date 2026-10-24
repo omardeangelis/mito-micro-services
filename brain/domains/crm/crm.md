@@ -27,13 +27,16 @@ links:
   - "[[domains/crm/flows/filtro-avanzato-di-clienti-e-pratiche]]"
   - "[[domains/crm/concepts/filtro-avanzato]]"
   - "[[domains/crm/concepts/colonne-filtrabili]]"
+  - "[[specs/crm/customer-effect/SPEC]]"
+  - "[[domains/crm/flows/controllo-dei-duplicati-di-un-cliente-nuovo]]"
+  - "[[domains/crm/concepts/codici-del-cliente]]"
 created: 2026-10-23
 updated: 2026-10-24
 ---
 
 # CRM — Mappa del dominio
 
-Il dominio `crm` è il gestionale MITO: clienti, pratiche, contatti e gli operatori che ci lavorano. Questa mappa elenca le pagine scritte finora dall'ingest. Oggi copre [[specs/crm/gestione-operatori/SPEC]], [[specs/crm/sicurezza-deploy-staging/SPEC]] (il deploy di staging) [[specs/crm/export-chiamate/SPEC]] (l'export delle chiamate) e [[specs/crm/filtri-sql-sicuri/SPEC]] (i filtri avanzati di Clienti e Pratiche): le altre spec del CRM sono in [[specs/crm/crm-specs]] e non sono ancora ingerite.
+Il dominio `crm` è il gestionale MITO: clienti, pratiche, contatti e gli operatori che ci lavorano. Questa mappa elenca le pagine scritte finora dall'ingest. Oggi copre [[specs/crm/gestione-operatori/SPEC]], [[specs/crm/sicurezza-deploy-staging/SPEC]] (il deploy di staging) [[specs/crm/export-chiamate/SPEC]] (l'export delle chiamate) [[specs/crm/filtri-sql-sicuri/SPEC]] (i filtri avanzati di Clienti e Pratiche) e [[specs/crm/customer-effect/SPEC]] (il router `customer` su Effect, con il controllo dei duplicati di un cliente nuovo): le altre spec del CRM sono in [[specs/crm/crm-specs]] e non sono ancora ingerite.
 
 - **Contratto:** [[domains/crm/crm-contract]] (Owns, Does Not Own, Invariants).
 
@@ -50,6 +53,7 @@ Il dominio `crm` è il gestionale MITO: clienti, pratiche, contatti e gli operat
 | [[domains/crm/flows/esito-non-risponde-e-ritorno-in-coda\|Esito "non risponde"]] | L'operatore segna "non risponde" e il contatto resta in coda | implemented |
 | [[domains/crm/flows/export-chiamate-per-operatore-admin\|Export chiamate per operatore]] | L'admin sceglie un periodo e vede numeri, grafici e file Excel per operatore | implemented |
 | [[domains/crm/flows/filtro-avanzato-di-clienti-e-pratiche\|Filtro avanzato di Clienti e Pratiche]] | Popover → URL `filter=` → voci come dati → mappa chiusa, operatore per tipo, valore legato; voci non valide scartate | implemented |
+| [[domains/crm/flows/controllo-dei-duplicati-di-un-cliente-nuovo\|Controllo dei duplicati di un cliente nuovo]] | Nuovo cliente e il cliente collegato di Nuova pratica cercano chi ha uno qualunque dei codici prima di creare | implemented |
 
 ## Concepts
 
@@ -65,6 +69,7 @@ Il dominio `crm` è il gestionale MITO: clienti, pratiche, contatti e gli operat
 | [[domains/crm/concepts/stato-del-contatto\|Stato del contatto]] | Solo lo stato `non risponde` e le sue transizioni (sintesi parziale) | implemented |
 | [[domains/crm/concepts/filtro-avanzato\|Filtro avanzato]] | La voce `{field, op, value}`, la convalida per tipo, i limiti e le differenze volute | implemented |
 | [[domains/crm/concepts/colonne-filtrabili\|Colonne filtrabili]] | Le mappe chiuse di Clienti e Pratiche, con tipo e operatori di ogni colonna | implemented |
+| [[domains/crm/concepts/codici-del-cliente\|Codici del cliente]] | NDG (`tempID`), codice fiscale, partita IVA: tipi, unicità, ricerca | implemented |
 
 ## Decisions
 
@@ -78,3 +83,4 @@ Nessuna ADR di dominio per ora. Le decisioni di ogni spec sono nel suo Decision 
 | [[specs/crm/sicurezza-deploy-staging/SPEC]] | [[specs/crm/sicurezza-deploy-staging/IMPLEMENTATION-NOTES]] | — | — |
 | [[specs/crm/export-chiamate/SPEC]] | [[specs/crm/export-chiamate/IMPLEMENTATION-NOTES]] | [[specs/crm/export-chiamate/REPORT]] | [[tech-debt/crm/export-chiamate]] |
 | [[specs/crm/filtri-sql-sicuri/SPEC]] | [[specs/crm/filtri-sql-sicuri/IMPLEMENTATION-NOTES]] | [[specs/crm/filtri-sql-sicuri/REPORT]] | [[tech-debt/crm/filtri-sql-sicuri]] |
+| [[specs/crm/customer-effect/SPEC]] | [[specs/crm/customer-effect/IMPLEMENTATION-NOTES]] | [[specs/crm/customer-effect/REPORT]] | [[tech-debt/crm/customer-effect]] |

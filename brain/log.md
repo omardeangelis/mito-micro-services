@@ -12,6 +12,12 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 
 <!-- Entries are appended by create-spec (spec creation) and docs-maintenance (ingest). Format:
 
+## [2026-10-24] ingest | Router `customer` su Effect (passo 2 della migrazione)
+- Source: [[specs/crm/customer-effect/SPEC]]
+- Flows written: 1 ([[domains/crm/flows/controllo-dei-duplicati-di-un-cliente-nuovo]]); aggiornato [[domains/crm/flows/filtro-avanzato-di-clienti-e-pratiche]] (percorso del traduttore, AC16)
+- Concepts written: 1 ([[domains/crm/concepts/codici-del-cliente]]); aggiornato [[domains/crm/concepts/filtro-avanzato]] (percorso)
+- Review ingested: [[specs/crm/customer-effect/REPORT]] (3 rilievi durevoli in [[tech-debt/crm/customer-effect]], uno già chiuso)
+
 ## [2026-10-24] implement | Router `customer` su Effect (passo 2 della migrazione)
 - Spec: [[specs/crm/customer-effect/SPEC]] → `implemented`; note: [[specs/crm/customer-effect/IMPLEMENTATION-NOTES]]; review: [[specs/crm/customer-effect/REPORT]] (SHIP dopo le correzioni; prima DO NOT SHIP, 0 blocker)
 - Caratterizzazione prima del refactor (`dac26d9`), poi utility in `shared/`, servizi `profile`, `list`, `queries`, `filterOptions`; le 18 procedure sono adapter. Gate di CI e prova nel browser su `mito_local` verdi
@@ -305,10 +311,3 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 - Verdict: DO NOT SHIP
 - Impact: critical
 - Verifiers: 7 (1 blockers, 4 major)
-
-## [2026-09-29] review | Sezione Contatti — PR2 "Pulizia e vincolo DB"
-- Report: [[specs/crm/sezione-contatti/REPORT]] (round PR2)
-- Scope: spec
-- Verdict: DO NOT SHIP (prima verifica)
-- Impact: critical
-- Verifiers: 9 (2 blockers, 8 major)
