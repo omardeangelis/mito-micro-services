@@ -8,6 +8,7 @@ links:
   - "[[specs/crm/gestione-operatori/SPEC]]"
   - "[[specs/crm/sicurezza-deploy-staging/SPEC]]"
   - "[[specs/crm/export-chiamate/SPEC]]"
+  - "[[specs/crm/import-pratiche/SPEC]]"
 created: 2026-09-24
 updated: 2026-10-23
 ---
@@ -24,3 +25,4 @@ Spec page map for the `crm` domain. Entry point for discovery before writing a n
 | [[specs/crm/gestione-operatori/SPEC\|gestione-operatori]] | Implemented sui branch (tranne la P2), con [[specs/crm/gestione-operatori/PLAN\|piano]] e [[specs/crm/gestione-operatori/REPORT\|review]]; PR e rilascio su staging da fare | `user` e `operator` su Effect (servizi + procedure adapter, middleware `operatorProcedure`/`adminProcedure` compresi) e disattivazione di un `OPERATORE` da parte di un admin: portafoglio passato a una destinazione scelta, sessioni cancellate, login rifiutato, "mai l'ultimo admin" sul cambio di ruolo. Preferenze di layout nei cookie del browser, non più sul server. Passo 1 di [[chore/migrazione-effect]]. |
 | [[specs/crm/sicurezza-deploy-staging/SPEC\|sicurezza-deploy-staging]] | Implemented | Deploy di staging più sicuro: controlli automatici sulle migrazioni (catena degli snapshot, ordine delle date, migrazioni che il migrator salterebbe), approvazione di Leonardo o Omar con la SQL in vista prima di applicarle, backup Cloud SQL subito prima, e un messaggio Slack a ogni deploy, riuscito, fallito o annullato. Prod esclusa. |
 | [[specs/crm/export-chiamate/SPEC\|export-chiamate]] | Implemented, unita su dev il 23/10/2026 (#57, #61, #65, #66, #67); [[specs/crm/export-chiamate/PLAN\|piano]] e [[specs/crm/export-chiamate/REPORT\|review]] (SHIP) | Export solo admin delle chiamate: per operatore e periodo, chiamate effettuate, risposte, appuntamenti fissati e non risposte, con grafici nella dashboard. Nuovo stato `non risponde` che resta in coda (#57, #61). Pilota della riscrittura in Effect. |
+| [[specs/crm/import-pratiche/SPEC\|import-pratiche]] | Approved, con [[specs/crm/import-pratiche/PLAN\|piano]] | Import dei file Wave e Standard riscritto: solo admin, anteprima con i numeri prima della conferma, tutto o niente, continua a scheda chiusa, storico degli import, report errori senza storage, ogni riga importata o segnalata. Logica in Effect con tRPC come trasporto; regole di conversione invariate. Passo 3 di [[chore/migrazione-effect]]. |
