@@ -36,8 +36,8 @@ const getCustomerByFiscalCodeInput = z
   })
   .partial()
   .refine(
-    (input) => !!input.fiscalCode || !!input.vatCode,
-    "Either fiscalCode or vatCode must be provided"
+    (input) => !!input.fiscalCode || !!input.vatCode || !!input.tempID,
+    "Either fiscalCode, vatCode or tempID must be provided"
   )
 
 export const getCustomersByFiscalCodeOrVatCode = protectedProcedure

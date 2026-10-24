@@ -14,7 +14,7 @@ import {
 // Caratterizzazione delle query di lettura del router `customer` (GET), prima
 // del refactor verso Effect: ogni test fissa la risposta che il codice da
 // oggi restituisce, riga intera compresa. La ricerca per codici cerca per
-// tutti i codici passati (TD8 b, corretto dopo il refactor)
+// tutti i codici passati, anche il solo tempID (TD8 b, corretto dopo il refactor)
 
 const byId = <T extends { id: string }>(a: T, b: T) => a.id.localeCompare(b.id)
 const byPraticaId = <T extends { praticaId: string }>(a: T, b: T) =>
@@ -352,20 +352,22 @@ describe("customer.getCustomersByFiscalCodeOrVatCode", () => {
     expect(result).toEqual([await customerRow(bruno.id)])
   })
 
-  it("solo con tempID riceve BAD_REQUEST, perché servono codice fiscale o partita IVA", async () => {
+  it("solo con tempID trova il cliente (TD8 b)", async () => {
     const operator = await createOperator()
-    await createCustomer({ id: "cliente-anna", tempID: "TMP-ANNA" })
+    const anna = await createCustomer({
+      id: "cliente-anna",
+      tempID: "TMP-ANNA",
+    })
+    await createCustomer({ id: "cliente-bruno", tempID: "TMP-BRUNO" })
 
-    const error = await rejectionOf(
-      createTestCaller(operator).customer.getCustomersByFiscalCodeOrVatCode({
-        tempID: "TMP-ANNA",
-      })
-    )
+    const result = await createTestCaller(
+      operator
+    ).customer.getCustomersByFiscalCodeOrVatCode({ tempID: "TMP-ANNA" })
 
-    expect(error).toMatchObject({ code: "BAD_REQUEST" })
+    expect(result).toEqual([await customerRow(anna.id)])
   })
 
-  it("senza codice fiscale e partita IVA riceve BAD_REQUEST", async () => {
+  it("senza nessun codice riceve BAD_REQUEST", async () => {
     const operator = await createOperator()
 
     const error = await rejectionOf(
