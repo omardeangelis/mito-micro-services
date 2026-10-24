@@ -1,3 +1,5 @@
+import { execFileSync } from "node:child_process"
+import { join } from "node:path"
 import { describe, expect, it } from "vitest"
 import {
   CUSTOMER_FILTER_MAP,
@@ -163,5 +165,21 @@ describe("validateAndFormatDate", () => {
     expect(validateAndFormatDate("2026-1-5")).toBe("2026-01-05")
     expect(validateAndFormatDate("2026-02-30")).toBeNull()
     expect(validateAndFormatDate("15/01/2026")).toBeNull()
+  })
+
+  it("non dipende dal fuso del processo: vale anche a ovest di UTC", () => {
+    // Ora la chiama anche il server. Il fuso si fissa all'avvio del processo,
+    // quindi il controllo gira in un Node a parte con TZ=America/New_York
+    const source = join(__dirname, "../advanced.ts")
+    const script = `
+      import { validateAndFormatDate as v } from ${JSON.stringify(source)}
+      console.log(JSON.stringify([v("2026-1-5"), v("2026-12-31"), v("2026-02-30")]))
+    `
+    const output = execFileSync(
+      process.execPath,
+      ["--import", "tsx", "--input-type=module", "--eval", script],
+      { env: { ...process.env, TZ: "America/New_York" }, encoding: "utf8" }
+    )
+    expect(JSON.parse(output)).toEqual(["2026-01-05", "2026-12-31", null])
   })
 })

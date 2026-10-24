@@ -104,8 +104,9 @@ function filterCondition(
     case "enum":
       return column.enumValues?.includes(value) ? eq(column, value) : undefined
     case "text":
-      // Su testo `eq` è "contiene"; il valore resta com'è, senza trim
-      return value.length > 0
+      // Su testo `eq` è "contiene"; il valore resta com'è, senza trim.
+      // Postgres rifiuta il byte NUL in un parametro: la voce si scarta
+      return value.length > 0 && !value.includes("\u0000")
         ? ilike(column, containsPattern(value))
         : undefined
     default: {

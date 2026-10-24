@@ -152,6 +152,25 @@ describe("PopoverDateFilter, operatori per tipo di colonna", () => {
   })
 })
 
+describe("PopoverDateFilter, controllo del valore per tipo di colonna", () => {
+  it("su un enum il valore è un selettore, non un campo di testo", async () => {
+    await openPopover(PRATICA_FILTER_MAP, ["state:eq:Liquidata"])
+    // Colonna, operatore e valore
+    expect(screen.getAllByRole("combobox")).toHaveLength(3)
+    expect(screen.queryByRole("textbox")).toBeNull()
+  })
+
+  it("su una data il campo ha il segnaposto aaaa-mm-gg, su un testo no", async () => {
+    await openPopover(CUSTOMER_FILTER_MAP, ["birthday_date:lt:1980-01-01"])
+    expect(screen.getByPlaceholderText("aaaa-mm-gg")).toBeTruthy()
+    cleanup()
+
+    await openPopover(CUSTOMER_FILTER_MAP, ["comune:eq:Roma"])
+    expect(screen.getByRole("textbox")).toBeTruthy()
+    expect(screen.queryByPlaceholderText("aaaa-mm-gg")).toBeNull()
+  })
+})
+
 describe("PopoverDateFilter, filtri scritti nell'URL", () => {
   it("scrive nome:op:valore, con la data completata degli zeri", async () => {
     router.push.mockClear()

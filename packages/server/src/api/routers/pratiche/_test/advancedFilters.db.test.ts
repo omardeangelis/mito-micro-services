@@ -222,6 +222,11 @@ describe("pratiche.getAllPratiche, un filtro valido per ogni colonna (AC6, AC7)"
     // 200 trova 200.00
     expect(await filtered(f("importo_rata", "eq", "200"))).toEqual(ids(c))
     expect(await filtered(f("importo_rata", "eq", "150.5"))).toEqual(ids(b))
+    // Senza la parte intera, come prima
+    expect(await filtered(f("importo_rata", "lt", ".5"))).toEqual({
+      ids: [],
+      total: 0,
+    })
     expect(await filtered(f("importo_rata", "eq", "150"))).toEqual({
       ids: [],
       total: 0,
@@ -330,11 +335,27 @@ describe("pratiche.getAllPratiche, voci non valide scartate (AC8)", () => {
       "un intero fuori dal range di integer",
       f("rate_totali", "gt", "2147483648"),
     ],
+    [
+      "un intero sotto il range di integer",
+      f("rate_totali", "gt", "-2147483649"),
+    ],
     ["un intero con i decimali", f("rate_pagate", "gt", "1.5")],
     ["una data che non esiste", f("data_liquidazione", "eq", "2026-02-30")],
+    ["un testo vuoto", f("region", "eq", "")],
+    // Postgres rifiuta il byte NUL in un parametro di testo
+    ["un testo con un byte NUL", f("region", "eq", "Lom\u0000bardia")],
   ])("%s", async (_, invalid) => {
     const { b, filtered, ids } = await seed()
     expect(await filtered(invalid, valid)).toEqual(ids(b))
+  })
+
+  it("un testo vuoto non toglie le pratiche con la colonna NULL", async () => {
+    const { a, b, c, d, practice, filtered, ids } = await seed()
+    // ILIKE '%%' terrebbe tutte tranne questa
+    const blank = await practice({ praticaId: "PR-C-005", region: null })
+    expect(await filtered(f("region", "eq", ""))).toEqual(
+      ids(a, b, c, d, blank)
+    )
   })
 
   it("numeri e date valgono dopo il trim", async () => {

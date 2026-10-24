@@ -177,11 +177,12 @@ export const validateAndFormatDate = (dateStr: string): string | null => {
   // Create a date object
   const date = new Date(`${year}-${month}-${day}`)
 
-  // Check if the date is valid
+  // Check if the date is valid. `aaaa-mm-gg` is parsed as UTC midnight, so it
+  // is read back in UTC: with the local getters every date fails west of UTC
   if (
-    date.getFullYear() !== parseInt(year, 10) ||
-    date.getMonth() + 1 !== parseInt(month, 10) ||
-    date.getDate() !== parseInt(day, 10)
+    date.getUTCFullYear() !== parseInt(year, 10) ||
+    date.getUTCMonth() + 1 !== parseInt(month, 10) ||
+    date.getUTCDate() !== parseInt(day, 10)
   ) {
     return null
   }

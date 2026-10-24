@@ -160,6 +160,7 @@ describe("customer.getAllCustomers, voci non valide scartate (AC8, AC9)", () => 
     ["un valore fuori dall'enum", f("source", "eq", "inesistente")],
     ["un intero non numerico", f("age", "gt", "abc")],
     ["un intero fuori dal range di smallint", f("age", "gt", "99999")],
+    ["un intero sotto il range di smallint", f("age", "gt", "-99999")],
     ["un intero con la virgola", f("age", "gt", "4,5")],
     ["un intero in notazione esponenziale", f("age", "gt", "1e3")],
     [
@@ -169,9 +170,20 @@ describe("customer.getAllCustomers, voci non valide scartate (AC8, AC9)", () => 
     ["una data dell'anno 0000", f("birthday_date", "lt", "0000-01-01")],
     ["una data in un altro formato", f("birthday_date", "lt", "15/01/2026")],
     ["un testo vuoto", f("occupazione", "eq", "")],
+    // Postgres rifiuta il byte NUL in un parametro di testo
+    ["un testo con un byte NUL", f("occupazione", "eq", "Inse\u0000gnante")],
   ])("%s", async (_, invalid) => {
     const { young, list, ids } = await seed()
     expect(await list([invalid, valid])).toEqual(ids(young))
+  })
+
+  it("un testo vuoto non toglie i clienti con la colonna NULL", async () => {
+    const { young, middle, old, list, ids } = await seed()
+    // ILIKE '%%' terrebbe tutti tranne questo
+    const blank = await createCustomer({ occupazione: null })
+    expect(await list([f("occupazione", "eq", "")])).toEqual(
+      ids(young, middle, old, blank)
+    )
   })
 
   it("numeri e date valgono dopo il trim, il testo resta com'è", async () => {

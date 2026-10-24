@@ -133,13 +133,27 @@ describe.skipIf(!hasTestDatabase)("filtri avanzati su Postgres vero", () => {
       expect(await filtered(f("age", "lt", "40"))).toEqual(ids(young))
     })
 
-    it("un intero fuori dal range di smallint si scarta senza errore, il filtro valido accanto vale (AC6)", async () => {
+    it("un intero fuori dal range di smallint, sopra o sotto, si scarta senza errore, il filtro valido accanto vale (AC6)", async () => {
       const { filtered, ids } = await seed()
       await createCustomer({ age: 30 })
       const middle = await createCustomer({ age: 40 })
 
+      for (const value of ["99999", "-99999"]) {
+        expect(
+          await filtered(f("age", "gt", value), f("age", "eq", "40")),
+          value
+        ).toEqual(ids(middle))
+      }
+    })
+
+    it("un testo con un byte NUL si scarta senza errore, il filtro valido accanto vale (AC8)", async () => {
+      const { filtered, ids } = await seed()
+      await createCustomer({ age: 30, comune: "Roma" })
+      const middle = await createCustomer({ age: 40, comune: "Roma" })
+
+      // Postgres rifiuta il byte NUL in un parametro di testo
       expect(
-        await filtered(f("age", "gt", "99999"), f("age", "eq", "40"))
+        await filtered(f("comune", "eq", "Ro\u0000ma"), f("age", "eq", "40"))
       ).toEqual(ids(middle))
     })
 
@@ -288,17 +302,20 @@ describe.skipIf(!hasTestDatabase)("filtri avanzati su Postgres vero", () => {
       expect(await filtered(f("rate_pagate", "gt", "10"))).toEqual(ids(c))
     })
 
-    it("un intero fuori dal range di integer si scarta senza errore, il filtro valido accanto vale (AC6)", async () => {
+    it("un intero fuori dal range di integer, sopra o sotto, si scarta senza errore, il filtro valido accanto vale (AC6)", async () => {
       const { filtered, ids, practice } = await seed()
       await practice({ praticaId: "PR-R-001", ratePagate: 1 })
       const b = await practice({ praticaId: "PR-R-002", ratePagate: 10 })
 
-      expect(
-        await filtered(
-          f("rate_pagate", "gt", "2147483648"),
-          f("rate_pagate", "eq", "10")
-        )
-      ).toEqual(ids(b))
+      for (const value of ["2147483648", "-2147483649"]) {
+        expect(
+          await filtered(
+            f("rate_pagate", "gt", value),
+            f("rate_pagate", "eq", "10")
+          ),
+          value
+        ).toEqual(ids(b))
+      }
     })
 
     it("enum: state è un uguale esatto (AC6)", async () => {
