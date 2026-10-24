@@ -30,15 +30,10 @@ async function signIn(userId: string) {
   return sessionToken
 }
 
-// The REST routes behind authCheck, with the method the Next.js app exports.
-// The dynamic segment of /api/export/[export] is `export` here
+// The REST routes behind authCheck, with the method the Next.js app exports
 const AUTHENTICATED: [string, string][] = [
   ["POST", "/api/export/download"],
   ["POST", "/api/export/importError"],
-  ["POST", "/api/export/export/fetchCall"],
-  ["POST", "/api/export/export/fetchDefault"],
-  ["POST", "/api/export/export/getMessages"],
-  ["POST", "/api/export/export/saveExport"],
   ["POST", "/api/import/create/customerToPratica"],
   ["POST", "/api/import/create/customers"],
   ["POST", "/api/import/create/practices"],
@@ -79,23 +74,6 @@ describe("route REST sul backend", () => {
     })
 
     expect(response.status).toBe(405)
-  })
-
-  it("con sessione l'export dei messaggi di nessuna chat risponde un risultato vuoto", async () => {
-    const operator = await createOperator()
-    const token = await signIn(operator.userId)
-
-    const response = await app.request("/api/export/export/getMessages", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        cookie: `${SESSION_COOKIE}=${token}`,
-      },
-      body: JSON.stringify({ chatIds: [] }),
-    })
-
-    expect(response.status).toBe(200)
-    expect(await response.json()).toEqual({ result: [] })
   })
 
   it("con sessione le preferenze della tabella clienti usano @/trpc/server e rispondono OK", async () => {
@@ -143,19 +121,21 @@ describe("route REST sul backend", () => {
       const token = await signIn(operator.userId)
 
       const response = await fetch(
-        `http://127.0.0.1:${port}/api/export/export/getMessages`,
+        `http://127.0.0.1:${port}/api/user/preferences?pref=ct`,
         {
           method: "POST",
           headers: {
             "content-type": "application/json",
             cookie: `${SESSION_COOKIE}=${token}`,
           },
-          body: JSON.stringify({ chatIds: [] }),
+          body: JSON.stringify({
+            preferences: { customerTableVisibleColumns: ["name", "surname"] },
+          }),
         }
       )
 
       expect(response.status).toBe(200)
-      expect(await response.json()).toEqual({ result: [] })
+      expect(await response.json()).toEqual({ message: "OK" })
     } finally {
       server.close()
     }

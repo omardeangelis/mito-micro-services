@@ -19,6 +19,32 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 - Gate di qualità (charter di `adversarial-verifier` in un agente a contesto pulito, 2 giri): primo giro DO NOT SHIP (2 blocker, 4 major), secondo giro DO NOT SHIP (1 blocker e 1 major rimasti, 1 major nuovo); tutti corretti senza terzo giro (budget di 2 tentativi): date seriali di Excel aggiunte a OQ2, attesa delle scritture concorrenti, uguaglianza di AC32 limitata alla conversione di una riga
 - 7 domande aperte per Leonardo, con i default
 
+## [2026-10-23] ingest | Export chiamate per operatore, solo admin
+- Source: [[specs/crm/export-chiamate/SPEC]]
+- Flows written: 2
+- Concepts written: 3
+- Review ingested: [[specs/crm/export-chiamate/REPORT]]
+
+## [2026-10-23] review | Export chiamate T6–T8 (PR #66 + #67)
+- Report: [[specs/crm/export-chiamate/REPORT]] (seconda sezione)
+- 3 pass (permessi su Opus, UI su Sonnet, rimozione su Haiku): SHIP dopo la correzione di 1 MAJOR e 2 MINOR
+- Follow-up sui permessi dello storage in [[tech-debt/crm/export-chiamate]]
+
+## [2026-10-23] review | Export chiamate T1–T5 (PR #65)
+- Rubric: [[specs/crm/export-chiamate/RUBRIC]]; report: [[specs/crm/export-chiamate/REPORT]]
+- 3 pass, tutti SHIP; corretti due rilievi (test AC21, ordine tra omonimi), due in [[tech-debt/crm/export-chiamate]]
+- PR di permessi: la rivede Leonardo
+
+## [2026-10-23] plan | Export chiamate per operatore, solo admin
+- Plan: [[specs/crm/export-chiamate/PLAN]]
+- 12 task in 4 PR (A: #61; B: dominio, servizio, procedura; C+D: UI e rimozione del vecchio export)
+- Gate: SHIP al secondo giro
+
+## [2026-10-23] spec | Export chiamate per operatore, solo admin
+- Created spec: [[specs/crm/export-chiamate/SPEC]]
+- Domain: crm
+- Status: Draft
+
 ## [2026-10-23] ingest | Sicurezza del deploy di staging
 - Source: [[specs/crm/sicurezza-deploy-staging/SPEC]]
 - Flows written: 2 (deploy-di-staging, pulizia-dei-backup-di-staging)
@@ -291,38 +317,3 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 - Verdict: DO NOT SHIP
 - Impact: critical
 - Verifiers: 6 (1 blocker, 8 major, più 1 major già presente in `authCheck`)
-
-## [2026-10-09] review | Staging su Vercel, accesso fuori produzione, Sentry solo in prod — secondo giro
-- Report: [[review/staging-accesso-sentry/REPORT]] (secondo giro)
-- Scope: standalone
-- Verdict: DO NOT SHIP
-- Impact: critical
-- Verifiers: 9 (3 blocker, 3 major)
-
-## [2026-10-09] review | Indirizzo dei cron da `CRON_BASE_URL` — secondo giro
-- Report: [[review/cron-base-url/REPORT]] (secondo giro)
-- Scope: standalone
-- Verdict: DO NOT SHIP
-- Impact: critical
-- Verifiers: 6 (1 blocker, 2 major); più 1 verificatore sulla correzione di `authCheck` (SHIP)
-
-## [2026-10-09] review | Indirizzo dei cron da `CRON_BASE_URL` — terzo giro
-- Report: [[review/cron-base-url/REPORT]] (terzo giro)
-- Scope: standalone
-- Verdict: DO NOT SHIP
-- Impact: critical
-- Verifiers: 5 rilanciati su 6 (1 blocker, 1 major)
-
-## [2026-10-09] review | Staging su Vercel, accesso fuori produzione, Sentry solo in prod — terzo giro
-- Report: [[review/staging-accesso-sentry/REPORT]] (terzo giro)
-- Scope: standalone
-- Verdict: DO NOT SHIP
-- Impact: critical
-- Verifiers: 6 rilanciati su 9 (3 major); durante il giro il proprietario sposta lo staging sul progetto Vercel `staging-mito-micro-services`
-
-## [2026-10-09] review | Indirizzo dei cron da `CRON_BASE_URL` — quarto giro
-- Report: [[review/cron-base-url/REPORT]] (quarto giro)
-- Scope: standalone
-- Verdict: DO NOT SHIP
-- Impact: critical
-- Verifiers: 3 rilanciati su 6 (2 major, tutte e due nei testi)

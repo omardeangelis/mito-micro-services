@@ -1,8 +1,8 @@
 import { createTRPCRouter } from "../../trpc"
-import { getTasksmessages } from "./GET/index"
+import { callStats } from "./GET/callStats"
 
 const exportRouter = createTRPCRouter({
-  getTasksmessages,
+  callStats,
 })
 
 export default exportRouter

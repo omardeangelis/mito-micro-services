@@ -23,13 +23,14 @@ const states = [
   "app.to",
   "caricato",
   "richiamare",
+  "non risponde",
   "erogata",
   "nessuno",
   "followup",
 ] as const
 
 // Written out by hand from the rules, not computed from the module.
-const toCall: State[] = ["chiamare", "followup"]
+const toCall: State[] = ["chiamare", "followup", "non risponde"]
 const outcome: State[] = [
   "app.to",
   "caricato",
@@ -42,6 +43,7 @@ const expectedKind = (from: State, to: State): Expected => {
   if (from === to) return "noop"
   if (to === "followup") return "reject"
   if (from === "followup" && to === "chiamare") return "reject"
+  if (from === "non risponde" && to === "chiamare") return "reject"
   if (toCall.includes(from) && outcome.includes(to)) return "close"
   if (outcome.includes(from) && to === "chiamare") return "reopen"
   return "persist"

@@ -16,6 +16,9 @@ export const calculatePriority = (task: TaskPriority) => {
   // Stato del Cliente
   if (task.state === "chiamare") {
     priority = 120
+  } else if (task.state === "non risponde") {
+    // Stays in the queue, right after the contacts never called
+    priority = 100
   } else if (task.state === "richiamare") {
     // Prossimità di scadenza dell'Alert
     if (task.deadline && new Date(task.deadline) < new Date()) {

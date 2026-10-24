@@ -18,6 +18,7 @@ export const taskStatus = [
   "app.to",
   "caricato",
   "richiamare",
+  "non risponde",
   "erogata",
   "nessuno",
   "followup",

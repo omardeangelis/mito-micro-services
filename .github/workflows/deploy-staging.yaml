@@ -166,6 +166,9 @@ jobs:
 
   Vercel-Deploy-Staging:
     needs: API-Deploy-Staging
+    # Without an if, GitHub skips this job whenever an earlier job in the
+    # chain was skipped, as Approve is on every deploy without migrations
+    if: ${{ !cancelled() && needs.API-Deploy-Staging.result == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:

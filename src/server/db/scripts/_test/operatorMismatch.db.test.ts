@@ -80,7 +80,7 @@ describe("contatti-operator-mismatch.sql", () => {
       closedAt,
     })
     const noOperatorOpen = await seed(bruno, null, { state: "chiamare" })
-    // `state` has no value: `closedCalls` leaves it out (`<> 'nessuno'` is not true)
+    // `state` has no value: the filter of the calls leaves it out (`<> 'nessuno'` is not true)
     const noOperatorNoState = await seed(anna, null, {
       state: null,
       closedAt,

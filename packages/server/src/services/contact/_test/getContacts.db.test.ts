@@ -1231,7 +1231,7 @@ describe("task.getContacts", () => {
       ],
       [
         "more states than there are",
-        { states: Array.from({ length: 9 }, () => "chiamare") },
+        { states: Array.from({ length: 10 }, () => "chiamare") },
       ],
       [
         "more than 100 operator ids",
