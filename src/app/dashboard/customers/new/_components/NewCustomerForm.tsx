@@ -1,5 +1,4 @@
 "use client"
-import { type PropsWithChildren } from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import {
@@ -125,11 +124,7 @@ const customerformSchema = insertCustomerSchema
 
 type CustomerInput = z.infer<typeof customerformSchema>
 
-type Props = PropsWithChildren<{
-  availableSedi: string[]
-}>
-
-export const NewCustomerForm = (props: Props) => {
+export const NewCustomerForm = () => {
   const form = useForm<CustomerInput>({
     resolver: zodResolver(customerformSchema),
     defaultValues: {
