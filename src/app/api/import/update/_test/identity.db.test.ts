@@ -10,7 +10,7 @@ import {
 import { eq } from "drizzle-orm"
 import { customers } from "@mito/db/schema/customers"
 import { migrateUpTo, resetDb, testDb } from "@/test/db"
-import { createCustomer } from "@/test/factories"
+import { createCustomer, createOperator } from "@/test/factories"
 import { type CustomerWriteWithInternalSort } from "../../process/_services/type"
 import { handleCustomerUpdate } from "../_services/updateCustomers"
 
@@ -76,16 +76,21 @@ afterEach(() => {
 
 describe("handleCustomerUpdate", () => {
   test("con A (CF X, P.IVA Y, codice 1) e B (P.IVA Y, codice 2) nel CRM, una riga con CF X, codice 1 e senza P.IVA aggiorna sia A sia B, e nessuno dei due cambia codice cliente", async () => {
+    const [mario, bianca] = [await createOperator(), await createOperator()]
     const a = await crmCustomer({
       tempID: "1",
       fiscalCode: "RSSMRA80A01H501U",
       vatCode: "01234567890",
       name: "Mario",
+      operatorId: mario.id,
+      createdAt: new Date("2023-01-10T09:00:00.000Z"),
     })
     const b = await crmCustomer({
       tempID: "2",
       vatCode: "01234567890",
       name: "Bianca",
+      operatorId: bianca.id,
+      createdAt: new Date("2023-05-20T09:00:00.000Z"),
     })
 
     await handleCustomerUpdate([
@@ -97,13 +102,23 @@ describe("handleCustomerUpdate", () => {
     ])
 
     const [updatedA, updatedB] = [await reload(a.id), await reload(b.id)]
-    expect(updatedA).toMatchObject({ tempID: "1", name: "MARIO AGGIORNATO" })
-    // Defect: the update matches A's VAT number too, and B becomes a copy of A
+    expect(updatedA).toMatchObject({
+      tempID: "1",
+      name: "MARIO AGGIORNATO",
+      operatorId: mario.id,
+      createdAt: a.createdAt,
+      lastImportUpdate: NOW,
+    })
+    // Defect: the update matches A's VAT number too, and B becomes a copy of
+    // A, creation date included; its code and operator stay
     expect(updatedB).toMatchObject({
       tempID: "2",
       name: "MARIO AGGIORNATO",
       fiscalCode: "RSSMRA80A01H501U",
       vatCode: "01234567890",
+      operatorId: bianca.id,
+      createdAt: a.createdAt,
+      lastImportUpdate: NOW,
     })
   })
 
