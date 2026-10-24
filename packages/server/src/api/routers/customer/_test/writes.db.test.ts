@@ -12,7 +12,7 @@ import { chat } from "@mito/db/schema/chat"
 import { customers } from "@mito/db/schema/customers"
 import { createTestCaller, rejectionOf } from "@/test/caller"
 import { customerRow, migrateUpTo, resetDb, testDb } from "@/test/db"
-import { createCustomer, createOperator, createUser } from "@/test/factories"
+import { createCustomer, createOperator } from "@/test/factories"
 
 // Caratterizzazione delle 4 scritture del router `customer`
 // (insertCustomer, updateCustomerFromDashboard, handleCustomerBlackList,
@@ -158,11 +158,11 @@ afterEach(() => {
 const callAtT1 = () => vi.setSystemTime(T1)
 
 describe("customer.insertCustomer", () => {
-  it("accetta ogni colonna di customers, operatorId compreso, da un utente con sessione ma senza riga operatore, e salva la riga come e stata passata", async () => {
-    const operator = await createOperator()
+  it("salva ogni colonna passata, ma il cliente va all'operatore che lo crea, non all'operatorId della richiesta (TD8 e)", async () => {
+    const creator = await createOperator()
+    const colleague = await createOperator()
     const customerChat = await createChat()
-    const control = await createCustomer({ operatorId: operator.id })
-    const user = await createUser()
+    const control = await createCustomer({ operatorId: colleague.id })
     const input = {
       id: "cliente-nuovo",
       fullName: "Anna Rossi",
@@ -191,15 +191,19 @@ describe("customer.insertCustomer", () => {
       updatedAt: new Date("2026-08-02T10:00:00.000Z"),
       lastImportUpdate: new Date("2026-08-03T10:00:00.000Z"),
       chatId: customerChat.id,
-      operatorId: operator.id,
+      operatorId: colleague.id,
       source: "banca",
     } satisfies Required<typeof customers.$inferInsert>
     const controlBefore = await customerRow(control.id)
 
-    const response = await createTestCaller(user).customer.insertCustomer(input)
+    const response =
+      await createTestCaller(creator).customer.insertCustomer(input)
 
     expect(response).toEqual([{ id: "cliente-nuovo" }])
-    expect(await customerRow("cliente-nuovo")).toEqual(input)
+    expect(await customerRow("cliente-nuovo")).toEqual({
+      ...input,
+      operatorId: creator.id,
+    })
     expect(await customerRow(control.id)).toEqual(controlBefore)
     expect(await allCustomers()).toHaveLength(2)
   })
@@ -210,7 +214,7 @@ describe("customer.insertCustomer", () => {
   ] as const)(
     "%s riceve BAD_REQUEST e non scrive nulla (TD8 d)",
     async (_which, id) => {
-      const caller = createTestCaller(await createUser())
+      const caller = createTestCaller(await createOperator())
 
       const error = await rejectionOf(
         caller.customer.insertCustomer(

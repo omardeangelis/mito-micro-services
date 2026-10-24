@@ -67,7 +67,7 @@ const PROCEDURES = {
     call: (c) => c.customer.getCustomerUnderReview(),
   },
   insertCustomer: {
-    guard: "protected",
+    guard: "operator",
     call: (c) => {
       const id = freshId()
       return c.customer.insertCustomer({

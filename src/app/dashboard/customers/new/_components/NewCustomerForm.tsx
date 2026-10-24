@@ -1,5 +1,5 @@
 "use client"
-import React, { type PropsWithChildren } from "react"
+import { type PropsWithChildren } from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import {
@@ -13,7 +13,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { z } from "zod"
 import { Button } from "@/components/ui/button"
-import { type Operator, insertCustomerSchema } from "@mito/domain/schemas"
+import { insertCustomerSchema } from "@mito/domain/schemas"
 import {
   SelectContent,
   SelectLabel,
@@ -54,14 +54,12 @@ const customerformSchema = insertCustomerSchema
     ambitoLavorativo: true,
     tempID: true,
     uniqueHash: true,
-    operatorId: true,
     sede: true,
     source: true,
   })
   .merge(
     z.object({
       id: z.string(),
-      operatorId: z.string(),
       sede: z.string(),
       fiscalCode: z
         .string()
@@ -128,7 +126,6 @@ const customerformSchema = insertCustomerSchema
 type CustomerInput = z.infer<typeof customerformSchema>
 
 type Props = PropsWithChildren<{
-  availableOperators: Operator[]
   availableSedi: string[]
 }>
 
@@ -147,14 +144,6 @@ export const NewCustomerForm = (props: Props) => {
   // FIX: Usa dirtyFields invece di isDirty per maggiore affidabilità
   const hasFormChanged = Object.keys(form.formState.dirtyFields).length > 0
 
-  const getOperatorName = React.useCallback(
-    (id: number) => {
-      const operator = props.availableOperators.find((t) => t.id === id)
-      return operator ? `${operator.name} ${operator.surname}` : ""
-    },
-    [props.availableOperators]
-  )
-
   const createCustomer = api.customer.insertCustomer.useMutation()
   const router = useRouter()
   const getCustomer =
@@ -163,7 +152,6 @@ export const NewCustomerForm = (props: Props) => {
 
   const onSubmit = form.handleSubmit(
     async (data) => {
-      const operatorID = Number(data.operatorId)
       const existing = await getCustomer({
         fiscalCode: data.fiscalCode,
         vatCode: data.vatCode,
@@ -190,7 +178,6 @@ export const NewCustomerForm = (props: Props) => {
         // sanitizeRedditoValue è una doppia sicurezza
         const result = await createCustomer.mutateAsync({
           ...data,
-          operatorId: operatorID,
           reddito: sanitizeRedditoValue(data.reddito),
         })
         const id = result[0]?.id
@@ -525,65 +512,6 @@ export const NewCustomerForm = (props: Props) => {
                   <FormLabel>Ambito</FormLabel>
                   <FormControl>
                     <Input {...field} value={field.value ?? ""} />
-                  </FormControl>
-                  <FormMessage className="text-red-400" />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="operatorId"
-              render={({ field: { ref: _, ...field } }) => (
-                <FormItem className="w-full bg-white">
-                  <div className="flex items-center justify-between">
-                    <FormLabel>Operatore</FormLabel>
-                  </div>
-                  <Select
-                    {...field}
-                    onValueChange={field.onChange}
-                    value={field.value?.toString()}
-                  >
-                    <FormControl>
-                      <SelectTrigger className="bg-white">
-                        <SelectValue>
-                          {getOperatorName(Number(field.value))}
-                        </SelectValue>
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectGroup>
-                        <SelectLabel>Operatore</SelectLabel>
-                        {props.availableOperators
-                          .filter(
-                            (o) => Number(form.watch("operatorId")) !== o.id
-                          )
-                          .map((operator) => (
-                            <SelectItem
-                              key={operator.id}
-                              value={operator.id.toString()}
-                            >
-                              {operator.name} {operator.surname}
-                            </SelectItem>
-                          ))}
-                      </SelectGroup>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage className="text-red-400" />
-                </FormItem>
-              )}
-            />
-            <FormField
-              name="operatorId"
-              control={form.control}
-              render={({ field }) => (
-                <FormItem className="w-full" hidden>
-                  <FormControl hidden>
-                    <Input
-                      className="w-full"
-                      placeholder="ID Pratica"
-                      {...field}
-                      value={field.value ?? ""}
-                    />
                   </FormControl>
                   <FormMessage className="text-red-400" />
                 </FormItem>
