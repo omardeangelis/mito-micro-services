@@ -1,7 +1,7 @@
 ---
 domain: crm
 type: spec
-status: draft
+status: approved
 links:
   - "[[chore/migrazione-effect]]"
   - "[[chore/migrazione-gcp]]"
@@ -11,6 +11,7 @@ links:
   - "[[chore/crm/analisi-import-xml-v2]]"
   - "[[chore/crm/report-frontend-riorganizzazione]]"
   - "[[chore/migration/fase-4-import-api]]"
+  - "[[specs/crm/import-pratiche/PLAN]]"
 created: 2026-10-23
 updated: 2026-10-24
 ---

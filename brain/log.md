@@ -12,6 +12,12 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 
 <!-- Entries are appended by create-spec (spec creation) and docs-maintenance (ingest). Format:
 
+## [2026-10-24] plan | Import di clienti e pratiche, riscritto
+- Plan: [[specs/crm/import-pratiche/PLAN]]
+- 22 task in 7 PR (A caratterizzazione, B dominio, C schema, D coda Cloud Tasks, E servizio, F UI, G rimozione) più due prove su staging
+- Scelta di Leonardo: l'import confermato gira in una coda Cloud Tasks
+- Gate: primo giro DO NOT SHIP (2 blocker), secondo DO NOT SHIP (3 major, nessun blocker); tutti corretti senza terzo giro
+
 ## [2026-10-23] spec | Import di clienti e pratiche, riscritto
 - Created spec: [[specs/crm/import-pratiche/SPEC]]
 - Domain: crm
