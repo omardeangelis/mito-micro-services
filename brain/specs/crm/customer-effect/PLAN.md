@@ -416,9 +416,11 @@ G0 ─┬─ T1  ─┐
   - `getAllCustomers.db.test.ts`, `getAllCustomers.rows.db.test.ts` (T1b), `advancedFilters.{security,types}.db.test.ts` e `shared/_test/advancedFilters.pg.test.ts` verdi senza cambiare asserzioni;
   - `list.ts` non importa `zod`, `server-only` né `@trpc/server`;
   - `tsc` verde, quindi lo zod della procedura è assegnabile a `CustomerListQuery`.
-- **status**: Planned
+- **status**: Done (2026-10-24)
 - **log**:
-- **files edited/created**:
+  1. Worker sonnet. `list.ts` con `customerSearchColumns`, `CustomerListRow`, `signedPractices`, `orderColumn`, `customersOrder` e `listCustomers(query, operatorId)`; `CustomerListQuery` è un tipo dichiarato nel servizio, con `CustomerSearchBy` e `AdvancedFilter` importati come `type`. Lo zod resta nella procedura.
+  2. Rivisto dall'orchestratore: il `diff` fra il blocco tolto dal router e `list.ts` mostra solo gli import, il tipo al posto di `z.infer`, il nome e il JSDoc del programma (in inglese, come gli altri servizi). `tsc` verde; i test dei router verdi (353), e `shared/_test/advancedFilters.pg.test.ts` 16/16; nessun file di test toccato.
+- **files edited/created**: `packages/server/src/services/customer/list.ts` (nuovo), `api/routers/customer/GET/index.ts`, `packages/domain/src/constants/customerSearch.ts` (commento)
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
