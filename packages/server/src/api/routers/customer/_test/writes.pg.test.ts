@@ -1,20 +1,14 @@
 import { beforeAll, beforeEach, describe, expect, it } from "vitest"
 import { asc } from "drizzle-orm"
 import { customers } from "@mito/db/schema/customers"
-import { createTestCaller, rejectionOf } from "@/test/caller"
+import { createTestCaller } from "@/test/caller"
 import { createCustomer, createOperator } from "@/test/factories"
 import { hasTestDatabase, migrateUpTo, pgDb, resetDb } from "@/test/pg"
 
 // Caratterizzazione, su postgres-js come in produzione, delle tre scritture
-// di `customer` che prendono `id` opzionale dallo schema e lo usano come
-// `input.id!` (updateCustomerFromDashboard, handleCustomerBlackList,
-// updateLastEdit): oggi senza `id` il driver rifiuta il parametro `undefined`
-// e la procedura risponde INTERNAL_SERVER_ERROR (AC10). Pinna il comportamento
-// di oggi, prima del refactor.
-
-// Il messaggio di postgres-js (UNDEFINED_VALUE) per un parametro `undefined`
-const UNDEFINED_VALUE_MESSAGE =
-  "UNDEFINED_VALUE: Undefined values are not allowed"
+// di `customer` che prendono un `id` (updateCustomerFromDashboard,
+// handleCustomerBlackList, updateLastEdit). Senza `id` lo schema le rifiuta
+// prima del driver (TD8 f): lo prova `writes.db.test.ts`
 
 /** Tutte le righe dei clienti, per confrontare prima e dopo. */
 const allCustomers = () =>
@@ -41,63 +35,8 @@ describe.skipIf(!hasTestDatabase)(
       await resetDb()
     })
 
-    describe("senza id", () => {
-      it("su postgres-js, `updateLastEdit` senza `id` risponde `INTERNAL_SERVER_ERROR` con il messaggio del driver e non cambia nessun cliente", async () => {
-        const { operator } = await seed()
-        const before = await allCustomers()
-
-        const error = await rejectionOf(
-          createTestCaller(operator).customer.updateLastEdit({})
-        )
-
-        expect(error).toMatchObject({
-          code: "INTERNAL_SERVER_ERROR",
-          message: UNDEFINED_VALUE_MESSAGE,
-          cause: { code: "UNDEFINED_VALUE" },
-        })
-        expect(await allCustomers()).toEqual(before)
-      })
-
-      it("su postgres-js, `handleCustomerBlackList` senza `id` risponde `INTERNAL_SERVER_ERROR` con il messaggio del driver e non cambia nessun cliente", async () => {
-        const { operator } = await seed()
-        const before = await allCustomers()
-
-        const error = await rejectionOf(
-          createTestCaller(operator).customer.handleCustomerBlackList({
-            blackListStatus: "blacklisted",
-          })
-        )
-
-        expect(error).toMatchObject({
-          code: "INTERNAL_SERVER_ERROR",
-          message: UNDEFINED_VALUE_MESSAGE,
-          cause: { code: "UNDEFINED_VALUE" },
-        })
-        expect(await allCustomers()).toEqual(before)
-      })
-
-      it("su postgres-js, `updateCustomerFromDashboard` senza `id` risponde `INTERNAL_SERVER_ERROR` con il messaggio del driver e non cambia nessun cliente", async () => {
-        const { operator } = await seed()
-        const before = await allCustomers()
-
-        const error = await rejectionOf(
-          createTestCaller(operator).customer.updateCustomerFromDashboard({
-            name: "Cambiato",
-            source: "inbound",
-          })
-        )
-
-        expect(error).toMatchObject({
-          code: "INTERNAL_SERVER_ERROR",
-          message: UNDEFINED_VALUE_MESSAGE,
-          cause: { code: "UNDEFINED_VALUE" },
-        })
-        expect(await allCustomers()).toEqual(before)
-      })
-    })
-
     describe("con id", () => {
-      it("`handleCustomerBlackList` risponde con la RowList del driver (array vuoto, `count` 1, `command` UPDATE) e cambia solo quel cliente", async () => {
+      it("`handleCustomerBlackList` non restituisce niente (TD8 h) e cambia solo quel cliente", async () => {
         const { operator, first, second } = await seed()
 
         const result = await createTestCaller(
@@ -107,12 +46,7 @@ describe.skipIf(!hasTestDatabase)(
           blackListStatus: "blacklisted",
         })
 
-        expect(result).toEqual([])
-        // `count` e `command` non sono enumerabili: toEqual non li vede
-        expect((result as unknown as { count: number }).count).toBe(1)
-        expect((result as unknown as { command: string }).command).toBe(
-          "UPDATE"
-        )
+        expect(result).toBeUndefined()
         const after = await allCustomers()
         const updated = after.find((row) => row.id === first.id)!
         expect({ ...updated, updatedAt: first.updatedAt }).toEqual({
@@ -125,18 +59,14 @@ describe.skipIf(!hasTestDatabase)(
         expect(after.find((row) => row.id === second.id)).toEqual(second)
       })
 
-      it("`updateLastEdit` risponde con la RowList del driver (array vuoto, `count` 1, `command` UPDATE) e aggiorna solo `updatedAt` di quel cliente", async () => {
+      it("`updateLastEdit` non restituisce niente (TD8 h) e aggiorna solo `updatedAt` di quel cliente", async () => {
         const { operator, first, second } = await seed()
 
         const result = await createTestCaller(operator).customer.updateLastEdit(
           { id: first.id }
         )
 
-        expect(result).toEqual([])
-        expect((result as unknown as { count: number }).count).toBe(1)
-        expect((result as unknown as { command: string }).command).toBe(
-          "UPDATE"
-        )
+        expect(result).toBeUndefined()
         const after = await allCustomers()
         const updated = after.find((row) => row.id === first.id)!
         expect({ ...updated, updatedAt: first.updatedAt }).toEqual(first)
@@ -173,7 +103,7 @@ describe.skipIf(!hasTestDatabase)(
     })
 
     describe("con un id che non esiste", () => {
-      it("`handleCustomerBlackList` risponde senza errore con la RowList del driver (array vuoto, `count` 0, `command` UPDATE) e non cambia nessun cliente", async () => {
+      it("`handleCustomerBlackList` risponde senza errore e senza dati e non cambia nessun cliente", async () => {
         const { operator } = await seed()
         const before = await allCustomers()
 
@@ -184,15 +114,11 @@ describe.skipIf(!hasTestDatabase)(
           blackListStatus: "blacklisted",
         })
 
-        expect(result).toEqual([])
-        expect((result as unknown as { count: number }).count).toBe(0)
-        expect((result as unknown as { command: string }).command).toBe(
-          "UPDATE"
-        )
+        expect(result).toBeUndefined()
         expect(await allCustomers()).toEqual(before)
       })
 
-      it("`updateLastEdit` risponde senza errore con la RowList del driver (array vuoto, `count` 0, `command` UPDATE) e non cambia nessun cliente", async () => {
+      it("`updateLastEdit` risponde senza errore e senza dati e non cambia nessun cliente", async () => {
         const { operator } = await seed()
         const before = await allCustomers()
 
@@ -200,11 +126,7 @@ describe.skipIf(!hasTestDatabase)(
           { id: "id-inesistente" }
         )
 
-        expect(result).toEqual([])
-        expect((result as unknown as { count: number }).count).toBe(0)
-        expect((result as unknown as { command: string }).command).toBe(
-          "UPDATE"
-        )
+        expect(result).toBeUndefined()
         expect(await allCustomers()).toEqual(before)
       })
     })

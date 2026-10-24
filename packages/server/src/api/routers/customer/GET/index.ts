@@ -1,9 +1,8 @@
-import { operatorProcedure, protectedProcedure } from "../../../trpc"
+import { operatorProcedure } from "../../../trpc"
 import { z } from "zod"
 import { runTrpc } from "../../../../effect/trpc"
 import { customerSearchBy } from "@mito/domain/constants/customerSearch"
 import { advancedFilterSchema } from "@mito/domain/filters/advanced"
-import { customerErrorToTrpc } from "../../../../services/customer/errors"
 import {
   listAmbiti,
   listComuni,
@@ -21,10 +20,10 @@ import {
 } from "../../../../services/customer/queries"
 
 const getCustomerByIdInput = z.object({
-  id: z.string().optional(),
+  id: z.string().min(1),
 })
 
-export const getCustomerById = protectedProcedure
+export const getCustomerById = operatorProcedure
   .input(getCustomerByIdInput)
   .query(({ input }) => runTrpc(getCustomerByIdService(input.id)))
 
@@ -36,11 +35,11 @@ const getCustomerByFiscalCodeInput = z
   })
   .partial()
   .refine(
-    (input) => !!input.fiscalCode || !!input.vatCode,
-    "Either fiscalCode or vatCode must be provided"
+    (input) => !!input.fiscalCode || !!input.vatCode || !!input.tempID,
+    "Either fiscalCode, vatCode or tempID must be provided"
   )
 
-export const getCustomersByFiscalCodeOrVatCode = protectedProcedure
+export const getCustomersByFiscalCodeOrVatCode = operatorProcedure
   .input(getCustomerByFiscalCodeInput)
   .query(({ input }) => runTrpc(findCustomersByCode(input)))
 
@@ -48,15 +47,13 @@ const getAllCustomerForPraticaInput = z.object({
   id: z.string(),
 })
 
-export const getAllPraticaByCustomer = protectedProcedure
+export const getAllPraticaByCustomer = operatorProcedure
   .input(getAllCustomerForPraticaInput)
   .query(({ input }) => runTrpc(listPracticesOfCustomer(input.id)))
 
-export const getAllCustomerForPratica = protectedProcedure
+export const getAllCustomerForPratica = operatorProcedure
   .input(getAllCustomerForPraticaInput)
-  .query(({ input }) =>
-    runTrpc(listCustomersOfPractice(input.id), customerErrorToTrpc)
-  )
+  .query(({ input }) => runTrpc(listCustomersOfPractice(input.id)))
 
 const getAllCustomersInput = z.object({
   page: z.number(),
@@ -103,10 +100,10 @@ export const getAllAvailableJobs = operatorProcedure.query(() =>
 
 const getAllFileNameInput = z.enum(["customers", "practices"])
 
-export const getAllFileName = protectedProcedure
+export const getAllFileName = operatorProcedure
   .input(getAllFileNameInput)
   .query(({ input }) => runTrpc(listFileNames(input)))
 
-export const getCustomerUnderReview = protectedProcedure.query(() =>
+export const getCustomerUnderReview = operatorProcedure.query(() =>
   runTrpc(listCustomersUnderReview())
 )

@@ -303,6 +303,8 @@ Scoperto nella review di PR3 (T3.13), preesistente.
 
 **Da fare fuori da questa spec:** decidere se un operatore può creare un cliente assegnato a un collega; se no, prendere l'operatore dalla sessione o richiedere un admin.
 
+**Decisione (Omar, 2026-10-24):** il cliente va all'operatore che lo crea. Per `customer.insertCustomer` è corretto sul branch `claude/customer-td8` (TD8 e di [[chore/migrazione-effect]]): è un'`operatorProcedure` e prende l'operatore dalla sessione. Restano aperte la rotta di import e `bulkHandleTask`.
+
 ## Data del richiamo: selettore e server con regole diverse
 
 Scoperto nel `/simplify` di PR3, preesistente (la regola del selettore è quella della base).

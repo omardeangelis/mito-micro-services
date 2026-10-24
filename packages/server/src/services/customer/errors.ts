@@ -17,13 +17,7 @@ export class HandoverSameOperator extends Data.TaggedError(
   "HandoverSameOperator"
 ) {}
 
-/** The practice has no customers. */
-export class PracticeWithoutCustomers extends Data.TaggedError(
-  "PracticeWithoutCustomers"
-) {}
-
-export type CustomerError =
-  CustomerAssignmentForbidden | HandoverSameOperator | PracticeWithoutCustomers
+export type CustomerError = CustomerAssignmentForbidden | HandoverSameOperator
 
 /**
  * The `TRPCError` for a customer error, passed to `runTrpc` by the customer
@@ -45,12 +39,6 @@ export const customerErrorToTrpc = (
         code: "BAD_REQUEST",
         message: "Il cliente è già di questo operatore",
         cause: contactErrorCause("HANDOVER_SAME_OPERATOR", {}),
-      })
-    case "PracticeWithoutCustomers":
-      // No `cause`: `data.contactError` stays null, as before
-      return new TRPCError({
-        code: "NOT_FOUND",
-        message: "No customers found for this pratica",
       })
     default:
       return contactErrorToTrpc(error)

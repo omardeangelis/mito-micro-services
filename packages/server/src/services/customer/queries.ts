@@ -5,7 +5,6 @@ import { customers } from "@mito/db/schema/customers"
 import { practices } from "@mito/db/schema/pratiche"
 import { operators } from "@mito/db/schema/operators"
 import { query } from "../../effect/db"
-import { PracticeWithoutCustomers } from "./errors"
 
 /** The codes that identify a customer; `findCustomersByCode` reads them. */
 export type CustomerCodes = {
@@ -14,16 +13,10 @@ export type CustomerCodes = {
   tempID?: string
 }
 
-/**
- * The customer with this id, or `undefined` if there is none. Without an `id`
- * the query has no `where`: it returns the first customer.
- */
-export const getCustomerById = (id: string | undefined) =>
+/** The customer with this id, or `undefined` if there is none. */
+export const getCustomerById = (id: string) =>
   query((client) =>
-    client
-      .select()
-      .from(customers)
-      .where(id ? eq(customers.id, id) : undefined)
+    client.select().from(customers).where(eq(customers.id, id))
   ).pipe(Effect.map((customer) => customer[0]))
 
 /**
@@ -88,10 +81,7 @@ export const listPracticesOfCustomer = (customerId: string) =>
     }))
   })
 
-/**
- * The customers of a practice, each with the operator and the role in it.
- * Fails with `PracticeWithoutCustomers` if the practice has none.
- */
+/** The customers of a practice, each with the operator and the role in it. */
 export const listCustomersOfPractice = (praticaId: string) =>
   Effect.gen(function* () {
     const customersIDs = yield* query((client) =>
@@ -105,7 +95,7 @@ export const listCustomersOfPractice = (praticaId: string) =>
     )
 
     if (customersIDs.length === 0) {
-      return yield* new PracticeWithoutCustomers()
+      return []
     }
 
     const praticaCustomers = yield* query((client) =>
@@ -141,7 +131,7 @@ export const listCustomersOfPractice = (praticaId: string) =>
 
 /**
  * The customers in review or blacklisted, with their operator and the number
- * of practices they signed, oldest update first.
+ * of practices they signed, oldest update first and, on the same date, by id.
  */
 export const listCustomersUnderReview = () =>
   query((client) =>
@@ -174,5 +164,5 @@ export const listCustomersUnderReview = () =>
       )
       .leftJoin(operators, eq(customers.operatorId, operators.id))
       .groupBy(customers.id, operators.id)
-      .orderBy(customers.updatedAt)
+      .orderBy(customers.updatedAt, customers.id)
   )

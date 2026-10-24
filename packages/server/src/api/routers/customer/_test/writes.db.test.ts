@@ -12,7 +12,7 @@ import { chat } from "@mito/db/schema/chat"
 import { customers } from "@mito/db/schema/customers"
 import { createTestCaller, rejectionOf } from "@/test/caller"
 import { customerRow, migrateUpTo, resetDb, testDb } from "@/test/db"
-import { createCustomer, createOperator, createUser } from "@/test/factories"
+import { createCustomer, createOperator } from "@/test/factories"
 
 // Caratterizzazione delle 4 scritture del router `customer`
 // (insertCustomer, updateCustomerFromDashboard, handleCustomerBlackList,
@@ -21,6 +21,7 @@ import { createCustomer, createOperator, createUser } from "@/test/factories"
 // passaggio a Effect.
 
 type CustomerRow = typeof customers.$inferSelect
+type Caller = ReturnType<typeof createTestCaller>
 
 /** Istante in cui nascono i clienti. */
 const T0 = new Date("2026-10-01T09:00:00.000Z")
@@ -157,11 +158,11 @@ afterEach(() => {
 const callAtT1 = () => vi.setSystemTime(T1)
 
 describe("customer.insertCustomer", () => {
-  it("accetta ogni colonna di customers, operatorId compreso, da un utente con sessione ma senza riga operatore, e salva la riga come e stata passata", async () => {
-    const operator = await createOperator()
+  it("salva ogni colonna passata, ma il cliente va all'operatore che lo crea, non all'operatorId della richiesta (TD8 e)", async () => {
+    const creator = await createOperator()
+    const colleague = await createOperator()
     const customerChat = await createChat()
-    const control = await createCustomer({ operatorId: operator.id })
-    const user = await createUser()
+    const control = await createCustomer({ operatorId: colleague.id })
     const input = {
       id: "cliente-nuovo",
       fullName: "Anna Rossi",
@@ -190,58 +191,48 @@ describe("customer.insertCustomer", () => {
       updatedAt: new Date("2026-08-02T10:00:00.000Z"),
       lastImportUpdate: new Date("2026-08-03T10:00:00.000Z"),
       chatId: customerChat.id,
-      operatorId: operator.id,
+      operatorId: colleague.id,
       source: "banca",
     } satisfies Required<typeof customers.$inferInsert>
     const controlBefore = await customerRow(control.id)
 
-    const response = await createTestCaller(user).customer.insertCustomer(input)
+    const response =
+      await createTestCaller(creator).customer.insertCustomer(input)
 
     expect(response).toEqual([{ id: "cliente-nuovo" }])
-    expect(await customerRow("cliente-nuovo")).toEqual(input)
+    expect(await customerRow("cliente-nuovo")).toEqual({
+      ...input,
+      operatorId: creator.id,
+    })
     expect(await customerRow(control.id)).toEqual(controlBefore)
     expect(await allCustomers()).toHaveLength(2)
   })
 
-  it("senza id usa il default del database, che e una costante: il secondo inserimento senza id fallisce per chiave duplicata e non scrive nulla", async () => {
-    const caller = createTestCaller(await createUser())
+  it.each([
+    ["senza id", {}],
+    ["con id vuoto", { id: "" }],
+  ] as const)(
+    "%s riceve BAD_REQUEST e non scrive nulla (TD8 d)",
+    async (_which, id) => {
+      const caller = createTestCaller(await createOperator())
 
-    const first = await caller.customer.insertCustomer({
-      name: "Primo",
-      tempID: "temp-primo",
-      uniqueHash: "hash-primo",
-      source: "inbound",
-    })
+      const error = await rejectionOf(
+        caller.customer.insertCustomer(
+          // @ts-expect-error -- `id` è obbligatorio: la richiesta di un client vecchio
+          {
+            name: "Primo",
+            tempID: "temp-primo",
+            uniqueHash: "hash-primo",
+            source: "inbound",
+            ...id,
+          }
+        )
+      )
 
-    // L'id e il default scritto nella migrazione, non quello dello schema
-    // generato a ogni avvio: qui basta che esista
-    expect(first).toEqual([{ id: expect.any(String) as string }])
-    expect(first[0]!.id).not.toBe("")
-    const firstRow = await customerRow(first[0]!.id)
-    expect(firstRow).toMatchObject({
-      name: "Primo",
-      tempID: "temp-primo",
-      blackListStatus: "whitelisted",
-      operatorId: null,
-    })
-
-    const error = await rejectionOf(
-      caller.customer.insertCustomer({
-        name: "Secondo",
-        tempID: "temp-secondo",
-        uniqueHash: "hash-secondo",
-        source: "inbound",
-      })
-    )
-
-    expect(error).toMatchObject({
-      code: "INTERNAL_SERVER_ERROR",
-      message:
-        'duplicate key value violates unique constraint "mito-deutsche_customers_pkey"',
-      cause: { code: "23505" },
-    })
-    expect(await allCustomers()).toEqual([firstRow])
-  })
+      expect(error).toMatchObject({ code: "BAD_REQUEST" })
+      expect(await allCustomers()).toEqual([])
+    }
+  )
 })
 
 describe("customer.updateCustomerFromDashboard", () => {
@@ -328,25 +319,64 @@ describe("customer.handleCustomerBlackList", () => {
       blackListStatus: "blacklisted",
     })
 
-    // Nessun returning: la risposta e il risultato grezzo del driver (PGlite)
-    expect(response).toEqual({ rows: [], fields: [], affectedRows: 1 })
+    expect(response).toBeUndefined()
     await expectWritten(pair, { blackListStatus: "blacklisted" })
   })
 
-  it("senza blackListStatus fallisce con INTERNAL_SERVER_ERROR `No values to set` e non cambia nessun cliente", async () => {
+  it("senza blackListStatus riceve BAD_REQUEST e non cambia nessun cliente (TD8 g)", async () => {
     const pair = await seedPair()
     callAtT1()
 
     const error = await rejectionOf(
-      pair.caller.customer.handleCustomerBlackList({ id: pair.written.id })
+      pair.caller.customer.handleCustomerBlackList(
+        // @ts-expect-error -- `blackListStatus` è obbligatorio: la richiesta di un client vecchio
+        { id: pair.written.id }
+      )
     )
 
-    expect(error).toMatchObject({
-      code: "INTERNAL_SERVER_ERROR",
-      message: "No values to set",
-    })
+    expect(error).toMatchObject({ code: "BAD_REQUEST" })
     await expectUntouched(pair)
   })
+})
+
+describe("le tre modifiche senza id (TD8 f)", () => {
+  it.each([
+    [
+      "updateCustomerFromDashboard",
+      (caller: Caller) =>
+        caller.customer.updateCustomerFromDashboard(
+          // @ts-expect-error -- `id` è obbligatorio: la richiesta di un client vecchio
+          { name: "Cambiato", source: "inbound" }
+        ),
+    ],
+    [
+      "handleCustomerBlackList",
+      (caller: Caller) =>
+        caller.customer.handleCustomerBlackList(
+          // @ts-expect-error -- `id` è obbligatorio: la richiesta di un client vecchio
+          { blackListStatus: "blacklisted" }
+        ),
+    ],
+    [
+      "updateLastEdit",
+      (caller: Caller) =>
+        caller.customer.updateLastEdit(
+          // @ts-expect-error -- `id` è obbligatorio: la richiesta di un client vecchio
+          {}
+        ),
+    ],
+  ] as const)(
+    "`%s` riceve BAD_REQUEST e non cambia nessun cliente",
+    async (_name, call) => {
+      const pair = await seedPair()
+      callAtT1()
+
+      const error = await rejectionOf(call(pair.caller))
+
+      expect(error).toMatchObject({ code: "BAD_REQUEST" })
+      await expectUntouched(pair)
+    }
+  )
 })
 
 describe("customer.updateLastEdit", () => {
@@ -358,8 +388,7 @@ describe("customer.updateLastEdit", () => {
       id: pair.written.id,
     })
 
-    // Nessun returning: la risposta e il risultato grezzo del driver (PGlite)
-    expect(response).toEqual({ rows: [], fields: [], affectedRows: 1 })
+    expect(response).toBeUndefined()
     await expectWritten(pair, {})
   })
 })
@@ -406,7 +435,7 @@ describe("customer.handleCustomerBlackList, ogni transizione", () => {
         blackListStatus: to,
       })
 
-      expect(response).toEqual({ rows: [], fields: [], affectedRows: 1 })
+      expect(response).toBeUndefined()
       await expectWritten(pair, { blackListStatus: to })
     }
   )
@@ -435,11 +464,11 @@ describe("customer.handleCustomerBlackList, ogni transizione", () => {
       name: 123,
     } as never)
 
-    expect(response).toEqual({ rows: [], fields: [], affectedRows: 1 })
+    expect(response).toBeUndefined()
     await expectWritten(pair, { blackListStatus: "blacklisted" })
   })
 
-  it("con un id che non esiste risponde senza errore con il risultato grezzo del driver (0 righe) e non cambia nessun cliente", async () => {
+  it("con un id che non esiste risponde senza errore e senza dati (TD8 h) e non cambia nessun cliente", async () => {
     const pair = await seedPair()
     callAtT1()
 
@@ -448,13 +477,13 @@ describe("customer.handleCustomerBlackList, ogni transizione", () => {
       blackListStatus: "blacklisted",
     })
 
-    expect(response).toEqual({ rows: [], fields: [], affectedRows: 0 })
+    expect(response).toBeUndefined()
     await expectUntouched(pair)
   })
 })
 
 describe("customer.updateLastEdit, con un id che non esiste", () => {
-  it("risponde senza errore con il risultato grezzo del driver (0 righe) e non cambia nessun cliente", async () => {
+  it("risponde senza errore e senza dati (TD8 h) e non cambia nessun cliente", async () => {
     const pair = await seedPair()
     callAtT1()
 
@@ -462,7 +491,7 @@ describe("customer.updateLastEdit, con un id che non esiste", () => {
       id: "id-inesistente",
     })
 
-    expect(response).toEqual({ rows: [], fields: [], affectedRows: 0 })
+    expect(response).toBeUndefined()
     await expectUntouched(pair)
   })
 })

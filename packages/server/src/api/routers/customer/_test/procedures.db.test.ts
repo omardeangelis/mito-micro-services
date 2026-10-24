@@ -11,11 +11,11 @@ import {
 } from "@/test/factories"
 
 // Quale middleware protegge ogni procedura del router `customer`:
-// - protected: basta la sessione (protectedProcedure), anche senza operatore;
 // - operator: sessione e operatore attivo (operatorProcedure);
 // - admin: operatore attivo con ruolo ADMIN (adminProcedure).
+// Nessuna basta più la sola sessione (TD8 e, TD8 i).
 
-type Guard = "protected" | "operator" | "admin"
+type Guard = "operator" | "admin"
 
 type CustomerProcedure = keyof typeof appRouter._def.record.customer._def.record
 
@@ -40,34 +40,34 @@ const freshId = () => `customer-guard-${++sequence}`
 /** Una riga per procedura: la guardia attesa e una chiamata con input valido. */
 const PROCEDURES = {
   getCustomerById: {
-    guard: "protected",
+    guard: "operator",
     call: (c, f) => c.customer.getCustomerById({ id: f.customerId }),
   },
   getCustomersByFiscalCodeOrVatCode: {
-    guard: "protected",
+    guard: "operator",
     call: (c) =>
       c.customer.getCustomersByFiscalCodeOrVatCode({
         fiscalCode: "RSSMRA80A01H501U",
       }),
   },
   getAllPraticaByCustomer: {
-    guard: "protected",
+    guard: "operator",
     call: (c, f) => c.customer.getAllPraticaByCustomer({ id: f.customerId }),
   },
   getAllCustomerForPratica: {
-    guard: "protected",
+    guard: "operator",
     call: (c, f) => c.customer.getAllCustomerForPratica({ id: f.praticaId }),
   },
   getAllFileName: {
-    guard: "protected",
+    guard: "operator",
     call: (c) => c.customer.getAllFileName("customers"),
   },
   getCustomerUnderReview: {
-    guard: "protected",
+    guard: "operator",
     call: (c) => c.customer.getCustomerUnderReview(),
   },
   insertCustomer: {
-    guard: "protected",
+    guard: "operator",
     call: (c) => {
       const id = freshId()
       return c.customer.insertCustomer({
@@ -146,15 +146,6 @@ const PROCEDURES = {
 
 const names = Object.keys(PROCEDURES) as CustomerProcedure[]
 
-/** I nomi delle procedure protette dalla guardia `guard`. */
-const namesWith = (guard: Guard) =>
-  names.filter((name) => PROCEDURES[name].guard === guard)
-
-/** Le guardie che richiedono un operatore: operatorProcedure e adminProcedure. */
-const operatorNames = names.filter(
-  (name) => PROCEDURES[name].guard !== "protected"
-)
-
 let fixtures: Fixtures
 
 beforeAll(async () => {
@@ -181,17 +172,7 @@ describe("customer: guardia di ogni procedura", () => {
   })
 
   describe("utente senza operatore", () => {
-    it.each(namesWith("protected"))(
-      "%s risponde: la sola sessione basta",
-      async (name) => {
-        const caller = createTestCaller(await createUser())
-        await expect(
-          PROCEDURES[name].call(caller, fixtures)
-        ).resolves.toBeDefined()
-      }
-    )
-
-    it.each(operatorNames)(
+    it.each(names)(
       "%s rifiuta con BAD_REQUEST: non è un operatore",
       async (name) => {
         const caller = createTestCaller(await createUser())
@@ -206,19 +187,7 @@ describe("customer: guardia di ogni procedura", () => {
   })
 
   describe("operatore disattivato", () => {
-    it.each(namesWith("protected"))(
-      "%s risponde: la sola sessione basta",
-      async (name) => {
-        const caller = createTestCaller(
-          await createOperator({ disabledAt: new Date() })
-        )
-        await expect(
-          PROCEDURES[name].call(caller, fixtures)
-        ).resolves.toBeDefined()
-      }
-    )
-
-    it.each(operatorNames)(
+    it.each(names)(
       "%s rifiuta con UNAUTHORIZED: utente disattivato",
       async (name) => {
         const caller = createTestCaller(
@@ -248,18 +217,5 @@ describe("customer: guardia di ogni procedura", () => {
         message: "admin-only",
       })
     })
-  })
-
-  it("un utente senza operatore che chiama `customer.updateLastEdit` riceve `BAD_REQUEST`, mentre `customer.getCustomerById` gli risponde", async () => {
-    const caller = createTestCaller(await createUser())
-
-    const error = await rejectionOf(
-      caller.customer.updateLastEdit({ id: fixtures.customerId })
-    )
-    expect(error).toMatchObject({ code: "BAD_REQUEST" })
-
-    await expect(
-      caller.customer.getCustomerById({ id: fixtures.customerId })
-    ).resolves.toMatchObject({ id: fixtures.customerId })
   })
 })

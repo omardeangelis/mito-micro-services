@@ -20,6 +20,8 @@ Lasciato fuori dalla spec (Out of Scope), confermato dalla review della PR 4 (v4
 
 **Effetto oggi:** basso. Le liste della UI non mostrano più i disattivati (AC14), quindi serve una chiamata HTTP diretta o una race di pochi millisecondi con la disattivazione.
 
+**Aggiornamento (2026-10-24):** sul branch `claude/customer-td8` (TD8 e di [[chore/migrazione-effect]]) `customer.insertCustomer` scrive l'operatore della sessione, che `operatorProcedure` ha appena trovato attivo, e non più uno scelto. Resta la race con una disattivazione dello stesso operatore, senza lock della sua riga utente.
+
 **Da fare fuori da questa spec:** passare la destinazione di tutti e due da `findWorkingOperator`, con il lock `KEY SHARE` della riga utente, e un test su Postgres reale come quelli di `deactivate.pg.test.ts`.
 
 ## Un contatto attivo senza cliente si sposta senza riga di log
