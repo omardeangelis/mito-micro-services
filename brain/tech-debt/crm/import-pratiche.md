@@ -24,7 +24,11 @@ Questi difetti sono in produzione oggi e la spec non li elencava. Restano anche 
   - Fix: decidere quale ordine vale per il testo (Excel, nelle celle data, scrive `m/d/yy`).
 - **[FOLLOW-UP]** Nei file Standard con date AAAAMMGG o seriali senza formato data le rate pagate partono dal 1970 (`new Date(numero)`), quindi sono tutte pagate, con debito `0` e stato `Chiusa` se `SITUAZIONE` non è nota.
   - Fix: calcolare le rate dalla data letta da `parseDateInput`, come fa Wave.
-- **[FOLLOW-UP]** Nei file Standard una data di liquidazione illeggibile fa sparire la pratica senza errore: le rate pagate escono `NaN` e la validazione la scarta. Nella riscrittura la riga è "solo cliente" (AC8), come oggi.
+- **[FOLLOW-UP]** Nei file Standard una data di liquidazione illeggibile fa sparire la pratica senza errore: le rate pagate escono `NaN` e la validazione la scarta, resta solo il cliente. Nella riscrittura la riga è scartata con il motivo `"DATA_LIQUIDAZIONE" non è una data leggibile` (AC11).
 - **[FOLLOW-UP]** Una riga Wave senza "Garante" né "Cliente Coobbligato" è letta come Standard (`isWaveRow`) e scartata con i sette motivi dei campi Standard. La riscrittura riconosce il formato dal file (T3), quindi il problema sparisce con lei: da dire nella PR che cambia il comportamento.
 - **[FOLLOW-UP]** Il debito residuo a zero è `0.00` in Wave e `0` nello Standard.
+- **[FOLLOW-UP]** Nei file Standard il debito residuo moltiplica la cella `IMPORTO_RATA` così com'è: quando papaparse la lascia come testo (un importo ≥ 1.000 con il separatore delle migliaia, `1,234.50`) il debito esce `NaN` e oggi si salva così. Nella riscrittura la riga è scartata con "Non si può calcolare il debito residuo da …" (T5).
+  - Fix: calcolare il debito dall'importo letto da `parseDecimal`.
+- **[FOLLOW-UP]** La conversione tratta come testo `DES_CLIENTE`, `DES_SUBAGENTE` e "Descrizione PdV" (`split`, `replace`): un numero in quelle celle fa lanciare la conversione, e oggi ferma l'elaborazione del file. Nella riscrittura la riga è scartata con "La riga ha un valore che l'import non sa leggere".
+  - Fix: `String()` prima di trattarle, e poi la riga si importa.
 - **[FOLLOW-UP]** Il cliente aggiornato per errore (stessa partita IVA del primo riconosciuto, o stesso codice cliente) prende tutti i campi del primo, compresa la data di creazione. Restano solo `id`, codice cliente, hash e operatore. Si somma al difetto dell'OR già nella spec (OQ1).

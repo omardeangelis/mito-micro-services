@@ -14,7 +14,7 @@ updated: 2026-10-24
 # Plan: Import di clienti e pratiche, riscritto
 
 **Spec:** [[specs/crm/import-pratiche/SPEC]] (approvata da Leonardo il 2026-10-24)
-**Status:** In progress (PR A, #77)
+**Status:** In progress (PR A #77, PR B #78)
 **Generato:** 2026-10-24 con `create-plan`: grill (una domanda a Leonardo, D1) → swarm-plan → tdd → adversarial-verifier (primo giro DO NOT SHIP con 2 blocker; secondo giro DO NOT SHIP senza blocker, 3 major e 8 minor; tutti corretti in questa versione, senza un terzo giro per il limite di 2 tentativi). Nessun codice scritto.
 
 ---
@@ -181,9 +181,9 @@ T0 è una prova senza PR; T12b è la prova finale su staging dopo F e G.
 - **location**: `packages/domain/src/import/formats.ts` + `_test/`
 - **description**: le liste di colonne di `src/app/api/import/_constants` si spostano qui (il vecchio file le riesporta). `detectFormat(headers)` → `{ format: "wave" | "standard" }`, oppure `{ error: "emptyHeaders" }` se la prima riga è vuota, oppure `{ error: "missingColumns", closest, missing: string[] }` con il formato che ha più colonne in comune (AC6). Lo Standard si riconosce dai nomi, non dal numero di colonne. Lo usa solo il codice nuovo: il vecchio import tiene il suo riconoscimento fino a T20.
 - **validation**: test: tracciato Wave completo, Standard completo, Wave senza "Codice NDG" e "Data Erogazione" → `missing` in quest'ordine, prima riga vuota, colonne in più ignorate.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-10-24, #78 (Haiku, revisione di Opus). 8 test. `src/app/api/import/_constants` riesporta le liste
+- **files edited/created**: `packages/domain/src/import/formats.ts`, `_test/formats.test.ts`, `src/app/api/import/_constants/index.ts`
 - **backlog_item_id**: —
 - **backlog_item_url**: —
 - **relation_mode**: body-links
@@ -197,9 +197,9 @@ T0 è una prova senza PR; T12b è la prova finale su staging dopo F e G.
 - **location**: `packages/domain/src/import/convert/` (`wave.ts`, `standard.ts`, `values.ts`, `fileName.ts`), `packages/domain/src/utils/` (funzioni di D4), `packages/domain/package.json` (`spark-md5`), `src/lib/utils/index.ts` (riesporta), `src/lib/import/parseWorkbook.ts`; i test di T1 si spostano in `src/lib/import/_test/characterization.test.ts`
 - **description**: sposta le funzioni di conversione e le loro dipendenze (D4) senza cambiarle, con `now` come argomento al posto di `new Date()` e senza `id`/`uniqueHash`. Le date diventano istanti calcolati sul fuso di Roma qualunque sia il fuso del processo (AC33). `parseWorkbook(buffer)` è la pipeline XLSX → CSV → papaparse di oggi, pura, usata dal worker di T14. I test di T1 passano su `parseWorkbook` + conversione del dominio, con le stesse asserzioni, due volte (`TZ` Roma e UTC). Il codice di oggi importa le funzioni spostate, così il vecchio import non cambia.
 - **validation**: i test di T1 spostati, con le stesse asserzioni, verdi con `TZ=Europe/Rome` e `TZ=UTC`; i test di oggi (`_utils/_test`, `process/_test`) verdi; nessun import di `@/` in `packages/domain`.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-10-24, #78. Funzioni spostate senza cambiarle; date di Roma con `romeLocalDate`, `addRomeMonth`, `romeParseDate` (`utils/romeClock.ts`, spostato dal seed locale). I test di T1 sulla singola riga passano in UTC e a Roma (progetti `utc` e `rome` di vitest, processo a parte); quelli su `processFile` restano in `process/_test` (12). Il test del seed (`importRates`, oltre 1.000 casi) resta verde. `spark-md5` resta della root
+- **files edited/created**: `packages/domain/src/import/convert/{rows,values,fileName,wave,standard}.ts`, `packages/domain/src/utils/{romeClock,dates,object,customerHash}.ts`, `packages/domain/src/constants/regex.ts`, `src/lib/import/parseWorkbook.ts`, `src/lib/import/_test/{workbooks,characterization.test}.ts`, `src/app/api/import/process/_services/{waveFile,standardFile,parsePratica}.ts`, `src/app/api/import/_utils/index.ts`, `src/lib/utils/index.ts`, `src/server/db/seeds/local/day.ts`, `vitest.config.ts`, `vitest.workspace.ts`
 - **backlog_item_id**: —
 - **backlog_item_url**: —
 - **relation_mode**: body-links
@@ -213,9 +213,9 @@ T0 è una prova senza PR; T12b è la prova finale su staging dopo F e G.
 - **location**: `packages/domain/src/import/classify.ts`, `messages.ts` + `_test/`
 - **description**: `classifyRow(format, cells, now, fileName)` → `importable` (cliente, pratica, ruolo), `customerOnly` (cliente) o `discarded` (tutti i motivi). Dati obbligatori di AC9; regola solo cliente di oggi; AC10 con il suo testo; AC11 con lunghezze e tipi dagli schemi zod di `@mito/domain/schemas`, più i limiti delle colonne intere che drizzle-zod non mette (`smallint`, `integer`: es. "Età"), e un motivo che nomina la colonna del file (mappa campo → colonna per formato). Tutti i motivi in italiano (AC40). Una riga con il cliente non valido e la pratica valida è scartata (cambio già nella spec).
 - **validation**: test: una riga per ogni dato obbligatorio mancante; CAP di 6 caratteri; "Età" non numerica e "Età" 70000; riga senza CF né P.IVA con la pratica valida; riga con due errori → due motivi (AC13); nessun motivo in inglese.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-10-24, #78. 53 test. Limiti di `smallint`, `integer` e importi `NaN` letti dalle colonne delle tabelle (`getTableColumns`). Un valore calcolato (rate pagate, debito residuo, importo erogato) non ripete il motivo del dato da cui viene. Una conversione che lancia (un numero dove si aspetta testo) scarta la riga con "La riga ha un valore che l'import non sa leggere". `classifyRows` numera le righe e lascia fuori le vuote
+- **files edited/created**: `packages/domain/src/import/{classify,messages}.ts`, `_test/{classify.test,cells}.ts`
 - **backlog_item_id**: —
 - **backlog_item_url**: —
 - **relation_mode**: body-links
@@ -229,9 +229,9 @@ T0 è una prova senza PR; T12b è la prova finale su staging dopo F e G.
 - **location**: `packages/domain/src/import/group.ts`, `payload.ts` + `_test/`
 - **description**: dalle righe classificate: clienti per chiave (CF, o P.IVA senza CF) + codice cliente (AC38, regola di `mergeDuplicateCustomers`); pratiche per ID pratica; per ogni campo l'ultimo valore non vuoto; legami (chiave cliente, ID pratica, ruolo) senza doppioni; le chiavi da cercare nel CRM. `payload.ts`: schemi zod delle chiavi di `import.lookup`, del corpo compatto di D3 e dell'esito atteso di D10, condivisi da T11 e T14.
 - **validation**: test: stesso CF e codice → un cliente; stesso CF e codici diversi → due clienti; stesso ID pratica su tre righe → una pratica con l'ultimo valore non vuoto; cliente con pratiche in punti diversi del file → un legame per pratica.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-10-24, #78. 10 + 11 test. Limiti del corpo: 50.000 righe, 500 colonne, 32.767 caratteri per cella, chiavi fino a 255. `toFileBody` e `fromFileBody` per T14 e T8b
+- **files edited/created**: `packages/domain/src/import/{group,payload}.ts`, `_test/{group,payload}.test.ts`
 - **backlog_item_id**: —
 - **backlog_item_url**: —
 - **relation_mode**: body-links
@@ -261,9 +261,9 @@ T0 è una prova senza PR; T12b è la prova finale su staging dopo F e G.
 - **location**: `packages/domain/src/import/plan.ts` + `_test/`
 - **description**: `planRows(groups, existing)`, dove `existing` è quello che `import.lookup` restituisce (clienti con id, CF, P.IVA, codice cliente; pratiche esistenti; legami esistenti di quelle pratiche). Applica il riconoscimento di D11 e il conflitto di AC11b (codice cliente già nel CRM per un cliente nuovo; due clienti nuovi del file con lo stesso codice → scartate tutte le righe con quel codice). Restituisce i numeri di AC7 (clienti nuovi e da aggiornare contano i clienti distinti del CRM), le righe scartate con i motivi, le righe attese (D10) e le operazioni da fare.
 - **validation**: test: numeri di AC7 su casi scritti a mano; importabili + solo cliente + scartate = righe (AC8); i due casi di AC11b; i casi di T2 sul riconoscimento, sullo stato del CRM che il test descrive.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-10-24, #78. 14 test, tdd_target compreso. `planRows` prende le righe classificate (non i gruppi): dopo AC11b il file si raggruppa senza le righe scartate. Il legame va al primo cliente riconosciuto. AC11b vale per le righe dei clienti nuovi con quel codice
+- **files edited/created**: `packages/domain/src/import/plan.ts`, `_test/plan.test.ts`
 - **backlog_item_id**: —
 - **backlog_item_url**: —
 - **relation_mode**: body-links
