@@ -36,3 +36,16 @@ Nessuna voce viola un criterio di accettazione. La review ([[specs/crm/filtri-sq
   - Fix: importare da `@mito/domain/filters/advanced` e togliere le riesportazioni.
 - **[FOLLOW-UP]** Le mappe dei filtri sono `Map<string, PgColumn>`: il dominio dipende dalle colonne di drizzle e il popover ne legge il tipo a runtime. Un descrittore di dati semplice (nome, tipo, valori dell'enum) toglierebbe la dipendenza dal browser. Da fare insieme alla descrizione di `packages/domain/package.json`, che non cita le mappe.
 - **[PREESISTENTE]** Su `/dashboard` compare `invalid input value for enum task_status: "non risponde"`, uguale sulla base `594ff64` e sul branch (visto nell'A/B su `mito_local`). Non riguarda i filtri: è un valore del seed locale o una query che usa uno stato rimosso. Da verificare a parte.
+
+## [2026-10-24] Dalla review [[specs/crm/filtri-sql-sicuri/REPORT]]
+
+Review SHIP, impatto critical, 0 BLOCKER e 0 MAJOR. Le sei righe marcate durevoli sono già le voci della sezione sopra, scritte dall'implementazione; qui solo la corrispondenza, con la severità della review:
+
+- **[MINOR]** Descrizione di `packages/domain/package.json` senza le mappe dei filtri — `packages/domain/package.json:4` → voce "descrittore di dati semplice".
+- **[NIT]** `value` non stringa fa fallire lo zod dell'intera richiesta — `packages/domain/src/filters/advanced.ts:120-124` → prima voce.
+- **[NIT]** `Effect.all` concorrente in `getAllPratiche` — `packages/server/src/api/routers/pratiche/GET/index.ts:200` → voce `Effect.all`.
+- **[NIT]** `getAllPratichePage` senza tipo di ritorno — `pratiche/GET/index.ts:82` → stessa voce.
+- **[NIT]** Riesportazioni di `*_FILTER_QUERY_MAP` in `customers/_constants` — `src/app/dashboard/customers/_constants/index.ts:3-8` → voce `_constants`.
+- **[NIT]** `filter.op as FilterOperator` senza convalida — `src/components/custom/table/PopoverFilter.tsx` ~L162 → voce del popover.
+
+I MINOR di codice non durevoli (byte NUL, `validateAndFormatDate` in UTC, test mancanti) sono corretti in `9c0d770`; quelli di documentazione (`\`, D17) nel §13 del PLAN.

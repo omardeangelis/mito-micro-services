@@ -23,13 +23,17 @@ links:
   - "[[domains/crm/concepts/chiamata]]"
   - "[[domains/crm/concepts/periodo-dell-export]]"
   - "[[domains/crm/concepts/stato-del-contatto]]"
+  - "[[specs/crm/filtri-sql-sicuri/SPEC]]"
+  - "[[domains/crm/flows/filtro-avanzato-di-clienti-e-pratiche]]"
+  - "[[domains/crm/concepts/filtro-avanzato]]"
+  - "[[domains/crm/concepts/colonne-filtrabili]]"
 created: 2026-10-23
-updated: 2026-10-23
+updated: 2026-10-24
 ---
 
 # CRM — Mappa del dominio
 
-Il dominio `crm` è il gestionale MITO: clienti, pratiche, contatti e gli operatori che ci lavorano. Questa mappa elenca le pagine scritte finora dall'ingest. Oggi copre [[specs/crm/gestione-operatori/SPEC]], [[specs/crm/sicurezza-deploy-staging/SPEC]] (il deploy di staging) e [[specs/crm/export-chiamate/SPEC]] (l'export delle chiamate): le altre spec del CRM sono in [[specs/crm/crm-specs]] e non sono ancora ingerite.
+Il dominio `crm` è il gestionale MITO: clienti, pratiche, contatti e gli operatori che ci lavorano. Questa mappa elenca le pagine scritte finora dall'ingest. Oggi copre [[specs/crm/gestione-operatori/SPEC]], [[specs/crm/sicurezza-deploy-staging/SPEC]] (il deploy di staging) [[specs/crm/export-chiamate/SPEC]] (l'export delle chiamate) e [[specs/crm/filtri-sql-sicuri/SPEC]] (i filtri avanzati di Clienti e Pratiche): le altre spec del CRM sono in [[specs/crm/crm-specs]] e non sono ancora ingerite.
 
 - **Contratto:** [[domains/crm/crm-contract]] (Owns, Does Not Own, Invariants).
 
@@ -45,6 +49,7 @@ Il dominio `crm` è il gestionale MITO: clienti, pratiche, contatti e gli operat
 | [[domains/crm/flows/pulizia-dei-backup-di-staging\|Pulizia dei backup di staging]] | Workflow settimanale che cancella i backup del deploy vecchi, tenendo gli ultimi 3 | implemented |
 | [[domains/crm/flows/esito-non-risponde-e-ritorno-in-coda\|Esito "non risponde"]] | L'operatore segna "non risponde" e il contatto resta in coda | implemented |
 | [[domains/crm/flows/export-chiamate-per-operatore-admin\|Export chiamate per operatore]] | L'admin sceglie un periodo e vede numeri, grafici e file Excel per operatore | implemented |
+| [[domains/crm/flows/filtro-avanzato-di-clienti-e-pratiche\|Filtro avanzato di Clienti e Pratiche]] | Popover → URL `filter=` → voci come dati → mappa chiusa, operatore per tipo, valore legato; voci non valide scartate | implemented |
 
 ## Concepts
 
@@ -58,10 +63,12 @@ Il dominio `crm` è il gestionale MITO: clienti, pratiche, contatti e gli operat
 | [[domains/crm/concepts/chiamata\|Chiamata]] | Che cosa conta come chiamata effettuata, risposta, non risposta, appuntamento | implemented |
 | [[domains/crm/concepts/periodo-dell-export\|Periodo dell'export]] | Giorni di Roma, ultimi 3 mesi, dati completi dal 15/09/2026 | implemented |
 | [[domains/crm/concepts/stato-del-contatto\|Stato del contatto]] | Solo lo stato `non risponde` e le sue transizioni (sintesi parziale) | implemented |
+| [[domains/crm/concepts/filtro-avanzato\|Filtro avanzato]] | La voce `{field, op, value}`, la convalida per tipo, i limiti e le differenze volute | implemented |
+| [[domains/crm/concepts/colonne-filtrabili\|Colonne filtrabili]] | Le mappe chiuse di Clienti e Pratiche, con tipo e operatori di ogni colonna | implemented |
 
 ## Decisions
 
-Nessuna ADR di dominio per ora. Le decisioni della spec sono nel suo Decision Log (D1–D10).
+Nessuna ADR di dominio per ora. Le decisioni di ogni spec sono nel suo Decision Log e nel PLAN.
 
 ## Fonti ingerite
 
@@ -70,3 +77,4 @@ Nessuna ADR di dominio per ora. Le decisioni della spec sono nel suo Decision Lo
 | [[specs/crm/gestione-operatori/SPEC]] | [[specs/crm/gestione-operatori/IMPLEMENTATION-NOTES]] | [[specs/crm/gestione-operatori/REPORT]] | [[tech-debt/crm/gestione-operatori]] |
 | [[specs/crm/sicurezza-deploy-staging/SPEC]] | [[specs/crm/sicurezza-deploy-staging/IMPLEMENTATION-NOTES]] | — | — |
 | [[specs/crm/export-chiamate/SPEC]] | [[specs/crm/export-chiamate/IMPLEMENTATION-NOTES]] | [[specs/crm/export-chiamate/REPORT]] | [[tech-debt/crm/export-chiamate]] |
+| [[specs/crm/filtri-sql-sicuri/SPEC]] | [[specs/crm/filtri-sql-sicuri/IMPLEMENTATION-NOTES]] | [[specs/crm/filtri-sql-sicuri/REPORT]] | [[tech-debt/crm/filtri-sql-sicuri]] |

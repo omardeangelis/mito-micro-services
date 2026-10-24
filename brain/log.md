@@ -12,6 +12,12 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 
 <!-- Entries are appended by create-spec (spec creation) and docs-maintenance (ingest). Format:
 
+## [2026-10-24] ingest | Filtri avanzati sicuri di Clienti e Pratiche
+- Source: [[specs/crm/filtri-sql-sicuri/SPEC]]
+- Flows written: 1
+- Concepts written: 2
+- Review ingested: [[specs/crm/filtri-sql-sicuri/REPORT]] (6 righe durevoli, già nel tech debt: solo corrispondenza)
+
 ## [2026-10-24] review | Filtri avanzati sicuri di Clienti e Pratiche
 - Report: [[specs/crm/filtri-sql-sicuri/REPORT]]
 - Scope: spec
@@ -282,13 +288,6 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 - Verdict: DO NOT SHIP
 - Impact: critical
 - Verifiers: 7 (1 blockers, 4 major)
-
-## [2026-09-24] spec | Sezione Contatti e tabella Clienti semplificata
-- Created spec: [[specs/crm/sezione-contatti/SPEC]]
-- Flow: [[specs/crm/sezione-contatti/FLOW]]
-- Domain: crm
-- Status: Draft
-- Source: [[chore/crm/design-contatti]]
 
 ## [2026-09-29] review | Sezione Contatti — PR2 "Pulizia e vincolo DB"
 - Report: [[specs/crm/sezione-contatti/REPORT]] (round PR2)

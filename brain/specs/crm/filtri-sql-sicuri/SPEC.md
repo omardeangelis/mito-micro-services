@@ -7,6 +7,8 @@ links:
   - "[[specs/crm/sezione-contatti/SPEC]]"
   - "[[chore/crm/report-frontend-riorganizzazione]]"
   - "[[chore/migrazione-effect]]"
+ingested: true
+last_ingested: 2026-10-24
 created: 2026-10-20
 updated: 2026-10-24
 ---

@@ -7,8 +7,11 @@ links:
   - "[[specs/crm/filtri-sql-sicuri/PLAN]]"
   - "[[specs/crm/filtri-sql-sicuri/REPORT]]"
   - "[[tech-debt/crm/filtri-sql-sicuri]]"
-ingested: false
-last_ingested: null
+  - "[[domains/crm/flows/filtro-avanzato-di-clienti-e-pratiche]]"
+  - "[[domains/crm/concepts/filtro-avanzato]]"
+  - "[[domains/crm/concepts/colonne-filtrabili]]"
+ingested: true
+last_ingested: 2026-10-24
 created: 2026-10-24
 updated: 2026-10-24
 ---

@@ -14,8 +14,8 @@ links:
   - "[[specs/crm/filtri-sql-sicuri/SPEC]]"
   - "[[specs/crm/filtri-sql-sicuri/PLAN]]"
   - "[[specs/crm/filtri-sql-sicuri/IMPLEMENTATION-NOTES]]"
-ingested: false
-last_ingested: null
+ingested: true
+last_ingested: 2026-10-24
 created: 2026-10-24
 updated: 2026-10-24
 ---
@@ -112,4 +112,4 @@ Nessun verificatore ha trovato un BLOCKER o un MAJOR. Il passaggio di sicurezza 
 
 - Correzioni prima del merge (commit `9c0d770`, dopo questa review): byte NUL scartato; `validateAndFormatDate` in UTC; test per il limite inferiore degli interi, il testo vuoto con righe NULL, `.5`, il Select degli enum e il segnaposto delle date (i mutanti dei rilievi ora muoiono). `\` e D17 aggiunti al §13 del PLAN.
 - Durable findings to fold into `brain/tech-debt/crm/filtri-sql-sicuri.md` (già scritti lì dall'implementazione): le righe marcate `yes`.
-- Domain pages that should backlink this review: le pagine di flusso dei filtri di Clienti e Pratiche, quando `docs-maintenance` le scrive.
+- Domain pages that should backlink this review: le pagine di flusso dei filtri di Clienti e Pratiche, quando `docs-maintenance` le scrive. Fatto il 2026-10-24: [[domains/crm/flows/filtro-avanzato-di-clienti-e-pratiche]], [[domains/crm/concepts/filtro-avanzato]], [[domains/crm/concepts/colonne-filtrabili]].

@@ -39,14 +39,14 @@ Migrated from `docs/` on 2026-09-24. Source material for future `create-spec` ru
 
 | Domain | Map | Contract | Concepts | Flows |
 |---|---|---|---|---|
-| crm | [[domains/crm/crm]] | [[domains/crm/crm-contract]] | 8 | 8 |
+| crm | [[domains/crm/crm]] | [[domains/crm/crm-contract]] | 10 | 9 |
 
 ## Specs (per domain)
 
 | Domain | Spec | Status |
 |---|---|---|
 | crm | [[specs/crm/sezione-contatti/SPEC]] | Draft |
-| crm | [[specs/crm/filtri-sql-sicuri/SPEC]] | Implemented (piano: [[specs/crm/filtri-sql-sicuri/PLAN]], review SHIP) |
+| crm | [[specs/crm/filtri-sql-sicuri/SPEC]] | Implemented, ingested, PR #76 verso `dev` (piano: [[specs/crm/filtri-sql-sicuri/PLAN]], review: [[specs/crm/filtri-sql-sicuri/REPORT]]) |
 | crm | [[specs/crm/seeder-locale/SPEC]] | Implemented (piano: [[specs/crm/seeder-locale/PLAN]], review: [[specs/crm/seeder-locale/REPORT]]) |
 | crm | [[specs/crm/gestione-operatori/SPEC]] | Implemented sui branch, tranne la P2 (piano: [[specs/crm/gestione-operatori/PLAN]], review: [[specs/crm/gestione-operatori/REPORT]]) |
 | crm | [[specs/crm/sicurezza-deploy-staging/SPEC]] | Implemented, ingested (piano: [[specs/crm/sicurezza-deploy-staging/PLAN]]) |
