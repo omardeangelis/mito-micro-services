@@ -74,3 +74,7 @@
 - [Grid min-content at text scale](feedback_grid_min_content_text_scale.md) — flex row or header padding widens grid track at root 20px; inject long words; old classes inline
 - [Dialog harness ordering](feedback_dialog_harness_ordering_and_state_forcing.md) — injector before stopImmediatePropagation; fiber-dispatch write-gated steps; merge split text rects
 - [Injection test payloads, param binding](feedback_injection_test_payload_and_param_binding.md) — TRUE payloads pass on vulnerable code; date params need non-UTC session; versions from worktree lockfile
+- [Base-vs-head procedure differential](feedback_base_vs_head_procedure_differential.md) — base file beside head, createTRPCRouter caller, patch testClient.query; userId pitfall; perf tests flake under load
+- [Union-branch mutants, pg binding capture](feedback_union_branch_mutants_and_pg_binding_capture.md) — mutate each statement; postgres-js debug hook; NUL text param = 500
+- [Raw-SQL to structured filter differential](feedback_raw_sql_to_structured_filter_differential.md) — probeSql hook, per-kind value battery, PG15 prepare:false Rome vs PGlite PG16, LIKE backslash
+- [Validator bounds, runner selector](feedback_validator_bounds_and_runner_selector.md) — lower-bound mutants survive; CI-line proof for pg file; NULL-row fixture; west-of-UTC date validator

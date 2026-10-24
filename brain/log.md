@@ -12,6 +12,13 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 
 <!-- Entries are appended by create-spec (spec creation) and docs-maintenance (ingest). Format:
 
+## [2026-10-24] review | Filtri avanzati sicuri di Clienti e Pratiche
+- Report: [[specs/crm/filtri-sql-sicuri/REPORT]]
+- Scope: spec
+- Verdict: SHIP
+- Impact: critical
+- Verifiers: 7 (0 blockers, 0 major; 8 minor)
+
 ## [2026-10-24] plan | Filtri avanzati sicuri di Clienti e Pratiche
 - Spec: [[specs/crm/filtri-sql-sicuri/SPEC]] (aggiornata alla baseline post-PR6, OQ2 e OQ3 chiuse, AC12 nuovo), piano: [[specs/crm/filtri-sql-sicuri/PLAN]]
 - 9 task in una PR, dopo il gate G0 (SPEC approvata da Omar): caratterizzazione e passaggio a Effect di `getAllPratiche`, modulo di dominio con le mappe chiuse, traduttore con parametri legati, test di sfruttamento rossi prima, mutanti M1–M5, prova su Postgres reale, A/B nel browser
@@ -282,11 +289,6 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 - Domain: crm
 - Status: Draft
 - Source: [[chore/crm/design-contatti]]
-
-## [2026-09-24] migration | docs/ → brain/
-- Moved 5 CRM design/analysis docs → `chore/crm/`; `migration_plan.md` + `migration/` (15 files) → `chore/`; 2 HTML deliverables → `raw/assets/`
-- Rewrote `docs/…` path references; added `domain:` frontmatter (`crm`, `platform`); `docs/` removed
-- Nothing ingested into `domains/` yet — run `create-spec` from a `chore/crm/` draft, then `docs-maintenance`
 
 ## [2026-09-29] review | Sezione Contatti — PR2 "Pulizia e vincolo DB"
 - Report: [[specs/crm/sezione-contatti/REPORT]] (round PR2)

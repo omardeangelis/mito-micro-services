@@ -1,7 +1,7 @@
 ---
 domain: crm
 type: spec
-status: approved
+status: implemented
 links:
   - "[[tech-debt/crm/search-by-explicit-map]]"
   - "[[specs/crm/sezione-contatti/SPEC]]"

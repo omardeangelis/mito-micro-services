@@ -103,7 +103,7 @@ Si fa a pezzi, dentro il passo che tocca quei file, o in una PR piccola sua. Non
 | import | ☐ | ☐ | più le 6 route REST |
 | analytics | ☐ | ☐ | |
 | customer | parziale | parziale | `PUT` handover e assegnazioni già fatti |
-| pratiche | ☐ | ☐ | dopo `filtri-sql-sicuri` |
+| pratiche | parziale | parziale | `getAllPratiche` su Effect (`query`, `runTrpc`) in [[specs/crm/filtri-sql-sicuri/PLAN]] (branch `claude/filtri-sql-sicuri`, in attesa di Leo e del merge); `getAllAvailableRegion` no |
 | chat | ☑ | parziale | |
 | task | ☑ | parziale | |
 | supabase | ☑ | parziale | |
@@ -138,3 +138,4 @@ Regole:
 | TD4 | `[PREVISTO]` | `auth.ts` rifiuta il login dei disattivati e l'override di `getSessionAndUser` ne invalida le sessioni | PR 4 di [[specs/crm/gestione-operatori/PLAN]] (AC16, AC17) | È codice NextAuth v4, che il passo 8 sostituisce | La spec del sostituto di NextAuth li conserva, con gli stessi test sull'adapter e su `sessionFromRequest` | Passo 8 |
 | TD5 | `[OPEN]` | Route `src/app/api/cron/*`, script `scheduled/*.js` e 8 workflow GitHub dei cron | Passo "cron" (§4) | La prod usa ancora GitHub Actions finché i cron non passano a Cloud Scheduler | Toglierli tutti insieme | Dopo il passaggio dei cron di prod a Cloud Scheduler ([[chore/migrazione-gcp]]) |
 | TD6 | `[OPEN]` | Residui del passo 0: `server-only` in 26 file, `@sentry/nextjs` in 2, router `supabase`, `supabaseClient` nel contesto | Passo 0 (§4) | Si tolgono dentro il passo che tocca quei file, senza allargare i diff | Come nel §4 | A ogni passo |
+| TD7 | `[OPEN]` | Stranezze di `getAllPratiche` fissate dai test di caratterizzazione: `total` conta le pratiche senza join, anche quelle senza clienti, mentre `data` no; `onlyMe` per un OPERATORE e `orderBy=operatore` danno `INTERNAL_SERVER_ERROR` | [[specs/crm/filtri-sql-sicuri/PLAN]] (F6, AC12) | Il passaggio a Effect non cambia comportamento | Una PR piccola per stranezza, ognuna con il test di caratterizzazione aggiornato | Dopo il merge di `filtri-sql-sicuri` |

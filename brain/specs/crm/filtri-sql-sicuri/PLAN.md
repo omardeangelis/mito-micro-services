@@ -12,7 +12,7 @@ updated: 2026-10-24
 # Plan: Filtri avanzati sicuri di Clienti e Pratiche
 
 **Spec:** [[specs/crm/filtri-sql-sicuri/SPEC]], aggiornata il 2026-10-24 al codice dopo PR6 e approvata da Omar lo stesso giorno, con D16 (G0 chiuso).
-**Status:** Planned
+**Status:** Complete
 **Generato:** 2026-10-24 con `create-plan`: grill (2 decisioni di Omar, le altre fissate dal codice e dalla spec) → task graph → tdd → `adversarial-verifier`. La prima verifica ha dato DO NOT SHIP (1 blocker, 7 major); le correzioni sono nel §16.
 **Baseline:** `dev` a `594ff64`. Dentro c'è PR6 della Sezione Contatti, che non è ancora in `main`.
 **Chi:** scrive Omar (divisione del lavoro del 2026-10-23: filtri → customer → pratiche), rivede Leo.
@@ -206,9 +206,9 @@ Prima della wave 1. Omar porta la SPEC a `status: approved` e conferma o cambia 
 
   I casi nuovi non passano né `filter` né `sqlFilter`, che escono dall'input in T6.
 - **validation**: test verdi su `dev` così com'è; `tsc`.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done (2026-10-24, commit `8cce71a`)
+- **log**: worker sonnet, nessuna correzione. 46 casi nuovi in `describe("pratiche.getAllPratiche, caratterizzazione")`, verdi 3 volte di fila sul codice di `594ff64`. Cinque pratiche con valori distinti per ogni chiave di ordinamento; la pratica con due clienti collegata a mano in `customerToPratica`. Comportamenti di oggi fissati e non ovvi: `importoFinanziato` torna come stringa (`castAsNumber` cambia solo il tipo TypeScript); `filterBy.productId` vuole il nome del prodotto, non il codice; un nome sconosciuto accanto a uno noto si ignora; `productId` o `file` vuoti non filtrano; gli importi si ordinano come numeri e `stato` nell'ordine dell'enum
+- **files edited/created**: `packages/server/src/api/routers/pratiche/_test/getAllPratiche.db.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -231,9 +231,9 @@ Prima della wave 1. Omar porta la SPEC a `status: approved` e conferma o cambia 
   - `__proto__`, `constructor` e `toString` non sono colonne;
   - `a:eq:10:30` dà il valore `10`;
   - `tsc`; i test della UI restano verdi.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done (2026-10-24, commit `ba6d84a`)
+- **log**: test rosso scritto dall'orchestratore (modulo assente), worker sul modello dell'orchestratore, nessuna correzione. `columnType` verificati in drizzle-orm 0.45.4: `PgEnumColumn`, `PgVarchar`, `PgText`, `PgChar`, `PgSmallInt`, `PgInteger`, `PgNumeric`, `PgTimestamp`; le varianti `PgNumericNumber`, `PgTimestampString` ecc. danno `undefined`. Le mappe per nome restano `Map<string, PgColumn>` e non `ReadonlyMap`, perché `createSQLQuery` le riceve fino a T8. 12 test del dominio verdi, 892 test della UI verdi, `tsc` pulito
+- **files edited/created**: nuovi `packages/domain/src/filters/advanced.ts`, `packages/domain/src/filters/_test/advanced.test.ts`; `src/app/dashboard/customers/_constants/index.ts` (riesporta le mappe)
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -270,9 +270,9 @@ Prima della wave 1. Omar porta la SPEC a `status: approved` e conferma o cambia 
   - test verdi; `tsc`;
   - nessun `sql.raw` in `customer/GET` né nel traduttore;
   - mutanti M1, M4 (testo) e M5 del §11 uccisi, ognuno con il nome del test che lo uccide nel log.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done (2026-10-24, commit `d00af73`)
+- **log**: eseguito insieme a T4 (un worker sul modello dell'orchestratore, nessuna correzione): il traduttore è uno, e scriverne prima una versione volutamente ingenua solo per avere T4 rosso non aveva senso. Test rossi scritti dall'orchestratore e provati sul codice di `594ff64`: 30 rossi su 31 (l'unico verde, "solo voci non valide", lo è per costruzione). Conteggi su `594ff64`: `NOT EXISTS (SELECT 1 FROM "mito-deutsche_user")` 2 → 0; `EXISTS … WHERE role = 'ADMIN'` con chiamante OPERATORE 2 → 0; `1=1) OR (1=1` con `q=Roma` 1 → 2; `sqlFilter` valido di un frontend vecchio 2 → 1 (oggi filtra); il valore `x' OR '1'='1` trova 9 clienti invece di 1. Aggiunto un enum (`source = passaparola`) al test di AC5 per uccidere M4 sull'enum. Mutanti, tutti uccisi: **M1** (`sqlFilter` nello zod e `sql.raw` nel `where`) da 4 test di "sqlFilter non arriva al database"; **M4 testo** (`ilike` con `sql.raw`) da "un valore con apici, % o _…" e dal test di AC5; **M5** (`sql.raw(field)` o `sql.identifier(field)` per una colonna sconosciuta) da "scarta senza errore una colonna a forma di iniezione…", "una colonna di task tolta da Clienti" e "solo voci non valide"
+- **files edited/created**: nuovi `packages/server/src/api/routers/utils/advancedFilters.ts`, `customer/_test/advancedFilters.security.db.test.ts`; `customer/GET/index.ts`; `src/app/dashboard/customers/_components/CustomerTableSection.tsx` e `_test/CustomerTableSection.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -301,9 +301,9 @@ Prima della wave 1. Omar porta la SPEC a `status: approved` e conferma o cambia 
   - **AC9:** `state:eq:chiamare` si scarta.
   - "Il totale conta i clienti…" si riscrive con un filtro strutturato su un valore che `seedTwentyFive` rende filtrabile (F2), con le stesse asserzioni su `total` e ordine.
 - **validation**: test verdi; `tsc`; mutanti M4 (numero, data, enum) uccisi e annotati.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done (2026-10-24, commit `a4ad30e`)
+- **log**: il codice è arrivato con T3; T4 porta i test di tipo e la riscrittura di "il totale conta i clienti…" (`seedTwentyFive` mette `comune = Roma` a c-10 … c-19; stesse asserzioni su `total` e ordine). Il test "un sqlFilter su una colonna di customers filtra come prima" è uscito, sostituito da "un sqlFilter valido di un frontend vecchio non ha effetto" (AC10). Rosso di D11 provato per mutazione: con il valore passato come `Date` all'encoder della colonna il test "con la sessione in Europe/Rome…" fallisce. Mutanti **M4 numero, data ed enum** (valore con `sql.raw`) uccisi dal test di AC5. 105 test di `customer` verdi, suite intera verde a parte i rossi di T6, `tsc` pulito
+- **files edited/created**: nuovo `customer/_test/advancedFilters.types.db.test.ts`; `customer/_test/getAllCustomers.db.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -321,9 +321,9 @@ Prima della wave 1. Omar porta la SPEC a `status: approved` e conferma o cambia 
 
   Restano uguali la forma della risposta, la `union`, gli ordinamenti e `filterQuery`, compreso `sql.raw`, che sparisce in T6. Questo task è solo refactor. Le altre procedure del file (`getAllAvailableRegion`, `getPraticaById`, `getPraticaByPraticaId`) non si toccano.
 - **validation**: i test di T1 e i 4 di oggi restano verdi senza cambiare asserzioni; `tsc`. Se un'asserzione va cambiata, il refactor ha cambiato comportamento: ci si ferma e si decide con Omar.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done (2026-10-24, commit `5de18c8`)
+- **log**: worker sonnet, nessuna correzione. `getAllPratichePage(input, operator)` con `Pick<ResolvedOperator, "id" | "role">`; `total` e `union` in due `query` con `Effect.all` `unbounded` (prima erano in sequenza: il risultato non cambia). `total` resta l'array `[{ total }]`. Tolto il blocco commentato `advancedData`, codice morto. I 50 test del file (4 di ricerca e 46 di T1) verdi due volte senza toccare asserzioni; i due casi `INTERNAL_SERVER_ERROR` passano dal `DbError` di `runTrpc`
+- **files edited/created**: `packages/server/src/api/routers/pratiche/GET/index.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -347,9 +347,9 @@ Prima della wave 1. Omar porta la SPEC a `status: approved` e conferma o cambia 
   - **AC5:** con i marcatori.
   - **AC10:** il payload completo di un frontend vecchio (`sqlFilter` più un array `filter`) risponde senza errore e senza effetto. Se un giorno qualcuno mette `.strict()`, il test diventa rosso.
 - **validation**: test verdi, quelli di T1 compresi, con le stesse asserzioni; `tsc`; nessun `sql.raw` in `pratiche/GET`; mutanti M2 e M3 uccisi e annotati.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done (2026-10-24, commit `edcac44`)
+- **log**: worker sul modello dell'orchestratore, nessuna correzione; il traduttore di T3 non è cambiato (i decimali passano al primo colpo). Test rossi dell'orchestratore provati sul codice con `sql.raw` (dopo T5, uguale a `594ff64` per i filtri): 24 rossi su 24. Conteggi: `NOT EXISTS` 4 → 0; `1=1) OR (1=1` con la ricerca `PR-A` 2 → 4; il payload di un frontend vecchio (`sqlFilter` più `filter`) oggi filtra, 4 → 0. Pagina Pratiche: 3 test rossi. Nei 4 test di ricerca di oggi tolto solo `filter: undefined`; nel test di T1 aggiornato il commento dell'helper, diventato falso (nessuna asserzione cambiata). Mutanti, tutti uccisi: **M2** (`sqlFilter` e `sql.raw` in `filterQuery`) e **M3** (`sql.raw` solo nel `total`) da 3 test di "sqlFilter non arriva al database" (NOT EXISTS, bypass, frontend vecchio), che controllano anche `total`; **M4 decimale** dal test di AC5 di Pratiche. Suite intera 3016 verdi, `tsc` pulito
+- **files edited/created**: `pratiche/GET/index.ts`; nuovo `pratiche/_test/advancedFilters.db.test.ts`; `pratiche/_test/getAllPratiche.db.test.ts`; `src/app/dashboard/pratiche/page.tsx` e `_test/page.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -370,9 +370,9 @@ Prima della wave 1. Omar porta la SPEC a `status: approved` e conferma o cambia 
 
   Prova F4 e l'assenza di errori di tipo sul driver vero.
 - **validation**: `pnpm run test --run` con `TEST_DATABASE_URL` verde, come in CI.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done (2026-10-24, commit `e0454a1`; casi aggiunti in `9c0d770`)
+- **log**: worker su sonnet (`medium`), nessuna correzione. 15 test su Postgres 15 con postgres-js: `vi.mock` di `@mito/db` con un pool la cui sessione è in `Europe/Rome` (un test controlla `SHOW TimeZone`). Senza `TEST_DATABASE_URL` il file si salta, con `CI=1` fallisce (`src/test/pg.setup.ts`). Nota: `pnpm test:pg` senza `--run` resta in watch. Dopo la review: intero sotto il range e testo con il byte NUL.
+- **files edited/created**: nuovo `packages/server/src/api/routers/utils/_test/advancedFilters.pg.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -388,9 +388,9 @@ Prima della wave 1. Omar porta la SPEC a `status: approved` e conferma o cambia 
   - test del popover: gli stessi operatori per tipo di prima, e l'URL scritto ancora come `nome:op:valore` (AC9);
   - `next lint`, `tsc` e test verdi;
   - `git grep -n "createSQLQuery\|createSQLFilter\|sqlFilter" -- src packages` trova solo i test di AC10.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done (2026-10-24, commit `c9193e6`; test aggiunti in `9c0d770`)
+- **log**: worker su sonnet (`medium`), nessuna correzione. Test dell'orchestratore prima del codice: operatori per tipo con le mappe vere e URL scritto come `nome:op:valore`. Il `git grep` della validazione trova `sqlFilter` solo nei test di AC10 e nei commenti dei router. Dopo la review: Select degli enum e segnaposto delle date, che i mutanti mostravano scoperti (lo erano anche prima).
+- **files edited/created**: `src/components/custom/table/PopoverFilter.tsx`, `_test/PopoverFilter.test.tsx`, `src/lib/utils/filters.ts`, `src/app/dashboard/customers/_constants/index.ts` (riesporta le mappe dal dominio)
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -426,9 +426,16 @@ Prima della wave 1. Omar porta la SPEC a `status: approved` e conferma o cambia 
      - riverificare A2.
   8. **PR verso `dev`** solo quando Omar la chiede. Merge prima del rilascio `dev`→`main` che porta PR6 (G3).
 - **validation**: tutti i punti sopra annotati in `IMPLEMENTATION-NOTES.md`; REPORT SHIP.
-- **status**: Planned
+- **status**: Done fino al punto 5 e al 7 (2026-10-24); 6 (Leo) e 8 (PR, quando Omar la chiede) aperti
 - **log**:
-- **files edited/created**:
+  1. AC1: il `git grep` non trova niente.
+  2. AC3: M1–M5 più il mutante D11 dell'encoder, tutti uccisi sul branch finito (dettaglio in `IMPLEMENTATION-NOTES.md`).
+  3. Gate in un worktree di scratchpad senza `.env*`, a `bfd559e`: install, `next lint`, `tsc`, test con i `*.pg.test.ts` (3102 verdi, 2 saltati), `pnpm build` con i placeholder, `api:build`, `api:smoke`, tutti verdi. Dopo `9c0d770` ripetuti `tsc`, lint e le suite toccate (238 verdi con il pg).
+  4. A/B su `mito_local` (10.000 clienti, 9.345 pratiche, sessione in Europe/Rome): totali uguali per i filtri validi, differenze tutte del §13 (dettaglio nelle note). Il popover mostra gli stessi operatori.
+  5. Review: SHIP, 7 passaggi, 0 BLOCKER, 0 MAJOR, 8 MINOR ([[specs/crm/filtri-sql-sicuri/REPORT]]). MINOR di codice corretti in `9c0d770`, quelli di documentazione nel §13; i NIT restano nel tech debt della spec.
+  7. Documenti: [[chore/migrazione-effect]] §5, [[tech-debt/crm/search-by-explicit-map]], [[tech-debt/crm/filtri-sql-sicuri]] (F6 e i rimandi). A2 riverificata: in prod il deploy è ancora `vercel deploy --prebuilt --prod` (`deploy-production.yaml:70`), Cloud Run solo su staging.
+  - Passaggio di `$simplify` prima della review: commit `bfd559e`.
+- **files edited/created**: `brain/specs/crm/filtri-sql-sicuri/RUBRIC.md`, `REPORT.md`; le correzioni della review in `9c0d770`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -502,7 +509,11 @@ Prima della wave 1. Omar porta la SPEC a `status: approved` e conferma o cambia 
 - un `'` in un valore: prima un errore, dopo funziona;
 - un operatore non offerto dal popover e scritto a mano (`state:gt:Liquidata`, `comune:gt:M`): prima restituiva righe, dopo si scarta (AC7);
 - valori che Postgres oggi accetta e il controllo no (`1e3`, una data fuori formato): prima filtravano o andavano in errore, dopo si scartano (AC8);
-- interi fuori range e date dell'anno `0000`: prima un errore, dopo si scartano (AC8).
+- interi fuori range e date dell'anno `0000`: prima un errore, dopo si scartano (AC8);
+- `\` in un valore di testo: prima faceva da escape del `LIKE`, dopo è un carattere letterale (AC4; trovata dalla review, v3);
+- un valore di testo oltre 255 caratteri: prima non trovava niente (0 righe), dopo si scarta e la lista è intera (D17);
+- oltre la ventesima voce di filtro: prima si applicavano tutte, dopo solo le prime 20 (D17);
+- un byte NUL in un valore di testo: prima un errore, dopo si scarta (AC8).
 
 ## 14. Tracciabilità AC → task
 
