@@ -1,4 +1,4 @@
-import { operatorProcedure, protectedProcedure } from "../../../trpc"
+import { operatorProcedure } from "../../../trpc"
 import { z } from "zod"
 import { runTrpc } from "../../../../effect/trpc"
 import { customerSearchBy } from "@mito/domain/constants/customerSearch"
@@ -23,7 +23,7 @@ const getCustomerByIdInput = z.object({
   id: z.string().min(1),
 })
 
-export const getCustomerById = protectedProcedure
+export const getCustomerById = operatorProcedure
   .input(getCustomerByIdInput)
   .query(({ input }) => runTrpc(getCustomerByIdService(input.id)))
 
@@ -39,7 +39,7 @@ const getCustomerByFiscalCodeInput = z
     "Either fiscalCode, vatCode or tempID must be provided"
   )
 
-export const getCustomersByFiscalCodeOrVatCode = protectedProcedure
+export const getCustomersByFiscalCodeOrVatCode = operatorProcedure
   .input(getCustomerByFiscalCodeInput)
   .query(({ input }) => runTrpc(findCustomersByCode(input)))
 
@@ -47,11 +47,11 @@ const getAllCustomerForPraticaInput = z.object({
   id: z.string(),
 })
 
-export const getAllPraticaByCustomer = protectedProcedure
+export const getAllPraticaByCustomer = operatorProcedure
   .input(getAllCustomerForPraticaInput)
   .query(({ input }) => runTrpc(listPracticesOfCustomer(input.id)))
 
-export const getAllCustomerForPratica = protectedProcedure
+export const getAllCustomerForPratica = operatorProcedure
   .input(getAllCustomerForPraticaInput)
   .query(({ input }) => runTrpc(listCustomersOfPractice(input.id)))
 
@@ -100,10 +100,10 @@ export const getAllAvailableJobs = operatorProcedure.query(() =>
 
 const getAllFileNameInput = z.enum(["customers", "practices"])
 
-export const getAllFileName = protectedProcedure
+export const getAllFileName = operatorProcedure
   .input(getAllFileNameInput)
   .query(({ input }) => runTrpc(listFileNames(input)))
 
-export const getCustomerUnderReview = protectedProcedure.query(() =>
+export const getCustomerUnderReview = operatorProcedure.query(() =>
   runTrpc(listCustomersUnderReview())
 )
