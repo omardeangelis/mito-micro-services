@@ -1,7 +1,7 @@
 import { type ClassValue, clsx } from "clsx"
 import { twMerge } from "tailwind-merge"
 import { type CustomerWrite, type Customer } from "@mito/domain/schemas"
-import SparkMD5 from "spark-md5"
+import { createHashForCustomer } from "@mito/domain/utils/customerHash"
 
 // $ExpectType string
 
@@ -90,107 +90,6 @@ export const formatDateAsDMY = (date: Date) => {
   return `${part("day")}/${part("month")}/${part("year")}`
 }
 
-export function parseDateInput(dateInput: string): Date | null {
-  // Ottieni l'anno corrente
-  const currentYear = new Date().getFullYear()
-  const pivotYear = currentYear % 100 // Le ultime due cifre dell'anno corrente
-  const currentCentury = Math.floor(currentYear / 100) * 100
-
-  // Controlla se è una data seriale di Excel
-  if (/^\d{5}$/.test(dateInput)) {
-    return formatDateSerialInDate(dateInput)
-  }
-
-  // Controlla se è una data in formato YYYYMMDD
-  if (/^\d{8}$/.test(dateInput)) {
-    return extractDataFromYYYYMMDD(dateInput)
-  }
-
-  // Controlla se è una data normale in formato M/D/YY, M/D/YYYY, MM/DD/YY, o MM/DD/YYYY
-  if (/^\d{1,2}\/\d{1,2}\/\d{2,4}$/.test(dateInput)) {
-    const [month, day, year] = dateInput.split("/").map(Number)
-    if (year !== undefined && !isNaN(month!) && !isNaN(day!) && !isNaN(year)) {
-      // Gestisci il caso YY
-      let fullYear
-      if (year < 100) {
-        if (year <= pivotYear) {
-          fullYear = currentCentury + year
-        } else {
-          fullYear = currentCentury + year - 100
-        }
-      } else {
-        fullYear = year
-      }
-      return new Date(fullYear, month! - 1, day)
-    }
-  }
-
-  // Controlla se è una data in formato ddMMMMyyyy (es: 23Mar1959)
-  if (/^\d{1,2}[a-zA-Z]{3}\d{4}$/.test(dateInput)) {
-    const day = parseInt(dateInput.slice(0, 2))
-    const monthStr = dateInput.slice(2, 5)
-    const year = parseInt(dateInput.slice(5, 9))
-
-    const monthMap: Record<string, number> = {
-      Jan: 0,
-      Feb: 1,
-      Mar: 2,
-      Apr: 3,
-      May: 4,
-      Jun: 5,
-      Jul: 6,
-      Aug: 7,
-      Sep: 8,
-      Oct: 9,
-      Nov: 10,
-      Dec: 11,
-    }
-
-    const month = monthMap[monthStr]
-    if (month !== undefined && !isNaN(day) && !isNaN(year)) {
-      return new Date(year, month, day)
-    }
-  }
-
-  // Se non corrisponde a nessuno dei formati specificati, restituisci null o un errore
-  return null
-}
-
-const extractDataFromYYYYMMDD = (date: string) => {
-  // Extract year, month, and day from the string
-  const year = parseInt(date.toString().substring(0, 4), 10)
-  const month = parseInt(date.toString().substring(4, 6), 10) - 1 // Months are zero-indexed in JavaScript
-  const day = parseInt(date.toString().substring(6, 8), 10)
-
-  // Create a new Date object
-  return new Date(year, month, day)
-}
-
-const formatDateSerialInDate = (serial: string) => {
-  const serialNumber = Number(serial)
-  // La data di riferimento di Excel
-  const excelBaseDate = new Date(1900, 0, 1) // 1 gennaio 1900
-  // Aggiungi il numero di giorni al numero di riferimento
-  const resultDate = new Date(
-    excelBaseDate.getTime() + (serialNumber - 1) * 24 * 60 * 60 * 1000
-  )
-  return resultDate
-}
-
-type HashForCustomer = Pick<Customer, "tempID" | "id">
-
-function createHashFromString({ tempId, id }: { tempId?: string; id: string }) {
-  return SparkMD5.hash(`${tempId}-${id}`)
-}
-
-export function createHashForCustomer(customer: HashForCustomer) {
-  const input = {
-    id: customer.id,
-    tempId: customer.tempID,
-  }
-  return createHashFromString(input)
-}
-
 export function findCustomerByHash({
   customer,
   customerList,
@@ -207,8 +106,5 @@ export function findCustomerByHash({
   })
 }
 
-export function cleanObject<T extends Record<string, unknown>>(obj: T) {
-  return Object.entries(obj)
-    .filter(([_, v]) => v !== null && v !== undefined && v !== "")
-    .reduce((acc, [k, v]) => ({ ...acc, [k]: v }), {} as T)
-}
+export { createHashForCustomer }
+export { cleanObject } from "@mito/domain/utils/object"

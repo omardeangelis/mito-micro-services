@@ -1,81 +1,13 @@
 // Calendario di Europe/Rome per il seed locale. Un "giorno" e' una stringa
 // "yyyy-MM-dd". Niente lettura dell'orologio e niente fuso del processo: tutto
 // passa da Intl con timeZone "Europe/Rome" o da getter UTC su istanti shiftati.
+import { romeWallClock, romeWallToInstant } from "@mito/domain/utils/romeClock"
 import type { Day } from "./types"
 
-const ROME = "Europe/Rome"
+// The Rome wall clock is the domain's, which the import uses too
+export { romeWallClock, romeWallToInstant } from "@mito/domain/utils/romeClock"
+
 const DAY_RE = /^(\d{4})-(\d{2})-(\d{2})$/
-const MS_PER_DAY = 86_400_000
-
-const romeFormat = new Intl.DateTimeFormat("en-US", {
-  timeZone: ROME,
-  hourCycle: "h23",
-  year: "numeric",
-  month: "numeric",
-  day: "numeric",
-  hour: "numeric",
-  minute: "numeric",
-  second: "numeric",
-})
-
-/** Scostamento di Europe/Rome da UTC (ms) all'istante dato. */
-export function romeOffsetMs(instantMs: number): number {
-  const parts = romeFormat.formatToParts(new Date(instantMs))
-  const part = (type: Intl.DateTimeFormatPartTypes) =>
-    Number(parts.find((p) => p.type === type)?.value)
-  const wall = Date.UTC(
-    part("year"),
-    part("month") - 1,
-    part("day"),
-    part("hour"),
-    part("minute"),
-    part("second")
-  )
-  const wholeSecond = instantMs - (((instantMs % 1000) + 1000) % 1000)
-  return wall - wholeSecond
-}
-
-export type WallClock = {
-  year: number
-  /** 0-11, come Date */
-  month: number
-  day: number
-  hours: number
-  minutes: number
-  seconds: number
-  ms: number
-}
-
-/** Campi del calendario di Roma di un istante. */
-export function romeWallClock(instantMs: number): WallClock {
-  const w = new Date(instantMs + romeOffsetMs(instantMs))
-  return {
-    year: w.getUTCFullYear(),
-    month: w.getUTCMonth(),
-    day: w.getUTCDate(),
-    hours: w.getUTCHours(),
-    minutes: w.getUTCMinutes(),
-    seconds: w.getUTCSeconds(),
-    ms: w.getUTCMilliseconds(),
-  }
-}
-
-/**
- * Istante di un orario di parete di Roma, dato come ms "UTC" dei suoi campi
- * (anche con overflow, come `Date.UTC`). Come un `Date` locale: in un orario
- * inesistente (salto in avanti) vale l'offset di prima del cambio, in un orario
- * doppio (indietro) vince la prima occorrenza.
- */
-export function romeWallToInstant(wallAsUtcMs: number): number {
-  const before = romeOffsetMs(wallAsUtcMs - MS_PER_DAY)
-  const after = romeOffsetMs(wallAsUtcMs + MS_PER_DAY)
-  if (before === after) return wallAsUtcMs - before
-  const candidates = [before, after]
-    .map((offset) => wallAsUtcMs - offset)
-    .filter((instant, i) => romeOffsetMs(instant) === [before, after][i])
-  if (candidates.length === 0) return wallAsUtcMs - before
-  return Math.min(...candidates)
-}
 
 function parseDay(day: Day): { y: number; m: number; d: number } {
   const match = DAY_RE.exec(day)
