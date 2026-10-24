@@ -1,9 +1,6 @@
 import { adminProcedure, operatorProcedure } from "../../../trpc"
-import { customers } from "@mito/db/schema/customers"
-import { eq } from "drizzle-orm"
 import { insertCustomerSchema } from "@mito/domain/schemas"
 import { z } from "zod"
-import { updateCustomerUpdatedAt } from "../../../../shared/updateAt"
 import { runTrpc } from "../../../../effect/trpc"
 import { actorOf } from "../../../../services/contact/actor"
 import {
@@ -12,6 +9,11 @@ import {
   handover as handoverService,
 } from "../../../../services/customer/assignment"
 import { customerErrorToTrpc } from "../../../../services/customer/errors"
+import {
+  markCustomerUpdated,
+  setBlackListStatus,
+  updateCustomerProfile,
+} from "../../../../services/customer/profile"
 
 const updateCustomerFromDashboardSchema = insertCustomerSchema.pick({
   id: true,
@@ -37,14 +39,7 @@ const updateCustomerFromDashboardSchema = insertCustomerSchema.pick({
  */
 export const updateCustomerFromDashboard = operatorProcedure
   .input(updateCustomerFromDashboardSchema)
-  .mutation(async ({ ctx, input }) => {
-    const { db } = ctx
-    return await db
-      .update(customers)
-      .set(input)
-      .where(eq(customers.id, input.id!))
-      .returning({ id: customers.id })
-  })
+  .mutation(({ input }) => runTrpc(updateCustomerProfile(input.id!, input)))
 
 const handoverInput = z.object({
   customerId: z.string(),
@@ -91,13 +86,9 @@ const handleCustomerBlackListSchema = insertCustomerSchema.pick({
 
 export const handleCustomerBlackList = operatorProcedure
   .input(handleCustomerBlackListSchema)
-  .mutation(async ({ input, ctx }) => {
-    const { db } = ctx
-    return await db
-      .update(customers)
-      .set({ blackListStatus: input.blackListStatus })
-      .where(eq(customers.id, input.id!))
-  })
+  .mutation(({ input }) =>
+    runTrpc(setBlackListStatus(input.id!, input.blackListStatus))
+  )
 
 /** "Assegna a te" (P4): see the `assignToYourself` service. */
 export const assignToYourself = operatorProcedure
@@ -118,7 +109,4 @@ const updateLastEditInput = insertCustomerSchema.pick({
 
 export const updateLastEdit = operatorProcedure
   .input(updateLastEditInput)
-  .mutation(async ({ ctx, input }) => {
-    const { db } = ctx
-    return updateCustomerUpdatedAt({ id: input.id!, db })
-  })
+  .mutation(({ input }) => runTrpc(markCustomerUpdated(input.id!)))

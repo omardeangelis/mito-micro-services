@@ -7,9 +7,10 @@ links:
   - "[[specs/crm/gestione-operatori/SPEC]]"
   - "[[specs/crm/gestione-operatori/PLAN]]"
   - "[[specs/crm/filtri-sql-sicuri/SPEC]]"
+  - "[[specs/crm/customer-effect/SPEC]]"
   - "[[chore/migration_plan]]"
 created: 2026-10-22
-updated: 2026-10-22
+updated: 2026-10-24
 ---
 
 # Verso "solo Effect": servizi, bordo, trasporto
@@ -28,8 +29,8 @@ Questa pagina ordina il lavoro sui **servizi di dominio**. Il piano GCP ([[chore
 
 | Livello | Cosa diventa Effect | Chi lo vede | Stato oggi |
 |---|---|---|---|
-| **L1: Logica** | Query Drizzle, regole, errori attesi (`Data.TaggedError`), dipendenze (`Context.Tag` + `Layer`) in `packages/server/src/services/<dominio>/` | Nessuno: è un refactor interno | Fatto per contact, task, chat, cron, storage, `customer/assignment`. Manca per user, operator, import, analytics, il resto di customer e pratiche |
-| **L2: Bordo** | Le procedure tRPC diventano adapter senza logica: input zod → servizio → `runTrpc(program, xErrorToTrpc)`. Anche i middleware `operatorProcedure` e `adminProcedure` | Nessuno: firme e codici di errore invariati | Quasi nessuno. I middleware di `packages/server/src/api/trpc.ts` fanno ancora query Drizzle inline |
+| **L1: Logica** | Query Drizzle, regole, errori attesi (`Data.TaggedError`), dipendenze (`Context.Tag` + `Layer`) in `packages/server/src/services/<dominio>/` | Nessuno: è un refactor interno | Fatto per contact, task, chat, cron, storage, customer ([[specs/crm/customer-effect/PLAN]]). Manca per user, import, analytics e pratiche; operator è nella PR 2 di [[specs/crm/gestione-operatori/PLAN]], in attesa del merge |
+| **L2: Bordo** | Le procedure tRPC diventano adapter senza logica: input zod → servizio → `runTrpc(program, xErrorToTrpc)`. Anche i middleware `operatorProcedure` e `adminProcedure` | Nessuno: firme e codici di errore invariati | Fatto per customer: le 18 procedure sono adapter ([[specs/crm/customer-effect/PLAN]]). Altrove quasi nessuno. I middleware di `packages/server/src/api/trpc.ts` passano a `resolveActor` con la PR 2 di [[specs/crm/gestione-operatori/PLAN]], in attesa del merge |
 | **L3: Trasporto** | tRPC → Effect RPC: `RpcGroup` con payload, successo ed errori in `Schema`, un middleware che fornisce `CurrentUser`, client tipizzato nella UI. Le route REST rimaste diventano `HttpApi` o procedure RPC (§6) | La UI: 76 procedure usate in 57 file, i server action via `@/trpc/server`, `createTestCaller` dei test | Da non iniziare ora (§3) |
 
 **Perché quest'ordine.** Il costo di L3 cresce con la logica che sta ancora dentro le procedure. Se ogni procedura è un adapter di tre righe, cambiare trasporto vuol dire riscrivere adapter, non logica. Altrimenti ogni router va rifatto due volte: una per togliere tRPC e una per scrivere i servizi. Per questo L1 e L2 si fanno router per router, insieme, e L3 si fa una volta sola, alla fine.
@@ -70,7 +71,7 @@ L'ordine segue il rischio della Mappa del 21/10, con un'eccezione: `user` e `ope
 | 0 | Base comune | S (resto) | Senza, ogni riscrittura si porta dietro gli shim di Next.js | – |
 | ✓ | Cron `update`, `cleanup`, `delete-export` | fatto | I 4 job sono programmi Effect con `Db` iniettato, `step()` non c'è più ([PR #55](https://github.com/omardeangelis/mito-micro-services/pull/55)). Restano da togliere `src/app/api/cron/*` e gli 8 workflow GitHub, dopo il passaggio dei cron di prod a Cloud Scheduler (piano GCP) | – |
 | 1 | `user`, `operator`, middleware di `trpc.ts` | S | Piccoli; la disattivazione ci si appoggia; i middleware servono a tutti i router dopo. Le preferenze di layout vanno nel browser invece di essere migrate | [[specs/crm/gestione-operatori/PLAN]] |
-| 2 | `customer` (il resto) | L | Il router non convertito che cambia più spesso (12 commit, 3 fix) ed è l'entità centrale. Mancano test su ricerca, filtri e modifica anagrafica | `filtri-sql-sicuri` in `dev`: riscrive le GET con `sql.raw`. Se tarda, si fa prima il passo 3 |
+| 2 | `customer` (il resto) | L | Il router non convertito che cambia più spesso (12 commit, 3 fix) ed è l'entità centrale. Mancavano test su ricerca, filtri e modifica anagrafica: ora li fissano i test di caratterizzazione del passo | `filtri-sql-sicuri` in `dev`: fatto il 2026-10-24 (PR #76). Il passo è fatto sul branch `claude/migrazione-customer` ([[specs/crm/customer-effect/PLAN]]), con la PR verso `dev` |
 | 3 | `import`: 4 procedure **e le 6 route REST `/api/import/*`** | L | Circa 2.000 righe: body letto con un cast senza zod, batch fuori transazione (un errore a metà lascia un import parziale), `xlsx` 0.18.5 abbandonato con 2 CVE. Il danno potenziale più grande | Caratterizzazione sui file xlsx dei test; decisione REST o RPC (§6) |
 | 4 | `pratiche` e le 7 query di `task/GET` | M | Chiude i due domini principali. Scritture con `input.id!`, alcune come `protectedProcedure` | Dopo `customer` |
 | 5 | `chat`, `supabase` → `storage` | S | Già quasi su servizi | – |
@@ -79,7 +80,7 @@ L'ordine segue il rischio della Mappa del 21/10, con un'eccezione: `user` e `ope
 | 8 | Auth e contesto tRPC | M, critico | Per ultimo, insieme all'uscita del frontend da Next.js e alla scelta del sostituto di NextAuth. Ogni PR qui ha la revisione di Leonardo | Il sostituto di NextAuth deve conservare i comportamenti della disattivazione (login rifiutato, sessioni invalidate) |
 
 **Passo 0, cosa resta.** Effect (`Db`, `Tx`, `runTrpc`, `ErrorReporter`), schema e codice server sono già in pacchetti (`@mito/db`, `@mito/server`), e lo storage è il kit `gcs-storage`. Restano:
-- `server-only` importato da 26 file di `packages/server/src`;
+- `server-only` importato da 32 file di `packages/server/src` (34 a `bc7aa2e`; il passo 2 l'ha tolto da `services/customer/errors.ts` e `assignment.ts`);
 - `@sentry/nextjs` in `api/trpc.ts` ed `effect/errorReporter.ts`;
 - il router `supabase` da rinominare `storage`;
 - `supabaseClient` nel contesto tRPC.
@@ -102,8 +103,8 @@ Si fa a pezzi, dentro il passo che tocca quei file, o in una PR piccola sua. Non
 | operator | ☑ | ☑ | PR 2 di [[specs/crm/gestione-operatori/PLAN]] (branch `-pr2`, in attesa del merge) |
 | import | ☐ | ☐ | più le 6 route REST |
 | analytics | ☐ | ☐ | |
-| customer | parziale | parziale | `PUT` handover e assegnazioni già fatti |
-| pratiche | parziale | parziale | `getAllPratiche` su Effect (`query`, `runTrpc`) in [[specs/crm/filtri-sql-sicuri/PLAN]] (branch `claude/filtri-sql-sicuri`, in attesa di Leo e del merge); `getAllAvailableRegion` no |
+| customer | ☑ | ☑ | Servizi `list`, `queries`, `filterOptions`, `profile`, `assignment` in `services/customer/`; le 18 procedure sono adapter. [[specs/crm/customer-effect/PLAN]] (branch `claude/migrazione-customer`, PR verso `dev`) |
+| pratiche | parziale | parziale | `getAllPratiche` su Effect (`query`, `runTrpc`) con [[specs/crm/filtri-sql-sicuri/PLAN]], in `dev` dalla PR #76; `getAllAvailableRegion` no |
 | chat | ☑ | parziale | |
 | task | ☑ | parziale | |
 | supabase | ☑ | parziale | |
@@ -137,5 +138,6 @@ Regole:
 | TD3 | `[OPEN]` | Stranezze di `operator` e `user` fissate dai test di caratterizzazione: `getOperatorById` senza id restituisce un operatore qualunque (query senza `WHERE` né `ORDER BY`, `id: 0` vale come "nessun id"); `updateOperatorInfo` restituisce l'operatore di prima dell'update; `getUserPreference` di un utente senza operatore restituisce `role` e `operatorId` undefined | PR 1 e 2 di [[specs/crm/gestione-operatori/PLAN]] (AC26) | Il refactor non cambia comportamento | Una PR piccola per stranezza, ognuna con il test di caratterizzazione aggiornato e il nome che dice il comportamento nuovo | Dopo la PR 2 |
 | TD4 | `[PREVISTO]` | `auth.ts` rifiuta il login dei disattivati e l'override di `getSessionAndUser` ne invalida le sessioni | PR 4 di [[specs/crm/gestione-operatori/PLAN]] (AC16, AC17) | È codice NextAuth v4, che il passo 8 sostituisce | La spec del sostituto di NextAuth li conserva, con gli stessi test sull'adapter e su `sessionFromRequest` | Passo 8 |
 | TD5 | `[OPEN]` | Route `src/app/api/cron/*`, script `scheduled/*.js` e 8 workflow GitHub dei cron | Passo "cron" (§4) | La prod usa ancora GitHub Actions finché i cron non passano a Cloud Scheduler | Toglierli tutti insieme | Dopo il passaggio dei cron di prod a Cloud Scheduler ([[chore/migrazione-gcp]]) |
-| TD6 | `[OPEN]` | Residui del passo 0: `server-only` in 26 file, `@sentry/nextjs` in 2, router `supabase`, `supabaseClient` nel contesto | Passo 0 (§4) | Si tolgono dentro il passo che tocca quei file, senza allargare i diff | Come nel §4 | A ogni passo |
+| TD6 | `[OPEN]` | Residui del passo 0: `server-only` in 32 file (34 a `bc7aa2e`; il passo 2 l'ha tolto da `services/customer/errors.ts` e `assignment.ts`), `@sentry/nextjs` in 2, router `supabase`, `supabaseClient` nel contesto | Passo 0 (§4) | Si tolgono dentro il passo che tocca quei file, senza allargare i diff | Come nel §4 | A ogni passo |
 | TD7 | `[OPEN]` | Stranezze di `getAllPratiche` fissate dai test di caratterizzazione: `total` conta le pratiche senza join, anche quelle senza clienti, mentre `data` no; `onlyMe` per un OPERATORE e `orderBy=operatore` danno `INTERNAL_SERVER_ERROR` | [[specs/crm/filtri-sql-sicuri/PLAN]] (F6, AC12) | Il passaggio a Effect non cambia comportamento | Una PR piccola per stranezza, ognuna con il test di caratterizzazione aggiornato | Dopo il merge di `filtri-sql-sicuri` |
+| TD8 | `[PREVISTO]` (diventa `[OPEN]` al merge in `dev` del passo 2) | Stranezze di `customer` fissate dai test di caratterizzazione: (a) `getCustomerById` senza `id` (o con `""`) restituisce un cliente qualunque; (b) `getCustomersByFiscalCodeOrVatCode` vuole `fiscalCode` o `vatCode` anche quando cerca per `tempID`. La priorità fra i codici (con un `tempID` ignorava `fiscalCode`, così Nuovo cliente, che manda sempre il "Codice Cliente (NDG)" come `tempID`, non segnalava un codice fiscale già presente: prova nel browser del 2026-10-24) è corretta nella PR del passo 2, in un commit dopo il refactor: la ricerca trova chi ha uno qualunque dei codici passati e il form segna solo i codici già presi; (c) `getAllCustomerForPratica` risponde `NOT_FOUND` per una pratica senza clienti, `getAllPraticaByCustomer` `[]`; (d) `insertCustomer` senza `id` usa il default costante del database (il secondo insert fallisce); (e) `insertCustomer` accetta `operatorId` da ogni utente con una sessione; (f) le tre `update` hanno `id` opzionale e `id!` (senza `id`, su postgres-js, `INTERNAL_SERVER_ERROR`); (g) `handleCustomerBlackList` senza `blackListStatus` risponde `INTERNAL_SERVER_ERROR` (`No values to set`); (h) `handleCustomerBlackList` e `updateLastEdit` restituiscono il risultato grezzo del driver, diverso fra PGlite e postgres-js; (i) sei letture sono `protectedProcedure`: `getCustomerById`, `getCustomersByFiscalCodeOrVatCode`, `getAllPraticaByCustomer`, `getAllCustomerForPratica`, `getAllFileName`, `getCustomerUnderReview`; (j) `getCustomerUnderReview` ordina per `updatedAt` senza pareggio | [[specs/crm/customer-effect/PLAN]] (§14; AC9, AC10 e AC12 della SPEC) | Il passaggio a Effect non cambia comportamento | Una PR piccola per voce, con il test di caratterizzazione aggiornato: (a) `id` obbligatorio; (b) il `refine` accetta anche il solo `tempID`; (c) `[]` in tutti e due i casi, con il dettaglio della pratica che lo gestisce; (d) `id` obbligatorio nell'input o generato dal servizio; (e) la correzione del debito già aperto in [[tech-debt/crm/gestione-operatori]] e [[tech-debt/crm/sezione-contatti]], che propongono due strade diverse: la scelta fra le due resta aperta; (f) `id` obbligatorio nell'input; (g) `blackListStatus` obbligatorio nell'input; (h) `void` o `{ id }`, in L3 con l'output in `Schema`; (i) `operatorProcedure`, dopo aver controllato i chiamanti; (j) l'id a pareggio. (e) e (i) toccano i permessi: revisione di Leonardo | Dopo il merge del passo 2; (h) con L3 |

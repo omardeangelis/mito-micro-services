@@ -3,7 +3,7 @@ import { z } from "zod"
 import { operatorProcedure, protectedProcedure } from "../../../trpc"
 import { practices, stateEnum } from "@mito/db/schema/pratiche"
 import { eq, count, desc, asc, and, ilike, inArray } from "drizzle-orm"
-import { castAsNumber, containsPattern } from "../../utils/index"
+import { castAsNumber, containsPattern } from "../../../../shared/sql"
 import { getProductKey } from "@mito/domain/constants/productMap"
 import { operators } from "@mito/db/schema/operators"
 import { customerToPratica } from "@mito/db/schema/relations/customerToPratica"
@@ -18,7 +18,7 @@ import {
   type PraticaSearchBy,
   praticaSearchBy,
 } from "@mito/domain/constants/praticaSearch"
-import { advancedFiltersWhere } from "../../utils/advancedFilters"
+import { advancedFiltersWhere } from "../../../../shared/advancedFilters"
 import {
   advancedFilterSchema,
   PRATICA_FILTER_QUERY_MAP,

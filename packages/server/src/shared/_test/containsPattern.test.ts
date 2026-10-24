@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { containsPattern } from "../index"
+import { containsPattern } from "../sql"
 
 // Il pattern `ilike` delle ricerche Clienti e Pratiche
 

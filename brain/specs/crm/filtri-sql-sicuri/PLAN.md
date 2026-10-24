@@ -426,14 +426,16 @@ Prima della wave 1. Omar porta la SPEC a `status: approved` e conferma o cambia 
      - riverificare A2.
   8. **PR verso `dev`** solo quando Omar la chiede. Merge prima del rilascio `dev`→`main` che porta PR6 (G3).
 - **validation**: tutti i punti sopra annotati in `IMPLEMENTATION-NOTES.md`; REPORT SHIP.
-- **status**: Done fino al punto 5 e al 7 (2026-10-24); 6 (Leo) e 8 (PR, quando Omar la chiede) aperti
+- **status**: Done (2026-10-24): PR #76 mergiata in `dev` (`bc7aa2e`)
 - **log**:
   1. AC1: il `git grep` non trova niente.
   2. AC3: M1–M5 più il mutante D11 dell'encoder, tutti uccisi sul branch finito (dettaglio in `IMPLEMENTATION-NOTES.md`).
   3. Gate in un worktree di scratchpad senza `.env*`, a `bfd559e`: install, `next lint`, `tsc`, test con i `*.pg.test.ts` (3102 verdi, 2 saltati), `pnpm build` con i placeholder, `api:build`, `api:smoke`, tutti verdi. Dopo `9c0d770` ripetuti `tsc`, lint e le suite toccate (238 verdi con il pg).
   4. A/B su `mito_local` (10.000 clienti, 9.345 pratiche, sessione in Europe/Rome): totali uguali per i filtri validi, differenze tutte del §13 (dettaglio nelle note). Il popover mostra gli stessi operatori.
   5. Review: SHIP, 7 passaggi, 0 BLOCKER, 0 MAJOR, 8 MINOR ([[specs/crm/filtri-sql-sicuri/REPORT]]). MINOR di codice corretti in `9c0d770`, quelli di documentazione nel §13; i NIT restano nel tech debt della spec.
+  6. Revisione di Leo: sulla PR #76 non c'è una review registrata su GitHub.
   7. Documenti: [[chore/migrazione-effect]] §5, [[tech-debt/crm/search-by-explicit-map]], [[tech-debt/crm/filtri-sql-sicuri]] (F6 e i rimandi). A2 riverificata: in prod il deploy è ancora `vercel deploy --prebuilt --prod` (`deploy-production.yaml:70`), Cloud Run solo su staging.
+  8. [PR #76](https://github.com/omardeangelis/mito-micro-services/pull/76) verso `dev`, mergiata da Omar il 2026-10-24 (`bc7aa2e`). G3 resta al rilascio `dev`→`main` della migrazione.
   - Passaggio di `$simplify` prima della review: commit `bfd559e`.
 - **files edited/created**: `brain/specs/crm/filtri-sql-sicuri/RUBRIC.md`, `REPORT.md`; le correzioni della review in `9c0d770`
 - **backlog_item_id**: n/a

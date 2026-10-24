@@ -12,6 +12,29 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 
 <!-- Entries are appended by create-spec (spec creation) and docs-maintenance (ingest). Format:
 
+## [2026-10-24] ingest | Router `customer` su Effect (passo 2 della migrazione)
+- Source: [[specs/crm/customer-effect/SPEC]]
+- Flows written: 1 ([[domains/crm/flows/controllo-dei-duplicati-di-un-cliente-nuovo]]); aggiornato [[domains/crm/flows/filtro-avanzato-di-clienti-e-pratiche]] (percorso del traduttore, AC16)
+- Concepts written: 1 ([[domains/crm/concepts/codici-del-cliente]]); aggiornato [[domains/crm/concepts/filtro-avanzato]] (percorso)
+- Review ingested: [[specs/crm/customer-effect/REPORT]] (3 rilievi durevoli in [[tech-debt/crm/customer-effect]], uno già chiuso)
+
+## [2026-10-24] implement | Router `customer` su Effect (passo 2 della migrazione)
+- Spec: [[specs/crm/customer-effect/SPEC]] → `implemented`; note: [[specs/crm/customer-effect/IMPLEMENTATION-NOTES]]; review: [[specs/crm/customer-effect/REPORT]] (SHIP dopo le correzioni; prima DO NOT SHIP, 0 blocker)
+- Caratterizzazione prima del refactor (`dac26d9`), poi utility in `shared/`, servizi `profile`, `list`, `queries`, `filterOptions`; le 18 procedure sono adapter. Gate di CI e prova nel browser su `mito_local` verdi
+- La review ha rafforzato i test in tre giri (input parziali, ordine, righe estranee, parametri di `getAllCustomers`, `id` inesistenti); TD8 resta `[PREVISTO]` fino al merge
+- Da fare: `docs-maintenance` (percorsi delle pagine del dominio, AC16), PR verso `dev`
+
+## [2026-10-24] plan | Router `customer` su Effect (passo 2 della migrazione)
+- Spec: [[specs/crm/customer-effect/SPEC]] (rivista dopo la verifica: DO NOT SHIP, 0 blocker, 5 major), piano: [[specs/crm/customer-effect/PLAN]]
+- 11 task in una PR, dopo il gate G0, verificati dall'`adversarial-verifier` (DO NOT SHIP, 0 blocker, 2 major, corretti): caratterizzazione di risposte, righe intere, righe scritte, errori e middleware delle 18 procedure con i mutanti sul codice inline, `*.pg.test.ts` sulle `update` senza `id`, utility in `shared/`, servizi `list`, `queries`, `filterOptions`, `profile`, gate con mutanti, prova nel browser e review
+- Debito della migrazione: TD8 `[PREVISTO]` in [[chore/migrazione-effect]]
+- G0 chiuso: SPEC approvata da Omar il 2026-10-24, con D7 (test sulle procedure), D9 (codice morto tolto), D10 (niente zod nei servizi, tipi con nome del dominio ammessi) e D11 (niente revisione obbligatoria di Leonardo)
+
+## [2026-10-24] spec | Router `customer` su Effect (passo 2 della migrazione)
+- Created spec: [[specs/crm/customer-effect/SPEC]]
+- Domain: crm
+- Status: Draft
+
 ## [2026-10-24] ingest | Filtri avanzati sicuri di Clienti e Pratiche
 - Source: [[specs/crm/filtri-sql-sicuri/SPEC]]
 - Flows written: 1
@@ -288,31 +311,3 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 - Verdict: DO NOT SHIP
 - Impact: critical
 - Verifiers: 7 (1 blockers, 4 major)
-
-## [2026-09-29] review | Sezione Contatti — PR2 "Pulizia e vincolo DB"
-- Report: [[specs/crm/sezione-contatti/REPORT]] (round PR2)
-- Scope: spec
-- Verdict: DO NOT SHIP (prima verifica)
-- Impact: critical
-- Verifiers: 9 (2 blockers, 8 major)
-
-## [2026-09-29] review | Sezione Contatti — PR2, verifiche successive
-- Report: [[specs/crm/sezione-contatti/REPORT]] (round PR2)
-- Scope: spec
-- Verdict: SHIP (dopo le correzioni)
-- Impact: critical
-- Verifiers: 3 nella seconda verifica, poi 4 su v9 (0 blocker aperti)
-
-## [2026-09-29] review | Sezione Contatti — PR2, runbook G2 senza via libera degli admin
-- Report: [[specs/crm/sezione-contatti/REPORT]] (round PR2, Verifiche successive)
-- Scope: spec
-- Verdict: SHIP (dopo le correzioni)
-- Impact: critical
-- Verifiers: 1, in due passate (2 major, poi 0)
-
-## [2026-10-09] review | Staging su Vercel, accesso fuori produzione, Sentry solo in prod
-- Report: [[review/staging-accesso-sentry/REPORT]]
-- Scope: standalone
-- Verdict: DO NOT SHIP
-- Impact: critical
-- Verifiers: 7 (2 blocker, 6 major)
