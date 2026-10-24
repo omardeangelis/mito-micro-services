@@ -13,7 +13,7 @@ updated: 2026-10-24
 # Plan: Router `customer` su Effect (passo 2 della migrazione)
 
 **Spec:** [[specs/crm/customer-effect/SPEC]], scritta il 2026-10-24, rivista dopo la prima verifica e approvata da Omar lo stesso giorno, con D7, D9, D10 e D11 (G0 chiuso).
-**Status:** Planned
+**Status:** In progress
 **Generato:** 2026-10-24 con `create-plan`. Il flusso è stato: grill (2 decisioni di Omar), spec, verifica della spec, task graph, tdd, verifica del piano.
 - **Verifica della spec:** DO NOT SHIP, 0 blocker e 5 major, corretti con altre 2 decisioni di Omar.
 - **Verifica del piano:** DO NOT SHIP, 0 blocker, 2 major e 10 minor, tutti corretti (§16).
@@ -233,9 +233,11 @@ G0 ─┬─ T1  ─┐
 
   Le tre letture senza `ORDER BY` si confrontano dopo averle ordinate per `id` nel test, o con una riga sola. Nessun codice di produzione cambia.
 - **validation**: test verdi su `bc7aa2e`; il diff contiene solo il file nuovo; mutanti sul codice inline di `bc7aa2e`, senza commit, almeno uno per procedura e per stranezza di AC9 coperta dal file, ognuno ucciso da un test del file (annotati nel log).
-- **status**: Planned
+- **status**: Done (2026-10-24)
 - **log**:
-- **files edited/created**:
+  1. Worker haiku. 18 test verdi su `bc7aa2e`. `operatore` di un cliente senza operatore in `getCustomerUnderReview` è `null`, non un oggetto di `null`: Drizzle collassa l'oggetto annidato quando il left join non trova righe.
+  2. Mutanti applicati dall'orchestratore uno alla volta, senza commit: 13 mutanti sul codice inline, 12 uccisi. Sopravvive `countDistinct` → `count` in `getCustomerUnderReview`, che è equivalente: la chiave primaria di `customerToPratica` è `(customerId, praticaId)` e il join con `operators` non duplica righe.
+- **files edited/created**: `packages/server/src/api/routers/customer/_test/queries.db.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -253,9 +255,11 @@ G0 ─┬─ T1  ─┐
 
   Una pagina con due righe, in un ordine esplicito (`orderBy: "name"`), così il confronto non dipende dai pareggi.
 - **validation**: test verdi su `bc7aa2e`; il diff contiene solo il file nuovo; mutanti sul codice inline di `bc7aa2e`, senza commit: togliere una colonna dalla select e cambiare il conteggio di `signedPractices`, ognuno ucciso da un test del file (annotati nel log).
-- **status**: Planned
+- **status**: Done (2026-10-24)
 - **log**:
-- **files edited/created**:
+  1. Worker haiku. 3 test verdi. La select ha 15 colonne, più `operatore` e `signedPractices` (17 chiavi). `operatore` di un cliente senza operatore è `null`. `signedPractices` conta tutte le pratiche, senza filtro sullo stato.
+  2. Mutanti applicati dall'orchestratore uno alla volta, senza commit: 2 mutanti (una colonna tolta, `signedPractices` + 1), uccisi tutti e due.
+- **files edited/created**: `packages/server/src/api/routers/customer/_test/getAllCustomers.rows.db.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -274,9 +278,11 @@ G0 ─┬─ T1  ─┐
   - **`getAllFileName("customers")`:** esclude `null` e `'Nessuno'`, un nome per file, in ordine di `max(lastImportUpdate)` decrescente, solo `{ fileName }`. I `lastImportUpdate` del test sono scritti espliciti e distinti, mai lasciati al default.
   - **`getAllFileName("practices")`:** legge `practices.fileName`.
 - **validation**: test verdi su `bc7aa2e`; il diff contiene solo il file nuovo; mutanti sul codice inline di `bc7aa2e`, senza commit, almeno uno per procedura e per stranezza di AC9 coperta dal file, ognuno ucciso da un test del file (annotati nel log).
-- **status**: Planned
+- **status**: Done (2026-10-24)
 - **log**:
-- **files edited/created**:
+  1. Worker haiku. 6 test verdi. Nelle 4 liste distinte il `null` è l'ultimo (ASC di Postgres).
+  2. Mutanti applicati dall'orchestratore uno alla volta, senza commit: 8 mutanti (ordine, chiave, `distinct`, esclusione di `'Nessuno'`, ordine dei file, tabella, forma della risposta), uccisi tutti.
+- **files edited/created**: `packages/server/src/api/routers/customer/_test/filterOptions.db.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -310,9 +316,11 @@ G0 ─┬─ T1  ─┐
   - **`updateLastEdit`:** cambia solo `updatedAt`, all'istante della chiamata. La risposta si fissa come per `handleCustomerBlackList`.
   - **Le `update` senza `id`** si fissano in T5, sul driver di prod. Qui non si testano.
 - **validation**: test verdi su `bc7aa2e`; il diff contiene solo il file nuovo; mutanti sul codice inline di `bc7aa2e`, senza commit, almeno uno per procedura e per stranezza di AC9 coperta dal file, ognuno ucciso da un test del file (annotati nel log).
-- **status**: Planned
+- **status**: Done (2026-10-24)
 - **log**:
-- **files edited/created**:
+  1. Worker sonnet. 7 test verdi, stabili su due giri. L'orologio finto guida `updatedAt` sia in `new Date()` sia in `$onUpdate`. Su PGlite `handleCustomerBlackList` e `updateLastEdit` rispondono `{ rows: [], fields: [], affectedRows: 1 }`. Il secondo insert senza `id` risponde `INTERNAL_SERVER_ERROR` con `duplicate key value violates unique constraint "mito-deutsche_customers_pkey"` (`cause.code` `23505`). Il default dell'`id` è la costante della migrazione, non il `nanoid()` dello schema, che cambia a ogni avvio: il test non lo confronta.
+  2. Mutanti applicati dall'orchestratore uno alla volta, senza commit: 9 mutanti (risposta e `operatorId` di `insertCustomer`, colonna in più e `where` tolto in `updateCustomerFromDashboard`, colonna in più, default di `blackListStatus` e `returning` in `handleCustomerBlackList`, data sbagliata e risposta tolta in `updateLastEdit`), uccisi tutti.
+- **files edited/created**: `packages/server/src/api/routers/customer/_test/writes.db.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -334,9 +342,11 @@ G0 ─┬─ T1  ─┐
 
   Un test controlla che le chiavi della tabella siano esattamente quelle di `appRouter._def.record.customer._def.record`, come fa `task/_test/router.db.test.ts`. Così una procedura nuova senza riga fa fallire il test.
 - **validation**: test verdi su `bc7aa2e`; il diff contiene solo il file nuovo; mutanti sul codice inline di `bc7aa2e`, senza commit, uno per tipo di middleware: una `protectedProcedure` passata a `operatorProcedure`, una `operatorProcedure` passata a `protectedProcedure`, `bulkUpdateCustomers` passata a `operatorProcedure`, e una procedura nuova aggiunta al router senza riga nella tabella. Ognuno ucciso da un test del file (annotati nel log).
-- **status**: Planned
+- **status**: Done (2026-10-24)
 - **log**:
-- **files edited/created**:
+  1. Worker haiku. 39 test verdi. Il `BAD_REQUEST` di un utente senza operatore ha come messaggio `"BAD_REQUEST"`: `operatorErrorToTrpc` non ne dà uno. La tabella è tipata sulle chiavi del router (`satisfies`), quindi una procedura nuova senza riga non compila nemmeno.
+  2. Mutanti applicati dall'orchestratore uno alla volta, senza commit: 4 mutanti (una `protectedProcedure` passata a `operatorProcedure`, una `operatorProcedure` passata a `protectedProcedure`, `bulkUpdateCustomers` passata a `operatorProcedure`, una procedura nuova nel router), uccisi tutti.
+- **files edited/created**: `packages/server/src/api/routers/customer/_test/procedures.db.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -353,9 +363,11 @@ G0 ─┬─ T1  ─┐
 
   Il file si salta senza `TEST_DATABASE_URL`, come gli altri `*.pg.test.ts`.
 - **validation**: verde su `bc7aa2e` con il Postgres di `docker-compose.yml`; il diff contiene solo il file nuovo; mutanti sul codice inline di `bc7aa2e`, senza commit, almeno uno per procedura e per stranezza di AC9 coperta dal file, ognuno ucciso da un test del file (annotati nel log).
-- **status**: Planned
+- **status**: Done (2026-10-24)
 - **log**:
-- **files edited/created**:
+  1. Worker sonnet. 6 test verdi con `pnpm run test:pg`, due giri; senza database il file si salta. Senza `id` le tre `update` rispondono `INTERNAL_SERVER_ERROR` con `UNDEFINED_VALUE: Undefined values are not allowed` (`cause.code` `UNDEFINED_VALUE`), ricostruito da `driverErrorMiddleware`. Con `id` la `RowList` è `[]` con `count` 1 e `command` `UPDATE`. `blackListStatus` è un enum (`blacklisted`, `whitelisted`, `review`) e `updateCustomerFromDashboard` vuole `source`: i test li passano.
+  2. Mutanti applicati dall'orchestratore uno alla volta, senza commit: 5 mutanti (`id ?? ""` nelle tre `update`, `returning` in `handleCustomerBlackList` e in `updateCustomerUpdatedAt`), uccisi tutti.
+- **files edited/created**: `packages/server/src/api/routers/customer/_test/writes.pg.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
