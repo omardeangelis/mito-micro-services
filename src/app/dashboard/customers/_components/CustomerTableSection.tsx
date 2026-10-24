@@ -9,15 +9,12 @@ import {
   DEFAULT_PAGE,
   DEFAULT_PER_PAGE,
 } from "@mito/domain/constants/pagination"
-import { createSQLQuery } from "@/lib/utils/filters"
 import {
-  CUSTOMER_FILTER_QUERY_MAP,
   REMOVED_CUSTOMER_COLUMN_IDS,
   REMOVED_CUSTOMER_ORDER_BY,
 } from "../_constants"
-import { getTableName } from "drizzle-orm"
-import { customers } from "@mito/db/schema/customers"
 import { parseCustomerSearchBy } from "@mito/domain/constants/customerSearch"
+import { parseFilterParams } from "@mito/domain/filters/advanced"
 
 const DEFAULT_SORTING = { orderBy: "updatedAt", sortedBy: "desc" } as const
 
@@ -38,18 +35,6 @@ export async function CustomersTableSection({
     filter,
   } = searchParams ?? {}
   const filterMap = getUrlParmsWithMultipleValue(filter_by as string)
-  let sqlQuery = ""
-
-  if (filter) {
-    const arrayFilter = typeof filter === "string" ? [filter] : filter
-    // The table name makes it drop the filters on columns that are not in the
-    // map: the ones Clienti no longer has (state, closed_at) and made-up ones
-    sqlQuery = createSQLQuery(
-      arrayFilter,
-      CUSTOMER_FILTER_QUERY_MAP,
-      getTableName(customers)
-    )
-  }
 
   let filterObj = {} as Record<string, string | string[] | number | undefined>
   if (filterMap) {
@@ -103,7 +88,9 @@ export async function CustomersTableSection({
     filterBy: filterObj,
     onlyMe: only_me === "true",
     showDM: black_list === "true",
-    sqlFilter: sqlQuery,
+    // Ogni tupla dell'URL, come dati: le colonne e gli operatori che non
+    // conosce (state, closed_at, inventati) li scarta il server
+    advancedFilters: parseFilterParams(filter),
   })
 
   const preferences = readRequestPreferences()
