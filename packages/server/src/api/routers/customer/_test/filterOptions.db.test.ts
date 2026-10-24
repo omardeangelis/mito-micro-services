@@ -59,58 +59,19 @@ async function seedDistinctValues() {
   return createTestCaller(operator)
 }
 
-describe("customer.getAllAvailableComune", () => {
-  it("restituisce i comuni distinti in ordine crescente e il null per ultimo, come lo ordina il DB", async () => {
+// Postgres ordina il NULL in coda nell'ASC: il null è sempre l'ultimo
+describe.each([
+  ["getAllAvailableComune", "comune", ["Bari", "Milano", "Roma"]],
+  ["getAllAvaliableSede", "sede", ["Sede Centro", "Sede Nord", "Sede Sud"]],
+  ["getAllAvailableAmbito", "ambito", ["Commercio", "Industria", "Servizi"]],
+  ["getAllAvailableJobs", "job", ["Impiegato", "Insegnante", "Operaio"]],
+] as const)("customer.%s", (procedure, key, values) => {
+  it(`restituisce i valori distinti con la chiave ${key}, in ordine crescente e il null per ultimo`, async () => {
     const caller = await seedDistinctValues()
 
-    expect(await caller.customer.getAllAvailableComune()).toEqual([
-      { comune: "Bari" },
-      { comune: "Milano" },
-      { comune: "Roma" },
-      // Postgres ordina il NULL in coda nell'ASC: il null è l'ultimo
-      { comune: null },
-    ])
-  })
-})
-
-describe("customer.getAllAvaliableSede", () => {
-  it("restituisce le sedi distinte in ordine crescente e il null per ultimo, come lo ordina il DB", async () => {
-    const caller = await seedDistinctValues()
-
-    expect(await caller.customer.getAllAvaliableSede()).toEqual([
-      { sede: "Sede Centro" },
-      { sede: "Sede Nord" },
-      { sede: "Sede Sud" },
-      // Postgres ordina il NULL in coda nell'ASC: il null è l'ultimo
-      { sede: null },
-    ])
-  })
-})
-
-describe("customer.getAllAvailableAmbito", () => {
-  it("restituisce gli ambiti lavorativi distinti in ordine crescente con la chiave ambito, e il null per ultimo", async () => {
-    const caller = await seedDistinctValues()
-
-    expect(await caller.customer.getAllAvailableAmbito()).toEqual([
-      { ambito: "Commercio" },
-      { ambito: "Industria" },
-      { ambito: "Servizi" },
-      // Postgres ordina il NULL in coda nell'ASC: il null è l'ultimo
-      { ambito: null },
-    ])
-  })
-})
-
-describe("customer.getAllAvailableJobs", () => {
-  it("restituisce le occupazioni distinte in ordine crescente con la chiave job, e il null per ultimo", async () => {
-    const caller = await seedDistinctValues()
-
-    expect(await caller.customer.getAllAvailableJobs()).toEqual([
-      { job: "Impiegato" },
-      { job: "Insegnante" },
-      { job: "Operaio" },
-      // Postgres ordina il NULL in coda nell'ASC: il null è l'ultimo
-      { job: null },
+    expect(await caller.customer[procedure]()).toEqual([
+      ...values.map((value) => ({ [key]: value })),
+      { [key]: null },
     ])
   })
 })

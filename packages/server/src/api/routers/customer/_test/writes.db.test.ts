@@ -10,8 +10,8 @@ import {
 import { eq } from "drizzle-orm"
 import { chat } from "@mito/db/schema/chat"
 import { customers } from "@mito/db/schema/customers"
-import { createTestCaller } from "@/test/caller"
-import { migrateUpTo, resetDb, testDb } from "@/test/db"
+import { createTestCaller, rejectionOf } from "@/test/caller"
+import { customerRow, migrateUpTo, resetDb, testDb } from "@/test/db"
 import { createCustomer, createOperator, createUser } from "@/test/factories"
 
 // Caratterizzazione delle 4 scritture del router `customer`
@@ -27,26 +27,8 @@ const T0 = new Date("2026-10-01T09:00:00.000Z")
 /** Istante in cui avviene la chiamata. */
 const T1 = new Date("2026-10-02T15:30:00.000Z")
 
-/** La riga del cliente, com'e nel database. */
-const customerRow = async (customerId: string) => {
-  const [row] = await testDb
-    .select()
-    .from(customers)
-    .where(eq(customers.id, customerId))
-  return row!
-}
-
 /** Tutti i clienti nel database. */
 const allCustomers = () => testDb.select().from(customers)
-
-/** L'errore con cui fallisce una chiamata. */
-const rejectionOf = (call: Promise<unknown>) =>
-  call.then(
-    () => {
-      throw new Error("la chiamata non e fallita")
-    },
-    (caught: unknown) => caught
-  )
 
 /** Una chat: il cliente la punta con `chatId`. */
 const createChat = async () => {

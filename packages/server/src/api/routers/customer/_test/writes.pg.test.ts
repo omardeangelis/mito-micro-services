@@ -1,7 +1,7 @@
 import { beforeAll, beforeEach, describe, expect, it } from "vitest"
 import { asc } from "drizzle-orm"
 import { customers } from "@mito/db/schema/customers"
-import { createTestCaller } from "@/test/caller"
+import { createTestCaller, rejectionOf } from "@/test/caller"
 import { createCustomer, createOperator } from "@/test/factories"
 import { hasTestDatabase, migrateUpTo, pgDb, resetDb } from "@/test/pg"
 
@@ -30,15 +30,6 @@ async function seed() {
   return { operator, first, second }
 }
 
-/** L'errore con cui la procedura è stata rifiutata. */
-const rejection = (call: Promise<unknown>) =>
-  call.then(
-    () => {
-      throw new Error("la chiamata doveva essere rifiutata")
-    },
-    (error: unknown) => error
-  )
-
 describe.skipIf(!hasTestDatabase)(
   "scritture di customer su postgres-js",
   () => {
@@ -55,7 +46,7 @@ describe.skipIf(!hasTestDatabase)(
         const { operator } = await seed()
         const before = await allCustomers()
 
-        const error = await rejection(
+        const error = await rejectionOf(
           createTestCaller(operator).customer.updateLastEdit({})
         )
 
@@ -71,7 +62,7 @@ describe.skipIf(!hasTestDatabase)(
         const { operator } = await seed()
         const before = await allCustomers()
 
-        const error = await rejection(
+        const error = await rejectionOf(
           createTestCaller(operator).customer.handleCustomerBlackList({
             blackListStatus: "blacklisted",
           })
@@ -89,7 +80,7 @@ describe.skipIf(!hasTestDatabase)(
         const { operator } = await seed()
         const before = await allCustomers()
 
-        const error = await rejection(
+        const error = await rejectionOf(
           createTestCaller(operator).customer.updateCustomerFromDashboard({
             name: "Cambiato",
             source: "inbound",

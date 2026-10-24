@@ -1,7 +1,7 @@
 import { TRPCError } from "@trpc/server"
 import { beforeAll, beforeEach, describe, expect, it } from "vitest"
 import { appRouter } from "../../../root"
-import { createTestCaller } from "@/test/caller"
+import { createTestCaller, rejectionOf } from "@/test/caller"
 import { migrateUpTo, resetDb } from "@/test/db"
 import {
   createCustomer,
@@ -154,15 +154,6 @@ const namesWith = (guard: Guard) =>
 const operatorNames = names.filter(
   (name) => PROCEDURES[name].guard !== "protected"
 )
-
-/** L'errore con cui una chiamata fallisce: fallisce se la chiamata riesce. */
-const rejectionOf = (call: Promise<unknown>) =>
-  call.then(
-    () => {
-      throw new Error("the call did not fail")
-    },
-    (caught: unknown) => caught
-  )
 
 let fixtures: Fixtures
 

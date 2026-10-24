@@ -4,8 +4,8 @@ import { TRPCError } from "@trpc/server"
 import { readContactError } from "@mito/domain/contact/errors"
 import { customers } from "@mito/db/schema/customers"
 import { customerToPratica } from "@mito/db/schema/relations/customerToPratica"
-import { createTestCaller } from "@/test/caller"
-import { migrateUpTo, resetDb, testDb } from "@/test/db"
+import { createTestCaller, rejectionOf } from "@/test/caller"
+import { customerRow, migrateUpTo, resetDb, testDb } from "@/test/db"
 import {
   createCustomer,
   createOperator,
@@ -16,24 +16,6 @@ import {
 // del refactor verso Effect: ogni test fissa la risposta che il codice da
 // oggi restituisce, riga intera compresa. La ricerca per codici cerca per
 // tutti i codici passati (TD8 b, corretto dopo il refactor)
-
-/** La riga del cliente come la tiene il database. */
-const customerRow = async (customerId: string) => {
-  const [row] = await testDb
-    .select()
-    .from(customers)
-    .where(eq(customers.id, customerId))
-  return row!
-}
-
-/** L'errore con cui una chiamata rifiuta. */
-const rejectionOf = (call: Promise<unknown>) =>
-  call.then(
-    () => {
-      throw new Error("la chiamata non è fallita")
-    },
-    (caught: unknown) => caught
-  )
 
 const byId = <T extends { id: string }>(a: T, b: T) => a.id.localeCompare(b.id)
 const byPraticaId = <T extends { praticaId: string }>(a: T, b: T) =>
