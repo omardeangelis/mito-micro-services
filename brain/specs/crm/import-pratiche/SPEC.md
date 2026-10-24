@@ -178,7 +178,7 @@ Le persone del progetto non sono ancora descritte (`paths.personas` è vuoto): i
 | 2 | Quattro difetti delle date (Technical Notes): Wave salva la data di liquidazione con un mese in più e, quando manca, la data di estinzione uguale al giorno dell'import; una data di liquidazione illeggibile diventa il giorno dell'import; una data in formato seriale di Excel diventa il giorno dopo. La riscrittura li conserva (AC32); si correggono dopo, una PR per difetto, ognuna con la sua decisione sui dati già importati (Leonardo, 2026-10-24). | AC32 | Leonardo | Resolved |
 | 3 | Import che continua a scheda chiusa (AC20) e storico (AC28–AC31) sono nel perimetro? Sì (Leonardo, 2026-10-24): richiedono una tabella nuova. | AC20, AC21, AC28–AC31 | Leonardo | Resolved |
 | 4 | Quanto sono grandi i file veri? Fino a 20.000 righe (Leonardo, 2026-10-24): restano 20.000 righe e 15 MB per file. | AC5, AC18, AC25 | Leonardo | Resolved |
-| 5 | Chi importa oggi: tutti gli admin o una persona sola? Default proposto: tutti gli admin. | AC1, AC22 | Leonardo | Open |
+| 5 | Chi può importare? Tutti gli utenti `ADMIN` (Leonardo, 2026-10-24); un permesso più fine si può aggiungere dopo. | AC1, AC22 | Leonardo | Resolved |
 | 6 | Dove vive l'import? In una pagina "Import" nel menu degli admin, con storico e nuovo import; il pulsante "Nuovo import" della dashboard porta lì (Leonardo, 2026-10-24). | AC1, AC28 | Leonardo | Resolved |
 | 7 | L'API per sistemi esterni di [[chore/migration/fase-4-import-api]] è ancora prevista? Default proposto: fuori da questa spec; la logica resta riusabile (Constraints). | Constraints | Leonardo | Open |
 
