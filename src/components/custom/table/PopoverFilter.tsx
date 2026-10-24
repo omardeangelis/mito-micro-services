@@ -25,24 +25,25 @@ import { SelectValue, Separator } from "@radix-ui/react-select"
 import { Input } from "@/components/ui/input"
 import { X } from "lucide-react"
 import {
-  createFilterFromString,
+  type FilterOperator,
+  filterKindOf,
+  operatorsFor,
+  parseFilterParam,
   validateAndFormatDate,
-} from "@/lib/utils/filters"
+} from "@mito/domain/filters/advanced"
 import { type PgColumn } from "drizzle-orm/pg-core"
 import { useRouter } from "next/navigation"
 import clsx from "clsx"
 import ErrorBoundary from "./PopoverFilterErrorBoundary"
 
-type Operatortypes = "eq" | "gt" | "lt" | "gte" | "lte"
-
 type CustomFilter = {
   id: string
   name: string
   value: string
-  operator: Operatortypes
+  operator: FilterOperator
 }
 
-const filterSymbolMap = new Map<Operatortypes, string>([
+const filterSymbolMap = new Map<FilterOperator, string>([
   ["eq", "="],
   ["gt", ">"],
   ["lt", "<"],
@@ -110,7 +111,8 @@ export const PopoverDateFilter = ({
   const setFilterAsSearchParams = useCallback(
     (filter: CustomFilter, url: URL) => {
       let value = filter.value as string | null
-      if (filterMap.get(filter.name)?.dataType === "date") {
+      const column = filterMap.get(filter.name)
+      if (column && filterKindOf(column) === "date") {
         value = validateAndFormatDate(filter.value)
       }
       if (!value)
@@ -150,14 +152,14 @@ export const PopoverDateFilter = ({
       // was removed, a made-up name) or be malformed: those rows are skipped
       setActiveFilter(
         filters.flatMap((f) => {
-          const filter = createFilterFromString(f)
-          const name = filter ? getMapKeyFromValue(filter.name) : undefined
+          const filter = parseFilterParam(f)
+          const name = filter ? getMapKeyFromValue(filter.field) : undefined
           if (!filter || !name) return []
           return [
             {
               id: nanoid(),
               name,
-              operator: filter.operator,
+              operator: filter.op as FilterOperator,
               value: filter.value,
             },
           ]
@@ -237,31 +239,10 @@ export const PopoverDateFilter = ({
 const AdvancedFilter = ({ filtro }: { filtro: CustomFilter }) => {
   const { setActiveFilter, removeFilter, filterMap, errorsField } =
     React.useContext(PopoverDateItemContext)
-  const filterProps = useMemo(
-    () => ({
-      columnType: filterMap.get(filtro.name)!.columnType,
-      enumValues: filterMap.get(filtro.name)!.enumValues,
-      dataType: filterMap.get(filtro.name)!.dataType,
-    }),
+  const allowedOperators = useMemo(
+    () => operatorsFor(filterMap.get(filtro.name)!),
     [filtro.name, filterMap]
   )
-
-  const allowedOperators = useMemo(() => {
-    if (filterProps.columnType === "PgEnumColumn") {
-      return ["eq"]
-    }
-    if (filterProps.columnType === "PgNumeric") {
-      return ["eq", "gt", "lt", "gte", "lte"]
-    }
-    switch (filterProps.dataType) {
-      case "date":
-        return ["eq", "gt", "lt", "gte", "lte"]
-      case "number":
-        return ["eq", "gt", "lt", "gte", "lte"]
-      default:
-        return ["eq"]
-    }
-  }, [filterProps]) satisfies Operatortypes[]
 
   return (
     <div className="flex w-full items-center gap-4" key={filtro.id}>
@@ -293,7 +274,7 @@ const AdvancedFilter = ({ filtro }: { filtro: CustomFilter }) => {
       </Select>
       <Select
         value={filterSymbolMap.get(filtro.operator)}
-        onValueChange={(value: Operatortypes) => {
+        onValueChange={(value: FilterOperator) => {
           setActiveFilter((prev) =>
             prev.map((f) =>
               f.id === filtro.id ? { ...f, operator: value } : f
@@ -318,7 +299,7 @@ const AdvancedFilter = ({ filtro }: { filtro: CustomFilter }) => {
       {filterMap.get(filtro.name)?.columnType === "PgEnumColumn" ? (
         <Select
           value={filtro.value}
-          onValueChange={(value: Operatortypes) => {
+          onValueChange={(value: FilterOperator) => {
             setActiveFilter((prev) =>
               prev.map((f) => (f.id === filtro.id ? { ...f, value } : f))
             )
@@ -346,7 +327,9 @@ const AdvancedFilter = ({ filtro }: { filtro: CustomFilter }) => {
           )}
           value={filtro.value}
           placeholder={
-            filterMap.get(filtro.name)?.dataType === "date" ? "aaaa-mm-gg" : ""
+            filterKindOf(filterMap.get(filtro.name)!) === "date"
+              ? "aaaa-mm-gg"
+              : ""
           }
           onChange={(e) => {
             setActiveFilter((prev) =>
