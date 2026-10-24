@@ -200,6 +200,29 @@ describe("customer.getCustomersByFiscalCodeOrVatCode", () => {
     expect(result).toEqual([await customerRow(anna.id)])
   })
 
+  it("con tempID di A e partita IVA di B cerca solo per tempID", async () => {
+    const operator = await createOperator()
+    const anna = await createCustomer({
+      id: "cliente-anna",
+      tempID: "TMP-ANNA",
+      vatCode: "01234567890",
+    })
+    await createCustomer({
+      id: "cliente-bruno",
+      tempID: "TMP-BRUNO",
+      vatCode: "09876543210",
+    })
+
+    const result = await createTestCaller(
+      operator
+    ).customer.getCustomersByFiscalCodeOrVatCode({
+      tempID: "TMP-ANNA",
+      vatCode: "09876543210",
+    })
+
+    expect(result).toEqual([await customerRow(anna.id)])
+  })
+
   it("con tempID vuoto cerca per codice fiscale e trova B", async () => {
     const operator = await createOperator()
     await createCustomer({

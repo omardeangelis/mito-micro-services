@@ -123,9 +123,14 @@ describe.skipIf(!hasTestDatabase)(
           "UPDATE"
         )
         const after = await allCustomers()
-        expect(after.find((row) => row.id === first.id)).toMatchObject({
+        const updated = after.find((row) => row.id === first.id)!
+        expect({ ...updated, updatedAt: first.updatedAt }).toEqual({
+          ...first,
           blackListStatus: "blacklisted",
         })
+        expect(updated.updatedAt?.getTime()).toBeGreaterThan(
+          first.updatedAt?.getTime() ?? 0
+        )
         expect(after.find((row) => row.id === second.id)).toEqual(second)
       })
 
@@ -158,15 +163,20 @@ describe.skipIf(!hasTestDatabase)(
         ).customer.updateCustomerFromDashboard({
           id: first.id,
           name: "Cambiato",
-          source: "inbound",
+          source: "digital",
         })
 
         expect(result).toEqual([{ id: first.id }])
         const after = await allCustomers()
-        expect(after.find((row) => row.id === first.id)).toMatchObject({
+        const updated = after.find((row) => row.id === first.id)!
+        expect({ ...updated, updatedAt: first.updatedAt }).toEqual({
+          ...first,
           name: "Cambiato",
-          surname: first.surname,
+          source: "digital",
         })
+        expect(updated.updatedAt?.getTime()).toBeGreaterThan(
+          first.updatedAt?.getTime() ?? 0
+        )
         expect(after.find((row) => row.id === second.id)).toEqual(second)
       })
     })

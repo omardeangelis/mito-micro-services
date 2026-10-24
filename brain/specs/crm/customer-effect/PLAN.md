@@ -513,9 +513,15 @@ G0 ─┬─ T1  ─┐
      - `IMPLEMENTATION-NOTES.md`.
   7. **PR verso `dev`** solo quando Omar la chiede, dopo il merge di `dev` nel branch (§5).
 - **validation**: tutti i punti annotati in `IMPLEMENTATION-NOTES.md`; REPORT SHIP.
-- **status**: Planned
+- **status**: In progress
 - **log**:
-- **files edited/created**:
+  1. T10.1: i `grep` della SPEC e i controlli di AC11 e AC15 a `30270b7`, vuoti o come previsti (dettaglio in `IMPLEMENTATION-NOTES.md`).
+  2. T10.2: 42 mutanti sui servizi e sugli adapter, 41 uccisi; sopravvive lo stesso equivalente di T1.
+  3. T10.3: gate di CI in un worktree di scratchpad senza `.env*`. `next lint` si fermava su `expect.any(String)` in `writes.db.test.ts`; corretto in `838198c`, poi tutti verdi.
+  4. T10.4: prova nel browser su `mito_local`, verde; Nuovo cliente non segnala il codice fiscale già presente (stranezza di AC9, aggiunta a TD8).
+  5. T10.5: `adversarial-review` caso B, 7 passaggi. Primo giro DO NOT SHIP (MAJOR di v5 sugli input parziali, MAJOR di v7 sullo stato di TD8); corretto, poi v5 e v7 rifatti.
+  6. T10.6: [[chore/migrazione-effect]] aggiornato (§1, §4, §5, TD6, TD8 `[PREVISTO]`).
+- **files edited/created**: `brain/chore/migrazione-effect.md`, `brain/tech-debt/crm/search-by-explicit-map.md`, `brain/specs/crm/customer-effect/{IMPLEMENTATION-NOTES,RUBRIC,REPORT}.md`, `packages/server/src/api/routers/customer/_test/{writes.db,writes.pg,queries.db}.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a

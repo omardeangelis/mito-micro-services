@@ -80,3 +80,6 @@
 - [Validator bounds, runner selector](feedback_validator_bounds_and_runner_selector.md) — lower-bound mutants survive; CI-line proof for pg file; NULL-row fixture; west-of-UTC date validator
 - [Refactor spec AC checks](feedback_refactor_spec_ac_checks.md) — vacuous grep ACs, mutation writes, zod rule; plan: old-test row gaps, unscoped greps, RowList toEqual
 - [PGlite clock and fake Date](feedback_pglite_clock_and_fake_date.md) — ms timestamps tie; now() follows faked Date.now, so freeze-before-seed makes updatedAt checks vacuous
+- [Partial-input update mutant](feedback_partial_input_update_mutant.md) — all-fields write tests hide omitted-field-as-NULL mutants; mutate with a subset input
+- [Inline to runTrpc error diff](feedback_inline_to_runtrpc_error_differential.md) — DbError mirrors code so cause.code tests are blind; base/head probe of cause keys, HTTP body, logs
+- [Router type contract differential](feedback_router_type_contract_differential.md) — print inferRouterInputs/Outputs via TS API in base+head, diff; print literals first or enums vanish

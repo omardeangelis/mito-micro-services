@@ -293,6 +293,21 @@ describe("customer.updateCustomerFromDashboard", () => {
     await expectWritten(pair, masterData)
   })
 
+  it("con solo alcuni campi scrive quelli e updatedAt, e lascia com'erano gli altri campi anagrafici", async () => {
+    const pair = await seedPair()
+    callAtT1()
+
+    // Il form manda solo i campi compilati (`cleanObject`)
+    const response = await pair.caller.customer.updateCustomerFromDashboard({
+      id: pair.written.id,
+      name: "Solo nome",
+      source: "digital",
+    })
+
+    expect(response).toEqual([{ id: pair.written.id }])
+    await expectWritten(pair, { name: "Solo nome", source: "digital" })
+  })
+
   it("con un id che non esiste risponde con una lista vuota e non cambia nessun cliente", async () => {
     const pair = await seedPair()
     callAtT1()

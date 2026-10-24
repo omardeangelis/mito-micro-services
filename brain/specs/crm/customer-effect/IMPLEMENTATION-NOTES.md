@@ -53,6 +53,17 @@ updated: 2026-10-24
 - **Il primo salvataggio nel browser non partiva** (nessun `POST`, il modale si chiudeva). La stessa prova sulla base `bc7aa2e` (porta 3006, stesso `mito_local`) salvava. Ripetuta sul branch con una sessione nuova di `agent-browser`, salvava anche lì: era lo stato della prima sessione, aperta direttamente sull'URL del modale, non il codice.
 - **Nuovo cliente non segnala il codice fiscale già presente.** Il form manda sempre il "Codice Cliente (NDG)" come `tempID`, e `getCustomersByFiscalCodeOrVatCode` con un `tempID` non vuoto cerca solo per `tempID` (AC9). Così un cliente con il codice fiscale di un altro si crea senza errore. È il comportamento di `bc7aa2e`, fissato dal test di T1 "con tempID di A e codice fiscale di B cerca solo per tempID"; la conseguenza per l'utente è aggiunta alla voce di TD8.
 
+## Deviations From the Plan
+
+- **TD8 resta `[PREVISTO]` nel commit della PR.** Il PLAN (T10.6 e il NIT del §16) la portava a `[OPEN]` nel commit della PR; AC12 della SPEC dice `[OPEN]` al merge in `dev`, e vince la SPEC (rilievo MAJOR di v7). Va portata a `[OPEN]` quando la PR è unita.
+- **Due righe di asserzione cambiate in test di questo branch, dopo `dac26d9`.** Non sono asserzioni preesistenti, e AC11 vale per quelle: (1) `expect.any(String) as string` in `writes.db.test.ts` (`838198c`), un cast di tipo chiesto da `next lint`, che esbuild cancella; (2) le correzioni della review (sotto), che rendono più forti i test e sono verdi sul codice di `dac26d9`. Nessuna asserzione dei test che c'erano a `bc7aa2e` è cambiata.
+- **Correzioni dopo la review** (verdi sia su `dac26d9` sia sul branch):
+  - `writes.db.test.ts`: `updateCustomerFromDashboard` con solo `name` e `source`, che fissa la riga intera (MAJOR di v5). Uccide il mutante che scrive `null` nelle colonne non passate (`email: input.email ?? null`), che prima sopravviveva a tutti i test.
+  - `queries.db.test.ts`: `tempID` di A e partita IVA di B cerca solo per `tempID` (NIT di v5). Uccide `if (input.tempID && !input.vatCode)`.
+  - `writes.pg.test.ts`: le righe dopo `handleCustomerBlackList` e `updateCustomerFromDashboard` con `id` sono confrontate intere, con `updatedAt` che avanza (MINOR di v5, NIT di v3). Il seed di questo file lascia `null` molte colonne, quindi un mutante che scrive `null` in una di quelle sopravvive qui: lo uccide `writes.db.test.ts`, che parte da righe senza `null`.
+  - [[chore/migrazione-effect]]: TD8 di nuovo `[PREVISTO]`; la riga 2 del §4 non dice più "Mancano test" (MINOR di v7).
+  - [[tech-debt/crm/search-by-explicit-map]]: il percorso di `containsPattern` è `packages/server/src/shared/sql.ts` (NIT di v7).
+
 ## Pre-existing Issues
 
 - **`export.callStats` fallisce su `mito_local`** con `invalid input value for enum task_status: "non risponde"`: la home lo chiama. Il router `export` non è toccato dal passo.

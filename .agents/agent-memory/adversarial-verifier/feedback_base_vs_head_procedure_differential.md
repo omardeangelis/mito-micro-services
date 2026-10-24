@@ -16,3 +16,5 @@ For a "same behavior" refactor (for example moving a procedure to Effect), a cha
 **How to apply:** In any AC that says "same data, total and order as before", run this differential. Don't rely on the test file alone.
 
 Under full-suite load, the seed perf tests (`generate`, `contacts` at N=10,000) and `auth.test.ts` time out. Rerun them in isolation before calling them a regression.
+
+**Read-path refactor variant (customer GET, 2026-10):** when the base file imports helpers the head moved, sed its import paths in the copy. Force driver errors by `ALTER TABLE ... RENAME` around the calls (one table at a time hits the 2nd query of a two-step read). Run the same file on real PG by swapping `@/test/db` for `@/test/pg` and `testClient.exec` for `pgClient.unsafe`. Strip the cause constructor before comparing (DbError vs PostgresError is the known, accepted change). Prove sensitivity with 4-5 head mutants (precedence, order, table branch, tiebreak, `[0]`): each must show diffs.

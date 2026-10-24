@@ -24,7 +24,7 @@ Tutto preesistente: la review del cambio `search_by` l'ha trovato, ma non l'ha i
   - Fix o prova che serve: una review di sicurezza dedicata. Probabile fix: la pagina manda i filtri come dati, cioè nome della colonna da una mappa chiusa, operatore da un enum e valore. Il server li traduce con gli operatori di Drizzle e i parametri, come fa già `search_by` con `customerSearchColumns`.
 - **[FOLLOW-UP, sicurezza]** `createSQLQuery` costruisce `ilike '%${filter.value}%'` senza escape — `src/lib/utils/filters.ts:65`.
   - Perché resta: il valore del filtro, che viene dall'URL, finisce dentro un letterale SQL. Un apice chiude la stringa. `%` e `_` funzionano da caratteri jolly.
-  - Fix o prova che serve: va nella stessa review. Dopo il fix il valore deve passare come parametro, con `containsPattern` (`src/server/api/routers/utils/index.ts`) come per `q`.
+  - Fix o prova che serve: va nella stessa review. Dopo il fix il valore deve passare come parametro, con `containsPattern` (`packages/server/src/shared/sql.ts`) come per `q`.
 
 ### Scope della review di sicurezza dei filtri SQL
 
