@@ -143,9 +143,10 @@ function updatedBy(
   const vatCode = customer.vatCode ?? first.vatCode
   const positions = new Set([
     ...(index.byTempID.get(customer.tempID) ?? []),
-    ...((fiscalCode && index.byFiscalCode.get(fiscalCode)) || []),
-    ...((vatCode && index.byVatCode.get(vatCode)) || []),
+    ...(fiscalCode ? (index.byFiscalCode.get(fiscalCode) ?? []) : []),
+    ...(vatCode ? (index.byVatCode.get(vatCode) ?? []) : []),
   ])
+
   return [...positions]
     .sort((a, b) => a - b)
     .map((position) => crm.customers[position]!.id)
