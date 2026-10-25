@@ -1,6 +1,6 @@
 import { z } from "zod"
 
-import { operatorProcedure, protectedProcedure } from "../../../trpc"
+import { operatorProcedure } from "../../../trpc"
 import { stateEnum } from "@mito/db/schema/pratiche"
 import { type Customer, type Practice } from "@mito/domain/schemas"
 import { runTrpc } from "../../../../effect/trpc"
@@ -11,6 +11,7 @@ import {
   getPracticeById,
   listRegions,
 } from "../../../../services/practice/queries"
+import { practiceErrorToTrpc } from "../../../../services/practice/errors"
 
 export type Result = Record<
   string,
@@ -51,6 +52,6 @@ export const getAllPratiche = operatorProcedure
   .input(getAllPraticheInput)
   .query(({ ctx, input }) => runTrpc(listPractices(input, ctx.operator)))
 
-export const getPraticaById = protectedProcedure
+export const getPraticaById = operatorProcedure
   .input(z.object({ id: z.string() }))
-  .query(({ input }) => runTrpc(getPracticeById(input.id)))
+  .query(({ input }) => runTrpc(getPracticeById(input.id), practiceErrorToTrpc))

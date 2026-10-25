@@ -4,20 +4,14 @@ import {
   getPraticaById,
   getAllAvailableRegion,
 } from "./GET/index"
-import { insertPratica, connectPraticaAndCustomer } from "./POST/index"
-import {
-  updatePraticaFromDashboard,
-  updateCustomerPreview,
-  bulkAssignPractices,
-} from "./PUT/index"
+import { createPratica } from "./POST/index"
+import { updatePraticaFromDashboard, updateCustomerPreview } from "./PUT/index"
 
 export const praticheRouter = createTRPCRouter({
   getAllPratiche,
   getPraticaById,
   getAllAvailableRegion,
-  insertPratica,
-  connectPraticaAndCustomer,
+  createPratica,
   updatePraticaFromDashboard,
   updateCustomerPreview,
-  bulkAssignPractices,
 })

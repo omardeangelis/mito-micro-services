@@ -49,13 +49,14 @@ const activeAlertsOf = (client: DbClient, customerIds: string[]) =>
         eq(task.isActive, true)
       )
     )
+    .orderBy(alert.deadline, alert.id)
 
 type ActiveAlertRow = Awaited<ReturnType<typeof activeAlertsOf>>[number]
 
 /**
  * Of the given customers, only those with an open alert (a planned callback
- * not yet resolved) on their active task, one row per such alert. An empty
- * list yields no rows, without a query.
+ * not yet resolved) on their active task, one row per such alert, by
+ * deadline. An empty list yields no rows, without a query.
  */
 export const listCustomersWithActiveAlerts = (
   customerIds: string[]

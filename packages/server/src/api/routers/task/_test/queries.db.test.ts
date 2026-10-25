@@ -8,10 +8,9 @@ import {
   createTask,
 } from "@/test/factories"
 
-// Caratterizzazione delle query di lettura del router `task` (GET), prima del
-// refactor verso Effect: ogni test fissa la risposta che il codice da oggi
-// restituisce. La query non ha un ordine: le righe si confrontano come insieme,
-// ordinate per `customerId`.
+// Le query di lettura del router `task` (GET): ogni test fissa la risposta.
+// Dove conta solo quali righe tornano, le righe si confrontano come insieme,
+// ordinate per `customerId`; l'ordine per scadenza ha un test suo.
 
 const byCustomerId = <T extends { customerId: string | null }>(a: T, b: T) =>
   (a.customerId ?? "").localeCompare(b.customerId ?? "")
@@ -258,6 +257,35 @@ describe("task.getCustomersWithActiveAlerts", () => {
         message: "Unico cliente",
         state: "richiamare",
       },
+    ])
+  })
+})
+
+describe("task.getCustomersWithActiveAlerts: ordine", () => {
+  it("restituisce gli alert per scadenza, la più vicina per prima, qualunque sia l'ordine dei clienti", async () => {
+    const operator = await createOperator()
+    const deadlines = [DEADLINE_CINQUE, DEADLINE_UNO, DEADLINE_DUE]
+    const customerIds: string[] = []
+    for (const [i, deadline] of deadlines.entries()) {
+      // Gli id vanno al contrario delle scadenze
+      const customer = await createCustomer({ id: `cliente-${3 - i}` })
+      const task = await createTask({
+        customerId: customer.id,
+        operatorId: operator.id,
+        state: "richiamare",
+      })
+      await createAlert({ taskId: task.id, deadline })
+      customerIds.push(customer.id)
+    }
+
+    const result = await createTestCaller(
+      operator
+    ).task.getCustomersWithActiveAlerts({ customerIds })
+
+    expect(result.map((row) => row.deadline)).toEqual([
+      DEADLINE_UNO,
+      DEADLINE_DUE,
+      DEADLINE_CINQUE,
     ])
   })
 })

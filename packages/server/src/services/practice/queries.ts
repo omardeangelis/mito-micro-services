@@ -3,11 +3,9 @@ import { Effect } from "effect"
 import { practices } from "@mito/db/schema/pratiche"
 import { operators } from "@mito/db/schema/operators"
 import { query } from "../../effect/db"
+import { PracticeNotFound } from "./errors"
 
-/**
- * The practice with this `praticaId`, with its operator, or `undefined` if
- * there is none.
- */
+/** The practice with this `praticaId`, with its operator. */
 export const getPracticeById = (praticaId: string) =>
   query((client) =>
     client
@@ -34,9 +32,16 @@ export const getPracticeById = (praticaId: string) =>
       .from(practices)
       .leftJoin(operators, eq(operators.id, practices.operatorId))
       .where(eq(practices.praticaId, praticaId))
-  ).pipe(Effect.map((result) => result[0]))
+  ).pipe(
+    Effect.flatMap(([practice]) =>
+      practice ? Effect.succeed(practice) : Effect.fail(new PracticeNotFound())
+    )
+  )
 
-/** The distinct regions of the practices, as `{ region }` rows. */
+/**
+ * The distinct regions of the practices, as `{ region }` rows in alphabetical
+ * order, `null` last.
+ */
 export const listRegions = () =>
   query((client) =>
     client
@@ -44,4 +49,5 @@ export const listRegions = () =>
         region: practices.region,
       })
       .from(practices)
+      .orderBy(practices.region)
   )

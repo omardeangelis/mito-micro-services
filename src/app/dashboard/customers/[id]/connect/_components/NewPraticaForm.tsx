@@ -53,7 +53,10 @@ type CustomerSave = (
 ) => CustomerSaveResponse
 
 type CustomerWithRole = CustomerWrite & {
-  role: CustomerToPraticaWrite["customerRole"]
+  role: Extract<
+    CustomerToPraticaWrite["customerRole"],
+    "Coobbligato" | "Garante"
+  >
 }
 
 export type CreateNewPraticaInput = {
@@ -161,10 +164,7 @@ export default function NewPraticaForm({
         })),
       } satisfies CreateNewPraticaInput
       const { redirectUrl, error } = await createNewPraticaAction(data)
-      if (error)
-        return form.setError("praticaId", {
-          message: "Errore durante la creazione",
-        })
+      if (error) return form.setError("praticaId", { message: error })
       router.replace(redirectUrl)
     },
     (error) => {

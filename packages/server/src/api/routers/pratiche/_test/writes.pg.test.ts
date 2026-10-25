@@ -2,6 +2,7 @@ import { beforeAll, beforeEach, describe, expect, it } from "vitest"
 import { asc } from "drizzle-orm"
 import { customers } from "@mito/db/schema/customers"
 import { practices } from "@mito/db/schema/pratiche"
+import { customerToPratica } from "@mito/db/schema/relations/customerToPratica"
 import { createTestCaller, rejectionOf } from "@/test/caller"
 import {
   createCustomer,
@@ -10,15 +11,9 @@ import {
 } from "@/test/factories"
 import { hasTestDatabase, migrateUpTo, pgDb, resetDb } from "@/test/pg"
 
-// Caratterizzazione, su postgres-js come in produzione, delle due scritture di
-// `pratiche` che passano `input.id!` al `where` (updatePraticaFromDashboard e
-// updateCustomerPreview), prima del refactor verso Effect. Lo schema lascia
-// `id` opzionale: senza `id` il driver rifiuta il parametro `undefined`, e la
-// risposta di `updateCustomerPreview` è il risultato grezzo del driver
-// (`RowList`): per questo il file gira su postgres-js, non su PGlite
-
-/** Il messaggio che il driver dà al parametro `undefined`, tale e quale. */
-const UNDEFINED_VALUE = "UNDEFINED_VALUE: Undefined values are not allowed"
+// Le scritture di `pratiche` su postgres-js, come in produzione: le risposte
+// di `updatePraticaFromDashboard` e `updateCustomerPreview`, e il rollback di
+// `createPratica` quando un passo fallisce dentro la transazione
 
 /** Tutte le righe dei clienti, per confrontare prima e dopo. */
 const allCustomers = () =>
@@ -61,37 +56,31 @@ describe.skipIf(!hasTestDatabase)(
     })
 
     describe("senza id", () => {
-      it("su postgres-js, `updatePraticaFromDashboard` senza `id` risponde `INTERNAL_SERVER_ERROR` con il messaggio del driver e non cambia nessuna pratica", async () => {
+      it("`updatePraticaFromDashboard` senza `id` risponde `BAD_REQUEST` e non cambia nessuna pratica", async () => {
         const { operator } = await seed()
         const before = await allPractices()
 
         const error = await rejectionOf(
           createTestCaller(operator).pratiche.updatePraticaFromDashboard({
             state: "Rifiutata",
-          })
+          } as never)
         )
 
-        expect(error).toMatchObject({
-          code: "INTERNAL_SERVER_ERROR",
-          message: UNDEFINED_VALUE,
-        })
+        expect(error).toMatchObject({ code: "BAD_REQUEST" })
         expect(await allPractices()).toEqual(before)
       })
 
-      it("su postgres-js, `updateCustomerPreview` senza `id` risponde `INTERNAL_SERVER_ERROR` con il messaggio del driver e non cambia nessun cliente", async () => {
+      it("`updateCustomerPreview` senza `id` risponde `BAD_REQUEST` e non cambia nessun cliente", async () => {
         const { operator } = await seed()
         const before = await allCustomers()
 
         const error = await rejectionOf(
           createTestCaller(operator).pratiche.updateCustomerPreview({
             email: "nuova@test.local",
-          })
+          } as never)
         )
 
-        expect(error).toMatchObject({
-          code: "INTERNAL_SERVER_ERROR",
-          message: UNDEFINED_VALUE,
-        })
+        expect(error).toMatchObject({ code: "BAD_REQUEST" })
         expect(await allCustomers()).toEqual(before)
       })
     })
@@ -122,7 +111,7 @@ describe.skipIf(!hasTestDatabase)(
         )
       })
 
-      it("`updateCustomerPreview` risponde con il risultato del driver, un elenco vuoto con `count` 1 e `command` UPDATE, e cambia solo quel cliente", async () => {
+      it("`updateCustomerPreview` risponde `undefined` e cambia solo quel cliente", async () => {
         const { operator, firstCustomer, secondCustomer } = await seed()
 
         const result = await createTestCaller(
@@ -132,10 +121,7 @@ describe.skipIf(!hasTestDatabase)(
           email: "nuova@test.local",
         })
 
-        // Senza `returning` il driver non restituisce righe: l'elenco è
-        // vuoto, ma è un `RowList` che porta `count` e `command`
-        expect(result).toEqual([])
-        expect(result).toMatchObject({ count: 1, command: "UPDATE" })
+        expect(result).toBeUndefined()
         const after = await allCustomers()
         const updated = after.find((row) => row.id === firstCustomer.id)!
         expect({ ...updated, updatedAt: firstCustomer.updatedAt }).toEqual({
@@ -167,7 +153,7 @@ describe.skipIf(!hasTestDatabase)(
         expect(await allPractices()).toEqual(before)
       })
 
-      it("`updateCustomerPreview` risponde con un `RowList` vuoto con `count` 0, senza errore, e non cambia nessun cliente", async () => {
+      it("`updateCustomerPreview` risponde `undefined`, senza errore, e non cambia nessun cliente", async () => {
         const { operator } = await seed()
         const before = await allCustomers()
 
@@ -178,9 +164,61 @@ describe.skipIf(!hasTestDatabase)(
           email: "nuova@test.local",
         })
 
-        expect(result).toEqual([])
-        expect(result).toMatchObject({ count: 0, command: "UPDATE" })
+        expect(result).toBeUndefined()
         expect(await allCustomers()).toEqual(before)
+      })
+    })
+
+    describe("createPratica", () => {
+      it("con un cliente collegato che esiste già annulla tutto: nessuna pratica, nessun cliente, nessun collegamento in più", async () => {
+        const { operator, firstCustomer, secondCustomer } = await seed()
+        const before = {
+          practices: await allPractices(),
+          customers: await allCustomers(),
+          links: await pgDb.select().from(customerToPratica),
+        }
+
+        const error = await rejectionOf(
+          createTestCaller(operator).pratiche.createPratica({
+            pratica: {
+              praticaId: "PR-nuova",
+              importoFinanziato: "10000",
+              importoErogato: "10000",
+              rateTotali: 60,
+              importoRata: "200",
+              ratePagate: 0,
+              dataLiquidazione: new Date("2026-01-15T00:00:00.000Z"),
+              state: "Liquidata",
+            },
+            customerId: firstCustomer.id,
+            relatedCustomers: [
+              {
+                id: "rel-nuovo",
+                tempID: "temp-rel-nuovo",
+                uniqueHash: "hash-rel-nuovo",
+                source: "spontaneo",
+                role: "Garante",
+              },
+              {
+                id: secondCustomer.id,
+                tempID: "temp-rel-esistente",
+                uniqueHash: "hash-rel-esistente",
+                source: "spontaneo",
+                role: "Coobbligato",
+              },
+            ],
+          })
+        )
+
+        expect(error).toMatchObject({
+          code: "CONFLICT",
+          cause: { code: "CUSTOMER_EXISTS" },
+        })
+        expect(await allPractices()).toEqual(before.practices)
+        expect(await allCustomers()).toEqual(before.customers)
+        expect(await pgDb.select().from(customerToPratica)).toEqual(
+          before.links
+        )
       })
     })
   }

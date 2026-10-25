@@ -14,15 +14,11 @@ import { practices } from "@mito/db/schema/pratiche"
 import { customerToPratica } from "@mito/db/schema/relations/customerToPratica"
 import { createTestCaller, rejectionOf } from "@/test/caller"
 import { customerRow, migrateUpTo, resetDb, testDb } from "@/test/db"
-import { createCustomer, createOperator, createUser } from "@/test/factories"
+import { createCustomer, createOperator } from "@/test/factories"
 
-// Caratterizzazione delle 5 scritture del router `pratiche` (insertPratica,
-// connectPraticaAndCustomer, updatePraticaFromDashboard, updateCustomerPreview,
-// bulkAssignPractices) su PGlite: la risposta e le righe nel database dopo la
-// chiamata. Pensata per restare verde, con le stesse asserzioni, dopo il
-// passaggio a Effect. `updatePratica` e `updateLastEdit` non ci sono: saranno
-// rimosse. Le `update` senza `id` con dei campi sono provate su postgres-js,
-// perché PGlite si comporta in modo diverso dalla produzione.
+// Le scritture del router `pratiche` (createPratica, updatePraticaFromDashboard,
+// updateCustomerPreview) su PGlite: la risposta e le righe nel database dopo la
+// chiamata. Le risposte su postgres-js sono in `writes.pg.test.ts`.
 
 type PracticeRow = typeof practices.$inferSelect
 type CustomerRow = typeof customers.$inferSelect
@@ -283,190 +279,169 @@ const callAtT1 = () => vi.setSystemTime(T1)
 const createDisabledOperator = () =>
   createOperator({ disabledAt: new Date("2026-09-01T00:00:00.000Z") })
 
-describe("pratiche.insertPratica", () => {
-  /** Ogni colonna scrivibile di `practices` (tutte tranne `id`), non null. */
-  const insertInput = async () => {
-    const disabled = await createDisabledOperator()
-    const praticaChat = await createChat()
-    return {
-      praticaId: "PR-nuova",
-      region: "Lombardia",
-      desPuntoVendita: "Punto vendita nuovo",
-      desConvenzionato: "Convenzionato nuovo",
-      subagente: "Subagente nuovo",
-      importoFinanziato: "15000.5",
-      importoErogato: "14000.25",
-      rateTotali: 48,
-      importoRata: "350.75",
-      ratePagate: 6,
-      debitoResiduo: "12000.5",
-      dataLiquidazione: new Date("2026-03-10T00:00:00.000Z"),
-      dataEstinzione: new Date("2027-03-10T00:00:00.000Z"),
-      importoRichiesto: "15500.5",
-      paymentMethod: "SDD",
-      tassoPratica: "7.5",
-      state: "Estinta anticipata",
-      isWave: false,
-      fileName: "import-nuovo.csv",
-      createdAt: new Date("2026-08-01T10:00:00.000Z"),
-      updatedAt: new Date("2026-08-02T10:00:00.000Z"),
-      lastImportUpdate: new Date("2026-08-03T10:00:00.000Z"),
-      productId: "ZZ",
-      operatorId: disabled.id,
-      chatId: praticaChat.id,
-    } satisfies Required<Omit<typeof practices.$inferInsert, "id">>
+describe("pratiche.createPratica", () => {
+  /** Le colonne del form "Nuova pratica", tutte valorizzate. */
+  const praticaInput = {
+    praticaId: "PR-nuova",
+    productId: "ZZ",
+    state: "Estinta anticipata",
+    importoFinanziato: "15000.5",
+    importoErogato: "14000.25",
+    importoRichiesto: "15500.5",
+    dataLiquidazione: new Date("2026-03-10T00:00:00.000Z"),
+    dataEstinzione: new Date("2027-03-10T00:00:00.000Z"),
+    importoRata: "350.75",
+    rateTotali: 48,
+    ratePagate: 6,
+    tassoPratica: "7.5",
+    desPuntoVendita: "Punto vendita nuovo",
+    desConvenzionato: "Convenzionato nuovo",
+    region: "Lombardia",
+  } as const
+
+  /** Un cliente nuovo da collegare alla pratica, con il suo ruolo. */
+  const related = (tag: string, role: "Garante" | "Coobbligato") => ({
+    id: `rel-${tag}`,
+    name: `Nome ${tag}`,
+    surname: `Cognome ${tag}`,
+    email: `${tag}@test.local`,
+    phoneNumber: "3331234567",
+    fiscalCode: `FSCL${tag}`.padEnd(16, "X"),
+    tempID: `temp-rel-${tag}`,
+    uniqueHash: `hash-rel-${tag}`,
+    source: "spontaneo" as const,
+    role,
+  })
+
+  /** L'intestatario, un cliente che esiste già, e l'operatore che chiama. */
+  const seedHolder = async () => {
+    const holder = await createCustomer({ id: "intestatario" })
+    const operator = await createOperator({ role: "OPERATORE" })
+    return { holder, operator, caller: createTestCaller(operator) }
   }
 
-  it.each([
-    ["un utente senza operatore", () => createUser()],
-    ["un operatore", () => createOperator({ role: "OPERATORE" })],
-  ] as const)(
-    "chiamata da %s salva ogni colonna passata, operatorId di un operatore disattivato compreso, e risponde con il praticaId",
-    async (_who, createActor) => {
-      const input = await insertInput()
-      const [control] = (await seedPractices(["c"])).rows
-      const caller = createTestCaller(await createActor())
+  /** Nessuna riga è cambiata rispetto a `before`. */
+  const snapshot = async () => ({
+    practices: await allPractices(),
+    customers: await allCustomers(),
+    links: await allLinks(),
+  })
 
-      const response = await caller.pratiche.insertPratica(input)
+  it("crea la pratica, i clienti collegati (dell'operatore che chiama) e i collegamenti, e risponde con il praticaId", async () => {
+    const { holder, operator, caller } = await seedHolder()
 
-      expect(response).toEqual({ id: "PR-nuova" })
-      // Le colonne passate, più `id`, che è il default del database
-      expect(await practiceRow("PR-nuova")).toEqual({
-        ...input,
-        id: control!.id + 1,
+    const response = await caller.pratiche.createPratica({
+      pratica: praticaInput,
+      customerId: holder.id,
+      relatedCustomers: [related("a", "Garante"), related("b", "Coobbligato")],
+    })
+
+    expect(response).toEqual({ praticaId: "PR-nuova" })
+    expect(await practiceRow("PR-nuova")).toMatchObject({
+      ...praticaInput,
+      fileName: "manual",
+      operatorId: null,
+    })
+    for (const tag of ["a", "b"]) {
+      const { role: _, ...values } = related(tag, "Garante")
+      expect(await customerRow(`rel-${tag}`)).toMatchObject({
+        ...values,
+        fileName: "manual",
+        operatorId: operator.id,
       })
-      expect(await practiceRow(control!.praticaId)).toEqual(control)
-      expect(await allPractices()).toHaveLength(2)
     }
-  )
-
-  it("con un praticaId già presente risponde INTERNAL_SERVER_ERROR con il messaggio di chiave duplicata del driver, e la pratica esistente resta com'era", async () => {
-    const pair = await seedPair()
-    callAtT1()
-
-    const error = await rejectionOf(
-      pair.caller.pratiche.insertPratica({
-        ...(await insertInput()),
-        praticaId: pair.written.praticaId,
-      })
-    )
-
-    expect(error).toMatchObject({
-      code: "INTERNAL_SERVER_ERROR",
-      message:
-        'duplicate key value violates unique constraint "mito-deutsche_practices_pkey"',
-    })
-    await expectUntouched(pair)
-  })
-
-  it("con un id risponde INTERNAL_SERVER_ERROR con il messaggio del driver per la colonna GENERATED ALWAYS, e nessuna pratica si aggiunge", async () => {
-    const pair = await seedPair()
-    callAtT1()
-
-    const error = await rejectionOf(
-      pair.caller.pratiche.insertPratica({ ...(await insertInput()), id: 5 })
-    )
-
-    expect(error).toMatchObject({
-      code: "INTERNAL_SERVER_ERROR",
-      message: 'cannot insert a non-DEFAULT value into column "id"',
-    })
-    await expectUntouched(pair)
-  })
-})
-
-describe("pratiche.connectPraticaAndCustomer", () => {
-  /** Due pratiche e due clienti; il cliente di controllo e collegato alla sua. */
-  const seedLinks = async () => {
-    const { rows } = await seedPractices(["w", "c"])
-    const customer = await createCustomer({ id: "cliente-w" })
-    const controlCustomer = await createCustomer({ id: "cliente-c" })
-    await testDb.insert(customerToPratica).values({
-      customerId: controlCustomer.id,
-      praticaId: rows[1]!.praticaId,
-      customerRole: "Intestatario",
-    })
-    return { rows, customer, controlCustomer }
-  }
-
-  it("scrive la riga (customerId, praticaId, customerRole) e risponde undefined, chiamata da un utente senza operatore", async () => {
-    const { rows, customer, controlCustomer } = await seedLinks()
-    const caller = createTestCaller(await createUser())
-
-    const response = await caller.pratiche.connectPraticaAndCustomer({
-      customerId: customer.id,
-      praticaId: rows[0]!.praticaId,
-      customerRole: "Garante",
-    })
-
-    expect(response).toBeUndefined()
     expect(await allLinks()).toEqual([
       {
-        customerId: controlCustomer.id,
-        praticaId: rows[1]!.praticaId,
+        customerId: holder.id,
+        praticaId: "PR-nuova",
         customerRole: "Intestatario",
       },
+      { customerId: "rel-a", praticaId: "PR-nuova", customerRole: "Garante" },
       {
-        customerId: customer.id,
-        praticaId: rows[0]!.praticaId,
-        customerRole: "Garante",
+        customerId: "rel-b",
+        praticaId: "PR-nuova",
+        customerRole: "Coobbligato",
       },
     ])
   })
 
-  it("non cambia nessuna pratica e nessun cliente", async () => {
-    const { rows, customer } = await seedLinks()
-    const practicesBefore = await allPractices()
-    const customersBefore = await allCustomers()
+  it("non scrive l'id né l'operatore della pratica, anche se l'input li contiene", async () => {
+    const { holder, caller } = await seedHolder()
+    const other = await createOperator()
 
-    await createTestCaller(
-      await createUser()
-    ).pratiche.connectPraticaAndCustomer({
-      customerId: customer.id,
-      praticaId: rows[0]!.praticaId,
-      customerRole: "Garante",
+    await caller.pratiche.createPratica({
+      pratica: { ...praticaInput, id: 5, operatorId: other.id } as never,
+      customerId: holder.id,
+      relatedCustomers: [],
     })
 
-    expect(await allPractices()).toEqual(practicesBefore)
-    expect(await allCustomers()).toEqual(customersBefore)
+    const row = await practiceRow("PR-nuova")
+    expect(row.id).not.toBe(5)
+    expect(row.operatorId).toBeNull()
   })
 
-  it("con una coppia cliente-pratica già presente risponde INTERNAL_SERVER_ERROR con il messaggio di chiave duplicata del driver, e nessuna riga cambia", async () => {
-    const { rows, customer, controlCustomer } = await seedLinks()
-    await testDb.insert(customerToPratica).values({
-      customerId: customer.id,
-      praticaId: rows[0]!.praticaId,
-      customerRole: "Intestatario",
-    })
-    const before = await allLinks()
-    const caller = createTestCaller(await createUser())
+  it("con un praticaId già presente risponde CONFLICT 'Questa pratica esiste già' e non scrive niente", async () => {
+    const { rows } = await seedPractices(["esistente"])
+    const { holder, caller } = await seedHolder()
+    const before = await snapshot()
 
     const error = await rejectionOf(
-      caller.pratiche.connectPraticaAndCustomer({
-        customerId: customer.id,
-        praticaId: rows[0]!.praticaId,
-        customerRole: "Garante",
+      caller.pratiche.createPratica({
+        pratica: { ...praticaInput, praticaId: rows[0]!.praticaId },
+        customerId: holder.id,
+        relatedCustomers: [related("a", "Garante")],
       })
     )
 
     expect(error).toMatchObject({
-      code: "INTERNAL_SERVER_ERROR",
-      message:
-        'duplicate key value violates unique constraint "customers_to_pratiche_customer_id_pratica_id_pk"',
+      code: "CONFLICT",
+      message: "Questa pratica esiste già",
+      cause: { code: "PRACTICE_EXISTS" },
     })
-    expect(before).toEqual([
-      {
-        customerId: controlCustomer.id,
-        praticaId: rows[1]!.praticaId,
-        customerRole: "Intestatario",
-      },
-      {
-        customerId: customer.id,
-        praticaId: rows[0]!.praticaId,
-        customerRole: "Intestatario",
-      },
-    ])
-    expect(await allLinks()).toEqual(before)
+    expect(await snapshot()).toEqual(before)
+  })
+
+  it("con un cliente collegato che esiste già risponde CONFLICT e annulla tutto, la pratica e i clienti scritti prima compresi", async () => {
+    const { holder, caller } = await seedHolder()
+    await createCustomer({ id: "rel-b" })
+    const before = await snapshot()
+
+    const error = await rejectionOf(
+      caller.pratiche.createPratica({
+        pratica: praticaInput,
+        customerId: holder.id,
+        relatedCustomers: [
+          related("a", "Garante"),
+          related("b", "Coobbligato"),
+        ],
+      })
+    )
+
+    expect(error).toMatchObject({
+      code: "CONFLICT",
+      message: "Un cliente collegato esiste già",
+      cause: { code: "CUSTOMER_EXISTS" },
+    })
+    expect(await snapshot()).toEqual(before)
+  })
+
+  it("con un intestatario che non esiste risponde BAD_REQUEST e annulla tutto", async () => {
+    const { caller } = await seedHolder()
+    const before = await snapshot()
+
+    const error = await rejectionOf(
+      caller.pratiche.createPratica({
+        pratica: praticaInput,
+        customerId: "inesistente",
+        relatedCustomers: [related("a", "Garante")],
+      })
+    )
+
+    expect(error).toMatchObject({
+      code: "BAD_REQUEST",
+      message: "Cliente non trovato: inesistente",
+    })
+    expect(await snapshot()).toEqual(before)
   })
 })
 
@@ -488,21 +463,32 @@ describe("pratiche.updatePraticaFromDashboard", () => {
     )
   })
 
-  it("con operatorId scrive anche quello, e un OPERATORE può passare l'id di un operatore disattivato", async () => {
+  it("non scrive l'operatore, anche se l'input lo contiene", async () => {
     const pair = await seedPair()
-    const caller = createTestCaller(await createOperator({ role: "OPERATORE" }))
     const disabled = await createDisabledOperator()
-    expect(pair.written.operatorId).not.toBe(disabled.id)
     callAtT1()
 
-    const response = await caller.pratiche.updatePraticaFromDashboard({
+    await pair.caller.pratiche.updatePraticaFromDashboard({
       id: pair.written.id,
       state: "Stornata",
       operatorId: disabled.id,
-    })
+    } as never)
 
-    expect(response).toEqual([{ id: pair.written.id }])
-    await expectWritten(pair, { state: "Stornata", operatorId: disabled.id })
+    await expectWritten(pair, { state: "Stornata" })
+  })
+
+  it("senza id risponde BAD_REQUEST e non cambia nessuna pratica", async () => {
+    const pair = await seedPair()
+    callAtT1()
+
+    const error = await rejectionOf(
+      pair.caller.pratiche.updatePraticaFromDashboard({
+        state: "Stornata",
+      } as never)
+    )
+
+    expect(error).toMatchObject({ code: "BAD_REQUEST" })
+    await expectUntouched(pair)
   })
 
   it("con un id che non esiste risponde con una lista vuota e non cambia nessuna pratica", async () => {
@@ -530,7 +516,7 @@ describe("pratiche.updateCustomerPreview", () => {
       phoneNumber: "+39111222333",
     })
 
-    expect(response).toEqual({ rows: [], fields: [], affectedRows: 1 })
+    expect(response).toBeUndefined()
     await expectCustomerWritten(pair, {
       email: "nuova@test.local",
       phoneNumber: "+39111222333",
@@ -552,17 +538,36 @@ describe("pratiche.updateCustomerPreview", () => {
     )
   })
 
-  it("con il solo id scrive l'id su sé stesso e cambia solo updatedAt, e la risposta è quella del driver", async () => {
+  it("con email null la cancella e lascia com'era il phoneNumber", async () => {
     const pair = await seedCustomerPair()
     callAtT1()
 
-    const response = await pair.caller.pratiche.updateCustomerPreview({
+    await pair.caller.pratiche.updateCustomerPreview({
       id: pair.written.id,
+      email: null,
     })
 
-    expect(response).toEqual({ rows: [], fields: [], affectedRows: 1 })
-    await expectCustomerWritten(pair, {})
+    await expectCustomerWritten(pair, { email: null })
   })
+
+  it.each([
+    ["con il solo id", { id: "id-w" }],
+    ["con `{}`", {}],
+    ["senza id", { email: "nuova@test.local" }],
+  ])(
+    "%s risponde BAD_REQUEST e non cambia nessun cliente",
+    async (_case, input) => {
+      const pair = await seedCustomerPair()
+      callAtT1()
+
+      const error = await rejectionOf(
+        pair.caller.pratiche.updateCustomerPreview(input as never)
+      )
+
+      expect(error).toMatchObject({ code: "BAD_REQUEST" })
+      await expectCustomersUntouched(pair)
+    }
+  )
 
   it("con un id che non esiste non cambia nessun cliente, e la risposta è quella del driver con zero righe toccate", async () => {
     const pair = await seedCustomerPair()
@@ -574,91 +579,7 @@ describe("pratiche.updateCustomerPreview", () => {
       phoneNumber: "+39111222333",
     })
 
-    expect(response).toEqual({ rows: [], fields: [], affectedRows: 0 })
+    expect(response).toBeUndefined()
     await expectCustomersUntouched(pair)
-  })
-
-  it("con `{}` risponde INTERNAL_SERVER_ERROR con `No values to set` e non cambia nessun cliente", async () => {
-    const pair = await seedCustomerPair()
-    callAtT1()
-
-    const error = await rejectionOf(
-      pair.caller.pratiche.updateCustomerPreview({})
-    )
-
-    expect(error).toMatchObject({
-      code: "INTERNAL_SERVER_ERROR",
-      message: "No values to set",
-    })
-    await expectCustomersUntouched(pair)
-  })
-})
-
-describe("pratiche.bulkAssignPractices", () => {
-  /** Due pratiche da assegnare e una di controllo, che non e nella lista. */
-  const seedBulk = async () => {
-    const { caller, rows } = await seedPractices(["a", "b", "c"])
-    return { caller, listed: [rows[0]!, rows[1]!], control: rows[2]! }
-  }
-
-  it("scrive operatorId e updatedAt (da T0 a T1) delle pratiche indicate e nient'altro, lascia com'è la pratica fuori dalla lista, e risponde undefined", async () => {
-    const { caller, listed, control } = await seedBulk()
-    const destination = await createOperator()
-    callAtT1()
-
-    const response = await caller.pratiche.bulkAssignPractices({
-      operatorId: destination.id,
-      practiceIds: listed.map((row) => row.praticaId),
-    })
-
-    expect(response).toBeUndefined()
-    for (const row of listed) {
-      expect(await practiceRow(row.praticaId)).toEqual({
-        ...row,
-        operatorId: destination.id,
-        updatedAt: T1,
-      })
-    }
-    expect(await practiceRow(control.praticaId)).toEqual(control)
-    expect(await allPractices()).toHaveLength(3)
-  })
-
-  it("ignora un praticaId che non esiste, accetta un operatore disattivato come destinazione, ed è chiamabile da un OPERATORE", async () => {
-    const { listed, control } = await seedBulk()
-    const caller = createTestCaller(await createOperator({ role: "OPERATORE" }))
-    const disabled = await createDisabledOperator()
-    callAtT1()
-
-    const response = await caller.pratiche.bulkAssignPractices({
-      operatorId: disabled.id,
-      practiceIds: ["PR-inesistente", listed[0]!.praticaId],
-    })
-
-    expect(response).toBeUndefined()
-    expect(await practiceRow(listed[0]!.praticaId)).toEqual({
-      ...listed[0]!,
-      operatorId: disabled.id,
-      updatedAt: T1,
-    })
-    expect(await practiceRow(listed[1]!.praticaId)).toEqual(listed[1])
-    expect(await practiceRow(control.praticaId)).toEqual(control)
-    expect(await allPractices()).toHaveLength(3)
-  })
-
-  it("con `practiceIds: []` risponde undefined e non cambia nessuna pratica", async () => {
-    const { caller, listed, control } = await seedBulk()
-    const destination = await createOperator()
-    callAtT1()
-
-    const response = await caller.pratiche.bulkAssignPractices({
-      operatorId: destination.id,
-      practiceIds: [],
-    })
-
-    expect(response).toBeUndefined()
-    for (const row of [...listed, control]) {
-      expect(await practiceRow(row.praticaId)).toEqual(row)
-    }
-    expect(await allPractices()).toHaveLength(3)
   })
 })

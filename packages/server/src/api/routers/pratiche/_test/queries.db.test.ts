@@ -1,7 +1,7 @@
 import { beforeAll, beforeEach, describe, expect, it } from "vitest"
 import { chat } from "@mito/db/schema/chat"
 import { type practices } from "@mito/db/schema/pratiche"
-import { createTestCaller } from "@/test/caller"
+import { createTestCaller, rejectionOf } from "@/test/caller"
 import { migrateUpTo, resetDb, testDb } from "@/test/db"
 import {
   createCustomer,
@@ -9,9 +9,8 @@ import {
   createPractice,
 } from "@/test/factories"
 
-// Caratterizzazione delle query di lettura del router `pratiche` (GET), prima
-// del refactor verso Effect: ogni test fissa la risposta che il codice da oggi
-// restituisce, riga intera compresa
+// Le query di lettura del router `pratiche` (GET): ogni test fissa la
+// risposta, riga intera compresa
 
 type Pratica = typeof practices.$inferSelect
 
@@ -39,18 +38,6 @@ const createChat = async () => {
     .values({ isRead: false })
     .returning()
   return created!
-}
-
-// `getAllAvailableRegion` non ha un ordine: le righe si confrontano ordinate,
-// con la regione `null` in fondo
-const perRegioneNullPerUltima = (
-  a: { region: string | null },
-  b: { region: string | null }
-) => {
-  if (a.region === null || b.region === null) {
-    return Number(a.region === null) - Number(b.region === null)
-  }
-  return a.region.localeCompare(b.region)
 }
 
 beforeAll(async () => {
@@ -156,7 +143,7 @@ describe("pratiche.getPraticaById", () => {
     expect(result).toEqual({ ...colonneDettaglio(pratica), operator: null })
   })
 
-  it("con un ID pratica sconosciuto restituisce undefined", async () => {
+  it("con un ID pratica sconosciuto risponde NOT_FOUND 'Pratica non trovata'", async () => {
     const chiamante = await createOperator()
     const customer = await createCustomer()
     await createPractice({
@@ -164,30 +151,32 @@ describe("pratiche.getPraticaById", () => {
       praticaId: "PR-2026-0005",
     })
 
-    const result = await createTestCaller(chiamante).pratiche.getPraticaById({
-      id: "PR-INESISTENTE",
-    })
+    const error = await rejectionOf(
+      createTestCaller(chiamante).pratiche.getPraticaById({
+        id: "PR-INESISTENTE",
+      })
+    )
 
-    expect(result).toBeUndefined()
+    expect(error).toMatchObject({
+      code: "NOT_FOUND",
+      message: "Pratica non trovata",
+      cause: { code: "PRACTICE_NOT_FOUND" },
+    })
   })
 })
 
 describe("pratiche.getAllAvailableRegion", () => {
-  it("restituisce una riga per regione distinta, null compresa", async () => {
+  it("restituisce una riga per regione distinta in ordine alfabetico, null per ultima", async () => {
     const chiamante = await createOperator()
     const customer = await createCustomer()
-    await createPractice({ customerId: customer.id, region: "A" })
-    await createPractice({ customerId: customer.id, region: "A" })
     await createPractice({ customerId: customer.id, region: "B" })
     await createPractice({ customerId: customer.id, region: null })
+    await createPractice({ customerId: customer.id, region: "A" })
+    await createPractice({ customerId: customer.id, region: "A" })
 
     const result =
       await createTestCaller(chiamante).pratiche.getAllAvailableRegion()
 
-    expect([...result].sort(perRegioneNullPerUltima)).toEqual([
-      { region: "A" },
-      { region: "B" },
-      { region: null },
-    ])
+    expect(result).toEqual([{ region: "A" }, { region: "B" }, { region: null }])
   })
 })
