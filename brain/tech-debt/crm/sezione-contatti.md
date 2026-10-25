@@ -202,7 +202,7 @@ Scoperto nella review di PR2 (v9), preesistente: le formule di data sono quelle 
 Scoperto nella review di PR2 (v2, prima e seconda verifica). Riguarda `task_priority_active_idx` e `task_operator_active_idx`.
 
 - L'indice è `priority DESC NULLS LAST WHERE is_active`. La lista Contatti (T5.1) ordina per `priority IS NULL, priority <dir>, id <dir>`, un ordine che nessun indice su `priority` da solo può servire. Anche con `priority DESC NULLS LAST` coprirebbe solo il verso decrescente. Nessuna query di oggi lo usa.
-- `task_operator_active_idx` (`operator_id WHERE is_active`): le query di oggi che filtrano per operatore (export chiamate, `getTasksToExport`, contatori) non filtrano `is_active`, quindi non lo usano. In T5.1 servirebbe solo il filtro `operatorIds` sui contatti attivi, non "Solo i miei" (D8).
+- `task_operator_active_idx` (`operator_id WHERE is_active`): le query di oggi che filtrano per operatore (export chiamate, contatori; `getTasksToExport` è stata tolta nel passo 4 di [[chore/migrazione-effect]]) non filtrano `is_active`, quindi non lo usano. In T5.1 servirebbe solo il filtro `operatorIds` sui contatti attivi, non "Solo i miei" (D8).
 - Costo: gli update di `priority` e di `operator_id` non sono più HOT (poco, con 75.000 task).
 
 **Effetto oggi:** nessuno sui risultati.
@@ -240,7 +240,7 @@ Scoperto nel piano (A11, §15), dichiarato in PR3 (T3.15).
   - il cron `priority` (`refreshPriorities`): ricalcola `priority` delle task attive in blocco;
   - la pulizia di `task_event_log` (`cleanupTaskEventLog`): cancella righe vecchie.
 - La massiva (`task.bulkHandleTask`) e il cron degli alert prendono il lock ma chiudono l'alert con codice proprio invece di `resolveOpenAlert`: niente guardia `is_resolved = false` e niente `alert.updated_at`. Sotto il lock la guardia serve solo se una task punta a un alert già chiuso.
-- La conferma dell'alert nella massiva è legata al cliente, non all'alert (`task/POST/index.ts`, `resolveAlertCustomerIds`): l'admin conferma "l'alert di questo cliente", e la massiva chiude quello che legge dopo il lock. Se un collega lo sostituisce con `setCallback` fra la modale e il salvataggio, la massiva chiude il richiamo nuovo, che l'admin non ha visto. `changeState` e `setCallback` lo evitano con `confirmedAlertId` e `replacesAlertId` (AC37, AC44). Logica invariata da A7 (review di PR3, v2).
+- La conferma dell'alert nella massiva è legata al cliente, non all'alert (`services/contact/bulkHandleTask.ts`, `resolveAlertCustomerIds`; prima in `task/POST/index.ts`): l'admin conferma "l'alert di questo cliente", e la massiva chiude quello che legge dopo il lock. Se un collega lo sostituisce con `setCallback` fra la modale e il salvataggio, la massiva chiude il richiamo nuovo, che l'admin non ha visto. `changeState` e `setCallback` lo evitano con `confirmedAlertId` e `replacesAlertId` (AC37, AC44). Logica invariata da A7 (review di PR3, v2).
 
 **Effetto oggi:** `refreshPriorities` può sovrascrivere una priorità appena salvata da un operatore (l'ultima scrittura vince); La pulizia del log non tocca righe recenti. ("Assegna Clienti" in concorrenza con una mutation del contatto non può più separare cliente e contatto: T6.8a, 2026-10-20.)
 

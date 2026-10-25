@@ -86,3 +86,8 @@
 - [ORDER BY removal survivors](feedback_order_by_removal_survivors.md) — alphabetical ids hide a missing orderBy; DISTINCT on tiny tables sorts anyway; unmatched-key fallthrough mutant
 - [Two-row fixtures, id-order sorts](feedback_two_row_fixtures_and_id_order.md) — no distractor rows and id-ordered sort fixtures hide filter-removal and sort-column mutants
 - [Plan mutant equivalence, removal grep](feedback_plan_mutant_equivalence_and_removal_grep.md) — probe listed mutants (inArray [] = false, castAsNumber type-only, unique index); removal grep vs the plan's own key tests
+- [Move pass byte diff](feedback_move_pass_byte_diff.md) — sed-range diff of moved body, collaborator diffs, driver by hand; direct eslint plugin-conflict is env
+- [Guard matrix parity mutants](feedback_guard_matrix_parity_mutants.md) — builder grep base vs head, one swap mutant per direction; no-session row needed for protected vs public
+- [Gate clone and count scope](feedback_gate_clone_and_doc_count_scope.md) — build a cp -c clone of clean HEAD, not the scratch gate; doc counts depend on scope
+- [Read-move parity battery](feedback_read_move_parity_battery.md) — normalised-text extract + typedump md5 + gate mutants; unique-index and inArray([]) equivalents; no-op mutant trap
+- [Write parity scratch-copy probe](feedback_write_parity_scratch_copy_probe.md) — @mito links into copy, reseed ctx for HTTP, mask pg now(), undefined norm, smallint FK
