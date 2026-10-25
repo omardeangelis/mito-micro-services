@@ -124,13 +124,8 @@ export const CustomerSection = (props: DesiredCustomer) => {
                 render={({ field }) => (
                   <FormItem hidden className="w-full">
                     <FormControl>
-                      <Input
-                        type="number"
-                        hidden
-                        className="w-full"
-                        placeholder="ID Pratica"
-                        {...field}
-                      />
+                      {/* Customer ids are text: a number input empties them */}
+                      <Input type="hidden" {...field} />
                     </FormControl>
                     <FormMessage className="text-red-400" />
                   </FormItem>

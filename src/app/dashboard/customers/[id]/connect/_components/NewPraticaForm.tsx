@@ -17,7 +17,6 @@ import { Button } from "@/components/ui/button"
 import React, { Suspense, useCallback } from "react"
 import { useHistoryBack } from "@/lib/hooks/useHistoryBack"
 import {
-  type CustomerToPraticaWrite,
   type CustomerWrite,
   insertCustomerSchema,
   insertPracticeSchema,
@@ -52,9 +51,9 @@ type CustomerSave = (
   customer: NewRelatedCustomerFormValues
 ) => CustomerSaveResponse
 
-type CustomerWithRole = CustomerWrite & {
-  role: CustomerToPraticaWrite["customerRole"]
-}
+/** A related customer from the form, as `createPratica` takes it. */
+type CustomerWithRole = NewRelatedCustomerFormValues &
+  Pick<CustomerWrite, "source" | "uniqueHash">
 
 export type CreateNewPraticaInput = {
   pratica: Omit<PracticeWrite, "productId"> & { productId: string }
@@ -161,10 +160,7 @@ export default function NewPraticaForm({
         })),
       } satisfies CreateNewPraticaInput
       const { redirectUrl, error } = await createNewPraticaAction(data)
-      if (error)
-        return form.setError("praticaId", {
-          message: "Errore durante la creazione",
-        })
+      if (error) return form.setError("praticaId", { message: error })
       router.replace(redirectUrl)
     },
     (error) => {

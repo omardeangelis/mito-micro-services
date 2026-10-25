@@ -35,6 +35,15 @@ export const updateCustomerProfile = (
       .returning({ id: customers.id })
   )
 
+/** Saves the customer's email and phone number. */
+export const updateCustomerContacts = (
+  id: string,
+  values: Pick<NewCustomer, "email" | "phoneNumber">
+) =>
+  query((client) =>
+    client.update(customers).set(values).where(eq(customers.id, id))
+  ).pipe(Effect.asVoid)
+
 /** Sets the customer's blacklist status. */
 export const setBlackListStatus = (
   id: string,

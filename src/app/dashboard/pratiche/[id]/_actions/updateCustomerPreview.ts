@@ -5,7 +5,8 @@ import { z } from "zod"
 
 const validationSchema = z.object({
   id: z.string(),
-  email: z.string().email(),
+  // A customer may have no email: an empty field clears it
+  email: z.union([z.literal("").transform(() => null), z.string().email()]),
   phoneNumber: z.string(),
 })
 
