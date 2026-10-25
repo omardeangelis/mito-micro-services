@@ -3,7 +3,7 @@ domain: _root
 type: index
 links: []
 created: 2026-09-24
-updated: 2026-10-23
+updated: 2026-10-24
 ---
 
 # Brain — Master Map
@@ -39,24 +39,27 @@ Migrated from `docs/` on 2026-09-24. Source material for future `create-spec` ru
 
 | Domain | Map | Contract | Concepts | Flows |
 |---|---|---|---|---|
-| crm | [[domains/crm/crm]] | [[domains/crm/crm-contract]] | 8 | 8 |
+| crm | [[domains/crm/crm]] | [[domains/crm/crm-contract]] | 11 | 10 |
 
 ## Specs (per domain)
 
 | Domain | Spec | Status |
 |---|---|---|
 | crm | [[specs/crm/sezione-contatti/SPEC]] | Draft |
-| crm | [[specs/crm/filtri-sql-sicuri/SPEC]] | Draft |
+| crm | [[specs/crm/filtri-sql-sicuri/SPEC]] | Implemented, ingested, unita su `dev` con la PR #76 (piano: [[specs/crm/filtri-sql-sicuri/PLAN]], review: [[specs/crm/filtri-sql-sicuri/REPORT]]) |
 | crm | [[specs/crm/seeder-locale/SPEC]] | Implemented (piano: [[specs/crm/seeder-locale/PLAN]], review: [[specs/crm/seeder-locale/REPORT]]) |
 | crm | [[specs/crm/gestione-operatori/SPEC]] | Implemented sui branch, tranne la P2 (piano: [[specs/crm/gestione-operatori/PLAN]], review: [[specs/crm/gestione-operatori/REPORT]]) |
 | crm | [[specs/crm/sicurezza-deploy-staging/SPEC]] | Implemented, ingested (piano: [[specs/crm/sicurezza-deploy-staging/PLAN]]) |
+| crm | [[specs/crm/customer-effect/SPEC]] | Implemented sul branch `claude/migrazione-customer`, ingested (piano: [[specs/crm/customer-effect/PLAN]], review: [[specs/crm/customer-effect/REPORT]]) |
 | crm | [[specs/crm/export-chiamate/SPEC]] | Implemented, unita su dev il 23/10/2026 (piano: [[specs/crm/export-chiamate/PLAN]], review: [[specs/crm/export-chiamate/REPORT]]) |
 
 - [[specs/crm/crm-specs|crm-specs]] — CRM spec page map
 
 ## Tech debt
 
+- [[tech-debt/crm/customer-effect]] — router `customer` su Effect (rilievi della review; le stranezze sono in TD8)
 - [[tech-debt/crm/export-chiamate]] — export chiamate (cron UTC/Roma, permessi dello storage, admin senza riga operatore)
+- [[tech-debt/crm/filtri-sql-sicuri]] — filtri avanzati sicuri (follow-up della review e di `$simplify`, errore `task_status` preesistente)
 
 ## Reviews
 
@@ -68,6 +71,8 @@ Migrated from `docs/` on 2026-09-24. Source material for future `create-spec` ru
 - [[specs/crm/sezione-contatti/REPORT|crm/sezione-contatti — PR4]] — spec · ship (dopo le correzioni; prima do-not-ship) · critical · 2026-10-15
 - [[specs/crm/sezione-contatti/REPORT|crm/sezione-contatti — PR4, T4.5–T4.7]] — spec · do-not-ship (sesta verifica) · medium · 2026-10-16
 - [[specs/crm/sezione-contatti/REPORT|crm/sezione-contatti — PR5a]] — spec · ship (dopo le correzioni; prima do-not-ship; riconferma di Omar sull'indice della priorità arrivata il 2026-10-18) · critical · 2026-10-18
+- [[specs/crm/filtri-sql-sicuri/REPORT|crm/filtri-sql-sicuri]] — spec · ship · critical · 2026-10-24
+- [[specs/crm/customer-effect/REPORT|crm/customer-effect]] — spec · ship (dopo le correzioni; prima do-not-ship) · critical · 2026-10-24
 - [[specs/crm/sezione-contatti/REPORT|crm/sezione-contatti — PR5b]] — spec · do-not-ship (primo giro: 3 BLOCKER e 11 MAJOR aperti) · critical · 2026-10-18
 - [[specs/crm/sezione-contatti/REPORT|crm/sezione-contatti — PR6]] — spec · ship (il codice: do-not-ship al primo giro, 0 BLOCKER e 2 MAJOR, poi corretti o accettati come debito; la migrazione di T6.9: ship dopo le correzioni, 0 BLOCKER) · critical · 2026-10-21
 - [[specs/crm/sezione-contatti/REPORT|crm/sezione-contatti — PR6 completa, terzo giro]] — spec · ship (do-not-ship al primo esito, 0 BLOCKER e 4 MAJOR: test dell'ordinamento di Clienti e tre frasi ereditate dei testi della massiva, accettati da Omar come debito) · critical · 2026-10-21

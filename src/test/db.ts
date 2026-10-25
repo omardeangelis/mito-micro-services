@@ -114,6 +114,15 @@ export const activeTasksOf = (customerId: string) =>
     )
     .orderBy(asc(schema.task.id))
 
+/** The customer's row as the database holds it. */
+export const customerRow = async (customerId: string) => {
+  const [row] = await testDb
+    .select()
+    .from(schema.customers)
+    .where(eq(schema.customers.id, customerId))
+  return row!
+}
+
 /** The customer's event log, in order. */
 export const logOf = (customerId: string) =>
   testDb

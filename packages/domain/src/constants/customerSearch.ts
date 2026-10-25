@@ -3,7 +3,8 @@ import { z } from "zod"
 // Valori di `search_by` nella ricerca della pagina Clienti, nell'ordine del
 // selettore "Cerca per". Il selettore mostra queste voci (non le colonne con
 // `enableColumnFilter`): per aggiungere un campo ricercabile si aggiunge qui,
-// in `customerSearchLabels` e nella mappa delle colonne del router.
+// in `customerSearchLabels` e nella mappa delle colonne del servizio
+// (`packages/server/src/services/customer/list.ts`).
 export const customerSearchBy = z.enum([
   "fiscalCode",
   "name",
