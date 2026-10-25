@@ -5,7 +5,7 @@ metadata:
   type: feedback
 ---
 
-To prove a procedure error reaches `readContactError`/`describeContactError` in both shapes, do not rebuild the shape by hand: in an out-of-tree vitest (see [[out-of-tree-vitest-probe]]) build `createTRPCProxyClient<AppRouter>` with `httpBatchLink({ url, fetch: (i, init) => fetchRequestHandler({ endpoint: "/api/trpc", req: new Request(i, init), router: appRouter, createContext }) })` for HTTP and `inProcessLink(ctx)` from `@/trpc/inProcessLink` for in-process. Context = `{ db, supabaseClient: {}, session: { user: { id: operator.userId } }, headers }`.
+To prove a procedure error reaches `readContactError`/`describeContactError` in both shapes, do not rebuild the shape by hand: in an out-of-tree vitest (see [[out-of-tree-vitest-probe]]) build `createTRPCProxyClient<AppRouter>` with `httpBatchLink({ url, fetch: (i, init) => fetchRequestHandler({ endpoint: "/api/trpc", req: new Request(i, init), router: appRouter, createContext }) })` for HTTP and `inProcessLink(ctx)` from `@/trpc/inProcessLink` for in-process. Context = `{ db, session: { user: { id: operator.userId } }, headers }`.
 
 **Why:** a first run failed with a plain `BAD_REQUEST` and null contactError that was not the thing under test: `operatorProcedure` rejected because I passed `operator.id`, not `operator.userId` (`createTestCaller` hides this). Read `err.data.code` and the stack before trusting a negative.
 

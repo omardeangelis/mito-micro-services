@@ -20,8 +20,8 @@ export class ExportFileNotAllowed extends Data.TaggedError(
 )<{ readonly name: string }> {}
 
 /**
- * Writes an xlsx file under export/. The bucket is private: the name, not a
- * public URL, finds the file again.
+ * Writes an xlsx file under export/. The bucket is private: the file is found
+ * again by its name, with `downloadExportFile`, never by a public URL.
  */
 export const uploadExportFile = (name: string, body: Uint8Array) =>
   Effect.flatMap(Storage, (storage) =>

@@ -28,11 +28,12 @@ async function handler(req: NextRequest) {
   // Copy into its own ArrayBuffer: that is the BodyInit Response accepts
   const fileBuffer = new Uint8Array(result.right).buffer
 
-  const headers = new Headers()
-  headers.set("Content-Type", "application/octet-stream")
-  headers.set("Content-Disposition", `attachment; filename=${filePathName}`)
-
-  return new Response(fileBuffer, { status: 200, headers })
+  return new Response(fileBuffer, {
+    headers: {
+      "Content-Type": "application/octet-stream",
+      "Content-Disposition": `attachment; filename=${filePathName}`,
+    },
+  })
 }
 
 export { handler as GET, handler as POST }

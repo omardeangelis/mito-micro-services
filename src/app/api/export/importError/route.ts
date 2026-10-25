@@ -59,9 +59,7 @@ async function handler(req: NextRequest) {
       }) as ArrayBuffer
     )
 
-    await runExportStorage(
-      uploadExportFile(filePathName, new Uint8Array(buffer))
-    )
+    await runExportStorage(uploadExportFile(filePathName, buffer))
 
     return NextResponse.json({
       message: "Exporting data",
