@@ -16,7 +16,7 @@ updated: 2026-10-25
 - **Verifica della spec:** DO NOT SHIP, 0 blocker e 2 major, tutti corretti.
 - **Dopo la verifica del piano:** AC17 (b) corretto (§17).
 
-**Status:** In progress (PR A fatta, non pushata; T9b e PR B da fare)
+**Status:** In progress (PR A in `dev` con la [PR #86](https://github.com/omardeangelis/mito-micro-services/pull/86), T9b con la [PR #87](https://github.com/omardeangelis/mito-micro-services/pull/87); PR B fatta sul branch `claude/storage-effect`, da aprire; poi T15)
 **Generato:** 2026-10-25 con `create-plan`. Il flusso è stato: spec (2 decisioni di Omar), verifica della spec, grill (nessuna domanda: le decisioni si ricavano dalla spec, dal codice e dal passo 4), task graph, tdd, verifica del piano.
 - **Verifica del piano:** DO NOT SHIP, 0 blocker, 2 major, 3 minor e 5 nit, corretti (§17).
 
@@ -628,8 +628,8 @@ T9b ─────────────────┘
      - `IMPLEMENTATION-NOTES.md`, con una sezione per la PR A.
   8. **PR verso `dev`** solo quando Omar la chiede, dopo il merge di `dev` nel branch.
 - **validation**: tutti i punti annotati in `IMPLEMENTATION-NOTES.md`; REPORT SHIP.
-- **status**: Done (tranne il punto 8, la PR, che aspetta Omar)
-- **log**: T9.1 `grep` di AC1, AC2, AC3 e AC8, AC10 su `6341cf0..HEAD`, AC19: come la SPEC. T9.2 tipi espansi uguali a `2b284b4` (8 righe). T9.3 30 mutanti uccisi, `transaction` tolta uccisa da `tsc`. `simplify` (`83b20f7`), poi ripetuti i 6 mutanti del lock. T9.4 gate di CI verdi nel worktree di gate a `83b20f7`. T9.5 prova nel browser verde su `mito_local`. T9.6 review caso B: SHIP, impatto critico, 0 BLOCKER, 0 MAJOR, 2 MINOR (`REPORT.md`); corretti i rilievi su commenti e documenti, resta il MINOR dei writer dell'import, preesistente. T9.7 documenti di `migrazione-effect.md` aggiornati, TD10 resta `[PREVISTO]`. T9.8: la PR verso `dev` solo quando Omar la chiede, dopo il merge di `dev` nel branch.
+- **status**: Done. La PR A è in `dev` con la [PR #86](https://github.com/omardeangelis/mito-micro-services/pull/86) (`bd37efa`, 2026-10-25)
+- **log**: T9.1 `grep` di AC1, AC2, AC3 e AC8, AC10 su `6341cf0..HEAD`, AC19: come la SPEC. T9.2 tipi espansi uguali a `2b284b4` (8 righe). T9.3 30 mutanti uccisi, `transaction` tolta uccisa da `tsc`. `simplify` (`83b20f7`), poi ripetuti i 6 mutanti del lock. T9.4 gate di CI verdi nel worktree di gate a `83b20f7`. T9.5 prova nel browser verde su `mito_local`. T9.6 review caso B: SHIP, impatto critico, 0 BLOCKER, 0 MAJOR, 2 MINOR (`REPORT.md`); corretti i rilievi su commenti e documenti, resta il MINOR dei writer dell'import, preesistente. T9.7 documenti di `migrazione-effect.md` aggiornati, TD10 resta `[PREVISTO]`. T9.8: `origin/dev` era ancora a `2b284b4`, quindi nessun merge da fare, e la PR non aggiunge migrazioni. [PR #86](https://github.com/omardeangelis/mito-micro-services/pull/86) aperta su richiesta di Omar, CI verde (Lint, Build, e Test con le 3 righe `|pg|` di `sendCustomerMessage.pg.test.ts`), unita con un merge commit (`bd37efa`).
 - **files edited/created**: `brain/chore/migrazione-effect.md`, `brain/specs/crm/chat-storage-effect/{IMPLEMENTATION-NOTES,RUBRIC,REPORT}.md`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
@@ -646,9 +646,9 @@ T9b ─────────────────┘
   - TD10 (a), (b), (c) e (f) passano a `[OPEN]`, con il link alla PR A;
   - una voce `merge` in `log.md`.
 - **validation**: TD10 dice lo stato nuovo; la CI della PR di documenti è verde.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: [PR #87](https://github.com/omardeangelis/mito-micro-services/pull/87) (branch `claude/chat-effect-td10-dev`, da `dev` a `bd37efa`): TD10 (a), (b), (c) e (f) `[OPEN]`; righe di `chat` in L2 e nel §5; righe di `index.md` e `crm-specs.md`; voce `merge` in `log.md`, la più vecchia tolta. CI verde, unita (`49e9a6c`), e portata nel branch della PR B.
+- **files edited/created**: `brain/chore/migrazione-effect.md`, `brain/index.md`, `brain/specs/crm/crm-specs.md`, `brain/log.md`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -683,8 +683,8 @@ T9b ─────────────────┘
     - la chiave del download senza `export/`;
     - `Content-Disposition` cambiato;
     - lo stato 200 → 201.
-- **status**: Planned
-- **log**:
+- **status**: Done
+- **log**: Worker sonnet. 16 test, gli 8 casi in GET e in POST; il caso del download usa byte che non sono testo. Verdi sulla base del branch e in un worktree a `2b284b4`, su due giri. 6 mutanti sul router, tutti uccisi, poi ripetuti dall'orchestratore: `^` tolto, `$` tolta, nome vuoto, chiave senza `export/`, `Content-Disposition`, 201. Commit `c17a0d3`, con T11.
 - **files edited/created**: `src/app/api/export/download/_test/download.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
@@ -715,8 +715,8 @@ T9b ─────────────────┘
     - la chiave dell'upload senza `export/`;
     - il nome del foglio cambiato;
     - un 500 quando l'upload restituisce `undefined`.
-- **status**: Planned
-- **log**:
+- **status**: Done
+- **log**: Worker sonnet. 5 test, con una riga d'errore standard e una Wave. Verdi sulla base del branch e in un worktree a `2b284b4`, su due giri. 4 mutanti uccisi, poi ripetuti dall'orchestratore: content type, chiave senza `export/`, nome del foglio, 500 quando il caricamento fallisce. L'orchestratore ha tradotto in inglese i commenti. Commit `c17a0d3`.
 - **files edited/created**: `src/app/api/export/importError/_test/importError.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
@@ -742,8 +742,8 @@ T9b ─────────────────┘
   - i `grep` di AC11 e AC12, come scritti nella SPEC;
   - `storage.db.test.ts` è l'unico test tolto (AC13);
   - `tsc` e `next lint` verdi.
-- **status**: Planned
-- **log**:
+- **status**: Done
+- **log**: Test rosso dell'orchestratore (`root.db.test.ts`: c'è la chiave `supabase`), poi worker sul modello più forte. Verde dopo; T10, T11 e `rest.db.test.ts` verdi senza cambi. I `grep` di AC11 e AC12 non trovano niente; 30 file con `server-only`. Commit `7931eec`. `simplify` (`9e8ed16`): intestazioni del download in linea, il `Buffer` passato senza copia, il commento del bucket privato riscritto.
 - **files edited/created**: `packages/server/src/services/export/files.ts` (nuovo), `src/app/api/export/{download,importError}/route.ts`, `packages/server/src/api/root.ts`, `packages/server/src/api/routers/supabase/{route.ts,_test/storage.db.test.ts}` (tolti), `packages/server/src/api/_test/root.db.test.ts` (nuovo)
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
@@ -767,8 +767,8 @@ T9b ─────────────────┘
   - `git grep -n supabaseClient -- packages src apps` non trova niente;
   - la suite intera e `tsc` verdi;
   - `git grep -n '@supabase/supabase-js' -- package.json packages/server/src/services/storage` trova ancora la dipendenza e `layer.ts`.
-- **status**: Planned
-- **log**:
+- **status**: Done
+- **log**: Test rosso dell'orchestratore (`context.db.test.ts`: 4 chiavi), poi worker haiku. Verde dopo; il diff ha solo righe tolte. Il `grep` di AC15 non trova niente; `@supabase/supabase-js` resta in `package.json` e in `layer.ts`. Commit `5ca656a`.
 - **files edited/created**: `packages/server/src/api/trpc.ts`, `packages/server/src/client/supabase.ts` (tolto), `src/test/setup.ts`, `src/test/caller.ts`, `packages/server/src/api/_test/{driverError,procedures}.db.test.ts`, `packages/server/src/api/routers/import/_test/updateExistingCustomers.test.ts`, `packages/server/src/api/_test/context.db.test.ts` (nuovo)
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
@@ -813,8 +813,8 @@ T9b ─────────────────┘
      - `IMPLEMENTATION-NOTES.md`, con una sezione per la PR B.
   7. **PR verso `dev`** solo quando Omar la chiede, dopo il merge di `dev` nel branch, con la revisione di Leonardo richiesta.
 - **validation**: tutti i punti annotati in `IMPLEMENTATION-NOTES.md`; REPORT SHIP; approvazione di Leonardo prima del merge.
-- **status**: Planned
-- **log**:
+- **status**: In progress (review e PR da fare)
+- **log**: T14.1: i `grep` di AC1, AC2, AC3, AC8, AC11, AC12 e AC15 come la SPEC; tipi espansi delle 4 procedure di `chat` uguali a `2b284b4` (8 righe); AC10 e AC13: da `c17a0d3` cambiano solo `storage.db.test.ts` (tolto), i due test nuovi e le 4 righe di fixture di `supabaseClient`, e `rest.db.test.ts` non cambia; AC19: niente in `packages/db` e `packages/domain`, in `src/` solo le due route, i loro test, `setup.ts` e `caller.ts`. T14.2: 15 mutanti uccisi su `files.ts` e sulle route, più 5 ripetuti sulle righe cambiate da `simplify`. T14.3: gate di CI verdi a `5ca656a` in un worktree senza `.env*` (3445 test con i `*.pg.test.ts`; `api:smoke` 401 su `/api/export/download`). T14.4: nessuna prova nel browser (D18). T14.6: documenti di `migrazione-effect.md` aggiornati.
 - **files edited/created**: `brain/chore/migrazione-effect.md`, `brain/specs/crm/chat-storage-effect/{IMPLEMENTATION-NOTES,RUBRIC,REPORT}.md`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
@@ -892,7 +892,7 @@ T9b ─────────────────┘
 | GA1 | Merge della PR A in `dev` | CI verde con i `*.pg.test.ts`; T9.1–T9.7 annotati; tipi uguali (T9.2); mutanti uccisi; prova nel browser senza errori; REPORT SHIP |
 | GA2 | Staging, dopo GA1 | Con `BACKEND_URL` (Cloud Run) le note passano via HTTP: un operatore che non è nella chat scrive una nota, chi l'ha avviata ne scrive un'altra, e si elimina l'ultima. Nessun errore |
 | GB1 | Merge della PR B in `dev` | CI verde; T14.1–T14.6 annotati; mutanti uccisi; REPORT SHIP; approvazione di Leonardo |
-| GB2 | Staging, dopo GB1 | Le route di export girano nel backend con il bucket GCS di staging. Un import con errori produce il file degli errori, il download dalla pagina dell'import lo restituisce, e `/api/export/download?n=export_chiamate_<data>.xlsx` risponde 404 |
+| GB2 | Staging, dopo GB1 | Un import con errori produce il file degli errori, il download dalla pagina dell'import lo restituisce, e `/api/export/download?n=export_chiamate_<data>.xlsx` risponde 404. Su staging le route di export le serve Next.js su Vercel: le rewrite di `BACKEND_URL` coprono solo `/api/trpc` e `/api/auth`. Dalla PR B chiamano lo storage con l'env di Vercel, quindi si controlla in quale bucket finisce il file. Prima ci arrivavano via tRPC sul backend, dove superjson non deserializza il `Buffer` del caricamento e il download perde byte e intestazioni (correzione del 2026-10-25, PR B) |
 | G3 | Prod | Nel rilascio unico della migrazione. Mai nella stessa release di un cutover GCP, né durante l'osservazione di S6 |
 
 ## 13. Rischi e mitigazioni
