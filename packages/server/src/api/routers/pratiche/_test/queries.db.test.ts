@@ -1,6 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, it } from "vitest"
 import { chat } from "@mito/db/schema/chat"
-import { practices } from "@mito/db/schema/pratiche"
+import { type practices } from "@mito/db/schema/pratiche"
 import { createTestCaller } from "@/test/caller"
 import { migrateUpTo, resetDb, testDb } from "@/test/db"
 import {
