@@ -80,6 +80,7 @@ Migrated from `docs/` on 2026-09-24. Source material for future `create-spec` ru
 - [[specs/crm/pratiche-effect/REPORT|crm/pratiche-effect — correzioni di TD9]] — spec · do-not-ship (1 blocker, 4 major; poi M1–M4 corretti, B1 a debito) · critical · 2026-10-25
 - [[specs/crm/pratiche-effect/REPORT|crm/pratiche-effect — rilancio sulle correzioni]] — spec · ship (v1, v3, v4, v5; B1 a debito; 5 minor) · critical · 2026-10-25
 - [[specs/crm/chat-storage-effect/REPORT|crm/chat-storage-effect — PR A]] — spec · ship (5 verificatori, 0 BLOCKER e 0 MAJOR; 2 minor, fra cui i writer dell'import senza lock, preesistenti) · critical · 2026-10-25
+- [[specs/crm/chat-storage-effect/REPORT|crm/chat-storage-effect — PR B]] — spec · do not ship (7 verificatori, 0 BLOCKER e 2 MAJOR: GB2 e la nota sulla topologia di staging smentiti da `next.config.js`) · critical · 2026-10-25
 - [[specs/crm/sezione-contatti/REPORT|crm/sezione-contatti — PR5b]] — spec · do-not-ship (primo giro: 3 BLOCKER e 11 MAJOR aperti) · critical · 2026-10-18
 - [[specs/crm/sezione-contatti/REPORT|crm/sezione-contatti — PR6]] — spec · ship (il codice: do-not-ship al primo giro, 0 BLOCKER e 2 MAJOR, poi corretti o accettati come debito; la migrazione di T6.9: ship dopo le correzioni, 0 BLOCKER) · critical · 2026-10-21
 - [[specs/crm/sezione-contatti/REPORT|crm/sezione-contatti — PR6 completa, terzo giro]] — spec · ship (do-not-ship al primo esito, 0 BLOCKER e 4 MAJOR: test dell'ordinamento di Clienti e tre frasi ereditate dei testi della massiva, accettati da Omar come debito) · critical · 2026-10-21
