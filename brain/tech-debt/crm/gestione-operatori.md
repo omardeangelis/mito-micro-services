@@ -15,7 +15,7 @@ updated: 2026-10-23
 
 Lasciato fuori dalla spec (Out of Scope), confermato dalla review della PR 4 (v4, 2026-10-22).
 
-- `pratiche.PUT` (assegnazione di una pratica, inline nel router) e `customer.insertCustomer` scrivono l'operatore scelto senza passare da `findWorkingOperator`. Non rifiutano un operatore disattivato e non prendono il lock della sua riga utente, quindi stanno fuori dalla regola "prima gli utenti, poi i clienti".
+- `pratiche.insertPratica`, `pratiche.updatePraticaFromDashboard` e `pratiche.bulkAssignPractices` (oggi `createPractice`, `updatePracticeFromDashboard` e `assignPractices` di `services/practice/writes.ts`) e `customer.insertCustomer` scrivono l'operatore scelto senza passare da `findWorkingOperator`. Non rifiutano un operatore disattivato e non prendono il lock della sua riga utente, quindi stanno fuori dalla regola "prima gli utenti, poi i clienti".
 - Una scrittura che conferma mentre la disattivazione è in corso, dopo che lo statement di spostamento ha preso la sua fotografia, lascia il cliente o la pratica sul disattivato. Il log resta coerente: quello che non si sposta non ha nemmeno la riga di log.
 
 **Effetto oggi:** basso. Le liste della UI non mostrano più i disattivati (AC14), quindi serve una chiamata HTTP diretta o una race di pochi millisecondi con la disattivazione.

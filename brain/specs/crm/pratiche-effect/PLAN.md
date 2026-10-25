@@ -17,7 +17,7 @@ updated: 2026-10-25
 - **Verifica della spec:** DO NOT SHIP, 0 blocker e 3 major, tutti corretti.
 - **Dopo la verifica del piano:** AC7 e due voci di AC9 corretti (§17).
 
-**Status:** Planned
+**Status:** In corso (wave 1–3 fatte, T11 in corso)
 **Generato:** 2026-10-25 con `create-plan`. Il flusso è stato: spec (2 decisioni di Omar), verifica della spec, grill (nessuna domanda: le decisioni si ricavano dal codice e dal passo 2), task graph, tdd, verifica del piano.
 - **Verifica del piano:** DO NOT SHIP, 1 blocker, 5 major, 7 minor e 5 nit, corretti (§17).
 
@@ -241,8 +241,8 @@ G0 ─┬─ T1  ─┐
 - **location**: `brain/specs/crm/pratiche-effect/SPEC.md`
 - **description**: Omar porta la SPEC a `status: approved`, comprese le correzioni di AC7 e AC9 dopo la verifica del piano (§17). Lanciare `implement-spec` su questa cartella vale come approvazione: l'orchestratore aggiorna il frontmatter come primo passo. Nessun task parte prima.
 - **validation**: frontmatter `status: approved`.
-- **status**: Planned
-- **log**:
+- **status**: Completed
+- **log**: 2026-10-25, SPEC a `status: approved` al lancio di `implement-spec`, commit `9044dfc`.
 - **files edited/created**: `brain/specs/crm/pratiche-effect/SPEC.md`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
@@ -270,9 +270,9 @@ G0 ─┬─ T1  ─┐
     - `leftJoin` → `innerJoin`;
     - `result[0]` → `result`;
     - `selectDistinct` → `select`.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Completed
+- **log**: worker haiku. 4 test. Mutanti sul codice inline (`7c5c77d`), uccisi 4 su 4: colonna tolta (`desPuntoVendita`), `innerJoin`, `result` senza `[0]`, `select` al posto di `selectDistinct`.
+- **files edited/created**: `packages/server/src/api/routers/pratiche/_test/queries.db.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -328,9 +328,9 @@ G0 ─┬─ T1  ─┐
     - `returning` aggiunto in `updateCustomerPreview`;
     - `newPratica[0]` → `newPratica`;
     - `operatorId: null` forzato in `insertPratica`.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Completed
+- **log**: worker sonnet; accenti dei nomi corretti dall'orchestratore. 17 test, verdi su due giri. Valori fissati: duplicato `duplicate key value violates unique constraint "mito-deutsche_practices_pkey"` e `"customers_to_pratiche_customer_id_pratica_id_pk"`; con `id` `cannot insert a non-DEFAULT value into column "id"`; `{}` `No values to set`; risposta di `updateCustomerPreview` su PGlite `{ rows: [], fields: [], affectedRows: 1 }` (0 per un `id` inesistente). Mutanti uccisi 10 su 10: i 7 del piano, più `returning` tolto da `updatePraticaFromDashboard`, `connectPraticaAndCustomer` e `bulkAssignPractices` che restituiscono il risultato del driver.
+- **files edited/created**: `packages/server/src/api/routers/pratiche/_test/writes.db.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -373,9 +373,9 @@ G0 ─┬─ T1  ─┐
     Il ritorno anticipato di `[]` è equivalente (D19);
   - i mutanti su `getActiveTask` e `getCustomerAlerts` uccisi dai test esistenti o da questo file;
   - tutto annotato nel log, con il test che uccide ogni mutante e la prova di ogni equivalente.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Completed
+- **log**: worker haiku; tipo di `byCustomerId` corretto dall'orchestratore (`tsc`). 4 test. Mutanti di `getCustomersWithActiveAlerts` uccisi 4 su 4. `getActiveTask`: `isActive` tolto ucciso dai test esistenti; `customerId` tolto **sopravvissuto** ai 5 file esistenti (53 test), ucciso dal test aggiunto qui (due clienti con una task attiva ciascuno). `getCustomerAlerts` con `onlyClosed: true` ucciso dai test esistenti.
+- **files edited/created**: `packages/server/src/api/routers/task/_test/queries.db.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -406,9 +406,9 @@ G0 ─┬─ T1  ─┐
   - il diff contiene solo il file nuovo;
   - i mutanti dei quattro casi uccisi dai test esistenti o da questo file;
   - l'esito del mutante sulla concorrenza annotato nel log.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Completed
+- **log**: worker sonnet. 2 test. Errore fissato: `BAD_REQUEST`, `Cliente non trovato: missing-customer` (`contactErrorToTrpc`). Mutanti di base, uccisi 7 su 7: `Set` ignorato, riga di log del caso 1 tolta, `setCustomerOperator` tolto dal caso 4, `isResolved` tolto dal caso 2, `closedAt: null` nel caso 3, ordine invertito; `mostRecent: false` **sopravvissuto** ai test esistenti (72), ucciso dal test aggiunto qui (orologio fermo). `concurrency: "unbounded"` ucciso 3 volte su 3: il controllo manuale di T11.1 non serve.
+- **files edited/created**: `packages/server/src/api/routers/task/_test/bulkHandleTask.order.db.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -444,9 +444,9 @@ G0 ─┬─ T1  ─┐
     - una `operatorProcedure` passata ad `adminProcedure`, una per router (per esempio `getAllAvailableRegion` e `getCustomerAlerts`);
     - `bulkHandleTask` passata a `operatorProcedure`;
     - una procedura nuova aggiunta a un router senza riga nella tabella.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Completed
+- **log**: worker haiku. 59 test (22 + 37). Nessuna divergenza dalla tabella dei middleware. Mutanti uccisi 9 su 9: `getPraticaById` e `insertPratica` su `operatorProcedure`, `getAllAvailableRegion` e `getCustomersWithActiveAlerts` su `protectedProcedure`, `getAllAvailableRegion` e `getCustomerAlerts` su `adminProcedure`, `bulkHandleTask` su `operatorProcedure`, una procedura nuova in ognuno dei due router.
+- **files edited/created**: `packages/server/src/api/routers/pratiche/_test/procedures.db.test.ts`, `packages/server/src/api/routers/task/_test/procedures.db.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -471,9 +471,9 @@ G0 ─┬─ T1  ─┐
     - `id ?? 0` e `id ?? ""` nelle due `update`;
     - `returning` in `updateCustomerPreview`;
     - un `throw` quando l'update non tocca righe.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Completed
+- **log**: worker sonnet. 6 test, verdi su due giri con `pnpm run test:pg`; saltati senza database. Errore fissato: `UNDEFINED_VALUE: Undefined values are not allowed`. Mutanti uccisi 7 su 7: `id ?? 0` e `id ?? ""` nelle due `update`, `returning` in `updateCustomerPreview`, un `throw` senza righe toccate in tutte e due.
+- **files edited/created**: `packages/server/src/api/routers/pratiche/_test/writes.pg.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -503,9 +503,9 @@ G0 ─┬─ T1  ─┐
   - `packages/server/src/shared/updateAt.ts` non esiste;
   - `tsc` e `next lint` verdi;
   - il diff di `CustomerChat.test.tsx` contiene solo le righe tolte.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Completed
+- **log**: test rossi scritti dall'orchestratore (5 falliti su 19), poi worker haiku. Dopo: 19 su 19 verdi; `grep` di AC7 vuoto con l'esclusione, e senza trova i nomi solo in `_test/`; `shared/updateAt.ts` tolto; il diff di `CustomerChat.test.tsx` ha solo righe tolte. A fine wave: `tsc` verde, 3269 test su PGlite, 100 su Postgres. Commit `48f2334`.
+- **files edited/created**: `pratiche/{index,GET/index,PUT/index}.ts`, `task/{index,GET/index}.ts`, `shared/updateAt.ts` (tolto), `src/components/custom/notes/_test/CustomerChat.test.tsx`, `pratiche/_test/router.db.test.ts` (nuovo), `task/_test/router.db.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -536,9 +536,9 @@ G0 ─┬─ T1  ─┐
   - `git grep -nE 'from "@mito/db"|ctx\.db|drizzle-orm|effect/db' -- packages/server/src/api/routers/pratiche/GET` non trova niente;
   - `list.ts` e `queries.ts` non importano `zod`, `server-only` né `@trpc/server`;
   - `tsc` verde: lo zod della procedura è assegnabile a `PracticeListQuery`, e `importoFinanziato` resta `number` nel tipo di output.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Completed
+- **log**: worker sonnet. `filterBy.state` tipato `Practice["state"]`; `orderBy` e `sortedBy` obbligatori in `PracticeListQuery` perché i `.default()` dello zod li rendono non opzionali. Verdi: i 4 file di `pratiche/_test` letti (104 test), `shared/_test/advancedFilters.pg` (16). Commit `728b759`.
+- **files edited/created**: `packages/server/src/services/practice/{list,queries}.ts` (nuovi), `pratiche/GET/index.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -568,9 +568,9 @@ G0 ─┬─ T1  ─┐
   - verdi senza cambiare asserzioni: T2, T4, T5, e i test delle procedure di `customer` che usano `profile.ts`, cioè `api/routers/customer/_test/{writes.db,writes.pg,customerOperator.db}`;
   - `git grep -nE 'from "@mito/db"|@mito/db/schema|ctx\.db|drizzle-orm|effect/db' -- packages/server/src/api/routers/pratiche/PUT packages/server/src/api/routers/pratiche/POST` non trova niente;
   - `writes.ts` e `profile.ts` non importano `zod` né `server-only`.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Completed
+- **log**: worker sonnet. Verdi: `pratiche/_test/{writes,procedures}.db`, `customer/_test/{writes,customerOperator}.db` (96 test), `pratiche/_test/writes.pg` e `customer/_test/writes.pg` (11). Commit `c34ef35`.
+- **files edited/created**: `packages/server/src/services/practice/writes.ts` (nuovo), `services/customer/profile.ts`, `pratiche/{PUT,POST}/index.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -592,9 +592,9 @@ G0 ─┬─ T1  ─┐
 - **validation**:
   - verdi senza cambiare asserzioni: T3, T4 e i test esistenti che leggono le tre procedure (§1);
   - `git grep -nE 'from "@mito/db"|@mito/db/schema|ctx\.db|drizzle-orm|effect/db' -- packages/server/src/api/routers/task/GET` non trova niente.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Completed
+- **log**: worker haiku. `listCustomersWithActiveAlerts` ha il tipo di ritorno dichiarato, così i due rami danno lo stesso tipo. Verdi: `task/_test`, i 6 file di `contact/_test`, `alert.db`, `harness.db`, `customers/[id]/_test/page.test.tsx` (258 test). A fine wave: `tsc` verde, 3269 test su PGlite, 100 su Postgres. Commit `d6e13da`.
+- **files edited/created**: `packages/server/src/services/contact/queries.ts` (nuovo), `task/GET/index.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -623,9 +623,9 @@ G0 ─┬─ T1  ─┐
     - T4;
   - `git grep -nE 'from "@mito/db"|ctx\.db|drizzle-orm|effect/db' -- packages/server/src/api/routers/task/POST` non trova niente;
   - `git grep -n '@mito/db/schema' -- packages/server/src/api/routers/task/POST` trova solo `taskStatus`.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Completed
+- **log**: worker sonnet. Corpo di `assignCustomer` identico a quello di `7c5c77d` (`diff` fra le due versioni: cambia solo la riga che segue). Verdi: i 4 file di `bulkHandleTask`, `procedures.db`, `lockRule.db`, `operatorRule.db` (110 test), `operatorLock.pg` e `deactivate.pg` (20). I `grep` su `task/POST` danno solo l'import di `taskStatus`. Commit `367f445`.
+- **files edited/created**: `packages/server/src/services/contact/bulkHandleTask.ts` (nuovo), `task/POST/index.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a

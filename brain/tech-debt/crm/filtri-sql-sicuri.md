@@ -24,7 +24,7 @@ Nessuna voce viola un criterio di accettazione. La review ([[specs/crm/filtri-sq
 - **[FOLLOW-UP]** Nessuna regola di lint vieta `sql.raw` nei router (F9) — `.eslintrc.cjs`.
   - Perché resta: i test di AC2 e i mutanti di AC3 coprono già le due procedure; una regola copre anche le procedure future, ma è un cambio di configurazione fuori dallo scope.
   - Fix: `no-restricted-syntax` su `sql.raw` in `packages/server/src/api/routers/**`.
-- **[FOLLOW-UP]** In `getAllPratiche` i due rami della `union` sono identici a meno del filtro sull'operatore — `packages/server/src/api/routers/pratiche/GET/index.ts`.
+- **[FOLLOW-UP]** In `getAllPratiche` i due rami della `union` sono identici a meno del filtro sull'operatore — `packages/server/src/services/practice/list.ts` (`listPractices`).
   - Perché resta: c'era già, e AC12 chiede lo stesso SQL di prima.
   - Fix: un solo ramo, con il test di caratterizzazione invariato.
 - **[FOLLOW-UP]** `Effect.all` concorrente in `getAllPratiche` (e in `getAllCustomers`): se `total` fallisce parte comunque la query della pagina, e con due errori il messaggio dipende da quale arriva prima. Il codice resta `INTERNAL_SERVER_ERROR`.
@@ -43,8 +43,8 @@ Review SHIP, impatto critical, 0 BLOCKER e 0 MAJOR. Le sei righe marcate durevol
 
 - **[MINOR]** Descrizione di `packages/domain/package.json` senza le mappe dei filtri — `packages/domain/package.json:4` → voce "descrittore di dati semplice".
 - **[NIT]** `value` non stringa fa fallire lo zod dell'intera richiesta — `packages/domain/src/filters/advanced.ts:120-124` → prima voce.
-- **[NIT]** `Effect.all` concorrente in `getAllPratiche` — `packages/server/src/api/routers/pratiche/GET/index.ts:200` → voce `Effect.all`.
-- **[NIT]** `getAllPratichePage` senza tipo di ritorno — `pratiche/GET/index.ts:82` → stessa voce.
+- **[NIT]** `Effect.all` concorrente in `getAllPratiche` — `packages/server/src/services/practice/list.ts` (`listPractices`) → voce `Effect.all`.
+- **[NIT]** `listPractices` (ex `getAllPratichePage`) senza tipo di ritorno — `services/practice/list.ts` → stessa voce.
 - **[NIT]** Riesportazioni di `*_FILTER_QUERY_MAP` in `customers/_constants` — `src/app/dashboard/customers/_constants/index.ts:3-8` → voce `_constants`.
 - **[NIT]** `filter.op as FilterOperator` senza convalida — `src/components/custom/table/PopoverFilter.tsx` ~L162 → voce del popover.
 
