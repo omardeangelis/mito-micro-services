@@ -68,6 +68,36 @@ describe("clienti del file (AC38)", () => {
     })
   })
 
+  test("senza CF, stesso codice e partite IVA diverse danno due clienti", () => {
+    const { customers } = group(
+      "standard",
+      standardCells({ CODICE_FISCALE_CLI: "01234567890", PRATICA: "1" }),
+      standardCells({ CODICE_FISCALE_CLI: "09876543210", PRATICA: "2" })
+    )
+
+    expect(customers.map((c) => c.customer.vatCode)).toEqual([
+      "01234567890",
+      "09876543210",
+    ])
+  })
+
+  test("le righe solo cliente si uniscono dopo le altre, come oggi", () => {
+    const { customers, rows } = wave(
+      { "n° Pratica": null, Email: "solo-cliente@example.com" },
+      { "n° Pratica": "1", Email: "pratica@example.com" }
+    )
+
+    expect(customers).toHaveLength(1)
+    expect(customers[0]).toMatchObject({
+      customer: { email: "solo-cliente@example.com" },
+      rows: [2, 3],
+    })
+    expect(rows.map(({ row, kind }) => [row, kind])).toEqual([
+      [2, "customerOnly"],
+      [3, "importable"],
+    ])
+  })
+
   test("stesso codice cliente con CF diversi dà due clienti", () => {
     const { customers } = wave(
       { "Codice Fiscale": "RSSMRA80A01H501U" },
@@ -153,6 +183,18 @@ describe("righe", () => {
 })
 
 describe("chiavi da cercare nel CRM", () => {
+  test("un codice fiscale di due clienti del file si cerca una volta", () => {
+    const keys = lookupKeys(
+      wave(
+        { "Codice NDG": "1", "n° Pratica": "1" },
+        { "Codice NDG": "2", "n° Pratica": "2" }
+      )
+    )
+
+    expect(keys.fiscalCodes).toEqual(["RSSMRA80A01H501U"])
+    expect(keys.customerCodes).toEqual(["1", "2"])
+  })
+
   test("codici fiscali, partite IVA, codici cliente e ID pratica, senza doppioni e in ordine", () => {
     const keys = lookupKeys(
       group(

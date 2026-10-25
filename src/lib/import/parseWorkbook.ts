@@ -12,10 +12,14 @@ const TEXT_COLUMNS = new Set([
   "PRATICA",
 ])
 
-/** Today's CSV pass of the import: a header row, numbers typed but the codes. */
+/**
+ * Today's CSV pass of the import: a header row, numbers typed but the codes.
+ * The names are trimmed, as `detectFormat` reads them.
+ */
 export const parseImportCsv = <T>(file: string): Papa.ParseResult<T> =>
   Papa.parse<T>(file, {
     header: true,
+    transformHeader: (header) => header.trim(),
     dynamicTyping: (field) => !TEXT_COLUMNS.has(String(field)),
   })
 

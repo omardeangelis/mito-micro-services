@@ -6,6 +6,7 @@ import {
 } from "@mito/domain/import/convert/standard"
 import { waveCustomer, wavePractice } from "@mito/domain/import/convert/wave"
 import { parseFileName } from "@mito/domain/import/convert/fileName"
+import { standardColumns } from "@mito/domain/import/formats"
 import {
   type StandardRow,
   type WaveRow,
@@ -19,6 +20,7 @@ import {
   standardRow,
   waveFile,
   waveRow,
+  workbook,
 } from "./workbooks"
 
 // Characterization of the conversion of one row (spec import-pratiche, T1
@@ -425,6 +427,24 @@ describe("parseWorkbook", () => {
       CLIENTE: "5001",
       NUMERO_RATE: 24,
       DATA_LIQUIDAZIONE: "1/15/24",
+    })
+  })
+
+  test("le colonne con spazi intorno al nome danno i valori di quelle senza", () => {
+    const spaced = (name: string) => ` ${name} `
+    const row = Object.fromEntries(
+      Object.entries(standardRow()).map(([name, value]) => [
+        spaced(name),
+        value,
+      ])
+    )
+
+    const { rows } = parseWorkbook(workbook(standardColumns.map(spaced), [row]))
+
+    expect(rows[0]).toMatchObject({
+      PRATICA: "000123",
+      CLIENTE: "5001",
+      NUMERO_RATE: 24,
     })
   })
 })
