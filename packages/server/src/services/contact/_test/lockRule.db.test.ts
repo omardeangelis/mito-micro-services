@@ -624,6 +624,81 @@ describe("regola dei lock: chat del cliente", () => {
 
     expect(await testDb.select().from(chatToOperator)).toEqual([])
   })
+
+  it("con la verifica attiva, inserire una nota senza lockCustomer fallisce", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined)
+    const operator = await createOperator()
+    const customer = await createCustomer()
+    const { id: chatId } = await createTestCaller(
+      operator
+    ).chat.createNewCustomerChat({ customerId: customer.id })
+    await assertCustomerLockedOnChatWrite()
+
+    const exit = await runServer(
+      transaction(
+        query((client) =>
+          client
+            .insert(messages)
+            .values({ chatId, operatorId: operator.id, content: "Nota" })
+        )
+      )
+    )
+
+    expect(Exit.isFailure(exit) && Cause.pretty(exit.cause)).toContain(
+      "lock rule"
+    )
+  })
+
+  it("una nota di un operatore che non è ancora nella chat prende il lock del cliente", async () => {
+    const operator = await createOperator()
+    const colleague = await createOperator()
+    const customer = await createCustomer()
+    const { id: chatId } = await createTestCaller(
+      operator
+    ).chat.createNewCustomerChat({ customerId: customer.id })
+    await assertCustomerLockedOnChatWrite()
+
+    await createTestCaller(colleague).chat.insertMessage({
+      chatId,
+      content: "Nota del collega",
+    })
+
+    expect(
+      await testDb
+        .select({
+          operatorId: messages.operatorId,
+          content: messages.content,
+        })
+        .from(messages)
+    ).toEqual([{ operatorId: colleague.id, content: "Nota del collega" }])
+    expect(
+      await testDb
+        .select()
+        .from(chatToOperator)
+        .where(eq(chatToOperator.operatorId, colleague.id))
+    ).toEqual([{ chatId, operatorId: colleague.id }])
+  })
+
+  it("una nota di chi ha avviato la chat prende il lock del cliente", async () => {
+    const operator = await createOperator()
+    const customer = await createCustomer()
+    const { id: chatId } = await createTestCaller(
+      operator
+    ).chat.createNewCustomerChat({ customerId: customer.id })
+    await assertCustomerLockedOnChatWrite()
+
+    await createTestCaller(operator).chat.insertMessage({
+      chatId,
+      content: "Nota",
+    })
+
+    expect(
+      await testDb
+        .select({ operatorId: messages.operatorId })
+        .from(messages)
+        .where(eq(messages.chatId, chatId))
+    ).toEqual([{ operatorId: operator.id }])
+  })
 })
 
 // The deactivation of an operator locks, after the two users, every customer

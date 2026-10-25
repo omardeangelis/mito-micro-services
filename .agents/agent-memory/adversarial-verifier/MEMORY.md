@@ -78,7 +78,7 @@
 - [Union-branch mutants, pg binding capture](feedback_union_branch_mutants_and_pg_binding_capture.md) — mutate each statement; postgres-js debug hook; NUL text param = 500
 - [Raw-SQL to structured filter differential](feedback_raw_sql_to_structured_filter_differential.md) — probeSql hook, per-kind value battery, PG15 prepare:false Rome vs PGlite PG16, LIKE backslash
 - [Validator bounds, runner selector](feedback_validator_bounds_and_runner_selector.md) — lower-bound mutants survive; CI-line proof for pg file; NULL-row fixture; west-of-UTC date validator
-- [Refactor spec AC checks](feedback_refactor_spec_ac_checks.md) — vacuous/over-matching grep ACs (zod enums), guard matrix scope, insert operatorId, mutation writes, RowList
+- [Refactor spec AC checks](feedback_refactor_spec_ac_checks.md) — grep ACs (zod enums), guard matrix, codes-only tests, lock trigger/FK path vacuity, memory doubles
 - [PGlite clock and fake Date](feedback_pglite_clock_and_fake_date.md) — ms timestamps tie; now() follows faked Date.now, so freeze-before-seed makes updatedAt checks vacuous
 - [Partial-input update mutant](feedback_partial_input_update_mutant.md) — all-fields write tests hide omitted-field-as-NULL mutants; mutate with a subset input
 - [Inline to runTrpc error diff](feedback_inline_to_runtrpc_error_differential.md) — DbError mirrors code so cause.code tests are blind; base/head probe of cause keys, HTTP body, logs
@@ -98,3 +98,8 @@
 - [Shared worktree, git archive copy](feedback_shared_worktree_git_archive_copy.md) — parallel passes mutate the worktree; copy from git archive HEAD; whitelist mutants: zod strip, FK kill reason, .min(1) on FK id
 - [Mutant first-match, empty-id case](feedback_mutant_first_match_and_empty_input_case.md) — perl without /g hits first repeated .pick; spread-then-override equivalents; ""-id BAD_REQUEST not pinning min(1)
 - [Scratchpad dir names, unsent form field](feedback_shared_scratchpad_dirnames_and_unsent_form_field.md) — pass-unique dir names; pick-drop mutant per key, fixture lacking vatCode lets it live
+- [Query-builder params, plan prototype](feedback_query_builder_param_and_plan_prototype.md) — drizzle drops limit<0 (no error); prototype planned service + mutants in scratch; owner-less factory fixtures
+- [Server action caller-class differential](feedback_server_action_caller_class_differential.md) — real action via vitest shim + mocked getServerAuthSession, per caller class, base vs head copies
+- [Lookup-then-lock window probe](feedback_lookup_then_lock_window_probe.md) — park writer at the lock, rewrite the pointer, hold new owner; pg kill reason; spread write-backs
+- [Three-transport contract differential](feedback_three_transport_contract_differential.md) — caller/inproc/http + real actions, base vs head; caller has no .query; log marker grep; annotation hides type mutant
+- [Fake-Tx mutant, pg wait limits](feedback_fake_tx_mutant_and_pg_wait_limits.md) — "tx removed" dies on missing Tx; fake-Tx (Db client) mutant; pg wait tests miss held-to-commit; first-write failpoint trivial
