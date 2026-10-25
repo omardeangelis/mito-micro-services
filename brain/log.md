@@ -12,6 +12,10 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 
 <!-- Entries are appended by create-spec (spec creation) and docs-maintenance (ingest). Format:
 
+## [2026-10-25] merge | Router `chat`: PR A del passo 5 in `dev`
+- [PR #86](https://github.com/omardeangelis/mito-micro-services/pull/86) unita in `dev` (`bd37efa`): il router `chat` su Effect, con l'invio di una nota in una transazione con il lock del cliente; porta anche `b72cd3e` (L3 su `HttpApi`)
+- TD10 in [[chore/migrazione-effect]] §7: `[OPEN]` (a), (b), (c) e (f); (d) ed (e) restano `[PREVISTO]` fino alla PR B. Righe di L2 e del §5 aggiornate
+
 ## [2026-10-25] review | Router `chat` su Effect, PR A del passo 5
 - Report: [[specs/crm/chat-storage-effect/REPORT]]
 - Scope: spec
@@ -293,13 +297,6 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 ## [2026-10-16] implement | Sezione Contatti — PR4, T4.7 (BLOCKER della quarta verifica)
 - Spec: [[specs/crm/sezione-contatti/PLAN]]
 - Note in eliminazione nello stato di `CustomerNotes`; NOT_FOUND senza toast (`gone`); test per chiudi e riapri, nota già eliminata, registro, cambio di cliente
-
-## [2026-10-16] review | Sezione Contatti — PR4, T4.5–T4.7 (quarta verifica)
-- Report: [[specs/crm/sezione-contatti/REPORT]]
-- Scope: spec
-- Verdict: DO NOT SHIP
-- Impact: medium
-- Verifiers: 2 (1 blockers, 0 major)
 
 ## [YYYY-MM-DD] ingest | <spec title>
 - Source: [[specs/<domain>/<spec>/SPEC]]
