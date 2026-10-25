@@ -17,7 +17,7 @@ updated: 2026-10-25
 - **Verifica della spec:** DO NOT SHIP, 0 blocker e 3 major, tutti corretti.
 - **Dopo la verifica del piano:** AC7 e due voci di AC9 corretti (§17).
 
-**Status:** In corso (wave 1–3 fatte, T11 in corso)
+**Status:** Complete
 **Generato:** 2026-10-25 con `create-plan`. Il flusso è stato: spec (2 decisioni di Omar), verifica della spec, grill (nessuna domanda: le decisioni si ricavano dal codice e dal passo 2), task graph, tdd, verifica del piano.
 - **Verifica del piano:** DO NOT SHIP, 1 blocker, 5 major, 7 minor e 5 nit, corretti (§17).
 
@@ -689,9 +689,9 @@ G0 ─┬─ T1  ─┐
      - `IMPLEMENTATION-NOTES.md`.
   8. **PR verso `dev`** solo quando Omar la chiede, dopo il merge di `dev` nel branch.
 - **validation**: tutti i punti annotati in `IMPLEMENTATION-NOTES.md`; REPORT SHIP.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Completed
+- **log**: T11.1 `grep` della SPEC come scritti, AC11 con due eccezioni annotate (`dd31882` import, `44f8881` due test della review verdi anche su `7c5c77d`); T11.2 tipi uguali (`scratchpad/typedump.cjs`); T11.3 45 mutanti su 45 uccisi sui servizi, più lo scambio dei lock (ucciso su Postgres); T11.4 gate di CI verdi nel worktree di gate, suite con Postgres 3367 passati; T11.5 prova nel browser su `mito_local` verde (agent sonnet), con due bug della UI già presenti in [[tech-debt/crm/pratiche-effect]]; `simplify` con una correzione (`7c14603`); T11.6 `adversarial-review` SHIP dopo la correzione di AC14 ([[specs/crm/pratiche-effect/REPORT]]); T11.7 documenti aggiornati, TD9 `[PREVISTO]`. `docs-maintenance` e la PR (T11.8) restano a Omar.
+- **files edited/created**: `brain/chore/migrazione-effect.md`, `brain/tech-debt/crm/{filtri-sql-sicuri,gestione-operatori,sezione-contatti,pratiche-effect}.md`, `RUBRIC.md`, `REPORT.md`, `IMPLEMENTATION-NOTES.md`, `pratiche/_test/{queries,writes}.db.test.ts`, `task/_test/queries.db.test.ts`, `services/practice/writes.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a

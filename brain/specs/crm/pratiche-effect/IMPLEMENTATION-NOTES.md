@@ -18,6 +18,17 @@ updated: 2026-10-25
 
 - Branch `claude/pratiche-effect`, da `dev` a `5b61b3f`, non pushato. Il primo commit (`9044dfc`) porta SPEC, PLAN e TD9 `[PREVISTO]`.
 - G0: la SPEC è passata a `status: approved` con il lancio di `implement-spec` (2026-10-25), comprese le correzioni di AC7 e AC9 del §17 del PLAN.
+- Un commit per fase:
+  - `7c5c77d`: la caratterizzazione (T1–T5, T3b), prima di ogni cambio di produzione;
+  - `48f2334`: T6, le 5 procedure senza chiamanti e `shared/updateAt.ts`;
+  - `367f445`: T10, `bulkHandleTask` in `services/contact/`;
+  - `728b759`, `c34ef35`, `d6e13da`: T7, T8, T9;
+  - `dd31882`: `import type` in un test (lint);
+  - `7c14603`: `simplify`, i tipi di `@mito/domain/schemas` in `writes.ts`;
+  - `44f8881`: due test chiesti dalla review;
+  - `baf95df`, `d505078`, `fe18f5b`, `12297e7`: documenti, note, correzioni della review, REPORT.
+- Le 20 procedure che restano di `pratiche` e `task` sono adapter di servizi in `services/practice/`, `services/contact/` e `services/customer/profile.ts`, a comportamento invariato. Le 5 procedure senza chiamanti non ci sono più.
+- Review avversariale: **SHIP**, impatto critico, con la checklist umana ([[specs/crm/pratiche-effect/REPORT]]). Al primo giro un solo passo su sette dava DO NOT SHIP, per un MAJOR sui documenti (AC14).
 
 ## Execution Mode
 
@@ -58,6 +69,7 @@ updated: 2026-10-25
 | T11.1, `grep` di AC1 (tutti e due), AC3, AC4, AC5, AC6, AC7 (con e senza l'esclusione), AC13 | come la SPEC | AC1b: solo `stateEnum` e `taskStatus` (anche `task/PUT`, che c'era già). AC3: solo i tre `errors.ts`. AC7 senza esclusione: solo 4 file in `_test/`. AC13: in `src/components` solo `CustomerChat.test.tsx` |
 | T11.1, AC11: `git diff 7c5c77d..HEAD -- '**/_test/**' '**/*.test.*'` | solo T6 e un import | I due `router.db.test.ts` (T6), le righe tolte da `CustomerChat.test.tsx`, e l'`import type` di `pratiche/_test/queries.db.test.ts` (`dd31882`, lint). Nessuna riga di asserzione cambiata |
 | T11.2, AC2: `scratchpad/typedump.cjs` (compiler API, tipi espansi) a `5b61b3f` e a `d6e13da` | uguali | 40 righe (20 procedure, input e output), tolte le 5 di AC7. Nessun `any`. `importoFinanziato` resta `number` nell'output di `getAllPratiche` |
+| Dopo la review: due test aggiunti (`44f8881`), copiati nel worktree a `7c5c77d` | verdi (23 su 23) | Uccidono i due mutanti segnalati dalla review (`connectPraticaAndCustomer` che scrive anche una pratica; `length <= 1` in `listCustomersWithActiveAlerts`). Lo scambio `lockCustomer`/`findWorkingOperator` in `bulkHandleTask` muore su `operatorLock.pg` e `deactivate.pg` (11 test); su PGlite sopravvive, come atteso |
 | T11.3, mutanti ripetuti sui servizi (`scratchpad/wave4.json`) | 45 uccisi su 45 | Ogni mutante fa cadere lo stesso numero di test che sul codice inline; due ne fanno cadere uno in più, il test aggiunto per il mutante sopravvissuto |
 | T11.4, gate di CI nel worktree di gate (`scratchpad/gate`, senza `.env*`, fuori dalla copia principale) a `d6e13da` | verdi | `next lint` (un warning, `import type`, corretto in `dd31882`), `tsc --noEmit`, `pnpm db:check`, `pnpm build` con i placeholder, `pnpm api:build`, `pnpm api:smoke` |
 | T11.4, `pnpm run test --run` con `TEST_DATABASE_URL`, worktree di gate a `dd31882` | 3367 passati, 2 saltati | Nessun database `mito_test_` lasciato dalla corsa; ce n'è uno del 2026-10-24, di una sessione precedente |
@@ -76,3 +88,25 @@ Trovate nella prova nel browser (T11.5), già presenti a `5b61b3f`: il passo non
 
 | Criterion | Status | Notes |
 |-----------|--------|-------|
+| AC1 | met | `grep` vuoti; `@mito/db/schema` solo per `stateEnum` e `taskStatus` |
+| AC2 | met | Middleware invariati (tabelle di T4, 12 mutanti della review); tipi uguali a `5b61b3f` tolte le 5 chiavi (T11.2); errori uguali (differenziale di v3) |
+| AC3 | met | `TRPCError` solo nei tre `errors.ts`; nessun traduttore nuovo |
+| AC4 | met | Nessuno zod nei servizi; tipi dichiarati o `type` di `@mito/domain` |
+| AC5 | met | Nessun import da `api/`; parametri espliciti |
+| AC6 | met | Nessun `server-only` nei file nuovi o modificati di `services/`; TD6 resta a 32 file di `packages/` |
+| AC7 | met | Test sulle chiavi dei router; `grep` come la SPEC; `CustomerChat.test.tsx` nello stesso commit (`48f2334`) |
+| AC8 | met | T1, T2, T3, verdi su `7c5c77d` |
+| AC9 | met | T1–T4, verdi su `7c5c77d` |
+| AC10 | met | T5, verde su `7c5c77d` e in CI (progetto `pg`) |
+| AC11 | met | `git diff 7c5c77d..HEAD` sui test: solo AC7, un `import type` e due test aggiunti dalla review, verdi anche su `7c5c77d` |
+| AC12 | met | TD9 `[PREVISTO]` con le voci (a)–(m); passa a `[OPEN]` dopo il merge in `dev` (D16) |
+| AC13 | met | Nessun file in `src/app/`, `packages/db/`, `packages/domain/`; in `src/components` solo `CustomerChat.test.tsx` |
+| AC14 | met | Dopo `fe18f5b`: §1, §4, §5, TD6 di [[chore/migrazione-effect]]; [[tech-debt/crm/filtri-sql-sicuri]] con i numeri di riga; [[tech-debt/crm/gestione-operatori]] |
+| AC15 | met in locale | Tutti i gate verdi nel worktree di gate; da confermare sulla CI della PR |
+
+## Remaining Work
+
+- Fare il merge di `dev` nel branch, aprire la PR verso `dev` e vedere la CI verde (AC15, checklist del REPORT). Il branch non è pushato.
+- Dopo il merge in `dev`: TD9 a `[OPEN]` con un commit di documenti (D16), e la prova su staging con `BACKEND_URL` (G2).
+- `docs-maintenance` sulla cartella, per ingerire la spec e il REPORT.
+- Fuori dal passo, in [[tech-debt/crm/pratiche-effect]]: il bug della UI di email e telefono nel dettaglio di una pratica, e l'assegnazione massiva delle pratiche senza pulsante.
