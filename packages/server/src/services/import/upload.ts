@@ -2,8 +2,12 @@ import "server-only"
 import { promisify } from "node:util"
 import { gunzip } from "node:zlib"
 import { and, asc, eq } from "drizzle-orm"
-import { Effect } from "effect"
-import { importUpload, importUploadPart } from "@mito/db/schema/importRun"
+import { Clock, Effect } from "effect"
+import {
+  importRun,
+  importUpload,
+  importUploadPart,
+} from "@mito/db/schema/importRun"
 import { detectFormat, type ImportFormat } from "@mito/domain/import/formats"
 import {
   MAX_BODY_BYTES,
@@ -12,11 +16,14 @@ import {
   fromFileBody,
 } from "@mito/domain/import/payload"
 import { query, transaction } from "../../effect/db"
+import { ImportConfig } from "./config"
 import {
   ImportInputInvalid,
+  ImportUnavailable,
   ImportUploadClosed,
   ImportUploadMissing,
 } from "./errors"
+import { ImportQueue } from "./queue"
 
 // The rows of a file from the confirmation to the end of its import (D3,
 // D14): the browser sends the gzip of the compact body in parts, the import
@@ -63,6 +70,25 @@ export const createUpload = (input: {
       return upload!.id
     })
   )
+
+/**
+ * The first part from the browser (`import.upload`): the upload, and its
+ * cleanup in the queue an hour later (D14). Without a queue the import can't
+ * start, so no rows stay; if the queue doesn't take the cleanup, they go at
+ * once.
+ */
+export const beginUpload = (input: Parameters<typeof createUpload>[0]) =>
+  Effect.gen(function* () {
+    const queue = yield* ImportQueue
+    if (!queue.available) return yield* new ImportUnavailable()
+    const { uploadTtlMs } = yield* ImportConfig
+    const uploadId = yield* createUpload(input)
+    const at = new Date((yield* Clock.currentTimeMillis) + uploadTtlMs)
+    yield* queue
+      .enqueue({ kind: "purge", uploadId, at })
+      .pipe(Effect.tapError(() => deleteUpload(uploadId)))
+    return uploadId
+  })
 
 /**
  * The admin's upload, locked until the transaction ends: a part, the start of
@@ -184,4 +210,36 @@ export const loadUpload = (uploadId: string) =>
 export const deleteUpload = (uploadId: string) =>
   query((client) =>
     client.delete(importUpload).where(eq(importUpload.id, uploadId))
+  )
+
+/**
+ * The cleanup task of an upload (`POST /internal/import/purge/:uploadId`,
+ * D14): deletes it with its parts unless a running import uses it. It waits
+ * for a part or a start that holds the row: after a start the upload is the
+ * import's, which deletes it at its end.
+ */
+export const purgeUpload = (uploadId: string) =>
+  transaction(
+    Effect.gen(function* () {
+      const [upload] = yield* query((client) =>
+        client
+          .select({ id: importUpload.id, runId: importUpload.runId })
+          .from(importUpload)
+          .where(eq(importUpload.id, uploadId))
+          .for("update")
+      )
+      if (!upload) return "gone" as const
+      const { runId } = upload
+      if (runId !== null) {
+        const [run] = yield* query((client) =>
+          client
+            .select({ status: importRun.status })
+            .from(importRun)
+            .where(eq(importRun.id, runId))
+        )
+        if (run?.status === "running") return "kept" as const
+      }
+      yield* deleteUpload(upload.id)
+      return "deleted" as const
+    })
   )

@@ -1,11 +1,12 @@
 import { Cause, Data, Effect, Exit, type Layer, Option } from "effect"
-import { Hono } from "hono"
-import { type Db } from "@mito/server/effect/db"
+import { type Context, Hono } from "hono"
+import { type Db, type DbError } from "@mito/server/effect/db"
 import { type ImportConfig } from "@mito/server/services/import/config"
 import { executeImport } from "@mito/server/services/import/run"
+import { purgeUpload } from "@mito/server/services/import/upload"
 import { ImportAuth } from "./auth"
 
-class UnknownImport extends Data.TaggedError("UnknownImport") {}
+class UnknownTask extends Data.TaggedError("UnknownTask") {}
 
 export type ImportRouteContext = ImportAuth | Db | ImportConfig
 
@@ -18,45 +19,74 @@ const describe = (cause: Cause.Cause<unknown>) => {
     : "defect"
 }
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 /**
- * The routes of the import queue's tasks (D1, D13), with the services they
- * need. Cloud Tasks calls them with an OIDC token, and tries again a task
- * whose call doesn't answer 2xx: a run answers 200 also when the import
+ * The routes of the import queue's tasks (D1, D13, D14), with the services
+ * they need. Cloud Tasks calls them with an OIDC token, and tries again a
+ * task whose call doesn't answer 2xx: a run answers 200 also when the import
  * fails, which the history shows, so that only a lost delivery comes again.
  */
 export const importRoutes = (layer: Layer.Layer<ImportRouteContext>) => {
-  const routes = new Hono()
-  routes.post("/run/:id", async (c) => {
-    const id = Number(c.req.param("id"))
-    const exit = await Effect.runPromiseExit(
-      Effect.gen(function* () {
-        yield* (yield* ImportAuth).verify(c.req.header("authorization"))
-        if (!Number.isSafeInteger(id) || id <= 0) {
-          return yield* new UnknownImport()
-        }
-        return yield* executeImport(id)
-      }).pipe(Effect.provide(layer))
-    )
-    if (Exit.isSuccess(exit)) {
-      return c.json({ runId: id, outcome: exit.value }, 200)
+  /**
+   * One task: the token first, then `run` on the id of the path, if `parse`
+   * takes it.
+   */
+  const task =
+    <I, A>(
+      param: string,
+      parse: (raw: string) => I | undefined,
+      run: (input: I) => Effect.Effect<A, DbError, Db | ImportConfig>
+    ) =>
+    async (c: Context) => {
+      const raw = c.req.param(param) ?? ""
+      const exit = await Effect.runPromiseExit(
+        Effect.gen(function* () {
+          yield* (yield* ImportAuth).verify(c.req.header("authorization"))
+          const input = parse(raw)
+          if (input === undefined) return yield* new UnknownTask()
+          return yield* run(input)
+        }).pipe(Effect.provide(layer))
+      )
+      if (Exit.isSuccess(exit)) {
+        return c.json({ outcome: exit.value }, 200)
+      }
+
+      const error = Option.getOrUndefined(Cause.failureOption(exit.cause))
+      const tag = (error as { _tag?: string } | undefined)?._tag
+      if (tag === "OidcUnauthorized") {
+        // Noise from scanners, not a failed import: logged, never reported
+        const reason = (error as { reason: string }).reason
+        console.warn(`Import task refused: ${reason}`)
+        return c.json({ error: "Unauthorized" }, 401)
+      }
+      if (tag === "ImportNotConfigured") {
+        return c.json({ error: "Import not configured" }, 503)
+      }
+      if (tag === "UnknownTask") return c.json({ error: "Unknown task" }, 404)
+      // The database: Cloud Tasks tries again. A run, taken already, is then
+      // skipped, and interrupted at its deadline
+      console.error(`Import task ${raw} failed: ${describe(exit.cause)}`)
+      return c.json({ error: "failed" }, 500)
     }
 
-    const error = Option.getOrUndefined(Cause.failureOption(exit.cause))
-    const tag = (error as { _tag?: string } | undefined)?._tag
-    if (tag === "OidcUnauthorized") {
-      // Noise from scanners, not a failed import: logged, never reported
-      const reason = (error as { reason: string }).reason
-      console.warn(`Import task refused: ${reason}`)
-      return c.json({ error: "Unauthorized" }, 401)
-    }
-    if (tag === "ImportNotConfigured") {
-      return c.json({ error: "Import not configured" }, 503)
-    }
-    if (tag === "UnknownImport") return c.json({ error: "Unknown import" }, 404)
-    // The database, taking the run or ending it: Cloud Tasks tries again,
-    // and the run, taken already, is skipped or interrupted at its deadline
-    console.error(`Import ${id} task failed: ${describe(exit.cause)}`)
-    return c.json({ runId: id, error: "failed" }, 500)
-  })
+  const routes = new Hono()
+  routes.post(
+    "/run/:runId",
+    task(
+      "runId",
+      (raw) => {
+        const id = Number(raw)
+        return /^\d+$/.test(raw) && Number.isSafeInteger(id) && id > 0
+          ? id
+          : undefined
+      },
+      executeImport
+    )
+  )
+  routes.post(
+    "/purge/:uploadId",
+    task("uploadId", (raw) => (UUID.test(raw) ? raw : undefined), purgeUpload)
+  )
   return routes
 }

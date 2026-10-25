@@ -9,7 +9,7 @@ import {
   type JWTPayload,
   SignJWT,
 } from "jose"
-import { importRun } from "@mito/db/schema/importRun"
+import { importRun, importUpload } from "@mito/db/schema/importRun"
 import { waveColumns } from "@mito/domain/import/formats"
 import { toFileBody } from "@mito/domain/import/payload"
 import { waveCells } from "@mito/domain/import/_test/cells"
@@ -135,7 +135,7 @@ describe("POST /internal/import/run/:id", () => {
 
     expect(response).toEqual({
       status: 200,
-      body: { runId, outcome: "completed" },
+      body: { outcome: "completed" },
     })
     expect(await runRow()).toMatchObject({
       status: "completed",
@@ -201,7 +201,7 @@ describe("POST /internal/import/run/:id", () => {
 
     expect(response).toEqual({
       status: 200,
-      body: { runId, outcome: "failed" },
+      body: { outcome: "failed" },
     })
     expect(await runRow()).toMatchObject({ status: "failed" })
   })
@@ -212,6 +212,51 @@ describe("POST /internal/import/run/:id", () => {
 
     const again = await call(`/run/${runId}`, `Bearer ${await idToken()}`)
 
-    expect(again).toEqual({ status: 200, body: { runId, outcome: "skipped" } })
+    expect(again).toEqual({ status: 200, body: { outcome: "skipped" } })
+  })
+})
+
+describe("POST /internal/import/purge/:uploadId", () => {
+  it("con il token della coda cancella le righe di un upload che nessun import usa", async () => {
+    const admin = await createUser({ role: "ADMIN" })
+    const uploadId = await Effect.runPromise(
+      createUpload({
+        createdBy: admin.id,
+        fileName: "0125_import.xlsx",
+        format: "wave",
+        parts: 2,
+        data: new Uint8Array([1]),
+      }).pipe(Effect.provide(ServerLive))
+    )
+
+    const response = await call(
+      `/purge/${uploadId}`,
+      `Bearer ${await idToken()}`
+    )
+
+    expect(response).toEqual({ status: 200, body: { outcome: "deleted" } })
+    expect(await testDb.select().from(importUpload)).toEqual([])
+  })
+
+  it("senza token risponde 401 e non cancella nulla", async () => {
+    const admin = await createUser({ role: "ADMIN" })
+    const uploadId = await Effect.runPromise(
+      createUpload({
+        createdBy: admin.id,
+        fileName: "0125_import.xlsx",
+        format: "wave",
+        parts: 2,
+        data: new Uint8Array([1]),
+      }).pipe(Effect.provide(ServerLive))
+    )
+
+    expect((await call(`/purge/${uploadId}`)).status).toBe(401)
+    expect(await testDb.select().from(importUpload)).toHaveLength(1)
+  })
+
+  it("un id che non è un UUID risponde 404", async () => {
+    expect((await call("/purge/abc", `Bearer ${await idToken()}`)).status).toBe(
+      404
+    )
   })
 })
