@@ -43,3 +43,24 @@ const integer = new Intl.NumberFormat("it-IT")
 /** A number of the summary; "—" when the import wrote nothing. */
 export const count = (value: number | null) =>
   value === null ? "—" : integer.format(value)
+
+/** The notice of an import's end, in any page (AC21): the counts, or why not. */
+export function endingNotice(run: ImportSummary) {
+  switch (run.status) {
+    case "running":
+      return null
+    case "completed":
+      return {
+        title: "Import completato",
+        description: `${run.fileName}: ${count(run.customersCreated)} clienti nuovi e ${count(run.customersUpdated)} aggiornati, ${count(run.practicesCreated)} pratiche nuove e ${count(run.practicesUpdated)} aggiornate, ${count(run.linksCreated)} legami nuovi`,
+        variant: "success" as const,
+      }
+    case "failed":
+    case "interrupted":
+      return {
+        title: `Import ${statusLabels[run.status].toLowerCase()}`,
+        description: `${run.fileName}: ${run.failureReason ?? "nessun dato è stato scritto"}`,
+        variant: "destructive" as const,
+      }
+  }
+}
