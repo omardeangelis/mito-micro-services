@@ -12,6 +12,18 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 
 <!-- Entries are appended by create-spec (spec creation) and docs-maintenance (ingest). Format:
 
+## [2026-10-25] plan | Router `chat` su Effect e router `supabase` tolto (passo 5 della migrazione)
+- Spec: [[specs/crm/chat-storage-effect/SPEC]], piano: [[specs/crm/chat-storage-effect/PLAN]]
+- 16 task in due PR, dopo il gate G0, verificati dall'`adversarial-verifier` (DO NOT SHIP, 0 blocker, 2 major, corretti; AC17 (b) della SPEC corretto): PR A (`chat`: caratterizzazione di middleware, letture, invio e messaggi degli errori; invio in un servizio con transazione e lock del cliente; server action e procedure senza chiamanti; un solo traduttore), PR B (route di export su `services/export/files.ts`, router `supabase` e `supabaseClient` tolti), e una PR di documenti dopo ognuna
+- Debito della migrazione: TD10 `[PREVISTO]` in [[chore/migrazione-effect]]
+- La PR B parte da `dev` dopo il merge della A e ha la revisione di Leonardo
+
+## [2026-10-25] spec | Router `chat` su Effect e router `supabase` tolto (passo 5 della migrazione)
+- Created spec: [[specs/crm/chat-storage-effect/SPEC]]
+- Domain: crm
+- Status: Draft
+- Decisioni di Omar: il router `supabase` si toglie e le due route di export chiamano `Storage`; l'invio di una nota prende il lock del cliente
+
 ## [2026-10-25] decision | Migrazione Effect: L3 su `HttpApi`
 - Decisione di Omar: L3 passa da Effect RPC a `HttpApi` di Effect, perché i prossimi obiettivi sono togliere tRPC e avere una SPA in React 19 ([[chore/migrazione-effect]] §3)
 - La SPA usa solo `HttpApi`; l'app Next.js resta su tRPC, e tRPC si toglie quando l'app Next.js si spegne
@@ -286,17 +298,6 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 - Verdict: DO NOT SHIP
 - Impact: medium
 - Verifiers: 2 (0 blockers, 3 major)
-
-## [2026-10-16] implement | Sezione Contatti — PR4, T4.7 (MAJOR della seconda verifica)
-- Spec: [[specs/crm/sezione-contatti/PLAN]]
-- Ordine sotto il lock coperto da test (`beforeNextLockOf`); regione di stato e eliminazioni in `CustomerNotes`, che resta quando la chat sparisce; scroll che segue l'ultima nota solo se la lista è in fondo
-
-## [2026-10-16] review | Sezione Contatti — PR4, T4.5–T4.7 (seconda verifica)
-- Report: [[specs/crm/sezione-contatti/REPORT]]
-- Scope: spec
-- Verdict: DO NOT SHIP
-- Impact: medium
-- Verifiers: 2 (0 blockers, 5 major)
 
 ## [YYYY-MM-DD] ingest | <spec title>
 - Source: [[specs/<domain>/<spec>/SPEC]]

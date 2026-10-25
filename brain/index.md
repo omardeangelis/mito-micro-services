@@ -52,6 +52,7 @@ Migrated from `docs/` on 2026-09-24. Source material for future `create-spec` ru
 | crm | [[specs/crm/sicurezza-deploy-staging/SPEC]] | Implemented, ingested (piano: [[specs/crm/sicurezza-deploy-staging/PLAN]]) |
 | crm | [[specs/crm/customer-effect/SPEC]] | Implemented sul branch `claude/migrazione-customer`, ingested (piano: [[specs/crm/customer-effect/PLAN]], review: [[specs/crm/customer-effect/REPORT]]) |
 | crm | [[specs/crm/pratiche-effect/SPEC]] | Implemented, in `dev` dalla [PR #83](https://github.com/omardeangelis/mito-micro-services/pull/83) (piano: [[specs/crm/pratiche-effect/PLAN]], review: [[specs/crm/pratiche-effect/REPORT]]) |
+| crm | [[specs/crm/chat-storage-effect/SPEC]] | Approved, in corso sul branch `claude/chat-effect` (piano: [[specs/crm/chat-storage-effect/PLAN]]) |
 | crm | [[specs/crm/export-chiamate/SPEC]] | Implemented, unita su dev il 23/10/2026 (piano: [[specs/crm/export-chiamate/PLAN]], review: [[specs/crm/export-chiamate/REPORT]]) |
 
 - [[specs/crm/crm-specs|crm-specs]] — CRM spec page map
