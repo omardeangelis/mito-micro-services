@@ -12,6 +12,10 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 
 <!-- Entries are appended by create-spec (spec creation) and docs-maintenance (ingest). Format:
 
+## [2026-10-25] merge | Pratiche: passo 4 in `dev`
+- [PR #83](https://github.com/omardeangelis/mito-micro-services/pull/83) unita in `dev` (`eba251b`): passo 4 della migrazione a Effect e correzioni di TD9
+- TD9 in [[chore/migrazione-effect]] §7: `[OPEN]` solo (k) (l'import, B1), le altre `[CLOSED 2026-10-25]`; righe del §4, §5 e dei livelli L1, L2 aggiornate
+
 ## [2026-10-25] review | Pratiche: rilancio sulle correzioni
 - Review: [[specs/crm/pratiche-effect/REPORT]], `4ca830c..bef07ae`, v1, v3, v4, v5 rilanciati
 - SHIP, impact critical: M1–M3 corretti e provati coi mutanti; M4 solo in parte (il `customerId` vuoto non è distinto dalla FK)
@@ -292,13 +296,6 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 ## [2026-10-16] implement | Sezione Contatti — PR4, T4.7
 - Spec: [[specs/crm/sezione-contatti/PLAN]]
 - Correzioni della review di T4.5 e T4.6; eliminazione della nota solo dell'autore, con il cliente bloccato (AC79, D21)
-
-## [2026-10-16] review | Sezione Contatti — PR4, T4.5 e T4.6
-- Report: [[specs/crm/sezione-contatti/REPORT]]
-- Scope: spec
-- Verdict: DO NOT SHIP
-- Impact: medium
-- Verifiers: 2 (1 blockers, 3 major)
 
 ## [YYYY-MM-DD] ingest | <spec title>
 - Source: [[specs/<domain>/<spec>/SPEC]]
