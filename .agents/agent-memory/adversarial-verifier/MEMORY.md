@@ -104,7 +104,7 @@
 - [Three-transport contract differential](feedback_three_transport_contract_differential.md) — caller/inproc/http + real actions, base vs head; caller has no .query; log marker grep; annotation hides type mutant
 - [Fake-Tx mutant, pg wait limits](feedback_fake_tx_mutant_and_pg_wait_limits.md) — "tx removed" dies on missing Tx; fake-Tx (Db client) mutant; pg wait tests miss held-to-commit; first-write failpoint trivial
 - [Storage key reach probes](feedback_storage_key_reach_probes.md) — fake GCS/Supabase servers; Supabase keys are not literal (`..`, `\`, `?`); spy + download-before-check control
-- [Runtime topology claims](feedback_runtime_topology_claims.md) — all rewrite flags x process x env matrix; coherence test (session/DB split) picks the real combo; cron per bucket; transformer only in HTTP links
-- [tRPC removal HTTP equivalence](feedback_trpc_removal_http_equivalence.md) — setup mocks hide base import crash; loggerLink/trpcMiddleware defect telemetry; memory layer can't kill no-copy; Buffer.slice is a view
+- [Runtime topology claims](feedback_runtime_topology_claims.md) — flags x process x env matrix; session-DB coherence; cron per bucket; superjson probe with session on/off; gate failure branch (redeploy, coupled flags, cleanup)
+- [tRPC removal HTTP equivalence](feedback_trpc_removal_http_equivalence.md) — setup mocks and SKIP_ENV_VALIDATION hide import crashes; loggerLink/trpcMiddleware defect telemetry; memory layer can't kill no-copy; Buffer.slice is a view
 - [Removed guard layer mutants](feedback_removed_guard_layer_mutants.md) — dropped 2nd guard: mutate the call shape (authCheck(req)) and order base vs head; middleware-manifest wiring
 - [Layer mock blind spots](feedback_layer_mock_blind_spots.md) — throw-in-real-layer probe plus no-mock control; Effect.provide builds layer before the guard; memory returns Uint8Array, GCS a pooled Buffer
