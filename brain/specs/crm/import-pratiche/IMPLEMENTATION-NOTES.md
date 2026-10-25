@@ -17,6 +17,7 @@ updated: 2026-10-25
 - PR C (#81, `claude/import-storico-schema`, da `dev`): T7, tabelle `import_run`, `import_upload`, `import_upload_part` e la loro migrazione, solo additiva. Nessun codice le usa ancora.
 - PR B (#78, `claude/import-dominio`, sopra la A): T3, T4, T5, T6, T8a. Tracciati, conversione, classificazione, raggruppamento e piano nel dominio, puri. L'import di oggi usa solo la conversione spostata; il resto lo chiamano le PR E ed F.
 - PR E (#85, `claude/import-servizio`, sopra B + C): T8b, T9, T9b, T10a, T10b, T11, T13. Lettura del CRM, righe temporanee, scrittura tutto o niente, avvio ed esecuzione con la coda, storico, pulizia, procedure solo admin, rotte interne del backend con OIDC. Il vecchio import non cambia; le procedure nuove non hanno ancora una UI (PR F).
+- PR F (#88, `claude/import-ui`, sopra la E): T14–T19. Lettura e anteprima in un Web Worker, report errori nel browser, invio a parti, pagina Import con storico, voce del menu e pulsante solo admin, avviso di fine in ogni pagina. Il pulsante della dashboard porta alla pagina nuova; il vecchio import resta solo nel codice fino alla PR G.
 
 ## Execution Mode
 
@@ -46,6 +47,9 @@ updated: 2026-10-25
 - T10b: `activeImport` dà l'ultimo import dell'admin, anche finito: l'avviso di fine (D15) deve leggere l'esito dopo la fine.
 - T10b: la pulizia blocca l'upload con un `FOR UPDATE` semplice, non con `SKIP LOCKED`. Con `SKIP LOCKED` una pulizia che arriva mentre l'avvio tiene la riga la salterebbe senza sapere se l'import parte; così aspetta pochi millisecondi e poi vede l'import collegato.
 - T13: la mediana era 24,2 s. Il profilo ha trovato tre costi nel dominio, corretti nella PR B dietro i test che c'erano: la ricerca dei clienti di `planRows` era quadratica (ora un indice, 0 differenze su 3.000 casi casuali contro la versione di prima); `Intl.formatToParts` era metà della classificazione (ora l'offset di Roma si chiede una volta per giorno UTC, 0 differenze su 293 cambi d'ora dal 1850 al 2100); uno schema zod per cella costava 1,3 s su un milione di celle (ora un ciclo nel `superRefine`, 0,1 s).
+- T14: il messaggio per un file oltre le 50.000 righe è nell'anteprima ("Il file ha più di 50.000 righe"), come T6 lasciava da decidere. Un errore del worker si mostra senza il suo motivo, che potrebbe avere valori delle righe (AC31).
+- T19: l'avviso è il toast, che Radix annuncia già in una regione live (AC41): una seconda regione lo farebbe leggere due volte. `router.refresh()` e il filtro "File" si aggiornano solo per un import completato, perché uno fallito o interrotto non ha scritto nulla; lo storico si aggiorna sempre.
+- T19: la conferma passa il `runId` al provider (`watch`), così l'avviso arriva anche per un import che finisce prima della prima domanda di `import.active`.
 
 ## Surprises and Decisions
 
@@ -91,6 +95,8 @@ Decisioni di T8b–T13:
 | Gate CI in locale (PR E) | ok | `next lint`, `tsc --noEmit`, `pnpm run test --run` (3782 passati, 111 saltati), progetto `pg` su Postgres 16 (108 passati), `pnpm api:build` e `pnpm api:smoke` (la rotta dell'import risponde 503 senza coda), `pnpm build` coi segnaposto di CI |
 | Prestazioni (T13) | ok | Mediana 12,0 s su 20.000 righe (10,7, 12,0, 12,6), limite 30 s; corpo 0,33 MiB gzip |
 | Equivalenza delle ottimizzazioni (T13) | ok | `planRows` con l'indice uguale alla versione di prima su 3.000 casi casuali; offset di Roma uguale a `Intl` su 400.000 istanti e attorno a 293 cambi d'ora; test del dominio verdi in UTC e a Roma |
+| Gate CI in locale (PR F) | ok | `next lint`, `tsc --noEmit`, `pnpm run test --run` (3875 passati, 111 saltati), progetto `pg` (108 passati), `pnpm api:build` e `pnpm api:smoke`, `pnpm build` coi segnaposto di CI (il worker esce come chunk a parte) |
+| Mutazioni su T17 e T19 | ok | Mostrando sempre il messaggio generico, non chiudendo il worker all'annullamento, chiedendo `import.active` anche per un operatore, chiedendolo dopo la fine, togliendo `router.refresh()` o l'attesa dell'import seguito, almeno un test fallisce |
 | Gate CI in locale (PR B) | ok | `next lint`, `tsc --noEmit`, `pnpm run test --run` (3243 passati, 75 saltati), `pnpm build` coi segnaposto di CI, `pnpm api:build` |
 
 ## Acceptance Criteria Status
@@ -110,7 +116,8 @@ Decisioni di T8b–T13:
 | AC20, AC22, AC29–AC31 | Sul server | `startImport`, `executeImport`, storico (T10a, T10b); la UI arriva con la PR F |
 | AC25 | Misurato | 12,0 s di mediana (T13) |
 | AC27 | Sul server | Lock ordinati, test pg con la disattivazione (T9, T9b) |
-| AC28 | Sul server | `listImports` (T10b); la pagina è di T18 |
+| AC28 | Server e UI | `listImports` (T10b), pagina, menu e pulsante (T16), storico (T18) |
+| AC1, AC5–AC7, AC14–AC18, AC21, AC22, AC26, AC29, AC30, AC40, AC41 | UI, test dei componenti | PR F (T14–T19); il giro nel browser vero e la misura di AC18 sono di T12b |
 | OQ1 (riconoscimento) | Caratterizzato, nel dominio | T2 sul codice di oggi; i suoi casi hanno il gemello in `plan.test.ts` (chi si aggiorna). Quali valori riceve ogni cliente (AC35) è di T9 |
 
 ## Pre-existing Issues
@@ -126,7 +133,7 @@ Decisioni di T8b–T13:
 - T0 (limite della rewrite di Vercel), prima di T11: serve il Chrome di Leonardo con Vercel aperto o una sessione sul Mac, perché il container non raggiunge staging.
 - Leonardo lancia `sh apps/api/gcp/setup-import-queue.sh` dal Mac (T12a).
 - T12b: memoria del backend. Il test di T13 ha visto 745 MiB di picco, ma è il processo di vitest intero: la misura vera è su staging.
-- PR F (UI, T14–T19) e G (T20).
+- PR G (T20), poi il giro nel browser di T14–T19 con T12b.
 - Prima del primo merge su `dev`: conferma di Leonardo che la promozione `dev` → `main` resta ferma fino al go/no-go (PLAN §10).
 
 ## Steering
@@ -134,4 +141,4 @@ Decisioni di T8b–T13:
 | Date | Feedback | Changes |
 |------|----------|---------|
 | 2026-10-24 | Leonardo: ok al piano, si parte dalla PR A | — |
-| 2026-10-25 | Leonardo: "vai continua", poi "possiamo proseguire" | PR C, D ed E |
+| 2026-10-25 | Leonardo: "vai continua", poi "possiamo proseguire" | PR C, D, E ed F |
