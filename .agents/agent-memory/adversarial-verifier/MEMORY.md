@@ -109,4 +109,4 @@
 - [Removed guard layer mutants](feedback_removed_guard_layer_mutants.md) — dropped 2nd guard: mutate the call shape (authCheck(req))
 - [Layer mock blind spots](feedback_layer_mock_blind_spots.md) — throw-in-real-layer probe plus no-mock control
 - [Flag-flip target env](feedback_flag_flip_target_env_probe.md) — a remedy that flips a rewrite flag: check the target's deploy env (set-env-vars
-- [Deferred precondition attribution](feedback_deferred_precondition_attribution.md) — grep the other step for each item; own deploy wipes hand fixes
+- [Deferred precondition attribution](feedback_deferred_precondition_attribution.md) — grep the other step per item; deploy wipes hand fixes; prechecks vacuous or unsatisfiable
