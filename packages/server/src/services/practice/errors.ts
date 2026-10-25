@@ -1,6 +1,6 @@
 import { TRPCError } from "@trpc/server"
 import { Data } from "effect"
-import { contactErrorCause, contactErrorToTrpc } from "../contact/errors"
+import { contactErrorCause } from "../contact/errors"
 import { type CustomerMissing } from "../../effect/db"
 
 /** The practice doesn't exist. */
@@ -16,7 +16,8 @@ export type PracticeError = PracticeNotFound | PracticeExists | CustomerExists
 
 /**
  * The `TRPCError` for a practice error, passed to `runTrpc` by the practice
- * procedures. `CustomerMissing` goes to `contactErrorToTrpc`.
+ * procedures. `CustomerMissing` (the holder of a new practice doesn't exist)
+ * carries `CUSTOMER_NOT_FOUND`, so the form says "Cliente non trovato".
  */
 export const practiceErrorToTrpc = (
   error: PracticeError | CustomerMissing
@@ -40,7 +41,11 @@ export const practiceErrorToTrpc = (
         message: "Un cliente collegato esiste già",
         cause: contactErrorCause("CUSTOMER_EXISTS", {}),
       })
-    default:
-      return contactErrorToTrpc(error)
+    case "CustomerMissing":
+      return new TRPCError({
+        code: "BAD_REQUEST",
+        message: `Cliente non trovato: ${error.customerId}`,
+        cause: contactErrorCause("CUSTOMER_NOT_FOUND", {}),
+      })
   }
 }

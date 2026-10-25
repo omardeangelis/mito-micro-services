@@ -165,6 +165,8 @@ describe("pratiche.getPraticaById", () => {
   })
 })
 
+// PGlite le ordina anche senza `ORDER BY`: il test che lo protegge è in
+// `queries.pg.test.ts`
 describe("pratiche.getAllAvailableRegion", () => {
   it("restituisce una riga per regione distinta in ordine alfabetico, null per ultima", async () => {
     const chiamante = await createOperator()

@@ -30,12 +30,27 @@ const createPraticaInput = z.object({
   }),
   /** The holder, an existing customer. */
   customerId: z.string().min(1),
-  /** New customers, assigned to whoever creates the practice. */
+  /**
+   * New customers, assigned to whoever creates the practice: the columns of
+   * the form, with no operator, chat, blacklist state or dates.
+   */
   relatedCustomers: z.array(
-    insertCustomerSchema.omit({ operatorId: true, fileName: true }).extend({
-      id: z.string().min(1),
-      role: z.enum(["Coobbligato", "Garante"]),
-    })
+    insertCustomerSchema
+      .pick({
+        name: true,
+        surname: true,
+        phoneNumber: true,
+        fiscalCode: true,
+        vatCode: true,
+        tempID: true,
+        uniqueHash: true,
+        source: true,
+      })
+      .extend({
+        id: z.string().min(1),
+        email: z.string().email(),
+        role: z.enum(["Coobbligato", "Garante"]),
+      })
   ),
 })
 

@@ -194,6 +194,7 @@ describe.skipIf(!hasTestDatabase)(
             relatedCustomers: [
               {
                 id: "rel-nuovo",
+                email: "rel-nuovo@test.local",
                 tempID: "temp-rel-nuovo",
                 uniqueHash: "hash-rel-nuovo",
                 source: "spontaneo",
@@ -201,6 +202,7 @@ describe.skipIf(!hasTestDatabase)(
               },
               {
                 id: secondCustomer.id,
+                email: "rel-esistente@test.local",
                 tempID: "temp-rel-esistente",
                 uniqueHash: "hash-rel-esistente",
                 source: "spontaneo",

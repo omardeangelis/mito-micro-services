@@ -380,6 +380,72 @@ describe("pratiche.createPratica", () => {
     expect(row.operatorId).toBeNull()
   })
 
+  it("dei clienti collegati scrive solo le colonne del form: operatore, chat, blacklist e date dell'input non passano", async () => {
+    const { holder, operator, caller } = await seedHolder()
+    const other = await createOperator()
+    const createdAt = new Date("2000-01-01T00:00:00.000Z")
+
+    await caller.pratiche.createPratica({
+      pratica: praticaInput,
+      customerId: holder.id,
+      relatedCustomers: [
+        {
+          ...related("a", "Garante"),
+          operatorId: other.id,
+          chatId: 999,
+          blackListStatus: "blacklisted",
+          createdAt,
+        } as never,
+      ],
+    })
+
+    const row = await customerRow("rel-a")
+    expect(row).toMatchObject({
+      operatorId: operator.id,
+      chatId: null,
+      blackListStatus: "whitelisted",
+    })
+    expect(row.createdAt).not.toEqual(createdAt)
+  })
+
+  it.each([
+    {
+      caso: "un cliente collegato con un'email non valida",
+      input: {
+        relatedCustomers: [
+          { ...related("a", "Garante"), email: "non-una-email" },
+        ],
+      },
+    },
+    {
+      caso: "un cliente collegato con il ruolo di intestatario",
+      input: {
+        relatedCustomers: [
+          { ...related("a", "Garante"), role: "Intestatario" },
+        ],
+      },
+    },
+    { caso: "un intestatario vuoto", input: { customerId: "" } },
+  ])(
+    "con $caso risponde BAD_REQUEST e non scrive niente",
+    async ({ input }) => {
+      const { holder, caller } = await seedHolder()
+      const before = await snapshot()
+
+      const error = await rejectionOf(
+        caller.pratiche.createPratica({
+          pratica: praticaInput,
+          customerId: holder.id,
+          relatedCustomers: [],
+          ...input,
+        } as never)
+      )
+
+      expect(error).toMatchObject({ code: "BAD_REQUEST" })
+      expect(await snapshot()).toEqual(before)
+    }
+  )
+
   it("con un praticaId già presente risponde CONFLICT 'Questa pratica esiste già' e non scrive niente", async () => {
     const { rows } = await seedPractices(["esistente"])
     const { holder, caller } = await seedHolder()
@@ -425,7 +491,7 @@ describe("pratiche.createPratica", () => {
     expect(await snapshot()).toEqual(before)
   })
 
-  it("con un intestatario che non esiste risponde BAD_REQUEST e annulla tutto", async () => {
+  it("con un intestatario che non esiste risponde BAD_REQUEST 'Cliente non trovato' e annulla tutto", async () => {
     const { caller } = await seedHolder()
     const before = await snapshot()
 
@@ -440,6 +506,7 @@ describe("pratiche.createPratica", () => {
     expect(error).toMatchObject({
       code: "BAD_REQUEST",
       message: "Cliente non trovato: inesistente",
+      cause: { code: "CUSTOMER_NOT_FOUND" },
     })
     expect(await snapshot()).toEqual(before)
   })
