@@ -422,9 +422,9 @@ T0 è una prova senza PR; T12b è la prova finale su staging dopo F e G.
 - **location**: `src/lib/import/read.worker.ts`, `src/lib/import/readImportFile.ts`, `src/lib/import/upload.ts`, `src/trpc/react.tsx` (`splitLink` e `loggerLink` per `import.*`) + `_test/`
 - **description**: `readImportFile(file, signal)`: tipo ed estensione (`.xlsx`, `.xls`, `.csv`) e 15 MB controllati prima di leggere (AC5); poi un Web Worker modulo esegue `parseWorkbook` (T4), `detectFormat` (T3), classificazione e raggruppamento, e restituisce formato, intestazioni, righe del foglio come testo (per il report, D16), le chiavi da cercare e il corpo compresso di D3. `previewImport` chiama `import.lookup` e `planRows` (T8a). `signal` termina il worker (AC18). `uploadAndStart` manda i pezzi uno alla volta e poi `import.start` con l'esito atteso. Nessun `console.*`.
 - **validation**: test: un `.pdf` → "Formato non supportato: carica un file Excel o CSV" senza leggere il file; 16 MB → "Il file supera i 15 MB"; le celle di un workbook di prova sono quelle di T1; un corpo da 5 MB parte in 3 richieste separate; una chiamata `import.*` fallita non scrive nulla in console. Nel browser: con 20.000 righe "Annulla" ferma la lettura entro 1 s.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-10-25, #88. Worker modulo con una sessione per file (`session.ts`): lettura, anteprima, corpo gzip e report, una domanda alla volta; alla pagina arrivano solo numeri, numeri di riga e il corpo. Un file con più di 50.000 righe ha un messaggio nell'anteprima ("Il file ha più di 50.000 righe"). Parti da 1,5 MB grezzi (2 MB in base64). Nel browser (Annulla entro 1 s su 20.000 righe): in T12b
+- **files edited/created**: `src/lib/import/session.ts`, `messages.ts`, `readImportFile.ts`, `read.worker.ts`, `upload.ts`, `parseWorkbook.ts`; `src/trpc/links.ts`, `src/trpc/react.tsx`; test in `src/lib/import/_test/` e `src/trpc/_test/links.test.ts`
 - **backlog_item_id**: —
 - **backlog_item_url**: —
 - **relation_mode**: body-links
@@ -439,9 +439,9 @@ T0 è una prova senza PR; T12b è la prova finale su staging dopo F e G.
 - **location**: `src/lib/import/errorReport.ts` + `_test/`
 - **description**: `buildErrorReport(headers, sheetRows, discarded, fileName, today)` → workbook con un foglio: "Riga", "Errori" (motivi separati da "; "), poi tutte le colonne del file nello stesso ordine e con i valori come testo del foglio (AC14, D16); nome `errori_import_<nome senza estensione>_<AAAA-MM-GG>.xlsx`. Nessun upload (AC15).
 - **validation**: test che rilegge il workbook con `xlsx`: intestazioni, numero di riga come in Excel, motivi uniti, colonne in più conservate, CAP "00185" uguale.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-10-25, #88. Haiku con il brief, rivisto da Opus. I testi delle celle li dà `parseWorkbook` (`textOf`, `format_cell` sulle colonne del foglio). 8 test, in UTC e a Roma
+- **files edited/created**: `src/lib/import/errorReport.ts`, `src/lib/import/_test/errorReport.test.ts`
 - **backlog_item_id**: —
 - **backlog_item_url**: —
 - **relation_mode**: body-links
@@ -455,9 +455,9 @@ T0 è una prova senza PR; T12b è la prova finale su staging dopo F e G.
 - **location**: `src/app/dashboard/import/page.tsx`, `src/app/_components/DashboardLayout.tsx`, `src/app/dashboard/page.tsx` + `_test/`
 - **description**: pagina server che legge il ruolo con `api.user.getUserPreference` (la sessione non ha il ruolo; come `CallsSection.tsx`) e risponde `notFound()` a un non admin; voce "Import" nel menu solo per gli admin; il pulsante "Nuovo import" della dashboard, solo per gli admin, diventa un link alla pagina (AC1, AC28). `WorkerImportDialog` esce dalla dashboard (lo cancella T20).
 - **validation**: test: con un operatore il menu non ha "Import", la dashboard non ha "Nuovo import" e la pagina risponde 404; con un admin il menu ha la voce e il pulsante porta a `/dashboard/import`.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-10-25, #88. Il pulsante della dashboard è `ImportLink`, componente server come `CallsSection`. Nel browser: in T12b
+- **files edited/created**: `src/app/dashboard/import/page.tsx`, `src/app/dashboard/_components/ImportLink.tsx`, `src/app/dashboard/page.tsx`, `src/app/_components/DashboardLayout.tsx` + test
 - **backlog_item_id**: —
 - **backlog_item_url**: —
 - **relation_mode**: body-links
@@ -472,9 +472,9 @@ T0 è una prova senza PR; T12b è la prova finale su staging dopo F e G.
 - **location**: `src/app/dashboard/import/_components/NewImport.tsx`, `ImportPreview.tsx` + `_test/`
 - **description**: area di trascinamento e selettore (AC5), messaggi di AC6, anteprima con i numeri (AC7), "Nessuna riga da importare" senza conferma (AC16), download del report (AC14), "Annulla" senza chiamate al server (AC17), conferma con "Invio del file…" (§5) e il messaggio di AC22 se rifiutata, stato "In corso" quando `import.start` risponde. Testi in italiano (AC40). Tutto da tastiera; lettura, inizio, fine e fallimento annunciati con una regione `aria-live` (AC41).
 - **validation**: test dei componenti (jsdom) per ogni stato; "Annulla" non chiama procedure di scrittura; nel browser: percorso completo con un file Wave e uno Standard, solo tastiera, annunci al lettore di schermo; misura di AC18 (20.000 righe, anteprima < 10 s in locale).
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-10-25, #88. Stati in `useNewImport`; 12 test dei componenti. Il messaggio del server si mostra solo per `BAD_REQUEST`, `CONFLICT`, `PRECONDITION_FAILED` e `NOT_FOUND`. Nel browser (percorso con Wave e Standard, tastiera, lettore di schermo, AC18): in T12b
+- **files edited/created**: `src/app/dashboard/import/_components/NewImport.tsx`, `ImportPreview.tsx`, `useNewImport.ts` + test
 - **backlog_item_id**: —
 - **backlog_item_url**: —
 - **relation_mode**: body-links
@@ -489,9 +489,9 @@ T0 è una prova senza PR; T12b è la prova finale su staging dopo F e G.
 - **location**: `src/app/dashboard/import/_components/ImportHistory.tsx` + `_test/`
 - **description**: tabella da `import.list`, 20 per pagina, dal più recente: data e ora di Roma, admin, file, formato, stato ("In corso", "Completato", "Fallito", "Interrotto"), durata, numeri del riepilogo; motivo del fallimento leggibile (AC28, AC29, AC30).
 - **validation**: test: le quattro etichette di stato; paginazione a 20; un fallito mostra il motivo.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-10-25, #88. `HISTORY_PAGE_SIZE` passa nel dominio, usato da pagina e servizio. 8 test
+- **files edited/created**: `src/app/dashboard/import/_components/ImportHistory.tsx`, `format.ts`; `packages/domain/src/import/payload.ts`, `packages/server/src/services/import/history.ts` + test
 - **backlog_item_id**: —
 - **backlog_item_url**: —
 - **relation_mode**: body-links
@@ -506,9 +506,9 @@ T0 è una prova senza PR; T12b è la prova finale su staging dopo F e G.
 - **location**: `src/app/_context/ImportStatus.tsx` (provider nel layout della dashboard, solo admin), `src/app/dashboard/layout.tsx` + `_test/`
 - **description**: mentre `import.active` dice che un import di questo admin è in corso, polling ogni 3 s (D15). All'esito: avviso in qualunque pagina, in una regione `aria-live` (AC21, AC41); `router.refresh()` per Clienti, Pratiche e "Ultime Pratiche Aggiornate", e invalidazione di `customer.getAllFileName` (filtro "File") e `import.list` (AC26). Nessun polling per gli operatori né senza import in corso.
 - **validation**: test: al passaggio da `running` a `completed` compare l'avviso, `router.refresh` è chiamato e le due query sono invalidate; con un operatore nessuna richiesta a `import.active`. Nel browser: import avviato, navigazione in Clienti, avviso e lista aggiornata senza ricaricare.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-10-25, #88. Il provider segue l'import confermato dal suo `runId` (`watch`), così l'avviso arriva anche per un import finito prima della prima domanda. L'avviso è il toast, che Radix annuncia nella sua regione live: nessuna seconda regione. `router.refresh()` e il filtro "File" solo per un import completato. 6 test con il client tRPC vero e un link finto. Nel browser: in T12b
+- **files edited/created**: `src/app/_context/ImportStatus.tsx`, `src/app/dashboard/layout.tsx`, `src/app/dashboard/import/_components/format.ts` (`endingNotice`) + test
 - **backlog_item_id**: —
 - **backlog_item_url**: —
 - **relation_mode**: body-links
