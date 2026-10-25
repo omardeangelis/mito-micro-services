@@ -42,7 +42,14 @@ export const sendCustomerMessage = ({
           .from(customers)
           .where(eq(customers.chatId, chatId))
       )
-      if (customer) yield* lockCustomer(customer.id)
+      if (customer) {
+        yield* lockCustomer(customer.id).pipe(
+          // The customer went while this send waited: so did its chat
+          Effect.catchTag("CustomerMissing", () =>
+            Effect.fail(new ChatMissing({ chatId }))
+          )
+        )
+      }
 
       // Under the lock: the chat may have gone with its last note meanwhile
       const [found] = yield* query((client) =>
@@ -66,9 +73,5 @@ export const sendCustomerMessage = ({
         client.update(chat).set({ isRead: false }).where(eq(chat.id, chatId))
       )
       return inserted[0]
-    }).pipe(
-      Effect.catchTag("CustomerMissing", () =>
-        Effect.fail(new ChatMissing({ chatId }))
-      )
-    )
+    })
   )

@@ -4,11 +4,7 @@ import { operatorProcedure } from "../../../trpc"
 import { runTrpc } from "../../../../effect/trpc"
 import { listChatMessages } from "../../../../services/chat/queries"
 
-const chatPartialSchema = selectChatSchema.pick({
-  id: true,
-})
-
-const chatMessageByIdInput = chatPartialSchema.extend({
+const chatMessageByIdInput = selectChatSchema.pick({ id: true }).extend({
   limit: z.number().optional().default(5),
 })
 
