@@ -3,7 +3,7 @@ domain: _root
 type: index
 links: []
 created: 2026-09-24
-updated: 2026-10-24
+updated: 2026-10-25
 ---
 
 # Brain — Log
@@ -11,6 +11,61 @@ updated: 2026-10-24
 Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest when over.
 
 <!-- Entries are appended by create-spec (spec creation) and docs-maintenance (ingest). Format:
+
+## [2026-10-25] merge | Pratiche: passo 4 in `dev`
+- [PR #83](https://github.com/omardeangelis/mito-micro-services/pull/83) unita in `dev` (`eba251b`): passo 4 della migrazione a Effect e correzioni di TD9
+- TD9 in [[chore/migrazione-effect]] §7: `[OPEN]` solo (k) (l'import, B1), le altre `[CLOSED 2026-10-25]`; righe del §4, §5 e dei livelli L1, L2 aggiornate
+
+## [2026-10-25] review | Pratiche: rilancio sulle correzioni
+- Review: [[specs/crm/pratiche-effect/REPORT]], `4ca830c..bef07ae`, v1, v3, v4, v5 rilanciati
+- SHIP, impact critical: M1–M3 corretti e provati coi mutanti; M4 solo in parte (il `customerId` vuoto non è distinto dalla FK)
+- B1 resta debito accettato; il piano del debito va allargato alle rotte REST dell'import
+- 5 MINOR (test di id vuoti e partita IVA, righe vecchie delle note, m6 e m7)
+
+## [2026-10-25] implement | Pratiche: correzioni della seconda review
+- Spec: [[specs/crm/pratiche-effect/IMPLEMENTATION-NOTES]], commit `8d3d33c`
+- M1–M4 corretti: "Cliente non trovato" nel form, input dei clienti collegati ristretto alle colonne del form, test di validazione, ordine delle regioni provato su postgres-js
+- B1 lasciato come debito (decisione di Omar): TD9 (k) riaperta per `import.updateExistingPractices`, in [[tech-debt/crm/gestione-operatori]]
+- Gate locali: tsc, ESLint, suite completa con Postgres (3383 test)
+
+## [2026-10-25] review | Pratiche: correzioni di TD9 (giro 2)
+- Report: [[specs/crm/pratiche-effect/REPORT]]
+- Scope: spec
+- Verdict: DO NOT SHIP
+- Impact: critical
+- Verifiers: 5 (1 blockers, 4 major)
+
+## [2026-10-25] implement | Pratiche: stranezze di TD9 corrette
+- `pratiche.createPratica` sostituisce `insertPratica` e `connectPraticaAndCustomer`: una transazione, errori `PRACTICE_EXISTS` e `CUSTOMER_EXISTS`
+- `getPraticaById` `operatorProcedure` e `NOT_FOUND`; regioni e alert ordinati; `id` obbligatorio, niente `operatorId` né risposta grezza nelle due scritture del dettaglio
+- Pagine: [[chore/migrazione-effect]] (TD9 `[CLOSED 2026-10-25]`), [[tech-debt/crm/gestione-operatori]], [[specs/crm/pratiche-effect/IMPLEMENTATION-NOTES]]
+
+## [2026-10-25] implement | Pratiche: email e telefono del cliente, via l'assegnazione massiva
+- Corretto l'input dell'id del cliente in `CustomerSection.tsx` (`type="hidden"`), con un test del componente
+- Tolta l'assegnazione massiva delle pratiche: dialog, server action, store, `pratiche.bulkAssignPractices`, `assignPractices`; TD9 (k) senza oggetto
+- Pagine: [[tech-debt/crm/pratiche-effect]], [[tech-debt/crm/gestione-operatori]], [[chore/migrazione-effect]]
+
+## [2026-10-25] review | Router `pratiche` e letture di `task` su Effect (passo 4)
+- Report: [[specs/crm/pratiche-effect/REPORT]], rubric: [[specs/crm/pratiche-effect/RUBRIC]]
+- Verdict: SHIP · critical · human checklist (7 punti). Al primo giro v7 DO NOT SHIP per AC14 (numeri di riga in [[tech-debt/crm/filtri-sql-sicuri]]), corretto e rilanciato
+- 7 passi (permessi, `bulkHandleTask`, scritture, SQL del client, letture, validità dei test, controlli statici): nessun BLOCKER; due test aggiunti dopo la review, verdi anche sulla base
+
+## [2026-10-25] implement | Router `pratiche` e letture di `task` su Effect (passo 4)
+- Spec: [[specs/crm/pratiche-effect/SPEC]] (implemented), note: [[specs/crm/pratiche-effect/IMPLEMENTATION-NOTES]]
+- Branch `claude/pratiche-effect`, non pushato: caratterizzazione (`7c5c77d`), rimozione delle 5 procedure senza chiamanti, servizi `services/practice/` e `services/contact/{queries,bulkHandleTask}.ts`, adapter
+- Mutanti: 47 sul codice inline e 45 sui servizi, tutti uccisi; tipi delle 20 procedure uguali a `5b61b3f`; gate di CI verdi in locale; prova nel browser su `mito_local`
+- Debito: TD9 `[PREVISTO]` in [[chore/migrazione-effect]]; [[tech-debt/crm/pratiche-effect]] nuovo (bug della UI già presenti)
+
+## [2026-10-25] plan | Router `pratiche` e letture di `task` su Effect (passo 4 della migrazione)
+- Spec: [[specs/crm/pratiche-effect/SPEC]] (rivista dopo la verifica: DO NOT SHIP, 0 blocker, 3 major; AC7 e AC9 corretti dopo la verifica del piano), piano: [[specs/crm/pratiche-effect/PLAN]]
+- 13 task in una PR, dopo il gate G0, verificati dall'`adversarial-verifier` (DO NOT SHIP, 1 blocker, 5 major, corretti): caratterizzazione di letture, scritture, middleware delle 20 procedure e ordine di `bulkHandleTask`, con i mutanti sul codice inline; `*.pg.test.ts` sulle `update`; rimozione delle 5 procedure senza chiamanti; servizi in `services/practice/`, `services/contact/` e `services/customer/profile.ts`; gate con confronto dei tipi, mutanti, prova nel browser e review
+- Debito della migrazione: TD9 `[PREVISTO]` in [[chore/migrazione-effect]]
+- Nessuna revisione obbligatoria di Leonardo (Omar, 2026-10-25)
+
+## [2026-10-25] spec | Router `pratiche` e letture di `task` su Effect (passo 4 della migrazione)
+- Created spec: [[specs/crm/pratiche-effect/SPEC]]
+- Domain: crm
+- Status: Draft
 
 ## [2026-10-24] ingest | Router `customer` su Effect (passo 2 della migrazione)
 - Source: [[specs/crm/customer-effect/SPEC]]
@@ -242,13 +297,6 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 - Spec: [[specs/crm/sezione-contatti/PLAN]]
 - Correzioni della review di T4.5 e T4.6; eliminazione della nota solo dell'autore, con il cliente bloccato (AC79, D21)
 
-## [2026-10-16] review | Sezione Contatti — PR4, T4.5 e T4.6
-- Report: [[specs/crm/sezione-contatti/REPORT]]
-- Scope: spec
-- Verdict: DO NOT SHIP
-- Impact: medium
-- Verifiers: 2 (1 blockers, 3 major)
-
 ## [YYYY-MM-DD] ingest | <spec title>
 - Source: [[specs/<domain>/<spec>/SPEC]]
 - Flows written: <count>
@@ -259,55 +307,3 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 - Plan: [[specs/crm/seeder-locale/PLAN]]; spec passata ad `approved`
 - Decisioni di Omar: servizi `update` e `cleanup-task-event-log` su Effect con `Db` (D1); giro completo a 10.000 anche in CI (D2); due PR, A (refactor + via i seed di oggi) e B (seeder) (D3)
 - T7.1c del piano di Contatti segnato "Sostituito"; T7.3 non lo aspetta più
-
-## [2026-10-21] spec | Seeder del database locale, con gli scenari dei cron
-- Created spec: [[specs/crm/seeder-locale/SPEC]]
-- Domain: crm
-- Status: Draft
-
-## [2026-10-20] spec | Filtri avanzati sicuri di Clienti e Pratiche
-- Spec: [[specs/crm/filtri-sql-sicuri/SPEC]] (bozza, `status: draft`), da [[tech-debt/crm/search-by-explicit-map]]
-- Scope: riforma di sicurezza dei filtri avanzati; chiude la SQL-injection `sql.raw` di `customer.getAllCustomers` e `pratiche.getAllPratiche` (confermata da prova di sfruttamento su Postgres reale, 4/4)
-- Decisioni di Omar: filtri strutturati + URL invariato, backend ignora subito `sqlFilter`, voci non valide scartate, Clienti+Pratiche in una PR
-- Gate `adversarial-verifier` (total): DO NOT SHIP al primo giro (1 MAJOR baseline post-PR6 + 3 MINOR); findings ripiegati nella bozza
-- Attende approvazione di Omar e la data; esce dopo PR6 della Sezione Contatti. Fix non implementato.
-
-## [2026-10-15] review-ingest | search_by con mappa esplicita (Clienti e Pratiche)
-- Report: [[review/search-by-explicit-map/REPORT]]
-- Verdict: SHIP
-- Durable findings folded to tech debt: 8 in [[tech-debt/crm/search-by-explicit-map]] (2 di sicurezza, 3 di accessibilità, 3 piccoli; il `console.log` su richiesta del proprietario di prodotto)
-
-## [2026-10-15] review | search_by con mappa esplicita (Clienti e Pratiche) — dal secondo al quinto giro
-- Report: [[review/search-by-explicit-map/REPORT]]
-- Scope: standalone
-- Verdict: SHIP (prima: DO NOT SHIP)
-- Impact: critical
-- Verifiers: secondo giro 8 su haiku (1 blocker, 1 major: badge fermo dopo back/avanti, titolo di test); terzo 4 (2 major sui test e sul badge di Pratiche); quarto 2 (2 major sui test del selettore); quinto 2 (SHIP, 4 minor sui test chiuse da `ee889e9`)
-
-## [2026-10-15] review | search_by con mappa esplicita (Clienti e Pratiche)
-- Report: [[review/search-by-explicit-map/REPORT]]
-- Scope: standalone
-- Verdict: DO NOT SHIP
-- Impact: critical
-- Verifiers: 7 su haiku (1 blocker, 1 major): ricerca per Comune scartata dall'enum
-
-## [2026-09-26] review | Sezione Contatti — PR1, terza verifica e smoke
-- Report: [[specs/crm/sezione-contatti/REPORT]]
-- Scope: spec
-- Verdict: SHIP
-- Impact: critical
-- Verifiers: v4 SHIP su "Assegna Clienti" e minor urgenti (vA interrotto); smoke sul DB di sviluppo (815 alert, 8 fallimenti di connessione isolati); cron a tempo aggiunto dopo la misura; poi `alert.js` che ripete dopo 10 s le chiamate che non arrivano in fondo (504, 5xx, rete, esecuzione fallita), non verificato
-
-## [2026-09-25] review | Sezione Contatti — PR1, seconda verifica
-- Report: [[specs/crm/sezione-contatti/REPORT]]
-- Scope: spec
-- Verdict: SHIP (prima: DO NOT SHIP)
-- Impact: critical
-- Verifiers: 3 rieseguiti (v1, v2, v3) su `87ff79e`; 0 blockers, 0 major, 5 minor
-
-## [2026-09-25] review | Sezione Contatti — PR1 "Percorsi di creazione sicuri"
-- Report: [[specs/crm/sezione-contatti/REPORT]]
-- Scope: spec
-- Verdict: DO NOT SHIP
-- Impact: critical
-- Verifiers: 7 (1 blockers, 4 major)

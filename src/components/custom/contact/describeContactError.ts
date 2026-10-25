@@ -54,6 +54,12 @@ export const describeContactError = (error: unknown): string => {
       return "Cliente non trovato"
     case "ALERT_CONFIRMATION_REQUIRED":
       return "Il contatto ha un richiamo aperto da confermare"
+    case "PRACTICE_NOT_FOUND":
+      return "Pratica non trovata"
+    case "PRACTICE_EXISTS":
+      return "Questa pratica esiste già"
+    case "CUSTOMER_EXISTS":
+      return "Un cliente collegato esiste già"
     default: {
       // A new code in `contactErrorCodes` makes this assignment fail to compile
       const unhandled: never = contactError

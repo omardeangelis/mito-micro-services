@@ -29,4 +29,13 @@ describe("task router", () => {
       procedure
     )
   })
+
+  it.each(["getTaskById", "getTasksToExport"])(
+    "non espone più la procedura senza chiamanti %s",
+    (procedure) => {
+      expect(Object.keys(appRouter._def.record.task._def.record)).not.toContain(
+        procedure
+      )
+    }
+  )
 })
