@@ -128,11 +128,12 @@ describe("import_upload", () => {
 
     expect(upload?.id).toMatch(/^[0-9a-f-]{36}$/)
     expect(upload?.runId).toBeNull()
+    expect(upload?.expected).toBeNull()
     expect([...stored!.data]).toEqual([...bytes])
     expect(again).toBe("23505")
   })
 
-  it("un upload si collega al suo import", async () => {
+  it("un upload si collega al suo import, con le righe confermate", async () => {
     const admin = await createUser({ role: "ADMIN" })
     const [started] = await testDb
       .insert(importRun)
@@ -146,10 +147,12 @@ describe("import_upload", () => {
         format: "wave",
         parts: 1,
         runId: started!.id,
+        expected: [2, 3, 5],
       })
       .returning()
 
     expect(upload?.runId).toBe(started!.id)
+    expect(upload?.expected).toEqual([2, 3, 5])
     expect(
       await codeOf(
         testDb.insert(importUpload).values({

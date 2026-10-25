@@ -26,7 +26,8 @@ CREATE TABLE "mito-deutsche_import_upload" (
 	"file_name" varchar(255) NOT NULL,
 	"format" "import_format" NOT NULL,
 	"parts" integer NOT NULL,
-	"run_id" integer
+	"run_id" integer,
+	"expected" integer[]
 );
 --> statement-breakpoint
 CREATE TABLE "mito-deutsche_import_upload_part" (
