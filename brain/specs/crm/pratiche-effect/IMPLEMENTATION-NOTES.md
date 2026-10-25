@@ -29,8 +29,14 @@ updated: 2026-10-25
   - `baf95df`, `d505078`, `fe18f5b`, `12297e7`: documenti, note, correzioni della review, REPORT.
 - Le 20 procedure che restano di `pratiche` e `task` sono adapter di servizi in `services/practice/`, `services/contact/` e `services/customer/profile.ts`, a comportamento invariato. Le 5 procedure senza chiamanti non ci sono più.
 - Dopo la review, su richiesta dell'utente: corretto l'input dell'id in `CustomerSection.tsx` (email e telefono dal dettaglio di una pratica ora si salvano) e tolta l'assegnazione massiva delle pratiche, procedura `bulkAssignPractices` compresa. Vedi [[tech-debt/crm/pratiche-effect]].
-- Poi, sempre su richiesta dell'utente, le stranezze di TD9 sono corrette nello stesso branch, invece che dopo il merge: il comportamento cambia rispetto a AC9, AC10 e AC12, che chiedevano di conservarle. `insertPratica` e `connectPraticaAndCustomer` lasciano il posto a `pratiche.createPratica`, una transazione sola. Restano 18 procedure (6 di `pratiche`, 12 di `task`), tutte `operatorProcedure` o `adminProcedure`. TD9 è `[CLOSED 2026-10-25]`; il punto (6) della checklist del REPORT non ha più oggetto.
+- Poi, sempre su richiesta dell'utente, le stranezze di TD9 sono corrette nello stesso branch, invece che dopo il merge: il comportamento cambia rispetto a AC9, AC10 e AC12, che chiedevano di conservarle. `insertPratica` e `connectPraticaAndCustomer` lasciano il posto a `pratiche.createPratica`, una transazione sola. Restano 18 procedure (6 di `pratiche`, 12 di `task`), tutte `operatorProcedure` o `adminProcedure`. TD9 è chiusa tranne (k), riaperta dopo la seconda review; il punto (6) della checklist del REPORT non ha più oggetto.
 - Review avversariale: **SHIP**, impatto critico, con la checklist umana ([[specs/crm/pratiche-effect/REPORT]]). Al primo giro un solo passo su sette dava DO NOT SHIP, per un MAJOR sui documenti (AC14).
+- Seconda review, sulle correzioni di TD9 (`def7bd0..4ca830c`): **DO NOT SHIP**, 1 BLOCKER e 4 MAJOR. Corretti dopo:
+  - M1: il cliente mancante di `createPratica` porta `CUSTOMER_NOT_FOUND`, e il form dice "Cliente non trovato" invece di "Modifica non salvata, riprova" (`practiceErrorToTrpc`; test del traduttore in-process e via HTTP in `services/practice/_test/errors.db.test.ts`);
+  - M2: l'ordine delle regioni ha un test su postgres-js (`pratiche/_test/queries.pg.test.ts`, con `ANALYZE`): senza `ORDER BY` fallisce 4 volte su 4; su PGlite il mutante sopravvive, perché la `selectDistinct` ordina da sola;
+  - M3: i clienti collegati di `createPratica` prendono solo le colonne del form, con l'email valida: operatore, chat, blacklist e date dell'input non passano;
+  - M4: test `BAD_REQUEST` per il ruolo `Intestatario`, l'intestatario vuoto e l'email non valida.
+  - B1 non si corregge qui (decisione dell'utente): TD9 (k) riaperta, debito in [[tech-debt/crm/gestione-operatori]] per `import.updateExistingPractices`, da correggere in una PR sua.
 
 ## Execution Mode
 
@@ -100,9 +106,9 @@ Trovate nella prova nel browser (T11.5), già presenti a `5b61b3f`: il passo non
 | AC8 | met | T1, T2, T3, verdi su `7c5c77d` |
 | AC9 | met | T1–T4, verdi su `7c5c77d` |
 | AC10 | met | T5, verde su `7c5c77d` e in CI (progetto `pg`) |
-| AC11 | met | `git diff 7c5c77d..HEAD` sui test: solo AC7, un `import type` e due test aggiunti dalla review, verdi anche su `7c5c77d` |
-| AC12 | superato | TD9 scritta con le voci (a)–(m), poi corretta nello stesso branch e chiusa (`[CLOSED 2026-10-25]`) |
-| AC13 | met | Nessun file in `src/app/`, `packages/db/`, `packages/domain/`; in `src/components` solo `CustomerChat.test.tsx` |
+| AC11 | superato | Fino a `def7bd0`: solo AC7, un `import type` e due test aggiunti dalla review. Dopo, le asserzioni cambiano con le correzioni di TD9 |
+| AC12 | superato | TD9 scritta con le voci (a)–(m), poi corretta nello stesso branch; (k) riaperta per l'import (B1 della seconda review) |
+| AC13 | superato | Fino a `def7bd0` sì. Le correzioni di TD9 e dei bug della UI toccano `src/app/`, `packages/domain/` e `src/components/` |
 | AC14 | met | Dopo `fe18f5b`: §1, §4, §5, TD6 di [[chore/migrazione-effect]]; [[tech-debt/crm/filtri-sql-sicuri]] con i numeri di riga; [[tech-debt/crm/gestione-operatori]] |
 | AC15 | met in locale | Tutti i gate verdi nel worktree di gate; da confermare sulla CI della PR |
 

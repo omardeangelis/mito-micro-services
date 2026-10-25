@@ -59,7 +59,7 @@ Migrated from `docs/` on 2026-09-24. Source material for future `create-spec` ru
 ## Tech debt
 
 - [[tech-debt/crm/customer-effect]] — router `customer` su Effect (rilievi della review; le stranezze sono in TD8)
-- [[tech-debt/crm/pratiche-effect]] — router `pratiche` e letture di `task` su Effect (bug della UI trovati nella prova e corretti, follow-up; le stranezze di TD9 corrette)
+- [[tech-debt/crm/pratiche-effect]] — router `pratiche` e letture di `task` su Effect (bug della UI trovati nella prova e corretti, follow-up; le stranezze di TD9 corrette tranne (k), riaperta per l'import)
 - [[tech-debt/crm/export-chiamate]] — export chiamate (cron UTC/Roma, permessi dello storage, admin senza riga operatore)
 - [[tech-debt/crm/filtri-sql-sicuri]] — filtri avanzati sicuri (follow-up della review e di `$simplify`, errore `task_status` preesistente)
 
@@ -76,6 +76,7 @@ Migrated from `docs/` on 2026-09-24. Source material for future `create-spec` ru
 - [[specs/crm/filtri-sql-sicuri/REPORT|crm/filtri-sql-sicuri]] — spec · ship · critical · 2026-10-24
 - [[specs/crm/customer-effect/REPORT|crm/customer-effect]] — spec · ship (dopo le correzioni; prima do-not-ship) · critical · 2026-10-24
 - [[specs/crm/pratiche-effect/REPORT|crm/pratiche-effect]] — spec · ship (dopo la correzione di AC14; prima do-not-ship su un solo passo) · critical · 2026-10-25
+- [[specs/crm/pratiche-effect/REPORT|crm/pratiche-effect — correzioni di TD9]] — spec · do-not-ship (1 blocker, 4 major; poi M1–M4 corretti, B1 a debito) · critical · 2026-10-25
 - [[specs/crm/sezione-contatti/REPORT|crm/sezione-contatti — PR5b]] — spec · do-not-ship (primo giro: 3 BLOCKER e 11 MAJOR aperti) · critical · 2026-10-18
 - [[specs/crm/sezione-contatti/REPORT|crm/sezione-contatti — PR6]] — spec · ship (il codice: do-not-ship al primo giro, 0 BLOCKER e 2 MAJOR, poi corretti o accettati come debito; la migrazione di T6.9: ship dopo le correzioni, 0 BLOCKER) · critical · 2026-10-21
 - [[specs/crm/sezione-contatti/REPORT|crm/sezione-contatti — PR6 completa, terzo giro]] — spec · ship (do-not-ship al primo esito, 0 BLOCKER e 4 MAJOR: test dell'ordinamento di Clienti e tre frasi ereditate dei testi della massiva, accettati da Omar come debito) · critical · 2026-10-21

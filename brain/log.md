@@ -12,6 +12,19 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 
 <!-- Entries are appended by create-spec (spec creation) and docs-maintenance (ingest). Format:
 
+## [2026-10-25] implement | Pratiche: correzioni della seconda review
+- Spec: [[specs/crm/pratiche-effect/IMPLEMENTATION-NOTES]], commit `8d3d33c`
+- M1–M4 corretti: "Cliente non trovato" nel form, input dei clienti collegati ristretto alle colonne del form, test di validazione, ordine delle regioni provato su postgres-js
+- B1 lasciato come debito (decisione di Omar): TD9 (k) riaperta per `import.updateExistingPractices`, in [[tech-debt/crm/gestione-operatori]]
+- Gate locali: tsc, ESLint, suite completa con Postgres (3383 test)
+
+## [2026-10-25] review | Pratiche: correzioni di TD9 (giro 2)
+- Report: [[specs/crm/pratiche-effect/REPORT]]
+- Scope: spec
+- Verdict: DO NOT SHIP
+- Impact: critical
+- Verifiers: 5 (1 blockers, 4 major)
+
 ## [2026-10-25] implement | Pratiche: stranezze di TD9 corrette
 - `pratiche.createPratica` sostituisce `insertPratica` e `connectPraticaAndCustomer`: una transazione, errori `PRACTICE_EXISTS` e `CUSTOMER_EXISTS`
 - `getPraticaById` `operatorProcedure` e `NOT_FOUND`; regioni e alert ordinati; `id` obbligatorio, niente `operatorId` né risposta grezza nelle due scritture del dettaglio
@@ -291,15 +304,3 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 - Plan: [[specs/crm/seeder-locale/PLAN]]; spec passata ad `approved`
 - Decisioni di Omar: servizi `update` e `cleanup-task-event-log` su Effect con `Db` (D1); giro completo a 10.000 anche in CI (D2); due PR, A (refactor + via i seed di oggi) e B (seeder) (D3)
 - T7.1c del piano di Contatti segnato "Sostituito"; T7.3 non lo aspetta più
-
-## [2026-10-21] spec | Seeder del database locale, con gli scenari dei cron
-- Created spec: [[specs/crm/seeder-locale/SPEC]]
-- Domain: crm
-- Status: Draft
-
-## [2026-10-20] spec | Filtri avanzati sicuri di Clienti e Pratiche
-- Spec: [[specs/crm/filtri-sql-sicuri/SPEC]] (bozza, `status: draft`), da [[tech-debt/crm/search-by-explicit-map]]
-- Scope: riforma di sicurezza dei filtri avanzati; chiude la SQL-injection `sql.raw` di `customer.getAllCustomers` e `pratiche.getAllPratiche` (confermata da prova di sfruttamento su Postgres reale, 4/4)
-- Decisioni di Omar: filtri strutturati + URL invariato, backend ignora subito `sqlFilter`, voci non valide scartate, Clienti+Pratiche in una PR
-- Gate `adversarial-verifier` (total): DO NOT SHIP al primo giro (1 MAJOR baseline post-PR6 + 3 MINOR); findings ripiegati nella bozza
-- Attende approvazione di Omar e la data; esce dopo PR6 della Sezione Contatti. Fix non implementato.

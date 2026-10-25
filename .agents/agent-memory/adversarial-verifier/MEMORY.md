@@ -91,3 +91,6 @@
 - [Gate clone and count scope](feedback_gate_clone_and_doc_count_scope.md) — build a cp -c clone of clean HEAD, not the scratch gate; doc counts depend on scope
 - [Read-move parity battery](feedback_read_move_parity_battery.md) — normalised-text extract + typedump md5 + gate mutants; unique-index and inArray([]) equivalents; no-op mutant trap
 - [Write parity scratch-copy probe](feedback_write_parity_scratch_copy_probe.md) — @mito links into copy, reseed ctx for HTTP, mask pg now(), undefined norm, smallint FK
+- [Delegated translator cause probe](feedback_delegated_translator_cause_probe.md) — delegated tags (CustomerMissing) have no contact cause -> generic message; tsx shape recipe
+- [Removed capability twin, scratch vitest](feedback_removed_capability_twin_and_scratch_vitest.md) — grep all writers of the column across routers; scratch vitest config needs absolute imports
+- [Out-of-tree vitest probe](feedback_out_of_tree_vitest_probe.md) — probe both drivers from mktemp: node_modules symlink, workspace with root=repo, test.dir=tmp

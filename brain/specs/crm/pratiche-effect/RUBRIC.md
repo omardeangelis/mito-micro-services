@@ -64,3 +64,56 @@ Nessuno. Il punto (6) della checklist umana si legge con D16 del PLAN: TD9 resta
 | v5 | Parità delle letture | medium | balanced (Sonnet) |
 | v6 | Validità dei test di caratterizzazione | medium | balanced (Sonnet) |
 | v7 | Controlli statici e perimetro | low | fast (Haiku) |
+
+## [Round: 2026-10-25] Correzioni di TD9
+
+### Change set under review
+
+- **Scope:** spec implementation (caso B), [[specs/crm/pratiche-effect/SPEC]]. Per i punti corretti il contratto è la voce TD9 (a)–(m) in [[chore/migrazione-effect]] §7, che supera le parti "conserva il comportamento" di AC2, AC9–AC11 e AC13 (vedi [[specs/crm/pratiche-effect/IMPLEMENTATION-NOTES]])
+- **Target:** branch `claude/pratiche-effect`, [PR #83](https://github.com/omardeangelis/mito-micro-services/pull/83) verso `dev`
+- **Compared:** `def7bd0` → `4ca830c` (commit `0ff83c1` codice, `4ca830c` documenti)
+- **Files touched:** 27 file di codice e test, più 6 documenti di `brain/`, in un dominio: crm
+
+### Routing rubric (review-classifier output)
+
+```json
+{
+  "taskType": "security",
+  "secondaryType": "bugfix",
+  "domainsTouched": ["crm"],
+  "adversarialVerifiers": {
+    "count": 5,
+    "passes": [
+      { "id": "v1", "charter": "Authorization surface of the pratiche router: operatorProcedure everywhere (TD9 a); no caller-supplied operatorId reaches a write (TD9 d, g); createPratica calling the createCustomer service directly vs the old customer.insertCustomer procedure (checks skipped?); bulkAssignPractices gone end to end (TD9 k).", "complexity": "high" },
+      { "id": "v2", "charter": "Transactional write correctness of createPracticeWithCustomers: atomicity, createCustomer and query joining the enclosing transaction, SQLSTATE mapping on PGlite and postgres-js, the 'only the holder can be missing' assumption, edge cases (duplicate related ids, related id = holder, empty list, unique violation on the link table); updateCustomerContacts and updatePracticeFromDashboard write only allowed columns. TD9 d, e, f, j, m.", "complexity": "high" },
+      { "id": "v3", "charter": "Input contracts and data fidelity: createPratica pick list vs NewPraticaForm fields, productId mapping, relatedCustomers omit/extend and role restriction, { praticaId } response; required ids; the email/phone refine with undefined/null/empty string and the empty-email-to-null transform; CustomerSection hidden input keeps text ids; ORDER BY region nulls last and deadline, id. TD9 c, h, i, l.", "complexity": "medium" },
+      { "id": "v4", "charter": "End-to-end error contract: new codes in @mito/domain, practiceErrorToTrpc, describeContactError; every consumer reads errors in both @/trpc/server shapes (in-process cause and HTTP data); 404 on the practice page; the right message per code in NewPraticaForm; TRPCError only in *errors.ts. TD9 b, f, m.", "complexity": "medium" },
+      { "id": "v5", "charter": "Runtime boundary and test integrity: no Next.js/@/ imports in packages/server, services free of zod, every changed test assertion maps to a TD9 item and no unrelated characterization assertion was loosened, deletions leave no dangling reference, the CustomerSection test exercises public behaviour, no migration.", "complexity": "medium" }
+    ]
+  },
+  "taskComplexity": "high",
+  "reviewImpact": "critical",
+  "humanInLoop": true,
+  "nextStep": "Run 5 independent adversarial-verifier passes on def7bd0..HEAD: v1 and v2 on the strongest model, v3 to v5 on a balanced model. No UI or motion-craft pass. REPORT.md must end with a human checklist that includes the role/permission sign-off by Leonardo before the merge into dev."
+}
+```
+
+(Charter abbreviati qui; il testo intero è quello passato ai verificatori.)
+
+### Classifier rationale
+
+Critico perché il giro cambia chi può chiamare le procedure di `pratiche`: da `protectedProcedure` a `operatorProcedure`, `operatorId` fuori dagli input, `bulkAssignPractices` tolta. Per il §4 di [[chore/migrazione-effect]] le PR che toccano i permessi hanno la revisione di Leonardo: la decisione della SPEC "nessuna revisione obbligatoria di Leonardo" valeva perché il middleware non cambiava, e qui cambia. Due passi sul modello più forte: i permessi e la nuova transazione, che deve comportarsi uguale su PGlite e postgres-js. Nessun passo UI: l'unico cambio di markup è il tipo dell'input nascosto in `CustomerSection.tsx`, dentro un `FormItem hidden`, che v3 controlla come dato; nessun codice di animazione.
+
+### Overrides applied
+
+Nessuno.
+
+### Verification plan (derived)
+
+| Pass | Charter | Complexity | Model tier |
+|------|---------|------------|------------|
+| v1 | Permessi del router, `operatorId`, `createCustomer` diretto, via `bulkAssignPractices` | high | strongest (Opus) |
+| v2 | Transazione di `createPracticeWithCustomers` e mappatura degli SQLSTATE | high | strongest (Opus) |
+| v3 | Contratti di input e fedeltà dei dati | medium | balanced (Sonnet) |
+| v4 | Contratto degli errori fino alla UI | medium | balanced (Sonnet) |
+| v5 | Confine del runtime e integrità dei test | medium | balanced (Sonnet) |
