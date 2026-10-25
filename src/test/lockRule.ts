@@ -96,7 +96,8 @@ const chatName = `${FAILPOINT_SCHEMA}.chat_lock_rule`
  * or removing an operator of a chat (`chat_to_operator`) and sending or
  * deleting a note (`messages`) fail with "lock rule: …" unless the current
  * transaction has locked the customer whose `chat_id` is that chat. A chat no
- * customer points to has nothing to lock and passes. Same conditions as
+ * customer points to has nothing to lock and passes. It checks one customer
+ * per chat, as the app writes them. Same conditions as
  * `assertCustomerLockedOnWrite`; seed first.
  */
 export async function assertCustomerLockedOnChatWrite() {

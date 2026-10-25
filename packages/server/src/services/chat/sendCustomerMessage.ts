@@ -44,7 +44,8 @@ export const sendCustomerMessage = ({
       )
       if (customer) {
         yield* lockCustomer(customer.id).pipe(
-          // The customer went while this send waited: so did its chat
+          // The customer was deleted while this send waited: the send fails
+          // as for a missing chat, and saves nothing
           Effect.catchTag("CustomerMissing", () =>
             Effect.fail(new ChatMissing({ chatId }))
           )
