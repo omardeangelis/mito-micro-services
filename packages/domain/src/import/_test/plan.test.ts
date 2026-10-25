@@ -4,8 +4,9 @@ import { type CrmCustomer, type CrmState, planRows } from "../plan"
 import { waveCells } from "./cells"
 
 // The preview and the writes of a file, given the CRM as the test describes it
-// (AC7, AC8, AC11b, AC37, D11). The recognition cases are those T2 fixes on
-// today's import (src/app/api/import/update/_test/identity.db.test.ts).
+// (AC7, AC8, AC11b, AC37, D11). The recognition cases are those T2 fixed on
+// the old import (src/app/api/import/update/_test/identity.db.test.ts, removed
+// with it in T20).
 
 const NOW = new Date("2025-01-15T11:00:00.000Z")
 const FILE_NAME = "0125_import.xlsx"

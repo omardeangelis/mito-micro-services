@@ -13,11 +13,6 @@ vi.mock("next/image", () => ({
   default: ({ alt }: { alt: string }) => <span role="img" aria-label={alt} />,
 }))
 
-// The worker of import is not what is tested here
-vi.mock("../../_context/ImportWorker", () => ({
-  useHandleImportWorkerStates: () => undefined,
-}))
-
 vi.mock("@/store/context/useUserPreferenceContext", () => ({
   useUserPreferenceContext: (
     selector: (state: Record<string, unknown>) => unknown

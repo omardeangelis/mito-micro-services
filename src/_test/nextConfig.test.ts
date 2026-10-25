@@ -230,7 +230,7 @@ describe("next.config.js", () => {
     )
   })
 
-  it("con BACKEND_REST=true manda al backend le route di import, export e user", async () => {
+  it("con BACKEND_REST=true manda al backend le route di export e user", async () => {
     const { config } = await loadNextConfig({
       BACKEND_URL: "https://backend.example.com",
       BACKEND_REST: "true",
@@ -241,10 +241,6 @@ describe("next.config.js", () => {
         {
           source: "/api/trpc/:path*",
           destination: "https://backend.example.com/api/trpc/:path*",
-        },
-        {
-          source: "/api/import/:path*",
-          destination: "https://backend.example.com/api/import/:path*",
         },
         {
           source: "/api/export/:path*",

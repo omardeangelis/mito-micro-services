@@ -350,3 +350,19 @@ describe("import di un admin", () => {
     expect(await written()).toMatchObject({ runs: 0, customers: 0 })
   })
 })
+
+describe("il vecchio import non c'è più (AC4)", () => {
+  it("il router import ha solo le procedure nuove", () => {
+    const procedures = Object.keys(appRouter._def.procedures).filter((path) =>
+      path.startsWith("import.")
+    )
+
+    expect(procedures.sort()).toEqual([
+      "import.active",
+      "import.list",
+      "import.lookup",
+      "import.start",
+      "import.upload",
+    ])
+  })
+})

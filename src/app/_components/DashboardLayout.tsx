@@ -17,14 +17,12 @@ import {
 import { useCallback, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { useUserPreferenceContext } from "@/store/context/useUserPreferenceContext"
-import { useHandleImportWorkerStates } from "../_context/ImportWorker"
 
 const uncollapsedClassWidth = "w-72"
 const collapsedClassWidth = "w-16"
 const transitionClass = "transition-all duration-300"
 
 export function DashboardLayout() {
-  useHandleImportWorkerStates()
   const pathname = usePathname()
   const preference = useUserPreferenceContext((state) => state.preferences)
   const isAdmin = useUserPreferenceContext((state) => state.role) === "ADMIN"
