@@ -7,6 +7,9 @@ links:
   - "[[specs/crm/pratiche-effect/SPEC]]"
   - "[[specs/crm/customer-effect/SPEC]]"
   - "[[domains/crm/concepts/regola-dei-lock]]"
+  - "[[specs/crm/chat-storage-effect/PLAN]]"
+  - "[[specs/crm/chat-storage-effect/IMPLEMENTATION-NOTES]]"
+  - "[[specs/crm/chat-storage-effect/REPORT]]"
 created: 2026-10-25
 updated: 2026-10-25
 ---

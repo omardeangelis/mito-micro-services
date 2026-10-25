@@ -99,3 +99,7 @@
 - [Mutant first-match, empty-id case](feedback_mutant_first_match_and_empty_input_case.md) — perl without /g hits first repeated .pick; spread-then-override equivalents; ""-id BAD_REQUEST not pinning min(1)
 - [Scratchpad dir names, unsent form field](feedback_shared_scratchpad_dirnames_and_unsent_form_field.md) — pass-unique dir names; pick-drop mutant per key, fixture lacking vatCode lets it live
 - [Query-builder params, plan prototype](feedback_query_builder_param_and_plan_prototype.md) — drizzle drops limit<0 (no error); prototype planned service + mutants in scratch; owner-less factory fixtures
+- [Server action caller-class differential](feedback_server_action_caller_class_differential.md) — real action via vitest shim + mocked getServerAuthSession, per caller class, base vs head copies
+- [Lookup-then-lock window probe](feedback_lookup_then_lock_window_probe.md) — park writer at the lock, rewrite the pointer, hold new owner; pg kill reason; spread write-backs
+- [Three-transport contract differential](feedback_three_transport_contract_differential.md) — caller/inproc/http + real actions, base vs head; caller has no .query; log marker grep; annotation hides type mutant
+- [Fake-Tx mutant, pg wait limits](feedback_fake_tx_mutant_and_pg_wait_limits.md) — "tx removed" dies on missing Tx; fake-Tx (Db client) mutant; pg wait tests miss held-to-commit; first-write failpoint trivial

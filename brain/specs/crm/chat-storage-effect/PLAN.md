@@ -16,7 +16,7 @@ updated: 2026-10-25
 - **Verifica della spec:** DO NOT SHIP, 0 blocker e 2 major, tutti corretti.
 - **Dopo la verifica del piano:** AC17 (b) corretto (§17).
 
-**Status:** In progress (PR A)
+**Status:** In progress (PR A fatta, non pushata; T9b e PR B da fare)
 **Generato:** 2026-10-25 con `create-plan`. Il flusso è stato: spec (2 decisioni di Omar), verifica della spec, grill (nessuna domanda: le decisioni si ricavano dalla spec, dal codice e dal passo 4), task graph, tdd, verifica del piano.
 - **Verifica del piano:** DO NOT SHIP, 0 blocker, 2 major, 3 minor e 5 nit, corretti (§17).
 
@@ -628,8 +628,8 @@ T9b ─────────────────┘
      - `IMPLEMENTATION-NOTES.md`, con una sezione per la PR A.
   8. **PR verso `dev`** solo quando Omar la chiede, dopo il merge di `dev` nel branch.
 - **validation**: tutti i punti annotati in `IMPLEMENTATION-NOTES.md`; REPORT SHIP.
-- **status**: Planned
-- **log**:
+- **status**: Done (tranne il punto 8, la PR, che aspetta Omar)
+- **log**: T9.1 `grep` di AC1, AC2, AC3 e AC8, AC10 su `6341cf0..HEAD`, AC19: come la SPEC. T9.2 tipi espansi uguali a `2b284b4` (8 righe). T9.3 30 mutanti uccisi, `transaction` tolta uccisa da `tsc`. `simplify` (`83b20f7`), poi ripetuti i 6 mutanti del lock. T9.4 gate di CI verdi nel worktree di gate a `83b20f7`. T9.5 prova nel browser verde su `mito_local`. T9.6 review caso B: SHIP, impatto critico, 0 BLOCKER, 0 MAJOR, 2 MINOR (`REPORT.md`); corretti i rilievi su commenti e documenti, resta il MINOR dei writer dell'import, preesistente. T9.7 documenti di `migrazione-effect.md` aggiornati, TD10 resta `[PREVISTO]`. T9.8: la PR verso `dev` solo quando Omar la chiede, dopo il merge di `dev` nel branch.
 - **files edited/created**: `brain/chore/migrazione-effect.md`, `brain/specs/crm/chat-storage-effect/{IMPLEMENTATION-NOTES,RUBRIC,REPORT}.md`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a

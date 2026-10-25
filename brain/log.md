@@ -12,6 +12,19 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 
 <!-- Entries are appended by create-spec (spec creation) and docs-maintenance (ingest). Format:
 
+## [2026-10-25] review | Router `chat` su Effect, PR A del passo 5
+- Report: [[specs/crm/chat-storage-effect/REPORT]]
+- Scope: spec
+- Verdict: SHIP
+- Impact: critical
+- Verifiers: 5 (0 blockers, 0 major; 2 minor, fra cui i writer dell'import che riscrivono `customers.chat_id` senza lock, preesistenti)
+
+## [2026-10-25] implement | Router `chat` su Effect, PR A del passo 5
+- Spec: [[specs/crm/chat-storage-effect/SPEC]] (approvata con il lancio di `implement-spec`), note: [[specs/crm/chat-storage-effect/IMPLEMENTATION-NOTES]]
+- Branch `claude/chat-effect`, non pushato: caratterizzazione (`6341cf0`), invio di una nota in `sendCustomerMessage` con transazione e lock del cliente (`ed8bce2`), server action e procedure senza chiamanti (`2bf79c7`), servizi e traduttore unico (`b202bdf`, `8abb525`), `simplify` (`83b20f7`)
+- Gate della PR A: tipi uguali a `2b284b4`, 30 mutanti uccisi, CI verde in un worktree senza `.env*`, prova nel browser su `mito_local`
+- Resta: merge di `dev`, PR verso `dev` quando Omar la chiede, poi T9b e la PR B
+
 ## [2026-10-25] plan | Router `chat` su Effect e router `supabase` tolto (passo 5 della migrazione)
 - Spec: [[specs/crm/chat-storage-effect/SPEC]], piano: [[specs/crm/chat-storage-effect/PLAN]]
 - 16 task in due PR, dopo il gate G0, verificati dall'`adversarial-verifier` (DO NOT SHIP, 0 blocker, 2 major, corretti; AC17 (b) della SPEC corretto): PR A (`chat`: caratterizzazione di middleware, letture, invio e messaggi degli errori; invio in un servizio con transazione e lock del cliente; server action e procedure senza chiamanti; un solo traduttore), PR B (route di export su `services/export/files.ts`, router `supabase` e `supabaseClient` tolti), e una PR di documenti dopo ognuna
@@ -287,17 +300,6 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 - Verdict: DO NOT SHIP
 - Impact: medium
 - Verifiers: 2 (1 blockers, 0 major)
-
-## [2026-10-16] implement | Sezione Contatti — PR4, T4.7 (test della terza verifica)
-- Spec: [[specs/crm/sezione-contatti/PLAN]]
-- Test della sezione vera, del plurale, del focus con due eliminazioni e della guardia del focus; `beforeNextLockOf` fallisce se non scatta; isolamento già coperto
-
-## [2026-10-16] review | Sezione Contatti — PR4, T4.5–T4.7 (terza verifica)
-- Report: [[specs/crm/sezione-contatti/REPORT]]
-- Scope: spec
-- Verdict: DO NOT SHIP
-- Impact: medium
-- Verifiers: 2 (0 blockers, 3 major)
 
 ## [YYYY-MM-DD] ingest | <spec title>
 - Source: [[specs/<domain>/<spec>/SPEC]]
