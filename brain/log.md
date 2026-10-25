@@ -3,7 +3,7 @@ domain: _root
 type: index
 links: []
 created: 2026-09-24
-updated: 2026-10-23
+updated: 2026-10-24
 ---
 
 # Brain — Log
@@ -11,6 +11,49 @@ updated: 2026-10-23
 Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest when over.
 
 <!-- Entries are appended by create-spec (spec creation) and docs-maintenance (ingest). Format:
+
+## [2026-10-24] ingest | Router `customer` su Effect (passo 2 della migrazione)
+- Source: [[specs/crm/customer-effect/SPEC]]
+- Flows written: 1 ([[domains/crm/flows/controllo-dei-duplicati-di-un-cliente-nuovo]]); aggiornato [[domains/crm/flows/filtro-avanzato-di-clienti-e-pratiche]] (percorso del traduttore, AC16)
+- Concepts written: 1 ([[domains/crm/concepts/codici-del-cliente]]); aggiornato [[domains/crm/concepts/filtro-avanzato]] (percorso)
+- Review ingested: [[specs/crm/customer-effect/REPORT]] (3 rilievi durevoli in [[tech-debt/crm/customer-effect]], uno già chiuso)
+
+## [2026-10-24] implement | Router `customer` su Effect (passo 2 della migrazione)
+- Spec: [[specs/crm/customer-effect/SPEC]] → `implemented`; note: [[specs/crm/customer-effect/IMPLEMENTATION-NOTES]]; review: [[specs/crm/customer-effect/REPORT]] (SHIP dopo le correzioni; prima DO NOT SHIP, 0 blocker)
+- Caratterizzazione prima del refactor (`dac26d9`), poi utility in `shared/`, servizi `profile`, `list`, `queries`, `filterOptions`; le 18 procedure sono adapter. Gate di CI e prova nel browser su `mito_local` verdi
+- La review ha rafforzato i test in tre giri (input parziali, ordine, righe estranee, parametri di `getAllCustomers`, `id` inesistenti); TD8 resta `[PREVISTO]` fino al merge
+- Da fare: `docs-maintenance` (percorsi delle pagine del dominio, AC16), PR verso `dev`
+
+## [2026-10-24] plan | Router `customer` su Effect (passo 2 della migrazione)
+- Spec: [[specs/crm/customer-effect/SPEC]] (rivista dopo la verifica: DO NOT SHIP, 0 blocker, 5 major), piano: [[specs/crm/customer-effect/PLAN]]
+- 11 task in una PR, dopo il gate G0, verificati dall'`adversarial-verifier` (DO NOT SHIP, 0 blocker, 2 major, corretti): caratterizzazione di risposte, righe intere, righe scritte, errori e middleware delle 18 procedure con i mutanti sul codice inline, `*.pg.test.ts` sulle `update` senza `id`, utility in `shared/`, servizi `list`, `queries`, `filterOptions`, `profile`, gate con mutanti, prova nel browser e review
+- Debito della migrazione: TD8 `[PREVISTO]` in [[chore/migrazione-effect]]
+- G0 chiuso: SPEC approvata da Omar il 2026-10-24, con D7 (test sulle procedure), D9 (codice morto tolto), D10 (niente zod nei servizi, tipi con nome del dominio ammessi) e D11 (niente revisione obbligatoria di Leonardo)
+
+## [2026-10-24] spec | Router `customer` su Effect (passo 2 della migrazione)
+- Created spec: [[specs/crm/customer-effect/SPEC]]
+- Domain: crm
+- Status: Draft
+
+## [2026-10-24] ingest | Filtri avanzati sicuri di Clienti e Pratiche
+- Source: [[specs/crm/filtri-sql-sicuri/SPEC]]
+- Flows written: 1
+- Concepts written: 2
+- Review ingested: [[specs/crm/filtri-sql-sicuri/REPORT]] (6 righe durevoli, già nel tech debt: solo corrispondenza)
+
+## [2026-10-24] review | Filtri avanzati sicuri di Clienti e Pratiche
+- Report: [[specs/crm/filtri-sql-sicuri/REPORT]]
+- Scope: spec
+- Verdict: SHIP
+- Impact: critical
+- Verifiers: 7 (0 blockers, 0 major; 8 minor)
+
+## [2026-10-24] plan | Filtri avanzati sicuri di Clienti e Pratiche
+- Spec: [[specs/crm/filtri-sql-sicuri/SPEC]] (aggiornata alla baseline post-PR6, OQ2 e OQ3 chiuse, AC12 nuovo), piano: [[specs/crm/filtri-sql-sicuri/PLAN]]
+- 9 task in una PR, dopo il gate G0 (SPEC approvata da Omar): caratterizzazione e passaggio a Effect di `getAllPratiche`, modulo di dominio con le mappe chiuse, traduttore con parametri legati, test di sfruttamento rossi prima, mutanti M1–M5, prova su Postgres reale, A/B nel browser
+- Decisioni di Omar: tutta la migrazione va in prod insieme, con PR6; `getAllPratiche` su Effect in questa PR; SPEC approvata con `=` esatto sui decimali (D16); deployment vecchi di Vercel sotto Standard Protection in G3
+- Gate di qualità: DO NOT SHIP al primo giro (1 blocker, 7 major), corretti nel piano senza un secondo giro, per scelta di Omar
+- OQ1 chiusa: nessuna traccia di uso della falla in `pg_stat_statements` di prod (dal 2024-06-13) né in Sentry
 
 ## [2026-10-23] ingest | Export chiamate per operatore, solo admin
 - Source: [[specs/crm/export-chiamate/SPEC]]
@@ -268,50 +311,3 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 - Verdict: DO NOT SHIP
 - Impact: critical
 - Verifiers: 7 (1 blockers, 4 major)
-
-## [2026-09-24] spec | Sezione Contatti e tabella Clienti semplificata
-- Created spec: [[specs/crm/sezione-contatti/SPEC]]
-- Flow: [[specs/crm/sezione-contatti/FLOW]]
-- Domain: crm
-- Status: Draft
-- Source: [[chore/crm/design-contatti]]
-
-## [2026-09-24] migration | docs/ → brain/
-- Moved 5 CRM design/analysis docs → `chore/crm/`; `migration_plan.md` + `migration/` (15 files) → `chore/`; 2 HTML deliverables → `raw/assets/`
-- Rewrote `docs/…` path references; added `domain:` frontmatter (`crm`, `platform`); `docs/` removed
-- Nothing ingested into `domains/` yet — run `create-spec` from a `chore/crm/` draft, then `docs-maintenance`
-
-## [2026-09-29] review | Sezione Contatti — PR2 "Pulizia e vincolo DB"
-- Report: [[specs/crm/sezione-contatti/REPORT]] (round PR2)
-- Scope: spec
-- Verdict: DO NOT SHIP (prima verifica)
-- Impact: critical
-- Verifiers: 9 (2 blockers, 8 major)
-
-## [2026-09-29] review | Sezione Contatti — PR2, verifiche successive
-- Report: [[specs/crm/sezione-contatti/REPORT]] (round PR2)
-- Scope: spec
-- Verdict: SHIP (dopo le correzioni)
-- Impact: critical
-- Verifiers: 3 nella seconda verifica, poi 4 su v9 (0 blocker aperti)
-
-## [2026-09-29] review | Sezione Contatti — PR2, runbook G2 senza via libera degli admin
-- Report: [[specs/crm/sezione-contatti/REPORT]] (round PR2, Verifiche successive)
-- Scope: spec
-- Verdict: SHIP (dopo le correzioni)
-- Impact: critical
-- Verifiers: 1, in due passate (2 major, poi 0)
-
-## [2026-10-09] review | Staging su Vercel, accesso fuori produzione, Sentry solo in prod
-- Report: [[review/staging-accesso-sentry/REPORT]]
-- Scope: standalone
-- Verdict: DO NOT SHIP
-- Impact: critical
-- Verifiers: 7 (2 blocker, 6 major)
-
-## [2026-10-09] review | Indirizzo dei cron da `CRON_BASE_URL`
-- Report: [[review/cron-base-url/REPORT]]
-- Scope: standalone
-- Verdict: DO NOT SHIP
-- Impact: critical
-- Verifiers: 6 (1 blocker, 8 major, più 1 major già presente in `authCheck`)

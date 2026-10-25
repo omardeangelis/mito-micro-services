@@ -2,18 +2,27 @@ import { z } from "zod"
 
 import { operatorProcedure, protectedProcedure } from "../../../trpc"
 import { practices, stateEnum } from "@mito/db/schema/pratiche"
-import { eq, count, desc, asc, and, ilike, inArray, sql } from "drizzle-orm"
-import { castAsNumber, containsPattern } from "../../utils/index"
+import { eq, count, desc, asc, and, ilike, inArray } from "drizzle-orm"
+import { castAsNumber, containsPattern } from "../../../../shared/sql"
 import { getProductKey } from "@mito/domain/constants/productMap"
 import { operators } from "@mito/db/schema/operators"
 import { customerToPratica } from "@mito/db/schema/relations/customerToPratica"
 import { customers } from "@mito/db/schema/customers"
 import { type PgColumn, union } from "drizzle-orm/pg-core"
+import { Effect } from "effect"
 import { type Customer, type Practice } from "@mito/domain/schemas"
+import { query } from "../../../../effect/db"
+import { runTrpc } from "../../../../effect/trpc"
+import { type ResolvedOperator } from "../../../../services/auth/actor"
 import {
   type PraticaSearchBy,
   praticaSearchBy,
 } from "@mito/domain/constants/praticaSearch"
+import { advancedFiltersWhere } from "../../../../shared/advancedFilters"
+import {
+  advancedFilterSchema,
+  PRATICA_FILTER_QUERY_MAP,
+} from "@mito/domain/filters/advanced"
 
 export type Result = Record<
   string,
@@ -46,8 +55,9 @@ const getAllPraticheInput = z.object({
     })
     .optional(),
   q: z.string().optional(),
-  sqlFilter: z.string().optional(),
-  filter: z.union([z.string(), z.array(z.string()), z.undefined()]),
+  // Senza `.strict()`: il `sqlFilter` e il `filter` di un frontend vecchio si
+  // ignorano
+  advancedFilters: z.array(advancedFilterSchema).optional(),
 })
 
 export const getAllAvailableRegion = operatorProcedure.query(
@@ -63,12 +73,18 @@ export const getAllAvailableRegion = operatorProcedure.query(
   }
 )
 
-export const getAllPratiche = operatorProcedure
-  .input(getAllPraticheInput)
-  .query(async ({ ctx, input }) => {
-    const { operator } = ctx
+type GetAllPraticheInput = z.infer<typeof getAllPraticheInput>
+
+/**
+ * Una pagina della lista Pratiche, con il totale delle pratiche che
+ * soddisfano i filtri. `total` resta l'array `[{ total }]` della query.
+ */
+const getAllPratichePage = (
+  input: GetAllPraticheInput,
+  operator: Pick<ResolvedOperator, "id" | "role">
+) =>
+  Effect.gen(function* () {
     const { page, perPage, filterBy, sortedBy, orderBy, q, searchBy } = input
-    const { db } = ctx
     const productCondition = filterBy?.productId
       ? filterBy.productId.split("-").map((p) => getProductKey(p))
       : undefined
@@ -82,7 +98,7 @@ export const getAllPratiche = operatorProcedure
       filterBy?.onlyMe && operator.role === "OPERATORE"
         ? eq(customers.operatorId, operator.id)
         : undefined,
-      input.sqlFilter ? sql.raw(`${input.sqlFilter}`) : undefined
+      advancedFiltersWhere(input.advancedFilters, PRATICA_FILTER_QUERY_MAP)
     )
 
     const sortedFn = sortedBy === "desc" ? desc : asc
@@ -118,39 +134,17 @@ export const getAllPratiche = operatorProcedure
       }
     }
 
-    const total = await db
-      .select({
-        total: count(),
-      })
-      .from(practices)
-      .where(filterQuery)
+    const total = query((client) =>
+      client
+        .select({
+          total: count(),
+        })
+        .from(practices)
+        .where(filterQuery)
+    )
 
-    const customersName = db
-      .select({
-        id: practices.id,
-        praticaId: practices.praticaId,
-        productId: practices.productId,
-        importoFinanziato: castAsNumber(practices.importoFinanziato),
-        importoErogato: practices.importoErogato,
-        dataLiquidazione: practices.dataLiquidazione,
-        stato: practices.state,
-        importoRata: practices.importoRata,
-        rateTotali: practices.rateTotali,
-        ratePagate: practices.ratePagate,
-        updatedAt: practices.updatedAt,
-        createdAt: practices.createdAt,
-      })
-      .from(practices)
-      .innerJoin(
-        customerToPratica,
-        eq(practices.praticaId, customerToPratica.praticaId)
-      )
-      .innerJoin(customers, eq(customers.id, customerToPratica.customerId))
-      .where(filterQuery)
-
-    const data = await union(
-      customersName,
-      db
+    const data = query((client) => {
+      const customersName = client
         .select({
           id: practices.id,
           praticaId: practices.praticaId,
@@ -171,56 +165,44 @@ export const getAllPratiche = operatorProcedure
           eq(practices.praticaId, customerToPratica.praticaId)
         )
         .innerJoin(customers, eq(customers.id, customerToPratica.customerId))
-
         .where(filterQuery)
-    )
-      .limit(perPage)
-      .offset((page - 1) * perPage)
-      .orderBy(sortedFn(order_by()))
 
-    // const advancedData = await db
-    //   .select({
-    //     pratica: {
-    //       praticaId: practices.praticaId,
-    //     },
-    //     customer: {
-    //       id: customers.id,
-    //       name: customers.name,
-    //       surname: customers.surname,
-    //       fullName: customers.fullName,
-    //     },
-    //     ctp: customerToPratica,
-    //   })
-    //   .from(practices)
-    //   .leftJoin(
-    //     customerToPratica,
-    //     eq(practices.praticaId, customerToPratica.praticaId)
-    //   )
-    //   .leftJoin(customers, eq(customers.id, customerToPratica.customerId))
-    //   .where(filterQuery)
-    //   .limit(perPage)
-    //   .offset((page - 1) * perPage)
-    //   .orderBy(sortedFn(order_by()))
+      return union(
+        customersName,
+        client
+          .select({
+            id: practices.id,
+            praticaId: practices.praticaId,
+            productId: practices.productId,
+            importoFinanziato: castAsNumber(practices.importoFinanziato),
+            importoErogato: practices.importoErogato,
+            dataLiquidazione: practices.dataLiquidazione,
+            stato: practices.state,
+            importoRata: practices.importoRata,
+            rateTotali: practices.rateTotali,
+            ratePagate: practices.ratePagate,
+            updatedAt: practices.updatedAt,
+            createdAt: practices.createdAt,
+          })
+          .from(practices)
+          .innerJoin(
+            customerToPratica,
+            eq(practices.praticaId, customerToPratica.praticaId)
+          )
+          .innerJoin(customers, eq(customers.id, customerToPratica.customerId))
+          .where(filterQuery)
+      )
+        .limit(perPage)
+        .offset((page - 1) * perPage)
+        .orderBy(sortedFn(order_by()))
+    })
 
-    // const advancedDataResult = advancedData.reduce<Result>((acc, curr) => {
-    //   if (!acc[curr.pratica.praticaId]) {
-    //     acc[curr.pratica.praticaId] = {
-    //       pratica: curr.pratica,
-    //       customers: [],
-    //     }
-    //   }
-    //   if (curr.customer && acc[curr.pratica.praticaId]) {
-    //     acc[curr.pratica.praticaId]!.customers.push(curr.customer)
-    //   }
-    //   return acc
-    // }, {})
-
-    return {
-      total,
-      data,
-      // practicesWithCustomers: advancedDataResult
-    }
+    return yield* Effect.all({ total, data }, { concurrency: "unbounded" })
   })
+
+export const getAllPratiche = operatorProcedure
+  .input(getAllPraticheInput)
+  .query(({ ctx, input }) => runTrpc(getAllPratichePage(input, ctx.operator)))
 
 export const getPraticaById = protectedProcedure
   .input(z.object({ id: z.string() }))

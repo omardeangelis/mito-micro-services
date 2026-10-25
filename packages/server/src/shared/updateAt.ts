@@ -1,5 +1,4 @@
 import { practices } from "@mito/db/schema/pratiche"
-import { customers } from "@mito/db/schema/customers"
 import { eq } from "drizzle-orm"
 import { type SupaBaseDb } from "@mito/db/types"
 
@@ -14,12 +13,4 @@ export const updatePracticeUpdatedAt = async (params: UpdateAtParams) => {
     .update(practices)
     .set({ updatedAt: new Date() })
     .where(eq(practices.praticaId, params.id))
-}
-
-export const updateCustomerUpdatedAt = async (params: UpdateAtParams) => {
-  const { db } = params
-  return await db
-    .update(customers)
-    .set({ updatedAt: new Date() })
-    .where(eq(customers.id, params.id))
 }

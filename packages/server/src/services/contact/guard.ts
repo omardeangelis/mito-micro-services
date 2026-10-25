@@ -122,7 +122,8 @@ export const lockCustomerOrNotFound = (
 
 /**
  * Marks the customer as just modified (AC39): sets its `updatedAt` as
- * `updateCustomerUpdatedAt` does, on the row the transaction locked.
+ * `markCustomerUpdated` does (`services/customer/profile.ts`), on the row the
+ * transaction locked.
  */
 export const touchCustomer = (
   customer: LockedCustomer

@@ -9,11 +9,8 @@ import {
   DEFAULT_PAGE,
   DEFAULT_PER_PAGE,
 } from "@mito/domain/constants/pagination"
-import { createSQLQuery } from "@/lib/utils/filters"
-import { PRATICA_FILTER_QUERY_MAP } from "../customers/_constants"
-import { getTableName } from "drizzle-orm"
-import { practices } from "@mito/db/schema/pratiche"
 import { parsePraticaSearchBy } from "@mito/domain/constants/praticaSearch"
+import { parseFilterParams } from "@mito/domain/filters/advanced"
 export default async function ParticheHome({
   searchParams,
 }: ServerPageDefaultProps) {
@@ -28,14 +25,6 @@ export default async function ParticheHome({
     q,
     filter,
   } = searchParams ?? {}
-
-  let sqlQuery = ""
-  if (filter)
-    sqlQuery = createSQLQuery(
-      typeof filter === "string" ? [filter] : filter,
-      PRATICA_FILTER_QUERY_MAP,
-      getTableName(practices)
-    )
 
   const filterBy = filter_by
     ? getUrlParmsWithMultipleValue(filter_by as string)
@@ -66,8 +55,9 @@ export default async function ParticheHome({
     // Con `q` ripetuto cerca il primo, quello che mostra il badge
     q: Array.isArray(q) ? q[0] : q,
     searchBy: parsePraticaSearchBy(search_by),
-    sqlFilter: sqlQuery,
-    filter: filter,
+    // Ogni tupla dell'URL, come dati: le colonne e gli operatori che non
+    // conosce li scarta il server
+    advancedFilters: parseFilterParams(filter),
   })
 
   const preferences = readRequestPreferences()

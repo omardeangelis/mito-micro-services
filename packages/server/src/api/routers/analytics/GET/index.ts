@@ -11,7 +11,7 @@ import {
   notInArray,
   sum,
 } from "drizzle-orm"
-import { castAsNumber } from "../../utils/index"
+import { castAsNumber } from "../../../../shared/sql"
 import { customerToPratica } from "@mito/db/schema/relations/customerToPratica"
 import { customers } from "@mito/db/schema/customers"
 import { operators } from "@mito/db/schema/operators"
