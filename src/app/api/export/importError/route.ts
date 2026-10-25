@@ -1,6 +1,9 @@
 import * as Sentry from "@sentry/nextjs"
 import * as XLSX from "xlsx"
-import { api } from "@/trpc/server"
+import {
+  runExportStorage,
+  uploadExportFile,
+} from "@mito/server/services/export/files"
 import {
   type StandardImportFile,
   type WaveFile,
@@ -56,10 +59,9 @@ async function handler(req: NextRequest) {
       }) as ArrayBuffer
     )
 
-    await api.supabase.uploadExportFile.mutate({
-      buffer: buffer,
-      filePathName: filePathName,
-    })
+    await runExportStorage(
+      uploadExportFile(filePathName, new Uint8Array(buffer))
+    )
 
     return NextResponse.json({
       message: "Exporting data",
