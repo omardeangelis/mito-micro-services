@@ -187,9 +187,8 @@ export type LockedCustomer = {
  *
  * Customers first, then practices: a transaction that writes several
  * practices locks them in order of `pratica_id` before it writes them, after
- * its customers. The import locks its customers and then its practices;
- * "Assegna" of the Pratiche page (`assignPractices`) and the deactivation
- * lock the practices the same way, so none of them deadlocks with the import
+ * its customers. The import locks its customers and then its practices; the
+ * deactivation locks the practices the same way, so the two don't deadlock
  * (`services/import/_test/concurrency.pg.test.ts`).
  *
  * The rule is tested in `packages/server/src/services/contact/_test/lockRule.db.test.ts`:

@@ -11,7 +11,6 @@ import { deactivateOperator } from "../../operator/deactivate"
 import { applyImport } from "../apply"
 import { ImportConfigLive } from "../config"
 import { lookupExisting } from "../lookup"
-import { createTestCaller } from "@/test/caller"
 import { runServer } from "@/test/effect"
 import {
   createCustomer,
@@ -28,20 +27,20 @@ import {
   waitUntilBlocked,
 } from "@/test/pg"
 
-// The import against the other writers of several practices, on a real
-// Postgres: all of them lock the practices in order of `pratica_id` before
-// they write, so none deadlocks (AC27, D6). Each sequence is made
-// deterministic by a lock the test holds on P1: the import waits for it
-// holding nothing of P2, the other writer queues behind; a writer that took
-// P2 first (in the order of the table) would deadlock with the import. On
-// today's code both writers failed with `deadlock detected`
+// The import against the other writer of several practices, the
+// deactivation of their operator, on a real Postgres: both lock the practices
+// in order of `pratica_id` before they write, so they don't deadlock (AC27,
+// D6). The sequence is made deterministic by a lock the test holds on P1: the
+// import waits for it holding nothing of P2, the deactivation queues behind;
+// one that took P2 first (in the order of the table) would deadlock with the
+// import. Before D6 the deactivation failed with `deadlock detected`
 
 const NOW = new Date("2025-01-15T11:00:00.000Z")
 const FILE_NAME = "0125_import.xlsx"
 const CF_A = "RSSMRA80A01H501U"
 
 describe.skipIf(!hasTestDatabase)(
-  "import e altri writer delle pratiche",
+  "import e disattivazione dell'operatore delle pratiche",
   () => {
     beforeAll(async () => {
       await migrateUpTo()
@@ -125,35 +124,6 @@ describe.skipIf(!hasTestDatabase)(
           .from(practices)
           .orderBy(asc(practices.praticaId))
       ).map(({ praticaId, operatorId }) => [praticaId, operatorId])
-
-    it("con un import che tiene le pratiche, un bulkAssignPractices sulle stesse aspetta e poi riesce", async () => {
-      const anna = await createOperator()
-      const importFile = await seed(null)
-
-      const p1 = await holdPracticeLock("P1")
-      const imported = importFile()
-      await waitUntilBlocked(1)
-      const assigned = createTestCaller(anna)
-        .pratiche.bulkAssignPractices({
-          operatorId: anna.id,
-          practiceIds: ["P2", "P1"],
-        })
-        .then(
-          () => "ok",
-          (error: unknown) => error
-        )
-      await waitUntilBlocked(2)
-      expect(await isPracticeLocked("P2")).toBe(false)
-      await p1.release()
-
-      const [importExit, assignment] = await Promise.all([imported, assigned])
-      expect(Exit.isSuccess(importExit) || String(importExit.cause)).toBe(true)
-      expect(assignment).toBe("ok")
-      expect(await operatorsOfPractices()).toEqual([
-        ["P1", anna.id],
-        ["P2", anna.id],
-      ])
-    })
 
     it("con un import che tiene le pratiche, la disattivazione del loro operatore aspetta e poi riesce", async () => {
       const [admin, mario, anna] = [

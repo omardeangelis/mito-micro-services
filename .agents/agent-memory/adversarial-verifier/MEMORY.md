@@ -78,10 +78,23 @@
 - [Union-branch mutants, pg binding capture](feedback_union_branch_mutants_and_pg_binding_capture.md) — mutate each statement; postgres-js debug hook; NUL text param = 500
 - [Raw-SQL to structured filter differential](feedback_raw_sql_to_structured_filter_differential.md) — probeSql hook, per-kind value battery, PG15 prepare:false Rome vs PGlite PG16, LIKE backslash
 - [Validator bounds, runner selector](feedback_validator_bounds_and_runner_selector.md) — lower-bound mutants survive; CI-line proof for pg file; NULL-row fixture; west-of-UTC date validator
-- [Refactor spec AC checks](feedback_refactor_spec_ac_checks.md) — vacuous grep ACs, mutation writes, zod rule; plan: old-test row gaps, unscoped greps, RowList toEqual
+- [Refactor spec AC checks](feedback_refactor_spec_ac_checks.md) — vacuous/over-matching grep ACs (zod enums), guard matrix scope, insert operatorId, mutation writes, RowList
 - [PGlite clock and fake Date](feedback_pglite_clock_and_fake_date.md) — ms timestamps tie; now() follows faked Date.now, so freeze-before-seed makes updatedAt checks vacuous
 - [Partial-input update mutant](feedback_partial_input_update_mutant.md) — all-fields write tests hide omitted-field-as-NULL mutants; mutate with a subset input
 - [Inline to runTrpc error diff](feedback_inline_to_runtrpc_error_differential.md) — DbError mirrors code so cause.code tests are blind; base/head probe of cause keys, HTTP body, logs
 - [Router type contract differential](feedback_router_type_contract_differential.md) — print inferRouterInputs/Outputs via TS API in base+head, diff; print literals first or enums vanish
 - [ORDER BY removal survivors](feedback_order_by_removal_survivors.md) — alphabetical ids hide a missing orderBy; DISTINCT on tiny tables sorts anyway; unmatched-key fallthrough mutant
 - [Two-row fixtures, id-order sorts](feedback_two_row_fixtures_and_id_order.md) — no distractor rows and id-ordered sort fixtures hide filter-removal and sort-column mutants
+- [Plan mutant equivalence, removal grep](feedback_plan_mutant_equivalence_and_removal_grep.md) — probe listed mutants (inArray [] = false, castAsNumber type-only, unique index); removal grep vs the plan's own key tests
+- [Move pass byte diff](feedback_move_pass_byte_diff.md) — sed-range diff of moved body, collaborator diffs, driver by hand; direct eslint plugin-conflict is env
+- [Guard matrix parity mutants](feedback_guard_matrix_parity_mutants.md) — builder grep base vs head, one swap mutant per direction; no-session row needed for protected vs public
+- [Gate clone and count scope](feedback_gate_clone_and_doc_count_scope.md) — build a cp -c clone of clean HEAD, not the scratch gate; doc counts depend on scope
+- [Read-move parity battery](feedback_read_move_parity_battery.md) — normalised-text extract + typedump md5 + gate mutants; unique-index and inArray([]) equivalents; no-op mutant trap
+- [Write parity scratch-copy probe](feedback_write_parity_scratch_copy_probe.md) — @mito links into copy, reseed ctx for HTTP, mask pg now(), undefined norm, smallint FK
+- [Delegated translator cause probe](feedback_delegated_translator_cause_probe.md) — delegated tags (CustomerMissing) have no contact cause -> generic message; tsx shape recipe
+- [Removed capability twin, scratch vitest](feedback_removed_capability_twin_and_scratch_vitest.md) — grep all writers of the column across routers; scratch vitest config needs absolute imports
+- [Out-of-tree vitest probe](feedback_out_of_tree_vitest_probe.md) — probe both drivers from mktemp: node_modules symlink, workspace with root=repo, test.dir=tmp
+- [Real handler client probe](feedback_real_handler_client_probe.md) — appRouter + fetchRequestHandler as link fetch + inProcessLink; operator.userId not id; check mutant applied
+- [Shared worktree, git archive copy](feedback_shared_worktree_git_archive_copy.md) — parallel passes mutate the worktree; copy from git archive HEAD; whitelist mutants: zod strip, FK kill reason, .min(1) on FK id
+- [Mutant first-match, empty-id case](feedback_mutant_first_match_and_empty_input_case.md) — perl without /g hits first repeated .pick; spread-then-override equivalents; ""-id BAD_REQUEST not pinning min(1)
+- [Scratchpad dir names, unsent form field](feedback_shared_scratchpad_dirnames_and_unsent_form_field.md) — pass-unique dir names; pick-drop mutant per key, fixture lacking vatCode lets it live

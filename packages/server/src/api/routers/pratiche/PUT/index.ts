@@ -1,77 +1,35 @@
-import { operatorProcedure, protectedProcedure } from "../../../trpc"
-import { practices } from "@mito/db/schema/pratiche"
-import { eq } from "drizzle-orm"
-import { customers } from "@mito/db/schema/customers"
+import { z } from "zod"
+import { operatorProcedure } from "../../../trpc"
 import {
   insertCustomerSchema,
   insertPracticeSchema,
 } from "@mito/domain/schemas"
-import { z } from "zod"
 import { runTrpc } from "../../../../effect/trpc"
-import { assignPractices } from "../../../../services/practice/assign"
-import { updatePracticeUpdatedAt } from "../../../../shared/updateAt"
+import { updateCustomerContacts } from "../../../../services/customer/profile"
+import { updatePracticeFromDashboard as updatePracticeFromDashboardService } from "../../../../services/practice/writes"
 
-export const updatePratica = protectedProcedure
-  .input(insertPracticeSchema)
-  .mutation(async ({ input, ctx }) => {
-    const { db } = ctx
-    return await db
-      .update(practices)
-      .set(input)
-      .where(eq(practices.id, input.id!))
-      .returning({ id: practices.id })
-  })
-
-const updatePraticaFromDashboardSchema = insertPracticeSchema.pick({
-  id: true,
-  state: true,
-  operatorId: true,
-})
+const updatePraticaFromDashboardSchema = insertPracticeSchema
+  .pick({ state: true })
+  .extend({ id: z.number().int() })
 
 export const updatePraticaFromDashboard = operatorProcedure
   .input(updatePraticaFromDashboardSchema)
-  .mutation(async ({ input, ctx }) => {
-    const { id: _, ...rest } = input
-    const { db } = ctx
-    return await db
-      .update(practices)
-      .set(rest)
-      .where(eq(practices.id, input.id!))
-      .returning({ id: practices.id })
+  .mutation(({ input }) => {
+    const { id, ...values } = input
+    return runTrpc(updatePracticeFromDashboardService(id, values))
   })
 
-const updateCustomerPreviewSchema = insertCustomerSchema.pick({
-  id: true,
-  email: true,
-  phoneNumber: true,
-})
+const updateCustomerPreviewSchema = insertCustomerSchema
+  .pick({ email: true, phoneNumber: true })
+  .extend({ id: z.string().min(1) })
+  .refine(
+    (input) => input.email !== undefined || input.phoneNumber !== undefined,
+    "Serve almeno uno fra email e telefono"
+  )
 
 export const updateCustomerPreview = operatorProcedure
   .input(updateCustomerPreviewSchema)
-  .mutation(async ({ input, ctx }) => {
-    const { db } = ctx
-    return await db
-      .update(customers)
-      .set(input)
-      .where(eq(customers.id, input.id!))
-  })
-
-const bulkAssignPracticesSchema = z.object({
-  operatorId: z.number(),
-  practiceIds: z.array(z.string()),
-})
-
-export const bulkAssignPractices = operatorProcedure
-  .input(bulkAssignPracticesSchema)
-  .mutation(({ input }) => runTrpc(assignPractices(input)))
-
-const updateLastEditInput = insertPracticeSchema.pick({
-  praticaId: true,
-})
-
-export const updateLastEdit = operatorProcedure
-  .input(updateLastEditInput)
-  .mutation(async ({ ctx, input }) => {
-    const { db } = ctx
-    return await updatePracticeUpdatedAt({ id: input.praticaId, db })
+  .mutation(({ input }) => {
+    const { id, ...values } = input
+    return runTrpc(updateCustomerContacts(id, values))
   })

@@ -41,7 +41,7 @@ La regola vive accanto a quella "stesso operatore" di [[specs/crm/sezione-contat
 | Cambio di ruolo | righe utente degli admin attivi e degli operatori del batch, in ordine di `users.id` | `FOR UPDATE OF users` |
 | Ogni writer di un cliente | il cliente, prima di ogni altra riga del cliente | `lockCustomer` |
 | Import (`applyImport`) | 1. i clienti del file, in ordine di id (prima quelli delle chiavi del file, poi quelli con la partita IVA dei primi riconosciuti); 2. le pratiche del file, in ordine di `pratica_id`. Mai righe `users` | `FOR UPDATE`, nella lettura del CRM dentro la transazione (D5 di [[specs/crm/import-pratiche/PLAN]]) |
-| "Assegna" delle Pratiche (`assignPractices`) e disattivazione (passo 5) | le pratiche, in ordine di `pratica_id`, prima dell'`UPDATE` | `FOR UPDATE`; ripetono la transazione fino a 2 volte su un 40P01 (D6) |
+| Disattivazione (passo 5) | le pratiche dell'operatore, in ordine di `pratica_id`, prima dell'`UPDATE` | `FOR UPDATE`; ripete la transazione fino a 2 volte su un 40P01 (D6) |
 
 ### Writer dentro la regola
 
@@ -61,7 +61,7 @@ Usano `findWorkingOperator` sulla destinazione, prima del lock del cliente:
 
 ### Pratiche (import-pratiche, D6)
 
-Un `UPDATE` di più pratiche blocca le righe nell'ordine in cui le trova (l'ordine della tabella), non in quello di `pratica_id`. Con l'import che le blocca in ordine, i due si bloccavano a vicenda: sul codice di prima "Assegna" e la disattivazione finivano in `deadlock detected` (`services/import/_test/concurrency.pg.test.ts`). Ora bloccano prima le pratiche in ordine e poi scrivono, e aspettano la fine dell'import.
+Un `UPDATE` di più pratiche blocca le righe nell'ordine in cui le trova (l'ordine della tabella), non in quello di `pratica_id`. Con l'import che le blocca in ordine, i due si bloccavano a vicenda: sul codice di prima la disattivazione finiva in `deadlock detected` (`services/import/_test/concurrency.pg.test.ts`). Ora blocca prima le pratiche in ordine e poi scrive, e aspetta la fine dell'import. "Assegna" delle Pratiche aveva lo stesso problema, ma l'assegnazione massiva delle pratiche è stata tolta ([PR #83](https://github.com/omardeangelis/mito-micro-services/pull/83)).
 
 ## Related flows
 
@@ -73,7 +73,7 @@ Concetto vicino: [[domains/crm/concepts/operatore]] ("lavora" = passa `findWorki
 ## [Source: gestione-operatori]
 
 - Spec: AC7, AC11, AC12, AC15 e D5 di [[specs/crm/gestione-operatori/SPEC]]. Deviazioni di "Assegna a te" e della riassegnazione in [[specs/crm/gestione-operatori/IMPLEMENTATION-NOTES]].
-- **Pratiche.** `concurrency.pg.test.ts` tiene P1 e controlla che, con l'import e l'altro writer in attesa, nessuno tenga P2 (`holdPracticeLock` di `src/test/pg.ts`): un writer che blocca nell'ordine della tabella tiene P2, anche quando un retry sul deadlock gli farebbe finire il lavoro.
+- **Pratiche.** `concurrency.pg.test.ts` tiene P1 e controlla che, con l'import e la disattivazione in attesa, nessuno tenga P2 (`holdPracticeLock` di `src/test/pg.ts`): un writer che blocca nell'ordine della tabella tiene P2, anche quando un retry sul deadlock gli farebbe finire il lavoro.
 - **Come si prova.** Test su Postgres reale con due connessioni (`holdCustomerLock` e `waitUntilBlocked` di `src/test/pg.ts`): `deactivate.pg.test.ts` e `operatorLock.pg.test.ts`. Ogni nuovo writer va aggiunto a `lockRule.db.test.ts` e a `operatorRule.db.test.ts`; la disattivazione c'è. Nella review della PR 4 i mutanti che rompono l'ordine (cliente prima dell'utente, `findWorkingOperator` senza `KEY SHARE`, `FOR NO KEY UPDATE`, disattivazione senza `OF users`) fanno fallire i test.
 - **`lockWorkingOperator`** prende il lock subito e restituisce l'errore dopo, così l'ordine degli errori resta quello di prima per i writer esistenti.
 - **Review:** [[specs/crm/gestione-operatori/REPORT]] (PR 4, concorrenza e dati).
