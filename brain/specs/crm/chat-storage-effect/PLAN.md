@@ -339,8 +339,8 @@ T9b ─────────────────┘
     - `insertMessage` su `protectedProcedure`;
     - `deleteMessage` su `adminProcedure`;
     - una procedura nuova nel router senza riga nella tabella.
-- **status**: Planned
-- **log**:
+- **status**: Done
+- **log**: worker haiku, una revisione. 13 test verdi sul codice di `2b284b4`. Mutanti (D20): `getChatMessagesById` e `insertMessage` su `protectedProcedure`, `deleteMessage` su `adminProcedure`, una procedura senza riga: 4 uccisi su 4. Commit `6341cf0`.
 - **files edited/created**: `packages/server/src/api/routers/chat/_test/procedures.db.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
@@ -376,8 +376,8 @@ T9b ─────────────────┘
     - `chatId` aggiunto alla select.
 
     Il ripiego `?? 0` del `total` è equivalente (§6).
-- **status**: Planned
-- **log**:
+- **status**: Done
+- **log**: worker haiku, una revisione. 6 test verdi. Il messaggio di `limit: 2.5` è `invalid input syntax for type bigint: "2.5"`: arriva dal `driverErrorMiddleware` di `api/trpc.ts`, che toglie l'SQL dal messaggio di `DrizzleQueryError`. Mutanti: `desc` → `asc`, `reverse()` tolto, `limit` ignorato, default 10, `where` tolto dal `count`, `chatId` nella select: 6 uccisi su 6. Commit `6341cf0`.
 - **files edited/created**: `packages/server/src/api/routers/chat/_test/queries.db.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
@@ -406,8 +406,8 @@ T9b ─────────────────┘
     - il `where` dell'update tolto;
     - `res[0]` → `res`;
     - `returning()` → `returning({ id: messages.id })`.
-- **status**: Planned
-- **log**:
+- **status**: Done
+- **log**: worker haiku, una revisione. 3 test verdi. Mutanti: `operatorId` costante, update di `isRead` tolto, `where` dell'update tolto, `res[0]` → `res`, `returning({ id })`: 5 uccisi su 5. Commit `6341cf0`.
 - **files edited/created**: `packages/server/src/api/routers/chat/_test/insertMessage.db.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
@@ -433,8 +433,8 @@ T9b ─────────────────┘
     - `FORBIDDEN` → `NOT_FOUND`;
     - `Cliente non trovato` → `` `Cliente non trovato: ${customerId}` ``, come in `practiceErrorToTrpc`;
     - un ramo che traduce `CustomerMissing` di `deleteMessage` in `Cliente non trovato`.
-- **status**: Planned
-- **log**:
+- **status**: Done
+- **log**: worker haiku, una revisione. 5 test verdi; il caso del cliente sparito passa da `beforeNextLockOf`, quindi l'eliminazione prende il lock. Mutanti: messaggi scambiati, `FORBIDDEN` → `NOT_FOUND`, `Cliente non trovato: ${customerId}`, `CustomerMissing` → `Cliente non trovato`: 4 uccisi su 4. Commit `6341cf0`.
 - **files edited/created**: `packages/server/src/api/routers/chat/_test/errors.db.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
@@ -486,8 +486,8 @@ T9b ─────────────────┘
     - `updateChat.test.ts`, `CustomerChat.test.tsx` e gli altri test di `src/components/custom/notes/`;
   - `pnpm run test:pg` verde su due giri; senza database, il file Postgres si salta;
   - `tsc` verde.
-- **status**: Planned
-- **log**:
+- **status**: Done
+- **log**: test rossi scritti dall'orchestratore, rossi per il motivo atteso (modulo mancante; `lock rule: … (INSERT on mito-deutsche_messages)`; la chat che non esiste salvava la nota). Il primo caso nuovo di `lockRule.db.test.ts` è verde appena cambia il trigger. Worker sul modello dell'orchestratore, una revisione: servizio, `errors.ts` con `ChatMissing`, adapter. Suite intera verde su PGlite (3323) e su Postgres (105, il file `.pg` anche due volte dal worker); `tsc` verde. Commit `ed8bce2`.
 - **files edited/created**: `src/test/lockRule.ts`, `packages/server/src/services/contact/_test/lockRule.db.test.ts`, `packages/server/src/services/chat/{sendCustomerMessage,errors}.ts` (nuovi), `packages/server/src/services/chat/_test/sendCustomerMessage.{db,pg}.test.ts` (nuovi), `packages/server/src/api/routers/chat/_test/insertMessage.notFound.db.test.ts` (nuovo), `packages/server/src/api/routers/chat/POST/index.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
@@ -514,8 +514,8 @@ T9b ─────────────────┘
   - AC8: `git grep -nwE 'getChatById|getUniqueChatOperator|addOperatorToChat' -- packages src apps ':!**/_test/**'` non trova niente. Senza l'esclusione, trova i nomi solo dentro `_test/`;
   - T1 resta verde senza cambiare (D12), e restano verdi T2–T5;
   - `tsc` e `next lint` verdi.
-- **status**: Planned
-- **log**:
+- **status**: Done
+- **log**: test rossi dell'orchestratore: in `updateChat.test.ts` solo righe tolte (16), rossi i due casi che arrivano ad `api` (`Cannot read properties of undefined (reading 'query')`), verdi i cinque di validazione; `router.db.test.ts` rosso con 7 chiavi. Worker haiku, una revisione. `grep` di AC8: niente fuori da `_test/`, con l'esclusione tolta solo la lista `REMOVED` di T1. `tsc`, lint e suite intera verdi (3323). Commit `2bf79c7`.
 - **files edited/created**: `src/components/custom/notes/_actions/updateChat.ts`, `src/components/custom/notes/_actions/_test/updateChat.test.ts`, `packages/server/src/api/routers/chat/{index,GET/index,POST/index}.ts`, `packages/server/src/api/routers/chat/PUT/index.ts` (tolto), `packages/server/src/api/routers/chat/_test/router.db.test.ts` (nuovo)
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
@@ -534,8 +534,8 @@ T9b ─────────────────┘
 - **validation**:
   - verdi senza cambiare asserzioni: T1, T2, `CustomerChat.test.tsx`;
   - `git grep -nE 'from "@mito/db|ctx\.db|drizzle-orm|effect/db|TRPCError' -- packages/server/src/api/routers/chat/GET` non trova niente.
-- **status**: Planned
-- **log**:
+- **status**: Done
+- **log**: rosso: il `grep` di T7 trovava Drizzle e `ctx.db` in `GET/`. Worker haiku, una revisione. T1, T2 e `CustomerChat.test.tsx` verdi senza cambi; `limit: 2.5` dà ancora `invalid input syntax for type bigint: "2.5"`, ora da `DbError` e `runTrpc`, che in più scrive il log `tRPC procedure failed` come ogni adapter. `grep` di T7 vuoto. Commit `b202bdf`.
 - **files edited/created**: `packages/server/src/services/chat/queries.ts` (nuovo), `packages/server/src/api/routers/chat/GET/index.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
@@ -566,8 +566,8 @@ T9b ─────────────────┘
   - i `grep` di AC1, AC2 e AC3, come scritti nella SPEC;
   - `git grep -l '"server-only"' -- packages/server/src | wc -l` dà 30;
   - `git grep -n 'services/chat' -- src` non trova import fuori dai test.
-- **status**: Planned
-- **log**:
+- **status**: Done
+- **log**: rosso: i `grep` di AC1 (`TRPCError` in `POST/` e `DELETE/`) e AC3 (`server-only`). Worker sonnet, una revisione. Correzione dell'orchestratore: il commento di `NotMessageAuthor` diceva "an administrator too", contro il codice e il test "neanche un amministratore può eliminare la nota di un operatore"; ora dice "not even an administrator". `grep` di AC1, AC2, AC3 come la SPEC; `server-only` in 30 file; nessun import di `services/chat` in `src/`. Suite intera verde su PGlite (3323) e su Postgres (105). Commit `8abb525`.
 - **files edited/created**: `packages/server/src/services/chat/{errors,createCustomerChat,deleteCustomerMessage}.ts`, `packages/server/src/api/routers/chat/{POST,DELETE}/index.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
