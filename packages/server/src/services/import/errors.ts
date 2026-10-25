@@ -30,3 +30,19 @@ export class ImportRowRejected extends Data.TaggedError("ImportRowRejected")<{
 
 /** The import ran past its time (AC30, D8): nothing is written. */
 export class ImportTimedOut extends Data.TaggedError("ImportTimedOut") {}
+
+/**
+ * Another import is running (D7, AC22): who started it and when, as the
+ * Italian time of Rome ("10:05").
+ */
+export class ImportAlreadyRunning extends Data.TaggedError(
+  "ImportAlreadyRunning"
+)<{ readonly startedBy: string; readonly time: string }> {}
+
+/** This environment has no queue for the imports (D13): none starts. */
+export class ImportUnavailable extends Data.TaggedError("ImportUnavailable") {}
+
+/** The queue didn't take the task: the import doesn't start. */
+export class ImportQueueFailed extends Data.TaggedError("ImportQueueFailed")<{
+  readonly reason: string
+}> {}
