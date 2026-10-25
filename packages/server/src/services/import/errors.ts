@@ -18,3 +18,15 @@ export class ImportUploadMissing extends Data.TaggedError(
 export class ImportUploadClosed extends Data.TaggedError("ImportUploadClosed")<{
   readonly uploadId: string
 }> {}
+
+/**
+ * A row the admin expected to import can't be saved now (AC19b): the CRM
+ * changed between the preview and the import. Names the row and the rule.
+ */
+export class ImportRowRejected extends Data.TaggedError("ImportRowRejected")<{
+  readonly row: number
+  readonly rule: string
+}> {}
+
+/** The import ran past its time (AC30, D8): nothing is written. */
+export class ImportTimedOut extends Data.TaggedError("ImportTimedOut") {}

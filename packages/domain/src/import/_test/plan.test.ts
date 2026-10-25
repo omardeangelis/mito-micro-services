@@ -103,6 +103,18 @@ describe("numeri dell'anteprima (AC7)", () => {
     ])
   })
 
+  test("la prima riga di ogni cliente nuovo e di ogni pratica nuova", () => {
+    const result = plan(
+      crm({ praticaIds: ["P1"] }),
+      { "Codice Fiscale": CF_A, "Codice NDG": "1", "n° Pratica": "P1" },
+      { "Codice Fiscale": CF_B, "Codice NDG": "2", "n° Pratica": "P2" },
+      { "Codice Fiscale": CF_A, "Codice NDG": "1", "n° Pratica": "P3" },
+      { "Codice Fiscale": CF_B, "Codice NDG": "2", "n° Pratica": "P3" }
+    )
+
+    expect(result.newRows).toEqual({ customers: [2, 3], practices: [3, 4] })
+  })
+
   test("un cliente nuovo con una pratica nuova: il legame punta al cliente nuovo", () => {
     const result = plan(crm(), { Garante: "SI" })
 

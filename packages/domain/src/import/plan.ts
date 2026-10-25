@@ -55,6 +55,11 @@ export type ImportPlan = {
   /** The rows importable or customer only: what the admin expects (D10) */
   expected: number[]
   customersNew: ConvertedCustomer[]
+  /**
+   * The row where each of `customersNew` and `practicesNew` first appears: a
+   * write of theirs that fails at the import names it (AC19b)
+   */
+  newRows: { customers: number[]; practices: number[] }
   /** A customer of the file recognized in the CRM, and the customers it updates */
   customerUpdates: { customer: ConvertedCustomer; ids: string[] }[]
   practicesNew: PracticeWrite[]
@@ -142,14 +147,16 @@ export function planRows(
     recognize(customer, crm)
   )
   const customersNew: ConvertedCustomer[] = []
+  const newRows: ImportPlan["newRows"] = { customers: [], practices: [] }
   const newIndex = new Map<number, number>()
   const customerUpdates: ImportPlan["customerUpdates"] = []
   const updated = new Set<string>()
-  grouped.customers.forEach(({ customer }, index) => {
+  grouped.customers.forEach(({ customer, rows }, index) => {
     const first = firsts[index]
     if (!first) {
       newIndex.set(index, customersNew.length)
       customersNew.push(customer)
+      newRows.customers.push(rows[0]!)
       return
     }
     const ids = updatedBy(customer, first, crm)
@@ -158,9 +165,12 @@ export function planRows(
   })
 
   const existingPractices = new Set(crm.praticaIds)
-  const practicesNew = grouped.practices
-    .filter(({ practice }) => !existingPractices.has(practice.praticaId))
-    .map(({ practice }) => practice)
+  const practicesNew: PracticeWrite[] = []
+  for (const { practice, rows } of grouped.practices) {
+    if (existingPractices.has(practice.praticaId)) continue
+    practicesNew.push(practice)
+    newRows.practices.push(rows[0]!)
+  }
   const practiceUpdates = grouped.practices
     .filter(({ practice }) => existingPractices.has(practice.praticaId))
     .map(({ practice }) => practice)
@@ -202,6 +212,7 @@ export function planRows(
     discarded,
     expected: grouped.rows.map(({ row }) => row),
     customersNew,
+    newRows,
     customerUpdates,
     practicesNew,
     practiceUpdates,
