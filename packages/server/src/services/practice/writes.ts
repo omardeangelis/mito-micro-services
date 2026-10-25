@@ -2,19 +2,14 @@ import { eq, inArray } from "drizzle-orm"
 import { Effect } from "effect"
 import { practices } from "@mito/db/schema/pratiche"
 import { customerToPratica } from "@mito/db/schema/relations/customerToPratica"
+import {
+  type CustomerToPraticaWrite,
+  type PracticeWrite,
+} from "@mito/domain/schemas"
 import { query } from "../../effect/db"
 
-/** The columns of a new practice row. */
-export type NewPractice = typeof practices.$inferInsert
-
-/** The columns of a new customer-practice link. */
-export type NewCustomerToPractice = typeof customerToPratica.$inferInsert
-
-/** The practice columns the dashboard writes. */
-export type PracticeDashboardValues = Pick<NewPractice, "state" | "operatorId">
-
 /** Inserts a practice and returns its `praticaId`, as `{ id }`. */
-export const createPractice = (values: NewPractice) =>
+export const createPractice = (values: PracticeWrite) =>
   query((client) =>
     client
       .insert(practices)
@@ -23,7 +18,7 @@ export const createPractice = (values: NewPractice) =>
   ).pipe(Effect.map((rows) => rows[0]))
 
 /** Links a customer to a practice. */
-export const linkCustomerToPractice = (values: NewCustomerToPractice) =>
+export const linkCustomerToPractice = (values: CustomerToPraticaWrite) =>
   query((client) => client.insert(customerToPratica).values(values)).pipe(
     Effect.asVoid
   )
@@ -35,7 +30,7 @@ export const linkCustomerToPractice = (values: NewCustomerToPractice) =>
  */
 export const updatePracticeFromDashboard = (
   id: number,
-  values: PracticeDashboardValues
+  values: Pick<PracticeWrite, "state" | "operatorId">
 ) =>
   query((client) =>
     client
