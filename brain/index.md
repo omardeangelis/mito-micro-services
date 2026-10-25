@@ -51,6 +51,7 @@ Migrated from `docs/` on 2026-09-24. Source material for future `create-spec` ru
 | crm | [[specs/crm/gestione-operatori/SPEC]] | Implemented sui branch, tranne la P2 (piano: [[specs/crm/gestione-operatori/PLAN]], review: [[specs/crm/gestione-operatori/REPORT]]) |
 | crm | [[specs/crm/sicurezza-deploy-staging/SPEC]] | Implemented, ingested (piano: [[specs/crm/sicurezza-deploy-staging/PLAN]]) |
 | crm | [[specs/crm/customer-effect/SPEC]] | Implemented sul branch `claude/migrazione-customer`, ingested (piano: [[specs/crm/customer-effect/PLAN]], review: [[specs/crm/customer-effect/REPORT]]) |
+| crm | [[specs/crm/pratiche-effect/SPEC]] | Draft (piano: [[specs/crm/pratiche-effect/PLAN]]) |
 | crm | [[specs/crm/export-chiamate/SPEC]] | Implemented, unita su dev il 23/10/2026 (piano: [[specs/crm/export-chiamate/PLAN]], review: [[specs/crm/export-chiamate/REPORT]]) |
 
 - [[specs/crm/crm-specs|crm-specs]] — CRM spec page map

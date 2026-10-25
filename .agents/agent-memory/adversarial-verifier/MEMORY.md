@@ -78,10 +78,11 @@
 - [Union-branch mutants, pg binding capture](feedback_union_branch_mutants_and_pg_binding_capture.md) — mutate each statement; postgres-js debug hook; NUL text param = 500
 - [Raw-SQL to structured filter differential](feedback_raw_sql_to_structured_filter_differential.md) — probeSql hook, per-kind value battery, PG15 prepare:false Rome vs PGlite PG16, LIKE backslash
 - [Validator bounds, runner selector](feedback_validator_bounds_and_runner_selector.md) — lower-bound mutants survive; CI-line proof for pg file; NULL-row fixture; west-of-UTC date validator
-- [Refactor spec AC checks](feedback_refactor_spec_ac_checks.md) — vacuous grep ACs, mutation writes, zod rule; plan: old-test row gaps, unscoped greps, RowList toEqual
+- [Refactor spec AC checks](feedback_refactor_spec_ac_checks.md) — vacuous/over-matching grep ACs (zod enums), guard matrix scope, insert operatorId, mutation writes, RowList
 - [PGlite clock and fake Date](feedback_pglite_clock_and_fake_date.md) — ms timestamps tie; now() follows faked Date.now, so freeze-before-seed makes updatedAt checks vacuous
 - [Partial-input update mutant](feedback_partial_input_update_mutant.md) — all-fields write tests hide omitted-field-as-NULL mutants; mutate with a subset input
 - [Inline to runTrpc error diff](feedback_inline_to_runtrpc_error_differential.md) — DbError mirrors code so cause.code tests are blind; base/head probe of cause keys, HTTP body, logs
 - [Router type contract differential](feedback_router_type_contract_differential.md) — print inferRouterInputs/Outputs via TS API in base+head, diff; print literals first or enums vanish
 - [ORDER BY removal survivors](feedback_order_by_removal_survivors.md) — alphabetical ids hide a missing orderBy; DISTINCT on tiny tables sorts anyway; unmatched-key fallthrough mutant
 - [Two-row fixtures, id-order sorts](feedback_two_row_fixtures_and_id_order.md) — no distractor rows and id-ordered sort fixtures hide filter-removal and sort-column mutants
+- [Plan mutant equivalence, removal grep](feedback_plan_mutant_equivalence_and_removal_grep.md) — probe listed mutants (inArray [] = false, castAsNumber type-only, unique index); removal grep vs the plan's own key tests

@@ -3,7 +3,7 @@ domain: _root
 type: index
 links: []
 created: 2026-09-24
-updated: 2026-10-24
+updated: 2026-10-25
 ---
 
 # Brain — Log
@@ -11,6 +11,17 @@ updated: 2026-10-24
 Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest when over.
 
 <!-- Entries are appended by create-spec (spec creation) and docs-maintenance (ingest). Format:
+
+## [2026-10-25] plan | Router `pratiche` e letture di `task` su Effect (passo 4 della migrazione)
+- Spec: [[specs/crm/pratiche-effect/SPEC]] (rivista dopo la verifica: DO NOT SHIP, 0 blocker, 3 major; AC7 e AC9 corretti dopo la verifica del piano), piano: [[specs/crm/pratiche-effect/PLAN]]
+- 13 task in una PR, dopo il gate G0, verificati dall'`adversarial-verifier` (DO NOT SHIP, 1 blocker, 5 major, corretti): caratterizzazione di letture, scritture, middleware delle 20 procedure e ordine di `bulkHandleTask`, con i mutanti sul codice inline; `*.pg.test.ts` sulle `update`; rimozione delle 5 procedure senza chiamanti; servizi in `services/practice/`, `services/contact/` e `services/customer/profile.ts`; gate con confronto dei tipi, mutanti, prova nel browser e review
+- Debito della migrazione: TD9 `[PREVISTO]` in [[chore/migrazione-effect]]
+- Nessuna revisione obbligatoria di Leonardo (Omar, 2026-10-25)
+
+## [2026-10-25] spec | Router `pratiche` e letture di `task` su Effect (passo 4 della migrazione)
+- Created spec: [[specs/crm/pratiche-effect/SPEC]]
+- Domain: crm
+- Status: Draft
 
 ## [2026-10-24] ingest | Router `customer` su Effect (passo 2 della migrazione)
 - Source: [[specs/crm/customer-effect/SPEC]]
@@ -297,17 +308,3 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 - Verdict: SHIP
 - Impact: critical
 - Verifiers: v4 SHIP su "Assegna Clienti" e minor urgenti (vA interrotto); smoke sul DB di sviluppo (815 alert, 8 fallimenti di connessione isolati); cron a tempo aggiunto dopo la misura; poi `alert.js` che ripete dopo 10 s le chiamate che non arrivano in fondo (504, 5xx, rete, esecuzione fallita), non verificato
-
-## [2026-09-25] review | Sezione Contatti — PR1, seconda verifica
-- Report: [[specs/crm/sezione-contatti/REPORT]]
-- Scope: spec
-- Verdict: SHIP (prima: DO NOT SHIP)
-- Impact: critical
-- Verifiers: 3 rieseguiti (v1, v2, v3) su `87ff79e`; 0 blockers, 0 major, 5 minor
-
-## [2026-09-25] review | Sezione Contatti — PR1 "Percorsi di creazione sicuri"
-- Report: [[specs/crm/sezione-contatti/REPORT]]
-- Scope: spec
-- Verdict: DO NOT SHIP
-- Impact: critical
-- Verifiers: 7 (1 blockers, 4 major)
