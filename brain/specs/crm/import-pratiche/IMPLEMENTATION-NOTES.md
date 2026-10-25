@@ -16,7 +16,7 @@ updated: 2026-10-25
 - PR D (#82, `claude/import-coda`, da `dev`): T12a, `setup-import-queue.sh` e le variabili `IMPORT_*` nel deploy di staging. Lo script lo lancia Leonardo dal Mac.
 - PR C (#81, `claude/import-storico-schema`, da `dev`): T7, tabelle `import_run`, `import_upload`, `import_upload_part` e la loro migrazione, solo additiva. Nessun codice le usa ancora.
 - PR B (#78, `claude/import-dominio`, sopra la A): T3, T4, T5, T6, T8a. Tracciati, conversione, classificazione, raggruppamento e piano nel dominio, puri. L'import di oggi usa solo la conversione spostata; il resto lo chiamano le PR E ed F.
-- PR E (`claude/import-servizio`, sopra B + C): T8b, T9, T9b, T10a, T10b, T11, T13. Lettura del CRM, righe temporanee, scrittura tutto o niente, avvio ed esecuzione con la coda, storico, pulizia, procedure solo admin, rotte interne del backend con OIDC. Il vecchio import non cambia; le procedure nuove non hanno ancora una UI (PR F).
+- PR E (#85, `claude/import-servizio`, sopra B + C): T8b, T9, T9b, T10a, T10b, T11, T13. Lettura del CRM, righe temporanee, scrittura tutto o niente, avvio ed esecuzione con la coda, storico, pulizia, procedure solo admin, rotte interne del backend con OIDC. Il vecchio import non cambia; le procedure nuove non hanno ancora una UI (PR F).
 
 ## Execution Mode
 
