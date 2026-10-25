@@ -414,6 +414,23 @@ describe("pratiche.connectPraticaAndCustomer", () => {
     ])
   })
 
+  it("non cambia nessuna pratica e nessun cliente", async () => {
+    const { rows, customer } = await seedLinks()
+    const practicesBefore = await allPractices()
+    const customersBefore = await allCustomers()
+
+    await createTestCaller(
+      await createUser()
+    ).pratiche.connectPraticaAndCustomer({
+      customerId: customer.id,
+      praticaId: rows[0]!.praticaId,
+      customerRole: "Garante",
+    })
+
+    expect(await allPractices()).toEqual(practicesBefore)
+    expect(await allCustomers()).toEqual(customersBefore)
+  })
+
   it("con una coppia cliente-pratica già presente risponde INTERNAL_SERVER_ERROR con il messaggio di chiave duplicata del driver, e nessuna riga cambia", async () => {
     const { rows, customer, controlCustomer } = await seedLinks()
     await testDb.insert(customerToPratica).values({

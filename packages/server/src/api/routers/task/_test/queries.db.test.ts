@@ -225,6 +225,41 @@ describe("task.getCustomersWithActiveAlerts", () => {
       }),
     ])
   })
+
+  it("con un solo cliente restituisce il suo alert aperto", async () => {
+    const operator = await createOperator()
+    const customer = await createCustomer({
+      id: "cliente-solo",
+      name: "Gina",
+      surname: "Leone",
+    })
+    const task = await createTask({
+      customerId: customer.id,
+      operatorId: operator.id,
+      state: "richiamare",
+    })
+    const openAlert = await createAlert({
+      taskId: task.id,
+      deadline: DEADLINE_DUE,
+      message: "Unico cliente",
+    })
+
+    const result = await createTestCaller(
+      operator
+    ).task.getCustomersWithActiveAlerts({ customerIds: [customer.id] })
+
+    expect(result).toEqual([
+      {
+        customerId: "cliente-solo",
+        name: "Gina",
+        surname: "Leone",
+        alertId: openAlert.id,
+        deadline: DEADLINE_DUE,
+        message: "Unico cliente",
+        state: "richiamare",
+      },
+    ])
+  })
 })
 
 describe("task.getActiveTask", () => {
