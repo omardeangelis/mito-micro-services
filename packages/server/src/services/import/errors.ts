@@ -46,3 +46,14 @@ export class ImportUnavailable extends Data.TaggedError("ImportUnavailable") {}
 export class ImportQueueFailed extends Data.TaggedError("ImportQueueFailed")<{
   readonly reason: string
 }> {}
+
+/** Every expected failure of the import's services. */
+export type ImportError =
+  | ImportInputInvalid
+  | ImportUploadMissing
+  | ImportUploadClosed
+  | ImportRowRejected
+  | ImportTimedOut
+  | ImportAlreadyRunning
+  | ImportUnavailable
+  | ImportQueueFailed

@@ -88,6 +88,12 @@ export const expectedRowsSchema = z.object({
 })
 export type ExpectedRows = z.infer<typeof expectedRowsSchema>
 
+/** The confirmation (`import.start`): the upload and the rows expected. */
+export const startImportSchema = expectedRowsSchema.extend({
+  uploadId: z.string().uuid(),
+})
+export type StartImport = z.infer<typeof startImportSchema>
+
 export const importFormatSchema = z.enum([
   "wave",
   "standard",
