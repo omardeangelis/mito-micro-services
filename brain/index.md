@@ -59,7 +59,7 @@ Migrated from `docs/` on 2026-09-24. Source material for future `create-spec` ru
 ## Tech debt
 
 - [[tech-debt/crm/customer-effect]] — router `customer` su Effect (rilievi della review; le stranezze sono in TD8)
-- [[tech-debt/crm/pratiche-effect]] — router `pratiche` e letture di `task` su Effect (bug della UI trovati nella prova, follow-up; le stranezze sono in TD9)
+- [[tech-debt/crm/pratiche-effect]] — router `pratiche` e letture di `task` su Effect (bug della UI trovati nella prova e corretti, follow-up; le stranezze di TD9 corrette)
 - [[tech-debt/crm/export-chiamate]] — export chiamate (cron UTC/Roma, permessi dello storage, admin senza riga operatore)
 - [[tech-debt/crm/filtri-sql-sicuri]] — filtri avanzati sicuri (follow-up della review e di `$simplify`, errore `task_status` preesistente)
 

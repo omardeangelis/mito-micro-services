@@ -12,6 +12,16 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 
 <!-- Entries are appended by create-spec (spec creation) and docs-maintenance (ingest). Format:
 
+## [2026-10-25] implement | Pratiche: stranezze di TD9 corrette
+- `pratiche.createPratica` sostituisce `insertPratica` e `connectPraticaAndCustomer`: una transazione, errori `PRACTICE_EXISTS` e `CUSTOMER_EXISTS`
+- `getPraticaById` `operatorProcedure` e `NOT_FOUND`; regioni e alert ordinati; `id` obbligatorio, niente `operatorId` né risposta grezza nelle due scritture del dettaglio
+- Pagine: [[chore/migrazione-effect]] (TD9 `[CLOSED 2026-10-25]`), [[tech-debt/crm/gestione-operatori]], [[specs/crm/pratiche-effect/IMPLEMENTATION-NOTES]]
+
+## [2026-10-25] implement | Pratiche: email e telefono del cliente, via l'assegnazione massiva
+- Corretto l'input dell'id del cliente in `CustomerSection.tsx` (`type="hidden"`), con un test del componente
+- Tolta l'assegnazione massiva delle pratiche: dialog, server action, store, `pratiche.bulkAssignPractices`, `assignPractices`; TD9 (k) senza oggetto
+- Pagine: [[tech-debt/crm/pratiche-effect]], [[tech-debt/crm/gestione-operatori]], [[chore/migrazione-effect]]
+
 ## [2026-10-25] review | Router `pratiche` e letture di `task` su Effect (passo 4)
 - Report: [[specs/crm/pratiche-effect/REPORT]], rubric: [[specs/crm/pratiche-effect/RUBRIC]]
 - Verdict: SHIP · critical · human checklist (7 punti). Al primo giro v7 DO NOT SHIP per AC14 (numeri di riga in [[tech-debt/crm/filtri-sql-sicuri]]), corretto e rilanciato
@@ -293,16 +303,3 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 - Decisioni di Omar: filtri strutturati + URL invariato, backend ignora subito `sqlFilter`, voci non valide scartate, Clienti+Pratiche in una PR
 - Gate `adversarial-verifier` (total): DO NOT SHIP al primo giro (1 MAJOR baseline post-PR6 + 3 MINOR); findings ripiegati nella bozza
 - Attende approvazione di Omar e la data; esce dopo PR6 della Sezione Contatti. Fix non implementato.
-
-## [2026-10-15] review-ingest | search_by con mappa esplicita (Clienti e Pratiche)
-- Report: [[review/search-by-explicit-map/REPORT]]
-- Verdict: SHIP
-- Durable findings folded to tech debt: 8 in [[tech-debt/crm/search-by-explicit-map]] (2 di sicurezza, 3 di accessibilità, 3 piccoli; il `console.log` su richiesta del proprietario di prodotto)
-
-## [2026-10-15] review | search_by con mappa esplicita (Clienti e Pratiche) — dal secondo al quinto giro
-- Report: [[review/search-by-explicit-map/REPORT]]
-- Scope: standalone
-- Verdict: SHIP (prima: DO NOT SHIP)
-- Impact: critical
-- Verifiers: secondo giro 8 su haiku (1 blocker, 1 major: badge fermo dopo back/avanti, titolo di test); terzo 4 (2 major sui test e sul badge di Pratiche); quarto 2 (2 major sui test del selettore); quinto 2 (SHIP, 4 minor sui test chiuse da `ee889e9`)
-

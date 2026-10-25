@@ -28,6 +28,8 @@ updated: 2026-10-25
   - `44f8881`: due test chiesti dalla review;
   - `baf95df`, `d505078`, `fe18f5b`, `12297e7`: documenti, note, correzioni della review, REPORT.
 - Le 20 procedure che restano di `pratiche` e `task` sono adapter di servizi in `services/practice/`, `services/contact/` e `services/customer/profile.ts`, a comportamento invariato. Le 5 procedure senza chiamanti non ci sono più.
+- Dopo la review, su richiesta dell'utente: corretto l'input dell'id in `CustomerSection.tsx` (email e telefono dal dettaglio di una pratica ora si salvano) e tolta l'assegnazione massiva delle pratiche, procedura `bulkAssignPractices` compresa. Vedi [[tech-debt/crm/pratiche-effect]].
+- Poi, sempre su richiesta dell'utente, le stranezze di TD9 sono corrette nello stesso branch, invece che dopo il merge: il comportamento cambia rispetto a AC9, AC10 e AC12, che chiedevano di conservarle. `insertPratica` e `connectPraticaAndCustomer` lasciano il posto a `pratiche.createPratica`, una transazione sola. Restano 18 procedure (6 di `pratiche`, 12 di `task`), tutte `operatorProcedure` o `adminProcedure`. TD9 è `[CLOSED 2026-10-25]`; il punto (6) della checklist del REPORT non ha più oggetto.
 - Review avversariale: **SHIP**, impatto critico, con la checklist umana ([[specs/crm/pratiche-effect/REPORT]]). Al primo giro un solo passo su sette dava DO NOT SHIP, per un MAJOR sui documenti (AC14).
 
 ## Execution Mode
@@ -79,8 +81,8 @@ updated: 2026-10-25
 
 Trovate nella prova nel browser (T11.5), già presenti a `5b61b3f`: il passo non tocca i file della UI.
 
-- **La modifica di email e telefono dal dettaglio di una pratica non salva niente.** In `CustomerSection.tsx` l'input nascosto dell'id del cliente è `type="number"`, e gli id dei clienti sono testo (`C000100` nel seed, `nanoid` in prod): il browser lo svuota, il server action manda `id: ''`, e `updateCustomerPreview` aggiorna zero righe senza errore. Con l'id messo a mano nel DOM la procedura scrive email, telefono e `updatedAt`. È un bug della UI, da correggere in una PR sua.
-- **L'assegnazione massiva delle pratiche non ha un pulsante:** in `PraticesTable.tsx` la riga di `BulkActionDialog` è commentata, anche su `main`. `bulkAssignPractices` resta chiamata da `bulkUpdateAction.ts`, che nessun componente monta.
+- **La modifica di email e telefono dal dettaglio di una pratica non salva niente.** In `CustomerSection.tsx` l'input nascosto dell'id del cliente è `type="number"`, e gli id dei clienti sono testo (`C000100` nel seed, `nanoid` in prod): il browser lo svuota, il server action manda `id: ''`, e `updateCustomerPreview` aggiorna zero righe senza errore. Con l'id messo a mano nel DOM la procedura scrive email, telefono e `updatedAt`. Corretto dopo la review (`type="hidden"`, con un test del componente).
+- **L'assegnazione massiva delle pratiche non ha un pulsante:** in `PraticesTable.tsx` la riga di `BulkActionDialog` è commentata, anche su `main`. Dopo la review l'utente ha deciso che non si deve poter fare: tolti dialog, server action, store, procedura, servizio e test.
 - **Il filtro avanzato `eq` su `data_liquidazione`** confronta con la mezzanotte, quindi una pratica liquidata alle 12 di quel giorno non esce (`shared/advancedFilters.ts`, non toccato).
 - **Il piede della lista Pratiche** mostra "1 - 20 of 18" con 18 righe.
 
@@ -99,7 +101,7 @@ Trovate nella prova nel browser (T11.5), già presenti a `5b61b3f`: il passo non
 | AC9 | met | T1–T4, verdi su `7c5c77d` |
 | AC10 | met | T5, verde su `7c5c77d` e in CI (progetto `pg`) |
 | AC11 | met | `git diff 7c5c77d..HEAD` sui test: solo AC7, un `import type` e due test aggiunti dalla review, verdi anche su `7c5c77d` |
-| AC12 | met | TD9 `[PREVISTO]` con le voci (a)–(m); passa a `[OPEN]` dopo il merge in `dev` (D16) |
+| AC12 | superato | TD9 scritta con le voci (a)–(m), poi corretta nello stesso branch e chiusa (`[CLOSED 2026-10-25]`) |
 | AC13 | met | Nessun file in `src/app/`, `packages/db/`, `packages/domain/`; in `src/components` solo `CustomerChat.test.tsx` |
 | AC14 | met | Dopo `fe18f5b`: §1, §4, §5, TD6 di [[chore/migrazione-effect]]; [[tech-debt/crm/filtri-sql-sicuri]] con i numeri di riga; [[tech-debt/crm/gestione-operatori]] |
 | AC15 | met in locale | Tutti i gate verdi nel worktree di gate; da confermare sulla CI della PR |
@@ -107,6 +109,5 @@ Trovate nella prova nel browser (T11.5), già presenti a `5b61b3f`: il passo non
 ## Remaining Work
 
 - Fare il merge di `dev` nel branch, aprire la PR verso `dev` e vedere la CI verde (AC15, checklist del REPORT). Il branch non è pushato.
-- Dopo il merge in `dev`: TD9 a `[OPEN]` con un commit di documenti (D16), e la prova su staging con `BACKEND_URL` (G2).
+- Dopo il merge in `dev`: la prova su staging con `BACKEND_URL` (G2).
 - `docs-maintenance` sulla cartella, per ingerire la spec e il REPORT.
-- Fuori dal passo, in [[tech-debt/crm/pratiche-effect]]: il bug della UI di email e telefono nel dettaglio di una pratica, e l'assegnazione massiva delle pratiche senza pulsante.

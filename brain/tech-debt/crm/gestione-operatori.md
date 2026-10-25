@@ -11,11 +11,11 @@ updated: 2026-10-23
 
 # Tech debt: Gestione operatori
 
-## Due scrittori non controllano la destinazione
+## Gli scrittori non controllano la destinazione
 
 Lasciato fuori dalla spec (Out of Scope), confermato dalla review della PR 4 (v4, 2026-10-22).
 
-- `pratiche.insertPratica`, `pratiche.updatePraticaFromDashboard` e `pratiche.bulkAssignPractices` (oggi `createPractice`, `updatePracticeFromDashboard` e `assignPractices` di `services/practice/writes.ts`) e `customer.insertCustomer` scrivono l'operatore scelto senza passare da `findWorkingOperator`. Non rifiutano un operatore disattivato e non prendono il lock della sua riga utente, quindi stanno fuori dalla regola "prima gli utenti, poi i clienti".
+- `customer.insertCustomer` e i clienti collegati di `pratiche.createPratica` (`createPracticeWithCustomers` di `services/practice/writes.ts`) scrivono l'operatore senza passare da `findWorkingOperator`, quindi senza il lock della sua riga utente: stanno fuori dalla regola "prima gli utenti, poi i clienti". Le pratiche non scrivono più un operatore scelto (2026-10-25: `insertPratica` e `bulkAssignPractices` tolte, `operatorId` fuori dall'input di `updatePraticaFromDashboard`).
 - Una scrittura che conferma mentre la disattivazione è in corso, dopo che lo statement di spostamento ha preso la sua fotografia, lascia il cliente o la pratica sul disattivato. Il log resta coerente: quello che non si sposta non ha nemmeno la riga di log.
 
 **Effetto oggi:** basso. Le liste della UI non mostrano più i disattivati (AC14), quindi serve una chiamata HTTP diretta o una race di pochi millisecondi con la disattivazione.
