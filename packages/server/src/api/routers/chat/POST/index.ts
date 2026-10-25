@@ -1,7 +1,5 @@
 import { operatorProcedure } from "../../../trpc"
 import { insertMessageSchema } from "@mito/domain/schemas"
-import { insertChatToOperatorSchema } from "@mito/domain/schemas"
-import { chatToOperator } from "@mito/db/schema/index"
 import z from "zod"
 import { TRPCError } from "@trpc/server"
 import { runTrpc } from "../../../../effect/trpc"
@@ -26,27 +24,6 @@ export const insertMessage = operatorProcedure
       chatErrorToTrpc
     )
   )
-
-const addOperatorToChatSchema = insertChatToOperatorSchema.pick({
-  chatId: true,
-})
-
-export const addOperatorToChat = operatorProcedure
-  .input(addOperatorToChatSchema)
-  .mutation(async ({ ctx, input }) => {
-    const req = await ctx.db
-      .insert(chatToOperator)
-      .values({
-        operatorId: Number(ctx.operator.id),
-        chatId: input.chatId,
-      })
-      .returning({
-        chatId: chatToOperator.chatId,
-        operatorId: chatToOperator.operatorId,
-      })
-
-    return req[0]
-  })
 
 const createCustomerChatInput = z.object({
   customerId: z.string(),

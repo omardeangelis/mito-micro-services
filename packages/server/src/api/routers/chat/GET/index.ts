@@ -1,21 +1,12 @@
 import { selectChatSchema } from "@mito/domain/schemas"
-import { operatorProcedure, protectedProcedure } from "../../../trpc"
-import { chatToOperator } from "@mito/db/schema/relations/chatToOperator"
-import { messages, chat } from "@mito/db/schema/chat"
+import { operatorProcedure } from "../../../trpc"
+import { messages } from "@mito/db/schema/chat"
 import { count, desc, eq } from "drizzle-orm"
 import { z } from "zod"
 
 const chatPartialSchema = selectChatSchema.pick({
   id: true,
 })
-
-export const getChatById = operatorProcedure
-  .input(chatPartialSchema)
-  .query(async ({ ctx, input }) => {
-    const res = await ctx.db.select().from(chat).where(eq(chat.id, input.id))
-
-    return res[0]
-  })
 
 const chatMessageByIdInput = chatPartialSchema.extend({
   limit: z.number().optional().default(5),
@@ -44,15 +35,4 @@ export const getChatMessagesById = operatorProcedure
       .where(eq(messages.chatId, input.id))
 
     return { messages: res.reverse(), total: total[0]?.total ?? 0 }
-  })
-
-export const getUniqueChatOperator = protectedProcedure
-  .input(chatPartialSchema)
-  .query(({ ctx, input }) => {
-    return ctx.db
-      .selectDistinct({
-        operator: chatToOperator.operatorId,
-      })
-      .from(chatToOperator)
-      .where(eq(chatToOperator.chatId, input.id))
   })
