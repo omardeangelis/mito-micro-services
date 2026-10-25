@@ -33,6 +33,14 @@ updated: 2026-10-25
   - `getActiveTask` senza il filtro `customerId`: nessun test aveva due clienti con una task attiva ciascuno (T3);
   - `mostRecent: false` nel caso 2 di `bulkHandleTask` (alert confermato): nessun test controllava che la task nuova fosse più recente di quella sostituita (T3b, con l'orologio fermo).
 - **Il mutante `concurrency: "unbounded"`** è stato ucciso 3 volte su 3 dal test di T3b, quindi non serve il controllo del `forEach` nel diff previsto da T11.1.
+- **`simplify` sul diff di produzione** (4 revisori: riuso, semplificazione, efficienza, livello), con il vincolo del refactor puro. Applicato: `services/practice/writes.ts` usa `PracticeWrite` e `CustomerToPraticaWrite` di `@mito/domain/schemas` al posto di tre alias nuovi (`7c14603`). Saltati, perché seguono le firme e i nomi del PLAN o la forma del passo 2:
+  - il ritorno anticipato di `listCustomersWithActiveAlerts` con il tipo dichiarato (PLAN §3, D12; come `getContacts`);
+  - `id!` e la destrutturazione di `updatePraticaFromDashboard` nell'adapter (D12);
+  - i nomi `getPracticeById(praticaId)` e `updateCustomerContacts` (PLAN §3, D10);
+  - gli alias `*Service` negli import dei router (come `createContactService`).
+- **Follow-up proposti da `simplify`, fuori dal passo:**
+  - `listPractices` riceve `Pick<ResolvedOperator, "id" | "role">` e `bulkHandleTask` un `actorOperatorId`, mentre gli altri servizi di `contact` ricevono `actor: Actor` (regola 1 del §2 di [[chore/migrazione-effect]]): da allineare prima di L3, con il middleware `CurrentUser`;
+  - `runTrpc` costruisce `ServerLive` a ogni chiamata; un `ManagedRuntime` costruito una volta toglierebbe il costo fisso. Riguarda tutti i router, non solo questo passo.
 - **`updatePraticaFromDashboard` con il solo `id`** non arriva al `set({})`: lo zod vuole `state` e risponde `BAD_REQUEST` (prova nel worktree di gate). Non è una stranezza in più per TD9.
 
 ## Sanity Checks
@@ -53,6 +61,16 @@ updated: 2026-10-25
 | T11.3, mutanti ripetuti sui servizi (`scratchpad/wave4.json`) | 45 uccisi su 45 | Ogni mutante fa cadere lo stesso numero di test che sul codice inline; due ne fanno cadere uno in più, il test aggiunto per il mutante sopravvissuto |
 | T11.4, gate di CI nel worktree di gate (`scratchpad/gate`, senza `.env*`, fuori dalla copia principale) a `d6e13da` | verdi | `next lint` (un warning, `import type`, corretto in `dd31882`), `tsc --noEmit`, `pnpm db:check`, `pnpm build` con i placeholder, `pnpm api:build`, `pnpm api:smoke` |
 | T11.4, `pnpm run test --run` con `TEST_DATABASE_URL`, worktree di gate a `dd31882` | 3367 passati, 2 saltati | Nessun database `mito_test_` lasciato dalla corsa; ce n'è uno del 2026-10-24, di una sessione precedente |
+| T11.5, prova nel browser su `mito_local` (10.000 clienti, 9.345 pratiche), `next dev` del worktree di gate a `dd31882` con le sole variabili locali, sessione con una riga in `session` e il cookie in `agent-browser` (agent sonnet a contesto pulito) | verde | 17 chiamate a `pratiche.*` e `task.*`, nessun errore: home (`getAllPratiche`), Pratiche (ricerca, filtro per stato, filtro avanzato), dettaglio di una pratica con cambio di stato salvato (`updatePraticaFromDashboard`, riga scritta), Nuova pratica con la tendina delle regioni e una pratica creata (`insertPratica`, `connectPraticaAndCustomer`), dialog di assegnazione massiva dei clienti con l'avviso dell'alert (`getCustomersWithActiveAlerts`), dettaglio di un cliente (`getActiveTask`, `getCustomerAlerts`). `bulkAssignPractices` provata via HTTP dal browser (nessun pulsante nella UI, vedi sotto). L'unico errore è `export.callStats`, già noto. A fine prova le righe sono tornate com'erano, la pratica creata e la riga di sessione cancellate |
+
+## Out of Scope Observations
+
+Trovate nella prova nel browser (T11.5), già presenti a `5b61b3f`: il passo non tocca i file della UI.
+
+- **La modifica di email e telefono dal dettaglio di una pratica non salva niente.** In `CustomerSection.tsx` l'input nascosto dell'id del cliente è `type="number"`, e gli id dei clienti sono testo (`C000100` nel seed, `nanoid` in prod): il browser lo svuota, il server action manda `id: ''`, e `updateCustomerPreview` aggiorna zero righe senza errore. Con l'id messo a mano nel DOM la procedura scrive email, telefono e `updatedAt`. È un bug della UI, da correggere in una PR sua.
+- **L'assegnazione massiva delle pratiche non ha un pulsante:** in `PraticesTable.tsx` la riga di `BulkActionDialog` è commentata, anche su `main`. `bulkAssignPractices` resta chiamata da `bulkUpdateAction.ts`, che nessun componente monta.
+- **Il filtro avanzato `eq` su `data_liquidazione`** confronta con la mezzanotte, quindi una pratica liquidata alle 12 di quel giorno non esce (`shared/advancedFilters.ts`, non toccato).
+- **Il piede della lista Pratiche** mostra "1 - 20 of 18" con 18 righe.
 
 ## Acceptance Criteria Status
 
