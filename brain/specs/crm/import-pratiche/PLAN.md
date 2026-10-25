@@ -14,7 +14,7 @@ updated: 2026-10-24
 # Plan: Import di clienti e pratiche, riscritto
 
 **Spec:** [[specs/crm/import-pratiche/SPEC]] (approvata da Leonardo il 2026-10-24)
-**Status:** In progress (PR A #77, PR B #78)
+**Status:** In progress (PR A #77, PR B #78, PR C #81)
 **Generato:** 2026-10-24 con `create-plan`: grill (una domanda a Leonardo, D1) → swarm-plan → tdd → adversarial-verifier (primo giro DO NOT SHIP con 2 blocker; secondo giro DO NOT SHIP senza blocker, 3 major e 8 minor; tutti corretti in questa versione, senza un terzo giro per il limite di 2 tentativi). Nessun codice scritto.
 
 ---
@@ -242,12 +242,12 @@ T0 è una prova senza PR; T12b è la prova finale su staging dopo F e G.
 ### T7: Tabelle dello storico e delle righe temporanee
 
 - **depends_on**: []
-- **location**: `packages/db/src/schema/importRun.ts`, `packages/db/src/schema/index.ts`, `packages/db/migrations/` (generata), `packages/db/src/schema/_test/importRun.db.test.ts`
+- **location**: `packages/db/src/schema/importRun.ts`, `packages/db/src/schema/index.ts`, `packages/db/migrations/` (generata), `packages/db/src/_test/importRun.db.test.ts`
 - **description**: `mito-deutsche_import_run`: `id`, `started_at`, `claimed_at`, `finished_at`, `started_by` (FK a `users`), `file_name`, `format`, `status` (enum `running`, `completed`, `failed`, `interrupted`), `failure_reason`, `rows_total`, `rows_discarded`, `customers_created`, `customers_updated`, `practices_created`, `practices_updated`, `links_created`; indice unico parziale `WHERE status = 'running'` (D7); indice su `started_at desc`. Nessuna colonna per i dati delle righe (AC31). `mito-deutsche_import_upload`: `id` (uuid), `created_by`, `created_at`, `file_name`, `format`, `parts` (numero atteso), `run_id` (FK, nullable); `mito-deutsche_import_upload_part`: `upload_id` (FK con `on delete cascade`), `part`, `data` (bytea), PK (`upload_id`, `part`). `pnpm db:generate`, tolta la riga del default di `customers.id`.
 - **validation**: la migrazione aggiunge soltanto; `pnpm db:migrate` sul database locale; test: due righe `running` → 23505; cancellare un upload cancella i suoi pezzi; journal e snapshot in catena.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-10-25, #81. 6 test (PGlite), tdd_target per primo. Migrazione `20261025003952_import_run` solo additiva, tolta la riga del default di `customers.id`; `db:check` ok; i test `pg` passano su un Postgres 16 vero con tutte le migrazioni. Test fuori da `schema/`: drizzle-kit legge come schema ogni file di `packages/db/src/schema/*`. `pnpm db:migrate` sul database locale di Leonardo non fatto dal container
+- **files edited/created**: `packages/db/src/schema/importRun.ts`, `packages/db/src/schema/index.ts`, `packages/db/migrations/20261025003952_import_run.sql`, `packages/db/migrations/meta/{20261025003952_snapshot,_journal}.json`, `packages/db/src/_test/importRun.db.test.ts`
 - **backlog_item_id**: —
 - **backlog_item_url**: —
 - **relation_mode**: body-links

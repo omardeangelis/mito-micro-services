@@ -13,6 +13,7 @@ updated: 2026-10-24
 ## Summary
 
 - PR A (#77, `claude/import-caratterizzazione`, da `dev`): T1 e T2, test di caratterizzazione sul codice di oggi. Nessun cambio al codice.
+- PR C (#81, `claude/import-storico-schema`, da `dev`): T7, tabelle `import_run`, `import_upload`, `import_upload_part` e la loro migrazione, solo additiva. Nessun codice le usa ancora.
 - PR B (#78, `claude/import-dominio`, sopra la A): T3, T4, T5, T6, T8a. Tracciati, conversione, classificazione, raggruppamento e piano nel dominio, puri. L'import di oggi usa solo la conversione spostata; il resto lo chiamano le PR E ed F.
 
 ## Execution Mode
@@ -30,6 +31,8 @@ updated: 2026-10-24
 - T4: `spark-md5` non entra nel `package.json` di `@mito/domain`: `pnpm install` rimescolava voci estranee del lockfile. Il dominio usa le dipendenze della root, come già per zod e drizzle.
 - T4: `romeWallClock` e `romeWallToInstant` vengono dal seed locale (`src/server/db/seeds/local/day.ts`), che ora li importa dal dominio.
 - T4: `parseDateInput` non è più riesportata da `src/lib/utils` (nessun chiamante fuori dall'import). `DAYS_PER_RATE` in `src/app/api/_utils` resta riesportato senza chiamanti: lo toglie T20.
+- T7: il test sta in `packages/db/src/_test/importRun.db.test.ts`, non in `schema/_test/`: drizzle-kit legge come schema ogni file sotto `packages/db/src/schema/*` e caricava il test (con vitest) a `db:generate`.
+- T7: `bytea` con `customType` (drizzle-orm 0.45 non lo ha); `uuid` con `gen_random_uuid()`; `failure_reason` fino a 1.000 caratteri; i numeri di quello che l'import ha scritto restano null finché non è `completed`.
 - T8a: `planRows(righe classificate, CRM)` invece di `planRows(gruppi, CRM)`: dopo AC11b il file si raggruppa di nuovo senza le righe scartate, così una pratica scritta anche da una di loro prende i valori solo dalle altre. Il worker chiama `groupRows` + `lookupKeys` per le chiavi, poi `planRows`.
 
 ## Surprises and Decisions
@@ -64,6 +67,8 @@ Decisioni di T5–T8a:
 | Gate CI in locale | ok | `next lint`, `tsc --noEmit`, `pnpm run test --run`. La build la fa la CI (solo file di test) |
 | Equivalenza di T4 | ok | I 50 test di T1 verdi a Roma dopo lo spostamento; il test del seed (`importRates`, oltre 1.000 casi contro `calculateDebitoResiduo`) verde; `romeLocalDate`, `addRomeMonth` e `romeParseDate` uguali al `Date` nativo di un processo a Roma su 800 giorni |
 | Mutazioni su T5, T6, T8a | ok | Togliendo AC10, la soppressione dei motivi derivati, i limiti delle colonne, la regola solo cliente, la fusione dei valori non vuoti, il codice cliente nella chiave, il nuovo raggruppamento dopo AC11b o il salto dei legami esistenti, almeno un test fallisce |
+| Gate CI in locale (PR C) | ok | `next lint`, `tsc --noEmit`, `pnpm run test --run` (3185 passati), progetto `pg` su Postgres 16 (94 passati, tutte le migrazioni), `pnpm build`, `pnpm api:build`, `db:check` |
+| Mutazioni su T7 | ok | Senza l'indice unico parziale o senza il `cascade` nella migrazione, un test fallisce |
 | Gate CI in locale (PR B) | ok | `next lint`, `tsc --noEmit`, `pnpm run test --run` (3243 passati, 75 saltati), `pnpm build` coi segnaposto di CI, `pnpm api:build` |
 
 ## Acceptance Criteria Status
@@ -76,6 +81,7 @@ Decisioni di T5–T8a:
 | AC7, AC8 | Nel dominio | `planRows` (T8a); l'anteprima arriva con T14 e T16 |
 | AC9–AC11, AC13, AC40 | Nel dominio | `classifyRow` (T5) |
 | AC11b | Nel dominio | `planRows` (T8a); il 23505 dentro l'import è di T9 |
+| AC31 | Schema | `import_run` senza colonne per i dati delle righe (T7) |
 | AC37, AC38 | Nel dominio | `groupRows` (T6), `planRows` (T8a); la scrittura è di T9 |
 | OQ1 (riconoscimento) | Caratterizzato, nel dominio | T2 sul codice di oggi; i suoi casi hanno il gemello in `plan.test.ts` (chi si aggiorna). Quali valori riceve ogni cliente (AC35) è di T9 |
 
@@ -90,7 +96,7 @@ Decisioni di T5–T8a:
 ## Remaining Work
 
 - T0 (limite della rewrite di Vercel), prima di T11: serve il Chrome di Leonardo con Vercel aperto o una sessione sul Mac, perché il container non raggiunge staging.
-- PR C (T7: tabelle dello storico e delle righe temporanee, migrazione).
+- PR D (T12a: coda Cloud Tasks su staging, lo script lo lancia Leonardo dal Mac), poi PR E (servizi, sopra B + C).
 - Prima del primo merge su `dev`: conferma di Leonardo che la promozione `dev` → `main` resta ferma fino al go/no-go (PLAN §10).
 
 ## Steering
