@@ -1,17 +1,17 @@
 import { operatorProcedure } from "../../../trpc"
-import { alert, task } from "@mito/db/schema/task"
-import { customers } from "@mito/db/schema/customers"
-import { desc, eq, and, sql, inArray } from "drizzle-orm"
 import { selectCustomerSchema } from "@mito/domain/schemas"
 import { z } from "zod"
 import { getContactsInput } from "@mito/domain/contact/listInput"
-import { query } from "../../../../effect/db"
 import { runTrpc } from "../../../../effect/trpc"
 import { actorOf } from "../../../../services/contact/actor"
-import { customerAlerts } from "../../../../services/contact/customerAlerts"
 import { contactErrorToTrpc } from "../../../../services/contact/errors"
 import { getContactById as getContactByIdService } from "../../../../services/contact/getContactById"
 import { getContacts as getContactsService } from "../../../../services/contact/getContacts"
+import {
+  getActiveTask as getActiveTaskService,
+  listCustomerAlerts,
+  listCustomersWithActiveAlerts,
+} from "../../../../services/contact/queries"
 
 const getCustomerAlertsInput = selectCustomerSchema.pick({ id: true })
 
@@ -20,9 +20,7 @@ const getCustomerAlertsInput = selectCustomerSchema.pick({ id: true })
 // ciascun alert risolto. Usato dalla sezione "Alerts" nel dettaglio cliente.
 export const getCustomerAlerts = operatorProcedure
   .input(getCustomerAlertsInput)
-  .query(({ input }) =>
-    runTrpc(query((client) => customerAlerts(client, input.id)))
-  )
+  .query(({ input }) => runTrpc(listCustomerAlerts(input.id)))
 
 const getCustomersWithActiveAlertsInput = z.object({
   customerIds: z.array(z.string()),
@@ -34,29 +32,9 @@ const getCustomersWithActiveAlertsInput = z.object({
 // prima di sovrascrivere lo stato con una nuova chiamata.
 export const getCustomersWithActiveAlerts = operatorProcedure
   .input(getCustomersWithActiveAlertsInput)
-  .query(async ({ ctx, input }) => {
-    if (input.customerIds.length === 0) return []
-    return await ctx.db
-      .select({
-        customerId: task.customerId,
-        name: customers.name,
-        surname: customers.surname,
-        alertId: alert.id,
-        deadline: alert.deadline,
-        message: alert.message,
-        state: task.state,
-      })
-      .from(alert)
-      .innerJoin(task, eq(task.alertId, alert.id))
-      .innerJoin(customers, eq(customers.id, task.customerId))
-      .where(
-        and(
-          inArray(task.customerId, input.customerIds),
-          eq(alert.isResolved, false),
-          eq(task.isActive, true)
-        )
-      )
-  })
+  .query(({ input }) =>
+    runTrpc(listCustomersWithActiveAlerts(input.customerIds))
+  )
 
 const getActiveTaskInput = selectCustomerSchema.pick({
   id: true,
@@ -64,24 +42,7 @@ const getActiveTaskInput = selectCustomerSchema.pick({
 
 export const getActiveTask = operatorProcedure
   .input(getActiveTaskInput)
-  .query(async ({ ctx, input }) => {
-    const { db } = ctx
-    // NB: un cliente può avere più task con isActive=true (bug noto sui duplicati).
-    // Ordiniamo in modo deterministico e prendiamo SOLO la più recente, così tutti i
-    // componenti che leggono la "task attiva" mostrano la stessa riga e non pescano
-    // un [0] casuale. GREATEST(updatedAt, createdAt) = ultima volta che la riga è stata
-    // toccata: è robusto anche rispetto al default congelato di updatedAt (le righe
-    // realmente modificate hanno una data reale, quelle auto-create no).
-    return await db
-      .select()
-      .from(task)
-      .where(and(eq(task.isActive, true), eq(task.customerId, input.id)))
-      .orderBy(
-        desc(sql`GREATEST(${task.updatedAt}, ${task.createdAt})`),
-        desc(task.id)
-      )
-      .limit(1)
-  })
+  .query(({ input }) => runTrpc(getActiveTaskService(input.id)))
 
 /** The list of contacts, filtered, ordered and paged: see `getContacts`. */
 export const getContacts = operatorProcedure
