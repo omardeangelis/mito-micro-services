@@ -62,16 +62,66 @@ export type ImportPlan = {
   linksNew: { customer: LinkCustomer; praticaId: string; role: CustomerRole }[]
 }
 
+/** Where each code is among the customers of the CRM, by position. */
+type CrmIndex = {
+  /** The customers with that fiscal code */
+  byFiscalCode: Map<string, number[]>
+  /** The customers with that VAT number */
+  byVatCode: Map<string, number[]>
+  /** The customers without a fiscal code and with that VAT number */
+  byVatCodeOnly: Map<string, number[]>
+  byTempID: Map<string, number[]>
+}
+
+const add = (map: Map<string, number[]>, key: string, position: number) => {
+  const positions = map.get(key)
+  if (positions) positions.push(position)
+  else map.set(key, [position])
+}
+
+const indexes = new WeakMap<CrmState, CrmIndex>()
+
+/**
+ * The positions of the CRM's customers by code, built once per state: a file
+ * of 20,000 rows on as many customers would otherwise compare each row with
+ * each customer (AC25).
+ */
+function indexOf(crm: CrmState): CrmIndex {
+  const cached = indexes.get(crm)
+  if (cached) return cached
+  const index: CrmIndex = {
+    byFiscalCode: new Map(),
+    byVatCode: new Map(),
+    byVatCodeOnly: new Map(),
+    byTempID: new Map(),
+  }
+  crm.customers.forEach((existing, position) => {
+    if (existing.fiscalCode) {
+      add(index.byFiscalCode, existing.fiscalCode, position)
+    } else if (existing.vatCode) {
+      add(index.byVatCodeOnly, existing.vatCode, position)
+    }
+    if (existing.vatCode) add(index.byVatCode, existing.vatCode, position)
+    add(index.byTempID, existing.tempID, position)
+  })
+  indexes.set(crm, index)
+  return index
+}
+
 /**
  * Today's rule (OQ1): a customer of the CRM with a fiscal code is the row's if
  * the fiscal codes match, one without if the VAT numbers do; the first wins.
  */
 function recognize(customer: ConvertedCustomer, crm: CrmState) {
-  return crm.customers.find((existing) =>
-    existing.fiscalCode
-      ? existing.fiscalCode === customer.fiscalCode
-      : !!existing.vatCode && existing.vatCode === customer.vatCode
-  )
+  const index = indexOf(crm)
+  const byFiscalCode = customer.fiscalCode
+    ? index.byFiscalCode.get(customer.fiscalCode)?.[0]
+    : undefined
+  const byVatCode = customer.vatCode
+    ? index.byVatCodeOnly.get(customer.vatCode)?.[0]
+    : undefined
+  const first = Math.min(byFiscalCode ?? Infinity, byVatCode ?? Infinity)
+  return first === Infinity ? undefined : crm.customers[first]
 }
 
 /**
@@ -83,16 +133,17 @@ function updatedBy(
   first: CrmCustomer,
   crm: CrmState
 ): string[] {
+  const index = indexOf(crm)
   const fiscalCode = customer.fiscalCode ?? first.fiscalCode
   const vatCode = customer.vatCode ?? first.vatCode
-  return crm.customers
-    .filter(
-      (existing) =>
-        existing.tempID === customer.tempID ||
-        (!!fiscalCode && existing.fiscalCode === fiscalCode) ||
-        (!!vatCode && existing.vatCode === vatCode)
-    )
-    .map((existing) => existing.id)
+  const positions = new Set([
+    ...(index.byTempID.get(customer.tempID) ?? []),
+    ...((fiscalCode && index.byFiscalCode.get(fiscalCode)) || []),
+    ...((vatCode && index.byVatCode.get(vatCode)) || []),
+  ])
+  return [...positions]
+    .sort((a, b) => a - b)
+    .map((position) => crm.customers[position]!.id)
 }
 
 /**
