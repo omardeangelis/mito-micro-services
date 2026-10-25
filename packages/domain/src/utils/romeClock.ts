@@ -17,8 +17,8 @@ const romeFormat = new Intl.DateTimeFormat("en-US", {
   second: "numeric",
 })
 
-/** Offset of Europe/Rome from UTC (ms) at the instant. */
-export function romeOffsetMs(instantMs: number): number {
+/** Offset of Europe/Rome from UTC (ms) at the instant, as Intl gives it. */
+function formattedOffsetMs(instantMs: number): number {
   const parts = romeFormat.formatToParts(new Date(instantMs))
   const part = (type: Intl.DateTimeFormatPartTypes) =>
     Number(parts.find((p) => p.type === type)?.value)
@@ -32,6 +32,28 @@ export function romeOffsetMs(instantMs: number): number {
   )
   const wholeSecond = instantMs - (((instantMs % 1000) + 1000) % 1000)
   return wall - wholeSecond
+}
+
+// Intl is slow, and an import asks the offset of the same days for every row
+// (T13): the offset of a UTC day whose first and last second agree holds for
+// the whole day, so it is asked once. A day that changes offset (null) is asked
+// at each instant. The size bound keeps a long process from growing it.
+const offsetByDay = new Map<number, number | null>()
+const MAX_CACHED_DAYS = 100_000
+
+/** Offset of Europe/Rome from UTC (ms) at the instant. */
+export function romeOffsetMs(instantMs: number): number {
+  const day = Math.floor(instantMs / MS_PER_DAY)
+  let offset = offsetByDay.get(day)
+  if (offset === undefined) {
+    const start = day * MS_PER_DAY
+    const first = formattedOffsetMs(start)
+    offset =
+      first === formattedOffsetMs(start + MS_PER_DAY - 1000) ? first : null
+    if (offsetByDay.size >= MAX_CACHED_DAYS) offsetByDay.clear()
+    offsetByDay.set(day, offset)
+  }
+  return offset ?? formattedOffsetMs(instantMs)
 }
 
 export type WallClock = {
