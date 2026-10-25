@@ -235,15 +235,3 @@ export const getPraticaById = protectedProcedure
 
     return result[0]
   })
-
-export const getPraticaByPraticaId = protectedProcedure
-  .input(z.object({ praticaId: z.string() }))
-  .query(async ({ input, ctx }) => {
-    const { db } = ctx
-    const result = await db
-      .select()
-      .from(practices)
-      .where(eq(practices.praticaId, input.praticaId))
-
-    return result[0]
-  })

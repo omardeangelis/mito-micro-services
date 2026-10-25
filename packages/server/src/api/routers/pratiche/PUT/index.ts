@@ -1,4 +1,4 @@
-import { operatorProcedure, protectedProcedure } from "../../../trpc"
+import { operatorProcedure } from "../../../trpc"
 import { practices } from "@mito/db/schema/pratiche"
 import { eq, inArray } from "drizzle-orm"
 import { customers } from "@mito/db/schema/customers"
@@ -7,18 +7,6 @@ import {
   insertPracticeSchema,
 } from "@mito/domain/schemas"
 import { z } from "zod"
-import { updatePracticeUpdatedAt } from "../../../../shared/updateAt"
-
-export const updatePratica = protectedProcedure
-  .input(insertPracticeSchema)
-  .mutation(async ({ input, ctx }) => {
-    const { db } = ctx
-    return await db
-      .update(practices)
-      .set(input)
-      .where(eq(practices.id, input.id!))
-      .returning({ id: practices.id })
-  })
 
 const updatePraticaFromDashboardSchema = insertPracticeSchema.pick({
   id: true,
@@ -67,15 +55,4 @@ export const bulkAssignPractices = operatorProcedure
       .update(practices)
       .set({ operatorId: input.operatorId })
       .where(inArray(practices.praticaId, input.practiceIds))
-  })
-
-const updateLastEditInput = insertPracticeSchema.pick({
-  praticaId: true,
-})
-
-export const updateLastEdit = operatorProcedure
-  .input(updateLastEditInput)
-  .mutation(async ({ ctx, input }) => {
-    const { db } = ctx
-    return await updatePracticeUpdatedAt({ id: input.praticaId, db })
   })

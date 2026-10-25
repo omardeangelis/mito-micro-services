@@ -2,7 +2,7 @@ import { operatorProcedure } from "../../../trpc"
 import { alert, task } from "@mito/db/schema/task"
 import { customers } from "@mito/db/schema/customers"
 import { desc, eq, and, sql, inArray } from "drizzle-orm"
-import { selectCustomerSchema, selectTaskSchema } from "@mito/domain/schemas"
+import { selectCustomerSchema } from "@mito/domain/schemas"
 import { z } from "zod"
 import { getContactsInput } from "@mito/domain/contact/listInput"
 import { query } from "../../../../effect/db"
@@ -12,40 +12,6 @@ import { customerAlerts } from "../../../../services/contact/customerAlerts"
 import { contactErrorToTrpc } from "../../../../services/contact/errors"
 import { getContactById as getContactByIdService } from "../../../../services/contact/getContactById"
 import { getContacts as getContactsService } from "../../../../services/contact/getContacts"
-
-const taskInput = selectTaskSchema.pick({
-  id: true,
-})
-
-export const getTaskById = operatorProcedure
-  .input(taskInput)
-  .query(async ({ ctx, input }) => {
-    const { id } = input
-    return await ctx.db.select().from(task).where(eq(task.id, id))
-  })
-
-export const getTasksToExport = operatorProcedure.query(async ({ ctx }) => {
-  const { db, operator } = ctx
-  const isAdmin = operator.role === "ADMIN"
-  if (isAdmin) {
-    const tasks = await db.select().from(task).orderBy(desc(task.updatedAt))
-    if (tasks.length === 0) {
-      return false
-    }
-    return true
-  } else {
-    const tasks = await db
-      .select()
-      .from(task)
-      .where(eq(task.operatorId, operator.id))
-      .orderBy(desc(task.updatedAt))
-
-    if (tasks.length === 0) {
-      return false
-    }
-    return true
-  }
-})
 
 const getCustomerAlertsInput = selectCustomerSchema.pick({ id: true })
 
