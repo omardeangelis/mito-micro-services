@@ -14,7 +14,7 @@ updated: 2026-10-24
 # Plan: Import di clienti e pratiche, riscritto
 
 **Spec:** [[specs/crm/import-pratiche/SPEC]] (approvata da Leonardo il 2026-10-24)
-**Status:** In progress (PR A #77, PR B #78, PR C #81)
+**Status:** In progress (PR A #77, PR B #78, PR C #81, PR D #82)
 **Generato:** 2026-10-24 con `create-plan`: grill (una domanda a Leonardo, D1) → swarm-plan → tdd → adversarial-verifier (primo giro DO NOT SHIP con 2 blocker; secondo giro DO NOT SHIP senza blocker, 3 major e 8 minor; tutti corretti in questa versione, senza un terzo giro per il limite di 2 tentativi). Nessun codice scritto.
 
 ---
@@ -373,9 +373,9 @@ T0 è una prova senza PR; T12b è la prova finale su staging dopo F e G.
 - **location**: `apps/api/gcp/setup-import-queue.sh` (nuovo), `apps/api/gcp/deploy-staging.sh`
 - **description**: lo script (idempotente, lanciato da Leonardo dal Mac) abilita l'API Cloud Tasks, crea la coda `mito-crm-staging-import` in `europe-west3` (3 tentativi con backoff, una consegna alla volta), il service account che firma i token dei task, e i permessi: il service account del backend mette task in coda e agisce come quel service account. `deploy-staging.sh` passa al backend coda, URL e service account. Senza queste variabili il backend parte con la coda spenta (D13), quindi la PR si può unire prima o dopo lo script senza bloccare i deploy.
 - **validation**: `gcloud tasks queues describe` mostra 3 tentativi e una consegna alla volta; dopo il deploy `/health` risponde e il backend parte con la coda configurata.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: In progress
+- **log**: 2026-10-25, #82. Script e variabili `IMPORT_QUEUE`, `IMPORT_OIDC_AUDIENCE`, `IMPORT_OIDC_SERVICE_ACCOUNT` (nomi come `CRON_OIDC_*`) scritti; controllati solo con `sh -n` e `--help`. Manca il lancio di Leonardo dal Mac e `gcloud tasks queues describe`. Nessun permesso al service agent di Cloud Tasks: il ruolo glielo dà Google con l'API
+- **files edited/created**: `apps/api/gcp/setup-import-queue.sh`, `apps/api/gcp/deploy-staging.sh`
 - **backlog_item_id**: —
 - **backlog_item_url**: —
 - **relation_mode**: body-links

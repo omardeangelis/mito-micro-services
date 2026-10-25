@@ -13,6 +13,7 @@ updated: 2026-10-24
 ## Summary
 
 - PR A (#77, `claude/import-caratterizzazione`, da `dev`): T1 e T2, test di caratterizzazione sul codice di oggi. Nessun cambio al codice.
+- PR D (#82, `claude/import-coda`, da `dev`): T12a, `setup-import-queue.sh` e le variabili `IMPORT_*` nel deploy di staging. Lo script lo lancia Leonardo dal Mac.
 - PR C (#81, `claude/import-storico-schema`, da `dev`): T7, tabelle `import_run`, `import_upload`, `import_upload_part` e la loro migrazione, solo additiva. Nessun codice le usa ancora.
 - PR B (#78, `claude/import-dominio`, sopra la A): T3, T4, T5, T6, T8a. Tracciati, conversione, classificazione, raggruppamento e piano nel dominio, puri. L'import di oggi usa solo la conversione spostata; il resto lo chiamano le PR E ed F.
 
@@ -96,7 +97,8 @@ Decisioni di T5–T8a:
 ## Remaining Work
 
 - T0 (limite della rewrite di Vercel), prima di T11: serve il Chrome di Leonardo con Vercel aperto o una sessione sul Mac, perché il container non raggiunge staging.
-- PR D (T12a: coda Cloud Tasks su staging, lo script lo lancia Leonardo dal Mac), poi PR E (servizi, sopra B + C).
+- Leonardo lancia `sh apps/api/gcp/setup-import-queue.sh` dal Mac (T12a).
+- PR E (servizi, sopra B + C).
 - Prima del primo merge su `dev`: conferma di Leonardo che la promozione `dev` → `main` resta ferma fino al go/no-go (PLAN §10).
 
 ## Steering
