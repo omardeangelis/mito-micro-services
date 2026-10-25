@@ -5,8 +5,8 @@ scope: spec
 spec: chat-storage-effect
 review_target: "branch claude/chat-effect (PR A del passo 5, PR #86); giro PR B: branch claude/storage-effect"
 base_ref: 2b284b4 (giro PR B: 49e9a6c)
-head_ref: bdf0840
-verdict: do-not-ship
+head_ref: 7ada632
+verdict: ship
 review_impact: critical
 human_in_loop: true
 links:
@@ -108,9 +108,9 @@ Caso B, sui criteri della PR B: AC10–AC16, AC17 (d)(e), le parti di AC18 della
 
 ### Verdict
 
-**DO NOT SHIP** · impact: critical
+**SHIP** dopo le correzioni · impact: critical. Primo giro a `bdf0840`: DO NOT SHIP; rilanci di v4 sotto, fino a `7ada632`.
 
-Sei verificatori su sette danno SHIP. v4 dà DO NOT SHIP per due MAJOR sui documenti, non sul codice: GB2 nel PLAN e la sorpresa corrispondente in `IMPLEMENTATION-NOTES.md` descrivono una topologia di staging che `next.config.js` e i suoi test smentiscono. Un'affermazione CONTRADICTED su cui un umano agirà dopo il merge tiene il verdetto. Nessun BLOCKER; 2 MAJOR, 11 MINOR e 13 NIT.
+Al primo giro sei verificatori su sette danno SHIP. v4 dà DO NOT SHIP per due MAJOR sui documenti, non sul codice: GB2 nel PLAN e la sorpresa corrispondente in `IMPLEMENTATION-NOTES.md` descrivono una topologia di staging che `next.config.js` e i suoi test smentiscono. Un'affermazione CONTRADICTED su cui un umano agirà dopo il merge tiene il verdetto. Nessun BLOCKER; 2 MAJOR, 11 MINOR e 13 NIT.
 
 ### Coverage
 
@@ -210,7 +210,24 @@ Il MAJOR di v7 sulla riga 5 del §4 non conta: la charter lo esclude, ed è di T
 | AC20 | met in locale | v6: gate verdi a `bdf0840`. La CI della PR si vede quando la PR si apre |
 | Vincolo di GB2 ("descrive quello che gira davvero") | not met | v4: MAJOR sopra |
 
+### Correzioni e rilanci di v4
+
+Correzioni nello stesso branch:
+- **Test** (`7516e60`), per i MINOR di v1, v2, v3 e v6: `download/_test/downloadGuards.test.ts` e `importError/_test/importErrorGuards.test.ts`, file nuovi, verdi a `HEAD` e a `2b284b4`. Il token dei cron senza sessione riceve 401 e lo storage non viene letto; un nome rifiutato non raggiunge il bucket (cifre Unicode, `\n` finale, maiuscole, date corte, punto); un file dato come vista su un buffer più grande si scarica con i suoi soli byte. Uccidono i 10 mutanti sopravvissuti nelle prove dei verificatori;
+- **Documenti** (`b9cb967`, `aa27225`, `e81a046`, `ef4b570`, `7ada632`): GB2 e D18 nel PLAN, le note sulla topologia, sui log dei difetti e sull'ordine fra layer e allow-list, TD6 e il conteggio delle righe di fixture.
+
+| Rilancio | Su | Verdetto | Rilievi principali |
+|---|---|---|---|
+| v4, 1º | `b9cb967` | DO NOT SHIP | MAJOR: il ramo di fallimento di GB2 accendeva solo `BACKEND_REST`, senza rideploy né pulizia del file. MINOR sul download di prima con la sessione di Vercel, sui 50 byte del `loggerLink`, sull'ordine con le credenziali GCS malformate |
+| v4, 2º | `aa27225` | DO NOT SHIP | MAJOR: accendere `BACKEND_AUTH` da GB2 lascia lo staging senza login, perché il backend non ha le variabili dei provider, e salta la copia fresca di B6 |
+| v4, 3º | `e81a046` | DO NOT SHIP | MAJOR: B6 non prevede le variabili di login del backend, e `deploy-staging.sh` le toglie a ogni deploy, quindi GB2 non si può fare |
+| v4, 4º | `ef4b570` | DO NOT SHIP | MAJOR: il run del deploy del merge può restare rosso per il job di Vercel (limite Hobby); MINOR sui provider attesi, sull'immagine della revisione, sul file di prova, sugli altri esiti. "Small wording fixes; none is a design change" |
+| verifica delle correzioni (sonnet) | `7ada632` | SHIP | I 7 rilievi del 4º rilancio risolti, nessuna affermazione falsa nuova; 2 NIT |
+
+Restano aperti, nella checklist: l'ordine fra layer e allow-list (punto 4) e GB2, che oggi è bloccato perché il backend di staging non ha il login (punto 5).
+
 ### Notes for docs-maintenance
 
 - Durevole: il MINOR di v2 sull'adapter Supabase, che non codifica la chiave, e su `uploadExportFile` senza controllo del nome. Va nel tech debt di [[specs/crm/chat-storage-effect/SPEC]].
-- Non durevoli: i MAJOR di v4 sono documenti del passo, da correggere prima del merge.
+- Non durevoli: i MAJOR di v4 sui documenti del passo, corretti.
+- Fuori dal passo, per il piano GCP: B6 di [[chore/migrazione-gcp]] non prevede le variabili di login del backend di staging (`AZURE_AD_*`, `SENDGRID_*`, `AUTH_ALLOWED_EMAILS`), e `deploy-staging.sh` non le passa.

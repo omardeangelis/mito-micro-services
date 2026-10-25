@@ -18,6 +18,8 @@ A gate that defers to another plan's step ("GB2 waits for B6, done by its owners
   - a label set only when an env var is present (`${COMMIT_SHA:+--update-labels=...}`) is inherited by hand deploys, so it can name a commit the image doesn't hold;
   - the test's input preconditions in the UI path (all-invalid import file never calls the upload route; the button is ADMIN-only).
 
+- Fix-verification pass (v7) on such a gate: a date said to be "UTC day" is true only because the deploy script sets `TZ=UTC` (the code uses local `getDate()`), so read the script's env, not just the code; a catch-all "every other outcome: tell owner of X the config is not in effect" over-attributes when some outcomes (storage 500, no file) belong to another step, so check the attribution, not just that a branch exists; a "log line" evidence needs the writer's key format (`object.name` carries `export/`) and the lifecycle-vs-cron timing.
+
 **Why:** chat-storage-effect PR B, docs pass after v4 rerun: GB2, REPORT point 5 and the notes said B6 brings the backend's login variables; B6 never names them, deploy-staging.sh passes none (providers [] under its env), and the merge's own deploy would wipe a hand fix. The next pass found the new prechecks could pass vacuously or not at all.
 
 **How to apply:** any release gate that defers to another plan or runbook. Related: [[flag-flip-target-env-probe]], [[runtime-topology-claims]], [[release-runbook-as-procedure]].

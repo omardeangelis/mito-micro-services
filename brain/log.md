@@ -12,6 +12,13 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 
 <!-- Entries are appended by create-spec (spec creation) and docs-maintenance (ingest). Format:
 
+## [2026-10-26] review | Router `supabase` e `supabaseClient`, PR B: rilanci di v4
+- Report: [[specs/crm/chat-storage-effect/REPORT]] (giro PR B, rilanci)
+- Scope: spec
+- Verdict: SHIP
+- Impact: critical
+- Verifiers: v4 rilanciato 4 volte sui documenti di GB2, poi una verifica delle correzioni (0 blockers, 0 major). GB2 bloccato: B6 di [[chore/migrazione-gcp]] non dà al backend di staging le variabili di login
+
 ## [2026-10-25] review | Router `supabase` e `supabaseClient`, PR B del passo 5
 - Report: [[specs/crm/chat-storage-effect/REPORT]] (giro PR B)
 - Scope: spec
@@ -293,13 +300,6 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 ## [2026-10-16] implement | Sezione Contatti — PR4, T4.7 (MAJOR e MINOR della quinta verifica)
 - Spec: [[specs/crm/sezione-contatti/PLAN]]
 - Store per cliente delle note in eliminazione; focus solo se rimasto sul cestino; toast solo col cliente a schermo; test di rollback
-
-## [2026-10-16] review | Sezione Contatti — PR4, T4.5–T4.7 (quinta verifica)
-- Report: [[specs/crm/sezione-contatti/REPORT]]
-- Scope: spec
-- Verdict: DO NOT SHIP
-- Impact: medium
-- Verifiers: 2 (0 blockers, 2 major)
 
 ## [YYYY-MM-DD] ingest | <spec title>
 - Source: [[specs/<domain>/<spec>/SPEC]]
