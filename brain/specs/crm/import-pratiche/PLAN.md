@@ -523,9 +523,9 @@ T0 è una prova senza PR; T12b è la prova finale su staging dopo F e G.
 - **location**: `src/app/api/import/**`; `src/lib/workers/import/**`; `src/app/dashboard/_components/WorkerImportDialog.tsx`; `src/app/_context/ImportWorker.tsx`, il provider in `src/app/dashboard/layout.tsx`, `useHandleImportWorkerStates` in `DashboardLayout.tsx` e i `vi.mock` in `src/app/_components/_test/DashboardLayout*.test.tsx`; `src/store/useImportStore.ts`; `src/app/api/export/importError/`; le rotte in `apps/api/src/rest.ts` (e i loro casi in `rest.db.test.ts`); le 4 procedure vecchie; `packages/server/src/shared/updateImportedCustomer.ts` se non ha altri usi; le riesportazioni di T3 e T4 rimaste senza chiamanti
 - **description**: cancella file e import morti (AC4). Prima di cancellare: i test di T1 vivono già in `src/lib/import/_test/` (T4) e restano; ogni caso di T2 ha il gemello in T8a, T8b o T9. Restano `/api/export/download`, il cron `delete-export` e le procedure dello storage (Non-Goals della spec).
 - **validation**: test: le 7 rotte rispondono 404 su Next.js e sul backend; le 4 procedure non esistono; i test di caratterizzazione di T1 e i gemelli di T2 verdi; nessun import (non testo) dei moduli cancellati; gate completi verdi. Un uso fuori da questa lista ferma il task (regola di stop).
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-10-25, #89. Tolti anche, perché li usava solo il vecchio import: `src/app/api/export/utils/`, `src/lib/types/errors.ts` e `workers.ts`, il prefisso `/api/import` delle rewrite in `next.config.js`. `splitArray` (usata da "Assegna Clienti") passa in `src/lib/utils`; il test del seed calcola le rate col dominio. Le 7 rotte rispondono 404 sul backend, e non sono più nella build di Next.js; il router `import` ha solo le 5 procedure nuove
+- **files edited/created**: 44 file cancellati; `apps/api/src/rest.ts` + `_test/rest.db.test.ts`, `packages/server/src/api/routers/import/index.ts` + `_test/import.db.test.ts`, `src/app/dashboard/layout.tsx`, `src/app/_components/DashboardLayout.tsx` + test, `next.config.js` + `src/_test/nextConfig.test.ts`, `src/lib/utils/index.ts`, `src/app/api/_utils/index.ts`, `CustomerBulkDialog.tsx`, `importRatesChild.ts`
 - **backlog_item_id**: —
 - **backlog_item_url**: —
 - **relation_mode**: body-links

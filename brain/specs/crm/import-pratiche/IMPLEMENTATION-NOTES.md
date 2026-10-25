@@ -18,6 +18,7 @@ updated: 2026-10-25
 - PR B (#78, `claude/import-dominio`, sopra la A): T3, T4, T5, T6, T8a. Tracciati, conversione, classificazione, raggruppamento e piano nel dominio, puri. L'import di oggi usa solo la conversione spostata; il resto lo chiamano le PR E ed F.
 - PR E (#85, `claude/import-servizio`, sopra B + C): T8b, T9, T9b, T10a, T10b, T11, T13. Lettura del CRM, righe temporanee, scrittura tutto o niente, avvio ed esecuzione con la coda, storico, pulizia, procedure solo admin, rotte interne del backend con OIDC. Il vecchio import non cambia; le procedure nuove non hanno ancora una UI (PR F).
 - PR F (#88, `claude/import-ui`, sopra la E): T14–T19. Lettura e anteprima in un Web Worker, report errori nel browser, invio a parti, pagina Import con storico, voce del menu e pulsante solo admin, avviso di fine in ogni pagina. Il pulsante della dashboard porta alla pagina nuova; il vecchio import resta solo nel codice fino alla PR G.
+- PR G (#89, `claude/import-cleanup`, sopra la F): T20. Via le 7 rotte, il worker, la finestra, il contesto, lo store e le 4 procedure vecchie (chiude TD9 (k)). Si unisce insieme alla F.
 
 ## Execution Mode
 
@@ -50,6 +51,7 @@ updated: 2026-10-25
 - T14: il messaggio per un file oltre le 50.000 righe è nell'anteprima ("Il file ha più di 50.000 righe"), come T6 lasciava da decidere. Un errore del worker si mostra senza il suo motivo, che potrebbe avere valori delle righe (AC31).
 - T19: l'avviso è il toast, che Radix annuncia già in una regione live (AC41): una seconda regione lo farebbe leggere due volte. `router.refresh()` e il filtro "File" si aggiornano solo per un import completato, perché uno fallito o interrotto non ha scritto nulla; lo storico si aggiorna sempre.
 - T19: la conferma passa il `runId` al provider (`watch`), così l'avviso arriva anche per un import che finisce prima della prima domanda di `import.active`.
+- T20: fuori dall'elenco del piano, ma usati solo dal vecchio import: `src/app/api/export/utils/` (il report errori sul server, che senza `_types` non compilava), `src/lib/types/errors.ts` e `workers.ts`, il prefisso `/api/import` delle rewrite verso il backend. `splitArray` la usa anche "Assegna Clienti": passa in `src/lib/utils`. `src/middleware/auth.ts` ha ancora `/api/import/:path*` nel `matcher`, ma non è collegato a nessun `middleware.ts`: non toccato.
 
 ## Surprises and Decisions
 
@@ -97,6 +99,7 @@ Decisioni di T8b–T13:
 | Equivalenza delle ottimizzazioni (T13) | ok | `planRows` con l'indice uguale alla versione di prima su 3.000 casi casuali; offset di Roma uguale a `Intl` su 400.000 istanti e attorno a 293 cambi d'ora; test del dominio verdi in UTC e a Roma |
 | Gate CI in locale (PR F) | ok | `next lint`, `tsc --noEmit`, `pnpm run test --run` (3875 passati, 111 saltati), progetto `pg` (108 passati), `pnpm api:build` e `pnpm api:smoke`, `pnpm build` coi segnaposto di CI (il worker esce come chunk a parte) |
 | Mutazioni su T17 e T19 | ok | Mostrando sempre il messaggio generico, non chiudendo il worker all'annullamento, chiedendo `import.active` anche per un operatore, chiedendolo dopo la fine, togliendo `router.refresh()` o l'attesa dell'import seguito, almeno un test fallisce |
+| Gate CI in locale (PR G) | ok | `next lint`, `tsc --noEmit`, `pnpm run test --run` (3833 passati, 111 saltati), progetto `pg` (108 passati), `pnpm api:build` e `pnpm api:smoke`, `pnpm build` (nessuna rotta `/api/import/*` né `/api/export/importError`) |
 | Gate CI in locale (PR B) | ok | `next lint`, `tsc --noEmit`, `pnpm run test --run` (3243 passati, 75 saltati), `pnpm build` coi segnaposto di CI, `pnpm api:build` |
 
 ## Acceptance Criteria Status
@@ -118,6 +121,7 @@ Decisioni di T8b–T13:
 | AC27 | Sul server | Lock ordinati, test pg con la disattivazione (T9, T9b) |
 | AC28 | Server e UI | `listImports` (T10b), pagina, menu e pulsante (T16), storico (T18) |
 | AC1, AC5–AC7, AC14–AC18, AC21, AC22, AC26, AC29, AC30, AC40, AC41 | UI, test dei componenti | PR F (T14–T19); il giro nel browser vero e la misura di AC18 sono di T12b |
+| AC4 | Tolto | Le 7 rotte rispondono 404 sul backend e mancano dalla build di Next.js; il router `import` ha solo le 5 procedure nuove (T20) |
 | OQ1 (riconoscimento) | Caratterizzato, nel dominio | T2 sul codice di oggi; i suoi casi hanno il gemello in `plan.test.ts` (chi si aggiorna). Quali valori riceve ogni cliente (AC35) è di T9 |
 
 ## Pre-existing Issues
@@ -126,14 +130,14 @@ Decisioni di T8b–T13:
 
 ## Out of Scope Observations
 
-- `handleCustomerUpdateV2` e `updateExistingCustomers` in `src/lib/workers/import/service/updateCustomer.ts` sono usati solo dalle 4 procedure senza chiamanti: spariscono con T20.
+- `handleCustomerUpdateV2` e `updateExistingCustomers` in `src/lib/workers/import/service/updateCustomer.ts` erano usati solo dalle 4 procedure senza chiamanti: tolti con T20.
 
 ## Remaining Work
 
 - T0 (limite della rewrite di Vercel), prima di T11: serve il Chrome di Leonardo con Vercel aperto o una sessione sul Mac, perché il container non raggiunge staging.
 - Leonardo lancia `sh apps/api/gcp/setup-import-queue.sh` dal Mac (T12a).
 - T12b: memoria del backend. Il test di T13 ha visto 745 MiB di picco, ma è il processo di vitest intero: la misura vera è su staging.
-- PR G (T20), poi il giro nel browser di T14–T19 con T12b.
+- Il giro nel browser di T14–T19 con T12b, dopo il merge di F e G su `dev`.
 - Prima del primo merge su `dev`: conferma di Leonardo che la promozione `dev` → `main` resta ferma fino al go/no-go (PLAN §10).
 
 ## Steering
@@ -141,4 +145,4 @@ Decisioni di T8b–T13:
 | Date | Feedback | Changes |
 |------|----------|---------|
 | 2026-10-24 | Leonardo: ok al piano, si parte dalla PR A | — |
-| 2026-10-25 | Leonardo: "vai continua", poi "possiamo proseguire" | PR C, D, E ed F |
+| 2026-10-25 | Leonardo: "vai continua", poi "possiamo proseguire" | PR C, D, E, F e G |
