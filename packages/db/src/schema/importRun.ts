@@ -85,6 +85,9 @@ export const importUpload = createTable("import_upload", {
   parts: integer("parts").notNull(),
   // The import that uses them: from then on the upload takes no more parts
   runId: integer("run_id").references(() => importRun.id),
+  // The rows the admin confirmed, by number, set with `runId`: the import
+  // writes those and checks they are still what the preview showed (AC19b)
+  expected: integer("expected").array(),
 })
 
 export const importUploadPart = createTable(

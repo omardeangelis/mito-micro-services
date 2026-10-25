@@ -1,5 +1,5 @@
 {
-  "id": "06790bbd-18cb-4580-8903-95953bc7eb74",
+  "id": "853fbe85-6779-4967-bea1-85c156b7ae4d",
   "prevId": "60f62df6-3bbe-48b0-9e42-8b1b37ca160a",
   "version": "7",
   "dialect": "postgresql",
@@ -210,7 +210,7 @@
           "type": "varchar",
           "primaryKey": true,
           "notNull": true,
-          "default": "'ixOvUuW5XKRbUj4N76MFg'"
+          "default": "'dXvQlfUZAfuBqCAGR3B-a'"
         },
         "fullname": {
           "name": "fullname",
@@ -675,6 +675,12 @@
         "run_id": {
           "name": "run_id",
           "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "expected": {
+          "name": "expected",
+          "type": "integer[]",
           "primaryKey": false,
           "notNull": false
         }
