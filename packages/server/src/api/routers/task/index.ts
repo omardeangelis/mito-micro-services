@@ -3,9 +3,7 @@ import { createContact, setCallback, bulkHandleTask } from "./POST/index"
 import { changeState, setPriority, reassign } from "./PUT/index"
 import { resolveAlert } from "./DELETE/index"
 import {
-  getTasksToExport,
   getCustomerAlerts,
-  getTaskById,
   getActiveTask,
   getCustomersWithActiveAlerts,
   getContacts,
@@ -13,7 +11,6 @@ import {
 } from "./GET/index"
 
 export const taskRouter = createTRPCRouter({
-  getTaskById,
   createContact,
   setCallback,
   changeState,
@@ -22,7 +19,6 @@ export const taskRouter = createTRPCRouter({
   bulkHandleTask,
   resolveAlert,
   getCustomerAlerts,
-  getTasksToExport,
   getActiveTask,
   getCustomersWithActiveAlerts,
   getContacts,

@@ -23,4 +23,11 @@ Plan-level checks for the same kind of refactor (customer PLAN review):
 - **Debt entries an AC requires "with a proposed fix for each":** read the actual debt row, not the plan's list. The row only said "una PR per stranezza", and the plan's closing task only flipped its status.
 - **postgres-js `RowList`:** `count`, `command`, `state` and `statement` are non-enumerable, so `toEqual([])` passes for a RowList and for a plain `[]`. Also, drizzle `set()` with every value undefined throws "No values to set" synchronously, an extra unpinned error path for optional-field updates.
 
+Second refactor spec (pratiche + task to L1/L2), what found gaps:
+
+- **The stricter grep over-matches too.** `@mito/db` in router files also hits zod enum tuples imported from schema files (`z.enum(taskStatus)`, `z.enum(stateEnum)`), even in files the spec calls finished adapters and "the model". Classify every hit on base as DB access or not. Before calling it unsatisfiable, look for domain stand-ins (`allStates`, `selectXSchema.shape.col` probed with tsx).
+- **Permission AC scope vs precedent.** The precedent had an exhaustive per-procedure guard matrix (`procedures.db.test.ts`, keys checked against the router). A spec that scopes "no operator -> BAD_REQUEST, disabled -> UNAUTHORIZED" to "the tests of AC8" leaves the moved procedures with no guard pin. grep `disabledAt: new Date()` and the actor (not the target) in tests.
+- **A list of "operatorId written without findWorkingOperator" writers:** check every `createInsertSchema` input. It takes all columns, so an `insertX` on `protectedProcedure` writes `operatorId` as well.
+- **Removed procedures still mocked in UI tests** (`api.<router>.<proc>` nested object, missed by a dotted grep) leave a `not.toHaveBeenCalled` that can no longer fail.
+
 Related: [[plan-verification-techniques]], [[vacuous-test-patterns]], [[pglite-clock-and-fake-date]]
