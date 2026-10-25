@@ -93,11 +93,11 @@ const chatName = `${FAILPOINT_SCHEMA}.chat_lock_rule`
 
 /**
  * As `assertCustomerLockedOnWrite`, for a customer's chat: from now on, adding
- * or removing an operator of a chat (`chat_to_operator`) and deleting a note
- * (`messages`) fail with "lock rule: …" unless the current transaction has
- * locked the customer whose `chat_id` is that chat. A chat no customer points
- * to has nothing to lock and passes. Sending a note is outside the rule: it
- * locks nothing. Same conditions as `assertCustomerLockedOnWrite`; seed first.
+ * or removing an operator of a chat (`chat_to_operator`) and sending or
+ * deleting a note (`messages`) fail with "lock rule: …" unless the current
+ * transaction has locked the customer whose `chat_id` is that chat. A chat no
+ * customer points to has nothing to lock and passes. Same conditions as
+ * `assertCustomerLockedOnWrite`; seed first.
  */
 export async function assertCustomerLockedOnChatWrite() {
   const customersTable = `"public"."${getTableName(customers)}"`
@@ -129,7 +129,7 @@ export async function assertCustomerLockedOnChatWrite() {
       BEFORE INSERT OR UPDATE OR DELETE ON "public"."${getTableName(chatToOperator)}"
       FOR EACH ROW EXECUTE FUNCTION ${chatName}();
     CREATE TRIGGER "chat_lock_rule_messages"
-      BEFORE DELETE ON "public"."${getTableName(messages)}"
+      BEFORE INSERT OR DELETE ON "public"."${getTableName(messages)}"
       FOR EACH ROW EXECUTE FUNCTION ${chatName}();
   `)
 }
