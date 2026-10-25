@@ -16,9 +16,6 @@ vi.mock("@mito/server/auth", () => ({
   getServerAuthSession: vi.fn(async () => null),
 }))
 
-// Created on import from env vars the tests don't have
-vi.mock("@mito/server/client/supabase", () => ({ supabaseClient: {} }))
-
 // Sentry: failures reported with `ErrorReporter` land in `reportedErrors`
 // (src/test/errorReporter.ts) instead
 vi.mock("@mito/server/effect/errorReporter", async (importOriginal) => {
