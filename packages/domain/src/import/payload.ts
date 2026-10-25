@@ -22,6 +22,8 @@ export const UPLOAD_PART_BYTES = 1_500_000
 export const MAX_UPLOAD_PARTS = 20
 /** The body once decompressed: `MAX_ROWS` rows of the layouts fit in it. */
 export const MAX_BODY_BYTES = 64 * 1024 * 1024
+/** Imports per page of the "Import" page (AC28), on the server and the page. */
+export const HISTORY_PAGE_SIZE = 20
 /** The longest code the CRM stores. */
 const MAX_KEY_LENGTH = 255
 /** Rows of a sheet in Excel: the headers are row 1, the first row is 2. */
