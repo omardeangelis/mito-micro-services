@@ -35,6 +35,18 @@ export const updateCustomerProfile = (
       .returning({ id: customers.id })
   )
 
+/**
+ * Saves the customer's email and phone number and returns the driver's result
+ * as it is. `values` can contain `id` and is written as it comes.
+ */
+export const updateCustomerContacts = (
+  id: string,
+  values: Pick<NewCustomer, "id" | "email" | "phoneNumber">
+) =>
+  query((client) =>
+    client.update(customers).set(values).where(eq(customers.id, id))
+  )
+
 /** Sets the customer's blacklist status. */
 export const setBlackListStatus = (
   id: string,

@@ -1,12 +1,15 @@
 import { operatorProcedure } from "../../../trpc"
-import { practices } from "@mito/db/schema/pratiche"
-import { eq, inArray } from "drizzle-orm"
-import { customers } from "@mito/db/schema/customers"
 import {
   insertCustomerSchema,
   insertPracticeSchema,
 } from "@mito/domain/schemas"
 import { z } from "zod"
+import { runTrpc } from "../../../../effect/trpc"
+import { updateCustomerContacts } from "../../../../services/customer/profile"
+import {
+  assignPractices,
+  updatePracticeFromDashboard as updatePracticeFromDashboardService,
+} from "../../../../services/practice/writes"
 
 const updatePraticaFromDashboardSchema = insertPracticeSchema.pick({
   id: true,
@@ -16,14 +19,9 @@ const updatePraticaFromDashboardSchema = insertPracticeSchema.pick({
 
 export const updatePraticaFromDashboard = operatorProcedure
   .input(updatePraticaFromDashboardSchema)
-  .mutation(async ({ input, ctx }) => {
+  .mutation(({ input }) => {
     const { id: _, ...rest } = input
-    const { db } = ctx
-    return await db
-      .update(practices)
-      .set(rest)
-      .where(eq(practices.id, input.id!))
-      .returning({ id: practices.id })
+    return runTrpc(updatePracticeFromDashboardService(input.id!, rest))
   })
 
 const updateCustomerPreviewSchema = insertCustomerSchema.pick({
@@ -34,13 +32,7 @@ const updateCustomerPreviewSchema = insertCustomerSchema.pick({
 
 export const updateCustomerPreview = operatorProcedure
   .input(updateCustomerPreviewSchema)
-  .mutation(async ({ input, ctx }) => {
-    const { db } = ctx
-    return await db
-      .update(customers)
-      .set(input)
-      .where(eq(customers.id, input.id!))
-  })
+  .mutation(({ input }) => runTrpc(updateCustomerContacts(input.id!, input)))
 
 const bulkAssignPracticesSchema = z.object({
   operatorId: z.number(),
@@ -49,10 +41,6 @@ const bulkAssignPracticesSchema = z.object({
 
 export const bulkAssignPractices = operatorProcedure
   .input(bulkAssignPracticesSchema)
-  .mutation(async ({ input, ctx }) => {
-    const { db } = ctx
-    await db
-      .update(practices)
-      .set({ operatorId: input.operatorId })
-      .where(inArray(practices.praticaId, input.practiceIds))
-  })
+  .mutation(({ input }) =>
+    runTrpc(assignPractices(input.operatorId, input.practiceIds))
+  )

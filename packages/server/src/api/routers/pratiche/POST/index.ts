@@ -3,24 +3,16 @@ import {
   insertPracticeSchema,
 } from "@mito/domain/schemas"
 import { protectedProcedure } from "../../../trpc"
-import { practices } from "@mito/db/schema/pratiche"
-import { customerToPratica } from "@mito/db/schema/relations/customerToPratica"
+import { runTrpc } from "../../../../effect/trpc"
+import {
+  createPractice,
+  linkCustomerToPractice,
+} from "../../../../services/practice/writes"
 
 export const insertPratica = protectedProcedure
   .input(insertPracticeSchema)
-  .mutation(async ({ input, ctx }) => {
-    const { db } = ctx
-    const newPratica = await db
-      .insert(practices)
-      .values(input)
-      .returning({ id: practices.praticaId })
-
-    return newPratica[0]
-  })
+  .mutation(({ input }) => runTrpc(createPractice(input)))
 
 export const connectPraticaAndCustomer = protectedProcedure
   .input(insertCustomerToPraticaSchema)
-  .mutation(async ({ input, ctx }) => {
-    const { db } = ctx
-    await db.insert(customerToPratica).values(input)
-  })
+  .mutation(({ input }) => runTrpc(linkCustomerToPractice(input)))
