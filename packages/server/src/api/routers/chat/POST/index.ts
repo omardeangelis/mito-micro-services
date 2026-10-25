@@ -1,7 +1,6 @@
 import { operatorProcedure } from "../../../trpc"
 import { insertMessageSchema } from "@mito/domain/schemas"
 import z from "zod"
-import { TRPCError } from "@trpc/server"
 import { runTrpc } from "../../../../effect/trpc"
 import { createCustomerChat } from "../../../../services/chat/createCustomerChat"
 import { chatErrorToTrpc } from "../../../../services/chat/errors"
@@ -37,6 +36,6 @@ export const createNewCustomerChat = operatorProcedure
         customerId: input.customerId,
         operatorId: ctx.operator.id,
       }),
-      () => new TRPCError({ code: "NOT_FOUND", message: "Cliente non trovato" })
+      chatErrorToTrpc
     )
   )
