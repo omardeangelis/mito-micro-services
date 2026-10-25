@@ -1,7 +1,7 @@
 ---
 domain: crm
 type: spec
-status: approved
+status: implemented
 links:
   - "[[chore/migrazione-effect]]"
   - "[[specs/crm/customer-effect/SPEC]]"

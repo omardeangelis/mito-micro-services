@@ -24,7 +24,7 @@ Nessuna voce viola un criterio di accettazione. La review ([[specs/crm/filtri-sq
 - **[FOLLOW-UP]** Nessuna regola di lint vieta `sql.raw` nei router (F9) — `.eslintrc.cjs`.
   - Perché resta: i test di AC2 e i mutanti di AC3 coprono già le due procedure; una regola copre anche le procedure future, ma è un cambio di configurazione fuori dallo scope.
   - Fix: `no-restricted-syntax` su `sql.raw` in `packages/server/src/api/routers/**`.
-- **[FOLLOW-UP]** In `getAllPratiche` i due rami della `union` sono identici a meno del filtro sull'operatore — `packages/server/src/services/practice/list.ts:137-165` (`listPractices`).
+- **[FOLLOW-UP]** In `getAllPratiche` i due rami della `union` sono identici a meno del filtro sull'operatore — `packages/server/src/services/practice/list.ts:114-165` (`listPractices`).
   - Perché resta: c'era già, e AC12 chiede lo stesso SQL di prima.
   - Fix: un solo ramo, con il test di caratterizzazione invariato.
 - **[FOLLOW-UP]** `Effect.all` concorrente in `getAllPratiche` (e in `getAllCustomers`): se `total` fallisce parte comunque la query della pagina, e con due errori il messaggio dipende da quale arriva prima. Il codice resta `INTERNAL_SERVER_ERROR`.

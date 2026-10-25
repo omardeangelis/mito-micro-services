@@ -12,6 +12,17 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 
 <!-- Entries are appended by create-spec (spec creation) and docs-maintenance (ingest). Format:
 
+## [2026-10-25] review | Router `pratiche` e letture di `task` su Effect (passo 4)
+- Report: [[specs/crm/pratiche-effect/REPORT]], rubric: [[specs/crm/pratiche-effect/RUBRIC]]
+- Verdict: SHIP · critical · human checklist (7 punti). Al primo giro v7 DO NOT SHIP per AC14 (numeri di riga in [[tech-debt/crm/filtri-sql-sicuri]]), corretto e rilanciato
+- 7 passi (permessi, `bulkHandleTask`, scritture, SQL del client, letture, validità dei test, controlli statici): nessun BLOCKER; due test aggiunti dopo la review, verdi anche sulla base
+
+## [2026-10-25] implement | Router `pratiche` e letture di `task` su Effect (passo 4)
+- Spec: [[specs/crm/pratiche-effect/SPEC]] (implemented), note: [[specs/crm/pratiche-effect/IMPLEMENTATION-NOTES]]
+- Branch `claude/pratiche-effect`, non pushato: caratterizzazione (`7c5c77d`), rimozione delle 5 procedure senza chiamanti, servizi `services/practice/` e `services/contact/{queries,bulkHandleTask}.ts`, adapter
+- Mutanti: 47 sul codice inline e 45 sui servizi, tutti uccisi; tipi delle 20 procedure uguali a `5b61b3f`; gate di CI verdi in locale; prova nel browser su `mito_local`
+- Debito: TD9 `[PREVISTO]` in [[chore/migrazione-effect]]; [[tech-debt/crm/pratiche-effect]] nuovo (bug della UI già presenti)
+
 ## [2026-10-25] plan | Router `pratiche` e letture di `task` su Effect (passo 4 della migrazione)
 - Spec: [[specs/crm/pratiche-effect/SPEC]] (rivista dopo la verifica: DO NOT SHIP, 0 blocker, 3 major; AC7 e AC9 corretti dopo la verifica del piano), piano: [[specs/crm/pratiche-effect/PLAN]]
 - 13 task in una PR, dopo il gate G0, verificati dall'`adversarial-verifier` (DO NOT SHIP, 1 blocker, 5 major, corretti): caratterizzazione di letture, scritture, middleware delle 20 procedure e ordine di `bulkHandleTask`, con i mutanti sul codice inline; `*.pg.test.ts` sulle `update`; rimozione delle 5 procedure senza chiamanti; servizi in `services/practice/`, `services/contact/` e `services/customer/profile.ts`; gate con confronto dei tipi, mutanti, prova nel browser e review
@@ -295,16 +306,3 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 - Impact: critical
 - Verifiers: secondo giro 8 su haiku (1 blocker, 1 major: badge fermo dopo back/avanti, titolo di test); terzo 4 (2 major sui test e sul badge di Pratiche); quarto 2 (2 major sui test del selettore); quinto 2 (SHIP, 4 minor sui test chiuse da `ee889e9`)
 
-## [2026-10-15] review | search_by con mappa esplicita (Clienti e Pratiche)
-- Report: [[review/search-by-explicit-map/REPORT]]
-- Scope: standalone
-- Verdict: DO NOT SHIP
-- Impact: critical
-- Verifiers: 7 su haiku (1 blocker, 1 major): ricerca per Comune scartata dall'enum
-
-## [2026-09-26] review | Sezione Contatti — PR1, terza verifica e smoke
-- Report: [[specs/crm/sezione-contatti/REPORT]]
-- Scope: spec
-- Verdict: SHIP
-- Impact: critical
-- Verifiers: v4 SHIP su "Assegna Clienti" e minor urgenti (vA interrotto); smoke sul DB di sviluppo (815 alert, 8 fallimenti di connessione isolati); cron a tempo aggiunto dopo la misura; poi `alert.js` che ripete dopo 10 s le chiamate che non arrivano in fondo (504, 5xx, rete, esecuzione fallita), non verificato

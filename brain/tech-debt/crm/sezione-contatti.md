@@ -262,9 +262,9 @@ Scoperto nella review di PR6 (v2, 2026-10-21). Sostituisce la voce di T6.8a ("As
 
 Scoperto nel terzo giro della review di PR6 (v14, 2026-10-21), preesistente. Le tre frasi c'erano già alla base `434b047` ("Crea una chiamata da fare per ogni cliente", "N chiamata/e create", "unico caso … Assegna Chiamate"). La ridenominazione di T6.3 e T6.6 le ha portate nei testi nuovi senza correggerle. I testi su "Assegna Clienti" scritti da PR6 sono giusti.
 
-- **"Crea un nuovo contatto da chiamare per ogni cliente selezionato"** (`guida-assegnazione-massiva-e-alert.md:26`; `CustomerBulkDialog.tsx:241`, `:484-485`). Per un cliente in `chiamare` o `followup`, o con un richiamo non confermato, `bulkHandleTask` non crea un contatto: riassegna solo quello attivo (`task/POST/index.ts:224-234`).
+- **"Crea un nuovo contatto da chiamare per ogni cliente selezionato"** (`guida-assegnazione-massiva-e-alert.md:26`; `CustomerBulkDialog.tsx:241`, `:484-485`). Per un cliente in `chiamare` o `followup`, o con un richiamo non confermato, `bulkHandleTask` non crea un contatto: riassegna solo quello attivo (`services/contact/bulkHandleTask.ts:177-187`, prima in `task/POST/index.ts`).
 - **Il riepilogo "N contatto/i creati e assegnati a X"** (`CustomerBulkDialog.tsx:216`, `:598-599`) conta i clienti selezionati. Con due clienti in `chiamare` dice "2 contatto/i creati", e di contatti nuovi non ne nasce nessuno. La guida (§3, Riepilogo) dice "assegnati".
-- **"Questo è l'unico caso in cui… può davvero cambiare lo stato di un cliente che aveva già un esito"** (guida :48). Anche con la casella "Risolvi alert" spuntata nasce un contatto con lo stato del form (`task/POST/index.ts:164-193`; test `bulkHandleTask.db.test.ts:106-135`).
+- **"Questo è l'unico caso in cui… può davvero cambiare lo stato di un cliente che aveva già un esito"** (guida :48). Anche con la casella "Risolvi alert" spuntata nasce un contatto con lo stato del form (`services/contact/bulkHandleTask.ts:114-175`, prima in `task/POST/index.ts`; test `bulkHandleTask.db.test.ts:106-135`).
 
 **Effetto oggi:** i dati restano giusti. Ma l'amministratore sceglie la modalità su queste frasi, e il riepilogo conta contatti mai creati.
 
@@ -441,7 +441,7 @@ Notati ripianificando PR4 (PLAN §15), preesistenti: PR4 sposta la chat in `src/
 Da PR4 (P11, D15).
 
 - Le server action della chat (`src/components/custom/notes/_actions/`) restano async semplici, fuori da Effect: l'unico errore previsto è la validazione dell'input, lasciata a Zod (P8, P11).
-- La procedura `pratiche.updateLastEdit` non ha più chiamanti dopo D15 (`chat.createNewChat` è stata rimossa in T4.5). Le chat di pratica già nel DB restano senza interfaccia: rimuovere le procedure o riportare le note in Pratiche è una scelta di prodotto.
+- La procedura `pratiche.updateLastEdit`, senza chiamanti dopo D15 (`chat.createNewChat` è stata rimossa in T4.5), è stata tolta nel passo 4 di [[chore/migrazione-effect]] ([[specs/crm/pratiche-effect/SPEC]], AC7). Le chat di pratica già nel DB restano senza interfaccia: riportare le note in Pratiche è una scelta di prodotto.
 
 **Effetto oggi:** nessuno per gli operatori; codice morto sul server.
 
