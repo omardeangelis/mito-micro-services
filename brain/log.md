@@ -12,6 +12,11 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 
 <!-- Entries are appended by create-spec (spec creation) and docs-maintenance (ingest). Format:
 
+## [2026-10-25] decision | Migrazione Effect: L3 su `HttpApi`
+- Decisione di Omar: L3 passa da Effect RPC a `HttpApi` di Effect, perché i prossimi obiettivi sono togliere tRPC e avere una SPA in React 19 ([[chore/migrazione-effect]] §3)
+- La SPA usa solo `HttpApi`; l'app Next.js resta su tRPC, e tRPC si toglie quando l'app Next.js si spegne
+- Le route REST di import ed export diventano gruppi della stessa API (§6, ora 9 route invece di 13); nota e D1 di [[chore/migration_plan]] aggiornate
+
 ## [2026-10-25] merge | Pratiche: passo 4 in `dev`
 - [PR #83](https://github.com/omardeangelis/mito-micro-services/pull/83) unita in `dev` (`eba251b`): passo 4 della migrazione a Effect e correzioni di TD9
 - TD9 in [[chore/migrazione-effect]] §7: `[OPEN]` solo (k) (l'import, B1), le altre `[CLOSED 2026-10-25]`; righe del §4, §5 e dei livelli L1, L2 aggiornate
@@ -292,10 +297,6 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 - Verdict: DO NOT SHIP
 - Impact: medium
 - Verifiers: 2 (0 blockers, 5 major)
-
-## [2026-10-16] implement | Sezione Contatti — PR4, T4.7
-- Spec: [[specs/crm/sezione-contatti/PLAN]]
-- Correzioni della review di T4.5 e T4.6; eliminazione della nota solo dell'autore, con il cliente bloccato (AC79, D21)
 
 ## [YYYY-MM-DD] ingest | <spec title>
 - Source: [[specs/<domain>/<spec>/SPEC]]

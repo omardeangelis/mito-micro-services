@@ -26,7 +26,7 @@ Migrated from `docs/` on 2026-09-24. Source material for future `create-spec` ru
 
 - [[chore/migration_plan|migration_plan]] — Next.js → monorepo (Express + React SPA + Postgres) plan, phase status and decision log D1–D9
 - `chore/migration/` — per-phase overviews (`fase-0` … `fase-5`), per-task files for phases 0–1, and `attivita-manuali-provider.md`
-- [[chore/migrazione-effect|migrazione-effect]] — verso "solo Effect": servizi (L1), bordo tRPC come adapter (L2), trasporto Effect RPC (L3, rinviato); ordine dei router e checklist (draft)
+- [[chore/migrazione-effect|migrazione-effect]] — verso "solo Effect": servizi (L1), bordo tRPC come adapter (L2), trasporto `HttpApi` per la SPA (L3, rinviato); ordine dei router e checklist (draft)
 
 ## Raw sources
 
