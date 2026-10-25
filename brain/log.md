@@ -12,6 +12,12 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 
 <!-- Entries are appended by create-spec (spec creation) and docs-maintenance (ingest). Format:
 
+## [2026-10-25] review | Pratiche: rilancio sulle correzioni
+- Review: [[specs/crm/pratiche-effect/REPORT]], `4ca830c..bef07ae`, v1, v3, v4, v5 rilanciati
+- SHIP, impact critical: M1–M3 corretti e provati coi mutanti; M4 solo in parte (il `customerId` vuoto non è distinto dalla FK)
+- B1 resta debito accettato; il piano del debito va allargato alle rotte REST dell'import
+- 5 MINOR (test di id vuoti e partita IVA, righe vecchie delle note, m6 e m7)
+
 ## [2026-10-25] implement | Pratiche: correzioni della seconda review
 - Spec: [[specs/crm/pratiche-effect/IMPLEMENTATION-NOTES]], commit `8d3d33c`
 - M1–M4 corretti: "Cliente non trovato" nel form, input dei clienti collegati ristretto alle colonne del form, test di validazione, ordine delle regioni provato su postgres-js

@@ -117,3 +117,25 @@ Nessuno.
 | v3 | Contratti di input e fedeltà dei dati | medium | balanced (Sonnet) |
 | v4 | Contratto degli errori fino alla UI | medium | balanced (Sonnet) |
 | v5 | Confine del runtime e integrità dei test | medium | balanced (Sonnet) |
+
+## [Round: 2026-10-25] Rilancio sulle correzioni
+
+### Change set under review
+
+- **Scope:** le correzioni di M1–M4 e i documenti di B1, chieste dal giro 2 (checklist, punto 3)
+- **Target:** branch `claude/pratiche-effect`, [PR #83](https://github.com/omardeangelis/mito-micro-services/pull/83)
+- **Compared:** `4ca830c` → `bef07ae` (commit `8d3d33c` codice, `bef07ae` documenti)
+- **Files touched:** 8 file di codice e test, più i documenti di `brain/`, in un dominio: crm
+
+### Overrides applied
+
+Classificatore non rilanciato: Omar ha chiesto di rilanciare i passi v1, v3, v4 e v5 del giro 2 sulle correzioni. Stessi passi, stessa complessità, charter ristretti a quello che le correzioni toccano. v2 (transazione) non rilanciato: le correzioni non toccano `writes.ts`.
+
+### Verification plan (derived)
+
+| Pass | Charter | Complexity | Model tier |
+|------|---------|------------|------------|
+| v1 | B1 nei documenti, rotta REST dell'import, clienti collegati senza operatore del chiamante, middleware invariati | high | strongest (Opus) |
+| v3 | `.pick` dei clienti collegati contro il form, mutanti di M4, ordine delle regioni su Postgres, tipo `CustomerWithRole` | medium | balanced (Sonnet) |
+| v4 | `CustomerMissing` → "Cliente non trovato" fino al form, in tutte e due le forme | medium | balanced (Sonnet) |
+| v5 | Confine del runtime, integrità dei test, verità dei documenti, gate | medium | balanced (Sonnet) |

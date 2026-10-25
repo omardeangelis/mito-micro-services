@@ -94,3 +94,7 @@
 - [Delegated translator cause probe](feedback_delegated_translator_cause_probe.md) — delegated tags (CustomerMissing) have no contact cause -> generic message; tsx shape recipe
 - [Removed capability twin, scratch vitest](feedback_removed_capability_twin_and_scratch_vitest.md) — grep all writers of the column across routers; scratch vitest config needs absolute imports
 - [Out-of-tree vitest probe](feedback_out_of_tree_vitest_probe.md) — probe both drivers from mktemp: node_modules symlink, workspace with root=repo, test.dir=tmp
+- [Real handler client probe](feedback_real_handler_client_probe.md) — appRouter + fetchRequestHandler as link fetch + inProcessLink; operator.userId not id; check mutant applied
+- [Shared worktree, git archive copy](feedback_shared_worktree_git_archive_copy.md) — parallel passes mutate the worktree; copy from git archive HEAD; whitelist mutants: zod strip, FK kill reason, .min(1) on FK id
+- [Mutant first-match, empty-id case](feedback_mutant_first_match_and_empty_input_case.md) — perl without /g hits first repeated .pick; spread-then-override equivalents; ""-id BAD_REQUEST not pinning min(1)
+- [Scratchpad dir names, unsent form field](feedback_shared_scratchpad_dirnames_and_unsent_form_field.md) — pass-unique dir names; pick-drop mutant per key, fixture lacking vatCode lets it live

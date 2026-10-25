@@ -3,10 +3,10 @@ domain: crm
 type: review
 scope: spec
 spec: pratiche-effect
-review_target: "spec implementation, branch claude/pratiche-effect (PR #83); giro 2: correzioni di TD9"
-base_ref: 5b61b3f (giro 2: def7bd0)
-head_ref: 4ca830c
-verdict: do-not-ship
+review_target: "spec implementation, branch claude/pratiche-effect (PR #83); giro 2: correzioni di TD9; giro 3: rilancio di v1, v3, v4, v5 sulle correzioni"
+base_ref: 5b61b3f (giro 2: def7bd0; giro 3: 4ca830c)
+head_ref: bef07ae
+verdict: ship
 review_impact: critical
 human_in_loop: true
 links:
@@ -24,7 +24,9 @@ updated: 2026-10-25
 
 ## Verdict
 
-**Giro 2 (correzioni di TD9, `def7bd0..4ca830c`): DO NOT SHIP** · impact: critical. Dettagli nel [Round: 2026-10-25] in fondo. Dopo il giro: M1–M4 corretti in `8d3d33c`, B1 lasciato come debito per decisione di Omar (TD9 (k) riaperta). Il verdetto resta quello del giro finché v1, v3, v4 e v5 non sono rilanciati sulla correzione.
+**Giro 3 (rilancio di v1, v3, v4, v5 sulle correzioni, `4ca830c..bef07ae`): SHIP** · impact: critical. I quattro passi danno SHIP, senza BLOCKER né MAJOR. B1 non è corretto nel codice: è debito accettato da Omar (2026-10-25), TD9 (k) riaperta, e i documenti ora lo dicono. Dettagli nel [Round: 2026-10-25] Rilancio sulle correzioni, in fondo.
+
+**Giro 2 (correzioni di TD9, `def7bd0..4ca830c`): DO NOT SHIP** · impact: critical. Dettagli nel [Round: 2026-10-25] Correzioni di TD9. Dopo il giro: M1–M4 corretti in `8d3d33c`, B1 lasciato come debito per decisione di Omar (TD9 (k) riaperta).
 
 **Giro 1 (passo 4, `5b61b3f..fe18f5b`): SHIP** · impact: critical
 
@@ -149,7 +151,7 @@ v1 trova un BLOCKER, v4 e v5 un MAJOR ciascuno; v2 e v3 danno SHIP con MAJOR e M
 | M1 | MAJOR (corretto in `8d3d33c`) | v4 — errori (e v2, MINOR) | `packages/server/src/services/practice/errors.ts:44` → `services/contact/errors.ts:167-171`; `connectPratica.ts:14` | `CustomerMissing` passa a `contactErrorToTrpc`, che dà un `BAD_REQUEST` senza `contactErrorCause`. `readContactError` dà `null` in tutte e due le forme, e il form mostra "Modifica non salvata, riprova". Il test (`writes.db.test.ts:~441`) fissa solo `message`, che l'action non legge. Raggiungibile dalla UI: `connect/page.tsx` non controlla che il cliente esista | In `practiceErrorToTrpc`, `CustomerMissing` → `BAD_REQUEST` con `cause: contactErrorCause("CUSTOMER_NOT_FOUND", {})` (il messaggio "Cliente non trovato" esiste già); un test che legge l'errore con `readContactError`/`describeContactError` | no |
 | M2 | MAJOR (corretto in `8d3d33c`: `queries.pg.test.ts` con `ANALYZE`, il mutante senza `ORDER BY` muore 4 volte su 4) | v5 — test (e v3) | `pratiche/_test/queries.db.test.ts` (`getAllAvailableRegion`); `services/practice/queries.ts:~52` | Togliendo `.orderBy(practices.region)` il test resta verde: PGlite esegue la `selectDistinct` con un sort. Su Postgres vero (container locale, dopo `ANALYZE`) le stesse righe tornano `null,B,A` con HashAggregate. v3 ha provato il mutante: sopravvive | Un caso in un `*.pg.test.ts`, oppure un'asserzione sull'SQL generato (`order by "region"`) | no |
 | M3 | MAJOR (corretto in `8d3d33c`) | v3 — input (e v2, MINOR) | `pratiche/POST/index.ts:~31` | `relatedCustomers` omette solo `operatorId` e `fileName`: passano `chatId`, `blackListStatus`, `createdAt`, `updatedAt`, `reddito` e altre colonne, e `email` senza formato. v2: un `chatId` inesistente dà `INTERNAL_SERVER_ERROR` con il messaggio della FK; `blackListStatus: "blacklisted"` e `createdAt: 2000-01-01` vengono scritti. Non peggio di `customer.insertCustomer` (TD8), ma TD9 (d) promette "le sole colonne del form" | `.pick()` delle colonne del form (`id`, `name`, `surname`, `email` con `.email()`, `phoneNumber`, `fiscalCode`, `vatCode`, `tempID`, `uniqueHash`, `source`) più `role` | no |
-| M4 | MAJOR (corretto in `8d3d33c`; i due casi passavano già, ora sono fissati) | v3 — input | `pratiche/POST/index.ts` (`role`, `customerId`) | Sostituendo `z.enum(["Coobbligato","Garante"])` con `z.string()`, o togliendo `.min(1)` da `customerId`, i 35 test restano verdi. Con `z.string()` un ruolo `Intestatario` scriverebbe un secondo intestatario | Due casi `BAD_REQUEST`: ruolo `Intestatario` e `customerId: ""` | no |
+| M4 | MAJOR (corretto in parte in `8d3d33c`: il ruolo è fissato; il caso `customerId: ""` no, vedi R1 del giro 3) | v3 — input | `pratiche/POST/index.ts` (`role`, `customerId`) | Sostituendo `z.enum(["Coobbligato","Garante"])` con `z.string()`, o togliendo `.min(1)` da `customerId`, i 35 test restano verdi. Con `z.string()` un ruolo `Intestatario` scriverebbe un secondo intestatario | Due casi `BAD_REQUEST`: ruolo `Intestatario` e `customerId: ""` | no |
 | m1 | MINOR | v2 — transazione | `services/practice/writes.ts:80-89` | Un 23505 sulla chiave dei collegamenti (un cliente collegato con lo stesso id dell'intestatario mancante) dà `INTERNAL_SERVER_ERROR` con il messaggio del driver, su tutti e due i driver; il rollback tiene. Solo con una richiesta costruita a mano | Rifiutare in zod gli id collegati uguali all'intestatario o duplicati, o mappare il 23505 sui collegamenti | no |
 | m2 | MINOR | v2 | `pratiche/_test/writes.pg.test.ts` | Su postgres-js solo il rollback di `CUSTOMER_EXISTS`; `PRACTICE_EXISTS` e `CustomerMissing` solo su PGlite (la prova di v2 su postgres-js passa) | I due casi in `writes.pg.test.ts` | no |
 | m3 | MINOR | v3 | `src/app/dashboard/pratiche/[id]/_actions/updateCustomerPreview.ts:8-10` | L'email vuota diventa `null`, il telefono vuoto resta `""`. Modificando solo l'email di un cliente con telefono `NULL`, il telefono diventa `""` e la cella passa da "Missing" a vuota (`CustomerColumns.tsx:220`) | `"" → null` anche su `phoneNumber`; un test dello schema dell'action | no |
@@ -210,13 +212,85 @@ Per i punti corretti il contratto è TD9; i criteri della SPEC che chiedevano di
 | AC6 | Met | Nessun `server-only` (v5) |
 | AC7 | Met | Più `bulkAssignPractices`, `insertPratica`, `connectPraticaAndCustomer` tolte, senza resti (v1, v5) |
 | AC9–AC11 | Superato | Le asserzioni cambiate corrispondono a TD9 (v5) |
-| AC12 / TD9 | Unmet | (k) contraddetta da B1; (m) incompleta per il cliente mancante (M1); (c) senza un test che fallisca (M2); (d) più larga per i clienti collegati (M3). (a), (b), (e)–(j), (l) sì |
+| AC12 / TD9 | Unmet (a `4ca830c`) | (k) contraddetta da B1; (m) incompleta per il cliente mancante (M1); (c) senza un test che fallisca (M2); (d) più larga per i clienti collegati (M3). (a), (b), (e)–(j), (l) sì. A `bef07ae`: (c), (d), (m) corrette, (k) riaperta (giro 3) |
 | AC13 | Superato | Il giro tocca `src/app/`, `packages/domain/` e `src/components/` per le correzioni (n3: le note non lo dicono) |
-| AC14 | Unmet | `gestione-operatori.md:18` e TD9 `[CLOSED]` dicono una cosa falsa sull'assegnazione delle pratiche (B1) |
+| AC14 | Unmet (a `4ca830c`) | `gestione-operatori.md:18` e TD9 `[CLOSED]` dicono una cosa falsa sull'assegnazione delle pratiche (B1). A `bef07ae` i documenti sono corretti (v1, giro 3) |
 | AC15 | Met in locale | `tsc`, test, `pg` ed ESLint verdi nei passi; CI della PR da vedere (checklist, punto 4) |
 
 ### Notes for docs-maintenance
 
 - Durable findings to fold into `brain/tech-debt/crm/pratiche-effect.md` (se non corretti prima del merge): B1 se resta accettato (in `gestione-operatori.md`, con TD9 (k) riaperta); m5, m6, m7, m8, n4.
 - I MAJOR M1–M4 e i MINOR m1–m4, m9 sono da correggere prima del merge, non debito.
-- Le memorie dei verificatori di questo giro sono in `.agents/agent-memory/adversarial-verifier/`, non ancora nei commit.
+- Le memorie dei verificatori di questo giro sono in `.agents/agent-memory/adversarial-verifier/`, nel commit `bef07ae`.
+
+## [Round: 2026-10-25] Rilancio sulle correzioni
+
+Rubric: [[specs/crm/pratiche-effect/RUBRIC]], sezione dello stesso giro (i passi v1, v3, v4, v5 del giro 2, ristretti alle correzioni). Confronto `4ca830c` → `bef07ae` (commit `8d3d33c` codice, `bef07ae` documenti), [PR #83](https://github.com/omardeangelis/mito-micro-services/pull/83).
+
+### Verdict
+
+**SHIP** · impact: critical
+
+I quattro passi danno SHIP. M1, M2 e M3 sono corretti e i loro test uccidono i mutanti; M4 è corretto per il ruolo e l'email, non per il `customerId` vuoto (R1). B1 resta nel codice: chi ha una sessione può ancora spostare pratiche su qualunque operatore con `import.updateExistingPractices` (riprodotto da v1). È debito accettato da Omar; TD9 (k) è riaperta e i documenti lo dicono. Restano MINOR sui test e sui documenti, nessuno sul comportamento.
+
+### Coverage
+
+- Rubric passes run: 4/4 (v1 Opus; v3, v4, v5 Sonnet). v2 non rilanciato: le correzioni non toccano la transazione.
+- Passes skipped or failed: nessuno. I quattro passi giravano nello stesso worktree e si sono visti a vicenda i mutanti: v1, v3 e v5 hanno rifatto i gate su una copia `git archive` di `bef07ae`, verde.
+- UI pass: non previsto.
+- Gate rilanciati: `tsc --noEmit` 0; ESLint sui file di codice cambiati 0 (v5; v4 non ha potuto lanciarlo nel worktree); 140 test di `pratiche` e `practice` con Postgres 15, suite completa 3383 test (v5).
+
+### Findings
+
+| ID | Severity | Concern (verifier) | Location | Problem | Required fix / evidence | Durable? |
+|----|----------|--------------------|----------|---------|-------------------------|----------|
+| R1 | MINOR | v1, v3, v5 | `pratiche/_test/writes.db.test.ts` (caso "un intestatario vuoto"); `pratiche/POST/index.ts` (`customerId`) | Togliendo `.min(1)` da `customerId` i test restano verdi: `""` arriva al database, dà `CustomerMissing` e quindi lo stesso `BAD_REQUEST`, senza scritture. Dopo M1 il caso non distingue zod dalla FK. Il REPORT diceva il caso "fissato" (riga M4 corretta) | Nel caso, controllare che la `cause` non sia `CUSTOMER_NOT_FOUND` (o che l'errore sia di zod su `customerId`) | no |
+| R2 | MINOR | v3, v5 | stesso file; `POST/index.ts` (`relatedCustomers[].id`) | Togliendo `.min(1)` dall'id di un cliente collegato i test restano verdi, e si scrive un cliente con `id = ""` (prova di v3). Il controllo c'era già alla base | Un caso `BAD_REQUEST` con un cliente collegato con `id: ""` | no |
+| R3 | MINOR | v3 | `writes.db.test.ts` (fixture `related()`) | Togliendo `vatCode` dal `.pick` i test restano verdi: la fixture non ha la partita IVA. Oggi si salva (prova di v3) | `vatCode` nella fixture, o un caso con solo partita IVA | no |
+| R4 | MINOR | v5 | `IMPLEMENTATION-NOTES.md` (tabella dei criteri) | Righe vecchie: AC3 "nei tre `errors.ts`; nessun traduttore nuovo", AC2 "tipi uguali a `5b61b3f`", AC9 e AC10 "met", AC14 "met" | Segnarle superate come AC11–AC13 | no |
+| R5 | MINOR | v4 | `NewPraticaForm.tsx:163`, `connectPratica.ts` | m6 e m7 restano: "Cliente non trovato" compare sotto "ID Pratica"; nessun test dell'action fino alla stringa (v4 l'ha provata a mano: giusta in tutte e due le forme) | Come m6 e m7 | sì |
+| r1 | NIT | v1, v3, v5 | `writes.db.test.ts` (test dei clienti collegati) | Il titolo dice "date", ma il test manda solo `createdAt`; colonne non mandate (`updatedAt`, `reddito`, …) aggiunte al `.pick` sopravvivono. Il `.pick` è una lista chiusa | Facoltativo | no |
+| r2 | NIT | v5 | `queries.pg.test.ts` | Il commento fa pensare che `ANALYZE` serva: il mutante muore anche senza (3 su 3) | Riformulare il commento | no |
+| r3 | NIT | v1 | `brain/domains/crm/crm-contract.md:56`, `concepts/regola-dei-lock.md:55`, `flows/disattivazione-operatore.md:115` | Citano `pratiche.PUT` fra chi scrive un operatore senza controllarlo e non citano `import.updateExistingPractices` | Per `docs-maintenance` all'ingest | sì |
+| r4 | NIT | v1 | `src/lib/workers/import/service/updateCustomer.ts:85-120` | Copia senza chiamanti della stessa scrittura di `operatorId` e `chatId` | Toglierla nella PR del debito di B1 | sì |
+| r5 | NIT | v1 | `src/app/api/import/update/practices`, `src/app/api/import/create/practices` | Le rotte REST dell'import accettano qualunque sessione (`authCheck()`): `update` riscrive le colonne di business di qualunque pratica, `create` inserisce con l'`operatorId` del chiamante. Esistevano prima; il piano del debito di B1 cita solo `import.*` | Aggiungerle al debito in [[tech-debt/crm/gestione-operatori]] | sì |
+| r6 | NIT | v4 | `api/routers/chat/POST/index.ts:72`, `chat/DELETE/index.ts:17,21` | `TRPCError` creati nel router, fuori dagli `errors.ts`. Fuori dal perimetro di AC3 e da questa PR | Nessuno qui | sì |
+| r7 | NIT | v1 | `brain/specs/crm/crm-specs.md:32` | Diceva "(SHIP)" senza il giro 2 | Aggiornato con questo giro | no |
+
+### What passed
+
+| Concern (verifier) | Evidence |
+|--------------------|----------|
+| v1 — permessi e B1 | `gestione-operatori.md`, TD9 (k), `pratiche-effect.md` e le note dicono il vero; nessun documento attuale dice che le pratiche non si possono più spostare. La rotta REST `PUT /api/import/update/practices` toglie `operatorId` e `chatId` e riscrive quelli della pratica (prova via Hono con un operatore disattivato: invariato). I clienti collegati di `createPratica` prendono l'operatore dalla sessione: 8 mutanti uccisi, 3 equivalenti. Nessun middleware cambiato; `createPratica` su `protectedProcedure` muore |
+| v3 — input | Il `.pick` è esattamente l'insieme che il form manda (più `source` e `uniqueHash` aggiunti al submit); email, `tempID`, `source`, `uniqueHash` coincidono col form. M2: 8 su 8 rosso senza `ORDER BY`, 8 su 8 verde col codice; l'ordine con `null` in fondo è quello che il form si aspetta. Ruolo ed email: mutanti uccisi. `tsc` 0, nessun `as` nuovo |
+| v4 — errori | I quattro tag hanno una `cause` leggibile; un tag nuovo fa fallire `tsc`. Prova end-to-end con `fetchRequestHandler` e `inProcessLink`: "Cliente non trovato" in tutte e due le forme. Tre mutanti (senza `cause`, codice sbagliato, ritorno a `contactErrorToTrpc`) uccisi da `errors.db.test.ts` e da `writes.db.test.ts`. AC3 nel perimetro della SPEC |
+| v5 — confine e test | Nessuna migrazione, nessun import vietato in `packages/server`. Ogni asserzione cambiata corrisponde a M1–M4 o m9, nessuna allentata. `queries.pg.test.ts` gira in CI (progetto `pg`, `pg.setup.ts` si ferma senza URL) e non lascia stato. "Corretto" vero per M1, M2, M3, m9, n3 |
+
+### Per-concern verdicts
+
+| Pass | Charter | Verdict | Rationale |
+|------|---------|---------|-----------|
+| v1 | Permessi, B1 nei documenti, rotta REST dell'import, clienti collegati | SHIP | Documenti veri, rotta REST sicura, nessun operatore scelto dal chiamante; B1 è debito accettato |
+| v3 | Contratti di input, ordine delle regioni, tipi | SHIP | Nessuna colonna persa né in più; M2 solido; restano test mancanti su id vuoti e partita IVA |
+| v4 | Contratto degli errori | SHIP | M1 tiene fino al form, in tutte e due le forme |
+| v5 | Confine, integrità dei test, documenti | SHIP | Gate verdi su una copia pulita; restano frasi dei documenti da correggere |
+
+### Human Review Checklist
+
+1. **Revisione di Leonardo** (come nel giro 2, punto 2): `getPraticaById` e `createPratica` passano a `operatorProcedure`, `operatorId` fuori dagli input.
+2. **B1 resta aperto nel codice.** Fino alla PR del debito, chi ha una sessione può spostare pratiche su qualunque operatore con una chiamata diretta a `import.updateExistingPractices`. Va bene solo se Omar e Leonardo lo accettano fino a quella PR; il piano del debito va allargato alle rotte REST dell'import (r5) e alla copia senza chiamanti (r4).
+3. **R1–R3**, da decidere: chiuderli in questa PR (tre casi di test) o lasciarli.
+4. **CI, migrazioni, staging e finestra di rilascio**: come nel giro 2, punti 4–7.
+
+### Acceptance criteria check (case B)
+
+| Criterion | Met / Unmet / Blocked | Notes |
+|-----------|-----------------------|-------|
+| AC12 / TD9 | Met, tranne (k) riaperta | (c) provata su Postgres (v3, v5); (d) ristretta alle colonne del form (v1, v3); (m) "Cliente non trovato" fino al form (v4); (k) `[OPEN]` per l'import (v1) |
+| AC14 | Met | I documenti dicono il vero su B1 (v1); restano le righe vecchie delle note (R4) e le pagine di dominio (r3) |
+| AC15 | Met in locale | Gate verdi su una copia pulita di `bef07ae` (v5); CI della PR da vedere |
+
+### Notes for docs-maintenance
+
+- Durable findings to fold into the tech debt: R5 (m6, m7) in [[tech-debt/crm/pratiche-effect]]; r4 e r5 in [[tech-debt/crm/gestione-operatori]] con B1; r3 nelle pagine di dominio; r6 nel debito della migrazione.
+- Le memorie dei verificatori di questo giro sono in `.agents/agent-memory/adversarial-verifier/`.
