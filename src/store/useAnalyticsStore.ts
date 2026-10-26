@@ -1,6 +1,9 @@
 import { create } from "zustand"
 import { createSelectors } from "./createSelectors"
-import { type TimeFrame } from "@mito/domain/constants/timeframes"
+import {
+  DEFAULTTIMEFRAME,
+  type TimeFrame,
+} from "@mito/domain/constants/timeframes"
 
 interface AnalyticsStore {
   timeframe: TimeFrame
@@ -8,7 +11,7 @@ interface AnalyticsStore {
 }
 
 const useAnalyticsStoreBase = create<AnalyticsStore>((set) => ({
-  timeframe: "30d",
+  timeframe: DEFAULTTIMEFRAME,
   setTimeframe: (timeframe) => set({ timeframe }),
 }))
 

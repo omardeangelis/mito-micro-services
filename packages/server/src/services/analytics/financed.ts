@@ -38,15 +38,18 @@ const customerAccess = (actor: Actor) =>
     ? isNotNull(customers.operatorId)
     : eq(customers.operatorId, actor.operatorId)
 
-/** Practices settled in the window, both ends included. */
-const settledIn = ({ start, end }: FinanceWindow) =>
+/** Practices settled in the reference window, both ends included. */
+const inReference = ({ start, end }: FinanceWindow) =>
   and(
     gte(practices.dataLiquidazione, start),
     lte(practices.dataLiquidazione, end)
   )
 
-/** Practices settled in the window, `end` excluded. */
-const settledBefore = ({ start, end }: FinanceWindow) =>
+/**
+ * Practices settled in the comparison window, `end` excluded: it is the start
+ * of the reference window, so a practice falls in one window only.
+ */
+const inComparison = ({ start, end }: FinanceWindow) =>
   and(
     gte(practices.dataLiquidazione, start),
     lt(practices.dataLiquidazione, end)
@@ -102,68 +105,33 @@ const financedIn = (
   })
 
 /**
- * The amount financed in the time frame (`reference`) and in the one before it
- * (`comparison`), as numbers (`0` when no practice falls in the window): the
- * sum over the financed practices (`FINANCED_STATES`) with at least one
- * customer the caller sees, each practice once. An operator sees the practices
- * with at least one customer of theirs; an admin those with at least one
- * customer who has an operator. `windows` are the spans counted, taken from
- * the server's clock at each call: `reference` from now − N days to now, both
- * ends included; `comparison` from now − 2N days, included, to now − N days,
- * excluded.
+ * The `aggregate` of the amount financed in the reference and in the
+ * comparison window of `timeFrame` (`financeWindows`), counted by `financedIn`,
+ * with the windows themselves.
  */
-export const financedTotal = ({
-  timeFrame,
-  actor,
-}: {
-  timeFrame: TimeFrame
-  actor: Actor
-}) =>
-  Effect.gen(function* () {
-    const windows = yield* financeWindows(timeFrame)
+const financedOverWindows =
+  (aggregate: typeof sum | typeof avg) =>
+  ({ timeFrame, actor }: { timeFrame: TimeFrame; actor: Actor }) =>
+    Effect.gen(function* () {
+      const windows = yield* financeWindows(timeFrame)
+      const [reference, comparison] = yield* Effect.all(
+        [
+          financedIn(aggregate, actor, inReference(windows.reference)),
+          financedIn(aggregate, actor, inComparison(windows.comparison)),
+        ],
+        { concurrency: "unbounded" }
+      )
+      return { reference, comparison, windows }
+    })
 
-    return {
-      reference: yield* financedIn(sum, actor, settledIn(windows.reference)),
-      comparison: yield* financedIn(
-        sum,
-        actor,
-        settledBefore(windows.comparison)
-      ),
-      windows,
-    }
-  })
+/** The amount financed in the time frame and in the one before it, summed. */
+export const financedTotal = financedOverWindows(sum)
 
 /**
- * The average amount financed in the time frame (`reference`) and in the one
- * before it (`comparison`), as numbers (`0` when no practice falls in the
- * window): the average over the financed practices (`FINANCED_STATES`) with at
- * least one customer the caller sees, each practice once. An operator sees the
- * practices with at least one customer of theirs; an admin those with at least
- * one customer who has an operator. `windows` are the spans counted, taken
- * from the server's clock at each call: `reference` from now − N days to now,
- * both ends included; `comparison` from now − 2N days, included, to now − N
- * days, excluded.
+ * The amount financed in the time frame and in the one before it, averaged per
+ * practice.
  */
-export const financedAverage = ({
-  timeFrame,
-  actor,
-}: {
-  timeFrame: TimeFrame
-  actor: Actor
-}) =>
-  Effect.gen(function* () {
-    const windows = yield* financeWindows(timeFrame)
-
-    return {
-      reference: yield* financedIn(avg, actor, settledIn(windows.reference)),
-      comparison: yield* financedIn(
-        avg,
-        actor,
-        settledBefore(windows.comparison)
-      ),
-      windows,
-    }
-  })
+export const financedAverage = financedOverWindows(avg)
 
 /**
  * The amount financed in the time frame (the `reference` window, both ends
@@ -182,7 +150,7 @@ export const financedByBranch = ({ timeFrame }: { timeFrame: TimeFrame }) =>
           total: sum(castAsNumber(practices.importoFinanziato)),
         })
         .from(practices)
-        .where(and(settledIn(reference), financed()))
+        .where(and(inReference(reference), financed()))
         .groupBy(practices.desPuntoVendita)
         .orderBy(practices.desPuntoVendita)
     )

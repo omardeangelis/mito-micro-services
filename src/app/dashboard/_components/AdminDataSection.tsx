@@ -3,24 +3,19 @@ import { FinanceCard } from "./FinanceCard"
 import { Skeleton } from "@/components/ui/skeleton"
 import { DonutCard } from "./DonutCard"
 import { CircleCard } from "./CircleCard"
-import {
-  type TimeFrame,
-  DEFAULTTIMEFRAME,
-} from "@mito/domain/constants/timeframes"
+import { type TimeFrame } from "@mito/domain/constants/timeframes"
 
 export const AdminDataSection = async ({
-  timeframe = DEFAULTTIMEFRAME,
+  timeframe,
 }: {
-  timeframe?: TimeFrame
+  timeframe: TimeFrame
 }) => {
-  const { comparison, reference, windows } =
-    await api.analytics.getFinancedAverage.query({
-      timeFrame: timeframe,
-    })
-  const { done, todo } = await api.analytics.getContactProgress.query()
-  const data = await api.analytics.getFinancedByBranch.query({
-    timeFrame: timeframe,
-  })
+  const [{ comparison, reference, windows }, { done, todo }, data] =
+    await Promise.all([
+      api.analytics.getFinancedAverage.query({ timeFrame: timeframe }),
+      api.analytics.getContactProgress.query(),
+      api.analytics.getFinancedByBranch.query({ timeFrame: timeframe }),
+    ])
 
   return (
     <div className="flex h-full w-full flex-row items-stretch justify-between gap-8">

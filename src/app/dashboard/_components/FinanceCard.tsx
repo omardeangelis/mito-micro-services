@@ -22,7 +22,7 @@ type FinanceCardProps = {
 }
 
 export const FinanceCard = (props: FinanceCardProps) => {
-  const { referencePeriod, comparisonPeriod } = props
+  const { referencePeriod, comparisonPeriod, windows } = props
   const hasComparison = comparisonPeriod.total !== 0
   const delta = hasComparison
     ? (referencePeriod.total - comparisonPeriod.total) / comparisonPeriod.total
@@ -37,7 +37,6 @@ export const FinanceCard = (props: FinanceCardProps) => {
       ? "—"
       : `${deltaValue.toFixed(0)}%`
   const diff = referencePeriod.total - comparisonPeriod.total
-  const { windows } = props
 
   return (
     <div className="w-full space-y-3">

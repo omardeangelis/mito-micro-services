@@ -6,6 +6,7 @@ import {
   createOperator,
   createPractice,
 } from "@/test/factories"
+import { actorOf } from "../../contact/actor"
 import { financedAverage, financedByBranch, financedTotal } from "../financed"
 import { at, DAY, T } from "./clock"
 
@@ -36,10 +37,7 @@ beforeEach(async () => {
   await resetDb()
   const owner = await createOperator({ role: "OPERATORE" })
   customerId = (await createCustomer({ operatorId: owner.id })).id
-  admin = {
-    operatorId: (await createOperator({ role: "ADMIN" })).id,
-    role: "ADMIN",
-  }
+  admin = actorOf(await createOperator({ role: "ADMIN" }))
 })
 
 describe("finestre dal Clock, a ogni chiamata", () => {

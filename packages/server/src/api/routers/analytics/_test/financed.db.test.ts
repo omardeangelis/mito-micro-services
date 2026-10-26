@@ -1,6 +1,10 @@
 import { beforeAll, beforeEach, describe, expect, it } from "vitest"
 import { db } from "@mito/db"
-import { customerToPratica } from "@mito/db/schema/relations/customerToPratica"
+import {
+  customerRoleEnum,
+  customerToPratica,
+} from "@mito/db/schema/relations/customerToPratica"
+import { type TimeFrame } from "@mito/domain/constants/timeframes"
 import { createTestCaller } from "@/test/caller"
 import { migrateUpTo, resetDb } from "@/test/db"
 import {
@@ -28,7 +32,7 @@ import {
 
 const DAY = 86_400_000
 
-type TimeFrameInput = { timeFrame?: "30d" | "90d" | "365d" }
+type TimeFrameInput = { timeFrame?: TimeFrame }
 
 const TIME_FRAMES: { label: string; input: TimeFrameInput; days: number }[] = [
   { label: "`{}` (30d di default)", input: {}, days: 30 },
@@ -56,8 +60,6 @@ function datesFor(days: number) {
   }
 }
 
-const ROLES = ["Intestatario", "Coobbligato", "Garante"] as const
-
 /**
  * Una pratica che collega i clienti `customerIds`, in ordine Intestatario,
  * Coobbligato, Garante (`createPractice` collega solo l'Intestatario).
@@ -73,7 +75,7 @@ async function createPracticeOf(
       others.map((customerId, index) => ({
         customerId,
         praticaId: practice.praticaId,
-        customerRole: ROLES[index + 1],
+        customerRole: customerRoleEnum[index + 1],
       }))
     )
   }

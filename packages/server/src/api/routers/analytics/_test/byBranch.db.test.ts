@@ -1,6 +1,7 @@
 import { beforeAll, beforeEach, describe, expect, it } from "vitest"
 import { db } from "@mito/db"
 import { practices, stateEnum } from "@mito/db/schema/pratiche"
+import { type TimeFrame } from "@mito/domain/constants/timeframes"
 import { createTestCaller } from "@/test/caller"
 import { migrateUpTo, resetDb } from "@/test/db"
 import {
@@ -18,8 +19,6 @@ import {
 // Il `FORBIDDEN` di un OPERATORE sta nella tabella di `procedures.db.test.ts`.
 
 const DAY = 86_400_000
-
-type TimeFrame = "30d" | "90d" | "365d"
 
 const CASES: {
   name: string

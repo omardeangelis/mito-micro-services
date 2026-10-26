@@ -1,7 +1,10 @@
 import { beforeAll, beforeEach, describe, expect, it } from "vitest"
 import { db } from "@mito/db"
 import { practices, stateEnum } from "@mito/db/schema/pratiche"
-import { customerToPratica } from "@mito/db/schema/relations/customerToPratica"
+import {
+  customerRoleEnum,
+  customerToPratica,
+} from "@mito/db/schema/relations/customerToPratica"
 import { type Actor } from "@mito/domain/contact/permissions"
 import { migrateUpTo, resetDb } from "@/test/db"
 import {
@@ -9,6 +12,7 @@ import {
   createOperator,
   createPractice,
 } from "@/test/factories"
+import { actorOf } from "../../contact/actor"
 import { financedAverage, financedByBranch, financedTotal } from "../financed"
 import { at, DAY, T } from "./clock"
 
@@ -26,8 +30,6 @@ const REFERENCE = new Date(T - 15 * DAY)
 const COMPARISON = new Date(T - 45 * DAY)
 
 type Values = Partial<typeof practices.$inferInsert>
-
-const ROLES = ["Intestatario", "Coobbligato", "Garante"] as const
 
 let sequence = 0
 
@@ -55,7 +57,7 @@ async function practiceOf(customerIds: string[], values: Values) {
       others.map((customerId, index) => ({
         customerId,
         praticaId: practice.praticaId,
-        customerRole: ROLES[index + 1],
+        customerRole: customerRoleEnum[index + 1],
       }))
     )
   }
@@ -81,11 +83,6 @@ async function inBothWindows(
 
 const customerOf = async (operatorId: number | null) =>
   (await createCustomer({ operatorId })).id
-
-const actorOf = (operator: { id: number; role: Actor["role"] }): Actor => ({
-  operatorId: operator.id,
-  role: operator.role,
-})
 
 /** Il totale e la media di `actor`, senza le finestre. */
 async function amountsOf(actor: Actor) {

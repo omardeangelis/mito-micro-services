@@ -1,5 +1,9 @@
 import { adminProcedure, operatorProcedure } from "../../../trpc"
 import { z } from "zod"
+import {
+  DEFAULTTIMEFRAME,
+  TIMEFRAMEOPTIONS,
+} from "@mito/domain/constants/timeframes"
 import { runTrpc } from "../../../../effect/trpc"
 import {
   financedAverage,
@@ -9,7 +13,7 @@ import {
 import { contactProgress } from "../../../../services/analytics/contactProgress"
 
 const timeFrameInput = z.object({
-  timeFrame: z.enum(["30d", "90d", "365d"]).optional().default("30d"),
+  timeFrame: z.enum(TIMEFRAMEOPTIONS).default(DEFAULTTIMEFRAME),
 })
 
 export const getFinancedTotal = operatorProcedure

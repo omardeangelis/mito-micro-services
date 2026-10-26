@@ -1,10 +1,10 @@
-import { Exit } from "effect"
 import { beforeAll, beforeEach, describe, expect, it } from "vitest"
 import { type Actor } from "@mito/domain/contact/permissions"
-import { runServer } from "@/test/effect"
 import { migrateUpTo, resetDb } from "@/test/db"
 import { createOperator, createTask } from "@/test/factories"
+import { actorOf } from "../../contact/actor"
 import { contactProgress } from "../contactProgress"
+import { at, T } from "./clock"
 
 // "Contatti con esito" sulla coda attuale (AC17): solo i contatti attivi;
 // completati gli stati con un esito, da fare quelli in coda; `nessuno` e lo
@@ -24,16 +24,7 @@ const STATES = [
   null,
 ] as const
 
-const progressOf = async (actor: Actor) => {
-  const exit = await runServer(contactProgress({ actor }))
-  if (Exit.isFailure(exit)) throw new Error(exit.cause.toString())
-  return exit.value
-}
-
-const actorOf = (operator: { id: number; role: Actor["role"] }): Actor => ({
-  operatorId: operator.id,
-  role: operator.role,
-})
+const progressOf = (actor: Actor) => at(T, contactProgress({ actor }))
 
 /** Un contatto attivo e uno non attivo per ogni stato, dell'operatore dato. */
 async function seedContacts(operatorId: number | null) {
