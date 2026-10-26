@@ -617,9 +617,9 @@ Ogni task parte da un test rosso sul comportamento nuovo, poi aggiorna i test ve
   - **TD10 (f)** `[CLOSED <data del merge>]`; **TD6** "38 a `2fd59da`, più quelli che il passo aggiunge, meno quelli che toglie": il passo non ne aggiunge né ne toglie.
   Non tocca le righe dei passi 1 e 3, fuori dal passo.
 - **validation**: le voci sopra ci sono; i link `[[...]]` puntano a pagine esistenti.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Complete
+- **log**: Wave 8, worker `haiku`, con il testo esatto di ogni modifica nel brief. §1 (L1 e L2), §4 (riga 6 ✓, conteggio di `server-only` del passo 0), §5 (☑☑), TD6, TD10 (f) `[CLOSED <data del merge>]` e TD11 nuovo (S1–S9 `[CLOSED <data del merge>]`, (u) `[PREVISTO]`). Il conteggio di `server-only` della riga del passo 0 e di TD6 diceva 30: a `2fd59da` sono 38, perché l'import nuovo l'ha messo negli 8 file nuovi di `services/import/` (34 a `bc7aa2e`, meno i 4 tolti dai passi 2 e 5, più 8); il passo 6 non ne aggiunge né ne toglie (38 anche a `309b46f`). Link `[[...]]` verso pagine esistenti; le righe dei passi 1 e 3 intatte.
+- **files edited/created**: `brain/chore/migrazione-effect.md`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
