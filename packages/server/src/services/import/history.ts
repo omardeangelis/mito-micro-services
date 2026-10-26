@@ -2,6 +2,7 @@ import "server-only"
 import { count, desc, eq } from "drizzle-orm"
 import { Clock, Effect } from "effect"
 import { importRun } from "@mito/db/schema/importRun"
+import { HISTORY_PAGE_SIZE } from "@mito/domain/import/payload"
 import { operators } from "@mito/db/schema/operators"
 import { users } from "@mito/db/schema/users"
 import { type DbClient, query } from "../../effect/db"
@@ -12,8 +13,7 @@ import { failureReasons } from "./run"
 // The history of the imports (AC28–AC31): who, when, which file, how it
 // ended and the counts. Never the rows' data, which the table doesn't hold
 
-/** Imports per page of the "Import" page (AC28). */
-export const HISTORY_PAGE_SIZE = 20
+export { HISTORY_PAGE_SIZE }
 
 const columns = {
   id: importRun.id,
