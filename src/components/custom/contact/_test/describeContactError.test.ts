@@ -133,6 +133,21 @@ describe("describeContactError, one message per code", () => {
       },
       "Il contatto ha un richiamo aperto da confermare",
     ],
+    [
+      "PRACTICE_NOT_FOUND",
+      { code: "PRACTICE_NOT_FOUND", payload: {} },
+      "Pratica non trovata",
+    ],
+    [
+      "PRACTICE_EXISTS",
+      { code: "PRACTICE_EXISTS", payload: {} },
+      "Questa pratica esiste già",
+    ],
+    [
+      "CUSTOMER_EXISTS",
+      { code: "CUSTOMER_EXISTS", payload: {} },
+      "Un cliente collegato esiste già",
+    ],
   ]
 
   it.each(cases)("%s", (_, contactError, message) => {

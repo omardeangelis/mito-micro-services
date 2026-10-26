@@ -23,6 +23,9 @@ export const contactErrorCodes = [
   "OPERATOR_IS_ADMIN",
   "CANNOT_DEACTIVATE_SELF",
   "LAST_ADMIN",
+  "PRACTICE_NOT_FOUND",
+  "PRACTICE_EXISTS",
+  "CUSTOMER_EXISTS",
 ] as const
 
 export type ContactErrorCode = (typeof contactErrorCodes)[number]
@@ -63,6 +66,10 @@ export type ContactErrorPayloads = {
   OPERATOR_IS_ADMIN: NoPayload
   CANNOT_DEACTIVATE_SELF: NoPayload
   LAST_ADMIN: NoPayload
+  PRACTICE_NOT_FOUND: NoPayload
+  PRACTICE_EXISTS: NoPayload
+  /** A customer the new practice adds already exists. */
+  CUSTOMER_EXISTS: NoPayload
 }
 
 export type ContactErrorPayload<C extends ContactErrorCode> =
