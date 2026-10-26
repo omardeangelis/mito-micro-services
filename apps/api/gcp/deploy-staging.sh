@@ -74,6 +74,10 @@ gcloud run jobs execute mito-crm-staging-migrate --project=$P --region=$R \
 # STAGING_CRON_SLACK_WEBHOOK_URL, which slack-webhook-staging.sh creates.
 # Storage is the GCS bucket storage-staging.sh creates, with the ADC of the
 # service account (packages/server/src/services/storage/layer.ts)
+# The imports go through the Cloud Tasks queue setup-import-queue.sh creates:
+# the backend puts a task with the OIDC token of IMPORT_OIDC_SERVICE_ACCOUNT,
+# for this URL, and checks it on /internal/import/* (D13)
+IMPORT_ENV=IMPORT_QUEUE=projects/$P/locations/$R/queues/mito-crm-staging-import,IMPORT_OIDC_AUDIENCE=$URL,IMPORT_OIDC_SERVICE_ACCOUNT=mito-crm-import-tasks-staging@mito-crm.iam.gserviceaccount.com
 # A revision tag starts with a letter: d- and the digest's first 12 characters
 phase "revisione Cloud Run"
 DIGEST=${IMAGE##*@sha256:}
@@ -82,7 +86,7 @@ gcloud run deploy mito-crm-staging --project=$P --region=$R \
   --image=$IMAGE \
   --add-cloudsql-instances=$INSTANCE \
   --set-secrets=$DB_SECRETS,SUPABASE_KEY=${S}SUPABASE_KEY:latest,NEXT_PUBLIC_SUPABASE_URL=${S}NEXT_PUBLIC_SUPABASE_URL:latest,NEXTAUTH_SECRET=${S}NEXTAUTH_SECRET:latest,CRON_SLACK_WEBHOOK_URL=${S}CRON_SLACK_WEBHOOK_URL:latest \
-  --set-env-vars=$DB_ENV,NEXT_PUBLIC_APP_ENV=staging,NEXTAUTH_URL=$FRONTEND,TZ=UTC,CRON_OIDC_AUDIENCE=$URL,CRON_OIDC_SERVICE_ACCOUNT=mito-crm-scheduler-staging@mito-crm.iam.gserviceaccount.com,CRON_REPORT_ENV=staging,GCS_BUCKET=mito-crm-staging-storage \
+  --set-env-vars=$DB_ENV,NEXT_PUBLIC_APP_ENV=staging,NEXTAUTH_URL=$FRONTEND,TZ=UTC,CRON_OIDC_AUDIENCE=$URL,CRON_OIDC_SERVICE_ACCOUNT=mito-crm-scheduler-staging@mito-crm.iam.gserviceaccount.com,CRON_REPORT_ENV=staging,GCS_BUCKET=mito-crm-staging-storage,$IMPORT_ENV \
   --timeout=1800 \
   --no-traffic --tag=$REVISION_TAG \
   ${COMMIT_SHA:+--update-labels=deployed-sha=$COMMIT_SHA} \
