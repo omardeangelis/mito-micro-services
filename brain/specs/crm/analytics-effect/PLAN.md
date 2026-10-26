@@ -246,9 +246,9 @@ G0 ─┬─ T1 ─┐
     - un filtro `eq(practices.state, "Liquidata")` aggiunto solo alla query del confronto;
     - `?? 0` → `?? "0"`;
     - il default di `timeFrameInput` a `"90d"`.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Complete
+- **log**: Wave 1, worker `sonnet`. 37 test (`describe.each` su `{}`, `30d`, `90d`, `365d`, più il `tdd_target` a sé), verdi due volte. Stringhe del driver fissate: le somme intere (`"5000"`), le medie con la scala di Postgres (`"1250.0000000000000000"`, `"24000.000000000000"`, `"2333.3333333333333333"`), lo `0` numerico senza righe. Mutanti dell'orchestratore, tutti uccisi da asserzioni: MAP↔DELTA in ognuna delle tre (32–33 test rossi), `accessCondition` tolto dal solo confronto e dal solo riferimento del totale e dal confronto della media per cliente (4), filtro per operatore nella media dell'admin (12), `sum`↔`avg` (32–33), `Liquidata` nel solo confronto del totale e della media dell'admin (4), `?? "0"` (12), default `90d` (7).
+- **files edited/created**: nuovo `packages/server/src/api/routers/analytics/_test/financed.db.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -267,9 +267,9 @@ G0 ─┬─ T1 ─┐
 - **validation**:
   - verdi su `2fd59da`; il diff contiene solo il file nuovo;
   - mutanti (D22), uccisi e annotati: `orderBy` tolto; `TIMEFRAMEMAP` → `TIMEFRAMEDELTA`; `Number(r.total)` → `r.total`; un `innerJoin` su `customerToPratica` aggiunto.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Complete
+- **log**: Wave 1, worker `haiku`. 16 test, verdi due volte. Ritocco dell'orchestratore in review: gli importi dei 6 stati passano da 100…600 a potenze di 2 (100·2^i), come chiede il §11, perché nel round 3 un sottoinsieme sbagliato non dia la stessa somma. Mutanti uccisi: `orderBy` tolto (16), MAP→DELTA (16), `Number(r.total)` tolto (16), `innerJoin` su `customerToPratica` (4).
+- **files edited/created**: nuovo `packages/server/src/api/routers/analytics/_test/byBranch.db.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -288,9 +288,9 @@ G0 ─┬─ T1 ─┐
 - **validation**:
   - verdi su `2fd59da`; il diff contiene solo il file nuovo;
   - mutanti (D22), uccisi e annotati: `accessCondition` sempre `undefined`; `"nessuno"` tolto da `notInArray`; un filtro `eq(task.isActive, true)` aggiunto; `todo` con `inArray(task.state, ["chiamare", "followup"])`.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Complete
+- **log**: Wave 1, worker `haiku`. 10 test, verdi due volte: OPERATORE `{ done: 14, todo: 2 }`, ADMIN `{ done: 42, todo: 6 }` sul fixture completo, più i casi per stato, il contatto di due anni fa e l'operatore senza contatti. Mutanti uccisi: `accessCondition` sempre `undefined` (3), `nessuno` tolto (5), `isActive` aggiunto (6), `todo` con `followup` (5).
+- **files edited/created**: nuovo `packages/server/src/api/routers/analytics/_test/contactProgress.db.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -310,9 +310,9 @@ G0 ─┬─ T1 ─┐
   - verde su `2fd59da`; il diff contiene solo il file nuovo;
   - `tsc` fallisce se manca una riga per una procedura con chiamanti;
   - mutanti (D22), uccisi e annotati: `getAllDoneTasksInLastMonth` su `protectedProcedure`; `getAmountPerSedeInLastMonth` su `operatorProcedure`.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Complete
+- **log**: Wave 1, worker `sonnet`. 18 test, verdi due volte. Fissati `BAD_REQUEST` con messaggio `BAD_REQUEST` e `UNAUTHORIZED` `Utente disattivato`; S3 con la media `"1000.0000000000000000"` e `[{ data: "Roma", total: 1000 }]`. `tsc` rosso togliendo una riga dalla tabella (TS1360). Mutanti uccisi: `getAllDoneTasksInLastMonth` su `protectedProcedure` (3), `getAmountPerSedeInLastMonth` su `operatorProcedure` (2).
+- **files edited/created**: nuovo `packages/server/src/api/routers/analytics/_test/procedures.db.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -327,9 +327,9 @@ G0 ─┬─ T1 ─┐
 - **validation**:
   - `pnpm exec tsc --noEmit` verde su `2fd59da`; il file gira anche in vitest (verde);
   - mutante (D22): `?? 0` → `?? null` in una procedura fa fallire `tsc`.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Complete
+- **log**: Wave 1, worker `haiku`. Tipi confermati con `tsc`: come nel piano, salvo l'input di `getAllDoneTasksInLastMonth`, che è `void | undefined`. `tsc` rosso cambiando un tipo atteso; mutante `?? null` ucciso da `tsc` (TS2344).
+- **files edited/created**: nuovo `packages/server/src/api/routers/analytics/_test/types.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
