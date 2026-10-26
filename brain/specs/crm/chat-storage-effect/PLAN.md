@@ -16,7 +16,7 @@ updated: 2026-10-25
 - **Verifica della spec:** DO NOT SHIP, 0 blocker e 2 major, tutti corretti.
 - **Dopo la verifica del piano:** AC17 (b) corretto (§17).
 
-**Status:** In progress (PR A in `dev` con la [PR #86](https://github.com/omardeangelis/mito-micro-services/pull/86), T9b con la [PR #87](https://github.com/omardeangelis/mito-micro-services/pull/87); PR B fatta e rivista sul branch `claude/storage-effect`, aperta il 2026-10-26 su richiesta di Omar, che ha chiesto di unirla con la CI verde senza aspettare l'approvazione di Leonardo (D22); poi T15; GB2 bloccato fino al login del backend di staging, [PR #90](https://github.com/omardeangelis/mito-micro-services/pull/90))
+**Status:** Done (PR A in `dev` con la [PR #86](https://github.com/omardeangelis/mito-micro-services/pull/86), T9b con la [PR #87](https://github.com/omardeangelis/mito-micro-services/pull/87); PR B in `dev` il 2026-10-26 con la [PR #91](https://github.com/omardeangelis/mito-micro-services/pull/91), unita con la CI verde senza l'approvazione di Leonardo, su richiesta di Omar (D22); T15 con questa PR di documenti; GB2 bloccato fino al login del backend di staging, [PR #90](https://github.com/omardeangelis/mito-micro-services/pull/90))
 **Generato:** 2026-10-25 con `create-plan`. Il flusso è stato: spec (2 decisioni di Omar), verifica della spec, grill (nessuna domanda: le decisioni si ricavano dalla spec, dal codice e dal passo 4), task graph, tdd, verifica del piano.
 - **Verifica del piano:** DO NOT SHIP, 0 blocker, 2 major, 3 minor e 5 nit, corretti (§17).
 
@@ -835,9 +835,9 @@ T9b ─────────────────┘
   - una voce `merge` in `log.md`;
   - `docs-maintenance` sulla cartella resta a Omar. Aggiorna anche [[domains/crm/concepts/regola-dei-lock]], che deve dire che l'invio di una nota prende il lock.
 - **validation**: i documenti dicono lo stato nuovo; la CI della PR di documenti è verde.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: dopo il merge della [PR #91](https://github.com/omardeangelis/mito-micro-services/pull/91) (`25ba9de`): §4 riga 5 ✓ con i link alle due PR, TD10 tutta `[OPEN]`, SPEC `implemented`, voce `merge` in `log.md`. `docs-maintenance`, con [[domains/crm/concepts/regola-dei-lock]], resta a Omar
+- **files edited/created**: `brain/chore/migrazione-effect.md`, `brain/specs/crm/chat-storage-effect/SPEC.md`, `brain/specs/crm/chat-storage-effect/PLAN.md`, `brain/index.md`, `brain/specs/crm/crm-specs.md`, `brain/log.md`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a

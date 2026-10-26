@@ -12,6 +12,10 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 
 <!-- Entries are appended by create-spec (spec creation) and docs-maintenance (ingest). Format:
 
+## [2026-10-26] merge | Router `supabase` e `supabaseClient`: PR B del passo 5 in `dev`
+- [PR #91](https://github.com/omardeangelis/mito-micro-services/pull/91) unita in `dev` (`25ba9de`) con la CI verde, senza l'approvazione di Leonardo, su richiesta di Omar (D22): il router `supabase` tolto, le route di export su `services/export/files.ts`, `supabaseClient` fuori dal contesto tRPC
+- Passo 5 fatto (§4 di [[chore/migrazione-effect]]); TD10 `[OPEN]` anche per (d) ed (e); [[specs/crm/chat-storage-effect/SPEC]] implemented. Restano GB2, bloccato fino alla [PR #90](https://github.com/omardeangelis/mito-micro-services/pull/90), e `docs-maintenance` sulla cartella
+
 ## [2026-10-26] review | Router `supabase` e `supabaseClient`, PR B: rilanci di v4
 - Report: [[specs/crm/chat-storage-effect/REPORT]] (giro PR B, rilanci)
 - Scope: spec
@@ -296,10 +300,6 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 - Verdict: DO NOT SHIP
 - Impact: medium
 - Verifiers: 2 (0 blockers, 1 major)
-
-## [2026-10-16] implement | Sezione Contatti — PR4, T4.7 (MAJOR e MINOR della quinta verifica)
-- Spec: [[specs/crm/sezione-contatti/PLAN]]
-- Store per cliente delle note in eliminazione; focus solo se rimasto sul cestino; toast solo col cliente a schermo; test di rollback
 
 ## [YYYY-MM-DD] ingest | <spec title>
 - Source: [[specs/<domain>/<spec>/SPEC]]
