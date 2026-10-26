@@ -132,13 +132,13 @@ Ruoli coinvolti: **operatori** e **admin** del CRM (login con Microsoft Entra ID
 
 | # | Question | Affects | Owner | Status |
 |---|----------|---------|-------|--------|
-| 1 | Al passaggio tutti rifanno il login una volta (default), o si migrano le sessioni aperte? | AC20 | Leonardo | Open, default: nuovo login |
-| 2 | La pagina di login nuova: basta un pulsante "Accedi con Microsoft" e, fuori produzione, un campo email (default), o serve un `prototype`? | AC24, AC25 | Leonardo | Open, default: pagina semplice |
+| 1 | Al passaggio tutti rifanno il login una volta (default), o si migrano le sessioni aperte? | AC20 | Leonardo | Decisa 2026-10-26 (Leonardo): nuovo login per tutti |
+| 2 | La pagina di login nuova: basta un pulsante "Accedi con Microsoft" e, fuori produzione, un campo email (default), o serve un `prototype`? | AC24, AC25 | Leonardo | Decisa 2026-10-26 (Leonardo): pagina semplice, nessun prototype |
 | 3 | In produzione un utente nuovo da Azure nasce `ADMIN` (default dello schema). Si conserva (default: comportamento invariato) o si cambia in una PR a parte? | AC4, AC10 | Leonardo, Omar | Open, default: invariato |
 | 4 | I token di Azure (access, refresh, id token) salvati negli account non li legge nessuno: si conservano (default) o si smette di salvarli? | AC2 | Leonardo | Open, default: conservati |
-| 5 | La [PR #90](https://github.com/omardeangelis/mito-micro-services/pull/90) si unisce prima della PR di better-auth (default, che poi aggiunge solo il secret nuovo), o la si chiude e la PR di better-auth porta tutti i secret? | Constraints | Omar | Open, default: #90 prima |
+| 5 | La [PR #90](https://github.com/omardeangelis/mito-micro-services/pull/90) si unisce prima della PR di better-auth (default, che poi aggiunge solo il secret nuovo), o la si chiude e la PR di better-auth porta tutti i secret? | Constraints | Omar | Decisa 2026-10-26 (Leonardo): #90 prima |
 | 6 | Il backend di produzione su Cloud Run come capisce di essere in produzione (oggi `isProduction` legge solo variabili di Vercel)? Va deciso prima del go/no-go, non serve per dev e staging | AC7, AC9, AC10 | Leonardo, Omar | Open |
-| 7 | Quali origini fidate e quale URL base usa better-auth su staging (oggi `NEXTAUTH_URL` = `https://staging-crm.dbmito.it`)? Default: lo stesso dominio del frontend | AC17, AC18 | Leonardo | Open, default: dominio del frontend |
+| 7 | Quali origini fidate e quale URL base usa better-auth su staging (oggi `NEXTAUTH_URL` = `https://staging-crm.dbmito.it`)? Default: lo stesso dominio del frontend | AC17, AC18 | Leonardo | Decisa 2026-10-26 (Leonardo): dominio del frontend |
 
 ---
 
