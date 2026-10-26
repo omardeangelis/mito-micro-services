@@ -12,6 +12,25 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 
 <!-- Entries are appended by create-spec (spec creation) and docs-maintenance (ingest). Format:
 
+## [2026-10-26] review | Router `analytics` su Effect, con le correzioni della dashboard (passo 6)
+- Report: [[specs/crm/analytics-effect/REPORT]]; rubric: [[specs/crm/analytics-effect/RUBRIC]]
+- Scope: spec
+- Verdict: DO NOT SHIP al giro 1 (`54da3e2`: il selettore del periodo non seguiva la pagina dopo una navigazione nel client); al giro 2 v3 prima DO NOT SHIP (la chiave della correzione mandava il fuoco sul `body`), poi SHIP dopo `ab8b2c3`; v4 SHIP sulla storia riscritta. SHIP su `0c3d384`, gate completi verdi
+- Impact: critical; la revisione dei permessi di Leonardo resta umana. La prova nel browser su `mito_local` l'ha fatta l'orchestratore dopo il giro 2: verde, con un difetto (Next dava il fuoco a `main` dopo la scelta del periodo) corretto in `a44ed77`; poi, su richiesta di Omar, i problemi della UI trovati sono corretti in `2f583e6` (la navigazione scartata) e `1f13227` (la sezione) e riprovati nel browser; resta il layout sotto i 768 px, di tutta l'app
+- Verifiers: 6 al giro 1 (0 blocker, 1 major), 3 passate al giro 2 (0 blocker, 1 major corretto); il FOLLOW-UP sulla navigazione scartata è corretto in `2f583e6`, senza un verificatore rilanciato
+
+## [2026-10-26] plan | Router `analytics` su Effect, con le correzioni della dashboard (passo 6 della migrazione)
+- Spec: [[specs/crm/analytics-effect/SPEC]], piano: [[specs/crm/analytics-effect/PLAN]]
+- 19 task e G0 in una PR con tre round: caratterizzazione delle 5 procedure con chiamanti (risposte, middleware, tipi, con i mutanti sul codice di oggi), refactor in `services/analytics/` con le 3 procedure senza chiamanti tolte, poi le correzioni da un test rosso (contratto del router e permessi, finestre dal `Clock`, una pratica contata una volta e solo le finanziate, "Contatti con esito", card, periodo non valido, refusi) e `insertChatToOperatorSchema` tolto
+- Verifica del piano: DO NOT SHIP, 0 blocker, 2 major (finestra di confronto senza prove, tipo `string | number`), 7 minor e 5 nit, tutti corretti
+- Debito della migrazione: TD11 (S1–S9 chiuse dalla PR, una voce `[PREVISTO]` sull'utente senza riga operatore); revisione obbligatoria di Leonardo
+
+## [2026-10-26] spec | Router `analytics` su Effect, con le correzioni della dashboard (passo 6 della migrazione)
+- Created spec: [[specs/crm/analytics-effect/SPEC]]
+- Domain: crm
+- Status: Draft
+- Decisioni di Omar: le correzioni nello stesso branch, come ultimo round dopo il refactor; "Contatti con esito" conta la coda attuale; una pratica conta una volta, per chi ha un cliente; le medie si rinominano "per pratica"
+
 ## [2026-10-26] merge | Import di clienti e pratiche: catena A–G in `dev`
 - [PR #77](https://github.com/omardeangelis/mito-micro-services/pull/77), #78, #81, #82, #85, #88, #89 e la spec #74 unite in `dev` su richiesta di Leonardo, ognuna con la CI verde; migrazione `20261025014131_import_run` approvata da Leonardo su `staging-db` e applicata; coda `mito-crm-staging-import` creata da Leonardo dal Mac (T12a)
 - Passo 3 fatto (§4 di [[chore/migrazione-effect]]); TD10 (d) chiusa, perché `/api/export/importError` è tolta. `dev` → `main` fermo fino al go/no-go ([[chore/migrazione-gcp]]). T0 e T12b, la prova su staging, rimandati da Leonardo alla fine della migrazione ([[specs/crm/import-pratiche/PLAN]])

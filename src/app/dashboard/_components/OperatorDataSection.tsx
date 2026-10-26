@@ -1,64 +1,37 @@
 import { api } from "@/trpc/server"
 import { FinanceCard } from "./FinanceCard"
-import { Skeleton } from "@/components/ui/skeleton"
 import { CircleCard } from "./CircleCard"
-import {
-  type TimeFrame,
-  DEFUALTTIMEFRAME,
-} from "@mito/domain/constants/timeframes"
+import { CardRow } from "./CardRow"
+import { type TimeFrame } from "@mito/domain/constants/timeframes"
 
 export const OperatorDataSection = async ({
-  timeframe = DEFUALTTIMEFRAME,
+  timeframe,
 }: {
-  timeframe?: TimeFrame
+  timeframe: TimeFrame
 }) => {
-  const { comparison, reference } =
-    await api.analitycs.getFinanziatoTotalePerOperatore.query({
-      timeFrame: timeframe,
-    })
-  const { done, todo } = await api.analitycs.getAllDoneTasksInLastMonth.query()
-  const { comparison: customerComparison, reference: customerReference } =
-    await api.analitycs.getFinaziatoMedioPerCliente.query({
-      timeFrame: timeframe,
-    })
+  const [total, { done, todo }, average] = await Promise.all([
+    api.analytics.getFinancedTotal.query({ timeFrame: timeframe }),
+    api.analytics.getContactProgress.query(),
+    api.analytics.getFinancedAverage.query({ timeFrame: timeframe }),
+  ])
 
   return (
-    <div className="flex h-full w-full flex-row items-stretch justify-between gap-8">
+    <CardRow>
       <FinanceCard
-        title="Finanziato medio per operatore"
-        referencePeriod={{
-          total: Number(reference),
-        }}
-        comparisonPeriod={{
-          total: Number(comparison),
-        }}
-        comparisonTimeFrame={timeframe}
+        title="Finanziato totale"
+        referencePeriod={{ total: total.reference }}
+        comparisonPeriod={{ total: total.comparison }}
+        windows={total.windows}
       />
       <CircleCard done={done} todo={todo}>
-        <p className="text-tremor-default text-tremor-content dark:text-dark-tremor-content">
-          Chiamate completate
-        </p>
+        <h2 className="text-sm text-neutral-500">Contatti con esito</h2>
       </CircleCard>
       <FinanceCard
-        title="Finanziato medio per cliente"
-        referencePeriod={{
-          total: Number(customerReference),
-        }}
-        comparisonPeriod={{
-          total: Number(customerComparison),
-        }}
-        comparisonTimeFrame={timeframe}
+        title="Finanziato medio per pratica"
+        referencePeriod={{ total: average.reference }}
+        comparisonPeriod={{ total: average.comparison }}
+        windows={average.windows}
       />
-    </div>
-  )
-}
-
-export const DataSectionSkeleton = () => {
-  return (
-    <div className="flex w-full flex-row items-center justify-between gap-8">
-      <Skeleton className="h-48 w-1/3 rounded-md" />
-      <Skeleton className="h-48 w-1/3 rounded-md" />
-      <Skeleton className="h-48 w-1/3 rounded-md" />
-    </div>
+    </CardRow>
   )
 }

@@ -110,3 +110,11 @@
 - [Layer mock blind spots](feedback_layer_mock_blind_spots.md) — throw-in-real-layer probe plus no-mock control
 - [Flag-flip target env](feedback_flag_flip_target_env_probe.md) — a remedy that flips a rewrite flag: check the target's deploy env (set-env-vars
 - [Deferred precondition attribution](feedback_deferred_precondition_attribution.md) — grep the other step per item; deploy wipes hand fixes; prechecks vacuous or unsatisfiable
+- [Spec gate checks](feedback_spec_bundled_clause_and_enum_terms.md) — per-procedure clauses; enum terms; unscoped grep ACs; vitest TZ claim
+- [Twin-window queries, literal types](feedback_twin_window_queries_and_literal_type_claims.md) — pin each clause in both windows; `?? 0` widens to number; TS probe
+- [Degraded UI pass substitutes](feedback_degraded_ui_pass_ssr_probes.md) — SSR the library for edge props, Tailwind CLI for dynamic colours, missing 50 boundary
+- [Disabled message, x64 runner](feedback_disabled_message_and_x64_runner.md) — adapter drops disabled sessions over HTTP; python subprocess runs x64 node
+- [Uncontrolled prop, searchParams remount](feedback_uncontrolled_prop_and_searchparam_remount.md) — stale on soft nav; key= fix drops focus to body, discarded navigate
+- [Worktree gate substitutes](feedback_worktree_gate_substitutes.md) — literal next lint via git-archive clone; throwaway pg15 container for the pg project; build green != lint
+- [Distinct-value fixtures](feedback_distinct_value_fixtures_hide_distinct_aggregates.md) — all-different amounts hide sumDistinct/avgDistinct mutants
+- [Round history per commit](feedback_round_history_per_commit_probes.md) — overlay red; tsc per commit; old-tree compare after rewrite; seeded differential probe
