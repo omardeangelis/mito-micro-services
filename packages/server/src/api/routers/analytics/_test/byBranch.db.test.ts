@@ -9,11 +9,12 @@ import {
   createPractice,
 } from "@/test/factories"
 
-// `analitycs.getAmountPerSedeInLastMonth` com'è oggi: una riga per punto
+// `analytics.getFinancedByBranch`, solo per gli ADMIN: una riga per punto
 // vendita delle pratiche liquidate nella finestra di riferimento (`timeFrame`,
 // 30 giorni di default), in ordine di nome con `null` per ultimo, con le
 // pratiche senza clienti contate e ogni stato incluso. Il periodo precedente
 // resta fuori: ogni test vi lascia una pratica di Milano che non deve contare.
+// Il `FORBIDDEN` di un OPERATORE sta nella tabella di `procedures.db.test.ts`.
 
 const DAY = 86_400_000
 
@@ -136,15 +137,15 @@ beforeEach(async () => {
   await resetDb()
 })
 
-describe("analitycs.getAmountPerSedeInLastMonth: pratiche per punto vendita", () => {
+describe("analytics.getFinancedByBranch: pratiche per punto vendita", () => {
   describe.each(CASES)("$name", (c) => {
     it(`con \`${c.timeFrame}\`: una riga per punto vendita nel periodo, in ordine di nome, con \`null\` per ultimo`, async () => {
       await seedRiferimento(c.days)
       const caller = createTestCaller(await createOperator({ role: "ADMIN" }))
 
-      expect(
-        await caller.analitycs.getAmountPerSedeInLastMonth(c.input)
-      ).toEqual(ATTESO)
+      expect(await caller.analytics.getFinancedByBranch(c.input)).toEqual(
+        ATTESO
+      )
     })
 
     it(`con \`${c.timeFrame}\`, la pratica senza clienti nella finestra conta nel totale del suo punto vendita`, async () => {
@@ -156,9 +157,7 @@ describe("analitycs.getAmountPerSedeInLastMonth: pratiche per punto vendita", ()
       })
       const caller = createTestCaller(await createOperator({ role: "ADMIN" }))
 
-      expect(
-        await caller.analitycs.getAmountPerSedeInLastMonth(c.input)
-      ).toEqual([
+      expect(await caller.analytics.getFinancedByBranch(c.input)).toEqual([
         { data: "Milano", total: 4000 },
         { data: "Roma", total: 1500 },
         { data: null, total: 2000 },
@@ -178,9 +177,7 @@ describe("analitycs.getAmountPerSedeInLastMonth: pratiche per punto vendita", ()
       }
       const caller = createTestCaller(await createOperator({ role: "ADMIN" }))
 
-      expect(
-        await caller.analitycs.getAmountPerSedeInLastMonth(c.input)
-      ).toEqual([
+      expect(await caller.analytics.getFinancedByBranch(c.input)).toEqual([
         { data: "Milano", total: 4000 },
         { data: "Napoli", total: 6300 },
         { data: "Roma", total: 1000 },
@@ -188,21 +185,13 @@ describe("analitycs.getAmountPerSedeInLastMonth: pratiche per punto vendita", ()
       ])
     })
 
-    it(`con \`${c.timeFrame}\`, ADMIN e OPERATORE ricevono la stessa risposta, anche se le pratiche sono di clienti di un altro operatore`, async () => {
+    it(`con \`${c.timeFrame}\`, un ADMIN riceve anche le pratiche dei clienti di un altro operatore`, async () => {
       const proprietario = await createOperator({ role: "OPERATORE" })
       await seedRiferimento(c.days, proprietario.id)
       const admin = await createOperator({ role: "ADMIN" })
-      const operatore = await createOperator({ role: "OPERATORE" })
 
       expect(
-        await createTestCaller(admin).analitycs.getAmountPerSedeInLastMonth(
-          c.input
-        )
-      ).toEqual(ATTESO)
-      expect(
-        await createTestCaller(operatore).analitycs.getAmountPerSedeInLastMonth(
-          c.input
-        )
+        await createTestCaller(admin).analytics.getFinancedByBranch(c.input)
       ).toEqual(ATTESO)
     })
   })

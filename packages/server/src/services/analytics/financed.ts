@@ -14,13 +14,13 @@ import { query } from "../../effect/db"
 import { castAsNumber } from "../../shared/sql"
 
 /**
- * The customers the caller sees: all for an admin, only their own for an
- * operator. Without a caller there is no filter.
+ * The customers the caller sees, among those with an operator: all of them for
+ * an admin, only their own for an operator.
  */
-const customerAccess = (actor: Actor | undefined) =>
-  actor && actor.role !== "ADMIN"
-    ? eq(customers.operatorId, actor.operatorId)
-    : undefined
+const customerAccess = (actor: Actor) =>
+  actor.role === "ADMIN"
+    ? undefined
+    : eq(customers.operatorId, actor.operatorId)
 
 /**
  * The amount financed in the time frame (`reference`) and in the one before it
@@ -94,15 +94,14 @@ export const financedTotal = ({
 /**
  * The average amount financed in the time frame (`reference`) and in the one
  * before it (`comparison`), over the practices of customers who have an
- * operator. With an operator `actor` only their own customers count; with an
- * admin, or without `actor`, all of them.
+ * operator. An operator sees only their own customers; an admin all of them.
  */
 export const financedAverage = ({
   timeFrame,
   actor,
 }: {
   timeFrame: TimeFrame
-  actor?: Actor
+  actor: Actor
 }) =>
   Effect.gen(function* () {
     const accessCondition = customerAccess(actor)

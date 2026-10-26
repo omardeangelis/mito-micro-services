@@ -9,10 +9,9 @@ import {
   createPractice,
 } from "@/test/factories"
 
-// Le tre procedure sugli importi finanziati del router `analitycs` (il refuso
-// è la chiave di oggi): `getFinanziatoMedioPerOperatore`,
-// `getFinanziatoTotalePerOperatore` e `getFinaziatoMedioPerCliente`.
-// Ognuna legge due finestre: `reference` (gli ultimi N giorni) e `comparison`
+// Le due procedure sugli importi finanziati del router `analytics`:
+// `getFinancedTotal` e `getFinancedAverage`, entrambe con le pratiche dei
+// clienti che il chiamante vede. Ognuna legge due finestre: `reference` (gli ultimi N giorni) e `comparison`
 // (i N giorni prima). Ogni caso crea le pratiche in entrambe le finestre, con
 // importi diversi, e controlla le due risposte insieme.
 //
@@ -81,13 +80,11 @@ async function createPracticeOf(
 const customerOf = async (operatorId: number | null) =>
   (await createCustomer({ operatorId })).id
 
-/** Le tre risposte per lo stesso input, da confrontare insieme. */
+/** Le due risposte per lo stesso input, da confrontare insieme. */
 async function readAll(caller: Caller, input: TimeFrameInput) {
   return {
-    totale: await caller.analitycs.getFinanziatoTotalePerOperatore(input),
-    medioPerCliente: await caller.analitycs.getFinaziatoMedioPerCliente(input),
-    medioPerOperatore:
-      await caller.analitycs.getFinanziatoMedioPerOperatore(input),
+    totale: await caller.analytics.getFinancedTotal(input),
+    media: await caller.analytics.getFinancedAverage(input),
   }
 }
 
@@ -100,7 +97,7 @@ beforeEach(async () => {
 })
 
 describe("pratica con tre clienti", () => {
-  it("con `30d`, una pratica con Intestatario, Coobbligato e Garante dello stesso operatore somma tre volte il suo importo in `getFinanziatoTotalePerOperatore`", async () => {
+  it("con `30d`, una pratica con Intestatario, Coobbligato e Garante dello stesso operatore somma tre volte il suo importo in `getFinancedTotal`", async () => {
     const when = datesFor(30)
     const operator = await createOperator({ role: "OPERATORE" })
     const triple: [string, string, string] = [
@@ -117,16 +114,16 @@ describe("pratica con tre clienti", () => {
       dataLiquidazione: when.comparison,
     })
 
-    const res = await createTestCaller(
-      operator
-    ).analitycs.getFinanziatoTotalePerOperatore({ timeFrame: "30d" })
+    const res = await createTestCaller(operator).analytics.getFinancedTotal({
+      timeFrame: "30d",
+    })
 
     expect(res).toEqual({ reference: "3000", comparison: "12000" })
   })
 })
 
 describe.each(TIME_FRAMES)("con $label", ({ input, days }) => {
-  it("una pratica con tre clienti dello stesso operatore conta tre volte: il totale la somma tre volte e le medie la pesano tre volte (S2)", async () => {
+  it("una pratica con tre clienti dello stesso operatore conta tre volte: il totale la somma tre volte e la media la pesa tre volte (S2)", async () => {
     const when = datesFor(days)
     const operator = await createOperator({ role: "OPERATORE" })
     const triple: [string, string, string] = [
@@ -158,11 +155,7 @@ describe.each(TIME_FRAMES)("con $label", ({ input, days }) => {
     // medie su 4 righe: (3 × 1000 + 2000) / 4 e (3 × 4000 + 8000) / 4
     expect(res).toEqual({
       totale: { reference: "5000", comparison: "20000" },
-      medioPerCliente: {
-        reference: "1250.0000000000000000",
-        comparison: "5000.0000000000000000",
-      },
-      medioPerOperatore: {
+      media: {
         reference: "1250.0000000000000000",
         comparison: "5000.0000000000000000",
       },
@@ -205,11 +198,7 @@ describe.each(TIME_FRAMES)("con $label", ({ input, days }) => {
 
     expect(res).toEqual({
       totale: { reference: "3000", comparison: "12000" },
-      medioPerCliente: {
-        reference: "1500.0000000000000000",
-        comparison: "6000.0000000000000000",
-      },
-      medioPerOperatore: {
+      media: {
         reference: "1500.0000000000000000",
         comparison: "6000.0000000000000000",
       },
@@ -256,11 +245,7 @@ describe.each(TIME_FRAMES)("con $label", ({ input, days }) => {
     // somme 63000 e 4032000, su 6 righe: medie 10500 e 672000
     expect(res).toEqual({
       totale: { reference: "63000", comparison: "4032000" },
-      medioPerCliente: {
-        reference: "10500.0000000000000000",
-        comparison: "672000.000000000000",
-      },
-      medioPerOperatore: {
+      media: {
         reference: "10500.0000000000000000",
         comparison: "672000.000000000000",
       },
@@ -291,11 +276,7 @@ describe.each(TIME_FRAMES)("con $label", ({ input, days }) => {
 
     expect(res).toEqual({
       totale: { reference: "3000", comparison: "12000" },
-      medioPerCliente: {
-        reference: "1500.0000000000000000",
-        comparison: "6000.0000000000000000",
-      },
-      medioPerOperatore: {
+      media: {
         reference: "1500.0000000000000000",
         comparison: "6000.0000000000000000",
       },
@@ -336,31 +317,28 @@ describe.each(TIME_FRAMES)("con $label", ({ input, days }) => {
       return { operatorA, operatorB, admin }
     }
 
-    // La media per operatore non filtra per ruolo: tutta la CRM, escluso
-    // il cliente senza operatore
+    // La media dell'ADMIN: tutta la CRM, escluso il cliente senza operatore
     const WHOLE_CRM_AVERAGE = {
       reference: "2333.3333333333333333",
       comparison: "37333.333333333333",
     }
 
-    it("un OPERATORE vede solo le pratiche dei suoi clienti, tranne in `getFinanziatoMedioPerOperatore`", async () => {
+    it("un OPERATORE vede solo le pratiche dei suoi clienti, anche nella media di `getFinancedAverage`", async () => {
       const { operatorA, operatorB } = await seedTwoOperators()
 
       expect(await readAll(createTestCaller(operatorA), input)).toEqual({
         totale: { reference: "3000", comparison: "48000" },
-        medioPerCliente: {
+        media: {
           reference: "1500.0000000000000000",
           comparison: "24000.000000000000",
         },
-        medioPerOperatore: WHOLE_CRM_AVERAGE,
       })
       expect(await readAll(createTestCaller(operatorB), input)).toEqual({
         totale: { reference: "4000", comparison: "64000" },
-        medioPerCliente: {
+        media: {
           reference: "4000.0000000000000000",
           comparison: "64000.000000000000",
         },
-        medioPerOperatore: WHOLE_CRM_AVERAGE,
       })
     })
 
@@ -369,8 +347,7 @@ describe.each(TIME_FRAMES)("con $label", ({ input, days }) => {
 
       expect(await readAll(createTestCaller(admin), input)).toEqual({
         totale: { reference: "7000", comparison: "112000" },
-        medioPerCliente: WHOLE_CRM_AVERAGE,
-        medioPerOperatore: WHOLE_CRM_AVERAGE,
+        media: WHOLE_CRM_AVERAGE,
       })
     })
   })
@@ -381,8 +358,7 @@ describe.each(TIME_FRAMES)("con $label", ({ input, days }) => {
       const admin = await createOperator({ role: "ADMIN" })
       const empty = {
         totale: { reference: 0, comparison: 0 },
-        medioPerCliente: { reference: 0, comparison: 0 },
-        medioPerOperatore: { reference: 0, comparison: 0 },
+        media: { reference: 0, comparison: 0 },
       }
 
       expect(await readAll(createTestCaller(operator), input)).toEqual(empty)
@@ -400,11 +376,7 @@ describe.each(TIME_FRAMES)("con $label", ({ input, days }) => {
 
       expect(await readAll(createTestCaller(operator), input)).toEqual({
         totale: { reference: "1000", comparison: 0 },
-        medioPerCliente: { reference: "1000.0000000000000000", comparison: 0 },
-        medioPerOperatore: {
-          reference: "1000.0000000000000000",
-          comparison: 0,
-        },
+        media: { reference: "1000.0000000000000000", comparison: 0 },
       })
     })
 
@@ -419,11 +391,7 @@ describe.each(TIME_FRAMES)("con $label", ({ input, days }) => {
 
       expect(await readAll(createTestCaller(operator), input)).toEqual({
         totale: { reference: 0, comparison: "2000" },
-        medioPerCliente: { reference: 0, comparison: "2000.0000000000000000" },
-        medioPerOperatore: {
-          reference: 0,
-          comparison: "2000.0000000000000000",
-        },
+        media: { reference: 0, comparison: "2000.0000000000000000" },
       })
     })
   })

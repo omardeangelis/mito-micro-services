@@ -4,7 +4,7 @@ import { migrateUpTo, resetDb } from "@/test/db"
 import { createOperator, createTask } from "@/test/factories"
 
 // Caratterizzazione di "Chiamate completate" (AC1, S4): fissa la risposta di
-// `analitycs.getAllDoneTasksInLastMonth`, senza input, così com'è oggi.
+// `analytics.getContactProgress`, senza input, così com'è oggi.
 // - `done`: ogni stato tranne `chiamare`, `nessuno` e `null`, attivi e non attivi;
 // - `todo`: solo `chiamare`, attivi e non attivi;
 // - nessun filtro di data;
@@ -42,7 +42,7 @@ async function seedFixture() {
   return { operatorA, operatorB }
 }
 
-describe("analitycs.getAllDoneTasksInLastMonth (Chiamate completate)", () => {
+describe("analytics.getContactProgress (Chiamate completate)", () => {
   beforeAll(async () => {
     await migrateUpTo()
   })
@@ -56,7 +56,7 @@ describe("analitycs.getAllDoneTasksInLastMonth (Chiamate completate)", () => {
       const { operatorA } = await seedFixture()
       const caller = createTestCaller(operatorA)
 
-      expect(await caller.analitycs.getAllDoneTasksInLastMonth()).toEqual({
+      expect(await caller.analytics.getContactProgress()).toEqual({
         done: 14,
         todo: 2,
       })
@@ -66,7 +66,7 @@ describe("analitycs.getAllDoneTasksInLastMonth (Chiamate completate)", () => {
       const { operatorB } = await seedFixture()
       const caller = createTestCaller(operatorB)
 
-      expect(await caller.analitycs.getAllDoneTasksInLastMonth()).toEqual({
+      expect(await caller.analytics.getContactProgress()).toEqual({
         done: 14,
         todo: 2,
       })
@@ -76,7 +76,7 @@ describe("analitycs.getAllDoneTasksInLastMonth (Chiamate completate)", () => {
       await seedFixture()
       const caller = createTestCaller(await createOperator({ role: "ADMIN" }))
 
-      expect(await caller.analitycs.getAllDoneTasksInLastMonth()).toEqual({
+      expect(await caller.analytics.getContactProgress()).toEqual({
         done: 42,
         todo: 6,
       })
@@ -88,7 +88,7 @@ describe("analitycs.getAllDoneTasksInLastMonth (Chiamate completate)", () => {
         await createOperator({ role: "OPERATORE" })
       )
 
-      expect(await caller.analitycs.getAllDoneTasksInLastMonth()).toEqual({
+      expect(await caller.analytics.getContactProgress()).toEqual({
         done: 0,
         todo: 0,
       })
@@ -103,7 +103,7 @@ describe("analitycs.getAllDoneTasksInLastMonth (Chiamate completate)", () => {
       }
       const caller = createTestCaller(operator)
 
-      expect(await caller.analitycs.getAllDoneTasksInLastMonth()).toEqual({
+      expect(await caller.analytics.getContactProgress()).toEqual({
         done: 7,
         todo: 1,
       })
@@ -123,7 +123,7 @@ describe("analitycs.getAllDoneTasksInLastMonth (Chiamate completate)", () => {
       })
       const caller = createTestCaller(operator)
 
-      expect(await caller.analitycs.getAllDoneTasksInLastMonth()).toEqual({
+      expect(await caller.analytics.getContactProgress()).toEqual({
         done: 2,
         todo: 0,
       })
@@ -139,7 +139,7 @@ describe("analitycs.getAllDoneTasksInLastMonth (Chiamate completate)", () => {
       await createTask({ state: null, isActive: true, operatorId: operator.id })
       const caller = createTestCaller(operator)
 
-      expect(await caller.analitycs.getAllDoneTasksInLastMonth()).toEqual({
+      expect(await caller.analytics.getContactProgress()).toEqual({
         done: 0,
         todo: 0,
       })
@@ -154,7 +154,7 @@ describe("analitycs.getAllDoneTasksInLastMonth (Chiamate completate)", () => {
       })
       const caller = createTestCaller(operator)
 
-      expect(await caller.analitycs.getAllDoneTasksInLastMonth()).toEqual({
+      expect(await caller.analytics.getContactProgress()).toEqual({
         done: 1,
         todo: 0,
       })
@@ -169,7 +169,7 @@ describe("analitycs.getAllDoneTasksInLastMonth (Chiamate completate)", () => {
       })
       const caller = createTestCaller(operator)
 
-      expect(await caller.analitycs.getAllDoneTasksInLastMonth()).toEqual({
+      expect(await caller.analytics.getContactProgress()).toEqual({
         done: 0,
         todo: 1,
       })
@@ -195,7 +195,7 @@ describe("analitycs.getAllDoneTasksInLastMonth (Chiamate completate)", () => {
       })
       const caller = createTestCaller(operator)
 
-      expect(await caller.analitycs.getAllDoneTasksInLastMonth()).toEqual({
+      expect(await caller.analytics.getContactProgress()).toEqual({
         done: 1,
         todo: 1,
       })

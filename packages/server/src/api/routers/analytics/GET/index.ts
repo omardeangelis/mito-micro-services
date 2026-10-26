@@ -1,4 +1,4 @@
-import { operatorProcedure, protectedProcedure } from "../../../trpc"
+import { adminProcedure, operatorProcedure } from "../../../trpc"
 import { z } from "zod"
 import { runTrpc } from "../../../../effect/trpc"
 import {
@@ -12,30 +12,24 @@ const timeFrameInput = z.object({
   timeFrame: z.enum(["30d", "90d", "365d"]).optional().default("30d"),
 })
 
-export const getAmountPerSedeInLastMonth = protectedProcedure
-  .input(timeFrameInput)
-  .query(({ input }) =>
-    runTrpc(financedByBranch({ timeFrame: input.timeFrame }))
-  )
-
-export const getAllDoneTasksInLastMonth = operatorProcedure.query(({ ctx }) =>
-  runTrpc(contactProgress({ actor: ctx.actor }))
-)
-
-export const getFinanziatoMedioPerOperatore = protectedProcedure
-  .input(timeFrameInput)
-  .query(({ input }) =>
-    runTrpc(financedAverage({ timeFrame: input.timeFrame }))
-  )
-
-export const getFinanziatoTotalePerOperatore = operatorProcedure
+export const getFinancedTotal = operatorProcedure
   .input(timeFrameInput)
   .query(({ ctx, input }) =>
     runTrpc(financedTotal({ timeFrame: input.timeFrame, actor: ctx.actor }))
   )
 
-export const getFinaziatoMedioPerCliente = operatorProcedure
+export const getFinancedAverage = operatorProcedure
   .input(timeFrameInput)
   .query(({ ctx, input }) =>
     runTrpc(financedAverage({ timeFrame: input.timeFrame, actor: ctx.actor }))
   )
+
+export const getFinancedByBranch = adminProcedure
+  .input(timeFrameInput)
+  .query(({ input }) =>
+    runTrpc(financedByBranch({ timeFrame: input.timeFrame }))
+  )
+
+export const getContactProgress = operatorProcedure.query(({ ctx }) =>
+  runTrpc(contactProgress({ actor: ctx.actor }))
+)

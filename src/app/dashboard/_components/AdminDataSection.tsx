@@ -14,11 +14,11 @@ export const AdminDataSection = async ({
   timeframe?: TimeFrame
 }) => {
   const { comparison, reference } =
-    await api.analitycs.getFinanziatoMedioPerOperatore.query({
+    await api.analytics.getFinancedAverage.query({
       timeFrame: timeframe,
     })
-  const { done, todo } = await api.analitycs.getAllDoneTasksInLastMonth.query()
-  const data = await api.analitycs.getAmountPerSedeInLastMonth.query({
+  const { done, todo } = await api.analytics.getContactProgress.query()
+  const data = await api.analytics.getFinancedByBranch.query({
     timeFrame: timeframe,
   })
 

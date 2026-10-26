@@ -3,33 +3,19 @@ import { beforeAll, beforeEach, describe, expect, it } from "vitest"
 import { appRouter } from "../../../root"
 import { createTestCaller, rejectionOf } from "@/test/caller"
 import { migrateUpTo, resetDb } from "@/test/db"
-import {
-  createCustomer,
-  createOperator,
-  createPractice,
-  createUser,
-} from "@/test/factories"
+import { createOperator, createUser } from "@/test/factories"
 
-// Quale middleware protegge ogni procedura del router `analitycs`:
-// - session: solo la sessione (protectedProcedure), senza riga operatore;
-// - operator: sessione e operatore attivo (operatorProcedure).
-// Le procedure senza chiamanti, che un task successivo rimuove, restano fuori
-// dalla tabella.
+// Quale middleware protegge ogni procedura del router `analytics` (AC19):
+// - operator: sessione e operatore attivo (operatorProcedure);
+// - admin: operatore attivo con ruolo ADMIN (adminProcedure).
+// Nessuna procedura resta su protectedProcedure. La tabella controlla solo
+// l'esito, risposta o errore: i numeri, e chi vede che cosa, stanno nei test
+// dei dati.
 
-const REMOVED = [
-  "getPraticheLiquidate",
-  "getAllNewPraticheOfLastMonth",
-  "getAllImportoRatePageteOfLastMonth",
-] as const
+type Guard = "operator" | "admin"
 
-type Removed = (typeof REMOVED)[number]
-
-type Guard = "session" | "operator"
-
-type AnalyticsProcedure = Exclude<
-  keyof typeof appRouter._def.record.analitycs._def.record,
-  Removed
->
+type AnalyticsProcedure =
+  keyof typeof appRouter._def.record.analytics._def.record
 
 type Caller = ReturnType<typeof createTestCaller>
 
@@ -40,47 +26,38 @@ type ProcedureSpec = {
 
 /** Una riga per procedura: la guardia attesa e una chiamata con input valido. */
 const PROCEDURES = {
-  getFinanziatoMedioPerOperatore: {
-    guard: "session",
-    call: (c) =>
-      c.analitycs.getFinanziatoMedioPerOperatore({ timeFrame: "30d" }),
-  },
-  getAmountPerSedeInLastMonth: {
-    guard: "session",
-    call: (c) => c.analitycs.getAmountPerSedeInLastMonth({ timeFrame: "30d" }),
-  },
-  getAllDoneTasksInLastMonth: {
+  getFinancedTotal: {
     guard: "operator",
-    call: (c) => c.analitycs.getAllDoneTasksInLastMonth(),
+    call: (c) => c.analytics.getFinancedTotal({ timeFrame: "30d" }),
   },
-  getFinanziatoTotalePerOperatore: {
+  getFinancedAverage: {
     guard: "operator",
-    call: (c) =>
-      c.analitycs.getFinanziatoTotalePerOperatore({ timeFrame: "30d" }),
+    call: (c) => c.analytics.getFinancedAverage({ timeFrame: "30d" }),
   },
-  getFinaziatoMedioPerCliente: {
+  getFinancedByBranch: {
+    guard: "admin",
+    call: (c) => c.analytics.getFinancedByBranch({ timeFrame: "30d" }),
+  },
+  getContactProgress: {
     guard: "operator",
-    call: (c) => c.analitycs.getFinaziatoMedioPerCliente({ timeFrame: "30d" }),
+    call: (c) => c.analytics.getContactProgress(),
   },
 } satisfies Record<AnalyticsProcedure, ProcedureSpec>
 
 const names = Object.keys(PROCEDURES) as AnalyticsProcedure[]
-const sessionNames = names.filter(
-  (name) => PROCEDURES[name].guard === "session"
-)
 const operatorNames = names.filter(
   (name) => PROCEDURES[name].guard === "operator"
 )
+const adminNames = names.filter((name) => PROCEDURES[name].guard === "admin")
 
-/** Le chiavi del router, senza le procedure rimosse. */
-const routerKeys = () => {
-  const removed: readonly string[] = REMOVED
-  return Object.keys(appRouter._def.record.analitycs._def.record)
-    .filter((key) => !removed.includes(key))
-    .sort()
+const expectRejection = async (
+  call: Promise<unknown>,
+  expected: { code: string; message: string }
+) => {
+  const error = await rejectionOf(call)
+  expect(error).toBeInstanceOf(TRPCError)
+  expect(error).toMatchObject(expected)
 }
-
-const DAY_MS = 24 * 60 * 60 * 1000
 
 beforeAll(async () => {
   await migrateUpTo()
@@ -90,106 +67,97 @@ beforeEach(async () => {
   await resetDb()
 })
 
-describe("analitycs: guardia di ogni procedura", () => {
-  it("la tabella copre esattamente le procedure del router analitycs", () => {
-    expect([...names].sort()).toEqual(routerKeys())
+describe("analytics: guardia di ogni procedura", () => {
+  it("la tabella copre esattamente le procedure del router analytics", () => {
+    expect([...names].sort()).toEqual(
+      Object.keys(appRouter._def.record.analytics._def.record).sort()
+    )
   })
 
   describe("utente senza operatore", () => {
-    it.each(operatorNames)(
+    it.each(names)(
       "un utente senza operatore riceve `BAD_REQUEST` da %s",
       async (name) => {
         const caller = createTestCaller(await createUser())
-        const error = await rejectionOf(PROCEDURES[name].call(caller))
-        expect(error).toBeInstanceOf(TRPCError)
-        expect(error).toMatchObject({
+        await expectRejection(PROCEDURES[name].call(caller), {
           code: "BAD_REQUEST",
           message: "BAD_REQUEST",
         })
       }
     )
 
-    it.each(sessionNames)(
-      "%s passa con un utente senza operatore",
+    // TD11: anche un admin senza riga operatore, come oggi per "Chiamate
+    // completate"
+    it.each(names)(
+      "un ADMIN senza riga operatore riceve `BAD_REQUEST` da %s",
       async (name) => {
-        const caller = createTestCaller(await createUser())
-        // Un rifiuto farebbe fallire il test
-        await PROCEDURES[name].call(caller)
+        const caller = createTestCaller(await createUser({ role: "ADMIN" }))
+        await expectRejection(PROCEDURES[name].call(caller), {
+          code: "BAD_REQUEST",
+          message: "BAD_REQUEST",
+        })
       }
     )
   })
 
   describe("operatore disattivato", () => {
-    it.each(operatorNames)(
-      "un operatore disattivato riceve `UNAUTHORIZED` da %s",
+    it.each(names)(
+      "un OPERATORE disattivato riceve `UNAUTHORIZED` da %s",
       async (name) => {
         const caller = createTestCaller(
-          await createOperator({ disabledAt: new Date() })
+          await createOperator({ role: "OPERATORE", disabledAt: new Date() })
         )
-        const error = await rejectionOf(PROCEDURES[name].call(caller))
-        expect(error).toBeInstanceOf(TRPCError)
-        expect(error).toMatchObject({
+        await expectRejection(PROCEDURES[name].call(caller), {
           code: "UNAUTHORIZED",
           message: "Utente disattivato",
         })
       }
     )
 
-    it.each(sessionNames)(
-      "%s passa con un operatore disattivato",
+    it.each(names)(
+      "un ADMIN disattivato riceve `UNAUTHORIZED` da %s",
       async (name) => {
         const caller = createTestCaller(
-          await createOperator({ disabledAt: new Date() })
+          await createOperator({ role: "ADMIN", disabledAt: new Date() })
         )
-        await PROCEDURES[name].call(caller)
+        await expectRejection(PROCEDURES[name].call(caller), {
+          code: "UNAUTHORIZED",
+          message: "Utente disattivato",
+        })
       }
     )
   })
 
-  describe("operatore attivo", () => {
-    it.each(names)("%s passa con un operatore attivo", async (name) => {
-      const caller = createTestCaller(
-        await createOperator({ role: "OPERATORE" })
-      )
-      await PROCEDURES[name].call(caller)
-    })
+  describe("OPERATORE attivo", () => {
+    it.each(operatorNames)(
+      "%s risponde a un OPERATORE attivo",
+      async (name) => {
+        const caller = createTestCaller(
+          await createOperator({ role: "OPERATORE" })
+        )
+        // Un rifiuto farebbe fallire il test
+        await PROCEDURES[name].call(caller)
+      }
+    )
+
+    it.each(adminNames)(
+      "un `OPERATORE` riceve `FORBIDDEN` con il messaggio `admin-only` da `analytics.%s`",
+      async (name) => {
+        const caller = createTestCaller(
+          await createOperator({ role: "OPERATORE" })
+        )
+        await expectRejection(PROCEDURES[name].call(caller), {
+          code: "FORBIDDEN",
+          message: "admin-only",
+        })
+      }
+    )
   })
 
-  // Le due procedure su protectedProcedure non filtrano per operatore: un
-  // OPERATORE legge i numeri di tutto il CRM, anche di clienti di un altro
-  describe("OPERATORE: numeri di tutto il CRM", () => {
-    /** Una pratica da 1000 a Roma, liquidata 15 giorni fa, di un cliente dell'operatore B. */
-    const seedPraticaOfOtherOperator = async () => {
-      const other = await createOperator({ name: "Luigi" })
-      const customer = await createCustomer({ operatorId: other.id })
-      await createPractice({
-        customerId: customer.id,
-        importoFinanziato: "1000",
-        desPuntoVendita: "Roma",
-        dataLiquidazione: new Date(Date.now() - 15 * DAY_MS),
-      })
-    }
-
-    it("getFinanziatoMedioPerOperatore legge la pratica di un cliente di un altro operatore", async () => {
-      await seedPraticaOfOtherOperator()
-      const caller = createTestCaller(
-        await createOperator({ role: "OPERATORE" })
-      )
-
-      await expect(
-        caller.analitycs.getFinanziatoMedioPerOperatore({ timeFrame: "30d" })
-      ).resolves.toEqual({ reference: "1000.0000000000000000", comparison: 0 })
-    })
-
-    it("getAmountPerSedeInLastMonth legge la pratica di un cliente di un altro operatore", async () => {
-      await seedPraticaOfOtherOperator()
-      const caller = createTestCaller(
-        await createOperator({ role: "OPERATORE" })
-      )
-
-      await expect(
-        caller.analitycs.getAmountPerSedeInLastMonth({ timeFrame: "30d" })
-      ).resolves.toEqual([{ data: "Roma", total: 1000 }])
+  describe("ADMIN attivo", () => {
+    it.each(names)("%s risponde a un ADMIN attivo", async (name) => {
+      const caller = createTestCaller(await createOperator({ role: "ADMIN" }))
+      await PROCEDURES[name].call(caller)
     })
   })
 })

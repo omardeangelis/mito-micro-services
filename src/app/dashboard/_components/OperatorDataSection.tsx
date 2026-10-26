@@ -12,13 +12,12 @@ export const OperatorDataSection = async ({
 }: {
   timeframe?: TimeFrame
 }) => {
-  const { comparison, reference } =
-    await api.analitycs.getFinanziatoTotalePerOperatore.query({
-      timeFrame: timeframe,
-    })
-  const { done, todo } = await api.analitycs.getAllDoneTasksInLastMonth.query()
+  const { comparison, reference } = await api.analytics.getFinancedTotal.query({
+    timeFrame: timeframe,
+  })
+  const { done, todo } = await api.analytics.getContactProgress.query()
   const { comparison: customerComparison, reference: customerReference } =
-    await api.analitycs.getFinaziatoMedioPerCliente.query({
+    await api.analytics.getFinancedAverage.query({
       timeFrame: timeframe,
     })
 
