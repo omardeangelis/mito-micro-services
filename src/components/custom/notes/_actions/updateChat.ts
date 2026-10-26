@@ -27,21 +27,6 @@ export async function updateChatAction(values: {
     return { ok: false as const, error: "Invalid form data" }
   }
 
-  const [chatOperators, userOperator] = await Promise.all([
-    api.chat.getUniqueChatOperator.query({ id: parsedValues.data.chatId }),
-    api.operator.getUserOperator.query(),
-  ])
-
-  const hasOperatorAlreadyChatted = chatOperators.some(
-    (o) => o.operator === userOperator.id
-  )
-
-  if (!hasOperatorAlreadyChatted) {
-    await api.chat.addOperatorToChat.mutate({
-      chatId: parsedValues.data.chatId,
-    })
-  }
-
   const message = await api.chat.insertMessage.mutate({
     chatId: parsedValues.data.chatId,
     content: parsedValues.data.content,
