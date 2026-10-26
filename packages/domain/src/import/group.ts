@@ -8,7 +8,8 @@ import { type LookupKeys } from "./payload"
 // The rows of a file that write something, put together as today's import
 // does (AC38): one customer per fiscal code (or VAT number without it) and
 // customer code, one practice per practice ID, for each field the last value
-// that isn't empty; one link per customer and practice, with the first role.
+// that isn't empty, the rows of the customer only last; one link per customer
+// and practice, with the first role.
 
 export type FileCustomer = {
   customer: ConvertedCustomer
@@ -86,7 +87,12 @@ export function groupRows(rows: readonly NumberedRow[]): GroupedRows {
     return practice.praticaId
   }
 
-  for (const row of rows) {
+  // Today's import merges the rows of the customer only after the others
+  const ordered = [
+    ...rows.filter((row) => row.kind !== "customerOnly"),
+    ...rows.filter((row) => row.kind === "customerOnly"),
+  ]
+  for (const row of ordered) {
     if (row.kind === "discarded") {
       grouped.discarded.push({ row: row.row, reasons: row.reasons })
       continue
@@ -104,6 +110,8 @@ export function groupRows(rows: readonly NumberedRow[]): GroupedRows {
     }
     grouped.rows.push({ row: row.row, kind: "importable", customer, praticaId })
   }
+  grouped.rows.sort((a, b) => a.row - b.row)
+  for (const { rows } of grouped.customers) rows.sort((a, b) => a - b)
   return grouped
 }
 

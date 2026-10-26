@@ -171,6 +171,38 @@ describe("ImportStatusProvider", () => {
     expect(asked("import.active")).toBe(3)
   })
 
+  it("a screen reader hears the notice in Italian, with its words apart (AC40, AC41)", async () => {
+    // Radix writes the announcement a frame after the toast, and takes it
+    // away a second later
+    vi.useRealTimers()
+    vi.useFakeTimers({
+      toFake: [
+        "setTimeout",
+        "clearTimeout",
+        "setInterval",
+        "clearInterval",
+        "Date",
+        "requestAnimationFrame",
+        "cancelAnimationFrame",
+      ],
+    })
+    active = run()
+    renderStatus()
+    await wait(0)
+
+    active = completed
+    await wait(3100)
+    // The two frames after the toast
+    await wait(50)
+
+    expect(screen.getByRole("status").textContent).toBe(
+      "Notifica Import completato wave_ottobre.xlsx: 40 clienti nuovi e 12.000 aggiornati, 50 pratiche nuove e 67 aggiornate, 90 legami nuovi"
+    )
+    expect(screen.getByRole("region").getAttribute("aria-label")).toMatch(
+      /^Notifiche \(/
+    )
+  })
+
   it("says why an import failed, without refreshing what it didn't write (AC29)", async () => {
     active = run()
     renderStatus()

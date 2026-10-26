@@ -49,6 +49,42 @@ describe("detectFormat", () => {
     })
   })
 
+  it.each([
+    "PRATICA",
+    "IMPORTO_FINANZIATO",
+    "CLIENTE",
+    "IMPORTO_NETTO_EROGATO",
+    "IMPORTO_RATA",
+    "NUMERO_RATE",
+    "DATA_LIQUIDAZIONE",
+  ])("un file Standard senza la colonna %s è rifiutato", (missing) => {
+    const headers = standardColumns.filter((column) => column !== missing)
+
+    expect(detectFormat(headers)).toEqual({
+      error: "missingColumns",
+      closest: "standard",
+      missing: [missing],
+    })
+  })
+
+  it.each([
+    "n° Pratica",
+    "Codice NDG",
+    "Importo Finanziato",
+    "Importo Rata",
+    "Importo Richiesto",
+    "N° rate pratica",
+    "Data Erogazione",
+  ])("un file Wave senza la colonna %s è rifiutato", (missing) => {
+    const headers = waveColumns.filter((column) => column !== missing)
+
+    expect(detectFormat(headers)).toEqual({
+      error: "missingColumns",
+      closest: "wave",
+      missing: [missing],
+    })
+  })
+
   it("una prima riga senza intestazioni non è un tracciato", () => {
     expect(detectFormat([])).toEqual({ error: "emptyHeaders" })
     expect(detectFormat(["", null])).toEqual({ error: "emptyHeaders" })

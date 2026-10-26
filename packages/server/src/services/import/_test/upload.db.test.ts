@@ -1,5 +1,5 @@
 import { gzipSync } from "node:zlib"
-import { beforeAll, beforeEach, describe, expect, test } from "vitest"
+import { beforeAll, beforeEach, describe, expect, test, vi } from "vitest"
 import { Cause, Effect, Exit, Option } from "effect"
 import { eq } from "drizzle-orm"
 import {
@@ -291,6 +291,36 @@ describe("corpi che il server non prende (D3)", () => {
     }
 
     expect(reasonOf(await load(body))).toBe("Il file ha più di 50.000 righe")
+  })
+
+  test("un corpo di righe vuote, piccolo in gzip, è rifiutato prima di leggerlo", async () => {
+    const empty = Array.from(
+      { length: MAX_ROWS + 1 },
+      (_, index) => `[${index + 2},[]]`
+    )
+    const body = `{"columns":["a"],"rows":[${empty.join(",")}]}`
+    const parse = vi.spyOn(JSON, "parse")
+
+    try {
+      expect(reasonOf(await load(body))).toBe("Il file ha più di 50.000 righe")
+      expect(parse).not.toHaveBeenCalled()
+    } finally {
+      parse.mockRestore()
+    }
+  })
+
+  test("le parentesi dentro i testi delle celle non contano come righe", async () => {
+    // Between two escaped quotes: a count that ended the text at the first
+    // would see 120.000 arrays
+    const text = `"${"[".repeat(30_000)}"`
+    const body = toFileBody(
+      waveColumns,
+      [2, 3, 4, 5].map((row) => ({ row, cells: waveCells({ Nome: text }) }))
+    )
+
+    const exit = await load(body)
+
+    expect(Exit.isSuccess(exit) || reasonOf(exit)).toBe(true)
   })
 
   test("una riga senza una cella per colonna", async () => {

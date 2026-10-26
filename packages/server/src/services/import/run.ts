@@ -68,6 +68,24 @@ const endRun = (runId: number, ending: Ending, finishedAt: Date) =>
     })
   )
 
+/** Imports past their deadline become interrupted, and their rows go (D8). */
+const interrupt = (ids: number[], now: number) =>
+  Effect.gen(function* () {
+    yield* query((client) =>
+      client
+        .update(importRun)
+        .set({
+          status: "interrupted",
+          failureReason: failureReasons.timedOut,
+          finishedAt: new Date(now),
+        })
+        .where(inArray(importRun.id, ids))
+    )
+    yield* query((client) =>
+      client.delete(importUpload).where(inArray(importUpload.runId, ids))
+    )
+  })
+
 /**
  * The imports still running `timeoutMs` after their start that no
  * transaction holds become interrupted, and their rows go (D8, AC30). One a
@@ -90,24 +108,97 @@ export const interruptExpired = Effect.gen(function* () {
           )
           .for("update", { skipLocked: true })
       )
-      if (expired.length === 0) return
-      const ids = expired.map(({ id }) => id)
-      yield* query((client) =>
-        client
-          .update(importRun)
-          .set({
-            status: "interrupted",
-            failureReason: failureReasons.timedOut,
-            finishedAt: new Date(now),
-          })
-          .where(inArray(importRun.id, ids))
-      )
-      yield* query((client) =>
-        client.delete(importUpload).where(inArray(importUpload.runId, ids))
-      )
+      if (expired.length > 0)
+        yield* interrupt(
+          expired.map(({ id }) => id),
+          now
+        )
     })
   )
 })
+
+/** How long after an import's deadline its cleanup comes again (D14). */
+export const PURGE_AFTER_DEADLINE_MS = 60_000
+
+/**
+ * The cleanup task of an upload (`POST /internal/import/purge/:uploadId`,
+ * D14): deletes it with its parts. It waits for a part or a start that holds
+ * the row; after a start the upload is the import's, which deletes it at its
+ * end.
+ *
+ * - The upload of an import running past its deadline that no transaction
+ *   holds: the import becomes interrupted (AC30) and its rows go, so they
+ *   don't stay when its server has stopped.
+ * - The upload of an import still running, or held by a transaction: kept,
+ *   and the cleanup comes again a minute after the deadline (or now, if it
+ *   has passed).
+ */
+export const purgeUpload = (uploadId: string) =>
+  Effect.gen(function* () {
+    const { timeoutMs } = yield* ImportConfig
+    const now = yield* Clock.currentTimeMillis
+    const purge = yield* transaction(
+      Effect.gen(function* () {
+        const [upload] = yield* query((client) =>
+          client
+            .select({ id: importUpload.id, runId: importUpload.runId })
+            .from(importUpload)
+            .where(eq(importUpload.id, uploadId))
+            .for("update")
+        )
+        if (!upload) return { outcome: "gone" as const }
+        const { runId } = upload
+        if (runId !== null) {
+          const [run] = yield* query((client) =>
+            client
+              .select({
+                status: importRun.status,
+                startedAt: importRun.startedAt,
+              })
+              .from(importRun)
+              .where(eq(importRun.id, runId))
+          )
+          if (run?.status === "running") {
+            const deadline = run.startedAt.getTime() + timeoutMs
+            if (now < deadline) {
+              return {
+                outcome: "kept" as const,
+                again: deadline + PURGE_AFTER_DEADLINE_MS,
+              }
+            }
+            // A transaction that holds it is the import, or its end
+            const [free] = yield* query((client) =>
+              client
+                .select({ id: importRun.id })
+                .from(importRun)
+                .where(
+                  and(eq(importRun.id, runId), eq(importRun.status, "running"))
+                )
+                .for("update", { skipLocked: true })
+            )
+            if (!free) {
+              return {
+                outcome: "kept" as const,
+                again: now + PURGE_AFTER_DEADLINE_MS,
+              }
+            }
+            yield* interrupt([runId], now)
+            return { outcome: "interrupted" as const }
+          }
+        }
+        yield* deleteUpload(upload.id)
+        return { outcome: "deleted" as const }
+      })
+    )
+    if (purge.outcome === "kept") {
+      yield* (yield* ImportQueue).enqueue({
+        kind: "purge",
+        uploadId,
+        at: new Date(purge.again),
+      })
+    }
+    return purge.outcome
+  })
 
 /** The import running now, if any, with the name of its admin. */
 const runningImport = query((client) =>

@@ -1,21 +1,24 @@
 "use client"
 
-import { useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { IMPORT_EXTENSIONS } from "@/lib/import/messages"
 import { cn } from "@/lib/utils"
 import { ImportPreview } from "./ImportPreview"
 import { type NewImportState, useNewImport } from "./useNewImport"
 
-/** What the screen reader hears at each step (AC41). */
+/**
+ * What the screen reader hears at each step (AC41). A message is an alert,
+ * which it hears already.
+ */
 const announcement = (state: NewImportState) => {
   switch (state.step) {
     case "choose":
-      return state.message ?? ""
+      return ""
     case "reading":
       return `Lettura di ${state.fileName}…`
     case "preview":
-      return state.message ?? `Anteprima di ${state.fileName} pronta`
+      return state.message ? "" : `Anteprima di ${state.fileName} pronta`
     case "sending":
       return "Invio del file…"
     case "started":
@@ -28,6 +31,22 @@ export function NewImport() {
   const { state, choose, cancel, confirm, downloadReport } = useNewImport()
   const input = useRef<HTMLInputElement>(null)
   const [dragging, setDragging] = useState(false)
+
+  // The focus follows the step, so the keyboard goes on from what appeared
+  // (AC41): the button to cancel the reading, the preview, the button to
+  // choose a file. Not on the first render: the page has its own
+  const chooseButton = useRef<HTMLButtonElement>(null)
+  const cancelButton = useRef<HTMLButtonElement>(null)
+  const previewBox = useRef<HTMLDivElement>(null)
+  const shownStep = useRef(state.step)
+  useEffect(() => {
+    if (shownStep.current === state.step) return
+    shownStep.current = state.step
+    if (state.step === "reading") cancelButton.current?.focus()
+    else if (state.step === "preview" || state.step === "sending")
+      previewBox.current?.focus()
+    else chooseButton.current?.focus()
+  }, [state.step])
 
   const pick = (files: FileList | null) => {
     const file = files?.[0]
@@ -74,7 +93,11 @@ export function NewImport() {
             className="hidden"
             onChange={(event) => pick(event.target.files)}
           />
-          <Button type="button" onClick={() => input.current?.click()}>
+          <Button
+            ref={chooseButton}
+            type="button"
+            onClick={() => input.current?.click()}
+          >
             Scegli il file
           </Button>
           {state.step === "choose" && state.message ? (
@@ -90,14 +113,24 @@ export function NewImport() {
           <p>
             Lettura di <span className="font-bold">{state.fileName}</span>…
           </p>
-          <Button type="button" variant="outline" onClick={cancel}>
+          <Button
+            ref={cancelButton}
+            type="button"
+            variant="outline"
+            onClick={cancel}
+          >
             Annulla
           </Button>
         </div>
       ) : null}
 
       {state.step === "preview" || state.step === "sending" ? (
-        <div>
+        <div
+          ref={previewBox}
+          tabIndex={-1}
+          aria-label={`Anteprima di ${state.fileName}`}
+          className="outline-none"
+        >
           <ImportPreview fileName={state.fileName} preview={state.preview} />
           {state.preview.counts.importable +
             state.preview.counts.customerOnly ===

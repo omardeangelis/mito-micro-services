@@ -1,5 +1,10 @@
 import { describe, expect, test } from "vitest"
-import { classifyRow, isBlankRow, requiredColumns } from "../classify"
+import {
+  classifyRow,
+  classifyRows,
+  isBlankRow,
+  requiredColumns,
+} from "../classify"
 import { type Cells, standardCells, waveCells } from "./cells"
 
 // Which of the three outcomes a row of the file has, and why it is discarded
@@ -43,12 +48,78 @@ describe("righe importabili", () => {
     }
   )
 
+  test.each([32767, -32768])("Età %s sta in un campo smallint", (age) => {
+    expect(wave({ Età: age })).toMatchObject({
+      kind: "importable",
+      customer: { age },
+    })
+  })
+
   test("0 è un valore, non un dato mancante", () => {
     expect(standard({ IMPORTO_RATA: 0 }).kind).toBe("importable")
   })
+
+  test.each([1, true])(
+    "una riga Wave con Garante %s, che non è un testo, è scartata e non ferma l'import",
+    (garante) => {
+      expect(wave({ Garante: garante })).toEqual({
+        kind: "discarded",
+        reasons: ["La riga ha un valore che l'import non sa leggere"],
+      })
+    }
+  )
+})
+
+describe("nome del file salvato", () => {
+  test.each([
+    { fileName: "Pratiche-ottobre.xlsx", stored: "0125_Pratiche_ottobre.xlsx" },
+    {
+      fileName: "0924_report-settembre.xlsx",
+      stored: "0924_report_settembre.xlsx",
+    },
+  ])(
+    "le righe di $fileName salvano $stored su cliente e pratica",
+    ({ fileName, stored }) => {
+      const [row] = classifyRows(
+        "standard",
+        [{ row: 2, cells: standardCells() }],
+        NOW,
+        fileName
+      )
+
+      expect(row).toMatchObject({
+        kind: "importable",
+        customer: { fileName: stored },
+        practice: { fileName: stored },
+      })
+    }
+  )
 })
 
 describe("dati obbligatori (AC9)", () => {
+  test("le liste dei dati obbligatori sono quelle della spec", () => {
+    expect(requiredColumns).toEqual({
+      standard: [
+        "PRATICA",
+        "IMPORTO_FINANZIATO",
+        "CLIENTE",
+        "IMPORTO_NETTO_EROGATO",
+        "IMPORTO_RATA",
+        "NUMERO_RATE",
+        "DATA_LIQUIDAZIONE",
+      ],
+      wave: [
+        "n° Pratica",
+        "Codice NDG",
+        "Importo Finanziato",
+        "Importo Rata",
+        "Importo Richiesto",
+        "N° rate pratica",
+        "Data Erogazione",
+      ],
+    })
+  })
+
   test.each(
     requiredColumns.standard.flatMap((column) => [
       { column, value: null },
@@ -124,6 +195,25 @@ describe("codice fiscale o partita IVA (AC10)", () => {
       reasons: ["Manca il codice fiscale o la partita IVA del cliente"],
     })
   })
+
+  test.each([
+    { name: "Standard", row: () => standard({ CODICE_FISCALE_CLI: 0 }) },
+    { name: "Wave", row: () => wave({ "Codice Fiscale": 0 }) },
+    {
+      name: "Wave solo cliente",
+      row: () => wave({ "Codice Fiscale": false, "Importo Rata": null }),
+    },
+  ])(
+    "un codice che non dà né codice fiscale né partita IVA manca ($name)",
+    ({ row }) => {
+      expect(row()).toMatchObject({
+        kind: "discarded",
+        reasons: expect.arrayContaining([
+          "Manca il codice fiscale o la partita IVA del cliente",
+        ]) as unknown,
+      })
+    }
+  )
 })
 
 describe("valori che il CRM non può salvare (AC11)", () => {
@@ -146,6 +236,16 @@ describe("valori che il CRM non può salvare (AC11)", () => {
     {
       name: "Età 70000",
       row: () => wave({ Età: 70000 }),
+      reason: '"Età" è fuori dall\'intervallo consentito',
+    },
+    {
+      name: "Età 32768",
+      row: () => wave({ Età: 32768 }),
+      reason: '"Età" è fuori dall\'intervallo consentito',
+    },
+    {
+      name: "Età -32769",
+      row: () => wave({ Età: -32769 }),
       reason: '"Età" è fuori dall\'intervallo consentito',
     },
     {

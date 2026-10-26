@@ -7,8 +7,7 @@ import {
   importQueueDisabled,
   importQueueInProcess,
 } from "./queue"
-import { executeImport } from "./run"
-import { purgeUpload } from "./upload"
+import { executeImport, purgeUpload } from "./run"
 
 /** What the log says of a task that failed: its tag, never a message. */
 const logFailure = (what: string) => (cause: Cause.Cause<unknown>) => {

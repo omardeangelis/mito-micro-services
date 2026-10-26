@@ -14,8 +14,8 @@ import { type Db, DbLive } from "../../../effect/db"
 import { ImportConfig, importSettings } from "../config"
 import { ImportQueueFailed } from "../errors"
 import { ImportQueue, type ImportTask, importQueueDisabled } from "../queue"
-import { startImport } from "../run"
-import { beginUpload, purgeUpload, saveUploadPart } from "../upload"
+import { purgeUpload, startImport } from "../run"
+import { beginUpload, saveUploadPart } from "../upload"
 import { migrateUpTo, resetDb, testDb } from "@/test/db"
 import { failureTag } from "@/test/effect"
 import { createUser } from "@/test/factories"
@@ -139,9 +139,10 @@ describe("pulizia delle righe temporanee", () => {
     expect(await testDb.select().from(importUploadPart)).toEqual([])
   })
 
-  test("il task lascia le righe di un import in corso", async () => {
+  test("il task lascia le righe di un import in corso e torna un minuto dopo la sua scadenza", async () => {
     const uploadId = value(await run(firstPart()))
     value(await run(startImport({ uploadId, expected: [2], startedBy: admin })))
+    tasks = []
 
     const outcome = value(await run(purgeUpload(uploadId)))
 
@@ -152,6 +153,62 @@ describe("pulizia delle righe temporanee", () => {
         .from(importUpload)
         .where(eq(importUpload.id, uploadId))
     ).toEqual([{ id: uploadId }])
+    // Started at NOW: the deadline is at +30 min
+    expect(tasks).toEqual([
+      { kind: "purge", uploadId, at: new Date("2026-10-25T10:31:00.000Z") },
+    ])
+  })
+
+  test("le righe di un import rimasto in corso oltre la scadenza vanno, e l'import è interrotto", async () => {
+    const uploadId = value(await run(firstPart()))
+    const { runId } = value(
+      await run(startImport({ uploadId, expected: [2], startedBy: admin }))
+    )
+    // Its server stopped 31 minutes ago, and no start came since
+    await testDb
+      .update(importRun)
+      .set({ startedAt: new Date("2026-10-25T09:29:00.000Z") })
+      .where(eq(importRun.id, runId))
+    tasks = []
+
+    const outcome = value(await run(purgeUpload(uploadId)))
+
+    expect(outcome).toBe("interrupted")
+    expect(await testDb.select().from(importUpload)).toEqual([])
+    expect(await testDb.select().from(importUploadPart)).toEqual([])
+    expect(
+      await testDb
+        .select({
+          status: importRun.status,
+          failureReason: importRun.failureReason,
+          finishedAt: importRun.finishedAt,
+        })
+        .from(importRun)
+    ).toEqual([
+      {
+        status: "interrupted",
+        failureReason: "L'import non è finito entro 30 minuti dall'inizio",
+        finishedAt: NOW,
+      },
+    ])
+    expect(tasks).toEqual([])
+  })
+
+  test("se la coda non riprende la pulizia, il task fallisce e la coda lo ripete", async () => {
+    const uploadId = value(await run(firstPart()))
+    value(await run(startImport({ uploadId, expected: [2], startedBy: admin })))
+    const refusing = Layer.succeed(ImportQueue, {
+      available: true,
+      enqueue: () =>
+        Effect.fail(
+          new ImportQueueFailed({ reason: "Cloud Tasks answered 503" })
+        ),
+    })
+
+    const exit = await run(purgeUpload(uploadId), refusing)
+
+    expect(failureTag(exit)).toBe("ImportQueueFailed")
+    expect(await testDb.select().from(importUpload)).toHaveLength(1)
   })
 
   test("le righe di un import finito sono già andate: il task non trova nulla", async () => {

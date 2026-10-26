@@ -66,3 +66,13 @@ export function dropQueryParams(event: ErrorEvent): ErrorEvent {
   if (event.message) event.message = withoutParams(event.message)
   return event
 }
+
+/**
+ * Removes the body of the request from the event: the SDK keeps it, and a
+ * tRPC call carries customers' data in it, such as the codes of a file's
+ * customers in `import.lookup` (AC31 of the import).
+ */
+export function dropRequestBody(event: ErrorEvent): ErrorEvent {
+  if (event.request) delete event.request.data
+  return event
+}

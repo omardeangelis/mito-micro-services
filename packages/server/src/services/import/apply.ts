@@ -162,17 +162,18 @@ export const applyImport = (input: ImportInput) =>
     yield* Tx
     const { batchSize } = yield* ImportConfig
 
+    // Before each step: the time to the deadline, the timeout of the
+    // statements that follow (D8)
     const timeLeft = Effect.gen(function* () {
       const left = input.deadline - (yield* Clock.currentTimeMillis)
       if (left <= 0) return yield* new ImportTimedOut()
-      return left
-    })
-    const left = yield* timeLeft
-    yield* query((client) =>
-      client.execute(
-        sql.raw(`SET LOCAL statement_timeout = ${Math.ceil(left)}`)
+      yield* query((client) =>
+        client.execute(
+          sql.raw(`SET LOCAL statement_timeout = ${Math.ceil(left)}`)
+        )
       )
-    )
+    })
+    yield* timeLeft
     yield* query((client) =>
       client.execute(
         sql.raw(`SET LOCAL idle_in_transaction_session_timeout = '60s'`)
