@@ -144,9 +144,18 @@ export function DatePickerFormItem({
 export const TimeFrameSelector = ({ timeframe }: { timeframe: TimeFrame }) => {
   const { setTimeframe } = useAnalyticsStore()
   const router = useRouter()
+  // Next non rimonta la pagina quando cambia solo `?tf=`: il periodo mostrato
+  // torna a quello della pagina quando cambia (link "Dashboard", Indietro), e
+  // fra la scelta e l'arrivo della navigazione resta quello scelto. Niente
+  // `key`: rimontando il Select il fuoco finirebbe sul body
+  const [shown, setShown] = React.useState(timeframe)
+  const [pageTimeframe, setPageTimeframe] = React.useState(timeframe)
+  if (timeframe !== pageTimeframe) {
+    setPageTimeframe(timeframe)
+    setShown(timeframe)
+  }
 
   React.useEffect(() => {
-    console.log("TimeFrameSelector mounted")
     const unsub = useAnalyticsStore.subscribe((state) => {
       const { timeframe } = state
       const url = new URL(window.location.href)
@@ -158,13 +167,12 @@ export const TimeFrameSelector = ({ timeframe }: { timeframe: TimeFrame }) => {
   }, [router])
 
   return (
-    // Next non rimonta la pagina quando cambia solo `?tf=`: la chiave rimonta
-    // il Select, così mostra il periodo della pagina anche dopo il link
-    // "Dashboard" o Indietro
     <Select
-      key={timeframe}
-      defaultValue={timeframe}
-      onValueChange={(value: TimeFrame) => setTimeframe(value)}
+      value={shown}
+      onValueChange={(value: TimeFrame) => {
+        setShown(value)
+        setTimeframe(value)
+      }}
     >
       <SelectTrigger className="w-[180px]">
         <SelectValue placeholder="Seleziona Periodo" />
