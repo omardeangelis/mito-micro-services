@@ -16,7 +16,7 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 - Report: [[specs/crm/analytics-effect/REPORT]]; rubric: [[specs/crm/analytics-effect/RUBRIC]]
 - Scope: spec
 - Verdict: DO NOT SHIP al giro 1 (`54da3e2`: il selettore del periodo non seguiva la pagina dopo una navigazione nel client); al giro 2 v3 prima DO NOT SHIP (la chiave della correzione mandava il fuoco sul `body`), poi SHIP dopo `ab8b2c3`; v4 SHIP sulla storia riscritta. SHIP su `0c3d384`, gate completi verdi
-- Impact: critical; revisione dei permessi di Leonardo, prova nel browser su `mito_local` e classi della UI non misurate restano umane
+- Impact: critical; la revisione dei permessi di Leonardo resta umana. La prova nel browser su `mito_local` l'ha fatta l'orchestratore dopo il giro 2: verde, con un difetto (Next dava il fuoco a `main` dopo la scelta del periodo) corretto in `a44ed77`; la navigazione scartata e la legenda della ciambella con tutte le sedi restano da decidere
 - Verifiers: 6 al giro 1 (0 blocker, 1 major), 3 passate al giro 2 (0 blocker, 1 major corretto); resta un FOLLOW-UP sulla navigazione scartata
 
 ## [2026-10-26] plan | Router `analytics` su Effect, con le correzioni della dashboard (passo 6 della migrazione)

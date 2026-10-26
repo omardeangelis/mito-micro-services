@@ -28,6 +28,8 @@ updated: 2026-10-26
 
 Rilanciati v3 e v4: v3 per la correzione di AC11, v4 per la storia riscritta dopo il giro 1. v3 dà prima DO NOT SHIP, per un MAJOR nato dalla correzione del giro 1: `key={timeframe}` rimonta il `Select` a ogni navigazione, e dopo ogni scelta il fuoco finisce sul `body` (sonda con `userEvent`: nodo nuovo, `activeElement` BODY). Corretto in `ab8b2c3` da un test rosso (stesso nodo e fuoco sul selettore dopo il cambio di periodo): il `Select` è controllato, il periodo mostrato torna a quello della pagina quando cambia e resta sulla scelta finché la navigazione è in corso. Rilanciato su `29ae6cb..1cbcfe3`, v3 dà SHIP; v4 dà SHIP sulla storia riscritta (i 20 commit compilano e passano la suite da soli). Nessun BLOCKER né MAJOR aperto. Resta un FOLLOW-UP: in una finestra stretta, se Next scarta la navigazione della scelta, il selettore resta sulla scelta. La checklist umana resta obbligatoria prima del merge.
 
+**Dopo il giro 2: prova nel browser (T19.3), dell'orchestratore, non di un verificatore.** Su `mito_local`, come admin e come operatore: nessun errore in console, titoli di AC16, numeri uguali a un calcolo SQL diretto, date di `FinanceCard` uguali alle finestre, `?tf=7d`, il cambio a `90d`, il link "Home", Indietro e Avanti. Un difetto: dopo una scelta il router di Next dava il fuoco a `main` (era così anche prima del passo; il test di `ab8b2c3`, con il router finto, non lo vede). Corretto in `a44ed77` da un test rosso e riprovato nel browser. La navigazione scartata del MINOR qui sotto è ora provata nel browser. Trovato anche, ed esisteva già: la legenda della ciambella elenca tutte le sedi (2015 a `365d`), e la riga delle card diventa alta 48.444 px. Esiti punto per punto nella checklist.
+
 **Giro 1 (`2fd59da..54da3e2`): DO NOT SHIP** · impact: critical
 
 Cinque passi su sei danno SHIP; v3 dà DO NOT SHIP per un MAJOR su AC11. Nessun BLOCKER. L'obiezione più forte: **il selettore del periodo non segue il periodo della pagina dopo una navigazione nel client.** `TimeFrameSelector` passa la prop a `Select` di Radix come `defaultValue`, che non è controllato; Next 14 non rimonta la pagina quando cambia solo la query (`layout-router.js` usa una chiave senza i search params). Dopo il link "Dashboard" della sidebar da `?tf=90d`, o dopo Indietro, i numeri sono di `30d` e il selettore mostra ancora `90d`: è il disaccordo che AC11 vuole togliere. Era così anche prima del passo (con `useSearchParams` e `defaultValue`), e nessun test lo vede: i test del selettore lo montano una volta sola.
@@ -43,6 +45,13 @@ Cinque passi su sei danno SHIP; v3 dà DO NOT SHIP per un MAJOR su AC11. Nessun 
 - Hash del giro 1 dopo la riscrittura della storia (IMPLEMENTATION-NOTES): `96d25fc` → `9dca1b8`, `f30b827` → `7a3ba6a`, `4791114` → `56b4b15`, `efb4960` → `1013937`, `54da3e2` → `0d7c2f9`, `1909215` → `f4bf6d6`, `309b46f` → `d6530b2`.
 - UI e prova nel browser: come al giro 1, non eseguite.
 
+**Dopo il giro 2: prova nel browser.**
+
+- Chi: l'orchestratore, con il browser del pannello (Chromium 152); nessun verificatore rilanciato. Le misure della UI sono sue: il passo UI dei verificatori resta `DEGRADED`.
+- Dove: `mito_local` (10.000 clienti, 9.345 pratiche, le 2 migrazioni mancanti applicate con `pnpm db:local:migrate`), `next dev` di un worktree pulito a `f2f82a1`, senza file `.env*`, con le sole variabili locali, senza il backend. Due sessioni di prova in `session` (ADMIN `seed-user-01`, OPERATORE `seed-user-04`), con il cookie aggiunto da un proxy locale che ritarda a richiesta le risposte RSC (punto 16). Dopo la correzione, lo stesso con `a44ed77`.
+- Correzione della ragione data ai giri 1 e 2: il Postgres locale non chiedeva credenziali mancanti. L'orchestratore l'aveva cercato su `127.0.0.1:5432`, che è di un altro progetto; `mito_local` sta su `127.0.0.1:54329` (`docker-compose.yml`).
+- Dati cambiati per i punti 17, 18 e il badge `—`: rimessi com'erano, confrontati riga per riga.
+
 **Giro 1.**
 
 - Rubric passes run: 6/6. Modelli: v1 e v2 sul modello dell'orchestratore (Opus); v3, v4, v5, v6 Sonnet.
@@ -53,12 +62,20 @@ Cinque passi su sei danno SHIP; v3 dà DO NOT SHIP per un MAJOR su AC11. Nessun 
 
 ## Findings
 
+### Prova nel browser, dopo il giro 2 (orchestratore)
+
+| Severity | Concern | Location | Problem | Required fix / evidence | Durable? |
+|----------|---------|----------|---------|-------------------------|----------|
+| MAJOR (corretto) | prova nel browser | `src/components/custom/date-picker/index.tsx:163` (a `f2f82a1`) | Dopo una scelta del periodo il fuoco lascia il selettore: Radix lo rende al trigger, poi `router.push` con lo scroll di default fa chiamare `focus()` su `main.dashabord-container` a `InnerScrollAndFocusHandler` di Next, e Chrome lo accetta perché `main` scorre (traccia delle chiamate a `focus()`). Era così anche prima del passo; il test di `ab8b2c3` non lo vede | Corretto in `a44ed77`: `router.push(url, { scroll: false })` (Next non applica né scroll né fuoco, `handle-mutable.js`), da un test rosso. Nel browser, con la tastiera: fuoco sul selettore (`:focus-visible`) | no |
+| MINOR (esisteva già) | prova nel browser | `packages/server/src/services/analytics/financed.ts:154`, `src/app/dashboard/_components/DonutCard.tsx` | La ciambella e la sua legenda hanno una voce per sede, senza limite (anche a `2fd59da`): su `mito_local` 10 sedi a `30d`, 219 a `90d`, 2015 a `365d`. La card allunga la riga: 348 px a `30d`, 5364 a `90d`, 48.444 a `365d`; "Chiamate per operatore" finisce in fondo, e il cambio di periodo sposta il layout (CLS 0,40). Il seed dà quasi una sede per pratica: quante sedi ha prod non è misurato | FOLLOW-UP in [[tech-debt/crm/analytics-effect]] | sì |
+| NIT (esisteva già) | prova nel browser | `src/app/dashboard/_components/DonutCard.tsx` | I colori delle sedi si ripetono ogni 7: con 10 sedi "Nessuna" ha lo stesso giallo di un'altra, e il tooltip della sua fetta non ha nome (punto 17) | FOLLOW-UP in [[tech-debt/crm/analytics-effect]] | sì |
+
 ### Giro 2
 
 | Severity | Concern (verifier) | Location | Problem | Required fix / evidence | Durable? |
 |----------|--------------------|----------|---------|-------------------------|----------|
 | MAJOR (corretto) | v3 — finestre e periodo | `src/components/custom/date-picker/index.tsx:165` (a `29ae6cb`) | `key={timeframe}` rimonta il `Select` quando cambia il periodo della pagina: dopo una scelta, quando arriva la navigazione, il selettore è un nodo nuovo e il fuoco va sul `body`. Prima del passo il fuoco restava sul selettore | Corretto in `ab8b2c3` da un test rosso (stesso nodo, fuoco sul selettore): `Select` controllato, il periodo mostrato torna a quello della pagina quando cambia. v3 rilanciato: SHIP | no |
-| MINOR | v3 — finestre e periodo | `src/components/custom/date-picker/index.tsx:147-156` | Navigazione scartata: si sceglie `90d`, poi "Dashboard" o Indietro prima della risposta RSC. Next scarta la prima navigazione (`action-queue.js`), la pagina resta su `30d`, il selettore mostra `90d`. La metà del componente è provata, quella di Next letta nel codice. Finestra stretta; prima del passo il selettore non seguiva nessuna navigazione | FOLLOW-UP in [[tech-debt/crm/analytics-effect]] (`useTransition` intorno a `router.push`); prova umana con la rete lenta (checklist, punto 16) | sì |
+| MINOR | v3 — finestre e periodo | `src/components/custom/date-picker/index.tsx:147-156` | Navigazione scartata: si sceglie `90d`, poi "Dashboard" o Indietro prima della risposta RSC. Next scarta la prima navigazione (`action-queue.js`), la pagina resta su `30d`, il selettore mostra `90d`. La metà del componente è provata, quella di Next letta nel codice; dopo il giro 2 provato nel browser (risposte RSC ritardate di 4 s, "Home" mezzo secondo dopo la scelta: `/dashboard`, date di `30d`, selettore su `90d`). Finestra stretta; prima del passo il selettore non seguiva nessuna navigazione | FOLLOW-UP in [[tech-debt/crm/analytics-effect]] (`useTransition` intorno a `router.push`); prova umana con la rete lenta (checklist, punto 16) | sì |
 | MINOR (corretto) | v3 — finestre e periodo | `src/components/custom/date-picker/_test/TimeFrameSelector.test.tsx` | Nessun test sceglieva un periodo: niente `router.push`, `tf` fisso, niente `setTimeframe`, niente sottoscrizione sopravvivevano (4 su 4) | Test della scelta in `ab8b2c3`: 8 mutanti su 8 uccisi | no |
 | MINOR (corretto) | v3 — finestre e periodo | `packages/server/src/services/analytics/_test/windows.db.test.ts` | Il test girava solo nel progetto `unit` (UTC): un conto a giorni di calendario passava | Fra i `timeZoneTests` in `1cbcfe3`: il mutante muore in `rome` | no |
 | MINOR (corretto) | v3 — finestre e periodo | `src/app/dashboard/_components/_test/FinanceCard.dates.test.tsx` | Solo istanti d'inverno alle 23:30 UTC: un fuso fisso a +1 ora (`Etc/GMT-1`), poi a +2 (`Etc/GMT-2`, `Europe/Athens`), dava le date di Roma | Un caso d'estate (`1cbcfe3`) e uno d'inverno alle 22:30 UTC (`0c3d384`): 8 mutanti di fuso su 8 uccisi, in `utc` e in `rome` | no |
@@ -145,7 +162,7 @@ Obbligatoria (`critical`). Va fatta prima del merge, nell'ordine.
 11. Un admin senza riga operatore riceve `BAD_REQUEST` e la sezione non si carica: TD11 (u), `[PREVISTO]`, `[OPEN]` al merge. Accettarlo o alzarlo.
 12. S3 nasconde la ciambella, non i numeri: `pratiche.getAllPratiche` senza `onlyMe` dà a ogni OPERATORE gli importi di tutte le pratiche (domanda 4 di [[tech-debt/crm/search-by-explicit-map]]). Decidere se S3 è solo della dashboard.
 
-**B. Prova nel browser (T19), su `mito_local`, con un `.env.development.local` che punta lì.**
+**B. Prova nel browser (T19), su `mito_local`.** Fatta dall'orchestratore dopo il giro 2: esiti sotto il punto 23; restano le decisioni dei punti 16 e 19–23.
 
 13. Come admin e come operatore, `/dashboard` si carica senza errori in console; titoli di AC16 nell'ordine.
 14. Le date di `FinanceCard` sono inizio del confronto, inizio e fine del riferimento, in ora di Roma; con `?tf=7d` la pagina mostra `30d` e i numeri di `30d`; il cambio a `90d` aggiorna numeri e date.
@@ -162,11 +179,26 @@ Obbligatoria (`critical`). Va fatta prima del merge, nell'ordine.
 22. Nomi accessibili: il badge `—` da solo, la percentuale ripetuta, i livelli dei titoli.
 23. Salto di layout fra lo skeleton e le card; Safari mobile e tema scuro non verificati.
 
+**Esito di B e C** (l'orchestratore, dopo il giro 2: Chromium 152, `mito_local`, a `f2f82a1` e poi a `a44ed77`; Coverage).
+
+- 13 — Verde. Admin e operatore senza errori in console. Titoli nell'ordine di AC16: admin "Finanziato medio per pratica", "Contatti con esito", "Finanziato totale per sede"; operatore "Finanziato totale", "Contatti con esito", "Finanziato medio per pratica". I numeri sono uguali a un calcolo SQL diretto (totale e media a `30d` e `90d`, per l'admin e per l'operatore 1003). `getFinancedByBranch` per l'operatore dà `FORBIDDEN` `admin-only`.
+- 14 — Verde. A `30d` le date sono 27/08/2026, 26/09/2026 e 26/10/2026: gli estremi delle finestre, in ora di Roma. `?tf=7d` mostra `30d` con i numeri di `30d`. Il cambio a `90d` porta 29/04, 28/07 e 26/10 e i numeri nuovi.
+- 15 — Verde a `a44ed77`. Da `?tf=90d` il link "Home" (`/dashboard`, la voce "Dashboard" della sidebar) porta il selettore a `30d`. Poi `365d`, Indietro (`30d`) e Indietro (`90d`), con le date giuste. Con la tastiera, a `f2f82a1` il fuoco finiva su `main` (Findings, prova nel browser); a `a44ed77` resta sul selettore.
+- 16 — Riprodotto. Risposte RSC ritardate di 4 s, `90d`, e "Home" mezzo secondo dopo: la pagina è `/dashboard` con le date di `30d`, il selettore mostra `90d`. Da decidere: accettarlo o correggerlo (FOLLOW-UP).
+- 17 — Come atteso dal FOLLOW-UP. La legenda mostra "Nessuna"; il tooltip della sua fetta mostra solo "€ 10K", senza nome, mentre le altre fette lo mostrano. "Nessuna" ha lo stesso giallo di "Borgo Gonzaga salentino" (NIT).
+- 18 — Con un confronto di 1 € e un riferimento di 160.464 €, la barra resta nella sua metà della traccia: la traccia la taglia, non esce dalla card. Il badge mostra "16046300%" e manda a capo il titolo; gli importi sotto le date si toccano.
+- AC21 nel browser — Con il confronto dell'operatore a 0, la card mostra `—` e la barra sta a `width: 0%`.
+- 19 — Esisteva già. La riga delle tre card deborda a ogni larghezza: 41 px a 1440, 201 a 1280, 613 a 768. `main` scorre in orizzontale, e la ciambella esce dal riquadro bianco. Le tre date di `FinanceCard` si toccano a ogni larghezza (spazio 0 px). Sotto i 768 px l'app intera non ha un layout: la sidebar resta aperta e occupa circa 290 px. Larghezze misurate: 280 (Chromium la porta a 320), 375, 768, 1280, 1440.
+- 20 — Esisteva già. Titoli e date in `text-neutral-400` su bianco: 2,52:1. Il badge verde: 3,4:1 (testo `emerald-600` su `emerald-500` al 10%). Il badge neutro `—`: 3,21:1 (arancione su arancione al 10%). Tutti sotto il 4,5:1. L'arco verde di `CircleCard` è 2,3:1, ma la percentuale è scritta anche come testo, quindi è ridondante. Archi giallo e blu: dal colore di Tailwind, non visti (il seed dà 86–87%).
+- 21 — Le tab stop della ciambella sono due: il grafico (`g` di recharts) e la legenda (un `div`, dentro un `ol` con `overflow: hidden`). Tutte e due hanno un anello visibile (l'`outline` di Chrome, 5 px e 1 px), nessun ruolo e nessun nome.
+- 22 — Il `—` non ha un nome accessibile, e l'icona del badge non ha `aria-hidden`.
+- 23 — Al caricamento CLS 0. Al cambio di periodo CLS 0,40: la legenda della ciambella cresce con le sedi (Findings). Nessuno skeleton visto durante la navigazione. Safari, i dispositivi mobili e il tema scuro: non provati.
+
 **D. Gate.** Dopo le correzioni, sulla PR: `SKIP_ENV_VALIDATION=true pnpm exec next lint`, `pnpm exec tsc --noEmit`, `pnpm db:check`, `pnpm run test --run`, `pnpm build` con i placeholder, `pnpm api:build`, `pnpm api:smoke` (la CI di GitHub li esegue tutti).
 
 ## Acceptance criteria check (case B)
 
-Stato a `0c3d384`, dopo il giro 2.
+Stato a `0c3d384`, dopo il giro 2; AC11 e AC21 anche nel browser, a `a44ed77`.
 
 | Criterion | Met / Unmet / Blocked | Notes |
 |-----------|-----------------------|-------|
@@ -180,7 +212,7 @@ Stato a `0c3d384`, dopo il giro 2.
 | AC8 | Met | Suite verde a `2ddd53a`, nessuna asserzione cambiata |
 | AC9 | Met | Test con un `Clock` fisso, in `utc` e in `rome`; mutanti sugli estremi e il conto a giorni di calendario uccisi |
 | AC10 | Met | Date dalle finestre, in ora di Roma, test in `utc` e `rome` con istanti d'inverno e d'estate; costanti tolte |
-| AC11 | Met | Al caricamento, dopo una navigazione nel client e dopo Indietro, con il fuoco sul selettore (`ab8b2c3`). Una navigazione scartata da Next può lasciare la scelta (MINOR, FOLLOW-UP); prova nel browser nella checklist |
+| AC11 | Met | Al caricamento, dopo una navigazione nel client e dopo Indietro (`ab8b2c3`); nel browser anche `?tf=7d`, il link "Home" e Avanti, e il fuoco sul selettore dopo la scelta solo da `a44ed77` (prima Next lo dava a `main`). Una navigazione scartata da Next lascia la scelta, provato nel browser (MINOR, FOLLOW-UP) |
 | AC12 | Met | Una pratica una volta; con due pratiche dello stesso importo da `7cd07b9` |
 | AC13 | Met | Sonda con pratiche condivise e miste; mutanti uccisi |
 | AC14 | Met | Solo le tre finanziate, nei tre aggregati |
@@ -190,7 +222,7 @@ Stato a `0c3d384`, dopo il giro 2.
 | AC18 | Met | `grep` vuota |
 | AC19 | Met | Matrice su tre percorsi; il messaggio del disattivato via HTTP è `UNAUTHORIZED` (NIT) |
 | AC20 | Met | `number` a runtime e nei tipi; nessun `Number(...)` nella UI |
-| AC21 | Met | `—` e `0%` neutri, barra a 0 |
+| AC21 | Met | `—` e `0%` neutri, barra a 0; `—` e barra a `width: 0%` anche nel browser |
 | AC22 | Met | Colore dalla percentuale mostrata; il confine del 50% e il testo nei test da `7cd07b9` |
 | AC23 | Met | `grep` vuota |
 | AC24 | Met | Con l'etichetta `[PREVISTO]` di TD11 (u), scelta da D21 (MINOR, v5) |
