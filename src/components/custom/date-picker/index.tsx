@@ -28,12 +28,11 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import {
-  parseTimeFrame,
   type TimeFrame,
   TIMEFRAMEOPTIONS,
 } from "@mito/domain/constants/timeframes"
 import { useAnalyticsStore } from "@/store/useAnalyticsStore"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useRouter } from "next/navigation"
 import { type Matcher } from "react-day-picker"
 
 export function DatePicker(defaultDate: Date) {
@@ -141,9 +140,8 @@ export function DatePickerFormItem({
   )
 }
 
-export const TimeFrameSelector = () => {
-  const searchParams = useSearchParams()
-  const tf = parseTimeFrame(searchParams.get("tf"))
+/** The period selector: `timeframe` is the one the page read from the URL. */
+export const TimeFrameSelector = ({ timeframe }: { timeframe: TimeFrame }) => {
   const { setTimeframe } = useAnalyticsStore()
   const router = useRouter()
 
@@ -161,7 +159,7 @@ export const TimeFrameSelector = () => {
 
   return (
     <Select
-      defaultValue={tf}
+      defaultValue={timeframe}
       onValueChange={(value: TimeFrame) => setTimeframe(value)}
     >
       <SelectTrigger className="w-[180px]">

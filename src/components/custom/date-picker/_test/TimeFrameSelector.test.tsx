@@ -1,35 +1,21 @@
 import { render, screen } from "@testing-library/react"
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 import { TimeFrameSelector } from ".."
 
-const mocks = vi.hoisted(() => ({ search: "" }))
-
 vi.mock("next/navigation", () => ({
-  useSearchParams: () => new URLSearchParams(mocks.search),
   useRouter: () => ({ push: vi.fn() }),
 }))
 
-/** Il periodo che il selettore mostra con la query `search` nell'URL. */
-const shownWith = (search: string) => {
-  mocks.search = search
-  render(<TimeFrameSelector />)
+// Il selettore mostra il periodo che la pagina ha letto dall'URL (AC11): la
+// lettura sta solo nella pagina (`page.test.tsx`)
+
+const shownWith = (timeframe: "30d" | "90d" | "365d") => {
+  render(<TimeFrameSelector timeframe={timeframe} />)
   return screen.getByRole("combobox").textContent
 }
 
-beforeEach(() => {
-  mocks.search = ""
-})
-
 describe("TimeFrameSelector: il periodo mostrato (AC11)", () => {
-  it("con `?tf=7d` mostra `30d`", () => {
-    expect(shownWith("tf=7d")).toBe("30d")
-  })
-
-  it("senza `tf` mostra `30d`", () => {
-    expect(shownWith("")).toBe("30d")
-  })
-
-  it("con `?tf=90d` mostra `90d`", () => {
-    expect(shownWith("tf=90d")).toBe("90d")
+  it.each(["30d", "90d", "365d"] as const)("con `%s` mostra `%s`", (tf) => {
+    expect(shownWith(tf)).toBe(tf)
   })
 })

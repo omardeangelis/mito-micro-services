@@ -26,7 +26,7 @@ export default async function DashboardHome(
             <div className="mt-8">
               <div className="flex items-center gap-4">
                 <h2 className="text-2xl">Analisi Andamento</h2>
-                <TimeFrameSelector />
+                <TimeFrameSelector timeframe={timeframe} />
               </div>
               <div className="mt-4">
                 <Suspense fallback={<DataSectionSkeleton />}>
