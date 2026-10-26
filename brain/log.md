@@ -25,6 +25,24 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 - Impact: critical
 - Verifiers: 4 (1 blocker, 8 major)
 
+## [2026-10-26] merge | Router `supabase` e `supabaseClient`: PR B del passo 5 in `dev`
+- [PR #91](https://github.com/omardeangelis/mito-micro-services/pull/91) unita in `dev` (`25ba9de`) con la CI verde, senza l'approvazione di Leonardo, su richiesta di Omar (D22): il router `supabase` tolto, le route di export su `services/export/files.ts`, `supabaseClient` fuori dal contesto tRPC
+- Passo 5 fatto (§4 di [[chore/migrazione-effect]]); TD10 `[OPEN]` anche per (d) ed (e); [[specs/crm/chat-storage-effect/SPEC]] implemented. Restano GB2, bloccato fino alla [PR #90](https://github.com/omardeangelis/mito-micro-services/pull/90), e `docs-maintenance` sulla cartella
+
+## [2026-10-26] review | Router `supabase` e `supabaseClient`, PR B: rilanci di v4
+- Report: [[specs/crm/chat-storage-effect/REPORT]] (giro PR B, rilanci)
+- Scope: spec
+- Verdict: SHIP
+- Impact: critical
+- Verifiers: v4 rilanciato 4 volte sui documenti di GB2, poi una verifica delle correzioni (0 blockers, 0 major). GB2 bloccato: B6 di [[chore/migrazione-gcp]] non dà al backend di staging le variabili di login
+
+## [2026-10-25] review | Router `supabase` e `supabaseClient`, PR B del passo 5
+- Report: [[specs/crm/chat-storage-effect/REPORT]] (giro PR B)
+- Scope: spec
+- Verdict: DO NOT SHIP
+- Impact: critical
+- Verifiers: 7 (0 blockers, 2 major: GB2 e la nota sulla topologia di staging smentiti da `next.config.js`)
+
 ## [2026-10-25] merge | Router `chat`: PR A del passo 5 in `dev`
 - [PR #86](https://github.com/omardeangelis/mito-micro-services/pull/86) unita in `dev` (`bd37efa`): il router `chat` su Effect, con l'invio di una nota in una transazione con il lock del cliente; porta anche `b72cd3e` (L3 su `HttpApi`)
 - TD10 in [[chore/migrazione-effect]] §7: `[OPEN]` (a), (b), (c) e (f); (d) ed (e) restano `[PREVISTO]` fino alla PR B. Righe di L2 e del §5 aggiornate
@@ -291,24 +309,9 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 - Impact: critical
 - Verifiers: 10, poi v5 rilanciato (0 blocker e 2 major alla prima verifica; un major nuovo alla seconda di v5, sul test dello script; tutti corretti o accettati come debito)
 
-## [2026-10-17] review | Sezione Contatti — PR5a "Logica sul server e stato dell'URL"
-- Report: [[specs/crm/sezione-contatti/REPORT]] (round PR5a)
-- Scope: spec
-- Verdict: SHIP (prima: DO NOT SHIP); la riconferma di Omar sull'indice della priorità, aperta il 2026-10-17, è arrivata il 2026-10-18
-- Impact: critical
-- Verifiers: 10, poi v1, v8, v10 rilanciati e v11 (regressione) aggiunto (1 blocker e 4 major alla prima verifica, 2 major alla seconda; tutti corretti; la riconferma umana è arrivata il 2026-10-18)
-
-## [2026-10-17] implement | Sezione Contatti — PR5a
-- Spec: [[specs/crm/sezione-contatti/SPEC]] (AC10, AC44, Constraints e Decision Log aggiornati), piano: [[specs/crm/sezione-contatti/PLAN]] (T5.1, T5.2, T5.3, T5.14, T5.15, T5.16; T5.17 è il gate)
-- `task.getContacts` e `task.getContactById`, stato dell'URL puro (`searchParams.ts`), preferenza delle colonne di Contatti, richiamo solo da domani (D22), migrazione dei due `DROP INDEX` con `lock_timeout` (da applicare a mano da Omar); nessuna interfaccia (PR5b)
-
 ## [YYYY-MM-DD] ingest | <spec title>
 - Source: [[specs/<domain>/<spec>/SPEC]]
 - Flows written: <count>
 - Concepts written: <count>
 -->
 
-## [2026-10-21] plan | Seeder del database locale, con gli scenari dei cron
-- Plan: [[specs/crm/seeder-locale/PLAN]]; spec passata ad `approved`
-- Decisioni di Omar: servizi `update` e `cleanup-task-event-log` su Effect con `Db` (D1); giro completo a 10.000 anche in CI (D2); due PR, A (refactor + via i seed di oggi) e B (seeder) (D3)
-- T7.1c del piano di Contatti segnato "Sostituito"; T7.3 non lo aspetta più
