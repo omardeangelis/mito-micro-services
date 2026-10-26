@@ -13,7 +13,7 @@ export const AdminDataSection = async ({
 }: {
   timeframe?: TimeFrame
 }) => {
-  const { comparison, reference } =
+  const { comparison, reference, windows } =
     await api.analytics.getFinancedAverage.query({
       timeFrame: timeframe,
     })
@@ -25,18 +25,14 @@ export const AdminDataSection = async ({
   return (
     <div className="flex h-full w-full flex-row items-stretch justify-between gap-8">
       <FinanceCard
-        title="Finanziato medio per operatore"
-        referencePeriod={{
-          total: Number(reference),
-        }}
-        comparisonPeriod={{
-          total: Number(comparison),
-        }}
-        comparisonTimeFrame={timeframe}
+        title="Finanziato medio per pratica"
+        referencePeriod={{ total: reference }}
+        comparisonPeriod={{ total: comparison }}
+        windows={windows}
       />
       <CircleCard done={done} todo={todo}>
         <p className="text-tremor-default text-tremor-content dark:text-dark-tremor-content">
-          Chiamate completate
+          Contatti con esito
         </p>
       </CircleCard>
       <DonutCard data={data} />

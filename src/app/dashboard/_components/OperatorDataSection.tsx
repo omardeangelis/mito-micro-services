@@ -12,41 +12,37 @@ export const OperatorDataSection = async ({
 }: {
   timeframe?: TimeFrame
 }) => {
-  const { comparison, reference } = await api.analytics.getFinancedTotal.query({
-    timeFrame: timeframe,
-  })
-  const { done, todo } = await api.analytics.getContactProgress.query()
-  const { comparison: customerComparison, reference: customerReference } =
-    await api.analytics.getFinancedAverage.query({
+  const { comparison, reference, windows } =
+    await api.analytics.getFinancedTotal.query({
       timeFrame: timeframe,
     })
+  const { done, todo } = await api.analytics.getContactProgress.query()
+  const {
+    comparison: averageComparison,
+    reference: averageReference,
+    windows: averageWindows,
+  } = await api.analytics.getFinancedAverage.query({
+    timeFrame: timeframe,
+  })
 
   return (
     <div className="flex h-full w-full flex-row items-stretch justify-between gap-8">
       <FinanceCard
-        title="Finanziato medio per operatore"
-        referencePeriod={{
-          total: Number(reference),
-        }}
-        comparisonPeriod={{
-          total: Number(comparison),
-        }}
-        comparisonTimeFrame={timeframe}
+        title="Finanziato totale"
+        referencePeriod={{ total: reference }}
+        comparisonPeriod={{ total: comparison }}
+        windows={windows}
       />
       <CircleCard done={done} todo={todo}>
         <p className="text-tremor-default text-tremor-content dark:text-dark-tremor-content">
-          Chiamate completate
+          Contatti con esito
         </p>
       </CircleCard>
       <FinanceCard
-        title="Finanziato medio per cliente"
-        referencePeriod={{
-          total: Number(customerReference),
-        }}
-        comparisonPeriod={{
-          total: Number(customerComparison),
-        }}
-        comparisonTimeFrame={timeframe}
+        title="Finanziato medio per pratica"
+        referencePeriod={{ total: averageReference }}
+        comparisonPeriod={{ total: averageComparison }}
+        windows={averageWindows}
       />
     </div>
   )

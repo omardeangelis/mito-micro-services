@@ -3,12 +3,8 @@
 import { currencyFormatter } from "@/lib/utils"
 import { formatBigNumberWithCurrency } from "@/lib/utils/format"
 import { Card, DeltaBar, BadgeDelta } from "@tremor/react"
-import {
-  TIMEFRAMEMAP,
-  TIMEFRAMEDELTA,
-  type TimeFrame,
-  financeCardFormattingSettings,
-} from "@mito/domain/constants/timeframes"
+import { type RouterOutputs } from "@/trpc/shared"
+import { financeCardFormattingSettings } from "@mito/domain/constants/timeframes"
 
 type ReferencePeriod = {
   total: number
@@ -22,7 +18,7 @@ type FinanceCardProps = {
   title: string
   referencePeriod: ReferencePeriod
   comparisonPeriod: ComparisonPeriod
-  comparisonTimeFrame?: TimeFrame
+  windows: RouterOutputs["analytics"]["getFinancedTotal"]["windows"]
 }
 
 export const FinanceCard = (props: FinanceCardProps) => {
@@ -41,11 +37,7 @@ export const FinanceCard = (props: FinanceCardProps) => {
       ? "—"
       : `${deltaValue.toFixed(0)}%`
   const diff = referencePeriod.total - comparisonPeriod.total
-  const comparisonTimeFrame = props.comparisonTimeFrame ?? "30d"
-  const comparisionDate = {
-    start: TIMEFRAMEDELTA[comparisonTimeFrame].start,
-    end: TIMEFRAMEMAP[comparisonTimeFrame].end,
-  }
+  const { windows } = props
 
   return (
     <div className="w-full space-y-3">
@@ -67,7 +59,7 @@ export const FinanceCard = (props: FinanceCardProps) => {
           <div className="flex items-end justify-between">
             <div className="flex flex-col space-y-0.5">
               <span className="text-tremor-label text-neutral-400">
-                {comparisionDate.start.toLocaleDateString(
+                {windows.comparison.start.toLocaleDateString(
                   "it-IT",
                   financeCardFormattingSettings
                 )}
@@ -78,7 +70,7 @@ export const FinanceCard = (props: FinanceCardProps) => {
             </div>
             <div className="flex flex-col space-y-0.5">
               <span className="text-tremor-label text-neutral-400">
-                {TIMEFRAMEDELTA[comparisonTimeFrame].end.toLocaleDateString(
+                {windows.reference.start.toLocaleDateString(
                   "it-IT",
                   financeCardFormattingSettings
                 )}
@@ -90,7 +82,7 @@ export const FinanceCard = (props: FinanceCardProps) => {
 
             <div className="flex flex-col space-y-0.5">
               <span className="text-tremor-label text-neutral-400">
-                {comparisionDate.end.toLocaleDateString(
+                {windows.reference.end.toLocaleDateString(
                   "it-IT",
                   financeCardFormattingSettings
                 )}

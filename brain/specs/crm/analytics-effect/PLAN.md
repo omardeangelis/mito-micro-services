@@ -478,9 +478,9 @@ Ogni task parte da un test rosso sul comportamento nuovo, poi aggiorna i test ve
 - **validation**:
   - il test "conta una volta" dei servizi è rosso prima del cambio e verde dopo; gli altri test di `analytics/` verdi; `tsc` verde a fine wave (D22);
   - mutanti (D22), ognuno ucciso da un test di servizio: la `exists` sostituita dai join di oggi; il filtro per operatore tolto per un `OPERATORE`; `is not null` tolto per un `ADMIN`; `Stornata` aggiunta a `FINANCED_STATES`; il filtro degli stati tolto dalla ciambella. Se T10 ha lasciato due query separate, ognuno di questi si applica anche a una sola delle due.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Complete
+- **log**: Wave 7, worker sul modello dell'orchestratore (`high`). RED dell'orchestratore: il test di servizio `financed.db.test.ts`, 4 rossi su 6 (tre clienti contati tre volte, la pratica di due operatori contata due volte per l'admin, i 6 stati nel totale e nella ciambella, `63000` invece di `13000`); i due casi già verdi (soli clienti senza operatore fuori, la ciambella con le pratiche senza clienti) restano come guardia. Il fixed `Clock` dei test di servizio passa in `_test/clock.ts`, usato anche da `windows.db.test.ts` (nessuna asserzione cambiata). Difetto del test dell'orchestratore trovato dal worker: `expect.closeTo` è `any` per `no-unsafe-assignment`; sostituito da `13000 / 3` esatto, che `toEqual` accetta. `financedIn` aggrega su `practices` senza join, con `FINANCED_STATES` e una `exists` correlata su `customerToPratica` ⋈ `customers` (`operatorId` del chiamante, o `is not null` per l'admin); la ciambella senza `selectDistinct`, `count()` e cast, `{ data: string | null; total: number }[]`. Test della procedura aggiornati ("conta una volta", "contano solo le pratiche finanziate"; `byBranch` Napoli 1300; il tipo della ciambella). 131 test verdi; mutanti uccisi dai test di servizio: la `exists` sostituita dai join di oggi (2 rossi), il filtro dell'operatore tolto (1), `is not null` tolto per l'admin (1), `Stornata` fra le finanziate (2), il filtro degli stati tolto dalla ciambella (1).
+- **files edited/created**: `packages/server/src/services/analytics/financed.ts`; nuovi `packages/server/src/services/analytics/_test/{financed.db.test.ts,clock.ts}`; `packages/server/src/services/analytics/_test/windows.db.test.ts` (solo l'import del `Clock` fisso); `packages/server/src/api/routers/analytics/_test/{financed,byBranch}.db.test.ts`, `types.test.ts`; `src/app/dashboard/_components/DonutCard.tsx` (solo il tipo `Data`)
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -578,9 +578,9 @@ Ogni task parte da un test rosso sul comportamento nuovo, poi aggiorna i test ve
   - `git grep -nE 'TIMEFRAMEMAP|TIMEFRAMEDELTA' -- packages src apps` non trova niente (AC10);
   - `git grep -n 'Number(' -- src/app/dashboard/_components/AdminDataSection.tsx src/app/dashboard/_components/OperatorDataSection.tsx` non trova niente (AC20);
   - il diff di `vitest.config.ts` aggiunge solo una riga a `timeZoneTests`.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Complete
+- **log**: Wave 7, worker `sonnet`. RED dell'orchestratore: `FinanceCard.dates.test.tsx` (in `timeZoneTests`, riga aggiunta dall'orchestratore con il RED) e `DataSection.test.tsx`. Con le date del piano (`2026-10-25T23:30:00Z`) i test erano verdi già prima: oggi è il 26/10/2026 e le finestre calcolate al caricamento del modulo davano le stesse date. L'orchestratore li ha spostati su istanti lontani da oggi (`2026-01-14T23:30:00Z` → `15/01/2026`; mezzogiorno UTC di gennaio–marzo per le sezioni): rossi in `utc` e in `rome` (`'26/10/2026'` invece di `'15/01/2026'`) e sulle sezioni (titoli vecchi, date non della risposta). `FinanceCard` prende `windows` (`RouterOutputs`), le date in ora di Roma; `TIMEFRAMEMAP` e `TIMEFRAMEDELTA` tolti; titoli di AC16; nessun `Number(...)` nelle sezioni. Verdi: date in `utc` e `rome`, 8 test di componente, `src/app/dashboard` 743 test. `git grep TIMEFRAMEMAP|TIMEFRAMEDELTA -- packages src apps` e `git grep 'Number('` nelle sezioni vuote; `vitest.config.ts` aggiunge una riga.
+- **files edited/created**: `src/app/dashboard/_components/{FinanceCard,AdminDataSection,OperatorDataSection}.tsx`; `packages/domain/src/constants/timeframes.ts`; `vitest.config.ts` (solo `timeZoneTests`); `src/app/dashboard/_components/_test/FinanceCard.test.tsx` (solo la prop `windows`); nuovi `src/app/dashboard/_components/_test/{FinanceCard.dates.test.tsx,DataSection.test.tsx}`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a

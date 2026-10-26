@@ -11,6 +11,7 @@ export const timeZoneTests = [
   "src/lib/import/**/_test/**/*.test.ts",
   "packages/domain/src/import/**/_test/**/*.test.ts",
   "packages/domain/src/utils/_test/{romeClock,dates}.test.ts",
+  "src/app/dashboard/_components/_test/FinanceCard.dates.test.tsx",
 ]
 
 export default defineConfig({

@@ -16,13 +16,24 @@ vi.mock("@tremor/react", async (original) => ({
   ),
 }))
 
+const windows = {
+  comparison: {
+    start: new Date("2026-01-10T12:00:00Z"),
+    end: new Date("2026-02-10T12:00:00Z"),
+  },
+  reference: {
+    start: new Date("2026-02-10T12:00:00Z"),
+    end: new Date("2026-03-12T12:00:00Z"),
+  },
+}
+
 const renderCard = (reference: number, comparison: number) => {
   render(
     <FinanceCard
       title="Finanziato totale"
       referencePeriod={{ total: reference }}
       comparisonPeriod={{ total: comparison }}
-      comparisonTimeFrame="30d"
+      windows={windows}
     />
   )
   const badge = screen.getByTestId("badge")
