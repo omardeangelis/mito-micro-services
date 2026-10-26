@@ -131,6 +131,7 @@ export const listPractices = (
           ratePagate: practices.ratePagate,
           updatedAt: practices.updatedAt,
           createdAt: practices.createdAt,
+          operatore: operators.name,
         })
         .from(practices)
         .innerJoin(
@@ -138,8 +139,11 @@ export const listPractices = (
           eq(practices.praticaId, customerToPratica.praticaId)
         )
         .innerJoin(customers, eq(customers.id, customerToPratica.customerId))
+        .leftJoin(operators, eq(operators.id, practices.operatorId))
         .where(filterQuery)
 
+      // La union si ordina solo per colonne del risultato: per questo il nome
+      // dell'operatore è nella select. A pari valore decide l'ID pratica
       return union(
         customersName,
         client
@@ -156,6 +160,7 @@ export const listPractices = (
             ratePagate: practices.ratePagate,
             updatedAt: practices.updatedAt,
             createdAt: practices.createdAt,
+            operatore: operators.name,
           })
           .from(practices)
           .innerJoin(
@@ -163,11 +168,12 @@ export const listPractices = (
             eq(practices.praticaId, customerToPratica.praticaId)
           )
           .innerJoin(customers, eq(customers.id, customerToPratica.customerId))
+          .leftJoin(operators, eq(operators.id, practices.operatorId))
           .where(filterQuery)
       )
         .limit(perPage)
         .offset((page - 1) * perPage)
-        .orderBy(sortedFn(order_by()))
+        .orderBy(sortedFn(order_by()), asc(practices.praticaId))
     })
 
     return yield* Effect.all({ total, data }, { concurrency: "unbounded" })

@@ -1,4 +1,5 @@
 import { beforeAll, beforeEach, describe, expect, it } from "vitest"
+import { inArray } from "drizzle-orm"
 import { db } from "@mito/db"
 import { practices } from "@mito/db/schema/pratiche"
 import { customerToPratica } from "@mito/db/schema/relations/customerToPratica"
@@ -373,6 +374,100 @@ describe("pratiche.getAllPratiche, caratterizzazione", () => {
       })
       expect(ids(second)).toEqual(["PR-003", "PR-002"])
     })
+
+    // PR-001 e PR-004 sono di Rossi, PR-002, PR-005 e PR-000 di Bianchi;
+    // PR-003, con due clienti, è senza operatore. PR-000 è inserita per ultima
+    // ma viene prima per ID pratica: a pari operatore decide l'ID pratica
+    async function seedOperatori() {
+      const seed = await seedCaratterizzazione()
+      const rossi = await createOperator({ name: "Rossi" })
+      const bianchi = await createOperator({ name: "Bianchi" })
+      await db
+        .update(practices)
+        .set({ operatorId: rossi.id })
+        .where(inArray(practices.praticaId, ["PR-001", "PR-004"]))
+      await db
+        .update(practices)
+        .set({ operatorId: bianchi.id })
+        .where(inArray(practices.praticaId, ["PR-002", "PR-005"]))
+      const cliente = await createCustomer()
+      await createPractice({
+        customerId: cliente.id,
+        praticaId: "PR-000",
+        operatorId: bianchi.id,
+      })
+      return seed
+    }
+
+    it("orderBy operatore ordina per nome dell'operatore della pratica, a pari nome per ID pratica", async () => {
+      const { caller, ids } = await seedOperatori()
+      const crescente = await list(caller, {
+        page: 1,
+        perPage: 10,
+        orderBy: "operatore",
+        sortedBy: "asc",
+      })
+      expect(ids(crescente)).toEqual([
+        "PR-000",
+        "PR-002",
+        "PR-005",
+        "PR-001",
+        "PR-004",
+        "PR-003",
+      ])
+      expect(crescente.data.map((p) => p.operatore)).toEqual([
+        "Bianchi",
+        "Bianchi",
+        "Bianchi",
+        "Rossi",
+        "Rossi",
+        null,
+      ])
+      expect(crescente.total).toEqual([{ total: 6 }])
+
+      const decrescente = await list(caller, {
+        page: 1,
+        perPage: 10,
+        orderBy: "operatore",
+        sortedBy: "desc",
+      })
+      // In ordine decrescente Postgres mette prima la pratica senza
+      // operatore; a pari operatore resta l'ID pratica crescente
+      expect(ids(decrescente)).toEqual([
+        "PR-003",
+        "PR-001",
+        "PR-004",
+        "PR-000",
+        "PR-002",
+        "PR-005",
+      ])
+      expect(decrescente.total).toEqual([{ total: 6 }])
+    })
+
+    it("orderBy operatore pagina senza ripetere né saltare pratiche", async () => {
+      const { caller, ids } = await seedOperatori()
+      const pages = await Promise.all(
+        [1, 2, 3].map((page) =>
+          list(caller, {
+            page,
+            perPage: 2,
+            orderBy: "operatore",
+            sortedBy: "asc",
+          })
+        )
+      )
+      expect(pages.flatMap(ids)).toEqual([
+        "PR-000",
+        "PR-002",
+        "PR-005",
+        "PR-001",
+        "PR-004",
+        "PR-003",
+      ])
+      for (const page of pages) {
+        expect(page.total).toEqual([{ total: 6 }])
+      }
+    })
   })
 
   describe("filterBy", () => {
@@ -600,16 +695,8 @@ describe("pratiche.getAllPratiche, caratterizzazione", () => {
         ratePagate: 10,
         updatedAt: new Date("2026-05-01T00:00:00.000Z"),
         createdAt: new Date("2026-02-03T00:00:00.000Z"),
+        operatore: null,
       })
-    })
-  })
-
-  describe("errori", () => {
-    it("orderBy operatore è un INTERNAL_SERVER_ERROR", async () => {
-      const { caller } = await seedCaratterizzazione()
-      await expect(
-        list(caller, { page: 1, perPage: 10, orderBy: "operatore" })
-      ).rejects.toMatchObject({ code: "INTERNAL_SERVER_ERROR" })
     })
   })
 })
