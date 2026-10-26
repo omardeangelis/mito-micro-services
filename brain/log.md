@@ -12,6 +12,12 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 
 <!-- Entries are appended by create-spec (spec creation) and docs-maintenance (ingest). Format:
 
+## [2026-10-26] ingest | Import di clienti e pratiche, riscritto
+- Source: [[specs/crm/import-pratiche/SPEC]]
+- Flows written: 2 ([[domains/crm/flows/nuovo-import-con-anteprima]], [[domains/crm/flows/esecuzione-di-un-import-confermato]])
+- Concepts written: 3 ([[domains/crm/concepts/import]], [[domains/crm/concepts/riga-dell-import]], [[domains/crm/concepts/riconoscimento-dei-clienti-nell-import]]), più una sezione in [[domains/crm/concepts/regola-dei-lock]]
+- Review ingested: [[specs/crm/import-pratiche/REPORT]] (5 rilievi durevoli in [[tech-debt/crm/import-pratiche]])
+
 ## [2026-10-26] review | Import di clienti e pratiche, PR A–G
 - Report: [[specs/crm/import-pratiche/REPORT]]; rubric: [[specs/crm/import-pratiche/RUBRIC]]
 - Scope: spec
@@ -295,28 +301,6 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 ## [2026-10-17] implement | Sezione Contatti — PR5a
 - Spec: [[specs/crm/sezione-contatti/SPEC]] (AC10, AC44, Constraints e Decision Log aggiornati), piano: [[specs/crm/sezione-contatti/PLAN]] (T5.1, T5.2, T5.3, T5.14, T5.15, T5.16; T5.17 è il gate)
 - `task.getContacts` e `task.getContactById`, stato dell'URL puro (`searchParams.ts`), preferenza delle colonne di Contatti, richiamo solo da domani (D22), migrazione dei due `DROP INDEX` con `lock_timeout` (da applicare a mano da Omar); nessuna interfaccia (PR5b)
-
-## [2026-10-16] review | Sezione Contatti — PR4, T4.5–T4.7 (sesta verifica)
-- Report: [[specs/crm/sezione-contatti/REPORT]]
-- Scope: spec
-- Verdict: DO NOT SHIP
-- Impact: medium
-- Verifiers: 2 (0 blockers, 1 major)
-
-## [2026-10-16] implement | Sezione Contatti — PR4, T4.7 (MAJOR e MINOR della quinta verifica)
-- Spec: [[specs/crm/sezione-contatti/PLAN]]
-- Store per cliente delle note in eliminazione; focus solo se rimasto sul cestino; toast solo col cliente a schermo; test di rollback
-
-## [2026-10-16] review | Sezione Contatti — PR4, T4.5–T4.7 (quinta verifica)
-- Report: [[specs/crm/sezione-contatti/REPORT]]
-- Scope: spec
-- Verdict: DO NOT SHIP
-- Impact: medium
-- Verifiers: 2 (0 blockers, 2 major)
-
-## [2026-10-16] implement | Sezione Contatti — PR4, T4.7 (BLOCKER della quarta verifica)
-- Spec: [[specs/crm/sezione-contatti/PLAN]]
-- Note in eliminazione nello stato di `CustomerNotes`; NOT_FOUND senza toast (`gone`); test per chiudi e riapri, nota già eliminata, registro, cambio di cliente
 
 ## [YYYY-MM-DD] ingest | <spec title>
 - Source: [[specs/<domain>/<spec>/SPEC]]

@@ -1,7 +1,7 @@
 ---
 domain: crm
 type: spec
-status: approved
+status: implemented
 links:
   - "[[chore/migrazione-effect]]"
   - "[[chore/migrazione-gcp]]"
@@ -12,8 +12,10 @@ links:
   - "[[chore/crm/report-frontend-riorganizzazione]]"
   - "[[chore/migration/fase-4-import-api]]"
   - "[[specs/crm/import-pratiche/PLAN]]"
+ingested: true
+last_ingested: 2026-10-26
 created: 2026-10-23
-updated: 2026-10-24
+updated: 2026-10-26
 ---
 
 # Spec: Import di clienti e pratiche, riscritto

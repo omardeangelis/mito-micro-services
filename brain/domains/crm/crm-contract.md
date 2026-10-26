@@ -21,13 +21,20 @@ links:
   - "[[domains/crm/concepts/filtro-avanzato]]"
   - "[[domains/crm/concepts/colonne-filtrabili]]"
   - "[[tech-debt/crm/filtri-sql-sicuri]]"
+  - "[[specs/crm/import-pratiche/SPEC]]"
+  - "[[domains/crm/flows/nuovo-import-con-anteprima]]"
+  - "[[domains/crm/flows/esecuzione-di-un-import-confermato]]"
+  - "[[domains/crm/concepts/import]]"
+  - "[[domains/crm/concepts/riga-dell-import]]"
+  - "[[domains/crm/concepts/riconoscimento-dei-clienti-nell-import]]"
+  - "[[tech-debt/crm/import-pratiche]]"
 created: 2026-10-23
-updated: 2026-10-24
+updated: 2026-10-26
 ---
 
 # CRM — Contratto del dominio
 
-Confini e invarianti del dominio `crm`. Questa versione copre quello che stabiliscono [[specs/crm/gestione-operatori/SPEC]], [[specs/crm/export-chiamate/SPEC]] e [[specs/crm/filtri-sql-sicuri/SPEC]]. Le altre spec del CRM (Contatti, seeder) entreranno con il loro ingest.
+Confini e invarianti del dominio `crm`. Questa versione copre quello che stabiliscono [[specs/crm/gestione-operatori/SPEC]], [[specs/crm/export-chiamate/SPEC]], [[specs/crm/filtri-sql-sicuri/SPEC]] e [[specs/crm/import-pratiche/SPEC]]. Le altre spec del CRM (Contatti, seeder) entreranno con il loro ingest.
 
 ## Owns
 
@@ -41,6 +48,8 @@ Confini e invarianti del dominio `crm`. Questa versione copre quello che stabili
 - **Lo stato `non risponde`** e le sue transizioni. Vedi [[domains/crm/concepts/stato-del-contatto]] e [[domains/crm/flows/esito-non-risponde-e-ritorno-in-coda]].
 - **L'export delle chiamate per operatore** (totali, grafici, file Excel) e il periodo che può coprire. Vedi [[domains/crm/flows/export-chiamate-per-operatore-admin]] e [[domains/crm/concepts/periodo-dell-export]].
 - **I filtri avanzati di Clienti e Pratiche:** le colonne filtrabili per tabella, gli operatori per tipo, la convalida dei valori e la loro traduzione in SQL con parametri legati. Vedi [[domains/crm/flows/filtro-avanzato-di-clienti-e-pratiche]], [[domains/crm/concepts/filtro-avanzato]] e [[domains/crm/concepts/colonne-filtrabili]].
+- **L'import dei file Wave e Standard da parte di un admin:** anteprima senza scritture, report errori nel browser, esecuzione tutto o niente in coda, storico degli import. Vedi [[domains/crm/flows/nuovo-import-con-anteprima]], [[domains/crm/flows/esecuzione-di-un-import-confermato]] e [[domains/crm/concepts/import]].
+- **Le regole delle righe dell'import** (formato, categorie, motivi di scarto, conversione dei valori) e **il riconoscimento dei clienti esistenti** nell'import. Vedi [[domains/crm/concepts/riga-dell-import]] e [[domains/crm/concepts/riconoscimento-dei-clienti-nell-import]].
 
 ## Does Not Own
 
@@ -56,6 +65,9 @@ Confini e invarianti del dominio `crm`. Questa versione copre quello che stabili
 - **Il controllo della destinazione in `pratiche.PUT` e `customer.insertCustomer`:** fuori dalla spec, nel debito ([[tech-debt/crm/gestione-operatori]]).
 - **La ricerca testuale `q`/`search_by` di Clienti e Pratiche** come parte dei filtri avanzati: era già parametrica, e la riforma dei filtri ne riusa solo `containsPattern`.
 - **Chi vede quali pratiche (`onlyMe`)**: domanda di prodotto aperta in [[tech-debt/crm/search-by-explicit-map]].
+- **Il tracciato XML v2, la separazione tra Prestiti e Cessioni e l'API di import per sistemi esterni:** spec a parte (Non-Goals e OQ7 di import-pratiche). La logica dell'import non dipende da file e trasporto, così la possono riusare.
+- **Annullare un import completato**, e creare contatti, assegnare operatori o scrivere nelle chat a partire dall'import.
+- **Le correzioni dei difetti della conversione e del riconoscimento dei clienti** (date di OQ2, CAP, importi come testo, l'OR di OQ1): una PR per difetto dopo la riscrittura ([[tech-debt/crm/import-pratiche]]).
 
 ## Invariants
 
@@ -75,5 +87,11 @@ Confini e invarianti del dominio `crm`. Questa versione copre quello che stabili
 - **Il periodo dell'export è in giorni di Roma**, estremi inclusi, e non va oltre 3 mesi indietro. Indicatori, grafici e file mostrano gli stessi numeri per lo stesso periodo.
 - **Da `non risponde` non si torna a `chiamare` né a `followup`.** Un contatto `non risponde` resta in coda e conserva il suo operatore.
 - **Sotto `export/` nel bucket un utente scarica solo i file di errore dell'import.**
+  > [!warning] Con [[specs/crm/import-pratiche/SPEC]] (AC15) l'import non carica più file di errore: il report nasce nel browser. Restano quelli già caricati fino alla loro scadenza; poi `/api/export/download` e il cron `delete-export` restano senza chiamanti e si tolgono in un passo a parte (Non-Goals).
 - **Nessun SQL del client arriva al database dalle liste Clienti e Pratiche.** I filtri avanzati viaggiano come dati; colonna e operatore vengono da mappe chiuse, ogni valore è un parametro legato. Nessun `sql.raw` su input del client nelle procedure.
 - **Una voce di filtro non valida si scarta in silenzio:** le altre si applicano, senza errore.
+- **Solo un admin importa.** Un operatore non vede pagina né comandi; ogni procedura `import.*` gli risponde `FORBIDDEN`, e senza sessione `UNAUTHORIZED`. Le rotte e le procedure del vecchio import non esistono più.
+- **Un import è tutto o niente**, in una transazione, e ne gira uno alla volta in tutto il CRM. L'anteprima e l'annullamento non scrivono nulla.
+- **Ogni riga del file è importabile, solo cliente o scartata con i suoi motivi:** nessuna riga sparisce in silenzio, e il server rifà la classificazione qualunque cosa dica l'anteprima.
+- **L'import non scrive mai l'operatore, le chat né i contatti**, e non cambia codice cliente, blacklist e data di creazione di un cliente esistente.
+- **Nessun valore delle righe dell'import** nello storico, nei motivi di fallimento, nei log del server o nella console del browser, e Sentry non riceve il corpo delle richieste del server. Le righe stanno nel database solo dalla conferma alla fine dell'import, al massimo un'ora.

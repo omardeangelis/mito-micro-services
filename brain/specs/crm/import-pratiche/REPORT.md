@@ -14,8 +14,8 @@ links:
   - "[[specs/crm/import-pratiche/SPEC]]"
   - "[[specs/crm/import-pratiche/PLAN]]"
   - "[[specs/crm/import-pratiche/IMPLEMENTATION-NOTES]]"
-ingested: false
-last_ingested: null
+ingested: true
+last_ingested: 2026-10-26
 created: 2026-10-26
 updated: 2026-10-26
 ---

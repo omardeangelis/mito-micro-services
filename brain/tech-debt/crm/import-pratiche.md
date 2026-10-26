@@ -4,8 +4,9 @@ type: tech-debt
 links:
   - "[[specs/crm/import-pratiche/SPEC]]"
   - "[[specs/crm/import-pratiche/IMPLEMENTATION-NOTES]]"
+  - "[[specs/crm/import-pratiche/REPORT]]"
 created: 2026-10-24
-updated: 2026-10-24
+updated: 2026-10-26
 ---
 
 # Tech debt: import di clienti e pratiche
@@ -32,3 +33,25 @@ Questi difetti sono in produzione oggi e la spec non li elencava. Restano anche 
 - **[FOLLOW-UP]** La conversione tratta come testo `DES_CLIENTE`, `DES_SUBAGENTE` e "Descrizione PdV" (`split`, `replace`): un numero in quelle celle fa lanciare la conversione, e oggi ferma l'elaborazione del file. Nella riscrittura la riga è scartata con "La riga ha un valore che l'import non sa leggere".
   - Fix: `String()` prima di trattarle, e poi la riga si importa.
 - **[FOLLOW-UP]** Il cliente aggiornato per errore (stessa partita IVA del primo riconosciuto, o stesso codice cliente) prende tutti i campi del primo, compresa la data di creazione. Restano solo `id`, codice cliente, hash e operatore. Si somma al difetto dell'OR già nella spec (OQ1).
+
+## [2026-10-26] From review [[specs/crm/import-pratiche/REPORT]]
+
+Rilievi della review a 4 pass (DO NOT SHIP su `bb956d6`) rimandati: i BLOCKER e i MAJOR sono corretti, questi restano.
+
+Con la riscrittura (PR E #85, D11, AC35) il cliente aggiornato per errore riceve solo i valori non vuoti della riga, non più i campi del primo: la voce del 2026-10-24 si chiude quando la catena va in produzione. Resta il difetto dell'OR (OQ1).
+
+- **[MINOR]** Un CSV in UTF-8 senza BOM arriva con le intestazioni rotte (comportamento già presente con il vecchio import) — `src/lib/import/parseWorkbook.ts:31`
+  - Why it persists: rimandato, già così in produzione
+  - Fix-or-evidence needed: leggere il CSV come UTF-8 (`codepage` di SheetJS o decodifica prima di `XLSX.read`), con un test su un CSV senza BOM con accenti nelle intestazioni
+- **[MINOR]** Un file lasciato fuori dall'area di caricamento durante la lettura o l'anteprima fa navigare la scheda — `src/app/dashboard/import/_components/NewImport.tsx:44-86`
+  - Why it persists: rimandato
+  - Fix-or-evidence needed: `preventDefault` su `dragover` e `drop` della finestra mentre la pagina Import è aperta, con un test
+- **[MINOR]** Lo storico ha 12 colonne: stimate più larghe dello spazio a 1280 px (non misurato) — `src/app/dashboard/import/_components/ImportHistory.tsx:54-70`
+  - Why it persists: nel container la pagina non si serve (login Azure)
+  - Fix-or-evidence needed: misura a 1280 px su staging (T12b); se esce, colonne raggruppate o scroll orizzontale della sola tabella
+- **[MINOR]** AC18 (anteprima di 20.000 righe in 10 s, "Annulla" entro 1 s) non è misurato nel browser — AC18
+  - Why it persists: serve il browser vero con il worker
+  - Fix-or-evidence needed: misura su staging (T12b)
+- **[MINOR]** Rami corretti ma senza test: R1 (retry sul deadlock), R7 (guardia di `endRun`), U2/U3 (`FOR UPDATE` di upload e pulizia), A5 (pratica creata da altri durante l'import) — `packages/server/src/services/import/run.ts`, `upload.ts`, `apply.ts`
+  - Why it persists: budget della review finito, nessun secondo giro
+  - Fix-or-evidence needed: un test pg per ramo, che fallisca togliendo il ramo

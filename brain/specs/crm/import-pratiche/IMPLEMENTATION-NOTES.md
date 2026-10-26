@@ -4,6 +4,15 @@ type: implementation-notes
 links:
   - "[[specs/crm/import-pratiche/SPEC]]"
   - "[[specs/crm/import-pratiche/PLAN]]"
+  - "[[domains/crm/flows/nuovo-import-con-anteprima]]"
+  - "[[domains/crm/flows/esecuzione-di-un-import-confermato]]"
+  - "[[domains/crm/concepts/import]]"
+  - "[[domains/crm/concepts/riga-dell-import]]"
+  - "[[domains/crm/concepts/riconoscimento-dei-clienti-nell-import]]"
+  - "[[domains/crm/concepts/regola-dei-lock]]"
+  - "[[specs/crm/import-pratiche/REPORT]]"
+ingested: true
+last_ingested: 2026-10-26
 created: 2026-10-24
 updated: 2026-10-26
 ---
@@ -115,6 +124,7 @@ Restano nel debito tecnico: CSV UTF-8 senza BOM (già oggi), un file lasciato fu
 | Correzioni della revisione (B) | ok | `tsc`, `next lint`, `pnpm run test --run` (3697 passati, 105 saltati). Il `classify.ts` di prima fa fallire 4 test nuovi; senza il riordino o senza il controllo dopo la conversione ne falliscono 4; senza `transformHeader`, 1 |
 | Correzioni della revisione (E) | ok | `tsc`, `next lint`, `pnpm run test --run` (3850 passati, 114 saltati), `pg` (111 passati), `api:build`, `api:smoke`, `pnpm build`. Il `lookup.ts` di prima, l'`ORDER BY` tolto, il lock tolto alle pratiche e il `statement_timeout` una volta sola fanno fallire i test pg nuovi; senza l'escape nel conteggio delle parentesi fallisce un test |
 | Correzioni della revisione (F) | ok | `tsc`, `next lint`, `pnpm run test --run` (3950 passati, 114 saltati), `pg` (111 passati), `api:build`, `api:smoke`, `pnpm build`. Il toaster di prima, il layout senza provider, la condizione del pulsante su `importable` soltanto, due etichette scambiate, la guardia del doppio clic e il focus tolti fanno fallire un test ciascuno |
+| Correzioni della revisione (G) | ok | Dopo il merge di F con le correzioni: `tsc`, `next lint`, `pnpm run test --run` (3908 passati, 114 saltati), `pg` (111 passati), `api:build`, `api:smoke`, `pnpm build` coi segnaposto di CI |
 
 ## Acceptance Criteria Status
 

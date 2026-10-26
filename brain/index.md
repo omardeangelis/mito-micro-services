@@ -39,7 +39,7 @@ Migrated from `docs/` on 2026-09-24. Source material for future `create-spec` ru
 
 | Domain | Map | Contract | Concepts | Flows |
 |---|---|---|---|---|
-| crm | [[domains/crm/crm]] | [[domains/crm/crm-contract]] | 11 | 10 |
+| crm | [[domains/crm/crm]] | [[domains/crm/crm-contract]] | 14 | 12 |
 
 ## Specs (per domain)
 
@@ -54,7 +54,7 @@ Migrated from `docs/` on 2026-09-24. Source material for future `create-spec` ru
 | crm | [[specs/crm/pratiche-effect/SPEC]] | Implemented, in `dev` dalla [PR #83](https://github.com/omardeangelis/mito-micro-services/pull/83) (piano: [[specs/crm/pratiche-effect/PLAN]], review: [[specs/crm/pratiche-effect/REPORT]]) |
 | crm | [[specs/crm/chat-storage-effect/SPEC]] | Approved; PR A in `dev` con la [PR #86](https://github.com/omardeangelis/mito-micro-services/pull/86), PR B in corso (piano: [[specs/crm/chat-storage-effect/PLAN]], review: [[specs/crm/chat-storage-effect/REPORT]]) |
 | crm | [[specs/crm/export-chiamate/SPEC]] | Implemented, unita su dev il 23/10/2026 (piano: [[specs/crm/export-chiamate/PLAN]], review: [[specs/crm/export-chiamate/REPORT]]) |
-| crm | [[specs/crm/import-pratiche/SPEC]] | Approved (piano: [[specs/crm/import-pratiche/PLAN]]) |
+| crm | [[specs/crm/import-pratiche/SPEC]] | Implemented sui branch (PR #77, #78, #81, #82, #85, #88, #89, in draft), ingested (piano: [[specs/crm/import-pratiche/PLAN]], review: [[specs/crm/import-pratiche/REPORT]]) |
 
 - [[specs/crm/crm-specs|crm-specs]] — CRM spec page map
 
