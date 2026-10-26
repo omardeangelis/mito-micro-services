@@ -9,8 +9,9 @@ links:
   - "[[specs/crm/filtri-sql-sicuri/SPEC]]"
   - "[[specs/crm/customer-effect/SPEC]]"
   - "[[chore/migration_plan]]"
+  - "[[specs/crm/analytics-effect/SPEC]]"
 created: 2026-10-22
-updated: 2026-10-25
+updated: 2026-10-26
 ---
 
 # Verso "solo Effect": servizi, bordo, trasporto
@@ -86,7 +87,7 @@ L'ordine segue il rischio della Mappa del 21/10, con un'eccezione: `user` e `ope
 | 3 | `import`: 4 procedure **e le 6 route REST `/api/import/*`** | L | Circa 2.000 righe: body letto con un cast senza zod, batch fuori transazione (un errore a metà lascia un import parziale), `xlsx` 0.18.5 abbandonato con 2 CVE. Il danno potenziale più grande | Caratterizzazione sui file xlsx dei test |
 | ✓ | `pratiche` e le query di `task/GET`, più `bulkHandleTask`, passo 4 | fatto | Chiude i due domini principali. Le stranezze che i test di caratterizzazione fissavano (TD9) sono corrette nello stesso branch, tranne (k), riaperta per `import.updateExistingPractices` e chiusa dalla [PR #89](https://github.com/omardeangelis/mito-micro-services/pull/89) dell'import nuovo. Le procedure senza chiamanti si tolgono | Dopo `customer`. Fatto: in `dev` il 2026-10-25 con la [PR #83](https://github.com/omardeangelis/mito-micro-services/pull/83) ([[specs/crm/pratiche-effect/PLAN]]), con le correzioni di TD9 |
 | ✓ | `chat`, `supabase` → `storage`, passo 5 | fatto | Già quasi su servizi. Il router `chat` è su servizi e adapter, con l'invio di una nota sotto il lock del cliente; il router `supabase` e `supabaseClient` sono tolti, le route di export chiamano `services/export/files.ts`. Le stranezze che il passo conserva sono in TD10 | Fatto: in `dev` il 2026-10-26 con la [PR #86](https://github.com/omardeangelis/mito-micro-services/pull/86) (PR A, `chat`) e la [PR #91](https://github.com/omardeangelis/mito-micro-services/pull/91) (PR B, storage) ([[specs/crm/chat-storage-effect/PLAN]]) |
-| 6 | `analytics` | M | 8 query di sola lettura, zero test, date con `new Date()` nel corpo: oggi non si testa. Basso rischio e basso valore | Prima i test con un `Clock` fisso |
+| 6 | `analytics` | M | 8 query di sola lettura, zero test, date con `new Date()` nel corpo: oggi non si testa. Basso rischio e basso valore | Prima i test con un `Clock` fisso. Spec: [[specs/crm/analytics-effect/SPEC]], con le correzioni della dashboard nello stesso branch, come ultimo round dopo il refactor (decisione di Omar del 2026-10-26) |
 | 7 | `export` | M | Escluso per ora | Il suo spostamento nel piano GCP; route REST (§6) |
 | 8 | Auth e contesto tRPC | M, critico | Per ultimo, insieme all'uscita del frontend da Next.js e alla scelta del sostituto di NextAuth. Ogni PR qui ha la revisione di Leonardo | Il sostituto di NextAuth deve conservare i comportamenti della disattivazione (login rifiutato, sessioni invalidate) |
 

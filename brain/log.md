@@ -12,6 +12,18 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 
 <!-- Entries are appended by create-spec (spec creation) and docs-maintenance (ingest). Format:
 
+## [2026-10-26] plan | Router `analytics` su Effect, con le correzioni della dashboard (passo 6 della migrazione)
+- Spec: [[specs/crm/analytics-effect/SPEC]], piano: [[specs/crm/analytics-effect/PLAN]]
+- 19 task e G0 in una PR con tre round: caratterizzazione delle 5 procedure con chiamanti (risposte, middleware, tipi, con i mutanti sul codice di oggi), refactor in `services/analytics/` con le 3 procedure senza chiamanti tolte, poi le correzioni da un test rosso (contratto del router e permessi, finestre dal `Clock`, una pratica contata una volta e solo le finanziate, "Contatti con esito", card, periodo non valido, refusi) e `insertChatToOperatorSchema` tolto
+- Verifica del piano: DO NOT SHIP, 0 blocker, 2 major (finestra di confronto senza prove, tipo `string | number`), 7 minor e 5 nit, tutti corretti
+- Debito della migrazione: TD11 (S1–S9 chiuse dalla PR, una voce `[PREVISTO]` sull'utente senza riga operatore); revisione obbligatoria di Leonardo
+
+## [2026-10-26] spec | Router `analytics` su Effect, con le correzioni della dashboard (passo 6 della migrazione)
+- Created spec: [[specs/crm/analytics-effect/SPEC]]
+- Domain: crm
+- Status: Draft
+- Decisioni di Omar: le correzioni nello stesso branch, come ultimo round dopo il refactor; "Contatti con esito" conta la coda attuale; una pratica conta una volta, per chi ha un cliente; le medie si rinominano "per pratica"
+
 ## [2026-10-26] ingest | Import di clienti e pratiche, riscritto
 - Source: [[specs/crm/import-pratiche/SPEC]]
 - Flows written: 2 ([[domains/crm/flows/nuovo-import-con-anteprima]], [[domains/crm/flows/esecuzione-di-un-import-confermato]])
@@ -294,20 +306,6 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 - Verdict: DO NOT SHIP al primo esito, poi SHIP. Il codice che scrive dati regge in tutti i passaggi. I 4 MAJOR (un buco nei test della mappatura dell'ordinamento di Clienti e tre frasi ereditate della guida e del dialogo di "Crea/assegna contatti" smentite dal codice) sono accettati da Omar come debito il 2026-10-21, con due voci nuove nel tech debt
 - Impact: critical
 - Verifiers: 16 (0 blocker, 4 major, 22 minor, 25 nit; 14 SHIP e 2 DO NOT SHIP)
-
-## [2026-10-21] review | Sezione Contatti — PR6, seconda metà: la migrazione di T6.9
-- Report: [[specs/crm/sezione-contatti/REPORT]] (round PR6, seconda metà)
-- Scope: spec
-- Verdict: SHIP; chiude anche il round di PR6 (il dialogo di "Assegna Clienti", F1, resta nel debito per scelta di Omar). Lista per la sessione di rilascio nel report: `drizzle-kit migrate` 0.31 non stampa il motivo di un fallimento
-- Impact: critical
-- Verifiers: 5, più una passata di conferma sul cambio del SQL (0 blocker; 1 major di documentazione e 11 minor, tutti corretti; il lock `LOCK TABLE` è arrivato dalla review)
-
-## [2026-10-21] review | Sezione Contatti — PR6 "Clienti semplificata" (senza la migrazione di T6.9)
-- Report: [[specs/crm/sezione-contatti/REPORT]] (round PR6)
-- Scope: spec
-- Verdict: DO NOT SHIP al primo giro; dopo le correzioni nessun BLOCKER né MAJOR aperto (il dialogo di "Assegna Clienti", F1, resta nel debito per scelta di Omar). Il verdetto del round si scrive dopo il round sulla migrazione di T6.9
-- Impact: critical
-- Verifiers: 10, poi v5 rilanciato (0 blocker e 2 major alla prima verifica; un major nuovo alla seconda di v5, sul test dello script; tutti corretti o accettati come debito)
 
 ## [YYYY-MM-DD] ingest | <spec title>
 - Source: [[specs/<domain>/<spec>/SPEC]]
