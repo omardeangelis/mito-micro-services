@@ -44,6 +44,12 @@ updated: 2026-10-26
 | Wave 1: `eslint --no-eslintrc -c .eslintrc.cjs` su `analytics/_test/` | verde | `next lint` non parte nel worktree (sopra) |
 | Wave 1: mutanti del round 1 | 25/25 uccisi | con `arch -arm64` |
 | Wave 1: `pnpm run test --run` | 265 file verdi, 23 saltati | i 23 sono il progetto `pg`, senza Postgres in locale |
+| T8: `git diff 545c6ce..2ddd53a -- '**/_test/**'` | solo `router.db.test.ts` aggiunto | AC8 |
+| T8: `grep` di AC5, AC6, AC7 | vuote | |
+| T8: `tsc --noEmit`, `eslint … src packages` | verdi | |
+| T8: mutanti di T1–T5 sui servizi | 24/24 uccisi | |
+| T8: `pnpm run test --run` | 266 file verdi, 23 saltati (`pg`) | |
+| T8: file con `server-only` in `packages/server/src` | 38 | come a `2fd59da` |
 
 ## Acceptance Criteria Status
 

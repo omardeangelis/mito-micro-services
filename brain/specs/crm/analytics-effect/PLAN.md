@@ -390,9 +390,9 @@ G0 ─┬─ T1 ─┐
   - i mutanti di T1–T5 ripetuti sui servizi, uno alla volta, tutti uccisi;
   - il conteggio di `server-only` in `packages/server/src` è ancora 38.
 - **validation**: i controlli sopra, annotati nel log con gli hash dei commit.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Complete
+- **log**: Wave 4, orchestratore, sull'ultimo commit del round 2 (`2ddd53a`; il round 1 finisce a `545c6ce`). `git diff 545c6ce..2ddd53a -- '**/_test/**'` aggiunge solo `router.db.test.ts` (26 righe) e non modifica righe (AC8). Le `grep` di AC5, AC6 (anche `ctx`) e AC7 vuote; `TIMEFRAMEMAP` in `financed.ts`. `tsc` verde; `eslint --no-eslintrc -c .eslintrc.cjs src packages` verde (sostituisce `next lint`, IMPLEMENTATION-NOTES); `pnpm run test --run` 266 file verdi, 23 saltati (`pg`). Mutanti di T1–T5 ripetuti sui servizi: 24 su 24 uccisi (il filtro per operatore nella media dell'admin diventa due mutanti di `customerAccess`: un filtro senza `actor`, 32 rossi, e l'ADMIN filtrato sul suo operatore, 8). `server-only` in `packages/server/src`: 38, come a `2fd59da`.
+- **files edited/created**: nessuno
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
