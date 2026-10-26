@@ -12,6 +12,10 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 
 <!-- Entries are appended by create-spec (spec creation) and docs-maintenance (ingest). Format:
 
+## [2026-10-26] merge | Import di clienti e pratiche: catena A–G in `dev`
+- [PR #77](https://github.com/omardeangelis/mito-micro-services/pull/77), #78, #81, #82, #85, #88, #89 e la spec #74 unite in `dev` su richiesta di Leonardo, ognuna con la CI verde; migrazione `20261025014131_import_run` approvata da Leonardo su `staging-db` e applicata; coda `mito-crm-staging-import` creata da Leonardo dal Mac (T12a)
+- Passo 3 fatto (§4 di [[chore/migrazione-effect]]); TD10 (d) chiusa, perché `/api/export/importError` è tolta. `dev` → `main` fermo fino al go/no-go ([[chore/migrazione-gcp]]). T0 e T12b, la prova su staging, rimandati da Leonardo alla fine della migrazione ([[specs/crm/import-pratiche/PLAN]])
+
 ## [2026-10-26] ingest | Import di clienti e pratiche, riscritto
 - Source: [[specs/crm/import-pratiche/SPEC]]
 - Flows written: 2 ([[domains/crm/flows/nuovo-import-con-anteprima]], [[domains/crm/flows/esecuzione-di-un-import-confermato]])
@@ -301,13 +305,6 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 - Verdict: SHIP; chiude anche il round di PR6 (il dialogo di "Assegna Clienti", F1, resta nel debito per scelta di Omar). Lista per la sessione di rilascio nel report: `drizzle-kit migrate` 0.31 non stampa il motivo di un fallimento
 - Impact: critical
 - Verifiers: 5, più una passata di conferma sul cambio del SQL (0 blocker; 1 major di documentazione e 11 minor, tutti corretti; il lock `LOCK TABLE` è arrivato dalla review)
-
-## [2026-10-21] review | Sezione Contatti — PR6 "Clienti semplificata" (senza la migrazione di T6.9)
-- Report: [[specs/crm/sezione-contatti/REPORT]] (round PR6)
-- Scope: spec
-- Verdict: DO NOT SHIP al primo giro; dopo le correzioni nessun BLOCKER né MAJOR aperto (il dialogo di "Assegna Clienti", F1, resta nel debito per scelta di Omar). Il verdetto del round si scrive dopo il round sulla migrazione di T6.9
-- Impact: critical
-- Verifiers: 10, poi v5 rilanciato (0 blocker e 2 major alla prima verifica; un major nuovo alla seconda di v5, sul test dello script; tutti corretti o accettati come debito)
 
 ## [YYYY-MM-DD] ingest | <spec title>
 - Source: [[specs/<domain>/<spec>/SPEC]]

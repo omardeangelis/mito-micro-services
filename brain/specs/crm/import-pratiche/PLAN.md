@@ -14,7 +14,7 @@ updated: 2026-10-26
 # Plan: Import di clienti e pratiche, riscritto
 
 **Spec:** [[specs/crm/import-pratiche/SPEC]] (approvata da Leonardo il 2026-10-24)
-**Status:** Implementata, in revisione (PR A #77, B #78, C #81, D #82, E #85, F #88, G #89). Review a 4 pass: DO NOT SHIP su `bb956d6`, poi tutti i BLOCKER e MAJOR corretti ([[specs/crm/import-pratiche/REPORT]]). Mancano la rilettura di Leonardo, T0, T12a e T12b
+**Status:** Implementata, in `dev` dal 2026-10-26 (PR A #77, B #78, C #81, D #82, E #85, F #88, G #89, unite su richiesta di Leonardo) e su staging dallo stesso giorno, con la coda Cloud Tasks (T12a). Review a 4 pass: DO NOT SHIP su `bb956d6`, poi tutti i BLOCKER e MAJOR corretti ([[specs/crm/import-pratiche/REPORT]]). T0 e T12b, la prova su staging, li fa Leonardo alla fine della migrazione (2026-10-26). `dev` → `main` resta fermo fino al go/no-go
 **Generato:** 2026-10-24 con `create-plan`: grill (una domanda a Leonardo, D1) → swarm-plan → tdd → adversarial-verifier (primo giro DO NOT SHIP con 2 blocker; secondo giro DO NOT SHIP senza blocker, 3 major e 8 minor; tutti corretti in questa versione, senza un terzo giro per il limite di 2 tentativi). Nessun codice scritto.
 
 ---
@@ -133,8 +133,8 @@ T0 è una prova senza PR; T12b è la prova finale su staging dopo F e G.
 - **location**: nessun file; esito nella PR C
 - **description**: su staging, `POST` di corpi da 2 MB e da 5 MB a `https://<frontend di staging>/api/trpc/import.upload` (procedura che non esiste ancora). Una risposta del backend (404 di tRPC) vuol dire che il corpo passa; un 413 di Vercel vuol dire che no. Se 2 MB non passano, la dimensione dei pezzi di D3 scende prima di T11. Se il container non raggiunge staging, la lancia la sessione sul Mac di Leonardo.
 - **validation**: codici di risposta riportati nella PR C.
-- **status**: Planned
-- **log**:
+- **status**: Deferred
+- **log**: 2026-10-26, dal Mac: i corpi da 2 e 5 MB senza login ricevono un 401 della protezione di Vercel su staging, prima della rewrite, quindi la prova non dice niente. Si vede nella prova nel browser di T12b, da utente con login: un file grande che arriva all'anteprima e si importa senza 413
 - **files edited/created**:
 - **backlog_item_id**: —
 - **backlog_item_url**: —
@@ -373,8 +373,8 @@ T0 è una prova senza PR; T12b è la prova finale su staging dopo F e G.
 - **location**: `apps/api/gcp/setup-import-queue.sh` (nuovo), `apps/api/gcp/deploy-staging.sh`
 - **description**: lo script (idempotente, lanciato da Leonardo dal Mac) abilita l'API Cloud Tasks, crea la coda `mito-crm-staging-import` in `europe-west3` (3 tentativi con backoff, una consegna alla volta), il service account che firma i token dei task, e i permessi: il service account del backend mette task in coda e agisce come quel service account. `deploy-staging.sh` passa al backend coda, URL e service account. Senza queste variabili il backend parte con la coda spenta (D13), quindi la PR si può unire prima o dopo lo script senza bloccare i deploy.
 - **validation**: `gcloud tasks queues describe` mostra 3 tentativi e una consegna alla volta; dopo il deploy `/health` risponde e il backend parte con la coda configurata.
-- **status**: In progress
-- **log**: 2026-10-25, #82. Script e variabili `IMPORT_QUEUE`, `IMPORT_OIDC_AUDIENCE`, `IMPORT_OIDC_SERVICE_ACCOUNT` (nomi come `CRON_OIDC_*`) scritti; controllati solo con `sh -n` e `--help`. Manca il lancio di Leonardo dal Mac e `gcloud tasks queues describe`. Nessun permesso al service agent di Cloud Tasks: il ruolo glielo dà Google con l'API
+- **status**: Done
+- **log**: 2026-10-25, #82. Script e variabili `IMPORT_QUEUE`, `IMPORT_OIDC_AUDIENCE`, `IMPORT_OIDC_SERVICE_ACCOUNT` (nomi come `CRON_OIDC_*`) scritti; controllati solo con `sh -n` e `--help`. Manca il lancio di Leonardo dal Mac e `gcloud tasks queues describe`. Nessun permesso al service agent di Cloud Tasks: il ruolo glielo dà Google con l'API. 2026-10-26: Leonardo lancia lo script dal Mac (la prima volta si ferma subito dopo l'abilitazione dell'API, la seconda va); `gcloud tasks queues describe` dà RUNNING, una consegna alla volta e 3 tentativi, con i due permessi e nessun altro. Il backend di staging ha le tre variabili `IMPORT_*` (deploy del 2026-10-26)
 - **files edited/created**: `apps/api/gcp/setup-import-queue.sh`, `apps/api/gcp/deploy-staging.sh`
 - **backlog_item_id**: —
 - **backlog_item_url**: —
@@ -389,8 +389,8 @@ T0 è una prova senza PR; T12b è la prova finale su staging dopo F e G.
 - **location**: `apps/api/gcp/deploy-staging.sh` (memoria, se serve); esito nella PR F
 - **description**: se T13 ha misurato più di 400 MiB, memoria a 1 GiB. Poi, con F e G su `dev`: import di un file vero da 20.000 righe su staging, scheda chiusa subito dopo la conferma; esito "Completato" nello storico con i numeri dell'anteprima; secondo import dello stesso file con zero nuovi; un'anteprima abbandonata non lascia righe in `import_upload`.
 - **validation**: storico, numeri e tabella `import_upload` vuota riportati nella PR.
-- **status**: Planned
-- **log**:
+- **status**: Deferred
+- **log**: 2026-10-26, Leonardo: la prova su staging la fa alla fine della migrazione, insieme agli altri passi. Comprende T0 e il giro nel browser di T14–T19
 - **files edited/created**:
 - **backlog_item_id**: —
 - **backlog_item_url**: —
