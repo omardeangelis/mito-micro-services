@@ -12,6 +12,11 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 
 <!-- Entries are appended by create-spec (spec creation) and docs-maintenance (ingest). Format:
 
+## [2026-10-26] spec | Login e sessione su better-auth, contesto tRPC su Effect
+- Created spec: [[specs/crm/auth-better-auth/SPEC]]
+- Domain: crm
+- Status: Draft
+
 ## [2026-10-26] merge | Import di clienti e pratiche: catena A–G in `dev`
 - [PR #77](https://github.com/omardeangelis/mito-micro-services/pull/77), #78, #81, #82, #85, #88, #89 e la spec #74 unite in `dev` su richiesta di Leonardo, ognuna con la CI verde; migrazione `20261025014131_import_run` approvata da Leonardo su `staging-db` e applicata; coda `mito-crm-staging-import` creata da Leonardo dal Mac (T12a)
 - Passo 3 fatto (§4 di [[chore/migrazione-effect]]); TD10 (d) chiusa, perché `/api/export/importError` è tolta. `dev` → `main` fermo fino al go/no-go ([[chore/migrazione-gcp]]). T0 e T12b, la prova su staging, rimandati da Leonardo alla fine della migrazione ([[specs/crm/import-pratiche/PLAN]])
@@ -298,13 +303,6 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 - Verdict: DO NOT SHIP al primo esito, poi SHIP. Il codice che scrive dati regge in tutti i passaggi. I 4 MAJOR (un buco nei test della mappatura dell'ordinamento di Clienti e tre frasi ereditate della guida e del dialogo di "Crea/assegna contatti" smentite dal codice) sono accettati da Omar come debito il 2026-10-21, con due voci nuove nel tech debt
 - Impact: critical
 - Verifiers: 16 (0 blocker, 4 major, 22 minor, 25 nit; 14 SHIP e 2 DO NOT SHIP)
-
-## [2026-10-21] review | Sezione Contatti — PR6, seconda metà: la migrazione di T6.9
-- Report: [[specs/crm/sezione-contatti/REPORT]] (round PR6, seconda metà)
-- Scope: spec
-- Verdict: SHIP; chiude anche il round di PR6 (il dialogo di "Assegna Clienti", F1, resta nel debito per scelta di Omar). Lista per la sessione di rilascio nel report: `drizzle-kit migrate` 0.31 non stampa il motivo di un fallimento
-- Impact: critical
-- Verifiers: 5, più una passata di conferma sul cambio del SQL (0 blocker; 1 major di documentazione e 11 minor, tutti corretti; il lock `LOCK TABLE` è arrivato dalla review)
 
 ## [YYYY-MM-DD] ingest | <spec title>
 - Source: [[specs/<domain>/<spec>/SPEC]]

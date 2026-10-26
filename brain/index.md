@@ -55,6 +55,7 @@ Migrated from `docs/` on 2026-09-24. Source material for future `create-spec` ru
 | crm | [[specs/crm/chat-storage-effect/SPEC]] | Implemented, in `dev` con la [PR #86](https://github.com/omardeangelis/mito-micro-services/pull/86) (PR A) e la [PR #91](https://github.com/omardeangelis/mito-micro-services/pull/91) (PR B) (piano: [[specs/crm/chat-storage-effect/PLAN]], review: [[specs/crm/chat-storage-effect/REPORT]]) |
 | crm | [[specs/crm/export-chiamate/SPEC]] | Implemented, unita su dev il 23/10/2026 (piano: [[specs/crm/export-chiamate/PLAN]], review: [[specs/crm/export-chiamate/REPORT]]) |
 | crm | [[specs/crm/import-pratiche/SPEC]] | Implemented sui branch (PR #77, #78, #81, #82, #85, #88, #89, in draft), ingested (piano: [[specs/crm/import-pratiche/PLAN]], review: [[specs/crm/import-pratiche/REPORT]]) |
+| crm | [[specs/crm/auth-better-auth/SPEC]] | Draft |
 
 - [[specs/crm/crm-specs|crm-specs]] — CRM spec page map
 
