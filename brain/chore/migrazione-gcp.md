@@ -3,7 +3,7 @@ domain: platform
 title: Backend, DB, storage e cron su GCP
 type: piano
 status: in_progress
-last_updated: 2026-10-20
+last_updated: 2026-10-26
 ---
 
 # Backend, DB, storage e cron su GCP
@@ -20,6 +20,7 @@ Questo piano sostituisce le decisioni D8 e D9 (Railway) e la fase 2 (Express) di
 ## Principi
 
 - **Prima tutto lo staging, poi la prod**, dopo un go/no-go con criteri scritti.
+- **`dev` → `main` resta fermo fino al go/no-go** (conferma di Leonardo del 2026-10-26, prima del merge della catena dell'import su `dev`). L'import nuovo toglie il vecchio ([[specs/crm/import-pratiche/PLAN]], PR G #89): `main` non lo riceve prima dei test su staging (T12b).
 - **Un passo alla volta, e ogni passo si accende con una variabile d'ambiente.** La prod passa al backend un pezzo per volta (tRPC, REST, auth, cron, DB), mai due nella stessa notte.
 - **Il backend ospita il codice esistente, non lo copia.** Importa gli stessi file di `src/server/**` e `src/app/api/**`: le modifiche di Omar valgono subito per entrambi e non c'è niente da tenere allineato a mano. I file si spostano fisicamente in `api/` solo alla fine, quando Next non li usa più, in un momento concordato con Omar.
 - **Stesso contratto:** stessi path, stessi nomi di procedura, input, output e codici di errore. I test esistenti restano verdi con le stesse asserzioni.

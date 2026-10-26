@@ -3,7 +3,7 @@ domain: _root
 type: index
 links: []
 created: 2026-09-24
-updated: 2026-10-25
+updated: 2026-10-26
 ---
 
 # Brain — Master Map
@@ -39,7 +39,7 @@ Migrated from `docs/` on 2026-09-24. Source material for future `create-spec` ru
 
 | Domain | Map | Contract | Concepts | Flows |
 |---|---|---|---|---|
-| crm | [[domains/crm/crm]] | [[domains/crm/crm-contract]] | 11 | 10 |
+| crm | [[domains/crm/crm]] | [[domains/crm/crm-contract]] | 14 | 12 |
 
 ## Specs (per domain)
 
@@ -54,6 +54,7 @@ Migrated from `docs/` on 2026-09-24. Source material for future `create-spec` ru
 | crm | [[specs/crm/pratiche-effect/SPEC]] | Implemented, in `dev` dalla [PR #83](https://github.com/omardeangelis/mito-micro-services/pull/83) (piano: [[specs/crm/pratiche-effect/PLAN]], review: [[specs/crm/pratiche-effect/REPORT]]) |
 | crm | [[specs/crm/chat-storage-effect/SPEC]] | Implemented, in `dev` con la [PR #86](https://github.com/omardeangelis/mito-micro-services/pull/86) (PR A) e la [PR #91](https://github.com/omardeangelis/mito-micro-services/pull/91) (PR B) (piano: [[specs/crm/chat-storage-effect/PLAN]], review: [[specs/crm/chat-storage-effect/REPORT]]) |
 | crm | [[specs/crm/export-chiamate/SPEC]] | Implemented, unita su dev il 23/10/2026 (piano: [[specs/crm/export-chiamate/PLAN]], review: [[specs/crm/export-chiamate/REPORT]]) |
+| crm | [[specs/crm/import-pratiche/SPEC]] | Implemented sui branch (PR #77, #78, #81, #82, #85, #88, #89, in draft), ingested (piano: [[specs/crm/import-pratiche/PLAN]], review: [[specs/crm/import-pratiche/REPORT]]) |
 
 - [[specs/crm/crm-specs|crm-specs]] — CRM spec page map
 
@@ -94,6 +95,7 @@ Migrated from `docs/` on 2026-09-24. Source material for future `create-spec` ru
 - [[specs/crm/gestione-operatori/REPORT|crm/gestione-operatori — PR 5]] — spec · do-not-ship al quarto giro (5, 2 e 1 MAJOR dei giri precedenti corretti; quarto giro 3 verificatori, 0 BLOCKER e 1 MAJOR: header della Dialog che con il testo a 1,25 allarga la griglia; MAJOR e MINOR corretti in cb51313 senza quinto giro) · critical · 2026-10-23
 - [[specs/crm/export-chiamate/REPORT|crm/export-chiamate — T1–T5]] — spec · ship (0 BLOCKER, 0 MAJOR; 2 rilievi corretti, 2 in tech debt) · critical · 2026-10-23
 - [[specs/crm/export-chiamate/REPORT|crm/export-chiamate — T6–T8]] — spec · ship (1 MAJOR corretto; follow-up sui permessi dello storage) · critical · 2026-10-23
+- [[specs/crm/import-pratiche/REPORT|crm/import-pratiche]] — spec · do-not-ship (4 verificatori, 1 BLOCKER e 8 MAJOR, poi corretti; rilettura di Leonardo da fare) · critical · 2026-10-26
 
 ## Log
 

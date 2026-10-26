@@ -3,7 +3,7 @@ domain: crm
 type: concept
 status: implemented
 ingested: true
-last_ingested: 2026-10-23
+last_ingested: 2026-10-26
 links:
   - "[[specs/crm/gestione-operatori/SPEC]]"
   - "[[specs/crm/gestione-operatori/IMPLEMENTATION-NOTES]]"
@@ -16,8 +16,11 @@ links:
   - "[[tech-debt/crm/gestione-operatori]]"
   - "[[specs/crm/import-pratiche/SPEC]]"
   - "[[specs/crm/import-pratiche/PLAN]]"
+  - "[[specs/crm/import-pratiche/IMPLEMENTATION-NOTES]]"
+  - "[[specs/crm/import-pratiche/REPORT]]"
+  - "[[domains/crm/flows/esecuzione-di-un-import-confermato]]"
 created: 2026-10-23
-updated: 2026-10-25
+updated: 2026-10-26
 ---
 
 # Regola dei lock: prima gli utenti, poi i clienti
@@ -40,8 +43,8 @@ La regola vive accanto a quella "stesso operatore" di [[specs/crm/sezione-contat
 | `findWorkingOperator` | la riga utente della destinazione, dentro la transazione del writer e prima di `lockCustomer` | `FOR KEY SHARE OF users`: in conflitto con il `FOR UPDATE` della disattivazione, non con un altro `KEY SHARE`, quindi due assegnazioni verso lo stesso operatore non si aspettano sulla sua riga utente |
 | Cambio di ruolo | righe utente degli admin attivi e degli operatori del batch, in ordine di `users.id` | `FOR UPDATE OF users` |
 | Ogni writer di un cliente | il cliente, prima di ogni altra riga del cliente | `lockCustomer` |
-| Import (`applyImport`) | 1. i clienti del file, in ordine di id (prima quelli delle chiavi del file, poi quelli con la partita IVA dei primi riconosciuti); 2. le pratiche del file, in ordine di `pratica_id`. Mai righe `users` | `FOR UPDATE`, nella lettura del CRM dentro la transazione (D5 di [[specs/crm/import-pratiche/PLAN]]) |
-| Disattivazione (passo 5) | le pratiche dell'operatore, in ordine di `pratica_id`, prima dell'`UPDATE` | `FOR UPDATE`; ripete la transazione fino a 2 volte su un 40P01 (D6) |
+| Import | 1. la riga di `import_run`; 2. i clienti del file, tutti in un solo statement, in ordine di id; 3. le pratiche del file, in ordine di `pratica_id`. Nessuna riga `users` | `SELECT … ORDER BY … FOR UPDATE`, nella transazione dell'import. I clienti si leggono prima senza lock, poi si bloccano e si rileggono finché l'insieme non cambia |
+| Disattivazione, pratiche | le pratiche dell'operatore, in ordine di `pratica_id`, prima di spostarle | `FOR UPDATE`, come l'import, così le due sulle stesse pratiche non vanno in deadlock; su un 40P01 ripete la transazione fino a 2 volte (D6 di [[specs/crm/import-pratiche/PLAN]]) |
 
 ### Writer dentro la regola
 
@@ -67,13 +70,22 @@ Un `UPDATE` di più pratiche blocca le righe nell'ordine in cui le trova (l'ordi
 
 - [[domains/crm/flows/disattivazione-operatore]]: il writer che ha fatto nascere la regola, e gli esiti delle operazioni simultanee (AC7).
 - [[domains/crm/flows/cambio-ruolo-operatori]]: blocca le stesse righe utente, quindi non nasce un `ADMIN` disattivato.
+- [[domains/crm/flows/esecuzione-di-un-import-confermato]]: l'import tiene clienti e pratiche del file fino al commit; chi scrive gli stessi clienti o pratiche aspetta.
 
 Concetto vicino: [[domains/crm/concepts/operatore]] ("lavora" = passa `findWorkingOperator`).
 
 ## [Source: gestione-operatori]
 
 - Spec: AC7, AC11, AC12, AC15 e D5 di [[specs/crm/gestione-operatori/SPEC]]. Deviazioni di "Assegna a te" e della riassegnazione in [[specs/crm/gestione-operatori/IMPLEMENTATION-NOTES]].
-- **Pratiche.** `concurrency.pg.test.ts` tiene P1 e controlla che, con l'import e la disattivazione in attesa, nessuno tenga P2 (`holdPracticeLock` di `src/test/pg.ts`): un writer che blocca nell'ordine della tabella tiene P2, anche quando un retry sul deadlock gli farebbe finire il lavoro.
 - **Come si prova.** Test su Postgres reale con due connessioni (`holdCustomerLock` e `waitUntilBlocked` di `src/test/pg.ts`): `deactivate.pg.test.ts` e `operatorLock.pg.test.ts`. Ogni nuovo writer va aggiunto a `lockRule.db.test.ts` e a `operatorRule.db.test.ts`; la disattivazione c'è. Nella review della PR 4 i mutanti che rompono l'ordine (cliente prima dell'utente, `findWorkingOperator` senza `KEY SHARE`, `FOR NO KEY UPDATE`, disattivazione senza `OF users`) fanno fallire i test.
 - **`lockWorkingOperator`** prende il lock subito e restituisce l'errore dopo, così l'ordine degli errori resta quello di prima per i writer esistenti.
 - **Review:** [[specs/crm/gestione-operatori/REPORT]] (PR 4, concorrenza e dati).
+
+## [Source: import-pratiche]
+
+- Spec: AC27 di [[specs/crm/import-pratiche/SPEC]]; piano: D5 e D6 di [[specs/crm/import-pratiche/PLAN]]. L'import non blocca righe `users` e non assegna operatori, quindi la regola "prima gli utenti" resta valida: chi blocca un utente lo fa prima dei clienti, e l'import non ne blocca nessuno.
+- **Che cosa vede chi scrive durante un import.** Una scrittura su un cliente o una pratica dell'import aspetta il commit e poi riesce; se la sua richiesta scade prima (es. i 60 secondi di Vercel), fallisce senza salvare nulla a metà e si può ripetere (AC27). Una scrittura su altri clienti non aspetta. L'import su un deadlock ripete la transazione.
+- **Deviazione (T9b).** D6 voleva anche `bulkAssignPractices` nello stesso ordine, ma "Assegna" della pagina Pratiche è stato tolto (#83): resta la disattivazione.
+- **Pratiche.** `concurrency.pg.test.ts` tiene P1 e controlla che, con l'import e la disattivazione in attesa, nessuno tenga P2 (`holdPracticeLock` di `src/test/pg.ts`): un writer che blocca nell'ordine della tabella tiene P2, anche quando un retry sul deadlock gli farebbe finire il lavoro.
+- **Review** [[specs/crm/import-pratiche/REPORT]] (MAJOR, `ac3ec7e`): i clienti si bloccavano in due round fuori ordine di id (prima quelli delle chiavi del file, poi quelli delle partite IVA dei clienti riconosciuti), con un deadlock riproducibile contro la disattivazione. Ora un solo statement ordinato. I test pg (`concurrency.pg.test.ts`) provano con `NOWAIT` da un'altra connessione che dopo il lookup clienti (anche quelli della partita IVA) e pratiche sono bloccati, e che in attesa sul primo id l'import non tiene gli altri clienti.
+- La review del passo 5 della chat aveva notato che i writer del **vecchio** import riscrivevano `customers.chat_id` senza lock: escono con la PR G (#89). L'import nuovo non scrive le chat (AC39).

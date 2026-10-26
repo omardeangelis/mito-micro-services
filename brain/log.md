@@ -3,7 +3,7 @@ domain: _root
 type: index
 links: []
 created: 2026-09-24
-updated: 2026-10-25
+updated: 2026-10-26
 ---
 
 # Brain — Log
@@ -11,6 +11,19 @@ updated: 2026-10-25
 Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest when over.
 
 <!-- Entries are appended by create-spec (spec creation) and docs-maintenance (ingest). Format:
+
+## [2026-10-26] ingest | Import di clienti e pratiche, riscritto
+- Source: [[specs/crm/import-pratiche/SPEC]]
+- Flows written: 2 ([[domains/crm/flows/nuovo-import-con-anteprima]], [[domains/crm/flows/esecuzione-di-un-import-confermato]])
+- Concepts written: 3 ([[domains/crm/concepts/import]], [[domains/crm/concepts/riga-dell-import]], [[domains/crm/concepts/riconoscimento-dei-clienti-nell-import]]), più una sezione in [[domains/crm/concepts/regola-dei-lock]]
+- Review ingested: [[specs/crm/import-pratiche/REPORT]] (5 rilievi durevoli in [[tech-debt/crm/import-pratiche]])
+
+## [2026-10-26] review | Import di clienti e pratiche, PR A–G
+- Report: [[specs/crm/import-pratiche/REPORT]]; rubric: [[specs/crm/import-pratiche/RUBRIC]]
+- Scope: spec
+- Verdict: DO NOT SHIP su `bb956d6`; tutti i BLOCKER e MAJOR corretti dopo, in B, E e F
+- Impact: critical
+- Verifiers: 4 (1 blocker, 8 major)
 
 ## [2026-10-26] merge | Router `supabase` e `supabaseClient`: PR B del passo 5 in `dev`
 - [PR #91](https://github.com/omardeangelis/mito-micro-services/pull/91) unita in `dev` (`25ba9de`) con la CI verde, senza l'approvazione di Leonardo, su richiesta di Omar (D22): il router `supabase` tolto, le route di export su `services/export/files.ts`, `supabaseClient` fuori dal contesto tRPC
@@ -162,6 +175,19 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 - Gate di qualità: DO NOT SHIP al primo giro (1 blocker, 7 major), corretti nel piano senza un secondo giro, per scelta di Omar
 - OQ1 chiusa: nessuna traccia di uso della falla in `pg_stat_statements` di prod (dal 2024-06-13) né in Sentry
 
+## [2026-10-24] plan | Import di clienti e pratiche, riscritto
+- Plan: [[specs/crm/import-pratiche/PLAN]]
+- 22 task in 7 PR (A caratterizzazione, B dominio, C schema, D coda Cloud Tasks, E servizio, F UI, G rimozione) più due prove su staging
+- Scelta di Leonardo: l'import confermato gira in una coda Cloud Tasks
+- Gate: primo giro DO NOT SHIP (2 blocker), secondo DO NOT SHIP (3 major, nessun blocker); tutti corretti senza terzo giro
+
+## [2026-10-23] spec | Import di clienti e pratiche, riscritto
+- Created spec: [[specs/crm/import-pratiche/SPEC]]
+- Domain: crm
+- Status: Draft
+- Gate di qualità (charter di `adversarial-verifier` in un agente a contesto pulito, 2 giri): primo giro DO NOT SHIP (2 blocker, 4 major), secondo giro DO NOT SHIP (1 blocker e 1 major rimasti, 1 major nuovo); tutti corretti senza terzo giro (budget di 2 tentativi): date seriali di Excel aggiunte a OQ2, attesa delle scritture concorrenti, uguaglianza di AC32 limitata alla conversione di una riga
+- 7 domande aperte per Leonardo, con i default
+
 ## [2026-10-23] ingest | Export chiamate per operatore, solo admin
 - Source: [[specs/crm/export-chiamate/SPEC]]
 - Flows written: 2
@@ -283,31 +309,9 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 - Impact: critical
 - Verifiers: 10, poi v5 rilanciato (0 blocker e 2 major alla prima verifica; un major nuovo alla seconda di v5, sul test dello script; tutti corretti o accettati come debito)
 
-## [2026-10-17] review | Sezione Contatti — PR5a "Logica sul server e stato dell'URL"
-- Report: [[specs/crm/sezione-contatti/REPORT]] (round PR5a)
-- Scope: spec
-- Verdict: SHIP (prima: DO NOT SHIP); la riconferma di Omar sull'indice della priorità, aperta il 2026-10-17, è arrivata il 2026-10-18
-- Impact: critical
-- Verifiers: 10, poi v1, v8, v10 rilanciati e v11 (regressione) aggiunto (1 blocker e 4 major alla prima verifica, 2 major alla seconda; tutti corretti; la riconferma umana è arrivata il 2026-10-18)
-
-## [2026-10-17] implement | Sezione Contatti — PR5a
-- Spec: [[specs/crm/sezione-contatti/SPEC]] (AC10, AC44, Constraints e Decision Log aggiornati), piano: [[specs/crm/sezione-contatti/PLAN]] (T5.1, T5.2, T5.3, T5.14, T5.15, T5.16; T5.17 è il gate)
-- `task.getContacts` e `task.getContactById`, stato dell'URL puro (`searchParams.ts`), preferenza delle colonne di Contatti, richiamo solo da domani (D22), migrazione dei due `DROP INDEX` con `lock_timeout` (da applicare a mano da Omar); nessuna interfaccia (PR5b)
-
-## [2026-10-16] review | Sezione Contatti — PR4, T4.5–T4.7 (sesta verifica)
-- Report: [[specs/crm/sezione-contatti/REPORT]]
-- Scope: spec
-- Verdict: DO NOT SHIP
-- Impact: medium
-- Verifiers: 2 (0 blockers, 1 major)
-
 ## [YYYY-MM-DD] ingest | <spec title>
 - Source: [[specs/<domain>/<spec>/SPEC]]
 - Flows written: <count>
 - Concepts written: <count>
 -->
 
-## [2026-10-21] plan | Seeder del database locale, con gli scenari dei cron
-- Plan: [[specs/crm/seeder-locale/PLAN]]; spec passata ad `approved`
-- Decisioni di Omar: servizi `update` e `cleanup-task-event-log` su Effect con `Db` (D1); giro completo a 10.000 anche in CI (D2); due PR, A (refactor + via i seed di oggi) e B (seeder) (D3)
-- T7.1c del piano di Contatti segnato "Sostituito"; T7.3 non lo aspetta più
