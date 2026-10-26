@@ -5,6 +5,7 @@
 import {
   dropExpectedTrpcErrors,
   dropQueryParams,
+  dropRequestBody,
   sentryInitOptions,
 } from "@/lib/utils/sentry"
 import * as Sentry from "@sentry/nextjs"
@@ -17,7 +18,7 @@ Sentry.init({
 
   beforeSend: (event, hint) => {
     const kept = dropExpectedTrpcErrors(event, hint)
-    return kept && dropQueryParams(kept)
+    return kept && dropRequestBody(dropQueryParams(kept))
   },
 
   // Setting this option to true will print useful information to the console while you're setting up Sentry.
