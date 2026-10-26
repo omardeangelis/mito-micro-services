@@ -9,7 +9,9 @@ import { query, transaction } from "../../effect/db"
 /**
  * Creates the user NextAuth signs up, without the provider's picture, and its
  * operator, which every operator procedure requires. Both rows or neither.
- * Only the provider's fields: the role and the preferences keep their defaults.
+ * Only the provider's fields and the role: a new user is an OPERATORE, whom an
+ * admin can promote, never an ADMIN as the column's default would make them.
+ * The preferences keep their default.
  */
 export const createUserWithOperator = (user: Omit<AdapterUser, "id">) =>
   transaction(
@@ -23,6 +25,7 @@ export const createUserWithOperator = (user: Omit<AdapterUser, "id">) =>
             email: user.email,
             emailVerified: user.emailVerified,
             image: null,
+            role: "OPERATORE",
           })
           .returning()
       )
