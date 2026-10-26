@@ -1,8 +1,8 @@
 import { api } from "@/trpc/server"
 import { FinanceCard } from "./FinanceCard"
-import { Skeleton } from "@/components/ui/skeleton"
 import { DonutCard } from "./DonutCard"
 import { CircleCard } from "./CircleCard"
+import { CardRow } from "./CardRow"
 import { type TimeFrame } from "@mito/domain/constants/timeframes"
 
 export const AdminDataSection = async ({
@@ -18,7 +18,7 @@ export const AdminDataSection = async ({
     ])
 
   return (
-    <div className="flex h-full w-full flex-row items-stretch justify-between gap-8">
+    <CardRow>
       <FinanceCard
         title="Finanziato medio per pratica"
         referencePeriod={{ total: reference }}
@@ -26,21 +26,9 @@ export const AdminDataSection = async ({
         windows={windows}
       />
       <CircleCard done={done} todo={todo}>
-        <p className="text-tremor-default text-tremor-content dark:text-dark-tremor-content">
-          Contatti con esito
-        </p>
+        <h2 className="text-sm text-neutral-500">Contatti con esito</h2>
       </CircleCard>
       <DonutCard data={data} />
-    </div>
-  )
-}
-
-export const DataSectionSkeleton = () => {
-  return (
-    <div className="flex w-full flex-row items-center justify-between gap-8">
-      <Skeleton className="h-48 w-1/3 rounded-md" />
-      <Skeleton className="h-48 w-1/3 rounded-md" />
-      <Skeleton className="h-48 w-1/3 rounded-md" />
-    </div>
+    </CardRow>
   )
 }

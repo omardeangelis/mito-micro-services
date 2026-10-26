@@ -74,6 +74,20 @@ describe("sezione dell'admin", () => {
     ])
   })
 
+  it("i titoli delle card sono intestazioni", async () => {
+    render(await AdminDataSection({ timeframe: "30d" }))
+
+    expect(
+      screen
+        .getAllByRole("heading", { level: 2 })
+        .map((title) => title.textContent)
+    ).toEqual([
+      "Finanziato medio per pratica",
+      "Contatti con esito",
+      "Finanziato totale per sede",
+    ])
+  })
+
   it("la card della media mostra le date delle finestre della risposta", async () => {
     render(await AdminDataSection({ timeframe: "30d" }))
 
@@ -86,6 +100,20 @@ describe("sezione dell'operatore", () => {
     render(await OperatorDataSection({ timeframe: "30d" }))
 
     expect(titles()).toEqual([
+      "Finanziato totale",
+      "Contatti con esito",
+      "Finanziato medio per pratica",
+    ])
+  })
+
+  it("i titoli delle card sono intestazioni", async () => {
+    render(await OperatorDataSection({ timeframe: "30d" }))
+
+    expect(
+      screen
+        .getAllByRole("heading", { level: 2 })
+        .map((title) => title.textContent)
+    ).toEqual([
       "Finanziato totale",
       "Contatti con esito",
       "Finanziato medio per pratica",

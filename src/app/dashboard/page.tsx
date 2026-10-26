@@ -4,7 +4,7 @@ import { DataSection } from "./_components/DataSection"
 import { TableSkeleton } from "@/components/custom/table/TableSkeleton"
 import { ImportLink } from "./_components/ImportLink"
 import { CallsSection } from "./_components/export/CallsSection"
-import { DataSectionSkeleton } from "./_components/AdminDataSection"
+import { DataSectionSkeleton } from "./_components/CardRow"
 import { type ServerPageProps } from "@/lib/types"
 import { parseTimeFrame } from "@mito/domain/constants/timeframes"
 import { TimeFrameSelector } from "@/components/custom/date-picker"
@@ -24,7 +24,7 @@ export default async function DashboardHome(
               </Suspense>
             </div>
             <div className="mt-8">
-              <div className="flex items-center gap-4">
+              <div className="flex flex-wrap items-center gap-4">
                 <h2 className="text-2xl">Analisi Andamento</h2>
                 <TimeFrameSelector timeframe={timeframe} />
               </div>

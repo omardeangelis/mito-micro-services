@@ -60,6 +60,16 @@ describe("FinanceCard: la variazione con un confronto a 0 (AC21)", () => {
       bar: "0",
     })
   })
+
+  it("con un riferimento di 150 000 e un confronto a 0, il `—` è nascosto ai lettori di schermo, che leggono perché manca la variazione", () => {
+    renderCard(150_000, 0)
+
+    expect(screen.getByText("—").getAttribute("aria-hidden")).toBe("true")
+    const reason = screen.getByText(
+      "Variazione non calcolabile: periodo di confronto a 0"
+    )
+    expect(reason.classList.contains("sr-only")).toBe(true)
+  })
 })
 
 describe("FinanceCard: la variazione con un confronto maggiore di 0", () => {
@@ -78,4 +88,30 @@ describe("FinanceCard: la variazione con un confronto maggiore di 0", () => {
       bar: "-50",
     })
   })
+})
+
+describe("FinanceCard: una variazione oltre il 999%", () => {
+  it("da 1 a 160 464 il badge mostra `> 999%` in aumento e la barra si ferma a 100", () => {
+    expect(renderCard(160_464, 1)).toEqual({
+      badge: "> 999%",
+      deltaType: "increase",
+      bar: "100",
+    })
+  })
+})
+
+describe("FinanceCard: una variazione che arrotondata è 0", () => {
+  it.each([
+    [100.4, 100],
+    [99.6, 100],
+  ])(
+    "da %s a %s il badge mostra `0%` con l'indicatore `unchanged`",
+    (reference, comparison) => {
+      const { badge, deltaType } = renderCard(reference, comparison)
+      expect({ badge, deltaType }).toEqual({
+        badge: "0%",
+        deltaType: "unchanged",
+      })
+    }
+  )
 })
