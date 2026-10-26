@@ -22,6 +22,12 @@ export const testAuth = (config: Partial<AuthConfig> = {}): Auth =>
     ...config,
   })
 
+/** An instance, or a handler in front of one (`authHandler`). */
+export type Target = Auth | ((request: Request) => Promise<Response>)
+
+const handle = (target: Target, request: Request) =>
+  typeof target === "function" ? target(request) : target.handler(request)
+
 /** The Azure profile the fake token endpoint puts in the id token. */
 export type Profile = { oid: string; email: string; name?: string }
 
@@ -83,12 +89,13 @@ const cookiesOf = (response: Response) =>
  * authorization URL.
  */
 export async function loginWithMicrosoft(
-  auth: Auth,
+  auth: Target,
   profile: Profile,
   body: Record<string, unknown> = {}
 ) {
   const microsoft = fakeMicrosoft(profile)
-  const start = await auth.handler(
+  const start = await handle(
+    auth,
     new Request(`${BASE}/api/auth/sign-in/social`, {
       method: "POST",
       headers: { "content-type": "application/json", origin: BASE },
@@ -98,7 +105,8 @@ export async function loginWithMicrosoft(
   const { url } = (await start.clone().json()) as { url: string }
   const authorization = new URL(url)
   const state = authorization.searchParams.get("state") ?? ""
-  const callback = await auth.handler(
+  const callback = await handle(
+    auth,
     new Request(
       `${BASE}/api/auth/callback/microsoft?code=the-code&state=${encodeURIComponent(state)}`,
       { headers: { cookie: cookiesOf(start) } }
@@ -117,8 +125,13 @@ export const linkMicrosoft = (userId: string, oid: string) =>
   })
 
 /** Asks for the link of the email login; the response of the request. */
-export const requestLink = (auth: Auth, email: string) =>
-  auth.handler(
+export const requestLink = (
+  auth: Target,
+  email: string,
+  body: Record<string, unknown> = {}
+) =>
+  handle(
+    auth,
     new Request(`${BASE}/api/auth/sign-in/magic-link`, {
       method: "POST",
       headers: { "content-type": "application/json", origin: BASE },
@@ -126,10 +139,11 @@ export const requestLink = (auth: Auth, email: string) =>
         email,
         callbackURL: "/dashboard",
         errorCallbackURL: "/login?error=1",
+        ...body,
       }),
     })
   )
 
 /** Opens a link of the email login, as the browser does. */
-export const openLink = (auth: Auth, url: string) =>
-  auth.handler(new Request(url, { headers: { origin: BASE } }))
+export const openLink = (auth: Target, url: string) =>
+  handle(auth, new Request(url, { headers: { origin: BASE } }))
