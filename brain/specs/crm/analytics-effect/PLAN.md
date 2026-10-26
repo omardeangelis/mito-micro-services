@@ -423,9 +423,9 @@ Ogni task parte da un test rosso sul comportamento nuovo, poi aggiorna i test ve
   - i numeri dell'admin in `financed.db.test.ts`, `byBranch.db.test.ts` e `contactProgress.db.test.ts` non cambiano;
   - `git grep -ni analitycs -- packages/server src/app ':!**/_test/**'` non trova niente;
   - `pnpm exec tsc --noEmit` verde a fine wave (D22).
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Complete
+- **log**: Wave 5, worker sul modello dell'orchestratore (`high`). RED dell'orchestratore: `router.db.test.ts` (chiave `analytics`, le 4 chiavi esatte, i nomi vecchi assenti) e `procedures.db.test.ts` (tabella sulle chiavi esatte; in più dei casi del piano, un ADMIN senza riga operatore, il caso di TD11, e un ADMIN disattivato), rossi con `TypeError … reading '_def'`; verdi dopo, senza modifiche. Test aggiornati dal worker: `financed` (`readAll` → `{ totale, media }`; "un OPERATORE vede solo le pratiche dei suoi clienti, anche nella media di `getFinancedAverage`" con i numeri della vecchia media per cliente; l'ADMIN con gli stessi numeri), `byBranch` (il 4° caso diventa "un ADMIN riceve anche le pratiche dei clienti di un altro operatore"), `contactProgress` e `types` sulle chiavi nuove. 6 file, 106 test verdi; `tsc` e `eslint` verdi; `git grep -ni analitycs` fuori dai test vuota in `packages/server` e `src/app`; nessun `protectedProcedure` nel router.
+- **files edited/created**: `packages/server/src/api/{root.ts,routers/analytics/index.ts,routers/analytics/GET/index.ts}`, `packages/server/src/services/analytics/financed.ts`, `src/app/dashboard/_components/{AdminDataSection,OperatorDataSection}.tsx`, tutti i test di `packages/server/src/api/routers/analytics/_test/`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -510,9 +510,9 @@ Ogni task parte da un test rosso sul comportamento nuovo, poi aggiorna i test ve
 - **location**: `src/app/dashboard/_components/CircleCard.tsx`; nuovo `src/app/dashboard/_components/_test/CircleCard.test.tsx`
 - **description**: AC22 (S7): il colore dipende dalla percentuale arrotondata che la card mostra: verde oltre 75, blu oltre 50, giallo oltre 25, rosso altrimenti. `ProgressCircle` finto (D19) espone `color`. Casi, come `done`/`todo`: 0/0 → `0%` rosso; 25/75 → `25%` rosso; 26/74 → giallo; 51/49 → blu; 76/24 → verde; 754/246 (75,4%, mostrato `75%`) → blu; 756/244 (75,6%, mostrato `76%`) → verde.
 - **validation**: il test è rosso su `CircleCard` di oggi e verde dopo.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Complete
+- **log**: Wave 5, worker `haiku`. RED dell'orchestratore: 7 rossi su 8 (`{ color: 'green', shown: '26%' }` invece di giallo; 75,4% mostrato 75% rosso invece di blu). Il colore deriva dalla percentuale arrotondata, con tre `if`. 8 verdi.
+- **files edited/created**: `src/app/dashboard/_components/CircleCard.tsx`; nuovo `src/app/dashboard/_components/_test/CircleCard.test.tsx`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -529,9 +529,9 @@ Ogni task parte da un test rosso sul comportamento nuovo, poi aggiorna i test ve
   - riferimento 150, confronto 100: `50%`, `increase`, barra 50; riferimento 50, confronto 100: `-50%`, `decrease`, barra −50 (il comportamento di oggi, che resta).
   Le prop delle date restano quelle di oggi: le cambia T16.
 - **validation**: il caso 150 000 / 0 è rosso su `FinanceCard` di oggi; gli altri sono già verdi e restano come guardia (con 0 / 0, `delta` è già 0); tutti verdi dopo.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Complete
+- **log**: Wave 5, worker `haiku`. RED dell'orchestratore: 1 rosso su 4 (`15000000%` invece di `—`); i casi 0/0, 150/100 e 50/100 verdi già prima, come guardia. Con un confronto a 0 la variazione vale 0 (`unchanged`, barra a 0) e il badge mostra `—`, o `0%` con tutti e due a 0. 4 verdi.
+- **files edited/created**: `src/app/dashboard/_components/FinanceCard.tsx`; nuovo `src/app/dashboard/_components/_test/FinanceCard.test.tsx`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -593,9 +593,9 @@ Ogni task parte da un test rosso sul comportamento nuovo, poi aggiorna i test ve
 - **location**: `packages/domain/src/schemas.ts`
 - **description**: AC23, TD10 (f): toglie la riga di `insertChatToOperatorSchema`. `chatToOperator` e `createInsertSchema` restano usati.
 - **validation**: `git grep -n insertChatToOperatorSchema -- packages src apps` non trova niente; `tsc` verde a fine wave (D22).
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Complete
+- **log**: Wave 5, worker `haiku`. Tolta la riga; `chatToOperator` e `createInsertSchema` restano usati. `git grep -n insertChatToOperatorSchema -- packages src apps` vuota; `tsc` verde a fine wave.
+- **files edited/created**: `packages/domain/src/schemas.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
