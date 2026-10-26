@@ -123,6 +123,7 @@ updated: 2026-10-25
 | Dopo la review, test nuovi (AC10: aggiunti dopo il refactor) `downloadGuards.test.ts` e `importErrorGuards.test.ts`, a `HEAD` e in un worktree a `2b284b4` (il codice dell'export di `c17a0d3`) | verdi, due giri | 21 test nuovi, 42 con quelli di T10 e T11. Nessun file di test di prima cambia |
 | Dopo la review, i mutanti sopravvissuti nelle prove dei verificatori (`scratchpad/wave-review-b.json`), contro i soli test nuovi | 10 uccisi su 10 | `authCheck(req)` nelle due route, download prima di `authCheck`, download prima dell'allow-list con l'errore ingoiato, `\d` → `.`, `\d{2}` → `\d+`, punto non scappato, flag `i`, `trim`, `.buffer` al posto della copia |
 | T14.5, rilanci di v4 sui documenti di GB2 (4) e verifica delle correzioni | SHIP a `7ada632` | I quattro rilanci DO NOT SHIP, ognuno su un passo di GB2 che non reggeva: il ramo di fallimento, il login del backend di staging, B6 senza le variabili di login, il run del deploy. Dettagli nel giro della PR B di `REPORT.md` |
+| T14.4, prova nel browser in locale (2026-10-26, dopo la review), `next dev` di un worktree a `6ea0d61` con il solo `.env.development.local`. Il file conteneva il database `mito_local`, le chiavi dello storage di sviluppo e un `NEXTAUTH_SECRET` nuovo, e nessun valore uguale a uno di `.env`. Una sessione di prova in `session` per l'ADMIN del seed `seed-user-01`, con il cookie in `agent-browser` | verde | "Nuovo import" con un file di 2 righe, una valida e una senza importi né codice cliente: "Ci sono 1 pratiche con errori", `POST /api/export/importError` 200. "Scarica il Report" apre `/api/export/download?n=error-import-26-10-2026.xlsx`: 200, `application/octet-stream`, `attachment; filename=error-import-26-10-2026.xlsx`, 18.345 byte, un xlsx con il foglio "Errori import", 33 colonne e la riga sbagliata con i suoi errori. `export_chiamate_26-10-2026.xlsx` e `../error-import-…` danno 404, `n=` vuoto 400, senza sessione 401 (download e caricamento). Il file resta nel bucket di sviluppo. Sessione di prova cancellata a fine prova |
 
 ## Acceptance Criteria Status
 
@@ -176,10 +177,11 @@ AC11–AC15 e AC17 (d)(e) sono della PR B, sotto.
   - "Elimina nota" non chiede conferma: un clic sul cestino elimina la nota;
   - chi elimina la sua unica nota resta fra gli operatori della chat (`chat_to_operator`), finché la chat ha altre note;
   - una pagina già aperta non vede la nota di un collega finché non si ricarica.
+- Dalla prova dell'export in locale: `mito_local` non ha la migrazione `20261023201234_task_status_non_risponde`, arrivata in `dev` dopo che il database era stato costruito, e la dashboard registra a ogni caricamento `export.callStats` fallita ("invalid input value for enum task_status"). È il database locale indietro, non il codice: `pnpm db:local:migrate` la applica.
 
 ## Remaining Work
 
 - GA2 su staging, a mano: con il backend su Cloud Run, un operatore che non è nella chat scrive una nota, chi l'ha avviata ne scrive un'altra, si elimina l'ultima. Ha la stessa dipendenza di GB2: con il backend su Cloud SQL, le chiamate tRPC al backend vedono solo le sessioni del backend, quindi serve il login sul backend (B6).
 - Il punto 2 della checklist del REPORT della PR A: la voce di debito per i writer dell'import, che `docs-maintenance` porta nel tech debt.
-- PR B: la PR verso `dev` quando Omar la chiede, con la revisione di Leonardo (D22). Dopo il merge, T15, che porta la SPEC a `implemented`.
-- GB2 è bloccato: B6 di [[chore/migrazione-gcp]] non prevede le variabili di login del backend di staging, e `deploy-staging.sh` non le passa. Da decidere chi aggiunge quel passo al piano GCP; poi GB2 come nel §12 del PLAN.
+- PR B: aperta il 2026-10-26 su richiesta di Omar, con la revisione di Leonardo richiesta. Omar ha chiesto di unirla con la CI verde, senza aspettare l'approvazione di Leonardo che D22 prevedeva. Dopo il merge, T15, che porta la SPEC a `implemented`.
+- GB2 è bloccato: B6 di [[chore/migrazione-gcp]] non prevedeva le variabili di login del backend di staging, e `deploy-staging.sh` non le passava. Il passo è nella [PR #90](https://github.com/omardeangelis/mito-micro-services/pull/90): prima del suo merge, qualcuno con l'accesso a Vercel lancia `login-staging.sh` con i valori del progetto di staging. Poi il resto di B6, e GB2 come nel §12 del PLAN.
