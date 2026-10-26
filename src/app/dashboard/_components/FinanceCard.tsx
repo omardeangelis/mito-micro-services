@@ -27,15 +27,19 @@ type FinanceCardProps = {
 
 export const FinanceCard = (props: FinanceCardProps) => {
   const { referencePeriod, comparisonPeriod } = props
-  const delta =
-    (referencePeriod.total - comparisonPeriod.total) /
-    (comparisonPeriod.total || 1)
+  const hasComparison = comparisonPeriod.total !== 0
+  const delta = hasComparison
+    ? (referencePeriod.total - comparisonPeriod.total) / comparisonPeriod.total
+    : 0
 
   const isIncreasePositive = delta > 0
   const deltaType =
     delta === 0 ? "unchanged" : isIncreasePositive ? "increase" : "decrease"
   const deltaValue = delta * 100
-  const percentage = `${deltaValue.toFixed(0)}%`
+  const percentage =
+    !hasComparison && referencePeriod.total !== 0
+      ? "—"
+      : `${deltaValue.toFixed(0)}%`
   const diff = referencePeriod.total - comparisonPeriod.total
   const comparisonTimeFrame = props.comparisonTimeFrame ?? "30d"
   const comparisionDate = {
