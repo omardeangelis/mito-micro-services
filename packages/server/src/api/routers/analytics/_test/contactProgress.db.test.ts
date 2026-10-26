@@ -3,12 +3,15 @@ import { createTestCaller } from "@/test/caller"
 import { migrateUpTo, resetDb } from "@/test/db"
 import { createOperator, createTask } from "@/test/factories"
 
-// Caratterizzazione di "Chiamate completate" (AC1, S4): fissa la risposta di
-// `analytics.getContactProgress`, senza input, così com'è oggi.
-// - `done`: ogni stato tranne `chiamare`, `nessuno` e `null`, attivi e non attivi;
-// - `todo`: solo `chiamare`, attivi e non attivi;
+// Caratterizzazione di "Contatti con esito" (AC17) sulla coda attuale: fissa la
+// risposta di `analytics.getContactProgress`, senza input, così com'è oggi.
+// - solo i contatti attivi: un contatto non attivo non conta, in nessuno stato;
+// - `done`: gli stati con un esito (`app.to`, `caricato`, `erogata`,
+//   `non interessato`, `richiamare`);
+// - `todo`: gli stati in coda (`chiamare`, `followup`, `non risponde`);
+// - `nessuno` e lo stato vuoto non contano in nessuno dei due;
 // - nessun filtro di data;
-// - un ADMIN conta tutti i contatti, un OPERATORE solo quelli con il suo operator_id.
+// - un ADMIN conta tutti i contatti attivi, un OPERATORE solo quelli con il suo operator_id.
 
 const STATES = [
   "chiamare",
@@ -42,7 +45,7 @@ async function seedFixture() {
   return { operatorA, operatorB }
 }
 
-describe("analytics.getContactProgress (Chiamate completate)", () => {
+describe("analytics.getContactProgress (Contatti con esito)", () => {
   beforeAll(async () => {
     await migrateUpTo()
   })
@@ -52,33 +55,33 @@ describe("analytics.getContactProgress (Chiamate completate)", () => {
   })
 
   describe("con il fixture completo: due operatori e senza operatore", () => {
-    it("un OPERATORE conta solo i suoi contatti, attivi e non attivi: done 14, todo 2", async () => {
+    it("un OPERATORE conta solo i suoi contatti attivi: done 5, todo 3", async () => {
       const { operatorA } = await seedFixture()
       const caller = createTestCaller(operatorA)
 
       expect(await caller.analytics.getContactProgress()).toEqual({
-        done: 14,
-        todo: 2,
+        done: 5,
+        todo: 3,
       })
     })
 
-    it("l'altro OPERATORE conta solo i suoi contatti: done 14, todo 2", async () => {
+    it("l'altro OPERATORE conta solo i suoi contatti attivi: done 5, todo 3", async () => {
       const { operatorB } = await seedFixture()
       const caller = createTestCaller(operatorB)
 
       expect(await caller.analytics.getContactProgress()).toEqual({
-        done: 14,
-        todo: 2,
+        done: 5,
+        todo: 3,
       })
     })
 
-    it("un ADMIN conta tutti i contatti, attivi e non attivi: done 42, todo 6", async () => {
+    it("un ADMIN conta tutti i contatti attivi, di ogni operatore e senza operatore: done 15, todo 9", async () => {
       await seedFixture()
       const caller = createTestCaller(await createOperator({ role: "ADMIN" }))
 
       expect(await caller.analytics.getContactProgress()).toEqual({
-        done: 42,
-        todo: 6,
+        done: 15,
+        todo: 9,
       })
     })
 
@@ -96,7 +99,7 @@ describe("analytics.getContactProgress (Chiamate completate)", () => {
   })
 
   describe("quali stati contano", () => {
-    it("un contatto per stato, attivo: done conta tutti gli stati tranne chiamare, nessuno e null; todo solo chiamare", async () => {
+    it("un contatto per stato, attivo: done conta gli stati con un esito, todo quelli in coda; nessuno e null non contano in nessuno dei due", async () => {
       const operator = await createOperator({ role: "OPERATORE" })
       for (const state of STATES) {
         await createTask({ state, isActive: true, operatorId: operator.id })
@@ -104,12 +107,12 @@ describe("analytics.getContactProgress (Chiamate completate)", () => {
       const caller = createTestCaller(operator)
 
       expect(await caller.analytics.getContactProgress()).toEqual({
-        done: 7,
-        todo: 1,
+        done: 5,
+        todo: 3,
       })
     })
 
-    it("followup e non risponde sono fra i completati", async () => {
+    it("followup e non risponde sono fra i da fare (in coda), non fra i completati", async () => {
       const operator = await createOperator({ role: "OPERATORE" })
       await createTask({
         state: "followup",
@@ -124,8 +127,8 @@ describe("analytics.getContactProgress (Chiamate completate)", () => {
       const caller = createTestCaller(operator)
 
       expect(await caller.analytics.getContactProgress()).toEqual({
-        done: 2,
-        todo: 0,
+        done: 0,
+        todo: 2,
       })
     })
 
@@ -145,7 +148,7 @@ describe("analytics.getContactProgress (Chiamate completate)", () => {
       })
     })
 
-    it("un contatto non attivo in `app.to` conta in `done`", async () => {
+    it("un contatto non attivo in `app.to` non conta in `done` di `getContactProgress`", async () => {
       const operator = await createOperator({ role: "OPERATORE" })
       await createTask({
         state: "app.to",
@@ -155,12 +158,12 @@ describe("analytics.getContactProgress (Chiamate completate)", () => {
       const caller = createTestCaller(operator)
 
       expect(await caller.analytics.getContactProgress()).toEqual({
-        done: 1,
+        done: 0,
         todo: 0,
       })
     })
 
-    it("un contatto non attivo in `chiamare` conta in `todo`", async () => {
+    it("un contatto non attivo in `chiamare` non conta in `todo`", async () => {
       const operator = await createOperator({ role: "OPERATORE" })
       await createTask({
         state: "chiamare",
@@ -171,13 +174,13 @@ describe("analytics.getContactProgress (Chiamate completate)", () => {
 
       expect(await caller.analytics.getContactProgress()).toEqual({
         done: 0,
-        todo: 1,
+        todo: 0,
       })
     })
   })
 
   describe("senza filtro di data", () => {
-    it("un contatto creato due anni fa conta, attivo o non attivo", async () => {
+    it("un contatto attivo creato due anni fa conta ancora (nessun filtro di data); quello non attivo no", async () => {
       const operator = await createOperator({ role: "OPERATORE" })
       const twoYearsAgo = new Date()
       twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2)
@@ -197,7 +200,7 @@ describe("analytics.getContactProgress (Chiamate completate)", () => {
 
       expect(await caller.analytics.getContactProgress()).toEqual({
         done: 1,
-        todo: 1,
+        todo: 0,
       })
     })
   })
