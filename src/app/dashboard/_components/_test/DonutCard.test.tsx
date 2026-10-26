@@ -1,5 +1,6 @@
 import { render, screen, within } from "@testing-library/react"
 import { describe, expect, it, vi } from "vitest"
+import { formatBigNumber } from "@/lib/utils/format"
 import { DonutCard } from "../DonutCard"
 
 // Recharts ha bisogno di un contenitore misurato, che jsdom non ha: la
@@ -52,14 +53,19 @@ describe("DonutCard: le fette", () => {
 
     const names = ["Bari", "Lecce", "Roma", "Nessuna", "Ancona", "Altre"]
     expect(donut().names).toEqual(names)
-    expect(legend()).toEqual([
-      "Bari€ 600.000",
-      "Lecce€ 500.000",
-      "Roma€ 400.000",
-      "Nessuna€ 300.000",
-      "Ancona€ 100.000",
-      "Altre€ 75.000",
-    ])
+    // Il formato compatto cambia con il CLDR di Node ("600.000" o "600K"):
+    // il test controlla l'ordine e le somme, non il formato
+    const rows: [string, number][] = [
+      ["Bari", 600_000],
+      ["Lecce", 500_000],
+      ["Roma", 400_000],
+      ["Nessuna", 300_000],
+      ["Ancona", 100_000],
+      ["Altre", 75_000],
+    ]
+    expect(legend()).toEqual(
+      rows.map(([name, total]) => `${name}€ ${formatBigNumber(total)}`)
+    )
   })
 
   it("con 6 sedi le mostra tutte, per importo", () => {
