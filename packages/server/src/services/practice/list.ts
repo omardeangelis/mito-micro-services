@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, ilike, inArray } from "drizzle-orm"
+import { and, asc, countDistinct, desc, eq, ilike, inArray } from "drizzle-orm"
 import { type PgColumn, union } from "drizzle-orm/pg-core"
 import { Effect } from "effect"
 import { practices } from "@mito/db/schema/pratiche"
@@ -44,7 +44,8 @@ const praticaSearchColumns = {
 
 /**
  * Una pagina della lista Pratiche, con il totale delle pratiche che
- * soddisfano i filtri. `total` resta l'array `[{ total }]` della query.
+ * soddisfano i filtri, contate una volta ciascuna come le righe di `data`.
+ * `total` resta l'array `[{ total }]` della query.
  */
 export const listPractices = (
   input: PracticeListQuery,
@@ -104,9 +105,14 @@ export const listPractices = (
     const total = query((client) =>
       client
         .select({
-          total: count(),
+          total: countDistinct(practices.praticaId),
         })
         .from(practices)
+        .innerJoin(
+          customerToPratica,
+          eq(practices.praticaId, customerToPratica.praticaId)
+        )
+        .innerJoin(customers, eq(customers.id, customerToPratica.customerId))
         .where(filterQuery)
     )
 
@@ -125,6 +131,7 @@ export const listPractices = (
           ratePagate: practices.ratePagate,
           updatedAt: practices.updatedAt,
           createdAt: practices.createdAt,
+          operatore: operators.name,
         })
         .from(practices)
         .innerJoin(
@@ -132,8 +139,11 @@ export const listPractices = (
           eq(practices.praticaId, customerToPratica.praticaId)
         )
         .innerJoin(customers, eq(customers.id, customerToPratica.customerId))
+        .leftJoin(operators, eq(operators.id, practices.operatorId))
         .where(filterQuery)
 
+      // La union si ordina solo per colonne del risultato: per questo il nome
+      // dell'operatore è nella select. A pari valore decide l'ID pratica
       return union(
         customersName,
         client
@@ -150,6 +160,7 @@ export const listPractices = (
             ratePagate: practices.ratePagate,
             updatedAt: practices.updatedAt,
             createdAt: practices.createdAt,
+            operatore: operators.name,
           })
           .from(practices)
           .innerJoin(
@@ -157,11 +168,12 @@ export const listPractices = (
             eq(practices.praticaId, customerToPratica.praticaId)
           )
           .innerJoin(customers, eq(customers.id, customerToPratica.customerId))
+          .leftJoin(operators, eq(operators.id, practices.operatorId))
           .where(filterQuery)
       )
         .limit(perPage)
         .offset((page - 1) * perPage)
-        .orderBy(sortedFn(order_by()))
+        .orderBy(sortedFn(order_by()), asc(practices.praticaId))
     })
 
     return yield* Effect.all({ total, data }, { concurrency: "unbounded" })
