@@ -6,7 +6,6 @@ import { userRouter } from "./routers/user/index"
 import { analitycsRouter } from "./routers/analytics/index"
 import { chatRouter } from "./routers/chat/index"
 import { taskRouter } from "./routers/task/index"
-import { storageRouter } from "./routers/supabase/route"
 import importRouter from "./routers/import/index"
 import exportRouter from "./routers/export/index"
 
@@ -23,7 +22,6 @@ export const appRouter = createTRPCRouter({
   analitycs: analitycsRouter,
   chat: chatRouter,
   task: taskRouter,
-  supabase: storageRouter,
   import: importRouter,
   export: exportRouter,
 })

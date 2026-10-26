@@ -8,13 +8,11 @@ vi.mock("@mito/db", async () => ({
   db: (await import("@/test/recordingDb")).recordingDb,
 }))
 vi.mock("../../../../auth", () => ({ getServerAuthSession: vi.fn() }))
-vi.mock("../../../../client/supabase", () => ({ supabaseClient: {} }))
 
 type Context = Awaited<ReturnType<typeof createTRPCContext>>
 
 const caller = importRouter.createCaller({
   db: recordingDb,
-  supabaseClient: {} as Context["supabaseClient"],
   session: { user: { id: "user" }, expires: "2099-01-01T00:00:00.000Z" },
   headers: new Headers(),
 } as Context)

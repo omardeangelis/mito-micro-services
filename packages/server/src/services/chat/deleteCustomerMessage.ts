@@ -1,27 +1,16 @@
-import "server-only"
-import { Data, Effect } from "effect"
+import { Effect } from "effect"
 import { and, count, eq } from "drizzle-orm"
 import { chat, messages } from "@mito/db/schema/chat"
 import { customers } from "@mito/db/schema/customers"
 import { chatToOperator } from "@mito/db/schema/relations/chatToOperator"
 import {
-  type CustomerMissing,
   type Db,
   type DbError,
   lockCustomer,
   query,
   transaction,
 } from "../../effect/db"
-
-/** The note doesn't exist any more, or its chat has no customer. */
-export class MessageMissing extends Data.TaggedError("MessageMissing")<{
-  readonly messageId: number
-}> {}
-
-/** Only the author of a note deletes it, an administrator too. */
-export class NotMessageAuthor extends Data.TaggedError("NotMessageAuthor")<{
-  readonly messageId: number
-}> {}
+import { MessageMissing, NotMessageAuthor } from "./errors"
 
 /**
  * Deletes a note of a customer's chat. The last note takes the chat with it:
@@ -35,11 +24,7 @@ export const deleteCustomerMessage = ({
 }: {
   messageId: number
   operator: { id: number }
-}): Effect.Effect<
-  void,
-  MessageMissing | NotMessageAuthor | CustomerMissing | DbError,
-  Db
-> =>
+}): Effect.Effect<void, MessageMissing | NotMessageAuthor | DbError, Db> =>
   transaction(
     Effect.gen(function* () {
       const [note] = yield* query((client) =>
@@ -58,7 +43,11 @@ export const deleteCustomerMessage = ({
         return yield* new NotMessageAuthor({ messageId })
       }
 
-      yield* lockCustomer(note.customerId)
+      yield* lockCustomer(note.customerId).pipe(
+        Effect.catchTag("CustomerMissing", () =>
+          Effect.fail(new MessageMissing({ messageId }))
+        )
+      )
       // Under the lock: the note may have gone with its chat in the meantime
       const deleted = yield* query((client) =>
         client
