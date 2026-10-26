@@ -69,9 +69,10 @@ vi.mock("@/trpc/react", () => ({
     operator: {
       getUserOperator: { useQuery: () => ({ data: mocks.operator }) },
       getOperatorById: {
-        useQuery: () => {
+        useQuery: (_input: unknown, options?: { enabled?: boolean }) => {
           mocks.noteRender()
-          return mocks.author
+          // Disabled: react-query fetches nothing and has no data
+          return options?.enabled === false ? { data: undefined } : mocks.author
         },
       },
     },
@@ -205,6 +206,13 @@ describe("CustomerChat, l'autore di una nota che non c'è ancora (M11, P17)", ()
     expect(
       screen.getByRole("heading", { level: 6, name: "Federica Rossi" })
     ).toBeTruthy()
+  })
+
+  it("una nota con un operatorId che nessun operatore può avere non cerca l'autore e non mostra un nome (TD3 a)", () => {
+    renderChat([{ ...note(1, "Nota senza autore"), operatorId: 0 }])
+
+    expect(notesWith("Nota senza autore")).toHaveLength(1)
+    expect(screen.queryByRole("heading", { level: 6 })).toBeNull()
   })
 })
 
