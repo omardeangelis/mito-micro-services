@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest"
+import { MAX_CHAT_LIMIT } from "@mito/domain/constants/chat"
 import { parseChatLimit } from "../chatLimit"
 
 describe("parseChatLimit: quanti messaggi della chat mostra il dettaglio (AC57)", () => {
@@ -6,7 +7,7 @@ describe("parseChatLimit: quanti messaggi della chat mostra il dettaglio (AC57)"
     ["5", 5],
     ["10", 10],
     ["250", 250],
-    ["10000", 10_000],
+    [String(MAX_CHAT_LIMIT), MAX_CHAT_LIMIT],
   ])("legge %s", (value, expected) => {
     expect(parseChatLimit(value)).toBe(expected)
   })
@@ -22,7 +23,7 @@ describe("parseChatLimit: quanti messaggi della chat mostra il dettaglio (AC57)"
     ["esadecimale", "0x10"],
     ["con spazi", " 5 "],
     ["con zeri davanti", "007"],
-    ["oltre il tetto", "10001"],
+    ["oltre il tetto", String(MAX_CHAT_LIMIT + 1)],
     ["enorme", "1000000000000000000000"],
     ["ripetuto", ["5", "10"]],
   ])(

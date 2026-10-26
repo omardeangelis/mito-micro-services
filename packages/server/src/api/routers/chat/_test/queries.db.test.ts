@@ -1,5 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, it } from "vitest"
 import { messages } from "@mito/db/schema/chat"
+import { MAX_CHAT_LIMIT } from "@mito/domain/constants/chat"
 import { createTestCaller } from "@/test/caller"
 import { migrateUpTo, resetDb, testDb } from "@/test/db"
 import { createCustomer, createOperator } from "@/test/factories"
@@ -112,10 +113,6 @@ describe("chat.getChatMessagesById", () => {
       messages: ultime(7),
       total: 7,
     })
-    expect(await leggi(federica, { id: chatId, limit: 0 })).toEqual({
-      messages: [],
-      total: 7,
-    })
   })
 
   it("una chat senza note, o che non esiste, dà messaggi vuoti e total 0", async () => {
@@ -137,19 +134,20 @@ describe("chat.getChatMessagesById", () => {
     expect(delCollegaEstraneo).toEqual({ messages: ultime(5), total: 7 })
   })
 
-  it("con limit -1 il limit non si applica: restituisce tutte le note, in ordine crescente", async () => {
-    expect(await leggi(federica, { id: chatId, limit: -1 })).toEqual({
-      messages: ultime(7),
-      total: 7,
-    })
+  it("con limit uguale al massimo restituisce le note come con ogni altro limit", async () => {
+    expect(
+      await leggi(federica, { id: chatId, limit: MAX_CHAT_LIMIT })
+    ).toEqual({ messages: ultime(7), total: 7 })
   })
 
-  it("con un limit non intero dà INTERNAL_SERVER_ERROR con il messaggio del driver", async () => {
-    await expect(
-      leggi(federica, { id: chatId, limit: 2.5 })
-    ).rejects.toMatchObject({
-      code: "INTERNAL_SERVER_ERROR",
-      message: 'invalid input syntax for type bigint: "2.5"',
+  it.each([
+    ["negativo", -1],
+    ["zero", 0],
+    ["non intero", 2.5],
+    ["sopra il massimo", MAX_CHAT_LIMIT + 1],
+  ])("con un limit %s dà BAD_REQUEST", async (_nome, limit) => {
+    await expect(leggi(federica, { id: chatId, limit })).rejects.toMatchObject({
+      code: "BAD_REQUEST",
     })
   })
 })

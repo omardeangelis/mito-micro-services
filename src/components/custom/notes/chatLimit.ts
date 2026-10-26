@@ -1,12 +1,11 @@
-/** The most messages the address can ask for: a bigger number is no request. */
-const MAX_CHAT_LIMIT = 10_000
+import { MAX_CHAT_LIMIT } from "@mito/domain/constants/chat"
 
 /**
  * The `limit` of the detail's address: how many messages of the customer's
  * chat to show ("Carica altri messaggi" raises it, AC57). Plain digits only,
  * from 1 to `MAX_CHAT_LIMIT`; anything else (absent, repeated, "1e2", "0x10",
- * a number too big for the database) is ignored, and the chat starts from its
- * default.
+ * a number above the most the server returns) is ignored, and the chat starts
+ * from its default.
  */
 export const parseChatLimit = (
   value: string | string[] | undefined

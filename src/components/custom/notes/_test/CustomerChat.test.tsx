@@ -3,6 +3,7 @@ import { StrictMode, Suspense, useState } from "react"
 import userEvent from "@testing-library/user-event"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { type Message } from "@mito/domain/schemas"
+import { MAX_CHAT_LIMIT } from "@mito/domain/constants/chat"
 import { CollassableSection } from "@/components/custom/CollassableItem"
 import { CustomerChat, CustomerNewChat, CustomerNotes } from "../CustomerChat"
 import { CustomerChatSection } from "../CustomerChatSection"
@@ -673,6 +674,27 @@ describe("CustomerChat, scroll della lista", () => {
 
     expect(router.replace).toHaveBeenCalled()
     expect(scrolled).toEqual([])
+  })
+})
+
+describe("CustomerChat, 'Carica altri messaggi' fino al massimo", () => {
+  const loadMore = () =>
+    screen.queryByRole("button", { name: "Carica altri messaggi" })
+
+  it("l'ultimo passo chiede il massimo, non di più", async () => {
+    renderChat([note(1, "Prima nota")], MAX_CHAT_LIMIT + 10, MAX_CHAT_LIMIT - 2)
+    const user = userEvent.setup()
+
+    await user.click(loadMore()!)
+
+    const [href] = router.replace.mock.lastCall! as [string, unknown]
+    expect(new URL(href).searchParams.get("limit")).toBe(String(MAX_CHAT_LIMIT))
+  })
+
+  it("al massimo il bottone sparisce, anche se la chat ha altre note", () => {
+    renderChat([note(1, "Prima nota")], MAX_CHAT_LIMIT + 10, MAX_CHAT_LIMIT)
+
+    expect(loadMore()).toBeNull()
   })
 })
 
