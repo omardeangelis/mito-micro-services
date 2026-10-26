@@ -144,24 +144,22 @@ export function DatePickerFormItem({
 export const TimeFrameSelector = ({ timeframe }: { timeframe: TimeFrame }) => {
   const { setTimeframe } = useAnalyticsStore()
   const router = useRouter()
-  // Next non rimonta la pagina quando cambia solo `?tf=`: il periodo mostrato
-  // torna a quello della pagina quando cambia (link "Dashboard", Indietro), e
-  // fra la scelta e l'arrivo della navigazione resta quello scelto. Niente
-  // `key`: rimontando il Select il fuoco finirebbe sul body. Niente scroll
-  // nella navigazione: con lo scroll Next dà il fuoco a `main`
-  const [shown, setShown] = React.useState(timeframe)
-  const [pageTimeframe, setPageTimeframe] = React.useState(timeframe)
-  if (timeframe !== pageTimeframe) {
-    setPageTimeframe(timeframe)
-    setShown(timeframe)
-  }
+  // Next non rimonta la pagina quando cambia solo `?tf=`: finché la navigazione
+  // della scelta è in corso il selettore mostra la scelta, poi il periodo della
+  // pagina, anche quando Next scarta la navigazione per una partita dopo (link
+  // "Home", Indietro). Niente `key`: rimontando il Select il fuoco finirebbe
+  // sul body. Niente scroll nella navigazione: con lo scroll Next dà il fuoco
+  // a `main`
+  const [isNavigating, startNavigation] = React.useTransition()
+  const [choice, setChoice] = React.useState(timeframe)
+  const shown = isNavigating ? choice : timeframe
 
   React.useEffect(() => {
     const unsub = useAnalyticsStore.subscribe((state) => {
       const { timeframe } = state
       const url = new URL(window.location.href)
       url.searchParams.set("tf", timeframe)
-      router.push(url.toString(), { scroll: false })
+      startNavigation(() => router.push(url.toString(), { scroll: false }))
     })
 
     return () => unsub()
@@ -171,7 +169,7 @@ export const TimeFrameSelector = ({ timeframe }: { timeframe: TimeFrame }) => {
     <Select
       value={shown}
       onValueChange={(value: TimeFrame) => {
-        setShown(value)
+        setChoice(value)
         setTimeframe(value)
       }}
     >
