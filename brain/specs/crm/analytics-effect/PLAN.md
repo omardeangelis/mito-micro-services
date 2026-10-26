@@ -15,7 +15,7 @@ updated: 2026-10-26
 
 **Spec:** [[specs/crm/analytics-effect/SPEC]], scritta il 2026-10-26, con due passate di verifica (la prima DO NOT SHIP con 1 blocker e 2 major, la seconda con 1 blocker; tutti corretti).
 
-**Status:** In progress
+**Status:** Complete per il perimetro dell'esecuzione (2026-10-26): G0–T18 fatti e T19 in locale, review SHIP al giro 2 ([[specs/crm/analytics-effect/REPORT]]). Restano la prova nel browser di T19, bloccata senza `mito_local`, e la PR verso `dev` con Leonardo, in mano a Omar
 **Generato:** 2026-10-26 con `create-plan`. Il flusso: spec (4 decisioni di Omar), verifica della spec, grill (nessuna domanda: le decisioni rimaste si ricavano dal codice e dai passi 4 e 5), task graph, tdd, verifica del piano.
 - **Verifica del piano:** DO NOT SHIP, 0 blocker, 2 major, 7 minor e 5 nit, tutti corretti (§17).
 
@@ -637,9 +637,14 @@ Ogni task parte da un test rosso sul comportamento nuovo, poi aggiorna i test ve
   4. **`adversarial-review`** (`review.mode: total`) sulla PR, con un passaggio dedicato ai permessi (AC19). I BLOCKER si chiudono prima della PR.
   5. **PR verso `dev`**, dopo il merge di `dev` nel branch, con Leonardo come revisore obbligatorio. Nella descrizione: i tre round, le correzioni con le loro AC, il cambio dei permessi.
 - **validation**: tutti i controlli verdi e annotati; REPORT SHIP; PR aperta con Leonardo fra i revisori.
-- **status**: Planned
+- **status**: Done in locale (punti 1, 2, 4); la prova nel browser (punto 3) è bloccata, la PR (punto 5) da aprire con l'ok di Omar
 - **log**:
-- **files edited/created**:
+  1. Controlli di AC a `0c3d384`: le `grep` di AC5, AC6, AC10, AC18, AC23 e di `protectedProcedure` nel router vuote; 48 file nel perimetro di AC25, nessuno di `packages/db/` né di `.agents/`; i tre round nell'ordine (v4 li ha rifatti commit per commit); `server-only` 38.
+  2. Gate a `0c3d384`: `tsc --noEmit`, `eslint --no-eslintrc -c .eslintrc.cjs src packages` (al posto di `next lint`, che nel worktree non parte: IMPLEMENTATION-NOTES), `pnpm db:check`, `pnpm run test --run` (279 file verdi, 23 saltati: il progetto `pg`), `pnpm build` con i placeholder, `pnpm api:build`, `pnpm api:smoke`: verdi.
+  3. Prova nel browser: **bloccata**. `.env.development.local` del worktree punta a un database Supabase remoto, non a `mito_local`, e il Postgres locale chiede una password che l'orchestratore non ha. Le verifiche dei `Date` fino a `FinanceCard`: via RSC e via HTTP con `superjson` dalle sonde della review (v3, v6), non in un browser. La checklist del REPORT (punti 13–18) dice che cosa provare.
+  4. `adversarial-review`, con un passaggio sui permessi (v1). Giro 1 su `54da3e2` (oggi `0d7c2f9`): DO NOT SHIP, un MAJOR su AC11, corretto in `9f8da93`, e le guardie dei MINOR in `7cd07b9`. Giro 2: v3 DO NOT SHIP su `29ae6cb` (la chiave della correzione mandava il fuoco sul `body`), corretto in `ab8b2c3` da un test rosso, con le guardie di `1cbcfe3` e `0c3d384`; v3 SHIP su `1cbcfe3`, v4 SHIP sulla storia riscritta. Nessun BLOCKER. La navigazione scartata che lascia la scelta nel selettore è un FOLLOW-UP del tech debt.
+  5. PR verso `dev`: non aperta. Serve l'ok di Omar per il push e la PR, dopo il merge di `dev` nel branch, con Leonardo come revisore; la checklist obbligatoria del REPORT va fatta prima del merge.
+- **files edited/created**: `brain/specs/crm/analytics-effect/{IMPLEMENTATION-NOTES,RUBRIC,REPORT}.md`, `brain/tech-debt/crm/analytics-effect.md`, `brain/index.md`, `brain/log.md`, `brain/specs/crm/crm-specs.md`; dalle correzioni della review: `src/components/custom/date-picker/index.tsx`, `vitest.config.ts` e i test (Surprises di IMPLEMENTATION-NOTES)
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a

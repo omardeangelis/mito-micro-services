@@ -12,6 +12,13 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 
 <!-- Entries are appended by create-spec (spec creation) and docs-maintenance (ingest). Format:
 
+## [2026-10-26] review | Router `analytics` su Effect, con le correzioni della dashboard (passo 6)
+- Report: [[specs/crm/analytics-effect/REPORT]]; rubric: [[specs/crm/analytics-effect/RUBRIC]]
+- Scope: spec
+- Verdict: DO NOT SHIP al giro 1 (`54da3e2`: il selettore del periodo non seguiva la pagina dopo una navigazione nel client); al giro 2 v3 prima DO NOT SHIP (la chiave della correzione mandava il fuoco sul `body`), poi SHIP dopo `ab8b2c3`; v4 SHIP sulla storia riscritta. SHIP su `0c3d384`, gate completi verdi
+- Impact: critical; revisione dei permessi di Leonardo, prova nel browser su `mito_local` e classi della UI non misurate restano umane
+- Verifiers: 6 al giro 1 (0 blocker, 1 major), 3 passate al giro 2 (0 blocker, 1 major corretto); resta un FOLLOW-UP sulla navigazione scartata
+
 ## [2026-10-26] plan | Router `analytics` su Effect, con le correzioni della dashboard (passo 6 della migrazione)
 - Spec: [[specs/crm/analytics-effect/SPEC]], piano: [[specs/crm/analytics-effect/PLAN]]
 - 19 task e G0 in una PR con tre round: caratterizzazione delle 5 procedure con chiamanti (risposte, middleware, tipi, con i mutanti sul codice di oggi), refactor in `services/analytics/` con le 3 procedure senza chiamanti tolte, poi le correzioni da un test rosso (contratto del router e permessi, finestre dal `Clock`, una pratica contata una volta e solo le finanziate, "Contatti con esito", card, periodo non valido, refusi) e `insertChatToOperatorSchema` tolto
@@ -299,13 +306,6 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 - Verdict: SHIP. Refactor puro confermato: corpo delle risposte identico misurato con l'handler HTTP, test della PR 1 con diff vuoto. Cambia solo la telemetria degli errori del database, come per ogni procedura già su `runTrpc`. Le lacune di test segnalate sono chiuse in `ac85739`
 - Impact: critical (middleware dei permessi); revisione di Leonardo richiesta (AC29a)
 - Verifiers: 4 (0 blocker, 0 major, 5 minor, 2 nit; 4 SHIP)
-
-## [2026-10-21] review | Sezione Contatti — PR6 completa, terzo giro (richiesto da Omar)
-- Report: [[specs/crm/sezione-contatti/REPORT]] (round PR6 completa, terzo giro)
-- Scope: spec
-- Verdict: DO NOT SHIP al primo esito, poi SHIP. Il codice che scrive dati regge in tutti i passaggi. I 4 MAJOR (un buco nei test della mappatura dell'ordinamento di Clienti e tre frasi ereditate della guida e del dialogo di "Crea/assegna contatti" smentite dal codice) sono accettati da Omar come debito il 2026-10-21, con due voci nuove nel tech debt
-- Impact: critical
-- Verifiers: 16 (0 blocker, 4 major, 22 minor, 25 nit; 14 SHIP e 2 DO NOT SHIP)
 
 ## [YYYY-MM-DD] ingest | <spec title>
 - Source: [[specs/<domain>/<spec>/SPEC]]

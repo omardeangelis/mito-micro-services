@@ -5,8 +5,8 @@ scope: spec
 spec: analytics-effect
 review_target: "spec implementation, branch claude/analytics-effect-spec"
 base_ref: 2fd59da
-head_ref: 54da3e2
-verdict: do-not-ship
+head_ref: 0c3d384
+verdict: ship
 review_impact: critical
 human_in_loop: true
 links:
@@ -24,11 +24,26 @@ updated: 2026-10-26
 
 ## Verdict
 
+**Giro 2 (`29ae6cb..0c3d384`): SHIP** · impact: critical
+
+Rilanciati v3 e v4: v3 per la correzione di AC11, v4 per la storia riscritta dopo il giro 1. v3 dà prima DO NOT SHIP, per un MAJOR nato dalla correzione del giro 1: `key={timeframe}` rimonta il `Select` a ogni navigazione, e dopo ogni scelta il fuoco finisce sul `body` (sonda con `userEvent`: nodo nuovo, `activeElement` BODY). Corretto in `ab8b2c3` da un test rosso (stesso nodo e fuoco sul selettore dopo il cambio di periodo): il `Select` è controllato, il periodo mostrato torna a quello della pagina quando cambia e resta sulla scelta finché la navigazione è in corso. Rilanciato su `29ae6cb..1cbcfe3`, v3 dà SHIP; v4 dà SHIP sulla storia riscritta (i 20 commit compilano e passano la suite da soli). Nessun BLOCKER né MAJOR aperto. Resta un FOLLOW-UP: in una finestra stretta, se Next scarta la navigazione della scelta, il selettore resta sulla scelta. La checklist umana resta obbligatoria prima del merge.
+
 **Giro 1 (`2fd59da..54da3e2`): DO NOT SHIP** · impact: critical
 
 Cinque passi su sei danno SHIP; v3 dà DO NOT SHIP per un MAJOR su AC11. Nessun BLOCKER. L'obiezione più forte: **il selettore del periodo non segue il periodo della pagina dopo una navigazione nel client.** `TimeFrameSelector` passa la prop a `Select` di Radix come `defaultValue`, che non è controllato; Next 14 non rimonta la pagina quando cambia solo la query (`layout-router.js` usa una chiave senza i search params). Dopo il link "Dashboard" della sidebar da `?tf=90d`, o dopo Indietro, i numeri sono di `30d` e il selettore mostra ancora `90d`: è il disaccordo che AC11 vuole togliere. Era così anche prima del passo (con `useSearchParams` e `defaultValue`), e nessun test lo vede: i test del selettore lo montano una volta sola.
 
 ## Coverage
+
+**Giro 2.**
+
+- Passi rilanciati: v3 (due volte: su `29ae6cb`, poi su `29ae6cb..1cbcfe3` dopo la correzione) e v4, tutti e due su Sonnet. v1, v2, v5 e v6 non rilanciati: dopo il giro 1 il codice fuori dai test cambia solo in `date-picker/index.tsx` (il selettore, che è di v3) e nella lista `timeZoneTests` di `vitest.config.ts`; i gate di v5 li ha rifatti l'orchestratore su `0c3d384`.
+- Prove di v3: sonde con `userEvent` (fuoco dopo la scelta, scelta durante la navigazione, scelta ripetuta, Indietro, navigazione scartata); 21 mutanti sul selettore (2 equivalenti, gli altri uccisi); 14 sulle finestre (3 equivalenti, gli altri uccisi; il conto a giorni di calendario muore solo in `rome`, come deve); 9 sulla pagina; 8 giri con `--sequence.shuffle`, stabili.
+- Prove di v4: copie `git archive` dei 20 commit, ognuna con `tsc` e la suite intera (`unit`, `utc`, `rome`); una sonda differenziale con 25 insiemi di dati casuali (2125 risposte uguali fra la base e `2ddd53a`, 1625 fra `d6530b2` e `1013937`); circa 55 mutanti sul codice di `2ddd53a` contro i test del round 1; il rosso di ogni correzione sul codice del padre.
+- Gate su `0c3d384`, dall'orchestratore: `tsc --noEmit`, `eslint --no-eslintrc -c .eslintrc.cjs src packages` (al posto di `next lint`, che nel worktree non parte), `pnpm db:check`, `pnpm run test --run` (279 file verdi, 23 saltati: il progetto `pg`), `pnpm build` con i placeholder, `pnpm api:build`, `pnpm api:smoke`.
+- Hash del giro 1 dopo la riscrittura della storia (IMPLEMENTATION-NOTES): `96d25fc` → `9dca1b8`, `f30b827` → `7a3ba6a`, `4791114` → `56b4b15`, `efb4960` → `1013937`, `54da3e2` → `0d7c2f9`, `1909215` → `f4bf6d6`, `309b46f` → `d6530b2`.
+- UI e prova nel browser: come al giro 1, non eseguite.
+
+**Giro 1.**
 
 - Rubric passes run: 6/6. Modelli: v1 e v2 sul modello dell'orchestratore (Opus); v3, v4, v5, v6 Sonnet.
 - Passes skipped or failed: nessuno.
@@ -37,6 +52,23 @@ Cinque passi su sei danno SHIP; v3 dà DO NOT SHIP per un MAJOR su AC11. Nessun 
 - Prove eseguite dai verificatori, oltre ai test del repo: v1 su tre percorsi (`createTestCaller`, `inProcessLink`, HTTP sul backend Hono con un cookie di sessione vero) e 17 mutanti sui permessi, tutti uccisi; v2 34 mutanti sugli aggregati (30 uccisi) e sonde PGlite sull'SQL; v3 mutanti sugli estremi delle finestre, tutti uccisi, una sonda HTTP con `superjson` e una sonda di `rerender` del selettore; v4 copie `git archive` di ogni commit, 33 mutanti sul codice del round 2 (32 uccisi, uno equivalente); v5 tutti i gate, compreso `next lint` letterale in una copia fuori dal worktree e il progetto `pg` su un Postgres usa e getta.
 
 ## Findings
+
+### Giro 2
+
+| Severity | Concern (verifier) | Location | Problem | Required fix / evidence | Durable? |
+|----------|--------------------|----------|---------|-------------------------|----------|
+| MAJOR (corretto) | v3 — finestre e periodo | `src/components/custom/date-picker/index.tsx:165` (a `29ae6cb`) | `key={timeframe}` rimonta il `Select` quando cambia il periodo della pagina: dopo una scelta, quando arriva la navigazione, il selettore è un nodo nuovo e il fuoco va sul `body`. Prima del passo il fuoco restava sul selettore | Corretto in `ab8b2c3` da un test rosso (stesso nodo, fuoco sul selettore): `Select` controllato, il periodo mostrato torna a quello della pagina quando cambia. v3 rilanciato: SHIP | no |
+| MINOR | v3 — finestre e periodo | `src/components/custom/date-picker/index.tsx:147-156` | Navigazione scartata: si sceglie `90d`, poi "Dashboard" o Indietro prima della risposta RSC. Next scarta la prima navigazione (`action-queue.js`), la pagina resta su `30d`, il selettore mostra `90d`. La metà del componente è provata, quella di Next letta nel codice. Finestra stretta; prima del passo il selettore non seguiva nessuna navigazione | FOLLOW-UP in [[tech-debt/crm/analytics-effect]] (`useTransition` intorno a `router.push`); prova umana con la rete lenta (checklist, punto 16) | sì |
+| MINOR (corretto) | v3 — finestre e periodo | `src/components/custom/date-picker/_test/TimeFrameSelector.test.tsx` | Nessun test sceglieva un periodo: niente `router.push`, `tf` fisso, niente `setTimeframe`, niente sottoscrizione sopravvivevano (4 su 4) | Test della scelta in `ab8b2c3`: 8 mutanti su 8 uccisi | no |
+| MINOR (corretto) | v3 — finestre e periodo | `packages/server/src/services/analytics/_test/windows.db.test.ts` | Il test girava solo nel progetto `unit` (UTC): un conto a giorni di calendario passava | Fra i `timeZoneTests` in `1cbcfe3`: il mutante muore in `rome` | no |
+| MINOR (corretto) | v3 — finestre e periodo | `src/app/dashboard/_components/_test/FinanceCard.dates.test.tsx` | Solo istanti d'inverno alle 23:30 UTC: un fuso fisso a +1 ora (`Etc/GMT-1`), poi a +2 (`Etc/GMT-2`, `Europe/Athens`), dava le date di Roma | Un caso d'estate (`1cbcfe3`) e uno d'inverno alle 22:30 UTC (`0c3d384`): 8 mutanti di fuso su 8 uccisi, in `utc` e in `rome` | no |
+| MINOR (corretto) | v3 — finestre e periodo | `brain/tech-debt/crm/analytics-effect.md` | Il FOLLOW-UP della navigazione scartata stava solo in una modifica non committata | Committato con i documenti del giro 2 | no |
+| MINOR | v4 — storia dei round | round 1, `byBranch.db.test.ts` | Nessun test del round 1 fissa la ciambella vuota: a `2ddd53a` un `financedByBranch` che risponde `[{ data: null, total: 0 }]` passa i test del round 1. Il caso arriva in `7cd07b9`; il refactor non ha regressioni (sonda differenziale) | Annotato nelle note | no |
+| MINOR (corretto) | v4 — storia dei round | `IMPLEMENTATION-NOTES.md`, "Commit dopo il round 3" | "Ognuno parte da un test rosso" non vale per `7cd07b9`, che aggiunge solo test (uccidono i 5 mutanti della review provati) | Frase corretta | no |
+| NIT (corretto) | v4 — storia dei round | `IMPLEMENTATION-NOTES.md` | La mappa degli hash non ha `445d2d0` → `9f8da93` né `cc94855` → `7cd07b9`; righe che citano `54da3e2`; la tabella delle AC vuota | Mappa completata, AC compilate | no |
+| NIT (corretto) | v3, v4 | `TimeFrameSelector.test.tsx`, `FinanceCard.dates.test.tsx`, `vitest.config.ts`, `date-picker/index.tsx` | Il titolo di `it.each` stampava un `%s` vuoto; un titolo diceva "in UTC" ma gira in due fusi; il commento di `timeZoneTests` nominava solo l'import; `console.log` al montaggio del selettore | `ab8b2c3`, `1cbcfe3`, `0c3d384` | no |
+
+### Giro 1
 
 | Severity | Concern (verifier) | Location | Problem | Required fix / evidence | Durable? |
 |----------|--------------------|----------|---------|-------------------------|----------|
@@ -71,6 +103,8 @@ Cinque passi su sei danno SHIP; v3 dà DO NOT SHIP per un MAJOR su AC11. Nessun 
 
 | Concern (verifier) | Evidence |
 |--------------------|----------|
+| v3 — giro 2, su `1cbcfe3` | AC9: il `Clock` a ogni chiamata, gli estremi, il turno di un giorno; il test delle finestre in `utc` e in `rome` (9 test per progetto, non più in `unit`). AC10: `grep` vuota, date in ora di Roma, `superjson` su server e client. AC11: 9 mutanti della pagina uccisi; il selettore segue il periodo al montaggio, dopo una navigazione nel client e dopo Indietro, tiene la scelta durante la navigazione, naviga di nuovo con una scelta ripetuta, tiene il fuoco dopo una scelta con la tastiera; 17 mutanti del selettore uccisi per la ragione giusta (2 equivalenti). `tsc` e la suite intera verdi in una copia |
+| v4 — giro 2, `2fd59da..29ae6cb` | I tre round in ordine, `545c6ce` senza codice; i test del round 1 verdi sul codice di base (264 file) e il test di tipo che morde; AC4–AC8 a `2ddd53a`/`97193a1`; nessuna riga di asserzione cambiata in `5b11658`, `2ddd53a`, `1013937`; sonda differenziale uguale prima e dopo ogni refactor; ogni correzione rossa sul codice del padre; i test aggiornati rinominati; tutti i 20 commit con `tsc` a 0 errori e la suite verde (due flake di carico, fuori dai file del passo, verdi al secondo giro); la riscrittura della storia lascia gli alberi uguali da `56b4b15` |
 | v1 — permessi | `getFinancedByBranch` su `adminProcedure`, le altre tre su `operatorProcedure`, nessun `protectedProcedure`; `trpc.ts`, `services/auth` e `services/operator` fuori dal diff. Matrice uguale sui tre percorsi: senza sessione 401; senza riga operatore, anche ADMIN, 400 `BAD_REQUEST`; disattivato `UNAUTHORIZED`; OPERATORE 403 `admin-only` solo dalla ciambella; ADMIN tutte. `customerAccess` è fail-closed (solo `ADMIN` ha `isNotNull`), la `exists` è correlata su `praticaId`; sonda di AC13 con pratiche condivise e miste giusta. `Actor` solo da `ctx.actor`; chiavi in più nell'input scartate. 17 mutanti sui permessi uccisi. Il backend monta lo stesso `appRouter`; nessuna route REST serve `analytics` |
 | v2 — aggregati | SQL di `financedIn` su `practices` sola, con la `exists` qualificata sulla tabella esterna. Il join di oggi (su `sum`, su `avg`, su tutti e due), il filtro degli stati tolto o cambiato, `Number` tolto, `parseInt`, arrotondamenti, `null` al posto di `0`, e 10 mutanti di `contactProgress`: tutti uccisi. I valori del driver diventano `number` esatti; `avg` senza righe → `0`. `Effect.all` concorrente sicuro: niente `Tx`, lo stesso pool di postgres-js nei due runtime, già usato da `practice/list.ts` |
 | v3 — finestre e periodo | `financeWindows` legge il `Clock` a ogni chiamata (`Date.now()` uccide 9 test); i quattro mutanti sugli estremi uccisi per N = 30, 90, 365 e nella ciambella; `windows` esatte. Nessuna costante al caricamento del modulo. Date di `FinanceCard` nell'ordine di AC10, in ora di Roma; `FinanceCard.dates.test.tsx` gira in `utc` e in `rome`. `parseTimeFrame` una volta nella pagina, l'unica lettura di `tf`; i mutanti su lista, cast e selettore fisso uccisi. Sonda HTTP con `superjson`: `Date` integri, per admin e operatore |
@@ -82,6 +116,9 @@ Cinque passi su sei danno SHIP; v3 dà DO NOT SHIP per un MAJOR su AC11. Nessun 
 
 | Pass | Charter | Verdict | Rationale |
 |------|---------|---------|-----------|
+| v3, giro 2, su `29ae6cb` | Finestre dal `Clock`, date in ora di Roma, `tf` | DO NOT SHIP | La chiave del giro 1 manda il fuoco sul `body` dopo ogni scelta (MAJOR); quattro guardie deboli |
+| v3, giro 2, su `1cbcfe3` | Lo stesso, dopo `ab8b2c3` e `1cbcfe3` | SHIP | AC9, AC10 e AC11 rispettate e guardate; resta la navigazione scartata (MINOR, FOLLOW-UP) e il fuso fisso a +2 (corretto dopo, in `0c3d384`) |
+| v4, giro 2 | Storia dei round, `2fd59da..29ae6cb` | SHIP | Ogni promessa del piano regge all'esecuzione, commit per commit; restano frasi delle note, corrette |
 | v1 | Permessi: middleware e chi vede quali pratiche | SHIP | Middleware e risultati di AC19 su tre percorsi, AC13 e lo scope di AC17 giusti, 17 mutanti uccisi. Resta una domanda di prodotto già tracciata |
 | v2 | Aggregati | SHIP | AC12, AC14, AC15, AC17, AC20 rispettate; due lacune di forza dei test, nessun numero sbagliato |
 | v3 | Finestre dal `Clock`, date in ora di Roma, `tf` | DO NOT SHIP | AC9 e AC10 solidi; AC11 non regge dopo una navigazione nel client (MAJOR), senza una prova nel browser |
@@ -112,25 +149,28 @@ Obbligatoria (`critical`). Va fatta prima del merge, nell'ordine.
 
 13. Come admin e come operatore, `/dashboard` si carica senza errori in console; titoli di AC16 nell'ordine.
 14. Le date di `FinanceCard` sono inizio del confronto, inizio e fine del riferimento, in ora di Roma; con `?tf=7d` la pagina mostra `30d` e i numeri di `30d`; il cambio a `90d` aggiorna numeri e date.
-15. Da `/dashboard?tf=90d`, il link "Dashboard" della sidebar: il selettore legge `30d`. Poi `365d` e Indietro: il selettore legge `90d`.
-16. Admin, una pratica finanziata senza punto vendita nella finestra: il tooltip della fetta (oggi senza nome) e la legenda ("Nessuna").
-17. Una card con un confronto di 1 e un riferimento di 150 000: la barra della variazione resta nella sua metà della traccia?
+15. Da `/dashboard?tf=90d`, il link "Dashboard" della sidebar: il selettore legge `30d`. Poi `365d` e Indietro: il selettore legge `90d`. Con la tastiera: dopo una scelta, quando la pagina cambia, il fuoco resta sul selettore e non va sul `body`.
+16. Con la rete lenta (DevTools, Slow 3G): scegliere `90d` e cliccare subito "Dashboard" (o Indietro). Atteso: selettore e numeri su `30d`. Per v3 il selettore resta su `90d` (FOLLOW-UP in [[tech-debt/crm/analytics-effect]]): accettarlo come limite o correggerlo prima del merge.
+17. Admin, una pratica finanziata senza punto vendita nella finestra: il tooltip della fetta (oggi senza nome) e la legenda ("Nessuna").
+18. Una card con un confronto di 1 e un riferimento di 150 000: la barra della variazione resta nella sua metà della traccia?
 
 **C. Classi del passo UI non misurate (v6), Chromium, da 280 a 1440 px.**
 
-18. Larghezze e a capo della riga di tre card (`.dashabord-layout .flex.flex-row`), con importi lunghi e un punto vendita di 20+ caratteri: niente sovrapposizioni né scroll orizzontale (esisteva già, è una taratura).
-19. Contrasto: titoli e date `text-neutral-400` su bianco, il badge neutro di `—` e `0%`, gli archi gialli e blu di `CircleCard` (ora raggiungibili): testo almeno 4,5:1, archi almeno 3:1 o ridondanti con il testo.
-20. Focus: le tab stop della `Legend` di Tremor (`div tabindex="0"` in un `ol` con `overflow-hidden`) hanno un nome e un anello visibile.
-21. Nomi accessibili: il badge `—` da solo, la percentuale ripetuta, i livelli dei titoli.
-22. Salto di layout fra lo skeleton e le card; Safari mobile e tema scuro non verificati.
+19. Larghezze e a capo della riga di tre card (`.dashabord-layout .flex.flex-row`), con importi lunghi e un punto vendita di 20+ caratteri: niente sovrapposizioni né scroll orizzontale (esisteva già, è una taratura).
+20. Contrasto: titoli e date `text-neutral-400` su bianco, il badge neutro di `—` e `0%`, gli archi gialli e blu di `CircleCard` (ora raggiungibili): testo almeno 4,5:1, archi almeno 3:1 o ridondanti con il testo.
+21. Focus: le tab stop della `Legend` di Tremor (`div tabindex="0"` in un `ol` con `overflow-hidden`) hanno un nome e un anello visibile.
+22. Nomi accessibili: il badge `—` da solo, la percentuale ripetuta, i livelli dei titoli.
+23. Salto di layout fra lo skeleton e le card; Safari mobile e tema scuro non verificati.
 
 **D. Gate.** Dopo le correzioni, sulla PR: `SKIP_ENV_VALIDATION=true pnpm exec next lint`, `pnpm exec tsc --noEmit`, `pnpm db:check`, `pnpm run test --run`, `pnpm build` con i placeholder, `pnpm api:build`, `pnpm api:smoke` (la CI di GitHub li esegue tutti).
 
 ## Acceptance criteria check (case B)
 
+Stato a `0c3d384`, dopo il giro 2.
+
 | Criterion | Met / Unmet / Blocked | Notes |
 |-----------|-----------------------|-------|
-| AC1 | Met | 91 test verdi a `545c6ce` sul codice di base; manca la risposta vuota della ciambella (MINOR, v4) |
+| AC1 | Met | 91 test verdi a `545c6ce` sul codice di base; la risposta vuota della ciambella non è nel round 1 (MINOR, v4), il caso c'è da `7cd07b9` |
 | AC2 | Met | La tabella dei middleware verde sul codice di base |
 | AC3 | Met | Il test di tipo bite (`tsc`) |
 | AC4 | Met | `router.db.test.ts` rosso sulla base, verde dopo |
@@ -138,26 +178,26 @@ Obbligatoria (`critical`). Va fatta prima del merge, nell'ordine.
 | AC6 | Met | Nessun `TRPCError`, `zod`, `server-only`, `ctx`; `Actor` come parametro |
 | AC7 | Met | `TIMEFRAMEMAP`/`TIMEFRAMEDELTA` e nessun `Clock` a `2ddd53a` |
 | AC8 | Met | Suite verde a `2ddd53a`, nessuna asserzione cambiata |
-| AC9 | Met | Test con un `Clock` fisso; mutanti sugli estremi uccisi |
-| AC10 | Met | Date dalle finestre, in ora di Roma, test in `utc` e `rome`; costanti tolte |
-| AC11 | Unmet | Al caricamento sì; dopo una navigazione nel client il selettore non segue il periodo (MAJOR, v3) |
-| AC12 | Met | Una pratica una volta; guardia debole contro `sumDistinct` (MINOR, v2) |
+| AC9 | Met | Test con un `Clock` fisso, in `utc` e in `rome`; mutanti sugli estremi e il conto a giorni di calendario uccisi |
+| AC10 | Met | Date dalle finestre, in ora di Roma, test in `utc` e `rome` con istanti d'inverno e d'estate; costanti tolte |
+| AC11 | Met | Al caricamento, dopo una navigazione nel client e dopo Indietro, con il fuoco sul selettore (`ab8b2c3`). Una navigazione scartata da Next può lasciare la scelta (MINOR, FOLLOW-UP); prova nel browser nella checklist |
+| AC12 | Met | Una pratica una volta; con due pratiche dello stesso importo da `7cd07b9` |
 | AC13 | Met | Sonda con pratiche condivise e miste; mutanti uccisi |
 | AC14 | Met | Solo le tre finanziate, nei tre aggregati |
-| AC15 | Met | Quattro procedure, chiavi esatte; `orderBy` non guardato su PGlite (MINOR, v2) |
+| AC15 | Met | Quattro procedure, chiavi esatte; `orderBy` guardato da `7cd07b9` |
 | AC16 | Met | Titoli e ordine |
 | AC17 | Met | Solo i contatti attivi, la divisione degli stati, lo scope |
 | AC18 | Met | `grep` vuota |
 | AC19 | Met | Matrice su tre percorsi; il messaggio del disattivato via HTTP è `UNAUTHORIZED` (NIT) |
 | AC20 | Met | `number` a runtime e nei tipi; nessun `Number(...)` nella UI |
 | AC21 | Met | `—` e `0%` neutri, barra a 0 |
-| AC22 | Met | Colore dalla percentuale mostrata; manca il confine del 50% nei test (MINOR, v6) |
+| AC22 | Met | Colore dalla percentuale mostrata; il confine del 50% e il testo nei test da `7cd07b9` |
 | AC23 | Met | `grep` vuota |
 | AC24 | Met | Con l'etichetta `[PREVISTO]` di TD11 (u), scelta da D21 (MINOR, v5) |
-| AC25 | Met | 43 file nel perimetro |
-| AC26 | Met | Tutti i gate verdi, anche `next lint` letterale e il progetto `pg` |
+| AC25 | Met | 48 file nel perimetro; `vitest.config.ts` solo nella lista `timeZoneTests` |
+| AC26 | Met | Tutti i gate verdi su `0c3d384` (con il sostituto di `next lint` nel worktree); al giro 1 v5 aveva fatto anche `next lint` letterale e il progetto `pg` |
 
 ## Notes for docs-maintenance
 
-- Durable findings to fold into `brain/tech-debt/crm/analytics-effect.md`: il tooltip senza nome della fetta `null` della ciambella, e la barra della variazione senza limite (v6, esistevano già, fuori dalle AC); la prova di `windows` via HTTP lasciata a G2, se non entra un test in `backendLink.db.test.ts` (v3). La domanda S3 / `getAllPratiche` è già in [[tech-debt/crm/search-by-explicit-map]].
+- Durable findings to fold into `brain/tech-debt/crm/analytics-effect.md`: la navigazione scartata che lascia la scelta nel selettore (giro 2, v3); il tooltip senza nome della fetta `null` della ciambella, e la barra della variazione senza limite (v6, esistevano già, fuori dalle AC); la prova di `windows` via HTTP lasciata a G2, se non entra un test in `backendLink.db.test.ts` (v3). La domanda S3 / `getAllPratiche` è già in [[tech-debt/crm/search-by-explicit-map]].
 - Domain pages that should backlink this review: le pagine di `domains/crm/` sulla dashboard "Analisi Andamento", quando l'ingest le scrive.
