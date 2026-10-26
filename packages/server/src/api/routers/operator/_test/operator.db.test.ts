@@ -22,8 +22,12 @@ beforeEach(async () => {
 })
 
 describe("operator.updateOperatorInfo", () => {
-  it("returns the operator with the name and surname it had before the update", async () => {
-    const operator = await createOperator({ name: "Mario", surname: "Rossi" })
+  it("returns the operator with the new name and surname, and its role (TD3 b)", async () => {
+    const operator = await createOperator({
+      role: "ADMIN",
+      name: "Mario",
+      surname: "Rossi",
+    })
     const caller = createTestCaller(operator)
 
     const returned = await caller.operator.updateOperatorInfo({
@@ -31,10 +35,11 @@ describe("operator.updateOperatorInfo", () => {
       surname: "Verdi",
     })
 
-    expect(returned).toMatchObject({
-      id: operator.id,
-      name: "Mario",
-      surname: "Rossi",
+    expect(returned).toEqual({
+      ...operator,
+      name: "Luigi",
+      surname: "Verdi",
+      updatedAt: expect.any(Date) as Date,
     })
   })
 
