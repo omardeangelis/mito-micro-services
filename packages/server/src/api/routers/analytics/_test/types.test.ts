@@ -9,11 +9,14 @@ import type { AppRouter } from "../../../root"
 type AnalyticsInputs = inferRouterInputs<AppRouter>["analytics"]
 type AnalyticsOutputs = inferRouterOutputs<AppRouter>["analytics"]
 
-// `sum` e `avg` restituiscono `string | null` dal driver; con `?? 0` il tipo
-// diventa `string | number`
+// Gli importi sono `number` (il servizio converte il valore del driver e dà 0
+// senza righe). `windows` sono le finestre su cui il server ha contato: con il
+// transformer superjson le date restano `Date`.
+type FinanceWindow = { start: Date; end: Date }
 type ImportoOutput = {
-  reference: string | number
-  comparison: string | number
+  reference: number
+  comparison: number
+  windows: { reference: FinanceWindow; comparison: FinanceWindow }
 }
 
 // `timeFrame` è opzionale: il default "30d" lo applica zod sul server
@@ -22,13 +25,13 @@ type TimeFrameInput = {
 }
 
 describe("router analytics: output", () => {
-  it("l'output di `getFinancedTotal` è `{ reference: string | number; comparison: string | number }`", () => {
+  it("l'output di `getFinancedTotal` è `{ reference: number; comparison: number; windows }`, con le finestre fatte di `Date`", () => {
     expectTypeOf<
       AnalyticsOutputs["getFinancedTotal"]
     >().toEqualTypeOf<ImportoOutput>()
   })
 
-  it("l'output di `getFinancedAverage` è `{ reference: string | number; comparison: string | number }`", () => {
+  it("l'output di `getFinancedAverage` è `{ reference: number; comparison: number; windows }`, con le finestre fatte di `Date`", () => {
     expectTypeOf<
       AnalyticsOutputs["getFinancedAverage"]
     >().toEqualTypeOf<ImportoOutput>()

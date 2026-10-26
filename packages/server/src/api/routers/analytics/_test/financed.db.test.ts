@@ -19,8 +19,11 @@ import {
 // pratiche sono state contate. Le date sono relative all'orologio del test e
 // stanno ad almeno un giorno dai bordi delle finestre.
 //
-// La somma e la media sono stringhe del driver; senza righe la risposta è il
-// numero 0.
+// Ogni importo è un `number`, anche la media (7000 / 3, per esempio); senza
+// pratiche nella finestra il totale e la media sono 0. La risposta porta anche
+// `windows`, le finestre su cui il server ha contato: i test degli importi
+// guardano solo `reference` e `comparison`, quelli di "forma della risposta"
+// anche le finestre.
 
 const DAY = 86_400_000
 
@@ -80,11 +83,20 @@ async function createPracticeOf(
 const customerOf = async (operatorId: number | null) =>
   (await createCustomer({ operatorId })).id
 
+/** Gli importi di una risposta, senza le finestre su cui il server ha contato. */
+const amountsOf = ({
+  reference,
+  comparison,
+}: {
+  reference: number
+  comparison: number
+}) => ({ reference, comparison })
+
 /** Le due risposte per lo stesso input, da confrontare insieme. */
 async function readAll(caller: Caller, input: TimeFrameInput) {
   return {
-    totale: await caller.analytics.getFinancedTotal(input),
-    media: await caller.analytics.getFinancedAverage(input),
+    totale: amountsOf(await caller.analytics.getFinancedTotal(input)),
+    media: amountsOf(await caller.analytics.getFinancedAverage(input)),
   }
 }
 
@@ -118,7 +130,7 @@ describe("pratica con tre clienti", () => {
       timeFrame: "30d",
     })
 
-    expect(res).toEqual({ reference: "3000", comparison: "12000" })
+    expect(res).toMatchObject({ reference: 3000, comparison: 12000 })
   })
 })
 
@@ -154,10 +166,10 @@ describe.each(TIME_FRAMES)("con $label", ({ input, days }) => {
 
     // medie su 4 righe: (3 × 1000 + 2000) / 4 e (3 × 4000 + 8000) / 4
     expect(res).toEqual({
-      totale: { reference: "5000", comparison: "20000" },
+      totale: { reference: 5000, comparison: 20000 },
       media: {
-        reference: "1250.0000000000000000",
-        comparison: "5000.0000000000000000",
+        reference: 1250,
+        comparison: 5000,
       },
     })
   })
@@ -197,10 +209,10 @@ describe.each(TIME_FRAMES)("con $label", ({ input, days }) => {
     const res = await readAll(createTestCaller(admin), input)
 
     expect(res).toEqual({
-      totale: { reference: "3000", comparison: "12000" },
+      totale: { reference: 3000, comparison: 12000 },
       media: {
-        reference: "1500.0000000000000000",
-        comparison: "6000.0000000000000000",
+        reference: 1500,
+        comparison: 6000,
       },
     })
   })
@@ -244,10 +256,10 @@ describe.each(TIME_FRAMES)("con $label", ({ input, days }) => {
 
     // somme 63000 e 4032000, su 6 righe: medie 10500 e 672000
     expect(res).toEqual({
-      totale: { reference: "63000", comparison: "4032000" },
+      totale: { reference: 63000, comparison: 4032000 },
       media: {
-        reference: "10500.0000000000000000",
-        comparison: "672000.000000000000",
+        reference: 10500,
+        comparison: 672000,
       },
     })
   })
@@ -275,10 +287,10 @@ describe.each(TIME_FRAMES)("con $label", ({ input, days }) => {
     const res = await readAll(createTestCaller(operator), input)
 
     expect(res).toEqual({
-      totale: { reference: "3000", comparison: "12000" },
+      totale: { reference: 3000, comparison: 12000 },
       media: {
-        reference: "1500.0000000000000000",
-        comparison: "6000.0000000000000000",
+        reference: 1500,
+        comparison: 6000,
       },
     })
   })
@@ -319,25 +331,25 @@ describe.each(TIME_FRAMES)("con $label", ({ input, days }) => {
 
     // La media dell'ADMIN: tutta la CRM, escluso il cliente senza operatore
     const WHOLE_CRM_AVERAGE = {
-      reference: "2333.3333333333333333",
-      comparison: "37333.333333333333",
+      reference: 7000 / 3,
+      comparison: 112000 / 3,
     }
 
     it("un OPERATORE vede solo le pratiche dei suoi clienti, anche nella media di `getFinancedAverage`", async () => {
       const { operatorA, operatorB } = await seedTwoOperators()
 
       expect(await readAll(createTestCaller(operatorA), input)).toEqual({
-        totale: { reference: "3000", comparison: "48000" },
+        totale: { reference: 3000, comparison: 48000 },
         media: {
-          reference: "1500.0000000000000000",
-          comparison: "24000.000000000000",
+          reference: 1500,
+          comparison: 24000,
         },
       })
       expect(await readAll(createTestCaller(operatorB), input)).toEqual({
-        totale: { reference: "4000", comparison: "64000" },
+        totale: { reference: 4000, comparison: 64000 },
         media: {
-          reference: "4000.0000000000000000",
-          comparison: "64000.000000000000",
+          reference: 4000,
+          comparison: 64000,
         },
       })
     })
@@ -346,14 +358,14 @@ describe.each(TIME_FRAMES)("con $label", ({ input, days }) => {
       const { admin } = await seedTwoOperators()
 
       expect(await readAll(createTestCaller(admin), input)).toEqual({
-        totale: { reference: "7000", comparison: "112000" },
+        totale: { reference: 7000, comparison: 112000 },
         media: WHOLE_CRM_AVERAGE,
       })
     })
   })
 
   describe("forma della risposta (S6)", () => {
-    it("senza pratiche nelle finestre, `reference` e `comparison` sono il numero 0", async () => {
+    it("senza pratiche nelle finestre, `reference` e `comparison` di totale e media sono 0", async () => {
       const operator = await createOperator({ role: "OPERATORE" })
       const admin = await createOperator({ role: "ADMIN" })
       const empty = {
@@ -365,7 +377,7 @@ describe.each(TIME_FRAMES)("con $label", ({ input, days }) => {
       expect(await readAll(createTestCaller(admin), input)).toEqual(empty)
     })
 
-    it("con pratiche solo nella finestra di riferimento, `comparison` è il numero 0", async () => {
+    it("con pratiche solo nella finestra di riferimento, gli importi sono numeri e `comparison` è 0", async () => {
       const when = datesFor(days)
       const operator = await createOperator({ role: "OPERATORE" })
       const customer = await customerOf(operator.id)
@@ -375,12 +387,12 @@ describe.each(TIME_FRAMES)("con $label", ({ input, days }) => {
       })
 
       expect(await readAll(createTestCaller(operator), input)).toEqual({
-        totale: { reference: "1000", comparison: 0 },
-        media: { reference: "1000.0000000000000000", comparison: 0 },
+        totale: { reference: 1000, comparison: 0 },
+        media: { reference: 1000, comparison: 0 },
       })
     })
 
-    it("con pratiche solo nella finestra di confronto, `reference` è il numero 0", async () => {
+    it("con pratiche solo nella finestra di confronto, gli importi sono numeri e `reference` è 0", async () => {
       const when = datesFor(days)
       const operator = await createOperator({ role: "OPERATORE" })
       const customer = await customerOf(operator.id)
@@ -390,9 +402,32 @@ describe.each(TIME_FRAMES)("con $label", ({ input, days }) => {
       })
 
       expect(await readAll(createTestCaller(operator), input)).toEqual({
-        totale: { reference: 0, comparison: "2000" },
-        media: { reference: 0, comparison: "2000.0000000000000000" },
+        totale: { reference: 0, comparison: 2000 },
+        media: { reference: 0, comparison: 2000 },
       })
+    })
+
+    it("`getFinancedTotal` e `getFinancedAverage` portano le finestre su cui hanno contato: due `Date` per finestra, il confronto che finisce dove comincia il riferimento", async () => {
+      const operator = await createOperator({ role: "OPERATORE" })
+      const caller = createTestCaller(operator)
+
+      for (const res of [
+        await caller.analytics.getFinancedTotal(input),
+        await caller.analytics.getFinancedAverage(input),
+      ]) {
+        const { reference, comparison } = res.windows
+        expect(reference.start).toBeInstanceOf(Date)
+        expect(reference.end).toBeInstanceOf(Date)
+        expect(comparison.start).toBeInstanceOf(Date)
+        expect(comparison.end).toBeInstanceOf(Date)
+        expect(comparison.end).toEqual(reference.start)
+        expect(reference.end.getTime() - reference.start.getTime()).toBe(
+          days * DAY
+        )
+        expect(comparison.end.getTime() - comparison.start.getTime()).toBe(
+          days * DAY
+        )
+      }
     })
   })
 })
