@@ -19,7 +19,9 @@ export const messages = createTable(
       .generatedAlwaysAsIdentity({ startWith: 10000 })
       .notNull(),
     operatorId: integer("operator_id").notNull(),
-    chatId: integer("chat_id").notNull(),
+    chatId: integer("chat_id")
+      .notNull()
+      .references(() => chat.id),
     sendDate: timestamp("send_date", { withTimezone: true })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),

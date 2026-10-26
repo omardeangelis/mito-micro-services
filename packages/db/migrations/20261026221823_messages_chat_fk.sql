@@ -1,0 +1,1 @@
+ALTER TABLE "mito-deutsche_messages" ADD CONSTRAINT "mito-deutsche_messages_chat_id_mito-deutsche_chat_id_fk" FOREIGN KEY ("chat_id") REFERENCES "public"."mito-deutsche_chat"("id") ON DELETE no action ON UPDATE no action;
