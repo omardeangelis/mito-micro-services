@@ -45,8 +45,8 @@ const port = await new Promise((resolve) => {
   })
 })
 
-const expect = async (path, status) => {
-  const response = await fetch(`http://127.0.0.1:${port}${path}`)
+const expect = async (path, status, method = "GET") => {
+  const response = await fetch(`http://127.0.0.1:${port}${path}`, { method })
   if (response.status !== status)
     fail(`${path} answered ${response.status}, expected ${status}`)
   console.log(`api:smoke ${path} ${response.status}`)
@@ -60,6 +60,8 @@ await expect("/api/auth/session", 200)
 await expect("/api/auth/providers", 200)
 // A REST route of the Next.js app, with NextResponse from next/server
 await expect("/api/export/download", 401)
+// The import queue's route, without its configuration: it refuses the task
+await expect("/internal/import/run/1", 503, "POST")
 
 clearTimeout(timer)
 child.removeAllListeners("exit")

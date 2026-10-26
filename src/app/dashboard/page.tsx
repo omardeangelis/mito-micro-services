@@ -2,7 +2,7 @@ import { LastUpdatedTableSection } from "./_components/LastUpdatedTableSection"
 import { Suspense } from "react"
 import { DataSection } from "./_components/DataSection"
 import { TableSkeleton } from "@/components/custom/table/TableSkeleton"
-import { WorkerImportDialog } from "./_components/WorkerImportDialog"
+import { ImportLink } from "./_components/ImportLink"
 import { CallsSection } from "./_components/export/CallsSection"
 import { DataSectionSkeleton } from "./_components/AdminDataSection"
 import { type ServerPageProps } from "@/lib/types"
@@ -22,7 +22,9 @@ export default async function DashboardHome(
         <div className="relative h-[inherit]">
           <div className="dashboard-content rounded-lg bg-white">
             <div className="flex items-center justify-end gap-4">
-              <WorkerImportDialog />
+              <Suspense fallback={null}>
+                <ImportLink />
+              </Suspense>
             </div>
             <div className="mt-8">
               <div className="flex items-center gap-4">

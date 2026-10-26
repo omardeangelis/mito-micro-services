@@ -12,20 +12,20 @@ import {
   ChevronLeft,
   ChevronRight,
   InfoIcon,
+  UploadIcon,
 } from "lucide-react"
 import { useCallback, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { useUserPreferenceContext } from "@/store/context/useUserPreferenceContext"
-import { useHandleImportWorkerStates } from "../_context/ImportWorker"
 
 const uncollapsedClassWidth = "w-72"
 const collapsedClassWidth = "w-16"
 const transitionClass = "transition-all duration-300"
 
 export function DashboardLayout() {
-  useHandleImportWorkerStates()
   const pathname = usePathname()
   const preference = useUserPreferenceContext((state) => state.preferences)
+  const isAdmin = useUserPreferenceContext((state) => state.role) === "ADMIN"
   const updatedCollapsed = useUserPreferenceContext(
     (state) => state.setDashboardCollapsed
   )
@@ -39,6 +39,7 @@ export function DashboardLayout() {
   const isContatti = pathname.includes("dashboard/contatti")
   const isPratiche = pathname.includes("dashboard/pratiche")
   const isProfile = pathname.includes("dashboard/profile")
+  const isImport = pathname.includes("dashboard/import")
   const defaultListItemClass = useMemo(
     () =>
       cn(
@@ -152,6 +153,24 @@ export function DashboardLayout() {
               )}
             </li>
           </Link>
+          {/* Admins only (AC1, AC28) */}
+          {isAdmin ? (
+            <Link
+              href="/dashboard/import"
+              className={
+                isImport
+                  ? cn(defaultListItemClass, "bg-slate-800 text-white")
+                  : cn(defaultListItemClass, "hover:bg-gray-300")
+              }
+            >
+              <li className="flex place-items-center rounded-2xl text-inherit">
+                <UploadIcon className={iconClass} />
+                {preference?.dashboardCollapsed ? null : (
+                  <span className="font-bold text-inherit">Import</span>
+                )}
+              </li>
+            </Link>
+          ) : null}
         </ul>
         <div
           className={cn(

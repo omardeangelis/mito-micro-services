@@ -136,3 +136,29 @@ describe("i parametri di una query fallita non arrivano a Sentry", () => {
     expect(JSON.stringify(sent)).not.toMatch(/Mario Rossi|RSSMRA80A01H501U/)
   })
 })
+
+describe("il corpo della richiesta non arriva a Sentry", () => {
+  it("il beforeSend di sentry.server.config lo toglie e lascia l'URL", async () => {
+    const options = await loadSentryInit("server", {
+      NEXT_PUBLIC_VERCEL_ENV: "production",
+      NEXT_PUBLIC_SENTRY_DSN: DSN,
+    })
+    const beforeSend = options?.beforeSend
+    if (!beforeSend) throw new Error("sentry.server.config has no beforeSend")
+    const url = "https://crm.example.it/api/trpc/import.lookup"
+
+    const sent = await beforeSend(
+      {
+        type: undefined,
+        request: {
+          url,
+          data: { json: { fiscalCodes: ["RSSMRA80A01H501U"] } },
+        },
+      },
+      { originalException: new Error("boom") }
+    )
+
+    expect(JSON.stringify(sent)).not.toMatch(/RSSMRA80A01H501U/)
+    expect(sent?.request?.url).toBe(url)
+  })
+})

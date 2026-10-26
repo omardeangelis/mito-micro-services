@@ -15,6 +15,7 @@ links:
   - "[[domains/crm/concepts/operatore]]"
   - "[[tech-debt/crm/gestione-operatori]]"
   - "[[specs/crm/import-pratiche/SPEC]]"
+  - "[[specs/crm/import-pratiche/PLAN]]"
   - "[[specs/crm/import-pratiche/IMPLEMENTATION-NOTES]]"
   - "[[specs/crm/import-pratiche/REPORT]]"
   - "[[domains/crm/flows/esecuzione-di-un-import-confermato]]"
@@ -26,7 +27,7 @@ updated: 2026-10-26
 
 ## Definition
 
-L'ordine in cui chi scrive blocca le righe nel database. Chi blocca la riga `users` di un operatore lo fa **prima** di bloccare qualunque cliente. Poi i clienti, in ordine di id. Poi i loro contatti attivi.
+L'ordine in cui chi scrive blocca le righe nel database. Chi blocca la riga `users` di un operatore lo fa **prima** di bloccare qualunque cliente. Poi i clienti, in ordine di id. Poi i loro contatti attivi. Chi scrive più pratiche le blocca dopo i clienti, in ordine di `pratica_id`, prima di scriverle.
 
 Prima di questa spec la regola era solo "ogni writer di un cliente lo blocca per primo" (`lockCustomer`, `effect/db.ts`). La disattivazione aggiunge un livello sopra: la riga utente dell'operatore. Il commento della regola in `effect/db.ts` dice la versione nuova.
 
@@ -43,7 +44,7 @@ La regola vive accanto a quella "stesso operatore" di [[specs/crm/sezione-contat
 | Cambio di ruolo | righe utente degli admin attivi e degli operatori del batch, in ordine di `users.id` | `FOR UPDATE OF users` |
 | Ogni writer di un cliente | il cliente, prima di ogni altra riga del cliente | `lockCustomer` |
 | Import | 1. la riga di `import_run`; 2. i clienti del file, tutti in un solo statement, in ordine di id; 3. le pratiche del file, in ordine di `pratica_id`. Nessuna riga `users` | `SELECT … ORDER BY … FOR UPDATE`, nella transazione dell'import. I clienti si leggono prima senza lock, poi si bloccano e si rileggono finché l'insieme non cambia |
-| Disattivazione, pratiche | le pratiche dell'operatore, in ordine di `pratica_id`, prima di spostarle | Come l'import, così le due sulle stesse pratiche non vanno in deadlock |
+| Disattivazione, pratiche | le pratiche dell'operatore, in ordine di `pratica_id`, prima di spostarle | `FOR UPDATE`, come l'import, così le due sulle stesse pratiche non vanno in deadlock; su un 40P01 ripete la transazione fino a 2 volte (D6 di [[specs/crm/import-pratiche/PLAN]]) |
 
 ### Writer dentro la regola
 
@@ -60,6 +61,10 @@ Usano `findWorkingOperator` sulla destinazione, prima del lock del cliente:
 
 - **`pratiche.PUT` e `customer.insertCustomer`** scrivono l'operatore senza `findWorkingOperator`. Lasciati fuori dalla spec, sono nel debito: [[tech-debt/crm/gestione-operatori]].
 - **Il cron `priority`** non segue la regola. Può dare un `deadlock_detected` (40P01) con la disattivazione, che per questo ripete la transazione fino a 2 volte.
+
+### Pratiche (import-pratiche, D6)
+
+Un `UPDATE` di più pratiche blocca le righe nell'ordine in cui le trova (l'ordine della tabella), non in quello di `pratica_id`. Con l'import che le blocca in ordine, i due si bloccavano a vicenda: sul codice di prima la disattivazione finiva in `deadlock detected` (`services/import/_test/concurrency.pg.test.ts`). Ora blocca prima le pratiche in ordine e poi scrive, e aspetta la fine dell'import. "Assegna" delle Pratiche aveva lo stesso problema, ma l'assegnazione massiva delle pratiche è stata tolta ([PR #83](https://github.com/omardeangelis/mito-micro-services/pull/83)).
 
 ## Related flows
 
@@ -81,5 +86,6 @@ Concetto vicino: [[domains/crm/concepts/operatore]] ("lavora" = passa `findWorki
 - Spec: AC27 di [[specs/crm/import-pratiche/SPEC]]; piano: D5 e D6 di [[specs/crm/import-pratiche/PLAN]]. L'import non blocca righe `users` e non assegna operatori, quindi la regola "prima gli utenti" resta valida: chi blocca un utente lo fa prima dei clienti, e l'import non ne blocca nessuno.
 - **Che cosa vede chi scrive durante un import.** Una scrittura su un cliente o una pratica dell'import aspetta il commit e poi riesce; se la sua richiesta scade prima (es. i 60 secondi di Vercel), fallisce senza salvare nulla a metà e si può ripetere (AC27). Una scrittura su altri clienti non aspetta. L'import su un deadlock ripete la transazione.
 - **Deviazione (T9b).** D6 voleva anche `bulkAssignPractices` nello stesso ordine, ma "Assegna" della pagina Pratiche è stato tolto (#83): resta la disattivazione.
+- **Pratiche.** `concurrency.pg.test.ts` tiene P1 e controlla che, con l'import e la disattivazione in attesa, nessuno tenga P2 (`holdPracticeLock` di `src/test/pg.ts`): un writer che blocca nell'ordine della tabella tiene P2, anche quando un retry sul deadlock gli farebbe finire il lavoro.
 - **Review** [[specs/crm/import-pratiche/REPORT]] (MAJOR, `ac3ec7e`): i clienti si bloccavano in due round fuori ordine di id (prima quelli delle chiavi del file, poi quelli delle partite IVA dei clienti riconosciuti), con un deadlock riproducibile contro la disattivazione. Ora un solo statement ordinato. I test pg (`concurrency.pg.test.ts`) provano con `NOWAIT` da un'altra connessione che dopo il lookup clienti (anche quelli della partita IVA) e pratiche sono bloccati, e che in attesa sul primo id l'import non tiene gli altri clienti.
 - La review del passo 5 della chat aveva notato che i writer del **vecchio** import riscrivevano `customers.chat_id` senza lock: escono con la PR G (#89). L'import nuovo non scrive le chat (AC39).

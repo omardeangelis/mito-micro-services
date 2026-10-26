@@ -199,6 +199,35 @@ export async function holdCustomerLock(customerId: string) {
 }
 
 /**
+ * Locks the practice's row from a transaction of the test, on a connection of
+ * its own: a call that locks or updates the same practice waits until
+ * `release`.
+ */
+export async function holdPracticeLock(praticaId: string) {
+  const client = connect(testDatabaseName, 1)
+  const db = drizzle(client, { schema })
+  try {
+    await client`BEGIN`
+    const [practice] = await db
+      .select({ praticaId: schema.practices.praticaId })
+      .from(schema.practices)
+      .where(eq(schema.practices.praticaId, praticaId))
+      .for("update")
+    if (!practice) throw new Error(`No practice ${praticaId} to lock`)
+  } catch (error) {
+    await client.end()
+    throw error
+  }
+  return {
+    /** Commits the test's transaction, which frees the lock. */
+    release: async () => {
+      await client`COMMIT`
+      await client.end()
+    },
+  }
+}
+
+/**
  * Waits until `n` backends of the test database wait for a lock, so the calls
  * a test started are queued behind `holdCustomerLock`. Fails after `timeoutMs`.
  */

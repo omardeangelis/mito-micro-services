@@ -8,6 +8,8 @@ import { authRoute } from "./auth"
 import { restRoutes } from "./rest"
 import { cronLive } from "./cron/live"
 import { cronRoutes } from "./cron/routes"
+import { importLive } from "./import/live"
+import { importRoutes } from "./import/routes"
 import { sessionFromRequest } from "./session"
 
 /**
@@ -23,6 +25,9 @@ app.get("/health", (c) => c.json({ ok: true }))
 // Cloud Scheduler's calls, with its OIDC token: outside /api, so no Vercel
 // rewrite reaches them and they read no session
 app.route("/internal/cron", cronRoutes(cronLive(process.env)))
+
+// The tasks of the import queue (Cloud Tasks), with its OIDC token, the same
+app.route("/internal/import", importRoutes(importLive(process.env)))
 
 app.use("/api/*", async (c, next) => {
   const session = await sessionFromRequest(c.req.raw)

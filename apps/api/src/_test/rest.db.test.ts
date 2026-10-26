@@ -31,8 +31,10 @@ async function signIn(userId: string) {
 }
 
 // The REST routes behind authCheck, with the method the Next.js app exports
-const AUTHENTICATED: [string, string][] = [
-  ["POST", "/api/export/download"],
+const AUTHENTICATED: [string, string][] = [["POST", "/api/export/download"]]
+
+// The routes of the old import, gone with it (AC4)
+const OLD_IMPORT: [string, string][] = [
   ["POST", "/api/export/importError"],
   ["POST", "/api/import/create/customerToPratica"],
   ["POST", "/api/import/create/customers"],
@@ -68,8 +70,23 @@ describe("route REST sul backend", () => {
     }
   )
 
+  it.each(OLD_IMPORT)(
+    "%s %s del vecchio import non esiste: 404 (AC4)",
+    async (method, path) => {
+      const operator = await createOperator()
+      const token = await signIn(operator.userId)
+
+      const response = await app.request(path, {
+        method,
+        headers: { cookie: `${SESSION_COOKIE}=${token}` },
+      })
+
+      expect(response.status).toBe(404)
+    }
+  )
+
   it("un metodo non esportato risponde 405", async () => {
-    const response = await app.request("/api/import/process", {
+    const response = await app.request("/api/user/preferences", {
       method: "GET",
     })
 

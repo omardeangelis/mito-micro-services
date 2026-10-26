@@ -1,4 +1,5 @@
-// Riproduce `calculateDebitoResiduo` (src/app/api/import/_utils) con l'orologio
+// Riproduce `calculateDebitoResiduo` (`@mito/domain/import/convert/values`, con
+// la firma del vecchio import) con l'orologio
 // fermo alle 12:00 di Europe/Rome del giorno D e il processo in
 // TZ=Europe/Rome, ma sul calendario di Roma e senza leggere l'orologio: stesso
 // risultato con qualsiasi fuso del processo. Non chiama l'originale.
