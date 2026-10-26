@@ -147,7 +147,8 @@ export const TimeFrameSelector = ({ timeframe }: { timeframe: TimeFrame }) => {
   // Next non rimonta la pagina quando cambia solo `?tf=`: il periodo mostrato
   // torna a quello della pagina quando cambia (link "Dashboard", Indietro), e
   // fra la scelta e l'arrivo della navigazione resta quello scelto. Niente
-  // `key`: rimontando il Select il fuoco finirebbe sul body
+  // `key`: rimontando il Select il fuoco finirebbe sul body. Niente scroll
+  // nella navigazione: con lo scroll Next dà il fuoco a `main`
   const [shown, setShown] = React.useState(timeframe)
   const [pageTimeframe, setPageTimeframe] = React.useState(timeframe)
   if (timeframe !== pageTimeframe) {
@@ -160,7 +161,7 @@ export const TimeFrameSelector = ({ timeframe }: { timeframe: TimeFrame }) => {
       const { timeframe } = state
       const url = new URL(window.location.href)
       url.searchParams.set("tf", timeframe)
-      router.push(url.toString())
+      router.push(url.toString(), { scroll: false })
     })
 
     return () => unsub()

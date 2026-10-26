@@ -3,7 +3,9 @@ import userEvent from "@testing-library/user-event"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { TimeFrameSelector } from ".."
 
-const mocks = vi.hoisted(() => ({ push: vi.fn<[string], void>() }))
+const mocks = vi.hoisted(() => ({
+  push: vi.fn<[string, { scroll?: boolean }?], void>(),
+}))
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: mocks.push }),
@@ -60,6 +62,19 @@ describe("TimeFrameSelector: la scelta di un periodo (AC11)", () => {
     expect(
       new URL(mocks.push.mock.calls[0]?.[0] ?? "").searchParams.get("tf")
     ).toBe("90d")
+  })
+
+  // Con lo scroll di default, a navigazione arrivata Next dà il fuoco al primo
+  // elemento della pagina (`main`, che in Chrome lo prende perché scorre)
+  it("scegliendo un periodo, naviga senza scorrere la pagina", async () => {
+    const user = userEvent.setup()
+    render(<TimeFrameSelector timeframe="30d" />)
+
+    await pick(user, "90d")
+
+    expect(mocks.push).toHaveBeenCalledWith(expect.any(String), {
+      scroll: false,
+    })
   })
 
   it("mentre la navigazione è in corso, con il periodo della pagina ancora `30d`, mostra `90d`", async () => {
