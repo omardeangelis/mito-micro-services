@@ -31,6 +31,10 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 - Status: Draft
 - Decisioni di Omar: le correzioni nello stesso branch, come ultimo round dopo il refactor; "Contatti con esito" conta la coda attuale; una pratica conta una volta, per chi ha un cliente; le medie si rinominano "per pratica"
 
+## [2026-10-26] merge | Import di clienti e pratiche: catena A–G in `dev`
+- [PR #77](https://github.com/omardeangelis/mito-micro-services/pull/77), #78, #81, #82, #85, #88, #89 e la spec #74 unite in `dev` su richiesta di Leonardo, ognuna con la CI verde; migrazione `20261025014131_import_run` approvata da Leonardo su `staging-db` e applicata; coda `mito-crm-staging-import` creata da Leonardo dal Mac (T12a)
+- Passo 3 fatto (§4 di [[chore/migrazione-effect]]); TD10 (d) chiusa, perché `/api/export/importError` è tolta. `dev` → `main` fermo fino al go/no-go ([[chore/migrazione-gcp]]). T0 e T12b, la prova su staging, rimandati da Leonardo alla fine della migrazione ([[specs/crm/import-pratiche/PLAN]])
+
 ## [2026-10-26] ingest | Import di clienti e pratiche, riscritto
 - Source: [[specs/crm/import-pratiche/SPEC]]
 - Flows written: 2 ([[domains/crm/flows/nuovo-import-con-anteprima]], [[domains/crm/flows/esecuzione-di-un-import-confermato]])
@@ -306,6 +310,20 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 - Verdict: SHIP. Refactor puro confermato: corpo delle risposte identico misurato con l'handler HTTP, test della PR 1 con diff vuoto. Cambia solo la telemetria degli errori del database, come per ogni procedura già su `runTrpc`. Le lacune di test segnalate sono chiuse in `ac85739`
 - Impact: critical (middleware dei permessi); revisione di Leonardo richiesta (AC29a)
 - Verifiers: 4 (0 blocker, 0 major, 5 minor, 2 nit; 4 SHIP)
+
+## [2026-10-21] review | Sezione Contatti — PR6 completa, terzo giro (richiesto da Omar)
+- Report: [[specs/crm/sezione-contatti/REPORT]] (round PR6 completa, terzo giro)
+- Scope: spec
+- Verdict: DO NOT SHIP al primo esito, poi SHIP. Il codice che scrive dati regge in tutti i passaggi. I 4 MAJOR (un buco nei test della mappatura dell'ordinamento di Clienti e tre frasi ereditate della guida e del dialogo di "Crea/assegna contatti" smentite dal codice) sono accettati da Omar come debito il 2026-10-21, con due voci nuove nel tech debt
+- Impact: critical
+- Verifiers: 16 (0 blocker, 4 major, 22 minor, 25 nit; 14 SHIP e 2 DO NOT SHIP)
+
+## [2026-10-21] review | Sezione Contatti — PR6, seconda metà: la migrazione di T6.9
+- Report: [[specs/crm/sezione-contatti/REPORT]] (round PR6, seconda metà)
+- Scope: spec
+- Verdict: SHIP; chiude anche il round di PR6 (il dialogo di "Assegna Clienti", F1, resta nel debito per scelta di Omar). Lista per la sessione di rilascio nel report: `drizzle-kit migrate` 0.31 non stampa il motivo di un fallimento
+- Impact: critical
+- Verifiers: 5, più una passata di conferma sul cambio del SQL (0 blocker; 1 major di documentazione e 11 minor, tutti corretti; il lock `LOCK TABLE` è arrivato dalla review)
 
 ## [YYYY-MM-DD] ingest | <spec title>
 - Source: [[specs/<domain>/<spec>/SPEC]]

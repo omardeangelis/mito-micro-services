@@ -158,11 +158,12 @@ Restano nel debito tecnico: CSV UTF-8 senza BOM (già oggi), un file lasciato fu
 
 ## Remaining Work
 
-- T0 (limite della rewrite di Vercel), prima di T11: serve il Chrome di Leonardo con Vercel aperto o una sessione sul Mac, perché il container non raggiunge staging.
-- Leonardo lancia `sh apps/api/gcp/setup-import-queue.sh` dal Mac (T12a).
-- T12b: memoria del backend. Il test di T13 ha visto 745 MiB di picco, ma è il processo di vitest intero: la misura vera è su staging.
-- Il giro nel browser di T14–T19 con T12b, dopo il merge di F e G su `dev`.
-- Prima del primo merge su `dev`: conferma di Leonardo che la promozione `dev` → `main` resta ferma fino al go/no-go (PLAN §10).
+La catena è in `dev` dal 2026-10-26 (PR #77–#89 e la spec #74, ognuna con la CI verde), la migrazione è approvata da Leonardo su `staging-db` e applicata, e la coda di staging esiste (T12a, lanciata da Leonardo). Leonardo ha confermato che `dev` → `main` resta fermo fino al go/no-go ([[chore/migrazione-gcp]]).
+
+Rimandati da Leonardo alla fine della migrazione (2026-10-26):
+- T12b: la prova su staging, con la memoria del backend. Il test di T13 ha visto 745 MiB di picco, ma è il processo di vitest intero: la misura vera è su staging.
+- Il giro nel browser di T14–T19, con T12b.
+- T0 (limite della rewrite di Vercel): senza login la protezione di Vercel risponde 401 prima della rewrite, quindi si vede nella prova nel browser.
 
 ## Steering
 
