@@ -33,9 +33,12 @@ const pick = async (
 }
 
 describe("TimeFrameSelector: il periodo mostrato (AC11)", () => {
-  it.each(["30d", "90d", "365d"] as const)("con `%s` mostra `%s`", (tf) => {
-    expect(shownWith(tf)).toBe(tf)
-  })
+  it.each(["30d", "90d", "365d"] as const)(
+    "con `%s` mostra lo stesso periodo",
+    (tf) => {
+      expect(shownWith(tf)).toBe(tf)
+    }
+  )
 })
 
 describe("TimeFrameSelector: dopo una navigazione nella stessa pagina (AC11)", () => {
