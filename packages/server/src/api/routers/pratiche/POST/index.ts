@@ -1,26 +1,69 @@
+import { z } from "zod"
 import {
-  insertCustomerToPraticaSchema,
+  insertCustomerSchema,
   insertPracticeSchema,
 } from "@mito/domain/schemas"
-import { protectedProcedure } from "../../../trpc"
-import { practices } from "@mito/db/schema/pratiche"
-import { customerToPratica } from "@mito/db/schema/relations/customerToPratica"
+import { operatorProcedure } from "../../../trpc"
+import { runTrpc } from "../../../../effect/trpc"
+import { createPracticeWithCustomers } from "../../../../services/practice/writes"
+import { practiceErrorToTrpc } from "../../../../services/practice/errors"
 
-export const insertPratica = protectedProcedure
-  .input(insertPracticeSchema)
-  .mutation(async ({ input, ctx }) => {
-    const { db } = ctx
-    const newPratica = await db
-      .insert(practices)
-      .values(input)
-      .returning({ id: practices.praticaId })
+// The columns of the "Nuova pratica" form: no `id`, which the database
+// generates, and no operator
+const createPraticaInput = z.object({
+  pratica: insertPracticeSchema.pick({
+    praticaId: true,
+    productId: true,
+    state: true,
+    importoFinanziato: true,
+    importoErogato: true,
+    importoRichiesto: true,
+    dataLiquidazione: true,
+    dataEstinzione: true,
+    importoRata: true,
+    rateTotali: true,
+    ratePagate: true,
+    tassoPratica: true,
+    desPuntoVendita: true,
+    desConvenzionato: true,
+    region: true,
+  }),
+  /** The holder, an existing customer. */
+  customerId: z.string().min(1),
+  /**
+   * New customers, assigned to whoever creates the practice: the columns of
+   * the form, with no operator, chat, blacklist state or dates.
+   */
+  relatedCustomers: z.array(
+    insertCustomerSchema
+      .pick({
+        name: true,
+        surname: true,
+        phoneNumber: true,
+        fiscalCode: true,
+        vatCode: true,
+        tempID: true,
+        uniqueHash: true,
+        source: true,
+      })
+      .extend({
+        id: z.string().min(1),
+        email: z.string().email(),
+        role: z.enum(["Coobbligato", "Garante"]),
+      })
+  ),
+})
 
-    return newPratica[0]
-  })
-
-export const connectPraticaAndCustomer = protectedProcedure
-  .input(insertCustomerToPraticaSchema)
-  .mutation(async ({ input, ctx }) => {
-    const { db } = ctx
-    await db.insert(customerToPratica).values(input)
-  })
+export const createPratica = operatorProcedure
+  .input(createPraticaInput)
+  .mutation(({ ctx, input }) =>
+    runTrpc(
+      createPracticeWithCustomers({
+        practice: input.pratica,
+        holderId: input.customerId,
+        related: input.relatedCustomers,
+        operatorId: ctx.operator.id,
+      }),
+      practiceErrorToTrpc
+    )
+  )

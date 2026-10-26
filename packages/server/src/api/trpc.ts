@@ -17,7 +17,6 @@ import { db } from "@mito/db"
 import { users } from "@mito/db/schema/users"
 import { eq } from "drizzle-orm"
 import { driverError } from "@mito/db/driverError"
-import { supabaseClient } from "../client/supabase"
 import { contactErrorFromCause } from "@mito/domain/contact/errors"
 import { runTrpc } from "../effect/trpc"
 import { resolveActor } from "../services/auth/actor"
@@ -40,7 +39,6 @@ export const createTRPCContext = async (opts: { headers: Headers }) => {
 
   return {
     db,
-    supabaseClient,
     session,
     ...opts,
   }

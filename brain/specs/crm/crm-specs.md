@@ -9,8 +9,13 @@ links:
   - "[[specs/crm/sicurezza-deploy-staging/SPEC]]"
   - "[[specs/crm/export-chiamate/SPEC]]"
   - "[[specs/crm/customer-effect/SPEC]]"
+  - "[[specs/crm/pratiche-effect/SPEC]]"
+  - "[[specs/crm/pratiche-effect/PLAN]]"
+  - "[[specs/crm/pratiche-effect/REPORT]]"
+  - "[[specs/crm/chat-storage-effect/SPEC]]"
+  - "[[specs/crm/chat-storage-effect/PLAN]]"
 created: 2026-09-24
-updated: 2026-10-24
+updated: 2026-10-25
 ---
 
 # CRM — Specs
@@ -26,3 +31,5 @@ Spec page map for the `crm` domain. Entry point for discovery before writing a n
 | [[specs/crm/sicurezza-deploy-staging/SPEC\|sicurezza-deploy-staging]] | Implemented | Deploy di staging più sicuro: controlli automatici sulle migrazioni (catena degli snapshot, ordine delle date, migrazioni che il migrator salterebbe), approvazione di Leonardo o Omar con la SQL in vista prima di applicarle, backup Cloud SQL subito prima, e un messaggio Slack a ogni deploy, riuscito, fallito o annullato. Prod esclusa. |
 | [[specs/crm/export-chiamate/SPEC\|export-chiamate]] | Implemented, unita su dev il 23/10/2026 (#57, #61, #65, #66, #67); [[specs/crm/export-chiamate/PLAN\|piano]] e [[specs/crm/export-chiamate/REPORT\|review]] (SHIP) | Export solo admin delle chiamate: per operatore e periodo, chiamate effettuate, risposte, appuntamenti fissati e non risposte, con grafici nella dashboard. Nuovo stato `non risponde` che resta in coda (#57, #61). Pilota della riscrittura in Effect. |
 | [[specs/crm/customer-effect/SPEC\|customer-effect]] | Implemented, ingested, con [[specs/crm/customer-effect/PLAN\|piano]] e [[specs/crm/customer-effect/REPORT\|review]] (SHIP) | Passo 2 di [[chore/migrazione-effect]]: il resto del router `customer` su Effect (servizi in `services/customer/`, procedure adapter) a comportamento invariato, con test di caratterizzazione prima del refactor e le stranezze di oggi nel debito della migrazione. Il traduttore dei filtri avanzati e `containsPattern` passano in `packages/server/src/shared/`. Nella stessa PR, dopo il refactor, la ricerca per codici trova chi ha uno qualunque dei codici: Nuovo cliente segnala un codice fiscale già presente. |
+| [[specs/crm/pratiche-effect/SPEC\|pratiche-effect]] | Implemented, in `dev` dalla [PR #83](https://github.com/omardeangelis/mito-micro-services/pull/83), con [[specs/crm/pratiche-effect/PLAN\|piano]] e [[specs/crm/pratiche-effect/REPORT\|review]] (giro 1 SHIP; giro 2 DO NOT SHIP; giro 3, sulle correzioni, SHIP con B1 a debito) | Passo 4 di [[chore/migrazione-effect]]: il router `pratiche`, le letture di `task/GET` e `bulkHandleTask` su Effect (servizi, procedure adapter) a comportamento invariato, con test di caratterizzazione prima del refactor e le stranezze di oggi nel debito della migrazione (TD9). Le 5 procedure senza chiamanti e `shared/updateAt.ts` si tolgono. |
+| [[specs/crm/chat-storage-effect/SPEC\|chat-storage-effect]] | Implemented, in `dev` con la [PR #86](https://github.com/omardeangelis/mito-micro-services/pull/86) (PR A) e la [PR #91](https://github.com/omardeangelis/mito-micro-services/pull/91) (PR B), con [[specs/crm/chat-storage-effect/PLAN\|piano]] | Passo 5 di [[chore/migrazione-effect]]: il router `chat` su Effect (servizi in `services/chat/`, procedure adapter), con l'invio di una nota in una sola procedura e un solo servizio, che prende il lock del cliente al posto della logica del server action `updateChatAction`. Il router `supabase` si toglie: le due route di export chiamano direttamente il servizio `Storage`. `supabaseClient` esce dal contesto tRPC. Le stranezze di oggi vanno nel debito della migrazione (TD10). |
