@@ -12,6 +12,10 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 
 <!-- Entries are appended by create-spec (spec creation) and docs-maintenance (ingest). Format:
 
+## [2026-10-26] plan | Login e sessione su better-auth, contesto tRPC su Effect
+- Plan: [[specs/crm/auth-better-auth/PLAN]] (5 PR, 15 task e 4 gate; verifica DO NOT SHIP, corretta)
+- Domain: crm
+
 ## [2026-10-26] spec | Login e sessione su better-auth, contesto tRPC su Effect
 - Created spec: [[specs/crm/auth-better-auth/SPEC]]
 - Domain: crm
@@ -296,13 +300,6 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 - Verdict: SHIP. Refactor puro confermato: corpo delle risposte identico misurato con l'handler HTTP, test della PR 1 con diff vuoto. Cambia solo la telemetria degli errori del database, come per ogni procedura già su `runTrpc`. Le lacune di test segnalate sono chiuse in `ac85739`
 - Impact: critical (middleware dei permessi); revisione di Leonardo richiesta (AC29a)
 - Verifiers: 4 (0 blocker, 0 major, 5 minor, 2 nit; 4 SHIP)
-
-## [2026-10-21] review | Sezione Contatti — PR6 completa, terzo giro (richiesto da Omar)
-- Report: [[specs/crm/sezione-contatti/REPORT]] (round PR6 completa, terzo giro)
-- Scope: spec
-- Verdict: DO NOT SHIP al primo esito, poi SHIP. Il codice che scrive dati regge in tutti i passaggi. I 4 MAJOR (un buco nei test della mappatura dell'ordinamento di Clienti e tre frasi ereditate della guida e del dialogo di "Crea/assegna contatti" smentite dal codice) sono accettati da Omar come debito il 2026-10-21, con due voci nuove nel tech debt
-- Impact: critical
-- Verifiers: 16 (0 blocker, 4 major, 22 minor, 25 nit; 14 SHIP e 2 DO NOT SHIP)
 
 ## [YYYY-MM-DD] ingest | <spec title>
 - Source: [[specs/<domain>/<spec>/SPEC]]

@@ -18,6 +18,7 @@ links:
   - "[[specs/crm/import-pratiche/PLAN]]"
   - "[[specs/crm/import-pratiche/REPORT]]"
   - "[[specs/crm/auth-better-auth/SPEC]]"
+  - "[[specs/crm/auth-better-auth/PLAN]]"
 created: 2026-09-24
 updated: 2026-10-26
 ---
