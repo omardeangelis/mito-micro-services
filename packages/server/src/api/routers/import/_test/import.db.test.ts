@@ -126,25 +126,30 @@ describe("solo gli admin (AC2, AC3)", () => {
   })
 
   it.each(calls)(
-    "import.%s: un operatore, un utente senza riga operatore e un admin disattivato ricevono FORBIDDEN, senza scritture",
+    "import.%s: un operatore riceve FORBIDDEN, un utente senza riga operatore, anche admin, BAD_REQUEST, un admin disattivato UNAUTHORIZED, senza scritture",
     async (_, call) => {
       const admin = await createOperator({ role: "ADMIN" })
-      const callers = [
-        createTestCaller(await createOperator()),
-        createTestCaller(await createUser()),
-        createTestCaller(
-          await createUser({
-            role: "ADMIN",
-            disabledAt: new Date("2026-10-01T08:00:00.000Z"),
-            disabledBy: admin.id,
-          })
-        ),
+      const callers: [Caller, { code: string; message?: string }][] = [
+        [createTestCaller(await createOperator()), { code: "FORBIDDEN" }],
+        [createTestCaller(await createUser()), { code: "BAD_REQUEST" }],
+        [
+          createTestCaller(await createUser({ role: "ADMIN" })),
+          { code: "BAD_REQUEST" },
+        ],
+        [
+          createTestCaller(
+            await createOperator({
+              role: "ADMIN",
+              disabledAt: new Date("2026-10-01T08:00:00.000Z"),
+              disabledBy: admin.id,
+            })
+          ),
+          { code: "UNAUTHORIZED", message: "Utente disattivato" },
+        ],
       ]
 
-      for (const caller of callers) {
-        expect(await rejectionOf(call(caller))).toMatchObject({
-          code: "FORBIDDEN",
-        })
+      for (const [caller, expected] of callers) {
+        expect(await rejectionOf(call(caller))).toMatchObject(expected)
       }
       expect(await written()).toEqual({ uploads: 0, runs: 0, customers: 0 })
     }
@@ -159,7 +164,7 @@ describe("solo gli admin (AC2, AC3)", () => {
 
 describe("import di un admin", () => {
   it("lookup legge che cosa esiste nel CRM per le chiavi, senza scrivere", async () => {
-    const admin = await createUser({ role: "ADMIN" })
+    const admin = await createOperator({ role: "ADMIN" })
 
     expect(await createTestCaller(admin).import.lookup(keys)).toEqual({
       customers: [],
@@ -213,7 +218,7 @@ describe("import di un admin", () => {
       name: "Anna",
       surname: "Rossi",
     })
-    const luca = await createUser({ role: "ADMIN" })
+    const luca = await createOperator({ role: "ADMIN" })
     const second = await send(createTestCaller(luca))
     // Anna's, running: no queue runs it
     const startedAt = new Date()
@@ -237,7 +242,7 @@ describe("import di un admin", () => {
   })
 
   it("una riga che non si può importare mandata a mano come attesa: BAD_REQUEST e nulla scritto (AC12)", async () => {
-    const admin = await createUser({ role: "ADMIN" })
+    const admin = await createOperator({ role: "ADMIN" })
     const caller = createTestCaller(admin)
     const sent = await send(caller, [
       ...rows,
@@ -255,8 +260,8 @@ describe("import di un admin", () => {
 
   it("l'upload di un altro admin non si usa: NOT_FOUND", async () => {
     const [owner, other] = [
-      await createUser({ role: "ADMIN" }),
-      await createUser({ role: "ADMIN" }),
+      await createOperator({ role: "ADMIN" }),
+      await createOperator({ role: "ADMIN" }),
     ]
     const sent = await send(createTestCaller(owner), rows, 1)
 
@@ -277,7 +282,7 @@ describe("import di un admin", () => {
   })
 
   it("dove non c'è la coda l'import non parte: PRECONDITION_FAILED (D13)", async () => {
-    const admin = await createUser({ role: "ADMIN" })
+    const admin = await createOperator({ role: "ADMIN" })
     vi.stubEnv("VERCEL", "1")
 
     const error = await rejectionOf(
@@ -342,7 +347,7 @@ describe("import di un admin", () => {
       },
     ],
   ])("%s: BAD_REQUEST", async (_, call) => {
-    const admin = await createUser({ role: "ADMIN" })
+    const admin = await createOperator({ role: "ADMIN" })
 
     expect(await rejectionOf(call(createTestCaller(admin)))).toMatchObject({
       code: "BAD_REQUEST",

@@ -6,7 +6,7 @@ import { waveColumns } from "@mito/domain/import/formats"
 import { UPLOAD_PART_BYTES, toFileBody } from "@mito/domain/import/payload"
 import { waveCells } from "@mito/domain/import/_test/cells"
 import { createTestCaller } from "@/test/caller"
-import { createUser } from "@/test/factories"
+import { createOperator } from "@/test/factories"
 import { hasTestDatabase, migrateUpTo, pgClient } from "@/test/pg"
 
 // AC25 of the import: a Wave file of 20,000 rows, half of customers and
@@ -44,11 +44,11 @@ const row = (n: number): Cells =>
 describe.skipIf(!hasTestDatabase || !process.env.PERF)(
   "import di 20.000 righe (AC25)",
   () => {
-    let admin: Awaited<ReturnType<typeof createUser>>
+    let admin: Awaited<ReturnType<typeof createOperator>>
 
     beforeAll(async () => {
       await migrateUpTo()
-      admin = await createUser({ role: "ADMIN" })
+      admin = await createOperator({ role: "ADMIN" })
       // The existing half of the file, and the rest of the CRM
       const total = EXISTING + OTHERS
       await pgClient`

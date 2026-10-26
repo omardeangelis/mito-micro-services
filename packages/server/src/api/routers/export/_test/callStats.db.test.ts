@@ -57,12 +57,12 @@ describe("export.callStats", () => {
     })
   })
 
-  it("gives an admin without an operator row the totals too", async () => {
+  it("refuses an admin without an operator row with BAD_REQUEST, as every operator procedure", async () => {
     const admin = await createUser({ role: "ADMIN" })
 
     await expect(
       createTestCaller({ userId: admin.id }).export.callStats(PERIOD)
-    ).resolves.toMatchObject({ rows: [] })
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" })
   })
 
   it("refuses an operator with FORBIDDEN (AC7)", async () => {
@@ -77,25 +77,28 @@ describe("export.callStats", () => {
     ).rejects.toMatchObject({ code: "FORBIDDEN" })
   })
 
-  it("refuses a user that is not admin and has no operator row with FORBIDDEN (AC7)", async () => {
+  it("refuses a user that is not admin and has no operator row with BAD_REQUEST, before the role", async () => {
     const user = await createUser()
 
     await expect(
       createTestCaller({ userId: user.id }).export.callStats(PERIOD)
-    ).rejects.toMatchObject({ code: "FORBIDDEN" })
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" })
   })
 
-  it("refuses a deactivated admin with FORBIDDEN, with or without an operator row", async () => {
+  it("refuses a deactivated admin: UNAUTHORIZED with an operator row, BAD_REQUEST without", async () => {
     const disabledAt = new Date("2026-10-20T10:00:00.000Z")
     const withRow = await createOperator({ role: "ADMIN", disabledAt })
     const withoutRow = await createUser({ role: "ADMIN", disabledAt })
 
     await expect(
       createTestCaller(withRow).export.callStats(PERIOD)
-    ).rejects.toMatchObject({ code: "FORBIDDEN" })
+    ).rejects.toMatchObject({
+      code: "UNAUTHORIZED",
+      message: "Utente disattivato",
+    })
     await expect(
       createTestCaller({ userId: withoutRow.id }).export.callStats(PERIOD)
-    ).rejects.toMatchObject({ code: "FORBIDDEN" })
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" })
   })
 
   it("refuses a request without session with UNAUTHORIZED (AC8)", async () => {

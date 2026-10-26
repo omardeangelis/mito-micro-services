@@ -14,8 +14,6 @@ import { ZodError } from "zod"
 
 import { getServerAuthSession } from "../auth"
 import { db } from "@mito/db"
-import { users } from "@mito/db/schema/users"
-import { eq } from "drizzle-orm"
 import { driverError } from "@mito/db/driverError"
 import { contactErrorFromCause } from "@mito/domain/contact/errors"
 import { runTrpc } from "../effect/trpc"
@@ -164,22 +162,3 @@ export const adminProcedure = operatorProcedure.use(async ({ ctx, next }) => {
   }
   return next()
 })
-
-const enforceIsActiveAdmin = t.middleware(async ({ ctx, next }) => {
-  const [user] = await db
-    .select({ role: users.role, disabledAt: users.disabledAt })
-    .from(users)
-    .where(eq(users.id, ctx.session!.user.id))
-  if (user?.role !== "ADMIN" || user.disabledAt !== null) {
-    throw new TRPCError({ code: "FORBIDDEN", message: "admin-only" })
-  }
-  return next()
-})
-
-/**
- * An active admin, with or without an operator row: every other signed-in
- * user, a deactivated admin included, gets FORBIDDEN. For procedures that
- * don't need `ctx.operator`.
- */
-export const adminSessionProcedure =
-  protectedProcedure.use(enforceIsActiveAdmin)

@@ -17,7 +17,7 @@ import { lookupExisting } from "../../../services/import/lookup"
 import { type ImportQueue } from "../../../services/import/queue"
 import { startImport } from "../../../services/import/run"
 import { beginUpload, saveUploadPart } from "../../../services/import/upload"
-import { adminSessionProcedure } from "../../trpc"
+import { adminProcedure } from "../../trpc"
 
 // The import of customers and practices, admins only (AC2, D12): adapters
 // without logic over the services of `services/import`. Lookup, upload and
@@ -75,14 +75,14 @@ const runImport = <A>(
   >
 ) => runTrpc(program.pipe(Effect.provide(ImportLive)), importErrorToTrpc)
 
-export const lookup = adminSessionProcedure
+export const lookup = adminProcedure
   .input(lookupKeysSchema)
   .mutation(({ input }) => runTrpc(lookupExisting(input)))
 
-export const upload = adminSessionProcedure
+export const upload = adminProcedure
   .input(uploadPartSchema)
   .mutation(({ ctx, input }) => {
-    const createdBy = ctx.session.user.id
+    const createdBy = ctx.operator.userId
     const data = new Uint8Array(Buffer.from(input.data, "base64"))
     if ("uploadId" in input) {
       return runImport(
@@ -105,22 +105,22 @@ export const upload = adminSessionProcedure
     )
   })
 
-export const start = adminSessionProcedure
+export const start = adminProcedure
   .input(startImportSchema)
   .mutation(({ ctx, input }) =>
     runImport(
       startImport({
         uploadId: input.uploadId,
         expected: input.rows,
-        startedBy: ctx.session.user.id,
+        startedBy: ctx.operator.userId,
       })
     )
   )
 
-export const active = adminSessionProcedure.query(({ ctx }) =>
-  runImport(activeImport(ctx.session.user.id))
+export const active = adminProcedure.query(({ ctx }) =>
+  runImport(activeImport(ctx.operator.userId))
 )
 
-export const list = adminSessionProcedure
+export const list = adminProcedure
   .input(z.object({ page: z.number().int().min(1).max(100_000) }))
   .query(({ input }) => runImport(listImports(input.page)))
