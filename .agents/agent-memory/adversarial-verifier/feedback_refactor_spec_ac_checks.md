@@ -30,4 +30,11 @@ Second refactor spec (pratiche + task to L1/L2), what found gaps:
 - **A list of "operatorId written without findWorkingOperator" writers:** check every `createInsertSchema` input. It takes all columns, so an `insertX` on `protectedProcedure` writes `operatorId` as well.
 - **Removed procedures still mocked in UI tests** (`api.<router>.<proc>` nested object, missed by a dotted grep) leave a `not.toHaveBeenCalled` that can no longer fail.
 
+Third refactor spec (chat + storage router removal), what found gaps:
+
+- **"Observed with the tests of ACx" for an error contract.** grep the named and kept tests for `message:`. The kept chat tests asserted only `code`, so the error messages the AC froze (and the step moved into one translator) were checked by no test.
+- **A lock AC checked through a test trigger: list the tables and operations it fires on.** The chat trigger fired on `chat_to_operator` writes and message DELETE only. The common path (the sender is already in the chat, including the operator who created it) writes neither, so a lock-rule case on it passes without the lock. A race test where an FK already rejects the write (insert into a deleted chat) also passes without the lock. Require the observation on the path that neither the FK nor the trigger covers. Then check whether the spec's diff-scope AC even allows extending the trigger.
+- **In-memory doubles: check what they record** before accepting "in the bucket there is X with content type Y". The memory storage stored only the body and the date.
+- **"The route has no tests":** grep `apps/api/src/_test` and `smoke.mjs` for the path too.
+
 Related: [[plan-verification-techniques]], [[vacuous-test-patterns]], [[pglite-clock-and-fake-date]]

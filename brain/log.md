@@ -12,6 +12,58 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 
 <!-- Entries are appended by create-spec (spec creation) and docs-maintenance (ingest). Format:
 
+## [2026-10-26] merge | Router `supabase` e `supabaseClient`: PR B del passo 5 in `dev`
+- [PR #91](https://github.com/omardeangelis/mito-micro-services/pull/91) unita in `dev` (`25ba9de`) con la CI verde, senza l'approvazione di Leonardo, su richiesta di Omar (D22): il router `supabase` tolto, le route di export su `services/export/files.ts`, `supabaseClient` fuori dal contesto tRPC
+- Passo 5 fatto (§4 di [[chore/migrazione-effect]]); TD10 `[OPEN]` anche per (d) ed (e); [[specs/crm/chat-storage-effect/SPEC]] implemented. Restano GB2, bloccato fino alla [PR #90](https://github.com/omardeangelis/mito-micro-services/pull/90), e `docs-maintenance` sulla cartella
+
+## [2026-10-26] review | Router `supabase` e `supabaseClient`, PR B: rilanci di v4
+- Report: [[specs/crm/chat-storage-effect/REPORT]] (giro PR B, rilanci)
+- Scope: spec
+- Verdict: SHIP
+- Impact: critical
+- Verifiers: v4 rilanciato 4 volte sui documenti di GB2, poi una verifica delle correzioni (0 blockers, 0 major). GB2 bloccato: B6 di [[chore/migrazione-gcp]] non dà al backend di staging le variabili di login
+
+## [2026-10-25] review | Router `supabase` e `supabaseClient`, PR B del passo 5
+- Report: [[specs/crm/chat-storage-effect/REPORT]] (giro PR B)
+- Scope: spec
+- Verdict: DO NOT SHIP
+- Impact: critical
+- Verifiers: 7 (0 blockers, 2 major: GB2 e la nota sulla topologia di staging smentiti da `next.config.js`)
+
+## [2026-10-25] merge | Router `chat`: PR A del passo 5 in `dev`
+- [PR #86](https://github.com/omardeangelis/mito-micro-services/pull/86) unita in `dev` (`bd37efa`): il router `chat` su Effect, con l'invio di una nota in una transazione con il lock del cliente; porta anche `b72cd3e` (L3 su `HttpApi`)
+- TD10 in [[chore/migrazione-effect]] §7: `[OPEN]` (a), (b), (c) e (f); (d) ed (e) restano `[PREVISTO]` fino alla PR B. Righe di L2 e del §5 aggiornate
+
+## [2026-10-25] review | Router `chat` su Effect, PR A del passo 5
+- Report: [[specs/crm/chat-storage-effect/REPORT]]
+- Scope: spec
+- Verdict: SHIP
+- Impact: critical
+- Verifiers: 5 (0 blockers, 0 major; 2 minor, fra cui i writer dell'import che riscrivono `customers.chat_id` senza lock, preesistenti)
+
+## [2026-10-25] implement | Router `chat` su Effect, PR A del passo 5
+- Spec: [[specs/crm/chat-storage-effect/SPEC]] (approvata con il lancio di `implement-spec`), note: [[specs/crm/chat-storage-effect/IMPLEMENTATION-NOTES]]
+- Branch `claude/chat-effect`, non pushato: caratterizzazione (`6341cf0`), invio di una nota in `sendCustomerMessage` con transazione e lock del cliente (`ed8bce2`), server action e procedure senza chiamanti (`2bf79c7`), servizi e traduttore unico (`b202bdf`, `8abb525`), `simplify` (`83b20f7`)
+- Gate della PR A: tipi uguali a `2b284b4`, 30 mutanti uccisi, CI verde in un worktree senza `.env*`, prova nel browser su `mito_local`
+- Resta: merge di `dev`, PR verso `dev` quando Omar la chiede, poi T9b e la PR B
+
+## [2026-10-25] plan | Router `chat` su Effect e router `supabase` tolto (passo 5 della migrazione)
+- Spec: [[specs/crm/chat-storage-effect/SPEC]], piano: [[specs/crm/chat-storage-effect/PLAN]]
+- 16 task in due PR, dopo il gate G0, verificati dall'`adversarial-verifier` (DO NOT SHIP, 0 blocker, 2 major, corretti; AC17 (b) della SPEC corretto): PR A (`chat`: caratterizzazione di middleware, letture, invio e messaggi degli errori; invio in un servizio con transazione e lock del cliente; server action e procedure senza chiamanti; un solo traduttore), PR B (route di export su `services/export/files.ts`, router `supabase` e `supabaseClient` tolti), e una PR di documenti dopo ognuna
+- Debito della migrazione: TD10 `[PREVISTO]` in [[chore/migrazione-effect]]
+- La PR B parte da `dev` dopo il merge della A e ha la revisione di Leonardo
+
+## [2026-10-25] spec | Router `chat` su Effect e router `supabase` tolto (passo 5 della migrazione)
+- Created spec: [[specs/crm/chat-storage-effect/SPEC]]
+- Domain: crm
+- Status: Draft
+- Decisioni di Omar: il router `supabase` si toglie e le due route di export chiamano `Storage`; l'invio di una nota prende il lock del cliente
+
+## [2026-10-25] decision | Migrazione Effect: L3 su `HttpApi`
+- Decisione di Omar: L3 passa da Effect RPC a `HttpApi` di Effect, perché i prossimi obiettivi sono togliere tRPC e avere una SPA in React 19 ([[chore/migrazione-effect]] §3)
+- La SPA usa solo `HttpApi`; l'app Next.js resta su tRPC, e tRPC si toglie quando l'app Next.js si spegne
+- Le route REST di import ed export diventano gruppi della stessa API (§6, ora 9 route invece di 13); nota e D1 di [[chore/migration_plan]] aggiornate
+
 ## [2026-10-25] merge | Pratiche: passo 4 in `dev`
 - [PR #83](https://github.com/omardeangelis/mito-micro-services/pull/83) unita in `dev` (`eba251b`): passo 4 della migrazione a Effect e correzioni di TD9
 - TD9 in [[chore/migrazione-effect]] §7: `[OPEN]` solo (k) (l'import, B1), le altre `[CLOSED 2026-10-25]`; righe del §4, §5 e dei livelli L1, L2 aggiornate
@@ -248,54 +300,6 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 - Verdict: DO NOT SHIP
 - Impact: medium
 - Verifiers: 2 (0 blockers, 1 major)
-
-## [2026-10-16] implement | Sezione Contatti — PR4, T4.7 (MAJOR e MINOR della quinta verifica)
-- Spec: [[specs/crm/sezione-contatti/PLAN]]
-- Store per cliente delle note in eliminazione; focus solo se rimasto sul cestino; toast solo col cliente a schermo; test di rollback
-
-## [2026-10-16] review | Sezione Contatti — PR4, T4.5–T4.7 (quinta verifica)
-- Report: [[specs/crm/sezione-contatti/REPORT]]
-- Scope: spec
-- Verdict: DO NOT SHIP
-- Impact: medium
-- Verifiers: 2 (0 blockers, 2 major)
-
-## [2026-10-16] implement | Sezione Contatti — PR4, T4.7 (BLOCKER della quarta verifica)
-- Spec: [[specs/crm/sezione-contatti/PLAN]]
-- Note in eliminazione nello stato di `CustomerNotes`; NOT_FOUND senza toast (`gone`); test per chiudi e riapri, nota già eliminata, registro, cambio di cliente
-
-## [2026-10-16] review | Sezione Contatti — PR4, T4.5–T4.7 (quarta verifica)
-- Report: [[specs/crm/sezione-contatti/REPORT]]
-- Scope: spec
-- Verdict: DO NOT SHIP
-- Impact: medium
-- Verifiers: 2 (1 blockers, 0 major)
-
-## [2026-10-16] implement | Sezione Contatti — PR4, T4.7 (test della terza verifica)
-- Spec: [[specs/crm/sezione-contatti/PLAN]]
-- Test della sezione vera, del plurale, del focus con due eliminazioni e della guardia del focus; `beforeNextLockOf` fallisce se non scatta; isolamento già coperto
-
-## [2026-10-16] review | Sezione Contatti — PR4, T4.5–T4.7 (terza verifica)
-- Report: [[specs/crm/sezione-contatti/REPORT]]
-- Scope: spec
-- Verdict: DO NOT SHIP
-- Impact: medium
-- Verifiers: 2 (0 blockers, 3 major)
-
-## [2026-10-16] implement | Sezione Contatti — PR4, T4.7 (MAJOR della seconda verifica)
-- Spec: [[specs/crm/sezione-contatti/PLAN]]
-- Ordine sotto il lock coperto da test (`beforeNextLockOf`); regione di stato e eliminazioni in `CustomerNotes`, che resta quando la chat sparisce; scroll che segue l'ultima nota solo se la lista è in fondo
-
-## [2026-10-16] review | Sezione Contatti — PR4, T4.5–T4.7 (seconda verifica)
-- Report: [[specs/crm/sezione-contatti/REPORT]]
-- Scope: spec
-- Verdict: DO NOT SHIP
-- Impact: medium
-- Verifiers: 2 (0 blockers, 5 major)
-
-## [2026-10-16] implement | Sezione Contatti — PR4, T4.7
-- Spec: [[specs/crm/sezione-contatti/PLAN]]
-- Correzioni della review di T4.5 e T4.6; eliminazione della nota solo dell'autore, con il cliente bloccato (AC79, D21)
 
 ## [YYYY-MM-DD] ingest | <spec title>
 - Source: [[specs/<domain>/<spec>/SPEC]]
