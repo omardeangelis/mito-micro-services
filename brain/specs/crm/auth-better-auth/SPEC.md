@@ -33,7 +33,7 @@ Scelta sulla domanda "Quando facciamo il passaggio a better-auth?": **Subito su 
 
 NextAuth v4 è in manutenzione e lega il server a Next.js, mentre la direzione è un backend tutto in Effect con il frontend React solo client. Omar e Leonardo hanno scelto **better-auth** come sostituto. Il passaggio deve essere invisibile agli utenti, salvo un nuovo login, e deve conservare quello che la gestione operatori ha aggiunto a NextAuth: un disattivato non entra e non ha sessione (TD4).
 
-Ruoli coinvolti: **operatori** e **admin** del CRM (login con Microsoft Entra ID in produzione), **sviluppatori** (login con link via email fuori produzione), **cron** e script (token `CRON_SECRET_KEY`, che non cambiano).
+Ruoli coinvolti: **operatori** e **admin** del CRM (login con Microsoft Entra ID in produzione), **sviluppatori** (login con link via email negli ambienti di prova), **cron** e script (token `CRON_SECRET_KEY`, che non cambiano).
 
 ---
 
@@ -50,21 +50,21 @@ Ruoli coinvolti: **operatori** e **admin** del CRM (login con Microsoft Entra ID
 
 ## Acceptance Criteria
 
-"Produzione" qui è quello che il codice chiama `isProduction` (`packages/env`): il progetto Vercel di produzione. Staging, sviluppo e test sono "fuori produzione".
+"Ambiente di prova" qui è un ambiente in cui il login di prova è acceso esplicitamente da una variabile d'ambiente: sviluppo, test e staging, su Vercel e su Cloud Run. Ogni altro ambiente, compreso uno in cui la variabile manca, è "produzione" (OQ6).
 
 ### Login
 
 - **AC1**: Con le variabili di Azure impostate, un utente con l'account Azure già collegato fa login con Microsoft Entra ID dello stesso tenant ed entra con lo stesso `users.id`, ruolo, operatore e preferenze di prima. Non nasce un secondo utente.
 - **AC2**: Un account Azure collegato con NextAuth (riga in `accounts`) resta collegato: il primo login dopo il passaggio trova l'utente dall'account Azure, anche se l'email del profilo Azure è cambiata da allora.
 - **AC3**: Un account Azure non collegato non si aggancia mai a un utente esistente per la sola email, come oggi: quel login è rifiutato e l'utente esistente resta com'è.
-- **AC4**: Il primo login di un utente nuovo crea l'utente e la sua riga `operators` insieme, tutto o niente, con ruolo e preferenze di default dello schema e senza immagine del provider, e lo porta a `/dashboard/profile?firstTime=true`.
+- **AC4**: Il primo login di un utente nuovo crea l'utente e la sua riga `operators` insieme, tutto o niente, con ruolo `OPERATORE`, preferenze di default e senza immagine del provider, e lo porta a `/dashboard/profile?firstTime=true`.
 - **AC5**: Dopo il login un utente che non è nuovo segue lo stesso percorso di oggi: `/dashboard`, oppure il profilo quando il suo operatore non ha nome o cognome.
 - **AC6**: Un indirizzo di ritorno passato al login, qualunque sia, non cambia la destinazione di AC4 e AC5: il login non porta mai fuori dal dominio del frontend.
-- **AC7**: Fuori produzione c'è anche il login con link via email: in `development` il link si stampa nella console del server, altrove si invia con SendGrid quando le sue quattro variabili sono impostate. In produzione il link via email non esiste.
+- **AC7**: In un ambiente di prova c'è anche il login con link via email: in `development` il link si stampa nella console del server, altrove si invia con SendGrid quando le sue quattro variabili sono impostate. In produzione il link via email non esiste, anche se le variabili di SendGrid sono impostate.
 - **AC8**: Il link via email vale una volta sola e scade dopo 24 ore.
-- **AC9**: Fuori produzione entra solo chi ha già un utente con la stessa email scritta uguale, o un indirizzo di `AUTH_ALLOWED_EMAILS` (senza differenze di maiuscole) senza utente. Un'email già presente con altre maiuscole è rifiutata, e non nasce un secondo utente.
+- **AC9**: In un ambiente di prova entra, con qualunque provider, solo chi ha già un utente con la stessa email scritta uguale, o un indirizzo di `AUTH_ALLOWED_EMAILS` (senza differenze di maiuscole) senza utente. Un'email già presente con altre maiuscole è rifiutata, e non nasce un secondo utente.
 - **AC10**: In produzione entra con Azure chiunque il tenant lasci entrare, salvo AC11.
-- **AC11**: Il login di un utente disattivato è rifiutato, cercato per id e per email senza differenze di maiuscole, con Azure e con il link via email, in produzione e fuori. Nessun utente nuovo viene creato e nessuna sessione aperta. (AC17 di [[specs/crm/gestione-operatori/SPEC]].)
+- **AC11**: Il login di un utente disattivato è rifiutato, cercato per id e per email senza differenze di maiuscole, con Azure e con il link via email, in produzione e negli ambienti di prova. Nessun utente nuovo viene creato e nessuna sessione aperta. (AC17 di [[specs/crm/gestione-operatori/SPEC]].)
 - **AC12**: Per un'email che AC9 o AC11 rifiutano non parte nessun link.
 - **AC13**: Un login rifiutato o fallito mostra in pagina "Accesso non riuscito"; né l'URL né la risposta contengono il motivo o un errore del database.
 
@@ -80,14 +80,15 @@ Ruoli coinvolti: **operatori** e **admin** del CRM (login con Microsoft Entra ID
 
 ### Superficie esposta
 
-- **AC21**: Le sole operazioni di auth che un browser può chiamare sono: avvio del login (Azure, e fuori produzione il link via email), ritorno dal provider o dal link, lettura della propria sessione, logout.
+- **AC21**: Le sole operazioni di auth che un browser può chiamare sono: avvio del login (Azure, e negli ambienti di prova il link via email), ritorno dal provider o dal link, lettura della propria sessione, logout.
+- **AC31**: Il login con Azure non chiede l'accesso offline, e dopo il login l'account collegato non conserva token del provider (access, refresh, id token). I token già salvati con NextAuth si cancellano.
 - **AC22**: Nessuna richiesta di un utente collegato cambia `role`, `email`, `disabled_at` o le preferenze attraverso l'auth, collega un altro account, elenca o revoca sessioni altrui, o restituisce i token del provider (access, refresh, id token).
 
 ### Pagine e chiamanti
 
 - **AC23**: `/login` con una sessione il cui utente ha un nome porta a `/dashboard`; con una sessione senza nome (link via email) mostra la pagina di login, come oggi.
 - **AC24**: `/login` senza sessione mostra il testo di oggi e "Accedi"; "Accedi" avvia il login con Microsoft quando le variabili di Azure sono impostate.
-- **AC25**: Fuori produzione `/login` offre anche il campo email del link (AC7).
+- **AC25**: In un ambiente di prova `/login` offre anche il campo email del link (AC7).
 - **AC26**: Le route che leggono la sessione (`authCheck` di `src/app/api/_utils/auth.ts`, `/api/auth/user`) rispondono, con e senza sessione, con lo stesso status e lo stesso corpo di prima del passaggio. `authCheck` accetta ancora il token dei cron firmato con `CRON_SECRET_KEY`.
 - **AC27**: I cron su Cloud Run restano sul token OIDC di Cloud Scheduler, che non dipende dalla sessione.
 
@@ -123,7 +124,8 @@ Ruoli coinvolti: **operatori** e **admin** del CRM (login con Microsoft Entra ID
 - Da verificare nel piano su better-auth: adapter Drizzle con mappatura di nomi di tabelle e colonne su quelle esistenti; provider `microsoft` con `tenantId`; plugin magic link; hook sul database per rifiutare i disattivati e creare l'operatore; handler per Hono; plugin dei cookie per Next.js; cache del cookie spenta. Le colonne differiscono da NextAuth (per esempio `emailVerified` booleano invece di data, `accountId`/`providerId`, `createdAt`/`updatedAt` obbligatori).
 - `src/middleware/auth.ts` non è collegato a niente: non esiste `src/middleware.ts` e nessuno lo importa. Si toglie con NextAuth.
 - `/api/auth/user` senza sessione oggi non restituisce una risposta (`return` vuoto nell'handler): AC26 conserva quello che succede, qualunque sia; correggerlo è un'altra PR.
-- Su Cloud Run `VERCEL_ENV` non è impostata, quindi per il backend `isProduction` è sempre falso: oggi conta poco, ma con il login sul backend in produzione deciderebbe provider e regole (OQ6).
+- Su Cloud Run `VERCEL_ENV` non è impostata, quindi per il backend `isProduction` è sempre falso: per questo il login di prova diventa un interruttore esplicito (OQ6), spento quando manca.
+- Oggi un utente nuovo nasce `ADMIN` per il default della colonna `role`; con AC4 nasce `OPERATORE`, e un admin lo promuove dalla gestione operatori (cambio ruolo, "mai l'ultimo admin").
 - `@auth/drizzle-adapter` è nella root e `packages/db` dipende da `next-auth` della root solo per il tipo `AdapterAccount`.
 
 ---
@@ -134,10 +136,10 @@ Ruoli coinvolti: **operatori** e **admin** del CRM (login con Microsoft Entra ID
 |---|----------|---------|-------|--------|
 | 1 | Al passaggio tutti rifanno il login una volta (default), o si migrano le sessioni aperte? | AC20 | Leonardo | Decisa 2026-10-26 (Leonardo): nuovo login per tutti |
 | 2 | La pagina di login nuova: basta un pulsante "Accedi con Microsoft" e, fuori produzione, un campo email (default), o serve un `prototype`? | AC24, AC25 | Leonardo | Decisa 2026-10-26 (Leonardo): pagina semplice, nessun prototype |
-| 3 | In produzione un utente nuovo da Azure nasce `ADMIN` (default dello schema). Si conserva (default: comportamento invariato) o si cambia in una PR a parte? | AC4, AC10 | Leonardo, Omar | Open, default: invariato |
-| 4 | I token di Azure (access, refresh, id token) salvati negli account non li legge nessuno: si conservano (default) o si smette di salvarli? | AC2 | Leonardo | Open, default: conservati |
+| 3 | In produzione un utente nuovo da Azure nasce `ADMIN` (default dello schema). Si conserva (default: comportamento invariato) o si cambia in una PR a parte? | AC4, AC10 | Leonardo, Omar | Decisa 2026-10-26 (Leonardo): nasce `OPERATORE`, in una PR a parte prima di better-auth (AC4) |
+| 4 | I token di Azure (access, refresh, id token) salvati negli account non li legge nessuno: si conservano (default) o si smette di salvarli? | AC2 | Leonardo | Decisa 2026-10-26 (Leonardo): non si salvano più e quelli salvati si cancellano (AC31) |
 | 5 | La [PR #90](https://github.com/omardeangelis/mito-micro-services/pull/90) si unisce prima della PR di better-auth (default, che poi aggiunge solo il secret nuovo), o la si chiude e la PR di better-auth porta tutti i secret? | Constraints | Omar | Decisa 2026-10-26 (Leonardo): #90 prima |
-| 6 | Il backend di produzione su Cloud Run come capisce di essere in produzione (oggi `isProduction` legge solo variabili di Vercel)? Va deciso prima del go/no-go, non serve per dev e staging | AC7, AC9, AC10 | Leonardo, Omar | Open |
+| 6 | Il backend di produzione su Cloud Run come capisce di essere in produzione (oggi `isProduction` legge solo variabili di Vercel)? Va deciso prima del go/no-go, non serve per dev e staging | AC7, AC9, AC10 | Leonardo, Omar | Decisa 2026-10-26 (Leonardo): interruttore esplicito del login di prova, spento se manca (definizione sopra AC1) |
 | 7 | Quali origini fidate e quale URL base usa better-auth su staging (oggi `NEXTAUTH_URL` = `https://staging-crm.dbmito.it`)? Default: lo stesso dominio del frontend | AC17, AC18 | Leonardo | Decisa 2026-10-26 (Leonardo): dominio del frontend |
 
 ---
@@ -150,4 +152,5 @@ Ruoli coinvolti: **operatori** e **admin** del CRM (login con Microsoft Entra ID
 | Subito su `dev` e staging, non con l'uscita da Next.js | Scelta di Leonardo il 2026-10-26: separa il cambio dell'auth dal cambio del frontend; la prod resta su NextAuth fino al go/no-go |
 | Login e sessione restano nel nostro Postgres | Già oggi l'auth non usa Supabase Auth: esce da Supabase insieme al database |
 | La pagina d'errore di NextAuth diventa il messaggio "Accesso non riuscito" nella pagina di login (AC13) | better-auth non ha pagine sue; fa parte della pagina di login nuova (OQ2) |
-| Comportamento invariato salvo il nuovo login e la pagina di login | Regola della migrazione Effect: niente cambi di comportamento nel passo di migrazione; i cambi (OQ3) vanno in PR a parte |
+| Tre cambi voluti oltre al passaggio: utente nuovo `OPERATORE` (OQ3), niente token Azure salvati (OQ4), login di prova solo con l'interruttore acceso (OQ6) | Decisioni di Leonardo del 2026-10-26: tolgono un accesso da admin a chiunque sia nel tenant, dati sensibili mai letti, e un ambiente configurato male che si apre da solo |
+| Comportamento invariato salvo il nuovo login, la pagina di login e i tre cambi sopra | Regola della migrazione Effect: niente cambi di comportamento nel passo di migrazione; i cambi (OQ3) vanno in PR a parte |
