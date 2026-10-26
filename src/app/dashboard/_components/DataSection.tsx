@@ -3,11 +3,11 @@ import { AdminDataSection } from "./AdminDataSection"
 import { OperatorDataSection } from "./OperatorDataSection"
 import {
   type TimeFrame,
-  DEFUALTTIMEFRAME,
+  DEFAULTTIMEFRAME,
 } from "@mito/domain/constants/timeframes"
 
 export const DataSection = async ({
-  timeframe = DEFUALTTIMEFRAME,
+  timeframe = DEFAULTTIMEFRAME,
 }: {
   timeframe?: TimeFrame
 }) => {

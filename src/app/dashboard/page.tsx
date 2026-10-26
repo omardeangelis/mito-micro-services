@@ -6,16 +6,13 @@ import { ImportLink } from "./_components/ImportLink"
 import { CallsSection } from "./_components/export/CallsSection"
 import { DataSectionSkeleton } from "./_components/AdminDataSection"
 import { type ServerPageProps } from "@/lib/types"
-import {
-  DEFUALTTIMEFRAME,
-  type TimeFrame,
-} from "@mito/domain/constants/timeframes"
+import { parseTimeFrame } from "@mito/domain/constants/timeframes"
 import { TimeFrameSelector } from "@/components/custom/date-picker"
 
 export default async function DashboardHome(
   props: ServerPageProps<{ x: never }>
 ) {
-  const { tf } = props.searchParams ?? { tf: DEFUALTTIMEFRAME }
+  const timeframe = parseTimeFrame(props.searchParams?.tf)
   return (
     <main className="dashabord-container">
       <div className="dashabord-layout">
@@ -33,7 +30,7 @@ export default async function DashboardHome(
               </div>
               <div className="mt-4">
                 <Suspense fallback={<DataSectionSkeleton />}>
-                  <DataSection timeframe={tf as TimeFrame} />
+                  <DataSection timeframe={timeframe} />
                 </Suspense>
               </div>
             </div>

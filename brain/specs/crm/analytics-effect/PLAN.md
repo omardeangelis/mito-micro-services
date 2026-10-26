@@ -450,9 +450,9 @@ Ogni task parte da un test rosso sul comportamento nuovo, poi aggiorna i test ve
   - mutanti (D22), uccisi da `windows.db.test.ts`: `lte(now)` → `lt(now)`; `lt` → `lte` sulla fine del confronto; `gte` → `gt` sull'inizio del confronto;
   - `git grep -nE 'TIMEFRAMEMAP|TIMEFRAMEDELTA' -- packages/server` non trova niente;
   - `pnpm exec tsc --noEmit` verde a fine wave (D22): le sezioni convertono ancora con `Number(...)`, che accetta un `number`.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Complete
+- **log**: Wave 6, worker `sonnet`. RED dell'orchestratore: `windows.db.test.ts`, 9 rossi su 9 (con le finestre di oggi la pratica a `T − 29,5` giorni non conta; `windows` assente). `financeWindows` legge `Clock.currentTimeMillis` a ogni chiamata; una sola funzione privata, `financedIn(aggregate, actor, period)`, conta una finestra ed è chiamata una volta per finestra al posto delle due query copiate (D26); riferimento `gte`/`lte`, confronto `gte`/`lt`. Importi `Number(...)`, `0` senza righe, e `windows` nella risposta. Test aggiornati: `financed.db.test.ts` (numeri; le medie periodiche `7000 / 3` e `112000 / 3` passano con `toEqual`; un caso nuovo per `timeFrame` su `windows`), `types.test.ts` (`tsc` conferma `Date` nelle finestre, con `superjson`). 9 verdi; mutanti uccisi da `windows.db.test.ts`: `lte(now)` → `lt` (4 rossi), `lt` → `lte` sulla fine del confronto (3), `gte` → `gt` sull'inizio del confronto (3). `git grep TIMEFRAMEMAP|TIMEFRAMEDELTA -- packages/server` vuota.
+- **files edited/created**: nuovo `packages/server/src/services/analytics/windows.ts`; `packages/server/src/services/analytics/financed.ts`; nuovo `packages/server/src/services/analytics/_test/windows.db.test.ts`; `packages/server/src/api/routers/analytics/_test/{financed.db.test.ts,types.test.ts}` (`byBranch.db.test.ts` resta verde senza modifiche)
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -495,9 +495,9 @@ Ogni task parte da un test rosso sul comportamento nuovo, poi aggiorna i test ve
   - I test nuovi stanno sul servizio (D25): ogni stato attivo e non attivo, i due ruoli, il contatto di due anni fa attivo che conta ancora.
   - I casi del round 1 sulla procedura si aggiornano: i non attivi non contano, `followup` e `non risponde` passano fra i da fare.
 - **validation**: il test di servizio "un contatto non attivo con un esito non conta" è rosso prima del cambio e verde dopo; gli altri casi di AC17 verdi.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Complete
+- **log**: Wave 6, worker `haiku`. RED dell'orchestratore: il test di servizio `contactProgress.db.test.ts`, 5 rossi su 6 (un contatto non attivo in `app.to` contava; l'ADMIN `{ done: 42, todo: 6 }` invece di `{ done: 15, todo: 9 }`); il caso del contatto di due anni fa era già verde, come guardia. Solo i contatti attivi, `done` su `outcomeStates`, `todo` su `callStates`. Test della procedura aggiornati, con i nomi del comportamento nuovo (`{ done: 5, todo: 3 }` per operatore). 16 verdi.
+- **files edited/created**: `packages/server/src/services/analytics/contactProgress.ts`; nuovo `packages/server/src/services/analytics/_test/contactProgress.db.test.ts`; `packages/server/src/api/routers/analytics/_test/contactProgress.db.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -554,9 +554,9 @@ Ogni task parte da un test rosso sul comportamento nuovo, poi aggiorna i test ve
   - i test della pagina e del selettore sono rossi su `dev` e verdi dopo;
   - `git grep -niE 'analitycs|defualttimeframe' -- packages src apps ':!**/_test/**'` non trova niente;
   - `tsc` verde a fine wave (D22).
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Complete
+- **log**: Wave 6, worker `sonnet`. RED dell'orchestratore: `timeframes.test.ts` (8 rossi, `parseTimeFrame is not a function`), `page.test.tsx` (`'7d'`, `''` con `{}` e `'90d365d'` con `tf` ripetuto invece di `30d`), `TimeFrameSelector.test.tsx` (`''` con `?tf=7d`). Due difetti dei test dell'orchestratore, corretti in review: in `page.test.tsx` due render nello stesso test (diviso in due), e i file formattati da `prettier` fuori dal repo, con i punti e virgola (riformattati). `parseTimeFrame` con `TIMEFRAMEOPTIONS.find`, senza cast; lo store rinominato con `git mv`. 15 verdi; `git grep -niE 'analitycs|defualttimeframe|finaziato'` fuori dai test vuota.
+- **files edited/created**: `packages/domain/src/constants/timeframes.ts`; `src/store/useAnalitycsStore.ts` → `src/store/useAnalyticsStore.ts`; `src/components/custom/date-picker/index.tsx`; `src/app/dashboard/page.tsx`; `src/app/dashboard/_components/{DataSection,AdminDataSection,OperatorDataSection}.tsx` (solo gli import); nuovi `src/app/dashboard/_test/page.test.tsx`, `src/components/custom/date-picker/_test/TimeFrameSelector.test.tsx`, `packages/domain/src/constants/_test/timeframes.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a

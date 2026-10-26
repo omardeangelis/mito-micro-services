@@ -5,11 +5,11 @@ import { DonutCard } from "./DonutCard"
 import { CircleCard } from "./CircleCard"
 import {
   type TimeFrame,
-  DEFUALTTIMEFRAME,
+  DEFAULTTIMEFRAME,
 } from "@mito/domain/constants/timeframes"
 
 export const AdminDataSection = async ({
-  timeframe = DEFUALTTIMEFRAME,
+  timeframe = DEFAULTTIMEFRAME,
 }: {
   timeframe?: TimeFrame
 }) => {
