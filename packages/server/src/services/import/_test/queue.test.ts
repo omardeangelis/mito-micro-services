@@ -1,10 +1,11 @@
-import { describe, expect, test } from "vitest"
+import { describe, expect, test, vi } from "vitest"
 import { ConfigProvider, Effect, Exit } from "effect"
 import {
   ImportQueue,
   type ImportTask,
   importQueueChoice,
   importQueueCloudTasks,
+  importQueueInProcess,
 } from "../queue"
 
 // The queue of the imports (T10a, D13): which one an environment gets, and
@@ -184,5 +185,30 @@ describe("Cloud Tasks", () => {
     expect(
       Exit.isSuccess(await enqueue({ kind: "run", runId: 7 }, fetchImpl))
     ).toBe(true)
+  })
+})
+
+describe("coda in processo (sviluppo locale)", () => {
+  test("un task di pulizia può rimettersi in coda", async () => {
+    const purged: string[] = []
+    const queue = importQueueInProcess({
+      run: () => Effect.void,
+      purge: (uploadId) =>
+        Effect.gen(function* () {
+          purged.push(uploadId)
+          if (purged.length > 1) return
+          yield* (yield* ImportQueue)
+            .enqueue({ kind: "purge", uploadId, at: new Date(0) })
+            .pipe(Effect.orDie)
+        }),
+    })
+
+    await Effect.runPromise(
+      Effect.flatMap(ImportQueue, (q) =>
+        q.enqueue({ kind: "purge", uploadId: "u1", at: new Date(0) })
+      ).pipe(Effect.provide(queue))
+    )
+
+    await vi.waitFor(() => expect(purged).toEqual(["u1", "u1"]))
   })
 })

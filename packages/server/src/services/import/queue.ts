@@ -126,10 +126,15 @@ export const importQueueCloudTasks = (
   return Layer.succeed(ImportQueue, { available: true, enqueue })
 }
 
-/** What the queue runs: the handlers report their own failures. */
+/**
+ * What the queue runs: the handlers report their own failures, and can queue
+ * tasks again.
+ */
 export type ImportHandlers<R> = {
-  readonly run: (runId: number) => Effect.Effect<void, never, R>
-  readonly purge: (uploadId: string) => Effect.Effect<void, never, R>
+  readonly run: (runId: number) => Effect.Effect<void, never, R | ImportQueue>
+  readonly purge: (
+    uploadId: string
+  ) => Effect.Effect<void, never, R | ImportQueue>
 }
 
 /**
@@ -141,19 +146,21 @@ export const importQueueInProcess = <R>(handlers: ImportHandlers<R>) =>
     ImportQueue,
     Effect.map(Effect.runtime<R>(), (runtime) => {
       const fork = Runtime.runFork(runtime)
-      return {
+      const queue: Context.Tag.Service<typeof ImportQueue> = {
         available: true,
         enqueue: (task: ImportTask) =>
           Effect.sync(() => {
             fork(
-              task.kind === "run"
+              (task.kind === "run"
                 ? handlers.run(task.runId)
                 : Effect.flatMap(Clock.currentTimeMillis, (now) =>
                     Effect.sleep(Math.max(0, task.at.getTime() - now))
                   ).pipe(Effect.zipRight(handlers.purge(task.uploadId)))
+              ).pipe(Effect.provideService(ImportQueue, queue))
             )
           }),
       }
+      return queue
     })
   )
 

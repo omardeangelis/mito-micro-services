@@ -8,6 +8,7 @@ import {
   insertPracticeSchema,
   type PracticeWrite,
 } from "../schemas"
+import { parseFileName } from "./convert/fileName"
 import { type StandardRow, type WaveRow } from "./convert/rows"
 import { standardCustomer, standardPractice } from "./convert/standard"
 import { getCustomerRole } from "./convert/values"
@@ -297,17 +298,25 @@ export function classifyRow(
 
   let customer: ConvertedCustomer | null = null
   let practice: PracticeWrite | null = null
+  let role: CustomerRole = "Intestatario"
   try {
     if (!isMissing(cells[layout.customerCode])) {
       customer = layout.customer(cells, fileName, now)
     }
-    if (missing.length === 0) practice = layout.practice(cells, fileName, now)
+    if (missing.length === 0) {
+      practice = layout.practice(cells, fileName, now)
+      role = layout.role(cells)
+    }
   } catch {
     // The conversion assumes text where a cell can be a number
     return { kind: "discarded", reasons: [...found, reasons.unreadableRow] }
   }
 
   if (customer) {
+    // A cell like 0 isn't missing but gives no code (AC10)
+    if (!customer.fiscalCode && !customer.vatCode) {
+      found.push(reasons.missingFiscalData)
+    }
     found.push(
       ...valueReasons(customer, customerEntity, layout.customerSources)
     )
@@ -320,29 +329,28 @@ export function classifyRow(
 
   if (found.length === 0 && customer) {
     if (practice) {
-      return {
-        kind: "importable",
-        customer,
-        practice,
-        role: layout.role(cells),
-      }
+      return { kind: "importable", customer, practice, role }
     }
     if (customerOnly) return { kind: "customerOnly", customer }
   }
   return { kind: "discarded", reasons: [...new Set(found)] }
 }
 
-/** The rows of a file, blank ones left out (they aren't rows, AC8). */
+/**
+ * The rows of a file, blank ones left out (they aren't rows, AC8). `fileName`
+ * is the name of the uploaded file: the rows get the one the CRM stores.
+ */
 export function classifyRows(
   format: ImportFormat,
   rows: readonly { row: number; cells: Cells }[],
   now: Date,
   fileName: string
 ): NumberedRow[] {
+  const stored = parseFileName(fileName, now)
   return rows
     .filter(({ cells }) => !isBlankRow(cells))
     .map(({ row, cells }) => ({
-      ...classifyRow(format, cells, now, fileName),
+      ...classifyRow(format, cells, now, stored),
       row,
     }))
 }

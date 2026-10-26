@@ -16,17 +16,14 @@ import { query } from "../../effect/db"
 const anyOf = (column: AnyPgColumn, values: readonly string[]) =>
   sql`${column} = ANY(${sql.param(values)}::text[])`
 
-const customersWith = (
-  codes: {
-    fiscalCodes: readonly string[]
-    vatCodes: readonly string[]
-    customerCodes: readonly string[]
-  },
-  lock: boolean
-) =>
+const customersWith = (codes: {
+  fiscalCodes: readonly string[]
+  vatCodes: readonly string[]
+  customerCodes: readonly string[]
+}) =>
   codes.fiscalCodes.length + codes.vatCodes.length + codes.customerCodes.length
-    ? query((client) => {
-        const select = client
+    ? query((client) =>
+        client
           .select({
             id: customers.id,
             fiscalCode: customers.fiscalCode,
@@ -41,35 +38,18 @@ const customersWith = (
               anyOf(customers.tempID, codes.customerCodes)
             )
           )
-        return lock ? select.orderBy(asc(customers.id)).for("update") : select
-      })
+      )
     : Effect.succeed([] as CrmCustomer[])
 
-/** By `id`, in the order of its characters (`COLLATE "C"`) on every side. */
-const byId = (a: CrmCustomer, b: CrmCustomer) =>
-  a.id < b.id ? -1 : a.id > b.id ? 1 : 0
-
 /**
- * What the CRM has for the keys of a file (`import.lookup`, D3), for
- * `planRows`. Reads only.
- *
- * - The customers with a fiscal code, VAT number or customer code of the file,
- *   and those with the VAT number of the ones a row can recognize: today's
- *   rule updates them too (D11). The fiscal code of one a row recognizes is
- *   a key of the file already.
- * - The practices of the file that exist, and their links.
- *
- * With `lock`, inside the import's transaction, it locks what it reads (D5):
- * the customers in order of `id`, those of the file's keys and then those of
- * the VAT numbers, and then the practices in order of `pratica_id`. Until the
- * end of the transaction they keep the codes it read.
+ * The customers with a fiscal code, VAT number or customer code of the file,
+ * and those with the VAT number of the ones a row can recognize: today's rule
+ * updates them too (D11). The fiscal code of one a row recognizes is a key of
+ * the file already. By `id`.
  */
-export const lookupExisting = (
-  keys: LookupKeys,
-  { lock = false }: { lock?: boolean } = {}
-) =>
+const customersOf = (keys: LookupKeys) =>
   Effect.gen(function* () {
-    const found = yield* customersWith(keys, lock)
+    const found = yield* customersWith(keys)
 
     // The ones `recognize` of `planRows` can pick
     const fiscalCodes = new Set(keys.fiscalCodes)
@@ -86,10 +66,58 @@ export const lookupExisting = (
           .filter((code): code is string => !!code && !vatCodes.has(code))
       ),
     ]
-    const more = yield* customersWith(
-      { fiscalCodes: [], vatCodes: moreVatCodes, customerCodes: [] },
-      lock
+    const more = yield* customersWith({
+      fiscalCodes: [],
+      vatCodes: moreVatCodes,
+      customerCodes: [],
+    })
+    return new Map(
+      [...found, ...more].map((customer) => [customer.id, customer])
     )
+  })
+
+/** Locks the customers in one statement, in order of `id` (D5). */
+const lockCustomers = (ids: readonly string[]) =>
+  query((client) =>
+    client
+      .select({ id: customers.id })
+      .from(customers)
+      .where(anyOf(customers.id, ids))
+      .orderBy(asc(customers.id))
+      .for("update")
+  )
+
+/** By `id`, in the order of its characters (`COLLATE "C"`) on every side. */
+const byId = (a: CrmCustomer, b: CrmCustomer) =>
+  a.id < b.id ? -1 : a.id > b.id ? 1 : 0
+
+/**
+ * What the CRM has for the keys of a file (`import.lookup`, D3), for
+ * `planRows`. Reads only.
+ *
+ * - The customers of the keys (`customersOf`).
+ * - The practices of the file that exist, and their links.
+ *
+ * With `lock`, inside the import's transaction, it locks what it reads (D5):
+ * the customers it found, all in one statement in order of `id`, and then the
+ * practices in order of `pratica_id`. It reads the customers again after the
+ * lock, and locks again if the codes brought others meanwhile. Until the end
+ * of the transaction they keep the codes it read.
+ */
+export const lookupExisting = (
+  keys: LookupKeys,
+  { lock = false }: { lock?: boolean } = {}
+) =>
+  Effect.gen(function* () {
+    let found = yield* customersOf(keys)
+    if (lock) {
+      const held = new Set<string>()
+      while ([...found.keys()].some((id) => !held.has(id))) {
+        for (const id of found.keys()) held.add(id)
+        yield* lockCustomers([...held])
+        found = yield* customersOf(keys)
+      }
+    }
 
     const praticaIds = keys.praticaIds.length
       ? (yield* query((client) => {
@@ -114,11 +142,8 @@ export const lookupExisting = (
         )
       : []
 
-    const unique = new Map(
-      [...found, ...more].map((customer) => [customer.id, customer])
-    )
     return {
-      customers: [...unique.values()].sort(byId),
+      customers: [...found.values()].sort(byId),
       praticaIds,
       links,
     } satisfies CrmState

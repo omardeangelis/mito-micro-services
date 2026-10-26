@@ -2,13 +2,17 @@ import { Cause, Data, Effect, Exit, type Layer, Option } from "effect"
 import { type Context, Hono } from "hono"
 import { type Db, type DbError } from "@mito/server/effect/db"
 import { type ImportConfig } from "@mito/server/services/import/config"
-import { executeImport } from "@mito/server/services/import/run"
-import { purgeUpload } from "@mito/server/services/import/upload"
+import {
+  type ImportQueueFailed,
+  type ImportUnavailable,
+} from "@mito/server/services/import/errors"
+import { type ImportQueue } from "@mito/server/services/import/queue"
+import { executeImport, purgeUpload } from "@mito/server/services/import/run"
 import { ImportAuth } from "./auth"
 
 class UnknownTask extends Data.TaggedError("UnknownTask") {}
 
-export type ImportRouteContext = ImportAuth | Db | ImportConfig
+export type ImportRouteContext = ImportAuth | Db | ImportConfig | ImportQueue
 
 /** The tag and the SQLSTATE of a failure: its message may hold a value. */
 const describe = (cause: Cause.Cause<unknown>) => {
@@ -36,7 +40,13 @@ export const importRoutes = (layer: Layer.Layer<ImportRouteContext>) => {
     <I, A>(
       param: string,
       parse: (raw: string) => I | undefined,
-      run: (input: I) => Effect.Effect<A, DbError, Db | ImportConfig>
+      run: (
+        input: I
+      ) => Effect.Effect<
+        A,
+        DbError | ImportQueueFailed | ImportUnavailable,
+        Db | ImportConfig | ImportQueue
+      >
     ) =>
     async (c: Context) => {
       const raw = c.req.param(param) ?? ""

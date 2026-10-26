@@ -15,7 +15,10 @@ import { toFileBody } from "@mito/domain/import/payload"
 import { waveCells } from "@mito/domain/import/_test/cells"
 import { ServerLive } from "@mito/server/effect/server"
 import { ImportConfigLive } from "@mito/server/services/import/config"
-import { ImportQueue } from "@mito/server/services/import/queue"
+import {
+  ImportQueue,
+  type ImportTask,
+} from "@mito/server/services/import/queue"
 import { startImport } from "@mito/server/services/import/run"
 import { createUpload } from "@mito/server/services/import/upload"
 import { migrateUpTo, resetDb, testDb } from "@/test/db"
@@ -46,6 +49,7 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   await resetDb()
+  queued.length = 0
 })
 
 /** An ID token as Google signs it for the queue, with `claims` changed. */
@@ -62,12 +66,20 @@ const idToken = (claims: JWTPayload & { email_verified?: boolean } = {}) =>
     .setExpirationTime("5m")
     .sign(googleKey)
 
+const queued: ImportTask[] = []
+const recordingQueue = Layer.succeed(ImportQueue, {
+  available: true,
+  enqueue: (task) => Effect.sync(() => void queued.push(task)),
+})
+
 const appWith = (
   auth = importAuth({ audience: SERVICE, serviceAccount: TASKS_ACCOUNT }, keys)
 ) =>
   new Hono().route(
     "/internal/import",
-    importRoutes(Layer.mergeAll(ServerLive, ImportConfigLive, auth))
+    importRoutes(
+      Layer.mergeAll(ServerLive, ImportConfigLive, recordingQueue, auth)
+    )
   )
 
 const call = async (path: string, authorization?: string, app = appWith()) => {
@@ -252,6 +264,19 @@ describe("POST /internal/import/purge/:uploadId", () => {
 
     expect((await call(`/purge/${uploadId}`)).status).toBe(401)
     expect(await testDb.select().from(importUpload)).toHaveLength(1)
+  })
+
+  it("le righe di un import in corso restano, e la pulizia torna dopo la sua scadenza", async () => {
+    await startedImport()
+    const [upload] = await testDb.select().from(importUpload)
+
+    const response = await call(
+      `/purge/${upload!.id}`,
+      `Bearer ${await idToken()}`
+    )
+
+    expect(response).toEqual({ status: 200, body: { outcome: "kept" } })
+    expect(queued).toMatchObject([{ kind: "purge", uploadId: upload!.id }])
   })
 
   it("un id che non è un UUID risponde 404", async () => {
