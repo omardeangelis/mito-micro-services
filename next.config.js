@@ -108,13 +108,13 @@ if (backendAuth && backendOrigin === undefined) {
   throw new Error("BACKEND_AUTH needs BACKEND_URL: set both or neither")
 }
 
-// With BACKEND_REST=true too, the REST routes of import, export and user
-// preferences go to the backend: another step of its own
+// With BACKEND_REST=true too, the REST routes of export and user preferences
+// go to the backend: another step of its own
 const backendRest = process.env.BACKEND_REST === "true"
 if (backendRest && backendOrigin === undefined) {
   throw new Error("BACKEND_REST needs BACKEND_URL: set both or neither")
 }
-const REST_PREFIXES = ["/api/import", "/api/export", "/api/user"]
+const REST_PREFIXES = ["/api/export", "/api/user"]
 
 /** @type {import("next").NextConfig} */
 const config = {

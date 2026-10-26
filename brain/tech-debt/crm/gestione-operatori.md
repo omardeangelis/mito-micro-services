@@ -6,7 +6,7 @@ links:
   - "[[specs/crm/gestione-operatori/IMPLEMENTATION-NOTES]]"
   - "[[specs/crm/gestione-operatori/REPORT]]"
 created: 2026-10-23
-updated: 2026-10-25
+updated: 2026-10-26
 ---
 
 # Tech debt: Gestione operatori
@@ -36,6 +36,8 @@ Trovato dalla seconda review di [[specs/crm/pratiche-effect/REPORT]] (B1, v1, 20
 **Effetto oggi:** chi ha un account può spostare in blocco le pratiche di chiunque con una chiamata HTTP diretta. Nessuna riga di log del cambio.
 
 **Da fare, in una PR sua:** togliere `operatorId` e `chatId` dal `set` (come fa la rotta REST), oppure togliere la procedura, visto che non ha chiamanti; portare `import.*` a `operatorProcedure` o `adminProcedure`, con una tabella dei middleware come `pratiche/_test/procedures.db.test.ts`. Le procedure di `import` toccano i permessi: revisione di Leonardo. Poi TD9 (k) si chiude.
+
+**Chiuso con la [PR #89](https://github.com/omardeangelis/mito-micro-services/pull/89)** ([[specs/crm/import-pratiche/SPEC]], AC4): la procedura è tolta con le altre 3 vecchie di `import`. Le 5 nuove sono su `adminSessionProcedure`, con un test per ognuna, e l'import nuovo non scrive mai `operatorId` né `chatId`. TD9 (k) è chiusa.
 
 ## Un contatto attivo senza cliente si sposta senza riga di log
 

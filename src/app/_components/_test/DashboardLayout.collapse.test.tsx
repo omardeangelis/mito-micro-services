@@ -11,9 +11,6 @@ vi.mock("next/navigation", () => ({ usePathname: () => "/dashboard" }))
 vi.mock("next/image", () => ({
   default: ({ alt }: { alt: string }) => <span role="img" aria-label={alt} />,
 }))
-vi.mock("../../_context/ImportWorker", () => ({
-  useHandleImportWorkerStates: () => undefined,
-}))
 vi.mock("../../_context/ExportWorker", () => ({
   useHandleExportWorkerStates: () => undefined,
 }))

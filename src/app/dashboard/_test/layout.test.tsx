@@ -16,9 +16,6 @@ vi.mock("@/store/context/UserPreferenceContext", () => ({
 vi.mock("../_components/GeneralDasboardLayout", () => ({
   DashboardAsyncLayout: passThrough,
 }))
-vi.mock("@/app/_context/ImportWorker", () => ({
-  ImportWorkerProvider: passThrough,
-}))
 vi.mock("@/app/_context/ImportStatus", () => ({
   ImportStatusProvider: ({ children }: { children: ReactNode }) => (
     <div data-testid="import-status">{children}</div>

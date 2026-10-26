@@ -27,8 +27,9 @@ import {
 // moved in T4): the values today's import gives a browser in Rome, defects
 // included, on `parseWorkbook` and the domain. vitest.workspace.ts runs this
 // file in UTC and in Europe/Rome: the dates are Rome's in both (AC33).
-// What the old import does with the converted rows (validation, merge,
-// errors) is in src/app/api/import/process/_test/characterization.test.ts.
+// What the old import did with the converted rows (validation, merge, errors)
+// was fixed in src/app/api/import/process/_test/characterization.test.ts,
+// removed with it (T20): the new rules are the domain's (classify, group, plan).
 
 // 12:00 in Rome
 const NOW = new Date("2025-01-15T11:00:00.000Z")

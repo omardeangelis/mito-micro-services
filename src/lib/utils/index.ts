@@ -1,7 +1,5 @@
 import { type ClassValue, clsx } from "clsx"
 import { twMerge } from "tailwind-merge"
-import { type CustomerWrite, type Customer } from "@mito/domain/schemas"
-import { createHashForCustomer } from "@mito/domain/utils/customerHash"
 
 // $ExpectType string
 
@@ -90,21 +88,13 @@ export const formatDateAsDMY = (date: Date) => {
   return `${part("day")}/${part("month")}/${part("year")}`
 }
 
-export function findCustomerByHash({
-  customer,
-  customerList,
-}: {
-  customer: Pick<CustomerWrite, "tempID">
-  customerList: Customer[] | CustomerWrite[]
-}) {
-  return customerList.find((c) => {
-    const input = {
-      id: c.id!,
-      tempID: customer.tempID,
-    }
-    return createHashForCustomer(input) === c.uniqueHash
-  })
+/** The array in slices of `size`, in order. */
+export function splitArray<T>(array: T[], size: number): T[][] {
+  const res = [] as T[][]
+  for (let i = 0; i < array.length; i += size) {
+    res.push(array.slice(i, i + size))
+  }
+  return res
 }
 
-export { createHashForCustomer }
 export { cleanObject } from "@mito/domain/utils/object"
