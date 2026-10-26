@@ -141,7 +141,7 @@ describe("auth outside production", () => {
     expect(console.error).toHaveBeenCalled()
   })
 
-  it("crea l'utente senza immagine insieme al suo operatore", async () => {
+  it("crea l'utente OPERATORE senza immagine insieme al suo operatore", async () => {
     const created = await createUser()
 
     expect(created).toMatchObject({
@@ -158,7 +158,9 @@ describe("auth outside production", () => {
       name: "Ada",
       email: "ada@x.it",
       image: null,
-      role: "ADMIN",
+      // Un utente nuovo non è admin: un admin lo promuove dalla gestione
+      // operatori (OQ3 di brain/specs/crm/auth-better-auth/SPEC.md)
+      role: "OPERATORE",
     })
     expect(
       await testDb
