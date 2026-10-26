@@ -138,6 +138,14 @@ beforeEach(async () => {
 })
 
 describe("analytics.getFinancedByBranch: pratiche per punto vendita", () => {
+  it("senza pratiche nella finestra la risposta è una lista vuota", async () => {
+    const caller = createTestCaller(await createOperator({ role: "ADMIN" }))
+
+    expect(
+      await caller.analytics.getFinancedByBranch({ timeFrame: "30d" })
+    ).toEqual([])
+  })
+
   describe.each(CASES)("$name", (c) => {
     it(`con \`${c.timeFrame}\`: una riga per punto vendita nel periodo, in ordine di nome, con \`null\` per ultimo`, async () => {
       await seedRiferimento(c.days)

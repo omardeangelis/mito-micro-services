@@ -120,6 +120,40 @@ describe("una pratica conta una volta (AC12)", () => {
   })
 })
 
+describe("due pratiche con lo stesso importo (AC12)", () => {
+  it("contano tutte e due, nel totale e nella media: una pratica una volta, non un importo una volta", async () => {
+    const operator = await createOperator({ role: "OPERATORE" })
+    const three = [
+      await customerOf(operator.id),
+      await customerOf(operator.id),
+      await customerOf(operator.id),
+    ]
+    await inBothWindows(three, [1000, 2000])
+    await inBothWindows([await customerOf(operator.id)], [1000, 2000])
+    await inBothWindows([await customerOf(operator.id)], [4000, 8000])
+
+    expect(await amountsOf(actorOf(operator))).toEqual({
+      total: { reference: 6000, comparison: 12000 },
+      average: { reference: 2000, comparison: 4000 },
+    })
+  })
+
+  it("contano tutte e due nella ciambella", async () => {
+    const operator = await createOperator({ role: "OPERATORE" })
+    for (const amount of [1000, 1000, 4000]) {
+      await practiceOf([await customerOf(operator.id)], {
+        desPuntoVendita: "Roma",
+        importoFinanziato: String(amount),
+        dataLiquidazione: REFERENCE,
+      })
+    }
+
+    expect(await at(T, financedByBranch({ timeFrame: "30d" }))).toEqual([
+      { data: "Roma", total: 6000 },
+    ])
+  })
+})
+
 describe("quali pratiche vede il chiamante (AC13)", () => {
   it("una pratica con clienti di due operatori conta una volta per ciascuno dei due, e una volta per l'admin", async () => {
     const operatorA = await createOperator({ role: "OPERATORE" })

@@ -29,6 +29,7 @@ describe("CircleCard: il colore segue la percentuale mostrata (AC22)", () => {
     { done: 0, todo: 0, shown: "0%", color: "red" },
     { done: 25, todo: 75, shown: "25%", color: "red" },
     { done: 26, todo: 74, shown: "26%", color: "yellow" },
+    { done: 50, todo: 50, shown: "50%", color: "yellow" },
     { done: 51, todo: 49, shown: "51%", color: "blue" },
     { done: 76, todo: 24, shown: "76%", color: "green" },
     // 75,4% si mostra 75%: blu, non verde
@@ -41,4 +42,11 @@ describe("CircleCard: il colore segue la percentuale mostrata (AC22)", () => {
       expect(renderCard(done, todo)).toEqual({ color, shown })
     }
   )
+})
+
+describe("CircleCard: il testo accanto all'anello", () => {
+  it("mostra la stessa percentuale arrotondata dell'anello", () => {
+    render(<CircleCard done={756} todo={244} />)
+    expect(screen.getByText("756/1000 (76%)")).toBeTruthy()
+  })
 })

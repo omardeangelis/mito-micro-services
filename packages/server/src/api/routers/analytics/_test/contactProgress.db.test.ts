@@ -3,8 +3,8 @@ import { createTestCaller } from "@/test/caller"
 import { migrateUpTo, resetDb } from "@/test/db"
 import { createOperator, createTask } from "@/test/factories"
 
-// Caratterizzazione di "Contatti con esito" (AC17) sulla coda attuale: fissa la
-// risposta di `analytics.getContactProgress`, senza input, così com'è oggi.
+// "Contatti con esito" (AC17) sulla coda attuale, attraverso la procedura
+// `analytics.getContactProgress`, senza input:
 // - solo i contatti attivi: un contatto non attivo non conta, in nessuno stato;
 // - `done`: gli stati con un esito (`app.to`, `caricato`, `erogata`,
 //   `non interessato`, `richiamare`);

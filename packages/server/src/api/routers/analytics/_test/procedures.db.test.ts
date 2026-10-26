@@ -154,6 +154,35 @@ describe("analytics: guardia di ogni procedura", () => {
     )
   })
 
+  describe("periodo non valido", () => {
+    // Il periodo arriva dall'URL: un valore fuori dalle opzioni non arriva ai
+    // servizi
+    const invalid = { timeFrame: "7d" } as unknown as { timeFrame: "30d" }
+
+    it.each([
+      [
+        "getFinancedTotal",
+        (c: Caller) => c.analytics.getFinancedTotal(invalid),
+      ],
+      [
+        "getFinancedAverage",
+        (c: Caller) => c.analytics.getFinancedAverage(invalid),
+      ],
+      [
+        "getFinancedByBranch",
+        (c: Caller) => c.analytics.getFinancedByBranch(invalid),
+      ],
+    ] as const)(
+      '%s rifiuta `timeFrame: "7d"` con BAD_REQUEST',
+      async (_, call) => {
+        const caller = createTestCaller(await createOperator({ role: "ADMIN" }))
+        const error = await rejectionOf(call(caller))
+        expect(error).toBeInstanceOf(TRPCError)
+        expect(error).toMatchObject({ code: "BAD_REQUEST" })
+      }
+    )
+  })
+
   describe("ADMIN attivo", () => {
     it.each(names)("%s risponde a un ADMIN attivo", async (name) => {
       const caller = createTestCaller(await createOperator({ role: "ADMIN" }))
