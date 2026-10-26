@@ -10,8 +10,9 @@ import {
 } from "@/test/factories"
 
 // Le due procedure sugli importi finanziati del router `analytics`:
-// `getFinancedTotal` e `getFinancedAverage`, entrambe con le pratiche dei
-// clienti che il chiamante vede. Ognuna legge due finestre: `reference` (gli ultimi N giorni) e `comparison`
+// `getFinancedTotal` e `getFinancedAverage`, entrambe con le pratiche
+// finanziate (Liquidata, Chiusa, Estinta anticipata) con almeno un cliente che
+// il chiamante vede, ognuna una volta. Ognuna legge due finestre: `reference` (gli ultimi N giorni) e `comparison`
 // (i N giorni prima). Ogni caso crea le pratiche in entrambe le finestre, con
 // importi diversi, e controlla le due risposte insieme.
 //
@@ -109,7 +110,7 @@ beforeEach(async () => {
 })
 
 describe("pratica con tre clienti", () => {
-  it("con `30d`, una pratica con Intestatario, Coobbligato e Garante dello stesso operatore somma tre volte il suo importo in `getFinancedTotal`", async () => {
+  it("con `30d`, una pratica con Intestatario, Coobbligato e Garante dello stesso operatore somma il suo importo una volta in `getFinancedTotal`", async () => {
     const when = datesFor(30)
     const operator = await createOperator({ role: "OPERATORE" })
     const triple: [string, string, string] = [
@@ -130,12 +131,12 @@ describe("pratica con tre clienti", () => {
       timeFrame: "30d",
     })
 
-    expect(res).toMatchObject({ reference: 3000, comparison: 12000 })
+    expect(res).toMatchObject({ reference: 1000, comparison: 4000 })
   })
 })
 
 describe.each(TIME_FRAMES)("con $label", ({ input, days }) => {
-  it("una pratica con tre clienti dello stesso operatore conta tre volte: il totale la somma tre volte e la media la pesa tre volte (S2)", async () => {
+  it("una pratica con tre clienti dello stesso operatore conta una volta: il totale la somma una volta e nella media vale una pratica (S2)", async () => {
     const when = datesFor(days)
     const operator = await createOperator({ role: "OPERATORE" })
     const triple: [string, string, string] = [
@@ -144,7 +145,7 @@ describe.each(TIME_FRAMES)("con $label", ({ input, days }) => {
       await customerOf(operator.id),
     ]
     const single = await customerOf(operator.id)
-    // reference: 3 × 1000 + 2000; comparison: 3 × 4000 + 8000
+    // reference: 1000 + 2000; comparison: 4000 + 8000
     await createPracticeOf(triple, {
       importoFinanziato: "1000",
       dataLiquidazione: when.reference,
@@ -164,12 +165,12 @@ describe.each(TIME_FRAMES)("con $label", ({ input, days }) => {
 
     const res = await readAll(createTestCaller(operator), input)
 
-    // medie su 4 righe: (3 × 1000 + 2000) / 4 e (3 × 4000 + 8000) / 4
+    // medie su 2 pratiche: (1000 + 2000) / 2 e (4000 + 8000) / 2
     expect(res).toEqual({
-      totale: { reference: 5000, comparison: 20000 },
+      totale: { reference: 3000, comparison: 12000 },
       media: {
-        reference: 1250,
-        comparison: 5000,
+        reference: 1500,
+        comparison: 6000,
       },
     })
   })
@@ -217,7 +218,7 @@ describe.each(TIME_FRAMES)("con $label", ({ input, days }) => {
     })
   })
 
-  it("le pratiche di ogni stato contano, in entrambe le finestre (S9)", async () => {
+  it("contano solo le pratiche finanziate: Liquidata, Chiusa ed Estinta anticipata, in entrambe le finestre (S9)", async () => {
     const when = datesFor(days)
     const operator = await createOperator({ role: "OPERATORE" })
     const customer = await customerOf(operator.id)
@@ -254,12 +255,14 @@ describe.each(TIME_FRAMES)("con $label", ({ input, days }) => {
 
     const res = await readAll(createTestCaller(operator), input)
 
-    // somme 63000 e 4032000, su 6 righe: medie 10500 e 672000
+    // Liquidata, Chiusa ed Estinta anticipata: 1000 + 4000 + 8000 e
+    // 64000 + 256000 + 512000, su 3 pratiche; Rifiutata, Rinunciata e
+    // Stornata non contano
     expect(res).toEqual({
-      totale: { reference: 63000, comparison: 4032000 },
+      totale: { reference: 13000, comparison: 832000 },
       media: {
-        reference: 10500,
-        comparison: 672000,
+        reference: 13000 / 3,
+        comparison: 832000 / 3,
       },
     })
   })

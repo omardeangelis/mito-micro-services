@@ -4,7 +4,7 @@ import { DonutChart, Legend, Card } from "@tremor/react"
 import { useMemo } from "react"
 
 type Data = {
-  data: string
+  data: string | null
   total: number
 }[]
 

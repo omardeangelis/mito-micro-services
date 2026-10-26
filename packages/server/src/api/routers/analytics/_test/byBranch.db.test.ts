@@ -12,7 +12,8 @@ import {
 // `analytics.getFinancedByBranch`, solo per gli ADMIN: una riga per punto
 // vendita delle pratiche liquidate nella finestra di riferimento (`timeFrame`,
 // 30 giorni di default), in ordine di nome con `null` per ultimo, con le
-// pratiche senza clienti contate e ogni stato incluso. Il periodo precedente
+// pratiche senza clienti contate e solo quelle finanziate (`Liquidata`,
+// `Chiusa`, `Estinta anticipata`). Il periodo precedente
 // resta fuori: ogni test vi lascia una pratica di Milano che non deve contare.
 // Il `FORBIDDEN` di un OPERATORE sta nella tabella di `procedures.db.test.ts`.
 
@@ -164,9 +165,10 @@ describe("analytics.getFinancedByBranch: pratiche per punto vendita", () => {
       ])
     })
 
-    it(`con \`${c.timeFrame}\`, le pratiche di ogni stato nella finestra contano, \`Rifiutata\` compresa`, async () => {
+    it(`con \`${c.timeFrame}\`, contano solo le pratiche finanziate nella finestra: \`Liquidata\`, \`Chiusa\` ed \`Estinta anticipata\``, async () => {
       await seedRiferimento(c.days)
-      // Napoli: una pratica per stato, con importi potenze di 2 (100, 200, 400…)
+      // Napoli: una pratica per stato, con importi potenze di 2 (100, 200, 400…);
+      // contano Liquidata (100), Chiusa (400) ed Estinta anticipata (800)
       for (const [i, state] of stateEnum.entries()) {
         await praticaDi({
           desPuntoVendita: "Napoli",
@@ -179,7 +181,7 @@ describe("analytics.getFinancedByBranch: pratiche per punto vendita", () => {
 
       expect(await caller.analytics.getFinancedByBranch(c.input)).toEqual([
         { data: "Milano", total: 4000 },
-        { data: "Napoli", total: 6300 },
+        { data: "Napoli", total: 1300 },
         { data: "Roma", total: 1000 },
         { data: null, total: 2000 },
       ])

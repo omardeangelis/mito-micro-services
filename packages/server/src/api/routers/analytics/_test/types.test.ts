@@ -37,9 +37,9 @@ describe("router analytics: output", () => {
     >().toEqualTypeOf<ImportoOutput>()
   })
 
-  it("l'output di `getFinancedByBranch` è `{ data: string; total: number }[]`", () => {
+  it("l'output di `getFinancedByBranch` è `{ data: string | null; total: number }[]`", () => {
     expectTypeOf<AnalyticsOutputs["getFinancedByBranch"]>().toEqualTypeOf<
-      { data: string; total: number }[]
+      { data: string | null; total: number }[]
     >()
   })
 

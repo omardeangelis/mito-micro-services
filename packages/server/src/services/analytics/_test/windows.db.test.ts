@@ -1,8 +1,5 @@
-import { Clock, Effect, Exit } from "effect"
 import { beforeAll, beforeEach, describe, expect, it } from "vitest"
 import { type Actor } from "@mito/domain/contact/permissions"
-import { type ServerContext } from "@mito/server/effect/server"
-import { runServer } from "@/test/effect"
 import { migrateUpTo, resetDb } from "@/test/db"
 import {
   createCustomer,
@@ -10,41 +7,14 @@ import {
   createPractice,
 } from "@/test/factories"
 import { financedAverage, financedByBranch, financedTotal } from "../financed"
+import { at, DAY, T } from "./clock"
 
 // Le finestre degli importi dall'orologio del server, lette a ogni chiamata
 // (AC9), con N = 30, 90 o 365 giorni:
 // - riferimento: da adesso − N × 24 ore ad adesso, estremi inclusi;
 // - confronto: da adesso − 2N × 24 ore, incluso, ad adesso − N × 24 ore,
 //   escluso.
-// Ogni test ferma il Clock a un istante lontano dall'ora vera.
-
-const DAY = 86_400_000
-
-/** Adesso, per i test: il 15 giugno 2026 a mezzogiorno UTC. */
-const T = Date.UTC(2026, 5, 15, 12)
-
-/** Un Clock fermo a `millis`. */
-const fixedClock = (millis: number): Clock.Clock => ({
-  [Clock.ClockTypeId]: Clock.ClockTypeId,
-  unsafeCurrentTimeMillis: () => millis,
-  currentTimeMillis: Effect.succeed(millis),
-  unsafeCurrentTimeNanos: () => BigInt(millis) * 1_000_000n,
-  currentTimeNanos: Effect.succeed(BigInt(millis) * 1_000_000n),
-  sleep: () => Effect.void,
-})
-
-/** Il valore del programma con il Clock fermo a `millis`. */
-async function at<A, E>(
-  millis: number,
-  program: Effect.Effect<A, E, ServerContext>
-): Promise<A> {
-  const exit = await runServer(
-    program.pipe(Effect.withClock(fixedClock(millis)))
-  )
-  if (Exit.isFailure(exit))
-    throw new Error(`il programma è fallito: ${exit.cause.toString()}`)
-  return exit.value
-}
+// Ogni test ferma il Clock a `T`, un istante lontano dall'ora vera.
 
 let admin: Actor
 let customerId: string
