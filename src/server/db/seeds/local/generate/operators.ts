@@ -93,6 +93,11 @@ export function generateUsersAndOperators({ day }: { day: Day }): {
         role === "ADMIN" ? "mito.test" : "example.com"
       }`,
       emailVerified: createdAt,
+      // Confirmed, as every user after the move to better-auth, and with
+      // the dataset's own dates: a seed run writes the same rows at any hour
+      emailConfirmed: true,
+      createdAt,
+      updatedAt: createdAt,
       role,
       image: null,
       preferences: null,
