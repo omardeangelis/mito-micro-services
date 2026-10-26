@@ -8,13 +8,13 @@ links:
   - "[[domains/crm/concepts/regola-dei-lock]]"
   - "[[specs/crm/export-chiamate/PLAN]]"
 created: 2026-10-24
-updated: 2026-10-24
+updated: 2026-10-26
 ---
 
 # Plan: Import di clienti e pratiche, riscritto
 
 **Spec:** [[specs/crm/import-pratiche/SPEC]] (approvata da Leonardo il 2026-10-24)
-**Status:** In progress (PR A #77, PR B #78, PR C #81, PR D #82)
+**Status:** Implementata, in revisione (PR A #77, B #78, C #81, D #82, E #85, F #88, G #89). Review a 4 pass: DO NOT SHIP su `bb956d6`, poi tutti i BLOCKER e MAJOR corretti ([[specs/crm/import-pratiche/REPORT]]). Mancano la rilettura di Leonardo, T0, T12a e T12b
 **Generato:** 2026-10-24 con `create-plan`: grill (una domanda a Leonardo, D1) → swarm-plan → tdd → adversarial-verifier (primo giro DO NOT SHIP con 2 blocker; secondo giro DO NOT SHIP senza blocker, 3 major e 8 minor; tutti corretti in questa versione, senza un terzo giro per il limite di 2 tentativi). Nessun codice scritto.
 
 ---
@@ -567,14 +567,14 @@ T0 è una prova senza PR; T12b è la prova finale su staging dopo F e G.
 
 | Rischio | Mitigazione |
 |---|---|
-| Cloud Run ferma l'istanza a metà import (deploy, riavvio) | La transazione si annulla; la riga passa a `interrupted` dopo 30 minuti (D8, AC30) e l'admin rifà l'import; le righe temporanee si cancellano col task di pulizia |
+| Cloud Run ferma l'istanza a metà import (deploy, riavvio) | La transazione si annulla; la riga passa a `interrupted` dopo 30 minuti (D8, AC30) e l'admin rifà l'import. Le righe temporanee si cancellano col task di pulizia: con l'import ancora in corso, la pulizia torna un minuto dopo la scadenza e lo interrompe (corretto dopo la review, che aveva trovato le righe rimaste senza limite) |
 | Cloud Tasks non consegna o consegna due volte | 3 tentativi con backoff; `claimed_at` (D7) evita il doppio import; se nessuna consegna arriva, `interrupted` dopo 30 minuti |
 | Token OIDC con l'audience sbagliata → task rifiutati | Audience fissata all'URL del servizio in `oidcToken` e testata in T10a |
 | Il backend nuovo senza la coda configurata | Coda spenta, il backend parte e risponde a `/health` (D13); la PR E si unisce dopo D e lo script |
 | Il corpo non passa la rewrite di Vercel | T0 prima della PR C; pezzi da 2 MB mandati uno alla volta e senza batch (D3, D12), più piccoli se serve, senza cambiare lo schema |
 | 512 MiB non bastano per decomprimere e convertire 20.000 righe | T13 misura; memoria a 1 GiB in T12b |
 | L'import occupa l'unica vCPU e rallenta gli altri sulla stessa istanza | Conversione a blocchi con `Effect.yieldNow`; le scritture aspettano il database, non la CPU |
-| Deadlock con altri writer di più righe | Lock ordinati per tutti i writer di più pratiche (D5, D6), retry su 40P01, test pg (T9, T9b) |
+| Deadlock con altri writer di più righe | Lock ordinati per tutti i writer di più pratiche (D5, D6), retry su 40P01, test pg (T9, T9b). I clienti dell'import si bloccano in un solo statement ordinato per id (la review aveva trovato due round fuori ordine) |
 | Anteprima nel browser e import sul server danno numeri diversi | Stesso codice (`planRows`, T8a) sui due lati; AC23 confronta i numeri in T9 |
 | Le date cambiano spostando la conversione dal browser (Roma) al server (UTC) | T1 con `TZ=Europe/Rome`, T4 con Roma e UTC sulle stesse asserzioni (AC33) |
 | La caratterizzazione trova difetti nuovi | Restano come oggi (AC32), annotati nel debito tecnico; correzioni in PR a parte |

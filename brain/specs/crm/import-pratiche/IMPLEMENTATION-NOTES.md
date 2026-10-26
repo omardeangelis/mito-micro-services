@@ -5,7 +5,7 @@ links:
   - "[[specs/crm/import-pratiche/SPEC]]"
   - "[[specs/crm/import-pratiche/PLAN]]"
 created: 2026-10-24
-updated: 2026-10-25
+updated: 2026-10-26
 ---
 
 # Implementation Notes
@@ -83,6 +83,17 @@ Decisioni di T8b–T13:
 - Il motivo di un fallimento non ha valori delle righe (AC31): numero di riga e regola, o il codice di Postgres. Un difetto scrive nel log solo il suo tipo.
 - L'import nuovo non scrive mai `operatorId`: TD9 (k) di [[chore/migrazione-effect]] si chiude quando T20 toglie `import.updateExistingPractices`.
 
+## Correzioni dopo la revisione
+
+La revisione a 4 pass ([[specs/crm/import-pratiche/REPORT]]) ha dato DO NOT SHIP su `bb956d6`: 1 BLOCKER, 8 MAJOR. Sono corretti tutti, con un test che fallisce sul codice di prima:
+- PR B (`83486bb`): `classifyRows` salva il nome del file con `parseFileName` (il BLOCKER: nessuno la chiamava più). Il ruolo si calcola dentro il try, così un Garante `1` o `TRUE` scarta la riga invece di far lanciare la classificazione; `getCustomerRole` resta com'è. Un codice che dopo la conversione non dà né CF né partita IVA (una cella `0`) manca. Le righe solo cliente si uniscono dopo le altre, come oggi (il differenziale del verifier dava 82 file su 300 diversi con dati in conflitto). `parseImportCsv` toglie gli spazi intorno ai nomi delle colonne, come `detectFormat`. Le liste di AC9 sono scritte nei test.
+- PR E (`ac3ec7e`, `38e4248`): `purgeUpload` passa in `run.ts`. Interrompe l'import rimasto in corso oltre la scadenza che nessuna transazione tiene, e cancella le sue righe. Se l'import è vivo, la pulizia torna un minuto dopo la scadenza: le righe di un import il cui server si è fermato non restano più fino al prossimo import (D14). Per rimettersi in coda, le rotte del backend hanno la coda delle procedure, e la coda in processo dà la coda ai suoi task. `lookupExisting` blocca i clienti in un solo statement ordinato per id, dopo averli letti senza lock, e li rilegge finché l'insieme non cambia: i due round di prima andavano in deadlock con la disattivazione (D5). `statement_timeout` si reimposta prima di ogni passo. Prima del `JSON.parse`, `loadUpload` conta le parentesi fuori dai testi. Sentry non riceve più il corpo delle richieste, per nessuna procedura.
+- PR F (`ace44aa`): etichette italiane di Radix nel toaster ("Notifica", "Notifiche ({hotkey})") e uno spazio tra titolo e descrizione: il lettore di schermo leggeva "Notification Import completatowave_…". Il focus segue i passi. Due click su "Conferma" fanno un solo import. Il report errori che non si crea dà un messaggio, e il suo link vive 40 s. Lo status non ripete i messaggi già annunciati dall'alert. Ci sono test sul layout vero e su tutti i numeri dell'anteprima.
+
+- PR G (`de9fb29`): il registro di TD9 dice (k) chiusa; il test del layout non mocka più il vecchio worker.
+
+Restano nel debito tecnico: CSV UTF-8 senza BOM (già oggi), un file lasciato fuori dalla zona, la larghezza dello storico e AC18 nel browser (T12b), e i rami di concorrenza corretti ma senza test (R1, R7, U2/U3, A5).
+
 ## Sanity Checks
 
 | Check | Result | Notes |
@@ -101,6 +112,9 @@ Decisioni di T8b–T13:
 | Mutazioni su T17 e T19 | ok | Mostrando sempre il messaggio generico, non chiudendo il worker all'annullamento, chiedendo `import.active` anche per un operatore, chiedendolo dopo la fine, togliendo `router.refresh()` o l'attesa dell'import seguito, almeno un test fallisce |
 | Gate CI in locale (PR G) | ok | `next lint`, `tsc --noEmit`, `pnpm run test --run` (3833 passati, 111 saltati), progetto `pg` (108 passati), `pnpm api:build` e `pnpm api:smoke`, `pnpm build` (nessuna rotta `/api/import/*` né `/api/export/importError`) |
 | Gate CI in locale (PR B) | ok | `next lint`, `tsc --noEmit`, `pnpm run test --run` (3243 passati, 75 saltati), `pnpm build` coi segnaposto di CI, `pnpm api:build` |
+| Correzioni della revisione (B) | ok | `tsc`, `next lint`, `pnpm run test --run` (3697 passati, 105 saltati). Il `classify.ts` di prima fa fallire 4 test nuovi; senza il riordino o senza il controllo dopo la conversione ne falliscono 4; senza `transformHeader`, 1 |
+| Correzioni della revisione (E) | ok | `tsc`, `next lint`, `pnpm run test --run` (3850 passati, 114 saltati), `pg` (111 passati), `api:build`, `api:smoke`, `pnpm build`. Il `lookup.ts` di prima, l'`ORDER BY` tolto, il lock tolto alle pratiche e il `statement_timeout` una volta sola fanno fallire i test pg nuovi; senza l'escape nel conteggio delle parentesi fallisce un test |
+| Correzioni della revisione (F) | ok | `tsc`, `next lint`, `pnpm run test --run` (3950 passati, 114 saltati), `pg` (111 passati), `api:build`, `api:smoke`, `pnpm build`. Il toaster di prima, il layout senza provider, la condizione del pulsante su `importable` soltanto, due etichette scambiate, la guardia del doppio clic e il focus tolti fanno fallire un test ciascuno |
 
 ## Acceptance Criteria Status
 
@@ -146,3 +160,4 @@ Decisioni di T8b–T13:
 |------|----------|---------|
 | 2026-10-24 | Leonardo: ok al piano, si parte dalla PR A | — |
 | 2026-10-25 | Leonardo: "vai continua", poi "possiamo proseguire" | PR C, D, E, F e G |
+| 2026-10-26 | Revisione a 4 pass: DO NOT SHIP | Correzioni in B, E, F, portate in G |

@@ -3,7 +3,7 @@ domain: _root
 type: index
 links: []
 created: 2026-09-24
-updated: 2026-10-23
+updated: 2026-10-26
 ---
 
 # Brain — Log
@@ -11,6 +11,13 @@ updated: 2026-10-23
 Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest when over.
 
 <!-- Entries are appended by create-spec (spec creation) and docs-maintenance (ingest). Format:
+
+## [2026-10-26] review | Import di clienti e pratiche, PR A–G
+- Report: [[specs/crm/import-pratiche/REPORT]]; rubric: [[specs/crm/import-pratiche/RUBRIC]]
+- Scope: spec
+- Verdict: DO NOT SHIP su `bb956d6`; tutti i BLOCKER e MAJOR corretti dopo, in B, E e F
+- Impact: critical
+- Verifiers: 4 (1 blocker, 8 major)
 
 ## [2026-10-24] plan | Import di clienti e pratiche, riscritto
 - Plan: [[specs/crm/import-pratiche/PLAN]]
@@ -274,20 +281,6 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 - Verdict: SHIP (prima: DO NOT SHIP)
 - Impact: critical
 - Verifiers: 3 rieseguiti (v1, v2, v3) su `87ff79e`; 0 blockers, 0 major, 5 minor
-
-## [2026-09-25] review | Sezione Contatti — PR1 "Percorsi di creazione sicuri"
-- Report: [[specs/crm/sezione-contatti/REPORT]]
-- Scope: spec
-- Verdict: DO NOT SHIP
-- Impact: critical
-- Verifiers: 7 (1 blockers, 4 major)
-
-## [2026-09-24] spec | Sezione Contatti e tabella Clienti semplificata
-- Created spec: [[specs/crm/sezione-contatti/SPEC]]
-- Flow: [[specs/crm/sezione-contatti/FLOW]]
-- Domain: crm
-- Status: Draft
-- Source: [[chore/crm/design-contatti]]
 
 ## [2026-09-29] review | Sezione Contatti — PR2 "Pulizia e vincolo DB"
 - Report: [[specs/crm/sezione-contatti/REPORT]] (round PR2)
