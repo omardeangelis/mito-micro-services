@@ -68,38 +68,67 @@ describe("CustomersTableSection, search_by", () => {
 
 // Filtri e ordinamenti tolti da Clienti (AC59, AC60): un link salvato si apre
 // senza di loro. I parametri sono quelli veri dell'URL, già decodificati da
-// Next: `filter_by=[status]=chiamare` e `filter=state:eq:chiamare`
+// Next: `filter_by=[status]=chiamare` e `filter=state:eq:chiamare`.
+// I filtri avanzati vanno al server come dati: è lui che scarta le colonne e
+// gli operatori che non conosce (AC7, AC8). La pagina non manda più SQL
 
-const savedSqlFilter = async (filter: string | string[]) =>
-  ((await queryFor({ filter })) as { sqlFilter: string }).sqlFilter
+const sentAdvancedFilters = async (filter: string | string[]) => {
+  const query = (await queryFor({ filter }))!
+  expect(query).not.toHaveProperty("sqlFilter")
+  return query.advancedFilters
+}
 
-describe("CustomersTableSection, filtri tolti (AC60)", () => {
-  it("scarta il filtro avanzato sullo stato e su 'Contattato il'", async () => {
-    expect(await savedSqlFilter("state:eq:chiamare")).toBe("")
-    expect(await savedSqlFilter("closed_at:gte:2026-09-01")).toBe("")
+describe("CustomersTableSection, filtri avanzati come dati (AC9, AC60)", () => {
+  it("manda la tupla dell'URL come { field, op, value }", async () => {
+    expect(await sentAdvancedFilters("comune:eq:Roma")).toEqual([
+      { field: "comune", op: "eq", value: "Roma" },
+    ])
   })
 
-  it("scarta un filtro avanzato su un nome di colonna inventato, anche a forma di iniezione", async () => {
-    for (const filter of [
-      "1=1) OR (1:eq:x",
-      "comune ilike '%' OR 1=1 --:eq:x",
-      "__proto__:eq:x",
-      "constructor:eq:x",
-    ]) {
-      expect(await savedSqlFilter(filter)).toBe("")
-    }
+  it("senza filtri avanzati manda una lista vuota e nessun SQL", async () => {
+    const query = (await queryFor({}))!
+    expect(query).not.toHaveProperty("sqlFilter")
+    expect(query.advancedFilters).toEqual([])
   })
 
-  it("tiene i filtri avanzati sulle colonne del cliente accanto a quelli tolti", async () => {
+  it("manda anche i filtri sullo stato e su 'Contattato il', che il server scarta", async () => {
     expect(
-      await savedSqlFilter([
+      await sentAdvancedFilters([
         "state:eq:chiamare",
         "comune:eq:Roma",
         "closed_at:gte:2026-09-01",
       ])
-    ).toBe("comune ilike '%Roma%'")
+    ).toEqual([
+      { field: "state", op: "eq", value: "chiamare" },
+      { field: "comune", op: "eq", value: "Roma" },
+      { field: "closed_at", op: "gte", value: "2026-09-01" },
+    ])
   })
 
+  it("un nome di colonna a forma di iniezione resta un dato", async () => {
+    expect(
+      await sentAdvancedFilters([
+        "1=1) OR (1:eq:x",
+        "comune ilike '%' OR 1=1 --:eq:x",
+        "__proto__:eq:x",
+        "constructor:eq:x",
+      ])
+    ).toEqual([
+      { field: "1=1) OR (1", op: "eq", value: "x" },
+      { field: "comune ilike '%' OR 1=1 --", op: "eq", value: "x" },
+      { field: "__proto__", op: "eq", value: "x" },
+      { field: "constructor", op: "eq", value: "x" },
+    ])
+  })
+
+  it("salta le tuple malformate e tiene le prime tre parti, come il popover", async () => {
+    expect(
+      await sentAdvancedFilters(["rotto", "comune:eq:", "age:gt:10:30"])
+    ).toEqual([{ field: "age", op: "gt", value: "10" }])
+  })
+})
+
+describe("CustomersTableSection, filtri tolti (AC60)", () => {
   it("non manda più il filtro per stato né quello sulle task", async () => {
     for (const filter_by of [
       "[status]=chiamare",

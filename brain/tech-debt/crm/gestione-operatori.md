@@ -6,21 +6,36 @@ links:
   - "[[specs/crm/gestione-operatori/IMPLEMENTATION-NOTES]]"
   - "[[specs/crm/gestione-operatori/REPORT]]"
 created: 2026-10-23
-updated: 2026-10-23
+updated: 2026-10-25
 ---
 
 # Tech debt: Gestione operatori
 
-## Due scrittori non controllano la destinazione
+## Gli scrittori non controllano la destinazione
 
 Lasciato fuori dalla spec (Out of Scope), confermato dalla review della PR 4 (v4, 2026-10-22).
 
-- `pratiche.PUT` (assegnazione di una pratica, inline nel router) e `customer.insertCustomer` scrivono l'operatore scelto senza passare da `findWorkingOperator`. Non rifiutano un operatore disattivato e non prendono il lock della sua riga utente, quindi stanno fuori dalla regola "prima gli utenti, poi i clienti".
+- `customer.insertCustomer` e i clienti collegati di `pratiche.createPratica` (`createPracticeWithCustomers` di `services/practice/writes.ts`) scrivono l'operatore senza passare da `findWorkingOperator`, quindi senza il lock della sua riga utente: stanno fuori dalla regola "prima gli utenti, poi i clienti". Le procedure di `pratiche` non scrivono più un operatore scelto (2026-10-25: `insertPratica` e `bulkAssignPractices` tolte, `operatorId` fuori dall'input di `updatePraticaFromDashboard`). Lo scrive ancora `import.updateExistingPractices`: vedi la sezione qui sotto.
 - Una scrittura che conferma mentre la disattivazione è in corso, dopo che lo statement di spostamento ha preso la sua fotografia, lascia il cliente o la pratica sul disattivato. Il log resta coerente: quello che non si sposta non ha nemmeno la riga di log.
 
 **Effetto oggi:** basso. Le liste della UI non mostrano più i disattivati (AC14), quindi serve una chiamata HTTP diretta o una race di pochi millisecondi con la disattivazione.
 
+**Aggiornamento (2026-10-24):** sul branch `claude/customer-td8` (TD8 e di [[chore/migrazione-effect]]) `customer.insertCustomer` scrive l'operatore della sessione, che `operatorProcedure` ha appena trovato attivo, e non più uno scelto. Resta la race con una disattivazione dello stesso operatore, senza lock della sua riga utente.
+
 **Da fare fuori da questa spec:** passare la destinazione di tutti e due da `findWorkingOperator`, con il lock `KEY SHARE` della riga utente, e un test su Postgres reale come quelli di `deactivate.pg.test.ts`.
+
+## L'import riassegna le pratiche a qualunque operatore
+
+Trovato dalla seconda review di [[specs/crm/pratiche-effect/REPORT]] (B1, v1, 2026-10-25). Riapre TD9 (k) di [[chore/migrazione-effect]]: l'assegnazione massiva delle pratiche non si deve poter fare.
+
+- `import.updateExistingPractices` (`packages/server/src/api/routers/import/GET/index.ts:28-62`) è `protectedProcedure`: basta una sessione, anche senza riga operatore. Prende `z.array(insertPracticeSchema)` e per ogni `praticaId` scrive tutte le colonne dell'input, `operatorId` e `chatId` compresi, senza controllare la destinazione. Con `import.getExistingPractices` (anche `protectedProcedure`) si leggono prima le righe intere, quindi si può cambiare solo l'operatore.
+- Prova del verificatore su PGlite: un utente senza riga operatore sposta due pratiche su un operatore disattivato, e la chiamata riesce.
+- Nessun chiamante: l'unico era una riga commentata nello stesso file. L'import vero passa dalla rotta REST `PUT /api/import/update/practices` (`src/app/api/import/update/_services/updatePractices.ts`), che toglie `operatorId` e `chatId` dall'input e riscrive quelli della pratica esistente: lì il problema non c'è.
+- C'era già prima del passo 4 (il file è invariato da `def7bd0`); `import` è il passo 3 della migrazione, fuori dal perimetro di [[specs/crm/pratiche-effect/SPEC]].
+
+**Effetto oggi:** chi ha un account può spostare in blocco le pratiche di chiunque con una chiamata HTTP diretta. Nessuna riga di log del cambio.
+
+**Da fare, in una PR sua:** togliere `operatorId` e `chatId` dal `set` (come fa la rotta REST), oppure togliere la procedura, visto che non ha chiamanti; portare `import.*` a `operatorProcedure` o `adminProcedure`, con una tabella dei middleware come `pratiche/_test/procedures.db.test.ts`. Le procedure di `import` toccano i permessi: revisione di Leonardo. Poi TD9 (k) si chiude.
 
 ## Un contatto attivo senza cliente si sposta senza riga di log
 

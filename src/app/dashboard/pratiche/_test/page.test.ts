@@ -87,3 +87,44 @@ describe("pagina Pratiche, colonne nascoste nel cookie (AC32)", () => {
     expect(await defaultColumnsFor(undefined)).toBeUndefined()
   })
 })
+
+// I filtri avanzati vanno al server come dati: è lui che scarta le colonne e
+// gli operatori che non conosce (AC7, AC8, AC9). La pagina non manda più SQL
+// né le tuple grezze dell'URL
+describe("pagina Pratiche, filtri avanzati come dati", () => {
+  const queryFor = async (filter?: string | string[]) => {
+    api.getAllPratiche.mockClear()
+    await ParticheHome({
+      params: { slug: "" },
+      searchParams: filter === undefined ? {} : { filter },
+    })
+    const query = api.getAllPratiche.mock.calls[0]?.[0] ?? {}
+    expect(query).not.toHaveProperty("sqlFilter")
+    expect(query).not.toHaveProperty("filter")
+    return query.advancedFilters
+  }
+
+  it("manda la tupla dell'URL come { field, op, value }", async () => {
+    expect(await queryFor("importo_rata:gt:150")).toEqual([
+      { field: "importo_rata", op: "gt", value: "150" },
+    ])
+  })
+
+  it("manda tutte le tuple, anche quelle che il server scarta, e salta le malformate", async () => {
+    expect(
+      await queryFor([
+        "region:eq:Lazio",
+        "comune:eq:x') OR ('1'='1",
+        "rotto",
+        "importo_rata:eq:",
+      ])
+    ).toEqual([
+      { field: "region", op: "eq", value: "Lazio" },
+      { field: "comune", op: "eq", value: "x') OR ('1'='1" },
+    ])
+  })
+
+  it("senza filtri avanzati manda una lista vuota", async () => {
+    expect(await queryFor()).toEqual([])
+  })
+})

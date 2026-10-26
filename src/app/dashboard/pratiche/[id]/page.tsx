@@ -3,6 +3,8 @@ import PraticaGeneralForm from "./_components/PraticaGeneralForm"
 import { CollassableSection } from "@/components/custom/CollassableItem"
 import { CustomerSection } from "./_components/CustomerSection"
 import { api } from "@/trpc/server"
+import { notFound } from "next/navigation"
+import { readContactError } from "@mito/domain/contact/errors"
 
 export default async function SinglePratica({
   params,
@@ -11,9 +13,14 @@ export default async function SinglePratica({
 }>) {
   const { id } = params
 
-  const pratica = await api.pratiche.getPraticaById.query({ id })
+  const pratica = await api.pratiche.getPraticaById
+    .query({ id })
+    .catch((error: unknown) => {
+      if (readContactError(error)?.code === "PRACTICE_NOT_FOUND") notFound()
+      throw error
+    })
   const customers = await api.customer.getAllCustomerForPratica.query({
-    id: pratica!.praticaId,
+    id: pratica.praticaId,
   })
 
   const intestatario = customers.find((c) => c.customerRole === "Intestatario")
@@ -22,7 +29,7 @@ export default async function SinglePratica({
     intestatario?.fiscalCode ?? intestatario?.vatCode ?? ""
 
   const praticaInitialValues = {
-    ...pratica!,
+    ...pratica,
     operatorId:
       intestatario?.operatorId ??
       customers.find((c) => c.operatorId)?.operatorId ??

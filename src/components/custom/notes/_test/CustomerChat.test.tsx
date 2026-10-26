@@ -15,7 +15,6 @@ type Note = Pick<Message, "id" | "content" | "sendDate" | "operatorId">
 
 const mocks = vi.hoisted(() => ({
   updateCustomer: vi.fn(),
-  updatePratica: vi.fn(),
   // Settled by hand: the action is the boundary towards the server
   updateChat: [] as Array<(value: unknown) => void>,
   deleteMessage: [] as Array<(value: unknown) => void>,
@@ -83,9 +82,6 @@ vi.mock("@/trpc/react", () => ({
       createNewCustomerChat: {
         useMutation: () => ({ mutateAsync: mocks.createChatMutate }),
       },
-    },
-    pratiche: {
-      updateLastEdit: { useMutation: () => ({ mutate: mocks.updatePratica }) },
     },
   },
 }))
@@ -230,7 +226,6 @@ describe("CustomerChat, invio di una nota", () => {
     })
 
     expect(mocks.updateCustomer).toHaveBeenCalledWith({ id: "c-42" })
-    expect(mocks.updatePratica).not.toHaveBeenCalled()
   })
 
   it("la nota compare subito, il campo si svuota e 'Commenta' resta disabilitato fino alla risposta", async () => {
@@ -415,7 +410,6 @@ describe("CustomerChat, eliminazione di una nota", () => {
     })
 
     expect(mocks.updateCustomer).toHaveBeenCalledWith({ id: "c-42" })
-    expect(mocks.updatePratica).not.toHaveBeenCalled()
   })
 })
 

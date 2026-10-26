@@ -161,6 +161,8 @@ async function seedTwentyFive() {
       tempID: customerId(n),
       uniqueHash: customerId(n),
       updatedAt: SAME_DATE,
+      // c-10 … c-19 a Roma: il filtro avanzato su `comune` li trova
+      comune: n >= 10 && n <= 19 ? "Roma" : "Milano",
     })
     // 1, 2 o 3 pratiche: un join con `customerToPratica` ripeterebbe il cliente
     for (let i = 0; i < (n % 3) + 1; i++) {
@@ -215,7 +217,7 @@ describe("customer.getAllCustomers, pagine", () => {
     const { allCustomers, total } = await caller.customer.getAllCustomers({
       page: 1,
       perPage: 10,
-      sqlFilter: `temp_id like 'c-1%'`,
+      advancedFilters: [{ field: "comune", op: "eq", value: "Roma" }],
     })
 
     expect(total).toBe(10)
@@ -454,22 +456,6 @@ describe("customer.getAllCustomers, senza il contatto", () => {
       [calling.id, callBack.id, noContact.id].sort()
     )
     expect(total).toBe(3)
-  })
-
-  it("un sqlFilter su una colonna di customers filtra come prima", async () => {
-    const operator = await createOperator({ name: "Operatore" })
-    const caller = createTestCaller(operator)
-    const roma = await createCustomer({ comune: "Roma" })
-    await createCustomer({ comune: "Milano" })
-
-    const { allCustomers, total } = await caller.customer.getAllCustomers({
-      page: 1,
-      perPage: 10,
-      sqlFilter: "comune ilike '%Roma%'",
-    })
-
-    expect(allCustomers.map((c) => c.id)).toEqual([roma.id])
-    expect(total).toBe(1)
   })
 })
 

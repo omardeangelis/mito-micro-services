@@ -16,13 +16,18 @@ links:
   - "[[domains/crm/concepts/stato-del-contatto]]"
   - "[[domains/crm/flows/export-chiamate-per-operatore-admin]]"
   - "[[tech-debt/crm/export-chiamate]]"
+  - "[[specs/crm/filtri-sql-sicuri/SPEC]]"
+  - "[[domains/crm/flows/filtro-avanzato-di-clienti-e-pratiche]]"
+  - "[[domains/crm/concepts/filtro-avanzato]]"
+  - "[[domains/crm/concepts/colonne-filtrabili]]"
+  - "[[tech-debt/crm/filtri-sql-sicuri]]"
 created: 2026-10-23
-updated: 2026-10-23
+updated: 2026-10-24
 ---
 
 # CRM — Contratto del dominio
 
-Confini e invarianti del dominio `crm`. Questa versione copre quello che stabiliscono [[specs/crm/gestione-operatori/SPEC]] e [[specs/crm/export-chiamate/SPEC]]. Le altre spec del CRM (Contatti, filtri, seeder) entreranno con il loro ingest.
+Confini e invarianti del dominio `crm`. Questa versione copre quello che stabiliscono [[specs/crm/gestione-operatori/SPEC]], [[specs/crm/export-chiamate/SPEC]] e [[specs/crm/filtri-sql-sicuri/SPEC]]. Le altre spec del CRM (Contatti, seeder) entreranno con il loro ingest.
 
 ## Owns
 
@@ -35,6 +40,7 @@ Confini e invarianti del dominio `crm`. Questa versione copre quello che stabili
 - **La definizione di chiamata effettuata**, risposta, non risposta e appuntamento fissato, contata dal registro dei cambi di stato. Vedi [[domains/crm/concepts/chiamata]].
 - **Lo stato `non risponde`** e le sue transizioni. Vedi [[domains/crm/concepts/stato-del-contatto]] e [[domains/crm/flows/esito-non-risponde-e-ritorno-in-coda]].
 - **L'export delle chiamate per operatore** (totali, grafici, file Excel) e il periodo che può coprire. Vedi [[domains/crm/flows/export-chiamate-per-operatore-admin]] e [[domains/crm/concepts/periodo-dell-export]].
+- **I filtri avanzati di Clienti e Pratiche:** le colonne filtrabili per tabella, gli operatori per tipo, la convalida dei valori e la loro traduzione in SQL con parametri legati. Vedi [[domains/crm/flows/filtro-avanzato-di-clienti-e-pratiche]], [[domains/crm/concepts/filtro-avanzato]] e [[domains/crm/concepts/colonne-filtrabili]].
 
 ## Does Not Own
 
@@ -48,6 +54,8 @@ Confini e invarianti del dominio `crm`. Questa versione copre quello che stabili
 - **Le chiamate precedenti al 15/09/2026**, data da cui esiste il registro dei cambi di stato.
 - **Il ritorno automatico in coda o il richiamo automatico** dei contatti `non risponde`.
 - **Il controllo della destinazione in `pratiche.PUT` e `customer.insertCustomer`:** fuori dalla spec, nel debito ([[tech-debt/crm/gestione-operatori]]).
+- **La ricerca testuale `q`/`search_by` di Clienti e Pratiche** come parte dei filtri avanzati: era già parametrica, e la riforma dei filtri ne riusa solo `containsPattern`.
+- **Chi vede quali pratiche (`onlyMe`)**: domanda di prodotto aperta in [[tech-debt/crm/search-by-explicit-map]].
 
 ## Invariants
 
@@ -67,3 +75,5 @@ Confini e invarianti del dominio `crm`. Questa versione copre quello che stabili
 - **Il periodo dell'export è in giorni di Roma**, estremi inclusi, e non va oltre 3 mesi indietro. Indicatori, grafici e file mostrano gli stessi numeri per lo stesso periodo.
 - **Da `non risponde` non si torna a `chiamare` né a `followup`.** Un contatto `non risponde` resta in coda e conserva il suo operatore.
 - **Sotto `export/` nel bucket un utente scarica solo i file di errore dell'import.**
+- **Nessun SQL del client arriva al database dalle liste Clienti e Pratiche.** I filtri avanzati viaggiano come dati; colonna e operatore vengono da mappe chiuse, ogni valore è un parametro legato. Nessun `sql.raw` su input del client nelle procedure.
+- **Una voce di filtro non valida si scarta in silenzio:** le altre si applicano, senza errore.

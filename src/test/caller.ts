@@ -19,3 +19,12 @@ export function createTestCaller(actor: { userId: string } | { id: string }) {
   }
   return appRouter.createCaller(ctx)
 }
+
+/** What `call` rejects with; fails the test if it resolves. */
+export const rejectionOf = (call: Promise<unknown>) =>
+  call.then(
+    () => {
+      throw new Error("the call did not fail")
+    },
+    (caught: unknown) => caught
+  )

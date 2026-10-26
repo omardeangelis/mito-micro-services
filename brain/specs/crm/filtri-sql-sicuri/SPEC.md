@@ -1,13 +1,16 @@
 ---
 domain: crm
 type: spec
-status: draft
+status: implemented
 links:
   - "[[tech-debt/crm/search-by-explicit-map]]"
   - "[[specs/crm/sezione-contatti/SPEC]]"
   - "[[chore/crm/report-frontend-riorganizzazione]]"
+  - "[[chore/migrazione-effect]]"
+ingested: true
+last_ingested: 2026-10-24
 created: 2026-10-20
-updated: 2026-10-20
+updated: 2026-10-24
 ---
 
 # Spec: Filtri avanzati sicuri di Clienti e Pratiche
@@ -36,11 +39,11 @@ Sorgente dello scope e delle evidenze: [search-by-explicit-map.md](../../../tech
 
 ## Context
 
-I filtri avanzati delle liste **Clienti** e **Pratiche** sono composti come **stringa SQL nel browser** (`createSQLQuery` in `src/lib/utils/filters.ts`) e passati in chiaro attraverso tRPC come `sqlFilter` (e per Clienti anche `sqlTaskFilter`). Le procedure `customer.getAllCustomers` e `pratiche.getAllPratiche` le eseguono con `sql.raw(input.sqlFilter)`, senza validarle. Sono `operatorProcedure`: le può chiamare **qualunque utente autenticato con una riga attiva in `operators`**, e un chiamante diretto (una POST tRPC, non la pagina) manda il frammento SQL che vuole. La lista bianca di colonne che la pagina applica — e quella che PR6 aggiunge nella pagina di Clienti (T6.2) — è lato client e **non difende la procedura**. (PR6 = la PR "Clienti semplificata" della [Sezione Contatti](../sezione-contatti/SPEC.md); T6.1/T6.2 sono i suoi task; AC60 è il suo criterio che fa scartare i parametri di filtro rimossi.)
+I filtri avanzati delle liste **Clienti** e **Pratiche** sono composti come **stringa SQL nel browser** (`createSQLQuery` in `src/lib/utils/filters.ts`) e passati in chiaro attraverso tRPC come `sqlFilter` (e per Clienti anche `sqlTaskFilter`). Le procedure `customer.getAllCustomers` e `pratiche.getAllPratiche` lo eseguono con `sql.raw(input.sqlFilter)`, senza validarlo. Sono `operatorProcedure`: le può chiamare **qualunque utente autenticato con una riga attiva in `operators`**, e un chiamante diretto (una POST tRPC, non la pagina) manda il frammento SQL che vuole. La lista bianca di colonne che la pagina applica (quella di Clienti l'ha aggiunta PR6, T6.2) è lato client e **non difende la procedura**. (PR6 = la PR "Clienti semplificata" della [Sezione Contatti](../sezione-contatti/SPEC.md); T6.1/T6.2 sono i suoi task; AC60 è il suo criterio che fa scartare i parametri di filtro rimossi.)
 
 Questa non è una validazione imperfetta: è **esecuzione di SQL arbitrario** da parte di qualsiasi operatore. L'app si connette al database con il ruolo **`postgres` di Supabase** (ruolo owner del progetto; su Cloud SQL diventerà `mito_app`), quindi l'iniezione gira con privilegi pieni di lettura e scrittura su **tutte** le tabelle: anagrafiche con PII dei clienti, utenti, task, pratiche, chat.
 
-La vulnerabilità era già tracciata come debito ([report frontend §3.1](../../../chore/crm/report-frontend-riorganizzazione.md)) e la Sezione Contatti l'ha esplicitamente lasciata fuori dal proprio perimetro ([sezione-contatti SPEC](../sezione-contatti/SPEC.md), Non-Goal). Questa spec è la riforma dedicata che la chiude. Esce **dopo** il rilascio in prod di PR5a, PR5b e PR6 della Sezione Contatti.
+La vulnerabilità era già tracciata come debito ([report frontend §3.1](../../../chore/crm/report-frontend-riorganizzazione.md)) e la Sezione Contatti l'ha esplicitamente lasciata fuori dal proprio perimetro ([sezione-contatti SPEC](../sezione-contatti/SPEC.md), Non-Goal). Questa spec è la riforma dedicata che la chiude. Va in prod **nello stesso rilascio `dev`→`main` di PR5a, PR5b e PR6** della Sezione Contatti, mai prima (Omar, 2026-10-24): il fix è scritto sul codice dopo PR6, che è già in `dev`.
 
 Chi è coinvolto:
 
@@ -53,19 +56,19 @@ Chi è coinvolto:
 
 - **Ridisegnare l'interfaccia dei filtri avanzati** (il popover `PopoverDateFilter`, le colonne offerte, gli operatori mostrati): il comportamento visibile dei filtri validi resta quello di oggi.
 - **Cambiare le colonne filtrabili** di Clienti o Pratiche rispetto a quelle già previste dai `FILTER_MAP` attuali (vedi Technical Notes). La riforma rende sicura la traduzione, non amplia il set.
-- **Rifattorizzare `getAllCustomers`/`getAllPratiche` oltre i filtri.** PR6 (T6.1) riscrive già `getAllCustomers` come programma Effect senza il join con `task`; questa spec non rifà quel lavoro e non tocca ordinamenti, paginazione o la ricerca `search_by`/`q`, che già usano Drizzle e `containsPattern`.
+- **Rifattorizzare `getAllCustomers`/`getAllPratiche` oltre i filtri e il passaggio di `getAllPratiche` a Effect.** PR6 (T6.1) ha già riscritto `getAllCustomers` come programma Effect senza il join con `task`; questa spec non rifà quel lavoro. `getAllPratiche` passa a Effect in questa PR (decisione di Omar, 2026-10-24) a comportamento invariato (AC12): non si correggono ordinamenti, paginazione, `union` o la ricerca `search_by`/`q`, che già usano Drizzle e `containsPattern`.
 - **Uno shim di traduzione** del vecchio `sqlFilter` durante la finestra di rilascio (decisione 2: il backend lo ignora e basta).
 - **Gli altri rilievi del tech-debt** `search-by-explicit-map.md` (accessibilità, badge, `router.push` al montaggio, `console.log`): restano dove sono.
 - **La ricerca testuale `q`/`search_by`**: già parametrica, fuori perimetro se non per il modello di `containsPattern` che il fix riusa.
 
 ---
 
-> **Baseline.** Questi criteri valgono sul codice **dopo** il rilascio di PR6 della Sezione Contatti (vincolo di ordine, vedi Context). PR6 (T6.1) toglie `sqlTaskFilter` dall'input e rimuove dalla query di Clienti il join con `task` e la seconda query sulle task, e riscrive `getAllCustomers` come programma Effect; resta solo `sqlFilter` che arriva a `sql.raw` (in Clienti nella query principale e in quella di `total`, in Pratiche). I numeri di riga della baseline attuale di `dev` sono in Technical Notes, non nei criteri.
+> **Baseline.** Questi criteri valgono sul codice **dopo** PR6 della Sezione Contatti, che è in `dev` (verificato il 2026-10-24). PR6 (T6.1) ha tolto `sqlTaskFilter` dall'input, il join con `task` e la seconda query sulle task, e ha riscritto `getAllCustomers` come programma Effect; resta solo `sqlFilter` che arriva a `sql.raw`: in Clienti in un solo `where`, condiviso da pagina e `total`; in Pratiche nel `where` del `total` e dei due rami della `union`. I numeri di riga sono in Technical Notes, non nei criteri.
 
 ### Chiusura della vulnerabilità
 
 - **AC1** — Dopo la riforma, in nessuna delle due procedure (`customer.getAllCustomers`, `pratiche.getAllPratiche`) resta un `sql.raw`, o un frammento SQL costruito per concatenazione da input del client, in **nessuna** delle loro query (principale, `total`, ed eventuale query sulle task se ancora presente); lo stesso vale per `src/lib/utils/filters.ts`.
-- **AC2** — Una chiamata diretta alla procedura (via `createCaller` o POST tRPC) con un filtro che contiene una sottoquery `EXISTS (SELECT … FROM <altra tabella>)` lascia `total` **invariato** rispetto alla stessa chiamata senza quel filtro; un filtro `1=1) OR (1=1` lascia **invariato** il conteggio dei risultati filtrati. Il payload non viene eseguito. Vale sia per `customer.getAllCustomers` sia per `pratiche.getAllPratiche`. (Il ritardo da `pg_sleep` resta come evidenza di sfruttamento, non come criterio: vedi Technical Notes.)
+- **AC2** — Una chiamata diretta alla procedura (via `createCaller` o POST tRPC) con un filtro che contiene una sottoquery `EXISTS (SELECT … FROM <altra tabella>)` lascia `total` **invariato** rispetto alla stessa chiamata senza quel filtro; un filtro `1=1) OR (1=1` lascia **invariato** il conteggio dei risultati filtrati. Il payload non viene eseguito. Vale sia per `customer.getAllCustomers` sia per `pratiche.getAllPratiche`. I payload dei test sono scelti in modo che sul codice di oggi cambino il risultato: per esempio `NOT EXISTS (SELECT 1 FROM "mito-deutsche_user")` e non `EXISTS`, che è sempre vera perché la riga del chiamante esiste, e `1=1) OR (1=1` insieme a una ricerca (PLAN, §11). (Il ritardo da `pg_sleep` resta come evidenza di sfruttamento, non come criterio: vedi Technical Notes.)
 - **AC3** — La suite contiene un test di regressione che diventa **rosso** se si reintroduce `sql.raw` su input del client in una delle due procedure (verifica per mutazione).
 - **AC4** — Un valore di filtro su colonna stringa con apice singolo (es. cognome `d'angelo`), `%` o `_` viene confrontato come **parametro letterale**: non chiude la stringa SQL e non agisce da jolly non voluto, come già fa `q` tramite `containsPattern`.
 - **AC5** — **Ogni** valore di filtro raggiunge il SQL solo come **parametro legato** (bound parameter), per ogni operatore (`=`, `>`, `<`, `>=`, `<=`) e ogni tipo di colonna (stringa, numero, data, enum): nessun valore viene interpolato nel testo SQL, nemmeno dopo la convalida del tipo.
@@ -79,19 +82,20 @@ Chi è coinvolto:
 ### Compatibilità
 
 - **AC9** — Il parametro URL `filter` mantiene la forma attuale (`nome:operatore:valore`, ripetibile). Un link salvato prima della riforma produce la **stessa lista** per i filtri ancora validi; le voci non più valide (es. filtri su colonne di `task` nella lista Clienti, che PR6 toglie dalla query) sono scartate (AC8), non danno più SQL non valido né errore.
-- **AC10** — Dal rilascio del backend, `sqlFilter` non ha **nessun effetto** sul SQL eseguito, anche se un frontend Vercel non ancora aggiornato continua a inviarlo: su quel frontend i filtri avanzati semplicemente non si applicano finché non è aggiornato, e nessun payload viene eseguito. (`sqlTaskFilter` è già stato rimosso dall'input da PR6 T6.1; se per slittamento dell'ordine fosse ancora presente, vale la stessa regola.)
+- **AC10** — Dal rilascio del backend, `sqlFilter` non ha **nessun effetto** sul SQL eseguito, anche se un frontend Vercel non ancora aggiornato continua a inviarlo: su quel frontend i filtri avanzati semplicemente non si applicano finché non è aggiornato, e nessun payload viene eseguito. (`sqlTaskFilter` l'ha già tolto PR6, T6.1, e un test lo fissa.)
 
 ### Perimetro
 
 - **AC11** — Clienti e Pratiche sono corrette nella **stessa PR**, e `src/lib/utils/filters.ts` condiviso non contiene più un costruttore di SQL grezzo dai filtri (nessun equivalente di `createSQLQuery`/`createSQLFilter`).
+- **AC12** — `pratiche.getAllPratiche` diventa un programma Effect e, fuori dai filtri avanzati, restituisce per ogni input gli **stessi dati, lo stesso `total` e lo stesso ordine** di oggi (paginazione, ordinamento, ricerca, `filterBy`). I test di caratterizzazione scritti prima del passaggio restano verdi con le stesse asserzioni; un errore del database resta un `INTERNAL_SERVER_ERROR`.
 
 ---
 
 ## Constraints
 
 - **Gate di CI invariati** (`.github/workflows/ci.yml`): lint (`next lint` + `tsc --noEmit`), test (`vitest --run`), build (`next build`). Il fix deve passarli tutti.
-- **Niente Next.js in `src/server/**`** e **nessun nuovo `sql.raw` su input**: il codice server gira sia nell'app Next.js sia nel backend Cloud Run (regola `AGENTS.md`).
-- **Effect (D9).** Il codice server toccato si muove su Effect dove ha senso (errori tipizzati, `query`/`runTrpc`), coerente con la riscrittura di `getAllCustomers` in PR6 (T6.1). Non allargare il diff a file non toccati.
+- **Niente Next.js in `packages/server/**`** e **nessun nuovo `sql.raw` su input**: il codice server gira sia nell'app Next.js sia nel backend Cloud Run (regola `AGENTS.md`).
+- **Effect (D9).** Il codice server toccato si muove su Effect dove ha senso (errori tipizzati, `query`/`runTrpc`), coerente con la riscrittura di `getAllCustomers` in PR6 (T6.1). `getAllPratiche` passa a Effect in questa PR (AC12). Non allargare il diff a file non toccati.
 - **Drizzle è il layer DB**: i filtri si traducono con gli operatori di Drizzle (`eq`, `gt`, `lt`, `gte`, `lte`, `ilike` con `containsPattern`); nessun pacchetto `@effect/sql*`.
 - **Test attraverso l'interfaccia pubblica**: i test chiamano le procedure `customer.getAllCustomers` e `pratiche.getAllPratiche`, non gli interni.
 - **Finestra di rilascio Vercel↔Cloud Run**: il backend rilascia separatamente dal frontend; AC10 copre la finestra in cui sono disallineati.
@@ -102,10 +106,13 @@ Chi è coinvolto:
 ## Technical Notes
 
 - **Prova di sfruttamento eseguita** (2026-10-20, Postgres 16 locale usa-e-getta, via `createTestCaller` come operatore autenticato; mai su staging/prod). 4/4: [A] `pg_sleep` iniettato ritarda `getAllCustomers` (~15 ms → ~811 ms); [D] stessa cosa su `getAllPratiche` (~12 ms → ~1210 ms); [B] sottoquery `EXISTS` su `mito-deutsche_user` fa variare `total` 0→1 (esfiltrazione blind); [C] `1=1) OR (1=1` annulla la ricerca. Dettagli e numeri in [search-by-explicit-map.md](../../../tech-debt/crm/search-by-explicit-map.md).
-- **Modelli già nel repo per il fix**: `customerSearchColumns` e `praticaSearchColumns` (mappa colonna→`PgColumn`), `containsPattern` (`src/server/api/routers/utils/index.ts`), e `src/server/services/contact/getContacts.ts` (programma Effect con `runTrpc`).
-- **Colonne oggi filtrabili** (da `src/app/dashboard/customers/_constants/index.ts`): Clienti → `birthdayDate`, `age`, `source`, `comune`, `sede`, `phoneNumber`, `ambitoLavorativo`, `occupazione` (di `customers`), più `state` e `closedAt` (di `task`, che dopo PR6 non sono più nella query di Clienti → diventano voci da scartare, AC8); Pratiche → `dataLiquidazione`, `debitoResiduo`, `importoFinanziato`, `ratePagate`, `state`, `importoErogato`, `importoRichiesto`, `rateTotali`, `region`, `importoRata` (di `practices`).
-- **Posizioni `sql.raw` nella baseline attuale di `dev` (pre-PR6)**: `customer/GET/index.ts:338`, `:371` (`sqlTaskFilter`), `:445`, e `pratiche/GET/index.ts:85`; `:252`/`:342` sono le stesse chiamate ma commentate. Dopo PR6 `:371`/`sqlTaskFilter` e il join con `task` spariscono e `getAllCustomers` è un programma Effect, quindi restano meno chiamate e le righe si spostano: i criteri di accettazione sono per questo scritti in forma semantica, non per numero di riga.
-- **Dove interviene il fix**: pagine `CustomerTableSection.tsx` e `pratiche/page.tsx` (costruzione del filtro), input Zod e `where` di `customer/GET/index.ts` e `pratiche/GET/index.ts`, e `src/lib/utils/filters.ts` condiviso.
+- **Modelli già nel repo per il fix**: `customerSearchColumns` e `praticaSearchColumns` (mappa colonna→`PgColumn`), `containsPattern` (`packages/server/src/api/routers/utils/index.ts`), e `packages/server/src/services/contact/getContacts.ts` (programma Effect con `runTrpc`).
+- **Colonne oggi filtrabili** (`CUSTOMER_FILTER_MAP` e `PRATICA_FILTER_MAP` in `src/app/dashboard/customers/_constants/index.ts`, dopo PR6): Clienti → `birthdayDate`, `age`, `source`, `comune`, `sede`, `phoneNumber`, `ambitoLavorativo`, `occupazione` (di `customers`). `state` e `closedAt` di `task` li ha tolti PR6 (T6.2): un link salvato che li ha li perde già nella pagina, e dopo la riforma li scarta il server (AC8). Pratiche → `dataLiquidazione`, `debitoResiduo`, `importoFinanziato`, `ratePagate`, `state`, `importoErogato`, `importoRichiesto`, `rateTotali`, `region`, `importoRata` (di `practices`).
+- **Posizioni `sql.raw` su `dev` dopo PR6** (2026-10-24, `594ff64`), in `packages/server/src/api/routers/`: `customer/GET/index.ts:354` (il `where` di pagina e `total`) e `pratiche/GET/index.ts:85` (`filterQuery`, usato da `total` e dai due rami della `union`). I criteri restano in forma semantica, non per numero di riga.
+- **Test che oggi usano `sqlFilter` come comportamento atteso**, da riscrivere con i filtri strutturati: `customer/_test/getAllCustomers.db.test.ts` ("il totale conta i clienti…" usa `temp_id like 'c-1%'`; "un sqlFilter su una colonna di customers filtra come prima") e `src/app/dashboard/customers/_components/_test/CustomerTableSection.test.ts` (`savedSqlFilter`). `getAllPratiche` riceve già anche `filter` (le tuple grezze dell'URL), che il server non usa.
+- **`=` sui decimali oggi è un errore** (verifica del PLAN, 2026-10-24): `createSQLFilter` tratta come testo le colonne `numeric` di Pratiche, perché in drizzle 0.45.4 hanno `dataType "string"`, quindi `importo_rata:eq:200` diventa `ilike` su un `numeric` e Postgres lo rifiuta, anche se il popover offre `=`. Per AC6 non c'è un risultato di oggi da conservare: diventa uguaglianza esatta (D16, confermata da Omar con l'approvazione di questa SPEC, 2026-10-24). Le altre differenze volute rispetto a oggi sono nel PLAN, §13.
+- **Fuso orario**: i database veri sono in `Europe/Rome`, i test in UTC. Una data del filtro (`aaaa-mm-gg`) si converte nel fuso della sessione, come il letterale di oggi.
+- **Dove interviene il fix**: pagine `CustomerTableSection.tsx` e `pratiche/page.tsx` (costruzione del filtro), `PopoverFilter.tsx` (scrive e rilegge `filter=`), input Zod e `where` di `packages/server/src/api/routers/customer/GET/index.ts` e `pratiche/GET/index.ts`, e `src/lib/utils/filters.ts` condiviso.
 
 ---
 
@@ -113,9 +120,9 @@ Chi è coinvolto:
 
 | # | Question | Affects | Owner | Status |
 |---|----------|---------|-------|--------|
-| 1 | I log Postgres di Supabase mostrano un uso passato di questa via di iniezione? (Non ispezionabile da sessione; da controllare nel pannello Supabase.) | Risposta all'incidente, non il fix | Omar / infra | Open |
-| 2 | Si tiene esattamente l'insieme di colonne filtrabili di oggi, o si coglie l'occasione per togliere quelle di `task` dalla mappa di Clienti già in questa riforma (dato che PR6 le rimuove dalla query)? | AC7, AC8 | Omar | Open |
-| 3 | Data dell'intervento (dopo il rilascio in prod di PR5a/PR5b/PR6). | Scheduling | Omar | Open |
+| 1 | I log Postgres di Supabase mostrano un uso passato di questa via di iniezione? (Non ispezionabile da sessione; da controllare nel pannello Supabase.) | Risposta all'incidente, non il fix | Omar / infra | Closed (2026-10-24): nessuna traccia. `pg_stat_statements` di prod, azzerato l'ultima volta il 2024-06-13, ha 2317 forme di query su clienti e pratiche: tutti i filtri grezzi dell'app hanno la forma legittima `colonna operatore $n`, su colonne delle mappe, e non c'è nessuna funzione di sistema, catalogo, commento o `;`. Sentry non ha errori SQL in 90 giorni. Limiti nel [[tech-debt/crm/search-by-explicit-map]] |
+| 2 | Si tiene esattamente l'insieme di colonne filtrabili di oggi, o si coglie l'occasione per togliere quelle di `task` dalla mappa di Clienti già in questa riforma (dato che PR6 le rimuove dalla query)? | AC7, AC8 | Omar | Closed (2026-10-24): le ha già tolte PR6 (T6.2), la mappa di Clienti ha solo le 8 colonne di `customers` |
+| 3 | Data dell'intervento (dopo il rilascio in prod di PR5a/PR5b/PR6). | Scheduling | Omar | Closed (2026-10-24): nello stesso rilascio `dev`→`main` di PR5a, PR5b e PR6, mai prima. La data è quella del rilascio |
 
 ---
 
@@ -129,3 +136,11 @@ Chi è coinvolto:
 | Clienti + Pratiche in un'unica PR | `filters.ts` è condiviso e la falla è identica: separarle lascerebbe Pratiche sfruttabile più a lungo e richiederebbe un doppio refactor del codice condiviso (Omar, 2026-10-20). |
 | Severità alzata rispetto allo scope iniziale | La prova mostra esecuzione arbitraria con il ruolo DB owner (`postgres`), non un filtro malformato: raggio d'azione = intero database (2026-10-20). |
 | Ci si ferma alla SPEC; `create-plan` (PLAN.md) è rimandato a dopo l'implementazione di PR6 | La baseline del fix è il codice post-PR6: pianificare prima significherebbe pianificare su righe e forma della query che PR6 cambia. La SPEC resta `draft` in attesa dell'approvazione di Omar e della data (Omar, 2026-10-20). |
+| OQ2 chiusa da PR6 | T6.2 ha già tolto `state` e `closedAt` di `task` dalla mappa di Clienti: la riforma tiene le 8 colonne di `customers` che restano (2026-10-24). |
+| In prod nello stesso rilascio di PR6, mai prima | Il "dopo" serviva a scrivere il fix sul codice post-PR6, che ora è in `dev`. Ogni rilascio in più lascia l'iniezione aperta in prod (Omar, 2026-10-24). |
+| `getAllPratiche` su Effect in questa PR | Scelta di Omar contro la raccomandazione di lasciarla al passo 4 di [[chore/migrazione-effect]]: il router si tocca comunque. Comportamento invariato fuori dai filtri, provato da test di caratterizzazione scritti prima (AC12) (2026-10-24). |
+| SPEC approvata, `=` esatto sui decimali (D16) | Il popover offre `=` sulle 5 colonne di importi e oggi va in errore; con l'uguaglianza esatta l'operatore che la UI mostra funziona. Nessun secondo giro del verifier sul PLAN: ogni test di sicurezza va provato rosso su `594ff64` (T3, T6) e alla fine ci sono la review critical e quella di Leo (Omar, 2026-10-24). |
+| Tutta la migrazione va in prod insieme | Il piano di migrazione si fa tutto su `dev` e va in prod in un rilascio unico: non c'è un caso "PR6 pronta e questa PR no" da decidere (Omar, 2026-10-24). |
+| Deployment vecchi di Vercel: Protezione Standard | Se in G3 gli URL generati dei deployment di prod precedenti al fix sono raggiungibili, si attiva Vercel Authentication con Standard Protection sul progetto di prod, invece di cancellarli: i deployment restano, ma nessun rollback a prima di questa PR (Omar, 2026-10-24). |
+| OQ1 chiusa | Controllo di sola lettura su `pg_stat_statements` di prod e su Sentry, autorizzato da Omar: nessuna traccia di uso della falla (2026-10-24). |
+| PLAN scritto il 2026-10-24 | La baseline post-PR6 è in `dev` (`594ff64`); la SPEC è stata aggiornata a quella baseline (percorsi in `packages/server`, posizioni di `sql.raw`, OQ2). |

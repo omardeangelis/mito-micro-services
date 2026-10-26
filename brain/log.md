@@ -19,6 +19,138 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 - Impact: critical
 - Verifiers: 4 (1 blocker, 8 major)
 
+## [2026-10-25] merge | Router `chat`: PR A del passo 5 in `dev`
+- [PR #86](https://github.com/omardeangelis/mito-micro-services/pull/86) unita in `dev` (`bd37efa`): il router `chat` su Effect, con l'invio di una nota in una transazione con il lock del cliente; porta anche `b72cd3e` (L3 su `HttpApi`)
+- TD10 in [[chore/migrazione-effect]] §7: `[OPEN]` (a), (b), (c) e (f); (d) ed (e) restano `[PREVISTO]` fino alla PR B. Righe di L2 e del §5 aggiornate
+
+## [2026-10-25] review | Router `chat` su Effect, PR A del passo 5
+- Report: [[specs/crm/chat-storage-effect/REPORT]]
+- Scope: spec
+- Verdict: SHIP
+- Impact: critical
+- Verifiers: 5 (0 blockers, 0 major; 2 minor, fra cui i writer dell'import che riscrivono `customers.chat_id` senza lock, preesistenti)
+
+## [2026-10-25] implement | Router `chat` su Effect, PR A del passo 5
+- Spec: [[specs/crm/chat-storage-effect/SPEC]] (approvata con il lancio di `implement-spec`), note: [[specs/crm/chat-storage-effect/IMPLEMENTATION-NOTES]]
+- Branch `claude/chat-effect`, non pushato: caratterizzazione (`6341cf0`), invio di una nota in `sendCustomerMessage` con transazione e lock del cliente (`ed8bce2`), server action e procedure senza chiamanti (`2bf79c7`), servizi e traduttore unico (`b202bdf`, `8abb525`), `simplify` (`83b20f7`)
+- Gate della PR A: tipi uguali a `2b284b4`, 30 mutanti uccisi, CI verde in un worktree senza `.env*`, prova nel browser su `mito_local`
+- Resta: merge di `dev`, PR verso `dev` quando Omar la chiede, poi T9b e la PR B
+
+## [2026-10-25] plan | Router `chat` su Effect e router `supabase` tolto (passo 5 della migrazione)
+- Spec: [[specs/crm/chat-storage-effect/SPEC]], piano: [[specs/crm/chat-storage-effect/PLAN]]
+- 16 task in due PR, dopo il gate G0, verificati dall'`adversarial-verifier` (DO NOT SHIP, 0 blocker, 2 major, corretti; AC17 (b) della SPEC corretto): PR A (`chat`: caratterizzazione di middleware, letture, invio e messaggi degli errori; invio in un servizio con transazione e lock del cliente; server action e procedure senza chiamanti; un solo traduttore), PR B (route di export su `services/export/files.ts`, router `supabase` e `supabaseClient` tolti), e una PR di documenti dopo ognuna
+- Debito della migrazione: TD10 `[PREVISTO]` in [[chore/migrazione-effect]]
+- La PR B parte da `dev` dopo il merge della A e ha la revisione di Leonardo
+
+## [2026-10-25] spec | Router `chat` su Effect e router `supabase` tolto (passo 5 della migrazione)
+- Created spec: [[specs/crm/chat-storage-effect/SPEC]]
+- Domain: crm
+- Status: Draft
+- Decisioni di Omar: il router `supabase` si toglie e le due route di export chiamano `Storage`; l'invio di una nota prende il lock del cliente
+
+## [2026-10-25] decision | Migrazione Effect: L3 su `HttpApi`
+- Decisione di Omar: L3 passa da Effect RPC a `HttpApi` di Effect, perché i prossimi obiettivi sono togliere tRPC e avere una SPA in React 19 ([[chore/migrazione-effect]] §3)
+- La SPA usa solo `HttpApi`; l'app Next.js resta su tRPC, e tRPC si toglie quando l'app Next.js si spegne
+- Le route REST di import ed export diventano gruppi della stessa API (§6, ora 9 route invece di 13); nota e D1 di [[chore/migration_plan]] aggiornate
+
+## [2026-10-25] merge | Pratiche: passo 4 in `dev`
+- [PR #83](https://github.com/omardeangelis/mito-micro-services/pull/83) unita in `dev` (`eba251b`): passo 4 della migrazione a Effect e correzioni di TD9
+- TD9 in [[chore/migrazione-effect]] §7: `[OPEN]` solo (k) (l'import, B1), le altre `[CLOSED 2026-10-25]`; righe del §4, §5 e dei livelli L1, L2 aggiornate
+
+## [2026-10-25] review | Pratiche: rilancio sulle correzioni
+- Review: [[specs/crm/pratiche-effect/REPORT]], `4ca830c..bef07ae`, v1, v3, v4, v5 rilanciati
+- SHIP, impact critical: M1–M3 corretti e provati coi mutanti; M4 solo in parte (il `customerId` vuoto non è distinto dalla FK)
+- B1 resta debito accettato; il piano del debito va allargato alle rotte REST dell'import
+- 5 MINOR (test di id vuoti e partita IVA, righe vecchie delle note, m6 e m7)
+
+## [2026-10-25] implement | Pratiche: correzioni della seconda review
+- Spec: [[specs/crm/pratiche-effect/IMPLEMENTATION-NOTES]], commit `8d3d33c`
+- M1–M4 corretti: "Cliente non trovato" nel form, input dei clienti collegati ristretto alle colonne del form, test di validazione, ordine delle regioni provato su postgres-js
+- B1 lasciato come debito (decisione di Omar): TD9 (k) riaperta per `import.updateExistingPractices`, in [[tech-debt/crm/gestione-operatori]]
+- Gate locali: tsc, ESLint, suite completa con Postgres (3383 test)
+
+## [2026-10-25] review | Pratiche: correzioni di TD9 (giro 2)
+- Report: [[specs/crm/pratiche-effect/REPORT]]
+- Scope: spec
+- Verdict: DO NOT SHIP
+- Impact: critical
+- Verifiers: 5 (1 blockers, 4 major)
+
+## [2026-10-25] implement | Pratiche: stranezze di TD9 corrette
+- `pratiche.createPratica` sostituisce `insertPratica` e `connectPraticaAndCustomer`: una transazione, errori `PRACTICE_EXISTS` e `CUSTOMER_EXISTS`
+- `getPraticaById` `operatorProcedure` e `NOT_FOUND`; regioni e alert ordinati; `id` obbligatorio, niente `operatorId` né risposta grezza nelle due scritture del dettaglio
+- Pagine: [[chore/migrazione-effect]] (TD9 `[CLOSED 2026-10-25]`), [[tech-debt/crm/gestione-operatori]], [[specs/crm/pratiche-effect/IMPLEMENTATION-NOTES]]
+
+## [2026-10-25] implement | Pratiche: email e telefono del cliente, via l'assegnazione massiva
+- Corretto l'input dell'id del cliente in `CustomerSection.tsx` (`type="hidden"`), con un test del componente
+- Tolta l'assegnazione massiva delle pratiche: dialog, server action, store, `pratiche.bulkAssignPractices`, `assignPractices`; TD9 (k) senza oggetto
+- Pagine: [[tech-debt/crm/pratiche-effect]], [[tech-debt/crm/gestione-operatori]], [[chore/migrazione-effect]]
+
+## [2026-10-25] review | Router `pratiche` e letture di `task` su Effect (passo 4)
+- Report: [[specs/crm/pratiche-effect/REPORT]], rubric: [[specs/crm/pratiche-effect/RUBRIC]]
+- Verdict: SHIP · critical · human checklist (7 punti). Al primo giro v7 DO NOT SHIP per AC14 (numeri di riga in [[tech-debt/crm/filtri-sql-sicuri]]), corretto e rilanciato
+- 7 passi (permessi, `bulkHandleTask`, scritture, SQL del client, letture, validità dei test, controlli statici): nessun BLOCKER; due test aggiunti dopo la review, verdi anche sulla base
+
+## [2026-10-25] implement | Router `pratiche` e letture di `task` su Effect (passo 4)
+- Spec: [[specs/crm/pratiche-effect/SPEC]] (implemented), note: [[specs/crm/pratiche-effect/IMPLEMENTATION-NOTES]]
+- Branch `claude/pratiche-effect`, non pushato: caratterizzazione (`7c5c77d`), rimozione delle 5 procedure senza chiamanti, servizi `services/practice/` e `services/contact/{queries,bulkHandleTask}.ts`, adapter
+- Mutanti: 47 sul codice inline e 45 sui servizi, tutti uccisi; tipi delle 20 procedure uguali a `5b61b3f`; gate di CI verdi in locale; prova nel browser su `mito_local`
+- Debito: TD9 `[PREVISTO]` in [[chore/migrazione-effect]]; [[tech-debt/crm/pratiche-effect]] nuovo (bug della UI già presenti)
+
+## [2026-10-25] plan | Router `pratiche` e letture di `task` su Effect (passo 4 della migrazione)
+- Spec: [[specs/crm/pratiche-effect/SPEC]] (rivista dopo la verifica: DO NOT SHIP, 0 blocker, 3 major; AC7 e AC9 corretti dopo la verifica del piano), piano: [[specs/crm/pratiche-effect/PLAN]]
+- 13 task in una PR, dopo il gate G0, verificati dall'`adversarial-verifier` (DO NOT SHIP, 1 blocker, 5 major, corretti): caratterizzazione di letture, scritture, middleware delle 20 procedure e ordine di `bulkHandleTask`, con i mutanti sul codice inline; `*.pg.test.ts` sulle `update`; rimozione delle 5 procedure senza chiamanti; servizi in `services/practice/`, `services/contact/` e `services/customer/profile.ts`; gate con confronto dei tipi, mutanti, prova nel browser e review
+- Debito della migrazione: TD9 `[PREVISTO]` in [[chore/migrazione-effect]]
+- Nessuna revisione obbligatoria di Leonardo (Omar, 2026-10-25)
+
+## [2026-10-25] spec | Router `pratiche` e letture di `task` su Effect (passo 4 della migrazione)
+- Created spec: [[specs/crm/pratiche-effect/SPEC]]
+- Domain: crm
+- Status: Draft
+
+## [2026-10-24] ingest | Router `customer` su Effect (passo 2 della migrazione)
+- Source: [[specs/crm/customer-effect/SPEC]]
+- Flows written: 1 ([[domains/crm/flows/controllo-dei-duplicati-di-un-cliente-nuovo]]); aggiornato [[domains/crm/flows/filtro-avanzato-di-clienti-e-pratiche]] (percorso del traduttore, AC16)
+- Concepts written: 1 ([[domains/crm/concepts/codici-del-cliente]]); aggiornato [[domains/crm/concepts/filtro-avanzato]] (percorso)
+- Review ingested: [[specs/crm/customer-effect/REPORT]] (3 rilievi durevoli in [[tech-debt/crm/customer-effect]], uno già chiuso)
+
+## [2026-10-24] implement | Router `customer` su Effect (passo 2 della migrazione)
+- Spec: [[specs/crm/customer-effect/SPEC]] → `implemented`; note: [[specs/crm/customer-effect/IMPLEMENTATION-NOTES]]; review: [[specs/crm/customer-effect/REPORT]] (SHIP dopo le correzioni; prima DO NOT SHIP, 0 blocker)
+- Caratterizzazione prima del refactor (`dac26d9`), poi utility in `shared/`, servizi `profile`, `list`, `queries`, `filterOptions`; le 18 procedure sono adapter. Gate di CI e prova nel browser su `mito_local` verdi
+- La review ha rafforzato i test in tre giri (input parziali, ordine, righe estranee, parametri di `getAllCustomers`, `id` inesistenti); TD8 resta `[PREVISTO]` fino al merge
+- Da fare: `docs-maintenance` (percorsi delle pagine del dominio, AC16), PR verso `dev`
+
+## [2026-10-24] plan | Router `customer` su Effect (passo 2 della migrazione)
+- Spec: [[specs/crm/customer-effect/SPEC]] (rivista dopo la verifica: DO NOT SHIP, 0 blocker, 5 major), piano: [[specs/crm/customer-effect/PLAN]]
+- 11 task in una PR, dopo il gate G0, verificati dall'`adversarial-verifier` (DO NOT SHIP, 0 blocker, 2 major, corretti): caratterizzazione di risposte, righe intere, righe scritte, errori e middleware delle 18 procedure con i mutanti sul codice inline, `*.pg.test.ts` sulle `update` senza `id`, utility in `shared/`, servizi `list`, `queries`, `filterOptions`, `profile`, gate con mutanti, prova nel browser e review
+- Debito della migrazione: TD8 `[PREVISTO]` in [[chore/migrazione-effect]]
+- G0 chiuso: SPEC approvata da Omar il 2026-10-24, con D7 (test sulle procedure), D9 (codice morto tolto), D10 (niente zod nei servizi, tipi con nome del dominio ammessi) e D11 (niente revisione obbligatoria di Leonardo)
+
+## [2026-10-24] spec | Router `customer` su Effect (passo 2 della migrazione)
+- Created spec: [[specs/crm/customer-effect/SPEC]]
+- Domain: crm
+- Status: Draft
+
+## [2026-10-24] ingest | Filtri avanzati sicuri di Clienti e Pratiche
+- Source: [[specs/crm/filtri-sql-sicuri/SPEC]]
+- Flows written: 1
+- Concepts written: 2
+- Review ingested: [[specs/crm/filtri-sql-sicuri/REPORT]] (6 righe durevoli, già nel tech debt: solo corrispondenza)
+
+## [2026-10-24] review | Filtri avanzati sicuri di Clienti e Pratiche
+- Report: [[specs/crm/filtri-sql-sicuri/REPORT]]
+- Scope: spec
+- Verdict: SHIP
+- Impact: critical
+- Verifiers: 7 (0 blockers, 0 major; 8 minor)
+
+## [2026-10-24] plan | Filtri avanzati sicuri di Clienti e Pratiche
+- Spec: [[specs/crm/filtri-sql-sicuri/SPEC]] (aggiornata alla baseline post-PR6, OQ2 e OQ3 chiuse, AC12 nuovo), piano: [[specs/crm/filtri-sql-sicuri/PLAN]]
+- 9 task in una PR, dopo il gate G0 (SPEC approvata da Omar): caratterizzazione e passaggio a Effect di `getAllPratiche`, modulo di dominio con le mappe chiuse, traduttore con parametri legati, test di sfruttamento rossi prima, mutanti M1–M5, prova su Postgres reale, A/B nel browser
+- Decisioni di Omar: tutta la migrazione va in prod insieme, con PR6; `getAllPratiche` su Effect in questa PR; SPEC approvata con `=` esatto sui decimali (D16); deployment vecchi di Vercel sotto Standard Protection in G3
+- Gate di qualità: DO NOT SHIP al primo giro (1 blocker, 7 major), corretti nel piano senza un secondo giro, per scelta di Omar
+- OQ1 chiusa: nessuna traccia di uso della falla in `pg_stat_statements` di prod (dal 2024-06-13) né in Sentry
+
 ## [2026-10-24] plan | Import di clienti e pratiche, riscritto
 - Plan: [[specs/crm/import-pratiche/PLAN]]
 - 22 task in 7 PR (A caratterizzazione, B dominio, C schema, D coda Cloud Tasks, E servizio, F UI, G rimozione) più due prove su staging
@@ -186,46 +318,6 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 - Spec: [[specs/crm/sezione-contatti/PLAN]]
 - Note in eliminazione nello stato di `CustomerNotes`; NOT_FOUND senza toast (`gone`); test per chiudi e riapri, nota già eliminata, registro, cambio di cliente
 
-## [2026-10-16] review | Sezione Contatti — PR4, T4.5–T4.7 (quarta verifica)
-- Report: [[specs/crm/sezione-contatti/REPORT]]
-- Scope: spec
-- Verdict: DO NOT SHIP
-- Impact: medium
-- Verifiers: 2 (1 blockers, 0 major)
-
-## [2026-10-16] implement | Sezione Contatti — PR4, T4.7 (test della terza verifica)
-- Spec: [[specs/crm/sezione-contatti/PLAN]]
-- Test della sezione vera, del plurale, del focus con due eliminazioni e della guardia del focus; `beforeNextLockOf` fallisce se non scatta; isolamento già coperto
-
-## [2026-10-16] review | Sezione Contatti — PR4, T4.5–T4.7 (terza verifica)
-- Report: [[specs/crm/sezione-contatti/REPORT]]
-- Scope: spec
-- Verdict: DO NOT SHIP
-- Impact: medium
-- Verifiers: 2 (0 blockers, 3 major)
-
-## [2026-10-16] implement | Sezione Contatti — PR4, T4.7 (MAJOR della seconda verifica)
-- Spec: [[specs/crm/sezione-contatti/PLAN]]
-- Ordine sotto il lock coperto da test (`beforeNextLockOf`); regione di stato e eliminazioni in `CustomerNotes`, che resta quando la chat sparisce; scroll che segue l'ultima nota solo se la lista è in fondo
-
-## [2026-10-16] review | Sezione Contatti — PR4, T4.5–T4.7 (seconda verifica)
-- Report: [[specs/crm/sezione-contatti/REPORT]]
-- Scope: spec
-- Verdict: DO NOT SHIP
-- Impact: medium
-- Verifiers: 2 (0 blockers, 5 major)
-
-## [2026-10-16] implement | Sezione Contatti — PR4, T4.7
-- Spec: [[specs/crm/sezione-contatti/PLAN]]
-- Correzioni della review di T4.5 e T4.6; eliminazione della nota solo dell'autore, con il cliente bloccato (AC79, D21)
-
-## [2026-10-16] review | Sezione Contatti — PR4, T4.5 e T4.6
-- Report: [[specs/crm/sezione-contatti/REPORT]]
-- Scope: spec
-- Verdict: DO NOT SHIP
-- Impact: medium
-- Verifiers: 2 (1 blockers, 3 major)
-
 ## [YYYY-MM-DD] ingest | <spec title>
 - Source: [[specs/<domain>/<spec>/SPEC]]
 - Flows written: <count>
@@ -236,83 +328,3 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 - Plan: [[specs/crm/seeder-locale/PLAN]]; spec passata ad `approved`
 - Decisioni di Omar: servizi `update` e `cleanup-task-event-log` su Effect con `Db` (D1); giro completo a 10.000 anche in CI (D2); due PR, A (refactor + via i seed di oggi) e B (seeder) (D3)
 - T7.1c del piano di Contatti segnato "Sostituito"; T7.3 non lo aspetta più
-
-## [2026-10-21] spec | Seeder del database locale, con gli scenari dei cron
-- Created spec: [[specs/crm/seeder-locale/SPEC]]
-- Domain: crm
-- Status: Draft
-
-## [2026-10-20] spec | Filtri avanzati sicuri di Clienti e Pratiche
-- Spec: [[specs/crm/filtri-sql-sicuri/SPEC]] (bozza, `status: draft`), da [[tech-debt/crm/search-by-explicit-map]]
-- Scope: riforma di sicurezza dei filtri avanzati; chiude la SQL-injection `sql.raw` di `customer.getAllCustomers` e `pratiche.getAllPratiche` (confermata da prova di sfruttamento su Postgres reale, 4/4)
-- Decisioni di Omar: filtri strutturati + URL invariato, backend ignora subito `sqlFilter`, voci non valide scartate, Clienti+Pratiche in una PR
-- Gate `adversarial-verifier` (total): DO NOT SHIP al primo giro (1 MAJOR baseline post-PR6 + 3 MINOR); findings ripiegati nella bozza
-- Attende approvazione di Omar e la data; esce dopo PR6 della Sezione Contatti. Fix non implementato.
-
-## [2026-10-15] review-ingest | search_by con mappa esplicita (Clienti e Pratiche)
-- Report: [[review/search-by-explicit-map/REPORT]]
-- Verdict: SHIP
-- Durable findings folded to tech debt: 8 in [[tech-debt/crm/search-by-explicit-map]] (2 di sicurezza, 3 di accessibilità, 3 piccoli; il `console.log` su richiesta del proprietario di prodotto)
-
-## [2026-10-15] review | search_by con mappa esplicita (Clienti e Pratiche) — dal secondo al quinto giro
-- Report: [[review/search-by-explicit-map/REPORT]]
-- Scope: standalone
-- Verdict: SHIP (prima: DO NOT SHIP)
-- Impact: critical
-- Verifiers: secondo giro 8 su haiku (1 blocker, 1 major: badge fermo dopo back/avanti, titolo di test); terzo 4 (2 major sui test e sul badge di Pratiche); quarto 2 (2 major sui test del selettore); quinto 2 (SHIP, 4 minor sui test chiuse da `ee889e9`)
-
-## [2026-10-15] review | search_by con mappa esplicita (Clienti e Pratiche)
-- Report: [[review/search-by-explicit-map/REPORT]]
-- Scope: standalone
-- Verdict: DO NOT SHIP
-- Impact: critical
-- Verifiers: 7 su haiku (1 blocker, 1 major): ricerca per Comune scartata dall'enum
-
-## [2026-09-26] review | Sezione Contatti — PR1, terza verifica e smoke
-- Report: [[specs/crm/sezione-contatti/REPORT]]
-- Scope: spec
-- Verdict: SHIP
-- Impact: critical
-- Verifiers: v4 SHIP su "Assegna Clienti" e minor urgenti (vA interrotto); smoke sul DB di sviluppo (815 alert, 8 fallimenti di connessione isolati); cron a tempo aggiunto dopo la misura; poi `alert.js` che ripete dopo 10 s le chiamate che non arrivano in fondo (504, 5xx, rete, esecuzione fallita), non verificato
-
-## [2026-09-25] review | Sezione Contatti — PR1, seconda verifica
-- Report: [[specs/crm/sezione-contatti/REPORT]]
-- Scope: spec
-- Verdict: SHIP (prima: DO NOT SHIP)
-- Impact: critical
-- Verifiers: 3 rieseguiti (v1, v2, v3) su `87ff79e`; 0 blockers, 0 major, 5 minor
-
-## [2026-09-29] review | Sezione Contatti — PR2 "Pulizia e vincolo DB"
-- Report: [[specs/crm/sezione-contatti/REPORT]] (round PR2)
-- Scope: spec
-- Verdict: DO NOT SHIP (prima verifica)
-- Impact: critical
-- Verifiers: 9 (2 blockers, 8 major)
-
-## [2026-09-29] review | Sezione Contatti — PR2, verifiche successive
-- Report: [[specs/crm/sezione-contatti/REPORT]] (round PR2)
-- Scope: spec
-- Verdict: SHIP (dopo le correzioni)
-- Impact: critical
-- Verifiers: 3 nella seconda verifica, poi 4 su v9 (0 blocker aperti)
-
-## [2026-09-29] review | Sezione Contatti — PR2, runbook G2 senza via libera degli admin
-- Report: [[specs/crm/sezione-contatti/REPORT]] (round PR2, Verifiche successive)
-- Scope: spec
-- Verdict: SHIP (dopo le correzioni)
-- Impact: critical
-- Verifiers: 1, in due passate (2 major, poi 0)
-
-## [2026-10-09] review | Staging su Vercel, accesso fuori produzione, Sentry solo in prod
-- Report: [[review/staging-accesso-sentry/REPORT]]
-- Scope: standalone
-- Verdict: DO NOT SHIP
-- Impact: critical
-- Verifiers: 7 (2 blocker, 6 major)
-
-## [2026-10-09] review | Indirizzo dei cron da `CRON_BASE_URL`
-- Report: [[review/cron-base-url/REPORT]]
-- Scope: standalone
-- Verdict: DO NOT SHIP
-- Impact: critical
-- Verifiers: 6 (1 blocker, 8 major, più 1 major già presente in `authCheck`)
