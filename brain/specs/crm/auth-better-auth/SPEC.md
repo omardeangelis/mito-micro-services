@@ -1,7 +1,7 @@
 ---
 domain: crm
 type: spec
-status: draft
+status: approved
 links:
   - "[[chore/migrazione-effect]]"
   - "[[chore/migrazione-gcp]]"

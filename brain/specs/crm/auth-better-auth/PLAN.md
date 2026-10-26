@@ -14,7 +14,7 @@ updated: 2026-10-26
 # Plan: Login e sessione su better-auth, contesto tRPC su Effect (passo 8)
 
 **Spec:** [[specs/crm/auth-better-auth/SPEC]], 2026-10-26: 31 criteri, le 7 domande decise da Leonardo.
-**Status:** Planned. Niente codice prima del via di Leonardo su questo piano.
+**Status:** In corso: PR A (#96) e B (#97) aperte in draft il 2026-10-26; C1 in lavorazione.
 - **Verifica del piano:** DO NOT SHIP, 1 blocker, 7 major, 7 minor, corretti (§15).
 **Generato:** 2026-10-26 con `create-plan`: grill senza domande nuove (le decisioni di prodotto sono nella spec, quelle tecniche sono qui sotto, D1–D14, e Leonardo le rivede col piano), ricerca su better-auth 1.7.13 (§7), task graph, tdd, verifica del piano.
 **Baseline:** `origin/dev` a `f13ba06`.
@@ -119,9 +119,9 @@ Docs: T13 dopo la PR D (docs-maintenance, con pull prima)
 - **location**: `brain/specs/crm/auth-better-auth/{SPEC,PLAN}.md`
 - **description**: Leonardo approva spec e piano; `implement-spec` porta la spec a `status: approved`.
 - **validation**: frontmatter `approved`.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-10-26, Leonardo: "vai" sul piano; spec `approved`.
+- **files edited/created**: `SPEC.md` (frontmatter)
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -136,9 +136,9 @@ Docs: T13 dopo la PR D (docs-maintenance, con pull prima)
 - **location**: `packages/server/src/services/auth/users.ts`, `packages/server/src/_test/auth.db.test.ts`
 - **description**: `createUserWithOperator` scrive `role: "OPERATORE"` in modo esplicito. Il default della colonna resta `ADMIN` (cambiarlo vuol dire una migrazione; lo toglie la PR E se serve). Nessun altro cambio.
 - **validation**: `pnpm run test --run packages/server/src/_test`; lint e `tsc`; nessun altro file nel diff.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-10-26, Opus inline (auth: le regole del progetto vietano di delegarla). RED: il test asseriva `ADMIN`, ora `OPERATORE`, rosso sul codice di `f13ba06`; verde dopo. Suite completa 3982 verdi. Commit `bf16d83`, [PR #96](https://github.com/omardeangelis/mito-micro-services/pull/96).
+- **files edited/created**: `packages/server/src/services/auth/users.ts`, `packages/server/src/_test/auth.db.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -153,9 +153,9 @@ Docs: T13 dopo la PR D (docs-maintenance, con pull prima)
 - **location**: `packages/db/src/schema/auth.ts` (nuovo), `packages/db/src/schema/users.ts`, `packages/db/migrations/`, test in `packages/db/src/_test/` o `src/server/db/_test/`
 - **description**: Schema Drizzle di `auth_session` (`id`, `token` unico, `user_id` FK con `on delete cascade`, `expires_at`, `ip_address`, `user_agent`, `created_at`, `updated_at`), `auth_account` (`id`, `account_id`, `provider_id`, `user_id` FK cascade, colonne dei token presenti ma sempre nulle, `scope`, `created_at`, `updated_at`, unico su `(provider_id, account_id)`), `auth_verification` (`id`, `identifier`, `value`, `expires_at`, `created_at`, `updated_at`). Su `user`: `email_confirmed`, `created_at`, `updated_at` (D4). `pnpm db:generate` senza `NODE_ENV`, togliere la riga `customers.id SET DEFAULT`. Poi una seconda migrazione di soli dati (`drizzle-kit generate --custom`, D5): `email_confirmed = true` per gli utenti esistenti (D4); email in minuscolo dove non collidono (D7); `INSERT INTO auth_account ... SELECT` dagli account `provider = 'azure-ad'` con un `id_token` ben formato, `account_id` = `oid` decodificato dal payload del JWT, `ON CONFLICT DO NOTHING`. I token vecchi non si toccano (D6). Regole del journal di AGENTS.md.
 - **validation**: test su PGlite che applica le migrazioni su un database con: un account con `id_token` (con `oid`), uno senza `id_token`, uno con un `id_token` malformato, uno `email`, due utenti con la stessa email in maiuscole diverse; la migrazione non fallisce, c'è solo la riga del primo con l'`oid` giusto, i token vecchi sono intatti, le email sono in minuscolo tranne le due che collidono, tutti hanno `email_confirmed = true`. `pnpm run test --run`; journal controllato (`when` crescente, `prevId`).
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-10-26, Opus inline (migrazione: non delegabile). Due migrazioni: `20261026174610_auth_tables` (schema) e `20261026174632_auth_data` (custom, dati). 5 test verdi; mutanti `sub` al posto di `oid` e niente conferma delle email uccisi. `createUser` dei test tipato senza le 3 colonne nuove (TS2739). Suite completa 3987 verdi. Commit `b6cc42e`, [PR #97](https://github.com/omardeangelis/mito-micro-services/pull/97). Query di controllo nel corpo della PR, da lanciare su staging prima del merge.
+- **files edited/created**: `packages/db/src/schema/{auth,users,index}.ts`, `packages/db/migrations/{20261026174610_auth_tables,20261026174632_auth_data}.sql` e snapshot, `_journal.json`, `src/test/{db,factories}.ts`, `src/server/db/_test/migrations/authData.db.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
