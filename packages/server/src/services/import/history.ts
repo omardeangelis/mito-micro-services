@@ -1,4 +1,3 @@
-import "server-only"
 import { count, desc, eq } from "drizzle-orm"
 import { Clock, Effect } from "effect"
 import { importRun } from "@mito/db/schema/importRun"

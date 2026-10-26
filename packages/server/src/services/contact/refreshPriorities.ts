@@ -1,4 +1,3 @@
-import "server-only"
 import { Effect } from "effect"
 import { and, eq, inArray, not } from "drizzle-orm"
 import { calculatePriority } from "@mito/domain/utils/priority"

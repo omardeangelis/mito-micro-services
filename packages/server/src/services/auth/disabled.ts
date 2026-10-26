@@ -1,4 +1,3 @@
-import "server-only"
 import { Effect } from "effect"
 import { eq, or, sql } from "drizzle-orm"
 import { users } from "@mito/db/schema/users"

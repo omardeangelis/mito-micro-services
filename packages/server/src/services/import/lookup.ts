@@ -1,4 +1,3 @@
-import "server-only"
 import { asc, or, sql } from "drizzle-orm"
 import { type AnyPgColumn } from "drizzle-orm/pg-core"
 import { Effect } from "effect"

@@ -1,4 +1,3 @@
-import "server-only"
 import { Effect } from "effect"
 import { eq } from "drizzle-orm"
 import { type UserPreference } from "@mito/domain/schemas"

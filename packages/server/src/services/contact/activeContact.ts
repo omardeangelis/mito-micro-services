@@ -1,4 +1,3 @@
-import "server-only"
 import { Effect } from "effect"
 import { and, desc, eq, sql } from "drizzle-orm"
 import { type Task } from "@mito/domain/schemas"

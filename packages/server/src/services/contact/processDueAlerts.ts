@@ -1,4 +1,3 @@
-import "server-only"
 import { Clock, Data, Effect } from "effect"
 import { and, asc, desc, eq, sql } from "drizzle-orm"
 import { SYSTEM_OPERATOR_USER_ID } from "@mito/domain/constants/operator"

@@ -1,4 +1,3 @@
-import "server-only"
 import { Layer, Logger } from "effect"
 import { DbLive } from "./db"
 import { SentryReporterLive } from "./errorReporter"
