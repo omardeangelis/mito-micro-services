@@ -158,7 +158,11 @@ export const TimeFrameSelector = ({ timeframe }: { timeframe: TimeFrame }) => {
   }, [router])
 
   return (
+    // Next non rimonta la pagina quando cambia solo `?tf=`: la chiave rimonta
+    // il Select, così mostra il periodo della pagina anche dopo il link
+    // "Dashboard" o Indietro
     <Select
+      key={timeframe}
       defaultValue={timeframe}
       onValueChange={(value: TimeFrame) => setTimeframe(value)}
     >
