@@ -1,41 +1,22 @@
-export const DEFUALTTIMEFRAME = "30d"
+export const TIMEFRAMEOPTIONS = ["30d", "90d", "365d"] as const
 
-export const TIMEFRAMEMAP = {
-  "30d": {
-    start: new Date(new Date().setDate(new Date().getDate() - 30)),
-    end: new Date(),
-  },
-  "90d": {
-    start: new Date(new Date().setDate(new Date().getDate() - 90)),
-    end: new Date(),
-  },
-  "365d": {
-    start: new Date(new Date().setDate(new Date().getDate() - 365)),
-    end: new Date(),
-  },
-}
+export type TimeFrame = (typeof TIMEFRAMEOPTIONS)[number]
 
-export const TIMEFRAMEOPTIONS = Object.keys(TIMEFRAMEMAP) as TimeFrame[]
+export const DEFAULTTIMEFRAME = "30d" satisfies TimeFrame
 
-export type TimeFrame = keyof typeof TIMEFRAMEMAP
-
-export const TIMEFRAMEDELTA = {
-  "30d": {
-    start: new Date(new Date().setDate(new Date().getDate() - 30 * 2)),
-    end: new Date(new Date().setDate(new Date().getDate() - 30)),
-  },
-  "90d": {
-    start: new Date(new Date().setDate(new Date().getDate() - 90 * 2)),
-    end: new Date(new Date().setDate(new Date().getDate() - 90)),
-  },
-  "365d": {
-    start: new Date(new Date().setDate(new Date().getDate() - 365 * 2)),
-    end: new Date(new Date().setDate(new Date().getDate() - 365)),
-  },
-}
+/**
+ * Reads a period from an untrusted value, such as the `tf` query param.
+ * Returns it when it is one of the options, `DEFAULTTIMEFRAME` otherwise
+ * (absent, null, unknown, or a list from a repeated param).
+ */
+export const parseTimeFrame = (
+  value: string | string[] | null | undefined
+): TimeFrame =>
+  TIMEFRAMEOPTIONS.find((option) => option === value) ?? DEFAULTTIMEFRAME
 
 export const financeCardFormattingSettings = {
   month: "2-digit",
   year: "numeric",
   day: "numeric",
+  timeZone: "Europe/Rome",
 } satisfies Intl.DateTimeFormatOptions

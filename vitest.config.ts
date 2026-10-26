@@ -4,13 +4,16 @@ import { resolve } from "path"
 
 /**
  * Tests of dates that must not depend on the time zone of the process (the
- * import, AC33): vitest.workspace.ts runs them in UTC and in Europe/Rome, in
+ * import, AC33; the windows and the dates of the dashboard amounts):
+ * vitest.workspace.ts runs them in UTC and in Europe/Rome, in
  * child processes, where TZ applies (worker threads keep the process's)
  */
 export const timeZoneTests = [
   "src/lib/import/**/_test/**/*.test.ts",
   "packages/domain/src/import/**/_test/**/*.test.ts",
   "packages/domain/src/utils/_test/{romeClock,dates}.test.ts",
+  "src/app/dashboard/_components/_test/FinanceCard.dates.test.tsx",
+  "packages/server/src/services/analytics/_test/windows.db.test.ts",
 ]
 
 export default defineConfig({

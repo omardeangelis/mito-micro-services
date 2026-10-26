@@ -28,12 +28,11 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import {
-  DEFUALTTIMEFRAME,
   type TimeFrame,
   TIMEFRAMEOPTIONS,
 } from "@mito/domain/constants/timeframes"
-import { useAnalitycsStore } from "@/store/useAnalitycsStore"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useAnalyticsStore } from "@/store/useAnalyticsStore"
+import { useRouter } from "next/navigation"
 import { type Matcher } from "react-day-picker"
 
 export function DatePicker(defaultDate: Date) {
@@ -141,19 +140,26 @@ export function DatePickerFormItem({
   )
 }
 
-export const TimeFrameSelector = () => {
-  const searchParams = useSearchParams()
-  const tf = searchParams.get("tf") as TimeFrame | null
-  const { setTimeframe } = useAnalitycsStore()
+/** The period selector: `timeframe` is the one the page read from the URL. */
+export const TimeFrameSelector = ({ timeframe }: { timeframe: TimeFrame }) => {
+  const { setTimeframe } = useAnalyticsStore()
   const router = useRouter()
+  // Next non rimonta la pagina quando cambia solo `?tf=`: finché la navigazione
+  // della scelta è in corso il selettore mostra la scelta, poi il periodo della
+  // pagina, anche quando Next scarta la navigazione per una partita dopo (link
+  // "Home", Indietro). Niente `key`: rimontando il Select il fuoco finirebbe
+  // sul body. Niente scroll nella navigazione: con lo scroll Next dà il fuoco
+  // a `main`
+  const [isNavigating, startNavigation] = React.useTransition()
+  const [choice, setChoice] = React.useState(timeframe)
+  const shown = isNavigating ? choice : timeframe
 
   React.useEffect(() => {
-    console.log("TimeFrameSelector mounted")
-    const unsub = useAnalitycsStore.subscribe((state) => {
+    const unsub = useAnalyticsStore.subscribe((state) => {
       const { timeframe } = state
       const url = new URL(window.location.href)
       url.searchParams.set("tf", timeframe)
-      router.push(url.toString())
+      startNavigation(() => router.push(url.toString(), { scroll: false }))
     })
 
     return () => unsub()
@@ -161,8 +167,11 @@ export const TimeFrameSelector = () => {
 
   return (
     <Select
-      defaultValue={tf ?? DEFUALTTIMEFRAME}
-      onValueChange={(value: TimeFrame) => setTimeframe(value)}
+      value={shown}
+      onValueChange={(value: TimeFrame) => {
+        setChoice(value)
+        setTimeframe(value)
+      }}
     >
       <SelectTrigger className="w-[180px]">
         <SelectValue placeholder="Seleziona Periodo" />
