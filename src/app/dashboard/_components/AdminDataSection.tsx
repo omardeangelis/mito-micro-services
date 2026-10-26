@@ -1,55 +1,34 @@
 import { api } from "@/trpc/server"
 import { FinanceCard } from "./FinanceCard"
-import { Skeleton } from "@/components/ui/skeleton"
 import { DonutCard } from "./DonutCard"
 import { CircleCard } from "./CircleCard"
-import {
-  type TimeFrame,
-  DEFUALTTIMEFRAME,
-} from "@mito/domain/constants/timeframes"
+import { CardRow } from "./CardRow"
+import { type TimeFrame } from "@mito/domain/constants/timeframes"
 
 export const AdminDataSection = async ({
-  timeframe = DEFUALTTIMEFRAME,
+  timeframe,
 }: {
-  timeframe?: TimeFrame
+  timeframe: TimeFrame
 }) => {
-  const { comparison, reference } =
-    await api.analitycs.getFinanziatoMedioPerOperatore.query({
-      timeFrame: timeframe,
-    })
-  const { done, todo } = await api.analitycs.getAllDoneTasksInLastMonth.query()
-  const data = await api.analitycs.getAmountPerSedeInLastMonth.query({
-    timeFrame: timeframe,
-  })
+  const [{ comparison, reference, windows }, { done, todo }, data] =
+    await Promise.all([
+      api.analytics.getFinancedAverage.query({ timeFrame: timeframe }),
+      api.analytics.getContactProgress.query(),
+      api.analytics.getFinancedByBranch.query({ timeFrame: timeframe }),
+    ])
 
   return (
-    <div className="flex h-full w-full flex-row items-stretch justify-between gap-8">
+    <CardRow>
       <FinanceCard
-        title="Finanziato medio per operatore"
-        referencePeriod={{
-          total: Number(reference),
-        }}
-        comparisonPeriod={{
-          total: Number(comparison),
-        }}
-        comparisonTimeFrame={timeframe}
+        title="Finanziato medio per pratica"
+        referencePeriod={{ total: reference }}
+        comparisonPeriod={{ total: comparison }}
+        windows={windows}
       />
       <CircleCard done={done} todo={todo}>
-        <p className="text-tremor-default text-tremor-content dark:text-dark-tremor-content">
-          Chiamate completate
-        </p>
+        <h2 className="text-sm text-neutral-500">Contatti con esito</h2>
       </CircleCard>
       <DonutCard data={data} />
-    </div>
-  )
-}
-
-export const DataSectionSkeleton = () => {
-  return (
-    <div className="flex w-full flex-row items-center justify-between gap-8">
-      <Skeleton className="h-48 w-1/3 rounded-md" />
-      <Skeleton className="h-48 w-1/3 rounded-md" />
-      <Skeleton className="h-48 w-1/3 rounded-md" />
-    </div>
+    </CardRow>
   )
 }

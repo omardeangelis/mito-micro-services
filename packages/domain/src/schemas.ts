@@ -101,7 +101,6 @@ export const selectChatSchema = createSelectSchema(chat)
 export const insertChatSchema = createInsertSchema(chat)
 
 export const selectChatToOperatorSchema = createSelectSchema(chatToOperator)
-export const insertChatToOperatorSchema = createInsertSchema(chatToOperator)
 
 export const selectTaskSchema = createSelectSchema(task)
 export const insertTaskSchema = createInsertSchema(task)
