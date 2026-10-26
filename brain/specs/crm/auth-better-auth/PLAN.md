@@ -14,7 +14,7 @@ updated: 2026-10-26
 # Plan: Login e sessione su better-auth, contesto tRPC su Effect (passo 8)
 
 **Spec:** [[specs/crm/auth-better-auth/SPEC]], 2026-10-26: 31 criteri, le 7 domande decise da Leonardo.
-**Status:** In corso: PR A (#96) e B (#97) aperte in draft il 2026-10-26; C1 in lavorazione.
+**Status:** In corso: PR A (#96) e B (#97) aperte in draft il 2026-10-26; C1 (T3–T6) fatta il 2026-10-26, in PR draft.
 - **Verifica del piano:** DO NOT SHIP, 1 blocker, 7 major, 7 minor, corretti (§15).
 **Generato:** 2026-10-26 con `create-plan`: grill senza domande nuove (le decisioni di prodotto sono nella spec, quelle tecniche sono qui sotto, D1–D14, e Leonardo le rivede col piano), ricerca su better-auth 1.7.13 (§7), task graph, tdd, verifica del piano.
 **Baseline:** `origin/dev` a `f13ba06`.
@@ -173,9 +173,9 @@ Tutto il codice nuovo, provato, ma non collegato a nessuna rotta né a `getServe
 - **location**: `packages/server/src/auth/_test/spike.db.test.ts` (si tiene come test di contratto della libreria)
 - **description**: `pnpm add -w better-auth@1.7.13` (versione esatta). Test che fissano i comportamenti non documentati di §7: un hook `session.create.before` che rifiuta, e la risposta HTTP del callback; se `user.create.after` gira nella transazione dell'insert (se no, wrapper dell'adapter, D8); `additionalFields` con `input: false`; come rifiutare prima dell'invio del magic link; l'elenco degli endpoint di `auth.api`.
 - **validation**: i test passano e il log del task scrive le risposte; se una risposta smentisce D3, D7, D8 o D9, si ferma e si torna al piano.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-10-26, Opus inline. Cartella `betterAuth/` invece di `auth/` (c'è già `auth.ts`, e `@mito/server/auth` è mockato in `src/test/setup.ts`). Risposte: `session.create.before` che restituisce `false` → 302 all'URL d'errore con `error=failed_to_create_session`, nessuna sessione; un `throw` lì → 500 senza `Location`; `user.create.after` gira dopo il commit (`queueAfterTransactionHook`) e un suo errore lascia l'utente creato; l'adapter Drizzle non usa transazioni se non con `transaction: true`, e allora gli hook `before` del sign-up girano dentro la transazione (su PGlite una query su un'altra connessione aspetta per sempre); `disabledPaths` non serve, il filtro è nostro; il code flow di Microsoft decodifica l'`id_token` senza verificarne la firma (arriva dal token endpoint in TLS, come con NextAuth). Nessuna risposta smentisce D3, D7 o D9; D8 cambia (sotto, T4). Lo spike resta come `contract.db.test.ts` (3 test).
+- **files edited/created**: `package.json`, `pnpm-lock.yaml` (`better-auth@1.7.13`), `packages/server/src/betterAuth/_test/contract.db.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -188,9 +188,9 @@ Tutto il codice nuovo, provato, ma non collegato a nessuna rotta né a `getServe
 - **location**: `packages/server/src/auth/{index,config,hooks}.ts`, `packages/server/src/services/auth/login.ts`, `packages/env/src/index.js`
 - **description**: `betterAuth` con D4, D7, D8, D10–D13. Regole in Effect (`login.ts`, errori taggati `UserDisabled`, `EmailNotAllowed`, `EmailOtherCase`, `EmailTaken`) chiamate dagli hook; utente + operatore come T3 ha stabilito. `AUTH_TEST_LOGIN`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL` in `@mito/env` (opzionali finché la C2 non li usa).
 - **validation**: test in `packages/server/src/auth/_test/` guidati da `auth.handler(Request)` con un provider Microsoft finto su `fetch` (porting delle asserzioni di `auth.db.test.ts`, `authDisabled*.db.test.ts`, `auth.test.ts`): AC1–AC5, AC10, AC11 (Azure), AC31 (nessun token nella riga dell'account, nessuna chiamata a Graph); `pnpm run test --run`, lint, `tsc`.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-10-26, Opus inline. **D8 rivista:** l'operatore si crea in `user.create.after` (dopo il commit), e se fallisce l'utente si cancella (account e sessioni a cascata) e il login fallisce; utente e account invece in una transazione (`transaction: true`). Per gli hook che girano dentro la transazione, `authDb` (proxy di `db`) ricorda la transazione aperta e `onAuthDb` la dà come `Db` ai programmi Effect. `mapProfileToUser` segna confermata l'email degli utenti nati con Azure (il tenant la garantisce), altrimenti un link via email successivo cancellerebbe i loro account. `role` è un `additionalField` con `input: false` e default `OPERATORE`. Il controllo dei disattivati nella `session.create.before` rifiuta solo i disattivati, non chi non ha operatore (utenti vecchi). 15 test, 9 mutanti uccisi (guardia della sessione, collegamento acceso, maiuscole, compensazione, token, transazione, login di prova, ruolo, scope). Commit `8d105b3`.
+- **files edited/created**: `packages/server/src/betterAuth/{config,database,index}.ts`, `packages/server/src/services/auth/login.ts`, `packages/env/src/index.js`, `packages/server/src/betterAuth/_test/{harness.ts,azure.db.test.ts,env.test.ts}`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -203,9 +203,9 @@ Tutto il codice nuovo, provato, ma non collegato a nessuna rotta né a `getServe
 - **location**: `packages/server/src/auth/config.ts`, `services/auth/login.ts`, `_test/magicLink.db.test.ts`
 - **description**: plugin magic link solo con `AUTH_TEST_LOGIN` (console in `development`, SendGrid altrove), `expiresIn` 24 ore; le regole di AC9 e AC11 prima dell'invio.
 - **validation**: AC7, AC8, AC9, AC11 (email), AC12; un utente con l'account Azure collegato che entra con il link conserva la riga in `auth_account` (D4).
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-10-26, Opus inline. Plugin solo con `testLogin` e un mittente (`mail.ts`: console in `development`, SendGrid via nodemailer altrove; aggiunto `@types/nodemailer`). Token salvato hashato. La regola prima dell'invio confronta l'email in minuscolo, come better-auth la cerca: chi scrive con le maiuscole l'email di un utente salvato in minuscolo riceve il link (come con NextAuth, che normalizzava). 13 test, 6 mutanti uccisi. Commit `6a6894e`.
+- **files edited/created**: `packages/server/src/betterAuth/{config,mail,index}.ts`, `services/auth/login.ts` (`admitMagicLink`), `packages/server/src/betterAuth/_test/magicLink.db.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -218,9 +218,9 @@ Tutto il codice nuovo, provato, ma non collegato a nessuna rotta né a `getServe
 - **location**: `packages/server/src/auth/hooks.ts`, `_test/redirects.db.test.ts`
 - **description**: D14 e D15.
 - **validation**: un `callbackURL` esterno o interno scelto dal client non cambia la destinazione (AC6); ogni rifiuto (disattivato, email non ammessa, errore del database) risponde con `Location` esattamente `/login?error=1` (AC13).
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-10-26, Opus inline. **D14 e D15 nel nostro handler** (`authHandler`), non negli `hooks` di better-auth: un login che finisce altrove che in una delle due destinazioni diventa `302 /login?error=1`, senza cookie; le URL del body e della query di verify le sostituisce il server; la richiesta del link perde `name` (AC23: l'utente del link non ha nome). Destinazioni: `/dashboard` e `/dashboard/profile?firstTime=true` (come `redirect` e `pages.newUser` di oggi). 12 test; mutante "500 → corpo vuoto" equivalente (better-auth risponde già 500 senza corpo). Commit `65e849c`.
+- **files edited/created**: `packages/server/src/betterAuth/handler.ts`, `packages/server/src/betterAuth/_test/redirects.db.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -233,9 +233,9 @@ Tutto il codice nuovo, provato, ma non collegato a nessuna rotta né a `getServe
 - **location**: `packages/server/src/auth/config.ts`, `packages/server/src/auth/_test/surface.test.ts`
 - **description**: filtro della allowlist (D9), su Hono e in Next.js, e `additionalFields` non scrivibili.
 - **validation**: il test enumera gli endpoint di `auth.api`: ogni path fuori dalla allowlist, anche con parametri (`/reset-password/x`), risponde 404; un `update-user` con `role` da un utente collegato non cambia la riga (AC21, AC22).
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-10-26, Opus inline. Allowlist nel `switch` di `authHandler` (metodo + path esatto, solo `/callback/microsoft` in GET, solo il provider `microsoft`); il test classifica i 32 path di `auth.api` (6 permessi, 26 bloccati). `additionalFields` non scrivibili coperto da `update-user` 404 con ruolo invariato. 7 test, 2 mutanti uccisi; quello del prefisso `/api/auth` è equivalente (better-auth risponde 404 fuori dal suo `basePath`). Commit `c4e0f04`.
+- **files edited/created**: `packages/server/src/betterAuth/handler.ts`, `packages/server/src/betterAuth/_test/surface.db.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -248,9 +248,9 @@ Tutto il codice nuovo, provato, ma non collegato a nessuna rotta né a `getServe
 - **location**: `packages/server/src/auth/session.ts`, `_test/session.db.test.ts`
 - **description**: servizio `AuthSession` e `readSession(headers)` (D3), che restituisce la `Session` di oggi o `null`; `Layer` live e di test; `hooks.after` di `/get-session` che passa da lì (D16). Non ancora usato da `getServerAuthSession`.
 - **validation**: test: cookie valido → sessione con `user.id`; scaduta → `null`; utente disattivato → `null` alla prima lettura, anche da `GET /api/auth/get-session`; rinnovo dopo 24 ore (AC14, AC15 a livello di servizio).
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-10-26, Opus inline. Servizio `AuthSession` (`Context.Tag`, `authSessionOf(auth)`), `readSession(headers)` e `activeSession`; errore `SessionReadFailed`. **D16 nel nostro handler:** `GET /get-session` risponde `null` per un disattivato. 9 test, 5 mutanti uccisi (controllo dei disattivati in `readSession` e nel handler, cache del cookie accesa, durata, rinnovo). Da tenere per la C2: `auth.api.getSession` chiamata fuori da una risposta rinnova la riga ma non il cookie (come oggi `getServerSession` nei server component).
+- **files edited/created**: `packages/server/src/betterAuth/{session,run,handler}.ts`, `packages/server/src/betterAuth/_test/session.db.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
