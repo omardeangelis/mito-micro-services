@@ -1,15 +1,46 @@
-import { Either } from "effect"
+import { Cause, Effect, Either, Exit, Option } from "effect"
 import { type NextRequest } from "next/server"
+import { getHTTPStatusCodeFromError } from "@trpc/server/http"
+import { getServerAuthSession } from "@mito/server/auth"
+import { ServerLive } from "@mito/server/effect/server"
+import { resolveActor } from "@mito/server/services/auth/actor"
 import {
   downloadExportFile,
   runExportStorage,
 } from "@mito/server/services/export/files"
+import { operatorErrorToTrpc } from "@mito/server/services/operator/errors"
 import { authCheck } from "../../_utils/auth"
+
+/**
+ * The response for a session whose user is not an active operator, with the
+ * status `operatorProcedure` answers the same error with (TD10 e); null for
+ * an active operator.
+ */
+async function operatorCheck(userId: string) {
+  const exit = await Effect.runPromiseExit(
+    resolveActor(userId).pipe(Effect.provide(ServerLive))
+  )
+  if (Exit.isSuccess(exit)) return null
+  const failure = Option.getOrUndefined(Cause.failureOption(exit.cause))
+  if (failure && failure._tag !== "DbError") {
+    const error = operatorErrorToTrpc(failure)
+    return new Response(error.message, {
+      status: getHTTPStatusCodeFromError(error),
+    })
+  }
+  console.error("Error reading the operator:", Cause.pretty(exit.cause))
+  return new Response("Error downloading file", { status: 500 })
+}
 
 async function handler(req: NextRequest) {
   // auth check
   const authResponse = await authCheck()
   if (authResponse) return authResponse
+
+  // authCheck has no request to read a token from: only a session gets here
+  const session = await getServerAuthSession()
+  const operatorResponse = await operatorCheck(session!.user.id)
+  if (operatorResponse) return operatorResponse
 
   const { searchParams } = new URL(req.url)
   const filePathName = searchParams.get("n")
