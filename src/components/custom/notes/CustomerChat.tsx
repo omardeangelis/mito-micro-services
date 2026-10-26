@@ -561,9 +561,11 @@ const CustomerNote = memo(function CustomerNote({
 }: CustomerNoteProps) {
   // The note is drawn at once; the author's name comes when it is there. No
   // skeleton: it would pulse for ever if the lookup never answers
-  const { data } = api.operator.getOperatorById.useQuery({
-    id: Number(operatorId),
-  })
+  const { data } = api.operator.getOperatorById.useQuery(
+    { id: operatorId },
+    // An id no operator can have (0, a negative one) is not looked up
+    { enabled: Number.isInteger(operatorId) && operatorId > 0 }
+  )
 
   const handleDelete = async () => {
     if (id === undefined || !deletable || deleting) return

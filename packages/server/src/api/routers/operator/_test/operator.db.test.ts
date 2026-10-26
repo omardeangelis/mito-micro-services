@@ -2,7 +2,7 @@ import { beforeAll, beforeEach, describe, expect, it } from "vitest"
 import { eq } from "drizzle-orm"
 import { operators } from "@mito/db/schema/operators"
 import { users } from "@mito/db/schema/users"
-import { createTestCaller } from "@/test/caller"
+import { createTestCaller, rejectionOf } from "@/test/caller"
 import { migrateUpTo, resetDb, testDb } from "@/test/db"
 import {
   createOperator,
@@ -22,8 +22,12 @@ beforeEach(async () => {
 })
 
 describe("operator.updateOperatorInfo", () => {
-  it("returns the operator with the name and surname it had before the update", async () => {
-    const operator = await createOperator({ name: "Mario", surname: "Rossi" })
+  it("returns the operator with the new name and surname, and its role (TD3 b)", async () => {
+    const operator = await createOperator({
+      role: "ADMIN",
+      name: "Mario",
+      surname: "Rossi",
+    })
     const caller = createTestCaller(operator)
 
     const returned = await caller.operator.updateOperatorInfo({
@@ -31,10 +35,11 @@ describe("operator.updateOperatorInfo", () => {
       surname: "Verdi",
     })
 
-    expect(returned).toMatchObject({
-      id: operator.id,
-      name: "Mario",
-      surname: "Rossi",
+    expect(returned).toEqual({
+      ...operator,
+      name: "Luigi",
+      surname: "Verdi",
+      updatedAt: expect.any(Date) as Date,
     })
   })
 
@@ -98,22 +103,31 @@ describe("operator.getOperatorById", () => {
     expect(found).toBeUndefined()
   })
 
-  // With no id the query has no WHERE: with a single operator in the database
-  // it returns that one. (With more operators the result is not defined.)
-  it("returns the only operator when called without an id", async () => {
+  it("rejects a call without an id with BAD_REQUEST, even with a single operator in the database (TD3 a)", async () => {
     const operator = await createOperator({ role: "ADMIN" })
-    const caller = createTestCaller(operator)
 
-    expect(await caller.operator.getOperatorById({})).toEqual(operator)
+    const error = await rejectionOf(
+      createTestCaller(operator).operator.getOperatorById(
+        // @ts-expect-error -- `id` is required: the request of an old client
+        {}
+      )
+    )
+
+    expect(error).toMatchObject({ code: "BAD_REQUEST" })
   })
 
-  // id 0 is falsy, so it reads as "no id" too
-  it("returns the only operator when called with id 0", async () => {
-    const operator = await createOperator({ role: "ADMIN" })
-    const caller = createTestCaller(operator)
+  it.each([0, -1, 1.5])(
+    "rejects id %s with BAD_REQUEST, even with a single operator in the database (TD3 a)",
+    async (id) => {
+      const operator = await createOperator({ role: "ADMIN" })
 
-    expect(await caller.operator.getOperatorById({ id: 0 })).toEqual(operator)
-  })
+      const error = await rejectionOf(
+        createTestCaller(operator).operator.getOperatorById({ id })
+      )
+
+      expect(error).toMatchObject({ code: "BAD_REQUEST" })
+    }
+  )
 })
 
 describe("operator.getUserOperator", () => {

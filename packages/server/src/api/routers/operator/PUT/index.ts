@@ -16,9 +16,12 @@ export const updateOperatorInfo = operatorProcedure
   .input(operatorInsertSchema)
   .mutation(async ({ ctx, input }) => {
     const { operator } = ctx
-    await runTrpc(updateOperatorInfoService(operator.id, input))
-    // The operator of the context, with the values before the update
-    return operator
+    const updated = await runTrpc(
+      updateOperatorInfoService(operator.id, input),
+      operatorErrorToTrpc
+    )
+    // The role is the user's, which this update doesn't change
+    return { ...updated, role: operator.role }
   })
 
 const updateOperatorsRoleInput = z.array(

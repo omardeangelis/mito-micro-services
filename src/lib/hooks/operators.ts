@@ -8,5 +8,9 @@ export const useAllUniqueOperators = cache(() =>
 )
 
 export const useGetOperatorById = cache((id: number | undefined) =>
-  api.operator.getOperatorById.useQuery({ id })
+  // Without an id the query waits: the `0` is never sent
+  api.operator.getOperatorById.useQuery(
+    { id: id ?? 0 },
+    { enabled: id !== undefined }
+  )
 )

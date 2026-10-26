@@ -18,7 +18,7 @@ export const getAllUniqueOperators = protectedProcedure.query(() =>
 )
 
 const getOperatorByIdInput = z.object({
-  id: z.number().optional(),
+  id: z.number().int().positive(),
 })
 
 export const getOperatorById = protectedProcedure
