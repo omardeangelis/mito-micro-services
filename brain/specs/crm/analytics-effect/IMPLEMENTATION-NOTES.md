@@ -130,7 +130,7 @@ updated: 2026-10-26
 | AC22 | Met | `CircleCard.test.tsx`, con il confine del 50% |
 | AC23 | Met | `grep` vuota |
 | AC24 | Met | TD11 (u) è `[PREVISTO]`, `[OPEN]` al merge (Deviations, D21) |
-| AC25 | Met | 48 file, nessuno di `packages/db/` né di `.agents/` |
+| AC25 | Met | 48 file a `0c3d384`, nessuno di `packages/db/`; dopo il merge di `dev` 50 file del passo più le 11 memorie di `.agents/agent-memory/` nel loro commit (`6710075`, D24) |
 | AC26 | Met | I gate in locale su `0c3d384`, con il sostituto di `next lint` nel worktree; la CI di GitHub li rifà sulla PR |
 
 ## Remaining Work

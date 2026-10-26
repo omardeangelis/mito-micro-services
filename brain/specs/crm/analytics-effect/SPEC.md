@@ -206,7 +206,8 @@ I soli test che fissano il comportamento vecchio sono quelli dei round 1 e 2. Og
   - la pagina della dashboard e i componenti della sezione "Analisi Andamento" in `src/app/dashboard/`;
   - `src/components/custom/date-picker/index.tsx` e lo store `src/store/useAnalitycsStore.ts`, rinominato per AC18;
   - `vitest.config.ts`, solo la lista `timeZoneTests` (AC10);
-  - i test e i documenti di `brain/`.
+  - i test e i documenti di `brain/`;
+  - le memorie dell'`adversarial-verifier` in `.agents/agent-memory/`, in un commit a parte (D24 del piano).
 
   Nessun file di `packages/db/`.
 - **AC26**: La PR passa i gate di CI: `next lint`, `tsc --noEmit`, `pnpm db:check`, `pnpm run test --run`, `pnpm build` con i placeholder, `pnpm api:build`, `pnpm api:smoke`.
