@@ -147,3 +147,14 @@ export const requestLink = (
 /** Opens a link of the email login, as the browser does. */
 export const openLink = (auth: Target, url: string) =>
   handle(auth, new Request(url, { headers: { origin: BASE } }))
+
+/** The session cookie of an active user signed in with the link of `handler`. */
+export async function sessionCookie(
+  handler: (request: Request) => Promise<Response>,
+  email: string,
+  links: string[]
+) {
+  await requestLink(handler, email)
+  const verify = await openLink(handler, links.at(-1)!)
+  return cookiesOf(verify)
+}
