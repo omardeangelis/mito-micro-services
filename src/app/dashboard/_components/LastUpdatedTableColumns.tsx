@@ -33,11 +33,7 @@ export type PraticheColumnSelectedProps = {
   dataLiquidazione: Date | null
   stato: PraticaState | null
   updatedAt: Date | null
-  operatore?: {
-    id: number
-    name: string | null
-    surname: string | null
-  } | null
+  operatore?: string | null
 }
 
 export const LastUpdatedPracticesColumns: ColumnDef<PraticheColumnSelectedProps>[] =
