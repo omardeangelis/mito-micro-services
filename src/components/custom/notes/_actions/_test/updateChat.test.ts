@@ -2,9 +2,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import { updateChatAction } from "../updateChat"
 
 const mocks = vi.hoisted(() => ({
-  getUniqueChatOperator: vi.fn(),
-  getUserOperator: vi.fn(),
-  addOperatorToChat: vi.fn(),
   insertMessage: vi.fn(),
   revalidatePath: vi.fn(),
 }))
@@ -13,19 +10,14 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/trpc/server", () => ({
   api: {
     chat: {
-      getUniqueChatOperator: { query: mocks.getUniqueChatOperator },
-      addOperatorToChat: { mutate: mocks.addOperatorToChat },
       insertMessage: { mutate: mocks.insertMessage },
     },
-    operator: { getUserOperator: { query: mocks.getUserOperator } },
   },
 }))
 vi.mock("next/cache", () => ({ revalidatePath: mocks.revalidatePath }))
 
 beforeEach(() => {
   vi.clearAllMocks()
-  mocks.getUniqueChatOperator.mockResolvedValue([{ operator: 11 }])
-  mocks.getUserOperator.mockResolvedValue({ id: 11 })
   mocks.insertMessage.mockResolvedValue({ id: 901 })
 })
 
@@ -46,14 +38,6 @@ describe("updateChatAction", () => {
       "/dashboard/customers/c-42",
       "page"
     )
-  })
-
-  it("aggiunge l'operatore alla chat se non ci ha ancora scritto", async () => {
-    mocks.getUniqueChatOperator.mockResolvedValue([{ operator: 7 }])
-
-    await updateChatAction(valid)
-
-    expect(mocks.addOperatorToChat).toHaveBeenCalledWith({ chatId: 3 })
   })
 
   it.each([

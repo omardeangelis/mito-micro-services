@@ -81,7 +81,6 @@ describe("errori del database nelle procedure tRPC", () => {
     })
     const ctx = {
       db: testDb,
-      supabaseClient: {},
       session: null,
       headers: new Headers(),
     } as unknown as Parameters<typeof router.createCaller>[0]
