@@ -1,11 +1,21 @@
 // @vitest-environment node
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import {
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest"
 import { Effect } from "effect"
 import { NextRequest } from "next/server"
 import { type Session } from "next-auth"
 import { getServerAuthSession } from "@mito/server/auth"
 import { StorageLive } from "@mito/server/services/storage/layer"
 import { Storage } from "@mito/server/services/storage/storage"
+import { migrateUpTo, resetDb } from "@/test/db"
+import { createOperator } from "@/test/factories"
 import { GET, POST } from "../route"
 
 // The bucket is a boundary: one in-memory store shared by every call of this file
@@ -37,9 +47,9 @@ const putInBucket = (name: string, body: Uint8Array) =>
     ).pipe(Effect.provide(StorageLive))
   )
 
-const signIn = () =>
+const signInAs = (userId: string) =>
   vi.mocked(getServerAuthSession).mockResolvedValue({
-    user: { id: "user-1" },
+    user: { id: userId },
     expires: "2099-01-01T00:00:00.000Z",
   } as Session)
 
@@ -53,7 +63,12 @@ const requestFor = (method: string, name?: string) =>
     { method }
   )
 
-beforeEach(() => {
+beforeAll(async () => {
+  await migrateUpTo()
+})
+
+beforeEach(async () => {
+  await resetDb()
   vi.spyOn(console, "log").mockImplementation(() => undefined)
   vi.spyOn(console, "error").mockImplementation(() => undefined)
 })
@@ -79,9 +94,9 @@ describe.each(methods)("download dell'export (%s)", (method, handler) => {
     expect(await response.json()).toEqual({ error: "Unauthorized" })
   })
 
-  describe("con una sessione", () => {
-    beforeEach(() => {
-      signIn()
+  describe("con la sessione di un operatore attivo", () => {
+    beforeEach(async () => {
+      signInAs((await createOperator()).userId)
     })
 
     it.each([

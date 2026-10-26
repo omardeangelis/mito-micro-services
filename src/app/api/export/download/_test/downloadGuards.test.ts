@@ -1,11 +1,21 @@
 // @vitest-environment node
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import {
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest"
 import { Effect } from "effect"
 import jwt from "jsonwebtoken"
 import { NextRequest } from "next/server"
 import { type Session } from "next-auth"
 import { getServerAuthSession } from "@mito/server/auth"
 import type { StorageService } from "@mito/server/services/storage/storage"
+import { migrateUpTo, resetDb } from "@/test/db"
+import { createOperator, createUser } from "@/test/factories"
 import { GET, POST } from "../route"
 
 // What download.test.ts cannot see: whether a refused request reaches the
@@ -49,9 +59,9 @@ const putInBucket = (key: string) =>
     })
   )
 
-const signIn = () =>
+const signInAs = (userId: string) =>
   vi.mocked(getServerAuthSession).mockResolvedValue({
-    user: { id: "user-1" },
+    user: { id: userId },
     expires: "2099-01-01T00:00:00.000Z",
   } as Session)
 
@@ -65,7 +75,12 @@ const requestFor = (
     { method, headers }
   )
 
-beforeEach(() => {
+beforeAll(async () => {
+  await migrateUpTo()
+})
+
+beforeEach(async () => {
+  await resetDb()
   vi.spyOn(console, "error").mockImplementation(() => undefined)
   vi.stubEnv("CRON_SECRET_KEY", SECRET)
   vi.mocked(getServerAuthSession).mockResolvedValue(null)
@@ -107,9 +122,43 @@ describe.each(methods)(
       expect(storage.download).not.toHaveBeenCalled()
     })
 
-    describe("con una sessione", () => {
-      beforeEach(() => {
-        signIn()
+    it("una sessione senza riga operatore risponde 400, come operatorProcedure, senza leggere il bucket", async () => {
+      await putInBucket(`export/${FILE_NAME}`)
+      signInAs((await createUser({ role: "ADMIN" })).id)
+
+      const response = await handler(requestFor(method, FILE_NAME))
+
+      expect(response.status).toBe(400)
+      expect(await response.text()).toBe("BAD_REQUEST")
+      expect(storage.download).not.toHaveBeenCalled()
+    })
+
+    it("un operatore disattivato risponde 401, come operatorProcedure, senza leggere il bucket", async () => {
+      await putInBucket(`export/${FILE_NAME}`)
+      signInAs(
+        (await createOperator({ role: "ADMIN", disabledAt: new Date() })).userId
+      )
+
+      const response = await handler(requestFor(method, FILE_NAME))
+
+      expect(response.status).toBe(401)
+      expect(await response.text()).toBe("Utente disattivato")
+      expect(storage.download).not.toHaveBeenCalled()
+    })
+
+    it("un operatore attivo scarica l'errore dell'import", async () => {
+      await putInBucket(`export/${FILE_NAME}`)
+      signInAs((await createOperator()).userId)
+
+      const response = await handler(requestFor(method, FILE_NAME))
+
+      expect(response.status).toBe(200)
+      expect(storage.download).toHaveBeenCalledTimes(1)
+    })
+
+    describe("con la sessione di un operatore attivo", () => {
+      beforeEach(async () => {
+        signInAs((await createOperator()).userId)
       })
 
       it.each([

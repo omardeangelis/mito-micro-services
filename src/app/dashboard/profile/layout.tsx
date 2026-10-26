@@ -24,7 +24,6 @@ const ProfileLayout = ({
   const { setOperatorId, setRole } = useUserPreferenceContext((state) => state)
 
   React.useEffect(() => {
-    if (!operatorId || !role) return
     setOperatorId(operatorId)
     setRole(role)
   }, [operatorId, role, setOperatorId, setRole])
