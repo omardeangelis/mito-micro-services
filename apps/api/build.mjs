@@ -12,7 +12,7 @@ import { fileURLToPath } from "node:url"
 const root = fileURLToPath(new URL("../..", import.meta.url))
 
 // Paths the build resolves itself: the tsconfig alias and the `alias` below
-const ownPaths = /^(@\/|@mito\/|server-only$|@sentry\/nextjs$)/
+const ownPaths = /^(@\/|@mito\/|@sentry\/nextjs$)/
 
 // The workspace packages (packages/*) ship TypeScript sources: they go in the
 // bundle like src/, while their own imports of packages stay external
@@ -92,9 +92,6 @@ await build({
   sourcemap: true,
   tsconfig: "tsconfig.json",
   alias: {
-    // The server modules import it so that Next.js keeps them out of the
-    // browser; outside Next.js its index throws (vitest.config.ts does the same)
-    "server-only": "./node_modules/server-only/empty.js",
     "@sentry/nextjs": "./apps/api/src/shims/sentry.ts",
     "@/trpc/server": "./apps/api/src/shims/trpcServer.ts",
     // The route handlers answer with NextResponse. `next` has no `exports`
