@@ -39,7 +39,6 @@ describe("protectedProcedure", () => {
     // createTestCaller always signs in, so the caller is built here with none
     const anonymous = appRouter.createCaller({
       db,
-      supabaseClient: {} as never,
       session: null,
       headers: new Headers(),
     })

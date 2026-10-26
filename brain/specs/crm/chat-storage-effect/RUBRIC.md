@@ -82,3 +82,90 @@ Nessuno. Il RUBRIC è coerente: 5 passi isolati, `critical` con `humanInLoop: tr
 | v3 | Equivalenza del contratto pubblico e della traduzione degli errori (AC1, AC4, AC5, AC7, AC8) | high | il più forte (Opus) |
 | v4 | Conformità statica e perimetro (AC1 grep, AC2, AC3, AC16, AC17, AC18, AC19) | low | veloce (haiku) |
 | v5 | Integrità dei test e prove dei gate (AC6, AC9, AC10, AC20) | medium | intermedio (sonnet) |
+
+## [Round: 2026-10-25] PR B: router `supabase` e `supabaseClient`
+
+### Change set under review
+
+- **Scope:** spec implementation (caso B), [[specs/crm/chat-storage-effect/SPEC]], i criteri della PR B: AC10–AC16, AC17 (d)(e), le parti di AC18 della PR B, AC19, AC20, e AC2 e AC4 alla fine del passo. La PR A è in `dev` (PR #86) e fuori da questo giro
+- **Target:** branch `claude/storage-effect`
+- **Compared:** `49e9a6c` (`origin/dev` dopo la PR #86 e la PR #87) → `bdf0840`
+- **Files touched:** 17 file di codice e test, più i documenti di `brain/` e un file di memoria del verificatore, in un dominio: crm
+
+### Routing rubric (review-classifier output)
+
+Le charter sono riassunte; il testo intero è nel brief di ogni verificatore.
+
+```json
+{
+  "taskType": "refactor",
+  "secondaryType": "security",
+  "domainsTouched": [
+    "crm"
+  ],
+  "adversarialVerifiers": {
+    "count": 7,
+    "passes": [
+      {
+        "id": "v1",
+        "charter": "Auth / access-control pass on the two export routes: authCheck() before any input or storage access, in GET and POST, called without the request (no cron JWT path); same check as protectedProcedure at 49e9a6c; same session in Next.js and on the Cloud Run backend (apps/api/src/rest.ts); no caller of services/export/files.ts without a session; src/middleware/auth.ts still applies; no permission widened or narrowed (AC17 e is declared debt).",
+        "complexity": "high"
+      },
+      {
+        "id": "v2",
+        "charter": "Untrusted-input and storage-reach pass on the file name n of /api/export/download, against the crm-contract invariant on export/: IMPORT_ERROR_FILE tested on the exact string that builds the key, before any download; traversal, encoded, CRLF, Unicode digits, repeated n, suffixes, empty, old exports; Content-Disposition reflection; literal keys in both storage backends; uploadExportFile call sites; one allow-list only.",
+        "complexity": "high"
+      },
+      {
+        "id": "v3",
+        "charter": "HTTP behaviour-equivalence pass (Next.js in-process, no BACKEND_URL) against the deleted router at 49e9a6c: status, body, headers and bytes on every path of both routes in GET and POST; failure channel (defects, StorageConfigError, StorageNotFoundError) now and at the base; the declared layer-before-allow-list ordering; console.error and Sentry; importError 200 on a failed upload; Buffer passed without copy.",
+        "complexity": "high"
+      },
+      {
+        "id": "v4",
+        "charter": "Runtime-topology and storage-config pass: which process serves /api/export/* and which bucket StorageLive picks, before and after, in production, staging with BACKEND_URL only, staging with BACKEND_REST, and the backend called directly; same bucket for upload and download; the delete-export cron cleans that bucket; where the superjson breakage applies; GB2 and the IMPLEMENTATION-NOTES surprise correct; production unchanged; removing client/supabase.ts.",
+        "complexity": "high"
+      },
+      {
+        "id": "v5",
+        "charter": "tRPC surface pass on the removals in root.ts and trpc.ts: no consumer of the supabase key or of ctx.supabaseClient; same context shape in Next.js and apps/api; middlewares unchanged; AC4 types of the 4 chat procedures; AC2; AC15 dependency kept.",
+        "complexity": "medium"
+      },
+      {
+        "id": "v6",
+        "charter": "Test-integrity and gate-evidence pass (AC10, AC13, AC14, AC20): route tests green at 2b284b4 and HEAD and pinning AC13/AC14; the layer mock really reaches files.ts; what the mock cannot see; only the declared test changes since c17a0d3; rest.db.test.ts and smoke unchanged; CI gates green at bdf0840.",
+        "complexity": "medium"
+      },
+      {
+        "id": "v7",
+        "charter": "Static conformance, scope-fence and docs pass: the SPEC greps of AC11, AC12, AC15; removed folders; files.ts without Next.js or server-only; nothing in packages/db or packages/domain; only the expected files in src/; the five doc places of migrazione-effect.md (TD6, TD10 d/e, L2 and §5 rows, §6 row, Passo 0).",
+        "complexity": "low"
+      }
+    ]
+  },
+  "taskComplexity": "high",
+  "reviewImpact": "critical",
+  "humanInLoop": true,
+  "nextStep": "Run 7 independent adversarial-verifier passes on 49e9a6c..bdf0840: v1-v4 on the strongest model, v5 and v6 on a balanced model, v7 on a fast model. No UI or motion-craft pass. Never exercise the export against real storage. REPORT.md ends with a human checklist before the merge into dev, including Leonardo's approval (D22)."
+}
+```
+
+### Classifier rationale
+
+L'impatto è critico perché la PR sposta un confine di accesso. Prima la sessione la controllavano `protectedProcedure` e `authCheck()`, ora solo `authCheck()` della route. Si sposta anche l'allow-list di `export/`, che è un invariante del contratto di crm. La SPEC e il piano di migrazione chiedono la revisione di Leonardo, quindi chi può chiamare le route (v1) e cosa può raggiungere (v2) sono passi separati. Il diff è piccolo, ma tocca tre superfici a rischio: autenticazione, input non fidato e configurazione dall'env; il contesto tRPC ha un passo suo (v5). v4 esiste perché la premessa del brief sullo staging non regge del tutto: `next.config.js` ha anche `BACKEND_REST`, che manda `/api/export` al backend, e [[chore/migrazione-gcp]] prevede di accenderlo su staging. v3 è separato perché `Effect.either` prende solo i fallimenti tipati: un `createClient` che lancia dentro `Layer.sync` è un difetto, e il mock in memoria dei test non lo vede, come non vede l'ordine fra layer e allow-list.
+
+### Overrides applied
+
+Nessuno. Il RUBRIC è coerente: 7 passi isolati, `critical` con `humanInLoop: true`, nessun passo UI né di motion (nessun `.tsx` cambiato).
+
+### Verification plan (derived)
+
+| Pass | Charter | Complexity | Model tier |
+|------|---------|------------|------------|
+| v1 | Accesso alle due route: `authCheck()` prima di tutto, senza la richiesta | high | il più forte (Opus) |
+| v2 | Il nome del file come input non fidato, e cosa raggiunge nello storage | high | il più forte (Opus) |
+| v3 | Equivalenza delle risposte HTTP con il router di prima, e canale degli errori | high | il più forte (Opus) |
+| v4 | Topologia: chi serve `/api/export/*` e con quale bucket, in ogni ambiente | high | il più forte (Opus) |
+| v5 | Superficie tRPC: chiave `supabase` e `supabaseClient` tolti, AC2, AC4, AC15 | medium | intermedio (sonnet) |
+| v6 | Integrità dei test e prove dei gate (AC10, AC13, AC14, AC20) | medium | intermedio (sonnet) |
+| v7 | Conformità statica, perimetro e documenti (AC11, AC12, AC15, AC16, AC17, AC18, AC19) | low | veloce (haiku) |
