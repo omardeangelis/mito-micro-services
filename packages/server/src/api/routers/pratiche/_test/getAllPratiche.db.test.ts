@@ -202,7 +202,7 @@ async function seedCaratterizzazione() {
   })
   const ids = (result: { data: { praticaId: string }[] }) =>
     result.data.map((p) => p.praticaId)
-  return { caller, adminCaller, ids, p1, p2, p3, p4, p5 }
+  return { caller, adminCaller, operator, ids, p1, p2, p3, p4, p5 }
 }
 
 describe("pratiche.getAllPratiche, caratterizzazione", () => {
@@ -235,7 +235,7 @@ describe("pratiche.getAllPratiche, caratterizzazione", () => {
       }
     })
 
-    it("total conta anche la pratica senza clienti, che non compare in data", async () => {
+    it("total non conta la pratica senza clienti: è il numero di righe che si vedono paginando fino in fondo", async () => {
       const { caller, ids } = await seedCaratterizzazione()
       await db.insert(practices).values({
         praticaId: "PR-006",
@@ -248,15 +248,19 @@ describe("pratiche.getAllPratiche, caratterizzazione", () => {
         state: "Liquidata",
         updatedAt: new Date("2026-07-01T00:00:00.000Z"),
       })
-      const result = await list(caller, { page: 1, perPage: 10 })
-      expect(result.total).toEqual([{ total: 6 }])
-      expect(ids(result)).toEqual([
+      const pages = await Promise.all(
+        [1, 2, 3].map((page) => list(caller, { page, perPage: 2 }))
+      )
+      expect(pages.flatMap(ids)).toEqual([
         "PR-005",
         "PR-003",
         "PR-002",
         "PR-001",
         "PR-004",
       ])
+      for (const page of pages) {
+        expect(page.total).toEqual([{ total: 5 }])
+      }
     })
 
     it("una pratica con due clienti compare una volta sola", async () => {
@@ -537,6 +541,38 @@ describe("pratiche.getAllPratiche, caratterizzazione", () => {
       ])
       expect(result.total).toEqual([{ total: 5 }])
     })
+
+    it("onlyMe true chiamato da un OPERATORE mostra solo le pratiche dei suoi clienti, ognuna una volta, con il total coerente", async () => {
+      const { caller, operator, ids, p3 } = await seedCaratterizzazione()
+      const mio = await createCustomer({ operatorId: operator.id })
+      const altroMio = await createCustomer({ operatorId: operator.id })
+      await createPractice({
+        customerId: mio.id,
+        praticaId: "PR-006",
+        updatedAt: new Date("2026-07-01T00:00:00.000Z"),
+      })
+      // PR-003 ha già due clienti senza operatore: con due clienti
+      // dell'operatore compare comunque una volta sola
+      await db.insert(customerToPratica).values([
+        {
+          customerId: mio.id,
+          praticaId: p3.praticaId,
+          customerRole: "Coobbligato",
+        },
+        {
+          customerId: altroMio.id,
+          praticaId: p3.praticaId,
+          customerRole: "Coobbligato",
+        },
+      ])
+      const result = await list(caller, {
+        page: 1,
+        perPage: 10,
+        filterBy: { onlyMe: true },
+      })
+      expect(ids(result)).toEqual(["PR-003", "PR-006"])
+      expect(result.total).toEqual([{ total: 2 }])
+    })
   })
 
   describe("forma della risposta", () => {
@@ -569,13 +605,6 @@ describe("pratiche.getAllPratiche, caratterizzazione", () => {
   })
 
   describe("errori", () => {
-    it("onlyMe true chiamato da un OPERATORE è un INTERNAL_SERVER_ERROR", async () => {
-      const { caller } = await seedCaratterizzazione()
-      await expect(
-        list(caller, { page: 1, perPage: 10, filterBy: { onlyMe: true } })
-      ).rejects.toMatchObject({ code: "INTERNAL_SERVER_ERROR" })
-    })
-
     it("orderBy operatore è un INTERNAL_SERVER_ERROR", async () => {
       const { caller } = await seedCaratterizzazione()
       await expect(

@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, ilike, inArray } from "drizzle-orm"
+import { and, asc, countDistinct, desc, eq, ilike, inArray } from "drizzle-orm"
 import { type PgColumn, union } from "drizzle-orm/pg-core"
 import { Effect } from "effect"
 import { practices } from "@mito/db/schema/pratiche"
@@ -44,7 +44,8 @@ const praticaSearchColumns = {
 
 /**
  * Una pagina della lista Pratiche, con il totale delle pratiche che
- * soddisfano i filtri. `total` resta l'array `[{ total }]` della query.
+ * soddisfano i filtri, contate una volta ciascuna come le righe di `data`.
+ * `total` resta l'array `[{ total }]` della query.
  */
 export const listPractices = (
   input: PracticeListQuery,
@@ -104,9 +105,14 @@ export const listPractices = (
     const total = query((client) =>
       client
         .select({
-          total: count(),
+          total: countDistinct(practices.praticaId),
         })
         .from(practices)
+        .innerJoin(
+          customerToPratica,
+          eq(practices.praticaId, customerToPratica.praticaId)
+        )
+        .innerJoin(customers, eq(customers.id, customerToPratica.customerId))
         .where(filterQuery)
     )
 
