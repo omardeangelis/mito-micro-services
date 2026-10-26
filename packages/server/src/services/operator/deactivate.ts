@@ -1,4 +1,3 @@
-import "server-only"
 import { Effect } from "effect"
 import { and, count, eq, inArray, or, sql } from "drizzle-orm"
 import { type Actor } from "@mito/domain/contact/permissions"

@@ -1,4 +1,3 @@
-import "server-only"
 import { TRPCError } from "@trpc/server"
 import { Cause, Effect, Exit, Option } from "effect"
 import { DbError } from "./db"

@@ -1,4 +1,3 @@
-import "server-only"
 import { sql } from "drizzle-orm"
 import { operators } from "@mito/db/schema/operators"
 import { users } from "@mito/db/schema/users"

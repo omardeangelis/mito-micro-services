@@ -1,4 +1,3 @@
-import "server-only"
 import { nanoid } from "nanoid"
 import { sql, type SQL } from "drizzle-orm"
 import { type PgColumn } from "drizzle-orm/pg-core"

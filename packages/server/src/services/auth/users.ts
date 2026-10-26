@@ -1,4 +1,3 @@
-import "server-only"
 import { Effect } from "effect"
 import { sql } from "drizzle-orm"
 import { type AdapterUser } from "next-auth/adapters"

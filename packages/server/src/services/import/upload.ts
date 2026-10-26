@@ -1,4 +1,3 @@
-import "server-only"
 import { promisify } from "node:util"
 import { gunzip } from "node:zlib"
 import { and, asc, eq } from "drizzle-orm"

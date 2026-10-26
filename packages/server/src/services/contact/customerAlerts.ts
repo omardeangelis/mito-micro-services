@@ -1,4 +1,3 @@
-import "server-only"
 import { and, desc, eq } from "drizzle-orm"
 import { operators } from "@mito/db/schema/operators"
 import { alert, task } from "@mito/db/schema/task"

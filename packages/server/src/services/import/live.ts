@@ -1,4 +1,3 @@
-import "server-only"
 import { Cause, Effect, Layer, Option } from "effect"
 import { ImportConfigLive } from "./config"
 import {

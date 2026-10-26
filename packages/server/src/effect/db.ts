@@ -1,4 +1,3 @@
-import "server-only"
 import { Context, Data, Effect, Exit, Layer, Option, Runtime } from "effect"
 import { eq, type ExtractTablesWithRelations } from "drizzle-orm"
 import { type PgDatabase } from "drizzle-orm/pg-core"
