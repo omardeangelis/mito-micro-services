@@ -99,7 +99,7 @@ Pattern da applicare a ogni pagina (il grosso del lavoro di fase — una pagina 
 4. `unstable_noStore`, `revalidatePath`, `revalidateTag`, `export const dynamic/maxDuration` si eliminano.
 5. Parametri URL (paginazione, filtri — `useGetPageAndPerPageParams`) via `useSearchParams` di react-router, già adattato in F3.T2.
 
-- [ ] `/dashboard` (analytics): 8 query `analytics.*`, grafici Tremor, store `useAnalitycsStore`.
+- [ ] `/dashboard` (analytics): 4 query `analytics.*` ([[specs/crm/analytics-effect/SPEC]]), grafici Tremor, store `useAnalyticsStore`.
 - [ ] `/dashboard/customers`: tabella TanStack Table + store `useCustomerTableStore`, paginazione URL, bulk actions (da `_actions/` → mutations).
 - [ ] `/dashboard/customers/new`: form react-hook-form + zod (invariati), mutation `customer.create`.
 - [ ] `/dashboard/customers/:id` (+ `/connect`): dettaglio, task/alert del cliente, collegamento pratiche.
