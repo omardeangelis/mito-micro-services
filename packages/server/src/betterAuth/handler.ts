@@ -1,4 +1,6 @@
+import { admitSession } from "../services/auth/login"
 import { type Auth } from "./config"
+import { admits } from "./run"
 
 /** Where every login ends, whatever the client asks (D15, AC4–AC6). */
 export const DESTINATIONS = {
@@ -104,7 +106,18 @@ export function authHandler(auth: Auth) {
             baseURL
           )
         }
-        case "GET /get-session":
+        case "GET /get-session": {
+          const response = await auth.handler(request)
+          if (response.status >= 500) return failed()
+          const found = (await response.clone().json()) as {
+            user: { id: string }
+          } | null
+          // A deactivated user has no session, here too (D16, AC15)
+          if (found && !(await admits(admitSession(found.user.id)))) {
+            return Response.json(null)
+          }
+          return response
+        }
         case "POST /sign-out": {
           const response = await auth.handler(request)
           return response.status >= 500 ? failed() : response
