@@ -5,6 +5,7 @@ import { Suspense } from "react"
 import { CustomerFormSection } from "./_components/CustomerFormSection"
 import { Skeleton } from "@/components/ui/skeleton"
 import { CustomerChatSection } from "@/components/custom/notes/CustomerChatSection"
+import { parseChatLimit } from "@/components/custom/notes/chatLimit"
 import { api } from "@/trpc/server"
 import { CustomerContactSummary } from "./_components/CustomerContactSummary"
 import { CustomerCreateContact } from "./_components/CustomerCreateContact"
@@ -39,7 +40,8 @@ export default async function CustomerHome({
   id: string
 }>) {
   const { id } = params
-  const { limit } = searchParams ?? {}
+  // The `limit` of the customer's chat, read as the contact's detail reads it
+  const limit = parseChatLimit(searchParams?.limit)
   const customer = await api.customer.getCustomerById.query({ id: id })
   const customerTasks = await api.task.getActiveTask.query({ id: id })
   const activeContact = await getHandoverActiveContact(id, customerTasks[0])
@@ -73,10 +75,7 @@ export default async function CustomerHome({
         <CustomerPraticaSection id={id} />
       </Suspense>
       <Suspense fallback={<Skeleton className="h-80 w-full rounded-md" />}>
-        <CustomerChatSection
-          customerId={id}
-          limit={limit ? Number(limit) : undefined}
-        />
+        <CustomerChatSection customerId={id} limit={limit} />
       </Suspense>
     </CustomerSheet>
   )

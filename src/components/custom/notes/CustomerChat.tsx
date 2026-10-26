@@ -21,6 +21,7 @@ import {
 } from "react"
 import { api } from "@/trpc/react"
 import { type Message } from "@mito/domain/schemas"
+import { MAX_CHAT_LIMIT } from "@mito/domain/constants/chat"
 import { LoadingSpinner } from "@/components/custom/loading-spinner"
 import { useSavingUntilRefreshed } from "@/components/custom/contact/useSavingUntilRefreshed"
 import { updateChatAction } from "./_actions/updateChat"
@@ -180,10 +181,13 @@ export function CustomerChat({
   const sending = pending.some((note) => note.id === undefined)
 
   const router = useRouter()
+  // Five more at a time, up to the most the server returns: there the button
+  // goes, as it does when no note is left
+  const canLoadMore = total > limit && limit < MAX_CHAT_LIMIT
   // Older notes appear at the top, next to the button: nothing scrolls
   const incrementLimit = useCallback(() => {
     const url = new URL(location.href)
-    url.searchParams.set("limit", String(limit + 5))
+    url.searchParams.set("limit", String(Math.min(limit + 5, MAX_CHAT_LIMIT)))
     router.replace(url.toString(), {
       scroll: false,
     })
@@ -383,7 +387,7 @@ export function CustomerChat({
         <AccordionContent>
           <div className="p-4">
             <div className="flex flex-col gap-4">
-              {total > limit ? (
+              {canLoadMore ? (
                 <Button variant="link" onClick={incrementLimit}>
                   Carica altri messaggi
                 </Button>

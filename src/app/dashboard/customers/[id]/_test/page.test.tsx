@@ -1,5 +1,6 @@
 import React from "react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
+import { MAX_CHAT_LIMIT } from "@mito/domain/constants/chat"
 import CustomerHome from "../page"
 
 // La scheda cliente (AC64, AC65, AC66, AC68): con un contatto attivo ne mostra
@@ -171,4 +172,33 @@ describe("la scheda cliente senza contatto attivo", () => {
     expect(await elementsNamed("CustomerContactSummary")).toHaveLength(0)
     expect(api.getContactById).not.toHaveBeenCalled()
   })
+})
+
+describe("il limit delle note dall'indirizzo", () => {
+  /** Il `limit` che la sezione delle note riceve con `?limit=<valore>` */
+  const chatLimit = async (limit: string) => {
+    const tree = await CustomerHome({
+      params: { id: "customer-1" },
+      searchParams: { limit },
+    })
+    const [section] = findAll(tree, named("CustomerChatSection"))
+    return (section!.props as { limit?: number }).limit
+  }
+
+  it("passa alle note un limit valido", async () => {
+    expect(await chatLimit("20")).toBe(20)
+  })
+
+  it.each([
+    ["testo", "abc"],
+    ["negativo", "-3"],
+    ["zero", "0"],
+    ["sopra il massimo", String(MAX_CHAT_LIMIT + 1)],
+    ["enorme", "1000000000000000000000"],
+  ])(
+    "ignora un limit %s: le note partono dal numero di default",
+    async (_nome, limit) => {
+      expect(await chatLimit(limit)).toBeUndefined()
+    }
+  )
 })
