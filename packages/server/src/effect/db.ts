@@ -74,6 +74,20 @@ export const query = <A>(
     )
   })
 
+/** How many times a transaction that hit a deadlock runs again. */
+const DEADLOCK_RETRIES = 2
+
+/** The database broke a deadlock by aborting this transaction (`40P01`). */
+export const isDeadlock = (error: unknown) =>
+  error instanceof DbError && error.code === "40P01"
+
+/**
+ * Runs `program`, a `transaction`, again when the database aborts it on a
+ * deadlock, at most `DEADLOCK_RETRIES` times: each run is a new transaction.
+ */
+export const retryOnDeadlock = <A, E, R>(program: Effect.Effect<A, E, R>) =>
+  program.pipe(Effect.retry({ times: DEADLOCK_RETRIES, while: isDeadlock }))
+
 /** Makes Drizzle roll back; never leaves `transaction`. */
 class Rollback extends Error {}
 
@@ -170,6 +184,12 @@ export type LockedCustomer = {
  * UPDATE`: `FOR NO KEY UPDATE`, or a bare UPDATE of `disabled_at` (which takes
  * `FOR NO KEY UPDATE`), doesn't conflict with `FOR KEY SHARE`, and would let a
  * writer through on the row as it was before the deactivation.
+ *
+ * Customers first, then practices: a transaction that writes several
+ * practices locks them in order of `pratica_id` before it writes them, after
+ * its customers. The import locks its customers and then its practices; the
+ * deactivation locks the practices the same way, so the two don't deadlock
+ * (`services/import/_test/concurrency.pg.test.ts`).
  *
  * The rule is tested in `packages/server/src/services/contact/_test/lockRule.db.test.ts`:
  * with a test trigger, a write of a customer's tasks, alerts or event log fails

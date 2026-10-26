@@ -14,15 +14,17 @@ links:
   - "[[domains/crm/flows/cambio-ruolo-operatori]]"
   - "[[domains/crm/concepts/operatore]]"
   - "[[tech-debt/crm/gestione-operatori]]"
+  - "[[specs/crm/import-pratiche/SPEC]]"
+  - "[[specs/crm/import-pratiche/PLAN]]"
 created: 2026-10-23
-updated: 2026-10-23
+updated: 2026-10-25
 ---
 
 # Regola dei lock: prima gli utenti, poi i clienti
 
 ## Definition
 
-L'ordine in cui chi scrive blocca le righe nel database. Chi blocca la riga `users` di un operatore lo fa **prima** di bloccare qualunque cliente. Poi i clienti, in ordine di id. Poi i loro contatti attivi.
+L'ordine in cui chi scrive blocca le righe nel database. Chi blocca la riga `users` di un operatore lo fa **prima** di bloccare qualunque cliente. Poi i clienti, in ordine di id. Poi i loro contatti attivi. Chi scrive più pratiche le blocca dopo i clienti, in ordine di `pratica_id`, prima di scriverle.
 
 Prima di questa spec la regola era solo "ogni writer di un cliente lo blocca per primo" (`lockCustomer`, `effect/db.ts`). La disattivazione aggiunge un livello sopra: la riga utente dell'operatore. Il commento della regola in `effect/db.ts` dice la versione nuova.
 
@@ -38,6 +40,8 @@ La regola vive accanto a quella "stesso operatore" di [[specs/crm/sezione-contat
 | `findWorkingOperator` | la riga utente della destinazione, dentro la transazione del writer e prima di `lockCustomer` | `FOR KEY SHARE OF users`: in conflitto con il `FOR UPDATE` della disattivazione, non con un altro `KEY SHARE`, quindi due assegnazioni verso lo stesso operatore non si aspettano sulla sua riga utente |
 | Cambio di ruolo | righe utente degli admin attivi e degli operatori del batch, in ordine di `users.id` | `FOR UPDATE OF users` |
 | Ogni writer di un cliente | il cliente, prima di ogni altra riga del cliente | `lockCustomer` |
+| Import (`applyImport`) | 1. i clienti del file, in ordine di id (prima quelli delle chiavi del file, poi quelli con la partita IVA dei primi riconosciuti); 2. le pratiche del file, in ordine di `pratica_id`. Mai righe `users` | `FOR UPDATE`, nella lettura del CRM dentro la transazione (D5 di [[specs/crm/import-pratiche/PLAN]]) |
+| Disattivazione (passo 5) | le pratiche dell'operatore, in ordine di `pratica_id`, prima dell'`UPDATE` | `FOR UPDATE`; ripete la transazione fino a 2 volte su un 40P01 (D6) |
 
 ### Writer dentro la regola
 
@@ -55,6 +59,10 @@ Usano `findWorkingOperator` sulla destinazione, prima del lock del cliente:
 - **`pratiche.PUT` e `customer.insertCustomer`** scrivono l'operatore senza `findWorkingOperator`. Lasciati fuori dalla spec, sono nel debito: [[tech-debt/crm/gestione-operatori]].
 - **Il cron `priority`** non segue la regola. Può dare un `deadlock_detected` (40P01) con la disattivazione, che per questo ripete la transazione fino a 2 volte.
 
+### Pratiche (import-pratiche, D6)
+
+Un `UPDATE` di più pratiche blocca le righe nell'ordine in cui le trova (l'ordine della tabella), non in quello di `pratica_id`. Con l'import che le blocca in ordine, i due si bloccavano a vicenda: sul codice di prima la disattivazione finiva in `deadlock detected` (`services/import/_test/concurrency.pg.test.ts`). Ora blocca prima le pratiche in ordine e poi scrive, e aspetta la fine dell'import. "Assegna" delle Pratiche aveva lo stesso problema, ma l'assegnazione massiva delle pratiche è stata tolta ([PR #83](https://github.com/omardeangelis/mito-micro-services/pull/83)).
+
 ## Related flows
 
 - [[domains/crm/flows/disattivazione-operatore]]: il writer che ha fatto nascere la regola, e gli esiti delle operazioni simultanee (AC7).
@@ -65,6 +73,7 @@ Concetto vicino: [[domains/crm/concepts/operatore]] ("lavora" = passa `findWorki
 ## [Source: gestione-operatori]
 
 - Spec: AC7, AC11, AC12, AC15 e D5 di [[specs/crm/gestione-operatori/SPEC]]. Deviazioni di "Assegna a te" e della riassegnazione in [[specs/crm/gestione-operatori/IMPLEMENTATION-NOTES]].
+- **Pratiche.** `concurrency.pg.test.ts` tiene P1 e controlla che, con l'import e la disattivazione in attesa, nessuno tenga P2 (`holdPracticeLock` di `src/test/pg.ts`): un writer che blocca nell'ordine della tabella tiene P2, anche quando un retry sul deadlock gli farebbe finire il lavoro.
 - **Come si prova.** Test su Postgres reale con due connessioni (`holdCustomerLock` e `waitUntilBlocked` di `src/test/pg.ts`): `deactivate.pg.test.ts` e `operatorLock.pg.test.ts`. Ogni nuovo writer va aggiunto a `lockRule.db.test.ts` e a `operatorRule.db.test.ts`; la disattivazione c'è. Nella review della PR 4 i mutanti che rompono l'ordine (cliente prima dell'utente, `findWorkingOperator` senza `KEY SHARE`, `FOR NO KEY UPDATE`, disattivazione senza `OF users`) fanno fallire i test.
 - **`lockWorkingOperator`** prende il lock subito e restituisce l'errore dopo, così l'ordine degli errori resta quello di prima per i writer esistenti.
 - **Review:** [[specs/crm/gestione-operatori/REPORT]] (PR 4, concorrenza e dati).
