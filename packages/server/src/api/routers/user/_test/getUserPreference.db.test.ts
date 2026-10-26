@@ -52,16 +52,26 @@ describe("user.getUserPreference", () => {
     expect(result.operatorId).toBe(operator.id)
   })
 
-  it("returns no preferences, role nor operator id to a user without operator (AC26)", async () => {
+  it("answers BAD_REQUEST, as every operator procedure, to a user without an operator row", async () => {
     const user = await createUser({ role: "ADMIN" })
     const caller = createTestCaller({ id: user.id })
 
-    const result = await caller.user.getUserPreference()
+    await expect(caller.user.getUserPreference()).rejects.toMatchObject({
+      code: "BAD_REQUEST",
+      message: "BAD_REQUEST",
+    })
+  })
 
-    expect(result).toEqual({
-      preferences: {},
-      role: undefined,
-      operatorId: undefined,
+  it("answers UNAUTHORIZED with Utente disattivato, as every operator procedure, to a deactivated operator", async () => {
+    const operator = await createOperator({
+      role: "ADMIN",
+      disabledAt: new Date(),
+    })
+    const caller = createTestCaller(operator)
+
+    await expect(caller.user.getUserPreference()).rejects.toMatchObject({
+      code: "UNAUTHORIZED",
+      message: "Utente disattivato",
     })
   })
 })

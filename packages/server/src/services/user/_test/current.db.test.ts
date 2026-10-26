@@ -3,7 +3,7 @@ import { Exit } from "effect"
 import { eq } from "drizzle-orm"
 import { users } from "@mito/db/schema/users"
 import { migrateUpTo, resetDb, testDb } from "@/test/db"
-import { runServer } from "@/test/effect"
+import { failureTag, runServer } from "@/test/effect"
 import { createOperator, createUser } from "@/test/factories"
 import { getCurrentUser } from "../current"
 
@@ -16,14 +16,12 @@ beforeEach(async () => {
 })
 
 describe("getCurrentUser", () => {
-  it("of a user without an operator returns empty preferences, role and operatorId undefined", async () => {
+  it("of a user without an operator fails with NotAnOperator", async () => {
     const user = await createUser({ role: "ADMIN" })
 
     const exit = await runServer(getCurrentUser(user.id))
 
-    expect(exit).toEqual(
-      Exit.succeed({ preferences: {}, role: undefined, operatorId: undefined })
-    )
+    expect(failureTag(exit)).toBe("NotAnOperator")
   })
 
   it("of a user with an operator returns the parsed preferences, role and operatorId", async () => {
