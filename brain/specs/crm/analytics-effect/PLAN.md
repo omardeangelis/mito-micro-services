@@ -370,9 +370,9 @@ G0 ─┬─ T1 ─┐
   - T1–T6 verdi senza modifiche, `tsc` compreso (T5);
   - le `grep` di AC5 su `packages/server/src/api/routers/analytics` non trovano niente;
   - `git grep -nE 'zod|@trpc|TRPCError|server-only|/api/' -- packages/server/src/services/analytics ':!**/_test/**'` e `git grep -n Clock -- packages/server/src/services/analytics` non trovano niente; `git grep -n TIMEFRAMEMAP -- packages/server/src/services/analytics` trova i servizi (AC6, AC7).
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Complete
+- **log**: Wave 3, worker `sonnet`. Servizi con le firme del §3; le espressioni SQL e le due query per finestra restano quelle di oggi. Il filtro per ruolo di `financedTotal` e `financedAverage` è un helper privato, `customerAccess`. `isNotNull(customers.operatorId)` tolto (D10). Contratto: 6 file, 99 test verdi senza modifiche; `tsc` verde; le `grep` di AC5, AC6 e AC7 vuote, `TIMEFRAMEMAP` nei servizi.
+- **files edited/created**: nuovi `packages/server/src/services/analytics/{financed.ts,contactProgress.ts}`; `packages/server/src/api/routers/analytics/GET/index.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a

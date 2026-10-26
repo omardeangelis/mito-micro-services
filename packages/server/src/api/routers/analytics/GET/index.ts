@@ -1,22 +1,12 @@
 import { operatorProcedure, protectedProcedure } from "../../../trpc"
-import { practices } from "@mito/db/schema/pratiche"
-import { task } from "@mito/db/schema/task"
-import {
-  and,
-  avg,
-  between,
-  count,
-  eq,
-  isNotNull,
-  notInArray,
-  sum,
-} from "drizzle-orm"
-import { castAsNumber } from "../../../../shared/sql"
-import { customerToPratica } from "@mito/db/schema/relations/customerToPratica"
-import { customers } from "@mito/db/schema/customers"
-import { operators } from "@mito/db/schema/operators"
 import { z } from "zod"
-import { TIMEFRAMEDELTA, TIMEFRAMEMAP } from "@mito/domain/constants/timeframes"
+import { runTrpc } from "../../../../effect/trpc"
+import {
+  financedAverage,
+  financedByBranch,
+  financedTotal,
+} from "../../../../services/analytics/financed"
+import { contactProgress } from "../../../../services/analytics/contactProgress"
 
 const timeFrameInput = z.object({
   timeFrame: z.enum(["30d", "90d", "365d"]).optional().default("30d"),
@@ -24,231 +14,28 @@ const timeFrameInput = z.object({
 
 export const getAmountPerSedeInLastMonth = protectedProcedure
   .input(timeFrameInput)
-  .query(async ({ ctx, input }) => {
-    const { db } = ctx
-    const res = await db
-      .selectDistinct({
-        total: sum(castAsNumber(practices.importoFinanziato)),
-        sede: practices.desPuntoVendita,
-        count: count(),
-      })
-      .from(practices)
-      .orderBy(practices.desPuntoVendita)
-      .groupBy(practices.desPuntoVendita)
-      .where(
-        between(
-          practices.dataLiquidazione,
-          TIMEFRAMEMAP[input.timeFrame].start,
-          TIMEFRAMEMAP[input.timeFrame].end
-        )
-      )
+  .query(({ input }) =>
+    runTrpc(financedByBranch({ timeFrame: input.timeFrame }))
+  )
 
-    return res.map((r) => ({
-      data: r.sede,
-      total: Number(r.total),
-    })) as { data: string; total: number }[]
-  })
-
-export const getAllDoneTasksInLastMonth = operatorProcedure.query(
-  async ({ ctx }) => {
-    const { db, operator } = ctx
-    const { id, role } = operator
-
-    const accessCondition =
-      role === "ADMIN" ? undefined : eq(task.operatorId, id)
-    const done = await db
-      .select({
-        done: count(),
-      })
-      .from(task)
-      .where(
-        and(notInArray(task.state, ["chiamare", "nessuno"]), accessCondition)
-      )
-
-    const todo = await db
-      .select({
-        todo: count(),
-      })
-      .from(task)
-      .where(and(eq(task.state, "chiamare"), accessCondition))
-
-    return {
-      done: done[0]?.done ?? 0,
-      todo: todo[0]?.todo ?? 0,
-    }
-  }
+export const getAllDoneTasksInLastMonth = operatorProcedure.query(({ ctx }) =>
+  runTrpc(contactProgress({ actor: ctx.actor }))
 )
 
 export const getFinanziatoMedioPerOperatore = protectedProcedure
   .input(timeFrameInput)
-  .query(async ({ ctx, input }) => {
-    const { db } = ctx
-    const { timeFrame } = input
-
-    const assignedReference = await db
-      .select({
-        importoFinanziato: avg(castAsNumber(practices.importoFinanziato)),
-      })
-      .from(practices)
-      .innerJoin(
-        customerToPratica,
-        eq(practices.praticaId, customerToPratica.praticaId)
-      )
-      .innerJoin(customers, eq(customers.id, customerToPratica.customerId))
-      .innerJoin(operators, eq(operators.id, customers.operatorId))
-      .where(
-        and(
-          isNotNull(customers.operatorId),
-          between(
-            practices.dataLiquidazione,
-            TIMEFRAMEMAP[timeFrame].start,
-            TIMEFRAMEMAP[timeFrame].end
-          )
-        )
-      )
-
-    const assignedComparison = await db
-      .select({
-        importoFinanziato: avg(castAsNumber(practices.importoFinanziato)),
-      })
-      .from(practices)
-      .innerJoin(
-        customerToPratica,
-        eq(practices.praticaId, customerToPratica.praticaId)
-      )
-      .innerJoin(customers, eq(customers.id, customerToPratica.customerId))
-      .innerJoin(operators, eq(operators.id, customers.operatorId))
-      .where(
-        and(
-          isNotNull(customers.operatorId),
-          between(
-            practices.dataLiquidazione,
-            TIMEFRAMEDELTA[timeFrame].start,
-            TIMEFRAMEDELTA[timeFrame].end
-          )
-        )
-      )
-
-    return {
-      reference: assignedReference[0]?.importoFinanziato ?? 0,
-      comparison: assignedComparison[0]?.importoFinanziato ?? 0,
-    }
-  })
+  .query(({ input }) =>
+    runTrpc(financedAverage({ timeFrame: input.timeFrame }))
+  )
 
 export const getFinanziatoTotalePerOperatore = operatorProcedure
   .input(timeFrameInput)
-  .query(async ({ ctx, input }) => {
-    const { db, operator } = ctx
-    const { timeFrame } = input
-    const { id, role } = operator
-
-    const accessCondition =
-      role === "ADMIN" ? undefined : eq(customers.operatorId, id)
-    const assignedReference = await db
-      .select({
-        importoFinanziato: sum(castAsNumber(practices.importoFinanziato)),
-      })
-      .from(practices)
-      .innerJoin(
-        customerToPratica,
-        eq(practices.praticaId, customerToPratica.praticaId)
-      )
-      .innerJoin(customers, eq(customers.id, customerToPratica.customerId))
-      .innerJoin(operators, eq(operators.id, customers.operatorId))
-      .where(
-        and(
-          accessCondition,
-          between(
-            practices.dataLiquidazione,
-            TIMEFRAMEMAP[timeFrame].start,
-            TIMEFRAMEMAP[timeFrame].end
-          )
-        )
-      )
-
-    const assignedComparison = await db
-      .select({
-        importoFinanziato: sum(castAsNumber(practices.importoFinanziato)),
-      })
-      .from(practices)
-      .innerJoin(
-        customerToPratica,
-        eq(practices.praticaId, customerToPratica.praticaId)
-      )
-      .innerJoin(customers, eq(customers.id, customerToPratica.customerId))
-      .innerJoin(operators, eq(operators.id, customers.operatorId))
-      .where(
-        and(
-          accessCondition,
-          between(
-            practices.dataLiquidazione,
-            TIMEFRAMEDELTA[timeFrame].start,
-            TIMEFRAMEDELTA[timeFrame].end
-          )
-        )
-      )
-
-    return {
-      reference: assignedReference[0]?.importoFinanziato ?? 0,
-      comparison: assignedComparison[0]?.importoFinanziato ?? 0,
-    }
-  })
+  .query(({ ctx, input }) =>
+    runTrpc(financedTotal({ timeFrame: input.timeFrame, actor: ctx.actor }))
+  )
 
 export const getFinaziatoMedioPerCliente = operatorProcedure
   .input(timeFrameInput)
-  .query(async ({ ctx, input }) => {
-    const { db, operator } = ctx
-    const { timeFrame } = input
-    const { id, role } = operator
-
-    const accessCondition =
-      role === "ADMIN" ? undefined : eq(customers.operatorId, id)
-    const assignedReference = await db
-      .select({
-        importoFinanziato: avg(castAsNumber(practices.importoFinanziato)),
-      })
-      .from(practices)
-      .innerJoin(
-        customerToPratica,
-        eq(practices.praticaId, customerToPratica.praticaId)
-      )
-      .innerJoin(customers, eq(customers.id, customerToPratica.customerId))
-      .innerJoin(operators, eq(operators.id, customers.operatorId))
-      .where(
-        and(
-          accessCondition,
-          between(
-            practices.dataLiquidazione,
-            TIMEFRAMEMAP[timeFrame].start,
-            TIMEFRAMEMAP[timeFrame].end
-          )
-        )
-      )
-
-    const assignedComparison = await db
-      .select({
-        importoFinanziato: avg(castAsNumber(practices.importoFinanziato)),
-      })
-      .from(practices)
-      .innerJoin(
-        customerToPratica,
-        eq(practices.praticaId, customerToPratica.praticaId)
-      )
-      .innerJoin(customers, eq(customers.id, customerToPratica.customerId))
-      .innerJoin(operators, eq(operators.id, customers.operatorId))
-      .where(
-        and(
-          accessCondition,
-          between(
-            practices.dataLiquidazione,
-            TIMEFRAMEDELTA[timeFrame].start,
-            TIMEFRAMEDELTA[timeFrame].end
-          )
-        )
-      )
-
-    return {
-      reference: assignedReference[0]?.importoFinanziato ?? 0,
-      comparison: assignedComparison[0]?.importoFinanziato ?? 0,
-    }
-  })
+  .query(({ ctx, input }) =>
+    runTrpc(financedAverage({ timeFrame: input.timeFrame, actor: ctx.actor }))
+  )
