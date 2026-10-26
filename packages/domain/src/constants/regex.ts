@@ -1,0 +1,2 @@
+export const fiscalCodeRegex =
+  /^[A-Z]{6}[0-9]{2}[A-EHLMPR-T][0-9]{2}[A-Z][0-9]{3}[A-Z]$/
