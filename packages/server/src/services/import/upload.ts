@@ -3,11 +3,7 @@ import { promisify } from "node:util"
 import { gunzip } from "node:zlib"
 import { and, asc, eq } from "drizzle-orm"
 import { Clock, Effect } from "effect"
-import {
-  importRun,
-  importUpload,
-  importUploadPart,
-} from "@mito/db/schema/importRun"
+import { importUpload, importUploadPart } from "@mito/db/schema/importRun"
 import { detectFormat, type ImportFormat } from "@mito/domain/import/formats"
 import {
   MAX_BODY_BYTES,
@@ -143,22 +139,49 @@ export const saveUploadPart = (input: {
     })
   )
 
+const tooManyRows = `Il file ha più di ${MAX_ROWS.toLocaleString("it-IT")} righe`
+
 /** The message of the first problem of the body, without its values. */
 const bodyProblem = (issues: { path: (string | number)[]; code: string }[]) => {
   const [issue] = issues
   if (issue?.code === "too_big" && issue.path.length === 1) {
-    if (issue.path[0] === "rows") {
-      return `Il file ha più di ${MAX_ROWS.toLocaleString("it-IT")} righe`
-    }
+    if (issue.path[0] === "rows") return tooManyRows
     if (issue.path[0] === "columns") return "Il file ha troppe colonne"
   }
   return "Il file inviato non è valido"
 }
 
+/** The arrays of a body: its columns, its rows, and each row with its cells. */
+const MAX_ARRAYS = 2 + 2 * MAX_ROWS
+
+/**
+ * Whether the JSON has at most `MAX_ARRAYS` arrays, counted outside its
+ * strings before it is parsed: a body of empty rows is a few KB of gzip and
+ * millions of arrays once parsed. The bytes of a UTF-8 character after the
+ * first are never `"`, `\` or `[`.
+ */
+const fewArrays = (json: Buffer) => {
+  let arrays = 0
+  let inString = false
+  for (let index = 0; index < json.length; index++) {
+    const byte = json[index]
+    if (inString) {
+      if (byte === 0x5c) index++
+      else if (byte === 0x22) inString = false
+    } else if (byte === 0x22) {
+      inString = true
+    } else if (byte === 0x5b && ++arrays > MAX_ARRAYS) {
+      return false
+    }
+  }
+  return true
+}
+
 /**
  * The rows of an upload whose parts have all arrived, checked as the server
- * takes them (D3): at most `MAX_BODY_BYTES` once decompressed, the schema of
- * the body, the columns of the layout it says.
+ * takes them (D3): at most `MAX_BODY_BYTES` once decompressed and the arrays
+ * of `MAX_ROWS` rows before it is parsed, the schema of the body, the columns
+ * of the layout it says.
  */
 export const loadUpload = (uploadId: string) =>
   Effect.gen(function* () {
@@ -189,9 +212,10 @@ export const loadUpload = (uploadId: string) =>
             ? "Il file inviato è troppo grande"
             : "Il file inviato non si legge"
         ),
-    }).pipe(Effect.map((bytes) => bytes.toString("utf8")))
+    })
+    if (!fewArrays(json)) return yield* invalid(tooManyRows)
     const raw = yield* Effect.try({
-      try: () => JSON.parse(json) as unknown,
+      try: () => JSON.parse(json.toString("utf8")) as unknown,
       catch: () => invalid("Il file inviato non si legge"),
     })
     const body = fileBodySchema.safeParse(raw)
@@ -210,36 +234,4 @@ export const loadUpload = (uploadId: string) =>
 export const deleteUpload = (uploadId: string) =>
   query((client) =>
     client.delete(importUpload).where(eq(importUpload.id, uploadId))
-  )
-
-/**
- * The cleanup task of an upload (`POST /internal/import/purge/:uploadId`,
- * D14): deletes it with its parts unless a running import uses it. It waits
- * for a part or a start that holds the row: after a start the upload is the
- * import's, which deletes it at its end.
- */
-export const purgeUpload = (uploadId: string) =>
-  transaction(
-    Effect.gen(function* () {
-      const [upload] = yield* query((client) =>
-        client
-          .select({ id: importUpload.id, runId: importUpload.runId })
-          .from(importUpload)
-          .where(eq(importUpload.id, uploadId))
-          .for("update")
-      )
-      if (!upload) return "gone" as const
-      const { runId } = upload
-      if (runId !== null) {
-        const [run] = yield* query((client) =>
-          client
-            .select({ status: importRun.status })
-            .from(importRun)
-            .where(eq(importRun.id, runId))
-        )
-        if (run?.status === "running") return "kept" as const
-      }
-      yield* deleteUpload(upload.id)
-      return "deleted" as const
-    })
   )

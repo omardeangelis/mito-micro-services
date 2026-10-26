@@ -101,12 +101,16 @@ const numbered = (rows: Cells[]) =>
   rows.map((cells, index) => ({ row: index + 2, cells: waveCells(cells) }))
 
 /** The rows of a Wave file, all arrived, as `import.upload` leaves them. */
-const uploadOf = async (createdBy: string, rows: Cells[]) =>
+const uploadOf = async (
+  createdBy: string,
+  rows: Cells[],
+  fileName = FILE_NAME
+) =>
   value(
     await run(
       createUpload({
         createdBy,
-        fileName: FILE_NAME,
+        fileName,
         format: "wave",
         parts: 1,
         data: gzipSync(JSON.stringify(toFileBody(waveColumns, numbered(rows)))),
@@ -385,6 +389,28 @@ describe("esecuzione dalla coda", () => {
     expect(await customerCodes()).toEqual(["1", "2"])
     expect(await uploads()).toEqual([])
     expect(await testDb.select().from(importUploadPart)).toEqual([])
+  })
+
+  test("clienti e pratiche salvano il nome del file come l'import di oggi, lo storico quello del file (AC32)", async () => {
+    const admin = await createUser({ role: "ADMIN" })
+    const uploadId = await uploadOf(admin.id, twoRows, "Pratiche-ottobre.xlsx")
+    const { runId } = value(
+      await run(
+        startImport({ uploadId, expected: [2, 3], startedBy: admin.id })
+      )
+    )
+
+    value(await run(executeImport(runId)))
+
+    // October 2026 in Rome
+    const stored = "1026_Pratiche_ottobre.xlsx"
+    expect(
+      await testDb.select({ fileName: customers.fileName }).from(customers)
+    ).toEqual([{ fileName: stored }, { fileName: stored }])
+    expect(
+      await testDb.select({ fileName: practices.fileName }).from(practices)
+    ).toEqual([{ fileName: stored }, { fileName: stored }])
+    expect(await runs()).toMatchObject([{ fileName: "Pratiche-ottobre.xlsx" }])
   })
 
   test("un task consegnato due volte: la seconda volta non fa nulla (D7)", async () => {
