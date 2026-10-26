@@ -23,6 +23,9 @@ export type NewImportState =
   | { step: "sending"; fileName: string; preview: Preview }
   | { step: "started"; fileName: string }
 
+/** How long the link of a downloaded report lives, as FileSaver.js keeps it. */
+const REVOKE_AFTER_MS = 40_000
+
 /** The server's own messages, in Italian, for the errors the admin can act on. */
 const readableCodes = new Set([
   "BAD_REQUEST",
@@ -97,22 +100,39 @@ export function useNewImport() {
   const downloadReport = useCallback(async () => {
     const current = reader.current
     if (!current) return
-    const { fileName, bytes } = await current.report()
-    const url = URL.createObjectURL(
-      new Blob([bytes], {
-        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      })
-    )
-    const link = document.createElement("a")
-    link.href = url
-    link.download = fileName
-    link.click()
-    URL.revokeObjectURL(url)
+    try {
+      const { fileName, bytes } = await current.report()
+      const url = URL.createObjectURL(
+        new Blob([bytes], {
+          type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        })
+      )
+      const link = document.createElement("a")
+      link.href = url
+      link.download = fileName
+      link.click()
+      // Revoked at once, the download can stop in Safari and Firefox
+      setTimeout(() => URL.revokeObjectURL(url), REVOKE_AFTER_MS)
+    } catch (error) {
+      if (error instanceof ImportReadCancelled || reader.current !== current)
+        return
+      setState((now) =>
+        now.step === "preview"
+          ? {
+              ...now,
+              message: "Il report errori non si è potuto creare: riprova",
+            }
+          : now
+      )
+    }
   }, [])
 
+  // Two clicks in the same tick see the same step: only the first sends
+  const sending = useRef(false)
   const confirm = useCallback(async () => {
     const current = reader.current
-    if (!current || state.step !== "preview") return
+    if (!current || state.step !== "preview" || sending.current) return
+    sending.current = true
     const { fileName, preview } = state
     setState({ step: "sending", fileName, preview })
     try {
@@ -136,6 +156,8 @@ export function useNewImport() {
         preview,
         message: messageOf(error, "L'import non è partito: riprova"),
       })
+    } finally {
+      sending.current = false
     }
   }, [drop, state, utils, watch])
 

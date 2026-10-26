@@ -14,7 +14,8 @@ export function Toaster() {
   const { toasts } = useToast()
 
   return (
-    <ToastProvider>
+    // Radix's labels are in English: the screen readers read them first
+    <ToastProvider label="Notifica">
       {toasts.map(function ({
         id,
         title,
@@ -27,6 +28,8 @@ export function Toaster() {
           <Toast key={id} {...props}>
             <div className="grid gap-1">
               {title && <ToastTitle>{title}</ToastTitle>}
+              {/* The announcement joins the texts: without it, the words stick */}
+              {title && description && " "}
               {description && (
                 <ToastDescription>{description}</ToastDescription>
               )}
@@ -36,7 +39,7 @@ export function Toaster() {
           </Toast>
         )
       })}
-      <ToastViewport />
+      <ToastViewport label="Notifiche ({hotkey})" />
     </ToastProvider>
   )
 }

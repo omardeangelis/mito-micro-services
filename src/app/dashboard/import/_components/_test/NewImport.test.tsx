@@ -210,6 +210,66 @@ describe("NewImport", () => {
     expect(start.mutate).not.toHaveBeenCalled()
   })
 
+  it("shows every number of the preview, and the format (AC7)", async () => {
+    reader.preview.mockResolvedValue({
+      ...preview,
+      counts: {
+        rows: 12_000,
+        importable: 2,
+        customerOnly: 3,
+        discarded: 4,
+        customersNew: 5,
+        customersToUpdate: 6,
+        practicesNew: 7,
+        practicesToUpdate: 8,
+        linksNew: 9,
+      },
+    })
+    render(<NewImport />)
+    choose()
+    await screen.findByText("Righe del file")
+
+    expect(
+      screen
+        .getAllByRole("term")
+        .map((term) => [term.textContent, term.nextSibling?.textContent])
+    ).toEqual([
+      ["Righe del file", "12.000"],
+      ["Righe importabili", "2"],
+      ["Righe solo cliente", "3"],
+      ["Righe scartate", "4"],
+      ["Clienti nuovi", "5"],
+      ["Clienti da aggiornare", "6"],
+      ["Pratiche nuove", "7"],
+      ["Pratiche da aggiornare", "8"],
+      ["Legami nuovi", "9"],
+    ])
+    expect(screen.getByText("wave.xlsx").parentElement?.textContent).toBe(
+      "wave.xlsx, formato Wave"
+    )
+  })
+
+  it("confirms a file of customer-only rows (AC16)", async () => {
+    reader.preview.mockResolvedValue({
+      ...preview,
+      counts: { ...preview.counts, importable: 0, customerOnly: 1 },
+      expected: [3],
+    })
+    render(<NewImport />)
+    choose()
+    await screen.findByText("Righe del file")
+
+    expect(screen.queryByText("Nessuna riga da importare")).toBeNull()
+    fireEvent.click(confirmButton())
+
+    await waitFor(() =>
+      expect(start.mutate).toHaveBeenCalledWith({
+        uploadId: "u-1",
+        rows: [3],
+      })
+    )
+  })
+
   it("has nothing to confirm when no row would be written (AC16)", async () => {
     reader.preview.mockResolvedValue({
       ...preview,
@@ -229,6 +289,10 @@ describe("NewImport", () => {
   })
 
   it("downloads the report of the discarded rows (AC14, AC15)", async () => {
+    vi.useFakeTimers({
+      toFake: ["setTimeout", "clearTimeout"],
+      shouldAdvanceTime: true,
+    })
     const downloads: string[] = []
     URL.createObjectURL = vi.fn(() => "blob:report")
     const revoke = vi.fn()
@@ -249,8 +313,70 @@ describe("NewImport", () => {
     await waitFor(() =>
       expect(downloads).toEqual(["errori_import_wave_2026-10-25.xlsx"])
     )
+    // The link lives while the browser saves the file
+    expect(revoke).not.toHaveBeenCalled()
+    vi.advanceTimersByTime(40_000)
     expect(revoke).toHaveBeenCalledWith("blob:report")
     expect(upload.mutate).not.toHaveBeenCalled()
+    vi.useRealTimers()
+  })
+
+  it("says the report failed when the worker can't make it", async () => {
+    reader.report.mockRejectedValue(new Error("worker crashed"))
+    render(<NewImport />)
+    choose()
+    await screen.findByText("Righe del file")
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Scarica il report errori" })
+    )
+
+    expect((await screen.findByRole("alert")).textContent).toBe(
+      "Il report errori non si è potuto creare: riprova"
+    )
+    expect(confirmButton()).toBeTruthy()
+  })
+
+  it("two clicks on Conferma start one import", async () => {
+    render(<NewImport />)
+    choose()
+    await screen.findByText("Righe del file")
+
+    const button = confirmButton()
+    act(() => {
+      button.click()
+      button.click()
+    })
+
+    await screen.findByText(/è in corso: puoi usare il resto del CRM/)
+    expect(upload.mutate).toHaveBeenCalledTimes(1)
+    expect(start.mutate).toHaveBeenCalledTimes(1)
+  })
+
+  it("moves the focus with the steps (AC41)", async () => {
+    let read!: (value: unknown) => void
+    reader.read.mockReturnValue(new Promise((resolve) => (read = resolve)))
+    render(<NewImport />)
+    const chooseButton = screen.getByRole("button", { name: "Scegli il file" })
+    expect(document.activeElement).not.toBe(chooseButton)
+
+    choose()
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole("button", { name: "Annulla" })
+      )
+    )
+
+    await act(async () => read({ ok: true, format: "wave", keys }))
+    await screen.findByText("Righe del file")
+    expect(document.activeElement?.getAttribute("aria-label")).toBe(
+      "Anteprima di wave.xlsx"
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: "Annulla" }))
+    expect(document.activeElement).toBe(
+      screen.getByRole("button", { name: "Scegli il file" })
+    )
   })
 
   it("has no report to download when nothing is discarded (AC14)", async () => {
@@ -323,6 +449,8 @@ describe("NewImport", () => {
     expect((await screen.findByRole("alert")).textContent).toBe(
       "L'anteprima non si è potuta calcolare: riprova"
     )
+    // Said once: by the alert, not by the status too
+    expect(screen.getByRole("status").textContent).toBe("")
     expect(reader.cancel).toHaveBeenCalled()
   })
 
