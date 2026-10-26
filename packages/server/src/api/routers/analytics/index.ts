@@ -1,8 +1,5 @@
 import { createTRPCRouter } from "../../trpc"
 import {
-  getPraticheLiquidate,
-  getAllImportoRatePageteOfLastMonth,
-  getAllNewPraticheOfLastMonth,
   getFinanziatoMedioPerOperatore,
   getAmountPerSedeInLastMonth,
   getAllDoneTasksInLastMonth,
@@ -10,9 +7,6 @@ import {
   getFinaziatoMedioPerCliente,
 } from "./GET/index"
 export const analitycsRouter = createTRPCRouter({
-  getPraticheLiquidate,
-  getAllImportoRatePageteOfLastMonth,
-  getAllNewPraticheOfLastMonth,
   getAmountPerSedeInLastMonth,
   getFinanziatoMedioPerOperatore,
   getAllDoneTasksInLastMonth,

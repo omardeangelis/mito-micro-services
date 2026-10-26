@@ -30,13 +30,20 @@ updated: 2026-10-26
 
 ## Surprises and Decisions
 
-- 
+- **`next lint` e `eslint` non partono in questo worktree.** Il worktree sta dentro la checkout principale (`.claude/worktrees/…`) e `.eslintrc.cjs` non ha `root: true`: ESLint carica anche quello della cartella madre e trova il plugin `prettier` due volte ("Plugin \"prettier\" was conflicted"). È l'ambiente, non il codice: in CI la checkout è sola. Il lint dei file del passo gira con la stessa configurazione passata a mano, `pnpm exec eslint --no-eslintrc -c .eslintrc.cjs <percorsi>`, sulle cartelle di `next lint` (`src`, `packages`, `eslint.dirs` di `next.config.js`).
+- **I mutanti da Python vanno lanciati con `arch -arm64`.** Il `python3` di sistema gira x86_64 e i suoi figli avviano `node` (universale) in x86_64, dove manca `@rollup/rollup-darwin-x64`: vitest non parte, e un mutante sembra ucciso. Il primo giro dei mutanti del round 1 era falso per questo; lo script (nello scratchpad della sessione) ora avvia i comandi con `arch -arm64` e conta un mutante come ucciso solo se un test fallisce su un'asserzione. Il secondo giro: 25 su 25, ognuno con i test rossi contati nel log di `PLAN.md`.
+- **Le medie del driver hanno una scala che cambia col valore** (`"1250.0000000000000000"`, 16 decimali; `"24000.000000000000"`, 12; `"2333.3333333333333333"`): è la scala di `avg` su `numeric` di Postgres. La caratterizzazione le fissa così; il refactor non deve cambiare l'espressione SQL dell'aggregato.
+- **L'input di `getAllDoneTasksInLastMonth`** per `inferRouterInputs` è `void | undefined`, non `void` come diceva T5 (`types.test.ts` fissa il tipo vero).
 
 ## Sanity Checks
 
 | Check | Result | Notes |
 |------|--------|-------|
-| | | |
+| Wave 1: `vitest` su `analytics/_test/` | 5 file, 91 test verdi | due giri per file |
+| Wave 1: `tsc --noEmit` | verde | |
+| Wave 1: `eslint --no-eslintrc -c .eslintrc.cjs` su `analytics/_test/` | verde | `next lint` non parte nel worktree (sopra) |
+| Wave 1: mutanti del round 1 | 25/25 uccisi | con `arch -arm64` |
+| Wave 1: `pnpm run test --run` | 265 file verdi, 23 saltati | i 23 sono il progetto `pg`, senza Postgres in locale |
 
 ## Acceptance Criteria Status
 

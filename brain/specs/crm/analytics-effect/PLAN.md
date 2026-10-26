@@ -347,9 +347,9 @@ G0 ─┬─ T1 ─┐
   - il test nuovo è rosso prima della rimozione e verde dopo;
   - T1–T5 verdi senza modifiche;
   - `git grep -nE 'getPraticheLiquidate|getAllNewPraticheOfLastMonth|getAllImportoRatePageteOfLastMonth' -- packages src apps ':!**/_test/**'` non trova niente.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Complete
+- **log**: Wave 2, worker `haiku`. RED scritto dall'orchestratore: `router.db.test.ts` con 3 rossi su 8 ("non espone più la procedura senza chiamanti …"), verde dopo la rimozione. Nessun import tolto: quelli delle 3 procedure restano usati dalle 5 che restano. T1–T5 verdi senza modifiche (6 file, 99 test), `tsc` verde, `git grep` dei 3 nomi fuori da `_test/` vuota.
+- **files edited/created**: `packages/server/src/api/routers/analytics/{index.ts,GET/index.ts}`; nuovo `packages/server/src/api/routers/analytics/_test/router.db.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
