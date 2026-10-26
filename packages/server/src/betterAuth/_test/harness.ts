@@ -115,3 +115,21 @@ export const linkMicrosoft = (userId: string, oid: string) =>
     providerId: "microsoft",
     accountId: oid,
   })
+
+/** Asks for the link of the email login; the response of the request. */
+export const requestLink = (auth: Auth, email: string) =>
+  auth.handler(
+    new Request(`${BASE}/api/auth/sign-in/magic-link`, {
+      method: "POST",
+      headers: { "content-type": "application/json", origin: BASE },
+      body: JSON.stringify({
+        email,
+        callbackURL: "/dashboard",
+        errorCallbackURL: "/login?error=1",
+      }),
+    })
+  )
+
+/** Opens a link of the email login, as the browser does. */
+export const openLink = (auth: Auth, url: string) =>
+  auth.handler(new Request(url, { headers: { origin: BASE } }))

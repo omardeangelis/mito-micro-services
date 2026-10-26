@@ -45,6 +45,31 @@ describe("authConfigFrom", () => {
     ).toBeUndefined()
   })
 
+  it("ha il link via email solo con il login di prova: console in development, SendGrid altrove (AC7)", () => {
+    const sendgrid = {
+      SENDGRID_USERNAME: "apikey",
+      SENDGRID_API_KEY: "sendgrid-key",
+      SENDGRID_SERVER: "smtp.sendgrid.net",
+      SENDGRID_PORT: "587",
+    }
+    const on = { ...REQUIRED, AUTH_TEST_LOGIN: "true" }
+
+    expect(
+      authConfigFrom({ ...on, NODE_ENV: "development" }).sendMagicLink
+    ).toBeDefined()
+    expect(
+      authConfigFrom({ ...on, NODE_ENV: "production", ...sendgrid })
+        .sendMagicLink
+    ).toBeDefined()
+    expect(
+      authConfigFrom({ ...on, NODE_ENV: "production" }).sendMagicLink
+    ).toBeUndefined()
+    expect(
+      authConfigFrom({ ...REQUIRED, NODE_ENV: "development", ...sendgrid })
+        .sendMagicLink
+    ).toBeUndefined()
+  })
+
   it("si ferma senza URL o secret", () => {
     expect(() =>
       authConfigFrom({ BETTER_AUTH_URL: REQUIRED.BETTER_AUTH_URL })

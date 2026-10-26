@@ -1,5 +1,6 @@
 import { betterAuth } from "better-auth"
 import { drizzleAdapter } from "better-auth/adapters/drizzle"
+import { magicLink } from "better-auth/plugins"
 import { Effect, Exit } from "effect"
 import {
   authAccounts,
@@ -11,6 +12,7 @@ import { type Db } from "../effect/db"
 import { ServerLive } from "../effect/server"
 import { authDb, onAuthDb } from "./database"
 import {
+  admitMagicLink,
   admitNewUser,
   admitSession,
   createOperatorOf,
@@ -27,6 +29,11 @@ export type AuthConfig = {
     readonly clientSecret: string
     readonly tenantId: string
   }
+  /**
+   * Sends the link of the email login, which exists only with `testLogin`
+   * and a sender (AC7).
+   */
+  readonly sendMagicLink?: (email: string, url: string) => Promise<void>
 } & SignUpRules
 
 const DAY = 24 * 60 * 60
@@ -74,6 +81,7 @@ const withoutTokens = <T extends object>(account: T) => ({
  * `services/auth/login.ts` in its hooks.
  */
 export function buildAuth(config: AuthConfig) {
+  const { sendMagicLink } = config
   return betterAuth({
     baseURL: config.baseURL,
     secret: config.secret,
@@ -129,6 +137,22 @@ export function buildAuth(config: AuthConfig) {
           },
         }
       : {},
+    plugins:
+      config.testLogin && sendMagicLink
+        ? [
+            magicLink({
+              expiresIn: DAY,
+              storeToken: "hashed",
+              // Nothing is sent to an address the login would refuse (AC12),
+              // and the answer is the same
+              sendMagicLink: async ({ email, url }) => {
+                if (await admits(admitMagicLink(email, config))) {
+                  await sendMagicLink(email, url)
+                }
+              },
+            }),
+          ]
+        : [],
     databaseHooks: {
       user: {
         create: {
