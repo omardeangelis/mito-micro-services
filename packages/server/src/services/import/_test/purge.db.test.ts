@@ -16,6 +16,7 @@ import { ImportQueueFailed } from "../errors"
 import { ImportQueue, type ImportTask, importQueueDisabled } from "../queue"
 import { purgeUpload, startImport } from "../run"
 import { beginUpload, saveUploadPart } from "../upload"
+import { fixedClock } from "../../analytics/_test/clock"
 import { migrateUpTo, resetDb, testDb } from "@/test/db"
 import { failureTag } from "@/test/effect"
 import { createUser } from "@/test/factories"
@@ -49,14 +50,7 @@ const run = <A, E>(
 ) =>
   Effect.runPromiseExit(
     program.pipe(
-      Effect.withClock({
-        [Clock.ClockTypeId]: Clock.ClockTypeId,
-        unsafeCurrentTimeMillis: () => NOW.getTime(),
-        currentTimeMillis: Effect.sync(() => NOW.getTime()),
-        unsafeCurrentTimeNanos: () => BigInt(NOW.getTime()) * 1_000_000n,
-        currentTimeNanos: Effect.sync(() => BigInt(NOW.getTime()) * 1_000_000n),
-        sleep: () => Effect.void,
-      }),
+      Effect.provideService(Clock.Clock, fixedClock(NOW.getTime())),
       Effect.provide(
         Layer.mergeAll(
           DbLive,

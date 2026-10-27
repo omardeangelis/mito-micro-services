@@ -141,7 +141,7 @@ export function buildAuth(config: AuthConfig) {
           after: async (user) => {
             const exit = await Effect.runPromiseExit(
               onAuthDb(createOperatorOf(user.id)).pipe(
-                Effect.tapErrorCause((cause) =>
+                Effect.tapCause((cause) =>
                   Effect.logError("Sign-up database step failed", cause)
                 ),
                 Effect.provide(ServerLive)

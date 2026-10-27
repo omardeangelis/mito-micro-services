@@ -1,4 +1,4 @@
-import { Effect, Either } from "effect"
+import { Effect, Result } from "effect"
 import { and, eq } from "drizzle-orm"
 import {
   type Actor,
@@ -172,8 +172,8 @@ export const handover = ({
         return yield* new CustomerAssignmentForbidden()
       }
 
-      if (Either.isLeft(working)) return yield* Effect.fail(working.left)
-      const target = working.right
+      if (Result.isFailure(working)) return yield* Effect.fail(working.failure)
+      const target = working.success
       if (customer.operatorId === target.id) {
         return yield* new HandoverSameOperator()
       }
@@ -289,7 +289,7 @@ export const assignToYourself = ({
       if (!canSelfAssign(actor, customer, contact)) {
         return yield* new CustomerAssignmentForbidden()
       }
-      if (Either.isLeft(working)) return yield* Effect.fail(working.left)
+      if (Result.isFailure(working)) return yield* Effect.fail(working.failure)
 
       yield* moveCustomerAndContact({
         customer,

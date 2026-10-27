@@ -1,12 +1,13 @@
 import { gzipSync } from "node:zlib"
 import { beforeAll, beforeEach, describe, expect, it } from "vitest"
 import { asc } from "drizzle-orm"
-import { Clock, Effect, Exit, Layer } from "effect"
+import { Cause, Clock, Effect, Exit, Layer } from "effect"
 import { importRun } from "@mito/db/schema/importRun"
 import { type Cells } from "@mito/domain/import/classify"
 import { waveColumns } from "@mito/domain/import/formats"
 import { toFileBody } from "@mito/domain/import/payload"
 import { waveCells } from "@mito/domain/import/_test/cells"
+import { fixedClock } from "../../analytics/_test/clock"
 import { type Db, DbLive } from "../../../effect/db"
 import { ImportConfig, importSettings } from "../config"
 import { ImportQueue, type ImportTask } from "../queue"
@@ -69,16 +70,7 @@ describe.skipIf(!hasTestDatabase)("un import alla volta", () => {
   ) => {
     const timed = at
       ? program.pipe(
-          Effect.withClock({
-            [Clock.ClockTypeId]: Clock.ClockTypeId,
-            unsafeCurrentTimeMillis: () => at.getTime(),
-            currentTimeMillis: Effect.sync(() => at.getTime()),
-            unsafeCurrentTimeNanos: () => BigInt(at.getTime()) * 1_000_000n,
-            currentTimeNanos: Effect.sync(
-              () => BigInt(at.getTime()) * 1_000_000n
-            ),
-            sleep: () => Effect.void,
-          })
+          Effect.provideService(Clock.Clock, fixedClock(at.getTime()))
         )
       : program
     return Effect.runPromiseExit(timed.pipe(Effect.provide(layer())))
@@ -109,8 +101,10 @@ describe.skipIf(!hasTestDatabase)("un import alla volta", () => {
   }
 
   const failureOf = (exit: Exit.Exit<unknown, unknown>) =>
-    Exit.isFailure(exit) && exit.cause._tag === "Fail"
-      ? exit.cause.error
+    Exit.isFailure(exit) &&
+    exit.cause.reasons.length === 1 &&
+    Cause.isFailReason(exit.cause.reasons[0]!)
+      ? exit.cause.reasons[0].error
       : undefined
 
   const statuses = async () =>

@@ -208,7 +208,7 @@ const runningImport = query((client) =>
     .leftJoin(operators, eq(operators.userId, users.id))
     .where(eq(importRun.status, "running"))
     .limit(1)
-).pipe(Effect.map(([run]) => Option.fromNullable(run)))
+).pipe(Effect.map(([run]) => Option.fromNullishOr(run)))
 
 const alreadyRunning = (run: { startedBy: string; startedAt: Date }) =>
   new ImportAlreadyRunning({
@@ -340,7 +340,7 @@ export const startImport = (input: StartInput) =>
 
 /** How a failed run ends, and what the log says of it: no values. */
 const endingOf = (cause: Cause.Cause<unknown>): Ending & { log: string } => {
-  const error = Option.getOrUndefined(Cause.failureOption(cause))
+  const error = Option.getOrUndefined(Cause.findErrorOption(cause))
   if (
     error instanceof ImportTimedOut ||
     (error instanceof DbError && error.code === "57014")

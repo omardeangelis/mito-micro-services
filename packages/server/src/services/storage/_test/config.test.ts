@@ -6,8 +6,9 @@ import { StorageConfigError } from "../errors"
 // Environment values come from an in-memory provider, so process.env is never touched.
 const load = (env: Record<string, string>, prefix?: string) =>
   storageConfigFromEnv(prefix).pipe(
-    Effect.withConfigProvider(
-      ConfigProvider.fromMap(new Map(Object.entries(env)))
+    Effect.provideService(
+      ConfigProvider.ConfigProvider,
+      ConfigProvider.fromEnv({ env })
     )
   )
 

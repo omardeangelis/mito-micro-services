@@ -223,7 +223,9 @@ describe("task.reassign", () => {
     )
 
     expect(Exit.isFailure(exit) && exit.cause).toMatchObject({
-      error: { _tag: "ContactForbidden", assignee: "Anna Bianchi" },
+      reasons: [
+        { error: { _tag: "ContactForbidden", assignee: "Anna Bianchi" } },
+      ],
     })
     expect(await tasksOf(customer.id)).toEqual(before)
     expect(await logOf(customer.id)).toEqual([])

@@ -18,7 +18,7 @@ export async function admits<E extends { readonly _tag: string }>(
         (error) => error._tag !== "DbError",
         () => Effect.succeed(false)
       ),
-      Effect.tapErrorCause((cause) =>
+      Effect.tapCause((cause) =>
         Effect.logError("Sign-in database step failed", cause)
       ),
       Effect.provide(ServerLive)

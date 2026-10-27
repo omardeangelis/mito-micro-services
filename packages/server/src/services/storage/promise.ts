@@ -31,7 +31,7 @@ export const createStorageClient = (config: StorageConfig): StorageClient => {
   ): Promise<A> =>
     runtime.runPromiseExit(Effect.flatMap(Storage, use)).then((exit) => {
       if (Exit.isSuccess(exit)) return exit.value
-      const failure = Cause.failureOption(exit.cause)
+      const failure = Cause.findErrorOption(exit.cause)
       throw Option.isSome(failure) ? failure.value : Cause.squash(exit.cause)
     })
 

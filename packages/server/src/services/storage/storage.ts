@@ -88,7 +88,6 @@ export interface StorageService {
 }
 
 /** Context tag for the storage service. Provide it with `makeGcsStorageLayer` or `makeMemoryStorageLayer`. */
-export class Storage extends Context.Tag("gcs-storage-kit/Storage")<
-  Storage,
-  StorageService
->() {}
+export class Storage extends Context.Service<Storage, StorageService>()(
+  "gcs-storage-kit/Storage"
+) {}

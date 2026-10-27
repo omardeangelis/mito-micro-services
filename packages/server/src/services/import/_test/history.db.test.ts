@@ -4,6 +4,7 @@ import { importRun } from "@mito/db/schema/importRun"
 import { type Db, DbLive } from "../../../effect/db"
 import { ImportConfig, importSettings } from "../config"
 import { HISTORY_PAGE_SIZE, activeImport, listImports } from "../history"
+import { fixedClock } from "../../analytics/_test/clock"
 import { migrateUpTo, resetDb, testDb } from "@/test/db"
 import { createOperator, createUser } from "@/test/factories"
 
@@ -22,19 +23,10 @@ beforeEach(async () => {
   await resetDb()
 })
 
-const at = (time: Date): Clock.Clock => ({
-  [Clock.ClockTypeId]: Clock.ClockTypeId,
-  unsafeCurrentTimeMillis: () => time.getTime(),
-  currentTimeMillis: Effect.sync(() => time.getTime()),
-  unsafeCurrentTimeNanos: () => BigInt(time.getTime()) * 1_000_000n,
-  currentTimeNanos: Effect.sync(() => BigInt(time.getTime()) * 1_000_000n),
-  sleep: () => Effect.void,
-})
-
 const read = async <A, E>(program: Effect.Effect<A, E, Db | ImportConfig>) => {
   const exit = await Effect.runPromiseExit(
     program.pipe(
-      Effect.withClock(at(NOW)),
+      Effect.provideService(Clock.Clock, fixedClock(NOW.getTime())),
       Effect.provide(
         Layer.merge(DbLive, Layer.succeed(ImportConfig, importSettings))
       )

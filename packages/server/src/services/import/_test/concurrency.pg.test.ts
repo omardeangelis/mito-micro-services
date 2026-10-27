@@ -7,6 +7,7 @@ import { classifyRows } from "@mito/domain/import/classify"
 import { groupRows, lookupKeys } from "@mito/domain/import/group"
 import { planRows } from "@mito/domain/import/plan"
 import { waveCells } from "@mito/domain/import/_test/cells"
+import { fixedClock } from "../../analytics/_test/clock"
 import { DbLive, transaction } from "../../../effect/db"
 import { deactivateOperator } from "../../operator/deactivate"
 import { applyImport } from "../apply"
@@ -294,9 +295,8 @@ describe.skipIf(!hasTestDatabase)("lock e scadenza dell'import", () => {
     const start = Date.now()
     const deadline = start + 60_000
     let calls = 0
-    const clock = Clock.make()
     const steppingClock: Clock.Clock = {
-      ...clock,
+      ...fixedClock(start),
       currentTimeMillis: Effect.sync(() =>
         calls++ === 0 ? start : deadline - 1_500
       ),
@@ -313,11 +313,14 @@ describe.skipIf(!hasTestDatabase)("lock e scadenza dell'import", () => {
             now: NOW,
             deadline,
           })
-        ).pipe(Effect.withClock(steppingClock), Effect.provide(layer))
+        ).pipe(
+          Effect.provideService(Clock.Clock, steppingClock),
+          Effect.provide(layer)
+        )
       )
 
       expect(Exit.isFailure(exit) && exit.cause).toMatchObject({
-        error: { _tag: "DbError", code: "57014" },
+        reasons: [{ error: { _tag: "DbError", code: "57014" } }],
       })
       expect(Date.now() - start).toBeLessThan(20_000)
     } finally {

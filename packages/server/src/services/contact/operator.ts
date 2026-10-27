@@ -1,4 +1,4 @@
-import { Effect, Either } from "effect"
+import { Effect, Result } from "effect"
 import { and, eq, isNull } from "drizzle-orm"
 import { operators } from "@mito/db/schema/operators"
 import { users } from "@mito/db/schema/users"
@@ -47,13 +47,13 @@ export const findWorkingOperator = (
 export const lockWorkingOperator = (
   operatorId: number
 ): Effect.Effect<
-  Either.Either<{ id: number }, OperatorNotFound>,
+  Result.Result<{ id: number }, OperatorNotFound>,
   DbError,
   Db | Tx
 > =>
   findWorkingOperator(operatorId).pipe(
-    Effect.map(Either.right),
+    Effect.map(Result.succeed),
     Effect.catchTag("OperatorNotFound", (error) =>
-      Effect.succeed(Either.left(error))
+      Effect.succeed(Result.fail(error))
     )
   )

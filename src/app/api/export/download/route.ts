@@ -1,4 +1,4 @@
-import { Cause, Effect, Either, Exit, Option } from "effect"
+import { Cause, Effect, Exit, Option, Result } from "effect"
 import { type NextRequest } from "next/server"
 import { getHTTPStatusCodeFromError } from "@trpc/server/http"
 import { getServerAuthSession } from "@mito/server/auth"
@@ -21,7 +21,7 @@ async function operatorCheck(userId: string) {
     resolveActor(userId).pipe(Effect.provide(ServerLive))
   )
   if (Exit.isSuccess(exit)) return null
-  const failure = Option.getOrUndefined(Cause.failureOption(exit.cause))
+  const failure = Option.getOrUndefined(Cause.findErrorOption(exit.cause))
   if (failure && failure._tag !== "DbError") {
     const error = operatorErrorToTrpc(failure)
     return new Response(error.message, {
@@ -49,15 +49,15 @@ async function handler(req: NextRequest) {
 
   const result = await runExportStorage(downloadExportFile(filePathName))
 
-  if (Either.isLeft(result)) {
-    if (result.left._tag === "ExportFileNotAllowed")
+  if (Result.isFailure(result)) {
+    if (result.failure._tag === "ExportFileNotAllowed")
       return new Response("File not found", { status: 404 })
-    console.error("Error downloading file:", result.left.message)
+    console.error("Error downloading file:", result.failure.message)
     return new Response("Error downloading file", { status: 500 })
   }
 
   // Copy into its own ArrayBuffer: that is the BodyInit Response accepts
-  const fileBuffer = new Uint8Array(result.right).buffer
+  const fileBuffer = new Uint8Array(result.success).buffer
 
   return new Response(fileBuffer, {
     headers: {
