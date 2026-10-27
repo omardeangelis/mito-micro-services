@@ -327,7 +327,7 @@ describe("runTrpc", () => {
 
 // it.live: serverLayer's logger writes to the console of the fiber, which
 // it.effect replaces with TestConsole
-describe("ServerLive", () => {
+describe("serverLayer", () => {
   it.live("manda Effect.logWarning su console.warn, non su console.log", () =>
     Effect.gen(function* () {
       const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined)

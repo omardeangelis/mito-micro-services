@@ -746,8 +746,13 @@ G0 ─┬─ T1 ─ T2 ─ T3 ─┬─ T4 ─┬─ T7 ─ T8 ══ PR 1 in de
   - il controllo di AC9: `git grep -nP "export const \w+Live\b" -- packages apps src` trova 8 righe su `dev` e nessuna sul branch, e ogni `Context.Service` ha un id che inizia con `@mito/`;
   - lo script di T1 esce con 0;
   - `pnpm api:build`.
-- **status**: In progress
+- **status**: Done
 - **log**: 2026-10-27, branch `claude/effect-style` da `dev` (`e7ead47`). Basi su `dev`: AC9 8 righe `*Live`, AC10 61 classi in 19 file, AC11 73 funzioni (una in meno della misura di T1, con il codice entrato in `dev` nel frattempo).
+  - Worker del modello più forte, `e03c9d9`: i 10 servizi con id `@mito/…` e i layer statici della tabella del §3, costruiti con `Servizio.of`; nessuna costante `<nome>Layer` in più (nessun import circolare). Per i layer statici, `importSettings` e `logOutcome` stanno prima delle classi che li leggono. Anche il servizio `Probe` di `db.db.test.ts` prende un id `@mito/`.
+  - Il mock di `src/test/setup.ts` restituisce una sottoclasse di `ErrorReporter` con il `layer` che scrive in `reportedErrors` (stesso id, quindi stesso servizio). Verificato: con la classe originale 3 test di `alert.db.test.ts` falliscono.
+  - Il `tdd_target` non esiste con quel nome: lo coprono i test di `runTrpc` in `db.db.test.ts` (`DbError` e *defect* → `INTERNAL_SERVER_ERROR` con il messaggio) e i 2 di `trpc.db.test.ts`, verdi con `serverLayer`.
+  - Quattro titoli di `describe` nominavano i layer vecchi (`ServerLive`, `SentryReporterLive`, `makeSupabaseStorageLayer`, `StorageLive`): rinominati dal supervisore, con 8 righe in `eccezioni-pr4.txt` (cambia solo il titolo della suite).
+  - Gate: `tsc` 0 errori; ESLint sui 63 file; suite 4415 verdi / 6 saltati; AC5 `ok, 31 test file(s) checked, 958 chain(s) compared, 8 exception(s) used`; AC9 0 righe `*Live` (8 su `dev`), ogni id `@mito/`; `api:build` e `api:smoke` verdi.
 - **files edited/created**:
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
@@ -774,7 +779,7 @@ G0 ─┬─ T1 ─ T2 ─ T3 ─┬─ T4 ─┬─ T7 ─ T8 ══ PR 1 in de
   - i test del punto 1 verdi prima e dopo;
   - tutti i test verdi, in particolare `*/_test/errors.db.test.ts`, `trpc.db.test.ts`, `cron.db.test.ts` e `routes.db.test.ts`;
   - lo script di T1 esce con 0, con i test nuovi nel file di eccezioni.
-- **status**: Planned
+- **status**: In progress
 - **log**:
 - **files edited/created**:
 - **backlog_item_id**: n/a

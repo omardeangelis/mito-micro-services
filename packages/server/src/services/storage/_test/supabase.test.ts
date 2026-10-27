@@ -69,7 +69,7 @@ afterEach(() => {
   vi.unstubAllEnvs()
 })
 
-describe("makeSupabaseStorageLayer", () => {
+describe("supabaseStorageLayer", () => {
   it.effect("opens the configured bucket", () =>
     Effect.gen(function* () {
       bucket.list.mockResolvedValue({ data: [], error: null })
@@ -478,7 +478,7 @@ describe("makeSupabaseStorageLayer", () => {
   })
 })
 
-describe("StorageLive", () => {
+describe("storageLayer", () => {
   it.effect("uses GCS and not Supabase when GCS_BUCKET is set", () =>
     Effect.gen(function* () {
       vi.stubEnv("GCS_BUCKET", "b")

@@ -36,7 +36,7 @@ afterEach(async () => {
   await Sentry.close()
 })
 
-describe("SentryReporterLive", () => {
+describe("ErrorReporter.layer", () => {
   it.effect("manda a Sentry l'errore della causa, con i dati del caso", () =>
     Effect.gen(function* () {
       yield* Effect.flatMap(ErrorReporter, (reporter) =>

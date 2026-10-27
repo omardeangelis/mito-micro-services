@@ -1,0 +1,13 @@
+# Eccezioni di AC5 per la PR 4 (scripts/check-assertions.mjs).
+# Una riga per catena o marcatore: `base:<file>:<riga>#<hash>` tolto, `<file>:<riga>#<hash>` aggiunto.
+#
+# T18: titoli di `describe` che nominano un layer rinominato (tabella del §3 del piano).
+# Cambia solo il titolo della suite: i test dentro e le loro asserzioni sono gli stessi.
+base:packages/server/src/effect/_test/db.db.test.ts:330#5469c519 describe("ServerLive")
+packages/server/src/effect/_test/db.db.test.ts:330#4ff05f6a describe("serverLayer")
+base:packages/server/src/effect/_test/errorReporter.test.ts:42#19d157ab describe("SentryReporterLive")
+packages/server/src/effect/_test/errorReporter.test.ts:39#9f80a1fe describe("ErrorReporter.layer")
+base:packages/server/src/services/storage/_test/supabase.test.ts:75#72977dd2 describe("makeSupabaseStorageLayer")
+packages/server/src/services/storage/_test/supabase.test.ts:72#f13965ff describe("supabaseStorageLayer")
+base:packages/server/src/services/storage/_test/supabase.test.ts:484#f7c8d3a4 describe("StorageLive")
+packages/server/src/services/storage/_test/supabase.test.ts:481#3151a7bb describe("storageLayer")
