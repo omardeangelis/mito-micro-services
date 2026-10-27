@@ -51,11 +51,13 @@ Dopo la verifica del piano (2026-10-27):
   - **`Cause` piatto.** Un `Cause` è `{ reasons: [...] }`, con le sole ragioni `Fail`, `Die` e `Interrupt`; spariscono `Sequential`, `Parallel` ed `Empty`. Le asserzioni che leggono la forma di v3 (`toMatchObject({ error })`, `cause: { _tag: "Fail", … }`, `cause._tag === "Fail"`) non possono restare uguali (AC5).
   - **La configurazione.** Il `ConfigProvider` di default fotografa `process.env` alla prima lettura e tratta `""` come assente. In v3 ogni lettura vedeva l'ambiente del momento.
   - **I *defect* con un messaggio.** `Effect.dieMessage` creava un `RuntimeException`; in v4 si scrive `Effect.die(new Error(msg))`, quindi il nome del *defect* in Sentry diventa `Error`.
+  - **Il cron `priority` in Sentry.** Con un body malformato (`src/app/api/cron/priority/route.ts`) Sentry riceve `UnknownError` invece di `UnknownException`: il titolo cambia, quindi l'errore apre un gruppo nuovo. La risposta resta 200.
   - **Valori che non sono più `Effect`.** `Either` (ora `Result`) e `Option` non si possono più dare a `yield*`: servono `Effect.fromResult` ed `Effect.fromOption`.
   - **Semantica.**
     - Un errore tipato che arriva insieme a un *defect* non lo catturano più `catchTag`, `catchIf` e `orElseSucceed`.
     - Un `Effect.provide` annidato riusa i layer già costruiti dal `provide` che lo contiene.
     - `Effect.mapError` mappa tutti gli errori tipati della causa, non solo il primo.
+    - Un errore tipato diventa un *defect* se intanto muore un finalizer o una fibra sorella: `Cause.findErrorOption` non lo vede più, e il bordo risponde 500 (o `INTERNAL`) invece del codice dell'errore. Oggi non succede: il codice di produzione non ha `ensuring`, `acquireRelease` né `addFinalizer`, e le `Effect.all` concorrenti falliscono solo con `DbError`. Il primo finalizer vicino a `runTrpc` o alle rotte va rivisto per questo. In auth il risultato sarebbe più severo, mai più permissivo.
   - **Pacchetto.** `effect` 4 è solo ESM (`"type": "module"`, nessun build CommonJS).
   - **Versioni.** `@effect/vitest` 4.0.6 vuole `vitest >=5 <6`. vitest 5 vuole Vite ≥ 6.4 come dipendenza del progetto e Node ≥ 22.12.
 - **Chi è coinvolto.** Omar scrive. Leonardo rivede: la PR 1 e la PR 4 toccano i file dell'auth (`auth.ts`, `betterAuth/*`, `services/auth/*`, `services/operator/deactivate.ts`), anche se senza cambiare il comportamento (regola 5 del §2 della roadmap). Operatori e admin non vedono niente.
