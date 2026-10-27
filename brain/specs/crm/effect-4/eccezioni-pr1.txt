@@ -2,6 +2,10 @@
 # <file>:<riga> = catena aggiunta (riga nel head); base:<file>:<riga> = catena tolta (riga nel base).
 # Rigenerato a ogni task che sposta le righe; le categorie ammesse sono solo T2 (test nuovi, AC6) e D14 (elenco chiuso del §6).
 
+base:apps/api/src/cron/_test/cron.db.test.ts:503 D14: cause { _tag: "Fail", error } -> cause { reasons: [{ _tag: "Fail", error }] }
+base:apps/api/src/cron/_test/cron.db.test.ts:532 D14: cause { _tag: "Fail", error } -> cause { reasons: [{ _tag: "Fail", error }] }
+apps/api/src/cron/_test/cron.db.test.ts:503 D14: cause { _tag: "Fail", error } -> cause { reasons: [{ _tag: "Fail", error }] }
+apps/api/src/cron/_test/cron.db.test.ts:534 D14: cause { _tag: "Fail", error } -> cause { reasons: [{ _tag: "Fail", error }] }
 base:packages/server/src/effect/_test/db.db.test.ts:87 D14: Exit.isInterrupted -> Exit.hasInterrupts (db.db.test.ts:87 di dev)
 packages/server/src/effect/_test/db.db.test.ts:92 D14: Exit.isInterrupted -> Exit.hasInterrupts (db.db.test.ts:87 di dev)
 packages/server/src/effect/_test/db.db.test.ts:171 T2, test nuovo (AC6)
@@ -12,4 +16,24 @@ packages/server/src/effect/_test/db.db.test.ts:278 T2, test nuovo (AC6)
 packages/server/src/effect/_test/db.db.test.ts:287 T2, test nuovo (AC6)
 packages/server/src/effect/_test/db.db.test.ts:288 T2, test nuovo (AC6)
 packages/server/src/effect/_test/db.db.test.ts:291 T2, test nuovo (AC6)
+base:packages/server/src/services/contact/_test/guard.db.test.ts:79 D14: { error } -> { reasons: [{ error }] }
+base:packages/server/src/services/contact/_test/guard.db.test.ts:105 D14: { error } -> { reasons: [{ error }] }
+base:packages/server/src/services/contact/_test/guard.db.test.ts:119 D14: { error } -> { reasons: [{ error }] }
+base:packages/server/src/services/contact/_test/guard.db.test.ts:175 D14: { error } -> { reasons: [{ error }] }
+packages/server/src/services/contact/_test/guard.db.test.ts:79 D14: { error } -> { reasons: [{ error }] }
+packages/server/src/services/contact/_test/guard.db.test.ts:107 D14: { error } -> { reasons: [{ error }] }
+packages/server/src/services/contact/_test/guard.db.test.ts:123 D14: { error } -> { reasons: [{ error }] }
+packages/server/src/services/contact/_test/guard.db.test.ts:179 D14: { error } -> { reasons: [{ error }] }
+base:packages/server/src/services/contact/_test/reassign.db.test.ts:225 D14: { error } -> { reasons: [{ error }] }
+packages/server/src/services/contact/_test/reassign.db.test.ts:225 D14: { error } -> { reasons: [{ error }] }
+base:packages/server/src/services/import/_test/apply.db.test.ts:201 D14: { error } -> { reasons: [{ error }] }
+base:packages/server/src/services/import/_test/apply.db.test.ts:233 D14: { error } -> { reasons: [{ error }] }
+base:packages/server/src/services/import/_test/apply.db.test.ts:284 D14: { error } -> { reasons: [{ error }] }
+packages/server/src/services/import/_test/apply.db.test.ts:202 D14: { error } -> { reasons: [{ error }] }
+packages/server/src/services/import/_test/apply.db.test.ts:238 D14: { error } -> { reasons: [{ error }] }
+packages/server/src/services/import/_test/apply.db.test.ts:289 D14: { error } -> { reasons: [{ error }] }
+base:packages/server/src/services/import/_test/concurrency.pg.test.ts:319 D14: { error } -> { reasons: [{ error }] }
+packages/server/src/services/import/_test/concurrency.pg.test.ts:322 D14: { error } -> { reasons: [{ error }] }
+base:packages/server/src/services/import/_test/queue.test.ts:172 D14: { error } -> { reasons: [{ error }] }
+packages/server/src/services/import/_test/queue.test.ts:173 D14: { error } -> { reasons: [{ error }] }
 packages/server/src/services/storage/_test/gcs.test.ts:478 T2, test nuovo (AC6)

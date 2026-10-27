@@ -376,9 +376,15 @@ G0 ─┬─ T1 ─ T2 ─ T3 ─┬─ T4 ─┬─ T7 ─ T8 ══ PR 1 in de
     - `storage/_test/supabase.test.ts:406-440` e `api/routers/import/_test/import.db.test.ts:284-300` (D15);
   - `git grep -n "ClockTypeId\|Clock.make\|fromMap\|withClock\|withConfigProvider" -- packages src` non trova niente;
   - lo script di T1 esce con 0, con le sole eccezioni di D14.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-10-27, worker sul modello del supervisore; review passata al primo giro.
+  - D15 con un helper nuovo, `packages/server/src/shared/currentEnv.ts` (`withCurrentEnv`): se il `ConfigProvider` è quello di default di v4, ne fornisce uno nuovo `fromEnv()` a ogni esecuzione; uno dato dal chiamante (i test) resta. Usato da `importQueueChoice`, `storageConfigFromEnv` e `layer.ts`. Le chiavi lette trattavano già `""` come assente in v3.
+  - RED → GREEN: con le letture semplici di `Config`, `import.db.test.ts` ("dove non c'è la coda l'import non parte: PRECONDITION_FAILED") e `supabase.test.ts` (`GCS_BUCKET` vuoto) falliscono, 2 su 48; con `withCurrentEnv`, 48/48.
+  - D12: gli orologi fissi sono quattro (`history.db`, `purge.db`, `run.db`, `run.pg`); `apply.db.test.ts:620` è un orologio a passi (`[0, 0, 2000]`), riscritto con `fixedClock` e le sue letture a passi, come quello di `concurrency.pg`.
+  - D14: le riscritture `{ error }` → `{ reasons: [{ error }] }` in `guard.db` (79, 105, 119, 175), `reassign.db` (225), `apply.db` (201, 233, 284), `concurrency.pg` (319), `queue.test` (172); `failureOf` di `run.db` e `run.pg` con una sola ragione `Fail`. `lockRule.db.test.ts` (`Cause.pretty` … `toContain`) intatto e verde.
+  - Nessuna correzione di semantica servita. Differenza latente, non esercitata dai test: in v4 un *defect* vince su `catchIf`/`catch` quando la causa ha anche un errore; in `betterAuth/run.ts` conta solo per cause con entrambi, che i suoi programmi non producono.
+  - Gate del supervisore sull'intera PR 1 dopo T4 e T5: `tsc` senza errori fuori da `.next/` (tipi generati da una build vecchia, ignorati da git); la suite intera con Postgres: 312 file, 4413 verdi e 6 saltati (i 4408 di prima più i 5 di T2), exit 0; lo script con `eccezioni-pr1.txt` (35 eccezioni: T2 e D14) exit 0.
+- **files edited/created**: `packages/server/src/{betterAuth,services/{auth,contact,cron,customer,export,import,storage}}/**`, `packages/server/src/shared/currentEnv.ts` (nuovo), `src/app/api/export/download/route.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -404,9 +410,12 @@ G0 ─┬─ T1 ─ T2 ─ T3 ─┬─ T4 ─┬─ T7 ─ T8 ══ PR 1 in de
   - verdi `apps/api/**/_test`, `packages/db/src/_test` (pg) e `src/app/api/cron/**/_test`;
   - `pnpm api:build`;
   - lo script di T1 esce con 0, con le sole eccezioni di D14.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-10-27, worker sonnet; review passata al primo giro.
+  - Solo rinomi: `CronAuth`, `CronReport`, `ImportAuth` in `Context.Service` con lo stesso id; `jobs.ts` con `Effect.result`/`Result.isFailure`/`.success`, `Effect.tapCause`, `Duration.Input`; `report.ts` con `Effect.andThen` ed `Effect.catch`; `Cause.findErrorOption` nelle rotte; `Effect.tapCause` nei cron di `src`. `packages/db/src/migrate.ts`, `apps/api/src/migrate.ts` e il seed dei cron non hanno avuto bisogno di modifiche.
+  - RED: `cron.db.test.ts` non si caricava su v4 (`Context.Tag is not a function`); GREEN 28/28 con le due riscritture D14 (505, 534).
+  - `apps/api` + cron di `src`: 18 file, 253 test verdi; `packages/db` (pg) 5/5; `pnpm api:build` ok.
+- **files edited/created**: `apps/api/src/{cron,import}/**`, `src/app/api/cron/{alert,priority}/route.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a

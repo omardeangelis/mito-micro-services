@@ -37,6 +37,9 @@
 - **ESLint nel worktree** carica anche il `.eslintrc.cjs` della checkout principale (due `eslint-plugin-prettier`). Si controlla con `--no-eslintrc -c .eslintrc.cjs`; il gate vero è la CI.
 - **Le righe del file di eccezioni si spostano** con ogni task che tocca i file di test. Il supervisore lo rigenera dopo ogni task dall'uscita dello script, con regole che ammettono solo le categorie T2 e D14 e lasciano scoperta ogni altra catena.
 
+- **D15 vive in un helper** (`packages/server/src/shared/currentEnv.ts`): riconosce il provider di default di v4 per identità e ne crea uno nuovo a ogni esecuzione. Se una versione futura di `effect` cambiasse come il default viene esposto, il confronto smetterebbe di valere senza errori: lo coprono i due test di D15 (`import.db.test.ts:284-300`, `supabase.test.ts:406-440`).
+- **OQ1, differenza latente:** in v4 un *defect* vince su `catchIf`/`catch` quando la causa ha anche un errore tipato. Nessun test la esercita, e nei programmi di oggi (`betterAuth/run.ts`) le due cose non arrivano insieme.
+
 ## Sanity Checks
 
 | Check | Result | Notes |
@@ -44,6 +47,9 @@
 | RED di T1 (`t1-harness.sh` nello scratchpad, 10 casi, 11 controlli) prima dello script | 0/11 | Fallisce perché lo script non c'è |
 | `t1-harness.sh` con lo script (T1) | 11/11 | Rifatto dal supervisore |
 | `check-assertions.mjs gen-wrappers origin/dev` | 74 | Con `query` e `lockCustomer` |
+| PR 1, `tsc --noEmit` dopo T3–T5 | 0 errori fuori da `.next/` | `.next/types` è generato da una build vecchia e ignorato da git |
+| PR 1, `pnpm run test --run` con `TEST_DATABASE_URL` | 312 file, 4413 verdi, 6 saltati | I 4408 di `dev` più i 5 di T2 |
+| PR 1, `check-assertions.mjs assertions origin/dev HEAD --exceptions eccezioni-pr1.txt` | exit 0, 35 eccezioni | Solo T2 e D14 |
 
 ## Acceptance Criteria Status
 
