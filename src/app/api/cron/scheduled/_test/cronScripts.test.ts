@@ -45,7 +45,7 @@ const SCRIPTS = {
 
 /** Runs the script, which runs on import, against a route that answers `response`. */
 async function runScript(script: keyof typeof SCRIPTS, response: Response) {
-  const fetch = vi.fn<[], Promise<Response>>().mockResolvedValue(response)
+  const fetch = vi.fn<() => Promise<Response>>().mockResolvedValue(response)
   vi.stubGlobal("fetch", fetch)
   vi.resetModules()
   await SCRIPTS[script].run()

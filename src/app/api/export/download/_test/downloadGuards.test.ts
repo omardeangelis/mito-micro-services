@@ -21,7 +21,7 @@ import { GET, POST } from "../route"
 // bucket, and the bytes of a file the storage gives as a view on a larger
 // buffer. The bucket is one in-memory store, with `download` spied on
 const storage = vi.hoisted(() => ({
-  download: vi.fn<[string], ReturnType<StorageService["download"]>>(),
+  download: vi.fn<(key: string) => ReturnType<StorageService["download"]>>(),
   memory: undefined as StorageService | undefined,
 }))
 

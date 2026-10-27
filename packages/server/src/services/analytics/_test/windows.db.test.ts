@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { beforeAll, beforeEach, describe, expect, it } from "vitest"
 import { type Actor } from "@mito/domain/contact/permissions"
 import { migrateUpTo, resetDb } from "@/test/db"

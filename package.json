@@ -163,7 +163,8 @@
     "tsx": "^4.23.15",
     "turbo": "2.11.7",
     "typescript": "^5.9.3",
-    "vitest": "^1.6.1"
+    "vite": "^7.3.7",
+    "vitest": "^5.0.5"
   },
   "ct3aMetadata": {
     "initVersion": "7.28.0"
