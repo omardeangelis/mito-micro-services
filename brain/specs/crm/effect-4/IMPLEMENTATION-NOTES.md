@@ -66,7 +66,7 @@
 | AC14 | Met per le PR 1 e 2 | CI verde su #113 e #114 |
 | AC4 | Met (PR 3, T12) | `@effect/vitest` 4.0.6 |
 | AC8 | Met (PR 3) dopo le correzioni della revisione | I bordi e i due orologi a passi nel log di T17 e nel §8; `queue.test.ts` e il budget di `processDueAlerts` in `it.live` |
-| AC5 (PR 3) | Met nei fatti, da firmare | 218 eccezioni, tutte `await` → `yield*` dello stesso valore (con `provideServer`/`Effect.exit`, `Fiber.join`, la tabella `writers`), più il test nuovo e un `.resolves`. La categoria aspetta Omar |
+| AC5 (PR 3) | Met | 218 eccezioni, tutte `await` → `yield*` dello stesso valore (con `provideServer`/`Effect.exit`, `Fiber.join`, la tabella `writers`), più il test nuovo e un `.resolves`. Categoria firmata da Omar (D17) |
 | AC9–AC11 | Non iniziati | PR 4 |
 | AC15 | Non verificato | Staging, dopo il merge della #114 |
 
@@ -82,7 +82,7 @@
 
 - **PR 1** (in `dev`, [#114](https://github.com/omardeangelis/mito-micro-services/pull/114)): la prova nel browser su `mito_local` e la revisione di Leonardo (D4) sui file dell'auth, rinviate; AC15 su staging.
 - **PR 2:** in `dev` ([#113](https://github.com/omardeangelis/mito-micro-services/pull/113)).
-- **PR 3** (`claude/effect-vitest`): T12–T16 fatti, T17 quasi: manca la decisione di Omar su AC5, poi la PR e la CI.
+- **PR 3** (`claude/effect-vitest`): T12–T16 fatti; T17: AC5 firmato (D17), restano la PR, la CI e il merge.
 - **PR 4:** dopo il merge della PR 3 in `dev` (T18 dipende da T17).
 
 ## PR 2 – vitest 5
@@ -103,7 +103,7 @@
 
 - **Esecuzione:** T12 su un worker del modello più forte nel worktree della sessione; T13–T16 in parallelo su quattro worker del modello bilanciato, ognuno nel suo worktree e branch, uniti dal supervisore. Il worker di T16 aveva riportato indietro `PLAN.md` e queste note nel suo commit: nel merge sono rimasti quelli del branch.
 - **Deviazioni:**
-  - AC5: oltre all'equivalenza `await X` = `yield* Effect.promise(() => X)`, le eccezioni ammettono `expect(await X)` → `expect(yield* X)` quando l'helper o il programma X diventa un Effect con lo stesso valore. Senza, gli helper dei test avrebbero tenuto runner a Promise, contro AC8. Decisa dal supervisore durante T13–T16: aspetta la firma di Omar.
+  - AC5: oltre all'equivalenza `await X` = `yield* Effect.promise(() => X)`, le eccezioni ammettono `expect(await X)` → `expect(yield* X)` quando l'helper o il programma X diventa un Effect con lo stesso valore. Senza, gli helper dei test avrebbero tenuto runner a Promise, contro AC8. Proposta dal supervisore durante T13–T16, firmata da Omar dopo la revisione (D17).
   - AC8: il secondo orologio a passi, in `apply.db.test.ts`, c'era già su `dev` e la SPEC non lo nominava.
   - `runServer` resta per una cella di una tabella `each`, che lo script confronta e che deve restituire una Promise come l'altra riga.
 - **Sorprese:** `it.effect.each` passa la riga intera come un argomento solo; le scadenze lette dal `Clock` vogliono `TestClock.setTime(Date.now())`, se no `statement_timeout` riceve un valore enorme; `TestClock.setTime` fallisce sotto `it.live`; un `TestClock` è condiviso dalle fibre di un test (in `run.pg.test.ts` va riportato indietro prima di liberare il lock).
@@ -115,3 +115,4 @@
 | 2026-10-27 | G0: SPEC approvata; D8, D9, D14 confermate | `SPEC.md` `approved`, OQ2 chiusa; `PLAN.md` aggiornato (commit `55d6fa2`) |
 | 2026-10-27 | AC3: la forma dei titoli `each` non conta | AC3 corretto nella SPEC, con una riga nel registro delle decisioni; AC3 Met per la PR 2 |
 | 2026-10-27 | "Mergiale e fai partire 3 e 4" | #113 e #114 in `dev` a CI verde, senza la prova su `mito_local` e senza la revisione di Leonardo chieste da GA1. I punti aperti della revisione della PR 1 (script, test di `withCurrentEnv`, note nella SPEC) entrano nella PR 3, prima della conversione |
+| 2026-10-27 | "Accetto i nuovi AC5 rules" | Categoria `expect(await X)` → `expect(yield* X)` firmata: D17 nel piano, AC5 e la riga del registro nella SPEC; PR 3 aperta verso `dev` |

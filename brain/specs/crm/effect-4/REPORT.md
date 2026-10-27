@@ -93,6 +93,8 @@ La conversione è sana: 9 passate su 11 danno SHIP, e i mutanti nel codice di pr
 5. **Rifare** `node scripts/check-assertions.mjs assertions origin/dev HEAD --exceptions brain/specs/crm/effect-4/eccezioni-pr3.txt` e la suite intera con `TEST_DATABASE_URL`.
 6. **La CI della PR** verde, poi il merge in `dev`.
 
+**Stato del checklist (2026-10-27):** 1 firmato da Omar (D17 nel piano, AC5 nella SPEC); 2–5 fatti (`b4b76b4`, `59280de`, `e44d4b1`: mutanti di v6 uccisi, harness 41/41, script `ok` con 218 eccezioni, suite 4415 verdi); 6 sulla PR.
+
 ### Acceptance criteria check
 
 | Criterion | Met / Unmet / Blocked | Notes |

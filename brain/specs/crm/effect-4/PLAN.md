@@ -136,6 +136,7 @@ I test della PR 3 fanno da guardia. Cambiano solo nei nomi importati, mai nelle 
 | D14 | Eccezione chiusa ad AC5 per le asserzioni che leggono la forma di `Cause` ed `Exit` di v3 (elenco nel §6) | Omar, 2026-10-27 (G0), dopo la verifica del piano (OQ2 della SPEC, chiusa) |
 | D15 | `Config` letto con un `ConfigProvider.fromEnv()` creato a ogni lettura in `storageLayer` e `importQueueChoice`; nei test, `ConfigProvider.fromEnv({ env })` al posto di `fromMap` | Tiene il comportamento di v3; `fromUnknown` con un oggetto annidato dà `None` (prova della verifica) |
 | D16 | vitest 5 con `pool: "threads"` (fuori dai fusi), `fakeTimers.toFake` e `exclude` di v1; `clearMocks` al default `true` | I default cambiati, misurati con prove su vitest 1.6 e 5 |
+| D17 | AC5, nella PR 3: `expect(await X)` → `expect(yield* X)` quando l'helper o il programma X diventa un `Effect` con lo stesso valore (anche `runServer(P)` → `P.pipe(provideServer, Effect.exit)` e Promise → `Fiber.join`), annotato in `eccezioni-pr3.txt` | Omar, 2026-10-27, dopo la revisione della PR 3: senza, gli helper dei test terrebbero runner a Promise, contro AC8 |
 
 ## 5. Assunzioni e vincoli
 
@@ -717,7 +718,7 @@ G0 ─┬─ T1 ─ T2 ─ T3 ─┬─ T4 ─┬─ T7 ─ T8 ══ PR 1 in de
   - Suite intera su `dev` e sul branch, reporter JSON: stessi nomi e stati in ogni file; in più solo i 2 test di `currentEnv.test.ts` (4415 verdi, 6 saltati).
   - **Debito (AC13):** nessuno nuovo. Il §8 della roadmap elenca come scelte i bordi a Promise, la cella `each` con `runServer`, i due `runSync` nelle factory di `vi.mock` e i due orologi a passi.
   - `adversarial-review` (round PR 3 in `REPORT.md`): **DO NOT SHIP**, 9 passate su 11 SHIP; i mutanti nel codice di produzione (43 di v4, 21 di v5) fanno fallire gli stessi test su `dev` e sul branch. Corretti dopo la revisione: `queue.test.ts` (fibre staccate) e i due test del budget di `processDueAlerts` in `it.live`, con i mutanti di v6 ora uccisi; lo script confronta per valore le tabelle `each` e le condizioni passate per nome (harness 41/41; la tabella `writers` di `operatorLock.pg` ha la sua eccezione); `AGENTS.md`, il §8, il conteggio di AC8, tre import vuoti. Lo script dà `ok, 55 test file(s) checked, 1620 chain(s) compared, 218 exception(s) used`; suite 4415 verdi.
-  - Da fare: la decisione di Omar sulla categoria di AC5 `expect(await X)` → `expect(yield* X)` (con `provideServer`/`Effect.exit` e `Fiber.join`), poi la PR verso `dev` e la CI.
+  - Omar firma la categoria di AC5 `expect(await X)` → `expect(yield* X)` (D17): AC5 nella SPEC la elenca. I punti 1–5 del checklist della revisione sono chiusi; restano la CI della PR e il merge.
 - **files edited/created**:
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
@@ -888,7 +889,7 @@ G0 ─┬─ T1 ─ T2 ─ T3 ─┬─ T4 ─┬─ T7 ─ T8 ══ PR 1 in de
 
 - **L'interfaccia pubblica.** Le procedure via `createTestCaller`, i servizi via i loro programmi, le rotte via HTTP, come oggi. Nessun test nuovo chiama un dettaglio interno di Effect.
 - **Il rosso, in un refactor.** I test di T2 e T19 si scrivono sul codice di oggi e devono essere verdi su `dev`. Il rosso che li rende utili sono i mutanti di T2, uccisi prima del passaggio. Per ogni altro task, il `tdd_target` è un test esistente che deve restare verde con il codice nuovo. Durante il lavoro è rosso: le API tolte non compilano, la fibra non vede il contesto, il provider di default non vede l'ambiente cambiato.
-- **AC5, con lo script di T1.** Nessuna asserzione cambia in nessuna PR. Le uniche eccezioni sono i test nuovi (T2, T19), l'elenco chiuso di D14 nella PR 1 e, nella PR 3, i `resolves`/`rejects` annotati. L'equivalenza `await X` = `yield* Effect.promise(() => X)` la applica lo script. Se un'asserzione va cambiata per altri motivi, ci si ferma e si chiede.
+- **AC5, con lo script di T1.** Nessuna asserzione cambia in nessuna PR. Le uniche eccezioni sono i test nuovi (T2, T19), l'elenco chiuso di D14 nella PR 1 e, nella PR 3, i `resolves`/`rejects` annotati. L'equivalenza `await X` = `yield* Effect.promise(() => X)` la applica lo script. Nella PR 3 vale anche D17: `expect(await X)` → `expect(yield* X)` quando X diventa un `Effect` con lo stesso valore, annotato riga per riga. Se un'asserzione va cambiata per altri motivi, ci si ferma e si chiede.
 - **Lo stato verde fra un task e l'altro della PR 1.** `tsc` sull'intero repo è rosso finché T4 e T5 non sono fatti. Ogni task controlla:
   - `tsc` filtrato sui suoi file;
   - i test delle sue cartelle, che girano anche se altri file non compilano, perché vitest traspila senza controllare i tipi.
