@@ -1,6 +1,8 @@
-import { beforeAll, beforeEach, describe, expect, test } from "vitest"
+import { beforeAll, beforeEach } from "vitest"
+import { describe, expect, it } from "@effect/vitest"
 import { asc, eq } from "drizzle-orm"
 import { Clock, Effect, Exit, Layer } from "effect"
+import { TestClock } from "effect/testing"
 import { chat } from "@mito/db/schema/chat"
 import { customers } from "@mito/db/schema/customers"
 import { practices } from "@mito/db/schema/pratiche"
@@ -10,7 +12,6 @@ import { type Cells, classifyRows } from "@mito/domain/import/classify"
 import { groupRows, lookupKeys } from "@mito/domain/import/group"
 import { planRows } from "@mito/domain/import/plan"
 import { waveCells } from "@mito/domain/import/_test/cells"
-import { fixedClock } from "../../analytics/_test/clock"
 import { type Db, DbLive, transaction } from "../../../effect/db"
 import { applyImport } from "../apply"
 import { ImportConfig, importSettings } from "../config"
@@ -52,53 +53,56 @@ const withDb = <A, E>(
   program: Effect.Effect<A, E, Db | ImportConfig>,
   batchSize = importSettings.batchSize
 ) =>
-  Effect.runPromiseExit(
-    program.pipe(
-      Effect.provide(
-        Layer.merge(
-          DbLive,
-          Layer.succeed(ImportConfig, { ...importSettings, batchSize })
-        )
+  program.pipe(
+    Effect.provide(
+      Layer.merge(
+        DbLive,
+        Layer.succeed(ImportConfig, { ...importSettings, batchSize })
       )
-    )
+    ),
+    Effect.exit
   )
 
 /** The preview of the rows on the CRM as it is now, as the browser makes it. */
-const preview = async (rows: Cells[]) => {
-  const classified = classifyRows("wave", numbered(rows), NOW, FILE_NAME)
-  const crm = await withDb(lookupExisting(lookupKeys(groupRows(classified))))
-  if (Exit.isFailure(crm)) throw new Error("lookup failed")
-  return planRows(classified, crm.value)
-}
+const preview = (rows: Cells[]) =>
+  Effect.gen(function* () {
+    const classified = classifyRows("wave", numbered(rows), NOW, FILE_NAME)
+    const crm = yield* withDb(lookupExisting(lookupKeys(groupRows(classified))))
+    if (Exit.isFailure(crm)) throw new Error("lookup failed")
+    return planRows(classified, crm.value)
+  })
 
 /** The import of the rows, confirmed with the expected rows of `confirmed`. */
-const importRows = async (
+const importRows = (
   rows: Cells[],
   {
     confirmed,
     batchSize,
     deadline = Date.now() + 60_000,
   }: {
-    confirmed?: Awaited<ReturnType<typeof preview>>
+    confirmed?: Effect.Success<ReturnType<typeof preview>>
     batchSize?: number
     deadline?: number
   } = {}
-) => {
-  const plan = confirmed ?? (await preview(rows))
-  return withDb(
-    transaction(
-      applyImport({
-        format: "wave",
-        fileName: FILE_NAME,
-        rows: numbered(rows),
-        expected: plan.expected,
-        now: NOW,
-        deadline,
-      })
-    ),
-    batchSize
-  )
-}
+) =>
+  Effect.gen(function* () {
+    const plan = confirmed ?? (yield* preview(rows))
+    // The deadline is on the wall clock, the statements' timeout comes from it
+    yield* TestClock.setTime(Date.now())
+    return yield* withDb(
+      transaction(
+        applyImport({
+          format: "wave",
+          fileName: FILE_NAME,
+          rows: numbered(rows),
+          expected: plan.expected,
+          now: NOW,
+          deadline,
+        })
+      ),
+      batchSize
+    )
+  })
 
 const value = <A, E>(exit: Exit.Exit<A, E>) => {
   if (Exit.isFailure(exit)) throw new Error(`failed: ${String(exit.cause)}`)
@@ -149,74 +153,103 @@ const linksOf = (customerId: string) =>
     .orderBy(asc(customerToPratica.praticaId))
 
 describe("tutto o niente (AC19)", () => {
-  test("se la scrittura delle pratiche fallisce, i clienti nuovi del primo blocco non esistono e i clienti esistenti hanno i valori di prima", async () => {
-    await createCustomer({
-      id: "a",
-      tempID: "1",
-      fiscalCode: CF_A,
-      name: "Anna",
-      lastImportUpdate: BEFORE,
-    })
-    const rows = [
-      { "Codice Fiscale": CF_A, "Codice NDG": "1", "n° Pratica": "P1" },
-      { "Codice Fiscale": CF_B, "Codice NDG": "2", "n° Pratica": "P2" },
-      { "Codice Fiscale": CF_C, "Codice NDG": "3", "n° Pratica": "P3" },
-    ]
-    const confirmed = await preview(rows)
-    const before = await snapshot()
-    await failNextInsertInto(practices)
+  it.effect(
+    "se la scrittura delle pratiche fallisce, i clienti nuovi del primo blocco non esistono e i clienti esistenti hanno i valori di prima",
+    () =>
+      Effect.gen(function* () {
+        yield* Effect.promise(() =>
+          createCustomer({
+            id: "a",
+            tempID: "1",
+            fiscalCode: CF_A,
+            name: "Anna",
+            lastImportUpdate: BEFORE,
+          })
+        )
+        const rows = [
+          { "Codice Fiscale": CF_A, "Codice NDG": "1", "n° Pratica": "P1" },
+          { "Codice Fiscale": CF_B, "Codice NDG": "2", "n° Pratica": "P2" },
+          { "Codice Fiscale": CF_C, "Codice NDG": "3", "n° Pratica": "P3" },
+        ]
+        const confirmed = yield* preview(rows)
+        const before = yield* Effect.promise(() => snapshot())
+        yield* Effect.promise(() => failNextInsertInto(practices))
 
-    const exit = await importRows(rows, { confirmed, batchSize: 1 })
+        const exit = yield* importRows(rows, { confirmed, batchSize: 1 })
 
-    expect(failureTag(exit)).toBe("DbError")
-    expect(await snapshot()).toEqual(before)
-  })
+        expect(failureTag(exit)).toBe("DbError")
+        expect(yield* Effect.promise(() => snapshot())).toEqual(before)
+      })
+  )
 
-  test("un errore al secondo blocco dei clienti nuovi non lascia nulla", async () => {
-    const rows = [
-      { "Codice Fiscale": CF_B, "Codice NDG": "2", "n° Pratica": "P2" },
-      { "Codice Fiscale": CF_C, "Codice NDG": "3", "n° Pratica": "P3" },
-    ]
-    const confirmed = await preview(rows)
-    await failNextInsertInto(customers, { temp_id: "3" })
+  it.effect(
+    "un errore al secondo blocco dei clienti nuovi non lascia nulla",
+    () =>
+      Effect.gen(function* () {
+        const rows = [
+          { "Codice Fiscale": CF_B, "Codice NDG": "2", "n° Pratica": "P2" },
+          { "Codice Fiscale": CF_C, "Codice NDG": "3", "n° Pratica": "P3" },
+        ]
+        const confirmed = yield* preview(rows)
+        yield* Effect.promise(() =>
+          failNextInsertInto(customers, { temp_id: "3" })
+        )
 
-    const exit = await importRows(rows, { confirmed, batchSize: 1 })
+        const exit = yield* importRows(rows, { confirmed, batchSize: 1 })
 
-    expect(failureTag(exit)).toBe("DbError")
-    expect(await snapshot()).toEqual([[], [], [], [], [], []])
-  })
+        expect(failureTag(exit)).toBe("DbError")
+        expect(yield* Effect.promise(() => snapshot())).toEqual([
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+        ])
+      })
+  )
 })
 
 describe("righe attese che non si salvano più (AC19b, D10)", () => {
-  test("un cliente con il codice di una riga creato dopo l'anteprima: la riga fallisce l'import e nulla è scritto", async () => {
-    const rows = [
-      { "Codice Fiscale": CF_A, "Codice NDG": "1", "n° Pratica": "P1" },
-      { "Codice Fiscale": CF_B, "Codice NDG": "2", "n° Pratica": "P2" },
-    ]
-    const confirmed = await preview(rows)
-    await createCustomer({ id: "altro", tempID: "2", fiscalCode: CF_C })
-    const before = await snapshot()
+  it.effect(
+    "un cliente con il codice di una riga creato dopo l'anteprima: la riga fallisce l'import e nulla è scritto",
+    () =>
+      Effect.gen(function* () {
+        const rows = [
+          { "Codice Fiscale": CF_A, "Codice NDG": "1", "n° Pratica": "P1" },
+          { "Codice Fiscale": CF_B, "Codice NDG": "2", "n° Pratica": "P2" },
+        ]
+        const confirmed = yield* preview(rows)
+        yield* Effect.promise(() =>
+          createCustomer({ id: "altro", tempID: "2", fiscalCode: CF_C })
+        )
+        const before = yield* Effect.promise(() => snapshot())
 
-    const exit = await importRows(rows, { confirmed })
+        const exit = yield* importRows(rows, { confirmed })
 
-    expect(Exit.isFailure(exit) && exit.cause).toMatchObject({
-      reasons: [
-        {
-          error: {
-            _tag: "ImportRowRejected",
-            row: 3,
-            rule: "Codice cliente già usato da un altro cliente",
-          },
-        },
-      ],
-    })
-    expect(await snapshot()).toEqual(before)
-  })
+        expect(Exit.isFailure(exit) && exit.cause).toMatchObject({
+          reasons: [
+            {
+              error: {
+                _tag: "ImportRowRejected",
+                row: 3,
+                rule: "Codice cliente già usato da un altro cliente",
+              },
+            },
+          ],
+        })
+        expect(yield* Effect.promise(() => snapshot())).toEqual(before)
+      })
+  )
 
-  test("un codice cliente preso mentre l'import scrive: fallisce sulla riga del cliente", async () => {
-    // Another transaction's customer, committed between the read and the
-    // insert of the import: a trigger stands in for it
-    await testClient.exec(`
+  it.effect(
+    "un codice cliente preso mentre l'import scrive: fallisce sulla riga del cliente",
+    () =>
+      Effect.gen(function* () {
+        // Another transaction's customer, committed between the read and the
+        // insert of the import: a trigger stands in for it
+        yield* Effect.promise(() =>
+          testClient.exec(`
       CREATE SCHEMA IF NOT EXISTS test_failpoints;
       CREATE FUNCTION test_failpoints.take_code() RETURNS trigger LANGUAGE plpgsql AS $$
       BEGIN
@@ -229,433 +262,539 @@ describe("righe attese che non si salvano più (AC19b, D10)", () => {
       CREATE TRIGGER take_code BEFORE INSERT ON "mito-deutsche_customers"
         FOR EACH ROW EXECUTE FUNCTION test_failpoints.take_code();
     `)
+        )
 
-    const exit = await importRows([
-      { "Codice Fiscale": CF_B, "Codice NDG": "2", "n° Pratica": "P2" },
-      { "Codice Fiscale": CF_C, "Codice NDG": "3", "n° Pratica": "P3" },
-    ])
+        const exit = yield* importRows([
+          { "Codice Fiscale": CF_B, "Codice NDG": "2", "n° Pratica": "P2" },
+          { "Codice Fiscale": CF_C, "Codice NDG": "3", "n° Pratica": "P3" },
+        ])
 
-    expect(Exit.isFailure(exit) && exit.cause).toMatchObject({
-      reasons: [{ error: { _tag: "ImportRowRejected", row: 3 } }],
-    })
-    expect(await testDb.select().from(customers)).toEqual([])
-  })
-
-  test("una riga attesa che il file non ha", async () => {
-    const exit = await withDb(
-      transaction(
-        applyImport({
-          format: "wave",
-          fileName: FILE_NAME,
-          rows: numbered([{}]),
-          expected: [2, 9],
-          now: NOW,
-          deadline: Date.now() + 60_000,
+        expect(Exit.isFailure(exit) && exit.cause).toMatchObject({
+          reasons: [{ error: { _tag: "ImportRowRejected", row: 3 } }],
         })
+        expect(
+          yield* Effect.promise(() => testDb.select().from(customers))
+        ).toEqual([])
+      })
+  )
+
+  it.effect("una riga attesa che il file non ha", () =>
+    Effect.gen(function* () {
+      yield* TestClock.setTime(Date.now())
+      const exit = yield* withDb(
+        transaction(
+          applyImport({
+            format: "wave",
+            fileName: FILE_NAME,
+            rows: numbered([{}]),
+            expected: [2, 9],
+            now: NOW,
+            deadline: Date.now() + 60_000,
+          })
+        )
       )
-    )
 
-    expect(failureTag(exit)).toBe("ImportInputInvalid")
-  })
-
-  test("una riga che l'anteprima ha scartato non si scrive, anche se ora sarebbe importabile", async () => {
-    const rows = [
-      { "Codice Fiscale": CF_A, "Codice NDG": "1", "n° Pratica": "P1" },
-      { "Codice Fiscale": CF_B, "Codice NDG": "2", "n° Pratica": "P2" },
-    ]
-    const confirmed = { ...(await preview(rows)), expected: [2] }
-
-    const counts = value(await importRows(rows, { confirmed }))
-
-    expect(counts).toMatchObject({
-      rowsTotal: 2,
-      rowsDiscarded: 1,
-      customersCreated: 1,
+      expect(failureTag(exit)).toBe("ImportInputInvalid")
     })
-    expect(
-      (await testDb.select().from(customers)).map((c) => c.tempID)
-    ).toEqual(["1"])
-  })
+  )
 
-  test("righe che violano le regole mandate come attese: l'import fallisce e nulla è scritto (AC12)", async () => {
-    const rows = [
-      { "Codice Fiscale": CF_A, "Codice NDG": "1", "n° Pratica": "P1" },
-      { "Codice Fiscale": null, "Codice NDG": "2", "n° Pratica": "P2" },
-    ]
-    const confirmed = { ...(await preview(rows)), expected: [2, 3] }
+  it.effect(
+    "una riga che l'anteprima ha scartato non si scrive, anche se ora sarebbe importabile",
+    () =>
+      Effect.gen(function* () {
+        const rows = [
+          { "Codice Fiscale": CF_A, "Codice NDG": "1", "n° Pratica": "P1" },
+          { "Codice Fiscale": CF_B, "Codice NDG": "2", "n° Pratica": "P2" },
+        ]
+        const confirmed = { ...(yield* preview(rows)), expected: [2] }
 
-    const exit = await importRows(rows, { confirmed })
+        const counts = value(yield* importRows(rows, { confirmed }))
 
-    expect(Exit.isFailure(exit) && exit.cause).toMatchObject({
-      reasons: [
-        {
-          error: {
-            _tag: "ImportRowRejected",
-            row: 3,
-            rule: "Manca il codice fiscale o la partita IVA del cliente",
-          },
-        },
-      ],
-    })
-    expect(await testDb.select().from(customers)).toEqual([])
-  })
+        expect(counts).toMatchObject({
+          rowsTotal: 2,
+          rowsDiscarded: 1,
+          customersCreated: 1,
+        })
+        expect(
+          (yield* Effect.promise(() => testDb.select().from(customers))).map(
+            (c) => c.tempID
+          )
+        ).toEqual(["1"])
+      })
+  )
+
+  it.effect(
+    "righe che violano le regole mandate come attese: l'import fallisce e nulla è scritto (AC12)",
+    () =>
+      Effect.gen(function* () {
+        const rows = [
+          { "Codice Fiscale": CF_A, "Codice NDG": "1", "n° Pratica": "P1" },
+          { "Codice Fiscale": null, "Codice NDG": "2", "n° Pratica": "P2" },
+        ]
+        const confirmed = { ...(yield* preview(rows)), expected: [2, 3] }
+
+        const exit = yield* importRows(rows, { confirmed })
+
+        expect(Exit.isFailure(exit) && exit.cause).toMatchObject({
+          reasons: [
+            {
+              error: {
+                _tag: "ImportRowRejected",
+                row: 3,
+                rule: "Manca il codice fiscale o la partita IVA del cliente",
+              },
+            },
+          ],
+        })
+        expect(
+          yield* Effect.promise(() => testDb.select().from(customers))
+        ).toEqual([])
+      })
+  )
 })
 
 describe("che cosa scrive", () => {
-  test("i numeri scritti sono quelli dell'anteprima (AC23)", async () => {
-    const a = await createCustomer({ id: "a", tempID: "1", fiscalCode: CF_A })
-    await createPractice({ customerId: a.id, praticaId: "P1" })
-    const rows = [
-      { "Codice Fiscale": CF_A, "Codice NDG": "1", "n° Pratica": "P1" },
-      { "Codice Fiscale": CF_A, "Codice NDG": "1", "n° Pratica": "P2" },
-      { "Codice Fiscale": CF_B, "Codice NDG": "2", "n° Pratica": "P3" },
-      { "Codice Fiscale": CF_C, "Codice NDG": "3", "n° Pratica": null },
-      { "Codice NDG": null },
-    ]
-    const confirmed = await preview(rows)
-
-    const counts = value(await importRows(rows, { confirmed }))
-
-    expect(counts).toEqual({
-      rowsTotal: confirmed.counts.rows,
-      rowsDiscarded: confirmed.counts.discarded,
-      customersCreated: confirmed.counts.customersNew,
-      customersUpdated: confirmed.counts.customersToUpdate,
-      practicesCreated: confirmed.counts.practicesNew,
-      practicesUpdated: confirmed.counts.practicesToUpdate,
-      linksCreated: confirmed.counts.linksNew,
-    })
-    expect(counts).toEqual({
-      rowsTotal: 5,
-      rowsDiscarded: 1,
-      customersCreated: 2,
-      customersUpdated: 1,
-      practicesCreated: 2,
-      practicesUpdated: 1,
-      linksCreated: 2,
-    })
-  })
-
-  test("lo stesso file due volte: la seconda volta nessun nuovo e nessun doppione (AC24)", async () => {
-    const rows = [
-      { "Codice Fiscale": CF_A, "Codice NDG": "1", "n° Pratica": "P1" },
-      { "Codice Fiscale": CF_B, "Codice NDG": "2", "n° Pratica": "P2" },
-      {
-        "Codice Fiscale": CF_B,
-        "Codice NDG": "2",
-        "n° Pratica": "P1",
-        Garante: "SI",
-      },
-    ]
-    value(await importRows(rows))
-    const [first] = await snapshot()
-
-    const counts = value(await importRows(rows))
-
-    expect(counts).toMatchObject({
-      customersCreated: 0,
-      practicesCreated: 0,
-      linksCreated: 0,
-      customersUpdated: 2,
-      practicesUpdated: 2,
-    })
-    const [second, , links] = await snapshot()
-    expect(second.map((c) => c.id)).toEqual(first.map((c) => c.id))
-    expect(links).toHaveLength(3)
-  })
-
-  test("legami: un cliente esistente con una pratica nuova, un cliente con pratiche in punti diversi del file, il ruolo della riga (AC37)", async () => {
-    const a = await createCustomer({ id: "a", tempID: "1", fiscalCode: CF_A })
-    await createPractice({ customerId: a.id, praticaId: "P0" })
-
-    value(
-      await importRows([
+  it.effect("i numeri scritti sono quelli dell'anteprima (AC23)", () =>
+    Effect.gen(function* () {
+      const a = yield* Effect.promise(() =>
+        createCustomer({ id: "a", tempID: "1", fiscalCode: CF_A })
+      )
+      yield* Effect.promise(() =>
+        createPractice({ customerId: a.id, praticaId: "P1" })
+      )
+      const rows = [
         { "Codice Fiscale": CF_A, "Codice NDG": "1", "n° Pratica": "P1" },
-        { "Codice Fiscale": CF_B, "Codice NDG": "2", "n° Pratica": "P2" },
-        {
-          "Codice Fiscale": CF_A,
-          "Codice NDG": "1",
-          "n° Pratica": "P2",
-          Garante: "si",
-        },
-        {
-          "Codice Fiscale": CF_B,
-          "Codice NDG": "2",
-          "n° Pratica": "P3",
-          "Cliente Coobbligato": "SI",
-        },
-        {
-          "Codice Fiscale": CF_A,
-          "Codice NDG": "1",
-          "n° Pratica": "P0",
-          Garante: "SI",
-        },
-      ])
-    )
+        { "Codice Fiscale": CF_A, "Codice NDG": "1", "n° Pratica": "P2" },
+        { "Codice Fiscale": CF_B, "Codice NDG": "2", "n° Pratica": "P3" },
+        { "Codice Fiscale": CF_C, "Codice NDG": "3", "n° Pratica": null },
+        { "Codice NDG": null },
+      ]
+      const confirmed = yield* preview(rows)
 
-    expect(await linksOf("a")).toEqual([
-      // A link that exists keeps its role
-      { praticaId: "P0", role: "Intestatario" },
-      { praticaId: "P1", role: "Intestatario" },
-      { praticaId: "P2", role: "Garante" },
-    ])
-    expect(await linksOf((await customerByCode("2")).id)).toEqual([
-      { praticaId: "P2", role: "Intestatario" },
-      { praticaId: "P3", role: "Coobbligato" },
-    ])
-  })
+      const counts = value(yield* importRows(rows, { confirmed }))
 
-  test("un cliente nuovo: senza operatore, con la fonte del formato, id e hash di oggi (AC34)", async () => {
-    value(
-      await importRows([
-        { "Codice Fiscale": CF_B, "Codice NDG": "2", Nome: "LUIGI" },
-      ])
-    )
-
-    const created = await customerByCode("2")
-    expect(created).toMatchObject({
-      operatorId: null,
-      chatId: null,
-      source: "wave",
-      fileName: FILE_NAME,
-      name: "Luigi",
-      fiscalCode: CF_B,
-      blackListStatus: "whitelisted",
+      expect(counts).toEqual({
+        rowsTotal: confirmed.counts.rows,
+        rowsDiscarded: confirmed.counts.discarded,
+        customersCreated: confirmed.counts.customersNew,
+        customersUpdated: confirmed.counts.customersToUpdate,
+        practicesCreated: confirmed.counts.practicesNew,
+        practicesUpdated: confirmed.counts.practicesToUpdate,
+        linksCreated: confirmed.counts.linksNew,
+      })
+      expect(counts).toEqual({
+        rowsTotal: 5,
+        rowsDiscarded: 1,
+        customersCreated: 2,
+        customersUpdated: 1,
+        practicesCreated: 2,
+        practicesUpdated: 1,
+        linksCreated: 2,
+      })
     })
-    expect(created.id).toMatch(/^[\w-]{21}$/)
-    expect(created.uniqueHash).toMatch(/^[0-9a-f]{32}$/)
-  })
+  )
 
-  test("un cliente esistente: i valori non vuoti della riga, mai codice, operatore, chat, blacklist e data di creazione (AC35)", async () => {
-    const mario = await createOperator()
-    const [conversation] = await testDb.insert(chat).values({}).returning()
-    const createdAt = new Date("2023-01-10T09:00:00.000Z")
-    await createCustomer({
-      id: "a",
-      tempID: "1",
-      uniqueHash: "hash-a",
-      fiscalCode: CF_A,
-      name: "Anna",
-      email: "anna@example.com",
-      operatorId: mario.id,
-      chatId: conversation!.id,
-      blackListStatus: "blacklisted",
-      source: "inbound",
-      createdAt,
-      lastImportUpdate: BEFORE,
+  it.effect(
+    "lo stesso file due volte: la seconda volta nessun nuovo e nessun doppione (AC24)",
+    () =>
+      Effect.gen(function* () {
+        const rows = [
+          { "Codice Fiscale": CF_A, "Codice NDG": "1", "n° Pratica": "P1" },
+          { "Codice Fiscale": CF_B, "Codice NDG": "2", "n° Pratica": "P2" },
+          {
+            "Codice Fiscale": CF_B,
+            "Codice NDG": "2",
+            "n° Pratica": "P1",
+            Garante: "SI",
+          },
+        ]
+        value(yield* importRows(rows))
+        const [first] = yield* Effect.promise(() => snapshot())
+
+        const counts = value(yield* importRows(rows))
+
+        expect(counts).toMatchObject({
+          customersCreated: 0,
+          practicesCreated: 0,
+          linksCreated: 0,
+          customersUpdated: 2,
+          practicesUpdated: 2,
+        })
+        const [second, , links] = yield* Effect.promise(() => snapshot())
+        expect(second.map((c) => c.id)).toEqual(first.map((c) => c.id))
+        expect(links).toHaveLength(3)
+      })
+  )
+
+  it.effect(
+    "legami: un cliente esistente con una pratica nuova, un cliente con pratiche in punti diversi del file, il ruolo della riga (AC37)",
+    () =>
+      Effect.gen(function* () {
+        const a = yield* Effect.promise(() =>
+          createCustomer({ id: "a", tempID: "1", fiscalCode: CF_A })
+        )
+        yield* Effect.promise(() =>
+          createPractice({ customerId: a.id, praticaId: "P0" })
+        )
+
+        value(
+          yield* importRows([
+            { "Codice Fiscale": CF_A, "Codice NDG": "1", "n° Pratica": "P1" },
+            { "Codice Fiscale": CF_B, "Codice NDG": "2", "n° Pratica": "P2" },
+            {
+              "Codice Fiscale": CF_A,
+              "Codice NDG": "1",
+              "n° Pratica": "P2",
+              Garante: "si",
+            },
+            {
+              "Codice Fiscale": CF_B,
+              "Codice NDG": "2",
+              "n° Pratica": "P3",
+              "Cliente Coobbligato": "SI",
+            },
+            {
+              "Codice Fiscale": CF_A,
+              "Codice NDG": "1",
+              "n° Pratica": "P0",
+              Garante: "SI",
+            },
+          ])
+        )
+
+        expect(yield* Effect.promise(() => linksOf("a"))).toEqual([
+          // A link that exists keeps its role
+          { praticaId: "P0", role: "Intestatario" },
+          { praticaId: "P1", role: "Intestatario" },
+          { praticaId: "P2", role: "Garante" },
+        ])
+        expect(
+          yield* Effect.promise(async () =>
+            linksOf((await customerByCode("2")).id)
+          )
+        ).toEqual([
+          { praticaId: "P2", role: "Intestatario" },
+          { praticaId: "P3", role: "Coobbligato" },
+        ])
+      })
+  )
+
+  it.effect(
+    "un cliente nuovo: senza operatore, con la fonte del formato, id e hash di oggi (AC34)",
+    () =>
+      Effect.gen(function* () {
+        value(
+          yield* importRows([
+            { "Codice Fiscale": CF_B, "Codice NDG": "2", Nome: "LUIGI" },
+          ])
+        )
+
+        const created = yield* Effect.promise(() => customerByCode("2"))
+        expect(created).toMatchObject({
+          operatorId: null,
+          chatId: null,
+          source: "wave",
+          fileName: FILE_NAME,
+          name: "Luigi",
+          fiscalCode: CF_B,
+          blackListStatus: "whitelisted",
+        })
+        expect(created.id).toMatch(/^[\w-]{21}$/)
+        expect(created.uniqueHash).toMatch(/^[0-9a-f]{32}$/)
+      })
+  )
+
+  it.effect(
+    "un cliente esistente: i valori non vuoti della riga, mai codice, operatore, chat, blacklist e data di creazione (AC35)",
+    () =>
+      Effect.gen(function* () {
+        const mario = yield* Effect.promise(() => createOperator())
+        const [conversation] = yield* Effect.promise(() =>
+          testDb.insert(chat).values({}).returning()
+        )
+        const createdAt = new Date("2023-01-10T09:00:00.000Z")
+        yield* Effect.promise(() =>
+          createCustomer({
+            id: "a",
+            tempID: "1",
+            uniqueHash: "hash-a",
+            fiscalCode: CF_A,
+            name: "Anna",
+            email: "anna@example.com",
+            operatorId: mario.id,
+            chatId: conversation!.id,
+            blackListStatus: "blacklisted",
+            source: "inbound",
+            createdAt,
+            lastImportUpdate: BEFORE,
+          })
+        )
+
+        value(
+          yield* importRows([
+            {
+              "Codice Fiscale": CF_A,
+              "Codice NDG": "1",
+              Nome: "MARIA",
+              Email: null,
+              "Comune di residenza": "MILANO",
+            },
+          ])
+        )
+
+        expect(yield* Effect.promise(() => customerByCode("1"))).toMatchObject({
+          id: "a",
+          tempID: "1",
+          uniqueHash: "hash-a",
+          name: "Maria",
+          comune: "Milano",
+          email: "anna@example.com",
+          operatorId: mario.id,
+          chatId: conversation!.id,
+          blackListStatus: "blacklisted",
+          createdAt,
+          source: "wave",
+          fileName: FILE_NAME,
+          lastImportUpdate: NOW,
+        })
+      })
+  )
+
+  it.effect(
+    "una riga col CF di A aggiorna anche B, che ha la partita IVA di A, ma B prende solo i valori della riga (D11, AC35)",
+    () =>
+      Effect.gen(function* () {
+        const [mario, bianca] = [
+          yield* Effect.promise(() => createOperator()),
+          yield* Effect.promise(() => createOperator()),
+        ]
+        const aCreated = new Date("2023-01-10T09:00:00.000Z")
+        const bCreated = new Date("2023-05-20T09:00:00.000Z")
+        yield* Effect.promise(() =>
+          createCustomer({
+            id: "a",
+            tempID: "1",
+            fiscalCode: CF_A,
+            vatCode: VAT,
+            name: "Mario",
+            operatorId: mario.id,
+            createdAt: aCreated,
+          })
+        )
+        yield* Effect.promise(() =>
+          createCustomer({
+            id: "b",
+            tempID: "2",
+            vatCode: VAT,
+            name: "Bianca",
+            email: "bianca@example.com",
+            operatorId: bianca.id,
+            createdAt: bCreated,
+          })
+        )
+
+        const counts = value(
+          yield* importRows([
+            {
+              "Codice Fiscale": CF_A,
+              "Codice NDG": "1",
+              Nome: "MARIO",
+              Email: null,
+            },
+          ])
+        )
+
+        expect(counts.customersUpdated).toBe(2)
+        expect(yield* Effect.promise(() => customerByCode("2"))).toMatchObject({
+          id: "b",
+          name: "Mario",
+          fiscalCode: CF_A,
+          vatCode: VAT,
+          email: "bianca@example.com",
+          operatorId: bianca.id,
+          createdAt: bCreated,
+          lastImportUpdate: NOW,
+        })
+        expect(yield* Effect.promise(() => customerByCode("1"))).toMatchObject({
+          operatorId: mario.id,
+          createdAt: aCreated,
+        })
+      })
+  )
+
+  it.effect(
+    "una pratica esistente: i valori non vuoti, mai rate totali, operatore, chat e data di creazione; l'ultimo import cambia solo con le rate pagate (AC36)",
+    () =>
+      Effect.gen(function* () {
+        const mario = yield* Effect.promise(() => createOperator())
+        const [conversation] = yield* Effect.promise(() =>
+          testDb.insert(chat).values({}).returning()
+        )
+        const a = yield* Effect.promise(() =>
+          createCustomer({ id: "a", tempID: "1", fiscalCode: CF_A })
+        )
+        const createdAt = new Date("2023-01-10T09:00:00.000Z")
+        const fields = {
+          operatorId: mario.id,
+          chatId: conversation!.id,
+          createdAt,
+          updatedAt: BEFORE,
+          lastImportUpdate: BEFORE,
+          region: "TOSCANA",
+          rateTotali: 60,
+        }
+        yield* Effect.promise(() =>
+          createPractice({ customerId: a.id, praticaId: "P1", ...fields })
+        )
+        yield* Effect.promise(() =>
+          createPractice({ customerId: a.id, praticaId: "P2", ...fields })
+        )
+        const rows = [
+          { "n° Pratica": "P1", Region: "LAZIO", "N° rate pratica": 36 },
+          { "n° Pratica": "P2", Region: null },
+        ]
+        const plan = yield* preview(rows)
+        const paid = Object.fromEntries(
+          plan.practiceUpdates.map((p) => [p.praticaId, p.ratePagate])
+        )
+        // P2 already has the paid rates the import computes, P1 doesn't
+        yield* Effect.promise(() =>
+          testDb
+            .update(practices)
+            .set({ ratePagate: paid.P1! + 1, updatedAt: BEFORE })
+            .where(eq(practices.praticaId, "P1"))
+        )
+        yield* Effect.promise(() =>
+          testDb
+            .update(practices)
+            .set({ ratePagate: paid.P2!, updatedAt: BEFORE })
+            .where(eq(practices.praticaId, "P2"))
+        )
+
+        value(yield* importRows(rows, { confirmed: plan }))
+
+        expect(yield* Effect.promise(() => practice("P1"))).toMatchObject({
+          region: "LAZIO",
+          rateTotali: 60,
+          ratePagate: paid.P1,
+          operatorId: mario.id,
+          chatId: conversation!.id,
+          createdAt,
+          updatedAt: BEFORE,
+          fileName: FILE_NAME,
+          lastImportUpdate: NOW,
+        })
+        expect(yield* Effect.promise(() => practice("P2"))).toMatchObject({
+          region: "TOSCANA",
+          rateTotali: 60,
+          lastImportUpdate: BEFORE,
+        })
+      })
+  )
+
+  it.effect("nessun contatto né chat creati, chiusi o spostati (AC39)", () =>
+    Effect.gen(function* () {
+      const mario = yield* Effect.promise(() => createOperator())
+      const a = yield* Effect.promise(() =>
+        createCustomer({
+          id: "a",
+          tempID: "1",
+          fiscalCode: CF_A,
+          operatorId: mario.id,
+        })
+      )
+      yield* Effect.promise(() =>
+        createTask({ customerId: a.id, operatorId: mario.id })
+      )
+      const [, , , tasks, log, chats] = yield* Effect.promise(() => snapshot())
+
+      value(
+        yield* importRows([
+          { "Codice Fiscale": CF_A, "Codice NDG": "1", "n° Pratica": "P1" },
+          { "Codice Fiscale": CF_B, "Codice NDG": "2", "n° Pratica": "P2" },
+        ])
+      )
+
+      const [, , , tasksAfter, logAfter, chatsAfter] = yield* Effect.promise(
+        () => snapshot()
+      )
+      expect([tasksAfter, logAfter, chatsAfter]).toEqual([tasks, log, chats])
     })
+  )
 
-    value(
-      await importRows([
-        {
-          "Codice Fiscale": CF_A,
-          "Codice NDG": "1",
-          Nome: "MARIA",
-          Email: null,
-          "Comune di residenza": "MILANO",
-        },
-      ])
-    )
+  it.effect("una riga solo cliente crea il cliente senza pratica", () =>
+    Effect.gen(function* () {
+      const counts = value(
+        yield* importRows([
+          { "Codice Fiscale": CF_B, "Codice NDG": "2", "n° Pratica": null },
+        ])
+      )
 
-    expect(await customerByCode("1")).toMatchObject({
-      id: "a",
-      tempID: "1",
-      uniqueHash: "hash-a",
-      name: "Maria",
-      comune: "Milano",
-      email: "anna@example.com",
-      operatorId: mario.id,
-      chatId: conversation!.id,
-      blackListStatus: "blacklisted",
-      createdAt,
-      source: "wave",
-      fileName: FILE_NAME,
-      lastImportUpdate: NOW,
+      expect(counts).toMatchObject({ customersCreated: 1, practicesCreated: 0 })
+      expect(
+        yield* Effect.promise(() => testDb.select().from(practices))
+      ).toEqual([])
     })
-  })
-
-  test("una riga col CF di A aggiorna anche B, che ha la partita IVA di A, ma B prende solo i valori della riga (D11, AC35)", async () => {
-    const [mario, bianca] = [await createOperator(), await createOperator()]
-    const aCreated = new Date("2023-01-10T09:00:00.000Z")
-    const bCreated = new Date("2023-05-20T09:00:00.000Z")
-    await createCustomer({
-      id: "a",
-      tempID: "1",
-      fiscalCode: CF_A,
-      vatCode: VAT,
-      name: "Mario",
-      operatorId: mario.id,
-      createdAt: aCreated,
-    })
-    await createCustomer({
-      id: "b",
-      tempID: "2",
-      vatCode: VAT,
-      name: "Bianca",
-      email: "bianca@example.com",
-      operatorId: bianca.id,
-      createdAt: bCreated,
-    })
-
-    const counts = value(
-      await importRows([
-        {
-          "Codice Fiscale": CF_A,
-          "Codice NDG": "1",
-          Nome: "MARIO",
-          Email: null,
-        },
-      ])
-    )
-
-    expect(counts.customersUpdated).toBe(2)
-    expect(await customerByCode("2")).toMatchObject({
-      id: "b",
-      name: "Mario",
-      fiscalCode: CF_A,
-      vatCode: VAT,
-      email: "bianca@example.com",
-      operatorId: bianca.id,
-      createdAt: bCreated,
-      lastImportUpdate: NOW,
-    })
-    expect(await customerByCode("1")).toMatchObject({
-      operatorId: mario.id,
-      createdAt: aCreated,
-    })
-  })
-
-  test("una pratica esistente: i valori non vuoti, mai rate totali, operatore, chat e data di creazione; l'ultimo import cambia solo con le rate pagate (AC36)", async () => {
-    const mario = await createOperator()
-    const [conversation] = await testDb.insert(chat).values({}).returning()
-    const a = await createCustomer({ id: "a", tempID: "1", fiscalCode: CF_A })
-    const createdAt = new Date("2023-01-10T09:00:00.000Z")
-    const fields = {
-      operatorId: mario.id,
-      chatId: conversation!.id,
-      createdAt,
-      updatedAt: BEFORE,
-      lastImportUpdate: BEFORE,
-      region: "TOSCANA",
-      rateTotali: 60,
-    }
-    await createPractice({ customerId: a.id, praticaId: "P1", ...fields })
-    await createPractice({ customerId: a.id, praticaId: "P2", ...fields })
-    const rows = [
-      { "n° Pratica": "P1", Region: "LAZIO", "N° rate pratica": 36 },
-      { "n° Pratica": "P2", Region: null },
-    ]
-    const plan = await preview(rows)
-    const paid = Object.fromEntries(
-      plan.practiceUpdates.map((p) => [p.praticaId, p.ratePagate])
-    )
-    // P2 already has the paid rates the import computes, P1 doesn't
-    await testDb
-      .update(practices)
-      .set({ ratePagate: paid.P1! + 1, updatedAt: BEFORE })
-      .where(eq(practices.praticaId, "P1"))
-    await testDb
-      .update(practices)
-      .set({ ratePagate: paid.P2!, updatedAt: BEFORE })
-      .where(eq(practices.praticaId, "P2"))
-
-    value(await importRows(rows, { confirmed: plan }))
-
-    expect(await practice("P1")).toMatchObject({
-      region: "LAZIO",
-      rateTotali: 60,
-      ratePagate: paid.P1,
-      operatorId: mario.id,
-      chatId: conversation!.id,
-      createdAt,
-      updatedAt: BEFORE,
-      fileName: FILE_NAME,
-      lastImportUpdate: NOW,
-    })
-    expect(await practice("P2")).toMatchObject({
-      region: "TOSCANA",
-      rateTotali: 60,
-      lastImportUpdate: BEFORE,
-    })
-  })
-
-  test("nessun contatto né chat creati, chiusi o spostati (AC39)", async () => {
-    const mario = await createOperator()
-    const a = await createCustomer({
-      id: "a",
-      tempID: "1",
-      fiscalCode: CF_A,
-      operatorId: mario.id,
-    })
-    await createTask({ customerId: a.id, operatorId: mario.id })
-    const [, , , tasks, log, chats] = await snapshot()
-
-    value(
-      await importRows([
-        { "Codice Fiscale": CF_A, "Codice NDG": "1", "n° Pratica": "P1" },
-        { "Codice Fiscale": CF_B, "Codice NDG": "2", "n° Pratica": "P2" },
-      ])
-    )
-
-    const [, , , tasksAfter, logAfter, chatsAfter] = await snapshot()
-    expect([tasksAfter, logAfter, chatsAfter]).toEqual([tasks, log, chats])
-  })
-
-  test("una riga solo cliente crea il cliente senza pratica", async () => {
-    const counts = value(
-      await importRows([
-        { "Codice Fiscale": CF_B, "Codice NDG": "2", "n° Pratica": null },
-      ])
-    )
-
-    expect(counts).toMatchObject({ customersCreated: 1, practicesCreated: 0 })
-    expect(await testDb.select().from(practices)).toEqual([])
-  })
+  )
 })
 
 describe("scadenza (D8)", () => {
-  test("oltre la scadenza non scrive nulla", async () => {
-    const exit = await importRows([{ "Codice NDG": "2" }], {
-      deadline: Date.now() - 1,
+  it.effect("oltre la scadenza non scrive nulla", () =>
+    Effect.gen(function* () {
+      const exit = yield* importRows([{ "Codice NDG": "2" }], {
+        deadline: Date.now() - 1,
+      })
+
+      expect(failureTag(exit)).toBe("ImportTimedOut")
+      expect(
+        yield* Effect.promise(() => testDb.select().from(customers))
+      ).toEqual([])
     })
+  )
 
-    expect(failureTag(exit)).toBe("ImportTimedOut")
-    expect(await testDb.select().from(customers)).toEqual([])
-  })
+  it.effect(
+    "la scadenza che passa tra un blocco e l'altro annulla anche il primo",
+    () =>
+      Effect.gen(function* () {
+        const rows = [
+          { "Codice Fiscale": CF_B, "Codice NDG": "2", "n° Pratica": "P2" },
+          { "Codice Fiscale": CF_C, "Codice NDG": "3", "n° Pratica": "P3" },
+        ]
+        const confirmed = yield* preview(rows)
+        // The time of each reading: the start and the first batch in time, the
+        // second batch past the deadline. Hand-written, as the step clock of
+        // concurrency.pg.test.ts: it advances on every read, which TestClock
+        // cannot do
+        const times = [0, 0, 2_000]
+        const next = () => times.shift() ?? 2_000
+        const clock: Clock.Clock = {
+          currentTimeMillisUnsafe: next,
+          currentTimeMillis: Effect.sync(next),
+          currentTimeNanosUnsafe: () => BigInt(next()) * 1_000_000n,
+          currentTimeNanos: Effect.sync(() => BigInt(next()) * 1_000_000n),
+          monotonicTimeNanosUnsafe: () => 0n,
+          monotonicTimeNanos: Effect.succeed(0n),
+          sleep: () => Effect.void,
+        }
 
-  test("la scadenza che passa tra un blocco e l'altro annulla anche il primo", async () => {
-    const rows = [
-      { "Codice Fiscale": CF_B, "Codice NDG": "2", "n° Pratica": "P2" },
-      { "Codice Fiscale": CF_C, "Codice NDG": "3", "n° Pratica": "P3" },
-    ]
-    const confirmed = await preview(rows)
-    // The time of each reading: the start and the first batch in time, the
-    // second batch past the deadline
-    const times = [0, 0, 2_000]
-    const next = () => times.shift() ?? 2_000
-    const clock: Clock.Clock = {
-      ...fixedClock(0),
-      currentTimeMillisUnsafe: next,
-      currentTimeMillis: Effect.sync(next),
-      currentTimeNanosUnsafe: () => BigInt(next()) * 1_000_000n,
-      currentTimeNanos: Effect.sync(() => BigInt(next()) * 1_000_000n),
-    }
+        const exit = yield* withDb(
+          transaction(
+            applyImport({
+              format: "wave",
+              fileName: FILE_NAME,
+              rows: numbered(rows),
+              expected: confirmed.expected,
+              now: NOW,
+              deadline: 1_000,
+            })
+          ).pipe(Effect.provideService(Clock.Clock, clock)),
+          1
+        )
 
-    const exit = await withDb(
-      transaction(
-        applyImport({
-          format: "wave",
-          fileName: FILE_NAME,
-          rows: numbered(rows),
-          expected: confirmed.expected,
-          now: NOW,
-          deadline: 1_000,
-        })
-      ).pipe(Effect.provideService(Clock.Clock, clock)),
-      1
-    )
-
-    expect(failureTag(exit)).toBe("ImportTimedOut")
-    expect(await testDb.select().from(customers)).toEqual([])
-  })
+        expect(failureTag(exit)).toBe("ImportTimedOut")
+        expect(
+          yield* Effect.promise(() => testDb.select().from(customers))
+        ).toEqual([])
+      })
+  )
 })

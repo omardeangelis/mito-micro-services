@@ -1,7 +1,9 @@
 import { gzipSync } from "node:zlib"
-import { beforeAll, beforeEach, describe, expect, test, vi } from "vitest"
+import { beforeAll, beforeEach, vi } from "vitest"
+import { describe, expect, it } from "@effect/vitest"
 import { asc, eq } from "drizzle-orm"
-import { Cause, Clock, Effect, Exit, Layer } from "effect"
+import { Cause, Effect, Exit, Layer } from "effect"
+import { TestClock } from "effect/testing"
 import { customers } from "@mito/db/schema/customers"
 import {
   importRun,
@@ -24,7 +26,6 @@ import {
 } from "../queue"
 import { executeImport, startImport } from "../run"
 import { createUpload } from "../upload"
-import { fixedClock } from "../../analytics/_test/clock"
 import { migrateUpTo, resetDb, testDb } from "@/test/db"
 import { failureTag } from "@/test/effect"
 import { createCustomer, createOperator, createUser } from "@/test/factories"
@@ -64,19 +65,21 @@ const run = <A, E>(
     queue = recordingQueue,
     settings = importSettings,
   }: {
-    at?: Date
+    // `null`: the real clock, for a test that runs in `it.live`
+    at?: Date | null
     queue?: Layer.Layer<ImportQueue>
     settings?: ImportSettings
   } = {}
 ) =>
-  Effect.runPromiseExit(
-    program.pipe(
-      Effect.provideService(Clock.Clock, fixedClock(at.getTime())),
+  Effect.gen(function* () {
+    if (at !== null) yield* TestClock.setTime(at.getTime())
+    return yield* program.pipe(
       Effect.provide(
         Layer.mergeAll(DbLive, Layer.succeed(ImportConfig, settings), queue)
-      )
+      ),
+      Effect.exit
     )
-  )
+  })
 
 const value = <A, E>(exit: Exit.Exit<A, E>) => {
   if (Exit.isFailure(exit)) throw new Error(`failed: ${String(exit.cause)}`)
@@ -94,22 +97,28 @@ const numbered = (rows: Cells[]) =>
   rows.map((cells, index) => ({ row: index + 2, cells: waveCells(cells) }))
 
 /** The rows of a Wave file, all arrived, as `import.upload` leaves them. */
-const uploadOf = async (
+const uploadOf = (
   createdBy: string,
   rows: Cells[],
-  fileName = FILE_NAME
+  fileName = FILE_NAME,
+  at: Date | null = START
 ) =>
-  value(
-    await run(
-      createUpload({
-        createdBy,
-        fileName,
-        format: "wave",
-        parts: 1,
-        data: gzipSync(JSON.stringify(toFileBody(waveColumns, numbered(rows)))),
-      })
+  Effect.gen(function* () {
+    return value(
+      yield* run(
+        createUpload({
+          createdBy,
+          fileName,
+          format: "wave",
+          parts: 1,
+          data: gzipSync(
+            JSON.stringify(toFileBody(waveColumns, numbered(rows)))
+          ),
+        }),
+        { at }
+      )
     )
-  )
+  })
 
 const twoRows = [
   { "Codice Fiscale": CF_A, "Codice NDG": "1", "n° Pratica": "P1" },
@@ -134,399 +143,522 @@ const customerCodes = async () =>
   ).map(({ tempID }) => tempID)
 
 describe("avvio dell'import", () => {
-  test("con un import in corso, una seconda startImport fallisce con ImportAlreadyRunning: nome dell'admin del primo e ora di inizio a Roma", async () => {
-    const anna = await createOperator({
-      role: "ADMIN",
-      name: "Anna",
-      surname: "Rossi",
-    })
-    const other = await createUser({ role: "ADMIN" })
-    const first = await uploadOf(anna.userId, twoRows)
-    const second = await uploadOf(other.id, twoRows)
-    value(
-      await run(
-        startImport({
-          uploadId: first,
-          expected: [2, 3],
-          startedBy: anna.userId,
+  it.effect(
+    "con un import in corso, una seconda startImport fallisce con ImportAlreadyRunning: nome dell'admin del primo e ora di inizio a Roma",
+    () =>
+      Effect.gen(function* () {
+        const anna = yield* Effect.promise(() =>
+          createOperator({
+            role: "ADMIN",
+            name: "Anna",
+            surname: "Rossi",
+          })
+        )
+        const other = yield* Effect.promise(() => createUser({ role: "ADMIN" }))
+        const first = yield* uploadOf(anna.userId, twoRows)
+        const second = yield* uploadOf(other.id, twoRows)
+        value(
+          yield* run(
+            startImport({
+              uploadId: first,
+              expected: [2, 3],
+              startedBy: anna.userId,
+            })
+          )
+        )
+
+        const exit = yield* run(
+          startImport({
+            uploadId: second,
+            expected: [2, 3],
+            startedBy: other.id,
+          }),
+          { at: new Date("2026-10-25T09:20:00.000Z") }
+        )
+
+        expect(failureOf(exit)).toMatchObject({
+          _tag: "ImportAlreadyRunning",
+          startedBy: "Anna Rossi",
+          time: "10:05",
         })
+        expect(yield* Effect.promise(() => runs())).toHaveLength(1)
+        expect(
+          (yield* Effect.promise(() => uploads())).find(
+            ({ id }) => id === second
+          )?.runId
+        ).toBeNull()
+      })
+  )
+
+  it.effect("un admin senza riga operatore si legge con la sua email", () =>
+    Effect.gen(function* () {
+      const admin = yield* Effect.promise(() => createUser({ role: "ADMIN" }))
+      const other = yield* Effect.promise(() => createUser({ role: "ADMIN" }))
+      const first = yield* uploadOf(admin.id, twoRows)
+      const second = yield* uploadOf(other.id, twoRows)
+      value(
+        yield* run(
+          startImport({
+            uploadId: first,
+            expected: [2, 3],
+            startedBy: admin.id,
+          })
+        )
       )
-    )
 
-    const exit = await run(
-      startImport({ uploadId: second, expected: [2, 3], startedBy: other.id }),
-      { at: new Date("2026-10-25T09:20:00.000Z") }
-    )
-
-    expect(failureOf(exit)).toMatchObject({
-      _tag: "ImportAlreadyRunning",
-      startedBy: "Anna Rossi",
-      time: "10:05",
-    })
-    expect(await runs()).toHaveLength(1)
-    expect((await uploads()).find(({ id }) => id === second)?.runId).toBeNull()
-  })
-
-  test("un admin senza riga operatore si legge con la sua email", async () => {
-    const admin = await createUser({ role: "ADMIN" })
-    const other = await createUser({ role: "ADMIN" })
-    const first = await uploadOf(admin.id, twoRows)
-    const second = await uploadOf(other.id, twoRows)
-    value(
-      await run(
-        startImport({ uploadId: first, expected: [2, 3], startedBy: admin.id })
+      const exit = yield* run(
+        startImport({ uploadId: second, expected: [2, 3], startedBy: other.id })
       )
-    )
 
-    const exit = await run(
-      startImport({ uploadId: second, expected: [2, 3], startedBy: other.id })
-    )
-
-    expect(failureOf(exit)).toMatchObject({
-      _tag: "ImportAlreadyRunning",
-      startedBy: admin.email,
+      expect(failureOf(exit)).toMatchObject({
+        _tag: "ImportAlreadyRunning",
+        startedBy: admin.email,
+      })
     })
-  })
+  )
 
-  test("il doppio clic sulla conferma: la seconda startImport dello stesso upload fallisce con ImportAlreadyRunning", async () => {
-    const admin = await createOperator({ role: "ADMIN", name: "Anna" })
-    const uploadId = await uploadOf(admin.userId, twoRows)
-    const start = startImport({
-      uploadId,
-      expected: [2, 3],
-      startedBy: admin.userId,
-    })
-    value(await run(start))
+  it.effect(
+    "il doppio clic sulla conferma: la seconda startImport dello stesso upload fallisce con ImportAlreadyRunning",
+    () =>
+      Effect.gen(function* () {
+        const admin = yield* Effect.promise(() =>
+          createOperator({ role: "ADMIN", name: "Anna" })
+        )
+        const uploadId = yield* uploadOf(admin.userId, twoRows)
+        const start = startImport({
+          uploadId,
+          expected: [2, 3],
+          startedBy: admin.userId,
+        })
+        value(yield* run(start))
 
-    const exit = await run(start)
+        const exit = yield* run(start)
 
-    expect(failureTag(exit)).toBe("ImportAlreadyRunning")
-    expect(await runs()).toHaveLength(1)
-    expect(tasks).toHaveLength(1)
-  })
+        expect(failureTag(exit)).toBe("ImportAlreadyRunning")
+        expect(yield* Effect.promise(() => runs())).toHaveLength(1)
+        expect(tasks).toHaveLength(1)
+      })
+  )
 
-  test("salva l'import in corso con i numeri dell'anteprima, collega le righe e mette il task in coda", async () => {
-    const admin = await createUser({ role: "ADMIN" })
-    const uploadId = await uploadOf(admin.id, [...twoRows, discardedRow])
+  it.effect(
+    "salva l'import in corso con i numeri dell'anteprima, collega le righe e mette il task in coda",
+    () =>
+      Effect.gen(function* () {
+        const admin = yield* Effect.promise(() => createUser({ role: "ADMIN" }))
+        const uploadId = yield* uploadOf(admin.id, [...twoRows, discardedRow])
 
-    const { runId } = value(
-      await run(
-        startImport({ uploadId, expected: [3, 2], startedBy: admin.id })
+        const { runId } = value(
+          yield* run(
+            startImport({ uploadId, expected: [3, 2], startedBy: admin.id })
+          )
+        )
+
+        expect(yield* Effect.promise(() => runs())).toEqual([
+          expect.objectContaining({
+            id: runId,
+            startedAt: START,
+            claimedAt: null,
+            finishedAt: null,
+            startedBy: admin.id,
+            fileName: FILE_NAME,
+            format: "wave",
+            status: "running",
+            failureReason: null,
+            rowsTotal: 3,
+            rowsDiscarded: 1,
+            customersCreated: null,
+          }),
+        ])
+        expect(yield* Effect.promise(() => uploads())).toEqual([
+          expect.objectContaining({ id: uploadId, runId, expected: [2, 3] }),
+        ])
+        expect(tasks).toEqual([{ kind: "run", runId }])
+      })
+  )
+
+  it.effect(
+    "le righe attese devono esserci e potersi importare: altrimenti nulla parte",
+    () =>
+      Effect.gen(function* () {
+        const admin = yield* Effect.promise(() => createUser({ role: "ADMIN" }))
+        const uploadId = yield* uploadOf(admin.id, [...twoRows, discardedRow])
+        const start = (expected: number[]) =>
+          run(startImport({ uploadId, expected, startedBy: admin.id }))
+
+        const absent = yield* start([2, 9])
+        const discarded = yield* start([2, 4])
+        const none = yield* start([])
+
+        expect(failureOf(absent)).toMatchObject({
+          _tag: "ImportInputInvalid",
+          reason: "La riga 9 attesa non è tra le righe del file",
+        })
+        expect(failureOf(discarded)).toMatchObject({
+          _tag: "ImportRowRejected",
+          row: 4,
+        })
+        expect(failureOf(none)).toMatchObject({
+          _tag: "ImportInputInvalid",
+          reason: "Il file non ha righe da importare",
+        })
+        expect(yield* Effect.promise(() => runs())).toEqual([])
+        expect(tasks).toEqual([])
+      })
+  )
+
+  it.effect("l'upload di un altro admin non si avvia", () =>
+    Effect.gen(function* () {
+      const [owner, other] = [
+        yield* Effect.promise(() => createUser({ role: "ADMIN" })),
+        yield* Effect.promise(() => createUser({ role: "ADMIN" })),
+      ]
+      const uploadId = yield* uploadOf(owner.id, twoRows)
+
+      const exit = yield* run(
+        startImport({ uploadId, expected: [2, 3], startedBy: other.id })
       )
-    )
 
-    expect(await runs()).toEqual([
-      expect.objectContaining({
-        id: runId,
-        startedAt: START,
-        claimedAt: null,
-        finishedAt: null,
-        startedBy: admin.id,
-        fileName: FILE_NAME,
-        format: "wave",
-        status: "running",
-        failureReason: null,
-        rowsTotal: 3,
-        rowsDiscarded: 1,
-        customersCreated: null,
-      }),
-    ])
-    expect(await uploads()).toEqual([
-      expect.objectContaining({ id: uploadId, runId, expected: [2, 3] }),
-    ])
-    expect(tasks).toEqual([{ kind: "run", runId }])
-  })
-
-  test("le righe attese devono esserci e potersi importare: altrimenti nulla parte", async () => {
-    const admin = await createUser({ role: "ADMIN" })
-    const uploadId = await uploadOf(admin.id, [...twoRows, discardedRow])
-    const start = (expected: number[]) =>
-      run(startImport({ uploadId, expected, startedBy: admin.id }))
-
-    const absent = await start([2, 9])
-    const discarded = await start([2, 4])
-    const none = await start([])
-
-    expect(failureOf(absent)).toMatchObject({
-      _tag: "ImportInputInvalid",
-      reason: "La riga 9 attesa non è tra le righe del file",
+      expect(failureTag(exit)).toBe("ImportUploadMissing")
+      expect(yield* Effect.promise(() => runs())).toEqual([])
     })
-    expect(failureOf(discarded)).toMatchObject({
-      _tag: "ImportRowRejected",
-      row: 4,
-    })
-    expect(failureOf(none)).toMatchObject({
-      _tag: "ImportInputInvalid",
-      reason: "Il file non ha righe da importare",
-    })
-    expect(await runs()).toEqual([])
-    expect(tasks).toEqual([])
-  })
+  )
 
-  test("l'upload di un altro admin non si avvia", async () => {
-    const [owner, other] = [
-      await createUser({ role: "ADMIN" }),
-      await createUser({ role: "ADMIN" }),
-    ]
-    const uploadId = await uploadOf(owner.id, twoRows)
+  it.effect(
+    "senza coda l'import non parte: ImportUnavailable e nulla scritto (D13)",
+    () =>
+      Effect.gen(function* () {
+        const admin = yield* Effect.promise(() => createUser({ role: "ADMIN" }))
+        const uploadId = yield* uploadOf(admin.id, twoRows)
 
-    const exit = await run(
-      startImport({ uploadId, expected: [2, 3], startedBy: other.id })
-    )
+        const exit = yield* run(
+          startImport({ uploadId, expected: [2, 3], startedBy: admin.id }),
+          { queue: importQueueDisabled }
+        )
 
-    expect(failureTag(exit)).toBe("ImportUploadMissing")
-    expect(await runs()).toEqual([])
-  })
+        expect(failureTag(exit)).toBe("ImportUnavailable")
+        expect(yield* Effect.promise(() => runs())).toEqual([])
+        expect((yield* Effect.promise(() => uploads()))[0]?.runId).toBeNull()
+      })
+  )
 
-  test("senza coda l'import non parte: ImportUnavailable e nulla scritto (D13)", async () => {
-    const admin = await createUser({ role: "ADMIN" })
-    const uploadId = await uploadOf(admin.id, twoRows)
+  it.effect(
+    "se la coda rifiuta il task, l'errore torna all'admin, l'import è fallito e le righe sono cancellate",
+    () =>
+      Effect.gen(function* () {
+        const admin = yield* Effect.promise(() => createUser({ role: "ADMIN" }))
+        const uploadId = yield* uploadOf(admin.id, twoRows)
+        const refusing = Layer.succeed(ImportQueue, {
+          available: true,
+          enqueue: () =>
+            Effect.fail(
+              new ImportQueueFailed({ reason: "Cloud Tasks answered 503" })
+            ),
+        })
 
-    const exit = await run(
-      startImport({ uploadId, expected: [2, 3], startedBy: admin.id }),
-      { queue: importQueueDisabled }
-    )
+        const exit = yield* run(
+          startImport({ uploadId, expected: [2, 3], startedBy: admin.id }),
+          { queue: refusing }
+        )
 
-    expect(failureTag(exit)).toBe("ImportUnavailable")
-    expect(await runs()).toEqual([])
-    expect((await uploads())[0]?.runId).toBeNull()
-  })
+        expect(failureTag(exit)).toBe("ImportQueueFailed")
+        expect(yield* Effect.promise(() => runs())).toEqual([
+          expect.objectContaining({
+            status: "failed",
+            failureReason: "La coda dell'import non ha accettato l'import",
+            finishedAt: START,
+          }),
+        ])
+        expect(yield* Effect.promise(() => uploads())).toEqual([])
+        expect(
+          yield* Effect.promise(() => testDb.select().from(importUploadPart))
+        ).toEqual([])
+      })
+  )
 
-  test("se la coda rifiuta il task, l'errore torna all'admin, l'import è fallito e le righe sono cancellate", async () => {
-    const admin = await createUser({ role: "ADMIN" })
-    const uploadId = await uploadOf(admin.id, twoRows)
-    const refusing = Layer.succeed(ImportQueue, {
-      available: true,
-      enqueue: () =>
-        Effect.fail(
-          new ImportQueueFailed({ reason: "Cloud Tasks answered 503" })
-        ),
-    })
+  it.effect(
+    "un import in corso da più di 30 minuti, che nessuno sta eseguendo, diventa interrotto e un nuovo import parte (AC30, D8)",
+    () =>
+      Effect.gen(function* () {
+        const admin = yield* Effect.promise(() => createUser({ role: "ADMIN" }))
+        const stale = yield* uploadOf(admin.id, twoRows)
+        const fresh = yield* uploadOf(admin.id, twoRows)
+        const { runId: staleRun } = value(
+          yield* run(
+            startImport({
+              uploadId: stale,
+              expected: [2, 3],
+              startedBy: admin.id,
+            })
+          )
+        )
 
-    const exit = await run(
-      startImport({ uploadId, expected: [2, 3], startedBy: admin.id }),
-      { queue: refusing }
-    )
+        const exit = yield* run(
+          startImport({
+            uploadId: fresh,
+            expected: [2, 3],
+            startedBy: admin.id,
+          }),
+          { at: new Date(START.getTime() + 31 * 60_000) }
+        )
 
-    expect(failureTag(exit)).toBe("ImportQueueFailed")
-    expect(await runs()).toEqual([
-      expect.objectContaining({
-        status: "failed",
-        failureReason: "La coda dell'import non ha accettato l'import",
-        finishedAt: START,
-      }),
-    ])
-    expect(await uploads()).toEqual([])
-    expect(await testDb.select().from(importUploadPart)).toEqual([])
-  })
-
-  test("un import in corso da più di 30 minuti, che nessuno sta eseguendo, diventa interrotto e un nuovo import parte (AC30, D8)", async () => {
-    const admin = await createUser({ role: "ADMIN" })
-    const stale = await uploadOf(admin.id, twoRows)
-    const fresh = await uploadOf(admin.id, twoRows)
-    const { runId: staleRun } = value(
-      await run(
-        startImport({ uploadId: stale, expected: [2, 3], startedBy: admin.id })
-      )
-    )
-
-    const exit = await run(
-      startImport({ uploadId: fresh, expected: [2, 3], startedBy: admin.id }),
-      { at: new Date(START.getTime() + 31 * 60_000) }
-    )
-
-    expect(Exit.isSuccess(exit)).toBe(true)
-    expect((await runs()).map(({ id, status }) => [id, status])).toEqual([
-      [staleRun, "interrupted"],
-      [staleRun + 1, "running"],
-    ])
-    expect((await runs())[0]?.failureReason).toBe(
-      "L'import non è finito entro 30 minuti dall'inizio"
-    )
-    expect((await uploads()).map(({ id }) => id)).toEqual([fresh])
-  })
+        expect(Exit.isSuccess(exit)).toBe(true)
+        expect(
+          (yield* Effect.promise(() => runs())).map(({ id, status }) => [
+            id,
+            status,
+          ])
+        ).toEqual([
+          [staleRun, "interrupted"],
+          [staleRun + 1, "running"],
+        ])
+        expect((yield* Effect.promise(() => runs()))[0]?.failureReason).toBe(
+          "L'import non è finito entro 30 minuti dall'inizio"
+        )
+        expect(
+          (yield* Effect.promise(() => uploads())).map(({ id }) => id)
+        ).toEqual([fresh])
+      })
+  )
 })
 
 describe("esecuzione dalla coda", () => {
-  const started = async (rows: Cells[] = twoRows, expected = [2, 3]) => {
-    const admin = await createUser({ role: "ADMIN" })
-    const uploadId = await uploadOf(admin.id, rows)
-    const { runId } = value(
-      await run(startImport({ uploadId, expected, startedBy: admin.id }))
-    )
-    return { runId, uploadId }
-  }
-
-  test("scrive le righe, salva i numeri e cancella le righe temporanee nella stessa transazione (D9)", async () => {
-    const { runId } = await started()
-    const finish = new Date(START.getTime() + 5_000)
-
-    const outcome = value(await run(executeImport(runId), { at: finish }))
-
-    expect(outcome).toBe("completed")
-    expect(await runs()).toEqual([
-      expect.objectContaining({
-        status: "completed",
-        claimedAt: finish,
-        finishedAt: finish,
-        failureReason: null,
-        rowsTotal: 2,
-        rowsDiscarded: 0,
-        customersCreated: 2,
-        customersUpdated: 0,
-        practicesCreated: 2,
-        practicesUpdated: 0,
-        linksCreated: 2,
-      }),
-    ])
-    expect(await customerCodes()).toEqual(["1", "2"])
-    expect(await uploads()).toEqual([])
-    expect(await testDb.select().from(importUploadPart)).toEqual([])
-  })
-
-  test("clienti e pratiche salvano il nome del file come l'import di oggi, lo storico quello del file (AC32)", async () => {
-    const admin = await createUser({ role: "ADMIN" })
-    const uploadId = await uploadOf(admin.id, twoRows, "Pratiche-ottobre.xlsx")
-    const { runId } = value(
-      await run(
-        startImport({ uploadId, expected: [2, 3], startedBy: admin.id })
+  const started = (rows: Cells[] = twoRows, expected = [2, 3]) =>
+    Effect.gen(function* () {
+      const admin = yield* Effect.promise(() => createUser({ role: "ADMIN" }))
+      const uploadId = yield* uploadOf(admin.id, rows)
+      const { runId } = value(
+        yield* run(startImport({ uploadId, expected, startedBy: admin.id }))
       )
-    )
-
-    value(await run(executeImport(runId)))
-
-    // October 2026 in Rome
-    const stored = "1026_Pratiche_ottobre.xlsx"
-    expect(
-      await testDb.select({ fileName: customers.fileName }).from(customers)
-    ).toEqual([{ fileName: stored }, { fileName: stored }])
-    expect(
-      await testDb.select({ fileName: practices.fileName }).from(practices)
-    ).toEqual([{ fileName: stored }, { fileName: stored }])
-    expect(await runs()).toMatchObject([{ fileName: "Pratiche-ottobre.xlsx" }])
-  })
-
-  test("un task consegnato due volte: la seconda volta non fa nulla (D7)", async () => {
-    const { runId } = await started()
-    value(await run(executeImport(runId)))
-    const before = await runs()
-
-    const again = value(await run(executeImport(runId)))
-
-    expect(again).toBe("skipped")
-    expect(await runs()).toEqual(before)
-    expect(await customerCodes()).toEqual(["1", "2"])
-  })
-
-  test("un task arrivato quando l'import è già preso non lo rifà, anche se è ancora in corso", async () => {
-    const { runId } = await started()
-    await testDb
-      .update(importRun)
-      .set({ claimedAt: START })
-      .where(eq(importRun.id, runId))
-
-    const outcome = value(await run(executeImport(runId)))
-
-    expect(outcome).toBe("skipped")
-    expect((await runs())[0]?.status).toBe("running")
-    expect(await customerCodes()).toEqual([])
-  })
-
-  test("oltre la scadenza l'import è interrotto e non scrive nulla (AC30, D8)", async () => {
-    const { runId } = await started()
-
-    const outcome = value(
-      await run(executeImport(runId), {
-        at: new Date(START.getTime() + 2_000),
-        settings: { ...importSettings, timeoutMs: 1_000 },
-      })
-    )
-
-    expect(outcome).toBe("interrupted")
-    expect(await runs()).toEqual([
-      expect.objectContaining({
-        status: "interrupted",
-        failureReason: "L'import non è finito entro 30 minuti dall'inizio",
-        customersCreated: null,
-      }),
-    ])
-    expect(await customerCodes()).toEqual([])
-    expect(await uploads()).toEqual([])
-  })
-
-  test("una query fermata dal database per il tempo (57014) interrompe l'import", async () => {
-    const { runId } = await started()
-    await failNextInsertInto(practices, {}, { sqlstate: "57014" })
-
-    const outcome = value(await run(executeImport(runId)))
-
-    expect(outcome).toBe("interrupted")
-    expect(await customerCodes()).toEqual([])
-  })
-
-  test("una riga che il CRM non accetta più fa fallire l'import: il motivo nomina riga e regola, mai i valori (AC19b, AC29, AC31)", async () => {
-    const { runId } = await started()
-    await createCustomer({ id: "altro", tempID: "2", fiscalCode: CF_C })
-
-    const outcome = value(await run(executeImport(runId)))
-
-    expect(outcome).toBe("failed")
-    const [failed] = await runs()
-    expect(failed).toMatchObject({
-      status: "failed",
-      failureReason: "Riga 3: Codice cliente già usato da un altro cliente",
-      customersCreated: null,
+      return { runId, uploadId }
     })
-    for (const value of [CF_A, CF_B, CF_C, "P1", "P2"]) {
-      expect(failed?.failureReason).not.toContain(value)
-    }
-    expect(await customerCodes()).toEqual(["2"])
-    expect(await uploads()).toEqual([])
-  })
 
-  test("un errore del database fa fallire l'import con il suo codice e nulla scritto", async () => {
-    const { runId } = await started()
-    await failNextInsertInto(practices)
+  it.effect(
+    "scrive le righe, salva i numeri e cancella le righe temporanee nella stessa transazione (D9)",
+    () =>
+      Effect.gen(function* () {
+        const { runId } = yield* started()
+        const finish = new Date(START.getTime() + 5_000)
 
-    const outcome = value(await run(executeImport(runId)))
+        const outcome = value(yield* run(executeImport(runId), { at: finish }))
 
-    expect(outcome).toBe("failed")
-    expect((await runs())[0]?.failureReason).toBe(
-      "Errore del database (codice P0001)"
-    )
-    expect(await customerCodes()).toEqual([])
-    expect(await uploads()).toEqual([])
-  })
+        expect(outcome).toBe("completed")
+        expect(yield* Effect.promise(() => runs())).toEqual([
+          expect.objectContaining({
+            status: "completed",
+            claimedAt: finish,
+            finishedAt: finish,
+            failureReason: null,
+            rowsTotal: 2,
+            rowsDiscarded: 0,
+            customersCreated: 2,
+            customersUpdated: 0,
+            practicesCreated: 2,
+            practicesUpdated: 0,
+            linksCreated: 2,
+          }),
+        ])
+        expect(yield* Effect.promise(() => customerCodes())).toEqual(["1", "2"])
+        expect(yield* Effect.promise(() => uploads())).toEqual([])
+        expect(
+          yield* Effect.promise(() => testDb.select().from(importUploadPart))
+        ).toEqual([])
+      })
+  )
+
+  it.effect(
+    "clienti e pratiche salvano il nome del file come l'import di oggi, lo storico quello del file (AC32)",
+    () =>
+      Effect.gen(function* () {
+        const admin = yield* Effect.promise(() => createUser({ role: "ADMIN" }))
+        const uploadId = yield* uploadOf(
+          admin.id,
+          twoRows,
+          "Pratiche-ottobre.xlsx"
+        )
+        const { runId } = value(
+          yield* run(
+            startImport({ uploadId, expected: [2, 3], startedBy: admin.id })
+          )
+        )
+
+        value(yield* run(executeImport(runId)))
+
+        // October 2026 in Rome
+        const stored = "1026_Pratiche_ottobre.xlsx"
+        expect(
+          yield* Effect.promise(() =>
+            testDb.select({ fileName: customers.fileName }).from(customers)
+          )
+        ).toEqual([{ fileName: stored }, { fileName: stored }])
+        expect(
+          yield* Effect.promise(() =>
+            testDb.select({ fileName: practices.fileName }).from(practices)
+          )
+        ).toEqual([{ fileName: stored }, { fileName: stored }])
+        expect(yield* Effect.promise(() => runs())).toMatchObject([
+          { fileName: "Pratiche-ottobre.xlsx" },
+        ])
+      })
+  )
+
+  it.effect(
+    "un task consegnato due volte: la seconda volta non fa nulla (D7)",
+    () =>
+      Effect.gen(function* () {
+        const { runId } = yield* started()
+        value(yield* run(executeImport(runId)))
+        const before = yield* Effect.promise(() => runs())
+
+        const again = value(yield* run(executeImport(runId)))
+
+        expect(again).toBe("skipped")
+        expect(yield* Effect.promise(() => runs())).toEqual(before)
+        expect(yield* Effect.promise(() => customerCodes())).toEqual(["1", "2"])
+      })
+  )
+
+  it.effect(
+    "un task arrivato quando l'import è già preso non lo rifà, anche se è ancora in corso",
+    () =>
+      Effect.gen(function* () {
+        const { runId } = yield* started()
+        yield* Effect.promise(() =>
+          testDb
+            .update(importRun)
+            .set({ claimedAt: START })
+            .where(eq(importRun.id, runId))
+        )
+
+        const outcome = value(yield* run(executeImport(runId)))
+
+        expect(outcome).toBe("skipped")
+        expect((yield* Effect.promise(() => runs()))[0]?.status).toBe("running")
+        expect(yield* Effect.promise(() => customerCodes())).toEqual([])
+      })
+  )
+
+  it.effect(
+    "oltre la scadenza l'import è interrotto e non scrive nulla (AC30, D8)",
+    () =>
+      Effect.gen(function* () {
+        const { runId } = yield* started()
+
+        const outcome = value(
+          yield* run(executeImport(runId), {
+            at: new Date(START.getTime() + 2_000),
+            settings: { ...importSettings, timeoutMs: 1_000 },
+          })
+        )
+
+        expect(outcome).toBe("interrupted")
+        expect(yield* Effect.promise(() => runs())).toEqual([
+          expect.objectContaining({
+            status: "interrupted",
+            failureReason: "L'import non è finito entro 30 minuti dall'inizio",
+            customersCreated: null,
+          }),
+        ])
+        expect(yield* Effect.promise(() => customerCodes())).toEqual([])
+        expect(yield* Effect.promise(() => uploads())).toEqual([])
+      })
+  )
+
+  it.effect(
+    "una query fermata dal database per il tempo (57014) interrompe l'import",
+    () =>
+      Effect.gen(function* () {
+        const { runId } = yield* started()
+        yield* Effect.promise(() =>
+          failNextInsertInto(practices, {}, { sqlstate: "57014" })
+        )
+
+        const outcome = value(yield* run(executeImport(runId)))
+
+        expect(outcome).toBe("interrupted")
+        expect(yield* Effect.promise(() => customerCodes())).toEqual([])
+      })
+  )
+
+  it.effect(
+    "una riga che il CRM non accetta più fa fallire l'import: il motivo nomina riga e regola, mai i valori (AC19b, AC29, AC31)",
+    () =>
+      Effect.gen(function* () {
+        const { runId } = yield* started()
+        yield* Effect.promise(() =>
+          createCustomer({ id: "altro", tempID: "2", fiscalCode: CF_C })
+        )
+
+        const outcome = value(yield* run(executeImport(runId)))
+
+        expect(outcome).toBe("failed")
+        const [failed] = yield* Effect.promise(() => runs())
+        expect(failed).toMatchObject({
+          status: "failed",
+          failureReason: "Riga 3: Codice cliente già usato da un altro cliente",
+          customersCreated: null,
+        })
+        for (const value of [CF_A, CF_B, CF_C, "P1", "P2"]) {
+          expect(failed?.failureReason).not.toContain(value)
+        }
+        expect(yield* Effect.promise(() => customerCodes())).toEqual(["2"])
+        expect(yield* Effect.promise(() => uploads())).toEqual([])
+      })
+  )
+
+  it.effect(
+    "un errore del database fa fallire l'import con il suo codice e nulla scritto",
+    () =>
+      Effect.gen(function* () {
+        const { runId } = yield* started()
+        yield* Effect.promise(() => failNextInsertInto(practices))
+
+        const outcome = value(yield* run(executeImport(runId)))
+
+        expect(outcome).toBe("failed")
+        expect((yield* Effect.promise(() => runs()))[0]?.failureReason).toBe(
+          "Errore del database (codice P0001)"
+        )
+        expect(yield* Effect.promise(() => customerCodes())).toEqual([])
+        expect(yield* Effect.promise(() => uploads())).toEqual([])
+      })
+  )
 })
 
 describe("coda in processo (sviluppo, D13)", () => {
-  test("startImport risponde prima della fine e l'esito arriva nello storico (AC20)", async () => {
-    const admin = await createUser({ role: "ADMIN" })
-    const uploadId = await uploadOf(admin.id, twoRows)
-    const inProcess = importQueueInProcess({
-      run: (runId) => executeImport(runId).pipe(Effect.orDie, Effect.asVoid),
-      purge: () => Effect.void,
-    }).pipe(
-      Layer.provide(
-        Layer.merge(DbLive, Layer.succeed(ImportConfig, importSettings))
-      )
-    )
+  it.live(
+    "startImport risponde prima della fine e l'esito arriva nello storico (AC20)",
+    () =>
+      Effect.gen(function* () {
+        const admin = yield* Effect.promise(() => createUser({ role: "ADMIN" }))
+        const uploadId = yield* uploadOf(admin.id, twoRows, FILE_NAME, null)
+        const inProcess = importQueueInProcess({
+          run: (runId) =>
+            executeImport(runId).pipe(Effect.orDie, Effect.asVoid),
+          purge: () => Effect.void,
+        }).pipe(
+          Layer.provide(
+            Layer.merge(DbLive, Layer.succeed(ImportConfig, importSettings))
+          )
+        )
 
-    const { runId } = value(
-      await run(
-        startImport({ uploadId, expected: [2, 3], startedBy: admin.id }),
-        // The fiber of the task runs on the real clock
-        { queue: inProcess, at: new Date() }
-      )
-    )
+        const { runId } = value(
+          yield* run(
+            startImport({ uploadId, expected: [2, 3], startedBy: admin.id }),
+            // The fiber of the task runs on the real clock
+            { queue: inProcess, at: null }
+          )
+        )
 
-    expect((await runs())[0]?.status).toBe("running")
-    await vi.waitFor(async () =>
-      expect((await runs())[0]).toMatchObject({
-        id: runId,
-        status: "completed",
-        customersCreated: 2,
+        expect((yield* Effect.promise(() => runs()))[0]?.status).toBe("running")
+        yield* Effect.promise(() =>
+          vi.waitFor(async () =>
+            expect((await runs())[0]).toMatchObject({
+              id: runId,
+              status: "completed",
+              customersCreated: 2,
+            })
+          )
+        )
       })
-    )
-  })
+  )
 })
