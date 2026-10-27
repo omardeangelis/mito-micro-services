@@ -8,28 +8,23 @@ import {
   vi,
 } from "vitest"
 import { eq } from "drizzle-orm"
-import { sessions } from "@mito/db/schema/users"
+import { authSessions } from "@mito/db/schema/auth"
 import { migrateUpTo, resetDb, testDb } from "@/test/db"
+import { signIn, SESSION_COOKIE } from "@/test/authSession"
 import { createOperator } from "@/test/factories"
 import { app } from "../app"
 
-// The real NextAuth configuration: the backend reads sessions with its adapter
-// and its `session` callback
+// The real session read: better-auth of the app, which the backend runs once
+// per request
 vi.unmock("@mito/server/auth")
 
 const DAY = 24 * 60 * 60 * 1000
 
-async function signIn(userId: string, expires: Date) {
-  const sessionToken = `token-${userId}`
-  await testDb.insert(sessions).values({ sessionToken, userId, expires })
-  return sessionToken
-}
-
-const sessionOf = (sessionToken: string) =>
+const sessionOf = (token: string) =>
   testDb
     .select()
-    .from(sessions)
-    .where(eq(sessions.sessionToken, sessionToken))
+    .from(authSessions)
+    .where(eq(authSessions.token, token))
     .then((rows) => rows[0])
 
 const getPreferences = (cookie?: string) =>
@@ -67,11 +62,9 @@ describe("backend", () => {
 
   it("con il cookie di una sessione valida esegue la procedura come quell'utente", async () => {
     const operator = await createOperator({ role: "ADMIN" })
-    const token = await signIn(operator.userId, new Date(Date.now() + 20 * DAY))
+    const { cookie } = await signIn(operator.userId)
 
-    const response = await getPreferences(
-      `other=1; __Secure-next-auth.session-token=${token}`
-    )
+    const response = await getPreferences(`other=1; ${cookie}`)
 
     expect(response.status).toBe(200)
     const body = (await response.json()) as {
@@ -83,29 +76,29 @@ describe("backend", () => {
     })
   })
 
-  it("accetta anche il cookie senza prefisso di next dev", async () => {
-    const operator = await createOperator()
-    const token = await signIn(operator.userId, new Date(Date.now() + 20 * DAY))
-
-    const response = await getPreferences(`next-auth.session-token=${token}`)
-
-    expect(response.status).toBe(200)
-  })
-
   it("un token che non è nel database non autentica", async () => {
-    const response = await getPreferences(
-      "__Secure-next-auth.session-token=sconosciuto"
-    )
+    const response = await getPreferences(`${SESSION_COOKIE}=sconosciuto`)
     expect(response.status).toBe(401)
   })
 
-  it("una sessione scaduta non autentica e viene cancellata, come fa NextAuth", async () => {
+  it("un token con la firma sbagliata non autentica", async () => {
     const operator = await createOperator()
-    const token = await signIn(operator.userId, new Date(Date.now() - 1000))
+    const { token } = await signIn(operator.userId)
 
     const response = await getPreferences(
-      `__Secure-next-auth.session-token=${token}`
+      `${SESSION_COOKIE}=${encodeURIComponent(`${token}.${"A".repeat(43)}=`)}`
     )
+
+    expect(response.status).toBe(401)
+  })
+
+  it("una sessione scaduta non autentica e viene cancellata", async () => {
+    const operator = await createOperator()
+    const { token, cookie } = await signIn(operator.userId, {
+      expiresAt: new Date(Date.now() - 1000),
+    })
+
+    const response = await getPreferences(cookie)
 
     expect(response.status).toBe(401)
     expect(await sessionOf(token)).toBeUndefined()
@@ -114,22 +107,24 @@ describe("backend", () => {
   it("una sessione con più di un giorno di vita prende una nuova scadenza a trenta giorni", async () => {
     const operator = await createOperator()
     // Created two days ago: expires in 28 days
-    const token = await signIn(operator.userId, new Date(Date.now() + 28 * DAY))
+    const { token, cookie } = await signIn(operator.userId, {
+      expiresAt: new Date(Date.now() + 28 * DAY),
+    })
 
-    await getPreferences(`__Secure-next-auth.session-token=${token}`)
+    await getPreferences(cookie)
 
     const session = await sessionOf(token)
-    expect(session!.expires.valueOf()).toBeGreaterThan(Date.now() + 29 * DAY)
+    expect(session!.expiresAt.valueOf()).toBeGreaterThan(Date.now() + 29 * DAY)
   })
 
   it("una sessione creata da meno di un giorno mantiene la sua scadenza", async () => {
     const operator = await createOperator()
-    const expires = new Date(Date.now() + 30 * DAY - 60 * 60 * 1000)
-    const token = await signIn(operator.userId, expires)
+    const expiresAt = new Date(Date.now() + 30 * DAY - 60 * 60 * 1000)
+    const { token, cookie } = await signIn(operator.userId, { expiresAt })
 
-    await getPreferences(`__Secure-next-auth.session-token=${token}`)
+    await getPreferences(cookie)
 
     const session = await sessionOf(token)
-    expect(session!.expires.valueOf()).toBe(expires.valueOf())
+    expect(session!.expiresAt.valueOf()).toBe(expiresAt.valueOf())
   })
 })

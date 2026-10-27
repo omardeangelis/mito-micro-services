@@ -280,8 +280,8 @@ Tutto il codice nuovo, provato, ma non collegato a nessuna rotta né a `getServe
 - **location**: `src/app/api/auth/[...all]/route.ts` (al posto di `[...nextauth]`), `apps/api/src/app.ts`
 - **description**: `toNextJsHandler(auth)` in Next.js; `auth.handler(c.req.raw)` su Hono, tutte e due dietro il filtro di T5; via l'emulazione del Pages Router; sul backend l'alias `/api/auth/session` per un deploy (D16). Nella stessa PR una seconda migrazione di soli dati che ripete la copia degli account di T2 (D5).
 - **validation**: test di `apps/api`: `get-session` senza cookie → `null`; con cookie → l'utente; logout cancella la riga e il cookie riusato non vale (AC19); cookie `HttpOnly`, `Secure` su https, `SameSite=Lax` (AC17); il cookie `next-auth.session-token` di una sessione NextAuth ancora valida non dà sessione (AC20); `nextConfig.test.ts` e i test dei cron OIDC di `apps/api` invariati (AC27).
-- **status**: Planned
-- **log**:
+- **status**: Done (in PR, da rivedere)
+- **log**: 2026-10-27: `[...all]` su Next.js e `authHandler(getAuth())` su Hono; alias `/api/auth/session` nella forma di NextAuth; migrazione `20261027082309_auth_data_c2` (ripete D4, D5, D7, con test); controllo dell'origine acceso anche nei test
 - **files edited/created**:
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
@@ -295,8 +295,8 @@ Tutto il codice nuovo, provato, ma non collegato a nessuna rotta né a `getServe
 - **location**: `packages/server/src/auth.ts` → `packages/server/src/auth/index.ts`, `api/trpc.ts`, `requestSession.ts` (tolto), `apps/api/src/{app,session,auth}.ts`, `src/trpc/{pageSession,backendSession}.ts`, `src/app/api/auth/user/route.ts`, `src/app/api/_utils/auth.ts`, `src/test/setup.ts`, `services/operator/deactivate.ts`
 - **description**: `getServerAuthSession(headers)` usa `readSession`; chiamanti di Next.js con `headers()`; `createTRPCContext` con le sue `headers`; backend senza `sessionFromRequest` né `requestSession`; `backendSession` su `/api/auth/get-session`; `deactivate` cancella da `auth_session` e da `sessions` (la seconda la toglie la PR D).
 - **validation**: i test di procedure, `authCheck`, `/api/auth/user`, `deactivate` passano con le asserzioni invariate (AC16, AC18, AC26, AC28); i test di `apps/api` e `src/trpc` riscritti sulla sessione di better-auth con le stesse asserzioni; `pnpm run test --run`, lint, `tsc`, `pnpm build`, `pnpm api:build`, `pnpm api:smoke`.
-- **status**: Planned
-- **log**:
+- **status**: Done (in PR, da rivedere)
+- **log**: 2026-10-27: `getServerAuthSession(headers)` su `readSession`; `requestSession` resta per lo shim del backend (deviazione); test di `apps/api` e `src/trpc` riscritti con `src/test/authSession.ts`; test AC18 in `apps/api/src/_test/sameSession.db.test.ts`
 - **files edited/created**:
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
@@ -310,8 +310,8 @@ Tutto il codice nuovo, provato, ma non collegato a nessuna rotta né a `getServe
 - **location**: `src/app/login/page.tsx` (+ un componente client), `src/app/dashboard/profile/_components/LogoutFloatingButton.tsx` e test
 - **description**: "Accedi" → `signIn.social({ provider: "microsoft", callbackURL: "/", newUserCallbackURL: "/dashboard/profile?firstTime=true" })` dal client (le URL le impone comunque il server, D15) di better-auth (`better-auth/react`); con `AUTH_TEST_LOGIN` il campo email del magic link; `?error=1` mostra "Accesso non riuscito"; logout con `signOut` e redirect a `/`.
 - **validation**: test dei componenti (AC23–AC25, AC13, AC19), più `review_mode: mixed` sulla pagina in `pnpm dev` (agent-browser, con il magic link in console).
-- **status**: Planned
-- **log**:
+- **status**: Done (in PR, da rivedere)
+- **log**: 2026-10-27: `LoginForm` (Microsoft, email con `AUTH_TEST_LOGIN`), "Accesso non riuscito" con `?error`, logout con `authClient.signOut()` e `/`; test dei componenti. La prova in `pnpm dev` resta per G2
 - **files edited/created**:
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
@@ -325,8 +325,8 @@ Tutto il codice nuovo, provato, ma non collegato a nessuna rotta né a `getServe
 - **location**: `apps/api/gcp/deploy-staging.sh`, `apps/api/gcp/login-staging.sh` (della #90), `brain/chore/migrazione-gcp.md` (B6)
 - **description**: il deploy passa `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL=$FRONTEND`, `AUTH_TEST_LOGIN=true`; lo script della #90 chiede anche il secret nuovo.
 - **validation**: `sh -n`; il parser di `gcloud` offline come nella #90.
-- **status**: Planned
-- **log**:
+- **status**: Done (in PR, da rivedere)
+- **log**: 2026-10-27: `STAGING_BETTER_AUTH_SECRET`, `BETTER_AUTH_URL=$FRONTEND`, `AUTH_TEST_LOGIN=true` in `deploy-staging.sh`; `sh -n`. Dopo il merge della #90 (2026-10-27): `login-staging.sh` chiede anche `BETTER_AUTH_SECRET`, da solo con `sh apps/api/gcp/login-staging.sh BETTER_AUTH_SECRET`, e rifiuta un valore sotto i 32 caratteri; `deploy-staging.sh` unito con i secret di login della #90
 - **files edited/created**:
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a

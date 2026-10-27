@@ -1,11 +1,15 @@
 import { unstable_noStore as noStore } from "next/cache"
-import Link from "next/link"
 import { redirect } from "next/navigation"
 import Image from "next/image"
+import { env } from "@mito/env"
 import { getPageSession } from "@/trpc/pageSession"
-import { Button } from "@/components/ui/button"
+import { LoginForm } from "./_components/LoginForm"
 
-export default async function Home() {
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: { error?: string }
+}) {
   noStore()
   const session = await getPageSession()
   if (session?.user.name) {
@@ -21,12 +25,13 @@ export default async function Home() {
             "Dashboard è riservata agli utenti registrati. Accedi per continuare."
           }
         </p>
-        <Link
-          href={"/api/auth/signin"}
-          className="rounded-full px-10 py-3 font-semibold no-underline transition"
-        >
-          <Button>{"Accedi"}</Button>
-        </Link>
+        {/* A refused or failed login, without why (spec auth-better-auth, AC13) */}
+        {searchParams.error && (
+          <p role="alert" className="text-sm text-red-600">
+            {"Accesso non riuscito"}
+          </p>
+        )}
+        <LoginForm testLogin={env.AUTH_TEST_LOGIN === "true"} />
       </div>
     </main>
   )

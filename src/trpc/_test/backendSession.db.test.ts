@@ -10,16 +10,14 @@ import {
 import { once } from "node:events"
 import { type AddressInfo } from "node:net"
 import { serve, type ServerType } from "@hono/node-server"
-import { sessions } from "@mito/db/schema/users"
-import { migrateUpTo, resetDb, testDb } from "@/test/db"
+import { migrateUpTo, resetDb } from "@/test/db"
+import { signIn } from "@/test/authSession"
 import { createOperator } from "@/test/factories"
 import { app } from "../../../apps/api/src/app"
 import { backendSession } from "../backendSession"
 
-// The real NextAuth configuration, as the backend runs it
+// The real session read: better-auth of the app, as the backend runs it
 vi.unmock("@mito/server/auth")
-
-const DAY = 24 * 60 * 60 * 1000
 
 // The backend of api/ on a real port, as Cloud Run serves it
 let server: ServerType
@@ -34,30 +32,21 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   await resetDb()
-  vi.stubEnv("NEXTAUTH_URL", "https://staging-crm.example.it")
-  vi.stubEnv("NEXTAUTH_SECRET", "test-secret")
 })
 
 afterAll(() => {
-  vi.unstubAllEnvs()
   server.close()
 })
 
 describe("backendSession", () => {
   it("con il cookie di una sessione risponde la sessione del backend", async () => {
     const operator = await createOperator()
-    await testDb.insert(sessions).values({
-      sessionToken: "token",
-      userId: operator.userId,
-      expires: new Date(Date.now() + 20 * DAY),
-    })
+    const { cookie } = await signIn(operator.userId)
 
-    const session = await backendSession({
-      url: backendUrl,
-      cookie: "__Secure-next-auth.session-token=token",
-    })
+    const session = await backendSession({ url: backendUrl, cookie })
 
     expect(session?.user.id).toBe(operator.userId)
+    expect(new Date(session!.expires).valueOf()).toBeGreaterThan(Date.now())
   })
 
   it("senza cookie risponde nessuna sessione", async () => {

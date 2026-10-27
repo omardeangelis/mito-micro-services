@@ -13,29 +13,19 @@ import { type AddressInfo } from "node:net"
 import { serve, type ServerType } from "@hono/node-server"
 import { createTRPCProxyClient, TRPCClientError } from "@trpc/client"
 import { type AppRouter } from "@mito/server/api/root"
-import { sessions } from "@mito/db/schema/users"
-import { migrateUpTo, resetDb, testDb } from "@/test/db"
+import { migrateUpTo, resetDb } from "@/test/db"
+import { signIn } from "@/test/authSession"
 import { createOperator } from "@/test/factories"
 import { app } from "../../../apps/api/src/app"
 import { backendLink } from "../backendLink"
 import { transformer } from "../shared"
 
-// The real NextAuth configuration: the backend reads sessions with its adapter
+// The real session read: better-auth of the app, on the backend
 vi.unmock("@mito/server/auth")
-
-const DAY = 24 * 60 * 60 * 1000
 
 // The backend of api/ on a real port, as Cloud Run serves it
 let server: ServerType
 let backendUrl: string
-
-async function signIn(userId: string) {
-  const sessionToken = `token-${userId}`
-  await testDb
-    .insert(sessions)
-    .values({ sessionToken, userId, expires: new Date(Date.now() + 20 * DAY) })
-  return sessionToken
-}
 
 /** `api` of `@/trpc/server` with BACKEND_URL, rendering a request with this cookie. */
 const serverApi = (cookie: string | null) =>
@@ -66,10 +56,10 @@ afterAll(async () => {
 describe("backendLink", () => {
   it("esegue la procedura sul backend come l'utente del cookie della richiesta", async () => {
     const operator = await createOperator({ role: "ADMIN" })
-    const token = await signIn(operator.userId)
+    const { cookie } = await signIn(operator.userId)
 
     const preference = await serverApi(
-      `other=1; __Secure-next-auth.session-token=${token}`
+      `other=1; ${cookie}`
     ).user.getUserPreference.query()
 
     expect(preference).toMatchObject({
@@ -107,12 +97,12 @@ describe("backendLink", () => {
   it("al backend manda il cookie della richiesta e dice che la chiamata viene dal server", async () => {
     const fetchSpy = vi.spyOn(globalThis, "fetch")
 
-    await serverApi("next-auth.session-token=abc")
+    await serverApi("better-auth.session_token=abc")
       .user.getUserPreference.query()
       .catch(() => undefined)
 
     const headers = new Headers(fetchSpy.mock.calls[0]![1]?.headers)
-    expect(headers.get("cookie")).toBe("next-auth.session-token=abc")
+    expect(headers.get("cookie")).toBe("better-auth.session_token=abc")
     expect(headers.get("x-trpc-source")).toBe("rsc")
   })
 })

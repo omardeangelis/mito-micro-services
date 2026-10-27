@@ -8,6 +8,7 @@ import { practices } from "@mito/db/schema/pratiche"
 import { chatToOperator } from "@mito/db/schema/relations/chatToOperator"
 import { alert, task } from "@mito/db/schema/task"
 import { taskEventLog } from "@mito/db/schema/taskEventLog"
+import { authSessions } from "@mito/db/schema/auth"
 import { accounts, sessions, users } from "@mito/db/schema/users"
 import { Db, type DbClient } from "../../../effect/db"
 import { actorOf } from "../../contact/actor"
@@ -444,6 +445,28 @@ describe("deactivateOperator: cosa sposta e cosa no", () => {
       { sessionToken: seed.otherSession },
     ])
     expect((await userOf(seed.target.id)).disabledAt).toBeNull()
+  })
+
+  it("cancella anche le sessioni di better-auth dell'utente, solo le sue (spec auth-better-auth, AC15)", async () => {
+    const seed = await seedAll()
+    const addAuthSession = (userId: string) =>
+      testDb.insert(authSessions).values({
+        id: `auth-${userId}`,
+        token: `token-${userId}`,
+        userId,
+        expiresAt: new Date("2099-01-01T00:00:00.000Z"),
+      })
+    await addAuthSession(seed.leaving.userId)
+    await addAuthSession(seed.colleague.userId)
+
+    await run(seed)
+
+    expect(
+      await testDb
+        .select({ userId: authSessions.userId })
+        .from(authSessions)
+        .orderBy(asc(authSessions.userId))
+    ).toEqual([{ userId: seed.colleague.userId }])
   })
 
   it("i clienti dell'operatore e le sue pratiche passano alla destinazione; gli altri clienti no (AC8b, AC8d)", async () => {

@@ -1,7 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest"
 import { eq } from "drizzle-orm"
-import { type Session } from "next-auth"
-import { getServerAuthSession } from "@mito/server/auth"
+import { getServerAuthSession, type Session } from "@mito/server/auth"
 import { customers } from "@mito/db/schema/customers"
 import { users } from "@mito/db/schema/users"
 import { migrateUpTo, resetDb, testDb } from "@/test/db"

@@ -1,34 +1,14 @@
-import {
-  afterAll,
-  beforeAll,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  vi,
-} from "vitest"
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest"
 import { once } from "node:events"
 import { type AddressInfo } from "node:net"
 import { serve } from "@hono/node-server"
-import { sessions } from "@mito/db/schema/users"
-import { migrateUpTo, resetDb, testDb } from "@/test/db"
+import { migrateUpTo, resetDb } from "@/test/db"
+import { signIn } from "@/test/authSession"
 import { createOperator } from "@/test/factories"
 import { app } from "../app"
 
-// The real NextAuth configuration, as the Next.js route serves it
+// The real session read: better-auth of the app
 vi.unmock("@mito/server/auth")
-
-const FRONTEND = "https://staging-crm.example.it"
-const DAY = 24 * 60 * 60 * 1000
-const SESSION_COOKIE = "__Secure-next-auth.session-token"
-
-async function signIn(userId: string) {
-  const sessionToken = `token-${userId}`
-  await testDb
-    .insert(sessions)
-    .values({ sessionToken, userId, expires: new Date(Date.now() + 20 * DAY) })
-  return sessionToken
-}
 
 // The REST routes behind authCheck, with the method the Next.js app exports
 const AUTHENTICATED: [string, string][] = [["POST", "/api/export/download"]]
@@ -50,13 +30,6 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   await resetDb()
-  // NextAuth builds every URL and picks the __Secure- cookies from it
-  vi.stubEnv("NEXTAUTH_URL", FRONTEND)
-  vi.stubEnv("NEXTAUTH_SECRET", "test-secret")
-})
-
-afterAll(() => {
-  vi.unstubAllEnvs()
 })
 
 describe("route REST sul backend", () => {
@@ -74,11 +47,11 @@ describe("route REST sul backend", () => {
     "%s %s del vecchio import non esiste: 404 (AC4)",
     async (method, path) => {
       const operator = await createOperator()
-      const token = await signIn(operator.userId)
+      const { cookie } = await signIn(operator.userId)
 
       const response = await app.request(path, {
         method,
-        headers: { cookie: `${SESSION_COOKIE}=${token}` },
+        headers: { cookie },
       })
 
       expect(response.status).toBe(404)
@@ -95,13 +68,13 @@ describe("route REST sul backend", () => {
 
   it("con sessione le preferenze della tabella clienti usano @/trpc/server e rispondono OK", async () => {
     const operator = await createOperator()
-    const token = await signIn(operator.userId)
+    const { cookie } = await signIn(operator.userId)
 
     const response = await app.request("/api/user/preferences?pref=ct", {
       method: "POST",
       headers: {
         "content-type": "application/json",
-        cookie: `${SESSION_COOKIE}=${token}`,
+        cookie,
       },
       body: JSON.stringify({
         preferences: { customerTableVisibleColumns: ["name", "surname"] },
@@ -114,13 +87,13 @@ describe("route REST sul backend", () => {
 
   it("le preferenze senza il parametro pref rispondono 400", async () => {
     const operator = await createOperator()
-    const token = await signIn(operator.userId)
+    const { cookie } = await signIn(operator.userId)
 
     const response = await app.request("/api/user/preferences", {
       method: "POST",
       headers: {
         "content-type": "application/json",
-        cookie: `${SESSION_COOKIE}=${token}`,
+        cookie,
       },
       body: JSON.stringify({}),
     })
@@ -135,7 +108,7 @@ describe("route REST sul backend", () => {
     const { port } = server.address() as AddressInfo
     try {
       const operator = await createOperator()
-      const token = await signIn(operator.userId)
+      const { cookie } = await signIn(operator.userId)
 
       const response = await fetch(
         `http://127.0.0.1:${port}/api/user/preferences?pref=ct`,
@@ -143,7 +116,7 @@ describe("route REST sul backend", () => {
           method: "POST",
           headers: {
             "content-type": "application/json",
-            cookie: `${SESSION_COOKIE}=${token}`,
+            cookie,
           },
           body: JSON.stringify({
             preferences: { customerTableVisibleColumns: ["name", "surname"] },

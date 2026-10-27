@@ -1,8 +1,7 @@
 // @vitest-environment node
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import jwt from "jsonwebtoken"
-import { type Session } from "next-auth"
-import { getServerAuthSession } from "@mito/server/auth"
+import { getServerAuthSession, type Session } from "@mito/server/auth"
 import { authCheck } from "@/app/api/_utils/auth"
 
 // The check the cron, import and export routes run before anything else
@@ -28,7 +27,7 @@ const requestWith = (authorization?: string) =>
   })
 
 /** The status authCheck answers with, or "authorized". */
-async function check(request?: Request) {
+async function check(request: Request = requestWith()) {
   const response = await authCheck(request)
   return response === null ? "authorized" : response.status
 }
@@ -65,6 +64,19 @@ describe("authCheck", () => {
 
   it("fa passare il token dei cron firmato con CRON_SECRET_KEY", async () => {
     expect(await check(requestWith(`Bearer ${cronToken()}`))).toBe("authorized")
+  })
+
+  it("con cronToken false il token dei cron non basta", async () => {
+    const response = await authCheck(requestWith(`Bearer ${cronToken()}`), {
+      cronToken: false,
+    })
+    expect(response?.status).toBe(401)
+  })
+
+  it("legge la sessione dalle intestazioni della richiesta", async () => {
+    const request = requestWith()
+    await check(request)
+    expect(getServerAuthSession).toHaveBeenCalledWith(request.headers)
   })
 
   it.each([

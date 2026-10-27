@@ -49,6 +49,12 @@ export const AUTH_TABLES_SCHEMA_TAG = "20261026174610_auth_tables"
  */
 export const AUTH_DATA_SCHEMA_TAG = "20261026174632_auth_data"
 
+/**
+ * The last migration before better-auth serves the login (PR C2), when the
+ * copy of NextAuth's rows runs again: its test seeds here.
+ */
+export const BEFORE_AUTH_SWITCH_SCHEMA_TAG = "20261026221823_messages_chat_fk"
+
 /** In-memory Postgres standing in for `@mito/db` in `*.db.test.ts` files. */
 export const testClient = new PGlite()
 export const testDb = drizzle(testClient, { schema })

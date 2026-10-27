@@ -34,11 +34,11 @@ async function operatorCheck(userId: string) {
 
 async function handler(req: NextRequest) {
   // auth check
-  const authResponse = await authCheck()
+  // Only a session, never the token of the cron scripts
+  const authResponse = await authCheck(req, { cronToken: false })
   if (authResponse) return authResponse
 
-  // authCheck has no request to read a token from: only a session gets here
-  const session = await getServerAuthSession()
+  const session = await getServerAuthSession(req.headers)
   const operatorResponse = await operatorCheck(session!.user.id)
   if (operatorResponse) return operatorResponse
 

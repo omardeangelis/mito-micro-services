@@ -28,8 +28,10 @@ esac
 P=mito-crm
 R=europe-west3
 URL=https://mito-crm-staging-869830994359.europe-west3.run.app
-# NextAuth builds callbacks, email links and cookies from NEXTAUTH_URL: the
-# public address of the frontend, which the Vercel rewrites send here
+# NextAuth and better-auth build callbacks, email links and cookies from
+# NEXTAUTH_URL and BETTER_AUTH_URL: the public address of the frontend, which
+# the Vercel rewrites send here. On staging the test login is on
+# (AUTH_TEST_LOGIN, spec auth-better-auth OQ6)
 FRONTEND=https://staging-crm.dbmito.it
 INSTANCE=mito-crm:europe-west3:mito-crm-staging
 S=STAGING_
@@ -39,9 +41,10 @@ S=STAGING_
 DB_SECRETS=SUPABASE_MITO_PSW=${S}CLOUDSQL_MITO_APP_PASSWORD:latest
 DB_ENV=SUPABASE_DB_CONNECTION_STRING=postgres://mito_app@localhost/mito,INSTANCE_UNIX_SOCKET=/cloudsql/$INSTANCE
 # The login, once Vercel sends /api/auth here (BACKEND_AUTH): without these
-# the backend has no provider (packages/server/src/auth.ts). The Azure app and
-# the SendGrid email link come from the secrets login-staging.sh stores, which
-# must exist before the first deploy that passes them, or step 2 fails
+# the backend has no provider (packages/server/src/betterAuth/). The Azure app,
+# the SendGrid email link and BETTER_AUTH_SECRET come from the secrets
+# login-staging.sh stores, which must exist before the first deploy that passes
+# them, or step 2 fails
 LOGIN_SECRETS=$(for name in AZURE_AD_CLIENT_ID AZURE_AD_CLIENT_SECRET \
   AZURE_AD_TENANT_ID SENDGRID_USERNAME SENDGRID_API_KEY SENDGRID_SERVER \
   SENDGRID_PORT; do printf ,%s=%s%s:latest "$name" "$S" "$name"; done)
@@ -97,8 +100,8 @@ REVISION_TAG=d-$(printf %s "$DIGEST" | cut -c1-12)
 gcloud run deploy mito-crm-staging --project=$P --region=$R \
   --image=$IMAGE \
   --add-cloudsql-instances=$INSTANCE \
-  --set-secrets=$DB_SECRETS$LOGIN_SECRETS,SUPABASE_KEY=${S}SUPABASE_KEY:latest,NEXT_PUBLIC_SUPABASE_URL=${S}NEXT_PUBLIC_SUPABASE_URL:latest,NEXTAUTH_SECRET=${S}NEXTAUTH_SECRET:latest,CRON_SLACK_WEBHOOK_URL=${S}CRON_SLACK_WEBHOOK_URL:latest \
-  --set-env-vars=$DB_ENV,NEXT_PUBLIC_APP_ENV=staging,NEXTAUTH_URL=$FRONTEND,TZ=UTC,CRON_OIDC_AUDIENCE=$URL,CRON_OIDC_SERVICE_ACCOUNT=mito-crm-scheduler-staging@mito-crm.iam.gserviceaccount.com,CRON_REPORT_ENV=staging,GCS_BUCKET=mito-crm-staging-storage,$IMPORT_ENV \
+  --set-secrets=$DB_SECRETS$LOGIN_SECRETS,SUPABASE_KEY=${S}SUPABASE_KEY:latest,NEXT_PUBLIC_SUPABASE_URL=${S}NEXT_PUBLIC_SUPABASE_URL:latest,NEXTAUTH_SECRET=${S}NEXTAUTH_SECRET:latest,BETTER_AUTH_SECRET=${S}BETTER_AUTH_SECRET:latest,CRON_SLACK_WEBHOOK_URL=${S}CRON_SLACK_WEBHOOK_URL:latest \
+  --set-env-vars=$DB_ENV,NEXT_PUBLIC_APP_ENV=staging,NEXTAUTH_URL=$FRONTEND,BETTER_AUTH_URL=$FRONTEND,AUTH_TEST_LOGIN=true,TZ=UTC,CRON_OIDC_AUDIENCE=$URL,CRON_OIDC_SERVICE_ACCOUNT=mito-crm-scheduler-staging@mito-crm.iam.gserviceaccount.com,CRON_REPORT_ENV=staging,GCS_BUCKET=mito-crm-staging-storage,$IMPORT_ENV \
   "--set-env-vars=^;^AUTH_ALLOWED_EMAILS=$AUTH_ALLOWED_EMAILS" \
   --timeout=1800 \
   --no-traffic --tag=$REVISION_TAG \

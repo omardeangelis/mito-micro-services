@@ -18,7 +18,10 @@ const child = spawn(
       PORT: "0",
       NEXT_PUBLIC_SUPABASE_URL: "http://127.0.0.1:54321",
       SUPABASE_KEY: "smoke-placeholder",
-      // auth.ts creates the Azure AD provider only when these are set
+      // better-auth stops without them, and adds Microsoft only with the
+      // three Azure ones
+      BETTER_AUTH_URL: "https://smoke.example.it",
+      BETTER_AUTH_SECRET: "smoke-placeholder-of-at-least-32-chars",
       AZURE_AD_CLIENT_ID: "smoke-placeholder",
       AZURE_AD_CLIENT_SECRET: "smoke-placeholder",
       AZURE_AD_TENANT_ID: "smoke-placeholder",
@@ -55,9 +58,12 @@ const expect = async (path, status, method = "GET") => {
 await expect("/health", 200)
 // A procedure that needs a session: the session middleware and the router run
 await expect("/api/trpc/user.getUserPreference", 401)
-// NextAuth's routes, without a cookie: they answer without the database
+// better-auth's routes, without a cookie: they answer without the database.
+// The session of NextAuth's shape, for the frontend of the deploy before (D16)
+await expect("/api/auth/get-session", 200)
 await expect("/api/auth/session", 200)
-await expect("/api/auth/providers", 200)
+// Outside the allowlist of authHandler (D9)
+await expect("/api/auth/providers", 404)
 // A REST route of the Next.js app, with NextResponse from next/server
 await expect("/api/export/download", 401)
 // The import queue's route, without its configuration: it refuses the task

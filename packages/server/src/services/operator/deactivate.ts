@@ -6,6 +6,7 @@ import { operators } from "@mito/db/schema/operators"
 import { practices } from "@mito/db/schema/pratiche"
 import { task } from "@mito/db/schema/task"
 import { taskEventLog } from "@mito/db/schema/taskEventLog"
+import { authSessions } from "@mito/db/schema/auth"
 import { sessions, users } from "@mito/db/schema/users"
 import {
   type Db,
@@ -285,6 +286,12 @@ export const deactivateOperator = ({
           .set({ disabledAt: sql`now()`, disabledBy: actor.operatorId })
           .where(eq(users.id, leaving.userId))
       )
+      yield* query((client) =>
+        client
+          .delete(authSessions)
+          .where(eq(authSessions.userId, leaving.userId))
+      )
+      // NextAuth's, until PR D of spec auth-better-auth drops it
       yield* query((client) =>
         client.delete(sessions).where(eq(sessions.userId, leaving.userId))
       )

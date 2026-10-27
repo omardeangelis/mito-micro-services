@@ -12,7 +12,6 @@ vi.mock("@mito/db", async () => ({
 
 // Sessions come from `createTestCaller`
 vi.mock("@mito/server/auth", () => ({
-  authOptions: {},
   getServerAuthSession: vi.fn(async () => null),
 }))
 

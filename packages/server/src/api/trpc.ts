@@ -33,7 +33,7 @@ import { operatorErrorToTrpc } from "../services/operator/errors"
  * @see https://trpc.io/docs/server/context
  */
 export const createTRPCContext = async (opts: { headers: Headers }) => {
-  const session = await getServerAuthSession()
+  const session = await getServerAuthSession(opts.headers)
 
   return {
     db,
@@ -129,7 +129,7 @@ export const publicProcedure = t.procedure
  * @see https://trpc.io/docs/procedures
  */
 export const protectedProcedure = publicProcedure.use(async ({ ctx, next }) => {
-  if (!ctx.session || !ctx.session.user) {
+  if (!ctx.session?.user) {
     throw new TRPCError({ code: "UNAUTHORIZED" })
   }
   return next({

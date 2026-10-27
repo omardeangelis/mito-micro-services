@@ -2,21 +2,23 @@ import { fetchRequestHandler } from "@trpc/server/adapters/fetch"
 import { Hono } from "hono"
 import { appRouter } from "@mito/server/api/root"
 import { createTRPCContext } from "@mito/server/api/trpc"
+import { readRequestSession } from "@mito/server/auth"
+import { getAuth } from "@mito/server/betterAuth/index"
+import { authHandler } from "@mito/server/betterAuth/handler"
 import { requestSession } from "@mito/server/requestSession"
 import { GET as authUser } from "@/app/api/auth/user/route"
-import { authRoute } from "./auth"
 import { restRoutes } from "./rest"
 import { cronLive } from "./cron/live"
 import { cronRoutes } from "./cron/routes"
 import { importLive } from "./import/live"
 import { importRoutes } from "./import/routes"
-import { sessionFromRequest } from "./session"
 
 /**
  * The backend: the same tRPC router the Next.js app serves at /api/trpc, on
  * the same path, so a Vercel rewrite can send the browser's calls here
- * unchanged. Every /api request runs inside its session (`requestSession`):
- * the code that calls `getServerAuthSession` gets it as in Next.js.
+ * unchanged. Every /api request runs inside its session (`requestSession`),
+ * read once from better-auth's cookie: the code that calls
+ * `getServerAuthSession` gets it as in Next.js.
  */
 export const app = new Hono()
 
@@ -30,7 +32,7 @@ app.route("/internal/cron", cronRoutes(cronLive(process.env)))
 app.route("/internal/import", importRoutes(importLive(process.env)))
 
 app.use("/api/*", async (c, next) => {
-  const session = await sessionFromRequest(c.req.raw)
+  const session = await readRequestSession(c.req.raw.headers)
   await requestSession.run({ session }, next)
 })
 
@@ -38,10 +40,20 @@ app.use("/api/*", async (c, next) => {
 // turns that into a 500
 app.all(
   "/api/auth/user",
-  async () => (await authUser()) ?? new Response(null, { status: 500 })
+  async (c) =>
+    (await authUser(c.req.raw)) ?? new Response(null, { status: 500 })
 )
 
-app.all("/api/auth/*", (c) => authRoute(c.req.raw))
+// NextAuth's session, as the frontend of the deploy before better-auth reads
+// it (src/trpc/backendSession.ts): `{}` without one. Only while Vercel and
+// Cloud Run may serve different deploys; PR D of spec auth-better-auth drops
+// it (D16)
+app.get("/api/auth/session", () => {
+  const session = requestSession.getStore()?.session
+  return Response.json(session ?? {})
+})
+
+app.all("/api/auth/*", (c) => authHandler(getAuth())(c.req.raw))
 
 app.route("/", restRoutes())
 
