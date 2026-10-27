@@ -5,7 +5,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { useToast } from "@/components/ui/use-toast"
-import { ToastAction } from "@radix-ui/react-toast"
+import { Toast as ToastPrimitives } from "radix-ui"
 import { type PropsWithChildren } from "react"
 import { Button } from "@/components/ui/button"
 import { MoreHorizontal } from "lucide-react"
@@ -28,7 +28,9 @@ export const DropDownCilpBoard: React.FC<{ label: string; value: string }> = ({
               variant: "success",
               closeManually: true,
               action: (
-                <ToastAction altText="Copiato con successo">Chiudi</ToastAction>
+                <ToastPrimitives.Action altText="Copiato con successo">
+                  Chiudi
+                </ToastPrimitives.Action>
               ),
             })
           })

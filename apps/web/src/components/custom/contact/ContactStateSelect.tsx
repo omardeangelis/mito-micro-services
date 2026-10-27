@@ -1,5 +1,5 @@
 import * as React from "react"
-import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu"
+import { DropdownMenu as DropdownMenuPrimitive } from "radix-ui"
 import { ChevronDown } from "lucide-react"
 import { TaskStatusBadge } from "@/components/custom/badge/TaskStatusBadge"
 import { LoadingSpinner } from "@/components/custom/loading-spinner"
