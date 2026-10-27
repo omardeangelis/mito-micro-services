@@ -120,6 +120,13 @@
       "when": 1793053103645,
       "tag": "20261026221823_messages_chat_fk",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1793089389876,
+      "tag": "20261027082309_auth_data_c2",
+      "breakpoints": true
     }
   ]
 }
