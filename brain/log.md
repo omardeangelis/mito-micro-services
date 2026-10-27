@@ -3,7 +3,7 @@ domain: _root
 type: index
 links: []
 created: 2026-09-24
-updated: 2026-10-26
+updated: 2026-10-27
 ---
 
 # Brain — Log
@@ -11,6 +11,13 @@ updated: 2026-10-26
 Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest when over.
 
 <!-- Entries are appended by create-spec (spec creation) and docs-maintenance (ingest). Format:
+
+## [2026-10-27] chore | Migrazione Effect: debito chiuso e stato allineato a `dev`
+- Pagina: [[chore/migrazione-effect]]; anche [[domains/crm/concepts/operatore]], [[domains/crm/crm-contract]], [[domains/crm/flows/export-chiamate-per-operatore-admin]], [[tech-debt/crm/export-chiamate]], [[chore/migrazione-gcp]]
+- In `dev` il 2026-10-26 e 2026-10-27: PR #98 e #103 (`server-only`), #104 (Sentry sul backend), #100 (TD3 a, b), #102 (TD7), #105 e #106 (TD10 b, c), #101 (ogni utente è un operatore); del passo 8 #94, #96, #97 e #99. Prima del merge, gate e prova nel browser su `mito_local` sul codice di tutte le PR insieme
+- Debito: TD3, TD7 e TD11 (u) `[CLOSED]`; TD10 (b), (c), (e) `[CLOSED]`, (a) proposta di chiusura da confermare con Leonardo; TD6 aperta solo per `@sentry/nextjs` in `api/trpc.ts` (passo 8). Il FOLLOW-UP sull'admin senza riga operatore di export-chiamate si chiude come "non si fa"
+- Regola nuova: ogni utente è un operatore (decisione di Omar del 2026-10-26). In prod il 2026-10-26: 0 utenti senza operatore, 0 note senza chat, chat più lunga 20 note
+- Stato dei passi: passo 1 in `dev` con la PR #62 (tranne la P2), passo 6 con la PR #95, passo 7 fatto con export-chiamate e `services/export/files.ts`. Per la fase P: il servizio Cloud Run di prod vuole `VERCEL_ENV=production` e `NEXT_PUBLIC_SENTRY_DSN`
 
 ## [2026-10-26] plan | Login e sessione su better-auth, contesto tRPC su Effect
 - Plan: [[specs/crm/auth-better-auth/PLAN]] (5 PR, 15 task e 4 gate; verifica DO NOT SHIP, corretta)
@@ -312,13 +319,6 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 - Verdict: DO NOT SHIP al primo giro (5 MAJOR: log e spostamenti da statement diversi, "Assegna a te" fuori dalla regola dei lock, failpoint troppo presto, ordine dei lock senza test, deviazione di AC9), SHIP al secondo dopo le correzioni di a0b45b4. Gate completi verdi (2643 test con i `*.pg.test.ts`)
 - Impact: critical; revisione di Leonardo, prova su staging e OQ2 prima della prod restano umane
 - Verifiers: 7 al primo giro, 2 al secondo (v4, v7: 0 blocker, 0 major, 3 minor, 2 nit; 22 mutanti presi)
-
-## [2026-10-22] review | Gestione operatori — PR 2, user e operator su Effect
-- Report: [[specs/crm/gestione-operatori/REPORT]] (round PR 2)
-- Scope: spec
-- Verdict: SHIP. Refactor puro confermato: corpo delle risposte identico misurato con l'handler HTTP, test della PR 1 con diff vuoto. Cambia solo la telemetria degli errori del database, come per ogni procedura già su `runTrpc`. Le lacune di test segnalate sono chiuse in `ac85739`
-- Impact: critical (middleware dei permessi); revisione di Leonardo richiesta (AC29a)
-- Verifiers: 4 (0 blocker, 0 major, 5 minor, 2 nit; 4 SHIP)
 
 ## [YYYY-MM-DD] ingest | <spec title>
 - Source: [[specs/<domain>/<spec>/SPEC]]

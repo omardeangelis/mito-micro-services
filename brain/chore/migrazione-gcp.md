@@ -3,7 +3,7 @@ domain: platform
 title: Backend, DB, storage e cron su GCP
 type: piano
 status: in_progress
-last_updated: 2026-10-26
+last_updated: 2026-10-27
 ---
 
 # Backend, DB, storage e cron su GCP
@@ -138,6 +138,12 @@ Ogni passo si accende con le variabili del progetto Vercel di prod e del servizi
 6. DB, nella finestra serale.
 
 Le dismissioni arrivano 2–4 settimane dopo.
+
+**Sentry sul backend di prod.** Dalla [PR #104](https://github.com/omardeangelis/mito-micro-services/pull/104) `apps/api/src/instrument.ts` inizializza Sentry, ma solo dove `isProduction` (`packages/env/src/index.js`) è vero. Fuori da un bundle Next lo decidono `VERCEL_ENV` (o `NEXT_PUBLIC_VERCEL_ENV`) uguale a `production` e `APP_ENV` diverso da `staging`. Per questo il servizio Cloud Run di prod deve avere, dal passo 1:
+- `VERCEL_ENV=production`, e nessun `APP_ENV=staging`;
+- `NEXT_PUBLIC_SENTRY_DSN`, lo stesso DSN del progetto Vercel di prod.
+
+Senza una delle due il backend non manda errori a Sentry. La prova con un errore forzato si fa al passo 1: su staging Sentry è spento per scelta, e lì la sostituiscono i test (`apps/api/src/_test/instrument.test.ts`).
 
 ## DB: dettagli
 

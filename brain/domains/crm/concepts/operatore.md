@@ -16,7 +16,7 @@ links:
   - "[[tech-debt/crm/gestione-operatori]]"
   - "[[chore/migrazione-effect]]"
 created: 2026-10-23
-updated: 2026-10-23
+updated: 2026-10-27
 ---
 
 # Operatore
@@ -24,6 +24,8 @@ updated: 2026-10-23
 ## Definition
 
 Una persona che lavora nel gestionale. È fatta di due righe: l'**utente** (`users`), che ha il login, le sessioni, il ruolo e lo stato di disattivazione, e l'**operatore** (`operators`), a cui sono assegnati clienti, contatti e pratiche. `createUserWithOperator` crea le due righe insieme, quindi "operatori" e "utenti" sono la stessa cosa: un utente con il suo operatore.
+
+**Ogni utente è un operatore** (decisione di Omar del 2026-10-26). Un utente senza riga in `operators` è un'anomalia, e per lui nessuna procedura e nessuna route vale: riceve `NotAnOperator` (`BAD_REQUEST`, 400 su `/api/export/download`). Il codice non ha rami per questo caso. La applica la [PR #101](https://github.com/omardeangelis/mito-micro-services/pull/101); il 2026-10-26 in prod non c'erano utenti senza operatore.
 
 Fa eccezione l'**operatore di sistema**, che non ha un utente: non entra, non si assegna e non si disattiva.
 
@@ -35,7 +37,7 @@ Un operatore **lavora** quando esiste, ha un utente e non è disattivato. È il 
 
 | Attributo | Dove | Valori e regole |
 |---|---|---|
-| Ruolo | `users.role` | `ADMIN` o `OPERATORE`. Alla registrazione il default è `ADMIN` (OQ2, aperta). Si cambia solo dalla tabella admin, in batch atomici: [[domains/crm/flows/cambio-ruolo-operatori]] |
+| Ruolo | `users.role` | `ADMIN` o `OPERATORE`. Al primo login `createUserWithOperator` scrive `OPERATORE` dalla [PR #96](https://github.com/omardeangelis/mito-micro-services/pull/96) del passo 8; il default della colonna resta `ADMIN` ([[specs/crm/auth-better-auth/SPEC]]). Si cambia solo dalla tabella admin, in batch atomici: [[domains/crm/flows/cambio-ruolo-operatori]] |
 | Disattivato il | `users.disabled_at` | `timestamp with time zone`, null se attivo. Sta su `users` e non su `operators` perché login e sessioni sono dell'utente |
 | Disattivato da | `users.disabled_by` | FK verso `operators.id`: l'operatore dell'admin che ha disattivato. Null se attivo |
 | Operatore dell'utente | `operators.user_id` | Null solo per l'operatore di sistema |
@@ -59,7 +61,7 @@ Le procedure restituiscono un errore tipizzato (`Data.TaggedError`) mappato a tR
 
 | Errore | Codice | tRPC | Messaggio |
 |---|---|---|---|
-| `NotAnOperator` | — | `BAD_REQUEST` | (l'utente non ha un operatore) |
+| `NotAnOperator` | — | `BAD_REQUEST` | (l'utente non ha un operatore: un'anomalia, vedi sopra) |
 | `OperatorDisabled` | `OPERATOR_DISABLED` | `UNAUTHORIZED` | "Utente disattivato" |
 | `OperatorIsAdmin` | `OPERATOR_IS_ADMIN` | `BAD_REQUEST` | "Declassa l'admin a operatore prima di disattivarlo" |
 | `CannotDeactivateSelf` | `CANNOT_DEACTIVATE_SELF` | `BAD_REQUEST` | "Non puoi disattivare te stesso" |
@@ -81,6 +83,6 @@ Concetto vicino: [[domains/crm/concepts/regola-dei-lock]], che dice in che ordin
 
 - **Codice in Effect (L1 + L2 di [[chore/migrazione-effect]]).** Le procedure di `operator` e `user.getUserPreference` sono adapter: input zod, servizio in `packages/server/src/services/{user,operator}/`, `runTrpc`. I router non contengono query Drizzle. `TRPCError` compare solo nelle funzioni `*ErrorToTrpc` e in `effect/trpc.ts`.
 - **Deviazioni** ([[specs/crm/gestione-operatori/IMPLEMENTATION-NOTES]]): `userErrorToTrpc` non esiste, perché i servizi di `user` falliscono solo con `DbError`. `LastAdmin` conta solo gli admin con un operatore.
-- **Stranezze conservate di proposito** dal refactor (AC26, TD3 di [[chore/migrazione-effect]] §7): `getOperatorById` senza `id` restituisce un operatore qualunque; `updateOperatorInfo` restituisce l'operatore di prima dell'aggiornamento; `getUserPreference` di un utente senza operatore restituisce `role` e `operatorId` undefined.
+- **Stranezze conservate di proposito** dal refactor (AC26, TD3 di [[chore/migrazione-effect]] §7), corrette il 2026-10-26: `getOperatorById` vuole un `id` intero positivo e con un id inesistente restituisce `undefined`; `updateOperatorInfo` restituisce l'operatore dopo l'aggiornamento ([PR #100](https://github.com/omardeangelis/mito-micro-services/pull/100)); `getUserPreference` è `operatorProcedure`, quindi un utente senza operatore riceve `BAD_REQUEST` ([PR #101](https://github.com/omardeangelis/mito-micro-services/pull/101)).
 - **Debito** ([[tech-debt/crm/gestione-operatori]]): nessuna riattivazione dalla UI; i filtri sui dati storici non mostrano i disattivati (OQ3); la lista degli operatori arriva anche agli `OPERATORE` nel payload di `@admin`.
 - **Review:** [[specs/crm/gestione-operatori/REPORT]] (PR 2 per i middleware, PR 4 per ruoli e sessioni).
