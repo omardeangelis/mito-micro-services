@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest"
 import { addRomeMonth, romeLocalDate, romeParseDate } from "../romeClock"
 
-// vitest.workspace.ts runs this file in UTC and in Europe/Rome: the literal
-// cases hold in both, the comparisons with the native Date only in Rome, where
+// The `utc` and `rome` projects of vitest.config.ts run this file in UTC and
+// in Europe/Rome: the literal cases hold in both, the comparisons with the native Date only in Rome, where
 // the native Date is what a browser in Italy gives
 
 const iso = (date: Date) => date.toISOString()

@@ -74,6 +74,8 @@ const project = (
         "Date",
       ],
     },
+    // Vitest 1's default: the hooks of a suite run in parallel (vitest 5: "stack")
+    sequence: { hooks: "parallel" },
     // Vitest 5's default (true): its restoreAllMocks no longer resets the
     // vi.fn mocks, and tests relied on that reset between tests
     clearMocks: true,

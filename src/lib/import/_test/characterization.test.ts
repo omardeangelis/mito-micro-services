@@ -25,8 +25,9 @@ import {
 
 // Characterization of the conversion of one row (spec import-pratiche, T1
 // moved in T4): the values today's import gives a browser in Rome, defects
-// included, on `parseWorkbook` and the domain. vitest.workspace.ts runs this
-// file in UTC and in Europe/Rome: the dates are Rome's in both (AC33).
+// included, on `parseWorkbook` and the domain. The `utc` and `rome` projects
+// of vitest.config.ts run this file in UTC and in Europe/Rome: the dates are
+// Rome's in both (AC33).
 // What the old import did with the converted rows (validation, merge, errors)
 // was fixed in src/app/api/import/process/_test/characterization.test.ts,
 // removed with it (T20): the new rules are the domain's (classify, group, plan).
