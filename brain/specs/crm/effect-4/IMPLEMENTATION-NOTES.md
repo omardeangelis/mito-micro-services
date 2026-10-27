@@ -83,7 +83,7 @@
 - **PR 1** (in `dev`, [#114](https://github.com/omardeangelis/mito-micro-services/pull/114)): la prova nel browser su `mito_local` e la revisione di Leonardo (D4) sui file dell'auth, rinviate; AC15 su staging.
 - **PR 2:** in `dev` ([#113](https://github.com/omardeangelis/mito-micro-services/pull/113)).
 - **PR 3:** in `dev` ([#116](https://github.com/omardeangelis/mito-micro-services/pull/116)).
-- **PR 4** (`claude/effect-style`, da `dev` `e7ead47`): T18 e T19 fatti, T20a–c in corso. Al merge servono la prova su `mito_local` e la revisione di Leonardo (D4).
+- **PR 4** (`claude/effect-style`, da `dev` `e7ead47`): T18–T20c fatti, T21 in corso. Al merge servono la prova su `mito_local` e la revisione di Leonardo (D4).
 
 ## PR 2 – vitest 5
 

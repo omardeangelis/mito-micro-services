@@ -805,8 +805,11 @@ G0 ─┬─ T1 ─ T2 ─ T3 ─┬─ T4 ─┬─ T7 ─ T8 ══ PR 1 in de
   - `node scripts/check-assertions.mjs gen-wrappers HEAD` non trova niente nelle sue cartelle (su `dev` ne trova);
   - i test delle sue cartelle verdi;
   - lo script di T1 esce con 0.
-- **status**: In progress
-- **log**:
+- **status**: Done
+- **log**: 2026-10-27, worker del modello bilanciato in un worktree suo, `c6d154f`, unito in `0b656f5`.
+  - 23 funzioni: in `Effect.fn` le esportate (`contact.replaceActiveContact`, `contact.activeTaskIdOf`, `contact.resolveOpenAlert`, `contact.getContactById`, `contact.loadEditableContact`, `contact.touchCustomer`, `contact.loadOperator`, `contact.findWorkingOperator`, `contact.processDueAlerts`, `contact.refreshPriorities`, `customer.listCustomers`, `customer.listPracticesOfCustomer`, `customer.listCustomersOfPractice`, `operator.updateOperatorInfo`, `practice.listPractices`, `user.getCurrentUser`); in `Effect.fnUntraced` gli helper e le callback per elemento (`assignCustomer`, `loadOpenAlert`, `processAlert`, la callback di `forEachIsolated`, il gestore di `catchIf` in `createContact`, `lockActiveContact`, `moveCustomerAndContact`).
+  - Scelta: `findWorkingOperator`, `replaceActiveContact`, `loadOperator` e `touchCustomer` sono esportate e girano anche una volta per cliente nell'assegnazione in blocco; restano `Effect.fn` (D9: esportate). Il costo della traccia, per qualche centinaio di clienti, è trascurabile.
+  - Il `tdd_target` è in `reassign.disabled.db.test.ts`, verde. Suite intera 4504 verdi; AC5 nessun test toccato.
 - **files edited/created**:
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
@@ -820,8 +823,11 @@ G0 ─┬─ T1 ─ T2 ─ T3 ─┬─ T4 ─┬─ T7 ─ T8 ══ PR 1 in de
 - **location**: `packages/server/src/services/{import,storage,export,chat,analytics,cron,auth}/**`, `packages/server/src/betterAuth/**` (non i test)
 - **description**: Come T20a. Nell'import, le funzioni chiamate per ogni riga del file sono percorsi caldi e usano `Effect.fnUntraced`.
 - **validation**: come T20a, sulle sue cartelle.
-- **status**: In progress
-- **log**:
+- **status**: Done
+- **log**: 2026-10-27, worker del modello bilanciato in un worktree suo, `4d4dc24`, unito in `b50ad3d`.
+  - 38 funzioni in 21 file. `Effect.fn` per le esportate di analytics, auth, chat, cron, export, import e per i metodi dei tre backend dello storage (`storage.upload`, …, un nome per metodo); `import.enqueue` di `ImportQueue.layerCloudTasks` passa il suo `Effect.retry` come secondo argomento di `Effect.fn`. `Effect.fnUntraced` per gli helper (`financedIn`, `updateCustomerAge`, `updatePractices`, `customersOf`, `interrupt`, `call` della coda). Nessuna funzione dell'import gira per riga del file: le esportate sono `Effect.fn`.
+  - **Deviazione:** `betterAuth.readSession` è `Effect.fnUntraced`. Un `Effect.fn` con traccia aggiunge alla `Cause` un'annotazione `StackTrace`, e `session.db.test.ts:159` (`toMatchObject(Exit.fail(…))`) fallisce; il test non si cambia (AC5).
+  - `apply.db.test.ts` verde; suite intera 4504 verdi; `api:build`, `api:smoke`.
 - **files edited/created**:
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
@@ -835,8 +841,11 @@ G0 ─┬─ T1 ─ T2 ─ T3 ─┬─ T4 ─┬─ T7 ─ T8 ══ PR 1 in de
 - **location**: `packages/server/src/effect/**`, `apps/api/src/**`, `packages/db/src/migrate.ts`, `src/app/api/**`, `src/server/db/seeds/local/cron.ts` (non i test)
 - **description**: Come T20a. `query` e `lockCustomer` di `effect/db.ts` usano `Effect.fnUntraced` (percorsi caldi), e `transaction`, `retryOnDeadlock` e `runTrpc` restano funzioni normali.
 - **validation**: come T20a, sulle sue cartelle, più `pnpm api:build`.
-- **status**: In progress
-- **log**:
+- **status**: Done
+- **log**: 2026-10-27, worker del modello bilanciato in un worktree suo, `d2a7642`, unito in `142c5c1`.
+  - 11 funzioni: `query` e `lockCustomer` `Effect.fnUntraced`; `errorReporter.forEachIsolated`, `cron.alertJob`, `oidc.verifyIdToken` (area `oidc`: la usano sia il cron sia l'import) `Effect.fn`; `runCron`, `checkOrder`, le callback di `tapCause` di `jobs.ts` e delle due rotte cron di Next.js `Effect.fnUntraced`. `src/server/db/seeds/local/cron.ts` non ha `Effect.gen`.
+  - **Deviazione:** `applyMigrations` è `Effect.fnUntraced`, per la stessa annotazione `StackTrace`: `migrate.pg.test.ts` confronta l'`Exit` con `toStrictEqual`.
+  - `gen-wrappers` trova solo `transaction` (`effect/db.ts:111`), combinatore che AC11 lascia funzione normale.
 - **files edited/created**:
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
@@ -865,8 +874,8 @@ G0 ─┬─ T1 ─ T2 ─ T3 ─┬─ T4 ─┬─ T7 ─ T8 ══ PR 1 in de
   8. **Lo script di T1** si toglie dal repo, e il suo sorgente resta in `IMPLEMENTATION-NOTES.md` (D11).
   9. **La PR verso `dev`** quando Omar la chiede, con la revisione di Leonardo (D4). La descrizione della PR dice che è un'eccezione approvata alla regola "solo il codice che la modifica tocca" (D7).
 - **validation**: tutti i punti annotati; REPORT SHIP.
-- **status**: Planned
-- **log**:
+- **status**: In progress
+- **log**: 2026-10-27. Dopo il merge di T20a–c: `tsc` 0 errori; suite 330 file, 4504 verdi / 6 saltati; AC5 `ok, 48 test file(s) checked, 958 chain(s) compared, 321 exception(s) used`; AC11 `gen-wrappers` solo `transaction`; `api:build`, `api:smoke`.
 - **files edited/created**:
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
