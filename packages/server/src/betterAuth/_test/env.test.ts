@@ -70,6 +70,12 @@ describe("authConfigFrom", () => {
     ).toBeUndefined()
   })
 
+  it("si ferma con un secret più corto di 32 caratteri", () => {
+    expect(() =>
+      authConfigFrom({ ...REQUIRED, BETTER_AUTH_SECRET: "[SENSITIVE]" })
+    ).toThrow(/32/)
+  })
+
   it("si ferma senza URL o secret", () => {
     expect(() =>
       authConfigFrom({ BETTER_AUTH_URL: REQUIRED.BETTER_AUTH_URL })

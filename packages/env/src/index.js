@@ -59,8 +59,11 @@ export const env = createEnv({
     // database: comma-separated addresses
     AUTH_ALLOWED_EMAILS: z.string().optional(),
     // better-auth (brain/specs/crm/auth-better-auth), optional until it
-    // serves the login: the secret of its cookies, and the frontend's address
-    BETTER_AUTH_SECRET: z.string().min(32).optional(),
+    // serves the login: the secret of its cookies, and the frontend's address.
+    // The secret is a Sensitive variable on Vercel, which the build sees as
+    // "[SENSITIVE]": its length is checked when better-auth starts
+    // (packages/server/src/betterAuth/index.ts)
+    BETTER_AUTH_SECRET: z.string().optional(),
     BETTER_AUTH_URL: z.string().url().optional(),
     // Exactly "true" turns on the test logins (the email link, the addresses
     // of AUTH_ALLOWED_EMAILS); anything else, or unset, leaves them off
