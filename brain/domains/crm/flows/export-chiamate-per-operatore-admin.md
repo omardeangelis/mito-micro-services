@@ -13,7 +13,7 @@ links:
   - "[[domains/crm/concepts/periodo-dell-export]]"
   - "[[domains/crm/flows/esito-non-risponde-e-ritorno-in-coda]]"
 created: 2026-10-23
-updated: 2026-10-23
+updated: 2026-10-27
 ---
 
 # Export chiamate per operatore (admin)
@@ -50,6 +50,6 @@ flowchart TD
 - Periodo di default: ultimi 30 giorni (`defaultPeriod`). `xlsx` si carica solo al click.
 - Il file nasce nel browser dai numeri già in pagina: non passa dallo storage (nota tecnica della spec).
 - Se la richiesta fallisce compare un messaggio con "Riprova"; `now` è riletto a ogni render, così oltre la mezzanotte il nuovo giorno è selezionabile (review [[specs/crm/export-chiamate/REPORT]]).
-- Permessi: `adminSessionProcedure` = `protectedProcedure` + controllo del ruolo da DB; un admin senza riga operatore riceve i dati ma oggi non vede la sezione (debito: [[tech-debt/crm/export-chiamate]]).
+- Permessi: `adminProcedure` dalla [PR #101](https://github.com/omardeangelis/mito-micro-services/pull/101) (prima `adminSessionProcedure`, tolta). Un utente senza riga operatore, anche un admin, riceve `BAD_REQUEST`: per la regola "ogni utente è un operatore" ([[domains/crm/concepts/operatore]]) è un'anomalia.
 - Codice: `packages/server/src/api/routers/export/GET/callStats.ts`, `packages/server/src/services/export/callStats.ts`, `src/app/dashboard/_components/export/` (`CallsSection`, `AdminExportSection`, `ExportKpis`, `ExportCharts`, `ExportDownload`), `src/lib/export/callStatsWorkbook.ts`.
 - Prestazioni (AC21): mediana 22 ms su 100.000 righe, nessun indice necessario.

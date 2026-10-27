@@ -29,7 +29,7 @@ links:
   - "[[domains/crm/concepts/riconoscimento-dei-clienti-nell-import]]"
   - "[[tech-debt/crm/import-pratiche]]"
 created: 2026-10-23
-updated: 2026-10-26
+updated: 2026-10-27
 ---
 
 # CRM — Contratto del dominio
@@ -81,7 +81,7 @@ Confini e invarianti del dominio `crm`. Questa versione copre quello che stabili
 - **Un disattivato non ha una sessione valida e non può fare login**, su Vercel e su Cloud Run. Non viene mai ricreato come utente nuovo.
 - **Chi blocca la riga utente di un operatore lo fa prima di bloccare qualunque cliente**, e le righe dello stesso tipo si bloccano in ordine di id.
 - **Nessuna scelta di layout fa una richiesta al server.** Le preferenze di layout non contengono dati di identità.
-- **Solo un admin attivo ottiene i dati dell'export delle chiamate**, con o senza riga operatore: un altro utente, compreso un admin disattivato, riceve `FORBIDDEN`, e senza sessione la risposta è `UNAUTHORIZED`. Ai non admin non compaiono né il comando né la sezione.
+- **Solo un admin attivo ottiene i dati dell'export delle chiamate** (`adminProcedure` dalla [PR #101](https://github.com/omardeangelis/mito-micro-services/pull/101)): un `OPERATORE` riceve `FORBIDDEN`, un admin disattivato `UNAUTHORIZED` ("Utente disattivato"), un utente senza riga operatore `BAD_REQUEST`, e senza sessione la risposta è `UNAUTHORIZED`. Ai non admin non compaiono né il comando né la sezione.
 - **L'export delle chiamate contiene solo totali per operatore:** nessun dato di clienti, telefoni o note.
 - **Le chiamate si contano dal registro dei cambi di stato manuali:** azioni massive e cambi del sistema non sono chiamate. Effettuate = risposte + non risposte, e un appuntamento fissato è anche una risposta.
 - **Il periodo dell'export è in giorni di Roma**, estremi inclusi, e non va oltre 3 mesi indietro. Indicatori, grafici e file mostrano gli stessi numeri per lo stesso periodo.
