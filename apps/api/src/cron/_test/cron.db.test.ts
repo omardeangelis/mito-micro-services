@@ -391,7 +391,7 @@ describe("cron del backend: un errore del database", () => {
     )
     expect(failureTag(exit)).toBe("CronStepFailed")
     return exit._tag === "Failure"
-      ? (Cause.failureOption(exit.cause).pipe(Option.getOrThrow) as {
+      ? (Cause.findErrorOption(exit.cause).pipe(Option.getOrThrow) as {
           step: string
           cause: { _tag?: string }
         })
@@ -502,7 +502,9 @@ describe("cron alert del backend: le chiamate di alert.js", () => {
     expect(calls).toBe(3)
     expect(exit).toMatchObject({
       _tag: "Failure",
-      cause: { _tag: "Fail", error: { _tag: "AlertsFailed", failed: 1 } },
+      cause: {
+        reasons: [{ _tag: "Fail", error: { _tag: "AlertsFailed", failed: 1 } }],
+      },
     })
   })
 
@@ -531,7 +533,9 @@ describe("cron alert del backend: le chiamate di alert.js", () => {
     expect(calls).toBe(2)
     expect(exit).toMatchObject({
       _tag: "Failure",
-      cause: { _tag: "Fail", error: { _tag: "AlertsLeft", calls: 2 } },
+      cause: {
+        reasons: [{ _tag: "Fail", error: { _tag: "AlertsLeft", calls: 2 } }],
+      },
     })
   })
 })

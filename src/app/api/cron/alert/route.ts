@@ -27,7 +27,7 @@ export async function GET(request: Request) {
           : Effect.void
       ),
       // The response is a 200 either way: report here, or nobody will
-      Effect.tapErrorCause((cause) =>
+      Effect.tapCause((cause) =>
         Effect.gen(function* () {
           yield* Effect.logError("Alert cron failed", Cause.pretty(cause))
           const reporter = yield* ErrorReporter

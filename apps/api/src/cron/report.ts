@@ -13,10 +13,10 @@ export type CronOutcome = {
  * channel is the record of what runs and when, so a missing message is a
  * signal too. It never fails: a report must not break the job it tells about.
  */
-export class CronReport extends Context.Tag("CronReport")<
+export class CronReport extends Context.Service<
   CronReport,
   { readonly send: (outcome: CronOutcome) => Effect.Effect<void> }
->() {}
+>()("CronReport") {}
 
 const ICONS = {
   succeeded: ":white_check_mark:",
@@ -64,7 +64,7 @@ export const slackReport = ({
   Layer.succeed(CronReport, {
     send: (outcome) =>
       logOutcome(outcome).pipe(
-        Effect.zipRight(
+        Effect.andThen(
           Effect.tryPromise(() =>
             fetch(webhookUrl, {
               method: "POST",
@@ -81,7 +81,7 @@ export const slackReport = ({
             ? Effect.void
             : Effect.fail(new Error(`Slack answered ${response.status}`))
         ),
-        Effect.catchAll((error) =>
+        Effect.catch((error) =>
           Effect.logWarning("Cron report not sent to Slack", error)
         )
       ),

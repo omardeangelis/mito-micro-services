@@ -27,7 +27,7 @@ async function handler(req: NextRequest) {
       yield* refreshPriorities(id ? Number(id) : undefined)
     }).pipe(
       // The response is a 200 either way: report here, or nobody will
-      Effect.tapErrorCause((cause) =>
+      Effect.tapCause((cause) =>
         Effect.gen(function* () {
           yield* Effect.logError("Priority cron failed", Cause.pretty(cause))
           const reporter = yield* ErrorReporter
