@@ -8,6 +8,17 @@ import { useUserPreferenceContext } from "@/store/context/useUserPreferenceConte
 const captureException = vi.hoisted(() => vi.fn())
 vi.mock("@sentry/react", () => ({ captureException }))
 
+const auth = vi.hoisted((): { session: object | null; isPending: boolean } => ({
+  session: { user: { name: "Ada" } },
+  isPending: false,
+}))
+vi.mock("@/lib/authClient", () => ({
+  authClient: {
+    useSession: () => ({ data: auth.session, isPending: auth.isPending }),
+    signOut: vi.fn(),
+  },
+}))
+
 const open = (path: string) => {
   const router = createMemoryRouter(routes, { initialEntries: [path] })
   render(<RouterProvider router={router} />)
@@ -18,6 +29,36 @@ const heading = () => screen.findByRole("heading", { level: 1 })
 
 afterEach(() => {
   vi.restoreAllMocks()
+  auth.session = { user: { name: "Ada" } }
+  auth.isPending = false
+})
+
+describe("la sessione (F6)", () => {
+  it("senza sessione /dashboard e le sue pagine portano al login", async () => {
+    auth.session = null
+    const router = open("/dashboard/contatti/76006")
+
+    expect(
+      await screen.findByRole("button", { name: "Accedi" })
+    ).toBeInTheDocument()
+    expect(router.state.location.pathname).toBe("/login")
+    expect(screen.queryByRole("navigation")).toBeNull()
+  })
+
+  it("mentre la sessione si legge non mostra né la pagina né il login", () => {
+    auth.isPending = true
+    open("/dashboard")
+
+    expect(screen.queryByRole("navigation")).toBeNull()
+    expect(screen.queryByRole("button", { name: "Accedi" })).toBeNull()
+  })
+
+  it("con una sessione /login porta alla dashboard", async () => {
+    const router = open("/login")
+
+    expect(await heading()).toHaveTextContent("Home")
+    expect(router.state.location.pathname).toBe("/dashboard")
+  })
 })
 
 describe("le rotte (§5)", () => {

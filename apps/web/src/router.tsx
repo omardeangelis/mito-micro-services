@@ -28,6 +28,7 @@ export const routes: RouteObject[] = [
     hydrateFallbackElement: <AppLoading />,
     children: [
       { path: "/", element: <Navigate to="/dashboard" replace /> },
+      { path: "/login", lazy: () => import("./routes/login/LoginPage") },
       {
         path: "/dashboard",
         element: <DashboardShell />,

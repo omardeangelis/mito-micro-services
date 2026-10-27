@@ -2,6 +2,7 @@ import { useSearchParams } from "react-router"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
 import { useUserPreferenceContext } from "@/store/context/useUserPreferenceContext"
+import { LogoutFloatingButton } from "./LogoutFloatingButton"
 
 const TABS = ["profile", "admin", "blacklist"] as const
 type ProfileTab = (typeof TABS)[number]
@@ -54,6 +55,7 @@ export function Component() {
         </TabsList>
         <TabsContent value="profile">
           Il profilo arriva con il task 3.8
+          <LogoutFloatingButton />
         </TabsContent>
         {isAdmin ? (
           <>
