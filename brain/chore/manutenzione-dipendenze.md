@@ -8,6 +8,8 @@ last_updated: 2026-10-20
 
 # Manutenzione delle dipendenze
 
+> [!note] Dal 2026-10-27 le dipendenze del nuovo stack sono nel §4 di [[chore/roadmap-nuovo-stack]]: cosa si aggiorna, cosa esce con l'app Next e quando. Le regole qui sotto restano valide, e questa pagina tiene le note di esecuzione delle ondate.
+
 ## Stato al 2026-10-14
 
 Rilevato con `pnpm outdated` e `pnpm audit` su `dev` (`7978a4a`).
@@ -44,13 +46,13 @@ Le critiche di `vitest` e `tinypool` toccano solo gli strumenti di test.
 | W0 | Patch di sicurezza dentro il major: next 14.2.35, eslint-config-next, next-auth 4.24.15, jsonwebtoken 9.0.3, tRPC 10.45.4, nanoid 5.1.x, ws 8.x, vitest 1.x, postcss 8.x, più i transitivi corretti nello stesso major con `pnpm.overrides`. Esclusi: xlsx, nodemailer, supabase-js, Drizzle, postgres, prettier | Subito, indipendente da GCP | fatta (PR #20, su `dev`) |
 | W0b | xlsx dal CDN di SheetJS (0.20.x), con test di caratterizzazione su import ed export | Dopo W0 | da fare |
 | W1 | drizzle-orm 0.45, drizzle-kit 0.31, drizzle-zod, postgres 3.4.x. Il controllo: `pnpm db:generate` non produce differenze. Si prova su Supabase prima di spostare il DB | Prima di S3 della migrazione GCP | fatta (PR #27, su `dev`) |
-| W2 | Next 15.5 + React 19, insieme a TanStack Query 5 e tRPC 11, più nodemailer. Prima uno spike: tremor 3 e react-day-picker 8 con React 19, codemod per le API di richiesta asincrone | Spike in parallelo; merge fuori dalle settimane di cutover | da fare |
-| W3 | Il resto, una famiglia alla volta: zod 4, Tailwind 4, ESLint flat config + typescript-eslint 8, vitest e jsdom, Sentry 11, date-fns 4, zustand 5, react-day-picker, lucide-react, i minor di Radix e di react-hook-form | Dopo W2 | da fare |
+| W2 | Next 15.5 + React 19, insieme a TanStack Query 5 e tRPC 11, più nodemailer. Prima uno spike: tremor 3 e react-day-picker 8 con React 19, codemod per le API di richiesta asincrone | Spike in parallelo; merge fuori dalle settimane di cutover | annullata il 2026-10-27 (R1 di [[chore/roadmap-nuovo-stack]]): l'app Next non si aggiorna, e l'app React parte da React 19 e TanStack Query 5. nodemailer va con le librerie del backend (§4 della roadmap) |
+| W3 | Il resto, una famiglia alla volta: zod 4, Tailwind 4, ESLint flat config + typescript-eslint 8, vitest e jsdom, Sentry 11, date-fns 4, zustand 5, react-day-picker, lucide-react, i minor di Radix e di react-hook-form | Dopo W2 | ridotta il 2026-10-27 (R1): niente per l'app Next. L'app React parte dalle versioni correnti (Tailwind 4 compreso), zod non si aggiorna perché lo sostituisce `Schema`, e le librerie del backend sono nel §4 di [[chore/roadmap-nuovo-stack]] |
 | Renovate | Attivare l'app: automerge dei patch su `dev` con la CI verde, major su approvazione (la regola c'è già), gruppi per famiglia (Radix, tRPC, Drizzle) | Dopo W1 | da fare |
 
 Fuori dalle ondate, da decidere a parte:
 
-- **Effect 4:** `AGENTS.md` fissa Effect 3.x come target. Si va solo all'ultima 3.x.
+- **Effect 4:** superato il 2026-10-27. Effect 4 è stabile, e il passaggio è il punto 1.1 di [[chore/roadmap-nuovo-stack]] (R2). Fino a quella PR `AGENTS.md` fissa Effect 3.x.
 - **TypeScript 7** (il port nativo): rimandato.
 - **Node:** resta 22.x (`engines.node`), LTS fino ad aprile 2027.
 

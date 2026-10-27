@@ -737,7 +737,7 @@ G0 ─┬─ T1  ─┐
 | G0 | Prima della wave 1 | SPEC `approved` |
 | G1 | Merge in `dev` | CI verde con i `*.pg.test.ts`; AC1–AC15 annotati; tipi uguali (T11.2); mutanti uccisi; prova nel browser senza errori; REPORT SHIP. Dopo il merge, TD9 passa a `[OPEN]` (D16) |
 | G2 | Staging, dopo il merge | Con `BACKEND_URL` (Cloud Run), le stesse pagine di T11.5 si aprono senza errori, in particolare il dettaglio di una pratica e l'assegnazione massiva di clienti, che passano via HTTP |
-| G3 | Prod | Nel rilascio unico della migrazione. Mai nella stessa release di un cutover GCP, né durante l'osservazione di S6 |
+| G3 | Prod | Nel rilascio unico della migrazione, nella sua finestra (fase 4 di [[chore/roadmap-nuovo-stack]]). Fino al 2026-10-27 anche "mai nella stessa release di un cutover GCP", superato da R10 |
 
 ## 13. Rischi e mitigazioni
 

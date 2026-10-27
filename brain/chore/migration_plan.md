@@ -7,7 +7,9 @@ domain: platform
 > Documento di riferimento ad alto livello. Il dettaglio operativo di ogni fase è in `brain/chore/migration/fase-N-*.md`.
 > Ogni file di fase ha un frontmatter con `status` e `completed`: **gli agent che eseguono una fase devono aggiornare il frontmatter e spuntare le checkbox dei task man mano che procedono.**
 
-> [!warning] In parte superato (2026-10-22, 2026-10-25)
+> [!warning] Superato (2026-10-22, 2026-10-25, 2026-10-27)
+> **Dal 2026-10-27 il piano è [[chore/roadmap-nuovo-stack]].** Questa pagina resta come storia: l'inventario del 2026-06-11 e il decision log. La tabella "Stato delle fasi" qui sotto non si aggiorna più.
+>
 > Il backend oggi è Hono su Cloud Run ([[chore/migrazione-gcp]]), non Express su Railway. La D1 ("tenere tRPC") è superata da [[chore/migrazione-effect]]: l'obiettivo è "solo Effect", con tRPC fino alla fine di L1 e L2 e poi `HttpApi` di Effect (decisione del 2026-10-25, che sostituisce Effect RPC, §3 di [[chore/migrazione-effect]]). La SPA della fase 3, in React 19, usa solo `HttpApi`, non gli hook di `@trpc/react-query`; tRPC si toglie quando si spegne l'app Next.js. Restano validi l'inventario, il pacchetto di dominio con la logica di import e cron coperta da test prima di toccarla, e la domanda sull'import come API per consumatori esterni: se serve, diventa il gruppo `import` della stessa `HttpApi`, con API key (§6 di [[chore/migrazione-effect]]).
 
 ## Stato delle fasi
