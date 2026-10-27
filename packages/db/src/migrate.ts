@@ -56,25 +56,27 @@ const appliedDates = (client: postgres.Sql) =>
  * the last applied: what predates the first is the schema the database had
  * before its migrations were tracked.
  */
-const checkOrder = (client: postgres.Sql, folder: string) =>
-  Effect.gen(function* () {
-    const applied = yield* appliedDates(client)
-    if (applied.length === 0) return
-    const first = Math.min(...applied)
-    const last = Math.max(...applied)
-    const { entries } = yield* attempt(
-      async () =>
-        JSON.parse(
-          fs.readFileSync(path.join(folder, "meta/_journal.json"), "utf8")
-        ) as { entries: { when: number; tag: string }[] }
+const checkOrder = Effect.fnUntraced(function* (
+  client: postgres.Sql,
+  folder: string
+) {
+  const applied = yield* appliedDates(client)
+  if (applied.length === 0) return
+  const first = Math.min(...applied)
+  const last = Math.max(...applied)
+  const { entries } = yield* attempt(
+    async () =>
+      JSON.parse(
+        fs.readFileSync(path.join(folder, "meta/_journal.json"), "utf8")
+      ) as { entries: { when: number; tag: string }[] }
+  )
+  const tags = entries
+    .filter(
+      ({ when }) => when > first && when < last && !applied.includes(when)
     )
-    const tags = entries
-      .filter(
-        ({ when }) => when > first && when < last && !applied.includes(when)
-      )
-      .map(({ tag }) => tag)
-    if (tags.length > 0) return yield* new MigrationOutOfOrder({ tags })
-  })
+    .map(({ tag }) => tag)
+  if (tags.length > 0) return yield* new MigrationOutOfOrder({ tags })
+})
 
 /**
  * Applies the migrations of `folder` still pending on the database of
@@ -85,10 +87,12 @@ const checkOrder = (client: postgres.Sql, folder: string) =>
  * production do. Fails with `MigrationOutOfOrder`, applying nothing, when
  * the migrator would skip a pending migration.
  */
-export const applyMigrations = (client: postgres.Sql, folder: string) =>
-  Effect.gen(function* () {
-    yield* checkOrder(client, folder)
-    const before = yield* appliedMigrations(client)
-    yield* attempt(() => migrate(drizzle(client), { migrationsFolder: folder }))
-    return (yield* appliedMigrations(client)) - before
-  })
+export const applyMigrations = Effect.fnUntraced(function* (
+  client: postgres.Sql,
+  folder: string
+) {
+  yield* checkOrder(client, folder)
+  const before = yield* appliedMigrations(client)
+  yield* attempt(() => migrate(drizzle(client), { migrationsFolder: folder }))
+  return (yield* appliedMigrations(client)) - before
+})

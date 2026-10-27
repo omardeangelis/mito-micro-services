@@ -26,38 +26,37 @@ export const googleKeys = () =>
  * header, signed with `keys` (RS256 only), not expired, for the caller's
  * audience and with the caller's verified email.
  */
-export const verifyIdToken = (
+export const verifyIdToken = Effect.fn("oidc.verifyIdToken")(function* (
   caller: OidcCaller,
   keys: JWTVerifyGetKey,
   authorization: string | undefined
-) =>
-  Effect.gen(function* () {
-    const token = authorization?.startsWith("Bearer ")
-      ? authorization.slice("Bearer ".length)
-      : ""
-    if (!token) {
-      return yield* new OidcUnauthorized({ reason: "no bearer token" })
-    }
-    const { payload } = yield* Effect.tryPromise({
-      try: () =>
-        jwtVerify(token, keys, {
-          issuer: GOOGLE_ISSUERS,
-          audience: caller.audience,
-          algorithms: ["RS256"],
-          requiredClaims: ["exp", "iat", "email"],
-          clockTolerance: 30,
-        }),
-      catch: (cause) =>
-        new OidcUnauthorized({
-          reason: cause instanceof Error ? cause.message : "invalid token",
-        }),
-    })
-    if (
-      payload.email !== caller.serviceAccount ||
-      payload.email_verified !== true
-    ) {
-      return yield* new OidcUnauthorized({
-        reason: "not the caller's service account",
-      })
-    }
+) {
+  const token = authorization?.startsWith("Bearer ")
+    ? authorization.slice("Bearer ".length)
+    : ""
+  if (!token) {
+    return yield* new OidcUnauthorized({ reason: "no bearer token" })
+  }
+  const { payload } = yield* Effect.tryPromise({
+    try: () =>
+      jwtVerify(token, keys, {
+        issuer: GOOGLE_ISSUERS,
+        audience: caller.audience,
+        algorithms: ["RS256"],
+        requiredClaims: ["exp", "iat", "email"],
+        clockTolerance: 30,
+      }),
+    catch: (cause) =>
+      new OidcUnauthorized({
+        reason: cause instanceof Error ? cause.message : "invalid token",
+      }),
   })
+  if (
+    payload.email !== caller.serviceAccount ||
+    payload.email_verified !== true
+  ) {
+    return yield* new OidcUnauthorized({
+      reason: "not the caller's service account",
+    })
+  }
+})

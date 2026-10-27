@@ -34,16 +34,16 @@ export class ErrorReporter extends Context.Service<
  * fails: an error, a defect (a thrown exception) or an interruption. Each
  * failure is logged and reported with `describe(item)`.
  */
-export const forEachIsolated = <A, B, E, R>(
-  items: Iterable<A>,
-  f: (item: A, index: number) => Effect.Effect<B, E, R>,
-  describe: (item: A) => Record<string, unknown>
-): Effect.Effect<
-  { succeeded: B[]; failed: number },
-  never,
-  R | ErrorReporter
-> =>
-  Effect.gen(function* () {
+export const forEachIsolated = Effect.fn("errorReporter.forEachIsolated")(
+  function* <A, B, E, R>(
+    items: Iterable<A>,
+    f: (item: A, index: number) => Effect.Effect<B, E, R>,
+    describe: (item: A) => Record<string, unknown>
+  ): Effect.fn.Return<
+    { succeeded: B[]; failed: number },
+    never,
+    R | ErrorReporter
+  > {
     const reporter = yield* ErrorReporter
     const succeeded: B[] = []
     let failed = 0
@@ -63,4 +63,5 @@ export const forEachIsolated = <A, B, E, R>(
       yield* reporter.report(exit.cause, data)
     }
     return { succeeded, failed }
-  })
+  }
+)

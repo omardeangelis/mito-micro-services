@@ -58,23 +58,22 @@ export class CustomerMissing extends Schema.TaggedError<CustomerMissing>()(
  * Runs a Drizzle call on the transaction in progress, or on `Db` outside one.
  * A driver error becomes a `DbError`.
  */
-export const query = <A>(
+export const query = Effect.fnUntraced(function* <A>(
   f: (client: DbClient) => Promise<A>
-): Effect.Effect<A, DbError, Db> =>
-  Effect.gen(function* () {
-    const tx = Option.getOrUndefined(yield* Effect.serviceOption(Tx))
-    const client = tx ? tx.client : yield* Db
-    return yield* Effect.tryPromise({
-      try: () => f(client),
-      catch: toDbError,
-    }).pipe(
-      Effect.tapError(() =>
-        Effect.sync(() => {
-          if (tx) tx.failed = true
-        })
-      )
+): Effect.fn.Return<A, DbError, Db> {
+  const tx = Option.getOrUndefined(yield* Effect.serviceOption(Tx))
+  const client = tx ? tx.client : yield* Db
+  return yield* Effect.tryPromise({
+    try: () => f(client),
+    catch: toDbError,
+  }).pipe(
+    Effect.tapError(() =>
+      Effect.sync(() => {
+        if (tx) tx.failed = true
+      })
     )
-  })
+  )
+})
 
 /** How many times a transaction that hit a deadlock runs again. */
 const DEADLOCK_RETRIES = 2
@@ -209,19 +208,18 @@ export type LockedCustomer = {
  * `src/test/operatorRule.ts`, run on every writer of operators in
  * `operatorRule.db.test.ts`.
  */
-export const lockCustomer = (
+export const lockCustomer = Effect.fnUntraced(function* (
   customerId: string | null
-): Effect.Effect<LockedCustomer, DbError | CustomerMissing, Db | Tx> =>
-  Effect.gen(function* () {
-    yield* Tx
-    if (!customerId) return yield* new CustomerMissing({ customerId })
-    const [customer] = yield* query((client) =>
-      client
-        .select({ id: customers.id, operatorId: customers.operatorId })
-        .from(customers)
-        .where(eq(customers.id, customerId))
-        .for("update")
-    )
-    if (!customer) return yield* new CustomerMissing({ customerId })
-    return customer as LockedCustomer
-  })
+): Effect.fn.Return<LockedCustomer, DbError | CustomerMissing, Db | Tx> {
+  yield* Tx
+  if (!customerId) return yield* new CustomerMissing({ customerId })
+  const [customer] = yield* query((client) =>
+    client
+      .select({ id: customers.id, operatorId: customers.operatorId })
+      .from(customers)
+      .where(eq(customers.id, customerId))
+      .for("update")
+  )
+  if (!customer) return yield* new CustomerMissing({ customerId })
+  return customer as LockedCustomer
+})
