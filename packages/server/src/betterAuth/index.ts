@@ -25,6 +25,11 @@ export function authConfigFrom(vars: AuthEnv): AuthConfig {
   if (!vars.BETTER_AUTH_URL || !vars.BETTER_AUTH_SECRET) {
     throw new Error("better-auth needs BETTER_AUTH_URL and BETTER_AUTH_SECRET")
   }
+  // Here and not in @mito/env: the staging build reads a Sensitive variable
+  // of Vercel as "[SENSITIVE]", and only the functions get the real value
+  if (vars.BETTER_AUTH_SECRET.length < 32) {
+    throw new Error("BETTER_AUTH_SECRET needs at least 32 characters")
+  }
   const { AZURE_AD_CLIENT_ID, AZURE_AD_CLIENT_SECRET, AZURE_AD_TENANT_ID } =
     vars
   const testLogin = vars.AUTH_TEST_LOGIN === "true"
