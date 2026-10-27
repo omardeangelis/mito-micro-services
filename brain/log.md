@@ -326,3 +326,10 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 - Concepts written: <count>
 -->
 
+
+## [2026-10-27] review | Effect 4, PR 2 (vitest 5)
+- Report: [[specs/crm/effect-4/REPORT]]
+- Scope: spec
+- Verdict: DO NOT SHIP
+- Impact: critical
+- Verifiers: 4 (1 blocker, 4 major; il blocker e due major sullo script di AC5, corretti in `ff0c648`)

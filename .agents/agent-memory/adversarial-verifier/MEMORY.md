@@ -119,3 +119,6 @@
 - [Distinct-value fixtures](feedback_distinct_value_fixtures_hide_distinct_aggregates.md) — all-different amounts hide sumDistinct/avgDistinct mutants
 - [Round history per commit](feedback_round_history_per_commit_probes.md) — overlay red; tsc per commit; old-tree compare after rewrite; seeded differential probe
 - [Effect 4 / vitest 5 upgrade probes](feedback_effect4_vitest5_upgrade_probes.md) — Cause shape, Config env snapshot, TestConsole, await in it.effect, restoreAllMocks, vacuous git grep -E
+- [test-partition-equivalence](feedback_test_partition_equivalence.md) — How to prove a test-runner config change keeps the same files per project and the same test names; tool traps that fake a mismatch
+- [guard-probes-how-to-check](guard_probes.md) — How to probe an assertion-diff guard (AST chain comparison) for false negatives; which probes to run before trusting a "ok" result
+- [test-runner-upgrade-checks](test-runner-upgrade-checks.md) — How to verify "tests run as before" across a test-runner major upgrade (vitest etc.) beyond a per-file probe
