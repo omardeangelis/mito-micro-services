@@ -78,7 +78,7 @@ Decisioni tecniche (da rivedere con il piano):
 - Su Azure (registrazione dell'app) si aggiunge il redirect `https://staging-crm.dbmito.it/api/auth/callback/microsoft` prima della prova su staging (oggi è `.../callback/azure-ad`). Lo fa chi amministra l'app su Entra ID (Leonardo o Omar); per la prod alla go/no-go.
 - I secret e le variabili di Vercel li imposta chi ne ha i permessi (Omar per le variabili di Actions e gli environment; Vercel e Secret Manager Leonardo dal Mac).
 - La migrazione della PR B gira su staging con l'approvazione di `staging-db` e il backup (pipeline di oggi).
-- Vincoli della spec: niente due cambi nella stessa notte, prod intoccata fino al go/no-go, no Next.js in `packages/server`.
+- Vincoli della spec: prod intoccata fino al go/no-go, no Next.js in `packages/server`. "Niente due cambi nella stessa notte" è superato dal 2026-10-27 (R10 di [[chore/roadmap-nuovo-stack]]): la prod passa tutta insieme, in una finestra.
 
 ## 6. Findings dal codice
 
@@ -370,7 +370,7 @@ Tutto il codice nuovo, provato, ma non collegato a nessuna rotta né a `getServe
 #### G3: Passaggio in produzione
 - **depends_on**: [T11]
 - **location**: fuori dal repo
-- **description**: alla go/no-go: migrazioni della B, poi C1, C2, D in prod, in una notte senza altri cutover; redirect Azure di prod; query di controllo degli account sul database di prod.
+- **description**: nella finestra unica del rilascio, dopo la go/no-go (fase P di [[chore/migrazione-gcp]], R10 di [[chore/roadmap-nuovo-stack]]): migrazioni della B, poi C1, C2, D in prod. Prima della finestra: redirect Azure di prod; query di controllo degli account sul database di prod.
 - **validation**: Leonardo conferma il login in prod.
 - **status**: Planned
 - **log**:
@@ -402,7 +402,7 @@ Tutto il codice nuovo, provato, ma non collegato a nessuna rotta né a `getServe
 #### T13: docs-maintenance
 - **depends_on**: [T11]
 - **location**: `brain/`
-- **description**: pull di `dev` e del branch della spec; flusso [[domains/crm/flows/accesso-utente-disattivato]] su better-auth; TD4 chiuso e riga del passo 8 in [[chore/migrazione-effect]] (deviazione dell'ordine); B6 di [[chore/migrazione-gcp]].
+- **description**: pull di `dev` e del branch della spec; flusso [[domains/crm/flows/accesso-utente-disattivato]] su better-auth; TD4 chiuso nel §8 di [[chore/roadmap-nuovo-stack]] (punto 1.2), dove è il debito aperto della migrazione dal 2026-10-27, e riga del passo 8 in [[chore/migrazione-effect]] (deviazione dell'ordine); B6 di [[chore/migrazione-gcp]].
 - **validation**: skill `docs-maintenance`.
 - **status**: Planned
 - **log**:
@@ -436,7 +436,7 @@ Esecutori: T1, T10, T11, T13 sono meccanici (sub-agent Haiku, con verifica); T2 
 - Ogni PR: i quattro gate di CI, revisione di Leonardo.
 - PR B: approvazione della migrazione su `staging-db` e backup (pipeline), query di controllo degli account (T2).
 - PR C2: G1 fatto; dopo il deploy, `GET /api/auth/get-session` senza cookie risponde `null` su staging.
-- Prod: alla go/no-go, in una notte senza altri cutover; la migrazione della B gira sulla prod prima del codice della C2.
+- Prod: nella finestra unica del rilascio, dopo la go/no-go (R10 di [[chore/roadmap-nuovo-stack]]); la migrazione della B gira sulla prod prima del codice della C2.
 
 ## 13. Rischi e mitigazioni
 

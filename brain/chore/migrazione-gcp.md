@@ -21,7 +21,7 @@ Questo piano sostituisce le decisioni D8 e D9 (Railway) e la fase 2 (Express) di
 
 - **Prima tutto lo staging, poi la prod**, dopo un go/no-go con criteri scritti.
 - **`dev` → `main` resta fermo fino al go/no-go** (conferma di Leonardo del 2026-10-26, prima del merge della catena dell'import su `dev`). L'import nuovo toglie il vecchio ([[specs/crm/import-pratiche/PLAN]], PR G #89): `main` non lo riceve prima dei test su staging (T12b).
-- **Un passo alla volta, e ogni passo si accende con una variabile d'ambiente.** La prod passa al backend un pezzo per volta (tRPC, REST, auth, cron, DB), mai due nella stessa notte.
+- **Su staging un passo alla volta, ognuno acceso da una variabile d'ambiente; in prod tutto insieme, in una sola finestra** (R10 di [[chore/roadmap-nuovo-stack]], 2026-10-27). Fino ad allora anche la prod passava al backend un pezzo per volta (tRPC, REST, auth, cron, DB), mai due nella stessa notte.
 - **Il backend ospita il codice esistente, non lo copia.** Importa gli stessi file di `src/server/**` e `src/app/api/**`: le modifiche di Omar valgono subito per entrambi e non c'è niente da tenere allineato a mano. I file si spostano fisicamente in `api/` solo alla fine, quando Next non li usa più, in un momento concordato con Omar.
 - **Stesso contratto:** stessi path, stessi nomi di procedura, input, output e codici di errore. I test esistenti restano verdi con le stesse asserzioni.
 - **Nessun dato perso:** dump verificato tabella per tabella, Supabase in sola lettura come rollback per almeno 2 settimane, dump finale archiviato.
@@ -129,21 +129,32 @@ K, T, B1 e W1 partono subito e in parallelo. B2 aspetta solo S1. PR7 parte dopo 
 
 ### Fase P — prod
 
-Ogni passo si accende con le variabili del progetto Vercel di prod e del servizio Cloud Run di prod. Ordine:
-1. tRPC;
-2. REST, con lo storage ancora su Supabase;
-3. auth;
-4. storage su GCS;
-5. cron, con `ALERT_CRON_ENABLED=false` su GitHub e lo Scheduler acceso lo stesso giorno: mai due scheduler insieme;
-6. DB, nella finestra serale.
+Dal 2026-10-27 la prod passa tutta insieme, in una sola finestra serale (R10 di [[chore/roadmap-nuovo-stack]]). Fino ad allora questo piano la accendeva un passo per notte: tRPC, REST, auth, storage, cron, DB.
+
+**Prima della finestra:**
+- il redirect Azure di prod per better-auth e la query di controllo degli account sul database di prod (G3 di [[specs/crm/auth-better-auth/PLAN]]);
+- le variabili del servizio Cloud Run di prod e dei progetti Vercel di prod: quello dell'app React e quello dell'app Next. Quelle di better-auth vanno sul servizio Cloud Run e sul progetto dell'app Next, con gli stessi valori: `BETTER_AUTH_SECRET`, un secret nuovo per la prod (almeno 32 caratteri), e `BETTER_AUTH_URL`, il dominio di prod. `AUTH_TEST_LOGIN` in prod non si imposta: con `true` accende il login di prova via email (OQ6 di [[specs/crm/auth-better-auth/SPEC]]);
+- il runbook della finestra con i comandi, provato su staging con i tempi (checklist di S6).
+
+**La finestra:**
+1. pausa dei cron di GitHub;
+2. Supabase in sola lettura, connessioni chiuse; dump → restore su Cloud SQL di prod → verifica identica (DB: dettagli, sotto);
+3. le migrazioni di `dev` non ancora in prod, su Cloud SQL, comprese quelle di better-auth;
+4. merge `dev` → `main` e deploy: il backend di prod su Cloud SQL, GCS e better-auth; l'app React sul dominio, con le rewrite verso il backend; l'app Next deployata con `BACKEND_URL` verso lo stesso backend, come rollback del solo frontend;
+5. smoke test da ADMIN e da OPERATORE, poi go/no-go;
+6. Cloud Scheduler acceso e cron di GitHub spenti, lo stesso giorno: mai due scheduler insieme.
+
+**Rollback:**
+- prima del go: Supabase di nuovo scrivibile, il dominio di nuovo sul deploy di prod precedente dell'app Next, i cron di GitHub riaccesi. Cloud SQL non ha ancora ricevuto scritture degli utenti;
+- dopo il go si corregge in avanti, perché tornare a Supabase perderebbe i dati scritti su Cloud SQL. Per il frontend il dominio può tornare sull'app Next, che usa lo stesso backend e gli stessi dati.
 
 Le dismissioni arrivano 2–4 settimane dopo.
 
-**Sentry sul backend di prod.** Dalla [PR #104](https://github.com/omardeangelis/mito-micro-services/pull/104) `apps/api/src/instrument.ts` inizializza Sentry, ma solo dove `isProduction` (`packages/env/src/index.js`) è vero. Fuori da un bundle Next lo decidono `VERCEL_ENV` (o `NEXT_PUBLIC_VERCEL_ENV`) uguale a `production` e `APP_ENV` diverso da `staging`. Per questo il servizio Cloud Run di prod deve avere, dal passo 1:
+**Sentry sul backend di prod.** Dalla [PR #104](https://github.com/omardeangelis/mito-micro-services/pull/104) `apps/api/src/instrument.ts` inizializza Sentry, ma solo dove `isProduction` (`packages/env/src/index.js`) è vero. Fuori da un bundle Next lo decidono `VERCEL_ENV` (o `NEXT_PUBLIC_VERCEL_ENV`) uguale a `production` e `APP_ENV` diverso da `staging`. Per questo il servizio Cloud Run di prod deve avere, dalla finestra:
 - `VERCEL_ENV=production`, e nessun `APP_ENV=staging`;
 - `NEXT_PUBLIC_SENTRY_DSN`, lo stesso DSN del progetto Vercel di prod.
 
-Senza una delle due il backend non manda errori a Sentry. La prova con un errore forzato si fa al passo 1: su staging Sentry è spento per scelta, e lì la sostituiscono i test (`apps/api/src/_test/instrument.test.ts`).
+Senza una delle due il backend non manda errori a Sentry. La prova con un errore forzato si fa nella finestra, prima del go: su staging Sentry è spento per scelta, e lì la sostituiscono i test (`apps/api/src/_test/instrument.test.ts`).
 
 ## DB: dettagli
 
@@ -166,8 +177,8 @@ Senza una delle due il backend non manda errori a Sentry. La prova con un errore
   - **`--clean --if-exists`**, perché il dump contiene `CREATE SCHEMA public`.
   - **Il fuso.** Supabase ha `ALTER DATABASE postgres SET TimeZone = 'Europe/Rome'`, e le date delle sessioni ne dipendono. Il dump degli schemi non lo porta: va rifatto su ogni copia (`mito` su Cloud SQL, `mito_local` con `db:local:reset`), e la verifica lo controlla.
   - **Ruoli ed estensioni di Supabase.** `public` non usa né `anon` e `authenticated` né le funzioni di `extensions`: il restore parte da un Postgres vuoto senza errori. Il ruolo `postgres` di Supabase ha `search_path` con `extensions`, che all'app non serve.
-- Runbook della finestra di prod: pausa dei cron → Supabase in sola lettura, connessioni chiuse → dump → restore → verifica → variabile del DB su `mito-api` prod → smoke test → go/no-go → ripartono i cron.
-  - Rollback prima del go: variabile vecchia e via la sola lettura.
+- Il DB nella finestra di prod (fase P): pausa dei cron → Supabase in sola lettura, connessioni chiuse → dump → restore → verifica → variabile del DB su `mito-api` prod → smoke test → go/no-go → ripartono i cron, su Cloud Scheduler.
+  - Rollback prima del go: quello della fase P, con Supabase di nuovo scrivibile.
   - Il metodo per la sola lettura si prova in B6: il ruolo `postgres` di Supabase potrebbe non avere il permesso per `ALTER DATABASE`.
 - Dopo B4 solo il backend si collega al DB: lo spike sulla connettività Vercel → Cloud SQL non serve più.
 
@@ -192,7 +203,7 @@ Senza una delle due il backend non manda errori a Sentry. La prova con un errore
 - [ ] **Storage:** export caricato con URL firmato e scaricato; il cron di pulizia svuota `export/`; il bucket rifiuta l'accesso anonimo.
 - [ ] **DB:** script di verifica identico; 2 settimane senza errori; connessioni sotto il limite; restore PITR provato.
 - [ ] **Cron:** 7 notti di fila verdi con i conteggi attesi su Slack; un fallimento forzato fa scattare l'alert; un secondo lancio in parallelo si ferma da solo (provato anche in CI: due `startRun` contemporanei su Postgres vero, con l'harness di PR7); un secondo `update` nello stesso giorno viene saltato.
-- [ ] **Rollback** provato per ogni passo, togliendo la variabile.
+- [ ] **La finestra di prod** (fase P) provata su staging con il suo runbook e i tempi, compreso il rollback prima del go.
 - [ ] **Prova della prod:** dump della prod restaurato nell'istanza prod, verifica identica, tempi misurati.
 
 ## Attività manuali

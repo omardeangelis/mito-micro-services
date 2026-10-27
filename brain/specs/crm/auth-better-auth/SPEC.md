@@ -40,10 +40,10 @@ Ruoli coinvolti: **operatori** e **admin** del CRM (login con Microsoft Entra ID
 ## Non-Goals
 
 - L'uscita del frontend da Next.js e la SPA React.
-- Il passaggio del trasporto da tRPC a `HttpApi` (L3): solo dopo Effect 4 e la fase P di GCP.
+- Il passaggio del trasporto da tRPC a `HttpApi` (L3): dopo Effect 4, nelle fasi 2 e 3 di [[chore/roadmap-nuovo-stack]] (fino al 2026-10-27: dopo la fase P di GCP).
 - Ruoli, permessi o regole di visibilità nuove; le procedure restano sugli stessi middleware.
 - Login con password, 2FA, passkey, altri provider social, API key per l'API esterna.
-- Il rilascio in produzione: arriva con il go/no-go di GCP, in un rilascio senza altri cutover.
+- Il rilascio in produzione: arriva con il go/no-go di GCP. Dal 2026-10-27 arriva nella finestra unica del rilascio, insieme ai cutover GCP (R10 di [[chore/roadmap-nuovo-stack]]); prima era "in un rilascio senza altri cutover".
 - `analytics` (lo fa Omar) e gli altri domini della migrazione Effect.
 
 ---
@@ -111,7 +111,7 @@ Ruoli coinvolti: **operatori** e **admin** del CRM (login con Microsoft Entra ID
 - **Stesso codice per Next.js e per il backend** (`AGENTS.md`): il backend importa la lettura della sessione, non ne ha una sua.
 - **Effect** come da `AGENTS.md`: la lettura della sessione e le regole del login sono servizi Effect con errori tipizzati, provati con un `Layer` di test; tRPC e le route restano plain async ai bordi.
 - **No Next.js in `packages/server`** (`AGENTS.md`).
-- **Mai due cambi nella stessa notte** ([[chore/migrazione-gcp]]): il passaggio in produzione non coincide con un cutover GCP né con le 2 settimane di osservazione di S6.
+- ~~**Mai due cambi nella stessa notte**~~ ([[chore/migrazione-gcp]]): il passaggio in produzione non coincide con un cutover GCP né con le 2 settimane di osservazione di S6. **Superato il 2026-10-27** da R10 di [[chore/roadmap-nuovo-stack]]: il passaggio in produzione arriva nella finestra unica del rilascio, insieme ai cutover GCP, dopo il go/no-go di S6.
 - **Produzione intoccata** fino al go/no-go: `dev`→`main` resta fermo.
 - I secret nuovi (il segreto di better-auth) seguono il percorso dei secret di staging di oggi (Secret Manager, leggibili solo dal service account di staging); i secret Azure e SendGrid della [PR #90](https://github.com/omardeangelis/mito-micro-services/pull/90) restano validi.
 - **Deviazione dal piano generale:** [[chore/migrazione-effect]] metteva il passo 8 insieme all'uscita del frontend da Next.js; Leonardo lo anticipa (Decision Log). Quel documento va aggiornato (§4 riga del passo 8, TD4) nella docs-maintenance.

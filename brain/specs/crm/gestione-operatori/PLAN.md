@@ -595,8 +595,8 @@ Si scrive e si prova in locale subito. Arriva su un ambiente solo quando la migr
 
 #### TP2.2: Gate e merge della PR P2
 - **depends_on**: [TP2.1]
-- **location**: `brain/chore/migrazione-effect.md` §5 (checklist: route REST di `user`) e §7 (TD1, TD2)
-- **description**: Gate di CI; merge in `dev`; il backend con P2 va in prod solo dopo P1 (AC35). In [[chore/migrazione-effect]] §7, TD1 (colonna `users.preferences`) e TD2 (nome di `getUserPreference`) passano da `[PREVISTO]` a `[OPEN]`.
+- **location**: `brain/chore/migrazione-effect.md` §5 (checklist: route REST di `user`) e `brain/chore/roadmap-nuovo-stack.md` §8 (TD1, TD2; fino al 2026-10-27 erano nel §7 di `migrazione-effect.md`)
+- **description**: Gate di CI; merge in `dev`; il backend con P2 va in prod solo dopo P1 (AC35). Nel §8 di [[chore/roadmap-nuovo-stack]], TD1 (colonna `users.preferences`) e TD2 (nome di `getUserPreference`) passano da `[PREVISTO]` a `[OPEN]`.
 - **validation**: CI verde.
 - **status**: Planned
 - **log**:
