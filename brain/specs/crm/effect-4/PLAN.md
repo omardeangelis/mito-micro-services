@@ -779,8 +779,12 @@ G0 ─┬─ T1 ─ T2 ─ T3 ─┬─ T4 ─┬─ T7 ─ T8 ══ PR 1 in de
   - i test del punto 1 verdi prima e dopo;
   - tutti i test verdi, in particolare `*/_test/errors.db.test.ts`, `trpc.db.test.ts`, `cron.db.test.ts` e `routes.db.test.ts`;
   - lo script di T1 esce con 0, con i test nuovi nel file di eccezioni.
-- **status**: In progress
-- **log**:
+- **status**: Done
+- **log**: 2026-10-27, worker del modello più forte.
+  - `a28e409`: 17 file di test nuovi (89 test), uno per file di errori, verdi su `Data.TaggedError`; le loro catene in `eccezioni-pr4.txt` (313 righe). `UnknownJob` e `UnknownTask` sono privati delle rotte: li coprono i test del 404 (`cron.db.test.ts:225`, `import/_test/routes.db.test.ts:228,344`).
+  - `65225e7`: le 61 classi in `Schema.TaggedError`, nessun test toccato, nessun punto di costruzione cambiato (`new X()` funziona ancora). Schemi: `String`, `Number`, `NullOr`, `UndefinedOr` (`DbError.code`), `optional` per `key?`/`cause?` dello storage, `Defect()` per `cause`, `instanceOf(Date)` per la scadenza dell'alert (anche non valida, stessa istanza), `Literals(taskStatus)`, `Struct` per `alert`, `mutable(Array(String))` per `tags`. I payload dei contatti sono controllati in compilazione contro `ContactErrorPayload` (`payloadOf`).
+  - Differenze verificate: `Struct` e `Array` copiano `alert` e `tags` (contenuto uguale); le chiavi fuori dallo schema si perdono, ma tutti i 119 punti di costruzione passano un letterale; `_tag` è la prima chiave nello spread. Un `tags` non stringa in un journal di drizzle malformato ora lancerebbe.
+  - Gate: AC10 0 righe (61 su `dev`); `tsc` 0 errori fuori da `.next/`; ESLint; suite 330 file, 4504 verdi / 6 saltati; AC5 `ok, 48 test file(s) checked, 958 chain(s) compared, 321 exception(s) used`, nessuna catena esistente cambiata; `api:build`, `api:smoke`.
 - **files edited/created**:
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
@@ -801,7 +805,7 @@ G0 ─┬─ T1 ─ T2 ─ T3 ─┬─ T4 ─┬─ T7 ─ T8 ══ PR 1 in de
   - `node scripts/check-assertions.mjs gen-wrappers HEAD` non trova niente nelle sue cartelle (su `dev` ne trova);
   - i test delle sue cartelle verdi;
   - lo script di T1 esce con 0.
-- **status**: Planned
+- **status**: In progress
 - **log**:
 - **files edited/created**:
 - **backlog_item_id**: n/a
@@ -816,7 +820,7 @@ G0 ─┬─ T1 ─ T2 ─ T3 ─┬─ T4 ─┬─ T7 ─ T8 ══ PR 1 in de
 - **location**: `packages/server/src/services/{import,storage,export,chat,analytics,cron,auth}/**`, `packages/server/src/betterAuth/**` (non i test)
 - **description**: Come T20a. Nell'import, le funzioni chiamate per ogni riga del file sono percorsi caldi e usano `Effect.fnUntraced`.
 - **validation**: come T20a, sulle sue cartelle.
-- **status**: Planned
+- **status**: In progress
 - **log**:
 - **files edited/created**:
 - **backlog_item_id**: n/a
@@ -831,7 +835,7 @@ G0 ─┬─ T1 ─ T2 ─ T3 ─┬─ T4 ─┬─ T7 ─ T8 ══ PR 1 in de
 - **location**: `packages/server/src/effect/**`, `apps/api/src/**`, `packages/db/src/migrate.ts`, `src/app/api/**`, `src/server/db/seeds/local/cron.ts` (non i test)
 - **description**: Come T20a. `query` e `lockCustomer` di `effect/db.ts` usano `Effect.fnUntraced` (percorsi caldi), e `transaction`, `retryOnDeadlock` e `runTrpc` restano funzioni normali.
 - **validation**: come T20a, sulle sue cartelle, più `pnpm api:build`.
-- **status**: Planned
+- **status**: In progress
 - **log**:
 - **files edited/created**:
 - **backlog_item_id**: n/a
