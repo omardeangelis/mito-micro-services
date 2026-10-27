@@ -29,6 +29,13 @@ const dbImports = {
   message: "Server code: apps/web calls HttpApi",
 }
 
+// The pages call the backend through the hooks of src/api, which own the
+// client, the runtime and the keys (H12 of brain/chore/fase-2-httpapi.md)
+const transportImports = {
+  group: ["@/api/runtime", "effect/http", "effect/http-api"],
+  message: "Call the backend through the hooks of src/api",
+}
+
 // The rules of the root .eslintrc.cjs that apply to a React app, without
 // eslint-config-next (1.a.1 of brain/chore/migrazione-frontend-react.md)
 export default tseslint.config(
@@ -78,6 +85,15 @@ export default tseslint.config(
         "error",
         { checksVoidReturn: { attributes: false } },
       ],
+      "no-restricted-imports": [
+        "error",
+        { patterns: [...appImports, dbImports, transportImports] },
+      ],
+    },
+  },
+  {
+    files: ["src/api/**", "src/test/**"],
+    rules: {
       "no-restricted-imports": [
         "error",
         { patterns: [...appImports, dbImports] },

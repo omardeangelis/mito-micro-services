@@ -6,6 +6,8 @@ import * as Sentry from "@sentry/react"
 import { StrictMode } from "react"
 import { createRoot } from "react-dom/client"
 import { RouterProvider } from "react-router"
+import { ApiProvider } from "@/api/ApiProvider"
+import { makeQueryClient } from "@/api/queryClient"
 import { Toaster } from "@/components/ui/toaster"
 import { createRouter, initSentry } from "@/lib/sentry"
 import { routes } from "./router"
@@ -27,7 +29,9 @@ createRoot(root, {
     <Sentry.ErrorBoundary
       fallback={(props) => <ErrorFallback onRetry={() => props.resetError()} />}
     >
-      <RouterProvider router={createRouter(routes)} />
+      <ApiProvider queryClient={makeQueryClient()}>
+        <RouterProvider router={createRouter(routes)} />
+      </ApiProvider>
       <Toaster />
     </Sentry.ErrorBoundary>
   </StrictMode>

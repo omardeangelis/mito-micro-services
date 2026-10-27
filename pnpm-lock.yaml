@@ -397,6 +397,9 @@ importers:
       '@mito/client':
         specifier: workspace:*
         version: link:../../packages/client
+      '@mito/contract':
+        specifier: workspace:*
+        version: link:../../packages/contract
       '@mito/domain':
         specifier: workspace:*
         version: link:../../packages/domain
@@ -538,6 +541,8 @@ importers:
         version: link:../domain
 
   packages/config: {}
+
+  packages/contract: {}
 
   packages/db: {}
 
