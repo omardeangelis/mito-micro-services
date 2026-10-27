@@ -57,11 +57,11 @@ export function DatePicker(defaultDate: Date) {
           showOutsideDays={true}
           fixedWeeks
           defaultMonth={date}
-          fromYear={1900}
-          toYear={2050}
+          startMonth={new Date(1900, 0)}
+          endMonth={new Date(2050, 11)}
           selected={date}
           onSelect={(value) => setDate(value ?? new Date())}
-          initialFocus
+          autoFocus
         />
       </PopoverContent>
     </Popover>
@@ -124,12 +124,12 @@ export function DatePickerFormItem({
             fixedWeeks
             showOutsideDays={true}
             defaultMonth={fieldValue ?? undefined}
-            fromYear={1900}
-            toYear={2050}
+            startMonth={new Date(1900, 0)}
+            endMonth={new Date(2050, 11)}
             selected={fieldValue ?? undefined}
             onSelect={onChange}
             disabled={disabled ?? disabledDates}
-            initialFocus
+            autoFocus
           />
         </PopoverContent>
       </Popover>

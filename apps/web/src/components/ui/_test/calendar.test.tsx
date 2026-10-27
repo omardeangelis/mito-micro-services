@@ -4,8 +4,7 @@ import { useState } from "react"
 import { describe, expect, it } from "vitest"
 import { Calendar } from "../calendar"
 
-// react-day-picker 8 declares React up to 18: this checks it on React 19
-// (1.b.1 of brain/chore/migrazione-frontend-react.md)
+// The Calendar of shadcn on react-day-picker 9, on React 19
 
 const SingleDate = () => {
   const [date, setDate] = useState<Date | undefined>()
@@ -17,7 +16,7 @@ const SingleDate = () => {
         selected={date}
         onSelect={setDate}
       />
-      <output>{date?.getDate() ?? "nessuna"}</output>
+      <output aria-label="Data scelta">{date?.getDate() ?? "nessuna"}</output>
     </>
   )
 }
@@ -28,9 +27,12 @@ describe("Calendar", () => {
     render(<SingleDate />)
 
     expect(screen.getByRole("grid")).toBeInTheDocument()
-    await user.click(screen.getByRole("gridcell", { name: "15" }))
+    // The day is a button inside its cell, named by its whole date
+    await user.click(screen.getByRole("button", { name: /October 15th, 2026/ }))
 
-    expect(screen.getByRole("status")).toHaveTextContent("15")
+    expect(
+      screen.getByRole("status", { name: "Data scelta" })
+    ).toHaveTextContent("15")
   })
 
   it("con captionLayout dropdown mostra mese e anno da scegliere", () => {
@@ -38,8 +40,8 @@ describe("Calendar", () => {
       <Calendar
         mode="single"
         captionLayout="dropdown"
-        fromYear={2020}
-        toYear={2030}
+        startMonth={new Date(2020, 0)}
+        endMonth={new Date(2030, 11)}
         defaultMonth={new Date(2026, 9, 1)}
       />
     )

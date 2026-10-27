@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { useRef } from "react"
-import * as Tabs from "@radix-ui/react-tabs"
+import { Tabs } from "radix-ui"
 import { describe, expect, it } from "vitest"
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "../dialog"
 

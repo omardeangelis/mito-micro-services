@@ -20,7 +20,7 @@ import React, {
   useState,
 } from "react"
 import { nanoid } from "nanoid"
-import { SelectValue, Separator } from "@radix-ui/react-select"
+import { Select as SelectPrimitive } from "radix-ui"
 
 import { Input } from "@/components/ui/input"
 import { X } from "lucide-react"
@@ -214,7 +214,7 @@ export const PopoverDateFilter = ({
               )}
             </PopoverDateItemContext.Provider>
 
-            <Separator className="border border-neutral-100" />
+            <SelectPrimitive.Separator className="border border-neutral-100" />
             <footer className="flex items-center justify-between">
               <Button size="sm" variant="outline" onClick={addEmptyFilter}>
                 Aggiungi filtro
@@ -259,7 +259,7 @@ const AdvancedFilter = ({ filtro }: { filtro: CustomFilter }) => {
         }}
       >
         <SelectTrigger className="h-8 w-full min-w-32">
-          <SelectValue />
+          <SelectPrimitive.Value />
         </SelectTrigger>
         <SelectContent>
           <SelectGroup>
@@ -283,7 +283,9 @@ const AdvancedFilter = ({ filtro }: { filtro: CustomFilter }) => {
         }}
       >
         <SelectTrigger className="h-8 min-w-32">
-          <SelectValue>{filterSymbolMap.get(filtro.operator)}</SelectValue>
+          <SelectPrimitive.Value>
+            {filterSymbolMap.get(filtro.operator)}
+          </SelectPrimitive.Value>
         </SelectTrigger>
         <SelectContent>
           <SelectGroup>
@@ -306,7 +308,7 @@ const AdvancedFilter = ({ filtro }: { filtro: CustomFilter }) => {
           }}
         >
           <SelectTrigger className="h-8 min-w-32">
-            <SelectValue>{filtro.value}</SelectValue>
+            <SelectPrimitive.Value>{filtro.value}</SelectPrimitive.Value>
           </SelectTrigger>
           <SelectContent>
             <SelectGroup>

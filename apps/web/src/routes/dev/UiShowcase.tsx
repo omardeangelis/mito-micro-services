@@ -386,8 +386,8 @@ export function UiShowcase() {
         <Calendar
           mode="single"
           captionLayout="dropdown"
-          fromYear={2020}
-          toYear={2030}
+          startMonth={new Date(2020, 0)}
+          endMonth={new Date(2030, 11)}
           defaultMonth={new Date(2026, 9, 1)}
           className="rounded-md border bg-card"
         />
