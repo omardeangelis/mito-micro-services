@@ -71,6 +71,11 @@
   - `utc` e `rome`: 14 file ciascuno (8 jsdom, 6 node), in processi figli con il loro fuso.
   - Timer finti: `setTimeout`, `setImmediate` e `Date`; non `performance.now`, `queueMicrotask` né `nextTick`.
   - Il setup gira una volta per file.
+- **T10 (commit `b1cd256` su `claude/vitest-5`):** la sonda di vitest 5 dà le stesse righe di v1 (`differences: 0`), con la sola mappa `unit` node dei `*.db.test.ts` → `db`. Gli stessi 4408 test verdi e 6 saltati.
+  - Fuori dal piano: 7 file di test cambiano solo il tipo di `vi.fn`.
+  - I titoli di `test.each` cambiano formato in 12 file: nessuna opzione di vitest 5 riporta quello di v1.
+- **I documenti della PR 2** (riga di vitest nel §4 della roadmap e W3) partono da righe che esistono solo nella PR #111. Si scrivono su `claude/vitest-5` dopo che la #111 è in `dev` e `dev` è unito nel branch: scritti prima, andrebbero in conflitto con la #111.
+- **Debito della PR 2 (AC13):** nessuno di nuovo. L'avviso del peer `@types/node` di vitest 5 lo chiude la riga di `@types/node` già nel §4 della roadmap.
 
 ## Steering
 

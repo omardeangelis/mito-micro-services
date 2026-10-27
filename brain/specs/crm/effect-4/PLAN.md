@@ -523,9 +523,16 @@ G0 ─┬─ T1 ─ T2 ─ T3 ─┬─ T4 ─┬─ T7 ─ T8 ══ PR 1 in de
   - il reporter JSON ha gli stessi test, tutti verdi, in particolare `src/app/api/cron/delete/_test/delete.test.ts` e gli altri test dei cron di `src`, che usano `vi.fn` con `restoreAllMocks`;
   - `pnpm test:pg` gira solo i `*.pg.test.ts`;
   - lo script di T1 esce con 0.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-10-27, worker sul modello del supervisore, nel suo worktree isolato; commit `b1cd256` su `claude/vitest-5` (base `5adbfc1`), non pushato. Review del supervisore passata al primo giro.
+  - `vitest` ^5.0.5, `vite` ^7.3.7 dichiarata; nessun altro pacchetto alzato. `@types/node` resta a 20: il peer di vitest 5 (`^22 || >=24`) è opzionale, pnpm avvisa soltanto; lo chiude la riga di `@types/node` nel §4 della roadmap.
+  - `vitest.workspace.ts` tolto; cinque progetti in `test.projects` (`unit` jsdom, `db` node per i `*.db.test.ts`, `pg`, `utc`, `rome`), scritti per intero da un helper senza `extends`, così `src/test/setup.ts` gira una volta per file. Fissati ai valori di v1: `pool: "threads"` (tranne i fusi, `forks`), `fakeTimers.toFake` con i sette timer, l'`exclude` di v1; `clearMocks: true` esplicito (con `false` falliscono 7 test di `delete.test.ts`, `cleanupTaskEventLog.db.test.ts` e `update.db.test.ts`).
+  - `windows.db.test.ts` prende `// @vitest-environment node` (un commento), come già cinque test di `src/lib/import`.
+  - **Fuori dal brief, senza asserzioni toccate:** in 7 file di test, `vi.fn<Args, Return>()` diventa `vi.fn<(…) => Return>()`, perché vitest 2 ha tolto la firma a due argomenti (`tsc`).
+  - TDD: la sonda di `rome` vedeva `windows.db.test.ts` in jsdom prima del commento, node dopo.
+  - AC3: sonda v5 rifatta (con `probe5.setup.ts`: vitest 5 vuole il contesto come primo argomento di `beforeAll`), 312 righe come v1, `differences: 0`; 315 file, 4408 verdi e 6 saltati come v1. I titoli di `test.each`/`describe.each` cambiano formato in 12 file (stringhe senza virgolette, troncamento diverso, `0` invece di `+0`): stessi test, stessi stati.
+  - `pnpm test:pg --run`: solo i 23 `*.pg.test.ts`. Lo script fra `origin/dev` e `claude/vitest-5`: exit 0, nessuna eccezione (rifatto dal supervisore). `tsc` pulito; `next lint` pulito in una copia dei file fuori dal worktree annidato.
+- **files edited/created**: `package.json`, `pnpm-lock.yaml`, `vitest.config.ts`, `vitest.workspace.ts` (tolto), `windows.db.test.ts` (commento), 7 file di test (tipi di `vi.fn`), su `claude/vitest-5`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
