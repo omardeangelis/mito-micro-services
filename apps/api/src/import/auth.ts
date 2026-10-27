@@ -7,7 +7,7 @@ export class ImportNotConfigured extends Data.TaggedError(
   "ImportNotConfigured"
 ) {}
 
-export class ImportAuth extends Context.Tag("ImportAuth")<
+export class ImportAuth extends Context.Service<
   ImportAuth,
   {
     /** Checks the `Authorization` header of a task of the import queue. */
@@ -15,7 +15,7 @@ export class ImportAuth extends Context.Tag("ImportAuth")<
       authorization: string | undefined
     ) => Effect.Effect<void, OidcUnauthorized | ImportNotConfigured>
   }
->() {}
+>()("ImportAuth") {}
 
 /**
  * Lets a task through only with the Google ID token of the queue's service

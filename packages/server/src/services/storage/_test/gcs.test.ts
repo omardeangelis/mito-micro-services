@@ -466,4 +466,18 @@ describe("Promise facade", () => {
       await client.dispose()
     }
   })
+
+  it("rejects with the thrown error itself when the GCS client dies", async () => {
+    const boom = new Error("bucket exploded")
+    gcs.bucket.mockImplementation(() => {
+      throw boom
+    })
+    const client = createStorageClient(config)
+    try {
+      const rejected = await client.exists("a.txt").catch((e: unknown) => e)
+      expect(rejected).toBe(boom)
+    } finally {
+      await client.dispose()
+    }
+  })
 })

@@ -1,4 +1,5 @@
 import { Config, Effect, Option, Redacted } from "effect"
+import { withCurrentEnv } from "../../shared/currentEnv"
 import { StorageConfigError } from "./errors"
 
 /** Lifetime of signed URLs when the caller does not set one. */
@@ -40,7 +41,7 @@ const readError = (name: string) => (cause: unknown) =>
 
 /** An environment variable as `Option`: `None` when it is unset or blank. */
 const optionalString = (name: string) =>
-  Config.option(Config.string(name)).pipe(
+  Config.option(Config.String(name)).pipe(
     Effect.mapError(readError(name)),
     Effect.map((value) => Option.filter(value, (text) => !isBlank(text)))
   )
@@ -94,7 +95,7 @@ const parseServiceAccount = (
 
 /** The credentials JSON is read as `Redacted`, so it is not printed by accident. */
 const optionalCredentials = (name: string) =>
-  Config.option(Config.redacted(name)).pipe(
+  Config.option(Config.Redacted(name)).pipe(
     Effect.mapError(readError(name)),
     Effect.flatMap((raw) => {
       if (Option.isNone(raw)) return Effect.succeed(undefined)
@@ -114,13 +115,17 @@ const optionalCredentials = (name: string) =>
 export const storageConfigFromEnv = (
   prefix = "GCS"
 ): Effect.Effect<StorageConfig, StorageConfigError> =>
-  Effect.gen(function* () {
-    const bucket = yield* requiredString(`${prefix}_BUCKET`)
-    const projectId = yield* optionalString(`${prefix}_PROJECT_ID`)
-    const credentials = yield* optionalCredentials(`${prefix}_CREDENTIALS_JSON`)
-    return {
-      bucket,
-      ...(Option.isSome(projectId) ? { projectId: projectId.value } : {}),
-      ...(credentials !== undefined ? { credentials } : {}),
-    }
-  })
+  withCurrentEnv(
+    Effect.gen(function* () {
+      const bucket = yield* requiredString(`${prefix}_BUCKET`)
+      const projectId = yield* optionalString(`${prefix}_PROJECT_ID`)
+      const credentials = yield* optionalCredentials(
+        `${prefix}_CREDENTIALS_JSON`
+      )
+      return {
+        bucket,
+        ...(Option.isSome(projectId) ? { projectId: projectId.value } : {}),
+        ...(credentials !== undefined ? { credentials } : {}),
+      }
+    })
+  )

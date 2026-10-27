@@ -4,7 +4,7 @@ import ParticheHome from "../page"
 // Il `search_by` che la pagina Pratiche passa al server
 
 const api = vi.hoisted(() => ({
-  getAllPratiche: vi.fn<[Record<string, unknown>], Promise<unknown>>(),
+  getAllPratiche: vi.fn<(input: Record<string, unknown>) => Promise<unknown>>(),
   cookies: new Map<string, string>(),
 }))
 

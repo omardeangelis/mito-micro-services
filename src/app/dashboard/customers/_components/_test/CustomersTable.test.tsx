@@ -13,7 +13,7 @@ import {
 
 const nav = vi.hoisted(() => ({
   params: new URLSearchParams(),
-  router: { push: vi.fn<[string], void>(), refresh: vi.fn() },
+  router: { push: vi.fn<(href: string) => void>(), refresh: vi.fn() },
 }))
 
 vi.mock("next/navigation", () => ({

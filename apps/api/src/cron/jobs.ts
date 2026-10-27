@@ -1,4 +1,4 @@
-import { Cause, Clock, Data, Duration, Effect, Either } from "effect"
+import { Cause, Clock, Data, Duration, Effect, Result } from "effect"
 import { type Db } from "@mito/server/effect/db"
 import { ErrorReporter } from "@mito/server/effect/errorReporter"
 import { processDueAlerts } from "@mito/server/services/contact/processDueAlerts"
@@ -73,7 +73,7 @@ export const alertJob = <E, R>(
   {
     maxCalls = 20,
     retryDelay = Duration.seconds(10),
-  }: { maxCalls?: number; retryDelay?: Duration.DurationInput } = {}
+  }: { maxCalls?: number; retryDelay?: Duration.Input } = {}
 ) =>
   Effect.gen(function* () {
     const reporter = yield* ErrorReporter
@@ -82,9 +82,9 @@ export const alertJob = <E, R>(
     let processed = 0
     let skipped = 0
     for (let call = 1; call <= maxCalls; call++) {
-      const result = yield* Effect.either(
+      const result = yield* Effect.result(
         processAlerts.pipe(
-          Effect.tapErrorCause((cause) =>
+          Effect.tapCause((cause) =>
             Effect.gen(function* () {
               yield* Effect.logError("Alert call failed", Cause.pretty(cause))
               yield* reporter.report(cause, { cron: "alert", call })
@@ -92,11 +92,11 @@ export const alertJob = <E, R>(
           )
         )
       )
-      if (Either.isLeft(result)) {
+      if (Result.isFailure(result)) {
         yield* Effect.sleep(retryDelay)
         continue
       }
-      const body = result.right
+      const body = result.success
       found ??= body.found
       processed += body.processed
       skipped += body.skipped

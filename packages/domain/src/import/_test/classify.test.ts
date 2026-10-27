@@ -8,7 +8,8 @@ import {
 import { type Cells, standardCells, waveCells } from "./cells"
 
 // Which of the three outcomes a row of the file has, and why it is discarded
-// (AC8–AC11, AC13, AC40). vitest.workspace.ts runs it in UTC and Europe/Rome.
+// (AC8–AC11, AC13, AC40). The `utc` and `rome` projects of vitest.config.ts
+// run it in UTC and Europe/Rome.
 
 const NOW = new Date("2025-01-15T11:00:00.000Z")
 const FILE_NAME = "0125_import.xlsx"

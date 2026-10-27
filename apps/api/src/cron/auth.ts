@@ -19,7 +19,7 @@ export class CronUnauthorized extends Data.TaggedError("CronUnauthorized")<{
 /** The service has no CronCaller: no cron runs. */
 export class CronNotConfigured extends Data.TaggedError("CronNotConfigured") {}
 
-export class CronAuth extends Context.Tag("CronAuth")<
+export class CronAuth extends Context.Service<
   CronAuth,
   {
     /** Checks the `Authorization` header of a cron request. */
@@ -27,7 +27,7 @@ export class CronAuth extends Context.Tag("CronAuth")<
       authorization: string | undefined
     ) => Effect.Effect<void, CronUnauthorized | CronNotConfigured>
   }
->() {}
+>()("CronAuth") {}
 
 /**
  * Lets a request through only with the scheduler's Google ID token

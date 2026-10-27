@@ -14,8 +14,9 @@ import {
 const choiceWith = (env: Record<string, string>) =>
   Effect.runPromise(
     importQueueChoice.pipe(
-      Effect.withConfigProvider(
-        ConfigProvider.fromMap(new Map(Object.entries(env)))
+      Effect.provideService(
+        ConfigProvider.ConfigProvider,
+        ConfigProvider.fromEnv({ env })
       )
     )
   )
@@ -170,7 +171,14 @@ describe("Cloud Tasks", () => {
     const exit = await enqueue({ kind: "run", runId: 7 }, fetchImpl)
 
     expect(Exit.isFailure(exit) && exit.cause).toMatchObject({
-      error: { _tag: "ImportQueueFailed", reason: "Cloud Tasks answered 403" },
+      reasons: [
+        {
+          error: {
+            _tag: "ImportQueueFailed",
+            reason: "Cloud Tasks answered 403",
+          },
+        },
+      ],
     })
     expect(calls).toHaveLength(6)
   })

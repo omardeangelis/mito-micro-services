@@ -1,13 +1,5 @@
-import {
-  Clock,
-  Config,
-  Context,
-  Effect,
-  Layer,
-  Option,
-  Runtime,
-  Schedule,
-} from "effect"
+import { Clock, Config, Context, Effect, Layer, Option, Schedule } from "effect"
+import { withCurrentEnv } from "../../shared/currentEnv"
 import { ImportQueueFailed, ImportUnavailable } from "./errors"
 
 // Where a confirmed import runs (D1, D13): a task of the queue calls the
@@ -18,7 +10,7 @@ export type ImportTask =
   | { readonly kind: "run"; readonly runId: number }
   | { readonly kind: "purge"; readonly uploadId: string; readonly at: Date }
 
-export class ImportQueue extends Context.Tag("ImportQueue")<
+export class ImportQueue extends Context.Service<
   ImportQueue,
   {
     /** Whether an import can start in this environment */
@@ -27,7 +19,7 @@ export class ImportQueue extends Context.Tag("ImportQueue")<
       task: ImportTask
     ) => Effect.Effect<void, ImportUnavailable | ImportQueueFailed>
   }
->() {}
+>()("ImportQueue") {}
 
 /** The route of the backend that runs the task (`apps/api/src/import`). */
 export const taskPath = (task: ImportTask) =>
@@ -143,9 +135,9 @@ export type ImportHandlers<R> = {
 export const importQueueInProcess = <R>(handlers: ImportHandlers<R>) =>
   Layer.effect(
     ImportQueue,
-    Effect.map(Effect.runtime<R>(), (runtime) => {
-      const fork = Runtime.runFork(runtime)
-      const queue: Context.Tag.Service<typeof ImportQueue> = {
+    Effect.map(Effect.context<R>(), (context) => {
+      const fork = Effect.runForkWith(context)
+      const queue: ImportQueue["Service"] = {
         available: true,
         enqueue: (task: ImportTask) =>
           Effect.sync(() => {
@@ -154,7 +146,7 @@ export const importQueueInProcess = <R>(handlers: ImportHandlers<R>) =>
                 ? handlers.run(task.runId)
                 : Effect.flatMap(Clock.currentTimeMillis, (now) =>
                     Effect.sleep(Math.max(0, task.at.getTime() - now))
-                  ).pipe(Effect.zipRight(handlers.purge(task.uploadId)))
+                  ).pipe(Effect.andThen(handlers.purge(task.uploadId)))
               ).pipe(Effect.provideService(ImportQueue, queue))
             )
           }),
@@ -175,7 +167,7 @@ export type ImportQueueChoice =
   | { readonly kind: "disabled" }
 
 const setting = (name: string) =>
-  Config.string(name).pipe(
+  Config.String(name).pipe(
     Config.option,
     Config.map(Option.map((value) => value.trim())),
     Config.map(Option.filter((value) => value !== ""))
@@ -190,34 +182,35 @@ const setting = (name: string) =>
  * - otherwise none, and the import isn't available. A deploy without the
  *   queue still starts.
  */
-export const importQueueChoice: Effect.Effect<ImportQueueChoice> = Effect.gen(
-  function* () {
-    const queue = yield* setting("IMPORT_QUEUE")
-    const audience = yield* setting("IMPORT_OIDC_AUDIENCE")
-    const serviceAccount = yield* setting("IMPORT_OIDC_SERVICE_ACCOUNT")
-    if (
-      Option.isSome(queue) &&
-      Option.isSome(audience) &&
-      Option.isSome(serviceAccount)
-    ) {
-      return {
-        kind: "cloudTasks" as const,
-        settings: {
-          queue: queue.value,
-          audience: audience.value,
-          serviceAccount: serviceAccount.value,
-        },
+export const importQueueChoice: Effect.Effect<ImportQueueChoice> =
+  withCurrentEnv(
+    Effect.gen(function* () {
+      const queue = yield* setting("IMPORT_QUEUE")
+      const audience = yield* setting("IMPORT_OIDC_AUDIENCE")
+      const serviceAccount = yield* setting("IMPORT_OIDC_SERVICE_ACCOUNT")
+      if (
+        Option.isSome(queue) &&
+        Option.isSome(audience) &&
+        Option.isSome(serviceAccount)
+      ) {
+        return {
+          kind: "cloudTasks" as const,
+          settings: {
+            queue: queue.value,
+            audience: audience.value,
+            serviceAccount: serviceAccount.value,
+          },
+        }
       }
-    }
-    const nodeEnv = yield* setting("NODE_ENV")
-    const cloudRun = yield* setting("K_SERVICE")
-    const vercel = yield* setting("VERCEL")
-    const local =
-      Option.getOrUndefined(nodeEnv) !== "production" &&
-      Option.isNone(cloudRun) &&
-      Option.isNone(vercel)
-    return local
-      ? { kind: "inProcess" as const }
-      : { kind: "disabled" as const }
-  }
-).pipe(Effect.orElseSucceed(() => ({ kind: "disabled" as const })))
+      const nodeEnv = yield* setting("NODE_ENV")
+      const cloudRun = yield* setting("K_SERVICE")
+      const vercel = yield* setting("VERCEL")
+      const local =
+        Option.getOrUndefined(nodeEnv) !== "production" &&
+        Option.isNone(cloudRun) &&
+        Option.isNone(vercel)
+      return local
+        ? { kind: "inProcess" as const }
+        : { kind: "disabled" as const }
+    })
+  ).pipe(Effect.orElseSucceed(() => ({ kind: "disabled" as const })))

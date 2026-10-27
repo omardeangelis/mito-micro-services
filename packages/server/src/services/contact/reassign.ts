@@ -1,4 +1,4 @@
-import { Effect, Either } from "effect"
+import { Effect, Result } from "effect"
 import { eq } from "drizzle-orm"
 import {
   type Actor,
@@ -72,8 +72,8 @@ export const reassign = ({
             taskOperator === null ? null : operatorDisplayName(taskOperator),
         })
       }
-      if (Either.isLeft(working)) return yield* Effect.fail(working.left)
-      const target = working.right
+      if (Result.isFailure(working)) return yield* Effect.fail(working.failure)
+      const target = working.success
 
       const contactChanged = contact.operatorId !== target.id
       const customerChanged = customer.operatorId !== target.id

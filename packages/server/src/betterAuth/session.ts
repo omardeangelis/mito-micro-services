@@ -27,10 +27,10 @@ type Found = {
 }
 
 /** better-auth's read of the session of a request, swappable in tests. */
-export class AuthSession extends Context.Tag("AuthSession")<
+export class AuthSession extends Context.Service<
   AuthSession,
   { readonly read: (headers: Headers) => Promise<Found | null> }
->() {}
+>()("AuthSession") {}
 
 /** `AuthSession` on a better-auth instance. */
 export const authSessionOf = (auth: Auth) =>

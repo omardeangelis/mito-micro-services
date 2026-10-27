@@ -10,6 +10,7 @@ import { type Cells, classifyRows } from "@mito/domain/import/classify"
 import { groupRows, lookupKeys } from "@mito/domain/import/group"
 import { planRows } from "@mito/domain/import/plan"
 import { waveCells } from "@mito/domain/import/_test/cells"
+import { fixedClock } from "../../analytics/_test/clock"
 import { type Db, DbLive, transaction } from "../../../effect/db"
 import { applyImport } from "../apply"
 import { ImportConfig, importSettings } from "../config"
@@ -199,11 +200,15 @@ describe("righe attese che non si salvano più (AC19b, D10)", () => {
     const exit = await importRows(rows, { confirmed })
 
     expect(Exit.isFailure(exit) && exit.cause).toMatchObject({
-      error: {
-        _tag: "ImportRowRejected",
-        row: 3,
-        rule: "Codice cliente già usato da un altro cliente",
-      },
+      reasons: [
+        {
+          error: {
+            _tag: "ImportRowRejected",
+            row: 3,
+            rule: "Codice cliente già usato da un altro cliente",
+          },
+        },
+      ],
     })
     expect(await snapshot()).toEqual(before)
   })
@@ -231,7 +236,7 @@ describe("righe attese che non si salvano più (AC19b, D10)", () => {
     ])
 
     expect(Exit.isFailure(exit) && exit.cause).toMatchObject({
-      error: { _tag: "ImportRowRejected", row: 3 },
+      reasons: [{ error: { _tag: "ImportRowRejected", row: 3 } }],
     })
     expect(await testDb.select().from(customers)).toEqual([])
   })
@@ -282,11 +287,15 @@ describe("righe attese che non si salvano più (AC19b, D10)", () => {
     const exit = await importRows(rows, { confirmed })
 
     expect(Exit.isFailure(exit) && exit.cause).toMatchObject({
-      error: {
-        _tag: "ImportRowRejected",
-        row: 3,
-        rule: "Manca il codice fiscale o la partita IVA del cliente",
-      },
+      reasons: [
+        {
+          error: {
+            _tag: "ImportRowRejected",
+            row: 3,
+            rule: "Manca il codice fiscale o la partita IVA del cliente",
+          },
+        },
+      ],
     })
     expect(await testDb.select().from(customers)).toEqual([])
   })
@@ -625,12 +634,11 @@ describe("scadenza (D8)", () => {
     const times = [0, 0, 2_000]
     const next = () => times.shift() ?? 2_000
     const clock: Clock.Clock = {
-      [Clock.ClockTypeId]: Clock.ClockTypeId,
-      unsafeCurrentTimeMillis: next,
+      ...fixedClock(0),
+      currentTimeMillisUnsafe: next,
       currentTimeMillis: Effect.sync(next),
-      unsafeCurrentTimeNanos: () => BigInt(next()) * 1_000_000n,
+      currentTimeNanosUnsafe: () => BigInt(next()) * 1_000_000n,
       currentTimeNanos: Effect.sync(() => BigInt(next()) * 1_000_000n),
-      sleep: () => Effect.void,
     }
 
     const exit = await withDb(
@@ -643,7 +651,7 @@ describe("scadenza (D8)", () => {
           now: NOW,
           deadline: 1_000,
         })
-      ).pipe(Effect.withClock(clock)),
+      ).pipe(Effect.provideService(Clock.Clock, clock)),
       1
     )
 

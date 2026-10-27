@@ -6,7 +6,7 @@ import { type ServerContext, ServerLive } from "./server"
 /** The typed error in `cause` that `mapError` translates, if any. */
 const expectedFailure = (cause: Cause.Cause<unknown>) =>
   Option.filter(
-    Cause.failureOption(cause),
+    Cause.findErrorOption(cause),
     (error) => !(error instanceof DbError)
   )
 
@@ -28,7 +28,7 @@ export async function runTrpc<A, E>(
 ): Promise<A> {
   const exit = await Effect.runPromiseExit(
     program.pipe(
-      Effect.tapErrorCause((cause) =>
+      Effect.tapCause((cause) =>
         Option.isSome(expectedFailure(cause))
           ? Effect.void
           : Effect.logError("tRPC procedure failed", Cause.pretty(cause))
