@@ -1,0 +1,11 @@
+# Eccezioni ad AC5 per la PR 3 (scripts/check-assertions.mjs assertions origin/dev HEAD --exceptions questo file).
+# <file>:<riga>#<hash> = catena aggiunta (riga nel head); base:<file>:<riga>#<hash> = catena tolta (riga nel base).
+# Rigenerato a ogni task che sposta le righe. Categorie ammesse: il test nuovo di withCurrentEnv (c68be23) e le riscritture di resolves/rejects.
+
+# packages/server/src/shared/_test/currentEnv.test.ts
+packages/server/src/shared/_test/currentEnv.test.ts:17#9ccdfd6f test nuovo: withCurrentEnv (c68be23), file assente su dev
+packages/server/src/shared/_test/currentEnv.test.ts:20#5b8dd51b test nuovo: withCurrentEnv (c68be23), file assente su dev
+packages/server/src/shared/_test/currentEnv.test.ts:25#ccce55c5 test nuovo: withCurrentEnv (c68be23), file assente su dev
+packages/server/src/shared/_test/currentEnv.test.ts:28#244188ed test nuovo: withCurrentEnv (c68be23), file assente su dev
+packages/server/src/shared/_test/currentEnv.test.ts:32#0c24177a test nuovo: withCurrentEnv (c68be23), file assente su dev
+packages/server/src/shared/_test/currentEnv.test.ts:41#e173edce test nuovo: withCurrentEnv (c68be23), file assente su dev
