@@ -53,6 +53,64 @@ const isEffectPromiseYield = (n) =>
 
 const printer = ts.createPrinter({ removeComments: true })
 
+const SEP = "\u0001"
+const CLOSERS = new Set([
+  ts.SyntaxKind.CloseParenToken,
+  ts.SyntaxKind.CloseBracketToken,
+  ts.SyntaxKind.CloseBraceToken,
+])
+// A `/` after one of these is a division, otherwise it starts a regex.
+const OPERAND_END = new Set([
+  ts.SyntaxKind.Identifier,
+  ts.SyntaxKind.NumericLiteral,
+  ts.SyntaxKind.BigIntLiteral,
+  ts.SyntaxKind.StringLiteral,
+  ts.SyntaxKind.NoSubstitutionTemplateLiteral,
+  ts.SyntaxKind.TemplateTail,
+  ts.SyntaxKind.RegularExpressionLiteral,
+  ts.SyntaxKind.ThisKeyword,
+  ts.SyntaxKind.CloseParenToken,
+  ts.SyntaxKind.CloseBracketToken,
+  ts.SyntaxKind.CloseBraceToken,
+])
+
+// Tokens of the printed text: layout and a formatter's trailing comma do not
+// count, a literal keeps its exact text.
+const tokenKey = (printed) => {
+  const scanner = ts.createScanner(
+    ts.ScriptTarget.Latest,
+    true,
+    ts.LanguageVariant.Standard,
+    printed
+  )
+  const tokens = []
+  const braces = [] // true for a `${` of a template, false for a plain `{`
+  let prev
+  for (let k = scanner.scan(); k !== ts.SyntaxKind.EndOfFileToken; ) {
+    if (k === ts.SyntaxKind.TemplateHead) braces.push(true)
+    else if (k === ts.SyntaxKind.OpenBraceToken) braces.push(false)
+    else if (k === ts.SyntaxKind.CloseBraceToken) {
+      if (braces.pop()) k = scanner.reScanTemplateToken(false)
+      if (k === ts.SyntaxKind.TemplateMiddle) braces.push(true)
+    } else if (
+      (k === ts.SyntaxKind.SlashToken || k === ts.SyntaxKind.SlashEqualsToken) &&
+      !OPERAND_END.has(prev)
+    ) {
+      k = scanner.reScanSlashToken()
+    }
+    tokens.push({ kind: k, text: scanner.getTokenText() })
+    prev = k
+    k = scanner.scan()
+  }
+  return tokens
+    .filter(
+      (t, i) =>
+        !(t.kind === ts.SyntaxKind.CommaToken && CLOSERS.has(tokens[i + 1]?.kind))
+    )
+    .map((t) => t.text)
+    .join(SEP)
+}
+
 const normalize = (node, sf) => {
   const transformer = (ctx) => (root) => {
     const visit = (n) => {
@@ -71,23 +129,20 @@ const normalize = (node, sf) => {
     sf
   )
   result.dispose()
-  // Whitespace never counts; neither does a trailing comma a formatter adds.
-  return printed.replace(/\s+/g, "").replace(/,(?=[)\]}])/g, "")
+  return tokenKey(printed)
 }
+
+const CALLED_OR_ACCESSED = new Set(["expect", "expectTypeOf"])
 
 const chainStart = (id) => {
   const p = id.parent
   if (!p) return false
   if (ts.isPropertyAccessExpression(p) && p.name === id) return false
-  if (id.text === "expect") {
-    return (
-      (ts.isCallExpression(p) && p.expression === id) ||
-      (ts.isPropertyAccessExpression(p) && p.expression === id)
-    )
-  }
-  if (id.text === "assert") {
-    return ts.isPropertyAccessExpression(p) && p.expression === id
-  }
+  const called = ts.isCallExpression(p) && p.expression === id
+  const accessed = ts.isPropertyAccessExpression(p) && p.expression === id
+  if (CALLED_OR_ACCESSED.has(id.text)) return called || accessed
+  if (id.text === "assertType") return called
+  if (id.text === "assert") return accessed
   return false
 }
 
@@ -108,14 +163,70 @@ const climb = (id) => {
   }
 }
 
+// Test and suite declarations: `it`, `test`, `describe`, `suite` and their
+// modifiers. Only skip/only/todo and the like count, so `it` -> `it.effect`
+// is free.
+const TEST_ROOTS = { it: "test", test: "test", describe: "describe", suite: "describe" }
+const MODIFIERS = new Set([
+  "skip",
+  "only",
+  "todo",
+  "fails",
+  "skipIf",
+  "runIf",
+  "concurrent",
+  "sequential",
+])
+
+const markerChain = (call) => {
+  const names = []
+  let n = call.expression
+  for (;;) {
+    if (ts.isPropertyAccessExpression(n)) names.unshift(n.name.text)
+    else if (
+      ts.isElementAccessExpression(n) &&
+      ts.isStringLiteralLike(n.argumentExpression)
+    ) {
+      names.unshift(n.argumentExpression.text)
+    } else if (!(ts.isCallExpression(n) || ts.isNonNullExpression(n))) break
+    n = n.expression
+  }
+  return ts.isIdentifier(n) && Object.hasOwn(TEST_ROOTS, n.text)
+    ? { root: TEST_ROOTS[n.text], names }
+    : null
+}
+
+const markerKey = (call) => {
+  const { root, names } = markerChain(call)
+  return `${root}:${[...new Set(names.filter((x) => MODIFIERS.has(x)))].sort().join(".")}`
+}
+
+const markersOf = (sf) => {
+  const out = []
+  const walk = (n) => {
+    if (ts.isCallExpression(n) && markerChain(n)) {
+      const p = n.parent
+      const inner =
+        p &&
+        (ts.isPropertyAccessExpression(p) ||
+          ts.isElementAccessExpression(p) ||
+          ts.isCallExpression(p) ||
+          ts.isNonNullExpression(p)) &&
+        p.expression === n
+      if (!inner) out.push(n)
+    }
+    ts.forEachChild(n, walk)
+  }
+  walk(sf)
+  return out
+}
+
 const chainsOf = (path, text) => {
   if (!text) return []
   const sf = parse(path, text)
   const found = []
   const walk = (n) => {
-    if (ts.isIdentifier(n) && (n.text === "expect" || n.text === "assert")) {
-      if (chainStart(n)) found.push(climb(n))
-    }
+    if (ts.isIdentifier(n) && chainStart(n)) found.push(climb(n))
     ts.forEachChild(n, walk)
   }
   walk(sf)
@@ -130,13 +241,26 @@ const chainsOf = (path, text) => {
       )
   )
   const seen = new Set()
-  return outermost
+  const items = outermost
     .filter((c) => !seen.has(c) && seen.add(c))
-    .sort((a, b) => a.getStart(sf) - b.getStart(sf))
     .map((c) => ({
+      pos: c.getStart(sf),
       key: normalize(c, sf),
-      line: sf.getLineAndCharacterOfPosition(c.getStart(sf)).line + 1,
       text: c.getText(sf),
+    }))
+  for (const c of markersOf(sf)) {
+    items.push({
+      pos: c.getStart(sf),
+      key: `marker${SEP}${markerKey(c)}`,
+      text: c.getText(sf).split("\n")[0],
+    })
+  }
+  return items
+    .sort((a, b) => a.pos - b.pos)
+    .map((i) => ({
+      key: i.key,
+      text: i.text,
+      line: sf.getLineAndCharacterOfPosition(i.pos).line + 1,
     }))
 }
 

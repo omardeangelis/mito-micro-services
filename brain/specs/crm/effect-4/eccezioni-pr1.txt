@@ -10,12 +10,17 @@ base:packages/server/src/effect/_test/db.db.test.ts:87 D14: Exit.isInterrupted -
 packages/server/src/effect/_test/db.db.test.ts:92 D14: Exit.isInterrupted -> Exit.hasInterrupts (db.db.test.ts:87 di dev)
 packages/server/src/effect/_test/db.db.test.ts:171 T2, test nuovo (AC6)
 packages/server/src/effect/_test/db.db.test.ts:184 T2, test nuovo (AC6)
+packages/server/src/effect/_test/db.db.test.ts:268 T2, test nuovo (AC6)
 packages/server/src/effect/_test/db.db.test.ts:274 T2, test nuovo (AC6)
 packages/server/src/effect/_test/db.db.test.ts:275 T2, test nuovo (AC6)
 packages/server/src/effect/_test/db.db.test.ts:278 T2, test nuovo (AC6)
+packages/server/src/effect/_test/db.db.test.ts:281 T2, test nuovo (AC6)
 packages/server/src/effect/_test/db.db.test.ts:287 T2, test nuovo (AC6)
 packages/server/src/effect/_test/db.db.test.ts:288 T2, test nuovo (AC6)
 packages/server/src/effect/_test/db.db.test.ts:291 T2, test nuovo (AC6)
+packages/server/src/effect/_test/db.db.test.ts:294 T2, test nuovo (AC6)
+packages/server/src/effect/_test/db.db.test.ts:305 T2, test nuovo (AC6)
+packages/server/src/effect/_test/db.db.test.ts:306 T2, test nuovo (AC6)
 base:packages/server/src/services/contact/_test/guard.db.test.ts:79 D14: { error } -> { reasons: [{ error }] }
 base:packages/server/src/services/contact/_test/guard.db.test.ts:105 D14: { error } -> { reasons: [{ error }] }
 base:packages/server/src/services/contact/_test/guard.db.test.ts:119 D14: { error } -> { reasons: [{ error }] }
@@ -36,4 +41,5 @@ base:packages/server/src/services/import/_test/concurrency.pg.test.ts:319 D14: {
 packages/server/src/services/import/_test/concurrency.pg.test.ts:322 D14: { error } -> { reasons: [{ error }] }
 base:packages/server/src/services/import/_test/queue.test.ts:172 D14: { error } -> { reasons: [{ error }] }
 packages/server/src/services/import/_test/queue.test.ts:173 D14: { error } -> { reasons: [{ error }] }
+packages/server/src/services/storage/_test/gcs.test.ts:470 T2, test nuovo (AC6)
 packages/server/src/services/storage/_test/gcs.test.ts:478 T2, test nuovo (AC6)
