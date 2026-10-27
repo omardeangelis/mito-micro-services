@@ -1,4 +1,5 @@
 import { useUserPreferenceContext } from "@/store/context/useUserPreferenceContext"
+import { useQueryClient } from "@tanstack/react-query"
 import { useCallback } from "react"
 import { clearUnsentNotes } from "@/components/custom/notes/unsentNote"
 import { clearDeletingNotes } from "@/components/custom/notes/deletingNotes"
@@ -6,6 +7,7 @@ import { authClient } from "@/lib/authClient"
 
 export const LogoutFloatingButton = () => {
   const logoutStore = useUserPreferenceContext((state) => state.logout)
+  const queryClient = useQueryClient()
   const handleLogout = useCallback(async () => {
     // Unsent notes and deletions are of this operator: not for the next one
     // in this tab
@@ -13,8 +15,10 @@ export const LogoutFloatingButton = () => {
     clearDeletingNotes()
     await authClient.signOut()
     logoutStore()
+    // What the backend answered is of this operator too (H12)
+    queryClient.clear()
     window.location.assign("/")
-  }, [logoutStore])
+  }, [logoutStore, queryClient])
   return (
     <button
       onClick={handleLogout}
