@@ -100,8 +100,8 @@ if (backendUrl !== undefined) {
 }
 
 // With BACKEND_AUTH=true too, the browser's /api/auth calls (login, callback,
-// session, logout) go to the backend, which runs the same NextAuth. A step of
-// its own, after tRPC: both read the same session table until the database
+// session, logout) go to the backend, which runs the same better-auth. A step
+// of its own, after tRPC: both read the same session table until the database
 // moves (brain/chore/migrazione-gcp.md)
 const backendAuth = process.env.BACKEND_AUTH === "true"
 if (backendAuth && backendOrigin === undefined) {
