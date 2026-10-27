@@ -136,3 +136,67 @@ Nessuno.
 | v6 | Storage e download | medium | sonnet |
 | v7 | Integrità dei test | high | il più forte |
 | v8 | Dipendenze, build, documenti | medium | sonnet |
+
+## [Round: 2026-10-27 — PR 3, @effect/vitest]
+
+### Change set under review
+
+- **Scope:** spec implementation, PR 3 di 4 (T12–T17 del piano)
+- **Target:** branch `claude/effect-vitest`
+- **Compared:** `origin/dev` (`43ec443`, con le PR 1 e 2) → `claude/effect-vitest` (`b686eac`)
+- **Files touched:** 64 (test e helper di test in `packages/server`, `apps/api`, `packages/db`, `src`; `scripts/check-assertions.mjs`; `package.json`, `pnpm-lock.yaml`; `AGENTS.md`; documenti della spec e della roadmap), dominio `crm`
+- **Contratto:** AC4, AC5, AC8, AC12 (PR 3), AC13, AC14
+
+### Routing rubric (review-classifier output, riassunta: i charter completi sono nei brief dei verificatori)
+
+```json
+{
+  "taskType": "test",
+  "secondaryType": "dependency",
+  "domainsTouched": ["crm"],
+  "adversarialVerifiers": {
+    "count": 11,
+    "passes": [
+      { "id": "v1", "charter": "AC5 script soundness: no false 'no change' (chains, markers, renames, each tables, await = yield* Effect.promise, exceptions only widen via the closed file); harness plus adversarial cases", "complexity": "high" },
+      { "id": "v2", "charter": "AC5 closed-exceptions audit: every pair of eccezioni-pr3.txt changes only await -> yield* with the same value; resolves/rejects annotated; nothing hides a changed matcher, argument, expected value or count", "complexity": "high" },
+      { "id": "v3", "charter": "Test inventory parity from the dev and head JSON reports: same tests, same statuses, pg suites really ran, skipIf conditions unchanged", "complexity": "medium" },
+      { "id": "v4", "charter": "Execution fidelity of converted tests (non-auth): every Effect yielded, no vacuous Effect.exit, assertions on the executed path, hooks in order", "complexity": "high" },
+      { "id": "v5", "charter": "Auth/identity guard tests stay effective after conversion", "complexity": "high" },
+      { "id": "v6", "charter": "AC8 time and console semantics: it.effect vs it.live, fixedClock -> TestClock.setTime, step clocks, no pass or hang from frozen virtual time", "complexity": "high" },
+      { "id": "v7", "charter": "Shared-layer and state isolation between tests; vi.mock/vi.spyOn with fibers; order independence", "complexity": "medium" },
+      { "id": "v8", "charter": "Test helpers and the production-code boundary: no production file changed; src/test/effect.ts, analytics clock.ts, failureOf, route edges", "complexity": "medium" },
+      { "id": "v9", "charter": "The new currentEnv.test.ts bites on realistic regressions of withCurrentEnv", "complexity": "medium" },
+      { "id": "v10", "charter": "Dependency and CI gates (AC4, AC14): one effect copy, peers, all gates green", "complexity": "medium" },
+      { "id": "v11", "charter": "Docs and contract edits (AC12 PR 3, AC13): AGENTS.md rules agree with AC8; SPEC/PLAN edits do not loosen AC5/AC8 without a recorded decision", "complexity": "medium" }
+    ]
+  },
+  "taskComplexity": "high",
+  "reviewImpact": "critical",
+  "humanInLoop": true,
+  "nextStep": "Run the 11 passes in parallel (Opus for v1, v2, v4, v5, v6; balanced for the rest). Human checklist before merge: rerun the script, spot-check exceptions, test-count parity, CI green, Omar approves the SPEC edits."
+}
+```
+
+### Classifier rationale
+
+Solo test, ma i test della PR 3 fanno da guardia alla PR 4, che riscrive il codice di produzione: un test convertito che non controlla più niente passerebbe inosservato adesso e lascerebbe passare una regressione dopo. Lo script di AC5 è l'unico controllo meccanico, non gira in CI, e questa PR allarga ciò che accetta (`await` → `yield*`): per questo logica dello script (v1) ed elenco delle eccezioni (v2) hanno passate separate. I test dell'auth e le dipendenze hanno le loro (v5, v10). Le modifiche a SPEC e PLAN dentro la PR in revisione richiedono un controllo (v11) e l'approvazione di Omar.
+
+### Overrides applied
+
+Due fatti corretti nei brief, senza cambiare le passate: `analytics/_test/clock.ts` non è cancellato ma ridotto a `T` e `DAY`; le riscritture di `resolves`/`rejects` nel file di eccezioni sono una (in `cron.db.test.ts`), non 14.
+
+### Verification plan (derived)
+
+| Pass | Concern | Complexity | Model tier |
+|------|---------|------------|------------|
+| v1 | Script di AC5 | high | il più forte |
+| v2 | Eccezioni di AC5 | high | il più forte |
+| v3 | Parità dei test | medium | sonnet |
+| v4 | Fedeltà d'esecuzione | high | il più forte |
+| v5 | Test dell'auth | high | il più forte |
+| v6 | Tempo e console (AC8) | high | il più forte |
+| v7 | Isolamento fra test | medium | sonnet |
+| v8 | Helper e confine col codice di produzione | medium | sonnet |
+| v9 | Test di `withCurrentEnv` | medium | sonnet |
+| v10 | Dipendenze e gate | medium | sonnet |
+| v11 | Documenti e contratto | medium | sonnet |

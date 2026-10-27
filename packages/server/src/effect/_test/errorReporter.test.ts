@@ -1,6 +1,7 @@
 // @vitest-environment node
 import * as Sentry from "@sentry/node"
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, vi } from "vitest"
+import { describe, expect, it } from "@effect/vitest"
 import { Cause, Effect } from "effect"
 import {
   ErrorReporter,
@@ -39,23 +40,23 @@ afterEach(async () => {
 })
 
 describe("SentryReporterLive", () => {
-  it("manda a Sentry l'errore della causa, con i dati del caso", async () => {
-    await Effect.runPromise(
-      Effect.flatMap(ErrorReporter, (reporter) =>
+  it.effect("manda a Sentry l'errore della causa, con i dati del caso", () =>
+    Effect.gen(function* () {
+      yield* Effect.flatMap(ErrorReporter, (reporter) =>
         reporter.report(Cause.fail(new Error("boom")), { alertId: 7 })
       ).pipe(Effect.provide(SentryReporterLive))
-    )
-    await Sentry.flush(2000)
+      yield* Effect.promise(() => Sentry.flush(2000))
 
-    // Every item of every envelope, in the order the SDK sent them
-    const items = envelopes.flatMap((envelope) => [...envelope[1]])
-    const events = items.filter(([header]) => header.type === "event")
-    expect(events).toHaveLength(1)
+      // Every item of every envelope, in the order the SDK sent them
+      const items = envelopes.flatMap((envelope) => [...envelope[1]])
+      const events = items.filter(([header]) => header.type === "event")
+      expect(events).toHaveLength(1)
 
-    const event = events[0]?.[1]
-    expect(event).toMatchObject({
-      exception: { values: [{ type: "Error", value: "boom" }] },
-      contexts: { details: { alertId: 7 } },
+      const event = events[0]?.[1]
+      expect(event).toMatchObject({
+        exception: { values: [{ type: "Error", value: "boom" }] },
+        contexts: { details: { alertId: 7 } },
+      })
     })
-  })
+  )
 })

@@ -1,4 +1,5 @@
-import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest"
+import { beforeAll, beforeEach, vi } from "vitest"
+import { describe, expect, it } from "@effect/vitest"
 import { Effect, Exit } from "effect"
 import { asc, eq, inArray } from "drizzle-orm"
 import { chat } from "@mito/db/schema/chat"
@@ -21,7 +22,7 @@ import {
   testClient,
   testDb,
 } from "@/test/db"
-import { failureTag, runServer } from "@/test/effect"
+import { failureTag, provideServer } from "@/test/effect"
 import {
   createAlert,
   createCustomer,
@@ -56,45 +57,59 @@ const operatorOfCustomer = async (id: string) => {
 }
 
 describe("deactivateOperator", () => {
-  it("passa alla destinazione un cliente e il suo contatto attivo, con due righe operator_reassign di source deactivation", async () => {
-    const admin = await createOperator({ role: "ADMIN" })
-    const leaving = await createOperator()
-    const target = await createOperator()
-    const customer = await createCustomer({ operatorId: leaving.id })
-    const contact = await createTask({
-      customerId: customer.id,
-      operatorId: leaving.id,
-    })
+  it.effect(
+    "passa alla destinazione un cliente e il suo contatto attivo, con due righe operator_reassign di source deactivation",
+    () =>
+      Effect.gen(function* () {
+        const admin = yield* Effect.promise(() =>
+          createOperator({ role: "ADMIN" })
+        )
+        const leaving = yield* Effect.promise(() => createOperator())
+        const target = yield* Effect.promise(() => createOperator())
+        const customer = yield* Effect.promise(() =>
+          createCustomer({ operatorId: leaving.id })
+        )
+        const contact = yield* Effect.promise(() =>
+          createTask({
+            customerId: customer.id,
+            operatorId: leaving.id,
+          })
+        )
 
-    const exit = await runServer(
-      deactivateOperator({
-        operatorId: leaving.id,
-        toOperatorId: target.id,
-        actor: actorOf(admin),
-      })
-    )
+        const exit = yield* deactivateOperator({
+          operatorId: leaving.id,
+          toOperatorId: target.id,
+          actor: actorOf(admin),
+        }).pipe(provideServer, Effect.exit)
 
-    expect(exit).toEqual(
-      Exit.succeed({ customersMoved: 1, contactsMoved: 1, practicesMoved: 0 })
-    )
-    expect(await operatorOfCustomer(customer.id)).toBe(target.id)
-    const [moved] = await tasksOf(customer.id)
-    expect(moved).toMatchObject({ id: contact.id, operatorId: target.id })
-    const log = await logOf(customer.id)
-    expect(log).toHaveLength(2)
-    for (const row of log) {
-      expect(row).toMatchObject({
-        action: "operator_reassign",
-        source: "deactivation",
-        actorOperatorId: admin.id,
-        fromOperatorId: leaving.id,
-        toOperatorId: target.id,
+        expect(exit).toEqual(
+          Exit.succeed({
+            customersMoved: 1,
+            contactsMoved: 1,
+            practicesMoved: 0,
+          })
+        )
+        expect(
+          yield* Effect.promise(() => operatorOfCustomer(customer.id))
+        ).toBe(target.id)
+        const [moved] = yield* Effect.promise(() => tasksOf(customer.id))
+        expect(moved).toMatchObject({ id: contact.id, operatorId: target.id })
+        const log = yield* Effect.promise(() => logOf(customer.id))
+        expect(log).toHaveLength(2)
+        for (const row of log) {
+          expect(row).toMatchObject({
+            action: "operator_reassign",
+            source: "deactivation",
+            actorOperatorId: admin.id,
+            fromOperatorId: leaving.id,
+            toOperatorId: target.id,
+          })
+        }
+        expect(log.map((row) => row.taskId).sort()).toEqual(
+          [null, contact.id].sort()
+        )
       })
-    }
-    expect(log.map((row) => row.taskId).sort()).toEqual(
-      [null, contact.id].sort()
-    )
-  })
+  )
 })
 
 // ---------------------------------------------------------------------------
@@ -154,143 +169,177 @@ const seedPortfolio = async (
 }
 
 describe("deactivateOperator: i rifiuti non cambiano nulla", () => {
-  it("un utente ADMIN è rifiutato con OperatorIsAdmin (AC3)", async () => {
-    const admin = await createOperator({ role: "ADMIN" })
-    const { operator: other } = await seedPortfolio({ role: "ADMIN" })
-    const target = await createOperator()
-    const before = await snapshot()
+  it.effect("un utente ADMIN è rifiutato con OperatorIsAdmin (AC3)", () =>
+    Effect.gen(function* () {
+      const admin = yield* Effect.promise(() =>
+        createOperator({ role: "ADMIN" })
+      )
+      const { operator: other } = yield* Effect.promise(() =>
+        seedPortfolio({ role: "ADMIN" })
+      )
+      const target = yield* Effect.promise(() => createOperator())
+      const before = yield* Effect.promise(() => snapshot())
 
-    const exit = await runServer(
-      deactivateOperator({
+      const exit = yield* deactivateOperator({
         operatorId: other.id,
         toOperatorId: target.id,
         actor: actorOf(admin),
+      }).pipe(provideServer, Effect.exit)
+
+      expect(failureTag(exit)).toBe("OperatorIsAdmin")
+      expect(yield* Effect.promise(() => snapshot())).toEqual(before)
+    })
+  )
+
+  it.effect(
+    "disattivare sé stessi è rifiutato con CannotDeactivateSelf, prima del controllo sugli admin (AC4)",
+    () =>
+      Effect.gen(function* () {
+        const { operator: admin } = yield* Effect.promise(() =>
+          seedPortfolio({ role: "ADMIN" })
+        )
+        const target = yield* Effect.promise(() => createOperator())
+        const before = yield* Effect.promise(() => snapshot())
+
+        const exit = yield* deactivateOperator({
+          operatorId: admin.id,
+          toOperatorId: target.id,
+          actor: actorOf(admin),
+        }).pipe(provideServer, Effect.exit)
+
+        expect(failureTag(exit)).toBe("CannotDeactivateSelf")
+        expect(yield* Effect.promise(() => snapshot())).toEqual(before)
       })
-    )
+  )
 
-    expect(failureTag(exit)).toBe("OperatorIsAdmin")
-    expect(await snapshot()).toEqual(before)
-  })
+  it.effect("un operatorId inesistente è OperatorNotFound (AC5)", () =>
+    Effect.gen(function* () {
+      const admin = yield* Effect.promise(() =>
+        createOperator({ role: "ADMIN" })
+      )
+      const target = yield* Effect.promise(() => createOperator())
+      yield* Effect.promise(() => seedPortfolio())
+      const before = yield* Effect.promise(() => snapshot())
 
-  it("disattivare sé stessi è rifiutato con CannotDeactivateSelf, prima del controllo sugli admin (AC4)", async () => {
-    const { operator: admin } = await seedPortfolio({ role: "ADMIN" })
-    const target = await createOperator()
-    const before = await snapshot()
-
-    const exit = await runServer(
-      deactivateOperator({
-        operatorId: admin.id,
-        toOperatorId: target.id,
-        actor: actorOf(admin),
-      })
-    )
-
-    expect(failureTag(exit)).toBe("CannotDeactivateSelf")
-    expect(await snapshot()).toEqual(before)
-  })
-
-  it("un operatorId inesistente è OperatorNotFound (AC5)", async () => {
-    const admin = await createOperator({ role: "ADMIN" })
-    const target = await createOperator()
-    await seedPortfolio()
-    const before = await snapshot()
-
-    const exit = await runServer(
-      deactivateOperator({
+      const exit = yield* deactivateOperator({
         operatorId: 999_999,
         toOperatorId: target.id,
         actor: actorOf(admin),
-      })
-    )
+      }).pipe(provideServer, Effect.exit)
 
-    expect(failureTag(exit)).toBe("OperatorNotFound")
-    expect(await snapshot()).toEqual(before)
-  })
-
-  it("l'operatore di sistema, senza utente, è OperatorNotFound (AC5)", async () => {
-    const admin = await createOperator({ role: "ADMIN" })
-    const target = await createOperator()
-    const system = await createSystemOperator()
-    const customer = await createCustomer({ operatorId: system.id })
-    await createTask({ customerId: customer.id, operatorId: system.id })
-    const before = await snapshot()
-
-    const exit = await runServer(
-      deactivateOperator({
-        operatorId: system.id,
-        toOperatorId: target.id,
-        actor: actorOf(admin),
-      })
-    )
-
-    expect(failureTag(exit)).toBe("OperatorNotFound")
-    expect(await snapshot()).toEqual(before)
-  })
-
-  it("un operatore già disattivato è OperatorNotFound (AC5)", async () => {
-    const admin = await createOperator({ role: "ADMIN" })
-    const target = await createOperator()
-    await seedPortfolio({
-      disabledAt: new Date("2026-10-01T08:00:00.000Z"),
-      disabledBy: admin.id,
+      expect(failureTag(exit)).toBe("OperatorNotFound")
+      expect(yield* Effect.promise(() => snapshot())).toEqual(before)
     })
-    const [disabled] = await testDb
-      .select()
-      .from(operators)
-      .orderBy(asc(operators.id))
-      .offset(2)
-    const before = await snapshot()
+  )
 
-    const exit = await runServer(
-      deactivateOperator({
+  it.effect(
+    "l'operatore di sistema, senza utente, è OperatorNotFound (AC5)",
+    () =>
+      Effect.gen(function* () {
+        const admin = yield* Effect.promise(() =>
+          createOperator({ role: "ADMIN" })
+        )
+        const target = yield* Effect.promise(() => createOperator())
+        const system = yield* Effect.promise(() => createSystemOperator())
+        const customer = yield* Effect.promise(() =>
+          createCustomer({ operatorId: system.id })
+        )
+        yield* Effect.promise(() =>
+          createTask({ customerId: customer.id, operatorId: system.id })
+        )
+        const before = yield* Effect.promise(() => snapshot())
+
+        const exit = yield* deactivateOperator({
+          operatorId: system.id,
+          toOperatorId: target.id,
+          actor: actorOf(admin),
+        }).pipe(provideServer, Effect.exit)
+
+        expect(failureTag(exit)).toBe("OperatorNotFound")
+        expect(yield* Effect.promise(() => snapshot())).toEqual(before)
+      })
+  )
+
+  it.effect("un operatore già disattivato è OperatorNotFound (AC5)", () =>
+    Effect.gen(function* () {
+      const admin = yield* Effect.promise(() =>
+        createOperator({ role: "ADMIN" })
+      )
+      const target = yield* Effect.promise(() => createOperator())
+      yield* Effect.promise(() =>
+        seedPortfolio({
+          disabledAt: new Date("2026-10-01T08:00:00.000Z"),
+          disabledBy: admin.id,
+        })
+      )
+      const [disabled] = yield* Effect.promise(() =>
+        testDb.select().from(operators).orderBy(asc(operators.id)).offset(2)
+      )
+      const before = yield* Effect.promise(() => snapshot())
+
+      const exit = yield* deactivateOperator({
         operatorId: disabled!.id,
         toOperatorId: target.id,
         actor: actorOf(admin),
-      })
-    )
+      }).pipe(provideServer, Effect.exit)
 
-    expect(failureTag(exit)).toBe("OperatorNotFound")
-    expect(await snapshot()).toEqual(before)
-  })
-
-  it("una destinazione inesistente, disattivata o di sistema è OperatorNotFound (AC6)", async () => {
-    const admin = await createOperator({ role: "ADMIN" })
-    const { operator: leaving } = await seedPortfolio()
-    const disabled = await createOperator({
-      disabledAt: new Date("2026-10-01T08:00:00.000Z"),
-    })
-    const system = await createSystemOperator()
-    const before = await snapshot()
-
-    for (const toOperatorId of [999_999, disabled.id, system.id]) {
-      const exit = await runServer(
-        deactivateOperator({
-          operatorId: leaving.id,
-          toOperatorId,
-          actor: actorOf(admin),
-        })
-      )
       expect(failureTag(exit)).toBe("OperatorNotFound")
-    }
-    expect(await snapshot()).toEqual(before)
-  })
+      expect(yield* Effect.promise(() => snapshot())).toEqual(before)
+    })
+  )
 
-  it("una destinazione uguale all'operatore disattivato è HandoverSameOperator (AC6)", async () => {
-    const admin = await createOperator({ role: "ADMIN" })
-    const { operator: leaving } = await seedPortfolio()
-    const before = await snapshot()
+  it.effect(
+    "una destinazione inesistente, disattivata o di sistema è OperatorNotFound (AC6)",
+    () =>
+      Effect.gen(function* () {
+        const admin = yield* Effect.promise(() =>
+          createOperator({ role: "ADMIN" })
+        )
+        const { operator: leaving } = yield* Effect.promise(() =>
+          seedPortfolio()
+        )
+        const disabled = yield* Effect.promise(() =>
+          createOperator({
+            disabledAt: new Date("2026-10-01T08:00:00.000Z"),
+          })
+        )
+        const system = yield* Effect.promise(() => createSystemOperator())
+        const before = yield* Effect.promise(() => snapshot())
 
-    const exit = await runServer(
-      deactivateOperator({
-        operatorId: leaving.id,
-        toOperatorId: leaving.id,
-        actor: actorOf(admin),
+        for (const toOperatorId of [999_999, disabled.id, system.id]) {
+          const exit = yield* deactivateOperator({
+            operatorId: leaving.id,
+            toOperatorId,
+            actor: actorOf(admin),
+          }).pipe(provideServer, Effect.exit)
+          expect(failureTag(exit)).toBe("OperatorNotFound")
+        }
+        expect(yield* Effect.promise(() => snapshot())).toEqual(before)
       })
-    )
+  )
 
-    expect(failureTag(exit)).toBe("HandoverSameOperator")
-    expect(await snapshot()).toEqual(before)
-  })
+  it.effect(
+    "una destinazione uguale all'operatore disattivato è HandoverSameOperator (AC6)",
+    () =>
+      Effect.gen(function* () {
+        const admin = yield* Effect.promise(() =>
+          createOperator({ role: "ADMIN" })
+        )
+        const { operator: leaving } = yield* Effect.promise(() =>
+          seedPortfolio()
+        )
+        const before = yield* Effect.promise(() => snapshot())
+
+        const exit = yield* deactivateOperator({
+          operatorId: leaving.id,
+          toOperatorId: leaving.id,
+          actor: actorOf(admin),
+        }).pipe(provideServer, Effect.exit)
+
+        expect(failureTag(exit)).toBe("HandoverSameOperator")
+        expect(yield* Effect.promise(() => snapshot())).toEqual(before)
+      })
+  )
 })
 
 // ---------------------------------------------------------------------------
@@ -412,221 +461,303 @@ describe("deactivateOperator: cosa sposta e cosa no", () => {
   }
 
   const run = (seed: Awaited<ReturnType<typeof seedAll>>) =>
-    runServer(
-      deactivateOperator({
-        operatorId: seed.leaving.id,
-        toOperatorId: seed.target.id,
-        actor: actorOf(seed.admin),
-      })
-    )
+    deactivateOperator({
+      operatorId: seed.leaving.id,
+      toOperatorId: seed.target.id,
+      actor: actorOf(seed.admin),
+    }).pipe(provideServer, Effect.exit)
 
-  it("risponde con i conteggi: due clienti, tre contatti attivi, una pratica (AC13)", async () => {
-    const seed = await seedAll()
+  it.effect(
+    "risponde con i conteggi: due clienti, tre contatti attivi, una pratica (AC13)",
+    () =>
+      Effect.gen(function* () {
+        const seed = yield* Effect.promise(() => seedAll())
 
-    const exit = await run(seed)
+        const exit = yield* run(seed)
 
-    expect(exit).toEqual(
-      Exit.succeed({ customersMoved: 2, contactsMoved: 3, practicesMoved: 1 })
-    )
-  })
-
-  it("disattiva l'utente con l'admin in disabled_by e ne cancella le sessioni (AC8a, AC8e)", async () => {
-    const seed = await seedAll()
-    const before = Date.now()
-
-    await run(seed)
-
-    const user = await userOf(seed.leaving.id)
-    expect(user.disabledBy).toBe(seed.admin.id)
-    expect(user.disabledAt).toBeInstanceOf(Date)
-    expect(user.disabledAt!.getTime()).toBeGreaterThan(before - 60_000)
-    expect(await sessionsOf(seed.leaving.userId)).toEqual([])
-    expect(await sessionsOf(seed.colleague.userId)).toMatchObject([
-      { sessionToken: seed.otherSession },
-    ])
-    expect((await userOf(seed.target.id)).disabledAt).toBeNull()
-  })
-
-  it("cancella anche le sessioni di better-auth dell'utente, solo le sue (spec auth-better-auth, AC15)", async () => {
-    const seed = await seedAll()
-    const addAuthSession = (userId: string) =>
-      testDb.insert(authSessions).values({
-        id: `auth-${userId}`,
-        token: `token-${userId}`,
-        userId,
-        expiresAt: new Date("2099-01-01T00:00:00.000Z"),
-      })
-    await addAuthSession(seed.leaving.userId)
-    await addAuthSession(seed.colleague.userId)
-
-    await run(seed)
-
-    expect(
-      await testDb
-        .select({ userId: authSessions.userId })
-        .from(authSessions)
-        .orderBy(asc(authSessions.userId))
-    ).toEqual([{ userId: seed.colleague.userId }])
-  })
-
-  it("i clienti dell'operatore e le sue pratiche passano alla destinazione; gli altri clienti no (AC8b, AC8d)", async () => {
-    const seed = await seedAll()
-
-    await run(seed)
-
-    expect(await operatorOfCustomer(seed.ofLeaving.id)).toBe(seed.target.id)
-    expect(await operatorOfCustomer(seed.bare.id)).toBe(seed.target.id)
-    expect(await operatorOfCustomer(seed.orphan.id)).toBeNull()
-    expect(await operatorOfCustomer(seed.ofColleague.id)).toBe(
-      seed.colleague.id
-    )
-    expect(await operatorOfCustomer(seed.untouched.id)).toBe(seed.colleague.id)
-    const rows = await testDb
-      .select({ id: practices.praticaId, operatorId: practices.operatorId })
-      .from(practices)
-      .orderBy(asc(practices.praticaId))
-    expect(rows).toEqual(
-      expect.arrayContaining([
-        { id: seed.practice.praticaId, operatorId: seed.target.id },
-        { id: seed.otherPractice.praticaId, operatorId: seed.colleague.id },
-      ])
-    )
-  })
-
-  it("ogni contatto attivo passa all'operatore del suo cliente dopo lo spostamento, o alla destinazione se il cliente non ne ha (AC8c)", async () => {
-    const seed = await seedAll()
-
-    await run(seed)
-
-    const operatorOfTask = async (id: number) =>
-      (await testDb.select().from(task).where(eq(task.id, id)))[0]!.operatorId
-    expect(await operatorOfTask(seed.active.id)).toBe(seed.target.id)
-    expect(await operatorOfTask(seed.orphanContact.id)).toBe(seed.target.id)
-    expect(await operatorOfTask(seed.colleagueContact.id)).toBe(
-      seed.colleague.id
-    )
-    expect(await operatorOfTask(seed.untouchedContact.id)).toBe(
-      seed.colleague.id
-    )
-  })
-
-  it("scrive una riga operator_reassign per cliente e per contatto attivo spostati, e nessuna per le pratiche (AC9)", async () => {
-    const seed = await seedAll()
-    const earlier = await testDb.select().from(taskEventLog)
-
-    await run(seed)
-
-    const written = (await testDb.select().from(taskEventLog))
-      .filter((row) => !earlier.some((old) => old.id === row.id))
-      .map((row) => ({
-        customerId: row.customerId,
-        taskId: row.taskId,
-        alertId: row.alertId,
-        actorOperatorId: row.actorOperatorId,
-        action: row.action,
-        source: row.source,
-        fromState: row.fromState,
-        toState: row.toState,
-        fromOperatorId: row.fromOperatorId,
-        toOperatorId: row.toOperatorId,
-      }))
-    const row = (
-      customerId: string,
-      taskId: number | null,
-      toOperatorId: number
-    ) => ({
-      customerId,
-      taskId,
-      alertId: null,
-      actorOperatorId: seed.admin.id,
-      action: "operator_reassign",
-      source: "deactivation",
-      fromState: null,
-      toState: null,
-      fromOperatorId: seed.leaving.id,
-      toOperatorId,
-    })
-    expect(written).toHaveLength(5)
-    expect(written).toEqual(
-      expect.arrayContaining([
-        row(seed.ofLeaving.id, null, seed.target.id),
-        row(seed.ofLeaving.id, seed.active.id, seed.target.id),
-        row(seed.bare.id, null, seed.target.id),
-        row(seed.orphan.id, seed.orphanContact.id, seed.target.id),
-        row(seed.ofColleague.id, seed.colleagueContact.id, seed.colleague.id),
-      ])
-    )
-    // The customer's row before its contact's, as moveCustomerAndContact
-    expect((await logOf(seed.ofLeaving.id)).slice(1)).toMatchObject([
-      { taskId: null },
-      { taskId: seed.active.id },
-    ])
-  })
-
-  it("non cambia i contatti non attivi, stato, priorità e richiami dei contatti spostati, resolved_by, il log già scritto, la chat e gli account (AC10)", async () => {
-    const seed = await seedAll()
-    const [inactiveBefore] = await testDb
-      .select()
-      .from(task)
-      .where(eq(task.id, seed.inactive.id))
-    const earlierLog = await testDb.select().from(taskEventLog)
-    const chatRows = await testDb.select().from(chatToOperator)
-    const accountRows = await testDb.select().from(accounts)
-    const alerts = await testDb.select().from(alert).orderBy(asc(alert.id))
-
-    await run(seed)
-
-    const [inactive] = await testDb
-      .select()
-      .from(task)
-      .where(eq(task.id, seed.inactive.id))
-    expect(inactive).toEqual(inactiveBefore)
-    const [active] = await testDb
-      .select()
-      .from(task)
-      .where(eq(task.id, seed.active.id))
-    expect(active).toMatchObject({
-      state: "richiamare",
-      priority: 77,
-      customPriority: true,
-      alertId: seed.callback.id,
-      isActive: true,
-      closedAt: seed.active.closedAt,
-    })
-    expect(await testDb.select().from(alert).orderBy(asc(alert.id))).toEqual(
-      alerts
-    )
-    expect(
-      await testDb
-        .select()
-        .from(taskEventLog)
-        .where(
-          inArray(
-            taskEventLog.id,
-            earlierLog.map((row) => row.id)
-          )
+        expect(exit).toEqual(
+          Exit.succeed({
+            customersMoved: 2,
+            contactsMoved: 3,
+            practicesMoved: 1,
+          })
         )
-    ).toEqual(earlierLog)
-    expect(await testDb.select().from(chatToOperator)).toEqual(chatRows)
-    expect(await testDb.select().from(accounts)).toEqual(accountRows)
-  })
+      })
+  )
 
-  it("se la scrittura del log fallisce, il database resta com'era: utente attivo, sessioni presenti (AC8)", async () => {
-    vi.spyOn(console, "error").mockImplementation(() => undefined)
-    const seed = await seedAll()
-    const before = await snapshot()
-    await failNextInsertInto(taskEventLog)
+  it.effect(
+    "disattiva l'utente con l'admin in disabled_by e ne cancella le sessioni (AC8a, AC8e)",
+    () =>
+      Effect.gen(function* () {
+        const seed = yield* Effect.promise(() => seedAll())
+        const before = Date.now()
 
-    const exit = await run(seed)
+        yield* run(seed)
 
-    expect(failureTag(exit)).toBe("DbError")
-    expect(await snapshot()).toEqual(before)
-    expect((await userOf(seed.leaving.id)).disabledAt).toBeNull()
-    expect(await sessionsOf(seed.leaving.userId)).toHaveLength(2)
-    vi.restoreAllMocks()
-  })
+        const user = yield* Effect.promise(() => userOf(seed.leaving.id))
+        expect(user.disabledBy).toBe(seed.admin.id)
+        expect(user.disabledAt).toBeInstanceOf(Date)
+        expect(user.disabledAt!.getTime()).toBeGreaterThan(before - 60_000)
+        expect(
+          yield* Effect.promise(() => sessionsOf(seed.leaving.userId))
+        ).toEqual([])
+        expect(
+          yield* Effect.promise(() => sessionsOf(seed.colleague.userId))
+        ).toMatchObject([{ sessionToken: seed.otherSession }])
+        expect(
+          (yield* Effect.promise(() => userOf(seed.target.id))).disabledAt
+        ).toBeNull()
+      })
+  )
 
-  it.each([
+  it.effect(
+    "cancella anche le sessioni di better-auth dell'utente, solo le sue (spec auth-better-auth, AC15)",
+    () =>
+      Effect.gen(function* () {
+        const seed = yield* Effect.promise(() => seedAll())
+        const addAuthSession = (userId: string) =>
+          testDb.insert(authSessions).values({
+            id: `auth-${userId}`,
+            token: `token-${userId}`,
+            userId,
+            expiresAt: new Date("2099-01-01T00:00:00.000Z"),
+          })
+        yield* Effect.promise(() => addAuthSession(seed.leaving.userId))
+        yield* Effect.promise(() => addAuthSession(seed.colleague.userId))
+
+        yield* run(seed)
+
+        expect(
+          yield* Effect.promise(() =>
+            testDb
+              .select({ userId: authSessions.userId })
+              .from(authSessions)
+              .orderBy(asc(authSessions.userId))
+          )
+        ).toEqual([{ userId: seed.colleague.userId }])
+      })
+  )
+
+  it.effect(
+    "i clienti dell'operatore e le sue pratiche passano alla destinazione; gli altri clienti no (AC8b, AC8d)",
+    () =>
+      Effect.gen(function* () {
+        const seed = yield* Effect.promise(() => seedAll())
+
+        yield* run(seed)
+
+        expect(
+          yield* Effect.promise(() => operatorOfCustomer(seed.ofLeaving.id))
+        ).toBe(seed.target.id)
+        expect(
+          yield* Effect.promise(() => operatorOfCustomer(seed.bare.id))
+        ).toBe(seed.target.id)
+        expect(
+          yield* Effect.promise(() => operatorOfCustomer(seed.orphan.id))
+        ).toBeNull()
+        expect(
+          yield* Effect.promise(() => operatorOfCustomer(seed.ofColleague.id))
+        ).toBe(seed.colleague.id)
+        expect(
+          yield* Effect.promise(() => operatorOfCustomer(seed.untouched.id))
+        ).toBe(seed.colleague.id)
+        const rows = yield* Effect.promise(() =>
+          testDb
+            .select({
+              id: practices.praticaId,
+              operatorId: practices.operatorId,
+            })
+            .from(practices)
+            .orderBy(asc(practices.praticaId))
+        )
+        expect(rows).toEqual(
+          expect.arrayContaining([
+            { id: seed.practice.praticaId, operatorId: seed.target.id },
+            { id: seed.otherPractice.praticaId, operatorId: seed.colleague.id },
+          ])
+        )
+      })
+  )
+
+  it.effect(
+    "ogni contatto attivo passa all'operatore del suo cliente dopo lo spostamento, o alla destinazione se il cliente non ne ha (AC8c)",
+    () =>
+      Effect.gen(function* () {
+        const seed = yield* Effect.promise(() => seedAll())
+
+        yield* run(seed)
+
+        const operatorOfTask = async (id: number) =>
+          (await testDb.select().from(task).where(eq(task.id, id)))[0]!
+            .operatorId
+        expect(
+          yield* Effect.promise(() => operatorOfTask(seed.active.id))
+        ).toBe(seed.target.id)
+        expect(
+          yield* Effect.promise(() => operatorOfTask(seed.orphanContact.id))
+        ).toBe(seed.target.id)
+        expect(
+          yield* Effect.promise(() => operatorOfTask(seed.colleagueContact.id))
+        ).toBe(seed.colleague.id)
+        expect(
+          yield* Effect.promise(() => operatorOfTask(seed.untouchedContact.id))
+        ).toBe(seed.colleague.id)
+      })
+  )
+
+  it.effect(
+    "scrive una riga operator_reassign per cliente e per contatto attivo spostati, e nessuna per le pratiche (AC9)",
+    () =>
+      Effect.gen(function* () {
+        const seed = yield* Effect.promise(() => seedAll())
+        const earlier = yield* Effect.promise(() =>
+          testDb.select().from(taskEventLog)
+        )
+
+        yield* run(seed)
+
+        const written = (yield* Effect.promise(() =>
+          testDb.select().from(taskEventLog)
+        ))
+          .filter((row) => !earlier.some((old) => old.id === row.id))
+          .map((row) => ({
+            customerId: row.customerId,
+            taskId: row.taskId,
+            alertId: row.alertId,
+            actorOperatorId: row.actorOperatorId,
+            action: row.action,
+            source: row.source,
+            fromState: row.fromState,
+            toState: row.toState,
+            fromOperatorId: row.fromOperatorId,
+            toOperatorId: row.toOperatorId,
+          }))
+        const row = (
+          customerId: string,
+          taskId: number | null,
+          toOperatorId: number
+        ) => ({
+          customerId,
+          taskId,
+          alertId: null,
+          actorOperatorId: seed.admin.id,
+          action: "operator_reassign",
+          source: "deactivation",
+          fromState: null,
+          toState: null,
+          fromOperatorId: seed.leaving.id,
+          toOperatorId,
+        })
+        expect(written).toHaveLength(5)
+        expect(written).toEqual(
+          expect.arrayContaining([
+            row(seed.ofLeaving.id, null, seed.target.id),
+            row(seed.ofLeaving.id, seed.active.id, seed.target.id),
+            row(seed.bare.id, null, seed.target.id),
+            row(seed.orphan.id, seed.orphanContact.id, seed.target.id),
+            row(
+              seed.ofColleague.id,
+              seed.colleagueContact.id,
+              seed.colleague.id
+            ),
+          ])
+        )
+        // The customer's row before its contact's, as moveCustomerAndContact
+        expect(
+          (yield* Effect.promise(() => logOf(seed.ofLeaving.id))).slice(1)
+        ).toMatchObject([{ taskId: null }, { taskId: seed.active.id }])
+      })
+  )
+
+  it.effect(
+    "non cambia i contatti non attivi, stato, priorità e richiami dei contatti spostati, resolved_by, il log già scritto, la chat e gli account (AC10)",
+    () =>
+      Effect.gen(function* () {
+        const seed = yield* Effect.promise(() => seedAll())
+        const [inactiveBefore] = yield* Effect.promise(() =>
+          testDb.select().from(task).where(eq(task.id, seed.inactive.id))
+        )
+        const earlierLog = yield* Effect.promise(() =>
+          testDb.select().from(taskEventLog)
+        )
+        const chatRows = yield* Effect.promise(() =>
+          testDb.select().from(chatToOperator)
+        )
+        const accountRows = yield* Effect.promise(() =>
+          testDb.select().from(accounts)
+        )
+        const alerts = yield* Effect.promise(() =>
+          testDb.select().from(alert).orderBy(asc(alert.id))
+        )
+
+        yield* run(seed)
+
+        const [inactive] = yield* Effect.promise(() =>
+          testDb.select().from(task).where(eq(task.id, seed.inactive.id))
+        )
+        expect(inactive).toEqual(inactiveBefore)
+        const [active] = yield* Effect.promise(() =>
+          testDb.select().from(task).where(eq(task.id, seed.active.id))
+        )
+        expect(active).toMatchObject({
+          state: "richiamare",
+          priority: 77,
+          customPriority: true,
+          alertId: seed.callback.id,
+          isActive: true,
+          closedAt: seed.active.closedAt,
+        })
+        expect(
+          yield* Effect.promise(() =>
+            testDb.select().from(alert).orderBy(asc(alert.id))
+          )
+        ).toEqual(alerts)
+        expect(
+          yield* Effect.promise(() =>
+            testDb
+              .select()
+              .from(taskEventLog)
+              .where(
+                inArray(
+                  taskEventLog.id,
+                  earlierLog.map((row) => row.id)
+                )
+              )
+          )
+        ).toEqual(earlierLog)
+        expect(
+          yield* Effect.promise(() => testDb.select().from(chatToOperator))
+        ).toEqual(chatRows)
+        expect(
+          yield* Effect.promise(() => testDb.select().from(accounts))
+        ).toEqual(accountRows)
+      })
+  )
+
+  it.effect(
+    "se la scrittura del log fallisce, il database resta com'era: utente attivo, sessioni presenti (AC8)",
+    () =>
+      Effect.gen(function* () {
+        vi.spyOn(console, "error").mockImplementation(() => undefined)
+        const seed = yield* Effect.promise(() => seedAll())
+        const before = yield* Effect.promise(() => snapshot())
+        yield* Effect.promise(() => failNextInsertInto(taskEventLog))
+
+        const exit = yield* run(seed)
+
+        expect(failureTag(exit)).toBe("DbError")
+        expect(yield* Effect.promise(() => snapshot())).toEqual(before)
+        expect(
+          (yield* Effect.promise(() => userOf(seed.leaving.id))).disabledAt
+        ).toBeNull()
+        expect(
+          yield* Effect.promise(() => sessionsOf(seed.leaving.userId))
+        ).toHaveLength(2)
+        vi.restoreAllMocks()
+      })
+  )
+
+  it.effect.each([
     [
       "l'ultimo UPDATE, quello dell'utente,",
       (seed: Awaited<ReturnType<typeof seedAll>>) =>
@@ -635,74 +766,107 @@ describe("deactivateOperator: cosa sposta e cosa no", () => {
     ["il COMMIT", () => failAtCommit(users)],
   ])(
     "se %s fallisce dopo gli spostamenti, il database resta com'era: utente attivo, sessioni presenti (AC8)",
-    async (_, fail) => {
-      vi.spyOn(console, "error").mockImplementation(() => undefined)
-      const seed = await seedAll()
-      const before = await snapshot()
-      // The practices move after customers, contacts and log: one UPDATE of
-      // them shows the moves ran before the failure
-      const practicesUpdates = await countStatementsOn(practices, "UPDATE")
-      await fail(seed)
+    (testCase) =>
+      Effect.gen(function* () {
+        const fail = testCase[1] as (
+          seed: Awaited<ReturnType<typeof seedAll>>
+        ) => Promise<unknown>
+        vi.spyOn(console, "error").mockImplementation(() => undefined)
+        const seed = yield* Effect.promise(() => seedAll())
+        const before = yield* Effect.promise(() => snapshot())
+        // The practices move after customers, contacts and log: one UPDATE of
+        // them shows the moves ran before the failure
+        const practicesUpdates = yield* Effect.promise(() =>
+          countStatementsOn(practices, "UPDATE")
+        )
+        yield* Effect.promise(() => fail(seed))
 
-      const exit = await run(seed)
+        const exit = yield* run(seed)
 
-      expect(failureTag(exit)).toBe("DbError")
-      expect(await practicesUpdates()).toBe(1)
-      expect(await snapshot()).toEqual(before)
-      expect((await userOf(seed.leaving.id)).disabledAt).toBeNull()
-      expect(await sessionsOf(seed.leaving.userId)).toHaveLength(2)
-      vi.restoreAllMocks()
-    }
+        expect(failureTag(exit)).toBe("DbError")
+        expect(yield* Effect.promise(() => practicesUpdates())).toBe(1)
+        expect(yield* Effect.promise(() => snapshot())).toEqual(before)
+        expect(
+          (yield* Effect.promise(() => userOf(seed.leaving.id))).disabledAt
+        ).toBeNull()
+        expect(
+          yield* Effect.promise(() => sessionsOf(seed.leaving.userId))
+        ).toHaveLength(2)
+        vi.restoreAllMocks()
+      })
   )
 
-  it("un contatto attivo dell'operatore senza cliente passa alla destinazione e conta in contactsMoved e nell'impatto, senza riga nel log", async () => {
-    const admin = await createOperator({ role: "ADMIN" })
-    const leaving = await createOperator()
-    const target = await createOperator()
-    const loose = await createTask({ customerId: null, operatorId: leaving.id })
+  it.effect(
+    "un contatto attivo dell'operatore senza cliente passa alla destinazione e conta in contactsMoved e nell'impatto, senza riga nel log",
+    () =>
+      Effect.gen(function* () {
+        const admin = yield* Effect.promise(() =>
+          createOperator({ role: "ADMIN" })
+        )
+        const leaving = yield* Effect.promise(() => createOperator())
+        const target = yield* Effect.promise(() => createOperator())
+        const loose = yield* Effect.promise(() =>
+          createTask({ customerId: null, operatorId: leaving.id })
+        )
 
-    expect(await runServer(deactivationImpact(leaving.id))).toEqual(
-      Exit.succeed({ customers: 0, contacts: 1, practices: 0 })
-    )
-    const exit = await runServer(
-      deactivateOperator({
-        operatorId: leaving.id,
-        toOperatorId: target.id,
-        actor: actorOf(admin),
+        expect(
+          yield* deactivationImpact(leaving.id).pipe(provideServer, Effect.exit)
+        ).toEqual(Exit.succeed({ customers: 0, contacts: 1, practices: 0 }))
+        const exit = yield* deactivateOperator({
+          operatorId: leaving.id,
+          toOperatorId: target.id,
+          actor: actorOf(admin),
+        }).pipe(provideServer, Effect.exit)
+
+        expect(exit).toEqual(
+          Exit.succeed({
+            customersMoved: 0,
+            contactsMoved: 1,
+            practicesMoved: 0,
+          })
+        )
+        const [moved] = yield* Effect.promise(() =>
+          testDb.select().from(task).where(eq(task.id, loose.id))
+        )
+        expect(moved).toMatchObject({ operatorId: target.id, isActive: true })
+        // `task_event_log.customer_id` is required: no row for it
+        expect(
+          yield* Effect.promise(() => testDb.select().from(taskEventLog))
+        ).toEqual([])
       })
-    )
+  )
 
-    expect(exit).toEqual(
-      Exit.succeed({ customersMoved: 0, contactsMoved: 1, practicesMoved: 0 })
-    )
-    const [moved] = await testDb
-      .select()
-      .from(task)
-      .where(eq(task.id, loose.id))
-    expect(moved).toMatchObject({ operatorId: target.id, isActive: true })
-    // `task_event_log.customer_id` is required: no row for it
-    expect(await testDb.select().from(taskEventLog)).toEqual([])
-  })
+  it.effect(
+    "un operatore senza clienti, contatti né pratiche si disattiva con zero spostamenti",
+    () =>
+      Effect.gen(function* () {
+        const admin = yield* Effect.promise(() =>
+          createOperator({ role: "ADMIN" })
+        )
+        const leaving = yield* Effect.promise(() => createOperator())
+        const target = yield* Effect.promise(() => createOperator())
 
-  it("un operatore senza clienti, contatti né pratiche si disattiva con zero spostamenti", async () => {
-    const admin = await createOperator({ role: "ADMIN" })
-    const leaving = await createOperator()
-    const target = await createOperator()
+        const exit = yield* deactivateOperator({
+          operatorId: leaving.id,
+          toOperatorId: target.id,
+          actor: actorOf(admin),
+        }).pipe(provideServer, Effect.exit)
 
-    const exit = await runServer(
-      deactivateOperator({
-        operatorId: leaving.id,
-        toOperatorId: target.id,
-        actor: actorOf(admin),
+        expect(exit).toEqual(
+          Exit.succeed({
+            customersMoved: 0,
+            contactsMoved: 0,
+            practicesMoved: 0,
+          })
+        )
+        expect(
+          (yield* Effect.promise(() => userOf(leaving.id))).disabledBy
+        ).toBe(admin.id)
+        expect(
+          yield* Effect.promise(() => testDb.select().from(taskEventLog))
+        ).toEqual([])
       })
-    )
-
-    expect(exit).toEqual(
-      Exit.succeed({ customersMoved: 0, contactsMoved: 0, practicesMoved: 0 })
-    )
-    expect((await userOf(leaving.id)).disabledBy).toBe(admin.id)
-    expect(await testDb.select().from(taskEventLog)).toEqual([])
-  })
+  )
 })
 
 // ---------------------------------------------------------------------------
@@ -728,73 +892,88 @@ const recordTransaction = () => {
 }
 
 describe("deactivateOperator: le query", () => {
-  it("blocca prima gli utenti (FOR UPDATE OF users, per id), poi i clienti, poi i contatti, e scrive log e aggiornamenti per insiemi, senza id come parametri", async () => {
-    const admin = await createOperator({ role: "ADMIN" })
-    const leaving = await createOperator()
-    const target = await createOperator()
-    // More rows than any statement has parameters: none takes one per row
-    for (let i = 0; i < 10; i++) {
-      const customer = await createCustomer({ operatorId: leaving.id })
-      await createTask({ customerId: customer.id, operatorId: leaving.id })
-    }
-    const recorded = recordTransaction()
-
-    const exit = await runServer(
-      deactivateOperator({
-        operatorId: leaving.id,
-        toOperatorId: target.id,
-        actor: actorOf(admin),
-      })
-    )
-    recorded.restore()
-
-    expect(exit).toEqual(
-      Exit.succeed({ customersMoved: 10, contactsMoved: 10, practicesMoved: 0 })
-    )
-    const sqls = recorded.statements.map(({ sql }) => sql)
-    const index = (pattern: RegExp) => sqls.findIndex((s) => pattern.test(s))
-
-    // The first statement that reads a table locks the two users, by id
-    const usersLock = index(/for update of "mito-deutsche_user"$/)
-    expect(usersLock).toBe(index(/^select /))
-    expect(sqls[usersLock]).toMatch(/order by "mito-deutsche_user"\."id"/)
-    const customersLock = index(
-      /^select "id" from "mito-deutsche_customers" .*order by "mito-deutsche_customers"\."id" for update$/
-    )
-    const contactsLock = index(
-      /^select "id" from "mito-deutsche_task" .*order by "mito-deutsche_task"\."id" for update$/
-    )
-    // Customers, contacts and log in one statement, after the locks: its
-    // CTEs share one snapshot, so the log rows are what the updates moved
-    const move = index(/^with "moved_customers" as \(/)
-    expect(usersLock).toBeLessThan(customersLock)
-    expect(customersLock).toBeLessThan(contactsLock)
-    expect(contactsLock).toBeLessThan(move)
-    expect(sqls[move]).toMatch(
-      /\(\s*update "mito-deutsche_customers"\s.*\(\s*update "mito-deutsche_task"\s.*\(\s*insert into "mito-deutsche_task_event_log"/s
-    )
-    // No other statement writes the customers, the contacts or the log
-    expect(
-      sqls.filter((s) =>
-        /\b(update|insert into) "mito-deutsche_(customers|task|task_event_log)"/.test(
-          s
+  it.effect(
+    "blocca prima gli utenti (FOR UPDATE OF users, per id), poi i clienti, poi i contatti, e scrive log e aggiornamenti per insiemi, senza id come parametri",
+    () =>
+      Effect.gen(function* () {
+        const admin = yield* Effect.promise(() =>
+          createOperator({ role: "ADMIN" })
         )
-      )
-    ).toEqual([sqls[move]])
-    // A lock on a join always names its table
-    for (const statement of sqls.filter((s) => / join .*for update/.test(s))) {
-      expect(statement).toMatch(/for update of "mito-deutsche_user"$/)
-    }
+        const leaving = yield* Effect.promise(() => createOperator())
+        const target = yield* Effect.promise(() => createOperator())
+        // More rows than any statement has parameters: none takes one per row
+        for (let i = 0; i < 10; i++) {
+          const customer = yield* Effect.promise(() =>
+            createCustomer({ operatorId: leaving.id })
+          )
+          yield* Effect.promise(() =>
+            createTask({ customerId: customer.id, operatorId: leaving.id })
+          )
+        }
+        const recorded = recordTransaction()
 
-    // One INSERT … SELECT, no VALUES; no statement grows with the rows
-    const inserts = sqls.filter((s) => /insert into/i.test(s))
-    expect(inserts).toHaveLength(1)
-    expect(inserts[0]).toMatch(/\)\s*select /)
-    expect(inserts[0]).not.toMatch(/\bvalues\b/i)
-    for (const { params } of recorded.statements) {
-      expect(params.length).toBeLessThan(10)
-    }
-  })
+        const exit = yield* deactivateOperator({
+          operatorId: leaving.id,
+          toOperatorId: target.id,
+          actor: actorOf(admin),
+        }).pipe(provideServer, Effect.exit)
+        recorded.restore()
+
+        expect(exit).toEqual(
+          Exit.succeed({
+            customersMoved: 10,
+            contactsMoved: 10,
+            practicesMoved: 0,
+          })
+        )
+        const sqls = recorded.statements.map(({ sql }) => sql)
+        const index = (pattern: RegExp) =>
+          sqls.findIndex((s) => pattern.test(s))
+
+        // The first statement that reads a table locks the two users, by id
+        const usersLock = index(/for update of "mito-deutsche_user"$/)
+        expect(usersLock).toBe(index(/^select /))
+        expect(sqls[usersLock]).toMatch(/order by "mito-deutsche_user"\."id"/)
+        const customersLock = index(
+          /^select "id" from "mito-deutsche_customers" .*order by "mito-deutsche_customers"\."id" for update$/
+        )
+        const contactsLock = index(
+          /^select "id" from "mito-deutsche_task" .*order by "mito-deutsche_task"\."id" for update$/
+        )
+        // Customers, contacts and log in one statement, after the locks: its
+        // CTEs share one snapshot, so the log rows are what the updates moved
+        const move = index(/^with "moved_customers" as \(/)
+        expect(usersLock).toBeLessThan(customersLock)
+        expect(customersLock).toBeLessThan(contactsLock)
+        expect(contactsLock).toBeLessThan(move)
+        expect(sqls[move]).toMatch(
+          /\(\s*update "mito-deutsche_customers"\s.*\(\s*update "mito-deutsche_task"\s.*\(\s*insert into "mito-deutsche_task_event_log"/s
+        )
+        // No other statement writes the customers, the contacts or the log
+        expect(
+          sqls.filter((s) =>
+            /\b(update|insert into) "mito-deutsche_(customers|task|task_event_log)"/.test(
+              s
+            )
+          )
+        ).toEqual([sqls[move]])
+        // A lock on a join always names its table
+        for (const statement of sqls.filter((s) =>
+          / join .*for update/.test(s)
+        )) {
+          expect(statement).toMatch(/for update of "mito-deutsche_user"$/)
+        }
+
+        // One INSERT … SELECT, no VALUES; no statement grows with the rows
+        const inserts = sqls.filter((s) => /insert into/i.test(s))
+        expect(inserts).toHaveLength(1)
+        expect(inserts[0]).toMatch(/\)\s*select /)
+        expect(inserts[0]).not.toMatch(/\bvalues\b/i)
+        for (const { params } of recorded.statements) {
+          expect(params.length).toBeLessThan(10)
+        }
+      })
+  )
 })
 
 describe("deactivateOperator: i deadlock", () => {
@@ -828,76 +1007,105 @@ describe("deactivateOperator: i deadlock", () => {
     return { admin, leaving, target }
   }
 
-  it("un deadlock a ogni tentativo: tre transazioni (due ripetizioni al massimo), poi il DbError 40P01, e niente cambia", async () => {
-    vi.spyOn(console, "error").mockImplementation(() => undefined)
-    const { admin, leaving, target } = await seedDeadlocks(4)
-    const before = await snapshot()
-    const { client, counter } = countingDb()
+  it.effect(
+    "un deadlock a ogni tentativo: tre transazioni (due ripetizioni al massimo), poi il DbError 40P01, e niente cambia",
+    () =>
+      Effect.gen(function* () {
+        vi.spyOn(console, "error").mockImplementation(() => undefined)
+        const { admin, leaving, target } = yield* Effect.promise(() =>
+          seedDeadlocks(4)
+        )
+        const before = yield* Effect.promise(() => snapshot())
+        const { client, counter } = countingDb()
 
-    const exit = await runServer(
-      deactivateOperator({
+        const exit = yield* deactivateOperator({
+          operatorId: leaving.id,
+          toOperatorId: target.id,
+          actor: actorOf(admin),
+        }).pipe(Effect.provideService(Db, client), provideServer, Effect.exit)
+
+        expect(counter.transactions).toBe(3)
+        expect(exit).toEqual(
+          Exit.fail(expect.objectContaining({ _tag: "DbError", code: "40P01" }))
+        )
+        expect(yield* Effect.promise(() => snapshot())).toEqual(before)
+        vi.restoreAllMocks()
+      })
+  )
+
+  it.effect("due deadlock: la terza transazione riesce", () =>
+    Effect.gen(function* () {
+      const { admin, leaving, target } = yield* Effect.promise(() =>
+        seedDeadlocks(2)
+      )
+      const { client, counter } = countingDb()
+
+      const exit = yield* deactivateOperator({
         operatorId: leaving.id,
         toOperatorId: target.id,
         actor: actorOf(admin),
-      }).pipe(Effect.provideService(Db, client))
-    )
+      }).pipe(Effect.provideService(Db, client), provideServer, Effect.exit)
 
-    expect(counter.transactions).toBe(3)
-    expect(exit).toEqual(
-      Exit.fail(expect.objectContaining({ _tag: "DbError", code: "40P01" }))
-    )
-    expect(await snapshot()).toEqual(before)
-    vi.restoreAllMocks()
-  })
-
-  it("due deadlock: la terza transazione riesce", async () => {
-    const { admin, leaving, target } = await seedDeadlocks(2)
-    const { client, counter } = countingDb()
-
-    const exit = await runServer(
-      deactivateOperator({
-        operatorId: leaving.id,
-        toOperatorId: target.id,
-        actor: actorOf(admin),
-      }).pipe(Effect.provideService(Db, client))
-    )
-
-    expect(counter.transactions).toBe(3)
-    expect(exit).toEqual(
-      Exit.succeed({ customersMoved: 1, contactsMoved: 0, practicesMoved: 0 })
-    )
-  })
+      expect(counter.transactions).toBe(3)
+      expect(exit).toEqual(
+        Exit.succeed({ customersMoved: 1, contactsMoved: 0, practicesMoved: 0 })
+      )
+    })
+  )
 })
 
 describe("deactivationImpact", () => {
-  it("conta i clienti, i contatti attivi e le pratiche dell'operatore", async () => {
-    const leaving = await createOperator()
-    const colleague = await createOperator()
-    const a = await createCustomer({ operatorId: leaving.id })
-    await createTask({
-      customerId: a.id,
-      operatorId: leaving.id,
-      isActive: false,
+  it.effect(
+    "conta i clienti, i contatti attivi e le pratiche dell'operatore",
+    () =>
+      Effect.gen(function* () {
+        const leaving = yield* Effect.promise(() => createOperator())
+        const colleague = yield* Effect.promise(() => createOperator())
+        const a = yield* Effect.promise(() =>
+          createCustomer({ operatorId: leaving.id })
+        )
+        yield* Effect.promise(() =>
+          createTask({
+            customerId: a.id,
+            operatorId: leaving.id,
+            isActive: false,
+          })
+        )
+        yield* Effect.promise(() =>
+          createTask({ customerId: a.id, operatorId: leaving.id })
+        )
+        yield* Effect.promise(() => createCustomer({ operatorId: leaving.id }))
+        const other = yield* Effect.promise(() =>
+          createCustomer({ operatorId: colleague.id })
+        )
+        yield* Effect.promise(() =>
+          createTask({ customerId: other.id, operatorId: leaving.id })
+        )
+        yield* Effect.promise(() =>
+          createPractice({ customerId: a.id, operatorId: leaving.id })
+        )
+        yield* Effect.promise(() =>
+          createPractice({ customerId: other.id, operatorId: colleague.id })
+        )
+
+        const exit = yield* deactivationImpact(leaving.id).pipe(
+          provideServer,
+          Effect.exit
+        )
+
+        expect(exit).toEqual(
+          Exit.succeed({ customers: 2, contacts: 2, practices: 1 })
+        )
+      })
+  )
+
+  it.effect("un operatore senza nulla ha zero ovunque", () =>
+    Effect.gen(function* () {
+      const leaving = yield* Effect.promise(() => createOperator())
+
+      expect(
+        yield* deactivationImpact(leaving.id).pipe(provideServer, Effect.exit)
+      ).toEqual(Exit.succeed({ customers: 0, contacts: 0, practices: 0 }))
     })
-    await createTask({ customerId: a.id, operatorId: leaving.id })
-    await createCustomer({ operatorId: leaving.id })
-    const other = await createCustomer({ operatorId: colleague.id })
-    await createTask({ customerId: other.id, operatorId: leaving.id })
-    await createPractice({ customerId: a.id, operatorId: leaving.id })
-    await createPractice({ customerId: other.id, operatorId: colleague.id })
-
-    const exit = await runServer(deactivationImpact(leaving.id))
-
-    expect(exit).toEqual(
-      Exit.succeed({ customers: 2, contacts: 2, practices: 1 })
-    )
-  })
-
-  it("un operatore senza nulla ha zero ovunque", async () => {
-    const leaving = await createOperator()
-
-    expect(await runServer(deactivationImpact(leaving.id))).toEqual(
-      Exit.succeed({ customers: 0, contacts: 0, practices: 0 })
-    )
-  })
+  )
 })

@@ -1,5 +1,7 @@
-import { beforeAll, beforeEach, describe, expect, it } from "vitest"
-import { Effect } from "effect"
+import { beforeAll, beforeEach } from "vitest"
+import { describe, expect, it } from "@effect/vitest"
+import { Effect, Fiber } from "effect"
+import { type ServerContext } from "@mito/server/effect/server"
 import { eq } from "drizzle-orm"
 import { readContactError } from "@mito/domain/contact/errors"
 import { customers } from "@mito/db/schema/customers"
@@ -9,7 +11,7 @@ import { Db, type DbClient } from "../../../effect/db"
 import { assignCustomers, handover } from "../../customer/assignment"
 import { reassign } from "../reassign"
 import { createTestCaller } from "@/test/caller"
-import { failureTag, runServer } from "@/test/effect"
+import { failureTag, provideServer } from "@/test/effect"
 import { createCustomer, createOperator, createTask } from "@/test/factories"
 import {
   hasTestDatabase,
@@ -54,6 +56,13 @@ function deactivation(userId: string) {
     },
   }
 }
+
+/** Starts the program as the edges run it, in a fiber of the test. */
+const forked = <A, E>(program: Effect.Effect<A, E, ServerContext>) =>
+  program.pipe(provideServer, Effect.exit, Effect.forkChild)
+
+const forkedAsIs = <A, E>(program: Effect.Effect<A, E>) =>
+  Effect.forkChild(program)
 
 /** The queries of the backends that wait for a lock. */
 const waitingQueries = async () =>
@@ -108,49 +117,49 @@ const writers: [
     admin: { id: number; userId: string }
     target: { id: number }
     seeded: Seeded
-  }) => Promise<string | undefined>,
+  }) => Effect.Effect<string | undefined>,
   string,
 ][] = [
   [
     "un Assegna chiamate (task.bulkHandleTask)",
     ({ admin, target, seeded }) =>
-      createTestCaller(admin)
-        .task.bulkHandleTask({
-          operatorId: target.id,
-          customerIds: [seeded.customer.id],
-        })
-        .then(
-          () => undefined,
-          (error: unknown) => readContactError(error)?.code ?? String(error)
-        ),
+      Effect.promise(() =>
+        createTestCaller(admin)
+          .task.bulkHandleTask({
+            operatorId: target.id,
+            customerIds: [seeded.customer.id],
+          })
+          .then(
+            () => undefined,
+            (error: unknown) => readContactError(error)?.code ?? String(error)
+          )
+      ),
     "OPERATOR_NOT_FOUND",
   ],
   [
     "un Assegna Clienti (assignCustomers)",
-    async ({ admin, target, seeded }) =>
-      failureTag(
-        await runServer(
-          assignCustomers({
-            customerIds: [seeded.customer.id],
-            toOperatorId: target.id,
-            actor: { role: "ADMIN", operatorId: admin.id },
-          })
-        )
-      ),
+    ({ admin, target, seeded }) =>
+      Effect.gen(function* () {
+        const exit = yield* assignCustomers({
+          customerIds: [seeded.customer.id],
+          toOperatorId: target.id,
+          actor: { role: "ADMIN", operatorId: admin.id },
+        }).pipe(provideServer, Effect.exit)
+        return failureTag(exit)
+      }),
     "OperatorNotFound",
   ],
   [
     "una riassegnazione del contatto (reassign)",
-    async ({ admin, target, seeded }) =>
-      failureTag(
-        await runServer(
-          reassign({
-            taskId: seeded.contact.id,
-            operatorId: target.id,
-            actor: { role: "ADMIN", operatorId: admin.id },
-          })
-        )
-      ),
+    ({ admin, target, seeded }) =>
+      Effect.gen(function* () {
+        const exit = yield* reassign({
+          taskId: seeded.contact.id,
+          operatorId: target.id,
+          actor: { role: "ADMIN", operatorId: admin.id },
+        }).pipe(provideServer, Effect.exit)
+        return failureTag(exit)
+      }),
     "OperatorNotFound",
   ],
 ]
@@ -166,159 +175,228 @@ describe.skipIf(!hasTestDatabase)(
       await resetDb()
     })
 
-    it("un passaggio di consegne verso X attende la disattivazione di X, senza il lock del cliente, poi riceve OperatorNotFound", async () => {
-      const owner = await createOperator({ name: "Anna" })
-      const target = await createOperator({ name: "Xavier" })
-      const { customer, contact } = await seedCustomer(owner.id)
+    it.effect(
+      "un passaggio di consegne verso X attende la disattivazione di X, senza il lock del cliente, poi riceve OperatorNotFound",
+      () =>
+        Effect.gen(function* () {
+          const owner = yield* Effect.promise(() =>
+            createOperator({ name: "Anna" })
+          )
+          const target = yield* Effect.promise(() =>
+            createOperator({ name: "Xavier" })
+          )
+          const { customer, contact } = yield* Effect.promise(() =>
+            seedCustomer(owner.id)
+          )
 
-      const deactivating = deactivation(target.userId)
-      await deactivating.locked
+          const deactivating = deactivation(target.userId)
+          yield* Effect.promise(() => deactivating.locked)
 
-      const handingOver = runServer(
-        handover({
-          customerId: customer.id,
-          toOperatorId: target.id,
-          actor: { role: "OPERATORE", operatorId: owner.id },
+          const handingOver = yield* forked(
+            handover({
+              customerId: customer.id,
+              toOperatorId: target.id,
+              actor: { role: "OPERATORE", operatorId: owner.id },
+            })
+          )
+          yield* Effect.promise(() => waitUntilBlocked(1))
+
+          // It waits on the user row, with the lock of findWorkingOperator, and
+          // has not locked the customer yet: users first, then customers
+          const [waiting] = yield* Effect.promise(() => waitingQueries())
+          expect(waiting).toMatch(/ for key share of "mito-deutsche_user"$/)
+          expect(
+            yield* Effect.promise(() => isCustomerLocked(customer.id))
+          ).toBe(false)
+
+          yield* Effect.promise(() => deactivating.disable())
+          const exit = yield* Fiber.join(handingOver)
+
+          expect(failureTag(exit)).toBe("OperatorNotFound")
+          expect(
+            yield* Effect.promise(() => operatorOfCustomer(customer.id))
+          ).toBe(owner.id)
+          expect(yield* Effect.promise(() => operatorOfTask(contact.id))).toBe(
+            owner.id
+          )
         })
-      )
-      await waitUntilBlocked(1)
+    )
 
-      // It waits on the user row, with the lock of findWorkingOperator, and
-      // has not locked the customer yet: users first, then customers
-      const [waiting] = await waitingQueries()
-      expect(waiting).toMatch(/ for key share of "mito-deutsche_user"$/)
-      expect(await isCustomerLocked(customer.id)).toBe(false)
+    it.effect(
+      "una disattivazione di X che parte durante un passaggio di consegne verso X attende che il passaggio finisca",
+      () =>
+        Effect.gen(function* () {
+          const owner = yield* Effect.promise(() =>
+            createOperator({ name: "Anna" })
+          )
+          const target = yield* Effect.promise(() =>
+            createOperator({ name: "Xavier" })
+          )
+          const { customer, contact } = yield* Effect.promise(() =>
+            seedCustomer(owner.id)
+          )
 
-      await deactivating.disable()
-      const exit = await handingOver
+          // The handover locks X's user row, then waits on the customer
+          const colleague = yield* Effect.promise(() =>
+            holdCustomerLock(customer.id)
+          )
+          const handingOver = yield* forked(
+            handover({
+              customerId: customer.id,
+              toOperatorId: target.id,
+              actor: { role: "OPERATORE", operatorId: owner.id },
+            })
+          )
+          yield* Effect.promise(() => waitUntilBlocked(1))
 
-      expect(failureTag(exit)).toBe("OperatorNotFound")
-      expect(await operatorOfCustomer(customer.id)).toBe(owner.id)
-      expect(await operatorOfTask(contact.id)).toBe(owner.id)
-    })
+          // The deactivation waits on the handover's lock of the user row
+          const deactivating = deactivation(target.userId)
+          yield* Effect.promise(() => waitUntilBlocked(2))
 
-    it("una disattivazione di X che parte durante un passaggio di consegne verso X attende che il passaggio finisca", async () => {
-      const owner = await createOperator({ name: "Anna" })
-      const target = await createOperator({ name: "Xavier" })
-      const { customer, contact } = await seedCustomer(owner.id)
+          yield* Effect.promise(() => colleague.release())
+          const exit = yield* Fiber.join(handingOver)
+          yield* Effect.promise(() => deactivating.locked)
+          yield* Effect.promise(() => deactivating.disable())
 
-      // The handover locks X's user row, then waits on the customer
-      const colleague = await holdCustomerLock(customer.id)
-      const handingOver = runServer(
-        handover({
-          customerId: customer.id,
-          toOperatorId: target.id,
-          actor: { role: "OPERATORE", operatorId: owner.id },
+          expect(failureTag(exit)).toBeUndefined()
+          expect(
+            yield* Effect.promise(() => operatorOfCustomer(customer.id))
+          ).toBe(target.id)
+          expect(yield* Effect.promise(() => operatorOfTask(contact.id))).toBe(
+            target.id
+          )
         })
-      )
-      await waitUntilBlocked(1)
+    )
 
-      // The deactivation waits on the handover's lock of the user row
-      const deactivating = deactivation(target.userId)
-      await waitUntilBlocked(2)
+    it.effect(
+      "un Assegna Clienti verso X già partito: X disattivato dopo il primo cliente ferma il secondo con OperatorNotFound",
+      () =>
+        Effect.gen(function* () {
+          const admin = yield* Effect.promise(() =>
+            createOperator({ role: "ADMIN" })
+          )
+          const previous = yield* Effect.promise(() =>
+            createOperator({ name: "Anna" })
+          )
+          const target = yield* Effect.promise(() =>
+            createOperator({ name: "Xavier" })
+          )
+          const seeded = [
+            yield* Effect.promise(() => seedCustomer(previous.id)),
+            yield* Effect.promise(() => seedCustomer(previous.id)),
+            yield* Effect.promise(() => seedCustomer(previous.id)),
+          ]
 
-      await colleague.release()
-      const exit = await handingOver
-      await deactivating.locked
-      await deactivating.disable()
+          // Before the second customer's transaction begins, the deactivation
+          // locks X's user row: that transaction then waits on it in
+          // findWorkingOperator, and sees X disabled once the deactivation commits
+          let deactivating: ReturnType<typeof deactivation> | undefined
+          let transactions = 0
+          const client = new Proxy(pgDb, {
+            get(target_, property, receiver) {
+              if (property !== "transaction") {
+                return Reflect.get(target_, property, receiver) as unknown
+              }
+              return async (...args: Parameters<typeof pgDb.transaction>) => {
+                transactions += 1
+                if (transactions === 2) {
+                  deactivating = deactivation(target.userId)
+                  await deactivating.locked
+                }
+                return target_.transaction(...args)
+              }
+            },
+          }) as unknown as DbClient
 
-      expect(failureTag(exit)).toBeUndefined()
-      expect(await operatorOfCustomer(customer.id)).toBe(target.id)
-      expect(await operatorOfTask(contact.id)).toBe(target.id)
-    })
+          const assigning = yield* forked(
+            assignCustomers({
+              customerIds: seeded.map(({ customer }) => customer.id),
+              toOperatorId: target.id,
+              actor: { role: "ADMIN", operatorId: admin.id },
+            }).pipe(Effect.provideService(Db, client))
+          )
+          yield* Effect.promise(() => waitUntilBlocked(1))
+          expect(yield* Effect.promise(() => waitingQueries())).toEqual([
+            expect.stringMatching(/ for key share of "mito-deutsche_user"$/),
+          ])
+          // Users first, then customers: the second customer is not locked yet
+          expect(
+            yield* Effect.promise(() =>
+              isCustomerLocked(seeded[1]!.customer.id)
+            )
+          ).toBe(false)
+          yield* Effect.promise(() => deactivating!.disable())
+          const exit = yield* Fiber.join(assigning)
 
-    it("un Assegna Clienti verso X già partito: X disattivato dopo il primo cliente ferma il secondo con OperatorNotFound", async () => {
-      const admin = await createOperator({ role: "ADMIN" })
-      const previous = await createOperator({ name: "Anna" })
-      const target = await createOperator({ name: "Xavier" })
-      const seeded = [
-        await seedCustomer(previous.id),
-        await seedCustomer(previous.id),
-        await seedCustomer(previous.id),
-      ]
-
-      // Before the second customer's transaction begins, the deactivation
-      // locks X's user row: that transaction then waits on it in
-      // findWorkingOperator, and sees X disabled once the deactivation commits
-      let deactivating: ReturnType<typeof deactivation> | undefined
-      let transactions = 0
-      const client = new Proxy(pgDb, {
-        get(target_, property, receiver) {
-          if (property !== "transaction") {
-            return Reflect.get(target_, property, receiver) as unknown
+          expect(failureTag(exit)).toBe("OperatorNotFound")
+          expect(transactions).toBe(2)
+          const [first, second, third] = seeded
+          expect(
+            yield* Effect.promise(() => operatorOfCustomer(first!.customer.id))
+          ).toBe(target.id)
+          expect(
+            yield* Effect.promise(() => operatorOfTask(first!.contact.id))
+          ).toBe(target.id)
+          for (const untouched of [second!, third!]) {
+            expect(
+              yield* Effect.promise(() =>
+                operatorOfCustomer(untouched.customer.id)
+              )
+            ).toBe(previous.id)
+            expect(
+              yield* Effect.promise(() => operatorOfTask(untouched.contact.id))
+            ).toBe(previous.id)
           }
-          return async (...args: Parameters<typeof pgDb.transaction>) => {
-            transactions += 1
-            if (transactions === 2) {
-              deactivating = deactivation(target.userId)
-              await deactivating.locked
-            }
-            return target_.transaction(...args)
-          }
-        },
-      }) as unknown as DbClient
-
-      const assigning = runServer(
-        assignCustomers({
-          customerIds: seeded.map(({ customer }) => customer.id),
-          toOperatorId: target.id,
-          actor: { role: "ADMIN", operatorId: admin.id },
-        }).pipe(Effect.provideService(Db, client))
-      )
-      await waitUntilBlocked(1)
-      expect(await waitingQueries()).toEqual([
-        expect.stringMatching(/ for key share of "mito-deutsche_user"$/),
-      ])
-      // Users first, then customers: the second customer is not locked yet
-      expect(await isCustomerLocked(seeded[1]!.customer.id)).toBe(false)
-      await deactivating!.disable()
-      const exit = await assigning
-
-      expect(failureTag(exit)).toBe("OperatorNotFound")
-      expect(transactions).toBe(2)
-      const [first, second, third] = seeded
-      expect(await operatorOfCustomer(first!.customer.id)).toBe(target.id)
-      expect(await operatorOfTask(first!.contact.id)).toBe(target.id)
-      for (const untouched of [second!, third!]) {
-        expect(await operatorOfCustomer(untouched.customer.id)).toBe(
-          previous.id
-        )
-        expect(await operatorOfTask(untouched.contact.id)).toBe(previous.id)
-      }
-    })
-    it.each(writers)(
+        })
+    )
+    it.effect.each(writers)(
       "%s verso X attende la disattivazione di X, senza il lock del cliente, poi riceve OperatorNotFound",
-      async (_, write, notFound) => {
-        const admin = await createOperator({ role: "ADMIN" })
-        const owner = await createOperator({ name: "Anna" })
-        const target = await createOperator({ name: "Xavier" })
-        const seeded = await seedCustomer(owner.id)
+      ([_, write, notFound]) =>
+        Effect.gen(function* () {
+          const admin = yield* Effect.promise(() =>
+            createOperator({ role: "ADMIN" })
+          )
+          const owner = yield* Effect.promise(() =>
+            createOperator({ name: "Anna" })
+          )
+          const target = yield* Effect.promise(() =>
+            createOperator({ name: "Xavier" })
+          )
+          const seeded = yield* Effect.promise(() => seedCustomer(owner.id))
 
-        const deactivating = deactivation(target.userId)
-        await deactivating.locked
+          const deactivating = deactivation(target.userId)
+          yield* Effect.promise(() => deactivating.locked)
 
-        const writing = write({ admin, target, seeded })
-        await waitUntilBlocked(1)
+          const writing = yield* forkedAsIs(write({ admin, target, seeded }))
+          yield* Effect.promise(() => waitUntilBlocked(1))
 
-        // It waits on the user row, with the lock of findWorkingOperator, and
-        // has not locked the customer yet: users first, then customers
-        expect(await waitingQueries()).toEqual([
-          expect.stringMatching(/ for key share of "mito-deutsche_user"$/),
-        ])
-        expect(await isCustomerLocked(seeded.customer.id)).toBe(false)
+          // It waits on the user row, with the lock of findWorkingOperator, and
+          // has not locked the customer yet: users first, then customers
+          expect(yield* Effect.promise(() => waitingQueries())).toEqual([
+            expect.stringMatching(/ for key share of "mito-deutsche_user"$/),
+          ])
+          expect(
+            yield* Effect.promise(() => isCustomerLocked(seeded.customer.id))
+          ).toBe(false)
 
-        await deactivating.disable()
+          yield* Effect.promise(() => deactivating.disable())
 
-        expect(await writing).toBe(notFound)
-        expect(await operatorOfCustomer(seeded.customer.id)).toBe(owner.id)
-        expect(await operatorOfTask(seeded.contact.id)).toBe(owner.id)
-        expect(
-          await pgDb
-            .select()
-            .from(taskEventLog)
-            .where(eq(taskEventLog.customerId, seeded.customer.id))
-        ).toEqual([])
-      }
+          expect(yield* Fiber.join(writing)).toBe(notFound)
+          expect(
+            yield* Effect.promise(() => operatorOfCustomer(seeded.customer.id))
+          ).toBe(owner.id)
+          expect(
+            yield* Effect.promise(() => operatorOfTask(seeded.contact.id))
+          ).toBe(owner.id)
+          expect(
+            yield* Effect.promise(() =>
+              pgDb
+                .select()
+                .from(taskEventLog)
+                .where(eq(taskEventLog.customerId, seeded.customer.id))
+            )
+          ).toEqual([])
+        })
     )
   }
 )

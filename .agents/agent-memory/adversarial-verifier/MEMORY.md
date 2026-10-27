@@ -125,3 +125,8 @@
 - [ConfigProvider snapshot probes](feedback_config_provider_snapshot_probes.md) — fresh-env wrapper: mutants, guards pass alone (-t), v3/v4 env matrix, webpack import.meta
 - [Effect 4 cause edge probes](feedback_effect4_cause_edge_probes.md) — probe natural programs: v4 elects Fail->Die on finalizer/sibling defects; squash/UnknownError drift
 - [Tx combinator version differential](feedback_tx_combinator_version_differential.md) — fake-client v3/v4 node diff; run survivors on whole unit project
+- [Exception pair audit](feedback_exception_pair_audit.md) — TS-scanner pairing + title check; helper clock source (TestClock 0, shared) beyond text
+- [Shuffle noise filter](feedback_shuffle_noise_filter.md) — triage shuffle failures vs diff list and base before calling order dependence
+- [Test conversion execution fidelity](feedback_test_conversion_execution_fidelity.md) — per-test assertionCalls diff, floating-Effect TS scan, base/head mutant diff
+- [Frozen TestClock probes](feedback_frozen_testclock_probes.md) — log reads of a never-set TestClock; sign mutants base-kill/head-survive, boundary opposite
+- [Test conversion kill parity](feedback_test_conversion_kill_parity.md) — same mutants base vs head, compare failing sets; `(cell ?? sentinel)` not reversed

@@ -1,13 +1,6 @@
 // @vitest-environment node
-import {
-  afterEach,
-  beforeAll,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  vi,
-} from "vitest"
+import { afterEach, beforeAll, beforeEach, vi } from "vitest"
+import { describe, expect, it } from "@effect/vitest"
 import { Effect } from "effect"
 import jwt from "jsonwebtoken"
 import { NextRequest } from "next/server"
@@ -50,13 +43,11 @@ const XLSX_CONTENT_TYPE =
 
 /** Puts an object in the bucket under exactly this key. */
 const putInBucket = (key: string) =>
-  Effect.runPromise(
-    storage.memory!.upload({
-      key,
-      body: new TextEncoder().encode("dati dei clienti"),
-      contentType: XLSX_CONTENT_TYPE,
-    })
-  )
+  storage.memory!.upload({
+    key,
+    body: new TextEncoder().encode("dati dei clienti"),
+    contentType: XLSX_CONTENT_TYPE,
+  })
 
 const signInAs = (userId: string) =>
   vi.mocked(getServerAuthSession).mockResolvedValue({
@@ -99,68 +90,108 @@ const methods = [
 describe.each(methods)(
   "download dell'export (%s), controlli",
   (method, handler) => {
-    it("senza sessione risponde 401 senza leggere il bucket", async () => {
-      await putInBucket(`export/${FILE_NAME}`)
+    it.effect("senza sessione risponde 401 senza leggere il bucket", () =>
+      Effect.gen(function* () {
+        yield* putInBucket(`export/${FILE_NAME}`)
 
-      const response = await handler(requestFor(method, FILE_NAME))
+        const response = yield* Effect.promise(() =>
+          handler(requestFor(method, FILE_NAME))
+        )
 
-      expect(response.status).toBe(401)
-      expect(storage.download).not.toHaveBeenCalled()
-    })
+        expect(response.status).toBe(401)
+        expect(storage.download).not.toHaveBeenCalled()
+      })
+    )
 
-    it("il token dei cron senza una sessione risponde 401 senza leggere il bucket", async () => {
-      await putInBucket(`export/${FILE_NAME}`)
-      const token = jwt.sign({ role: "cronjob" }, SECRET, { expiresIn: "5m" })
+    it.effect(
+      "il token dei cron senza una sessione risponde 401 senza leggere il bucket",
+      () =>
+        Effect.gen(function* () {
+          yield* putInBucket(`export/${FILE_NAME}`)
+          const token = jwt.sign({ role: "cronjob" }, SECRET, {
+            expiresIn: "5m",
+          })
 
-      const response = await handler(
-        requestFor(method, FILE_NAME, { Authorization: `Bearer ${token}` })
-      )
+          const response = yield* Effect.promise(() =>
+            handler(
+              requestFor(method, FILE_NAME, {
+                Authorization: `Bearer ${token}`,
+              })
+            )
+          )
 
-      expect(response.status).toBe(401)
-      expect(await response.json()).toEqual({ error: "Unauthorized" })
-      expect(storage.download).not.toHaveBeenCalled()
-    })
+          expect(response.status).toBe(401)
+          expect(yield* Effect.promise(() => response.json())).toEqual({
+            error: "Unauthorized",
+          })
+          expect(storage.download).not.toHaveBeenCalled()
+        })
+    )
 
-    it("una sessione senza riga operatore risponde 400, come operatorProcedure, senza leggere il bucket", async () => {
-      await putInBucket(`export/${FILE_NAME}`)
-      signInAs((await createUser({ role: "ADMIN" })).id)
+    it.effect(
+      "una sessione senza riga operatore risponde 400, come operatorProcedure, senza leggere il bucket",
+      () =>
+        Effect.gen(function* () {
+          yield* putInBucket(`export/${FILE_NAME}`)
+          signInAs(
+            (yield* Effect.promise(() => createUser({ role: "ADMIN" }))).id
+          )
 
-      const response = await handler(requestFor(method, FILE_NAME))
+          const response = yield* Effect.promise(() =>
+            handler(requestFor(method, FILE_NAME))
+          )
 
-      expect(response.status).toBe(400)
-      expect(await response.text()).toBe("BAD_REQUEST")
-      expect(storage.download).not.toHaveBeenCalled()
-    })
+          expect(response.status).toBe(400)
+          expect(yield* Effect.promise(() => response.text())).toBe(
+            "BAD_REQUEST"
+          )
+          expect(storage.download).not.toHaveBeenCalled()
+        })
+    )
 
-    it("un operatore disattivato risponde 401, come operatorProcedure, senza leggere il bucket", async () => {
-      await putInBucket(`export/${FILE_NAME}`)
-      signInAs(
-        (await createOperator({ role: "ADMIN", disabledAt: new Date() })).userId
-      )
+    it.effect(
+      "un operatore disattivato risponde 401, come operatorProcedure, senza leggere il bucket",
+      () =>
+        Effect.gen(function* () {
+          yield* putInBucket(`export/${FILE_NAME}`)
+          signInAs(
+            (yield* Effect.promise(() =>
+              createOperator({ role: "ADMIN", disabledAt: new Date() })
+            )).userId
+          )
 
-      const response = await handler(requestFor(method, FILE_NAME))
+          const response = yield* Effect.promise(() =>
+            handler(requestFor(method, FILE_NAME))
+          )
 
-      expect(response.status).toBe(401)
-      expect(await response.text()).toBe("Utente disattivato")
-      expect(storage.download).not.toHaveBeenCalled()
-    })
+          expect(response.status).toBe(401)
+          expect(yield* Effect.promise(() => response.text())).toBe(
+            "Utente disattivato"
+          )
+          expect(storage.download).not.toHaveBeenCalled()
+        })
+    )
 
-    it("un operatore attivo scarica l'errore dell'import", async () => {
-      await putInBucket(`export/${FILE_NAME}`)
-      signInAs((await createOperator()).userId)
+    it.effect("un operatore attivo scarica l'errore dell'import", () =>
+      Effect.gen(function* () {
+        yield* putInBucket(`export/${FILE_NAME}`)
+        signInAs((yield* Effect.promise(() => createOperator())).userId)
 
-      const response = await handler(requestFor(method, FILE_NAME))
+        const response = yield* Effect.promise(() =>
+          handler(requestFor(method, FILE_NAME))
+        )
 
-      expect(response.status).toBe(200)
-      expect(storage.download).toHaveBeenCalledTimes(1)
-    })
+        expect(response.status).toBe(200)
+        expect(storage.download).toHaveBeenCalledTimes(1)
+      })
+    )
 
     describe("con la sessione di un operatore attivo", () => {
       beforeEach(async () => {
         signInAs((await createOperator()).userId)
       })
 
-      it.each([
+      it.effect.each([
         "export_chiamate_23-10-2026.xlsx",
         "../error-import-23-10-2026.xlsx",
         "error-import-٢٣-10-2026.xlsx",
@@ -170,15 +201,20 @@ describe.each(methods)(
         "error-import-23-10-2026_xlsx",
       ])(
         "%j risponde 404 senza leggere il bucket, anche se il file c'è",
-        async (name) => {
-          await putInBucket(`export/${name}`)
+        (name) =>
+          Effect.gen(function* () {
+            yield* putInBucket(`export/${name}`)
 
-          const response = await handler(requestFor(method, name))
+            const response = yield* Effect.promise(() =>
+              handler(requestFor(method, name))
+            )
 
-          expect(response.status).toBe(404)
-          expect(await response.text()).toBe("File not found")
-          expect(storage.download).not.toHaveBeenCalled()
-        }
+            expect(response.status).toBe(404)
+            expect(yield* Effect.promise(() => response.text())).toBe(
+              "File not found"
+            )
+            expect(storage.download).not.toHaveBeenCalled()
+          })
       )
 
       it("un file che lo storage dà come vista su un buffer più grande si scarica con i suoi soli byte", async () => {
