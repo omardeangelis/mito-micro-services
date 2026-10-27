@@ -34,7 +34,7 @@ const error = vi.spyOn(console, "error").mockImplementation(() => undefined)
  * Returns the route's `fetch`.
  */
 async function runScript(...responses: (Response | Error)[]) {
-  const fetch = vi.fn<[], Promise<Response>>()
+  const fetch = vi.fn<() => Promise<Response>>()
   for (const response of responses) {
     if (response instanceof Error) fetch.mockRejectedValueOnce(response)
     else fetch.mockResolvedValueOnce(response)

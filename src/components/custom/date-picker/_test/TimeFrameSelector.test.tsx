@@ -6,7 +6,7 @@ import { type TimeFrame } from "@mito/domain/constants/timeframes"
 import { TimeFrameSelector } from ".."
 
 const mocks = vi.hoisted(() => ({
-  push: vi.fn<[string, { scroll?: boolean }?], void>(),
+  push: vi.fn<(href: string, options?: { scroll?: boolean }) => void>(),
 }))
 
 vi.mock("next/navigation", () => ({
