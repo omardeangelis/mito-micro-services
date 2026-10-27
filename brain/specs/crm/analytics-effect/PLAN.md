@@ -695,7 +695,7 @@ Ogni task parte da un test rosso sul comportamento nuovo, poi aggiorna i test ve
 | G0 | Prima della wave 1 | SPEC `approved` |
 | G1 | Merge in `dev` | CI verde; AC1–AC26 annotati; mutanti uccisi; prova nel browser senza errori; REPORT SHIP; approvazione di Leonardo. Dopo il merge, il commit di documenti di D21 (date, PR, TD11, TD10 (f), §4, §5) |
 | G2 | Staging, dopo il merge | Con `BACKEND_URL` (Cloud Run), la dashboard come admin e come operatore: card, date e cambio di periodo come in T19, con le chiamate via HTTP |
-| G3 | Prod | Nel rilascio unico della migrazione. Mai nella stessa release di un cutover GCP, né durante l'osservazione di S6 |
+| G3 | Prod | Nel rilascio unico della migrazione, nella sua finestra (fase 4 di [[chore/roadmap-nuovo-stack]]). Fino al 2026-10-27 anche "mai nella stessa release di un cutover GCP", superato da R10 |
 
 ## 13. Rischi e mitigazioni
 
