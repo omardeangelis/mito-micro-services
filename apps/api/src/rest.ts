@@ -1,13 +1,6 @@
 import { Hono } from "hono"
 import { NextRequest } from "next/server"
-import * as importError from "@/app/api/export/importError/route"
 import * as exportDownload from "@/app/api/export/download/route"
-import * as createCustomerToPratica from "@/app/api/import/create/customerToPratica/route"
-import * as createCustomers from "@/app/api/import/create/customers/route"
-import * as createPractices from "@/app/api/import/create/practices/route"
-import * as importProcess from "@/app/api/import/process/route"
-import * as updateCustomers from "@/app/api/import/update/customers/route"
-import * as updatePractices from "@/app/api/import/update/practices/route"
 import * as userPreferences from "@/app/api/user/preferences/route"
 
 const METHODS = ["GET", "POST", "PUT"] as const
@@ -21,13 +14,6 @@ type RouteModule = Partial<Record<(typeof METHODS)[number], unknown>>
 // The route handlers of the Next.js app, on the same paths
 const ROUTES: [string, RouteModule][] = [
   ["/api/export/download", exportDownload],
-  ["/api/export/importError", importError],
-  ["/api/import/create/customerToPratica", createCustomerToPratica],
-  ["/api/import/create/customers", createCustomers],
-  ["/api/import/create/practices", createPractices],
-  ["/api/import/process", importProcess],
-  ["/api/import/update/customers", updateCustomers],
-  ["/api/import/update/practices", updatePractices],
   ["/api/user/preferences", userPreferences],
 ]
 
@@ -41,7 +27,7 @@ const toNextRequest = (request: Request) =>
   })
 
 /**
- * The REST routes of import, export and user preferences, as the Next.js app
+ * The REST routes of export and user preferences, as the Next.js app
  * serves them: the same files, run on a NextRequest made from the request.
  * They read the session with `getServerAuthSession`, which the backend
  * provides (`requestSession`). A method a route doesn't export is a 405, and a

@@ -1,12 +1,15 @@
 import { Context, Data, Effect, Layer } from "effect"
-import { createRemoteJWKSet, jwtVerify, type JWTVerifyGetKey } from "jose"
+import { type JWTVerifyGetKey } from "jose"
+import { type OidcCaller, verifyIdToken } from "../oidc"
+
+export { googleKeys } from "../oidc"
 
 /**
  * Who may start the crons: Cloud Scheduler, with an OIDC token Google signs
  * for `serviceAccount` (the scheduler's), issued for `audience` (the URL of
  * the service, as the scheduler job sets it).
  */
-export type CronCaller = { audience: string; serviceAccount: string }
+export type CronCaller = OidcCaller
 
 /** The request has no valid token of the scheduler. */
 export class CronUnauthorized extends Data.TaggedError("CronUnauthorized")<{
@@ -26,51 +29,16 @@ export class CronAuth extends Context.Tag("CronAuth")<
   }
 >() {}
 
-// Google's ID tokens carry either form of the issuer
-const GOOGLE_ISSUERS = ["https://accounts.google.com", "accounts.google.com"]
-
-/** The keys Google signs ID tokens with (jose caches them). */
-export const googleKeys = () =>
-  createRemoteJWKSet(new URL("https://www.googleapis.com/oauth2/v3/certs"))
-
 /**
- * Lets a request through only with a Google ID token, signed with `keys`
- * (RS256 only), not expired, for the caller's audience and with the caller's
- * verified email.
+ * Lets a request through only with the scheduler's Google ID token
+ * (`verifyIdToken`).
  */
 export const cronAuth = (caller: CronCaller, keys: JWTVerifyGetKey) =>
   Layer.succeed(CronAuth, {
     verify: (authorization) =>
-      Effect.gen(function* () {
-        const token = authorization?.startsWith("Bearer ")
-          ? authorization.slice("Bearer ".length)
-          : ""
-        if (!token) {
-          return yield* new CronUnauthorized({ reason: "no bearer token" })
-        }
-        const { payload } = yield* Effect.tryPromise({
-          try: () =>
-            jwtVerify(token, keys, {
-              issuer: GOOGLE_ISSUERS,
-              audience: caller.audience,
-              algorithms: ["RS256"],
-              requiredClaims: ["exp", "iat", "email"],
-              clockTolerance: 30,
-            }),
-          catch: (cause) =>
-            new CronUnauthorized({
-              reason: cause instanceof Error ? cause.message : "invalid token",
-            }),
-        })
-        if (
-          payload.email !== caller.serviceAccount ||
-          payload.email_verified !== true
-        ) {
-          return yield* new CronUnauthorized({
-            reason: "not the scheduler's service account",
-          })
-        }
-      }),
+      verifyIdToken(caller, keys, authorization).pipe(
+        Effect.mapError(({ reason }) => new CronUnauthorized({ reason }))
+      ),
   })
 
 /** Without a CronCaller every cron request is refused. */

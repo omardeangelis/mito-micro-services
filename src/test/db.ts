@@ -37,6 +37,18 @@ export const BEFORE_REALIGN_SCHEMA_TAG =
   "20261011200758_task_updated_at_default"
 export const REALIGN_SCHEMA_TAG = "20261021100457_contatti_contact_realign"
 
+/**
+ * The tables of better-auth (spec auth-better-auth, T2), the migration before
+ * the one that fills them from NextAuth's rows: its test seeds here.
+ */
+export const AUTH_TABLES_SCHEMA_TAG = "20261026174610_auth_tables"
+
+/**
+ * The last migration before the foreign key of `messages.chat_id` (TD10 c):
+ * its test seeds here.
+ */
+export const AUTH_DATA_SCHEMA_TAG = "20261026174632_auth_data"
+
 /** In-memory Postgres standing in for `@mito/db` in `*.db.test.ts` files. */
 export const testClient = new PGlite()
 export const testDb = drizzle(testClient, { schema })

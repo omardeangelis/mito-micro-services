@@ -92,6 +92,34 @@
       "when": 1792786354097,
       "tag": "20261023201234_task_status_non_risponde",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1792892491982,
+      "tag": "20261025014131_import_run",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1793036770517,
+      "tag": "20261026174610_auth_tables",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1793036792779,
+      "tag": "20261026174632_auth_data",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1793053103645,
+      "tag": "20261026221823_messages_chat_fk",
+      "breakpoints": true
     }
   ]
 }

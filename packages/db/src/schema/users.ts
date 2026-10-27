@@ -1,5 +1,6 @@
 import { relations, sql } from "drizzle-orm"
 import {
+  boolean,
   index,
   integer,
   pgTableCreator,
@@ -29,6 +30,16 @@ export const users = createTable("user", {
   // Chi ha disattivato l'utente e quando: null = attivo (gestione-operatori).
   disabledAt: timestamp("disabled_at", { mode: "date", withTimezone: true }),
   disabledBy: integer("disabled_by").references(() => operators.id),
+  // The columns better-auth needs (spec auth-better-auth, D4): its
+  // `emailVerified` is a boolean, and it sets both times on every write.
+  // Every user from before it counts as confirmed (migration auth_data)
+  emailConfirmed: boolean("email_confirmed").notNull().default(false),
+  createdAt: timestamp("created_at", { mode: "date", withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true })
+    .notNull()
+    .defaultNow(),
 })
 
 export const usersRelations = relations(users, ({ one, many }) => ({

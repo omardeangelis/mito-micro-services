@@ -3,10 +3,9 @@ import { praticheRouter } from "./routers/pratiche/index"
 import { operatorRouter } from "./routers/operator/index"
 import { customerRouter } from "./routers/customer/index"
 import { userRouter } from "./routers/user/index"
-import { analitycsRouter } from "./routers/analytics/index"
+import { analyticsRouter } from "./routers/analytics/index"
 import { chatRouter } from "./routers/chat/index"
 import { taskRouter } from "./routers/task/index"
-import { storageRouter } from "./routers/supabase/route"
 import importRouter from "./routers/import/index"
 import exportRouter from "./routers/export/index"
 
@@ -20,10 +19,9 @@ export const appRouter = createTRPCRouter({
   operator: operatorRouter,
   customer: customerRouter,
   user: userRouter,
-  analitycs: analitycsRouter,
+  analytics: analyticsRouter,
   chat: chatRouter,
   task: taskRouter,
-  supabase: storageRouter,
   import: importRouter,
   export: exportRouter,
 })

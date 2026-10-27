@@ -1,105 +1,120 @@
-- [Plan verification techniques](feedback_plan_verification_techniques.md) — PGlite probes, writer enumeration, per-role cases, helper-vs-depends_on, UI data, date rule vs cron
+- [Plan verification techniques](feedback_plan_verification_techniques.md) — PGlite probes, writer enumeration, per-role cases
 - [Vacuous test patterns](feedback_vacuous_test_patterns.md) — assertions/gates that cannot fail; flag on sight
-- [Client mutation checks](feedback_client_mutation_checks.md) — rq v4 callbacks dropped on unmount; success-path navigation runs after leaving; grep hook options per consumer
-- [UI probe side effects](feedback_ui_probe_side_effects.md) — hit-area really clicks (mutated data once); abort the endpoint or skip click probes in read-only passes
-- [Review at reviewed commit](feedback_review_at_reviewed_commit.md) — read ledger/decision docs via git show <sha>; working-tree fixes are not resolutions
-- [Motion exception scope](feedback_motion_exception_scope.md) — exceptions bind to named consumers; class guards miss descendants; browser claims need a probe record
-- [Mock tRPC in UI pass](feedback_ui_pass_mock_trpc_responses.md) — show dialogs/toasts via stream-format mock, audit POSTs after; list load POSTs preferences
-- [Storage draft checks](feedback_storage_draft_checks.md) — remount race, own-success wipe, empty-submit flag, sign-out x in-flight, mutation runner
-- [Server action boundary](feedback_server_action_boundary_checks.md) — tsx zod probe, revalidatePath literal tag, live Next-Action POST + dev log, RSC slot grep
+- [Client mutation checks](feedback_client_mutation_checks.md) — rq v4 callbacks dropped on unmount; success-path navigation runs after leaving
+- [UI probe side effects](feedback_ui_probe_side_effects.md) — hit-area really clicks (mutated data once)
+- [Review at reviewed commit](feedback_review_at_reviewed_commit.md) — read ledger/decision docs via git show <sha>
+- [Motion exception scope](feedback_motion_exception_scope.md) — exceptions bind to named consumers; class guards miss descendants
+- [Mock tRPC in UI pass](feedback_ui_pass_mock_trpc_responses.md) — show dialogs/toasts via stream-format mock, audit POSTs after
+- [Storage draft checks](feedback_storage_draft_checks.md) — remount race, own-success wipe, empty-submit flag, sign-out x in-flight
+- [Server action boundary](feedback_server_action_boundary_checks.md) — tsx zod probe, revalidatePath literal tag, live Next-Action POST + dev log
 - [Gate exit capture](feedback_gate_exit_capture.md) — zsh PIPESTATUS is empty: redirect gate logs; server-action bundling via export-name grep
-- [UI pass moving target](feedback_ui_pass_moving_target.md) — component can change mid-run (check mtime); EMAXCONN on shared dev server; select-all fails, use Backspace
-- [Live region and class checks](feedback_live_region_and_class_checks.md) — sr-only status repeat text is silent; class-string tests prove no reachability; compile Tailwind in scratchpad
-- [Lock order mutants](feedback_lock_order_mutants.md) — order mutants survive PGlite; real-PG random-mix stress with 2 negative controls; refresh-vs-refresh deadlock is noise
+- [UI pass moving target](feedback_ui_pass_moving_target.md) — component can change mid-run (check mtime); EMAXCONN on shared dev server
+- [Live region and class checks](feedback_live_region_and_class_checks.md) — sr-only status repeat text is silent
+- [Lock order mutants](feedback_lock_order_mutants.md) — order mutants survive PGlite; real-PG random-mix stress with 2 negative controls
 - [Mutant harness hygiene](feedback_mutant_harness_hygiene.md) — re-sync src before each mutant; a wrong restore path contaminates the next run
-- [Live region host unmount](feedback_live_region_host_unmount.md) — announcements/focus inside a component the action can unmount never run; probe the swap
+- [Live region host unmount](feedback_live_region_host_unmount.md) — announcements/focus inside a component the action can unmount never run
 - [Mutant apply verify](feedback_mutant_apply_verify.md) — grep-check a mutant applied before trusting green; Next action queue is serial
 - [Test helper wiring](feedback_test_helper_wiring.md) — helper wrapping its own provider hides parent wiring; probe the real parent; zsh loop quirk
-- [Collapse during in-flight](feedback_collapse_during_inflight_probe.md) — waits in children unmounted by collapse are lost on reopen; probe collapse mid-action
-- [Real caller probe and kill reason](feedback_real_caller_probe_and_kill_reason.md) — check tRPC error shape via real api proxy; a removed-wrapper mutant may die for an unrelated reason
+- [Collapse during in-flight](feedback_collapse_during_inflight_probe.md) — waits in children unmounted by collapse are lost on reopen
+- [Real caller probe and kill reason](feedback_real_caller_probe_and_kill_reason.md) — check tRPC error shape via real api proxy
 - [Memo and order probes](feedback_memo_and_order_probes.md) — memo needs a render counter; fallback order needs three items
-- [Mutant battery in scratch copy](feedback_mutant_battery_scratch_copy.md) — rsync src, exact-pair runner, cmp check; probes outside; `(`-led replacement = ASI false kill
-- [Tx rollback mutant masking](feedback_tx_rollback_mutant_masking.md) — DB failpoint kills no-transaction mutant, not commit-on-JS-failure; pin both
-- [Contract wording over plan decisions](feedback_contract_wording_over_plan_decisions.md) — a test named after a browser quirk can lock in a SPEC miss; check each added condition against the AC text
-- [Authz read surface probes](feedback_authz_read_surface_probes.md) — createCaller gates, HTTP payload probe, PGlite rename for DbError, tsc gate mutant; route wrapping api = 500
-- [Mocked framework side effects](feedback_mocked_framework_side_effects.md) — mocked router.refresh hides Next's hard-reload fallback on failure paths; read node_modules source
-- [Href builder safety](feedback_href_builder_safety_checks.md) — model Next push as new URL(href, location); `..` ids; passthrough mutants at call sites; DB ids writable via insert schema
-- [Read mirrors write](feedback_read_mirrors_write_differential.md) — matrix read vs real write; boolean flags diverge on superseded; shared scratchpad pointer-file collision
-- [Day-rule tests and TZ matrix](feedback_day_rule_tests_and_tz_matrix.md) — mutate deadline AND now sides; 10:00Z nows hide UTC-now mutants; display formatters + RSC/SSR in UTC; tautological expected strings
-- [Server-only vitest alias](feedback_server_only_vitest_alias.md) — vitest stubs server-only, so green tests prove no client reachability; tsx probe plus control
-- [Snapshot structural diff](feedback_snapshot_structural_diff.md) — diff consecutive Drizzle snapshots fully; SQL can omit a change the snapshot carries
-- [Touched procedure Effect wrap](feedback_touched_procedure_effect_wrap.md) — a procedure whose query was extracted must still go through query and runTrpc
-- [SQL input and cost probes](feedback_sql_input_and_cost_probes.md) — toSQL marker sweep; apostrophe kills sql.raw mutant; OR blowup; spy byte-diff vs reference; base-vs-head raw probe
-- [List query mutant patterns](feedback_list_query_mutant_patterns.md) — seed rows passing the join filter; empty branch of found/missing; '' vs NULLS LAST; PGlite C collation; rerun survivors by hand
-- [Index-drop migration checks](feedback_index_drop_migration_checks.md) — regenerate from base; COALESCE proxy; pg_locks; real-PG Docker contention test via drizzle-kit CLI; IN-list test blind spot
-- [URL-state module checks](feedback_url_state_module_checks.md) — Number() coercion mutants; seeded fuzz; equivalent mutants; __proto__ record prototype; esbuild purity
-- [Client PII telemetry checks](feedback_client_pii_telemetry_checks.md) — Replay maskAttributes default, loggerLink logs input, Sentry URL/Referer; probes from node_modules
-- [Row state and toast probes](feedback_row_state_toast_probes.md) — real Toaster + fake timers; portal click bubbling; success vs rejection after unmount; mutant/fixture collision
-- [Optimistic filter bar probes](feedback_optimistic_filter_bar_probes.md) — sibling navigators discard pending filter nav; RSC fetch delay; one invalid field blocks the bar; sync mocks hide pending
-- [Router cache stale seed](feedback_router_cache_stale_seed.md) — useState seeded from server prop is stale on return within 30 s; network-log proof, fetch-mock pitfalls, equivalent stop mutants
-- [Router cache and error.tsx probes](feedback_next_router_cache_and_error_boundary_probes.md) — Back never refetches; mutation+replace w/o refresh = stale list; invalid session cookie triggers error.tsx; reset() never refetches
-- [Client graph esbuild probe](feedback_client_graph_esbuild_probe.md) — bundle each "use client" file, stop at "use server", flag src/server, env, server-only; trpc/shared.ts is a known hit
-- [Focus loss and toast announce](feedback_focus_loss_and_toast_announce_probes.md) — controls that vanish on activation and Back drop focus to body; Radix toast announce escapes a modal's aria-hidden; webpack toast injection
-- [UI pass driver artifacts](feedback_ui_pass_driver_artifacts.md) — set viewport fires no resize (false stale popovers); portal/Sheet probes need hand measuring; sticky bar vs focus Tab loop
-- [Removed params, focus handoff, gates](feedback_removed_params_focus_handoff_gates.md) — URL writer vs reader names; client readers survive a server discard (popover crash); plan param literal vs real parser; gate cells vs task text; migrations in one tx
-- [Probe the engine before calling a test vacuous](lesson_probe-engine-before-calling-a-test-vacuous.md) — 20-line PGlite probe settles tie-order/CTE claims; my tiebreak suspicion was a false positive
-- [Stale text after a ledger change](lesson_stale-text-after-ledger-change.md) — where plans keep old wording: Done tasks, headers, AC tables, verification logs
-- [Migration high-water mark and partial merges](lesson_migration-high-water-mark-and-partial-merges.md) — check limited-merge options against the migrator's created_at rule
-- [Real migrate CLI probe](feedback_real_migrate_cli_probe.md) — run drizzle-kit migrate itself on template-cloned DBs; 0.31 swallows errors; xmin proves one tx; NULL created_at sorts first
+- [Mutant battery in scratch copy](feedback_mutant_battery_scratch_copy.md) — rsync src, exact-pair runner, cmp check; probes outside
+- [Tx rollback mutant masking](feedback_tx_rollback_mutant_masking.md) — DB failpoint kills no-transaction mutant, not commit-on-JS-failure
+- [Contract wording over plan decisions](feedback_contract_wording_over_plan_decisions.md) — a test named after a browser quirk can lock in a SPEC
+- [Authz read surface probes](feedback_authz_read_surface_probes.md) — createCaller gates, HTTP payload probe, PGlite rename for DbError
+- [Mocked framework side effects](feedback_mocked_framework_side_effects.md) — mocked router.refresh hides Next's hard-reload fallback on failure
+- [Href builder safety](feedback_href_builder_safety_checks.md) — model Next push as new URL(href, location); `..` ids
+- [Read mirrors write](feedback_read_mirrors_write_differential.md) — matrix read vs real write; boolean flags diverge on superseded
+- [Day-rule tests and TZ matrix](feedback_day_rule_tests_and_tz_matrix.md) — mutate deadline AND now sides; 10:00Z nows hide UTC-now mutants
+- [Server-only vitest alias](feedback_server_only_vitest_alias.md) — vitest stubs server-only, so green tests prove no client reachability
+- [Snapshot structural diff](feedback_snapshot_structural_diff.md) — diff consecutive Drizzle snapshots fully
+- [Touched procedure Effect wrap](feedback_touched_procedure_effect_wrap.md) — a procedure whose query was extracted must still go through query
+- [SQL input and cost probes](feedback_sql_input_and_cost_probes.md) — toSQL marker sweep; apostrophe kills sql.raw mutant; OR blowup
+- [List query mutant patterns](feedback_list_query_mutant_patterns.md) — seed rows passing the join filter; empty branch of found/missing; ''
+- [Index-drop migration checks](feedback_index_drop_migration_checks.md) — regenerate from base; COALESCE proxy; pg_locks
+- [URL-state module checks](feedback_url_state_module_checks.md) — Number() coercion mutants; seeded fuzz; equivalent mutants
+- [Client PII telemetry checks](feedback_client_pii_telemetry_checks.md) — Replay maskAttributes default, loggerLink logs input
+- [Row state and toast probes](feedback_row_state_toast_probes.md) — real Toaster + fake timers; portal click bubbling; success
+- [Optimistic filter bar probes](feedback_optimistic_filter_bar_probes.md) — sibling navigators discard pending filter nav; RSC fetch delay
+- [Router cache stale seed](feedback_router_cache_stale_seed.md) — useState seeded from server prop is stale on return within 30 s
+- [Router cache and error.tsx probes](feedback_next_router_cache_and_error_boundary_probes.md) — Back never refetches; mutation+replace w/o refresh
+- [Client graph esbuild probe](feedback_client_graph_esbuild_probe.md) — bundle each "use client" file, stop at "use server", flag src/server, env
+- [Focus loss and toast announce](feedback_focus_loss_and_toast_announce_probes.md) — controls that vanish on activation
+- [UI pass driver artifacts](feedback_ui_pass_driver_artifacts.md) — set viewport fires no resize (false stale popovers)
+- [Removed params, focus handoff, gates](feedback_removed_params_focus_handoff_gates.md) — URL writer vs reader names
+- [Probe the engine before calling a test vacuous](lesson_probe-engine-before-calling-a-test-vacuous.md) — 20-line PGlite probe settles
+- [Stale text after a ledger change](lesson_stale-text-after-ledger-change.md) — where plans keep old wording: Done tasks, headers, AC tables
+- [Migration high-water mark and partial merges](lesson_migration-high-water-mark-and-partial-merges.md) — check limited-merge options against the
+- [Real migrate CLI probe](feedback_real_migrate_cli_probe.md) — run drizzle-kit migrate itself on template-cloned DBs; 0.31 swallows errors
 - [zsh/rg quoting](env_zsh-rg-quoting.md) — quote globs, use rg -g
-- [Release-order two-sided probe](feedback_release_order_two_sided_probe.md) — run old-client/new-server and new-client/old-server in private worktrees; diff router keys vs origin/main
-- [Equal-count swap mutants](feedback_equal_counts_swap_mutants.md) — counts row with equal values hides swapped FILTERs; per-list is_active/NULL-state fixture rows; export differential probe
-- [Rewrite-loop and allow-list probes](feedback_rewrite_loop_and_whitelist_probes.md) — stateful-router push count (cap the push or a loop hangs vitest), per-entry uniqueName probe, revert-the-fix run; mutation-payload survivors
-- [Sort fixture vacuity, runner race](feedback_sort_fixture_vacuity_and_runner_race.md) — JS-reference sweep for list order; key->id mutant; NULLS LAST only on desc; never start a mutant runner twice
-- [Data migration row differential](feedback_data_migration_row_differential.md) — to_jsonb minus col + xmin (xmax = FK KEY SHARE, not a write); ghost rows; oracle fuzz; tsx harness; EXPLAIN for CTE/triggers
-- [Force dialog states via React fiber](feedback_force_dialog_states_via_react_fiber.md) — dispatch pending/success hooks for loading/summary steps with no write; swap base copy into DOM to size a text regression
-- [Migration batch concurrency probes](feedback_migration_batch_concurrency_probes.md) — EPQ misses lock-only txs and CTE-only predicates; incidental batch AEL; FK-check deadlock; SHARE-lock pause
-- [Migration test-evidence battery](feedback_migration_test_evidence_battery.md) — SQL mutants x pg+PGlite files, fixture-gap survivors, BEFORE-tag batch mutant, regex matches statement text
-- [Table-lock migration probes](feedback_table_lock_migration_probes.md) — lock-mode mutants need a FOR UPDATE-only colleague; FK KEY SHARE vs NO KEY UPDATE; victim varies; standalone has no timeout
-- [Invariant trigger coverage](feedback_invariant_trigger_coverage_mutants.md) — check the trigger's message is the killer; actor = owner hides actor-operator mutants; aligned-only fixtures skip repair variants
-- [Operator guide branch audit](feedback_operator_guide_branch_audit.md) — map each guide/dialog claim to its procedure branch; superlatives and counts; renamed labels keep false claims
-- [API surface callers, gate reconcile](feedback_api_surface_caller_and_gate_reconcile.md) — git grep HEAD, router-key script, HTTP probe; reconcile gate counts with git ls-files; tsc rewrites tsbuildinfo
-- [Audit log chain probe](feedback_audit_log_chain_probe.md) — per-entity from/to chain over app actions + migration; export oracle checked on "before"; pg orderings
-- [Release runbook as procedure](feedback_release_runbook_as_procedure.md) — deploy green vs serving; extraction timing vs migration; failure branches; CLI time-to-fail; node lock-holder harness
-- [Deferred trigger and sync helper](feedback_deferred_trigger_and_sync_helper_mutants.md) — INSERT/NULL-direction/UPDATE OF mutants; trigger removal leaves 22/25 green; neutralised waitUntilBlocked survives; PGlite is PG16
-- [SQL report script checks](feedback_sql_report_script_checks.md) — READ ONLY allows LOCK TABLE; non-HOT update flips tie-break fixtures; column-NULL battery; closedCalls oracle; PGlite vs PG15 diff
-- [Multi-step dialog and fix validation](feedback_multistep_dialog_and_fix_validation.md) — measure every dialog step at short heights; base-text swap delta; test a candidate fix in the DOM first
+- [Release-order two-sided probe](feedback_release_order_two_sided_probe.md) — run old-client/new-server and new-client/old-server in private
+- [Equal-count swap mutants](feedback_equal_counts_swap_mutants.md) — counts row with equal values hides swapped FILTERs
+- [Rewrite-loop and allow-list probes](feedback_rewrite_loop_and_whitelist_probes.md) — stateful-router push count (cap the push or a loop hangs
+- [Sort fixture vacuity, runner race](feedback_sort_fixture_vacuity_and_runner_race.md) — JS-reference sweep for list order; key->id mutant
+- [Data migration row differential](feedback_data_migration_row_differential.md) — to_jsonb minus col + xmin (xmax = FK KEY SHARE, not a write)
+- [Force dialog states via React fiber](feedback_force_dialog_states_via_react_fiber.md) — dispatch pending/success hooks for loading/summary steps
+- [Migration batch concurrency probes](feedback_migration_batch_concurrency_probes.md) — EPQ misses lock-only txs and CTE-only predicates
+- [Migration test-evidence battery](feedback_migration_test_evidence_battery.md) — SQL mutants x pg+PGlite files, fixture-gap survivors
+- [Table-lock migration probes](feedback_table_lock_migration_probes.md) — lock-mode mutants need a FOR UPDATE-only colleague; FK KEY SHARE
+- [Invariant trigger coverage](feedback_invariant_trigger_coverage_mutants.md) — check the trigger's message is the killer
+- [Operator guide branch audit](feedback_operator_guide_branch_audit.md) — map each guide/dialog claim to its procedure branch; superlatives
+- [API surface callers, gate reconcile](feedback_api_surface_caller_and_gate_reconcile.md) — git grep HEAD, router-key script, HTTP probe
+- [Audit log chain probe](feedback_audit_log_chain_probe.md) — per-entity from/to chain over app actions + migration
+- [Release runbook as procedure](feedback_release_runbook_as_procedure.md) — deploy green vs serving; extraction timing vs migration
+- [Deferred trigger and sync helper](feedback_deferred_trigger_and_sync_helper_mutants.md) — INSERT/NULL-direction/UPDATE OF mutants
+- [SQL report script checks](feedback_sql_report_script_checks.md) — READ ONLY allows LOCK TABLE; non-HOT update flips tie-break fixtures
+- [Multi-step dialog and fix validation](feedback_multistep_dialog_and_fix_validation.md) — measure every dialog step at short heights
 - [CTE snapshot probes](feedback_cte_snapshot_probes.md) — move+log in one statement: probe EPQ window and post-snapshot commit separately
 - [PG lock mutant runs](feedback_pg_lock_mutant_runs.md) — pnpm @mito links into copy; cascade timeouts, isolate with -t; pre-fix file as mutant
-- [Action error shape probes](feedback_action_error_shape_probes.md) — probe both link modes; code-as-message fixture hides mutants; disabled-actor divergence is a probe artifact
-- [Dialog action UI probes](feedback_dialog_action_ui_probes.md) — abort POST for stuck dialog, index-keyed rows move focus, inject alert for contrast/jump, toast ratio computed
-- [Shared primitive regression](feedback_shared_primitive_regression_checks.md) — twMerge consumers; focus loop must compare to prior activeElement (roving tablist); live Radix-rule harness
-- [Query error and pixel probes](feedback_query_error_and_pixel_probes.md) — fail only dialog queries via QueryClient refetch; node PNG pixel contrast; title-vs-X Range scan
-- [Filter-on-read probes](feedback_filter_on_read_probes.md) — derived-from-props fix leaves store entry; probe vanish-then-return and remount; button-after-click asserts loading
-- [Grid min-content at text scale](feedback_grid_min_content_text_scale.md) — flex row or header padding widens grid track at root 20px; inject long words; old classes inline
-- [Dialog harness ordering](feedback_dialog_harness_ordering_and_state_forcing.md) — injector before stopImmediatePropagation; fiber-dispatch write-gated steps; merge split text rects
-- [Injection test payloads, param binding](feedback_injection_test_payload_and_param_binding.md) — TRUE payloads pass on vulnerable code; date params need non-UTC session; versions from worktree lockfile
-- [Base-vs-head procedure differential](feedback_base_vs_head_procedure_differential.md) — base file beside head, createTRPCRouter caller, patch testClient.query; userId pitfall; perf tests flake under load
-- [Union-branch mutants, pg binding capture](feedback_union_branch_mutants_and_pg_binding_capture.md) — mutate each statement; postgres-js debug hook; NUL text param = 500
-- [Raw-SQL to structured filter differential](feedback_raw_sql_to_structured_filter_differential.md) — probeSql hook, per-kind value battery, PG15 prepare:false Rome vs PGlite PG16, LIKE backslash
-- [Validator bounds, runner selector](feedback_validator_bounds_and_runner_selector.md) — lower-bound mutants survive; CI-line proof for pg file; NULL-row fixture; west-of-UTC date validator
-- [Refactor spec AC checks](feedback_refactor_spec_ac_checks.md) — grep ACs (zod enums), guard matrix, codes-only tests, lock trigger/FK path vacuity, memory doubles
-- [PGlite clock and fake Date](feedback_pglite_clock_and_fake_date.md) — ms timestamps tie; now() follows faked Date.now, so freeze-before-seed makes updatedAt checks vacuous
-- [Partial-input update mutant](feedback_partial_input_update_mutant.md) — all-fields write tests hide omitted-field-as-NULL mutants; mutate with a subset input
-- [Inline to runTrpc error diff](feedback_inline_to_runtrpc_error_differential.md) — DbError mirrors code so cause.code tests are blind; base/head probe of cause keys, HTTP body, logs
-- [Router type contract differential](feedback_router_type_contract_differential.md) — print inferRouterInputs/Outputs via TS API in base+head, diff; print literals first or enums vanish
-- [ORDER BY removal survivors](feedback_order_by_removal_survivors.md) — alphabetical ids hide a missing orderBy; DISTINCT on tiny tables sorts anyway; unmatched-key fallthrough mutant
-- [Two-row fixtures, id-order sorts](feedback_two_row_fixtures_and_id_order.md) — no distractor rows and id-ordered sort fixtures hide filter-removal and sort-column mutants
-- [Plan mutant equivalence, removal grep](feedback_plan_mutant_equivalence_and_removal_grep.md) — probe listed mutants (inArray [] = false, castAsNumber type-only, unique index); removal grep vs the plan's own key tests
-- [Move pass byte diff](feedback_move_pass_byte_diff.md) — sed-range diff of moved body, collaborator diffs, driver by hand; direct eslint plugin-conflict is env
-- [Guard matrix parity mutants](feedback_guard_matrix_parity_mutants.md) — builder grep base vs head, one swap mutant per direction; no-session row needed for protected vs public
-- [Gate clone and count scope](feedback_gate_clone_and_doc_count_scope.md) — build a cp -c clone of clean HEAD, not the scratch gate; doc counts depend on scope
-- [Read-move parity battery](feedback_read_move_parity_battery.md) — normalised-text extract + typedump md5 + gate mutants; unique-index and inArray([]) equivalents; no-op mutant trap
-- [Write parity scratch-copy probe](feedback_write_parity_scratch_copy_probe.md) — @mito links into copy, reseed ctx for HTTP, mask pg now(), undefined norm, smallint FK
-- [Delegated translator cause probe](feedback_delegated_translator_cause_probe.md) — delegated tags (CustomerMissing) have no contact cause -> generic message; tsx shape recipe
-- [Removed capability twin, scratch vitest](feedback_removed_capability_twin_and_scratch_vitest.md) — grep all writers of the column across routers; scratch vitest config needs absolute imports
-- [Out-of-tree vitest probe](feedback_out_of_tree_vitest_probe.md) — probe both drivers from mktemp: node_modules symlink, workspace with root=repo, test.dir=tmp
-- [Real handler client probe](feedback_real_handler_client_probe.md) — appRouter + fetchRequestHandler as link fetch + inProcessLink; operator.userId not id; check mutant applied
-- [Shared worktree, git archive copy](feedback_shared_worktree_git_archive_copy.md) — parallel passes mutate the worktree; copy from git archive HEAD; whitelist mutants: zod strip, FK kill reason, .min(1) on FK id
-- [Mutant first-match, empty-id case](feedback_mutant_first_match_and_empty_input_case.md) — perl without /g hits first repeated .pick; spread-then-override equivalents; ""-id BAD_REQUEST not pinning min(1)
-- [Scratchpad dir names, unsent form field](feedback_shared_scratchpad_dirnames_and_unsent_form_field.md) — pass-unique dir names; pick-drop mutant per key, fixture lacking vatCode lets it live
-- [Query-builder params, plan prototype](feedback_query_builder_param_and_plan_prototype.md) — drizzle drops limit<0 (no error); prototype planned service + mutants in scratch; owner-less factory fixtures
-- [Server action caller-class differential](feedback_server_action_caller_class_differential.md) — real action via vitest shim + mocked getServerAuthSession, per caller class, base vs head copies
-- [Lookup-then-lock window probe](feedback_lookup_then_lock_window_probe.md) — park writer at the lock, rewrite the pointer, hold new owner; pg kill reason; spread write-backs
-- [Three-transport contract differential](feedback_three_transport_contract_differential.md) — caller/inproc/http + real actions, base vs head; caller has no .query; log marker grep; annotation hides type mutant
-- [Fake-Tx mutant, pg wait limits](feedback_fake_tx_mutant_and_pg_wait_limits.md) — "tx removed" dies on missing Tx; fake-Tx (Db client) mutant; pg wait tests miss held-to-commit; first-write failpoint trivial
+- [Action error shape probes](feedback_action_error_shape_probes.md) — probe both link modes; code-as-message fixture hides mutants
+- [Dialog action UI probes](feedback_dialog_action_ui_probes.md) — abort POST for stuck dialog, index-keyed rows move focus
+- [Shared primitive regression](feedback_shared_primitive_regression_checks.md) — twMerge consumers; focus loop must compare to prior activeElement
+- [Query error and pixel probes](feedback_query_error_and_pixel_probes.md) — fail only dialog queries via QueryClient refetch
+- [Filter-on-read probes](feedback_filter_on_read_probes.md) — derived-from-props fix leaves store entry; probe vanish-then-return and remount
+- [Grid min-content at text scale](feedback_grid_min_content_text_scale.md) — flex row or header padding widens grid track at root 20px
+- [Dialog harness ordering](feedback_dialog_harness_ordering_and_state_forcing.md) — injector before stopImmediatePropagation
+- [Injection test payloads, param binding](feedback_injection_test_payload_and_param_binding.md) — TRUE payloads pass on vulnerable code
+- [Base-vs-head procedure differential](feedback_base_vs_head_procedure_differential.md) — base file beside head, createTRPCRouter caller
+- [Union-branch mutants, pg binding capture](feedback_union_branch_mutants_and_pg_binding_capture.md) — mutate each statement
+- [Raw-SQL to structured filter differential](feedback_raw_sql_to_structured_filter_differential.md) — probeSql hook, per-kind value battery
+- [Validator bounds, runner selector](feedback_validator_bounds_and_runner_selector.md) — lower-bound mutants survive; CI-line proof for pg file
+- [Refactor spec AC checks](feedback_refactor_spec_ac_checks.md) — grep ACs (zod enums), guard matrix, codes-only tests
+- [PGlite clock and fake Date](feedback_pglite_clock_and_fake_date.md) — ms timestamps tie; now() follows faked Date.now
+- [Partial-input update mutant](feedback_partial_input_update_mutant.md) — all-fields write tests hide omitted-field-as-NULL mutants
+- [Inline to runTrpc error diff](feedback_inline_to_runtrpc_error_differential.md) — DbError mirrors code so cause.code tests are blind
+- [Router type contract differential](feedback_router_type_contract_differential.md) — print inferRouterInputs/Outputs via TS API in base+head
+- [ORDER BY removal survivors](feedback_order_by_removal_survivors.md) — alphabetical ids hide a missing orderBy
+- [Two-row fixtures, id-order sorts](feedback_two_row_fixtures_and_id_order.md) — no distractor rows and id-ordered sort fixtures hide
+- [Plan mutant equivalence, removal grep](feedback_plan_mutant_equivalence_and_removal_grep.md) — probe listed mutants (inArray [] = false
+- [Move pass byte diff](feedback_move_pass_byte_diff.md) — sed-range diff of moved body, collaborator diffs, driver by hand
+- [Guard matrix parity mutants](feedback_guard_matrix_parity_mutants.md) — builder grep base vs head, one swap mutant per direction
+- [Gate clone and count scope](feedback_gate_clone_and_doc_count_scope.md) — build a cp -c clone of clean HEAD, not the scratch gate
+- [Read-move parity battery](feedback_read_move_parity_battery.md) — normalised-text extract + typedump md5 + gate mutants; unique-index
+- [Write parity scratch-copy probe](feedback_write_parity_scratch_copy_probe.md) — @mito links into copy, reseed ctx for HTTP, mask pg now()
+- [Delegated translator cause probe](feedback_delegated_translator_cause_probe.md) — delegated tags (CustomerMissing) have no contact cause ->
+- [Removed capability twin, scratch vitest](feedback_removed_capability_twin_and_scratch_vitest.md) — grep all writers of the column across
+- [Out-of-tree vitest probe](feedback_out_of_tree_vitest_probe.md) — probe both drivers from mktemp: node_modules symlink
+- [Real handler client probe](feedback_real_handler_client_probe.md) — appRouter + fetchRequestHandler as link fetch + inProcessLink
+- [Shared worktree, git archive copy](feedback_shared_worktree_git_archive_copy.md) — parallel passes mutate the worktree
+- [Mutant first-match, empty-id case](feedback_mutant_first_match_and_empty_input_case.md) — perl without /g hits first repeated .pick
+- [Scratchpad dir names, unsent form field](feedback_shared_scratchpad_dirnames_and_unsent_form_field.md) — pass-unique dir names
+- [Query-builder params, plan prototype](feedback_query_builder_param_and_plan_prototype.md) — drizzle drops limit<0 (no error)
+- [Server action caller-class differential](feedback_server_action_caller_class_differential.md) — real action via vitest shim + mocked
+- [Lookup-then-lock window probe](feedback_lookup_then_lock_window_probe.md) — park writer at the lock, rewrite the pointer, hold new owner
+- [Three-transport contract differential](feedback_three_transport_contract_differential.md) — caller/inproc/http + real actions, base vs head
+- [Fake-Tx mutant, pg wait limits](feedback_fake_tx_mutant_and_pg_wait_limits.md) — "tx removed" dies on missing Tx; fake-Tx (Db client) mutant
+- [Storage key reach probes](feedback_storage_key_reach_probes.md) — fake GCS/Supabase servers; Supabase keys are not literal (`..`, `\`, `?`)
+- [Runtime topology claims](feedback_runtime_topology_claims.md) — flags x process x env matrix; session-DB coherence; cron per bucket
+- [tRPC removal HTTP equivalence](feedback_trpc_removal_http_equivalence.md) — setup mocks and SKIP_ENV_VALIDATION hide import crashes
+- [Removed guard layer mutants](feedback_removed_guard_layer_mutants.md) — dropped 2nd guard: mutate the call shape (authCheck(req))
+- [Layer mock blind spots](feedback_layer_mock_blind_spots.md) — throw-in-real-layer probe plus no-mock control
+- [Flag-flip target env](feedback_flag_flip_target_env_probe.md) — a remedy that flips a rewrite flag: check the target's deploy env (set-env-vars
+- [Deferred precondition attribution](feedback_deferred_precondition_attribution.md) — grep the other step per item; deploy wipes hand fixes; prechecks vacuous or unsatisfiable
+- [Spec gate checks](feedback_spec_bundled_clause_and_enum_terms.md) — per-procedure clauses; enum terms; unscoped grep ACs; vitest TZ claim
+- [Twin-window queries, literal types](feedback_twin_window_queries_and_literal_type_claims.md) — pin each clause in both windows; `?? 0` widens to number; TS probe
+- [Degraded UI pass substitutes](feedback_degraded_ui_pass_ssr_probes.md) — SSR the library for edge props, Tailwind CLI for dynamic colours, missing 50 boundary
+- [Disabled message, x64 runner](feedback_disabled_message_and_x64_runner.md) — adapter drops disabled sessions over HTTP; python subprocess runs x64 node
+- [Uncontrolled prop, searchParams remount](feedback_uncontrolled_prop_and_searchparam_remount.md) — stale on soft nav; key= fix drops focus to body, discarded navigate
+- [Worktree gate substitutes](feedback_worktree_gate_substitutes.md) — literal next lint via git-archive clone; throwaway pg15 container for the pg project; build green != lint
+- [Distinct-value fixtures](feedback_distinct_value_fixtures_hide_distinct_aggregates.md) — all-different amounts hide sumDistinct/avgDistinct mutants
+- [Round history per commit](feedback_round_history_per_commit_probes.md) — overlay red; tsc per commit; old-tree compare after rewrite; seeded differential probe

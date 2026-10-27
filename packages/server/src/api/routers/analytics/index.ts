@@ -1,21 +1,13 @@
 import { createTRPCRouter } from "../../trpc"
 import {
-  getPraticheLiquidate,
-  getAllImportoRatePageteOfLastMonth,
-  getAllNewPraticheOfLastMonth,
-  getFinanziatoMedioPerOperatore,
-  getAmountPerSedeInLastMonth,
-  getAllDoneTasksInLastMonth,
-  getFinanziatoTotalePerOperatore,
-  getFinaziatoMedioPerCliente,
+  getContactProgress,
+  getFinancedAverage,
+  getFinancedByBranch,
+  getFinancedTotal,
 } from "./GET/index"
-export const analitycsRouter = createTRPCRouter({
-  getPraticheLiquidate,
-  getAllImportoRatePageteOfLastMonth,
-  getAllNewPraticheOfLastMonth,
-  getAmountPerSedeInLastMonth,
-  getFinanziatoMedioPerOperatore,
-  getAllDoneTasksInLastMonth,
-  getFinanziatoTotalePerOperatore,
-  getFinaziatoMedioPerCliente,
+export const analyticsRouter = createTRPCRouter({
+  getFinancedTotal,
+  getFinancedAverage,
+  getFinancedByBranch,
+  getContactProgress,
 })

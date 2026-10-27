@@ -1,5 +1,4 @@
-import "server-only"
-import * as Sentry from "@sentry/nextjs"
+import * as Sentry from "@sentry/node"
 import { Cause, Context, Effect, Exit, Layer } from "effect"
 
 /**

@@ -13,7 +13,6 @@ export function createTestCaller(actor: { userId: string } | { id: string }) {
   const userId = "userId" in actor ? actor.userId : actor.id
   const ctx: Context = {
     db,
-    supabaseClient: {} as Context["supabaseClient"],
     session: { user: { id: userId }, expires: "2099-01-01T00:00:00.000Z" },
     headers: new Headers(),
   }

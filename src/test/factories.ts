@@ -37,9 +37,16 @@ const usersBeforeDisabled = pgTableCreator((name) => `mito-deutsche_${name}`)(
 )
 
 /** A user without an operator row: the operator middleware rejects it. */
+// The columns better-auth added (spec auth-better-auth) are left out: the
+// insert through `usersBeforeDisabled` doesn't read them back
+export type TestUser = Omit<
+  typeof users.$inferSelect,
+  "emailConfirmed" | "createdAt" | "updatedAt"
+>
+
 export async function createUser(
   values: { role?: Role; disabledAt?: Date; disabledBy?: number } = {}
-): Promise<typeof users.$inferSelect> {
+): Promise<TestUser> {
   const id = nextId("user")
   const email = `${id}@test.local`
   const role = values.role ?? "OPERATORE"

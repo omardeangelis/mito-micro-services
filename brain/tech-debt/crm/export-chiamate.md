@@ -5,7 +5,7 @@ links:
   - "[[specs/crm/export-chiamate/REPORT]]"
   - "[[specs/crm/export-chiamate/SPEC]]"
 created: 2026-10-23
-updated: 2026-10-23
+updated: 2026-10-27
 ---
 
 # Tech debt: export delle chiamate
@@ -27,8 +27,9 @@ Il cambio (PR #65) è uscito con verdetto SHIP. Queste voci non violano un crite
   - Fix: accettare solo `error-import-<gg-mm-aaaa>.xlsx` (cambia le asserzioni di `storage.db.test.ts`, quindi va concordato).
 - **[RISOLTO 2026-10-23, a4f73d6 in #67: rimossa]** `supabase.deleteExportFile` è `protectedProcedure` e non ha chiamanti: qualunque utente può svuotare `export/`.
   - Fix: rimuoverla (il cron usa `deleteExportFiles` direttamente) o passarla ad `adminSessionProcedure`.
-- **[FOLLOW-UP]** Un admin senza riga operatore non vede la sezione "Chiamate per operatore": `CallsSection` legge il ruolo da `user.getUserPreference`, che fa `innerJoin` su `operators`.
+- **[CHIUSO 2026-10-26: non si fa]** Un admin senza riga operatore non vede la sezione "Chiamate per operatore": `CallsSection` legge il ruolo da `user.getUserPreference`, che fa `innerJoin` su `operators`.
   - Fix: leggere `users.role` con una `leftJoin`, come fa `enforceIsAdmin`.
+  - Perché non si fa: per la regola "ogni utente è un operatore" (decisione di Omar del 2026-10-26, [[domains/crm/concepts/operatore]]) un utente senza riga operatore è un'anomalia. Dalla [PR #101](https://github.com/omardeangelis/mito-micro-services/pull/101) `export.callStats` è `adminProcedure` e gli risponde `BAD_REQUEST`, come `getUserPreference`.
 - **[CLEANUP]** `exceljs` in `package.json` non ha import. `Storage.signedUploadUrl` non ha più chiamanti dopo la rimozione di `createExportUploadUrl`.
 - **[CLEANUP]** `brain/chore/migration/fase-2-backend-express.md` e `fase-3-frontend-spa.md` citano ancora le rotte `/api/export/[export]/*`, che non esistono più.
 

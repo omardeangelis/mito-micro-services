@@ -2,36 +2,35 @@ import { LastUpdatedTableSection } from "./_components/LastUpdatedTableSection"
 import { Suspense } from "react"
 import { DataSection } from "./_components/DataSection"
 import { TableSkeleton } from "@/components/custom/table/TableSkeleton"
-import { WorkerImportDialog } from "./_components/WorkerImportDialog"
+import { ImportLink } from "./_components/ImportLink"
 import { CallsSection } from "./_components/export/CallsSection"
-import { DataSectionSkeleton } from "./_components/AdminDataSection"
+import { DataSectionSkeleton } from "./_components/CardRow"
 import { type ServerPageProps } from "@/lib/types"
-import {
-  DEFUALTTIMEFRAME,
-  type TimeFrame,
-} from "@mito/domain/constants/timeframes"
+import { parseTimeFrame } from "@mito/domain/constants/timeframes"
 import { TimeFrameSelector } from "@/components/custom/date-picker"
 
 export default async function DashboardHome(
   props: ServerPageProps<{ x: never }>
 ) {
-  const { tf } = props.searchParams ?? { tf: DEFUALTTIMEFRAME }
+  const timeframe = parseTimeFrame(props.searchParams?.tf)
   return (
     <main className="dashabord-container">
       <div className="dashabord-layout">
         <div className="relative h-[inherit]">
           <div className="dashboard-content rounded-lg bg-white">
             <div className="flex items-center justify-end gap-4">
-              <WorkerImportDialog />
+              <Suspense fallback={null}>
+                <ImportLink />
+              </Suspense>
             </div>
             <div className="mt-8">
-              <div className="flex items-center gap-4">
+              <div className="flex flex-wrap items-center gap-4">
                 <h2 className="text-2xl">Analisi Andamento</h2>
-                <TimeFrameSelector />
+                <TimeFrameSelector timeframe={timeframe} />
               </div>
               <div className="mt-4">
                 <Suspense fallback={<DataSectionSkeleton />}>
-                  <DataSection timeframe={tf as TimeFrame} />
+                  <DataSection timeframe={timeframe} />
                 </Suspense>
               </div>
             </div>

@@ -1,4 +1,3 @@
-import "server-only"
 import { Effect } from "effect"
 import { and, asc, eq, isNull, ne } from "drizzle-orm"
 import { operators } from "@mito/db/schema/operators"
@@ -44,11 +43,8 @@ export const listDeactivationTargets = (operatorId: number) =>
       .orderBy(asc(operators.surname), asc(operators.name), asc(operators.id))
   )
 
-/**
- * The operator with `id` and its role, or `undefined`. Quirk kept on purpose:
- * without an `id` (or with 0) the query has no WHERE and returns the first row.
- */
-export const getOperatorById = (id: number | undefined) =>
+/** The operator with `id` and its role, or `undefined`. */
+export const getOperatorById = (id: number) =>
   query((client) =>
     client
       .select({
@@ -57,7 +53,7 @@ export const getOperatorById = (id: number | undefined) =>
       })
       .from(operators)
       .innerJoin(users, eq(operators.userId, users.id))
-      .where(id ? eq(operators.id, id) : undefined)
+      .where(eq(operators.id, id))
   ).pipe(Effect.map((rows) => rows[0]))
 
 /** `id`, `name` and `surname` of the operator of `userId`, or `undefined`. */

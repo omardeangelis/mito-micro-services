@@ -1,4 +1,3 @@
-import "server-only"
 import { Effect } from "effect"
 import { and, eq } from "drizzle-orm"
 import {

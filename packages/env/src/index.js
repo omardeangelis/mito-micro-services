@@ -58,6 +58,13 @@ export const env = createEnv({
     // Who signs in outside production besides the users already in the
     // database: comma-separated addresses
     AUTH_ALLOWED_EMAILS: z.string().optional(),
+    // better-auth (brain/specs/crm/auth-better-auth), optional until it
+    // serves the login: the secret of its cookies, and the frontend's address
+    BETTER_AUTH_SECRET: z.string().min(32).optional(),
+    BETTER_AUTH_URL: z.string().url().optional(),
+    // Exactly "true" turns on the test logins (the email link, the addresses
+    // of AUTH_ALLOWED_EMAILS); anything else, or unset, leaves them off
+    AUTH_TEST_LOGIN: z.string().optional(),
     CRON_SECRET_KEY: z.string().optional(),
     TELEGRAM_BOT_TOKEN: z.string().optional(),
     TELEGRAM_CHAT_ID: z.string().optional(),
@@ -106,6 +113,9 @@ export const env = createEnv({
     SENDGRID_SERVER: process.env.SENDGRID_SERVER,
     SENDGRID_PORT: process.env.SENDGRID_PORT,
     AUTH_ALLOWED_EMAILS: process.env.AUTH_ALLOWED_EMAILS,
+    BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET,
+    BETTER_AUTH_URL: process.env.BETTER_AUTH_URL,
+    AUTH_TEST_LOGIN: process.env.AUTH_TEST_LOGIN,
     NEXT_PUBLIC_VERCEL_ENV: process.env.NEXT_PUBLIC_VERCEL_ENV,
     NEXT_PUBLIC_APP_ENV: process.env.NEXT_PUBLIC_APP_ENV,
     CRON_SECRET_KEY: process.env.CRON_SECRET_KEY,

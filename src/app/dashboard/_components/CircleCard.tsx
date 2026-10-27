@@ -1,7 +1,6 @@
 "use client"
 
 import { Card, ProgressCircle } from "@tremor/react"
-import { useMemo } from "react"
 
 type Props = {
   done: number
@@ -10,39 +9,26 @@ type Props = {
 
 type CircleCardProps = React.PropsWithChildren<Props>
 
-export const CircleCard = ({ children, done, todo }: CircleCardProps) => {
-  const percentage = useMemo(
-    () => (done / (done + todo)) * 100 || 0,
-    [done, todo]
-  )
+/** Il colore della percentuale che la card mostra: 75,4% si mostra 75%, blu. */
+const colorOf = (shown: number) => {
+  if (shown > 75) return "green"
+  if (shown > 50) return "blue"
+  if (shown > 25) return "yellow"
+  return "red"
+}
 
-  const color = useMemo(() => {
-    switch (percentage > 100) {
-      case percentage > 75:
-        return "green"
-      case percentage > 50:
-        return "blue"
-      case percentage > 25:
-        return "yellow"
-      default:
-        return "red"
-    }
-  }, [percentage])
+export const CircleCard = ({ children, done, todo }: CircleCardProps) => {
+  const shown = Math.round((done / (done + todo)) * 100 || 0)
+
   return (
     <Card className="w-full">
       <div className="flex items-center justify-start space-x-5">
-        <ProgressCircle
-          value={Number(percentage.toFixed(0))}
-          size="xl"
-          color={color}
-        >
-          <span className="text-xs font-medium text-slate-700">
-            {percentage.toFixed(0)}%
-          </span>
+        <ProgressCircle value={shown} size="xl" color={colorOf(shown)}>
+          <span className="text-xs font-medium text-slate-700">{shown}%</span>
         </ProgressCircle>
         <div>
           <p className="text-tremor-default font-medium text-tremor-content-strong dark:text-dark-tremor-content-strong">
-            {`${done}/${done + todo} (${percentage.toFixed(0)}%)`}
+            {`${done}/${done + todo} (${shown}%)`}
           </p>
           {children}
         </div>

@@ -1,4 +1,3 @@
-import "server-only"
 import { TRPCError } from "@trpc/server"
 import { Data } from "effect"
 import {

@@ -1,4 +1,3 @@
-import "server-only"
 import { and, eq, gte, inArray, lt, ne, sql } from "drizzle-orm"
 import { Effect } from "effect"
 import { operators } from "@mito/db/schema/operators"

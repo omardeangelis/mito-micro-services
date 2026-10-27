@@ -1,3 +1,5 @@
+// First, so Sentry's client exists before the rest of the server loads
+import "./instrument"
 import { serve } from "@hono/node-server"
 import { app } from "./app"
 

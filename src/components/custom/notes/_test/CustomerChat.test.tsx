@@ -3,6 +3,7 @@ import { StrictMode, Suspense, useState } from "react"
 import userEvent from "@testing-library/user-event"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { type Message } from "@mito/domain/schemas"
+import { MAX_CHAT_LIMIT } from "@mito/domain/constants/chat"
 import { CollassableSection } from "@/components/custom/CollassableItem"
 import { CustomerChat, CustomerNewChat, CustomerNotes } from "../CustomerChat"
 import { CustomerChatSection } from "../CustomerChatSection"
@@ -69,9 +70,10 @@ vi.mock("@/trpc/react", () => ({
     operator: {
       getUserOperator: { useQuery: () => ({ data: mocks.operator }) },
       getOperatorById: {
-        useQuery: () => {
+        useQuery: (_input: unknown, options?: { enabled?: boolean }) => {
           mocks.noteRender()
-          return mocks.author
+          // Disabled: react-query fetches nothing and has no data
+          return options?.enabled === false ? { data: undefined } : mocks.author
         },
       },
     },
@@ -205,6 +207,13 @@ describe("CustomerChat, l'autore di una nota che non c'è ancora (M11, P17)", ()
     expect(
       screen.getByRole("heading", { level: 6, name: "Federica Rossi" })
     ).toBeTruthy()
+  })
+
+  it("una nota con un operatorId che nessun operatore può avere non cerca l'autore e non mostra un nome (TD3 a)", () => {
+    renderChat([{ ...note(1, "Nota senza autore"), operatorId: 0 }])
+
+    expect(notesWith("Nota senza autore")).toHaveLength(1)
+    expect(screen.queryByRole("heading", { level: 6 })).toBeNull()
   })
 })
 
@@ -673,6 +682,27 @@ describe("CustomerChat, scroll della lista", () => {
 
     expect(router.replace).toHaveBeenCalled()
     expect(scrolled).toEqual([])
+  })
+})
+
+describe("CustomerChat, 'Carica altri messaggi' fino al massimo", () => {
+  const loadMore = () =>
+    screen.queryByRole("button", { name: "Carica altri messaggi" })
+
+  it("l'ultimo passo chiede il massimo, non di più", async () => {
+    renderChat([note(1, "Prima nota")], MAX_CHAT_LIMIT + 10, MAX_CHAT_LIMIT - 2)
+    const user = userEvent.setup()
+
+    await user.click(loadMore()!)
+
+    const [href] = router.replace.mock.lastCall! as [string, unknown]
+    expect(new URL(href).searchParams.get("limit")).toBe(String(MAX_CHAT_LIMIT))
+  })
+
+  it("al massimo il bottone sparisce, anche se la chat ha altre note", () => {
+    renderChat([note(1, "Prima nota")], MAX_CHAT_LIMIT + 10, MAX_CHAT_LIMIT)
+
+    expect(loadMore()).toBeNull()
   })
 })
 

@@ -1,16 +1,13 @@
 import { createTRPCRouter } from "../../trpc"
-import {
-  getExistingPractices,
-  updateExistingPractices,
-  getExistingCustomers,
-  updateExistingCustomers,
-} from "./GET/index"
+import { active, list, lookup, start, upload } from "./procedures"
 
+// The import of customers and practices (spec import-pratiche), admins only
 const importRouter = createTRPCRouter({
-  getExistingPractices,
-  updateExistingPractices,
-  getExistingCustomers,
-  updateExistingCustomers,
+  lookup,
+  upload,
+  start,
+  active,
+  list,
 })
 
 export default importRouter

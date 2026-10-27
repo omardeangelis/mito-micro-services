@@ -1,4 +1,3 @@
-import "server-only"
 import { Effect } from "effect"
 import { and, count, eq, inArray, or, sql } from "drizzle-orm"
 import { type Actor } from "@mito/domain/contact/permissions"
@@ -11,20 +10,15 @@ import { sessions, users } from "@mito/db/schema/users"
 import {
   type Db,
   type DbClient,
-  DbError,
+  type DbError,
   query,
+  retryOnDeadlock,
   transaction,
 } from "../../effect/db"
 import { OperatorNotFound } from "../contact/errors"
 import { findWorkingOperator } from "../contact/operator"
 import { HandoverSameOperator } from "../customer/errors"
 import { CannotDeactivateSelf, OperatorIsAdmin } from "./errors"
-
-/** How many times a deactivation that hit a deadlock runs again (AC12). */
-const DEADLOCK_RETRIES = 2
-
-const isDeadlock = (error: unknown) =>
-  error instanceof DbError && error.code === "40P01"
 
 const MOVED_CUSTOMERS = "moved_customers"
 const MOVED_CONTACTS = "moved_contacts"
@@ -132,6 +126,9 @@ export type DeactivationResult = {
  *    doesn't conflict with `FOR KEY SHARE`.
  * 2. ordered by id, the customers of the operator and those with an active
  *    contact of theirs; then, ordered by id, those active contacts.
+ * 3. before moving them, ordered by `pratica_id`, the practices of the
+ *    operator: the import locks its practices in that order (D6 of
+ *    import-pratiche).
  *
  * Checks, in this order, before any write: the operator exists, has a user and
  * is not disabled (else `OperatorNotFound`: the system operator has no user);
@@ -263,7 +260,16 @@ export const deactivateOperator = ({
           .from(ctes[0])
       })
 
-      // 5. The practices, without a log row
+      // 5. The practices, without a log row: locked first in order of
+      // `pratica_id`, as the import locks them
+      yield* query((client) =>
+        client
+          .select({ id: practices.praticaId })
+          .from(practices)
+          .where(eq(practices.operatorId, operatorId))
+          .orderBy(practices.praticaId)
+          .for("update")
+      )
       const movedPractices = yield* query((client) =>
         client
           .update(practices)
@@ -289,7 +295,7 @@ export const deactivateOperator = ({
         practicesMoved: movedPractices.length,
       }
     })
-  ).pipe(Effect.retry({ times: DEADLOCK_RETRIES, while: isDeadlock }))
+  ).pipe(retryOnDeadlock)
 
 export type DeactivationImpact = {
   customers: number

@@ -3,7 +3,7 @@ domain: platform
 title: Backend, DB, storage e cron su GCP
 type: piano
 status: in_progress
-last_updated: 2026-10-20
+last_updated: 2026-10-27
 ---
 
 # Backend, DB, storage e cron su GCP
@@ -20,6 +20,7 @@ Questo piano sostituisce le decisioni D8 e D9 (Railway) e la fase 2 (Express) di
 ## Principi
 
 - **Prima tutto lo staging, poi la prod**, dopo un go/no-go con criteri scritti.
+- **`dev` → `main` resta fermo fino al go/no-go** (conferma di Leonardo del 2026-10-26, prima del merge della catena dell'import su `dev`). L'import nuovo toglie il vecchio ([[specs/crm/import-pratiche/PLAN]], PR G #89): `main` non lo riceve prima dei test su staging (T12b).
 - **Un passo alla volta, e ogni passo si accende con una variabile d'ambiente.** La prod passa al backend un pezzo per volta (tRPC, REST, auth, cron, DB), mai due nella stessa notte.
 - **Il backend ospita il codice esistente, non lo copia.** Importa gli stessi file di `src/server/**` e `src/app/api/**`: le modifiche di Omar valgono subito per entrambi e non c'è niente da tenere allineato a mano. I file si spostano fisicamente in `api/` solo alla fine, quando Next non li usa più, in un momento concordato con Omar.
 - **Stesso contratto:** stessi path, stessi nomi di procedura, input, output e codici di errore. I test esistenti restano verdi con le stesse asserzioni.
@@ -120,7 +121,7 @@ Un progetto a sé (`~/Desktop/lavoro/gcs-storage-kit`), da copiare in ogni proge
 | B5 | Cron sul backend + Cloud Scheduler + Slack; poi vengono tolti i workflow cron di GitHub per lo staging | Opus + Haiku | T, B2 |
 | W1 | Drizzle 0.45 / kit 0.31 ([[chore/manutenzione-dipendenze]]) | Haiku + review di Opus | — |
 | PR7 | PR7 del piano Contatti: T7.1 (servizio `postgres:15` in CI e in Docker, harness `*.pg.test.ts` su un database `mito_test_<casuale>`, `PUSHED_SCHEMA` in un modulo suo) e T7.1b (`mito_local` con `db:local:up`, `db:local:reset` e `db:local:migrate`). T7.2 (concorrenza dei Contatti) e T7.1c (seeder di Contatti) restano a Omar, a bassa priorità | Opus (T7.1, T7.1b) + Omar (T7.2, T7.1c) | W1 |
-| B6 | DB: Cloud SQL di staging, dump del DB Supabase di sviluppo, script di verifica, backend via socket Unix, locale via Auth Proxy. Fatti il 2026-10-20 istanza, copia e verifica (note di esecuzione); il backend passa a Cloud SQL dopo B4 | Opus + Leonardo | B4, W1, PR7 (T7.1, T7.1b) |
+| B6 | DB: Cloud SQL di staging, dump del DB Supabase di sviluppo, script di verifica, backend via socket Unix, locale via Auth Proxy. Fatti il 2026-10-20 istanza, copia e verifica (note di esecuzione); il backend passa a Cloud SQL dopo B4. Il login del backend (`login-staging.sh`, i secret `STAGING_AZURE_AD_*` e `STAGING_SENDGRID_*`, `AUTH_ALLOWED_EMAILS`) è nella [PR #90](https://github.com/omardeangelis/mito-micro-services/pull/90), in bozza dal 2026-10-26 fino all'esecuzione di B6: prima chi ha l'accesso a Vercel e a GCP lancia `login-staging.sh`, poi la PR si unisce, prima di accendere `BACKEND_AUTH` | Opus + Leonardo | B4, W1, PR7 (T7.1, T7.1b) |
 | S5 | Copia prod → staging (sotto) | Opus + Leonardo | ok del committente |
 | S6 | Osservazione per almeno 2 settimane, prove di rollback e di restore PITR → go/no-go | tutti | B1–B6 |
 
@@ -137,6 +138,12 @@ Ogni passo si accende con le variabili del progetto Vercel di prod e del servizi
 6. DB, nella finestra serale.
 
 Le dismissioni arrivano 2–4 settimane dopo.
+
+**Sentry sul backend di prod.** Dalla [PR #104](https://github.com/omardeangelis/mito-micro-services/pull/104) `apps/api/src/instrument.ts` inizializza Sentry, ma solo dove `isProduction` (`packages/env/src/index.js`) è vero. Fuori da un bundle Next lo decidono `VERCEL_ENV` (o `NEXT_PUBLIC_VERCEL_ENV`) uguale a `production` e `APP_ENV` diverso da `staging`. Per questo il servizio Cloud Run di prod deve avere, dal passo 1:
+- `VERCEL_ENV=production`, e nessun `APP_ENV=staging`;
+- `NEXT_PUBLIC_SENTRY_DSN`, lo stesso DSN del progetto Vercel di prod.
+
+Senza una delle due il backend non manda errori a Sentry. La prova con un errore forzato si fa al passo 1: su staging Sentry è spento per scelta, e lì la sostituiscono i test (`apps/api/src/_test/instrument.test.ts`).
 
 ## DB: dettagli
 

@@ -3,7 +3,7 @@ domain: _root
 type: index
 links: []
 created: 2026-09-24
-updated: 2026-10-25
+updated: 2026-10-26
 ---
 
 # Brain — Master Map
@@ -39,7 +39,7 @@ Migrated from `docs/` on 2026-09-24. Source material for future `create-spec` ru
 
 | Domain | Map | Contract | Concepts | Flows |
 |---|---|---|---|---|
-| crm | [[domains/crm/crm]] | [[domains/crm/crm-contract]] | 11 | 10 |
+| crm | [[domains/crm/crm]] | [[domains/crm/crm-contract]] | 14 | 12 |
 
 ## Specs (per domain)
 
@@ -52,8 +52,11 @@ Migrated from `docs/` on 2026-09-24. Source material for future `create-spec` ru
 | crm | [[specs/crm/sicurezza-deploy-staging/SPEC]] | Implemented, ingested (piano: [[specs/crm/sicurezza-deploy-staging/PLAN]]) |
 | crm | [[specs/crm/customer-effect/SPEC]] | Implemented sul branch `claude/migrazione-customer`, ingested (piano: [[specs/crm/customer-effect/PLAN]], review: [[specs/crm/customer-effect/REPORT]]) |
 | crm | [[specs/crm/pratiche-effect/SPEC]] | Implemented, in `dev` dalla [PR #83](https://github.com/omardeangelis/mito-micro-services/pull/83) (piano: [[specs/crm/pratiche-effect/PLAN]], review: [[specs/crm/pratiche-effect/REPORT]]) |
-| crm | [[specs/crm/chat-storage-effect/SPEC]] | Approved; PR A in `dev` con la [PR #86](https://github.com/omardeangelis/mito-micro-services/pull/86), PR B in corso (piano: [[specs/crm/chat-storage-effect/PLAN]], review: [[specs/crm/chat-storage-effect/REPORT]]) |
+| crm | [[specs/crm/chat-storage-effect/SPEC]] | Implemented, in `dev` con la [PR #86](https://github.com/omardeangelis/mito-micro-services/pull/86) (PR A) e la [PR #91](https://github.com/omardeangelis/mito-micro-services/pull/91) (PR B) (piano: [[specs/crm/chat-storage-effect/PLAN]], review: [[specs/crm/chat-storage-effect/REPORT]]) |
 | crm | [[specs/crm/export-chiamate/SPEC]] | Implemented, unita su dev il 23/10/2026 (piano: [[specs/crm/export-chiamate/PLAN]], review: [[specs/crm/export-chiamate/REPORT]]) |
+| crm | [[specs/crm/import-pratiche/SPEC]] | Implemented sui branch (PR #77, #78, #81, #82, #85, #88, #89, in draft), ingested (piano: [[specs/crm/import-pratiche/PLAN]], review: [[specs/crm/import-pratiche/REPORT]]) |
+| crm | [[specs/crm/analytics-effect/SPEC]] | Implemented sul branch `claude/analytics-effect-spec`, PR verso `dev` da aprire (piano: [[specs/crm/analytics-effect/PLAN]], review: [[specs/crm/analytics-effect/REPORT]]) |
+| crm | [[specs/crm/auth-better-auth/SPEC]] | Draft (piano: [[specs/crm/auth-better-auth/PLAN]]) |
 
 - [[specs/crm/crm-specs|crm-specs]] — CRM spec page map
 
@@ -80,6 +83,7 @@ Migrated from `docs/` on 2026-09-24. Source material for future `create-spec` ru
 - [[specs/crm/pratiche-effect/REPORT|crm/pratiche-effect — correzioni di TD9]] — spec · do-not-ship (1 blocker, 4 major; poi M1–M4 corretti, B1 a debito) · critical · 2026-10-25
 - [[specs/crm/pratiche-effect/REPORT|crm/pratiche-effect — rilancio sulle correzioni]] — spec · ship (v1, v3, v4, v5; B1 a debito; 5 minor) · critical · 2026-10-25
 - [[specs/crm/chat-storage-effect/REPORT|crm/chat-storage-effect — PR A]] — spec · ship (5 verificatori, 0 BLOCKER e 0 MAJOR; 2 minor, fra cui i writer dell'import senza lock, preesistenti) · critical · 2026-10-25
+- [[specs/crm/chat-storage-effect/REPORT|crm/chat-storage-effect — PR B]] — spec · ship dopo le correzioni (7 verificatori, 0 BLOCKER; i 2 MAJOR di v4 sui documenti di GB2 corretti in 4 rilanci; GB2 bloccato finché il backend di staging non ha il login) · critical · 2026-10-25
 - [[specs/crm/sezione-contatti/REPORT|crm/sezione-contatti — PR5b]] — spec · do-not-ship (primo giro: 3 BLOCKER e 11 MAJOR aperti) · critical · 2026-10-18
 - [[specs/crm/sezione-contatti/REPORT|crm/sezione-contatti — PR6]] — spec · ship (il codice: do-not-ship al primo giro, 0 BLOCKER e 2 MAJOR, poi corretti o accettati come debito; la migrazione di T6.9: ship dopo le correzioni, 0 BLOCKER) · critical · 2026-10-21
 - [[specs/crm/sezione-contatti/REPORT|crm/sezione-contatti — PR6 completa, terzo giro]] — spec · ship (do-not-ship al primo esito, 0 BLOCKER e 4 MAJOR: test dell'ordinamento di Clienti e tre frasi ereditate dei testi della massiva, accettati da Omar come debito) · critical · 2026-10-21
@@ -93,6 +97,8 @@ Migrated from `docs/` on 2026-09-24. Source material for future `create-spec` ru
 - [[specs/crm/gestione-operatori/REPORT|crm/gestione-operatori — PR 5]] — spec · do-not-ship al quarto giro (5, 2 e 1 MAJOR dei giri precedenti corretti; quarto giro 3 verificatori, 0 BLOCKER e 1 MAJOR: header della Dialog che con il testo a 1,25 allarga la griglia; MAJOR e MINOR corretti in cb51313 senza quinto giro) · critical · 2026-10-23
 - [[specs/crm/export-chiamate/REPORT|crm/export-chiamate — T1–T5]] — spec · ship (0 BLOCKER, 0 MAJOR; 2 rilievi corretti, 2 in tech debt) · critical · 2026-10-23
 - [[specs/crm/export-chiamate/REPORT|crm/export-chiamate — T6–T8]] — spec · ship (1 MAJOR corretto; follow-up sui permessi dello storage) · critical · 2026-10-23
+- [[specs/crm/import-pratiche/REPORT|crm/import-pratiche]] — spec · do-not-ship (4 verificatori, 1 BLOCKER e 8 MAJOR, poi corretti; rilettura di Leonardo da fare) · critical · 2026-10-26
+- [[specs/crm/analytics-effect/REPORT|crm/analytics-effect]] — spec · ship (giro 2, dopo le correzioni; giro 1 do-not-ship) · critical · 2026-10-26
 
 ## Log
 

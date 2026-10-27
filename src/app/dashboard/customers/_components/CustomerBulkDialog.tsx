@@ -50,7 +50,7 @@ import {
 } from "lucide-react"
 import { customerBulkUpdateAction } from "../_actions/customerBulkUpdate"
 import { taskStatus } from "@mito/db/schema/task"
-import { splitArray } from "@/app/api/import/_utils"
+import { splitArray } from "@/lib/utils"
 
 const SPLIT_SIZE = 30
 
