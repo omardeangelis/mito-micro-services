@@ -1,7 +1,7 @@
 ---
 domain: crm
 type: spec
-status: draft
+status: approved
 links:
   - "[[specs/crm/effect-4/PLAN]]"
   - "[[chore/roadmap-nuovo-stack]]"
@@ -178,7 +178,7 @@ Dopo la verifica del piano (2026-10-27):
 | # | Question | Affects | Owner | Status |
 |---|----------|---------|-------|--------|
 | 1 | Se un test di AC7 fallisce per la semantica nuova dei *defect* (`catchTag` che non cattura un errore accanto a un *defect*), dove si corregge? | PR 1 | Omar | Assunzione: nel codice, per tenere il comportamento (AC5). Si annota nel log, e se la correzione non è locale ci si ferma e si chiede |
-| 2 | Le asserzioni che leggono la forma di `Cause` ed `Exit` di v3 possono cambiare? | AC5, PR 1 | Omar | Da confermare in G0: sì, come eccezione chiusa e riscrittura meccanica. In v4 la forma di v3 non esiste più, e nessuna correzione del codice la riporta |
+| 2 | Le asserzioni che leggono la forma di `Cause` ed `Exit` di v3 possono cambiare? | AC5, PR 1 | Omar | **Chiusa (G0, 2026-10-27):** sì, come eccezione chiusa e riscrittura meccanica. In v4 la forma di v3 non esiste più, e nessuna correzione del codice la riporta |
 
 ---
 
@@ -196,5 +196,5 @@ Dopo la verifica del piano (2026-10-27):
 | Revisione di Leonardo sulla PR 1 e sulla PR 4 | Toccano i file dell'auth, anche se senza cambiarne il comportamento (regola 5 del §2 della roadmap) |
 | Le funzioni libere restano funzioni libere | Raggrupparle in servizi è una scelta della fase 2, quando gli handler di `HttpApi` ne fissano la forma |
 | Tutti i test che eseguono Effect passano a `@effect/vitest`, anche i 38 misti | Omar, 2026-10-27, dopo la verifica del piano: lo stile v4 per intero. 400 righe `expect(await X)` diventano `expect(yield* Effect.promise(() => X))`, che il controllo di AC5 tratta come uguali |
-| Eccezione chiusa ad AC5 per la forma di `Cause` ed `Exit` di v4 | Proposta dopo la verifica del piano (OQ2): circa 15 asserzioni leggono la forma di v3, che in v4 non esiste |
+| Eccezione chiusa ad AC5 per la forma di `Cause` ed `Exit` di v4 | Omar, 2026-10-27 (G0, OQ2): circa 15 asserzioni leggono la forma di v3, che in v4 non esiste |
 | Il controllo di AC5 legge l'AST, non le righe | La verifica del piano ha mostrato che un confronto per righe non vede le asserzioni su più righe né i file cancellati |

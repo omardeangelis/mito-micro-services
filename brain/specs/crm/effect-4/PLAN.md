@@ -12,8 +12,8 @@ updated: 2026-10-27
 
 # Plan: Effect 4, vitest 5 e lo stile di Effect 4 (punto 1.1 della roadmap)
 
-**Spec:** [[specs/crm/effect-4/SPEC]], scritta il 2026-10-27, in attesa di approvazione (G0).
-**Status:** Planned
+**Spec:** [[specs/crm/effect-4/SPEC]], scritta il 2026-10-27, approvata da Omar in G0 lo stesso giorno.
+**Status:** In progress
 **Generato:** 2026-10-27 con `create-plan`. Il flusso:
 - grill (5 decisioni di Omar);
 - spec;
@@ -93,7 +93,7 @@ Quattro PR in serie, ognuna con un solo motivo per rompersi. Il comportamento re
 
 I test della PR 3 fanno da guardia. Cambiano solo nei nomi importati, mai nelle asserzioni.
 
-**Nomi della PR 4 (proposta, D8).** La regola:
+**Nomi della PR 4 (D8, confermati in G0).** La regola:
 - `layer` è il layer principale, e le varianti hanno un suffisso che le descrive;
 - un layer è statico sulla classe quando si può definire nel file del servizio senza un import circolare;
 - altrimenti è una costante esportata `<nome>Layer` nel suo modulo.
@@ -127,13 +127,13 @@ I test della PR 3 fanno da guardia. Cambiano solo nei nomi importati, mai nelle 
 | D5 | `effect` e `@effect/vitest` a `~4.0.6` | I moduli `http-api` della fase 2 sono `@stability unstable` |
 | D6 | Quattro PR: Effect 4 e vitest 5 in parallelo, poi `@effect/vitest`, poi lo stile nel codice | Omar, 2026-10-27 |
 | D7 | La PR 4 adotta (a) servizi e layer, (b) `Effect.fn`, (c) `Schema.TaggedError`; la (d) è la PR 3. La PR 4 è un'eccezione approvata alla regola di `AGENTS.md` "solo il codice che la modifica tocca", e la descrizione della PR lo dice | Omar, 2026-10-27 |
-| D8 | Nomi di servizi e layer come nella tabella del §3 | Proposta del piano, sulla convenzione di `LLMS.md` di Effect 4 (`layer`, suffissi per le varianti); da confermare in G0 |
-| D9 | `Effect.fn("<area>.<funzione>")`; `Effect.fnUntraced` per gli helper interni e i percorsi caldi | `LLMS.md` di Effect 4: `fn` quando una traccia serve, `fnUntraced` nei percorsi caldi |
+| D8 | Nomi di servizi e layer come nella tabella del §3 | Omar, 2026-10-27 (G0), sulla convenzione di `LLMS.md` di Effect 4 (`layer`, suffissi per le varianti) |
+| D9 | `Effect.fn("<area>.<funzione>")`; `Effect.fnUntraced` per gli helper interni e i percorsi caldi | Omar, 2026-10-27 (G0); `LLMS.md` di Effect 4: `fn` quando una traccia serve, `fnUntraced` nei percorsi caldi |
 | D10 | Le funzioni libere restano funzioni libere: niente raggruppamento in servizi | Non-goal della SPEC: la forma la decide la fase 2 |
 | D11 | Lo script di AC5 (`scripts/check-assertions.mjs`) entra nella PR 1 e si toglie nella PR 4 (T21). La PR 2, in parallelo, lo prende dal branch della PR 1 (`git show claude/effect-4:scripts/check-assertions.mjs`) | Serve a quattro PR in branch diversi; è uno strumento della migrazione, non del prodotto |
 | D12 | Nella PR 1 gli orologi fissi dei test passano a un solo helper con l'interfaccia v4 (`services/analytics/_test/clock.ts`); nella PR 3 a `TestClock`, tranne l'orologio a passi di `concurrency.pg.test.ts` | Vanno riscritti comunque: una copia invece di sei |
 | D13 | Tutti i 49 file che eseguono Effect passano a `@effect/vitest`, con `expect(await X)` → `expect(yield* Effect.promise(() => X))` | Omar, 2026-10-27, dopo la verifica del piano |
-| D14 | Eccezione chiusa ad AC5 per le asserzioni che leggono la forma di `Cause` ed `Exit` di v3 (elenco nel §6) | Proposta dopo la verifica del piano (OQ2 della SPEC); da confermare in G0 |
+| D14 | Eccezione chiusa ad AC5 per le asserzioni che leggono la forma di `Cause` ed `Exit` di v3 (elenco nel §6) | Omar, 2026-10-27 (G0), dopo la verifica del piano (OQ2 della SPEC, chiusa) |
 | D15 | `Config` letto con un `ConfigProvider.fromEnv()` creato a ogni lettura in `storageLayer` e `importQueueChoice`; nei test, `ConfigProvider.fromEnv({ env })` al posto di `fromMap` | Tiene il comportamento di v3; `fromUnknown` con un oggetto annidato dà `None` (prova della verifica) |
 | D16 | vitest 5 con `pool: "threads"` (fuori dai fusi), `fakeTimers.toFake` e `exclude` di v1; `clearMocks` al default `true` | I default cambiati, misurati con prove su vitest 1.6 e 5 |
 
@@ -232,9 +232,9 @@ G0 ─┬─ T1 ─ T2 ─ T3 ─┬─ T4 ─┬─ T7 ─ T8 ══ PR 1 in de
 - **location**: `brain/specs/crm/effect-4/SPEC.md`, §3 e §4 di questo piano
 - **description**: Omar porta la SPEC a `status: approved` e conferma D8 (nomi), D9 (nomi di `Effect.fn`) e D14 (eccezione di AC5 per la forma di `Cause` ed `Exit`). Nessun task parte prima.
 - **validation**: frontmatter `status: approved`; D8, D9 e D14 senza "Proposta"; OQ2 della SPEC chiusa.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-10-27, Omar approva la SPEC e conferma D8, D9 e D14 (risposte a `implement-spec`).
+- **files edited/created**: `SPEC.md` (status, OQ2, decision log), `PLAN.md` (D8, D9, D14, §15)
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -880,7 +880,7 @@ Nessun debito previsto. Ogni task finale (T8, T11, T17, T21) verifica il debito 
 
 ## 15. Domande aperte
 
-- **D8, D9 e D14** sono proposte del piano, da confermare in G0. D14 corrisponde all'OQ2 della SPEC.
+- **D8, D9 e D14** confermate da Omar in G0 (2026-10-27); l'OQ2 della SPEC è chiusa.
 - **OQ1 della SPEC** è un'assunzione (§5).
 
 ## 16. Correzioni dopo la verifica del piano (2026-10-27)
