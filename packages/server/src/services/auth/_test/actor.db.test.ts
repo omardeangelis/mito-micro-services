@@ -1,7 +1,8 @@
-import { beforeAll, beforeEach, describe, expect, it } from "vitest"
-import { Exit } from "effect"
+import { beforeAll, beforeEach } from "vitest"
+import { describe, expect, it } from "@effect/vitest"
+import { Effect, Exit } from "effect"
 import { migrateUpTo, resetDb } from "@/test/db"
-import { failureTag, runServer } from "@/test/effect"
+import { failureTag, provideServer } from "@/test/effect"
 import { createOperator, createUser } from "@/test/factories"
 import { resolveActor } from "../actor"
 
@@ -14,26 +15,38 @@ beforeEach(async () => {
 })
 
 describe("resolveActor", () => {
-  it("fails with NotAnOperator for a user without an operator row", async () => {
-    const user = await createUser()
+  it.effect("fails with NotAnOperator for a user without an operator row", () =>
+    Effect.gen(function* () {
+      const user = yield* Effect.promise(() => createUser())
 
-    const exit = await runServer(resolveActor(user.id))
+      const exit = yield* resolveActor(user.id).pipe(provideServer, Effect.exit)
 
-    expect(failureTag(exit)).toBe("NotAnOperator")
-  })
-
-  it("returns the user's operator, with the role, and its actor", async () => {
-    const operator = await createOperator({ role: "ADMIN" })
-
-    const exit = await runServer(resolveActor(operator.userId))
-
-    expect(Exit.isSuccess(exit)).toBe(true)
-    if (!Exit.isSuccess(exit)) return
-    expect(exit.value.operator).toMatchObject({
-      id: operator.id,
-      userId: operator.userId,
-      role: "ADMIN",
+      expect(failureTag(exit)).toBe("NotAnOperator")
     })
-    expect(exit.value.actor).toEqual({ operatorId: operator.id, role: "ADMIN" })
-  })
+  )
+
+  it.effect("returns the user's operator, with the role, and its actor", () =>
+    Effect.gen(function* () {
+      const operator = yield* Effect.promise(() =>
+        createOperator({ role: "ADMIN" })
+      )
+
+      const exit = yield* resolveActor(operator.userId).pipe(
+        provideServer,
+        Effect.exit
+      )
+
+      expect(Exit.isSuccess(exit)).toBe(true)
+      if (!Exit.isSuccess(exit)) return
+      expect(exit.value.operator).toMatchObject({
+        id: operator.id,
+        userId: operator.userId,
+        role: "ADMIN",
+      })
+      expect(exit.value.actor).toEqual({
+        operatorId: operator.id,
+        role: "ADMIN",
+      })
+    })
+  )
 })

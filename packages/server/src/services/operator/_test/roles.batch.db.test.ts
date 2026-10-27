@@ -1,9 +1,11 @@
-import { beforeAll, beforeEach, describe, expect, it } from "vitest"
+import { beforeAll, beforeEach } from "vitest"
+import {} from "@effect/vitest"
+import { describe, expect, it } from "@effect/vitest"
 import { eq } from "drizzle-orm"
-import { Exit } from "effect"
+import { Effect, Exit } from "effect"
 import { users } from "@mito/db/schema/users"
 import { migrateUpTo, resetDb, testDb } from "@/test/db"
-import { failureTag, runServer } from "@/test/effect"
+import { failureTag, provideServer } from "@/test/effect"
 import { createTestCaller } from "@/test/caller"
 import { createOperator, createUser } from "@/test/factories"
 import { failNextUpdateOf } from "@/test/failpoint"
@@ -29,161 +31,245 @@ const roleOf = async (userId: string) => {
 }
 
 describe("updateOperatorsRole, l'ultimo admin (AC18)", () => {
-  it("l'unico admin che si declassa riceve LastAdmin e resta ADMIN", async () => {
-    const admin = await createOperator({ role: "ADMIN" })
+  it.effect(
+    "l'unico admin che si declassa riceve LastAdmin e resta ADMIN",
+    () =>
+      Effect.gen(function* () {
+        const admin = yield* Effect.promise(() =>
+          createOperator({ role: "ADMIN" })
+        )
 
-    const exit = await runServer(
-      updateOperatorsRole([{ id: admin.id, role: "OPERATORE" }])
-    )
+        const exit = yield* updateOperatorsRole([
+          { id: admin.id, role: "OPERATORE" },
+        ]).pipe(provideServer, Effect.exit)
 
-    expect(failureTag(exit)).toBe("LastAdmin")
-    expect(await roleOf(admin.userId)).toBe("ADMIN")
-  })
+        expect(failureTag(exit)).toBe("LastAdmin")
+        expect(yield* Effect.promise(() => roleOf(admin.userId))).toBe("ADMIN")
+      })
+  )
 
-  it("con due admin, declassarne uno riesce", async () => {
-    const a = await createOperator({ role: "ADMIN" })
-    const b = await createOperator({ role: "ADMIN" })
-    const input = [{ id: b.id, role: "OPERATORE" as const }]
+  it.effect("con due admin, declassarne uno riesce", () =>
+    Effect.gen(function* () {
+      const a = yield* Effect.promise(() => createOperator({ role: "ADMIN" }))
+      const b = yield* Effect.promise(() => createOperator({ role: "ADMIN" }))
+      const input = [{ id: b.id, role: "OPERATORE" as const }]
 
-    const exit = await runServer(updateOperatorsRole(input))
+      const exit = yield* updateOperatorsRole(input).pipe(
+        provideServer,
+        Effect.exit
+      )
 
-    expect(exit).toEqual(Exit.succeed(input))
-    expect(await roleOf(a.userId)).toBe("ADMIN")
-    expect(await roleOf(b.userId)).toBe("OPERATORE")
-  })
-
-  it("declassarli entrambi nello stesso batch riceve LastAdmin e non cambia nulla", async () => {
-    const a = await createOperator({ role: "ADMIN" })
-    const b = await createOperator({ role: "ADMIN" })
-
-    const exit = await runServer(
-      updateOperatorsRole([
-        { id: a.id, role: "OPERATORE" },
-        { id: b.id, role: "OPERATORE" },
-      ])
-    )
-
-    expect(failureTag(exit)).toBe("LastAdmin")
-    expect(await roleOf(a.userId)).toBe("ADMIN")
-    expect(await roleOf(b.userId)).toBe("ADMIN")
-  })
-
-  it("declassare un admin e promuovere un operatore nello stesso batch riesce", async () => {
-    const admin = await createOperator({ role: "ADMIN" })
-    const operator = await createOperator({ role: "OPERATORE" })
-    const input = [
-      { id: admin.id, role: "OPERATORE" as const },
-      { id: operator.id, role: "ADMIN" as const },
-    ]
-
-    const exit = await runServer(updateOperatorsRole(input))
-
-    expect(exit).toEqual(Exit.succeed(input))
-    expect(await roleOf(admin.userId)).toBe("OPERATORE")
-    expect(await roleOf(operator.userId)).toBe("ADMIN")
-  })
-
-  it("un admin disattivato non conta: l'admin attivo che si declassa riceve LastAdmin", async () => {
-    const active = await createOperator({ role: "ADMIN" })
-    const disabled = await createOperator({
-      role: "ADMIN",
-      disabledAt: new Date(),
+      expect(exit).toEqual(Exit.succeed(input))
+      expect(yield* Effect.promise(() => roleOf(a.userId))).toBe("ADMIN")
+      expect(yield* Effect.promise(() => roleOf(b.userId))).toBe("OPERATORE")
     })
+  )
 
-    const exit = await runServer(
-      updateOperatorsRole([{ id: active.id, role: "OPERATORE" }])
-    )
+  it.effect(
+    "declassarli entrambi nello stesso batch riceve LastAdmin e non cambia nulla",
+    () =>
+      Effect.gen(function* () {
+        const a = yield* Effect.promise(() => createOperator({ role: "ADMIN" }))
+        const b = yield* Effect.promise(() => createOperator({ role: "ADMIN" }))
 
-    expect(failureTag(exit)).toBe("LastAdmin")
-    expect(await roleOf(active.userId)).toBe("ADMIN")
-    expect(await roleOf(disabled.userId)).toBe("ADMIN")
-  })
+        const exit = yield* updateOperatorsRole([
+          { id: a.id, role: "OPERATORE" },
+          { id: b.id, role: "OPERATORE" },
+        ]).pipe(provideServer, Effect.exit)
 
-  it("un id che non esiste viene saltato e il resto del batch cambia", async () => {
-    const a = await createOperator({ role: "ADMIN" })
-    const b = await createOperator({ role: "ADMIN" })
-    const input = [
-      { id: b.id + 100, role: "OPERATORE" as const },
-      { id: b.id, role: "OPERATORE" as const },
-    ]
+        expect(failureTag(exit)).toBe("LastAdmin")
+        expect(yield* Effect.promise(() => roleOf(a.userId))).toBe("ADMIN")
+        expect(yield* Effect.promise(() => roleOf(b.userId))).toBe("ADMIN")
+      })
+  )
 
-    const exit = await runServer(updateOperatorsRole(input))
+  it.effect(
+    "declassare un admin e promuovere un operatore nello stesso batch riesce",
+    () =>
+      Effect.gen(function* () {
+        const admin = yield* Effect.promise(() =>
+          createOperator({ role: "ADMIN" })
+        )
+        const operator = yield* Effect.promise(() =>
+          createOperator({ role: "OPERATORE" })
+        )
+        const input = [
+          { id: admin.id, role: "OPERATORE" as const },
+          { id: operator.id, role: "ADMIN" as const },
+        ]
 
-    expect(exit).toEqual(Exit.succeed(input))
-    expect(await roleOf(a.userId)).toBe("ADMIN")
-    expect(await roleOf(b.userId)).toBe("OPERATORE")
-  })
+        const exit = yield* updateOperatorsRole(input).pipe(
+          provideServer,
+          Effect.exit
+        )
+
+        expect(exit).toEqual(Exit.succeed(input))
+        expect(yield* Effect.promise(() => roleOf(admin.userId))).toBe(
+          "OPERATORE"
+        )
+        expect(yield* Effect.promise(() => roleOf(operator.userId))).toBe(
+          "ADMIN"
+        )
+      })
+  )
+
+  it.effect(
+    "un admin disattivato non conta: l'admin attivo che si declassa riceve LastAdmin",
+    () =>
+      Effect.gen(function* () {
+        const active = yield* Effect.promise(() =>
+          createOperator({ role: "ADMIN" })
+        )
+        const disabled = yield* Effect.promise(() =>
+          createOperator({
+            role: "ADMIN",
+            disabledAt: new Date(),
+          })
+        )
+
+        const exit = yield* updateOperatorsRole([
+          { id: active.id, role: "OPERATORE" },
+        ]).pipe(provideServer, Effect.exit)
+
+        expect(failureTag(exit)).toBe("LastAdmin")
+        expect(yield* Effect.promise(() => roleOf(active.userId))).toBe("ADMIN")
+        expect(yield* Effect.promise(() => roleOf(disabled.userId))).toBe(
+          "ADMIN"
+        )
+      })
+  )
+
+  it.effect(
+    "un id che non esiste viene saltato e il resto del batch cambia",
+    () =>
+      Effect.gen(function* () {
+        const a = yield* Effect.promise(() => createOperator({ role: "ADMIN" }))
+        const b = yield* Effect.promise(() => createOperator({ role: "ADMIN" }))
+        const input = [
+          { id: b.id + 100, role: "OPERATORE" as const },
+          { id: b.id, role: "OPERATORE" as const },
+        ]
+
+        const exit = yield* updateOperatorsRole(input).pipe(
+          provideServer,
+          Effect.exit
+        )
+
+        expect(exit).toEqual(Exit.succeed(input))
+        expect(yield* Effect.promise(() => roleOf(a.userId))).toBe("ADMIN")
+        expect(yield* Effect.promise(() => roleOf(b.userId))).toBe("OPERATORE")
+      })
+  )
 })
 
 describe("updateOperatorsRole, l'ultimo admin: i casi limite (AC18)", () => {
-  it("con lo stesso id due volte vale la prima modifica: l'unico admin che prima si declassa riceve LastAdmin", async () => {
-    const admin = await createOperator({ role: "ADMIN" })
+  it.effect(
+    "con lo stesso id due volte vale la prima modifica: l'unico admin che prima si declassa riceve LastAdmin",
+    () =>
+      Effect.gen(function* () {
+        const admin = yield* Effect.promise(() =>
+          createOperator({ role: "ADMIN" })
+        )
 
-    const exit = await runServer(
-      updateOperatorsRole([
-        { id: admin.id, role: "OPERATORE" },
-        { id: admin.id, role: "ADMIN" },
-      ])
-    )
+        const exit = yield* updateOperatorsRole([
+          { id: admin.id, role: "OPERATORE" },
+          { id: admin.id, role: "ADMIN" },
+        ]).pipe(provideServer, Effect.exit)
 
-    expect(failureTag(exit)).toBe("LastAdmin")
-    expect(await roleOf(admin.userId)).toBe("ADMIN")
-  })
+        expect(failureTag(exit)).toBe("LastAdmin")
+        expect(yield* Effect.promise(() => roleOf(admin.userId))).toBe("ADMIN")
+      })
+  )
 
-  it("con lo stesso id due volte vale la prima modifica: l'unico admin che prima resta ADMIN non riceve LastAdmin", async () => {
-    const admin = await createOperator({ role: "ADMIN" })
-    const input = [
-      { id: admin.id, role: "ADMIN" as const },
-      { id: admin.id, role: "OPERATORE" as const },
-    ]
+  it.effect(
+    "con lo stesso id due volte vale la prima modifica: l'unico admin che prima resta ADMIN non riceve LastAdmin",
+    () =>
+      Effect.gen(function* () {
+        const admin = yield* Effect.promise(() =>
+          createOperator({ role: "ADMIN" })
+        )
+        const input = [
+          { id: admin.id, role: "ADMIN" as const },
+          { id: admin.id, role: "OPERATORE" as const },
+        ]
 
-    const exit = await runServer(updateOperatorsRole(input))
+        const exit = yield* updateOperatorsRole(input).pipe(
+          provideServer,
+          Effect.exit
+        )
 
-    expect(exit).toEqual(Exit.succeed(input))
-    expect(await roleOf(admin.userId)).toBe("ADMIN")
-  })
+        expect(exit).toEqual(Exit.succeed(input))
+        expect(yield* Effect.promise(() => roleOf(admin.userId))).toBe("ADMIN")
+      })
+  )
 
-  it("un utente ADMIN senza operatore non conta: l'ultimo admin vero che si declassa riceve LastAdmin", async () => {
-    const admin = await createOperator({ role: "ADMIN" })
-    const withoutOperator = await createUser({ role: "ADMIN" })
+  it.effect(
+    "un utente ADMIN senza operatore non conta: l'ultimo admin vero che si declassa riceve LastAdmin",
+    () =>
+      Effect.gen(function* () {
+        const admin = yield* Effect.promise(() =>
+          createOperator({ role: "ADMIN" })
+        )
+        const withoutOperator = yield* Effect.promise(() =>
+          createUser({ role: "ADMIN" })
+        )
 
-    const exit = await runServer(
-      updateOperatorsRole([{ id: admin.id, role: "OPERATORE" }])
-    )
+        const exit = yield* updateOperatorsRole([
+          { id: admin.id, role: "OPERATORE" },
+        ]).pipe(provideServer, Effect.exit)
 
-    expect(failureTag(exit)).toBe("LastAdmin")
-    expect(await roleOf(admin.userId)).toBe("ADMIN")
-    expect(await roleOf(withoutOperator.id)).toBe("ADMIN")
-  })
+        expect(failureTag(exit)).toBe("LastAdmin")
+        expect(yield* Effect.promise(() => roleOf(admin.userId))).toBe("ADMIN")
+        expect(yield* Effect.promise(() => roleOf(withoutOperator.id))).toBe(
+          "ADMIN"
+        )
+      })
+  )
 
-  it("un batch vuoto riesce e non cambia nulla", async () => {
-    const admin = await createOperator({ role: "ADMIN" })
+  it.effect("un batch vuoto riesce e non cambia nulla", () =>
+    Effect.gen(function* () {
+      const admin = yield* Effect.promise(() =>
+        createOperator({ role: "ADMIN" })
+      )
 
-    expect(await runServer(updateOperatorsRole([]))).toEqual(Exit.succeed([]))
-    expect(await roleOf(admin.userId)).toBe("ADMIN")
-  })
+      expect(
+        yield* updateOperatorsRole([]).pipe(provideServer, Effect.exit)
+      ).toEqual(Exit.succeed([]))
+      expect(yield* Effect.promise(() => roleOf(admin.userId))).toBe("ADMIN")
+    })
+  )
 })
 
 describe("updateOperatorsRole, gli operatori disattivati (AC19)", () => {
-  it("un disattivato nel batch riceve OperatorNotFound e l'altro operatore del batch non cambia", async () => {
-    await createOperator({ role: "ADMIN" })
-    const disabled = await createOperator({
-      role: "OPERATORE",
-      disabledAt: new Date(),
-    })
-    const other = await createOperator({ role: "OPERATORE" })
+  it.effect(
+    "un disattivato nel batch riceve OperatorNotFound e l'altro operatore del batch non cambia",
+    () =>
+      Effect.gen(function* () {
+        yield* Effect.promise(() => createOperator({ role: "ADMIN" }))
+        const disabled = yield* Effect.promise(() =>
+          createOperator({
+            role: "OPERATORE",
+            disabledAt: new Date(),
+          })
+        )
+        const other = yield* Effect.promise(() =>
+          createOperator({ role: "OPERATORE" })
+        )
 
-    const exit = await runServer(
-      updateOperatorsRole([
-        { id: other.id, role: "ADMIN" },
-        { id: disabled.id, role: "ADMIN" },
-      ])
-    )
+        const exit = yield* updateOperatorsRole([
+          { id: other.id, role: "ADMIN" },
+          { id: disabled.id, role: "ADMIN" },
+        ]).pipe(provideServer, Effect.exit)
 
-    expect(failureTag(exit)).toBe("OperatorNotFound")
-    expect(await roleOf(other.userId)).toBe("OPERATORE")
-    expect(await roleOf(disabled.userId)).toBe("OPERATORE")
-  })
+        expect(failureTag(exit)).toBe("OperatorNotFound")
+        expect(yield* Effect.promise(() => roleOf(other.userId))).toBe(
+          "OPERATORE"
+        )
+        expect(yield* Effect.promise(() => roleOf(disabled.userId))).toBe(
+          "OPERATORE"
+        )
+      })
+  )
 })
 
 describe("operator.updateOperatorsRole, gli operatori disattivati (AC19)", () => {
@@ -207,21 +293,33 @@ describe("operator.updateOperatorsRole, gli operatori disattivati (AC19)", () =>
 })
 
 describe("updateOperatorsRole, il batch è atomico (AC20)", () => {
-  it("se il secondo aggiornamento fallisce, il primo utente ha il ruolo di prima", async () => {
-    await createOperator({ role: "ADMIN" })
-    const first = await createOperator({ role: "OPERATORE" })
-    const second = await createOperator({ role: "OPERATORE" })
-    await failNextUpdateOf(users, { id: second.userId })
+  it.effect(
+    "se il secondo aggiornamento fallisce, il primo utente ha il ruolo di prima",
+    () =>
+      Effect.gen(function* () {
+        yield* Effect.promise(() => createOperator({ role: "ADMIN" }))
+        const first = yield* Effect.promise(() =>
+          createOperator({ role: "OPERATORE" })
+        )
+        const second = yield* Effect.promise(() =>
+          createOperator({ role: "OPERATORE" })
+        )
+        yield* Effect.promise(() =>
+          failNextUpdateOf(users, { id: second.userId })
+        )
 
-    const exit = await runServer(
-      updateOperatorsRole([
-        { id: first.id, role: "ADMIN" },
-        { id: second.id, role: "ADMIN" },
-      ])
-    )
+        const exit = yield* updateOperatorsRole([
+          { id: first.id, role: "ADMIN" },
+          { id: second.id, role: "ADMIN" },
+        ]).pipe(provideServer, Effect.exit)
 
-    expect(failureTag(exit)).toBe("DbError")
-    expect(await roleOf(first.userId)).toBe("OPERATORE")
-    expect(await roleOf(second.userId)).toBe("OPERATORE")
-  })
+        expect(failureTag(exit)).toBe("DbError")
+        expect(yield* Effect.promise(() => roleOf(first.userId))).toBe(
+          "OPERATORE"
+        )
+        expect(yield* Effect.promise(() => roleOf(second.userId))).toBe(
+          "OPERATORE"
+        )
+      })
+  )
 })

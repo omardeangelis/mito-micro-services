@@ -1,19 +1,13 @@
-import {
-  afterEach,
-  beforeAll,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  vi,
-} from "vitest"
+import { afterEach, beforeAll, beforeEach, vi } from "vitest"
+import { describe, expect, it } from "@effect/vitest"
+import { Effect } from "effect"
 import { eq } from "drizzle-orm"
 import { customers } from "@mito/db/schema/customers"
 import { taskEventLog } from "@mito/db/schema/taskEventLog"
 import { assignCustomers } from "../../../../services/customer/assignment"
 import { logOf, migrateUpTo, resetDb, tasksOf, testDb } from "@/test/db"
 import { createTestCaller } from "@/test/caller"
-import { failureTag, runServer } from "@/test/effect"
+import { failureTag, provideServer } from "@/test/effect"
 import { failNextInsertInto } from "@/test/failpoint"
 import {
   createAlert,
@@ -592,35 +586,44 @@ describe("customer.bulkUpdateCustomers, permessi (P7)", () => {
   })
 
   // Il test via procedura passa dal middleware: il servizio si prova da solo
-  it.each(["di un collega", "suo"])(
+  it.effect.each(["di un collega", "suo"])(
     "il servizio chiamato da un OPERATORE per un cliente %s dà CustomerAssignmentForbidden e nulla cambia",
-    async (whose) => {
-      const { previousOperator, nextOperator } = await seed()
-      const colleague = await createOperator({ name: "Collega" })
-      const customer = await createCustomer({
-        operatorId: whose === "suo" ? previousOperator.id : colleague.id,
-      })
-      const contact = await createTask({
-        customerId: customer.id,
-        operatorId: customer.operatorId,
-        state: "richiamare",
-      })
+    (whose) =>
+      Effect.gen(function* () {
+        const { previousOperator, nextOperator } = yield* Effect.promise(() =>
+          seed()
+        )
+        const colleague = yield* Effect.promise(() =>
+          createOperator({ name: "Collega" })
+        )
+        const customer = yield* Effect.promise(() =>
+          createCustomer({
+            operatorId: whose === "suo" ? previousOperator.id : colleague.id,
+          })
+        )
+        const contact = yield* Effect.promise(() =>
+          createTask({
+            customerId: customer.id,
+            operatorId: customer.operatorId,
+            state: "richiamare",
+          })
+        )
 
-      const exit = await runServer(
-        assignCustomers({
+        const exit = yield* assignCustomers({
           customerIds: [customer.id],
           toOperatorId: nextOperator.id,
           actor: { role: "OPERATORE", operatorId: previousOperator.id },
-        })
-      )
+        }).pipe(provideServer, Effect.exit)
 
-      expect(failureTag(exit)).toBe("CustomerAssignmentForbidden")
-      expect((await customerRow(customer.id)).operatorId).toBe(
-        customer.operatorId
-      )
-      expect(await tasksOf(customer.id)).toEqual([contact])
-      expect(await logOf(customer.id)).toEqual([])
-    }
+        expect(failureTag(exit)).toBe("CustomerAssignmentForbidden")
+        expect(
+          (yield* Effect.promise(() => customerRow(customer.id))).operatorId
+        ).toBe(customer.operatorId)
+        expect(yield* Effect.promise(() => tasksOf(customer.id))).toEqual([
+          contact,
+        ])
+        expect(yield* Effect.promise(() => logOf(customer.id))).toEqual([])
+      })
   )
 })
 
