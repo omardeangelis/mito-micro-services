@@ -1,9 +1,10 @@
-import { beforeAll, beforeEach, describe, expect, it } from "vitest"
+import { beforeAll, beforeEach } from "vitest"
+import { describe, expect, it } from "@effect/vitest"
 import { eq } from "drizzle-orm"
-import { Exit } from "effect"
+import { Effect, Exit } from "effect"
 import { users } from "@mito/db/schema/users"
 import { migrateUpTo, resetDb, testDb } from "@/test/db"
-import { runServer } from "@/test/effect"
+import { provideServer } from "@/test/effect"
 import { createOperator } from "@/test/factories"
 import { updateOperatorsRole } from "../roles"
 
@@ -24,33 +25,53 @@ const roleOf = async (userId: string) => {
 }
 
 describe("updateOperatorsRole", () => {
-  it("changes the roles and returns the input as it is", async () => {
-    const promoted = await createOperator({ role: "OPERATORE" })
-    const demoted = await createOperator({ role: "ADMIN" })
-    const input = [
-      { id: promoted.id, role: "ADMIN" as const },
-      { id: demoted.id, role: "OPERATORE" as const },
-    ]
+  it.effect("changes the roles and returns the input as it is", () =>
+    Effect.gen(function* () {
+      const promoted = yield* Effect.promise(() =>
+        createOperator({ role: "OPERATORE" })
+      )
+      const demoted = yield* Effect.promise(() =>
+        createOperator({ role: "ADMIN" })
+      )
+      const input = [
+        { id: promoted.id, role: "ADMIN" as const },
+        { id: demoted.id, role: "OPERATORE" as const },
+      ]
 
-    const exit = await runServer(updateOperatorsRole(input))
+      const exit = yield* updateOperatorsRole(input).pipe(
+        provideServer,
+        Effect.exit
+      )
 
-    expect(exit).toEqual(Exit.succeed(input))
-    expect(await roleOf(promoted.userId)).toBe("ADMIN")
-    expect(await roleOf(demoted.userId)).toBe("OPERATORE")
-  })
+      expect(exit).toEqual(Exit.succeed(input))
+      expect(yield* Effect.promise(() => roleOf(promoted.userId))).toBe("ADMIN")
+      expect(yield* Effect.promise(() => roleOf(demoted.userId))).toBe(
+        "OPERATORE"
+      )
+    })
+  )
 
-  it("skips an id that doesn't exist and still changes the others", async () => {
-    // Another admin stays: demoting the only one is LastAdmin (AC18)
-    await createOperator({ role: "ADMIN" })
-    const operator = await createOperator({ role: "ADMIN" })
-    const input = [
-      { id: operator.id + 1, role: "OPERATORE" as const },
-      { id: operator.id, role: "OPERATORE" as const },
-    ]
+  it.effect("skips an id that doesn't exist and still changes the others", () =>
+    Effect.gen(function* () {
+      // Another admin stays: demoting the only one is LastAdmin (AC18)
+      yield* Effect.promise(() => createOperator({ role: "ADMIN" }))
+      const operator = yield* Effect.promise(() =>
+        createOperator({ role: "ADMIN" })
+      )
+      const input = [
+        { id: operator.id + 1, role: "OPERATORE" as const },
+        { id: operator.id, role: "OPERATORE" as const },
+      ]
 
-    const exit = await runServer(updateOperatorsRole(input))
+      const exit = yield* updateOperatorsRole(input).pipe(
+        provideServer,
+        Effect.exit
+      )
 
-    expect(exit).toEqual(Exit.succeed(input))
-    expect(await roleOf(operator.userId)).toBe("OPERATORE")
-  })
+      expect(exit).toEqual(Exit.succeed(input))
+      expect(yield* Effect.promise(() => roleOf(operator.userId))).toBe(
+        "OPERATORE"
+      )
+    })
+  )
 })

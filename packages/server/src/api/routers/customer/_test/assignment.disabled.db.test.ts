@@ -1,10 +1,12 @@
-import { beforeAll, beforeEach, describe, expect, it } from "vitest"
+import { beforeAll, beforeEach } from "vitest"
+import { describe, expect, it } from "@effect/vitest"
+import { Effect } from "effect"
 import { eq } from "drizzle-orm"
 import { readContactError } from "@mito/domain/contact/errors"
 import { customers } from "@mito/db/schema/customers"
 import { createTestCaller } from "@/test/caller"
 import { logOf, migrateUpTo, resetDb, tasksOf, testDb } from "@/test/db"
-import { failureTag, runServer } from "@/test/effect"
+import { failureTag, provideServer } from "@/test/effect"
 import { createCustomer, createOperator, createTask } from "@/test/factories"
 import { assignToYourself } from "../../../../services/customer/assignment"
 
@@ -126,35 +128,45 @@ describe("customer.bulkUpdateCustomers verso un operatore disattivato", () => {
 describe("assignToYourself di un operatore disattivato", () => {
   // The middleware already stops a disabled operator: the service's own check
   // covers one deactivated while the call runs (gestione-operatori, AC7)
-  it("riceve OperatorNotFound e il cliente resta senza operatore", async () => {
-    const disabled = await createOperator({ disabledAt: new Date() })
-    const customer = await createCustomer({ operatorId: null })
-    const contact = await createTask({
-      customerId: customer.id,
-      operatorId: null,
-    })
+  it.effect("riceve OperatorNotFound e il cliente resta senza operatore", () =>
+    Effect.gen(function* () {
+      const disabled = yield* Effect.promise(() =>
+        createOperator({ disabledAt: new Date() })
+      )
+      const customer = yield* Effect.promise(() =>
+        createCustomer({ operatorId: null })
+      )
+      const contact = yield* Effect.promise(() =>
+        createTask({
+          customerId: customer.id,
+          operatorId: null,
+        })
+      )
 
-    const exit = await runServer(
-      assignToYourself({
+      const exit = yield* assignToYourself({
         customerId: customer.id,
         actor: { role: "OPERATORE", operatorId: disabled.id },
+      }).pipe(provideServer, Effect.exit)
+
+      expect(failureTag(exit)).toBe("OperatorNotFound")
+      yield* Effect.promise(() => expectUntouched({ customer, contact }))
+    })
+  )
+
+  it.effect(
+    "su un cliente inesistente riceve ancora CustomerNotFound, prima del proprio stato",
+    () =>
+      Effect.gen(function* () {
+        const disabled = yield* Effect.promise(() =>
+          createOperator({ disabledAt: new Date() })
+        )
+
+        const exit = yield* assignToYourself({
+          customerId: "missing",
+          actor: { role: "OPERATORE", operatorId: disabled.id },
+        }).pipe(provideServer, Effect.exit)
+
+        expect(failureTag(exit)).toBe("CustomerNotFound")
       })
-    )
-
-    expect(failureTag(exit)).toBe("OperatorNotFound")
-    await expectUntouched({ customer, contact })
-  })
-
-  it("su un cliente inesistente riceve ancora CustomerNotFound, prima del proprio stato", async () => {
-    const disabled = await createOperator({ disabledAt: new Date() })
-
-    const exit = await runServer(
-      assignToYourself({
-        customerId: "missing",
-        actor: { role: "OPERATORE", operatorId: disabled.id },
-      })
-    )
-
-    expect(failureTag(exit)).toBe("CustomerNotFound")
-  })
+  )
 })
