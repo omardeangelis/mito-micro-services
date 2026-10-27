@@ -1,11 +1,4 @@
-import {
-  beforeAll,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  vi,
-} from "vitest"
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest"
 import { once } from "node:events"
 import { type AddressInfo } from "node:net"
 import { serve } from "@hono/node-server"

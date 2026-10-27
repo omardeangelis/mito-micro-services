@@ -8,7 +8,9 @@ import { createUserPreferenceStore } from "@/store/userPreferences"
 // Uscendo, il prossimo operatore dello stesso browser parte dal layout di
 // default (AC33)
 
-vi.mock("next-auth/react", () => ({ signOut: vi.fn(async () => undefined) }))
+vi.mock("@/lib/authClient", () => ({
+  authClient: { signOut: vi.fn(async () => undefined) },
+}))
 
 describe("LogoutFloatingButton, cookie delle preferenze (AC33)", () => {
   beforeEach(() => {

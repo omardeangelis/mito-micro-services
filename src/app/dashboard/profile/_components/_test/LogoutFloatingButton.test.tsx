@@ -10,10 +10,12 @@ import {
 const draftKey = "mito:nota-non-inviata:c-42"
 const draftAtSignOut: Array<string | null> = []
 
-vi.mock("next-auth/react", () => ({
-  signOut: vi.fn(async () => {
-    draftAtSignOut.push(window.sessionStorage.getItem(draftKey))
-  }),
+vi.mock("@/lib/authClient", () => ({
+  authClient: {
+    signOut: vi.fn(async () => {
+      draftAtSignOut.push(window.sessionStorage.getItem(draftKey))
+    }),
+  },
 }))
 vi.mock("@/store/context/useUserPreferenceContext", () => ({
   useUserPreferenceContext: () => () => undefined,
