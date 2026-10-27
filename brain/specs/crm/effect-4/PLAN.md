@@ -438,9 +438,12 @@ G0 ─┬─ T1 ─ T2 ─ T3 ─┬─ T4 ─┬─ T7 ─ T8 ══ PR 1 in de
     - nel §7 la riga di `AGENTS.md` chiusa per Effect 4.
   - **[[chore/migrazione-effect]]:** dove cita Effect 3 come vincolo, un rimando.
 - **validation**: `git grep -n "effect\` 3\|Effect 3.x\|Context.Tag" -- AGENTS.md` non trova niente; i link `[[…]]` puntano a pagine esistenti.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-10-27, worker haiku; review passata al primo giro.
+  - `AGENTS.md`: `effect` 4.x (`~4.0.6`), `Context.Service`, l'eccezione delle asserzioni sulla forma di `Cause`/`Exit` nella regola "Behavior stays the same". `CLAUDE.md` è un link ad `AGENTS.md`.
+  - Roadmap: la riga di `effect` nel §4 ("sul branch, non ancora in `dev`": va aggiornata al merge), la riga di `AGENTS.md` nel §7, e **TD12** nel §8 (AC13): `withCurrentEnv` (D15), da togliere nella fase 2.
+  - `migrazione-effect.md`: la riga L1 con `Context.Service` e il rimando alla spec; nessun altro punto cita Effect 3 come vincolo attuale.
+- **files edited/created**: `AGENTS.md`, `brain/chore/roadmap-nuovo-stack.md`, `brain/chore/migrazione-effect.md`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a

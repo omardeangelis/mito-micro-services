@@ -42,11 +42,11 @@ The server code is moving from the Next.js app to the backend in `apps/api/`, on
 
 ## Effect
 
-[Effect](https://effect.website/docs) (`effect` 3.x) is the target for error handling and server infrastructure. Adoption is incremental and driven by refactors:
+[Effect](https://effect.website/docs) (`effect` 4.x, pinned to `~4.0.6`) is the target for error handling and server infrastructure. Adoption is incremental and driven by refactors:
 
-- **Every refactor moves the code it touches to Effect where it fits.** Expected failures become typed errors (`Data.TaggedError`) in the error channel instead of `throw`, `!` assertions or `null` returns. Steps compose with `Effect.gen`. Dependencies (DB, clock, config, external clients) are `Context.Tag` services provided by a `Layer`, so tests can swap them.
+- **Every refactor moves the code it touches to Effect where it fits.** Expected failures become typed errors (`Data.TaggedError`) in the error channel instead of `throw`, `!` assertions or `null` returns. Steps compose with `Effect.gen`. Dependencies (DB, clock, config, external clients) are `Context.Service` services provided by a `Layer`, so tests can swap them.
 - **Only the code the change already touches.** Don't widen a diff to convert unrelated files; list larger conversions as follow-ups.
-- **Behavior stays the same.** Existing tests must stay green with unchanged assertions after the move to Effect.
+- **Behavior stays the same.** Existing tests must stay green with unchanged assertions after the move to Effect. The one exception is a version upgrade of Effect that changes the shape of `Cause` or `Exit`: assertions that read that shape are rewritten mechanically, from a closed list in the upgrade's plan (as in `brain/specs/crm/effect-4/`).
 - **Plain async at the edges.** tRPC procedures, route handlers and server actions keep their signatures: run the program there (`Effect.runPromise` / `Effect.runPromiseExit`) and map tagged errors to `TRPCError` or the HTTP response in one place. UI components stay plain React.
 - **Drizzle stays the DB layer.** Wrap queries with `Effect.tryPromise` and map driver errors to tagged errors; don't add `@effect/sql*` packages.
 - **Tests go through the public interface** (see the `tdd` skill): they call the procedure, route or service, never Effect internals.
