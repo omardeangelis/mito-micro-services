@@ -21,7 +21,7 @@ updated: 2026-10-27
 
 Sì. La fase 2 della [[chore/roadmap-nuovo-stack]] è piccola nel codice (un gruppo, un endpoint o due), ma fissa le convenzioni che i nove gruppi della fase 3 copiano: dove sta il contratto, come si chiamano gli endpoint, come viaggiano gli errori, come il frontend esegue le chiamate e le invalida, come si testa. Tocca anche l'auth (il middleware dell'utente corrente, il login dell'app React su staging), che vuole la revisione di Leonardo (regola 5 della roadmap). Una scelta sbagliata qui si ripete nove volte.
 
-Questa pagina è il dettaglio dei punti 2.1, 2.2 e 2.3 della roadmap. Le decisioni H1–H20 (§3) sono proposte, da confermare: le prime quattro con Leonardo, le altre con Omar. I task (§4) sostituiscono la tabella "Fase 2, frontend" di [[chore/migrazione-frontend-react]] e aggiungono quelli del backend e dello staging. Niente di questa pagina è implementato.
+Questa pagina è il dettaglio dei punti 2.1, 2.2 e 2.3 della roadmap. Le decisioni H1–H4 (§3) le ha confermate Leonardo il 2026-10-27, con il via alla fase 2; H5–H20 sono proposte, da confermare con Omar. I task (§4) sostituiscono la tabella "Fase 2, frontend" di [[chore/migrazione-frontend-react]] e aggiungono quelli del backend e dello staging. Lo stato dei task è nel §4.
 
 ## 1. Da dove si parte (2026-10-27, `dev` a `c6a8b9d`)
 
@@ -62,6 +62,8 @@ Ogni riga ha una proposta. "Chi" è chi la conferma: L Leonardo, O Omar.
 
 ### Ordine e perimetro
 
+> Confermate da Leonardo il 2026-10-27 ("Via, con H1–H4 come proposte").
+
 | # | Chi | Proposta | Perché | Alternativa |
 |---|---|---|---|---|
 | H1 | L, O | **Non aspettare le PR 3 e 4 di Effect 4.** La definizione (2.1.1) parte subito: è un pacchetto nuovo e non tocca file del server. Gli handler (2.1.2) si scrivono già nello stile della PR 4, così la PR 4 non ha niente da convertire in loro: `Context.Service` con id `@mito/...`, `Effect.fn` e `Schema.TaggedError`. Chi arriva in `dev` per secondo si aggiorna; i conflitti attesi sono piccoli (`apps/api/src/app.ts`, `services/operator/errors.ts`, il nome di `ServerLive`) | La PR 4 è `high`, non è iniziata e tocca tutto il server: aspettarla ferma la fase 2 e, con lei, il frontend (regola 1 della roadmap) | Aspettare la 1.1 intera, come scrive oggi la roadmap |
@@ -101,7 +103,7 @@ Una PR per task. "Dipende" dice cosa deve essere deciso o in `dev` prima.
 
 | # | Task | Dipende | Fatto quando |
 |---|---|---|---|
-| 2.2.0 | **`apps/web` su Effect 4 e TanStack Query 5:** `effect` `~4.0.6` e `env.ts` su `Schema` v4 (stessi test); `@tanstack/react-query` 5; ESLint che in `apps/web` vieta `@mito/server`, `@mito/db` e `@mito/env` | H6 | I gate del job Web verdi; `pnpm why effect` trova una sola versione |
+| 2.2.0 | **`apps/web` su Effect 4 e TanStack Query 5:** `effect` `~4.0.6` e `env.ts` su `Schema` v4 (stessi test); `@tanstack/react-query` 5; ESLint che in `apps/web` vieta `@mito/server`, `@mito/db` e `@mito/env` | H6 | I gate del job Web verdi; `pnpm why effect` trova una sola versione. **Fatto** (PR #117): `effect` 4.0.6 è l'unica copia, e il chunk principale scende da 263,7 a 237,9 KB gzip, perché lo `Schema` di v4 pesa meno di quello di v3. La regola di ESLint lascia `@mito/db` ai test (`_test/`), che costruiscono le colonne dei filtri dalle tabelle come quelli dell'app Next |
 | 2.1.1 | **La definizione**: `@mito/contract` (H5) con `MitoApi` su `/api/v1`, il gruppo `me` (`GET /me`, e `PATCH /me` con H3), gli errori (`Unauthorized`, `NotAnOperator`, `OperatorDisabled`, `OperatorNotFound`) e i middleware `CurrentUser` e `AdminOnly` dichiarati. Test di andata e ritorno (date, errori, payload rifiutato) e il controllo degli import | H5, H7–H11 | In `dev` (regola 2 della roadmap): il frontend ci costruisce il client |
 | 2.2.1 | **Spike del data layer** (H12–H14):<br>– `runtime.ts`, `run`, `api/me.ts`, `QueryClientProvider` in `main.tsx`, `renderWithApi` con `HttpApiTest` in jsdom;<br>– un test che legge `me`, uno che scrive con `PATCH /me` e vede `me` invalidato, uno su `OperatorDisabled` che arriva nel toast con il testo di oggi;<br>– la misura del bundle | 2.1.1, 2.2.0 | I test verdi in jsdom, e la stessa pagina sul backend locale dopo 2.1.2. Quello che lo spike cambia di H12–H14 si scrive in 2.3.2 |
 | 2.1.2 | **Il backend serve `HttpApi`** (H9, H10):<br>– gli handler di `me` e i middleware in `packages/server/src/http/`;<br>– il montaggio in `apps/api/src/httpApi.ts` (`HttpRouter.toWebHandler`), in `app.ts` prima di `/api/trpc`;<br>– gli errori del gruppo passano al contratto, e il servizio li importa da lì;<br>– il middleware dei 500, l'OpenAPI (H15).<br>Test di contratto con `HttpApiTest` e PGlite: 200 da operatore e da admin, 401 senza sessione, 401 da disattivato, 400 senza operatore, 400 con un payload non valido, `PATCH` che scrive. Un test su `app.request` con `signIn`, e la chiamata in `api:smoke`. Revisione di Leonardo (o di Omar, H2) | 2.1.1, H1, H2 | In `dev` con i gate verdi (lint, tsc, test, build, `api:build`, `api:smoke`). Chiude TD2 per `HttpApi`; le procedure tRPC restano fino alla fase 5 |
@@ -153,6 +155,6 @@ Erano da confermare con Omar prima di 1.a. La fase 1 ne ha già messe in `dev` a
 
 ## 7. Domande aperte
 
-1. **H1–H4**, per Leonardo: l'ordine con la PR 4, chi scrive 2.1, `PATCH /me` nella fase 2, le preferenze in `GET /me`.
+1. ~~**H1–H4**, per Leonardo~~: confermate il 2026-10-27.
 2. **H5–H20 e F1–F11**, per Omar.
 3. **Il giro di `create-spec`** per 2.1.2 e 2.1.3 (§4): sì o no.

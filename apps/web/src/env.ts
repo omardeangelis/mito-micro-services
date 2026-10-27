@@ -12,7 +12,7 @@ const Env = Schema.Struct({
   VITE_VERCEL_ENV: Schema.optional(Schema.String),
   // "true" where the backend allows the test login with the email link, as
   // AUTH_TEST_LOGIN of the Next.js app (spec auth-better-auth, OQ6)
-  VITE_AUTH_TEST_LOGIN: Schema.optional(Schema.Literal("true", "false")),
+  VITE_AUTH_TEST_LOGIN: Schema.optional(Schema.Literals(["true", "false"])),
   // The DSN of the Sentry project, as NEXT_PUBLIC_SENTRY_DSN of the Next.js app
   VITE_SENTRY_DSN: Schema.optional(Schema.String),
 })
