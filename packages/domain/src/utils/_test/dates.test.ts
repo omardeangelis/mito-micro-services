@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest"
 import { parseDateInput } from "../dates"
 
-// vitest.workspace.ts runs this file in UTC and in Europe/Rome: the result is
-// the same, the date a browser in Italy reads
+// The `utc` and `rome` projects of vitest.config.ts run this file in UTC and
+// in Europe/Rome: the result is the same, the date a browser in Italy reads
 
 const NOW = new Date("2025-01-15T11:00:00.000Z")
 const iso = (date: Date | null) => date?.toISOString() ?? null

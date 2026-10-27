@@ -4,7 +4,8 @@ import { CustomersTableSection } from "../CustomerTableSection"
 // Il `search_by` che la pagina Clienti passa al server
 
 const api = vi.hoisted(() => ({
-  getAllCustomers: vi.fn<[Record<string, unknown>], Promise<unknown>>(),
+  getAllCustomers:
+    vi.fn<(input: Record<string, unknown>) => Promise<unknown>>(),
   // The cookies of the request, by name: the layout preferences are in them
   cookies: new Map<string, string>(),
 }))
