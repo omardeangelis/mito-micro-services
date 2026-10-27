@@ -4,6 +4,38 @@ import reactHooks from "eslint-plugin-react-hooks"
 import globals from "globals"
 import tseslint from "typescript-eslint"
 
+// No Next.js and no tRPC in the React app (roadmap, fase 3)
+const appImports = [
+  {
+    group: ["next", "next/*", "next-auth", "next-auth/*"],
+    message: "No Next.js in apps/web",
+  },
+  {
+    group: ["@trpc/*"],
+    message: "apps/web calls HttpApi, not tRPC",
+  },
+  // The server code stays out of the browser (2.2.0 of
+  // brain/chore/fase-2-httpapi.md): the app reaches it through HttpApi
+  {
+    group: ["@mito/server", "@mito/server/*", "@mito/env", "@mito/env/*"],
+    message: "Server code: apps/web calls HttpApi",
+  },
+]
+
+// The tables of @mito/db too, outside the tests: a ported test may still
+// build its filter columns from them, as the test of the Next.js app does
+const dbImports = {
+  group: ["@mito/db", "@mito/db/*"],
+  message: "Server code: apps/web calls HttpApi",
+}
+
+// The pages call the backend through the hooks of src/api, which own the
+// client, the runtime and the keys (H12 of brain/chore/fase-2-httpapi.md)
+const transportImports = {
+  group: ["@/api/runtime", "effect/http", "effect/http-api"],
+  message: "Call the backend through the hooks of src/api",
+}
+
 // The rules of the root .eslintrc.cjs that apply to a React app, without
 // eslint-config-next (1.a.1 of brain/chore/migrazione-frontend-react.md)
 export default tseslint.config(
@@ -53,22 +85,25 @@ export default tseslint.config(
         "error",
         { checksVoidReturn: { attributes: false } },
       ],
-      // No Next.js and no tRPC in the React app (roadmap, fase 3)
       "no-restricted-imports": [
         "error",
-        {
-          patterns: [
-            {
-              group: ["next", "next/*", "next-auth", "next-auth/*"],
-              message: "No Next.js in apps/web",
-            },
-            {
-              group: ["@trpc/*"],
-              message: "apps/web calls HttpApi, not tRPC",
-            },
-          ],
-        },
+        { patterns: [...appImports, dbImports, transportImports] },
       ],
+    },
+  },
+  {
+    files: ["src/api/**", "src/test/**"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        { patterns: [...appImports, dbImports] },
+      ],
+    },
+  },
+  {
+    files: ["**/_test/**"],
+    rules: {
+      "no-restricted-imports": ["error", { patterns: appImports }],
     },
   }
 )

@@ -5,6 +5,7 @@ status: draft
 links:
   - "[[chore/roadmap-nuovo-stack]]"
   - "[[chore/migrazione-effect]]"
+  - "[[chore/fase-2-httpapi]]"
   - "[[chore/migrazione-gcp]]"
   - "[[chore/migration/fase-3-frontend-spa]]"
   - "[[specs/crm/auth-better-auth/PLAN]]"
@@ -112,6 +113,8 @@ I numeri sono quelli della roadmap. Una PR per task, salvo dove è scritto altro
 | 1.c.2 | **Login e guard** (F6): `/login` (`routes/login`) con `authClient` di better-auth, lo stesso dell'app Next.js (Microsoft, e il link via email dove `VITE_AUTH_TEST_LOGIN=true`), `?error` come Accesso non riuscito, il redirect alla dashboard con una sessione; il guard di `/dashboard` (`RequireSession`, con `authClient.useSession()`) che senza sessione porta a `/login`; il logout (`LogoutFloatingButton`, nel tab Profile) che chiude la sessione, pulisce note e cookie delle preferenze e torna a `/`. Il primo accesso lo decide il server (D15). Resta alla fase 2 il controllo di `DashboardInitialPage` (operatore senza nome → `/dashboard/profile?firstTime=true` anche dopo il primo accesso), che legge l'operatore da `HttpApi` | 1.c.1, la C2 in `dev` | Test verdi (login, guard, redirect, logout portato). Il giro con il backend locale (`pnpm web:dev`: login, refresh con la sessione che resta, logout) resta da fare su una macchina con `.env.development.local` |
 
 ### Fase 2, frontend
+
+> Dal 2026-10-27 i task della fase 2 sono nel §4 di [[chore/fase-2-httpapi]], con quelli del backend e dello staging e le decisioni H1–H20: questa tabella resta come storia.
 
 | # | Task | Dipende | Fatto quando |
 |---|---|---|---|

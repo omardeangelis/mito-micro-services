@@ -1,0 +1,10 @@
+{
+  "name": "@mito/contract",
+  "version": "0.0.0",
+  "private": true,
+  "description": "La definizione di HttpApi che il backend serve e apps/web chiama: gruppi, endpoint, Schema di input e risposta, errori. Solo effect della root: niente @mito/db, @mito/server, @mito/env, drizzle o zod (H5 di brain/chore/fase-2-httpapi.md)",
+  "type": "module",
+  "exports": {
+    "./*": "./src/*.ts"
+  }
+}
