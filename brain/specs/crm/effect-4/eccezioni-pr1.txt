@@ -1,14 +1,15 @@
 # Eccezioni ad AC5 per la PR 1 (scripts/check-assertions.mjs assertions origin/dev HEAD --exceptions questo file).
 # <file>:<riga> = catena aggiunta (riga nel head); base:<file>:<riga> = catena tolta (riga nel base).
-# Le righe si rigenerano al gate T8.
+# Rigenerato a ogni task che sposta le righe; le categorie ammesse sono solo T2 (test nuovi, AC6) e D14 (elenco chiuso del §6).
 
-# T2: test nuovi di caratterizzazione (AC6)
-packages/server/src/effect/_test/db.db.test.ts:172 T2, test nuovo (AC6)
-packages/server/src/effect/_test/db.db.test.ts:185 T2, test nuovo (AC6)
+base:packages/server/src/effect/_test/db.db.test.ts:87 D14: Exit.isInterrupted -> Exit.hasInterrupts (db.db.test.ts:87 di dev)
+packages/server/src/effect/_test/db.db.test.ts:92 D14: Exit.isInterrupted -> Exit.hasInterrupts (db.db.test.ts:87 di dev)
+packages/server/src/effect/_test/db.db.test.ts:171 T2, test nuovo (AC6)
+packages/server/src/effect/_test/db.db.test.ts:184 T2, test nuovo (AC6)
+packages/server/src/effect/_test/db.db.test.ts:274 T2, test nuovo (AC6)
 packages/server/src/effect/_test/db.db.test.ts:275 T2, test nuovo (AC6)
-packages/server/src/effect/_test/db.db.test.ts:276 T2, test nuovo (AC6)
-packages/server/src/effect/_test/db.db.test.ts:279 T2, test nuovo (AC6)
+packages/server/src/effect/_test/db.db.test.ts:278 T2, test nuovo (AC6)
+packages/server/src/effect/_test/db.db.test.ts:287 T2, test nuovo (AC6)
 packages/server/src/effect/_test/db.db.test.ts:288 T2, test nuovo (AC6)
-packages/server/src/effect/_test/db.db.test.ts:289 T2, test nuovo (AC6)
-packages/server/src/effect/_test/db.db.test.ts:292 T2, test nuovo (AC6)
+packages/server/src/effect/_test/db.db.test.ts:291 T2, test nuovo (AC6)
 packages/server/src/services/storage/_test/gcs.test.ts:478 T2, test nuovo (AC6)

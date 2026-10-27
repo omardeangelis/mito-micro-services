@@ -33,6 +33,10 @@
 
 - **Il worktree della sessione non aveva `better-auth` in `node_modules`**: era stato installato prima della PR #108. La prima sonda di T9 ha visto 14 file non caricati. Rimedio: `pnpm install --frozen-lockfile`, che non cambia il lockfile, poi la sonda rifatta.
 
+- **I defect di `transaction` sono `Error`, non più `RuntimeException`** (T3): v3 creava una `RuntimeException` con `dieMessage`/`filterOrDieMessage`. Il messaggio è lo stesso, e i test controllano il messaggio e `isDefect`.
+- **ESLint nel worktree** carica anche il `.eslintrc.cjs` della checkout principale (due `eslint-plugin-prettier`). Si controlla con `--no-eslintrc -c .eslintrc.cjs`; il gate vero è la CI.
+- **Le righe del file di eccezioni si spostano** con ogni task che tocca i file di test. Il supervisore lo rigenera dopo ogni task dall'uscita dello script, con regole che ammettono solo le categorie T2 e D14 e lasciano scoperta ogni altra catena.
+
 ## Sanity Checks
 
 | Check | Result | Notes |

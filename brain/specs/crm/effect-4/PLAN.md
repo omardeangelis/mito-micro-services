@@ -333,9 +333,15 @@ G0 ─┬─ T1 ─ T2 ─ T3 ─┬─ T4 ─┬─ T7 ─ T8 ══ PR 1 in de
   - `tsc --noEmit` senza errori nei file del task (filtrato per percorso);
   - verdi `effect/_test/*`, compresi i test di T2;
   - lo script di T1 su questi file esce con 0, con le sole eccezioni di D14.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-10-27, worker sul modello del supervisore; review passata al primo giro.
+  - `effect` `~4.0.6` (`pnpm add` scrive `^`, corretto a mano), una sola copia nel lockfile; con v3 escono `fast-check` e `pure-rand`.
+  - `transaction` con `Effect.context` + `runPromiseExitWith`, `Effect.result`/`fromResult`, `Effect.flatMap` per il `DbError` recuperato. Il RED rifatto dal worker: con `Effect.runPromiseExit` senza contesto i due test di T2 sul contesto falliscono.
+  - Logger: `Logger.layer` sostituisce i logger correnti (`Logger.ts:1211`), e i default di v4 sono `[defaultLogger, tracerLogger]`.
+  - `Clock.Clock` è un `Context.Reference`; `fixedClock` ha anche i due tempi monotòni.
+  - `effect/_test` 23/23 (`db.db.test.ts` 20, come su v3), più i test di analytics che usano `fixedClock`: 56/56 in tutto. `tsc` pulito sui file del task (413 errori altrove, di T4 e T5).
+  - Lo script esce con 0 con 11 eccezioni: 10 di T2 e la riga D14 (`db.db.test.ts`, 87 in `dev`, 92 ora).
+- **files edited/created**: `package.json`, `pnpm-lock.yaml`, `packages/server/src/effect/{db,server,trpc,errorReporter}.ts`, `packages/server/src/effect/_test/db.db.test.ts`, `src/test/effect.ts`, `packages/server/src/services/analytics/_test/clock.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
