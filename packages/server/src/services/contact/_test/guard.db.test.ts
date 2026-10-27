@@ -1,4 +1,5 @@
-import { beforeAll, beforeEach, describe, expect, it } from "vitest"
+import { beforeAll, beforeEach } from "vitest"
+import { describe, expect, it } from "@effect/vitest"
 import { Effect, Exit } from "effect"
 import { eq } from "drizzle-orm"
 import { type Actor } from "@mito/domain/contact/permissions"
@@ -10,7 +11,8 @@ import {
   transaction,
 } from "../../../effect/db"
 import { migrateUpTo, resetDb, testDb } from "@/test/db"
-import { failureTag, runServer } from "@/test/effect"
+import { failureTag, provideServer } from "@/test/effect"
+import { type ServerContext } from "@mito/server/effect/server"
 import {
   createAlert,
   createCustomer,
@@ -19,19 +21,26 @@ import {
 } from "@/test/factories"
 import { loadEditableContact, touchCustomer } from "../guard"
 
+/** The program as the edges run it: with `ServerContext` and nothing else. */
+const inServer = <A, E>(program: Effect.Effect<A, E, ServerContext>) =>
+  program.pipe(provideServer, Effect.exit)
+
 const load = (taskId: number, actor: Actor) =>
-  runServer(transaction(loadEditableContact(taskId, actor)))
+  inServer(transaction(loadEditableContact(taskId, actor)))
 
-const loaded = async (taskId: number, actor: Actor) => {
-  const exit = await load(taskId, actor)
-  if (Exit.isFailure(exit)) throw new Error(`guard failed: ${failureTag(exit)}`)
-  return exit.value
-}
+const loaded = (taskId: number, actor: Actor) =>
+  Effect.gen(function* () {
+    const exit = yield* load(taskId, actor)
+    if (Exit.isFailure(exit))
+      throw new Error(`guard failed: ${failureTag(exit)}`)
+    return exit.value
+  })
 
-const failure = async (taskId: number, actor: Actor) => {
-  const exit = await load(taskId, actor)
-  return Exit.isFailure(exit) && exit.cause
-}
+const failure = (taskId: number, actor: Actor) =>
+  Effect.gen(function* () {
+    const exit = yield* load(taskId, actor)
+    return Exit.isFailure(exit) && exit.cause
+  })
 
 const operatorActor = (operatorId: number): Actor => ({
   operatorId,
@@ -57,256 +66,372 @@ beforeEach(async () => {
 })
 
 describe("loadEditableContact", () => {
-  it("un OPERATORE che non è né l'operatore del contatto né quello del cliente riceve ContactForbidden con il nome dell'assegnatario", async () => {
-    const mario = await createOperator({ name: "Mario", surname: "Rossi" })
-    const owner = await createOperator()
-    const other = await createOperator()
-    const customer = await createCustomer({ operatorId: owner.id })
-    const contact = await createTask({
-      customerId: customer.id,
-      operatorId: mario.id,
-    })
+  it.effect(
+    "un OPERATORE che non è né l'operatore del contatto né quello del cliente riceve ContactForbidden con il nome dell'assegnatario",
+    () =>
+      Effect.gen(function* () {
+        const mario = yield* Effect.promise(() =>
+          createOperator({ name: "Mario", surname: "Rossi" })
+        )
+        const owner = yield* Effect.promise(() => createOperator())
+        const other = yield* Effect.promise(() => createOperator())
+        const customer = yield* Effect.promise(() =>
+          createCustomer({ operatorId: owner.id })
+        )
+        const contact = yield* Effect.promise(() =>
+          createTask({
+            customerId: customer.id,
+            operatorId: mario.id,
+          })
+        )
 
-    const exit = await runServer(
-      transaction(
-        loadEditableContact(contact.id, {
-          operatorId: other.id,
-          role: "OPERATORE",
+        const exit = yield* transaction(
+          loadEditableContact(contact.id, {
+            operatorId: other.id,
+            role: "OPERATORE",
+          })
+        ).pipe(provideServer, Effect.exit)
+
+        expect(Exit.isFailure(exit) && exit.cause).toMatchObject({
+          reasons: [
+            { error: { _tag: "ContactForbidden", assignee: "Mario Rossi" } },
+          ],
+        })
+      })
+  )
+
+  it.effect("un id inesistente fallisce con ContactNotFound", () =>
+    Effect.gen(function* () {
+      const admin = yield* Effect.promise(() =>
+        createOperator({ role: "ADMIN" })
+      )
+      expect(
+        failureTag(
+          yield* load(999_999, {
+            operatorId: admin.id,
+            role: "ADMIN",
+          })
+        )
+      ).toBe("ContactNotFound")
+    })
+  )
+
+  it.effect(
+    "un contatto non più attivo fallisce con ContactSuperseded e l'id del contatto attivo del cliente",
+    () =>
+      Effect.gen(function* () {
+        const owner = yield* Effect.promise(() => createOperator())
+        const customer = yield* Effect.promise(() =>
+          createCustomer({ operatorId: owner.id })
+        )
+        const old = yield* Effect.promise(() =>
+          createTask({
+            customerId: customer.id,
+            operatorId: owner.id,
+            isActive: false,
+          })
+        )
+        const active = yield* Effect.promise(() =>
+          createTask({
+            customerId: customer.id,
+            operatorId: owner.id,
+          })
+        )
+        expect(yield* failure(old.id, operatorActor(owner.id))).toMatchObject({
+          reasons: [
+            { error: { _tag: "ContactSuperseded", activeTaskId: active.id } },
+          ],
+        })
+      })
+  )
+
+  it.effect(
+    "un contatto non più attivo di un cliente senza contatto attivo fallisce con activeTaskId null, anche per un ADMIN",
+    () =>
+      Effect.gen(function* () {
+        const admin = yield* Effect.promise(() =>
+          createOperator({ role: "ADMIN" })
+        )
+        const customer = yield* Effect.promise(() =>
+          createCustomer({ operatorId: admin.id })
+        )
+        const old = yield* Effect.promise(() =>
+          createTask({
+            customerId: customer.id,
+            operatorId: admin.id,
+            isActive: false,
+          })
+        )
+        expect(
+          yield* failure(old.id, {
+            operatorId: admin.id,
+            role: "ADMIN",
+          })
+        ).toMatchObject({
+          reasons: [
+            { error: { _tag: "ContactSuperseded", activeTaskId: null } },
+          ],
+        })
+      })
+  )
+
+  it.effect(
+    "un OPERATORE modifica il contatto di un collega su un cliente suo (D2)",
+    () =>
+      Effect.gen(function* () {
+        const me = yield* Effect.promise(() => createOperator())
+        const colleague = yield* Effect.promise(() => createOperator())
+        const customer = yield* Effect.promise(() =>
+          createCustomer({ operatorId: me.id })
+        )
+        const contact = yield* Effect.promise(() =>
+          createTask({
+            customerId: customer.id,
+            operatorId: colleague.id,
+          })
+        )
+
+        const result = yield* loaded(contact.id, operatorActor(me.id))
+
+        expect(result.task.id).toBe(contact.id)
+        expect(result.taskOperator).toEqual({
+          id: colleague.id,
+          name: colleague.name,
+          surname: colleague.surname,
+        })
+      })
+  )
+
+  it.effect(
+    "un OPERATORE modifica il contatto assegnato a lui su un cliente di un altro",
+    () =>
+      Effect.gen(function* () {
+        const me = yield* Effect.promise(() => createOperator())
+        const owner = yield* Effect.promise(() => createOperator())
+        const customer = yield* Effect.promise(() =>
+          createCustomer({ operatorId: owner.id })
+        )
+        const contact = yield* Effect.promise(() =>
+          createTask({
+            customerId: customer.id,
+            operatorId: me.id,
+          })
+        )
+        expect((yield* loaded(contact.id, operatorActor(me.id))).task.id).toBe(
+          contact.id
+        )
+      })
+  )
+
+  it.effect(
+    "un contatto non assegnato si modifica se il cliente è dell'operatore (A1)",
+    () =>
+      Effect.gen(function* () {
+        const me = yield* Effect.promise(() => createOperator())
+        const customer = yield* Effect.promise(() =>
+          createCustomer({ operatorId: me.id })
+        )
+        const contact = yield* Effect.promise(() =>
+          createTask({ customerId: customer.id })
+        )
+
+        const result = yield* loaded(contact.id, operatorActor(me.id))
+
+        expect(result.taskOperator).toBeNull()
+      })
+  )
+
+  it.effect(
+    "un contatto non assegnato su un cliente non suo fallisce con ContactForbidden e assignee null (A1)",
+    () =>
+      Effect.gen(function* () {
+        const me = yield* Effect.promise(() => createOperator())
+        const owner = yield* Effect.promise(() => createOperator())
+        const customer = yield* Effect.promise(() =>
+          createCustomer({ operatorId: owner.id })
+        )
+        const contact = yield* Effect.promise(() =>
+          createTask({ customerId: customer.id })
+        )
+        expect(yield* failure(contact.id, operatorActor(me.id))).toMatchObject({
+          reasons: [{ error: { _tag: "ContactForbidden", assignee: null } }],
+        })
+      })
+  )
+
+  it.effect("un ADMIN modifica qualunque contatto attivo (AC48)", () =>
+    Effect.gen(function* () {
+      const admin = yield* Effect.promise(() =>
+        createOperator({ role: "ADMIN" })
+      )
+      const owner = yield* Effect.promise(() => createOperator())
+      const customer = yield* Effect.promise(() =>
+        createCustomer({ operatorId: owner.id })
+      )
+      const contact = yield* Effect.promise(() =>
+        createTask({
+          customerId: customer.id,
+          operatorId: owner.id,
         })
       )
-    )
 
-    expect(Exit.isFailure(exit) && exit.cause).toMatchObject({
-      reasons: [
-        { error: { _tag: "ContactForbidden", assignee: "Mario Rossi" } },
-      ],
+      const result = yield* loaded(contact.id, {
+        operatorId: admin.id,
+        role: "ADMIN",
+      })
+
+      expect(result.task.id).toBe(contact.id)
     })
-  })
+  )
 
-  it("un id inesistente fallisce con ContactNotFound", async () => {
-    const admin = await createOperator({ role: "ADMIN" })
-
-    expect(
-      failureTag(await load(999_999, { operatorId: admin.id, role: "ADMIN" }))
-    ).toBe("ContactNotFound")
-  })
-
-  it("un contatto non più attivo fallisce con ContactSuperseded e l'id del contatto attivo del cliente", async () => {
-    const owner = await createOperator()
-    const customer = await createCustomer({ operatorId: owner.id })
-    const old = await createTask({
-      customerId: customer.id,
-      operatorId: owner.id,
-      isActive: false,
-    })
-    const active = await createTask({
-      customerId: customer.id,
-      operatorId: owner.id,
-    })
-
-    expect(await failure(old.id, operatorActor(owner.id))).toMatchObject({
-      reasons: [
-        { error: { _tag: "ContactSuperseded", activeTaskId: active.id } },
-      ],
-    })
-  })
-
-  it("un contatto non più attivo di un cliente senza contatto attivo fallisce con activeTaskId null, anche per un ADMIN", async () => {
-    const admin = await createOperator({ role: "ADMIN" })
-    const customer = await createCustomer({ operatorId: admin.id })
-    const old = await createTask({
-      customerId: customer.id,
-      operatorId: admin.id,
-      isActive: false,
-    })
-
-    expect(
-      await failure(old.id, { operatorId: admin.id, role: "ADMIN" })
-    ).toMatchObject({
-      reasons: [{ error: { _tag: "ContactSuperseded", activeTaskId: null } }],
-    })
-  })
-
-  it("un OPERATORE modifica il contatto di un collega su un cliente suo (D2)", async () => {
-    const me = await createOperator()
-    const colleague = await createOperator()
-    const customer = await createCustomer({ operatorId: me.id })
-    const contact = await createTask({
-      customerId: customer.id,
-      operatorId: colleague.id,
-    })
-
-    const result = await loaded(contact.id, operatorActor(me.id))
-
-    expect(result.task.id).toBe(contact.id)
-    expect(result.taskOperator).toEqual({
-      id: colleague.id,
-      name: colleague.name,
-      surname: colleague.surname,
-    })
-  })
-
-  it("un OPERATORE modifica il contatto assegnato a lui su un cliente di un altro", async () => {
-    const me = await createOperator()
-    const owner = await createOperator()
-    const customer = await createCustomer({ operatorId: owner.id })
-    const contact = await createTask({
-      customerId: customer.id,
-      operatorId: me.id,
-    })
-
-    expect((await loaded(contact.id, operatorActor(me.id))).task.id).toBe(
-      contact.id
-    )
-  })
-
-  it("un contatto non assegnato si modifica se il cliente è dell'operatore (A1)", async () => {
-    const me = await createOperator()
-    const customer = await createCustomer({ operatorId: me.id })
-    const contact = await createTask({ customerId: customer.id })
-
-    const result = await loaded(contact.id, operatorActor(me.id))
-
-    expect(result.taskOperator).toBeNull()
-  })
-
-  it("un contatto non assegnato su un cliente non suo fallisce con ContactForbidden e assignee null (A1)", async () => {
-    const me = await createOperator()
-    const owner = await createOperator()
-    const customer = await createCustomer({ operatorId: owner.id })
-    const contact = await createTask({ customerId: customer.id })
-
-    expect(await failure(contact.id, operatorActor(me.id))).toMatchObject({
-      reasons: [{ error: { _tag: "ContactForbidden", assignee: null } }],
-    })
-  })
-
-  it("un ADMIN modifica qualunque contatto attivo (AC48)", async () => {
-    const admin = await createOperator({ role: "ADMIN" })
-    const owner = await createOperator()
-    const customer = await createCustomer({ operatorId: owner.id })
-    const contact = await createTask({
-      customerId: customer.id,
-      operatorId: owner.id,
-    })
-
-    const result = await loaded(contact.id, {
-      operatorId: admin.id,
-      role: "ADMIN",
-    })
-
-    expect(result.task.id).toBe(contact.id)
-  })
-
-  it("un contatto senza cliente fallisce con CustomerMissing", async () => {
-    const admin = await createOperator({ role: "ADMIN" })
-    const contact = await createTask()
-
-    expect(
-      failureTag(
-        await load(contact.id, { operatorId: admin.id, role: "ADMIN" })
+  it.effect("un contatto senza cliente fallisce con CustomerMissing", () =>
+    Effect.gen(function* () {
+      const admin = yield* Effect.promise(() =>
+        createOperator({ role: "ADMIN" })
       )
-    ).toBe("CustomerMissing")
-  })
-
-  it("l'alert collegato e già risolto non è aperto: openAlert è null", async () => {
-    const me = await createOperator()
-    const customer = await createCustomer({ operatorId: me.id })
-    const contact = await createTask({ customerId: customer.id })
-    await createAlert({
-      taskId: contact.id,
-      deadline: new Date(),
-      isResolved: true,
+      const contact = yield* Effect.promise(() => createTask())
+      expect(
+        failureTag(
+          yield* load(contact.id, {
+            operatorId: admin.id,
+            role: "ADMIN",
+          })
+        )
+      ).toBe("CustomerMissing")
     })
+  )
 
-    expect(
-      (await loaded(contact.id, operatorActor(me.id))).openAlert
-    ).toBeNull()
-  })
+  it.effect(
+    "l'alert collegato e già risolto non è aperto: openAlert è null",
+    () =>
+      Effect.gen(function* () {
+        const me = yield* Effect.promise(() => createOperator())
+        const customer = yield* Effect.promise(() =>
+          createCustomer({ operatorId: me.id })
+        )
+        const contact = yield* Effect.promise(() =>
+          createTask({ customerId: customer.id })
+        )
+        yield* Effect.promise(() =>
+          createAlert({
+            taskId: contact.id,
+            deadline: new Date(),
+            isResolved: true,
+          })
+        )
+        expect(
+          (yield* loaded(contact.id, operatorActor(me.id))).openAlert
+        ).toBeNull()
+      })
+  )
 
-  it("l'alert collegato e aperto torna come openAlert", async () => {
-    const me = await createOperator()
-    const customer = await createCustomer({ operatorId: me.id })
-    const contact = await createTask({ customerId: customer.id })
-    const open = await createAlert({ taskId: contact.id, deadline: new Date() })
-
-    expect((await loaded(contact.id, operatorActor(me.id))).openAlert).toEqual(
-      open
-    )
-  })
-
-  it("restituisce il cliente bloccato e la task riletta", async () => {
-    const me = await createOperator()
-    const customer = await createCustomer({ operatorId: me.id })
-    const contact = await createTask({ customerId: customer.id })
-    const alert = await createAlert({
-      taskId: contact.id,
-      deadline: new Date(),
+  it.effect("l'alert collegato e aperto torna come openAlert", () =>
+    Effect.gen(function* () {
+      const me = yield* Effect.promise(() => createOperator())
+      const customer = yield* Effect.promise(() =>
+        createCustomer({ operatorId: me.id })
+      )
+      const contact = yield* Effect.promise(() =>
+        createTask({ customerId: customer.id })
+      )
+      const open = yield* Effect.promise(() =>
+        createAlert({ taskId: contact.id, deadline: new Date() })
+      )
+      expect(
+        (yield* loaded(contact.id, operatorActor(me.id))).openAlert
+      ).toEqual(open)
     })
+  )
 
-    const result = await loaded(contact.id, operatorActor(me.id))
+  it.effect("restituisce il cliente bloccato e la task riletta", () =>
+    Effect.gen(function* () {
+      const me = yield* Effect.promise(() => createOperator())
+      const customer = yield* Effect.promise(() =>
+        createCustomer({ operatorId: me.id })
+      )
+      const contact = yield* Effect.promise(() =>
+        createTask({ customerId: customer.id })
+      )
+      const alert = yield* Effect.promise(() =>
+        createAlert({
+          taskId: contact.id,
+          deadline: new Date(),
+        })
+      )
 
-    expect(result.customer).toEqual({ id: customer.id, operatorId: me.id })
-    // The row as stored after createAlert linked the alert to it
-    const [stored] = await testDb
-      .select()
-      .from(task)
-      .where(eq(task.id, contact.id))
-    expect(result.task).toEqual(stored)
-    expect(result.task.alertId).toBe(alert.id)
-  })
+      const result = yield* loaded(contact.id, operatorActor(me.id))
+
+      expect(result.customer).toEqual({ id: customer.id, operatorId: me.id })
+      // The row as stored after createAlert linked the alert to it
+      const [stored] = yield* Effect.promise(() =>
+        testDb.select().from(task).where(eq(task.id, contact.id))
+      )
+      expect(result.task).toEqual(stored)
+      expect(result.task.alertId).toBe(alert.id)
+    })
+  )
 
   // Checked by `tsc --noEmit`: the calls never run
-  it("si chiama solo dentro transaction()", () => {
-    const actor = operatorActor(1)
-    const locked = {} as LockedCustomer
+  it.effect("si chiama solo dentro transaction()", () =>
+    Effect.sync(() => {
+      const actor = operatorActor(1)
+      const locked = {} as LockedCustomer
 
-    const misuses = [
-      // @ts-expect-error: only transaction() provides Tx
-      () => runServer(loadEditableContact(1, actor)),
-      // @ts-expect-error: only transaction() provides Tx
-      () => runServer(touchCustomer(locked)),
-    ]
+      const misuses = [
+        // @ts-expect-error: only transaction() provides Tx
+        () => inServer(loadEditableContact(1, actor)),
+        // @ts-expect-error: only transaction() provides Tx
+        () => inServer(touchCustomer(locked)),
+      ]
 
-    expect(misuses).toHaveLength(2)
-  })
+      expect(misuses).toHaveLength(2)
+    })
+  )
 })
 
 describe("touchCustomer", () => {
-  it("porta avanti updatedAt del cliente bloccato", async () => {
-    const customer = await createCustomer({ updatedAt: past })
-    const before = new Date()
+  it.effect("porta avanti updatedAt del cliente bloccato", () =>
+    Effect.gen(function* () {
+      const customer = yield* Effect.promise(() =>
+        createCustomer({ updatedAt: past })
+      )
+      const before = new Date()
 
-    const exit = await runServer(
-      transaction(Effect.flatMap(lockCustomer(customer.id), touchCustomer))
-    )
+      const exit = yield* transaction(
+        Effect.flatMap(lockCustomer(customer.id), touchCustomer)
+      ).pipe(provideServer, Effect.exit)
 
-    expect(Exit.isSuccess(exit)).toBe(true)
-    expect((await updatedAtOf(customer.id)).getTime()).toBeGreaterThanOrEqual(
-      before.getTime()
-    )
-  })
-
-  it("dopo loadEditableContact aggiorna il cliente del contatto", async () => {
-    const me = await createOperator()
-    const customer = await createCustomer({
-      operatorId: me.id,
-      updatedAt: past,
+      expect(Exit.isSuccess(exit)).toBe(true)
+      expect(
+        (yield* Effect.promise(() => updatedAtOf(customer.id))).getTime()
+      ).toBeGreaterThanOrEqual(before.getTime())
     })
-    const contact = await createTask({ customerId: customer.id })
+  )
 
-    const exit = await runServer(
-      transaction(
+  it.effect("dopo loadEditableContact aggiorna il cliente del contatto", () =>
+    Effect.gen(function* () {
+      const me = yield* Effect.promise(() => createOperator())
+      const customer = yield* Effect.promise(() =>
+        createCustomer({
+          operatorId: me.id,
+          updatedAt: past,
+        })
+      )
+      const contact = yield* Effect.promise(() =>
+        createTask({ customerId: customer.id })
+      )
+
+      const exit = yield* transaction(
         Effect.flatMap(
           loadEditableContact(contact.id, operatorActor(me.id)),
           ({ customer: locked }) => touchCustomer(locked)
         )
-      )
-    )
+      ).pipe(provideServer, Effect.exit)
 
-    expect(Exit.isSuccess(exit)).toBe(true)
-    expect((await updatedAtOf(customer.id)).getTime()).toBeGreaterThan(
-      past.getTime()
-    )
-  })
+      expect(Exit.isSuccess(exit)).toBe(true)
+      expect(
+        (yield* Effect.promise(() => updatedAtOf(customer.id))).getTime()
+      ).toBeGreaterThan(past.getTime())
+    })
+  )
 })

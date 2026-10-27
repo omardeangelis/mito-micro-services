@@ -1,4 +1,5 @@
-import { beforeAll, beforeEach, describe, expect, it } from "vitest"
+import { beforeAll, beforeEach } from "vitest"
+import { describe, expect, it } from "@effect/vitest"
 import { Effect } from "effect"
 import { task } from "@mito/db/schema/task"
 import {
@@ -11,26 +12,30 @@ import { activeTasksOf, migrateUpTo, resetDb, tasksOf, testDb } from "@/test/db"
 import { createTestCaller } from "@/test/caller"
 import { createCustomer, createOperator, createTask } from "@/test/factories"
 import { failNextInsertInto } from "@/test/failpoint"
-import { failureTag, runServer } from "@/test/effect"
+import { failureTag, provideServer } from "@/test/effect"
+import { type ServerContext } from "@mito/server/effect/server"
 
 // As the callers do: lock the customer, then replace its contact
 const replaceExit = (customerId: string, operatorId?: number) =>
-  runServer(
-    transaction(
-      Effect.flatMap(lockCustomer(customerId), (customer) =>
-        replaceActiveContact({
-          customer,
-          values: { state: "chiamare", operatorId, priority: 120 },
-        })
-      )
+  transaction(
+    Effect.flatMap(lockCustomer(customerId), (customer) =>
+      replaceActiveContact({
+        customer,
+        values: { state: "chiamare", operatorId, priority: 120 },
+      })
     )
-  )
+  ).pipe(provideServer, Effect.exit)
 
-const replace = async (customerId: string, operatorId?: number) => {
-  const exit = await replaceExit(customerId, operatorId)
-  if (exit._tag === "Failure") throw new Error("replaceActiveContact failed")
-  return exit.value
-}
+const replace = (customerId: string, operatorId?: number) =>
+  Effect.gen(function* () {
+    const exit = yield* replaceExit(customerId, operatorId)
+    if (exit._tag === "Failure") throw new Error("replaceActiveContact failed")
+    return exit.value
+  })
+
+/** The program as the edges run it: with `ServerContext` and nothing else. */
+const inServer = <A, E>(program: Effect.Effect<A, E, ServerContext>) =>
+  program.pipe(provideServer, Effect.exit)
 
 beforeAll(async () => {
   await migrateUpTo()
@@ -41,82 +46,122 @@ beforeEach(async () => {
 })
 
 describe("replaceActiveContact", () => {
-  it("un cliente senza task, dopo replaceActiveContact, ha un solo contatto attivo: quello creato", async () => {
-    const operator = await createOperator()
-    const customer = await createCustomer({ operatorId: operator.id })
+  it.effect(
+    "un cliente senza task, dopo replaceActiveContact, ha un solo contatto attivo: quello creato",
+    () =>
+      Effect.gen(function* () {
+        const operator = yield* Effect.promise(() => createOperator())
+        const customer = yield* Effect.promise(() =>
+          createCustomer({ operatorId: operator.id })
+        )
 
-    const { created, previous } = await replace(customer.id, operator.id)
+        const { created, previous } = yield* replace(customer.id, operator.id)
 
-    expect(previous).toBeNull()
-    expect(created).toMatchObject({
-      customerId: customer.id,
-      state: "chiamare",
-      operatorId: operator.id,
-      priority: 120,
-      isActive: true,
-    })
-    const [active] = await createTestCaller(operator).task.getActiveTask({
-      id: customer.id,
-    })
-    expect(active).toEqual(created)
-    expect(await activeTasksOf(customer.id)).toHaveLength(1)
-  })
+        expect(previous).toBeNull()
+        expect(created).toMatchObject({
+          customerId: customer.id,
+          state: "chiamare",
+          operatorId: operator.id,
+          priority: 120,
+          isActive: true,
+        })
+        const [active] = yield* Effect.promise(() =>
+          createTestCaller(operator).task.getActiveTask({
+            id: customer.id,
+          })
+        )
+        expect(active).toEqual(created)
+        expect(
+          yield* Effect.promise(() => activeTasksOf(customer.id))
+        ).toHaveLength(1)
+      })
+  )
 
-  it("un cliente con una task attiva: la precedente non è più attiva e torna come previous", async () => {
-    const operator = await createOperator()
-    const customer = await createCustomer({ operatorId: operator.id })
-    const existing = await createTask({
-      customerId: customer.id,
-      operatorId: operator.id,
-      state: "app.to",
-    })
+  it.effect(
+    "un cliente con una task attiva: la precedente non è più attiva e torna come previous",
+    () =>
+      Effect.gen(function* () {
+        const operator = yield* Effect.promise(() => createOperator())
+        const customer = yield* Effect.promise(() =>
+          createCustomer({ operatorId: operator.id })
+        )
+        const existing = yield* Effect.promise(() =>
+          createTask({
+            customerId: customer.id,
+            operatorId: operator.id,
+            state: "app.to",
+          })
+        )
 
-    const { created, previous } = await replace(customer.id, operator.id)
+        const { created, previous } = yield* replace(customer.id, operator.id)
 
-    expect(previous).toMatchObject({
-      id: existing.id,
-      state: "app.to",
-      isActive: false,
-    })
-    expect(await activeTasksOf(customer.id)).toEqual([created])
-  })
+        expect(previous).toMatchObject({
+          id: existing.id,
+          state: "app.to",
+          isActive: false,
+        })
+        expect(yield* Effect.promise(() => activeTasksOf(customer.id))).toEqual(
+          [created]
+        )
+      })
+  )
 
-  it("un cliente inesistente fallisce con CustomerMissing senza scrivere nulla", async () => {
-    const exit = await replaceExit("missing-customer")
+  it.effect(
+    "un cliente inesistente fallisce con CustomerMissing senza scrivere nulla",
+    () =>
+      Effect.gen(function* () {
+        const exit = yield* replaceExit("missing-customer")
 
-    expect(failureTag(exit)).toBe("CustomerMissing")
-    expect(await testDb.select().from(task)).toEqual([])
-  })
+        expect(failureTag(exit)).toBe("CustomerMissing")
+        expect(yield* Effect.promise(() => testDb.select().from(task))).toEqual(
+          []
+        )
+      })
+  )
 
-  it("se l'insert fallisce il DB resta com'era e il chiamante riceve un DbError", async () => {
-    const operator = await createOperator()
-    const customer = await createCustomer({ operatorId: operator.id })
-    const existing = await createTask({
-      customerId: customer.id,
-      operatorId: operator.id,
-      state: "app.to",
-    })
-    await failNextInsertInto(task)
+  it.effect(
+    "se l'insert fallisce il DB resta com'era e il chiamante riceve un DbError",
+    () =>
+      Effect.gen(function* () {
+        const operator = yield* Effect.promise(() => createOperator())
+        const customer = yield* Effect.promise(() =>
+          createCustomer({ operatorId: operator.id })
+        )
+        const existing = yield* Effect.promise(() =>
+          createTask({
+            customerId: customer.id,
+            operatorId: operator.id,
+            state: "app.to",
+          })
+        )
+        yield* Effect.promise(() => failNextInsertInto(task))
 
-    const exit = await replaceExit(customer.id, operator.id)
+        const exit = yield* replaceExit(customer.id, operator.id)
 
-    expect(failureTag(exit)).toBe("DbError")
-    expect(await tasksOf(customer.id)).toEqual([existing])
-  })
+        expect(failureTag(exit)).toBe("DbError")
+        expect(yield* Effect.promise(() => tasksOf(customer.id))).toEqual([
+          existing,
+        ])
+      })
+  )
 
   // Checked by `tsc --noEmit`: the calls never run
-  it("si chiama solo con un cliente bloccato da lockCustomer, dentro transaction()", () => {
-    const values = { state: "chiamare" as const }
-    const unlocked = { id: "customer", operatorId: null }
-    const locked = {} as LockedCustomer
+  it.effect(
+    "si chiama solo con un cliente bloccato da lockCustomer, dentro transaction()",
+    () =>
+      Effect.sync(() => {
+        const values = { state: "chiamare" as const }
+        const unlocked = { id: "customer", operatorId: null }
+        const locked = {} as LockedCustomer
 
-    const misuses = [
-      // @ts-expect-error: only lockCustomer makes a LockedCustomer
-      () => replaceActiveContact({ customer: unlocked, values }),
-      // @ts-expect-error: only transaction() provides Tx
-      () => runServer(replaceActiveContact({ customer: locked, values })),
-    ]
+        const misuses = [
+          // @ts-expect-error: only lockCustomer makes a LockedCustomer
+          () => replaceActiveContact({ customer: unlocked, values }),
+          // @ts-expect-error: only transaction() provides Tx
+          () => inServer(replaceActiveContact({ customer: locked, values })),
+        ]
 
-    expect(misuses).toHaveLength(2)
-  })
+        expect(misuses).toHaveLength(2)
+      })
+  )
 })
