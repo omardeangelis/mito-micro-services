@@ -326,7 +326,7 @@ Tutto il codice nuovo, provato, ma non collegato a nessuna rotta né a `getServe
 - **description**: il deploy passa `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL=$FRONTEND`, `AUTH_TEST_LOGIN=true`; lo script della #90 chiede anche il secret nuovo.
 - **validation**: `sh -n`; il parser di `gcloud` offline come nella #90.
 - **status**: Done (in PR, da rivedere)
-- **log**: 2026-10-27: `STAGING_BETTER_AUTH_SECRET`, `BETTER_AUTH_URL=$FRONTEND`, `AUTH_TEST_LOGIN=true` in `deploy-staging.sh`; `sh -n`. Il secret si crea a mano prima del merge (la #90 non è ancora unita)
+- **log**: 2026-10-27: `STAGING_BETTER_AUTH_SECRET`, `BETTER_AUTH_URL=$FRONTEND`, `AUTH_TEST_LOGIN=true` in `deploy-staging.sh`; `sh -n`. Dopo il merge della #90 (2026-10-27): `login-staging.sh` chiede anche `BETTER_AUTH_SECRET`, da solo con `sh apps/api/gcp/login-staging.sh BETTER_AUTH_SECRET`, e rifiuta un valore sotto i 32 caratteri; `deploy-staging.sh` unito con i secret di login della #90
 - **files edited/created**:
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
