@@ -77,6 +77,34 @@ describe("GET /api/v1/me", () => {
     })
   )
 
+  it.effect(
+    "una preferenza salvata di tipo sbagliato resta fuori, le altre arrivano",
+    () =>
+      Effect.gen(function* () {
+        const operator = yield* Effect.promise(() => createOperator())
+        yield* Effect.promise(() =>
+          testDb
+            .update(users)
+            .set({
+              preferences: JSON.stringify({
+                dashboardCollapsed: "yes",
+                customerTableVisibleColumns: ["Sede"],
+                practicesTableVisibleColumns: "Nome",
+                unknownKey: 1,
+              }),
+            })
+            .where(eq(users.id, operator.userId))
+        )
+        const api = yield* clientAs(operator.userId)
+
+        const me = yield* api.me.getCurrentUser()
+
+        assert.deepStrictEqual(me.preferences, {
+          customerTableVisibleColumns: ["Sede"],
+        })
+      })
+  )
+
   it.effect("un admin ha il ruolo ADMIN", () =>
     Effect.gen(function* () {
       const admin = yield* Effect.promise(() =>

@@ -1,13 +1,29 @@
-import { Effect } from "effect"
+import { Effect, Option, Schema } from "effect"
 import { HttpApiBuilder } from "effect/http-api"
 import { MitoApi } from "@mito/contract/api"
 import { OperatorNotFound } from "@mito/contract/errors"
 import { CurrentUser } from "@mito/contract/middleware"
+import { UserPreference } from "@mito/contract/schemas"
 import { type Db } from "../effect/db"
 import { type ErrorReporter } from "../effect/errorReporter"
 import { updateOperatorInfo } from "../services/operator/profile"
 import { getCurrentUser } from "../services/user/current"
 import { unexpectedAs500 } from "./unexpected"
+
+const decodePreference = Schema.decodeUnknownOption(UserPreference)
+
+/**
+ * The stored preferences the contract can carry: a key of the wrong type (or
+ * unknown) stays out, as the Next.js app skips it before writing a cookie
+ * (`validPreferences`), instead of failing the whole response
+ */
+const validPreferences = (stored: object): UserPreference =>
+  Object.assign(
+    {},
+    ...Object.entries(stored).map(([key, value]) =>
+      Option.getOrElse(decodePreference({ [key]: value }), () => ({}))
+    )
+  ) as UserPreference
 
 /**
  * The group `me`: adapters of the services the procedures
@@ -31,7 +47,12 @@ export const MeLive = HttpApiBuilder.group(MitoApi, "me", (handlers) =>
             Effect.catchTag("NotAnOperator", (error) => Effect.die(error)),
             unexpectedAs500("getCurrentUser")
           )
-          return { role, operatorId, operator, preferences }
+          return {
+            role,
+            operatorId,
+            operator,
+            preferences: validPreferences(preferences),
+          }
         }).pipe(Effect.provide(services))
       )
       .handle("updateOperatorInfo", ({ payload }) =>
