@@ -28,20 +28,19 @@ type ActiveContact = { id: number; operatorId: number | null }
  * The customer's active contact, locked until the transaction ends, or null.
  * It is read after the customer's lock (the lock rule of `lockCustomer`).
  */
-const lockActiveContact = (
+const lockActiveContact = Effect.fnUntraced(function* (
   customer: LockedCustomer
-): Effect.Effect<ActiveContact | null, DbError, Db | Tx> =>
-  Effect.gen(function* () {
-    yield* Tx
-    const [contact] = yield* query((client) =>
-      client
-        .select({ id: task.id, operatorId: task.operatorId })
-        .from(task)
-        .where(and(eq(task.customerId, customer.id), eq(task.isActive, true)))
-        .for("update")
-    )
-    return contact ?? null
-  })
+): Effect.fn.Return<ActiveContact | null, DbError, Db | Tx> {
+  yield* Tx
+  const [contact] = yield* query((client) =>
+    client
+      .select({ id: task.id, operatorId: task.operatorId })
+      .from(task)
+      .where(and(eq(task.customerId, customer.id), eq(task.isActive, true)))
+      .for("update")
+  )
+  return contact ?? null
+})
 
 /**
  * The core of "Passaggio di consegne", "Assegna Clienti" and "Assegna a te"
@@ -61,7 +60,7 @@ const lockActiveContact = (
  * The caller checks that the actor may do it and that `toOperatorId` is a
  * working operator.
  */
-const moveCustomerAndContact = ({
+const moveCustomerAndContact = Effect.fnUntraced(function* ({
   customer,
   contact,
   toOperatorId,
@@ -74,61 +73,60 @@ const moveCustomerAndContact = ({
   toOperatorId: number
   actor: Actor
   source: "detail" | "bulk" | "self_assign"
-}): Effect.Effect<
+}): Effect.fn.Return<
   { customerMoved: boolean; contactMoved: boolean },
   DbError,
   Db | Tx
-> =>
-  Effect.gen(function* () {
-    // Outside a transaction the updates and the log would commit apart
-    yield* Tx
-    const customerMoved = customer.operatorId !== toOperatorId
-    const contactMoved = !!contact && contact.operatorId !== toOperatorId
+> {
+  // Outside a transaction the updates and the log would commit apart
+  yield* Tx
+  const customerMoved = customer.operatorId !== toOperatorId
+  const contactMoved = !!contact && contact.operatorId !== toOperatorId
 
-    if (customerMoved) {
-      yield* query((client) =>
-        client
-          .update(customers)
-          .set({ operatorId: toOperatorId })
-          .where(eq(customers.id, customer.id))
-      )
-    }
-    if (contactMoved) {
-      yield* query((client) =>
-        client
-          .update(task)
-          .set({ operatorId: toOperatorId })
-          .where(eq(task.id, contact.id))
-      )
-    }
+  if (customerMoved) {
+    yield* query((client) =>
+      client
+        .update(customers)
+        .set({ operatorId: toOperatorId })
+        .where(eq(customers.id, customer.id))
+    )
+  }
+  if (contactMoved) {
+    yield* query((client) =>
+      client
+        .update(task)
+        .set({ operatorId: toOperatorId })
+        .where(eq(task.id, contact.id))
+    )
+  }
 
-    const reassign = {
-      customerId: customer.id,
-      actorOperatorId: actor.operatorId,
-      action: "operator_reassign" as const,
-      source,
-      toOperatorId,
-    }
-    const logRows: (typeof taskEventLog.$inferInsert)[] = [
-      ...(customerMoved
-        ? [{ ...reassign, taskId: null, fromOperatorId: customer.operatorId }]
-        : []),
-      ...(contactMoved
-        ? [
-            {
-              ...reassign,
-              taskId: contact.id,
-              fromOperatorId: contact.operatorId,
-            },
-          ]
-        : []),
-    ]
-    if (logRows.length > 0) {
-      yield* query((client) => client.insert(taskEventLog).values(logRows))
-    }
+  const reassign = {
+    customerId: customer.id,
+    actorOperatorId: actor.operatorId,
+    action: "operator_reassign" as const,
+    source,
+    toOperatorId,
+  }
+  const logRows: (typeof taskEventLog.$inferInsert)[] = [
+    ...(customerMoved
+      ? [{ ...reassign, taskId: null, fromOperatorId: customer.operatorId }]
+      : []),
+    ...(contactMoved
+      ? [
+          {
+            ...reassign,
+            taskId: contact.id,
+            fromOperatorId: contact.operatorId,
+          },
+        ]
+      : []),
+  ]
+  if (logRows.length > 0) {
+    yield* query((client) => client.insert(taskEventLog).values(logRows))
+  }
 
-    return { customerMoved, contactMoved }
-  })
+  return { customerMoved, contactMoved }
+})
 
 /**
  * "Passaggio di consegne" (D13): moves the customer and its active contact,

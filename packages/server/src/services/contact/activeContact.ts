@@ -29,20 +29,20 @@ import {
  * `previous` is the most recent of the deactivated tasks, as the UI shows it
  * (`task.getActiveTask`), or null.
  */
-export const replaceActiveContact = ({
-  customer,
-  values,
-  mostRecent = false,
-}: {
-  customer: LockedCustomer
-  values: Omit<typeof task.$inferInsert, "id" | "customerId" | "isActive">
-  mostRecent?: boolean
-}): Effect.Effect<
-  { created: Task & { customerId: string }; previous: Task | null },
-  DbError,
-  Db | Tx
-> =>
-  Effect.gen(function* () {
+export const replaceActiveContact = Effect.fn("contact.replaceActiveContact")(
+  function* ({
+    customer,
+    values,
+    mostRecent = false,
+  }: {
+    customer: LockedCustomer
+    values: Omit<typeof task.$inferInsert, "id" | "customerId" | "isActive">
+    mostRecent?: boolean
+  }): Effect.fn.Return<
+    { created: Task & { customerId: string }; previous: Task | null },
+    DbError,
+    Db | Tx
+  > {
     // Outside a transaction the update and the insert would commit apart
     yield* Tx
     const isActiveOfCustomer = and(
@@ -90,17 +90,19 @@ export const replaceActiveContact = ({
       previous:
         deactivated.find((row) => row.id === mostRecentActive?.id) ?? null,
     }
-  })
+  }
+)
 
 /** The id of the customer's active contact, or null. */
-export const activeTaskIdOf = (customerId: string) =>
-  Effect.gen(function* () {
-    const [active] = yield* query((client) =>
-      client
-        .select({ id: task.id })
-        .from(task)
-        .where(and(eq(task.customerId, customerId), eq(task.isActive, true)))
-        .limit(1)
-    )
-    return active?.id ?? null
-  })
+export const activeTaskIdOf = Effect.fn("contact.activeTaskIdOf")(function* (
+  customerId: string
+) {
+  const [active] = yield* query((client) =>
+    client
+      .select({ id: task.id })
+      .from(task)
+      .where(and(eq(task.customerId, customerId), eq(task.isActive, true)))
+      .limit(1)
+  )
+  return active?.id ?? null
+})

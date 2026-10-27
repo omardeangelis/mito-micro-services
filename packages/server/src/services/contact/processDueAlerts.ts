@@ -52,78 +52,81 @@ const deadlineDay = sql`DATE(${alerts.deadline} AT TIME ZONE 'Europe/Rome')`
  * its operator; due on an earlier day, the alert is only resolved. An alert
  * already resolved (by an overlapping run) is skipped.
  */
-const processAlert = (
+const processAlert = Effect.fnUntraced(function* (
   { task, alert }: DueAlert,
   today: string,
   systemOperatorId: number
-): Effect.Effect<"processed" | "skipped", DbError | CustomerMissing, Db | Tx> =>
-  Effect.gen(function* () {
-    const customer = yield* lockCustomer(task.customerId)
-    // Resolves the alert only if still open: an overlapping run may have
-    // resolved it since the list was read
-    const resolved = yield* query((client) =>
-      client
-        .update(alerts)
-        .set({ isResolved: true, resolvedBy: systemOperatorId })
-        .where(and(eq(alerts.id, alert.id), eq(alerts.isResolved, false)))
-        .returning({ id: alerts.id })
-    )
-    if (resolved.length === 0) return "skipped"
+): Effect.fn.Return<
+  "processed" | "skipped",
+  DbError | CustomerMissing,
+  Db | Tx
+> {
+  const customer = yield* lockCustomer(task.customerId)
+  // Resolves the alert only if still open: an overlapping run may have
+  // resolved it since the list was read
+  const resolved = yield* query((client) =>
+    client
+      .update(alerts)
+      .set({ isResolved: true, resolvedBy: systemOperatorId })
+      .where(and(eq(alerts.id, alert.id), eq(alerts.isResolved, false)))
+      .returning({ id: alerts.id })
+  )
+  if (resolved.length === 0) return "skipped"
 
-    const alertResolvedLog = {
-      customerId: customer.id,
-      taskId: task.id,
-      alertId: alert.id,
-      actorOperatorId: systemOperatorId,
-      action: "alert_resolved",
-      source: "cron_alert",
-    } as const
+  const alertResolvedLog = {
+    customerId: customer.id,
+    taskId: task.id,
+    alertId: alert.id,
+    actorOperatorId: systemOperatorId,
+    action: "alert_resolved",
+    source: "cron_alert",
+  } as const
 
-    if (italianDay(alert.deadline) === today) {
-      // La nuova task attiva non deve nascere agganciata all'alert che stiamo
-      // risolvendo: l'alert è risolto, quindi il contatto non ha più un alert
-      // aperto e l'alert vive solo nello Storico, collegato (via alert.taskId)
-      // alla vecchia task.
-      yield* replaceActiveContact({
-        customer,
-        values: {
-          state: "followup",
-          closedAt: task.closedAt,
-          operatorId: customer.operatorId,
-          alertId: null,
-          priority: 150,
-          customPriority: false,
+  if (italianDay(alert.deadline) === today) {
+    // La nuova task attiva non deve nascere agganciata all'alert che stiamo
+    // risolvendo: l'alert è risolto, quindi il contatto non ha più un alert
+    // aperto e l'alert vive solo nello Storico, collegato (via alert.taskId)
+    // alla vecchia task.
+    yield* replaceActiveContact({
+      customer,
+      values: {
+        state: "followup",
+        closedAt: task.closedAt,
+        operatorId: customer.operatorId,
+        alertId: null,
+        priority: 150,
+        customPriority: false,
+      },
+    })
+    yield* query((client) =>
+      client.insert(taskEventLog).values([
+        alertResolvedLog,
+        {
+          customerId: customer.id,
+          taskId: task.id,
+          actorOperatorId: systemOperatorId,
+          action: "state_change",
+          source: "cron_alert",
+          fromState: task.state,
+          toState: "followup",
         },
-      })
-      yield* query((client) =>
-        client.insert(taskEventLog).values([
-          alertResolvedLog,
-          {
-            customerId: customer.id,
-            taskId: task.id,
-            actorOperatorId: systemOperatorId,
-            action: "state_change",
-            source: "cron_alert",
-            fromState: task.state,
-            toState: "followup",
-          },
-        ])
-      )
-    } else {
-      // Only if the task still points at this alert: a writer may have linked
-      // a new one since the list was read
-      yield* query((client) =>
-        client
-          .update(tasks)
-          .set({ alertId: null })
-          .where(and(eq(tasks.id, task.id), eq(tasks.alertId, alert.id)))
-      )
-      yield* query((client) =>
-        client.insert(taskEventLog).values(alertResolvedLog)
-      )
-    }
-    return "processed"
-  })
+      ])
+    )
+  } else {
+    // Only if the task still points at this alert: a writer may have linked
+    // a new one since the list was read
+    yield* query((client) =>
+      client
+        .update(tasks)
+        .set({ alertId: null })
+        .where(and(eq(tasks.id, task.id), eq(tasks.alertId, alert.id)))
+    )
+    yield* query((client) =>
+      client.insert(taskEventLog).values(alertResolvedLog)
+    )
+  }
+  return "processed"
+})
 
 /**
  * The alert cron: resolves the open alerts due today or earlier, each in its
@@ -134,21 +137,21 @@ const processAlert = (
  * takes the first: the ones left are counted in `remaining` and stay open for
  * the next call.
  */
-export const processDueAlerts = (
-  now: Date,
-  { budgetMs }: { budgetMs: number }
-): Effect.Effect<
-  {
-    found: number
-    processed: number
-    skipped: number
-    failed: number
-    remaining: number
-  },
-  DbError | SystemOperatorMissing,
-  Db | ErrorReporter
-> =>
-  Effect.gen(function* () {
+export const processDueAlerts = Effect.fn("contact.processDueAlerts")(
+  function* (
+    now: Date,
+    { budgetMs }: { budgetMs: number }
+  ): Effect.fn.Return<
+    {
+      found: number
+      processed: number
+      skipped: number
+      failed: number
+      remaining: number
+    },
+    DbError | SystemOperatorMissing,
+    Db | ErrorReporter
+  > {
     const start = yield* Clock.currentTimeMillis
     const [systemOperator] = yield* query((client) =>
       client
@@ -179,12 +182,11 @@ export const processDueAlerts = (
     )
     const { succeeded, failed } = yield* forEachIsolated(
       rows,
-      (row, index) =>
-        Effect.gen(function* () {
-          const elapsed = (yield* Clock.currentTimeMillis) - start
-          if (index > 0 && elapsed >= budgetMs) return "remaining" as const
-          return yield* transaction(processAlert(row, today, systemOperator.id))
-        }),
+      Effect.fnUntraced(function* (row: DueAlert, index: number) {
+        const elapsed = (yield* Clock.currentTimeMillis) - start
+        if (index > 0 && elapsed >= budgetMs) return "remaining" as const
+        return yield* transaction(processAlert(row, today, systemOperator.id))
+      }),
       ({ task, alert }) => ({ alertId: alert.id, customerId: task.customerId })
     )
     const count = (outcome: (typeof succeeded)[number]) =>
@@ -196,4 +198,5 @@ export const processDueAlerts = (
       failed,
       remaining: count("remaining"),
     }
-  })
+  }
+)

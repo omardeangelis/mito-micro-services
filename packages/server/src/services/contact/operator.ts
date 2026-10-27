@@ -20,10 +20,10 @@ import { OperatorNotFound } from "./errors"
  * `lockCustomer` (the lock rule of `lockCustomer`: users first, then
  * customers).
  */
-export const findWorkingOperator = (
-  operatorId: number
-): Effect.Effect<{ id: number }, OperatorNotFound | DbError, Db | Tx> =>
-  Effect.gen(function* () {
+export const findWorkingOperator = Effect.fn("contact.findWorkingOperator")(
+  function* (
+    operatorId: number
+  ): Effect.fn.Return<{ id: number }, OperatorNotFound | DbError, Db | Tx> {
     // Outside a transaction the lock would end with the query
     yield* Tx
     const [operator] = yield* query((client) =>
@@ -36,7 +36,8 @@ export const findWorkingOperator = (
     )
     if (!operator) return yield* new OperatorNotFound()
     return operator
-  })
+  }
+)
 
 /**
  * `findWorkingOperator` with its `OperatorNotFound` left to the caller: the
