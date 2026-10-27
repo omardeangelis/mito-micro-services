@@ -141,6 +141,16 @@
   * {
     @apply border-border;
   }
+  /* What Tailwind 3 gave and Tailwind 4 no longer does: the placeholders in
+     gray-400 and the pointer on the buttons (Tailwind 4 upgrade guide) */
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--color-gray-400);
+  }
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
   body {
     @apply bg-background text-foreground;
   }
