@@ -9,16 +9,19 @@ export type ImportSettings = {
   readonly batchSize: number
 }
 
-/** The limits of the import: tests shorten them. */
-export class ImportConfig extends Context.Service<
-  ImportConfig,
-  ImportSettings
->()("ImportConfig") {}
-
 export const importSettings: ImportSettings = {
   timeoutMs: 30 * 60_000,
   uploadTtlMs: 60 * 60_000,
   batchSize: 1_000,
 }
 
-export const ImportConfigLive = Layer.succeed(ImportConfig, importSettings)
+/** The limits of the import: tests shorten them. */
+export class ImportConfig extends Context.Service<
+  ImportConfig,
+  ImportSettings
+>()("@mito/server/services/import/ImportConfig") {
+  static readonly layer = Layer.succeed(
+    ImportConfig,
+    ImportConfig.of(importSettings)
+  )
+}

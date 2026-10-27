@@ -1,7 +1,7 @@
 import { TRPCError } from "@trpc/server"
 import { Cause, Effect, Exit, Option } from "effect"
 import { DbError } from "./db"
-import { type ServerContext, ServerLive } from "./server"
+import { type ServerServices, serverLayer } from "./server"
 
 /** The typed error in `cause` that `mapError` translates, if any. */
 const expectedFailure = (cause: Cause.Cause<unknown>) =>
@@ -12,7 +12,7 @@ const expectedFailure = (cause: Cause.Cause<unknown>) =>
 
 /**
  * The edge of a tRPC procedure written in Effect: runs `program` with
- * `ServerLive` and turns its outcome into what tRPC expects.
+ * `serverLayer` and turns its outcome into what tRPC expects.
  *
  * - Typed errors other than `DbError` become the `TRPCError` `mapError`
  *   returns. It is required whenever `program` has such errors.
@@ -21,7 +21,7 @@ const expectedFailure = (cause: Cause.Cause<unknown>) =>
  *   middleware reports it: this function doesn't.
  */
 export async function runTrpc<A, E>(
-  program: Effect.Effect<A, E, ServerContext>,
+  program: Effect.Effect<A, E, ServerServices>,
   ...[mapError]: [Exclude<E, DbError>] extends [never]
     ? []
     : [mapError: (error: Exclude<E, DbError>) => TRPCError]
@@ -33,7 +33,7 @@ export async function runTrpc<A, E>(
           ? Effect.void
           : Effect.logError("tRPC procedure failed", Cause.pretty(cause))
       ),
-      Effect.provide(ServerLive)
+      Effect.provide(serverLayer)
     )
   )
   if (Exit.isSuccess(exit)) return exit.value

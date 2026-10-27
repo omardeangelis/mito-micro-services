@@ -3,7 +3,7 @@ import { describe, expect, it } from "@effect/vitest"
 import { Effect, Exit, Layer } from "effect"
 import { TestClock } from "effect/testing"
 import { importRun } from "@mito/db/schema/importRun"
-import { type Db, DbLive } from "../../../effect/db"
+import { Db } from "../../../effect/db"
 import { ImportConfig, importSettings } from "../config"
 import { HISTORY_PAGE_SIZE, activeImport, listImports } from "../history"
 import { migrateUpTo, resetDb, testDb } from "@/test/db"
@@ -29,7 +29,7 @@ const read = <A, E>(program: Effect.Effect<A, E, Db | ImportConfig>) =>
     yield* TestClock.setTime(NOW.getTime())
     const exit = yield* program.pipe(
       Effect.provide(
-        Layer.merge(DbLive, Layer.succeed(ImportConfig, importSettings))
+        Layer.merge(Db.layer, Layer.succeed(ImportConfig, importSettings))
       ),
       Effect.exit
     )

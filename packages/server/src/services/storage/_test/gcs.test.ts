@@ -12,7 +12,7 @@ import {
   StorageUploadError,
   StorageValidationError,
 } from "../errors"
-import { makeGcsStorageLayer } from "../gcs"
+import { gcsStorageLayer } from "../gcs"
 import { createStorageClient } from "../promise"
 import { Storage, type StorageService } from "../storage"
 
@@ -52,7 +52,7 @@ const withStorage = <A, E>(
 const runOk = <A, E>(
   program: Effect.Effect<A, E, Storage>,
   cfg: StorageConfig = config
-) => Effect.provide(program, makeGcsStorageLayer(cfg))
+) => Effect.provide(program, gcsStorageLayer(cfg))
 
 const runFail = <E>(
   program: Effect.Effect<unknown, E, Storage>,
@@ -80,7 +80,7 @@ beforeEach(() => {
 describe("client creation", () => {
   it.effect("creates the GCS client only when the layer is built", () =>
     Effect.gen(function* () {
-      const layer = makeGcsStorageLayer(config)
+      const layer = gcsStorageLayer(config)
       expect(gcs.clientOptions).not.toHaveBeenCalled()
 
       yield* Effect.provide(

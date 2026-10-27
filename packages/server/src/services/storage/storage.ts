@@ -87,7 +87,7 @@ export interface StorageService {
   ) => Effect.Effect<string, StorageSignError>
 }
 
-/** Context tag for the storage service. Provide it with `makeGcsStorageLayer` or `makeMemoryStorageLayer`. */
+/** Context tag for the storage service. Provide it with `gcsStorageLayer` or `memoryStorageLayer`. */
 export class Storage extends Context.Service<Storage, StorageService>()(
-  "gcs-storage-kit/Storage"
+  "@mito/server/services/storage/Storage"
 ) {}

@@ -15,9 +15,11 @@ export type DbClient = PgDatabase<
 >
 
 /** The Drizzle client of `@mito/db`. */
-export class Db extends Context.Service<Db, DbClient>()("Db") {}
-
-export const DbLive = Layer.succeed(Db, db)
+export class Db extends Context.Service<Db, DbClient>()(
+  "@mito/server/effect/Db"
+) {
+  static readonly layer = Layer.succeed(Db, Db.of(db))
+}
 
 /**
  * The transaction `transaction` opened. `failed` records a query that failed
@@ -27,7 +29,7 @@ export const DbLive = Layer.succeed(Db, db)
 export class Tx extends Context.Service<
   Tx,
   { readonly client: DbClient; failed: boolean }
->()("Tx") {}
+>()("@mito/server/effect/Tx") {}
 
 /** A query the database driver rejected. `code` is the Postgres SQLSTATE. */
 export class DbError extends Data.TaggedError("DbError")<{

@@ -30,13 +30,16 @@ type Found = {
 export class AuthSession extends Context.Service<
   AuthSession,
   { readonly read: (headers: Headers) => Promise<Found | null> }
->()("AuthSession") {}
-
-/** `AuthSession` on a better-auth instance. */
-export const authSessionOf = (auth: Auth) =>
-  Layer.succeed(AuthSession, {
-    read: (headers) => auth.api.getSession({ headers }),
-  })
+>()("@mito/server/betterAuth/AuthSession") {
+  /** `AuthSession` on a better-auth instance. */
+  static readonly layerOf = (auth: Auth) =>
+    Layer.succeed(
+      AuthSession,
+      AuthSession.of({
+        read: (headers) => auth.api.getSession({ headers }),
+      })
+    )
+}
 
 /** better-auth couldn't read the session (its database, a bad cookie format). */
 export class SessionReadFailed extends Data.TaggedError("SessionReadFailed")<{

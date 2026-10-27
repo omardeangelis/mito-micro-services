@@ -12,10 +12,10 @@ import {
 import { waveColumns } from "@mito/domain/import/formats"
 import { toFileBody } from "@mito/domain/import/payload"
 import { waveCells } from "@mito/domain/import/_test/cells"
-import { type Db, DbLive } from "../../../effect/db"
+import { Db } from "../../../effect/db"
 import { ImportConfig, importSettings } from "../config"
 import { ImportQueueFailed } from "../errors"
-import { ImportQueue, type ImportTask, importQueueDisabled } from "../queue"
+import { ImportQueue, type ImportTask } from "../queue"
 import { purgeUpload, startImport } from "../run"
 import { beginUpload, saveUploadPart } from "../upload"
 import { migrateUpTo, resetDb, testDb } from "@/test/db"
@@ -54,7 +54,7 @@ const run = <A, E>(
     return yield* program.pipe(
       Effect.provide(
         Layer.mergeAll(
-          DbLive,
+          Db.layer,
           Layer.succeed(ImportConfig, importSettings),
           queue
         )
@@ -101,7 +101,7 @@ describe("pulizia delle righe temporanee", () => {
 
   it.effect("senza coda il primo pezzo è rifiutato e nulla resta (D13)", () =>
     Effect.gen(function* () {
-      const exit = yield* run(firstPart(), importQueueDisabled)
+      const exit = yield* run(firstPart(), ImportQueue.layerDisabled)
 
       expect(failureTag(exit)).toBe("ImportUnavailable")
       expect(

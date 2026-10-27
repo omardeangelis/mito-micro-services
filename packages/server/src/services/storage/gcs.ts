@@ -29,9 +29,7 @@ const DELETE_CONCURRENCY = 10
  * built, not when this module is imported, so importing the kit has no side
  * effects and reads no environment.
  */
-export const makeGcsStorageLayer = (
-  config: StorageConfig
-): Layer.Layer<Storage> =>
+export const gcsStorageLayer = (config: StorageConfig): Layer.Layer<Storage> =>
   Layer.sync(Storage, () => {
     const client = new GoogleCloudStorage({
       ...(config.projectId !== undefined
@@ -41,7 +39,7 @@ export const makeGcsStorageLayer = (
         ? { credentials: config.credentials }
         : {}),
     })
-    return gcsService(client.bucket(config.bucket), config)
+    return Storage.of(gcsService(client.bucket(config.bucket), config))
   })
 
 /** GCS reports a missing object as an API error with code 404. */

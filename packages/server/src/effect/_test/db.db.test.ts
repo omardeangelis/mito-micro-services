@@ -17,7 +17,7 @@ import { T } from "@mito/server/services/analytics/_test/clock"
 class Boom extends Data.TaggedError("Boom")<Record<never, never>> {}
 
 class Probe extends Context.Service<Probe, { readonly value: string }>()(
-  "test/Probe"
+  "@mito/server/effect/_test/Probe"
 ) {}
 
 const insertUser = (id: string) =>
@@ -325,7 +325,7 @@ describe("runTrpc", () => {
   })
 })
 
-// it.live: ServerLive's logger writes to the console of the fiber, which
+// it.live: serverLayer's logger writes to the console of the fiber, which
 // it.effect replaces with TestConsole
 describe("ServerLive", () => {
   it.live("manda Effect.logWarning su console.warn, non su console.log", () =>

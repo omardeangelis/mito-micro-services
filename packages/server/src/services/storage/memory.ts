@@ -31,9 +31,10 @@ const encodePath = (key: string): string =>
  * deterministic (`memory://<bucket>/<key>?action=read...`): they are not valid
  * against GCS.
  */
-export const makeMemoryStorageLayer = (
+export const memoryStorageLayer = (
   options: MemoryStorageOptions = {}
-): Layer.Layer<Storage> => Layer.sync(Storage, () => makeMemoryService(options))
+): Layer.Layer<Storage> =>
+  Layer.sync(Storage, () => Storage.of(makeMemoryService(options)))
 
 const makeMemoryService = (options: MemoryStorageOptions): StorageService => {
   const bucket = options.bucket ?? "memory"

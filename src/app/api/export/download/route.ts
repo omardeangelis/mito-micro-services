@@ -2,7 +2,7 @@ import { Cause, Effect, Exit, Option, Result } from "effect"
 import { type NextRequest } from "next/server"
 import { getHTTPStatusCodeFromError } from "@trpc/server/http"
 import { getServerAuthSession } from "@mito/server/auth"
-import { ServerLive } from "@mito/server/effect/server"
+import { serverLayer } from "@mito/server/effect/server"
 import { resolveActor } from "@mito/server/services/auth/actor"
 import {
   downloadExportFile,
@@ -18,7 +18,7 @@ import { authCheck } from "../../_utils/auth"
  */
 async function operatorCheck(userId: string) {
   const exit = await Effect.runPromiseExit(
-    resolveActor(userId).pipe(Effect.provide(ServerLive))
+    resolveActor(userId).pipe(Effect.provide(serverLayer))
   )
   if (Exit.isSuccess(exit)) return null
   const failure = Option.getOrUndefined(Cause.findErrorOption(exit.cause))

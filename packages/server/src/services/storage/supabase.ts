@@ -53,11 +53,13 @@ const call = <A, E>(
       : Effect.fail(onError(result.error))
   )
 
-export const makeSupabaseStorageLayer = (
+export const supabaseStorageLayer = (
   options: SupabaseStorageOptions
 ): Layer.Layer<Storage> =>
   Layer.sync(Storage, () =>
-    supabaseService(options.client().storage.from(options.bucket), options)
+    Storage.of(
+      supabaseService(options.client().storage.from(options.bucket), options)
+    )
   )
 
 type Bucket = ReturnType<SupabaseClient["storage"]["from"]>

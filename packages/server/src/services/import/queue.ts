@@ -10,17 +10,6 @@ export type ImportTask =
   | { readonly kind: "run"; readonly runId: number }
   | { readonly kind: "purge"; readonly uploadId: string; readonly at: Date }
 
-export class ImportQueue extends Context.Service<
-  ImportQueue,
-  {
-    /** Whether an import can start in this environment */
-    readonly available: boolean
-    readonly enqueue: (
-      task: ImportTask
-    ) => Effect.Effect<void, ImportUnavailable | ImportQueueFailed>
-  }
->()("ImportQueue") {}
-
 /** The route of the backend that runs the task (`apps/api/src/import`). */
 export const taskPath = (task: ImportTask) =>
   task.kind === "run"
@@ -47,77 +36,6 @@ const METADATA_TOKEN_URL =
 const DISPATCH_DEADLINE = "1800s"
 
 /**
- * Tasks in Cloud Tasks, with the REST API and the token of the service's own
- * account from the metadata server: no client library. A refused or failed
- * call is tried twice more.
- */
-export const importQueueCloudTasks = (
-  settings: CloudTasksSettings,
-  fetchImpl: typeof fetch = fetch
-) => {
-  const failed = (reason: string) => new ImportQueueFailed({ reason })
-  const call = (what: string, url: string, init: RequestInit) =>
-    Effect.gen(function* () {
-      const response = yield* Effect.tryPromise({
-        try: () => fetchImpl(url, init),
-        catch: () => failed(`${what} unreachable`),
-      })
-      if (!response.ok) {
-        return yield* failed(`${what} answered ${response.status}`)
-      }
-      return yield* Effect.tryPromise({
-        try: () => response.json() as Promise<unknown>,
-        catch: () => failed(`${what} answered no JSON`),
-      })
-    })
-
-  const enqueue = (task: ImportTask) =>
-    Effect.gen(function* () {
-      const token = yield* call("metadata server", METADATA_TOKEN_URL, {
-        headers: { "Metadata-Flavor": "Google" },
-      })
-      const accessToken = (token as { access_token?: unknown }).access_token
-      if (typeof accessToken !== "string" || !accessToken) {
-        return yield* failed("metadata server gave no token")
-      }
-      yield* call(
-        "Cloud Tasks",
-        `https://cloudtasks.googleapis.com/v2/${settings.queue}/tasks`,
-        {
-          method: "POST",
-          headers: {
-            authorization: `Bearer ${accessToken}`,
-            "content-type": "application/json",
-          },
-          body: JSON.stringify({
-            task: {
-              httpRequest: {
-                httpMethod: "POST",
-                url: new URL(taskPath(task), settings.audience).toString(),
-                oidcToken: {
-                  serviceAccountEmail: settings.serviceAccount,
-                  audience: settings.audience,
-                },
-              },
-              dispatchDeadline: DISPATCH_DEADLINE,
-              ...(task.kind === "purge"
-                ? { scheduleTime: task.at.toISOString() }
-                : {}),
-            },
-          }),
-        }
-      )
-    }).pipe(
-      Effect.retry({
-        times: 2,
-        schedule: Schedule.exponential("200 millis"),
-      })
-    )
-
-  return Layer.succeed(ImportQueue, { available: true, enqueue })
-}
-
-/**
  * What the queue runs: the handlers report their own failures, and can queue
  * tasks again.
  */
@@ -128,38 +46,126 @@ export type ImportHandlers<R> = {
   ) => Effect.Effect<void, never, R | ImportQueue>
 }
 
-/**
- * The tasks run in this process, in a fiber of their own that outlives the
- * request (local development only, D13). A cleanup waits for its time.
- */
-export const importQueueInProcess = <R>(handlers: ImportHandlers<R>) =>
-  Layer.effect(
+export class ImportQueue extends Context.Service<
+  ImportQueue,
+  {
+    /** Whether an import can start in this environment */
+    readonly available: boolean
+    readonly enqueue: (
+      task: ImportTask
+    ) => Effect.Effect<void, ImportUnavailable | ImportQueueFailed>
+  }
+>()("@mito/server/services/import/ImportQueue") {
+  /**
+   * Tasks in Cloud Tasks, with the REST API and the token of the service's
+   * own account from the metadata server: no client library. A refused or
+   * failed call is tried twice more.
+   */
+  static readonly layerCloudTasks = (
+    settings: CloudTasksSettings,
+    fetchImpl: typeof fetch = fetch
+  ) => {
+    const failed = (reason: string) => new ImportQueueFailed({ reason })
+    const call = (what: string, url: string, init: RequestInit) =>
+      Effect.gen(function* () {
+        const response = yield* Effect.tryPromise({
+          try: () => fetchImpl(url, init),
+          catch: () => failed(`${what} unreachable`),
+        })
+        if (!response.ok) {
+          return yield* failed(`${what} answered ${response.status}`)
+        }
+        return yield* Effect.tryPromise({
+          try: () => response.json() as Promise<unknown>,
+          catch: () => failed(`${what} answered no JSON`),
+        })
+      })
+
+    const enqueue = (task: ImportTask) =>
+      Effect.gen(function* () {
+        const token = yield* call("metadata server", METADATA_TOKEN_URL, {
+          headers: { "Metadata-Flavor": "Google" },
+        })
+        const accessToken = (token as { access_token?: unknown }).access_token
+        if (typeof accessToken !== "string" || !accessToken) {
+          return yield* failed("metadata server gave no token")
+        }
+        yield* call(
+          "Cloud Tasks",
+          `https://cloudtasks.googleapis.com/v2/${settings.queue}/tasks`,
+          {
+            method: "POST",
+            headers: {
+              authorization: `Bearer ${accessToken}`,
+              "content-type": "application/json",
+            },
+            body: JSON.stringify({
+              task: {
+                httpRequest: {
+                  httpMethod: "POST",
+                  url: new URL(taskPath(task), settings.audience).toString(),
+                  oidcToken: {
+                    serviceAccountEmail: settings.serviceAccount,
+                    audience: settings.audience,
+                  },
+                },
+                dispatchDeadline: DISPATCH_DEADLINE,
+                ...(task.kind === "purge"
+                  ? { scheduleTime: task.at.toISOString() }
+                  : {}),
+              },
+            }),
+          }
+        )
+      }).pipe(
+        Effect.retry({
+          times: 2,
+          schedule: Schedule.exponential("200 millis"),
+        })
+      )
+
+    return Layer.succeed(
+      ImportQueue,
+      ImportQueue.of({ available: true, enqueue })
+    )
+  }
+
+  /**
+   * The tasks run in this process, in a fiber of their own that outlives the
+   * request (local development only, D13). A cleanup waits for its time.
+   */
+  static readonly layerInProcess = <R>(handlers: ImportHandlers<R>) =>
+    Layer.effect(
+      ImportQueue,
+      Effect.map(Effect.context<R>(), (context) => {
+        const fork = Effect.runForkWith(context)
+        const queue: ImportQueue["Service"] = ImportQueue.of({
+          available: true,
+          enqueue: (task: ImportTask) =>
+            Effect.sync(() => {
+              fork(
+                (task.kind === "run"
+                  ? handlers.run(task.runId)
+                  : Effect.flatMap(Clock.currentTimeMillis, (now) =>
+                      Effect.sleep(Math.max(0, task.at.getTime() - now))
+                    ).pipe(Effect.andThen(handlers.purge(task.uploadId)))
+                ).pipe(Effect.provideService(ImportQueue, queue))
+              )
+            }),
+        })
+        return queue
+      })
+    )
+
+  /** No queue: an import doesn't start (`ImportUnavailable`). */
+  static readonly layerDisabled = Layer.succeed(
     ImportQueue,
-    Effect.map(Effect.context<R>(), (context) => {
-      const fork = Effect.runForkWith(context)
-      const queue: ImportQueue["Service"] = {
-        available: true,
-        enqueue: (task: ImportTask) =>
-          Effect.sync(() => {
-            fork(
-              (task.kind === "run"
-                ? handlers.run(task.runId)
-                : Effect.flatMap(Clock.currentTimeMillis, (now) =>
-                    Effect.sleep(Math.max(0, task.at.getTime() - now))
-                  ).pipe(Effect.andThen(handlers.purge(task.uploadId)))
-              ).pipe(Effect.provideService(ImportQueue, queue))
-            )
-          }),
-      }
-      return queue
+    ImportQueue.of({
+      available: false,
+      enqueue: () => Effect.fail(new ImportUnavailable()),
     })
   )
-
-/** No queue: an import doesn't start (`ImportUnavailable`). */
-export const importQueueDisabled = Layer.succeed(ImportQueue, {
-  available: false,
-  enqueue: () => Effect.fail(new ImportUnavailable()),
-})
+}
 
 export type ImportQueueChoice =
   | { readonly kind: "cloudTasks"; readonly settings: CloudTasksSettings }

@@ -16,7 +16,7 @@ const DAY = 24 * 60 * 60 * 1000
 const YESTERDAY = new Date(NOW.getTime() - DAY)
 const TOMORROW = new Date(NOW.getTime() + DAY)
 
-/** The program as the priority route runs it: `provideServer` provides ServerLive. */
+/** The program as the priority route runs it: `provideServer` provides serverLayer. */
 const refresh = (taskId?: number) =>
   refreshPriorities(taskId).pipe(provideServer, Effect.exit)
 

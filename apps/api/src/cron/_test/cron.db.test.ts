@@ -16,7 +16,7 @@ import { customers } from "@mito/db/schema/customers"
 import { cronRun } from "@mito/db/schema/cronRun"
 import { practices } from "@mito/db/schema/pratiche"
 import { taskEventLog } from "@mito/db/schema/taskEventLog"
-import { ServerLive } from "@mito/server/effect/server"
+import { serverLayer } from "@mito/server/effect/server"
 import { failureTag, provideServer } from "@/test/effect"
 import {
   FAILPOINT_SCHEMA,
@@ -28,14 +28,9 @@ import {
 import { reportedErrors } from "@/test/errorReporter"
 import { failNextUpdateOf } from "@/test/failpoint"
 import { createCustomer, createPractice } from "@/test/factories"
-import { cronAuth, cronAuthDisabled } from "../auth"
+import { CronAuth } from "../auth"
 import { alertJob, type CronJob, cronJobs } from "../jobs"
-import {
-  CronReport,
-  type CronOutcome,
-  formatReport,
-  slackReport,
-} from "../report"
+import { CronReport, type CronOutcome, formatReport } from "../report"
 import { cronRoutes } from "../routes"
 
 const AUDIENCE = "https://mito-crm-staging.example.run.app"
@@ -90,11 +85,14 @@ const recordReports = Layer.succeed(CronReport, {
 })
 
 const appWith = (
-  auth = cronAuth({ audience: AUDIENCE, serviceAccount: SCHEDULER }, keys)
+  auth = CronAuth.layerOidc(
+    { audience: AUDIENCE, serviceAccount: SCHEDULER },
+    keys
+  )
 ) =>
   new Hono().route(
     "/internal/cron",
-    cronRoutes(Layer.mergeAll(ServerLive, auth, recordReports), jobs)
+    cronRoutes(Layer.mergeAll(serverLayer, auth, recordReports), jobs)
   )
 
 const call = async (job: string, authorization?: string, app = appWith()) => {
@@ -216,7 +214,7 @@ describe("cron del backend: chi può avviarli", () => {
   })
 
   it("senza la configurazione OIDC rifiuta ogni chiamata, anche con un token valido", async () => {
-    const app = appWith(cronAuthDisabled)
+    const app = appWith(CronAuth.layerDisabled)
     expect(await call("probe", `Bearer ${await idToken()}`, app)).toEqual({
       status: 503,
       body: { error: "Cron not configured" },
@@ -587,7 +585,7 @@ describe("report dei cron", () => {
       const send = (outcome: CronOutcome) =>
         Effect.flatMap(CronReport, (report) => report.send(outcome)).pipe(
           Effect.provide(
-            slackReport({
+            CronReport.layerSlack({
               webhookUrl: "https://hooks.slack.test/x",
               environment: "staging",
             })

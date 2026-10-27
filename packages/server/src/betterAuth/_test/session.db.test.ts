@@ -4,14 +4,9 @@ import { Effect, Exit, Layer } from "effect"
 import { eq } from "drizzle-orm"
 import { authSessions } from "@mito/db/schema/auth"
 import { users } from "@mito/db/schema/users"
-import { DbLive } from "../../effect/db"
+import { Db } from "../../effect/db"
 import { authHandler } from "../handler"
-import {
-  AuthSession,
-  authSessionOf,
-  readSession,
-  SessionReadFailed,
-} from "../session"
+import { AuthSession, readSession, SessionReadFailed } from "../session"
 import { BASE, sessionCookie, testAuth } from "./harness"
 import { migrateUpTo, resetDb, testDb } from "@/test/db"
 import { createOperator } from "@/test/factories"
@@ -28,7 +23,7 @@ const handler = authHandler(auth)
 
 const read = (cookie: string) =>
   readSession(new Headers({ cookie })).pipe(
-    Effect.provide(Layer.merge(authSessionOf(auth), DbLive))
+    Effect.provide(Layer.merge(AuthSession.layerOf(auth), Db.layer))
   )
 
 beforeAll(async () => {
@@ -157,7 +152,7 @@ describe("readSession", () => {
         })
 
         const exit = yield* readSession(new Headers()).pipe(
-          Effect.provide(Layer.merge(failing, DbLive)),
+          Effect.provide(Layer.merge(failing, Db.layer)),
           Effect.exit
         )
 

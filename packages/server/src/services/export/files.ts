@@ -1,5 +1,5 @@
 import { Data, Effect } from "effect"
-import { Storage, StorageLive } from "../storage/index"
+import { Storage, storageLayer } from "../storage/index"
 
 const EXPORT_PATH = "export"
 const XLSX_CONTENT_TYPE =
@@ -43,4 +43,4 @@ export const downloadExportFile = (name: string) =>
 
 /** Runs a storage program; a failure comes back as `Failure`, not thrown. */
 export const runExportStorage = <A, E>(program: Effect.Effect<A, E, Storage>) =>
-  Effect.runPromise(program.pipe(Effect.provide(StorageLive), Effect.result))
+  Effect.runPromise(program.pipe(Effect.provide(storageLayer), Effect.result))

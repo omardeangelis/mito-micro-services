@@ -15,15 +15,10 @@ import { type Cells } from "@mito/domain/import/classify"
 import { waveColumns } from "@mito/domain/import/formats"
 import { toFileBody } from "@mito/domain/import/payload"
 import { waveCells } from "@mito/domain/import/_test/cells"
-import { type Db, DbLive } from "../../../effect/db"
+import { Db } from "../../../effect/db"
 import { ImportConfig, type ImportSettings, importSettings } from "../config"
 import { ImportQueueFailed } from "../errors"
-import {
-  ImportQueue,
-  type ImportTask,
-  importQueueDisabled,
-  importQueueInProcess,
-} from "../queue"
+import { ImportQueue, type ImportTask } from "../queue"
 import { executeImport, startImport } from "../run"
 import { createUpload } from "../upload"
 import { migrateUpTo, resetDb, testDb } from "@/test/db"
@@ -75,7 +70,7 @@ const run = <A, E>(
     if (at !== null) yield* TestClock.setTime(at.getTime())
     return yield* program.pipe(
       Effect.provide(
-        Layer.mergeAll(DbLive, Layer.succeed(ImportConfig, settings), queue)
+        Layer.mergeAll(Db.layer, Layer.succeed(ImportConfig, settings), queue)
       ),
       Effect.exit
     )
@@ -332,7 +327,7 @@ describe("avvio dell'import", () => {
 
         const exit = yield* run(
           startImport({ uploadId, expected: [2, 3], startedBy: admin.id }),
-          { queue: importQueueDisabled }
+          { queue: ImportQueue.layerDisabled }
         )
 
         expect(failureTag(exit)).toBe("ImportUnavailable")
@@ -631,13 +626,13 @@ describe("coda in processo (sviluppo, D13)", () => {
       Effect.gen(function* () {
         const admin = yield* Effect.promise(() => createUser({ role: "ADMIN" }))
         const uploadId = yield* uploadOf(admin.id, twoRows, FILE_NAME, null)
-        const inProcess = importQueueInProcess({
+        const inProcess = ImportQueue.layerInProcess({
           run: (runId) =>
             executeImport(runId).pipe(Effect.orDie, Effect.asVoid),
           purge: () => Effect.void,
         }).pipe(
           Layer.provide(
-            Layer.merge(DbLive, Layer.succeed(ImportConfig, importSettings))
+            Layer.merge(Db.layer, Layer.succeed(ImportConfig, importSettings))
           )
         )
 

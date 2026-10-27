@@ -14,16 +14,20 @@ export class ErrorReporter extends Context.Service<
       data: Record<string, unknown>
     ) => Effect.Effect<void>
   }
->()("ErrorReporter") {}
-
-export const SentryReporterLive = Layer.succeed(ErrorReporter, {
-  report: (cause, data) =>
-    Effect.sync(() => {
-      Sentry.captureException(Cause.squash(cause), {
-        contexts: { details: data },
-      })
-    }),
-})
+>()("@mito/server/effect/ErrorReporter") {
+  /** Reports to Sentry. */
+  static readonly layer = Layer.succeed(
+    ErrorReporter,
+    ErrorReporter.of({
+      report: (cause, data) =>
+        Effect.sync(() => {
+          Sentry.captureException(Cause.squash(cause), {
+            contexts: { details: data },
+          })
+        }),
+    })
+  )
+}
 
 /**
  * Runs `f` on each item in order, with its index, and keeps going when one

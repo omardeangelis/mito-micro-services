@@ -4,7 +4,7 @@ import { describe, expect, it } from "@effect/vitest"
 import { Effect } from "effect"
 import { NextRequest } from "next/server"
 import { getServerAuthSession, type Session } from "@mito/server/auth"
-import { StorageLive } from "@mito/server/services/storage/layer"
+import { storageLayer } from "@mito/server/services/storage/layer"
 import { Storage } from "@mito/server/services/storage/storage"
 import { migrateUpTo, resetDb } from "@/test/db"
 import { createOperator } from "@/test/factories"
@@ -15,13 +15,11 @@ vi.mock("@mito/server/services/storage/layer", async () => {
   const { Effect, Layer } = await import("effect")
   // Not the index: it re-exports this module
   const { Storage } = await import("@mito/server/services/storage/storage")
-  const { makeMemoryStorageLayer } =
+  const { memoryStorageLayer } =
     await import("@mito/server/services/storage/memory")
   // Built once, so an upload is still there for the next call
-  const service = Effect.runSync(
-    Effect.provide(Storage, makeMemoryStorageLayer())
-  )
-  return { StorageLive: Layer.succeed(Storage, service) }
+  const service = Effect.runSync(Effect.provide(Storage, memoryStorageLayer()))
+  return { storageLayer: Layer.succeed(Storage, service) }
 })
 
 const XLSX_CONTENT_TYPE =
@@ -35,7 +33,7 @@ const putInBucket = (name: string, body: Uint8Array) =>
       body,
       contentType: XLSX_CONTENT_TYPE,
     })
-  ).pipe(Effect.provide(StorageLive))
+  ).pipe(Effect.provide(storageLayer))
 
 const signInAs = (userId: string) =>
   vi.mocked(getServerAuthSession).mockResolvedValue({

@@ -1,8 +1,8 @@
 import { Layer } from "effect"
-import { ServerLive } from "@mito/server/effect/server"
-import { ImportLive } from "@mito/server/services/import/live"
+import { serverLayer } from "@mito/server/effect/server"
+import { importLayer } from "@mito/server/services/import/live"
 import { googleKeys } from "../oidc"
-import { importAuth, importAuthDisabled } from "./auth"
+import { ImportAuth } from "./auth"
 import { type ImportRouteContext } from "./routes"
 
 /**
@@ -12,15 +12,15 @@ import { type ImportRouteContext } from "./routes"
  * every task is refused. The queue is the one of the procedures (a cleanup
  * queues itself again).
  */
-export const importLive = (
+export const importRouteLayer = (
   env: NodeJS.ProcessEnv
 ): Layer.Layer<ImportRouteContext> => {
   const audience = env.IMPORT_OIDC_AUDIENCE?.trim()
   const serviceAccount = env.IMPORT_OIDC_SERVICE_ACCOUNT?.trim()
   return Layer.mergeAll(
-    ImportLive.pipe(Layer.provideMerge(ServerLive)),
+    importLayer.pipe(Layer.provideMerge(serverLayer)),
     audience && serviceAccount
-      ? importAuth({ audience, serviceAccount }, googleKeys())
-      : importAuthDisabled
+      ? ImportAuth.layerOidc({ audience, serviceAccount }, googleKeys())
+      : ImportAuth.layerDisabled
   )
 }

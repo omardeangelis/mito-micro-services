@@ -15,8 +15,8 @@ import { importRun, importUpload } from "@mito/db/schema/importRun"
 import { waveColumns } from "@mito/domain/import/formats"
 import { toFileBody } from "@mito/domain/import/payload"
 import { waveCells } from "@mito/domain/import/_test/cells"
-import { ServerLive } from "@mito/server/effect/server"
-import { ImportConfigLive } from "@mito/server/services/import/config"
+import { serverLayer } from "@mito/server/effect/server"
+import { ImportConfig } from "@mito/server/services/import/config"
 import {
   ImportQueue,
   type ImportTask,
@@ -25,7 +25,7 @@ import { startImport } from "@mito/server/services/import/run"
 import { createUpload } from "@mito/server/services/import/upload"
 import { migrateUpTo, resetDb, testDb } from "@/test/db"
 import { createCustomer, createUser } from "@/test/factories"
-import { importAuth, importAuthDisabled } from "../auth"
+import { ImportAuth } from "../auth"
 import { importRoutes } from "../routes"
 
 // The route of the import queue's tasks (T10a, D13): only Cloud Tasks, with
@@ -75,12 +75,15 @@ const recordingQueue = Layer.succeed(ImportQueue, {
 })
 
 const appWith = (
-  auth = importAuth({ audience: SERVICE, serviceAccount: TASKS_ACCOUNT }, keys)
+  auth = ImportAuth.layerOidc(
+    { audience: SERVICE, serviceAccount: TASKS_ACCOUNT },
+    keys
+  )
 ) =>
   new Hono().route(
     "/internal/import",
     importRoutes(
-      Layer.mergeAll(ServerLive, ImportConfigLive, recordingQueue, auth)
+      Layer.mergeAll(serverLayer, ImportConfig.layer, recordingQueue, auth)
     )
   )
 
@@ -130,8 +133,8 @@ const startedImport = (rows = [{ "n° Pratica": "P1", "Codice NDG": "1" }]) =>
     const exit = yield* program.pipe(
       Effect.provide(
         Layer.mergeAll(
-          ServerLive,
-          ImportConfigLive,
+          serverLayer,
+          ImportConfig.layer,
           Layer.succeed(ImportQueue, {
             available: true,
             enqueue: () => Effect.void,
@@ -210,7 +213,7 @@ describe("POST /internal/import/run/:id", () => {
           call(
             `/run/${runId}`,
             `Bearer ${await idToken()}`,
-            appWith(importAuthDisabled)
+            appWith(ImportAuth.layerDisabled)
           )
         )
 
@@ -286,7 +289,7 @@ describe("POST /internal/import/purge/:uploadId", () => {
           format: "wave",
           parts: 2,
           data: new Uint8Array([1]),
-        }).pipe(Effect.provide(ServerLive))
+        }).pipe(Effect.provide(serverLayer))
 
         const response = yield* Effect.promise(async () =>
           call(`/purge/${uploadId}`, `Bearer ${await idToken()}`)
@@ -309,7 +312,7 @@ describe("POST /internal/import/purge/:uploadId", () => {
         format: "wave",
         parts: 2,
         data: new Uint8Array([1]),
-      }).pipe(Effect.provide(ServerLive))
+      }).pipe(Effect.provide(serverLayer))
 
       expect(
         (yield* Effect.promise(() => call(`/purge/${uploadId}`))).status

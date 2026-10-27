@@ -1,7 +1,7 @@
 import { Layer } from "effect"
-import { ServerLive } from "@mito/server/effect/server"
-import { cronAuth, cronAuthDisabled, googleKeys } from "./auth"
-import { logReport, slackReport } from "./report"
+import { serverLayer } from "@mito/server/effect/server"
+import { CronAuth, googleKeys } from "./auth"
+import { CronReport } from "./report"
 import { type CronContext } from "./routes"
 
 /**
@@ -13,17 +13,20 @@ import { type CronContext } from "./routes"
  *   where the reports go and how they name the environment. Without the
  *   webhook they go to the log only.
  */
-export const cronLive = (env: NodeJS.ProcessEnv): Layer.Layer<CronContext> => {
+export const cronLayer = (env: NodeJS.ProcessEnv): Layer.Layer<CronContext> => {
   const audience = env.CRON_OIDC_AUDIENCE?.trim()
   const serviceAccount = env.CRON_OIDC_SERVICE_ACCOUNT?.trim()
   const webhookUrl = env.CRON_SLACK_WEBHOOK_URL?.trim()
   return Layer.mergeAll(
-    ServerLive,
+    serverLayer,
     audience && serviceAccount
-      ? cronAuth({ audience, serviceAccount }, googleKeys())
-      : cronAuthDisabled,
+      ? CronAuth.layerOidc({ audience, serviceAccount }, googleKeys())
+      : CronAuth.layerDisabled,
     webhookUrl
-      ? slackReport({ webhookUrl, environment: env.CRON_REPORT_ENV ?? "?" })
-      : logReport
+      ? CronReport.layerSlack({
+          webhookUrl,
+          environment: env.CRON_REPORT_ENV ?? "?",
+        })
+      : CronReport.layerLog
   )
 }

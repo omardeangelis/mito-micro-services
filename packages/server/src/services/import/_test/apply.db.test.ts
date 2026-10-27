@@ -12,7 +12,7 @@ import { type Cells, classifyRows } from "@mito/domain/import/classify"
 import { groupRows, lookupKeys } from "@mito/domain/import/group"
 import { planRows } from "@mito/domain/import/plan"
 import { waveCells } from "@mito/domain/import/_test/cells"
-import { type Db, DbLive, transaction } from "../../../effect/db"
+import { Db, transaction } from "../../../effect/db"
 import { applyImport } from "../apply"
 import { ImportConfig, importSettings } from "../config"
 import { lookupExisting } from "../lookup"
@@ -56,7 +56,7 @@ const withDb = <A, E>(
   program.pipe(
     Effect.provide(
       Layer.merge(
-        DbLive,
+        Db.layer,
         Layer.succeed(ImportConfig, { ...importSettings, batchSize })
       )
     ),

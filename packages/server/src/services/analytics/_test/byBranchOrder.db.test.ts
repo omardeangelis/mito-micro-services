@@ -2,7 +2,7 @@ import { afterAll, beforeAll, beforeEach } from "vitest"
 import { describe, expect, it } from "@effect/vitest"
 import { Effect } from "effect"
 import { TestClock } from "effect/testing"
-import { type ServerContext } from "@mito/server/effect/server"
+import { type ServerServices } from "@mito/server/effect/server"
 import { provideServer } from "@/test/effect"
 import { migrateUpTo, resetDb, testClient } from "@/test/db"
 import { createCustomer, createPractice } from "@/test/factories"
@@ -12,7 +12,7 @@ import { DAY, T } from "./clock"
 /** The program with the `Clock` stopped at `millis`: the `TestClock` of `it.effect`. */
 const at = <A, E>(
   millis: number,
-  program: Effect.Effect<A, E, ServerContext>
+  program: Effect.Effect<A, E, ServerServices>
 ) => TestClock.setTime(millis).pipe(Effect.andThen(program), provideServer)
 
 // L'ordine della ciambella lo dà la query (`ORDER BY` sul punto vendita, AC15).

@@ -15,7 +15,7 @@ import {
   toFileBody,
 } from "@mito/domain/import/payload"
 import { waveCells } from "@mito/domain/import/_test/cells"
-import { type Db, DbLive } from "../../../effect/db"
+import { Db } from "../../../effect/db"
 import {
   createUpload,
   deleteUpload,
@@ -40,7 +40,7 @@ beforeEach(async () => {
 })
 
 const withDb = <A, E>(program: Effect.Effect<A, E, Db>) =>
-  program.pipe(Effect.provide(DbLive), Effect.exit)
+  program.pipe(Effect.provide(Db.layer), Effect.exit)
 
 const value = <A, E>(exit: Exit.Exit<A, E>) => {
   if (Exit.isFailure(exit)) throw new Error(`failed: ${String(exit.cause)}`)
