@@ -111,6 +111,14 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { toast } from "@/components/ui/use-toast"
+import {
+  BadgeDelta,
+  BarChart,
+  Card as ChartCard,
+  DeltaBar,
+  DonutChart,
+  ProgressCircle,
+} from "@/components/charts"
 
 // Every component of src/components/ui, on React 19 and Tailwind 4: the test
 // page of 1.b.1, only in development (src/router.tsx)
@@ -429,6 +437,77 @@ export function UiShowcase() {
             </PaginationItem>
           </PaginationContent>
         </Pagination>
+      </Section>
+      <Section title="Grafici (al posto di Tremor)">
+        <ChartCard className="w-96 space-y-4">
+          <div className="space-y-1">
+            <h3 className="text-sm text-neutral-500">
+              Finanziato totale per sede
+            </h3>
+            <p className="text-2xl">€ 1,9 Mln</p>
+          </div>
+          <DonutChart
+            data={[
+              { name: "Bari", total: 600_000 },
+              { name: "Lecce", total: 500_000 },
+              { name: "Roma", total: 400_000 },
+              { name: "Nessuna", total: 300_000 },
+              { name: "Ancona", total: 100_000 },
+              { name: "Altre", total: 75_000 },
+            ]}
+            category="total"
+            index="name"
+            colors={[
+              "blue-500",
+              "amber-600",
+              "emerald-600",
+              "violet-500",
+              "rose-500",
+              "gray-500",
+            ]}
+            valueFormatter={(n) => `€ ${n}`}
+            className="h-32 w-32"
+          />
+        </ChartCard>
+        <ChartCard className="w-96 space-y-8">
+          <div className="flex items-start justify-between gap-2">
+            <div className="space-y-1">
+              <h3 className="text-sm text-neutral-500">Finanziato nel mese</h3>
+              <p className="text-2xl">€ 320.000</p>
+            </div>
+            <BadgeDelta
+              size="md"
+              deltaType="increase"
+              className="text-emerald-700"
+            >
+              18%
+            </BadgeDelta>
+          </div>
+          <DeltaBar value={18} />
+          <DeltaBar value={-42} />
+        </ChartCard>
+        <ChartCard className="flex w-72 items-center gap-5">
+          <ProgressCircle value={75} size="xl" color="blue">
+            <span className="text-xs font-medium text-slate-700">75%</span>
+          </ProgressCircle>
+          <p className="text-sm font-medium">15/20 (75%)</p>
+        </ChartCard>
+        <ChartCard className="w-[36rem]">
+          <h3 className="text-sm text-neutral-400">Risposte e non risposte</h3>
+          <BarChart
+            className="mt-4 h-72"
+            data={[
+              { Operatore: "Rossi Mario", Risposte: 32, "Non risposte": 12 },
+              { Operatore: "Bianchi Giulia", Risposte: 28, "Non risposte": 20 },
+              { Operatore: "Verdi Luca", Risposte: 15, "Non risposte": 5 },
+            ]}
+            index="Operatore"
+            categories={["Risposte", "Non risposte"]}
+            colors={["emerald", "rose"]}
+            stack
+            yAxisWidth={40}
+          />
+        </ChartCard>
       </Section>
     </main>
   )
