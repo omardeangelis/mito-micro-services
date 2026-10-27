@@ -11,3 +11,319 @@ base:packages/server/src/services/storage/_test/supabase.test.ts:75#72977dd2 des
 packages/server/src/services/storage/_test/supabase.test.ts:72#f13965ff describe("supabaseStorageLayer")
 base:packages/server/src/services/storage/_test/supabase.test.ts:484#f7c8d3a4 describe("StorageLive")
 packages/server/src/services/storage/_test/supabase.test.ts:481#3151a7bb describe("storageLayer")
+
+# T19: test nuovi della costruzione degli errori (AC10)
+# Un file nuovo per file di errori, scritto prima della conversione e verde su Data.TaggedError.
+apps/api/src/_test/oidc.errors.test.ts:7#0b3bf68d describe("errori dell'OIDC: costruzione", () => {
+apps/api/src/_test/oidc.errors.test.ts:8#78d924f5 it("OidcUnauthorized porta il motivo", () => {
+apps/api/src/_test/oidc.errors.test.ts:12#2471e7f9 expect(error).toBeInstanceOf(OidcUnauthorized)
+apps/api/src/_test/oidc.errors.test.ts:13#442732b3 expect(error).toBeInstanceOf(Error)
+apps/api/src/_test/oidc.errors.test.ts:14#b0bca094 expect(error._tag).toBe("OidcUnauthorized")
+apps/api/src/_test/oidc.errors.test.ts:15#056e26b9 expect(error.reason).toBe("not the caller's service account")
+apps/api/src/_test/oidc.errors.test.ts:16#759e0161 expect(error.message).toBe("")
+apps/api/src/_test/oidc.errors.test.ts:17#ffdeaa64 expect({ ...error }).toStrictEqual({
+apps/api/src/cron/_test/auth.errors.test.ts:7#19453d7d describe("errori dell'autenticazione dei cron: costruzione", () => {
+apps/api/src/cron/_test/auth.errors.test.ts:8#3fa08473 it("CronUnauthorized porta il motivo", () => {
+apps/api/src/cron/_test/auth.errors.test.ts:10#f0256b76 expect(error).toBeInstanceOf(CronUnauthorized)
+apps/api/src/cron/_test/auth.errors.test.ts:11#442732b3 expect(error).toBeInstanceOf(Error)
+apps/api/src/cron/_test/auth.errors.test.ts:12#68529bc1 expect(error._tag).toBe("CronUnauthorized")
+apps/api/src/cron/_test/auth.errors.test.ts:13#c0de9b2a expect(error.reason).toBe("no bearer token")
+apps/api/src/cron/_test/auth.errors.test.ts:14#759e0161 expect(error.message).toBe("")
+apps/api/src/cron/_test/auth.errors.test.ts:15#ffe8852f expect({ ...error }).toStrictEqual({
+apps/api/src/cron/_test/auth.errors.test.ts:21#6115140a it("CronNotConfigured si costruisce senza campi", () => {
+apps/api/src/cron/_test/auth.errors.test.ts:23#368eea38 expect(error).toBeInstanceOf(CronNotConfigured)
+apps/api/src/cron/_test/auth.errors.test.ts:24#442732b3 expect(error).toBeInstanceOf(Error)
+apps/api/src/cron/_test/auth.errors.test.ts:25#683e29c7 expect(error._tag).toBe("CronNotConfigured")
+apps/api/src/cron/_test/auth.errors.test.ts:26#759e0161 expect(error.message).toBe("")
+apps/api/src/cron/_test/auth.errors.test.ts:27#27dd4b6b expect({ ...error }).toStrictEqual({ _tag: "CronNotConfigured" })
+apps/api/src/cron/_test/jobs.errors.test.ts:7#4c5dad9f describe("errori dei job dei cron: costruzione", () => {
+apps/api/src/cron/_test/jobs.errors.test.ts:8#09cd0f06 it("CronStepFailed porta il passo e la cause, la stessa istanza", () => {
+apps/api/src/cron/_test/jobs.errors.test.ts:11#93faeb4c expect(error).toBeInstanceOf(CronStepFailed)
+apps/api/src/cron/_test/jobs.errors.test.ts:12#442732b3 expect(error).toBeInstanceOf(Error)
+apps/api/src/cron/_test/jobs.errors.test.ts:13#f067c200 expect(error._tag).toBe("CronStepFailed")
+apps/api/src/cron/_test/jobs.errors.test.ts:14#efbb06ed expect(error.step).toBe("updatePractices")
+apps/api/src/cron/_test/jobs.errors.test.ts:15#00a777e4 expect(error.cause).toBe(cause)
+apps/api/src/cron/_test/jobs.errors.test.ts:16#759e0161 expect(error.message).toBe("")
+apps/api/src/cron/_test/jobs.errors.test.ts:17#2bbf924a expect({ ...error }).toStrictEqual({
+apps/api/src/cron/_test/jobs.errors.test.ts:23#51fc6d30 it("CronStepFailed con una cause che non è un Error, o undefined", () => {
+apps/api/src/cron/_test/jobs.errors.test.ts:25#d6f11713 expect(
+apps/api/src/cron/_test/jobs.errors.test.ts:28#a81ba16f expect(
+apps/api/src/cron/_test/jobs.errors.test.ts:33#d9485761 it("AlertsFailed porta gli alert falliti", () => {
+apps/api/src/cron/_test/jobs.errors.test.ts:35#43f8df09 expect(error).toBeInstanceOf(AlertsFailed)
+apps/api/src/cron/_test/jobs.errors.test.ts:36#442732b3 expect(error).toBeInstanceOf(Error)
+apps/api/src/cron/_test/jobs.errors.test.ts:37#6919e5d9 expect(error._tag).toBe("AlertsFailed")
+apps/api/src/cron/_test/jobs.errors.test.ts:38#0578d72f expect(error.failed).toBe(2)
+apps/api/src/cron/_test/jobs.errors.test.ts:39#759e0161 expect(error.message).toBe("")
+apps/api/src/cron/_test/jobs.errors.test.ts:40#d3a62a2d expect({ ...error }).toStrictEqual({ _tag: "AlertsFailed", failed: 2 })
+apps/api/src/cron/_test/jobs.errors.test.ts:43#aa6dd4d5 it("AlertsLeft porta le chiamate fatte", () => {
+apps/api/src/cron/_test/jobs.errors.test.ts:45#9880ddea expect(error).toBeInstanceOf(AlertsLeft)
+apps/api/src/cron/_test/jobs.errors.test.ts:46#442732b3 expect(error).toBeInstanceOf(Error)
+apps/api/src/cron/_test/jobs.errors.test.ts:47#c92de186 expect(error._tag).toBe("AlertsLeft")
+apps/api/src/cron/_test/jobs.errors.test.ts:48#a655d4c3 expect(error.calls).toBe(20)
+apps/api/src/cron/_test/jobs.errors.test.ts:49#759e0161 expect(error.message).toBe("")
+apps/api/src/cron/_test/jobs.errors.test.ts:50#8c10affd expect({ ...error }).toStrictEqual({ _tag: "AlertsLeft", calls: 20 })
+apps/api/src/import/_test/auth.errors.test.ts:7#2a7bd0a9 describe("errori dell'autenticazione dell'import: costruzione", () => {
+apps/api/src/import/_test/auth.errors.test.ts:8#fc4d8992 it("ImportNotConfigured si costruisce senza campi", () => {
+apps/api/src/import/_test/auth.errors.test.ts:10#5b4b4a3a expect(error).toBeInstanceOf(ImportNotConfigured)
+apps/api/src/import/_test/auth.errors.test.ts:11#442732b3 expect(error).toBeInstanceOf(Error)
+apps/api/src/import/_test/auth.errors.test.ts:12#488b25e0 expect(error._tag).toBe("ImportNotConfigured")
+apps/api/src/import/_test/auth.errors.test.ts:13#759e0161 expect(error.message).toBe("")
+apps/api/src/import/_test/auth.errors.test.ts:14#bb1993ac expect({ ...error }).toStrictEqual({ _tag: "ImportNotConfigured" })
+packages/db/src/_test/migrate.errors.test.ts:7#9a373d67 describe("errori delle migrazioni: costruzione", () => {
+packages/db/src/_test/migrate.errors.test.ts:8#1ee9fc64 it("MigrationError porta la cause, la stessa istanza", () => {
+packages/db/src/_test/migrate.errors.test.ts:11#c8c625cb expect(error).toBeInstanceOf(MigrationError)
+packages/db/src/_test/migrate.errors.test.ts:12#442732b3 expect(error).toBeInstanceOf(Error)
+packages/db/src/_test/migrate.errors.test.ts:13#ff8f2bff expect(error._tag).toBe("MigrationError")
+packages/db/src/_test/migrate.errors.test.ts:14#00a777e4 expect(error.cause).toBe(cause)
+packages/db/src/_test/migrate.errors.test.ts:15#759e0161 expect(error.message).toBe("")
+packages/db/src/_test/migrate.errors.test.ts:16#a0966f53 expect({ ...error }).toStrictEqual({ _tag: "MigrationError" })
+packages/db/src/_test/migrate.errors.test.ts:19#e1feed8d it("MigrationError con una cause che non è un Error, o undefined", () => {
+packages/db/src/_test/migrate.errors.test.ts:21#12d12a24 expect(new MigrationError({ cause }).cause).toBe(cause)
+packages/db/src/_test/migrate.errors.test.ts:22#e9bcdf84 expect(new MigrationError({ cause: undefined }).cause).toBeUndefined()
+packages/db/src/_test/migrate.errors.test.ts:25#4222430c it("MigrationOutOfOrder porta le migrazioni saltate", () => {
+packages/db/src/_test/migrate.errors.test.ts:28#ec3bccc7 expect(error).toBeInstanceOf(MigrationOutOfOrder)
+packages/db/src/_test/migrate.errors.test.ts:29#442732b3 expect(error).toBeInstanceOf(Error)
+packages/db/src/_test/migrate.errors.test.ts:30#dd45a896 expect(error._tag).toBe("MigrationOutOfOrder")
+packages/db/src/_test/migrate.errors.test.ts:31#37c8db18 expect(error.tags).toStrictEqual(["0040_supabase_a", "0041_supabase_b"])
+packages/db/src/_test/migrate.errors.test.ts:32#759e0161 expect(error.message).toBe("")
+packages/db/src/_test/migrate.errors.test.ts:33#b57c2ea1 expect({ ...error }).toStrictEqual({
+packages/server/src/betterAuth/_test/session.errors.test.ts:7#dd089bbb describe("errori della sessione: costruzione", () => {
+packages/server/src/betterAuth/_test/session.errors.test.ts:8#0224aca5 it("SessionReadFailed porta la cause, la stessa istanza", () => {
+packages/server/src/betterAuth/_test/session.errors.test.ts:11#1206b34f expect(error).toBeInstanceOf(SessionReadFailed)
+packages/server/src/betterAuth/_test/session.errors.test.ts:12#442732b3 expect(error).toBeInstanceOf(Error)
+packages/server/src/betterAuth/_test/session.errors.test.ts:13#e894f8bd expect(error._tag).toBe("SessionReadFailed")
+packages/server/src/betterAuth/_test/session.errors.test.ts:14#00a777e4 expect(error.cause).toBe(cause)
+packages/server/src/betterAuth/_test/session.errors.test.ts:15#759e0161 expect(error.message).toBe("")
+packages/server/src/betterAuth/_test/session.errors.test.ts:16#27e8ad2e expect({ ...error }).toStrictEqual({ _tag: "SessionReadFailed" })
+packages/server/src/betterAuth/_test/session.errors.test.ts:19#d5a7d94f it("SessionReadFailed con una cause che non è un Error, o undefined", () => {
+packages/server/src/betterAuth/_test/session.errors.test.ts:21#75e93e0c expect(new SessionReadFailed({ cause }).cause).toBe(cause)
+packages/server/src/betterAuth/_test/session.errors.test.ts:22#b740f986 expect(new SessionReadFailed({ cause: undefined }).cause).toBeUndefined()
+packages/server/src/effect/_test/db.errors.test.ts:7#a398bd11 describe("errori del database: costruzione", () => {
+packages/server/src/effect/_test/db.errors.test.ts:8#8924edcb it("DbError porta cause, message e il codice SQLSTATE", () => {
+packages/server/src/effect/_test/db.errors.test.ts:17#430d180f expect(error).toBeInstanceOf(DbError)
+packages/server/src/effect/_test/db.errors.test.ts:18#442732b3 expect(error).toBeInstanceOf(Error)
+packages/server/src/effect/_test/db.errors.test.ts:19#8a45d873 expect(error._tag).toBe("DbError")
+packages/server/src/effect/_test/db.errors.test.ts:20#00a777e4 expect(error.cause).toBe(cause)
+packages/server/src/effect/_test/db.errors.test.ts:21#01c33137 expect(error.message).toBe("duplicate key value")
+packages/server/src/effect/_test/db.errors.test.ts:22#38730cd1 expect(error.code).toBe("23505")
+packages/server/src/effect/_test/db.errors.test.ts:23#e7c9f363 expect({ ...error }).toStrictEqual({ _tag: "DbError", code: "23505" })
+packages/server/src/effect/_test/db.errors.test.ts:26#a25428ba it("DbError senza codice e con una cause che non è un Error", () => {
+packages/server/src/effect/_test/db.errors.test.ts:33#00a777e4 expect(error.cause).toBe(cause)
+packages/server/src/effect/_test/db.errors.test.ts:34#1d0099c2 expect(error.message).toBe("[object Object]")
+packages/server/src/effect/_test/db.errors.test.ts:35#73a57294 expect(error.code).toBeUndefined()
+packages/server/src/effect/_test/db.errors.test.ts:36#6be844e0 expect({ ...error }).toStrictEqual({ _tag: "DbError", code: undefined })
+packages/server/src/effect/_test/db.errors.test.ts:39#d83dc2e0 it("DbError con cause undefined", () => {
+packages/server/src/effect/_test/db.errors.test.ts:45#7b4e6e72 expect(error.cause).toBeUndefined()
+packages/server/src/effect/_test/db.errors.test.ts:46#5f5bf72e expect(error.message).toBe("undefined")
+packages/server/src/effect/_test/db.errors.test.ts:47#e85a23fb expect({ ...error }).toStrictEqual({
+packages/server/src/effect/_test/db.errors.test.ts:54#5ed3df65 it("CustomerMissing porta il cliente, o null", () => {
+packages/server/src/effect/_test/db.errors.test.ts:56#b5118243 expect(error).toBeInstanceOf(CustomerMissing)
+packages/server/src/effect/_test/db.errors.test.ts:57#442732b3 expect(error).toBeInstanceOf(Error)
+packages/server/src/effect/_test/db.errors.test.ts:58#21567f5d expect(error._tag).toBe("CustomerMissing")
+packages/server/src/effect/_test/db.errors.test.ts:59#05710819 expect(error.customerId).toBe("inesistente")
+packages/server/src/effect/_test/db.errors.test.ts:60#759e0161 expect(error.message).toBe("")
+packages/server/src/effect/_test/db.errors.test.ts:61#67620ec5 expect({ ...error }).toStrictEqual({
+packages/server/src/effect/_test/db.errors.test.ts:66#e9c2cab6 expect(new CustomerMissing({ customerId: null }).customerId).toBeNull()
+packages/server/src/effect/_test/db.errors.test.ts:67#a80d21d1 expect(new CustomerMissing({ customerId: "" }).customerId).toBe("")
+packages/server/src/services/auth/_test/login.errors.test.ts:12#10faf873 describe("errori del login: costruzione", () => {
+packages/server/src/services/auth/_test/login.errors.test.ts:13#f3d10c36 it.each([
+packages/server/src/services/auth/_test/login.errors.test.ts:20#d18053f3 expect(error).toBeInstanceOf(Class)
+packages/server/src/services/auth/_test/login.errors.test.ts:21#442732b3 expect(error).toBeInstanceOf(Error)
+packages/server/src/services/auth/_test/login.errors.test.ts:22#18e5750d expect(error._tag).toBe(tag)
+packages/server/src/services/auth/_test/login.errors.test.ts:23#759e0161 expect(error.message).toBe("")
+packages/server/src/services/auth/_test/login.errors.test.ts:24#a0695d0e expect({ ...error }).toStrictEqual({ _tag: tag })
+packages/server/src/services/chat/_test/errors.classes.test.ts:7#6f7dc346 describe("errori della chat: costruzione", () => {
+packages/server/src/services/chat/_test/errors.classes.test.ts:8#8b2595dd it("ChatMissing porta l'id della chat", () => {
+packages/server/src/services/chat/_test/errors.classes.test.ts:10#87d09245 expect(error).toBeInstanceOf(ChatMissing)
+packages/server/src/services/chat/_test/errors.classes.test.ts:11#442732b3 expect(error).toBeInstanceOf(Error)
+packages/server/src/services/chat/_test/errors.classes.test.ts:12#27ba9a74 expect(error._tag).toBe("ChatMissing")
+packages/server/src/services/chat/_test/errors.classes.test.ts:13#49f9ce12 expect(error.chatId).toBe(12)
+packages/server/src/services/chat/_test/errors.classes.test.ts:14#759e0161 expect(error.message).toBe("")
+packages/server/src/services/chat/_test/errors.classes.test.ts:15#0c580239 expect({ ...error }).toStrictEqual({ _tag: "ChatMissing", chatId: 12 })
+packages/server/src/services/chat/_test/errors.classes.test.ts:18#b24aab3d it("MessageMissing porta l'id del messaggio", () => {
+packages/server/src/services/chat/_test/errors.classes.test.ts:20#88ecb3fb expect(error).toBeInstanceOf(MessageMissing)
+packages/server/src/services/chat/_test/errors.classes.test.ts:21#442732b3 expect(error).toBeInstanceOf(Error)
+packages/server/src/services/chat/_test/errors.classes.test.ts:22#82d3709f expect(error._tag).toBe("MessageMissing")
+packages/server/src/services/chat/_test/errors.classes.test.ts:23#ad3f36f4 expect(error.messageId).toBe(34)
+packages/server/src/services/chat/_test/errors.classes.test.ts:24#759e0161 expect(error.message).toBe("")
+packages/server/src/services/chat/_test/errors.classes.test.ts:25#59a503bf expect({ ...error }).toStrictEqual({
+packages/server/src/services/chat/_test/errors.classes.test.ts:31#a2aa1971 it("NotMessageAuthor porta l'id del messaggio", () => {
+packages/server/src/services/chat/_test/errors.classes.test.ts:33#99c99877 expect(error).toBeInstanceOf(NotMessageAuthor)
+packages/server/src/services/chat/_test/errors.classes.test.ts:34#442732b3 expect(error).toBeInstanceOf(Error)
+packages/server/src/services/chat/_test/errors.classes.test.ts:35#8f0b471d expect(error._tag).toBe("NotMessageAuthor")
+packages/server/src/services/chat/_test/errors.classes.test.ts:36#32ca7cb0 expect(error.messageId).toBe(56)
+packages/server/src/services/chat/_test/errors.classes.test.ts:37#759e0161 expect(error.message).toBe("")
+packages/server/src/services/chat/_test/errors.classes.test.ts:38#c2383536 expect({ ...error }).toStrictEqual({
+packages/server/src/services/contact/_test/errors.classes.test.ts:21#ef2c8df3 describe("errori dei contatti: costruzione", () => {
+packages/server/src/services/contact/_test/errors.classes.test.ts:22#98f755c6 it.each([
+packages/server/src/services/contact/_test/errors.classes.test.ts:31#d18053f3 expect(error).toBeInstanceOf(Class)
+packages/server/src/services/contact/_test/errors.classes.test.ts:32#442732b3 expect(error).toBeInstanceOf(Error)
+packages/server/src/services/contact/_test/errors.classes.test.ts:33#18e5750d expect(error._tag).toBe(tag)
+packages/server/src/services/contact/_test/errors.classes.test.ts:34#759e0161 expect(error.message).toBe("")
+packages/server/src/services/contact/_test/errors.classes.test.ts:35#a0695d0e expect({ ...error }).toStrictEqual({ _tag: tag })
+packages/server/src/services/contact/_test/errors.classes.test.ts:38#2d35cd70 it("ContactSuperseded porta il contatto attivo, o null", () => {
+packages/server/src/services/contact/_test/errors.classes.test.ts:40#05f9655e expect(active).toBeInstanceOf(ContactSuperseded)
+packages/server/src/services/contact/_test/errors.classes.test.ts:41#b3499bcb expect(active).toBeInstanceOf(Error)
+packages/server/src/services/contact/_test/errors.classes.test.ts:42#23a29f03 expect(active._tag).toBe("ContactSuperseded")
+packages/server/src/services/contact/_test/errors.classes.test.ts:43#53cace16 expect(active.activeTaskId).toBe(42)
+packages/server/src/services/contact/_test/errors.classes.test.ts:44#bab34bb7 expect(active.message).toBe("")
+packages/server/src/services/contact/_test/errors.classes.test.ts:45#ce9ef57a expect({ ...active }).toStrictEqual({
+packages/server/src/services/contact/_test/errors.classes.test.ts:51#d62b4b20 expect(none.activeTaskId).toBeNull()
+packages/server/src/services/contact/_test/errors.classes.test.ts:52#bab9624c expect({ ...none }).toStrictEqual({
+packages/server/src/services/contact/_test/errors.classes.test.ts:58#673a4fbb it("ContactForbidden porta l'operatore del contatto, o null", () => {
+packages/server/src/services/contact/_test/errors.classes.test.ts:60#58c040fd expect(owned).toBeInstanceOf(ContactForbidden)
+packages/server/src/services/contact/_test/errors.classes.test.ts:61#ad8dbd87 expect(owned).toBeInstanceOf(Error)
+packages/server/src/services/contact/_test/errors.classes.test.ts:62#9215f394 expect(owned._tag).toBe("ContactForbidden")
+packages/server/src/services/contact/_test/errors.classes.test.ts:63#70bb9eaf expect(owned.assignee).toBe("Mario Rossi")
+packages/server/src/services/contact/_test/errors.classes.test.ts:64#038f1d59 expect(owned.message).toBe("")
+packages/server/src/services/contact/_test/errors.classes.test.ts:65#f45781b5 expect({ ...owned }).toStrictEqual({
+packages/server/src/services/contact/_test/errors.classes.test.ts:71#1e754d2a expect(unassigned.assignee).toBeNull()
+packages/server/src/services/contact/_test/errors.classes.test.ts:72#8dc579da expect({ ...unassigned }).toStrictEqual({
+packages/server/src/services/contact/_test/errors.classes.test.ts:78#2652111e it("TransitionRejected porta gli stati, con from null", () => {
+packages/server/src/services/contact/_test/errors.classes.test.ts:80#9395c1bc expect(error).toBeInstanceOf(TransitionRejected)
+packages/server/src/services/contact/_test/errors.classes.test.ts:81#442732b3 expect(error).toBeInstanceOf(Error)
+packages/server/src/services/contact/_test/errors.classes.test.ts:82#7ea17c06 expect(error._tag).toBe("TransitionRejected")
+packages/server/src/services/contact/_test/errors.classes.test.ts:83#56928676 expect(error.from).toBe("followup")
+packages/server/src/services/contact/_test/errors.classes.test.ts:84#4f0cbc73 expect(error.to).toBe("chiamare")
+packages/server/src/services/contact/_test/errors.classes.test.ts:85#759e0161 expect(error.message).toBe("")
+packages/server/src/services/contact/_test/errors.classes.test.ts:86#23e0d1e8 expect({ ...error }).toStrictEqual({
+packages/server/src/services/contact/_test/errors.classes.test.ts:96#79af5ba6 expect(fromNull.from).toBeNull()
+packages/server/src/services/contact/_test/errors.classes.test.ts:97#4178bf3b expect(fromNull.to).toBe("non interessato")
+packages/server/src/services/contact/_test/errors.classes.test.ts:100#c3cd6fbd it("AlertConfirmationRequired porta l'alert con la sua Date", () => {
+packages/server/src/services/contact/_test/errors.classes.test.ts:105#e6472260 expect(error).toBeInstanceOf(AlertConfirmationRequired)
+packages/server/src/services/contact/_test/errors.classes.test.ts:106#442732b3 expect(error).toBeInstanceOf(Error)
+packages/server/src/services/contact/_test/errors.classes.test.ts:107#3c214c04 expect(error._tag).toBe("AlertConfirmationRequired")
+packages/server/src/services/contact/_test/errors.classes.test.ts:108#33500483 expect(error.alert).toStrictEqual({
+packages/server/src/services/contact/_test/errors.classes.test.ts:113#5f8e8a24 expect(error.alert.deadline).toBe(deadline)
+packages/server/src/services/contact/_test/errors.classes.test.ts:114#759e0161 expect(error.message).toBe("")
+packages/server/src/services/contact/_test/errors.classes.test.ts:115#6ca027db expect({ ...error }).toStrictEqual({
+packages/server/src/services/contact/_test/errors.classes.test.ts:121#125ce420 it("AlertConfirmationRequired accetta un alert senza messaggio e una Date non valida", () => {
+packages/server/src/services/contact/_test/errors.classes.test.ts:126#236e3802 expect(error.alert.id).toBe(8)
+packages/server/src/services/contact/_test/errors.classes.test.ts:127#cb6c4a23 expect(error.alert.deadline).toBe(invalid)
+packages/server/src/services/contact/_test/errors.classes.test.ts:128#4043d37d expect(error.alert.message).toBeNull()
+packages/server/src/services/contact/_test/errors.classes.test.ts:131#c3ad548e it("CallbackNotAllowed porta lo stato, o null", () => {
+packages/server/src/services/contact/_test/errors.classes.test.ts:133#4915c7d9 expect(error).toBeInstanceOf(CallbackNotAllowed)
+packages/server/src/services/contact/_test/errors.classes.test.ts:134#442732b3 expect(error).toBeInstanceOf(Error)
+packages/server/src/services/contact/_test/errors.classes.test.ts:135#cc414f96 expect(error._tag).toBe("CallbackNotAllowed")
+packages/server/src/services/contact/_test/errors.classes.test.ts:136#708875db expect(error.state).toBe("chiamare")
+packages/server/src/services/contact/_test/errors.classes.test.ts:137#759e0161 expect(error.message).toBe("")
+packages/server/src/services/contact/_test/errors.classes.test.ts:138#00494359 expect({ ...error }).toStrictEqual({
+packages/server/src/services/contact/_test/errors.classes.test.ts:143#60ff8dfe expect(new CallbackNotAllowed({ state: null }).state).toBeNull()
+packages/server/src/services/contact/_test/errors.classes.test.ts:146#324ee2c2 it("ContactAlreadyActive porta il contatto attivo", () => {
+packages/server/src/services/contact/_test/errors.classes.test.ts:148#7827ef1a expect(error).toBeInstanceOf(ContactAlreadyActive)
+packages/server/src/services/contact/_test/errors.classes.test.ts:149#442732b3 expect(error).toBeInstanceOf(Error)
+packages/server/src/services/contact/_test/errors.classes.test.ts:150#da772ac8 expect(error._tag).toBe("ContactAlreadyActive")
+packages/server/src/services/contact/_test/errors.classes.test.ts:151#483ed32e expect(error.activeTaskId).toBe(9)
+packages/server/src/services/contact/_test/errors.classes.test.ts:152#759e0161 expect(error.message).toBe("")
+packages/server/src/services/contact/_test/errors.classes.test.ts:153#7e3696d7 expect({ ...error }).toStrictEqual({
+packages/server/src/services/contact/_test/processDueAlerts.errors.test.ts:7#18dd9d8d describe("errori del cron degli alert: costruzione", () => {
+packages/server/src/services/contact/_test/processDueAlerts.errors.test.ts:8#9fc9b899 it("SystemOperatorMissing si costruisce senza campi", () => {
+packages/server/src/services/contact/_test/processDueAlerts.errors.test.ts:10#0c023c02 expect(error).toBeInstanceOf(SystemOperatorMissing)
+packages/server/src/services/contact/_test/processDueAlerts.errors.test.ts:11#442732b3 expect(error).toBeInstanceOf(Error)
+packages/server/src/services/contact/_test/processDueAlerts.errors.test.ts:12#2d1c30d4 expect(error._tag).toBe("SystemOperatorMissing")
+packages/server/src/services/contact/_test/processDueAlerts.errors.test.ts:13#759e0161 expect(error.message).toBe("")
+packages/server/src/services/contact/_test/processDueAlerts.errors.test.ts:14#6ec66a28 expect({ ...error }).toStrictEqual({ _tag: "SystemOperatorMissing" })
+packages/server/src/services/customer/_test/errors.classes.test.ts:7#5b3c2fc7 describe("errori dei clienti: costruzione", () => {
+packages/server/src/services/customer/_test/errors.classes.test.ts:8#2f23e913 it.each([
+packages/server/src/services/customer/_test/errors.classes.test.ts:13#d18053f3 expect(error).toBeInstanceOf(Class)
+packages/server/src/services/customer/_test/errors.classes.test.ts:14#442732b3 expect(error).toBeInstanceOf(Error)
+packages/server/src/services/customer/_test/errors.classes.test.ts:15#18e5750d expect(error._tag).toBe(tag)
+packages/server/src/services/customer/_test/errors.classes.test.ts:16#759e0161 expect(error.message).toBe("")
+packages/server/src/services/customer/_test/errors.classes.test.ts:17#a0695d0e expect({ ...error }).toStrictEqual({ _tag: tag })
+packages/server/src/services/export/_test/files.errors.test.ts:8#ac9df624 describe("errori dei file di export: costruzione", () => {
+packages/server/src/services/export/_test/files.errors.test.ts:9#33b4f938 it("ExportFileNotAllowed porta il nome del file", () => {
+packages/server/src/services/export/_test/files.errors.test.ts:11#2a0feca8 expect(error).toBeInstanceOf(ExportFileNotAllowed)
+packages/server/src/services/export/_test/files.errors.test.ts:12#442732b3 expect(error).toBeInstanceOf(Error)
+packages/server/src/services/export/_test/files.errors.test.ts:13#d93153df expect(error._tag).toBe("ExportFileNotAllowed")
+packages/server/src/services/export/_test/files.errors.test.ts:14#d2f36e27 expect(error.name).toBe("../segreti.xlsx")
+packages/server/src/services/export/_test/files.errors.test.ts:15#759e0161 expect(error.message).toBe("")
+packages/server/src/services/export/_test/files.errors.test.ts:16#c502ac15 expect({ ...error }).toStrictEqual({
+packages/server/src/services/import/_test/errors.classes.test.ts:16#6ee3f79e describe("errori dell'import: costruzione", () => {
+packages/server/src/services/import/_test/errors.classes.test.ts:17#dea933eb it.each([
+packages/server/src/services/import/_test/errors.classes.test.ts:22#d18053f3 expect(error).toBeInstanceOf(Class)
+packages/server/src/services/import/_test/errors.classes.test.ts:23#442732b3 expect(error).toBeInstanceOf(Error)
+packages/server/src/services/import/_test/errors.classes.test.ts:24#18e5750d expect(error._tag).toBe(tag)
+packages/server/src/services/import/_test/errors.classes.test.ts:25#759e0161 expect(error.message).toBe("")
+packages/server/src/services/import/_test/errors.classes.test.ts:26#a0695d0e expect({ ...error }).toStrictEqual({ _tag: tag })
+packages/server/src/services/import/_test/errors.classes.test.ts:29#694209b8 it("ImportInputInvalid porta il motivo", () => {
+packages/server/src/services/import/_test/errors.classes.test.ts:31#5e74c465 expect(error).toBeInstanceOf(ImportInputInvalid)
+packages/server/src/services/import/_test/errors.classes.test.ts:32#442732b3 expect(error).toBeInstanceOf(Error)
+packages/server/src/services/import/_test/errors.classes.test.ts:33#56e67c81 expect(error._tag).toBe("ImportInputInvalid")
+packages/server/src/services/import/_test/errors.classes.test.ts:34#9dde75a7 expect(error.reason).toBe("file vuoto")
+packages/server/src/services/import/_test/errors.classes.test.ts:35#759e0161 expect(error.message).toBe("")
+packages/server/src/services/import/_test/errors.classes.test.ts:36#c368eb16 expect({ ...error }).toStrictEqual({
+packages/server/src/services/import/_test/errors.classes.test.ts:42#8db95122 it("ImportUploadMissing porta l'upload", () => {
+packages/server/src/services/import/_test/errors.classes.test.ts:45#9d7eccc5 expect(error).toBeInstanceOf(ImportUploadMissing)
+packages/server/src/services/import/_test/errors.classes.test.ts:46#442732b3 expect(error).toBeInstanceOf(Error)
+packages/server/src/services/import/_test/errors.classes.test.ts:47#8cc681b8 expect(error._tag).toBe("ImportUploadMissing")
+packages/server/src/services/import/_test/errors.classes.test.ts:48#243f5400 expect(error.uploadId).toBe(uploadId)
+packages/server/src/services/import/_test/errors.classes.test.ts:49#759e0161 expect(error.message).toBe("")
+packages/server/src/services/import/_test/errors.classes.test.ts:50#dfaf97a1 expect({ ...error }).toStrictEqual({
+packages/server/src/services/import/_test/errors.classes.test.ts:56#aa25ff04 it("ImportUploadClosed porta l'upload", () => {
+packages/server/src/services/import/_test/errors.classes.test.ts:59#474a4fcc expect(error).toBeInstanceOf(ImportUploadClosed)
+packages/server/src/services/import/_test/errors.classes.test.ts:60#442732b3 expect(error).toBeInstanceOf(Error)
+packages/server/src/services/import/_test/errors.classes.test.ts:61#ff476151 expect(error._tag).toBe("ImportUploadClosed")
+packages/server/src/services/import/_test/errors.classes.test.ts:62#243f5400 expect(error.uploadId).toBe(uploadId)
+packages/server/src/services/import/_test/errors.classes.test.ts:63#759e0161 expect(error.message).toBe("")
+packages/server/src/services/import/_test/errors.classes.test.ts:64#e599d66f expect({ ...error }).toStrictEqual({ _tag: "ImportUploadClosed", uploadId })
+packages/server/src/services/import/_test/errors.classes.test.ts:67#67a9b8a2 it("ImportRowRejected porta la riga e la regola", () => {
+packages/server/src/services/import/_test/errors.classes.test.ts:69#066bd635 expect(error).toBeInstanceOf(ImportRowRejected)
+packages/server/src/services/import/_test/errors.classes.test.ts:70#442732b3 expect(error).toBeInstanceOf(Error)
+packages/server/src/services/import/_test/errors.classes.test.ts:71#e97ec411 expect(error._tag).toBe("ImportRowRejected")
+packages/server/src/services/import/_test/errors.classes.test.ts:72#e296c903 expect(error.row).toBe(3)
+packages/server/src/services/import/_test/errors.classes.test.ts:73#998d4218 expect(error.rule).toBe("codice fiscale")
+packages/server/src/services/import/_test/errors.classes.test.ts:74#759e0161 expect(error.message).toBe("")
+packages/server/src/services/import/_test/errors.classes.test.ts:75#378b720b expect({ ...error }).toStrictEqual({
+packages/server/src/services/import/_test/errors.classes.test.ts:82#48a13389 it("ImportAlreadyRunning porta chi l'ha avviato e l'ora", () => {
+packages/server/src/services/import/_test/errors.classes.test.ts:87#4ea1344c expect(error).toBeInstanceOf(ImportAlreadyRunning)
+packages/server/src/services/import/_test/errors.classes.test.ts:88#442732b3 expect(error).toBeInstanceOf(Error)
+packages/server/src/services/import/_test/errors.classes.test.ts:89#85863fd9 expect(error._tag).toBe("ImportAlreadyRunning")
+packages/server/src/services/import/_test/errors.classes.test.ts:90#a42b7f74 expect(error.startedBy).toBe("Mario Rossi")
+packages/server/src/services/import/_test/errors.classes.test.ts:91#07e9269a expect(error.time).toBe("10:05")
+packages/server/src/services/import/_test/errors.classes.test.ts:92#759e0161 expect(error.message).toBe("")
+packages/server/src/services/import/_test/errors.classes.test.ts:93#c956c35d expect({ ...error }).toStrictEqual({
+packages/server/src/services/import/_test/errors.classes.test.ts:100#55ca4b0b it("ImportQueueFailed porta il motivo", () => {
+packages/server/src/services/import/_test/errors.classes.test.ts:102#d64d87ee expect(error).toBeInstanceOf(ImportQueueFailed)
+packages/server/src/services/import/_test/errors.classes.test.ts:103#442732b3 expect(error).toBeInstanceOf(Error)
+packages/server/src/services/import/_test/errors.classes.test.ts:104#7389e608 expect(error._tag).toBe("ImportQueueFailed")
+packages/server/src/services/import/_test/errors.classes.test.ts:105#7d9705c3 expect(error.reason).toBe("Cloud Tasks answered 503")
+packages/server/src/services/import/_test/errors.classes.test.ts:106#759e0161 expect(error.message).toBe("")
+packages/server/src/services/import/_test/errors.classes.test.ts:107#33b77981 expect({ ...error }).toStrictEqual({
+packages/server/src/services/operator/_test/errors.classes.test.ts:13#c50e54f5 describe("errori degli operatori: costruzione", () => {
+packages/server/src/services/operator/_test/errors.classes.test.ts:14#cee42bb9 it.each([
+packages/server/src/services/operator/_test/errors.classes.test.ts:22#d18053f3 expect(error).toBeInstanceOf(Class)
+packages/server/src/services/operator/_test/errors.classes.test.ts:23#442732b3 expect(error).toBeInstanceOf(Error)
+packages/server/src/services/operator/_test/errors.classes.test.ts:24#18e5750d expect(error._tag).toBe(tag)
+packages/server/src/services/operator/_test/errors.classes.test.ts:25#759e0161 expect(error.message).toBe("")
+packages/server/src/services/operator/_test/errors.classes.test.ts:26#a0695d0e expect({ ...error }).toStrictEqual({ _tag: tag })
+packages/server/src/services/practice/_test/errors.classes.test.ts:7#861e777a describe("errori delle pratiche: costruzione", () => {
+packages/server/src/services/practice/_test/errors.classes.test.ts:8#05e34682 it.each([
+packages/server/src/services/practice/_test/errors.classes.test.ts:14#d18053f3 expect(error).toBeInstanceOf(Class)
+packages/server/src/services/practice/_test/errors.classes.test.ts:15#442732b3 expect(error).toBeInstanceOf(Error)
+packages/server/src/services/practice/_test/errors.classes.test.ts:16#18e5750d expect(error._tag).toBe(tag)
+packages/server/src/services/practice/_test/errors.classes.test.ts:17#759e0161 expect(error.message).toBe("")
+packages/server/src/services/practice/_test/errors.classes.test.ts:18#a0695d0e expect({ ...error }).toStrictEqual({ _tag: tag })
+packages/server/src/services/storage/_test/errors.classes.test.ts:28#2c8856c7 describe("errori dello storage: costruzione", () => {
+packages/server/src/services/storage/_test/errors.classes.test.ts:29#87eb2e45 it.each(classes)("$tag porta key, message e cause", ({ Class, tag }) => {
+packages/server/src/services/storage/_test/errors.classes.test.ts:36#d18053f3 expect(error).toBeInstanceOf(Class)
+packages/server/src/services/storage/_test/errors.classes.test.ts:37#442732b3 expect(error).toBeInstanceOf(Error)
+packages/server/src/services/storage/_test/errors.classes.test.ts:38#18e5750d expect(error._tag).toBe(tag)
+packages/server/src/services/storage/_test/errors.classes.test.ts:39#3a1de171 expect(error.key).toBe("export/a.xlsx")
+packages/server/src/services/storage/_test/errors.classes.test.ts:40#df63d7cb expect(error.message).toBe('Upload of "export/a.xlsx" failed')
+packages/server/src/services/storage/_test/errors.classes.test.ts:41#00a777e4 expect(error.cause).toBe(cause)
+packages/server/src/services/storage/_test/errors.classes.test.ts:42#17c0948b expect({ ...error }).toStrictEqual({ _tag: tag, key: "export/a.xlsx" })
+packages/server/src/services/storage/_test/errors.classes.test.ts:45#e09ace7a it.each(classes)("$tag senza key né cause", ({ Class, tag }) => {
+packages/server/src/services/storage/_test/errors.classes.test.ts:49#18e5750d expect(error._tag).toBe(tag)
+packages/server/src/services/storage/_test/errors.classes.test.ts:50#111728a1 expect(error.message).toBe("Body is 10 bytes, the limit is 5 bytes")
+packages/server/src/services/storage/_test/errors.classes.test.ts:51#3bcbd0e6 expect("key" in error).toBe(false)
+packages/server/src/services/storage/_test/errors.classes.test.ts:52#83a65a8f expect(error.key).toBeUndefined()
+packages/server/src/services/storage/_test/errors.classes.test.ts:53#7b4e6e72 expect(error.cause).toBeUndefined()
+packages/server/src/services/storage/_test/errors.classes.test.ts:54#a0695d0e expect({ ...error }).toStrictEqual({ _tag: tag })
+packages/server/src/services/storage/_test/errors.classes.test.ts:57#63a63294 it.each(classes)("$tag con key e cause undefined", ({ Class, tag }) => {
+packages/server/src/services/storage/_test/errors.classes.test.ts:63#18e5750d expect(error._tag).toBe(tag)
+packages/server/src/services/storage/_test/errors.classes.test.ts:64#82bf7094 expect(error.message).toBe("STORAGE_BUCKET is required")
+packages/server/src/services/storage/_test/errors.classes.test.ts:65#83a65a8f expect(error.key).toBeUndefined()
+packages/server/src/services/storage/_test/errors.classes.test.ts:66#7b4e6e72 expect(error.cause).toBeUndefined()
+packages/server/src/services/storage/_test/errors.classes.test.ts:68#902e781d expect({ ...error }).toStrictEqual({
+packages/server/src/services/storage/_test/errors.classes.test.ts:75#1845a4ad it.each(classes)("$tag con una cause che non è un Error", ({ Class }) => {
+packages/server/src/services/storage/_test/errors.classes.test.ts:78#00a777e4 expect(error.cause).toBe(cause)
