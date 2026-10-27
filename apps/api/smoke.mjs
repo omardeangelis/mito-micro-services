@@ -58,6 +58,8 @@ const expect = async (path, status, method = "GET") => {
 await expect("/health", 200)
 // A procedure that needs a session: the session middleware and the router run
 await expect("/api/trpc/user.getUserPreference", 401)
+// The HttpApi of the contract (2.1.2): its web handler and its middleware
+await expect("/api/v1/me", 401)
 // better-auth's routes, without a cookie: they answer without the database.
 // The session of NextAuth's shape, for the frontend of the deploy before (D16)
 await expect("/api/auth/get-session", 200)

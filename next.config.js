@@ -122,6 +122,7 @@ const config = {
   // The workspace packages ship TypeScript sources (packages/*)
   transpilePackages: [
     "@mito/client",
+    "@mito/contract",
     "@mito/db",
     "@mito/domain",
     "@mito/env",

@@ -376,6 +376,9 @@ importers:
 
   apps/api:
     devDependencies:
+      '@mito/contract':
+        specifier: workspace:*
+        version: link:../../packages/contract
       '@mito/db':
         specifier: workspace:*
         version: link:../../packages/db
@@ -556,6 +559,9 @@ importers:
 
   packages/server:
     dependencies:
+      '@mito/contract':
+        specifier: workspace:*
+        version: link:../contract
       '@mito/db':
         specifier: workspace:*
         version: link:../db
