@@ -1,5 +1,6 @@
 import { gzipSync } from "node:zlib"
-import { beforeAll, beforeEach, describe, expect, test, vi } from "vitest"
+import { beforeAll, beforeEach, vi } from "vitest"
+import { describe, expect, it } from "@effect/vitest"
 import { Cause, Effect, Exit, Option } from "effect"
 import { eq } from "drizzle-orm"
 import {
@@ -39,7 +40,7 @@ beforeEach(async () => {
 })
 
 const withDb = <A, E>(program: Effect.Effect<A, E, Db>) =>
-  Effect.runPromiseExit(program.pipe(Effect.provide(DbLive)))
+  program.pipe(Effect.provide(DbLive), Effect.exit)
 
 const value = <A, E>(exit: Exit.Exit<A, E>) => {
   if (Exit.isFailure(exit)) throw new Error(`failed: ${String(exit.cause)}`)
@@ -70,31 +71,32 @@ const rows = [
 const waveBody = toFileBody(waveColumns, rows)
 
 /** Sends every part of `body` for `admin`, as `import.upload` does. */
-const upload = async (
+const upload = (
   body: unknown,
   { parts = 1, format = "wave" }: { parts?: number; format?: ImportFormat } = {}
-) => {
-  const [first, ...rest] = pieces(body, parts)
-  const uploadId = value(
-    await withDb(
-      createUpload({
-        createdBy: admin,
-        fileName: "0125_import.xlsx",
-        format,
-        parts,
-        data: first!,
-      })
-    )
-  )
-  for (const [index, data] of rest.entries()) {
-    value(
-      await withDb(
-        saveUploadPart({ uploadId, createdBy: admin, part: index + 1, data })
+) =>
+  Effect.gen(function* () {
+    const [first, ...rest] = pieces(body, parts)
+    const uploadId = value(
+      yield* withDb(
+        createUpload({
+          createdBy: admin,
+          fileName: "0125_import.xlsx",
+          format,
+          parts,
+          data: first!,
+        })
       )
     )
-  }
-  return uploadId
-}
+    for (const [index, data] of rest.entries()) {
+      value(
+        yield* withDb(
+          saveUploadPart({ uploadId, createdBy: admin, part: index + 1, data })
+        )
+      )
+    }
+    return uploadId
+  })
 
 const partsOf = (uploadId: string) =>
   testDb
@@ -103,243 +105,299 @@ const partsOf = (uploadId: string) =>
     .where(eq(importUploadPart.uploadId, uploadId))
 
 describe("upload e lettura delle righe", () => {
-  test("le righe mandate in tre pezzi tornano come le ha lette il browser", async () => {
-    const uploadId = await upload(waveBody, { parts: 3 })
+  it.effect(
+    "le righe mandate in tre pezzi tornano come le ha lette il browser",
+    () =>
+      Effect.gen(function* () {
+        const uploadId = yield* upload(waveBody, { parts: 3 })
 
-    const { upload: saved, rows: loaded } = value(
-      await withDb(loadUpload(uploadId))
-    )
+        const { upload: saved, rows: loaded } = value(
+          yield* withDb(loadUpload(uploadId))
+        )
 
-    expect(saved).toMatchObject({
-      createdBy: admin,
-      fileName: "0125_import.xlsx",
-      format: "wave",
-      parts: 3,
-      runId: null,
+        expect(saved).toMatchObject({
+          createdBy: admin,
+          fileName: "0125_import.xlsx",
+          format: "wave",
+          parts: 3,
+          runId: null,
+        })
+        expect(loaded).toEqual(
+          rows.map(({ row, cells }) => ({
+            row,
+            cells: Object.fromEntries(
+              waveColumns.map((column) => [column, cells[column] ?? null])
+            ),
+          }))
+        )
+      })
+  )
+
+  it.effect("un pezzo mandato di nuovo prende il posto del primo", () =>
+    Effect.gen(function* () {
+      const [first, second] = pieces(waveBody, 2)
+      const uploadId = value(
+        yield* withDb(
+          createUpload({
+            createdBy: admin,
+            fileName: "0125_import.xlsx",
+            format: "wave",
+            parts: 2,
+            data: first!,
+          })
+        )
+      )
+      const send = (data: Uint8Array) =>
+        withDb(saveUploadPart({ uploadId, createdBy: admin, part: 1, data }))
+
+      value(yield* send(new Uint8Array([1, 2, 3])))
+      value(yield* send(second!))
+
+      expect(value(yield* withDb(loadUpload(uploadId))).rows).toHaveLength(2)
     })
-    expect(loaded).toEqual(
-      rows.map(({ row, cells }) => ({
-        row,
-        cells: Object.fromEntries(
-          waveColumns.map((column) => [column, cells[column] ?? null])
-        ),
-      }))
-    )
-  })
+  )
 
-  test("un pezzo mandato di nuovo prende il posto del primo", async () => {
-    const [first, second] = pieces(waveBody, 2)
-    const uploadId = value(
-      await withDb(
-        createUpload({
-          createdBy: admin,
-          fileName: "0125_import.xlsx",
-          format: "wave",
-          parts: 2,
-          data: first!,
+  it.effect(
+    "un pezzo dopo l'avvio dell'import è rifiutato e non si salva",
+    () =>
+      Effect.gen(function* () {
+        const [first, second] = pieces(waveBody, 2)
+        const uploadId = value(
+          yield* withDb(
+            createUpload({
+              createdBy: admin,
+              fileName: "0125_import.xlsx",
+              format: "wave",
+              parts: 2,
+              data: first!,
+            })
+          )
+        )
+        const [started] = yield* Effect.promise(() =>
+          testDb
+            .insert(importRun)
+            .values({
+              startedBy: admin,
+              fileName: "0125_import.xlsx",
+              format: "wave",
+              rowsTotal: 2,
+              rowsDiscarded: 0,
+            })
+            .returning()
+        )
+        yield* Effect.promise(() =>
+          testDb
+            .update(importUpload)
+            .set({ runId: started!.id })
+            .where(eq(importUpload.id, uploadId))
+        )
+
+        const exit = yield* withDb(
+          saveUploadPart({ uploadId, createdBy: admin, part: 1, data: second! })
+        )
+
+        expect(failureTag(exit)).toBe("ImportUploadClosed")
+        expect(yield* Effect.promise(() => partsOf(uploadId))).toEqual([
+          { part: 0 },
+        ])
+      })
+  )
+
+  it.effect("un admin non manda pezzi all'upload di un altro", () =>
+    Effect.gen(function* () {
+      const uploadId = yield* upload(waveBody, { parts: 1 })
+      const other = yield* Effect.promise(() => createUser({ role: "ADMIN" }))
+
+      const exit = yield* withDb(
+        saveUploadPart({
+          uploadId,
+          createdBy: other.id,
+          part: 1,
+          data: new Uint8Array([1]),
         })
       )
-    )
-    const send = (data: Uint8Array) =>
-      withDb(saveUploadPart({ uploadId, createdBy: admin, part: 1, data }))
 
-    value(await send(new Uint8Array([1, 2, 3])))
-    value(await send(second!))
+      expect(failureTag(exit)).toBe("ImportUploadMissing")
+    })
+  )
 
-    expect(value(await withDb(loadUpload(uploadId))).rows).toHaveLength(2)
-  })
+  it.effect("un pezzo oltre quelli annunciati è rifiutato", () =>
+    Effect.gen(function* () {
+      const uploadId = yield* upload(waveBody, { parts: 1 })
 
-  test("un pezzo dopo l'avvio dell'import è rifiutato e non si salva", async () => {
-    const [first, second] = pieces(waveBody, 2)
-    const uploadId = value(
-      await withDb(
-        createUpload({
+      const exit = yield* withDb(
+        saveUploadPart({
+          uploadId,
           createdBy: admin,
-          fileName: "0125_import.xlsx",
-          format: "wave",
-          parts: 2,
-          data: first!,
+          part: 1,
+          data: new Uint8Array([1]),
         })
       )
-    )
-    const [started] = await testDb
-      .insert(importRun)
-      .values({
-        startedBy: admin,
-        fileName: "0125_import.xlsx",
-        format: "wave",
-        rowsTotal: 2,
-        rowsDiscarded: 0,
-      })
-      .returning()
-    await testDb
-      .update(importUpload)
-      .set({ runId: started!.id })
-      .where(eq(importUpload.id, uploadId))
 
-    const exit = await withDb(
-      saveUploadPart({ uploadId, createdBy: admin, part: 1, data: second! })
-    )
+      expect(failureTag(exit)).toBe("ImportInputInvalid")
+      expect(yield* Effect.promise(() => partsOf(uploadId))).toEqual([
+        { part: 0 },
+      ])
+    })
+  )
 
-    expect(failureTag(exit)).toBe("ImportUploadClosed")
-    expect(await partsOf(uploadId)).toEqual([{ part: 0 }])
-  })
+  it.effect("deleteUpload cancella l'upload con i suoi pezzi", () =>
+    Effect.gen(function* () {
+      const uploadId = yield* upload(waveBody, { parts: 2 })
 
-  test("un admin non manda pezzi all'upload di un altro", async () => {
-    const uploadId = await upload(waveBody, { parts: 1 })
-    const other = await createUser({ role: "ADMIN" })
+      value(yield* withDb(deleteUpload(uploadId)))
 
-    const exit = await withDb(
-      saveUploadPart({
-        uploadId,
-        createdBy: other.id,
-        part: 1,
-        data: new Uint8Array([1]),
-      })
-    )
-
-    expect(failureTag(exit)).toBe("ImportUploadMissing")
-  })
-
-  test("un pezzo oltre quelli annunciati è rifiutato", async () => {
-    const uploadId = await upload(waveBody, { parts: 1 })
-
-    const exit = await withDb(
-      saveUploadPart({
-        uploadId,
-        createdBy: admin,
-        part: 1,
-        data: new Uint8Array([1]),
-      })
-    )
-
-    expect(failureTag(exit)).toBe("ImportInputInvalid")
-    expect(await partsOf(uploadId)).toEqual([{ part: 0 }])
-  })
-
-  test("deleteUpload cancella l'upload con i suoi pezzi", async () => {
-    const uploadId = await upload(waveBody, { parts: 2 })
-
-    value(await withDb(deleteUpload(uploadId)))
-
-    expect(await testDb.select().from(importUpload)).toEqual([])
-    expect(await testDb.select().from(importUploadPart)).toEqual([])
-  })
+      expect(
+        yield* Effect.promise(() => testDb.select().from(importUpload))
+      ).toEqual([])
+      expect(
+        yield* Effect.promise(() => testDb.select().from(importUploadPart))
+      ).toEqual([])
+    })
+  )
 })
 
 describe("corpi che il server non prende (D3)", () => {
-  const load = async (body: unknown, options?: Parameters<typeof upload>[1]) =>
-    withDb(loadUpload(await upload(body, options)))
+  const load = (body: unknown, options?: Parameters<typeof upload>[1]) =>
+    Effect.gen(function* () {
+      return yield* withDb(loadUpload(yield* upload(body, options)))
+    })
 
-  test("un pezzo che manca", async () => {
-    const [first] = pieces(waveBody, 2)
-    const uploadId = value(
-      await withDb(
-        createUpload({
-          createdBy: admin,
-          fileName: "0125_import.xlsx",
-          format: "wave",
-          parts: 2,
-          data: first!,
-        })
+  it.effect("un pezzo che manca", () =>
+    Effect.gen(function* () {
+      const [first] = pieces(waveBody, 2)
+      const uploadId = value(
+        yield* withDb(
+          createUpload({
+            createdBy: admin,
+            fileName: "0125_import.xlsx",
+            format: "wave",
+            parts: 2,
+            data: first!,
+          })
+        )
       )
-    )
 
-    const exit = await withDb(loadUpload(uploadId))
+      const exit = yield* withDb(loadUpload(uploadId))
 
-    expect(reasonOf(exit)).toBe("Il file non è arrivato per intero")
-  })
+      expect(reasonOf(exit)).toBe("Il file non è arrivato per intero")
+    })
+  )
 
-  test(`più di ${MAX_BODY_BYTES} byte una volta decompresso`, async () => {
-    const exit = await load(" ".repeat(MAX_BODY_BYTES + 1))
+  it.effect(`più di ${MAX_BODY_BYTES} byte una volta decompresso`, () =>
+    Effect.gen(function* () {
+      const exit = yield* load(" ".repeat(MAX_BODY_BYTES + 1))
 
-    expect(failureTag(exit)).toBe("ImportInputInvalid")
-    expect(reasonOf(exit)).toBe("Il file inviato è troppo grande")
-  })
+      expect(failureTag(exit)).toBe("ImportInputInvalid")
+      expect(reasonOf(exit)).toBe("Il file inviato è troppo grande")
+    })
+  )
 
-  test("pezzi che non sono gzip", async () => {
-    const uploadId = value(
-      await withDb(
-        createUpload({
-          createdBy: admin,
-          fileName: "0125_import.xlsx",
-          format: "wave",
-          parts: 1,
-          data: new TextEncoder().encode(JSON.stringify(waveBody)),
-        })
+  it.effect("pezzi che non sono gzip", () =>
+    Effect.gen(function* () {
+      const uploadId = value(
+        yield* withDb(
+          createUpload({
+            createdBy: admin,
+            fileName: "0125_import.xlsx",
+            format: "wave",
+            parts: 1,
+            data: new TextEncoder().encode(JSON.stringify(waveBody)),
+          })
+        )
       )
-    )
 
-    const exit = await withDb(loadUpload(uploadId))
+      const exit = yield* withDb(loadUpload(uploadId))
 
-    expect(reasonOf(exit)).toBe("Il file inviato non si legge")
-  })
+      expect(reasonOf(exit)).toBe("Il file inviato non si legge")
+    })
+  )
 
-  test("un JSON rotto", async () => {
-    expect(reasonOf(await load('{"columns": ['))).toBe(
-      "Il file inviato non si legge"
-    )
-  })
+  it.effect("un JSON rotto", () =>
+    Effect.gen(function* () {
+      expect(reasonOf(yield* load('{"columns": ['))).toBe(
+        "Il file inviato non si legge"
+      )
+    })
+  )
 
-  test(`più di ${MAX_ROWS} righe`, async () => {
-    const body = {
-      columns: [...waveColumns],
-      rows: Array.from({ length: MAX_ROWS + 1 }, (_, index) => [
-        index + 2,
-        waveColumns.map(() => null),
-      ]),
-    }
+  it.effect(`più di ${MAX_ROWS} righe`, () =>
+    Effect.gen(function* () {
+      const body = {
+        columns: [...waveColumns],
+        rows: Array.from({ length: MAX_ROWS + 1 }, (_, index) => [
+          index + 2,
+          waveColumns.map(() => null),
+        ]),
+      }
 
-    expect(reasonOf(await load(body))).toBe("Il file ha più di 50.000 righe")
-  })
+      expect(reasonOf(yield* load(body))).toBe("Il file ha più di 50.000 righe")
+    })
+  )
 
-  test("un corpo di righe vuote, piccolo in gzip, è rifiutato prima di leggerlo", async () => {
-    const empty = Array.from(
-      { length: MAX_ROWS + 1 },
-      (_, index) => `[${index + 2},[]]`
-    )
-    const body = `{"columns":["a"],"rows":[${empty.join(",")}]}`
-    const parse = vi.spyOn(JSON, "parse")
+  it.effect(
+    "un corpo di righe vuote, piccolo in gzip, è rifiutato prima di leggerlo",
+    () =>
+      Effect.gen(function* () {
+        const empty = Array.from(
+          { length: MAX_ROWS + 1 },
+          (_, index) => `[${index + 2},[]]`
+        )
+        const body = `{"columns":["a"],"rows":[${empty.join(",")}]}`
+        const parse = vi.spyOn(JSON, "parse")
 
-    try {
-      expect(reasonOf(await load(body))).toBe("Il file ha più di 50.000 righe")
-      expect(parse).not.toHaveBeenCalled()
-    } finally {
-      parse.mockRestore()
-    }
-  })
+        try {
+          expect(reasonOf(yield* load(body))).toBe(
+            "Il file ha più di 50.000 righe"
+          )
+          expect(parse).not.toHaveBeenCalled()
+        } finally {
+          parse.mockRestore()
+        }
+      })
+  )
 
-  test("le parentesi dentro i testi delle celle non contano come righe", async () => {
-    // Between two escaped quotes: a count that ended the text at the first
-    // would see 120.000 arrays
-    const text = `"${"[".repeat(30_000)}"`
-    const body = toFileBody(
-      waveColumns,
-      [2, 3, 4, 5].map((row) => ({ row, cells: waveCells({ Nome: text }) }))
-    )
+  it.effect(
+    "le parentesi dentro i testi delle celle non contano come righe",
+    () =>
+      Effect.gen(function* () {
+        // Between two escaped quotes: a count that ended the text at the first
+        // would see 120.000 arrays
+        const text = `"${"[".repeat(30_000)}"`
+        const body = toFileBody(
+          waveColumns,
+          [2, 3, 4, 5].map((row) => ({ row, cells: waveCells({ Nome: text }) }))
+        )
 
-    const exit = await load(body)
+        const exit = yield* load(body)
 
-    expect(Exit.isSuccess(exit) || reasonOf(exit)).toBe(true)
-  })
+        expect(Exit.isSuccess(exit) || reasonOf(exit)).toBe(true)
+      })
+  )
 
-  test("una riga senza una cella per colonna", async () => {
-    const body = { columns: [...waveColumns], rows: [[2, ["P1"]]] }
+  it.effect("una riga senza una cella per colonna", () =>
+    Effect.gen(function* () {
+      const body = { columns: [...waveColumns], rows: [[2, ["P1"]]] }
 
-    expect(reasonOf(await load(body))).toBe("Il file inviato non è valido")
-  })
+      expect(reasonOf(yield* load(body))).toBe("Il file inviato non è valido")
+    })
+  )
 
-  test("le colonne di un altro formato", async () => {
-    expect(reasonOf(await load(waveBody, { format: "standard" }))).toBe(
-      "Le colonne del file non sono quelle del formato Standard"
-    )
-  })
+  it.effect("le colonne di un altro formato", () =>
+    Effect.gen(function* () {
+      expect(reasonOf(yield* load(waveBody, { format: "standard" }))).toBe(
+        "Le colonne del file non sono quelle del formato Standard"
+      )
+    })
+  )
 
-  test("un upload che non c'è", async () => {
-    const exit = await withDb(
-      loadUpload("00000000-0000-4000-8000-000000000000")
-    )
+  it.effect("un upload che non c'è", () =>
+    Effect.gen(function* () {
+      const exit = yield* withDb(
+        loadUpload("00000000-0000-4000-8000-000000000000")
+      )
 
-    expect(failureTag(exit)).toBe("ImportUploadMissing")
-  })
+      expect(failureTag(exit)).toBe("ImportUploadMissing")
+    })
+  )
 })
