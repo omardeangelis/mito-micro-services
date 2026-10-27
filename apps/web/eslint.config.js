@@ -11,8 +11,16 @@ export default tseslint.config(
   js.configs.recommended,
   ...tseslint.configs.recommendedTypeChecked,
   ...tseslint.configs.stylisticTypeChecked,
-  reactHooks.configs.flat.recommended,
   prettier,
+  {
+    // The two rules of the root, not the React Compiler ones of
+    // `recommended`: the copied components keep their code (R6)
+    plugins: { "react-hooks": reactHooks },
+    rules: {
+      "react-hooks/rules-of-hooks": "error",
+      "react-hooks/exhaustive-deps": "warn",
+    },
+  },
   {
     languageOptions: {
       globals: globals.browser,

@@ -1,5 +1,5 @@
 import { render, screen } from "@testing-library/react"
-import { describe, expect, it } from "vitest"
+import { beforeAll, describe, expect, it, vi } from "vitest"
 import {
   BadgeDelta,
   BarChart,
@@ -8,6 +8,30 @@ import {
   DonutChart,
   ProgressCircle,
 } from ".."
+
+// jsdom measures nothing, and the observer of test/setup.ts never calls back:
+// this one gives the chart a size as soon as it observes it
+beforeAll(() => {
+  vi.stubGlobal(
+    "ResizeObserver",
+    class {
+      constructor(private callback: ResizeObserverCallback) {}
+      observe(target: Element) {
+        this.callback(
+          [
+            {
+              target,
+              contentRect: { width: 320, height: 200 },
+            } as unknown as ResizeObserverEntry,
+          ],
+          this
+        )
+      }
+      unobserve = () => undefined
+      disconnect = () => undefined
+    }
+  )
+})
 
 describe("chartColor", () => {
   it("dà l'hex di Tremor, e il 500 per un nome senza tonalità", () => {
