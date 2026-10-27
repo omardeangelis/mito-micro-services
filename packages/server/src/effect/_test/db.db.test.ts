@@ -22,10 +22,9 @@ import { fixedClock, T } from "@mito/server/services/analytics/_test/clock"
 
 class Boom extends Data.TaggedError("Boom")<Record<never, never>> {}
 
-class Probe extends Context.Tag("test/Probe")<
-  Probe,
-  { readonly value: string }
->() {}
+class Probe extends Context.Service<Probe, { readonly value: string }>()(
+  "test/Probe"
+) {}
 
 const insertUser = (id: string) =>
   query((client) => client.insert(users).values({ id, email: `${id}@t.it` }))
@@ -90,7 +89,7 @@ describe("transaction", () => {
       )
     )
 
-    expect(Exit.isInterrupted(exit)).toBe(true)
+    expect(Exit.hasInterrupts(exit)).toBe(true)
     expect(await testDb.select().from(users)).toEqual([])
   })
 
@@ -166,7 +165,7 @@ describe("transaction e il contesto del chiamante", () => {
           yield* insertUser("u1")
           return yield* Clock.currentTimeMillis
         })
-      ).pipe(Effect.withClock(fixedClock(T)))
+      ).pipe(Effect.provideService(Clock.Clock, fixedClock(T)))
     )
 
     expect(exit).toEqual(Exit.succeed(T))

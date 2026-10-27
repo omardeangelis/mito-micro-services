@@ -10,11 +10,12 @@ import { SentryReporterLive } from "./errorReporter"
 export const ServerLive = Layer.mergeAll(
   DbLive,
   SentryReporterLive,
-  Logger.replace(
-    Logger.defaultLogger,
-    Logger.withLeveledConsole(Logger.logfmtLogger)
-  )
+  // Replaces the default loggers; the tracer logger stays, as in Effect 3
+  Logger.layer([
+    Logger.withLeveledConsole(Logger.formatLogFmt),
+    Logger.tracerLogger,
+  ])
 )
 
 /** The services `ServerLive` provides. */
-export type ServerContext = Layer.Layer.Success<typeof ServerLive>
+export type ServerContext = Layer.Success<typeof ServerLive>
