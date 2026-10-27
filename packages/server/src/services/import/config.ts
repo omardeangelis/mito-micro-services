@@ -10,10 +10,10 @@ export type ImportSettings = {
 }
 
 /** The limits of the import: tests shorten them. */
-export class ImportConfig extends Context.Tag("ImportConfig")<
+export class ImportConfig extends Context.Service<
   ImportConfig,
   ImportSettings
->() {}
+>()("ImportConfig") {}
 
 export const importSettings: ImportSettings = {
   timeoutMs: 30 * 60_000,

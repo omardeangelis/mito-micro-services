@@ -16,7 +16,7 @@ export type ImportRouteContext = ImportAuth | Db | ImportConfig | ImportQueue
 
 /** The tag and the SQLSTATE of a failure: its message may hold a value. */
 const describe = (cause: Cause.Cause<unknown>) => {
-  const error = Option.getOrUndefined(Cause.failureOption(cause)) as
+  const error = Option.getOrUndefined(Cause.findErrorOption(cause)) as
     { _tag?: string; code?: string } | undefined
   return error?._tag
     ? `${error._tag}${error.code ? ` ${error.code}` : ""}`
@@ -62,7 +62,7 @@ export const importRoutes = (layer: Layer.Layer<ImportRouteContext>) => {
         return c.json({ outcome: exit.value }, 200)
       }
 
-      const error = Option.getOrUndefined(Cause.failureOption(exit.cause))
+      const error = Option.getOrUndefined(Cause.findErrorOption(exit.cause))
       const tag = (error as { _tag?: string } | undefined)?._tag
       if (tag === "OidcUnauthorized") {
         // Noise from scanners, not a failed import: logged, never reported

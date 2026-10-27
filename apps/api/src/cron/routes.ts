@@ -85,7 +85,7 @@ export const cronRoutes = (
     )
     if (Exit.isSuccess(exit)) return c.json(exit.value.body, exit.value.status)
 
-    const error = Option.getOrUndefined(Cause.failureOption(exit.cause))
+    const error = Option.getOrUndefined(Cause.findErrorOption(exit.cause))
     const tag = (error as { _tag?: string } | undefined)?._tag
     if (tag === "CronUnauthorized") {
       // Noise from scanners, not a failed job: logged, never reported

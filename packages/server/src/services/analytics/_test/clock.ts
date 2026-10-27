@@ -9,14 +9,18 @@ export const DAY = 86_400_000
 export const T = Date.UTC(2026, 5, 15, 12)
 
 /** Un Clock fermo a `millis`. */
-export const fixedClock = (millis: number): Clock.Clock => ({
-  [Clock.ClockTypeId]: Clock.ClockTypeId,
-  unsafeCurrentTimeMillis: () => millis,
-  currentTimeMillis: Effect.succeed(millis),
-  unsafeCurrentTimeNanos: () => BigInt(millis) * 1_000_000n,
-  currentTimeNanos: Effect.succeed(BigInt(millis) * 1_000_000n),
-  sleep: () => Effect.void,
-})
+export const fixedClock = (millis: number): Clock.Clock => {
+  const nanos = BigInt(millis) * 1_000_000n
+  return {
+    currentTimeMillisUnsafe: () => millis,
+    currentTimeMillis: Effect.succeed(millis),
+    currentTimeNanosUnsafe: () => nanos,
+    currentTimeNanos: Effect.succeed(nanos),
+    monotonicTimeNanosUnsafe: () => nanos,
+    monotonicTimeNanos: Effect.succeed(nanos),
+    sleep: () => Effect.void,
+  }
+}
 
 /** Il valore del programma con il Clock fermo a `millis`. */
 export async function at<A, E>(
@@ -24,7 +28,7 @@ export async function at<A, E>(
   program: Effect.Effect<A, E, ServerContext>
 ): Promise<A> {
   const exit = await runServer(
-    program.pipe(Effect.withClock(fixedClock(millis)))
+    program.pipe(Effect.provideService(Clock.Clock, fixedClock(millis)))
   )
   if (Exit.isFailure(exit)) {
     throw new Error(`il programma è fallito: ${exit.cause.toString()}`)

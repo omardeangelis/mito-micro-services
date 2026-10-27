@@ -53,7 +53,7 @@ export async function deleteExportFiles(
     Effect.provide(deleteExport, storage)
   )
   if (Exit.isSuccess(exit)) return exit.value
-  const failure = Cause.failureOption(exit.cause)
+  const failure = Cause.findErrorOption(exit.cause)
   if (Option.isNone(failure)) throw Cause.squash(exit.cause)
   throw failure.value._tag === "StorageListError"
     ? (failure.value.cause ?? failure.value)

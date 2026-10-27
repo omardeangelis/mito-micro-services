@@ -1,7 +1,7 @@
 ---
 domain: crm
 type: spec
-status: draft
+status: approved
 links:
   - "[[specs/crm/effect-4/PLAN]]"
   - "[[chore/roadmap-nuovo-stack]]"
@@ -80,7 +80,7 @@ Dopo la verifica del piano (2026-10-27):
 
 - **AC1**: Dopo la PR 1, `effect` è a `~4.0.6` nel `package.json` della radice ed è l'unica copia installata: `pnpm why effect` mostra solo `4.0.x`. Il codice importa solo dalla radice `"effect"`: `git grep -nE "from ['\"](effect/|@effect/)" -- packages apps src` non trova niente. Dopo la PR 3 i test importano anche `@effect/vitest` ed `effect/testing`, e nient'altro.
 - **AC2**: Dopo la PR 2, `vitest` è a `^5.0.5` e `vite` è una devDependency compatibile (≥ 6.4). Non esiste più `vitest.workspace.ts`, né `environmentMatchGlobs` o `poolMatchGlobs`: i progetti stanno in `test.projects` di `vitest.config.ts`. I comandi restano quelli di oggi: `pnpm run test --run`, `pnpm test:pg` (`--project pg`) e il passo di test della CI.
-- **AC3**: Dopo la PR 2, ogni file di test gira come prima: stesso ambiente (`jsdom` o `node`), stesso fuso, stesso tipo di pool (thread o processo figlio), stessi timer finti. Una sonda temporanea registra queste quattro cose per ogni file e progetto, su vitest 1.6 e su vitest 5, e i due elenchi coincidono. Il reporter JSON dà gli stessi test, per nome e per file, in tutti e due.
+- **AC3**: Dopo la PR 2, ogni file di test gira come prima: stesso ambiente (`jsdom` o `node`), stesso fuso, stesso tipo di pool (thread o processo figlio), stessi timer finti. Una sonda temporanea registra queste quattro cose per ogni file e progetto, su vitest 1.6 e su vitest 5, e i due elenchi coincidono. Il reporter JSON dà gli stessi test, per nome e per file, in tutti e due. Nei titoli di `test.each` e `describe.each` non contano le differenze di forma con cui vitest 5 stampa i valori (i testi senza apici, `0` invece di `+0`, un altro punto di troncamento; 12 file su `dev` `5adbfc1`), purché ogni test abbia un corrispondente con lo stesso stato.
 - **AC4**: Dopo la PR 3, `@effect/vitest` è a `~4.0.6`, la stessa versione di `effect`.
 
 ### Comportamento invariato
@@ -118,7 +118,7 @@ Dopo la verifica del piano (2026-10-27):
   - il numero di test per file non cambia.
 - **AC9 (a)**: Dopo la PR 4, ogni servizio è una classe `Context.Service` con un identificativo che inizia dal pacchetto e dal percorso (`"@mito/server/effect/Db"`, `"@mito/api/cron/CronAuth"`). Il layer principale è la proprietà statica `layer`, e le varianti hanno un suffisso che le descrive (`layerDisabled`, `layerInProcess`, …), costruite con `Servizio.of({...})`. Quando un layer statico creerebbe un import circolare, è una costante `<nome>Layer` nel suo modulo. Non restano costanti `*Live` esportate: `git grep -nP "export const \w+Live\b" -- packages apps src` non trova niente (su `dev` ne trova 8). I nomi sono nella tabella del §3 del piano.
 - **AC10 (c)**: Dopo la PR 4, ogni classe di errore del codice di produzione è una `Schema.TaggedError`, con lo stesso `_tag`, gli stessi campi e lo stesso `message`: `git grep -n "Data.TaggedError" -- packages apps src ':!**/_test/**'` non trova niente (su `dev` trova 61 classi). Lo schema di ogni campo accetta tutti i valori che il codice di oggi passa, compresi `undefined` esplicito, chiavi assenti e date: nessun costruttore lancia dove oggi non lanciava. Un test per classe costruisce l'errore con i valori che il codice usa davvero, scritto prima e verde su `Data.TaggedError`.
-- **AC11 (b)**: Dopo la PR 4, ogni funzione che restituisce direttamente un `Effect.gen` è scritta con `Effect.fn("<area>.<nome>")` se è esportata, e con `Effect.fnUntraced` se è un helper interno o un percorso caldo. `query` e `lockCustomer` di `effect/db.ts` usano `Effect.fnUntraced`. Controllo: lo script di AC5, in un secondo modo, cerca con il compilatore di TypeScript le funzioni il cui corpo è, o restituisce, una chiamata a `Effect.gen`. Su `dev` ne trova almeno 75; dopo la PR 4 nessuna nel codice di produzione. I combinatori che prendono un programma (`transaction`, `retryOnDeadlock`, `runTrpc`) restano funzioni normali.
+- **AC11 (b)**: Dopo la PR 4, ogni funzione che restituisce direttamente un `Effect.gen` è scritta con `Effect.fn("<area>.<nome>")` se è esportata, e con `Effect.fnUntraced` se è un helper interno o un percorso caldo. `query` e `lockCustomer` di `effect/db.ts` usano `Effect.fnUntraced`. Controllo: lo script di AC5, in un secondo modo, cerca con il compilatore di TypeScript le funzioni il cui corpo è, o restituisce, una chiamata a `Effect.gen`. Su `dev` ne trova almeno 74 (misurate da T1 il 2026-10-27; la stima di 75 contava anche programmi come `run: Effect.gen(...)`); dopo la PR 4 nessuna nel codice di produzione. I combinatori che prendono un programma (`transaction`, `retryOnDeadlock`, `runTrpc`) restano funzioni normali.
 
 ### Documenti
 
@@ -178,7 +178,7 @@ Dopo la verifica del piano (2026-10-27):
 | # | Question | Affects | Owner | Status |
 |---|----------|---------|-------|--------|
 | 1 | Se un test di AC7 fallisce per la semantica nuova dei *defect* (`catchTag` che non cattura un errore accanto a un *defect*), dove si corregge? | PR 1 | Omar | Assunzione: nel codice, per tenere il comportamento (AC5). Si annota nel log, e se la correzione non è locale ci si ferma e si chiede |
-| 2 | Le asserzioni che leggono la forma di `Cause` ed `Exit` di v3 possono cambiare? | AC5, PR 1 | Omar | Da confermare in G0: sì, come eccezione chiusa e riscrittura meccanica. In v4 la forma di v3 non esiste più, e nessuna correzione del codice la riporta |
+| 2 | Le asserzioni che leggono la forma di `Cause` ed `Exit` di v3 possono cambiare? | AC5, PR 1 | Omar | **Chiusa (G0, 2026-10-27):** sì, come eccezione chiusa e riscrittura meccanica. In v4 la forma di v3 non esiste più, e nessuna correzione del codice la riporta |
 
 ---
 
@@ -196,5 +196,6 @@ Dopo la verifica del piano (2026-10-27):
 | Revisione di Leonardo sulla PR 1 e sulla PR 4 | Toccano i file dell'auth, anche se senza cambiarne il comportamento (regola 5 del §2 della roadmap) |
 | Le funzioni libere restano funzioni libere | Raggrupparle in servizi è una scelta della fase 2, quando gli handler di `HttpApi` ne fissano la forma |
 | Tutti i test che eseguono Effect passano a `@effect/vitest`, anche i 38 misti | Omar, 2026-10-27, dopo la verifica del piano: lo stile v4 per intero. 400 righe `expect(await X)` diventano `expect(yield* Effect.promise(() => X))`, che il controllo di AC5 tratta come uguali |
-| Eccezione chiusa ad AC5 per la forma di `Cause` ed `Exit` di v4 | Proposta dopo la verifica del piano (OQ2): circa 15 asserzioni leggono la forma di v3, che in v4 non esiste |
+| Eccezione chiusa ad AC5 per la forma di `Cause` ed `Exit` di v4 | Omar, 2026-10-27 (G0, OQ2): circa 15 asserzioni leggono la forma di v3, che in v4 non esiste |
+| AC3 accetta la forma nuova dei titoli `each` di vitest 5 | Omar, 2026-10-27, dopo la revisione della PR 2: vitest 5 non ha un'opzione per il formato di v1, e nel repo niente legge i nomi dei test (nessuno snapshot, nessun reporter che li conservi). Rimettere gli apici a mano toccherebbe 12 file di test solo per l'etichetta |
 | Il controllo di AC5 legge l'AST, non le righe | La verifica del piano ha mostrato che un confronto per righe non vede le asserzioni su più righe né i file cancellati |

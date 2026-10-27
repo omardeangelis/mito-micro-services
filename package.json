@@ -100,7 +100,7 @@
     "dotenv": "^16.6.1",
     "drizzle-orm": "^0.45.4",
     "drizzle-zod": "^0.5.1",
-    "effect": "^3.22.2",
+    "effect": "~4.0.6",
     "exceljs": "^4.4.0",
     "hono": "^4.13.13",
     "jose": "^6.2.13",

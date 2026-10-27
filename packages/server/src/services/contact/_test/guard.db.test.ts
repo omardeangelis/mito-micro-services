@@ -77,7 +77,9 @@ describe("loadEditableContact", () => {
     )
 
     expect(Exit.isFailure(exit) && exit.cause).toMatchObject({
-      error: { _tag: "ContactForbidden", assignee: "Mario Rossi" },
+      reasons: [
+        { error: { _tag: "ContactForbidden", assignee: "Mario Rossi" } },
+      ],
     })
   })
 
@@ -103,7 +105,9 @@ describe("loadEditableContact", () => {
     })
 
     expect(await failure(old.id, operatorActor(owner.id))).toMatchObject({
-      error: { _tag: "ContactSuperseded", activeTaskId: active.id },
+      reasons: [
+        { error: { _tag: "ContactSuperseded", activeTaskId: active.id } },
+      ],
     })
   })
 
@@ -119,7 +123,7 @@ describe("loadEditableContact", () => {
     expect(
       await failure(old.id, { operatorId: admin.id, role: "ADMIN" })
     ).toMatchObject({
-      error: { _tag: "ContactSuperseded", activeTaskId: null },
+      reasons: [{ error: { _tag: "ContactSuperseded", activeTaskId: null } }],
     })
   })
 
@@ -173,7 +177,7 @@ describe("loadEditableContact", () => {
     const contact = await createTask({ customerId: customer.id })
 
     expect(await failure(contact.id, operatorActor(me.id))).toMatchObject({
-      error: { _tag: "ContactForbidden", assignee: null },
+      reasons: [{ error: { _tag: "ContactForbidden", assignee: null } }],
     })
   })
 

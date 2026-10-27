@@ -1,7 +1,7 @@
 import { gzipSync } from "node:zlib"
 import { beforeAll, beforeEach, describe, expect, test, vi } from "vitest"
 import { asc, eq } from "drizzle-orm"
-import { Clock, Effect, Exit, Layer } from "effect"
+import { Cause, Clock, Effect, Exit, Layer } from "effect"
 import { customers } from "@mito/db/schema/customers"
 import {
   importRun,
@@ -24,6 +24,7 @@ import {
 } from "../queue"
 import { executeImport, startImport } from "../run"
 import { createUpload } from "../upload"
+import { fixedClock } from "../../analytics/_test/clock"
 import { migrateUpTo, resetDb, testDb } from "@/test/db"
 import { failureTag } from "@/test/effect"
 import { createCustomer, createOperator, createUser } from "@/test/factories"
@@ -56,16 +57,6 @@ const recordingQueue = Layer.succeed(ImportQueue, {
   enqueue: (task) => Effect.sync(() => void tasks.push(task)),
 })
 
-/** A clock stopped at `at`. */
-const stoppedAt = (at: Date): Clock.Clock => ({
-  [Clock.ClockTypeId]: Clock.ClockTypeId,
-  unsafeCurrentTimeMillis: () => at.getTime(),
-  currentTimeMillis: Effect.sync(() => at.getTime()),
-  unsafeCurrentTimeNanos: () => BigInt(at.getTime()) * 1_000_000n,
-  currentTimeNanos: Effect.sync(() => BigInt(at.getTime()) * 1_000_000n),
-  sleep: () => Effect.void,
-})
-
 const run = <A, E>(
   program: Effect.Effect<A, E, Db | ImportConfig | ImportQueue>,
   {
@@ -80,7 +71,7 @@ const run = <A, E>(
 ) =>
   Effect.runPromiseExit(
     program.pipe(
-      Effect.withClock(stoppedAt(at)),
+      Effect.provideService(Clock.Clock, fixedClock(at.getTime())),
       Effect.provide(
         Layer.mergeAll(DbLive, Layer.succeed(ImportConfig, settings), queue)
       )
@@ -93,8 +84,10 @@ const value = <A, E>(exit: Exit.Exit<A, E>) => {
 }
 
 const failureOf = (exit: Exit.Exit<unknown, unknown>) =>
-  Exit.isFailure(exit) && exit.cause._tag === "Fail"
-    ? exit.cause.error
+  Exit.isFailure(exit) &&
+  exit.cause.reasons.length === 1 &&
+  Cause.isFailReason(exit.cause.reasons[0]!)
+    ? exit.cause.reasons[0].error
     : undefined
 
 const numbered = (rows: Cells[]) =>

@@ -49,7 +49,7 @@ const value = <A, E>(exit: Exit.Exit<A, E>) => {
 const reasonOf = (exit: Exit.Exit<unknown, unknown>) =>
   Exit.isFailure(exit)
     ? (
-        Option.getOrUndefined(Cause.failureOption(exit.cause)) as
+        Option.getOrUndefined(Cause.findErrorOption(exit.cause)) as
           { reason?: string } | undefined
       )?.reason
     : undefined

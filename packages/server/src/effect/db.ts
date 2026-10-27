@@ -1,4 +1,4 @@
-import { Context, Data, Effect, Exit, Layer, Option, Runtime } from "effect"
+import { Context, Data, Effect, Exit, Layer, Option } from "effect"
 import { eq, type ExtractTablesWithRelations } from "drizzle-orm"
 import { type PgDatabase } from "drizzle-orm/pg-core"
 import { type PostgresJsQueryResultHKT } from "drizzle-orm/postgres-js"
@@ -15,7 +15,7 @@ export type DbClient = PgDatabase<
 >
 
 /** The Drizzle client of `@mito/db`. */
-export class Db extends Context.Tag("Db")<Db, DbClient>() {}
+export class Db extends Context.Service<Db, DbClient>()("Db") {}
 
 export const DbLive = Layer.succeed(Db, db)
 
@@ -24,10 +24,10 @@ export const DbLive = Layer.succeed(Db, db)
  * inside it: Postgres has aborted the transaction by then, whatever the
  * program does with the error.
  */
-export class Tx extends Context.Tag("Tx")<
+export class Tx extends Context.Service<
   Tx,
   { readonly client: DbClient; failed: boolean }
->() {}
+>()("Tx") {}
 
 /** A query the database driver rejected. `code` is the Postgres SQLSTATE. */
 export class DbError extends Data.TaggedError("DbError")<{
@@ -111,26 +111,35 @@ export const transaction = <A, E, R>(
 ): Effect.Effect<A, E | DbError, Db | Exclude<R, Tx>> =>
   Effect.gen(function* () {
     if (Option.isSome(yield* Effect.serviceOption(Tx))) {
-      return yield* Effect.dieMessage(
-        "transaction() inside another transaction: run the work in the outer one"
+      return yield* Effect.die(
+        new Error(
+          "transaction() inside another transaction: run the work in the outer one"
+        )
       )
     }
     const client = yield* Db
-    const runtime = yield* Effect.runtime<Exclude<R, Tx>>()
+    // The caller's services and references (Clock, loggers, log annotations)
+    const context = yield* Effect.context<Exclude<R, Tx>>()
 
     let exit: Exit.Exit<A, E> | undefined
-    const committed = yield* Effect.either(
+    const committed = yield* Effect.result(
       Effect.tryPromise({
         try: () =>
           client.transaction(
             async (txClient) => {
               const tx = { client: txClient, failed: false }
-              exit = await Runtime.runPromiseExit(runtime)(
+              exit = await Effect.runPromiseExitWith(context)(
                 program.pipe(
                   Effect.provideService(Tx, tx),
-                  Effect.filterOrDieMessage(
-                    () => !tx.failed,
-                    "A DbError was recovered inside transaction(): map it to an error instead"
+                  // Only on success: the program's typed errors stay typed
+                  Effect.flatMap((a) =>
+                    tx.failed
+                      ? Effect.die(
+                          new Error(
+                            "A DbError was recovered inside transaction(): map it to an error instead"
+                          )
+                        )
+                      : Effect.succeed(a)
                   )
                 )
               )
@@ -145,7 +154,7 @@ export const transaction = <A, E, R>(
 
     if (exit && Exit.isFailure(exit)) return yield* Effect.failCause(exit.cause)
     // Otherwise only a failure of the transaction itself (BEGIN, COMMIT)
-    return yield* committed
+    return yield* Effect.fromResult(committed)
   })
 
 declare const locked: unique symbol

@@ -73,6 +73,7 @@ Migrated from `docs/` on 2026-09-24. Source material for future `create-spec` ru
 > `adversarial-review` writes SHIP/DO-NOT-SHIP reports here. Standalone reviews land under `review/<slug>/`; spec-implementation reviews live inside the spec folder (`specs/<domain>/<spec>/REPORT.md`).
 
 - [[specs/crm/sezione-contatti/REPORT|crm/sezione-contatti]] — spec · ship (terza verifica e smoke; prima do-not-ship) · critical · 2026-09-26
+- [[specs/crm/effect-4/REPORT|crm/effect-4]] — spec · do-not-ship (PR 1: lo script di AC5; PR 2: AC3 alla lettera e documenti) · critical · 2026-10-27
 - [[specs/crm/sezione-contatti/REPORT|crm/sezione-contatti — PR2]] — spec · ship (dopo le correzioni; prima do-not-ship) · critical · 2026-09-29
 - [[specs/crm/sezione-contatti/REPORT|crm/sezione-contatti — PR3]] — spec · ship (dopo le correzioni; prima do-not-ship) · critical · 2026-10-15
 - [[specs/crm/sezione-contatti/REPORT|crm/sezione-contatti — PR4]] — spec · ship (dopo le correzioni; prima do-not-ship) · critical · 2026-10-15

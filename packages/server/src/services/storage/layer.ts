@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js"
 import { Config, Effect, Layer, Option } from "effect"
+import { withCurrentEnv } from "../../shared/currentEnv"
 import { storageConfigFromEnv } from "./config"
 import type { StorageConfigError } from "./errors"
 import { makeGcsStorageLayer } from "./gcs"
@@ -16,22 +17,24 @@ export const SUPABASE_BUCKET = "mito-storage"
  * the layer is built, never on import.
  */
 export const StorageLive: Layer.Layer<Storage, StorageConfigError> =
-  Layer.unwrapEffect(
-    Effect.gen(function* () {
-      const gcsBucket = yield* Config.option(Config.string("GCS_BUCKET")).pipe(
-        Effect.orElseSucceed(() => Option.none<string>())
-      )
-      if (Option.isSome(gcsBucket) && gcsBucket.value.trim() !== "") {
-        return makeGcsStorageLayer(yield* storageConfigFromEnv("GCS"))
-      }
-      return makeSupabaseStorageLayer({
-        // As before the move: createClient throws when they are missing
-        client: () =>
-          createClient(
-            process.env.NEXT_PUBLIC_SUPABASE_URL!,
-            process.env.SUPABASE_KEY!
-          ),
-        bucket: SUPABASE_BUCKET,
+  Layer.unwrap(
+    withCurrentEnv(
+      Effect.gen(function* () {
+        const gcsBucket = yield* Config.option(
+          Config.String("GCS_BUCKET")
+        ).pipe(Effect.orElseSucceed(() => Option.none<string>()))
+        if (Option.isSome(gcsBucket) && gcsBucket.value.trim() !== "") {
+          return makeGcsStorageLayer(yield* storageConfigFromEnv("GCS"))
+        }
+        return makeSupabaseStorageLayer({
+          // As before the move: createClient throws when they are missing
+          client: () =>
+            createClient(
+              process.env.NEXT_PUBLIC_SUPABASE_URL!,
+              process.env.SUPABASE_KEY!
+            ),
+          bucket: SUPABASE_BUCKET,
+        })
       })
-    })
+    )
   )

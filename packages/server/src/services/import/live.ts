@@ -10,7 +10,7 @@ import { executeImport, purgeUpload } from "./run"
 
 /** What the log says of a task that failed: its tag, never a message. */
 const logFailure = (what: string) => (cause: Cause.Cause<unknown>) => {
-  const error = Option.getOrUndefined(Cause.failureOption(cause)) as
+  const error = Option.getOrUndefined(Cause.findErrorOption(cause)) as
     { _tag?: string; code?: string } | undefined
   const kind = error?._tag
     ? `${error._tag}${error.code ? ` ${error.code}` : ""}`
@@ -22,7 +22,7 @@ const logFailure = (what: string) => (cause: Cause.Cause<unknown>) => {
  * The queue of this environment (`importQueueChoice`, D13). In process, the
  * tasks run the same services as the backend's routes.
  */
-const ImportQueueLive = Layer.unwrapEffect(
+const ImportQueueLive = Layer.unwrap(
   Effect.map(importQueueChoice, (choice) => {
     switch (choice.kind) {
       case "cloudTasks":
@@ -32,12 +32,12 @@ const ImportQueueLive = Layer.unwrapEffect(
           run: (runId) =>
             executeImport(runId).pipe(
               Effect.asVoid,
-              Effect.catchAllCause(logFailure(`Import ${runId}`))
+              Effect.catchCause(logFailure(`Import ${runId}`))
             ),
           purge: (uploadId) =>
             purgeUpload(uploadId).pipe(
               Effect.asVoid,
-              Effect.catchAllCause(logFailure("Import cleanup"))
+              Effect.catchCause(logFailure("Import cleanup"))
             ),
         })
       case "disabled":

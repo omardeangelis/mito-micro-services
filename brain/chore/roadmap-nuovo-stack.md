@@ -145,9 +145,9 @@ Parte dopo il rilascio (R6).
 
 | Pacchetto | Oggi | Cosa | Quando |
 |---|---|---|---|
-| `effect` | 3.22 | → `~4.0.6` | 1.1 (PR 1) |
+| `effect` | 3.22 | → `~4.0.6`: 4.0.6, in `dev` con la [PR #114](https://github.com/omardeangelis/mito-micro-services/pull/114) (PR 1 di 1.1) del 2026-10-27 | 1.1 (PR 1) |
 | `@effect/vitest` | – | `~4.0.6`, la stessa di `effect` | 1.1 (PR 3) |
-| `vitest`, `vite` | 1.6, transitiva | vitest → 5, `vite` dichiarata (≥ 6.4, la 7 per `@vitejs/plugin-react` 4.7): vitest 5.0.5 e vite 7.3.7 sul branch `claude/vitest-5` (PR 2 di 1.1), con i progetti di test in `vitest.config.ts` al posto di `vitest.workspace.ts`; non ancora in `dev` | 1.1 (PR 2) |
+| `vitest`, `vite` | 1.6, transitiva | vitest → 5, `vite` dichiarata (≥ 6.4, la 7 per `@vitejs/plugin-react` 4.7): vitest 5.0.5 e vite 7.3.7, in `dev` con la [PR #113](https://github.com/omardeangelis/mito-micro-services/pull/113) (PR 2 di 1.1) del 2026-10-27, con i progetti di test in `vitest.config.ts` al posto di `vitest.workspace.ts` | 1.1 (PR 2) |
 | `drizzle-orm`, `drizzle-kit` | 0.45.4, 0.31.11 | restano (R3) | – |
 | `zod`, `drizzle-zod` | 3.25, 0.5.1 | non si aggiornano; nel backend e nell'app React li sostituisce `Schema` | escono nella fase 5 |
 | `@trpc/*`, `superjson` | 10.45.4 | non si aggiornano | fase 5 |
@@ -177,7 +177,7 @@ Il 2026-10-27 ogni documento qui sotto ha ricevuto un rimando a questa pagina. R
 
 | Documento | Fatto il 2026-10-27 | Resta, e quando |
 |---|---|---|
-| `AGENTS.md` | Il rimando a questa pagina nella mappa del repo; l'auth su better-auth dopo la C2 (`getServerAuthSession(headers)`, `requestSession`) | "`effect` 3.x" → 4.x, con la PR 1.1 |
+| `AGENTS.md` | Il rimando a questa pagina nella mappa del repo; l'auth su better-auth dopo la C2 (`getServerAuthSession(headers)`, `requestSession`) | "`effect` 3.x" → 4.x e `Context.Service`: fatto sul branch della PR 1 di 1.1, insieme all'eccezione delle asserzioni sulla forma di `Cause` ed `Exit` |
 | [[chore/migrazione-effect]] | Chiusa per L1 e L2; i vincoli del §3 aggiornati (R2, R8, R10); la regola sui cutover del §4 e del §6 superata (R10); il debito aperto spostato nel §8 | Le convenzioni di `HttpApi` nel §3, con 2.3 |
 | [[chore/migrazione-gcp]] | Il principio "un passo alla volta" e la fase P riscritti per la finestra unica (R10), con le variabili di better-auth per la prod; la riga del rollback nella checklist di S6 | Il runbook della finestra con i comandi, provato su staging prima del go/no-go |
 | [[specs/crm/auth-better-auth/SPEC]] e il suo PLAN | Il vincolo "mai due cambi nella stessa notte" e il gate G3 portati sulla finestra unica (R10) | – |
@@ -201,6 +201,7 @@ Regole:
 | TD5 | `[OPEN]` | Route `src/app/api/cron/*`, script `scheduled/*.js` e 8 workflow GitHub dei cron | Passo "cron" (§4 di [[chore/migrazione-effect]]) | La prod usa ancora GitHub Actions finché i cron non passano a Cloud Scheduler | Toglierli tutti insieme | Dopo il passaggio dei cron di prod a Cloud Scheduler ([[chore/migrazione-gcp]]); nella roadmap: fase 5 |
 | TD6 | `[OPEN]` per `Sentry.trpcMiddleware`. L'import di `server-only` `[CLOSED 2026-10-27]` con la C2; il resto è chiuso nel §7 di [[chore/migrazione-effect]] | `Sentry.trpcMiddleware` di `api/trpc.ts` importa ancora `@sentry/nextjs`, con lo shim `apps/api/src/shims/sentry.ts` e il suo alias in `apps/api/build.mjs` | Passo 0 (§4 di [[chore/migrazione-effect]]) | Né la C2 né la D di better-auth riscrivono il middleware di Sentry: resta finché resta tRPC. L'import di `server-only` in `services/auth/login.ts` (della [PR #99](https://github.com/omardeangelis/mito-micro-services/pull/99)) l'ha tolto la C2 ([PR #108](https://github.com/omardeangelis/mito-micro-services/pull/108), in `dev` dal 2026-10-27): con lui il backend non partiva (`api:smoke`) | Togliere `Sentry.trpcMiddleware`, lo shim e l'alias insieme a tRPC e a `@sentry/nextjs` | Nella roadmap: fase 5 |
 | TD10 (a) | `[OPEN]`, in `dev` con la [PR #86](https://github.com/omardeangelis/mito-micro-services/pull/86) del 2026-10-25 | Chi ha un `chatId` legge e scrive le note di quella chat, qualunque sia il cliente | [[specs/crm/chat-storage-effect/PLAN]] (§14; AC17 della SPEC), PR di `chat` | Il passo 5 non cambia comportamento | Proposta: chiudere senza codice. `customer` non ha una regola di visibilità per operatore: `getCustomerById` è `operatorProcedure` senza filtri sull'attore, quindi ogni operatore attivo vede ogni cliente. Le 4 procedure di `chat` sono già `operatorProcedure`, e "chi può vedere il cliente della chat" vuol dire già "ogni operatore attivo". Se un giorno arriva una visibilità per operatore, la voce rinasce nella sua spec | Con la conferma di Leonardo |
+| TD12 | `[PREVISTO]` | `withCurrentEnv` (`packages/server/src/shared/currentEnv.ts`) fa leggere `Config` sull'ambiente del momento, come Effect 3, riconoscendo per identità il `ConfigProvider` di default di Effect 4 | PR 1 di 1.1 ([[specs/crm/effect-4/PLAN]], D15) | Effect 4 fotografa `process.env` alla prima lettura, e due test cambiano l'ambiente fra un test e l'altro (`import.db.test.ts:284-300`, `supabase.test.ts:406-440`). Se una versione di `effect` cambiasse come espone il provider di default, il confronto smetterebbe di valere senza errori; lo coprono quei due test | Leggere la configurazione una volta, all'avvio, in un `Layer` del backend, e nei test fornire il provider esplicito; poi togliere `withCurrentEnv` | Con la fase 2, quando il backend su `HttpApi` costruisce i suoi layer; nella roadmap: 2.1 |
 
 Punti chiusi senza debito nuovo:
 - **1.1, PR 2 (vitest 5):** nessun debito. L'avviso di pnpm sul *peer* `@types/node` di vitest 5 (`^22 || >=24`, opzionale) lo chiude la riga di `@types/node` nel §4.

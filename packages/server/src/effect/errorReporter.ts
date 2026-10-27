@@ -5,7 +5,7 @@ import { Cause, Context, Effect, Exit, Layer } from "effect"
  * Reports a failure no edge would see. tRPC procedures don't use it: their
  * failures reach Sentry from the tRPC middleware (`packages/server/src/api/trpc.ts`).
  */
-export class ErrorReporter extends Context.Tag("ErrorReporter")<
+export class ErrorReporter extends Context.Service<
   ErrorReporter,
   {
     /** `data` holds the ids that tell the case apart (alert, customer, …). */
@@ -14,7 +14,7 @@ export class ErrorReporter extends Context.Tag("ErrorReporter")<
       data: Record<string, unknown>
     ) => Effect.Effect<void>
   }
->() {}
+>()("ErrorReporter") {}
 
 export const SentryReporterLive = Layer.succeed(ErrorReporter, {
   report: (cause, data) =>
@@ -45,7 +45,7 @@ export const forEachIsolated = <A, B, E, R>(
     let failed = 0
     let index = 0
     for (const item of items) {
-      // Effect.exit, not Effect.either: defects must not stop the loop
+      // Effect.exit, not Effect.result: defects must not stop the loop
       const exit = yield* Effect.exit(f(item, index++))
       if (Exit.isSuccess(exit)) {
         succeeded.push(exit.value)

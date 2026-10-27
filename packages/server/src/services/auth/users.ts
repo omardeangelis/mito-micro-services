@@ -28,7 +28,8 @@ export const createUserWithOperator = (user: Omit<AdapterUser, "id">) =>
           })
           .returning()
       )
-      if (!created) return yield* Effect.dieMessage("INSERT returned no user")
+      if (!created)
+        return yield* Effect.die(new Error("INSERT returned no user"))
       yield* query((client) =>
         client.insert(operators).values({ userId: created.id })
       )

@@ -41,6 +41,6 @@ export const downloadExportFile = (name: string) =>
     return yield* storage.download(exportKey(name))
   })
 
-/** Runs a storage program; a failure comes back as `Left`, not thrown. */
+/** Runs a storage program; a failure comes back as `Failure`, not thrown. */
 export const runExportStorage = <A, E>(program: Effect.Effect<A, E, Storage>) =>
-  Effect.runPromise(program.pipe(Effect.provide(StorageLive), Effect.either))
+  Effect.runPromise(program.pipe(Effect.provide(StorageLive), Effect.result))

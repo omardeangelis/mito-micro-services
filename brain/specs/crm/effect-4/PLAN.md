@@ -12,8 +12,8 @@ updated: 2026-10-27
 
 # Plan: Effect 4, vitest 5 e lo stile di Effect 4 (punto 1.1 della roadmap)
 
-**Spec:** [[specs/crm/effect-4/SPEC]], scritta il 2026-10-27, in attesa di approvazione (G0).
-**Status:** Planned
+**Spec:** [[specs/crm/effect-4/SPEC]], scritta il 2026-10-27, approvata da Omar in G0 lo stesso giorno.
+**Status:** In progress
 **Generato:** 2026-10-27 con `create-plan`. Il flusso:
 - grill (5 decisioni di Omar);
 - spec;
@@ -47,7 +47,7 @@ updated: 2026-10-27
   - **Il resto:** `Data.TaggedError` 63; `Clock.currentTimeMillis` 19 e `ClockTypeId` 12; `Context.Tag` 11; `Either` 7; `ConfigProvider.fromMap` 2; `Config` 10; `Runtime` 2; `ManagedRuntime` 1; `Logger` 4.
 - I 10 servizi (`Context.Tag`): `Db`, `Tx` (`effect/db.ts`), `ErrorReporter` (`effect/errorReporter.ts`), `ImportConfig`, `ImportQueue` (`services/import/`), `Storage` (`services/storage/storage.ts`, id `"gcs-storage-kit/Storage"`), `AuthSession` (`betterAuth/session.ts`), `CronAuth`, `CronReport` (`apps/api/src/cron/`), `ImportAuth` (`apps/api/src/import/auth.ts`).
 - 61 classi `Data.TaggedError` di produzione, in 19 file.
-- Almeno 75 funzioni che restituiscono un `Effect.gen` (43 esportate); prettier spesso manda `Effect.gen(` a capo.
+- 74 funzioni che restituiscono un `Effect.gen` (misurate da T1; la stima era 75); prettier spesso manda `Effect.gen(` a capo.
 - 49 file di test eseguono programmi Effect (`Effect.run*` o `runServer`). 11 sono "puri"; 38 leggono anche il database con le Promise di Drizzle, in 400 righe `expect(await …)`, e contengono 14 `await expect(…).resolves/rejects`.
 - vitest 1.6.1 con `vitest.workspace.ts`:
   - `unit` è la configurazione della radice: jsdom, e i `*.db.test.ts` in `node` con `environmentMatchGlobs`, nel pool `threads` di default;
@@ -93,7 +93,7 @@ Quattro PR in serie, ognuna con un solo motivo per rompersi. Il comportamento re
 
 I test della PR 3 fanno da guardia. Cambiano solo nei nomi importati, mai nelle asserzioni.
 
-**Nomi della PR 4 (proposta, D8).** La regola:
+**Nomi della PR 4 (D8, confermati in G0).** La regola:
 - `layer` è il layer principale, e le varianti hanno un suffisso che le descrive;
 - un layer è statico sulla classe quando si può definire nel file del servizio senza un import circolare;
 - altrimenti è una costante esportata `<nome>Layer` nel suo modulo.
@@ -127,13 +127,13 @@ I test della PR 3 fanno da guardia. Cambiano solo nei nomi importati, mai nelle 
 | D5 | `effect` e `@effect/vitest` a `~4.0.6` | I moduli `http-api` della fase 2 sono `@stability unstable` |
 | D6 | Quattro PR: Effect 4 e vitest 5 in parallelo, poi `@effect/vitest`, poi lo stile nel codice | Omar, 2026-10-27 |
 | D7 | La PR 4 adotta (a) servizi e layer, (b) `Effect.fn`, (c) `Schema.TaggedError`; la (d) è la PR 3. La PR 4 è un'eccezione approvata alla regola di `AGENTS.md` "solo il codice che la modifica tocca", e la descrizione della PR lo dice | Omar, 2026-10-27 |
-| D8 | Nomi di servizi e layer come nella tabella del §3 | Proposta del piano, sulla convenzione di `LLMS.md` di Effect 4 (`layer`, suffissi per le varianti); da confermare in G0 |
-| D9 | `Effect.fn("<area>.<funzione>")`; `Effect.fnUntraced` per gli helper interni e i percorsi caldi | `LLMS.md` di Effect 4: `fn` quando una traccia serve, `fnUntraced` nei percorsi caldi |
+| D8 | Nomi di servizi e layer come nella tabella del §3 | Omar, 2026-10-27 (G0), sulla convenzione di `LLMS.md` di Effect 4 (`layer`, suffissi per le varianti) |
+| D9 | `Effect.fn("<area>.<funzione>")`; `Effect.fnUntraced` per gli helper interni e i percorsi caldi | Omar, 2026-10-27 (G0); `LLMS.md` di Effect 4: `fn` quando una traccia serve, `fnUntraced` nei percorsi caldi |
 | D10 | Le funzioni libere restano funzioni libere: niente raggruppamento in servizi | Non-goal della SPEC: la forma la decide la fase 2 |
 | D11 | Lo script di AC5 (`scripts/check-assertions.mjs`) entra nella PR 1 e si toglie nella PR 4 (T21). La PR 2, in parallelo, lo prende dal branch della PR 1 (`git show claude/effect-4:scripts/check-assertions.mjs`) | Serve a quattro PR in branch diversi; è uno strumento della migrazione, non del prodotto |
 | D12 | Nella PR 1 gli orologi fissi dei test passano a un solo helper con l'interfaccia v4 (`services/analytics/_test/clock.ts`); nella PR 3 a `TestClock`, tranne l'orologio a passi di `concurrency.pg.test.ts` | Vanno riscritti comunque: una copia invece di sei |
 | D13 | Tutti i 49 file che eseguono Effect passano a `@effect/vitest`, con `expect(await X)` → `expect(yield* Effect.promise(() => X))` | Omar, 2026-10-27, dopo la verifica del piano |
-| D14 | Eccezione chiusa ad AC5 per le asserzioni che leggono la forma di `Cause` ed `Exit` di v3 (elenco nel §6) | Proposta dopo la verifica del piano (OQ2 della SPEC); da confermare in G0 |
+| D14 | Eccezione chiusa ad AC5 per le asserzioni che leggono la forma di `Cause` ed `Exit` di v3 (elenco nel §6) | Omar, 2026-10-27 (G0), dopo la verifica del piano (OQ2 della SPEC, chiusa) |
 | D15 | `Config` letto con un `ConfigProvider.fromEnv()` creato a ogni lettura in `storageLayer` e `importQueueChoice`; nei test, `ConfigProvider.fromEnv({ env })` al posto di `fromMap` | Tiene il comportamento di v3; `fromUnknown` con un oggetto annidato dà `None` (prova della verifica) |
 | D16 | vitest 5 con `pool: "threads"` (fuori dai fusi), `fakeTimers.toFake` e `exclude` di v1; `clearMocks` al default `true` | I default cambiati, misurati con prove su vitest 1.6 e 5 |
 
@@ -232,9 +232,9 @@ G0 ─┬─ T1 ─ T2 ─ T3 ─┬─ T4 ─┬─ T7 ─ T8 ══ PR 1 in de
 - **location**: `brain/specs/crm/effect-4/SPEC.md`, §3 e §4 di questo piano
 - **description**: Omar porta la SPEC a `status: approved` e conferma D8 (nomi), D9 (nomi di `Effect.fn`) e D14 (eccezione di AC5 per la forma di `Cause` ed `Exit`). Nessun task parte prima.
 - **validation**: frontmatter `status: approved`; D8, D9 e D14 senza "Proposta"; OQ2 della SPEC chiusa.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-10-27, Omar approva la SPEC e conferma D8, D9 e D14 (risposte a `implement-spec`).
+- **files edited/created**: `SPEC.md` (status, OQ2, decision log), `PLAN.md` (D8, D9, D14, §15)
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -264,11 +264,15 @@ G0 ─┬─ T1 ─ T2 ─ T3 ─┬─ T4 ─┬─ T7 ─ T8 ══ PR 1 in de
     - un'indentazione cambiata esce con 0;
     - un `expect(await f())` riscritto in `expect(yield* Effect.promise(() => f()))` esce con 0;
     - una catena coperta dal file di eccezioni esce con 0.
-  - **`gen-wrappers` su `dev`:** trova almeno 75 funzioni, tra cui `lockCustomer` e `query` (`effect/db.ts`).
+  - **`gen-wrappers` su `dev`:** trova almeno 74 funzioni, tra cui `lockCustomer` e `query` (`effect/db.ts`).
   - **La ricerca di D14:** trova almeno i punti del §6.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-10-27, worker sonnet, review del supervisore passata al primo giro.
+  - RED: `t1-harness.sh` (scratchpad, 10 casi, 11 controlli) 0/11 senza script, 11/11 con lo script.
+  - `gen-wrappers origin/dev`: 74 funzioni, con `query` (`db.ts:58`) e `lockCustomer` (`db.ts:200`). La soglia di AC11 passa da 75 a 74: le forme escluse sono programmi (`run: Effect.gen(...)` in `apps/api/src/cron/jobs.ts`, `const x = Effect.gen(...)`), `Effect.gen(...).pipe(...)` e frecce il cui corpo è `transaction(Effect.gen(...))` (23), che non restituiscono direttamente un `Effect.gen`.
+  - `assertions origin/dev HEAD`: exit 0. Le virgole finali prima di `)`, `]`, `}` non contano (un formatter le aggiunge o le toglie).
+  - La ricerca di D14 su `dev` trova i punti del §6 e nient'altro fra le asserzioni (`IMPLEMENTATION-NOTES.md`).
+- **files edited/created**: `scripts/check-assertions.mjs` (nuovo)
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -294,9 +298,12 @@ G0 ─┬─ T1 ─ T2 ─ T3 ─┬─ T4 ─┬─ T7 ─ T8 ══ PR 1 in de
   - in `transaction`, `Runtime.runPromiseExit(Runtime.defaultRuntime as any)` al posto del runtime del chiamante;
   - in `promise.ts`, `throw exit.cause` al posto di `throw failure.value`.
 - **validation**: i test nuovi verdi su `dev`; i tre mutanti uccisi; nessun file di produzione cambiato; lo script di T1 fra `dev` e il commit esce con 0, con i soli test nuovi nel file di eccezioni.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-10-27, worker sonnet; review del supervisore passata dopo una correzione banale (tolto un `afterEach(vi.restoreAllMocks)` ripetuto: il file ne ha già uno globale).
+  - Test nuovi, verdi su Effect 3: in `describe("ServerLive")` `logWarning` → `console.warn` e `logInfo` → `console.info`, una volta e mai `console.log`; `describe("transaction e il contesto del chiamante")` con il `Clock` fisso e un servizio `Probe` forniti fuori; in `gcs.test.ts` "rejects with the thrown error itself when the GCS client dies". Il caso dell'errore tipato era già fissato da `gcs.test.ts:449`.
+  - Mutanti uccisi: M1 (logger senza `withLeveledConsole`) → i due test nuovi e quello di `logError`; M2 (`Runtime.defaultRuntime`) → i due test del contesto, rifatto dal supervisore; M3 (`throw exit.cause`) → il test nuovo e quello della riga 449. Nessun file di produzione cambiato.
+  - `db.db.test.ts` + `gcs.test.ts`: 52/52. Lo script fra `origin/dev` e il commit esce con 0 con le sole 9 catene nuove in `eccezioni-pr1.txt`.
+- **files edited/created**: `packages/server/src/effect/_test/db.db.test.ts`, `packages/server/src/services/storage/_test/gcs.test.ts`, `brain/specs/crm/effect-4/eccezioni-pr1.txt` (nuovo)
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -326,9 +333,15 @@ G0 ─┬─ T1 ─ T2 ─ T3 ─┬─ T4 ─┬─ T7 ─ T8 ══ PR 1 in de
   - `tsc --noEmit` senza errori nei file del task (filtrato per percorso);
   - verdi `effect/_test/*`, compresi i test di T2;
   - lo script di T1 su questi file esce con 0, con le sole eccezioni di D14.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-10-27, worker sul modello del supervisore; review passata al primo giro.
+  - `effect` `~4.0.6` (`pnpm add` scrive `^`, corretto a mano), una sola copia nel lockfile; con v3 escono `fast-check` e `pure-rand`.
+  - `transaction` con `Effect.context` + `runPromiseExitWith`, `Effect.result`/`fromResult`, `Effect.flatMap` per il `DbError` recuperato. Il RED rifatto dal worker: con `Effect.runPromiseExit` senza contesto i due test di T2 sul contesto falliscono.
+  - Logger: `Logger.layer` sostituisce i logger correnti (`Logger.ts:1211`), e i default di v4 sono `[defaultLogger, tracerLogger]`.
+  - `Clock.Clock` è un `Context.Reference`; `fixedClock` ha anche i due tempi monotòni.
+  - `effect/_test` 23/23 (`db.db.test.ts` 20, come su v3), più i test di analytics che usano `fixedClock`: 56/56 in tutto. `tsc` pulito sui file del task (413 errori altrove, di T4 e T5).
+  - Lo script esce con 0 con 11 eccezioni: 10 di T2 e la riga D14 (`db.db.test.ts`, 87 in `dev`, 92 ora).
+- **files edited/created**: `package.json`, `pnpm-lock.yaml`, `packages/server/src/effect/{db,server,trpc,errorReporter}.ts`, `packages/server/src/effect/_test/db.db.test.ts`, `src/test/effect.ts`, `packages/server/src/services/analytics/_test/clock.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -363,9 +376,15 @@ G0 ─┬─ T1 ─ T2 ─ T3 ─┬─ T4 ─┬─ T7 ─ T8 ══ PR 1 in de
     - `storage/_test/supabase.test.ts:406-440` e `api/routers/import/_test/import.db.test.ts:284-300` (D15);
   - `git grep -n "ClockTypeId\|Clock.make\|fromMap\|withClock\|withConfigProvider" -- packages src` non trova niente;
   - lo script di T1 esce con 0, con le sole eccezioni di D14.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-10-27, worker sul modello del supervisore; review passata al primo giro.
+  - D15 con un helper nuovo, `packages/server/src/shared/currentEnv.ts` (`withCurrentEnv`): se il `ConfigProvider` è quello di default di v4, ne fornisce uno nuovo `fromEnv()` a ogni esecuzione; uno dato dal chiamante (i test) resta. Usato da `importQueueChoice`, `storageConfigFromEnv` e `layer.ts`. Le chiavi lette trattavano già `""` come assente in v3.
+  - RED → GREEN: con le letture semplici di `Config`, `import.db.test.ts` ("dove non c'è la coda l'import non parte: PRECONDITION_FAILED") e `supabase.test.ts` (`GCS_BUCKET` vuoto) falliscono, 2 su 48; con `withCurrentEnv`, 48/48.
+  - D12: gli orologi fissi sono quattro (`history.db`, `purge.db`, `run.db`, `run.pg`); `apply.db.test.ts:620` è un orologio a passi (`[0, 0, 2000]`), riscritto con `fixedClock` e le sue letture a passi, come quello di `concurrency.pg`.
+  - D14: le riscritture `{ error }` → `{ reasons: [{ error }] }` in `guard.db` (79, 105, 119, 175), `reassign.db` (225), `apply.db` (201, 233, 284), `concurrency.pg` (319), `queue.test` (172); `failureOf` di `run.db` e `run.pg` con una sola ragione `Fail`. `lockRule.db.test.ts` (`Cause.pretty` … `toContain`) intatto e verde.
+  - Nessuna correzione di semantica servita. Differenza latente, non esercitata dai test: in v4 un *defect* vince su `catchIf`/`catch` quando la causa ha anche un errore; in `betterAuth/run.ts` conta solo per cause con entrambi, che i suoi programmi non producono.
+  - Gate del supervisore sull'intera PR 1 dopo T4 e T5: `tsc` senza errori fuori da `.next/` (tipi generati da una build vecchia, ignorati da git); la suite intera con Postgres: 312 file, 4413 verdi e 6 saltati (i 4408 di prima più i 5 di T2), exit 0; lo script con `eccezioni-pr1.txt` (35 eccezioni: T2 e D14) exit 0.
+- **files edited/created**: `packages/server/src/{betterAuth,services/{auth,contact,cron,customer,export,import,storage}}/**`, `packages/server/src/shared/currentEnv.ts` (nuovo), `src/app/api/export/download/route.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -391,9 +410,12 @@ G0 ─┬─ T1 ─ T2 ─ T3 ─┬─ T4 ─┬─ T7 ─ T8 ══ PR 1 in de
   - verdi `apps/api/**/_test`, `packages/db/src/_test` (pg) e `src/app/api/cron/**/_test`;
   - `pnpm api:build`;
   - lo script di T1 esce con 0, con le sole eccezioni di D14.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-10-27, worker sonnet; review passata al primo giro.
+  - Solo rinomi: `CronAuth`, `CronReport`, `ImportAuth` in `Context.Service` con lo stesso id; `jobs.ts` con `Effect.result`/`Result.isFailure`/`.success`, `Effect.tapCause`, `Duration.Input`; `report.ts` con `Effect.andThen` ed `Effect.catch`; `Cause.findErrorOption` nelle rotte; `Effect.tapCause` nei cron di `src`. `packages/db/src/migrate.ts`, `apps/api/src/migrate.ts` e il seed dei cron non hanno avuto bisogno di modifiche.
+  - RED: `cron.db.test.ts` non si caricava su v4 (`Context.Tag is not a function`); GREEN 28/28 con le due riscritture D14 (505, 534).
+  - `apps/api` + cron di `src`: 18 file, 253 test verdi; `packages/db` (pg) 5/5; `pnpm api:build` ok.
+- **files edited/created**: `apps/api/src/{cron,import}/**`, `src/app/api/cron/{alert,priority}/route.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -416,9 +438,12 @@ G0 ─┬─ T1 ─ T2 ─ T3 ─┬─ T4 ─┬─ T7 ─ T8 ══ PR 1 in de
     - nel §7 la riga di `AGENTS.md` chiusa per Effect 4.
   - **[[chore/migrazione-effect]]:** dove cita Effect 3 come vincolo, un rimando.
 - **validation**: `git grep -n "effect\` 3\|Effect 3.x\|Context.Tag" -- AGENTS.md` non trova niente; i link `[[…]]` puntano a pagine esistenti.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-10-27, worker haiku; review passata al primo giro.
+  - `AGENTS.md`: `effect` 4.x (`~4.0.6`), `Context.Service`, l'eccezione delle asserzioni sulla forma di `Cause`/`Exit` nella regola "Behavior stays the same". `CLAUDE.md` è un link ad `AGENTS.md`.
+  - Roadmap: la riga di `effect` nel §4 ("sul branch, non ancora in `dev`": va aggiornata al merge), la riga di `AGENTS.md` nel §7, e **TD12** nel §8 (AC13): `withCurrentEnv` (D15), da togliere nella fase 2.
+  - `migrazione-effect.md`: la riga L1 con `Context.Service` e il rimando alla spec; nessun altro punto cita Effect 3 come vincolo attuale.
+- **files edited/created**: `AGENTS.md`, `brain/chore/roadmap-nuovo-stack.md`, `brain/chore/migrazione-effect.md`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -446,8 +471,11 @@ G0 ─┬─ T1 ─ T2 ─ T3 ─┬─ T4 ─┬─ T7 ─ T8 ══ PR 1 in de
   6. **`IMPLEMENTATION-NOTES.md`**, sezione "PR 1": i punti sopra, l'elenco di D14 completo e le deviazioni.
   7. **PR verso `dev`** quando Omar la chiede, dopo il merge di `dev` nel branch, con la revisione di Leonardo (D4). Prima di GA1 si avvisa Leonardo della PR #46 (§13).
 - **validation**: tutti i punti annotati; REPORT SHIP.
-- **status**: Planned
-- **log**:
+- **status**: In progress
+- **log**: 2026-10-27.
+  - Fatti: AC1 (una copia di `effect` 4.0.6, nessun import da sottopercorsi); AC5 (lo script con `eccezioni-pr1.txt`, 41 eccezioni, exit 0); AC14 in un worktree di scratchpad senza `.env*` (install, lint, `tsc`, `db:check`, test con Postgres 312 file / 4413 verdi / 6 saltati, `next build` con `SKIP_ENV_VALIDATION=true` e i placeholder, `api:build`, `api:smoke`, tutti verdi).
+  - `adversarial-review` (round PR 1 in `REPORT.md`): **DO NOT SHIP**, 7 passate su 8 SHIP. Il blocco è lo script di AC5 (v7): una rinomina pura non è confrontata, i marcatori con argomenti o opzioni e le tabelle di `each` passano. Da fare anche: un test diretto di `withCurrentEnv` (v3) e due righe nel Context della SPEC (v4).
+  - Non fatti: la prova nel browser su `mito_local` (serve un `.env.development.local` locale; chiesto a Omar), la PR verso `dev`.
 - **files edited/created**:
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
@@ -472,9 +500,14 @@ G0 ─┬─ T1 ─ T2 ─ T3 ─┬─ T4 ─┬─ T7 ─ T8 ══ PR 1 in de
 
   In più il reporter JSON salva i nomi e lo stato dei test. Il risultato è la base di AC3, e va nella sezione "PR 2" di `IMPLEMENTATION-NOTES.md`.
 - **validation**: la sonda copre tutti i file che la CI esegue, uno per progetto in cui girano; il reporter JSON ha lo stesso numero di test della CI.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-10-27, worker haiku; la prima esecuzione aveva 14 file non caricati (`better-auth` mancava nel worktree, rimedio `pnpm install --frozen-lockfile`), la seconda è completa. Review del supervisore passata.
+  - vitest 1.6.1, `pnpm run test --run` con `TEST_DATABASE_URL` (Postgres locale): exit 0; 315 file (312 eseguiti, 3 saltati per intero: `cronCli.test.ts`, `import.perf.pg.test.ts`, `callStats.perf.pg.test.ts`); 4408 test verdi, 6 saltati.
+  - Sonda: 312 righe, nessun file due volte. `unit` 263 (117 jsdom, 146 node), `pg` 21 node, `utc` 14 e `rome` 14 (8 jsdom, 6 node ciascuno).
+  - `unit` e `pg` girano in thread (`isMainThread` falso) e vedono il fuso dell'host, non il `TZ: "UTC"` di `test.env`; `utc` e `rome` girano in processi figli e vedono il loro fuso.
+  - Timer finti in ogni file: `setTimeout`, `setImmediate` e `Date` sì; `performance.now`, `queueMicrotask` e `process.nextTick` no.
+  - File nello scratchpad della sessione (`probe/probe-v1.jsonl`, `report-v1.json`, `summary-v1.txt`); la sonda è `probe/probe.setup.ts`, da rifare in T10 con `PROBE_OUT`.
+- **files edited/created**: nessuno nel repo (modifiche temporanee annullate)
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -505,9 +538,18 @@ G0 ─┬─ T1 ─ T2 ─ T3 ─┬─ T4 ─┬─ T7 ─ T8 ══ PR 1 in de
   - il reporter JSON ha gli stessi test, tutti verdi, in particolare `src/app/api/cron/delete/_test/delete.test.ts` e gli altri test dei cron di `src`, che usano `vi.fn` con `restoreAllMocks`;
   - `pnpm test:pg` gira solo i `*.pg.test.ts`;
   - lo script di T1 esce con 0.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-10-27, worker sul modello del supervisore, nel suo worktree isolato; commit `b1cd256` su `claude/vitest-5` (base `5adbfc1`), non pushato. Review del supervisore passata al primo giro.
+  - `vitest` ^5.0.5, `vite` ^7.3.7 dichiarata; nessun altro pacchetto alzato. `@types/node` resta a 20: il peer di vitest 5 (`^22 || >=24`) è opzionale, pnpm avvisa soltanto; lo chiude la riga di `@types/node` nel §4 della roadmap.
+  - `vitest.workspace.ts` tolto; cinque progetti in `test.projects` (`unit` jsdom, `db` node per i `*.db.test.ts`, `pg`, `utc`, `rome`), scritti per intero da un helper senza `extends`, così `src/test/setup.ts` gira una volta per file. Fissati ai valori di v1: `pool: "threads"` (tranne i fusi, `forks`), `fakeTimers.toFake` con i sette timer, l'`exclude` di v1; `clearMocks: true` esplicito (con `false` falliscono 7 test di `delete.test.ts`, `cleanupTaskEventLog.db.test.ts` e `update.db.test.ts`).
+  - `windows.db.test.ts` prende `// @vitest-environment node` (un commento), come già cinque test di `src/lib/import`.
+  - **Fuori dal brief, senza asserzioni toccate:** in 7 file di test, `vi.fn<Args, Return>()` diventa `vi.fn<(…) => Return>()`, perché vitest 2 ha tolto la firma a due argomenti (`tsc`).
+  - TDD: la sonda di `rome` vedeva `windows.db.test.ts` in jsdom prima del commento, node dopo.
+  - AC3: sonda v5 rifatta (con `probe5.setup.ts`: vitest 5 vuole il contesto come primo argomento di `beforeAll`), 312 righe come v1, `differences: 0`; 315 file, 4408 verdi e 6 saltati come v1. I titoli di `test.each`/`describe.each` cambiano formato in 12 file (stringhe senza virgolette, troncamento diverso, `0` invece di `+0`): stessi test, stessi stati.
+  - `pnpm test:pg --run`: solo i 23 `*.pg.test.ts`. Lo script fra `origin/dev` e `claude/vitest-5`: exit 0, nessuna eccezione (rifatto dal supervisore). `tsc` pulito; `next lint` pulito in una copia dei file fuori dal worktree annidato.
+  - Dopo la revisione della PR 2 (`REPORT.md`, round PR 2), commit `01a042a`: `sequence: { hooks: "parallel" }` in `project()` (vitest 1 lo risolveva a `parallel`, vitest 5 a `stack`; tutti e cinque i progetti lo risolvono ora a `parallel`) e i quattro commenti che citavano `vitest.workspace.ts`. Suite intera: 312 file, 4408 verdi e 6 saltati, exit 0; `tsc` pulito; lo script corretto (`ff0c648`) fra `origin/dev` e il branch: 446 catene, 0 eccezioni, exit 0.
+  - Correzione del conteggio: con `clearMocks: false` falliscono 26 test in 4 file (`downloadGuards.test.ts` 19, `delete.test.ts` 4, `update.db.test.ts` 2, `cleanupTaskEventLog.db.test.ts` 1), misurati dalla revisione; non 7 in 3.
+- **files edited/created**: `package.json`, `pnpm-lock.yaml`, `vitest.config.ts`, `vitest.workspace.ts` (tolto), `windows.db.test.ts` (commento), 7 file di test (tipi di `vi.fn`), su `claude/vitest-5`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -528,8 +570,13 @@ G0 ─┬─ T1 ─ T2 ─ T3 ─┬─ T4 ─┬─ T7 ─ T8 ══ PR 1 in de
     - si rifà la sonda di T9 su `dev` e quella di T10 sul branch, perché la base è cambiata.
   - La PR verso `dev` quando Omar la chiede.
 - **validation**: tutti i punti annotati; REPORT SHIP; la CI della PR verde.
-- **status**: Planned
-- **log**:
+- **status**: In progress
+- **log**: 2026-10-27.
+  - `adversarial-review` (round PR 2 in `REPORT.md`): **DO NOT SHIP** sulla lettera di AC3 (i titoli di `each` cambiano forma in 12 file; decisione di Omar), su `sequence.hooks` (corretto in `01a042a`) e sui documenti.
+  - I gate locali sul branch: suite intera verde dopo `01a042a`, `tsc` pulito, lo script exit 0.
+  - AC3 corretto nella SPEC (Omar, 2026-10-27): la forma dei titoli `each` di vitest 5 è accettata. AC3 è Met.
+  - La #111 in `dev` (`723fc10`), unita nel branch. Documenti in `d7674cd`: la riga di vitest nel §4 della roadmap, W3, e nel §8 "nessun debito nuovo" (AC12, AC13). `AGENTS.md` non cita `vitest.workspace.ts`.
+  - [PR #113](https://github.com/omardeangelis/mito-micro-services/pull/113) aperta verso `dev`. Da fare: la CI verde, poi il merge.
 - **files edited/created**:
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
@@ -880,7 +927,7 @@ Nessun debito previsto. Ogni task finale (T8, T11, T17, T21) verifica il debito 
 
 ## 15. Domande aperte
 
-- **D8, D9 e D14** sono proposte del piano, da confermare in G0. D14 corrisponde all'OQ2 della SPEC.
+- **D8, D9 e D14** confermate da Omar in G0 (2026-10-27); l'OQ2 della SPEC è chiusa.
 - **OQ1 della SPEC** è un'assunzione (§5).
 
 ## 16. Correzioni dopo la verifica del piano (2026-10-27)
