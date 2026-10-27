@@ -220,7 +220,8 @@ describe("Cloud Tasks", () => {
 })
 
 describe("coda in processo (sviluppo locale)", () => {
-  it.effect("un task di pulizia può rimettersi in coda", () =>
+  // Detached fibers on the real clock: with TestClock both `now` and `at` are 0
+  it.live("un task di pulizia può rimettersi in coda", () =>
     Effect.gen(function* () {
       const purged: string[] = []
       const queue = importQueueInProcess({

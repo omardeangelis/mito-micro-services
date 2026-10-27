@@ -324,8 +324,8 @@ describe.skipIf(!hasTestDatabase)("lock e scadenza dell'import", () => {
         const start = Date.now()
         const deadline = start + 60_000
         let calls = 0
-        // Hand-written, the one exception of AC8: it advances on every read,
-        // which TestClock cannot do
+        // Hand-written, one of the two exceptions of AC8 (with apply.db's): it
+        // advances on every read, which TestClock cannot do
         const nanos = BigInt(start) * 1_000_000n
         const steppingClock: Clock.Clock = {
           currentTimeMillisUnsafe: () => start,

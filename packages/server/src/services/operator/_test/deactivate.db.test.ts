@@ -1,5 +1,4 @@
 import { beforeAll, beforeEach, vi } from "vitest"
-import {} from "@effect/vitest"
 import { describe, expect, it } from "@effect/vitest"
 import { Effect, Exit } from "effect"
 import { asc, eq, inArray } from "drizzle-orm"

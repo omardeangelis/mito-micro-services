@@ -54,7 +54,8 @@ beforeEach(async () => {
 })
 
 describe("processDueAlerts a tempo", () => {
-  it.effect(
+  // The budget is measured on the real clock: under TestClock no time passes
+  it.live(
     "a tempo esaurito elabora solo il primo alert: gli altri restano aperti e li prende la chiamata dopo",
     () =>
       Effect.gen(function* () {
@@ -82,7 +83,7 @@ describe("processDueAlerts a tempo", () => {
       })
   )
 
-  it.effect(
+  it.live(
     "prende prima gli alert che scadono oggi, gli unici che creano il followup",
     () =>
       Effect.gen(function* () {

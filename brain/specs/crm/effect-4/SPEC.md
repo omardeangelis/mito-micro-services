@@ -115,7 +115,7 @@ Dopo la verifica del piano (2026-10-27):
   - `layer(...)` quando più test condividono un layer.
 
   Restano `it` i test dell'interfaccia a Promise dei bordi (`runTrpc`, il client storage a Promise, le rotte). Restano scritti a mano i due orologi a passi di `services/import/_test/`, che cambiano valore da una lettura all'altra e che `TestClock` non sa riprodurre: quello di `concurrency.pg.test.ts` e quello di `apply.db.test.ts` (la scadenza che passa fra un blocco e l'altro). Controlli:
-  - `git grep -nE "Effect\.run(Promise|PromiseExit|Sync)\(|runServer\(" -- '**/_test/**' src/test` trova solo i bordi, elencati nel log (su `dev` trova 49 file);
+  - `git grep -nE "Effect\.run(Promise|PromiseExit|Sync)\(|runServer\(" -- '**/_test/**' src/test` trova solo i bordi, elencati nel log (su `dev` trova 50 file);
   - `git grep -nE "currentTimeMillisUnsafe|Clock\.Clock" -- '**/_test/**'` trova solo `concurrency.pg.test.ts` e `apply.db.test.ts`;
   - il numero di test per file non cambia.
 - **AC9 (a)**: Dopo la PR 4, ogni servizio è una classe `Context.Service` con un identificativo che inizia dal pacchetto e dal percorso (`"@mito/server/effect/Db"`, `"@mito/api/cron/CronAuth"`). Il layer principale è la proprietà statica `layer`, e le varianti hanno un suffisso che le descrive (`layerDisabled`, `layerInProcess`, …), costruite con `Servizio.of({...})`. Quando un layer statico creerebbe un import circolare, è una costante `<nome>Layer` nel suo modulo. Non restano costanti `*Live` esportate: `git grep -nP "export const \w+Live\b" -- packages apps src` non trova niente (su `dev` ne trova 8). I nomi sono nella tabella del §3 del piano.

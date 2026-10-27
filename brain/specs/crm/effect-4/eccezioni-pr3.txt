@@ -201,6 +201,10 @@ packages/server/src/services/export/_test/callStats.db.test.ts:102#65963aa6 help
 packages/server/src/services/export/_test/callStats.db.test.ts:148#bf0e8ff2 helper diventato Effect: await → yield*, stesso valore
 packages/server/src/services/export/_test/callStats.db.test.ts:177#b1b8144a helper diventato Effect: await → yield*, stesso valore
 
+# packages/server/src/services/contact/_test/operatorLock.pg.test.ts (tabella writers, confrontata per valore dallo script dopo la revisione)
+base:packages/server/src/services/contact/_test/operatorLock.pg.test.ts:289#aff9eb93  tabella writers: ogni cella restituisce un Effect invece di una Promise (runServer(P) -> P.pipe(provideServer, Effect.exit); la Promise del caller in Effect.promise), stessi titoli e stessi valori attesi
+packages/server/src/services/contact/_test/operatorLock.pg.test.ts:352#50912682  tabella writers: le stesse tre righe, celle diventate Effect
+
 # ======== T15
 # Eccezioni ad AC5 per T15 (import e storage): tutte nella categoria "helper diventato Effect".
 # <file>:<riga>#<hash> = catena aggiunta; base:<file>:<riga>#<hash> = catena tolta.

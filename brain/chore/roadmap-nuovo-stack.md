@@ -205,4 +205,4 @@ Regole:
 
 Punti chiusi senza debito nuovo:
 - **1.1, PR 2 (vitest 5):** nessun debito. L'avviso di pnpm sul *peer* `@types/node` di vitest 5 (`^22 || >=24`, opzionale) lo chiude la riga di `@types/node` nel §4.
-- **1.1, PR 3 (`@effect/vitest`):** nessun debito. I test che eseguono un programma Effect usano `it.effect` o `it.live`; restano a Promise solo i bordi (le procedure tRPC, le rotte, il client storage a Promise) e una cella di una tabella `each` in `deactivate.pg.test.ts`.
+- **1.1, PR 3 (`@effect/vitest`):** nessun debito. I test che eseguono un programma Effect usano `it.effect` o `it.live`. Restano, per scelta e non come debito: i bordi a Promise (le procedure tRPC, le rotte, il client storage a Promise); una cella di una tabella `each` in `deactivate.pg.test.ts` che deve restituire una Promise come l'altra riga, e per lei `runServer` in `src/test/effect.ts`; i due `Effect.runSync` nelle factory di `vi.mock` dei test della rotta del download, che costruiscono lo storage in memoria al caricamento del modulo; i due orologi a passi scritti a mano di `services/import/_test/` (AC8).

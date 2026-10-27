@@ -262,12 +262,42 @@ const optionsKey = (call, sf) =>
     .map((p) => normalize(p, sf))
     .sort()
 
+// The initializers of the variables a file declares, by name: an `each` table
+// or a skipIf condition passed by name is compared through its value.
+const declarations = new WeakMap()
+const declarationsOf = (sf) => {
+  if (!declarations.has(sf)) {
+    const byName = new Map()
+    const walk = (n) => {
+      if (
+        ts.isVariableDeclaration(n) &&
+        ts.isIdentifier(n.name) &&
+        n.initializer
+      ) {
+        const list = byName.get(n.name.text) ?? []
+        list.push(n.initializer)
+        byName.set(n.name.text, list)
+      }
+      ts.forEachChild(n, walk)
+    }
+    walk(sf)
+    declarations.set(sf, byName)
+  }
+  return declarations.get(sf)
+}
+
+const argKey = (a, sf) => {
+  const key = normalize(a, sf)
+  const inits = ts.isIdentifier(a) && declarationsOf(sf).get(a.text)
+  return inits ? `${key}=${inits.map((i) => normalize(i, sf)).join("|")}` : key
+}
+
 const markerKey = (call, sf) => {
   const { root, names, args } = markerChain(call)
   const modifiers = [...new Set(names.filter((x) => MODIFIERS.has(x)))].sort()
   const parts = [`${root}:${modifiers.join(".")}`]
   for (const [name, list] of args) {
-    parts.push(`${name}(${list.map((a) => normalize(a, sf)).join(",")})`)
+    parts.push(`${name}(${list.map((a) => argKey(a, sf)).join(",")})`)
   }
   const options = optionsKey(call, sf)
   if (options.length) parts.push(`options{${options.join(",")}}`)
