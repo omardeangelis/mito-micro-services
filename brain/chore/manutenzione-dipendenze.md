@@ -3,7 +3,7 @@ domain: platform
 title: Manutenzione delle dipendenze
 type: piano
 status: in_progress
-last_updated: 2026-10-20
+last_updated: 2026-10-27
 ---
 
 # Manutenzione delle dipendenze
@@ -47,7 +47,7 @@ Le critiche di `vitest` e `tinypool` toccano solo gli strumenti di test.
 | W0b | xlsx dal CDN di SheetJS (0.20.x), con test di caratterizzazione su import ed export | Dopo W0 | da fare |
 | W1 | drizzle-orm 0.45, drizzle-kit 0.31, drizzle-zod, postgres 3.4.x. Il controllo: `pnpm db:generate` non produce differenze. Si prova su Supabase prima di spostare il DB | Prima di S3 della migrazione GCP | fatta (PR #27, su `dev`) |
 | W2 | Next 15.5 + React 19, insieme a TanStack Query 5 e tRPC 11, più nodemailer. Prima uno spike: tremor 3 e react-day-picker 8 con React 19, codemod per le API di richiesta asincrone | Spike in parallelo; merge fuori dalle settimane di cutover | annullata il 2026-10-27 (R1 di [[chore/roadmap-nuovo-stack]]): l'app Next non si aggiorna, e l'app React parte da React 19 e TanStack Query 5. nodemailer va con le librerie del backend (§4 della roadmap) |
-| W3 | Il resto, una famiglia alla volta: zod 4, Tailwind 4, ESLint flat config + typescript-eslint 8, vitest e jsdom, Sentry 11, date-fns 4, zustand 5, react-day-picker, lucide-react, i minor di Radix e di react-hook-form | Dopo W2 | ridotta il 2026-10-27 (R1): niente per l'app Next. L'app React parte dalle versioni correnti (Tailwind 4 compreso), zod non si aggiorna perché lo sostituisce `Schema`, e le librerie del backend sono nel §4 di [[chore/roadmap-nuovo-stack]] |
+| W3 | Il resto, una famiglia alla volta: zod 4, Tailwind 4, ESLint flat config + typescript-eslint 8, vitest e jsdom, Sentry 11, date-fns 4, zustand 5, react-day-picker, lucide-react, i minor di Radix e di react-hook-form | Dopo W2 | ridotta il 2026-10-27 (R1): niente per l'app Next. L'app React parte dalle versioni correnti (Tailwind 4 compreso), zod non si aggiorna perché lo sostituisce `Schema`, e le librerie del backend sono nel §4 di [[chore/roadmap-nuovo-stack]]. vitest 5 (con vite 7) arriva con la PR 2 del punto 1.1, perché `@effect/vitest` 4 lo richiede; jsdom resta alla 24 |
 | Renovate | Attivare l'app: automerge dei patch su `dev` con la CI verde, major su approvazione (la regola c'è già), gruppi per famiglia (Radix, tRPC, Drizzle) | Dopo W1 | da fare |
 
 Fuori dalle ondate, da decidere a parte:
