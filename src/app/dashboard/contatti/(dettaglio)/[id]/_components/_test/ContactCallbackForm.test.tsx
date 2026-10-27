@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { TRPCClientError } from "@trpc/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { type ContactErrorData } from "@mito/domain/contact/errors"
-import { formatDeadline } from "@/lib/utils/format"
+import { formatDeadline } from "@mito/client/format"
 import { ContactCallbackForm } from "../ContactCallbackForm"
 
 type Call = {

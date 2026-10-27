@@ -6,6 +6,7 @@ links:
   - "[[chore/migrazione-effect]]"
   - "[[chore/migrazione-gcp]]"
   - "[[chore/manutenzione-dipendenze]]"
+  - "[[chore/migrazione-frontend-react]]"
   - "[[chore/migration/fase-3-frontend-spa]]"
   - "[[specs/crm/auth-better-auth/PLAN]]"
   - "[[specs/crm/gestione-operatori/PLAN]]"
@@ -21,6 +22,7 @@ updated: 2026-10-27
 Questa pagina mette in fila il lavoro che porta in prod il nuovo stack: backend su Effect 4 con `HttpApi`, app React in `apps/web`, Next.js e tRPC spenti. **Dal 2026-10-27 è il punto d'ingresso del piano:** l'ordine dei lavori, le decisioni e il debito aperto della migrazione (§8) stanno qui. Le altre pagine restano il dettaglio:
 - [[chore/migrazione-gcp]]: dove gira il codice, la checklist del go/no-go e la finestra del rilascio in prod;
 - [[specs/crm/auth-better-auth/PLAN]]: l'auth (1.2, e la PR D prima di S6);
+- [[chore/migrazione-frontend-react]]: il filone frontend (1.a, 1.b, 1.c, 2.2, 2.3 e le pagine della fase 3), task per task, con la mappa delle rotte e delle server action;
 - [[chore/migrazione-effect]], chiusa per L1 e L2: le regole per i servizi (§2), come si costruisce `HttpApi` (§3), le route REST (§6) e il debito chiuso (§7).
 
 **Il punto di partenza (2026-10-27).** L1 e L2 di [[chore/migrazione-effect]] sono fatti per tutti i router: ogni procedura tRPC è un adapter di un servizio Effect. Restano il passo 8 (l'auth: le PR C1 e C2 di better-auth sono in `dev`, la C2 con la [PR #108](https://github.com/omardeangelis/mito-micro-services/pull/108) del 2026-10-27; la D non è iniziata e aspetta G2), che qui è il punto 1.2, e la P2 di [[specs/crm/gestione-operatori/PLAN]], che qui è nella fase 5. L3, il trasporto, non è iniziato: sono le fasi 2 e 3. `dev` → `main` è fermo fino al go/no-go dello staging (S6 di [[chore/migrazione-gcp]]).
@@ -183,7 +185,7 @@ Il 2026-10-27 ogni documento qui sotto ha ricevuto un rimando a questa pagina. R
 | [[specs/crm/auth-better-auth/SPEC]] e il suo PLAN | Il vincolo "mai due cambi nella stessa notte" e il gate G3 portati sulla finestra unica (R10) | – |
 | [[chore/manutenzione-dipendenze]] | W2 annullata, W3 ridotta (R1), Effect 4 (R2) | – |
 | [[chore/migration_plan]] | Superato da questa pagina | – |
-| [[chore/migration/fase-3-frontend-spa]] | Il rimando alle decisioni R1–R9 | I task riscritti con 1.a: React 19 invece di 18, Tailwind 4, `HttpApi` e TanStack Query 5 su `HttpApiClient` invece degli hook tRPC, Tremor fuori, layout da telefono in fase 6. Il reverse proxy di D6 sono le rewrite di Vercel (R9): le rewrite e gli header di `next.config.js` (`rewrites()` e `headers()`, con `X-Frame-Options`) passano nella configurazione del progetto Vercel dell'app React. Restano validi lo spostamento dei componenti, i web worker, Sentry e il collaudo di parità |
+| [[chore/migration/fase-3-frontend-spa]] | Il rimando alle decisioni R1–R9; i task riscritti in [[chore/migrazione-frontend-react]] | Fatto in [[chore/migrazione-frontend-react]], da confermare (F1–F11). Erano: i task riscritti con 1.a: React 19 invece di 18, Tailwind 4, `HttpApi` e TanStack Query 5 su `HttpApiClient` invece degli hook tRPC, Tremor fuori, layout da telefono in fase 6. Il reverse proxy di D6 sono le rewrite di Vercel (R9): le rewrite e gli header di `next.config.js` (`rewrites()` e `headers()`, con `X-Frame-Options`) passano nella configurazione del progetto Vercel dell'app React. Restano validi lo spostamento dei componenti, i web worker, Sentry e il collaudo di parità |
 
 ## 8. Debito aperto della migrazione
 

@@ -1,0 +1,13 @@
+{
+  "name": "@mito/client",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Codice del browser condiviso dall'app Next e da apps/web, senza React e senza Next: preferenze nei cookie, lettura dell'import e il suo worker, workbook dell'export, formattazione. Usa xlsx e papaparse della root, come @mito/domain usa zod (F1 di brain/chore/migrazione-frontend-react.md)",
+  "type": "module",
+  "exports": {
+    "./*": "./src/*.ts"
+  },
+  "dependencies": {
+    "@mito/domain": "workspace:*"
+  }
+}

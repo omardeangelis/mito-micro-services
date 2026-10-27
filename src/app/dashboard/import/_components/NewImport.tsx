@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
-import { IMPORT_EXTENSIONS } from "@/lib/import/messages"
+import { IMPORT_EXTENSIONS } from "@mito/client/import/messages"
 import { cn } from "@/lib/utils"
 import { ImportPreview } from "./ImportPreview"
 import { type NewImportState, useNewImport } from "./useNewImport"
