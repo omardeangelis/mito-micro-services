@@ -115,3 +115,112 @@ Il BLOCKER di v3 sta nello script di AC5, che serve a tutte e quattro le PR. È 
   - l'ambiente dei `*.db.test.ts` nei progetti dei fusi, che oggi dipende da un commento;
   - il minimo di Node 22.12 contro `engines.node: "22.x"`.
 - **Pagine di dominio da collegare:** nessuna (strumenti di test).
+
+## [Round: 2026-10-27 — PR 1, Effect 4]
+
+`base_ref` e `head_ref` del frontmatter sono quelli del round della PR 2. Questo round confronta `origin/dev` (`5adbfc1`) con `claude/effect-4` (`a9e199d`).
+
+### Verdict
+
+**DO NOT SHIP** · impact: critical
+
+**L'obiezione più forte (v7) riguarda lo script di AC5,** che fa da gate a tutte e quattro le PR. Una rinomina pura di un file di test non viene confrontata (`scripts/check-assertions.mjs:333`, `if (before === after) continue`): `git mv _test/x.test.ts _test/x.ts` toglie un file intero dall'esecuzione, e lo script stampa comunque "ok".
+
+**I cambi della PR 1 sono sani.** Sette verificatori su otto danno SHIP, e v7 conferma che:
+- le riscritture D14 asseriscono esattamente quello di prima;
+- gli helper e gli orologi sono equivalenti;
+- i test di T2 uccidono i loro mutanti su Effect 3;
+- le suite di AC7 sono verdi.
+
+Il blocco è tutto nello script e nel suo harness.
+
+### Coverage
+
+- **Passate eseguite:** 8/8.
+  - v1, v2, v3, v4 e v7 sul modello più forte;
+  - v5, v6 e v8 su sonnet.
+- **Passate saltate o fallite:** nessuna.
+- **UI pass:** non prevista dalla rubrica, perché non cambia nessuna superficie visibile.
+- **Gate di CI (AC14),** in un worktree senza `.env*` (`scratchpad/gate-pr1.log`):
+  - install, lint, `tsc`, `db:check` verdi;
+  - test con Postgres: 312 file, 4413 verdi e 6 saltati;
+  - `api:build` e `api:smoke` verdi;
+  - `next build` verde, rifatto con `SKIP_ENV_VALIDATION=true` come la CI. Il primo tentativo era fallito per un errore del comando, non del codice, e v8 lo ha rifatto in una copia pulita.
+- **Non fatte:**
+  - la prova nel browser su `mito_local` (T8.4): serve un `.env.development.local` con il database locale e le chiavi dello storage di sviluppo;
+  - la prova su staging (GA2).
+
+### Findings
+
+| Severity | Concern (verifier) | Location | Problem | Required fix / evidence | Durable? |
+|----------|--------------------|----------|---------|-------------------------|----------|
+| BLOCKER | v7 — integrità dei test | `scripts/check-assertions.mjs:333` | Una rinomina pura salta il confronto: un `*.test.ts` rinominato in `.tst.ts`, `.ts` o `.md` esce con 0 (0 catene) | Se il vecchio percorso è un test eseguibile e il nuovo no, trattarla come una cancellazione; casi nell'harness | no |
+| MAJOR | v7 | `scripts/check-assertions.mjs:199` (`markerKey`) | La chiave dei marcatori tiene solo i nomi. Passano: `it(name, { skip: true }, fn)`, `{ fails: true }`, `ctx.skip()`, `describe.skipIf(!hasDb)` → `skipIf(true)` (28 chiamate nel repo, una in AC7), `it` → `it.each([])` | Gli argomenti di `skipIf`/`runIf`/`each`/`for` nella chiave; segnalare le opzioni del test con skip/only/todo/fails e `ctx.skip(`; casi nell'harness | no |
+| MAJOR | v7 | stesso script | Le tabelle di `it.each`/`describe.each` (233 chiamate in 103 file, che la PR 3 riscrive) non si confrontano: un valore atteso cambiato nella tabella passa | Confrontare le tabelle come catene, con la stessa chiave a token | no |
+| MINOR | v7 | `:145`, `:140` | `assert(cond)` senza proprietà e `ctx.expect(...)` non sono radici (`assert` di `@effect/vitest`, nella PR 3, è una funzione) | Aggiungerli | no |
+| MINOR | v7 | stesso script | Togliere l'`await` davanti a `await expect(p).rejects…` passa | L'`await`/`return` genitore nella chiave delle catene `.resolves`/`.rejects` | no |
+| MINOR | v7 | `:301`, `:362`, `:377` | Le eccezioni sono legate solo a `file:riga`: una seconda catena sulla stessa riga passa, e una voce inutilizzata dà solo un avviso | Legare la voce a un hash della chiave; far fallire le voci inutilizzate | no |
+| MINOR | v7 | — | Un valore atteso in una costante fuori dalla catena, un'asserzione spostata in un helper non chiamato, `expect` importato da altrove: nessun confronto di catene li vede. Nella PR 1, v7 ha letto a mano i 16 file di test e nessuno di questi casi c'è | Dirlo nel gate: lo script non sostituisce la lettura del diff | no |
+| MINOR | v3 — configurazione | `import.db.test.ts:284-300`, `supabase.test.ts:420-440` | I due test di D15 fanno da guardia solo se gira il file intero: da soli (`-t`, `.only`) non leggono prima la configurazione, e il mutante "mai fresco" passa. Nella suite intera lo uccidono | Un test diretto di `withCurrentEnv`: lettura, cambio di `process.env`, nuova lettura | no |
+| MINOR | v4 — errori ai bordi | `src/app/api/cron/priority/route.ts:24` | Con un body malformato Sentry riceve `UnknownError` invece di `UnknownException`, con un titolo diverso, quindi un gruppo nuovo. La risposta resta 200 | Annotarlo nel Context della SPEC (i Non-Goals escludono di cambiare il codice) | sì |
+| MINOR | v4, v1 | `effect.ts` di v4 (`causeElectDefects`) | Se un finalizer o una fibra sorella muore, v4 trasforma l'errore tipato in *defect*: `findErrorOption` non lo vede più (500 invece di 401/404, `INTERNAL` invece del codice). Oggi non succede: niente `ensuring`/`acquireRelease`/`addFinalizer` nel codice di produzione, e le `Effect.all` concorrenti hanno solo `DbError`. In auth il risultato sarebbe più severo, mai più permissivo | Una riga nel Context della SPEC accanto a OQ1, così il primo finalizer vicino a `runTrpc` o alle rotte viene rivisto | sì |
+| NIT | v7 | `eccezioni-pr1.txt:21-23` | I marcatori anonimi fanno citare come "test nuovi" tre test esistenti di `db.db.test.ts` (294, 305, 306). I conti sono giusti (4 `it` e 1 `describe` nuovi) | Il titolo nella chiave dei marcatori, o una nota nel file | no |
+| NIT | v7 | `concurrency.pg.test.ts:297` | L'orologio a passi ha ora `sleep` e i nanosecondi fissi; su v3 non li aveva. Il percorso asserito non dorme | Nessuno | no |
+| NIT | v2 — transazioni | `effect/_test/db.db.test.ts` | Nessun test locale per "query fallita → `catchTag("DbError")` → errore tipato, nessuna riga" (un mutante passa il file, ma 26 test dei servizi lo uccidono) | Facoltativo: un test locale | no |
+| NIT | v2, v4, v6 | `effect/db.ts:114-118,137-141`; `export/files.ts:46` | I *defect* sono `Error` invece di `RuntimeException`; `Effect.runPromise` rifiuta con il *defect* nudo invece di `FiberFailure`; `Cause.squash` di una causa di sole interruzioni cambia. Nessun codice li legge; Sentry può raggrupparli diversamente | Facoltativo: una nota | no |
+| NIT | v5, v3, v8 | vari | Nessun test conta i logger (togliere `tracerLogger` passerebbe); `fixedClock` ha `sleep` istantaneo, come la versione per v3; `withCurrentEnv` in `storage/config.ts` non ha un test suo; un provider derivato da quello di default tornerebbe a fotografare l'ambiente (da annotare in TD12); 123 file importano `effect` invece di 122 | Facoltativi | no |
+
+### What passed
+
+| Concern (verifier) | Evidence |
+|--------------------|----------|
+| v1 — auth | Prova differenziale v3/v4 su 11 cause con le catene vere (`admits`, dispatch delle rotte): uguali, tranne il caso latente sopra. Chiavi dei servizi identiche. Suite di auth, cron, import, download e profilo: 29 file, 287 test; pg 15/15; `apps/api` 43 |
+| v2 — transazioni | Differenziale v3/v4 su 15 scenari (contesto e riferimenti, errori tipati, `DbError` recuperato, annidamento, COMMIT fallito, rollback, interruzioni, figli, deadlock): stesso comportamento. 7 mutanti, 6 uccisi dal file, 1 da 26 test dei servizi. AC7 89/89, servizi 547/547, pg 29/29 |
+| v3 — configurazione | Identità del provider di default stabile fra `Context.empty()`, fibre, `ManagedRuntime`, layer e `runForkWith`. Differenziale v3/v4 su 2688 combinazioni dell'ambiente per la coda e 210 per lo storage: 0 differenze, nessun `inProcess` su Cloud Run o Vercel. Credenziali `Redacted` |
+| v4 — errori ai bordi | 15 cause × 13 comportamenti più programmi veri: stessi codici tRPC, divisione fra errori attesi e loggati, finali dell'import, stati dei cron, tentativi, report. 11 file, 158 test |
+| v5 — runtime e log | Output della console identico fra v3 e v4 (livelli, logfmt, annotazioni, span); due logger, nessun duplicato; le fibre dell'import sopravvivono a un chiamante interrotto come in v3; `fixedClock` completo |
+| v6 — storage e download | Il client a Promise rifiuta con la stessa istanza dell'errore tipato o con lo stesso *defect*; chiave `gcs-storage-kit/Storage`; 404/500 della rotta invariati; 140 test |
+| v7 — integrità dei test | D14 severe come prima su 8 forme di `Exit` (un'altra ragione, un *defect* accanto, un errore diverso falliscono in tutte e due le versioni). Helper e orologi equivalenti; i mutanti di T2 uccisi su Effect 3; harness 19/19; AC7 805 test non-pg e 114 pg |
+| v8 — dipendenze, build, documenti | Una sola copia di `effect` 4.0.6, nessun import da sottopercorsi; i gate verdi; `next build` verde in una copia pulita; `AGENTS.md`, roadmap (§4, §7, TD12) e `migrazione-effect.md` coerenti con il codice |
+
+### Per-concern verdicts
+
+| Pass | Charter | Verdict | Rationale |
+|------|---------|---------|-----------|
+| v1 | Auth | SHIP | Nessun percorso di auth raggiungibile cambia esito; la differenza latente è più severa |
+| v2 | Transazioni | SHIP | Stesso comportamento in 15 scenari, mutanti uccisi |
+| v3 | Configurazione | SHIP | D15 fa il suo lavoro; le guardie dipendono dall'ordine dei test (MINOR) |
+| v4 | Errori ai bordi | SHIP | Esiti uguali; un titolo di Sentry e una differenza latente da annotare |
+| v5 | Runtime, fibre, log | SHIP | Output e fibre equivalenti |
+| v6 | Storage e download | SHIP | Esiti uguali |
+| v7 | Integrità dei test | DO NOT SHIP | I cambi della PR sono sani, ma lo script di AC5 lascia passare una rinomina e alcuni marcatori |
+| v8 | Dipendenze, build, documenti | SHIP | AC1, AC12, AC13 e AC14 soddisfatti |
+
+### Human Review Checklist
+
+1. **Lo script di AC5.** Correggere il BLOCKER e i due MAJOR di v7 (rinomina, marcatori con argomenti e opzioni, tabelle di `each`), con un caso nell'harness per ognuno. Poi rifare:
+   - `node scripts/check-assertions.mjs assertions origin/dev HEAD --exceptions brain/specs/crm/effect-4/eccezioni-pr1.txt`, che deve uscire con 0;
+   - lo stesso confronto fra `origin/dev` e `claude/vitest-5`.
+2. **Il test diretto di `withCurrentEnv`** (v3) e le due righe nel Context della SPEC (v4: il titolo di Sentry del cron `priority`; l'errore tipato che diventa *defect* con finalizer o fibre sorelle).
+3. **La prova nel browser su `mito_local`** (T8.4), con un `.env.development.local` locale: login, Dashboard, Clienti, Contatti, un import in processo, il download di un export, Profilo. Nessun errore in console né dal server.
+4. **Leonardo (D4)** rivede la PR 1, in particolare i file dell'auth (`betterAuth/*`, `apps/api/src/{cron,import}/auth.ts` e `routes.ts`) e la nota di v1.
+5. **Prima del merge,** `dev` unito nel branch, la CI della PR verde, poi GA2 su staging.
+
+### Acceptance criteria check
+
+| Criterion | Met / Unmet / Blocked | Notes |
+|-----------|-----------------------|-------|
+| AC1 | Met | Una copia di `effect` 4.0.6, solo import da `"effect"` |
+| AC5 | Met per la PR 1, il gate no | Le uniche differenze sono le 41 eccezioni (T2 e D14), confermate a mano da v7; lo script ha i buchi sopra |
+| AC6 | Met | I test di T2 verdi su Effect 3 e su Effect 4; mutanti uccisi |
+| AC7 | Met | Tutte le suite nominate verdi, anche su Postgres |
+| AC12 (PR 1) | Met | `AGENTS.md`, roadmap §4 e §7, `migrazione-effect.md` |
+| AC13 | Met | TD12 nel §8 della roadmap |
+| AC14 | Met in locale | I gate nel worktree pulito; la CI della PR non è ancora partita |
+
+### Notes for docs-maintenance
+
+- **Durable findings** per `brain/tech-debt/crm/effect-4.md`, se restano dopo il merge:
+  - in v4 un errore tipato con un finalizer o una fibra sorella morta diventa *defect*;
+  - il titolo di Sentry del cron `priority`.
+- **Pagine di dominio da collegare:** nessuna.

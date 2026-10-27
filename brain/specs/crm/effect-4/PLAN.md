@@ -471,8 +471,11 @@ G0 ─┬─ T1 ─ T2 ─ T3 ─┬─ T4 ─┬─ T7 ─ T8 ══ PR 1 in de
   6. **`IMPLEMENTATION-NOTES.md`**, sezione "PR 1": i punti sopra, l'elenco di D14 completo e le deviazioni.
   7. **PR verso `dev`** quando Omar la chiede, dopo il merge di `dev` nel branch, con la revisione di Leonardo (D4). Prima di GA1 si avvisa Leonardo della PR #46 (§13).
 - **validation**: tutti i punti annotati; REPORT SHIP.
-- **status**: Planned
-- **log**:
+- **status**: In progress
+- **log**: 2026-10-27.
+  - Fatti: AC1 (una copia di `effect` 4.0.6, nessun import da sottopercorsi); AC5 (lo script con `eccezioni-pr1.txt`, 41 eccezioni, exit 0); AC14 in un worktree di scratchpad senza `.env*` (install, lint, `tsc`, `db:check`, test con Postgres 312 file / 4413 verdi / 6 saltati, `next build` con `SKIP_ENV_VALIDATION=true` e i placeholder, `api:build`, `api:smoke`, tutti verdi).
+  - `adversarial-review` (round PR 1 in `REPORT.md`): **DO NOT SHIP**, 7 passate su 8 SHIP. Il blocco è lo script di AC5 (v7): una rinomina pura non è confrontata, i marcatori con argomenti o opzioni e le tabelle di `each` passano. Da fare anche: un test diretto di `withCurrentEnv` (v3) e due righe nel Context della SPEC (v4).
+  - Non fatti: la prova nel browser su `mito_local` (serve un `.env.development.local` locale; chiesto a Omar), la PR verso `dev`.
 - **files edited/created**:
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
@@ -544,6 +547,8 @@ G0 ─┬─ T1 ─ T2 ─ T3 ─┬─ T4 ─┬─ T7 ─ T8 ══ PR 1 in de
   - TDD: la sonda di `rome` vedeva `windows.db.test.ts` in jsdom prima del commento, node dopo.
   - AC3: sonda v5 rifatta (con `probe5.setup.ts`: vitest 5 vuole il contesto come primo argomento di `beforeAll`), 312 righe come v1, `differences: 0`; 315 file, 4408 verdi e 6 saltati come v1. I titoli di `test.each`/`describe.each` cambiano formato in 12 file (stringhe senza virgolette, troncamento diverso, `0` invece di `+0`): stessi test, stessi stati.
   - `pnpm test:pg --run`: solo i 23 `*.pg.test.ts`. Lo script fra `origin/dev` e `claude/vitest-5`: exit 0, nessuna eccezione (rifatto dal supervisore). `tsc` pulito; `next lint` pulito in una copia dei file fuori dal worktree annidato.
+  - Dopo la revisione della PR 2 (`REPORT.md`, round PR 2), commit `01a042a`: `sequence: { hooks: "parallel" }` in `project()` (vitest 1 lo risolveva a `parallel`, vitest 5 a `stack`; tutti e cinque i progetti lo risolvono ora a `parallel`) e i quattro commenti che citavano `vitest.workspace.ts`. Suite intera: 312 file, 4408 verdi e 6 saltati, exit 0; `tsc` pulito; lo script corretto (`ff0c648`) fra `origin/dev` e il branch: 446 catene, 0 eccezioni, exit 0.
+  - Correzione del conteggio: con `clearMocks: false` falliscono 26 test in 4 file (`downloadGuards.test.ts` 19, `delete.test.ts` 4, `update.db.test.ts` 2, `cleanupTaskEventLog.db.test.ts` 1), misurati dalla revisione; non 7 in 3.
 - **files edited/created**: `package.json`, `pnpm-lock.yaml`, `vitest.config.ts`, `vitest.workspace.ts` (tolto), `windows.db.test.ts` (commento), 7 file di test (tipi di `vi.fn`), su `claude/vitest-5`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
@@ -565,8 +570,11 @@ G0 ─┬─ T1 ─ T2 ─ T3 ─┬─ T4 ─┬─ T7 ─ T8 ══ PR 1 in de
     - si rifà la sonda di T9 su `dev` e quella di T10 sul branch, perché la base è cambiata.
   - La PR verso `dev` quando Omar la chiede.
 - **validation**: tutti i punti annotati; REPORT SHIP; la CI della PR verde.
-- **status**: Planned
-- **log**:
+- **status**: In progress
+- **log**: 2026-10-27.
+  - `adversarial-review` (round PR 2 in `REPORT.md`): **DO NOT SHIP** sulla lettera di AC3 (i titoli di `each` cambiano forma in 12 file; decisione di Omar), su `sequence.hooks` (corretto in `01a042a`) e sui documenti.
+  - I gate locali sul branch: suite intera verde dopo `01a042a`, `tsc` pulito, lo script exit 0.
+  - Da fare: la decisione su AC3; i documenti (riga di vitest nel §4 della roadmap, W3, debito "nessuno") dopo la #111 in `dev`; la PR quando Omar la chiede.
 - **files edited/created**:
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a

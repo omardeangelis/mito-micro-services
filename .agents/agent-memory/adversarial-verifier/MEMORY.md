@@ -122,3 +122,6 @@
 - [test-partition-equivalence](feedback_test_partition_equivalence.md) — How to prove a test-runner config change keeps the same files per project and the same test names; tool traps that fake a mismatch
 - [guard-probes-how-to-check](guard_probes.md) — How to probe an assertion-diff guard (AST chain comparison) for false negatives; which probes to run before trusting a "ok" result
 - [test-runner-upgrade-checks](test-runner-upgrade-checks.md) — How to verify "tests run as before" across a test-runner major upgrade (vitest etc.) beyond a per-file probe
+- [ConfigProvider snapshot probes](feedback_config_provider_snapshot_probes.md) — fresh-env wrapper: mutants, guards pass alone (-t), v3/v4 env matrix, webpack import.meta
+- [Effect 4 cause edge probes](feedback_effect4_cause_edge_probes.md) — probe natural programs: v4 elects Fail->Die on finalizer/sibling defects; squash/UnknownError drift
+- [Tx combinator version differential](feedback_tx_combinator_version_differential.md) — fake-client v3/v4 node diff; run survivors on whole unit project

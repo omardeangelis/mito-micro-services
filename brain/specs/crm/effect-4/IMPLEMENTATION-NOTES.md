@@ -10,7 +10,7 @@
   - La PR 1 gira nel worktree della sessione, sul branch `claude/effect-4`, da `55d6fa2` (il commit di G0 sopra la PR #111).
   - I task della PR 2 vanno a worker con un worktree isolato, che creano `claude/vitest-5` da `origin/dev` (`5adbfc1`). La sessione può scrivere solo nel proprio worktree.
 - Delegation: `supervised` (`brain/brain.config.json`). `low` → haiku, `medium` → sonnet, `high` → il modello del supervisore.
-- Escalations: nessuna, per ora.
+- Escalations: nessuna. Due cicli di correzione chiesti dalle revisioni: lo script di T1 (la prima revisione della PR 2), le correzioni di T10 (`01a042a`).
 
 ## Deviations From the Plan
 
@@ -55,7 +55,16 @@
 
 | Criterion | Status | Notes |
 |-----------|--------|-------|
-| | | |
+| AC1 | Met (PR 1) | `effect` 4.0.6, una copia, solo import da `"effect"` |
+| AC2 | Met (PR 2) | vitest ^5.0.5, vite ^7.3.7, progetti in `test.projects` |
+| AC3 | Unmet alla lettera (PR 2) | Ambiente, fuso, pool e timer uguali per ogni file; i titoli di `each` cambiano forma in 12 file. Decisione di Omar |
+| AC5 | Met per le PR 1 e 2; lo script ha buchi (v7) | Da correggere prima delle PR 3 e 4 |
+| AC6 | Met | Test di T2 |
+| AC7 | Met | Suite nominate verdi, anche su Postgres |
+| AC12 | PR 1 met; PR 2 blocked | La PR 2 aspetta la #111 in `dev` |
+| AC13 | PR 1 met (TD12); PR 2 da scrivere | La frase "nessun debito" va nella roadmap |
+| AC14 | Met in locale per le PR 1 e 2 | La CI delle PR non è ancora partita |
+| AC4, AC8–AC11, AC15 | Non iniziati | PR 3, PR 4, staging |
 
 ## Pre-existing Issues
 
@@ -67,7 +76,17 @@
 
 ## Remaining Work
 
-- Tutte le wave da 1 in poi.
+- **PR 1:**
+  - correggere lo script di AC5 (BLOCKER e MAJOR di v7);
+  - aggiungere il test diretto di `withCurrentEnv`;
+  - scrivere le due righe nel Context della SPEC;
+  - fare la prova nel browser su `mito_local`;
+  - aprire la PR (con Leonardo, D4).
+- **PR 2:**
+  - la decisione su AC3;
+  - i documenti dopo la #111;
+  - aprire la PR.
+- **PR 3 e PR 4:** da iniziare dopo il merge delle PR 1 e 2 in `dev`.
 
 ## PR 2 – vitest 5
 

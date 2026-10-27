@@ -78,3 +78,61 @@ Nessuno.
 | v2 | Come gira ogni file: ambiente, fuso, pool, timer, mock (AC3) | high | il più forte (ereditato) |
 | v3 | Integrità dei file di test (AC5) | low | veloce (haiku) |
 | v4 | Dipendenze, lockfile e gate di CI (AC2, AC13, AC14) | medium | bilanciato (sonnet) |
+
+## [Round: 2026-10-27 — PR 1, Effect 4]
+
+### Change set under review
+
+- **Scope:** spec implementation, PR 1 di 4 (T1–T7 del piano)
+- **Target:** branch `claude/effect-4`
+- **Compared:** `origin/dev` (`5adbfc1`) → `claude/effect-4` (`a9e199d`); i commit della PR #111 (spec e piano) sono contesto
+- **Files touched:** 67 (codice di `packages/server`, `apps/api`, `src/app/api/{export,cron}`, `src/test`, test, `package.json`, `pnpm-lock.yaml`, `scripts/check-assertions.mjs`, `AGENTS.md`, documenti)
+- **Contratto:** AC1, AC5, AC6, AC7, AC12 (PR 1), AC13, AC14
+
+### Routing rubric (review-classifier output, riassunta: i charter completi sono nei brief dei verificatori)
+
+```json
+{
+  "taskType": "dependency",
+  "secondaryType": "refactor",
+  "domainsTouched": ["crm"],
+  "adversarialVerifiers": {
+    "count": 8,
+    "passes": [
+      { "id": "v1", "charter": "Auth gates allow and deny exactly as on Effect 3 (betterAuth config/run/session, auth/users.ts, apps/api cron+import OIDC auth and routes, download operatorCheck, service identity of Context.Service rewrites)", "complexity": "high" },
+      { "id": "v2", "charter": "Database transaction semantics in effect/db.ts (caller context via Effect.context + runPromiseExitWith, tx.failed check, nesting, commit/rollback via Result, lock rule in touched callers)", "complexity": "high" },
+      { "id": "v3", "charter": "Secrets/config reading: withCurrentEnv (D15), storage config/layer choice, importQueueChoice fail-safe, Redacted credentials, no prod env leak", "complexity": "high" },
+      { "id": "v4", "charter": "Edge error mapping under v4 Cause/Result (tRPC codes, error reporter, cron routes/jobs/report, import run endings, contacts/customers/export Result branches), excluding auth and transaction", "complexity": "high" },
+      { "id": "v5", "charter": "Runtime, fiber and logging: in-process import queue runForkWith, ServerLive Logger.layer, test Clock helper", "complexity": "medium" },
+      { "id": "v6", "charter": "Storage and export download: Promise client rejections (AC6), Storage tag key, download route 404/500, signed URLs and paths", "complexity": "medium" },
+      { "id": "v7", "charter": "Test integrity AC5/AC7: check-assertions.mjs soundness, D14 rewrites equivalence, src/test/effect.ts helpers, T2 tests pin AC6, AC7 suites unchanged", "complexity": "high" },
+      { "id": "v8", "charter": "Dependency, build and spec conformance: AC1 single effect copy and root imports, AC14 bundling/gates, AC12/AC13 docs match code", "complexity": "medium" }
+    ]
+  },
+  "taskComplexity": "high",
+  "reviewImpact": "critical",
+  "humanInLoop": true,
+  "nextStep": "Run v1–v8 in parallel (Opus for v1–v4 and v7, balanced for v5, v6, v8). Leonardo (D4) signs off the auth items (v1) before merge. Merge gated on green CI."
+}
+```
+
+### Classifier rationale
+
+Sulla carta è un aggiornamento di libreria a comportamento invariato. In pratica riscrive la semantica del canale degli errori, del runtime e della configurazione sotto ogni superficie di rischio del repo: auth (better-auth, rotte dei cron e dell'import con OIDC), `transaction` con la regola dei lock, storage e download degli export, lettura dell'ambiente (dove `.env` ha valori di produzione). D4 chiede una revisione umana sui file dell'auth: `critical` con una persona nel giro. Una passata per ogni cambio di semantica; lo script di AC5 ha la sua, perché regge tutta la promessa "stesse asserzioni".
+
+### Overrides applied
+
+Nessuno.
+
+### Verification plan (derived)
+
+| Pass | Concern | Complexity | Model tier |
+|------|---------|------------|------------|
+| v1 | Auth | high | il più forte |
+| v2 | Transazioni | high | il più forte |
+| v3 | Configurazione e segreti | high | il più forte |
+| v4 | Errori ai bordi | high | il più forte |
+| v5 | Runtime, fibre, log | medium | sonnet |
+| v6 | Storage e download | medium | sonnet |
+| v7 | Integrità dei test | high | il più forte |
+| v8 | Dipendenze, build, documenti | medium | sonnet |
