@@ -1,13 +1,5 @@
-import {
-  afterAll,
-  afterEach,
-  beforeAll,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  vi,
-} from "vitest"
+import { afterAll, afterEach, beforeAll, beforeEach, vi } from "vitest"
+import { describe, expect, it } from "@effect/vitest"
 import { Effect, Layer } from "effect"
 import { asc, eq } from "drizzle-orm"
 import { Db, type DbClient } from "@mito/server/effect/db"
@@ -40,11 +32,7 @@ const DAY = 24 * 60 * 60 * 1000
 const TODAY_AT_8 = Date.parse("2026-10-14T08:00:00.000Z")
 
 const run = <A, E>(program: Effect.Effect<A, E, Db>) =>
-  Effect.runPromise(
-    program.pipe(
-      Effect.provide(Layer.succeed(Db, testDb as unknown as DbClient))
-    )
-  )
+  program.pipe(Effect.provide(Layer.succeed(Db, testDb as unknown as DbClient)))
 
 let customerId: string
 let actorOperatorId: number
@@ -94,20 +82,30 @@ afterAll(async () => {
 })
 
 describe("cron services on an injected Db", () => {
-  it("cleanupTaskEventLog deletes the rows older than three months", async () => {
-    const old = await eventAt(new Date("2026-07-14T02:59:59.999Z"))
-    const kept = await eventAt(new Date("2026-07-14T03:00:00.000Z"))
+  it.effect(
+    "cleanupTaskEventLog deletes the rows older than three months",
+    () =>
+      Effect.gen(function* () {
+        const old = yield* Effect.promise(() =>
+          eventAt(new Date("2026-07-14T02:59:59.999Z"))
+        )
+        const kept = yield* Effect.promise(() =>
+          eventAt(new Date("2026-07-14T03:00:00.000Z"))
+        )
 
-    const deleted = await run(cleanupTaskEventLog(NOW))
+        const deleted = yield* run(cleanupTaskEventLog(NOW))
 
-    expect(deleted).toBe(1)
-    const remaining = await testDb
-      .select({ id: taskEventLog.id })
-      .from(taskEventLog)
-      .orderBy(asc(taskEventLog.id))
-    expect(remaining.map(({ id }) => id)).toEqual([kept])
-    expect(remaining.map(({ id }) => id)).not.toContain(old)
-  })
+        expect(deleted).toBe(1)
+        const remaining = yield* Effect.promise(() =>
+          testDb
+            .select({ id: taskEventLog.id })
+            .from(taskEventLog)
+            .orderBy(asc(taskEventLog.id))
+        )
+        expect(remaining.map(({ id }) => id)).toEqual([kept])
+        expect(remaining.map(({ id }) => id)).not.toContain(old)
+      })
+  )
 })
 
 describe("update services on an injected Db", () => {
@@ -176,45 +174,65 @@ describe("update services on an injected Db", () => {
     return row!.age
   }
 
-  it("updatePractices adds today's rate, closes on the last one, and skips a recent import", async () => {
-    await practiceDueToday("due")
-    await practiceDueToday("last", { rateTotali: 13 })
-    await practiceDueToday("recent", {
-      lastImportUpdate: new Date(NOW.getTime() - 10 * DAY),
-    })
+  it.effect(
+    "updatePractices adds today's rate, closes on the last one, and skips a recent import",
+    () =>
+      Effect.gen(function* () {
+        yield* Effect.promise(() => practiceDueToday("due"))
+        yield* Effect.promise(() =>
+          practiceDueToday("last", { rateTotali: 13 })
+        )
+        yield* Effect.promise(() =>
+          practiceDueToday("recent", {
+            lastImportUpdate: new Date(NOW.getTime() - 10 * DAY),
+          })
+        )
 
-    const updated = await run(updatePractices("2026-10-14"))
+        const updated = yield* run(updatePractices("2026-10-14"))
 
-    expect(updated).toBe(2)
-    expect(await praticaOf("due")).toEqual({
-      ratePagate: 13,
-      debitoResiduo: 8810,
-      state: "Liquidata",
-    })
-    expect(await praticaOf("last")).toEqual({
-      ratePagate: 13,
-      debitoResiduo: 8810,
-      state: "Chiusa",
-    })
-    expect(await praticaOf("recent")).toEqual({
-      ratePagate: 12,
-      debitoResiduo: 9000,
-      state: "Liquidata",
-    })
-  })
+        expect(updated).toBe(2)
+        expect(yield* Effect.promise(() => praticaOf("due"))).toEqual({
+          ratePagate: 13,
+          debitoResiduo: 8810,
+          state: "Liquidata",
+        })
+        expect(yield* Effect.promise(() => praticaOf("last"))).toEqual({
+          ratePagate: 13,
+          debitoResiduo: 8810,
+          state: "Chiusa",
+        })
+        expect(yield* Effect.promise(() => praticaOf("recent"))).toEqual({
+          ratePagate: 12,
+          debitoResiduo: 9000,
+          state: "Liquidata",
+        })
+      })
+  )
 
-  it("updateCustomerAge adds a year to the customers born on that month and day only", async () => {
-    await customerAged("today", 45, "1980-10-14T12:00:00.000Z")
-    await customerAged("other-year", 35, "1990-10-14T12:00:00.000Z")
-    await customerAged("tomorrow", 45, "1980-10-15T12:00:00.000Z")
-    await customerAged("other-month", 45, "1980-11-14T12:00:00.000Z")
+  it.effect(
+    "updateCustomerAge adds a year to the customers born on that month and day only",
+    () =>
+      Effect.gen(function* () {
+        yield* Effect.promise(() =>
+          customerAged("today", 45, "1980-10-14T12:00:00.000Z")
+        )
+        yield* Effect.promise(() =>
+          customerAged("other-year", 35, "1990-10-14T12:00:00.000Z")
+        )
+        yield* Effect.promise(() =>
+          customerAged("tomorrow", 45, "1980-10-15T12:00:00.000Z")
+        )
+        yield* Effect.promise(() =>
+          customerAged("other-month", 45, "1980-11-14T12:00:00.000Z")
+        )
 
-    const updated = await run(updateCustomerAge(10, 14))
+        const updated = yield* run(updateCustomerAge(10, 14))
 
-    expect(updated).toBe(2)
-    expect(await ageOf("today")).toBe(46)
-    expect(await ageOf("other-year")).toBe(36)
-    expect(await ageOf("tomorrow")).toBe(45)
-    expect(await ageOf("other-month")).toBe(45)
-  })
+        expect(updated).toBe(2)
+        expect(yield* Effect.promise(() => ageOf("today"))).toBe(46)
+        expect(yield* Effect.promise(() => ageOf("other-year"))).toBe(36)
+        expect(yield* Effect.promise(() => ageOf("tomorrow"))).toBe(45)
+        expect(yield* Effect.promise(() => ageOf("other-month"))).toBe(45)
+      })
+  )
 })

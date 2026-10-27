@@ -1,5 +1,6 @@
-import { beforeAll, beforeEach, describe, expect, it } from "vitest"
-import { Cause, Exit } from "effect"
+import { beforeAll, beforeEach } from "vitest"
+import { describe, expect, it } from "@effect/vitest"
+import { Cause, Effect, Exit } from "effect"
 import { asc, eq, getTableName } from "drizzle-orm"
 import { chat, messages } from "@mito/db/schema/chat"
 import { customers } from "@mito/db/schema/customers"
@@ -7,7 +8,7 @@ import { chatToOperator } from "@mito/db/schema/relations/chatToOperator"
 import { sendCustomerMessage } from "../sendCustomerMessage"
 import { createTestCaller } from "@/test/caller"
 import { migrateUpTo, resetDb, testDb } from "@/test/db"
-import { failureTag, runServer } from "@/test/effect"
+import { failureTag, provideServer } from "@/test/effect"
 import { createCustomer, createOperator } from "@/test/factories"
 import {
   beforeNextLockOf,
@@ -18,14 +19,18 @@ import {
 type Operator = Awaited<ReturnType<typeof createOperator>>
 
 const send = (chatId: number, operator: { id: number }, content = "Nota") =>
-  runServer(sendCustomerMessage({ chatId, content, operatorId: operator.id }))
+  sendCustomerMessage({ chatId, content, operatorId: operator.id }).pipe(
+    provideServer,
+    Effect.exit
+  )
 
 /** The note `send` saved; fails the test if it failed. */
-const sent = async (...args: Parameters<typeof send>) => {
-  const exit = await send(...args)
-  if (Exit.isFailure(exit)) throw new Error(Cause.pretty(exit.cause))
-  return exit.value!
-}
+const sent = (...args: Parameters<typeof send>) =>
+  Effect.gen(function* () {
+    const exit = yield* send(...args)
+    if (Exit.isFailure(exit)) throw new Error(Cause.pretty(exit.cause))
+    return exit.value!
+  })
 
 const notesOf = (chatId: number) =>
   testDb
@@ -77,129 +82,172 @@ beforeEach(async () => {
 })
 
 describe("sendCustomerMessage", () => {
-  it("un operatore che non è nella chat ci entra, salva la nota con il suo operatorId e la chat diventa non letta", async () => {
-    const note = await sent(chatId, b, "Nota di B")
+  it.effect(
+    "un operatore che non è nella chat ci entra, salva la nota con il suo operatorId e la chat diventa non letta",
+    () =>
+      Effect.gen(function* () {
+        const note = yield* sent(chatId, b, "Nota di B")
 
-    expect(await notesOf(chatId)).toEqual([note])
-    expect(note).toMatchObject({
-      chatId,
-      operatorId: b.id,
-      content: "Nota di B",
-      notifyDate: null,
+        expect(yield* Effect.promise(() => notesOf(chatId))).toEqual([note])
+        expect(note).toMatchObject({
+          chatId,
+          operatorId: b.id,
+          content: "Nota di B",
+          notifyDate: null,
+        })
+        expect(yield* Effect.promise(() => operatorsOf(chatId))).toEqual(
+          [a.id, b.id].sort((x, y) => x - y)
+        )
+        expect(yield* Effect.promise(() => isReadOf(chatId))).toBe(false)
+
+        expect(yield* Effect.promise(() => notesOf(controlChatId))).toEqual([])
+        expect(yield* Effect.promise(() => operatorsOf(controlChatId))).toEqual(
+          [b.id]
+        )
+        expect(yield* Effect.promise(() => isReadOf(controlChatId))).toBe(true)
+      })
+  )
+
+  it.effect(
+    "chi ha avviato la chat la scrive senza righe nuove in chat_to_operator",
+    () =>
+      Effect.gen(function* () {
+        const note = yield* sent(chatId, a)
+
+        expect(yield* Effect.promise(() => notesOf(chatId))).toEqual([note])
+        expect(note.operatorId).toBe(a.id)
+        expect(yield* Effect.promise(() => operatorsOf(chatId))).toEqual([a.id])
+        expect(yield* Effect.promise(() => isReadOf(chatId))).toBe(false)
+      })
+  )
+
+  it.effect(
+    "se la nota non si salva, non resta la riga dell'operatore e la chat resta letta",
+    () =>
+      Effect.gen(function* () {
+        yield* Effect.promise(() => failNextInsertInto(messages))
+        expect(failureTag(yield* send(chatId, b))).toBe("DbError")
+
+        expect(yield* Effect.promise(() => notesOf(chatId))).toEqual([])
+        expect(yield* Effect.promise(() => operatorsOf(chatId))).toEqual([a.id])
+        expect(yield* Effect.promise(() => isReadOf(chatId))).toBe(true)
+      })
+  )
+
+  it.effect("se l'operatore non entra nella chat, la nota non si salva", () =>
+    Effect.gen(function* () {
+      yield* Effect.promise(() => failNextInsertInto(chatToOperator))
+      expect(failureTag(yield* send(chatId, b))).toBe("DbError")
+
+      expect(yield* Effect.promise(() => notesOf(chatId))).toEqual([])
+      expect(yield* Effect.promise(() => operatorsOf(chatId))).toEqual([a.id])
+      expect(yield* Effect.promise(() => isReadOf(chatId))).toBe(true)
     })
-    expect(await operatorsOf(chatId)).toEqual(
-      [a.id, b.id].sort((x, y) => x - y)
-    )
-    expect(await isReadOf(chatId)).toBe(false)
+  )
 
-    expect(await notesOf(controlChatId)).toEqual([])
-    expect(await operatorsOf(controlChatId)).toEqual([b.id])
-    expect(await isReadOf(controlChatId)).toBe(true)
-  })
+  it.effect(
+    "se la chat non si segna come non letta, non restano né la nota né la riga dell'operatore",
+    () =>
+      Effect.gen(function* () {
+        yield* Effect.promise(() => failNextUpdateOf(chat, { id: chatId }))
+        expect(failureTag(yield* send(chatId, b))).toBe("DbError")
 
-  it("chi ha avviato la chat la scrive senza righe nuove in chat_to_operator", async () => {
-    const note = await sent(chatId, a)
+        expect(yield* Effect.promise(() => notesOf(chatId))).toEqual([])
+        expect(yield* Effect.promise(() => operatorsOf(chatId))).toEqual([a.id])
+        expect(yield* Effect.promise(() => isReadOf(chatId))).toBe(true)
+      })
+  )
 
-    expect(await notesOf(chatId)).toEqual([note])
-    expect(note.operatorId).toBe(a.id)
-    expect(await operatorsOf(chatId)).toEqual([a.id])
-    expect(await isReadOf(chatId)).toBe(false)
-  })
+  it.effect(
+    "su una chat che non esiste fallisce con ChatMissing e non salva niente",
+    () =>
+      Effect.gen(function* () {
+        expect(failureTag(yield* send(999999, b))).toBe("ChatMissing")
 
-  it("se la nota non si salva, non resta la riga dell'operatore e la chat resta letta", async () => {
-    await failNextInsertInto(messages)
+        expect(yield* Effect.promise(() => notesOf(999999))).toEqual([])
+        expect(
+          yield* Effect.promise(() => testDb.select().from(chatToOperator))
+        ).toEqual(
+          expect.not.arrayContaining([
+            expect.objectContaining({ chatId: 999999 }),
+          ])
+        )
+        expect(yield* Effect.promise(() => operatorsOf(chatId))).toEqual([a.id])
+      })
+  )
 
-    expect(failureTag(await send(chatId, b))).toBe("DbError")
+  it.effect(
+    "su una chat a cui nessun cliente punta salva la nota, senza lock",
+    () =>
+      Effect.gen(function* () {
+        const [orphan] = yield* Effect.promise(() =>
+          testDb
+            .insert(chat)
+            .values({ isRead: true })
+            .returning({ id: chat.id })
+        )
 
-    expect(await notesOf(chatId)).toEqual([])
-    expect(await operatorsOf(chatId)).toEqual([a.id])
-    expect(await isReadOf(chatId)).toBe(true)
-  })
+        const note = yield* sent(orphan!.id, b)
 
-  it("se l'operatore non entra nella chat, la nota non si salva", async () => {
-    await failNextInsertInto(chatToOperator)
+        expect(yield* Effect.promise(() => notesOf(orphan!.id))).toEqual([note])
+        expect(yield* Effect.promise(() => operatorsOf(orphan!.id))).toEqual([
+          b.id,
+        ])
+        expect(yield* Effect.promise(() => isReadOf(orphan!.id))).toBe(false)
+      })
+  )
 
-    expect(failureTag(await send(chatId, b))).toBe("DbError")
-
-    expect(await notesOf(chatId)).toEqual([])
-    expect(await operatorsOf(chatId)).toEqual([a.id])
-    expect(await isReadOf(chatId)).toBe(true)
-  })
-
-  it("se la chat non si segna come non letta, non restano né la nota né la riga dell'operatore", async () => {
-    await failNextUpdateOf(chat, { id: chatId })
-
-    expect(failureTag(await send(chatId, b))).toBe("DbError")
-
-    expect(await notesOf(chatId)).toEqual([])
-    expect(await operatorsOf(chatId)).toEqual([a.id])
-    expect(await isReadOf(chatId)).toBe(true)
-  })
-
-  it("su una chat che non esiste fallisce con ChatMissing e non salva niente", async () => {
-    expect(failureTag(await send(999999, b))).toBe("ChatMissing")
-
-    expect(await notesOf(999999)).toEqual([])
-    expect(await testDb.select().from(chatToOperator)).toEqual(
-      expect.not.arrayContaining([expect.objectContaining({ chatId: 999999 })])
-    )
-    expect(await operatorsOf(chatId)).toEqual([a.id])
-  })
-
-  it("su una chat a cui nessun cliente punta salva la nota, senza lock", async () => {
-    const [orphan] = await testDb
-      .insert(chat)
-      .values({ isRead: true })
-      .returning({ id: chat.id })
-
-    const note = await sent(orphan!.id, b)
-
-    expect(await notesOf(orphan!.id)).toEqual([note])
-    expect(await operatorsOf(orphan!.id)).toEqual([b.id])
-    expect(await isReadOf(orphan!.id)).toBe(false)
-  })
-
-  it("se la chat sparisce mentre l'invio aspetta il cliente, fallisce con ChatMissing e la nota non si salva", async () => {
-    await sent(chatId, a, "L'ultima nota")
-    // While this one waits for the lock, the last note is deleted and the
-    // chat with it, as "Elimina nota" does
-    beforeNextLockOf(
-      customers,
-      `DELETE FROM "${getTableName(messages)}" WHERE chat_id = ${chatId};
+  it.effect(
+    "se la chat sparisce mentre l'invio aspetta il cliente, fallisce con ChatMissing e la nota non si salva",
+    () =>
+      Effect.gen(function* () {
+        yield* sent(chatId, a, "L'ultima nota")
+        // While this one waits for the lock, the last note is deleted and the
+        // chat with it, as "Elimina nota" does
+        beforeNextLockOf(
+          customers,
+          `DELETE FROM "${getTableName(messages)}" WHERE chat_id = ${chatId};
        DELETE FROM "${getTableName(chatToOperator)}" WHERE chat_id = ${chatId};
        UPDATE "${getTableName(customers)}" SET chat_id = NULL WHERE id = '${customer.id}';
        DELETE FROM "${getTableName(chat)}" WHERE id = ${chatId};`
-    )
+        )
+        expect(failureTag(yield* send(chatId, a, "Nota inviata"))).toBe(
+          "ChatMissing"
+        )
 
-    expect(failureTag(await send(chatId, a, "Nota inviata"))).toBe(
-      "ChatMissing"
-    )
+        // Only the answer and the note: the colleague's writes run in this
+        // transaction, and roll back with it
+        expect(
+          yield* Effect.promise(() =>
+            testDb
+              .select()
+              .from(messages)
+              .where(eq(messages.content, "Nota inviata"))
+          )
+        ).toEqual([])
+      })
+  )
 
-    // Only the answer and the note: the colleague's writes run in this
-    // transaction, and roll back with it
-    expect(
-      await testDb
-        .select()
-        .from(messages)
-        .where(eq(messages.content, "Nota inviata"))
-    ).toEqual([])
-  })
+  it.effect(
+    "se il cliente sparisce mentre l'invio aspetta il suo lock, fallisce con ChatMissing",
+    () =>
+      Effect.gen(function* () {
+        beforeNextLockOf(
+          customers,
+          `DELETE FROM "${getTableName(customers)}" WHERE id = '${customer.id}'`
+        )
+        expect(failureTag(yield* send(chatId, a, "Nota inviata"))).toBe(
+          "ChatMissing"
+        )
 
-  it("se il cliente sparisce mentre l'invio aspetta il suo lock, fallisce con ChatMissing", async () => {
-    beforeNextLockOf(
-      customers,
-      `DELETE FROM "${getTableName(customers)}" WHERE id = '${customer.id}'`
-    )
-
-    expect(failureTag(await send(chatId, a, "Nota inviata"))).toBe(
-      "ChatMissing"
-    )
-
-    expect(
-      await testDb
-        .select()
-        .from(messages)
-        .where(eq(messages.content, "Nota inviata"))
-    ).toEqual([])
-  })
+        expect(
+          yield* Effect.promise(() =>
+            testDb
+              .select()
+              .from(messages)
+              .where(eq(messages.content, "Nota inviata"))
+          )
+        ).toEqual([])
+      })
+  )
 })

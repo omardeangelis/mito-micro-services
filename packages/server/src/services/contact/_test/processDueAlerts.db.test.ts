@@ -1,8 +1,10 @@
-import { beforeAll, beforeEach, describe, expect, it } from "vitest"
+import { beforeAll, beforeEach } from "vitest"
+import { describe, expect, it } from "@effect/vitest"
+import { Effect } from "effect"
 import { processDueAlerts } from "../processDueAlerts"
 import { migrateUpTo, resetDb } from "@/test/db"
 import { createTestCaller } from "@/test/caller"
-import { runServer } from "@/test/effect"
+import { provideServer } from "@/test/effect"
 import {
   createAlert,
   createCustomer,
@@ -14,11 +16,15 @@ import {
 const NOW = new Date("2026-09-25T06:00:00.000Z")
 const EARLIER_DAY = new Date("2026-09-20T08:00:00.000Z")
 
-const run = async (budgetMs: number, now = NOW) => {
-  const exit = await runServer(processDueAlerts(now, { budgetMs }))
-  if (exit._tag === "Failure") throw new Error("processDueAlerts failed")
-  return exit.value
-}
+const run = (budgetMs: number, now = NOW) =>
+  Effect.gen(function* () {
+    const exit = yield* processDueAlerts(now, { budgetMs }).pipe(
+      provideServer,
+      Effect.exit
+    )
+    if (exit._tag === "Failure") throw new Error("processDueAlerts failed")
+    return exit.value
+  })
 
 async function seedAlert(deadline: Date) {
   const operator = await createOperator()
@@ -48,46 +54,56 @@ beforeEach(async () => {
 })
 
 describe("processDueAlerts a tempo", () => {
-  it("a tempo esaurito elabora solo il primo alert: gli altri restano aperti e li prende la chiamata dopo", async () => {
-    const first = await seedAlert(EARLIER_DAY)
-    const second = await seedAlert(EARLIER_DAY)
+  it.effect(
+    "a tempo esaurito elabora solo il primo alert: gli altri restano aperti e li prende la chiamata dopo",
+    () =>
+      Effect.gen(function* () {
+        const first = yield* Effect.promise(() => seedAlert(EARLIER_DAY))
+        const second = yield* Effect.promise(() => seedAlert(EARLIER_DAY))
+        expect(yield* run(0)).toEqual({
+          found: 2,
+          processed: 1,
+          skipped: 0,
+          failed: 0,
+          remaining: 1,
+        })
+        expect(yield* run(0)).toEqual({
+          found: 1,
+          processed: 1,
+          skipped: 0,
+          failed: 0,
+          remaining: 0,
+        })
+        for (const seeded of [first, second]) {
+          expect(yield* Effect.promise(() => alertsOf(seeded))).toEqual([
+            expect.objectContaining({ id: seeded.alert.id, isResolved: true }),
+          ])
+        }
+      })
+  )
 
-    expect(await run(0)).toEqual({
-      found: 2,
-      processed: 1,
-      skipped: 0,
-      failed: 0,
-      remaining: 1,
-    })
-    expect(await run(0)).toEqual({
-      found: 1,
-      processed: 1,
-      skipped: 0,
-      failed: 0,
-      remaining: 0,
-    })
-    for (const seeded of [first, second]) {
-      expect(await alertsOf(seeded)).toEqual([
-        expect.objectContaining({ id: seeded.alert.id, isResolved: true }),
-      ])
-    }
-  })
+  it.effect(
+    "prende prima gli alert che scadono oggi, gli unici che creano il followup",
+    () =>
+      Effect.gen(function* () {
+        // Created first: in table order it would be taken first
+        const earlier = yield* Effect.promise(() => seedAlert(EARLIER_DAY))
+        const today = yield* Effect.promise(() =>
+          seedAlert(new Date("2026-09-25T08:00:00.000Z"))
+        )
+        expect(yield* run(0)).toMatchObject({ processed: 1, remaining: 1 })
 
-  it("prende prima gli alert che scadono oggi, gli unici che creano il followup", async () => {
-    // Created first: in table order it would be taken first
-    const earlier = await seedAlert(EARLIER_DAY)
-    const today = await seedAlert(new Date("2026-09-25T08:00:00.000Z"))
-
-    expect(await run(0)).toMatchObject({ processed: 1, remaining: 1 })
-
-    const [active] = await createTestCaller(today.operator).task.getActiveTask({
-      id: today.customer.id,
-    })
-    expect(active).toMatchObject({ state: "followup" })
-    expect(await alertsOf(earlier)).toEqual([
-      expect.objectContaining({ id: earlier.alert.id, isResolved: false }),
-    ])
-  })
+        const [active] = yield* Effect.promise(() =>
+          createTestCaller(today.operator).task.getActiveTask({
+            id: today.customer.id,
+          })
+        )
+        expect(active).toMatchObject({ state: "followup" })
+        expect(yield* Effect.promise(() => alertsOf(earlier))).toEqual([
+          expect.objectContaining({ id: earlier.alert.id, isResolved: false }),
+        ])
+      })
+  )
 })
 
 // The app saves a deadline as midnight in Italy: 22:00 UTC of the day before
@@ -106,7 +122,7 @@ describe("processDueAlerts: il giorno è quello italiano", () => {
     return active?.state
   }
 
-  it.each([
+  it.effect.each([
     ["in ora legale", "2026-10-11T22:00:00.000Z", "2026-10-11T23:47:00.000Z"],
     ["in ora solare", "2026-11-09T23:00:00.000Z", "2026-11-09T23:47:00.000Z"],
     [
@@ -131,19 +147,21 @@ describe("processDueAlerts: il giorno è quello italiano", () => {
     ],
   ])(
     "un alert che scade oggi crea il followup %s",
-    async (_, deadline, now) => {
-      const seeded = await seedAlert(new Date(deadline))
+    ([_, deadline = "", now = ""]) =>
+      Effect.gen(function* () {
+        const seeded = yield* Effect.promise(() =>
+          seedAlert(new Date(deadline))
+        )
+        expect(yield* run(BUDGET_MS, new Date(now))).toMatchObject({
+          found: 1,
+          processed: 1,
+        })
 
-      expect(await run(BUDGET_MS, new Date(now))).toMatchObject({
-        found: 1,
-        processed: 1,
+        expect(yield* Effect.promise(() => stateOf(seeded))).toBe("followup")
       })
-
-      expect(await stateOf(seeded)).toBe("followup")
-    }
   )
 
-  it.each([
+  it.effect.each([
     ["in ora legale", "2026-10-10T22:00:00.000Z", "2026-10-11T23:47:00.000Z"],
     ["in ora solare", "2026-11-08T23:00:00.000Z", "2026-11-09T23:47:00.000Z"],
     [
@@ -153,22 +171,24 @@ describe("processDueAlerts: il giorno è quello italiano", () => {
     ],
   ])(
     "un alert scaduto ieri si chiude senza followup %s",
-    async (_, deadline, now) => {
-      const seeded = await seedAlert(new Date(deadline))
+    ([_, deadline = "", now = ""]) =>
+      Effect.gen(function* () {
+        const seeded = yield* Effect.promise(() =>
+          seedAlert(new Date(deadline))
+        )
+        expect(yield* run(BUDGET_MS, new Date(now))).toMatchObject({
+          found: 1,
+          processed: 1,
+        })
 
-      expect(await run(BUDGET_MS, new Date(now))).toMatchObject({
-        found: 1,
-        processed: 1,
+        expect(yield* Effect.promise(() => stateOf(seeded))).toBe("richiamare")
+        expect(yield* Effect.promise(() => alertsOf(seeded))).toEqual([
+          expect.objectContaining({ id: seeded.alert.id, isResolved: true }),
+        ])
       })
-
-      expect(await stateOf(seeded)).toBe("richiamare")
-      expect(await alertsOf(seeded)).toEqual([
-        expect.objectContaining({ id: seeded.alert.id, isResolved: true }),
-      ])
-    }
   )
 
-  it.each([
+  it.effect.each([
     ["in ora legale", "2026-10-12T22:00:00.000Z", "2026-10-11T23:47:00.000Z"],
     ["in ora solare", "2026-11-10T23:00:00.000Z", "2026-11-09T23:47:00.000Z"],
     // Why the schedule isn't an hour earlier: in winter time Italy would still
@@ -178,14 +198,19 @@ describe("processDueAlerts: il giorno è quello italiano", () => {
       "2026-11-09T23:00:00.000Z",
       "2026-11-09T22:47:00.000Z",
     ],
-  ])("un alert che scade domani resta aperto %s", async (_, deadline, now) => {
-    const seeded = await seedAlert(new Date(deadline))
+  ])(
+    "un alert che scade domani resta aperto %s",
+    ([_, deadline = "", now = ""]) =>
+      Effect.gen(function* () {
+        const seeded = yield* Effect.promise(() =>
+          seedAlert(new Date(deadline))
+        )
+        expect(yield* run(BUDGET_MS, new Date(now))).toMatchObject({ found: 0 })
 
-    expect(await run(BUDGET_MS, new Date(now))).toMatchObject({ found: 0 })
-
-    expect(await stateOf(seeded)).toBe("richiamare")
-    expect(await alertsOf(seeded)).toEqual([
-      expect.objectContaining({ id: seeded.alert.id, isResolved: false }),
-    ])
-  })
+        expect(yield* Effect.promise(() => stateOf(seeded))).toBe("richiamare")
+        expect(yield* Effect.promise(() => alertsOf(seeded))).toEqual([
+          expect.objectContaining({ id: seeded.alert.id, isResolved: false }),
+        ])
+      })
+  )
 })

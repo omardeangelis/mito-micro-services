@@ -1,13 +1,6 @@
-import {
-  afterEach,
-  beforeAll,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  vi,
-} from "vitest"
-import { Cause, Exit } from "effect"
+import { afterEach, beforeAll, beforeEach, vi } from "vitest"
+import { describe, expect, it } from "@effect/vitest"
+import { Cause, Effect, Exit } from "effect"
 import { eq } from "drizzle-orm"
 import { type TaskStatus } from "@mito/domain/schemas"
 import { messages } from "@mito/db/schema/chat"
@@ -26,7 +19,7 @@ import {
   tasksOf,
   testDb,
 } from "@/test/db"
-import { runServer } from "@/test/effect"
+import { provideServer } from "@/test/effect"
 import {
   createAlert,
   createCustomer,
@@ -52,27 +45,31 @@ afterEach(() => {
 })
 
 describe("regola dei lock", () => {
-  it("con la verifica del lock attiva, una scrittura su task senza lockCustomer fallisce con il messaggio della regola dei lock", async () => {
-    vi.spyOn(console, "error").mockImplementation(() => undefined)
-    const customer = await createCustomer()
-    const contact = await createTask({ customerId: customer.id })
-    await assertCustomerLockedOnWrite()
-
-    const exit = await runServer(
-      transaction(
-        query((client) =>
-          client
-            .update(task)
-            .set({ state: "app.to" })
-            .where(eq(task.id, contact.id))
+  it.effect(
+    "con la verifica del lock attiva, una scrittura su task senza lockCustomer fallisce con il messaggio della regola dei lock",
+    () =>
+      Effect.gen(function* () {
+        vi.spyOn(console, "error").mockImplementation(() => undefined)
+        const customer = yield* Effect.promise(() => createCustomer())
+        const contact = yield* Effect.promise(() =>
+          createTask({ customerId: customer.id })
         )
-      )
-    )
+        yield* Effect.promise(() => assertCustomerLockedOnWrite())
 
-    expect(Exit.isFailure(exit) && Cause.pretty(exit.cause)).toContain(
-      "lock rule"
-    )
-  })
+        const exit = yield* transaction(
+          query((client) =>
+            client
+              .update(task)
+              .set({ state: "app.to" })
+              .where(eq(task.id, contact.id))
+          )
+        ).pipe(provideServer, Effect.exit)
+
+        expect(Exit.isFailure(exit) && Cause.pretty(exit.cause)).toContain(
+          "lock rule"
+        )
+      })
+  )
 })
 
 // Coverage: with the check active, every writer of a contact succeeds, so each
@@ -452,37 +449,47 @@ describe("regola dei lock: il cron degli alert (processDueAlerts)", () => {
     return { customer, open }
   }
 
-  const run = async () => {
-    const exit = await runServer(processDueAlerts(NOW, { budgetMs: 60_000 }))
-    if (Exit.isFailure(exit)) throw new Error(Cause.pretty(exit.cause))
-    return exit.value
-  }
+  const run = () =>
+    Effect.gen(function* () {
+      const exit = yield* processDueAlerts(NOW, { budgetMs: 60_000 }).pipe(
+        provideServer,
+        Effect.exit
+      )
+      if (Exit.isFailure(exit)) throw new Error(Cause.pretty(exit.cause))
+      return exit.value
+    })
 
-  it("un alert che scade oggi crea il followup e prende il lock del cliente", async () => {
-    const { customer } = await seedDueAlert(
-      new Date("2026-09-25T08:00:00.000Z")
-    )
-    await assertCustomerLockedOnWrite()
+  it.effect(
+    "un alert che scade oggi crea il followup e prende il lock del cliente",
+    () =>
+      Effect.gen(function* () {
+        const { customer } = yield* Effect.promise(() =>
+          seedDueAlert(new Date("2026-09-25T08:00:00.000Z"))
+        )
+        yield* Effect.promise(() => assertCustomerLockedOnWrite())
+        expect(yield* run()).toMatchObject({ processed: 1, failed: 0 })
 
-    expect(await run()).toMatchObject({ processed: 1, failed: 0 })
+        expect(
+          yield* Effect.promise(() => activeTasksOf(customer.id))
+        ).toMatchObject([{ state: "followup" }])
+      })
+  )
 
-    expect(await activeTasksOf(customer.id)).toMatchObject([
-      { state: "followup" },
-    ])
-  })
+  it.effect(
+    "un alert di un altro giorno si chiude soltanto e prende il lock del cliente",
+    () =>
+      Effect.gen(function* () {
+        const { customer, open } = yield* Effect.promise(() =>
+          seedDueAlert(new Date("2026-09-20T08:00:00.000Z"))
+        )
+        yield* Effect.promise(() => assertCustomerLockedOnWrite())
+        expect(yield* run()).toMatchObject({ processed: 1, failed: 0 })
 
-  it("un alert di un altro giorno si chiude soltanto e prende il lock del cliente", async () => {
-    const { customer, open } = await seedDueAlert(
-      new Date("2026-09-20T08:00:00.000Z")
-    )
-    await assertCustomerLockedOnWrite()
-
-    expect(await run()).toMatchObject({ processed: 1, failed: 0 })
-
-    expect(await logOf(customer.id)).toMatchObject([
-      { action: "alert_resolved", alertId: open.id },
-    ])
-  })
+        expect(yield* Effect.promise(() => logOf(customer.id))).toMatchObject([
+          { action: "alert_resolved", alertId: open.id },
+        ])
+      })
+  )
 })
 
 // "Assegna Clienti" prende il lock del cliente (T6.8a, A11): una transazione per
@@ -567,30 +574,34 @@ describe("regola dei lock: customer.bulkUpdateCustomers", () => {
 // one customer, so two operators on it wait for each other. In PGlite the
 // transactions never overlap, so only this check sees the lock go missing
 describe("regola dei lock: chat del cliente", () => {
-  it("con la verifica attiva, aggiungere un operatore alla chat senza lockCustomer fallisce", async () => {
-    vi.spyOn(console, "error").mockImplementation(() => undefined)
-    const operator = await createOperator()
-    const customer = await createCustomer()
-    const { id: chatId } = await createTestCaller(
-      operator
-    ).chat.createNewCustomerChat({ customerId: customer.id })
-    const colleague = await createOperator()
-    await assertCustomerLockedOnChatWrite()
-
-    const exit = await runServer(
-      transaction(
-        query((client) =>
-          client
-            .insert(chatToOperator)
-            .values({ chatId, operatorId: colleague.id })
+  it.effect(
+    "con la verifica attiva, aggiungere un operatore alla chat senza lockCustomer fallisce",
+    () =>
+      Effect.gen(function* () {
+        vi.spyOn(console, "error").mockImplementation(() => undefined)
+        const operator = yield* Effect.promise(() => createOperator())
+        const customer = yield* Effect.promise(() => createCustomer())
+        const { id: chatId } = yield* Effect.promise(() =>
+          createTestCaller(operator).chat.createNewCustomerChat({
+            customerId: customer.id,
+          })
         )
-      )
-    )
+        const colleague = yield* Effect.promise(() => createOperator())
+        yield* Effect.promise(() => assertCustomerLockedOnChatWrite())
 
-    expect(Exit.isFailure(exit) && Cause.pretty(exit.cause)).toContain(
-      "lock rule"
-    )
-  })
+        const exit = yield* transaction(
+          query((client) =>
+            client
+              .insert(chatToOperator)
+              .values({ chatId, operatorId: colleague.id })
+          )
+        ).pipe(provideServer, Effect.exit)
+
+        expect(Exit.isFailure(exit) && Cause.pretty(exit.cause)).toContain(
+          "lock rule"
+        )
+      })
+  )
 
   it("'Avvia una chat' prende il lock del cliente", async () => {
     const operator = await createOperator()
@@ -625,29 +636,33 @@ describe("regola dei lock: chat del cliente", () => {
     expect(await testDb.select().from(chatToOperator)).toEqual([])
   })
 
-  it("con la verifica attiva, inserire una nota senza lockCustomer fallisce", async () => {
-    vi.spyOn(console, "error").mockImplementation(() => undefined)
-    const operator = await createOperator()
-    const customer = await createCustomer()
-    const { id: chatId } = await createTestCaller(
-      operator
-    ).chat.createNewCustomerChat({ customerId: customer.id })
-    await assertCustomerLockedOnChatWrite()
-
-    const exit = await runServer(
-      transaction(
-        query((client) =>
-          client
-            .insert(messages)
-            .values({ chatId, operatorId: operator.id, content: "Nota" })
+  it.effect(
+    "con la verifica attiva, inserire una nota senza lockCustomer fallisce",
+    () =>
+      Effect.gen(function* () {
+        vi.spyOn(console, "error").mockImplementation(() => undefined)
+        const operator = yield* Effect.promise(() => createOperator())
+        const customer = yield* Effect.promise(() => createCustomer())
+        const { id: chatId } = yield* Effect.promise(() =>
+          createTestCaller(operator).chat.createNewCustomerChat({
+            customerId: customer.id,
+          })
         )
-      )
-    )
+        yield* Effect.promise(() => assertCustomerLockedOnChatWrite())
 
-    expect(Exit.isFailure(exit) && Cause.pretty(exit.cause)).toContain(
-      "lock rule"
-    )
-  })
+        const exit = yield* transaction(
+          query((client) =>
+            client
+              .insert(messages)
+              .values({ chatId, operatorId: operator.id, content: "Nota" })
+          )
+        ).pipe(provideServer, Effect.exit)
+
+        expect(Exit.isFailure(exit) && Cause.pretty(exit.cause)).toContain(
+          "lock rule"
+        )
+      })
+  )
 
   it("una nota di un operatore che non è ancora nella chat prende il lock del cliente", async () => {
     const operator = await createOperator()
@@ -704,51 +719,69 @@ describe("regola dei lock: chat del cliente", () => {
 // The deactivation of an operator locks, after the two users, every customer
 // it moves or whose active contact it moves, then those contacts (AC11)
 describe("regola dei lock: deactivateOperator", () => {
-  it("clienti dell'operatore, un cliente senza operatore e uno di un collega con un suo contatto attivo: prende il lock di ogni cliente", async () => {
-    const admin = await createOperator({ role: "ADMIN" })
-    const leaving = await createOperator()
-    const target = await createOperator()
-    const colleague = await createOperator()
-    const { customer: own, contact } = await seedContact(leaving, "richiamare")
-    await createAlert({ taskId: contact.id, deadline })
-    const bare = await createCustomer({ operatorId: leaving.id })
-    const orphan = await createCustomer({ operatorId: null })
-    const orphanContact = await createTask({
-      customerId: orphan.id,
-      operatorId: leaving.id,
-    })
-    const ofColleague = await createCustomer({ operatorId: colleague.id })
-    const colleagueContact = await createTask({
-      customerId: ofColleague.id,
-      operatorId: leaving.id,
-    })
-    await assertCustomerLockedOnWrite()
+  it.effect(
+    "clienti dell'operatore, un cliente senza operatore e uno di un collega con un suo contatto attivo: prende il lock di ogni cliente",
+    () =>
+      Effect.gen(function* () {
+        const admin = yield* Effect.promise(() =>
+          createOperator({ role: "ADMIN" })
+        )
+        const leaving = yield* Effect.promise(() => createOperator())
+        const target = yield* Effect.promise(() => createOperator())
+        const colleague = yield* Effect.promise(() => createOperator())
+        const { customer: own, contact } = yield* Effect.promise(() =>
+          seedContact(leaving, "richiamare")
+        )
+        yield* Effect.promise(() =>
+          createAlert({ taskId: contact.id, deadline })
+        )
+        const bare = yield* Effect.promise(() =>
+          createCustomer({ operatorId: leaving.id })
+        )
+        const orphan = yield* Effect.promise(() =>
+          createCustomer({ operatorId: null })
+        )
+        const orphanContact = yield* Effect.promise(() =>
+          createTask({
+            customerId: orphan.id,
+            operatorId: leaving.id,
+          })
+        )
+        const ofColleague = yield* Effect.promise(() =>
+          createCustomer({ operatorId: colleague.id })
+        )
+        const colleagueContact = yield* Effect.promise(() =>
+          createTask({
+            customerId: ofColleague.id,
+            operatorId: leaving.id,
+          })
+        )
+        yield* Effect.promise(() => assertCustomerLockedOnWrite())
 
-    const exit = await runServer(
-      deactivateOperator({
-        operatorId: leaving.id,
-        toOperatorId: target.id,
-        actor: { role: "ADMIN", operatorId: admin.id },
+        const exit = yield* deactivateOperator({
+          operatorId: leaving.id,
+          toOperatorId: target.id,
+          actor: { role: "ADMIN", operatorId: admin.id },
+        }).pipe(provideServer, Effect.exit)
+
+        if (Exit.isFailure(exit)) throw new Error(Cause.pretty(exit.cause))
+        expect(exit.value).toEqual({
+          customersMoved: 2,
+          contactsMoved: 3,
+          practicesMoved: 0,
+        })
+        expect(yield* Effect.promise(() => tasksOf(own.id))).toMatchObject([
+          { id: contact.id, operatorId: target.id },
+        ])
+        expect(yield* Effect.promise(() => tasksOf(orphan.id))).toMatchObject([
+          { id: orphanContact.id, operatorId: target.id },
+        ])
+        expect(
+          yield* Effect.promise(() => tasksOf(ofColleague.id))
+        ).toMatchObject([{ id: colleagueContact.id, operatorId: colleague.id }])
+        expect(yield* Effect.promise(() => logOf(bare.id))).toMatchObject([
+          { source: "deactivation", taskId: null, toOperatorId: target.id },
+        ])
       })
-    )
-
-    if (Exit.isFailure(exit)) throw new Error(Cause.pretty(exit.cause))
-    expect(exit.value).toEqual({
-      customersMoved: 2,
-      contactsMoved: 3,
-      practicesMoved: 0,
-    })
-    expect(await tasksOf(own.id)).toMatchObject([
-      { id: contact.id, operatorId: target.id },
-    ])
-    expect(await tasksOf(orphan.id)).toMatchObject([
-      { id: orphanContact.id, operatorId: target.id },
-    ])
-    expect(await tasksOf(ofColleague.id)).toMatchObject([
-      { id: colleagueContact.id, operatorId: colleague.id },
-    ])
-    expect(await logOf(bare.id)).toMatchObject([
-      { source: "deactivation", taskId: null, toOperatorId: target.id },
-    ])
-  })
+  )
 })
