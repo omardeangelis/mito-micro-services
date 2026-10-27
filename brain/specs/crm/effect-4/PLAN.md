@@ -635,8 +635,8 @@ G0 ─┬─ T1 ─ T2 ─ T3 ─┬─ T4 ─┬─ T7 ─ T8 ══ PR 1 in de
   - i file verdi, con lo stesso numero di test;
   - lo script di T1 esce con 0, eccezioni annotate;
   - `git grep -nE "Effect\.run(Promise|PromiseExit|Sync)\(|runServer\(" -- <file del task>` trova solo i bordi elencati.
-- **status**: In progress
-- **log**: 2026-10-27, assegnato a un worker (modello bilanciato) nel suo worktree, sul branch `claude/effect-vitest-t13`, con le eccezioni in `eccezioni-pr3-t13.txt`.
+- **status**: Done
+- **log**: 2026-10-27, worker sul modello bilanciato, rivisto e unito dal supervisore. `2e1f39a` (merge `9c64d4b`). 16 file, 110 → 110 test. Restano `it` i test che passano da `createTestCaller` o dall'`handler` HTTP. L'unico `runServer(` rimasto è una cella della tabella `each` di `deactivate.pg.test.ts:609`, che deve restituire una Promise come l'altra riga (lo script confronta le tabelle). 34 eccezioni: `expect(await X)` → `expect(yield* X)`, anche nella forma `runServer(P)` → `P.pipe(provideServer, Effect.exit)`. `it.effect.each` passa la riga intera come un argomento solo.
 - **files edited/created**:
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
@@ -652,8 +652,8 @@ G0 ─┬─ T1 ─ T2 ─ T3 ─┬─ T4 ─┬─ T7 ─ T8 ══ PR 1 in de
   - `lockRule` e `operatorRule` restano helper di test che girano programmi su ogni scrittore: si convertono dove eseguono programmi Effect, senza toccare le loro tabelle di casi.
   - `alert.db.test.ts:269` osserva la console (`it.live`).
 - **validation**: come T13, sulle sue cartelle.
-- **status**: In progress
-- **log**: 2026-10-27, assegnato a un worker (modello bilanciato) nel suo worktree, sul branch `claude/effect-vitest-t14`, con le eccezioni in `eccezioni-pr3-t14.txt`.
+- **status**: Done
+- **log**: 2026-10-27, worker sul modello bilanciato, rivisto e unito dal supervisore. `bebb005` (merge `ebdcd8c`). 17 file convertiti, 583 test verdi prima e dopo. Nessun `it.live`: le rotte dei cron in `src/app/api/cron` sono bordi e restano `it`, e la spia sulla console di `alert.db.test.ts` vede ancora la console, perché la rotta usa il suo runtime. I tre `Cause.pretty` di `lockRule` sono invariati. 120 eccezioni: helper diventati Effect, e 8 righe in cui la Promise di un invio concorrente diventa una fibra (`yield* Fiber.join`).
 - **files edited/created**:
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
@@ -671,8 +671,8 @@ G0 ─┬─ T1 ─ T2 ─ T3 ─┬─ T4 ─┬─ T7 ─ T8 ══ PR 1 in de
   - `run.db.test.ts:509-534` (fibra staccata sull'orologio reale) e `queue.test.ts:162-176` (attese reali da 200 ms in su) vanno con `it.live`.
   - `gcs.test.ts` prova anche il client a Promise: quella parte resta `it`.
 - **validation**: come T13, sulle sue cartelle (i `*.pg.test.ts` con `TEST_DATABASE_URL`).
-- **status**: In progress
-- **log**: 2026-10-27, assegnato a un worker (modello bilanciato) nel suo worktree, sul branch `claude/effect-vitest-t15`, con le eccezioni in `eccezioni-pr3-t15.txt`.
+- **status**: Done
+- **log**: 2026-10-27, worker sul modello bilanciato, rivisto e unito dal supervisore. `539aa0f` (merge `8e73189`). 16 file, 189 → 189 test. `it.live`: i due tentativi della coda in `queue.test.ts` (`Schedule.exponential`) e la fibra staccata di `run.db.test.ts`. Restano `it` la facciata a Promise di `gcs.test.ts` e `import.perf.pg.test.ts`. Un secondo orologio a passi scritto a mano, già su `dev`, in `apply.db.test.ts:770` (la scadenza che passa fra un blocco e l'altro): AC8 corretto per nominarlo. Le scadenze `Date.now() + …` lette dal `Clock` vogliono `TestClock.setTime(Date.now())`, se no `statement_timeout` riceve un valore enorme. 50 eccezioni, tutte helper diventati Effect.
 - **files edited/created**:
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
@@ -686,8 +686,8 @@ G0 ─┬─ T1 ─ T2 ─ T3 ─┬─ T4 ─┬─ T7 ─ T8 ══ PR 1 in de
 - **location**: `apps/api/src/**/_test/*`, `packages/db/src/_test/migrate.pg.test.ts`, `src/app/api/export/download/_test/*`
 - **description**: Conversione con le regole di T12. I test delle rotte (Hono, Next.js) sono bordi e restano `it`. Si convertono solo le parti che eseguono un programma Effect per preparare o controllare. L'elenco dei bordi va nel log.
 - **validation**: come T13, sulle sue cartelle, con i bordi elencati come eccezioni di AC8.
-- **status**: In progress
-- **log**: 2026-10-27, assegnato a un worker (modello bilanciato) nel suo worktree, sul branch `claude/effect-vitest-t16`, con le eccezioni in `eccezioni-pr3-t16.txt`.
+- **status**: Done
+- **log**: 2026-10-27, worker sul modello bilanciato, rivisto e unito dal supervisore. `b85a8af`, `9f6a998` (merge `c6289da`). 11 file, 129 → 129 test. Le rotte Hono e Next.js restano `it`. Bordi: i due `Effect.runSync` nelle factory di `vi.mock` di `download.test.ts:21` e `downloadGuards.test.ts:27`, che costruiscono lo storage in memoria al caricamento del modulo. 6 eccezioni: `failureOf` diventato Effect e un `.resolves` riscritto. Il worker aveva riportato indietro `PLAN.md` e le note nel suo commit: nel merge restano quelli del branch.
 - **files edited/created**:
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
@@ -708,8 +708,12 @@ G0 ─┬─ T1 ─ T2 ─ T3 ─┬─ T4 ─┬─ T7 ─ T8 ══ PR 1 in de
   6. `adversarial-review` caso B sulla PR 3, contro AC4, AC5, AC8, AC12 (PR 3), AC13 e AC14.
   7. La PR verso `dev` quando Omar la chiede.
 - **validation**: tutti i punti annotati; REPORT SHIP.
-- **status**: Planned
-- **log**:
+- **status**: In progress
+- **log**: 2026-10-27.
+  - AC4: `@effect/vitest` 4.0.6, come `effect`.
+  - AC8: su `dev` il grep trova 50 file. Su HEAD trova solo i bordi: la cella di `deactivate.pg.test.ts:609`, le due factory di `vi.mock` della rotta del download e `runServer` stesso in `src/test/effect.ts`, che resta per quella cella. `fixedClock` e `at` tolti da `analytics/_test/clock.ts`. Il grep degli orologi trova `concurrency.pg.test.ts` e `apply.db.test.ts` (AC8 corretto).
+  - AC5: le eccezioni dei cinque task sono in un solo `eccezioni-pr3.txt`; lo script dà `ok, 55 test file(s) checked, 1621 chain(s) compared, 216 exception(s) used`. Il confronto a coppie delle righe tolte e aggiunte mostra che cambia solo `await` → `yield*`, salvo il test nuovo di `withCurrentEnv` e il `.resolves` riscritto.
+  - `tsc`, ESLint e Prettier puliti sul diff.
 - **files edited/created**:
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a

@@ -1,6 +1,11 @@
 # Eccezioni ad AC5 per la PR 3 (scripts/check-assertions.mjs assertions origin/dev HEAD --exceptions questo file).
 # <file>:<riga>#<hash> = catena aggiunta (riga nel head); base:<file>:<riga>#<hash> = catena tolta (riga nel base).
-# Rigenerato a ogni task che sposta le righe. Categorie ammesse: il test nuovo di withCurrentEnv (c68be23) e le riscritture di resolves/rejects.
+# Rigenerato a ogni task che sposta le righe. Categorie ammesse:
+#   - il test nuovo di withCurrentEnv (c68be23);
+#   - le riscritture di resolves/rejects;
+#   - un helper o un programma che restituiva una Promise e ora è un Effect: expect(await X) -> expect(yield* X), con X uguale
+#     (anche runServer(P) -> P.pipe(provideServer, Effect.exit), e la Promise di un invio concorrente che diventa Fiber.join).
+# Una sezione per task (T12-T16).
 
 # packages/server/src/shared/_test/currentEnv.test.ts
 packages/server/src/shared/_test/currentEnv.test.ts:17#9ccdfd6f test nuovo: withCurrentEnv (c68be23), file assente su dev
@@ -9,3 +14,270 @@ packages/server/src/shared/_test/currentEnv.test.ts:25#ccce55c5 test nuovo: with
 packages/server/src/shared/_test/currentEnv.test.ts:28#244188ed test nuovo: withCurrentEnv (c68be23), file assente su dev
 packages/server/src/shared/_test/currentEnv.test.ts:32#0c24177a test nuovo: withCurrentEnv (c68be23), file assente su dev
 packages/server/src/shared/_test/currentEnv.test.ts:41#e173edce test nuovo: withCurrentEnv (c68be23), file assente su dev
+
+# ======== T13
+# T13: catene di expect che cambiano solo per await → yield* (helper o runServer diventati Effect); nessuna riscrittura di resolves/rejects
+# packages/server/src/betterAuth/_test/session.db.test.ts
+base:packages/server/src/betterAuth/_test/session.db.test.ts:79#4d05d84f helper diventato Effect: await → yield*, stesso valore
+base:packages/server/src/betterAuth/_test/session.db.test.ts:86#f1e93909 helper diventato Effect: await → yield*, stesso valore
+base:packages/server/src/betterAuth/_test/session.db.test.ts:95#b57a8b7a helper diventato Effect: await → yield*, stesso valore
+base:packages/server/src/betterAuth/_test/session.db.test.ts:96#53912882 helper diventato Effect: await → yield*, stesso valore
+base:packages/server/src/betterAuth/_test/session.db.test.ts:98#4d05d84f helper diventato Effect: await → yield*, stesso valore
+base:packages/server/src/betterAuth/_test/session.db.test.ts:111#4d05d84f helper diventato Effect: await → yield*, stesso valore
+packages/server/src/betterAuth/_test/session.db.test.ts:74#ca510a45 helper diventato Effect: await → yield*, stesso valore
+packages/server/src/betterAuth/_test/session.db.test.ts:89#08bfab3c helper diventato Effect: await → yield*, stesso valore
+packages/server/src/betterAuth/_test/session.db.test.ts:102#641ad0f0 helper diventato Effect: await → yield*, stesso valore
+packages/server/src/betterAuth/_test/session.db.test.ts:103#385affa9 helper diventato Effect: await → yield*, stesso valore
+packages/server/src/betterAuth/_test/session.db.test.ts:107#ca510a45 helper diventato Effect: await → yield*, stesso valore
+packages/server/src/betterAuth/_test/session.db.test.ts:126#ca510a45 helper diventato Effect: await → yield*, stesso valore
+# packages/server/src/services/auth/_test/disabled.db.test.ts
+base:packages/server/src/services/auth/_test/disabled.db.test.ts:26#a712c90c helper diventato Effect: await → yield*, stesso valore
+base:packages/server/src/services/auth/_test/disabled.db.test.ts:32#4e60754c helper diventato Effect: await → yield*, stesso valore
+base:packages/server/src/services/auth/_test/disabled.db.test.ts:38#1d12e0be helper diventato Effect: await → yield*, stesso valore
+base:packages/server/src/services/auth/_test/disabled.db.test.ts:47#edc2fe83 helper diventato Effect: await → yield*, stesso valore
+base:packages/server/src/services/auth/_test/disabled.db.test.ts:53#733b6d76 helper diventato Effect: await → yield*, stesso valore
+base:packages/server/src/services/auth/_test/disabled.db.test.ts:54#e28ac285 helper diventato Effect: await → yield*, stesso valore
+base:packages/server/src/services/auth/_test/disabled.db.test.ts:55#42e0d3f0 helper diventato Effect: await → yield*, stesso valore
+base:packages/server/src/services/auth/_test/disabled.db.test.ts:56#98a1770f helper diventato Effect: await → yield*, stesso valore
+packages/server/src/services/auth/_test/disabled.db.test.ts:31#debb096f helper diventato Effect: await → yield*, stesso valore
+packages/server/src/services/auth/_test/disabled.db.test.ts:39#8c543c33 helper diventato Effect: await → yield*, stesso valore
+packages/server/src/services/auth/_test/disabled.db.test.ts:49#20f594b6 helper diventato Effect: await → yield*, stesso valore
+packages/server/src/services/auth/_test/disabled.db.test.ts:64#fcd1daf4 helper diventato Effect: await → yield*, stesso valore
+packages/server/src/services/auth/_test/disabled.db.test.ts:74#8e4f3fa3 helper diventato Effect: await → yield*, stesso valore
+packages/server/src/services/auth/_test/disabled.db.test.ts:77#05d9f677 helper diventato Effect: await → yield*, stesso valore
+packages/server/src/services/auth/_test/disabled.db.test.ts:78#2253be6d helper diventato Effect: await → yield*, stesso valore
+packages/server/src/services/auth/_test/disabled.db.test.ts:79#50daa394 helper diventato Effect: await → yield*, stesso valore
+# packages/server/src/services/operator/_test/deactivate.db.test.ts
+base:packages/server/src/services/operator/_test/deactivate.db.test.ts:664#fbe67f96 expect(await runServer(P)) → expect(yield* P.pipe(provideServer, Effect.exit)): il Promise runner diventa Effect, await → yield*, stesso valore
+base:packages/server/src/services/operator/_test/deactivate.db.test.ts:899#8a915f16 expect(await runServer(P)) → expect(yield* P.pipe(provideServer, Effect.exit)): il Promise runner diventa Effect, await → yield*, stesso valore
+packages/server/src/services/operator/_test/deactivate.db.test.ts:813#4675c76b expect(await runServer(P)) → expect(yield* P.pipe(provideServer, Effect.exit)): il Promise runner diventa Effect, await → yield*, stesso valore
+packages/server/src/services/operator/_test/deactivate.db.test.ts:1107#494fbb55 expect(await runServer(P)) → expect(yield* P.pipe(provideServer, Effect.exit)): il Promise runner diventa Effect, await → yield*, stesso valore
+# packages/server/src/services/operator/_test/roles.batch.db.test.ts
+base:packages/server/src/services/operator/_test/roles.batch.db.test.ts:162#9b1f568b expect(await runServer(P)) → expect(yield* P.pipe(provideServer, Effect.exit)): il Promise runner diventa Effect, await → yield*, stesso valore
+packages/server/src/services/operator/_test/roles.batch.db.test.ts:235#e3b92935 expect(await runServer(P)) → expect(yield* P.pipe(provideServer, Effect.exit)): il Promise runner diventa Effect, await → yield*, stesso valore
+
+# ======== T14
+# T14: eccezioni ad AC5 (contact, chat, export, cron, analytics). Solo await → yield* di un helper che ora è un Effect (e Fiber.join per le fibre).
+
+# packages/server/src/services/analytics/_test/contactProgress.db.test.ts
+base:packages/server/src/services/analytics/_test/contactProgress.db.test.ts:55#896d2632 helper diventato Effect: await → yield*, stesso valore
+base:packages/server/src/services/analytics/_test/contactProgress.db.test.ts:66#37d38c0e helper diventato Effect: await → yield*, stesso valore
+base:packages/server/src/services/analytics/_test/contactProgress.db.test.ts:82#9a62a41a helper diventato Effect: await → yield*, stesso valore
+base:packages/server/src/services/analytics/_test/contactProgress.db.test.ts:91#896d2632 helper diventato Effect: await → yield*, stesso valore
+base:packages/server/src/services/analytics/_test/contactProgress.db.test.ts:102#b26d5a5f helper diventato Effect: await → yield*, stesso valore
+base:packages/server/src/services/analytics/_test/contactProgress.db.test.ts:103#04ddb1c0 helper diventato Effect: await → yield*, stesso valore
+base:packages/server/src/services/analytics/_test/contactProgress.db.test.ts:104#13610a31 helper diventato Effect: await → yield*, stesso valore
+base:packages/server/src/services/analytics/_test/contactProgress.db.test.ts:118#edb9b94e helper diventato Effect: await → yield*, stesso valore
+packages/server/src/services/analytics/_test/contactProgress.db.test.ts:73#dcb3023a helper diventato Effect: await → yield*, stesso valore
+packages/server/src/services/analytics/_test/contactProgress.db.test.ts:95#c90d3b2c helper diventato Effect: await → yield*, stesso valore
+packages/server/src/services/analytics/_test/contactProgress.db.test.ts:122#27a2de7d helper diventato Effect: await → yield*, stesso valore
+packages/server/src/services/analytics/_test/contactProgress.db.test.ts:137#dcb3023a helper diventato Effect: await → yield*, stesso valore
+packages/server/src/services/analytics/_test/contactProgress.db.test.ts:158#055db40c helper diventato Effect: await → yield*, stesso valore
+packages/server/src/services/analytics/_test/contactProgress.db.test.ts:159#56b19753 helper diventato Effect: await → yield*, stesso valore
+packages/server/src/services/analytics/_test/contactProgress.db.test.ts:163#3e9d4e63 helper diventato Effect: await → yield*, stesso valore
+packages/server/src/services/analytics/_test/contactProgress.db.test.ts:188#3286b605 helper diventato Effect: await → yield*, stesso valore
+
+# packages/server/src/services/analytics/_test/financed.db.test.ts
+base:packages/server/src/services/analytics/_test/financed.db.test.ts:116#547c9de6 helper diventato Effect: await → yield*, stesso valore
+base:packages/server/src/services/analytics/_test/financed.db.test.ts:135#7caf0021 helper diventato Effect: await → yield*, stesso valore
+base:packages/server/src/services/analytics/_test/financed.db.test.ts:151#63959e19 helper diventato Effect: await → yield*, stesso valore
+base:packages/server/src/services/analytics/_test/financed.db.test.ts:168#0122ef77 helper diventato Effect: await → yield*, stesso valore
+base:packages/server/src/services/analytics/_test/financed.db.test.ts:172#c41eb600 helper diventato Effect: await → yield*, stesso valore
+base:packages/server/src/services/analytics/_test/financed.db.test.ts:176#4cc4e240 helper diventato Effect: await → yield*, stesso valore
+base:packages/server/src/services/analytics/_test/financed.db.test.ts:195#6be2186f helper diventato Effect: await → yield*, stesso valore
+base:packages/server/src/services/analytics/_test/financed.db.test.ts:196#06b2d808 helper diventato Effect: await → yield*, stesso valore
+base:packages/server/src/services/analytics/_test/financed.db.test.ts:218#cf647aab helper diventato Effect: await → yield*, stesso valore
+base:packages/server/src/services/analytics/_test/financed.db.test.ts:228#ffe12c82 helper diventato Effect: await → yield*, stesso valore
+base:packages/server/src/services/analytics/_test/financed.db.test.ts:259#f9695b8d helper diventato Effect: await → yield*, stesso valore
+packages/server/src/services/analytics/_test/financed.db.test.ts:134#b31b9406 helper diventato Effect: await → yield*, stesso valore
+packages/server/src/services/analytics/_test/financed.db.test.ts:161#bc0ce3e7 helper diventato Effect: await → yield*, stesso valore
+packages/server/src/services/analytics/_test/financed.db.test.ts:184#1448f3ef helper diventato Effect: await → yield*, stesso valore
+packages/server/src/services/analytics/_test/financed.db.test.ts:215#5bd35987 helper diventato Effect: await → yield*, stesso valore
+packages/server/src/services/analytics/_test/financed.db.test.ts:219#2a8b9a91 helper diventato Effect: await → yield*, stesso valore
+packages/server/src/services/analytics/_test/financed.db.test.ts:223#51884a77 helper diventato Effect: await → yield*, stesso valore
+packages/server/src/services/analytics/_test/financed.db.test.ts:252#e1372f0b helper diventato Effect: await → yield*, stesso valore
+packages/server/src/services/analytics/_test/financed.db.test.ts:253#b34e0b51 helper diventato Effect: await → yield*, stesso valore
+packages/server/src/services/analytics/_test/financed.db.test.ts:284#fbe619cb helper diventato Effect: await → yield*, stesso valore
+packages/server/src/services/analytics/_test/financed.db.test.ts:301#2a6a10fb helper diventato Effect: await → yield*, stesso valore
+packages/server/src/services/analytics/_test/financed.db.test.ts:341#0934015d helper diventato Effect: await → yield*, stesso valore
+
+# packages/server/src/services/analytics/_test/windows.db.test.ts
+base:packages/server/src/services/analytics/_test/windows.db.test.ts:87#b2f96eb5 helper diventato Effect: await → yield*, stesso valore
+base:packages/server/src/services/analytics/_test/windows.db.test.ts:101#ac76010b helper diventato Effect: await → yield*, stesso valore
+base:packages/server/src/services/analytics/_test/windows.db.test.ts:104#bb984dbe helper diventato Effect: await → yield*, stesso valore
+base:packages/server/src/services/analytics/_test/windows.db.test.ts:118#a6da7e5f helper diventato Effect: await → yield*, stesso valore
+packages/server/src/services/analytics/_test/windows.db.test.ts:112#a9b95693 helper diventato Effect: await → yield*, stesso valore
+packages/server/src/services/analytics/_test/windows.db.test.ts:130#41322ce6 helper diventato Effect: await → yield*, stesso valore
+packages/server/src/services/analytics/_test/windows.db.test.ts:133#3e8a27f6 helper diventato Effect: await → yield*, stesso valore
+packages/server/src/services/analytics/_test/windows.db.test.ts:149#6d4329c9 helper diventato Effect: await → yield*, stesso valore
+
+# packages/server/src/services/chat/_test/sendCustomerMessage.db.test.ts
+base:packages/server/src/services/chat/_test/sendCustomerMessage.db.test.ts:112#bb01c859 helper diventato Effect: await → yield*, stesso valore
+base:packages/server/src/services/chat/_test/sendCustomerMessage.db.test.ts:122#bb01c859 helper diventato Effect: await → yield*, stesso valore
+base:packages/server/src/services/chat/_test/sendCustomerMessage.db.test.ts:132#bb01c859 helper diventato Effect: await → yield*, stesso valore
+base:packages/server/src/services/chat/_test/sendCustomerMessage.db.test.ts:140#f15f37a8 helper diventato Effect: await → yield*, stesso valore
+base:packages/server/src/services/chat/_test/sendCustomerMessage.db.test.ts:174#36d81c3b helper diventato Effect: await → yield*, stesso valore
+base:packages/server/src/services/chat/_test/sendCustomerMessage.db.test.ts:194#36d81c3b helper diventato Effect: await → yield*, stesso valore
+packages/server/src/services/chat/_test/sendCustomerMessage.db.test.ts:129#d9fdcda2 helper diventato Effect: await → yield*, stesso valore
+packages/server/src/services/chat/_test/sendCustomerMessage.db.test.ts:140#d9fdcda2 helper diventato Effect: await → yield*, stesso valore
+packages/server/src/services/chat/_test/sendCustomerMessage.db.test.ts:153#d9fdcda2 helper diventato Effect: await → yield*, stesso valore
+packages/server/src/services/chat/_test/sendCustomerMessage.db.test.ts:165#6445669d helper diventato Effect: await → yield*, stesso valore
+packages/server/src/services/chat/_test/sendCustomerMessage.db.test.ts:214#8f4fc78c helper diventato Effect: await → yield*, stesso valore
+packages/server/src/services/chat/_test/sendCustomerMessage.db.test.ts:239#8f4fc78c helper diventato Effect: await → yield*, stesso valore
+
+# packages/server/src/services/chat/_test/sendCustomerMessage.pg.test.ts
+base:packages/server/src/services/chat/_test/sendCustomerMessage.pg.test.ts:69#a5f7eaba la fibra sostituisce la Promise: await → yield* Fiber.join, stesso valore
+base:packages/server/src/services/chat/_test/sendCustomerMessage.pg.test.ts:86#8b68d02d la fibra sostituisce la Promise: await → yield* Fiber.join, stesso valore
+base:packages/server/src/services/chat/_test/sendCustomerMessage.pg.test.ts:87#9cee0ef7 la fibra sostituisce la Promise: await → yield* Fiber.join, stesso valore
+base:packages/server/src/services/chat/_test/sendCustomerMessage.pg.test.ts:120#9beb1ae2 la fibra sostituisce la Promise: await → yield* Fiber.join, stesso valore
+packages/server/src/services/chat/_test/sendCustomerMessage.pg.test.ts:82#057d4c50 la fibra sostituisce la Promise: await → yield* Fiber.join, stesso valore
+packages/server/src/services/chat/_test/sendCustomerMessage.pg.test.ts:111#7e9f7c27 la fibra sostituisce la Promise: await → yield* Fiber.join, stesso valore
+packages/server/src/services/chat/_test/sendCustomerMessage.pg.test.ts:112#4b273cb4 la fibra sostituisce la Promise: await → yield* Fiber.join, stesso valore
+packages/server/src/services/chat/_test/sendCustomerMessage.pg.test.ts:169#8dc41993 la fibra sostituisce la Promise: await → yield* Fiber.join, stesso valore
+
+# packages/server/src/services/contact/_test/guard.db.test.ts
+base:packages/server/src/services/contact/_test/guard.db.test.ts:89#00c33dd1 helper diventato Effect: await → yield*, stesso valore
+base:packages/server/src/services/contact/_test/guard.db.test.ts:107#72c55659 helper diventato Effect: await → yield*, stesso valore
+base:packages/server/src/services/contact/_test/guard.db.test.ts:123#8f6b17ad helper diventato Effect: await → yield*, stesso valore
+base:packages/server/src/services/contact/_test/guard.db.test.ts:158#6f884be4 helper diventato Effect: await → yield*, stesso valore
+base:packages/server/src/services/contact/_test/guard.db.test.ts:179#430ef41d helper diventato Effect: await → yield*, stesso valore
+base:packages/server/src/services/contact/_test/guard.db.test.ts:205#323251d7 helper diventato Effect: await → yield*, stesso valore
+base:packages/server/src/services/contact/_test/guard.db.test.ts:222#e4b30d6f helper diventato Effect: await → yield*, stesso valore
+base:packages/server/src/services/contact/_test/guard.db.test.ts:233#e9286861 helper diventato Effect: await → yield*, stesso valore
+packages/server/src/services/contact/_test/guard.db.test.ts:108#cc7166b4 helper diventato Effect: await → yield*, stesso valore
+packages/server/src/services/contact/_test/guard.db.test.ts:140#f045bec2 helper diventato Effect: await → yield*, stesso valore
+packages/server/src/services/contact/_test/guard.db.test.ts:165#9c3fc521 helper diventato Effect: await → yield*, stesso valore
+packages/server/src/services/contact/_test/guard.db.test.ts:220#3a78ff13 helper diventato Effect: await → yield*, stesso valore
+packages/server/src/services/contact/_test/guard.db.test.ts:256#7b51da91 helper diventato Effect: await → yield*, stesso valore
+packages/server/src/services/contact/_test/guard.db.test.ts:293#1b5bc7bb helper diventato Effect: await → yield*, stesso valore
+packages/server/src/services/contact/_test/guard.db.test.ts:322#9eb01381 helper diventato Effect: await → yield*, stesso valore
+packages/server/src/services/contact/_test/guard.db.test.ts:340#904f2e1d helper diventato Effect: await → yield*, stesso valore
+
+# packages/server/src/services/contact/_test/lockRule.db.test.ts
+base:packages/server/src/services/contact/_test/lockRule.db.test.ts:467#1b17d3f5 helper diventato Effect: await → yield*, stesso valore
+base:packages/server/src/services/contact/_test/lockRule.db.test.ts:480#1b17d3f5 helper diventato Effect: await → yield*, stesso valore
+packages/server/src/services/contact/_test/lockRule.db.test.ts:470#29e1c7cb helper diventato Effect: await → yield*, stesso valore
+packages/server/src/services/contact/_test/lockRule.db.test.ts:486#29e1c7cb helper diventato Effect: await → yield*, stesso valore
+
+# packages/server/src/services/contact/_test/operatorLock.pg.test.ts
+base:packages/server/src/services/contact/_test/operatorLock.pg.test.ts:312#bb6f3176 la fibra sostituisce la Promise: await → yield* Fiber.join, stesso valore
+packages/server/src/services/contact/_test/operatorLock.pg.test.ts:384#7e7420a2 la fibra sostituisce la Promise: await → yield* Fiber.join, stesso valore
+
+# packages/server/src/services/contact/_test/processDueAlerts.db.test.ts
+base:packages/server/src/services/contact/_test/processDueAlerts.db.test.ts:55#bddc7345 helper diventato Effect: await → yield*, stesso valore
+base:packages/server/src/services/contact/_test/processDueAlerts.db.test.ts:62#5399ba47 helper diventato Effect: await → yield*, stesso valore
+base:packages/server/src/services/contact/_test/processDueAlerts.db.test.ts:81#d2999d67 helper diventato Effect: await → yield*, stesso valore
+base:packages/server/src/services/contact/_test/processDueAlerts.db.test.ts:137#ca4221b5 helper diventato Effect: await → yield*, stesso valore
+base:packages/server/src/services/contact/_test/processDueAlerts.db.test.ts:159#ca4221b5 helper diventato Effect: await → yield*, stesso valore
+base:packages/server/src/services/contact/_test/processDueAlerts.db.test.ts:184#2e53247d helper diventato Effect: await → yield*, stesso valore
+packages/server/src/services/contact/_test/processDueAlerts.db.test.ts:63#8ea27d8e helper diventato Effect: await → yield*, stesso valore
+packages/server/src/services/contact/_test/processDueAlerts.db.test.ts:70#0c0a2699 helper diventato Effect: await → yield*, stesso valore
+packages/server/src/services/contact/_test/processDueAlerts.db.test.ts:94#ae674cae helper diventato Effect: await → yield*, stesso valore
+packages/server/src/services/contact/_test/processDueAlerts.db.test.ts:155#6eebdd50 helper diventato Effect: await → yield*, stesso valore
+packages/server/src/services/contact/_test/processDueAlerts.db.test.ts:179#6eebdd50 helper diventato Effect: await → yield*, stesso valore
+packages/server/src/services/contact/_test/processDueAlerts.db.test.ts:208#2126ef22 helper diventato Effect: await → yield*, stesso valore
+
+# packages/server/src/services/contact/_test/refreshPriorities.db.test.ts
+base:packages/server/src/services/contact/_test/refreshPriorities.db.test.ts:83#c3e532cb helper diventato Effect: await → yield*, stesso valore
+base:packages/server/src/services/contact/_test/refreshPriorities.db.test.ts:105#c3e532cb helper diventato Effect: await → yield*, stesso valore
+base:packages/server/src/services/contact/_test/refreshPriorities.db.test.ts:115#6854b39f helper diventato Effect: await → yield*, stesso valore
+base:packages/server/src/services/contact/_test/refreshPriorities.db.test.ts:128#9b06c1a6 helper diventato Effect: await → yield*, stesso valore
+base:packages/server/src/services/contact/_test/refreshPriorities.db.test.ts:129#e20b0b34 helper diventato Effect: await → yield*, stesso valore
+base:packages/server/src/services/contact/_test/refreshPriorities.db.test.ts:135#c3e532cb helper diventato Effect: await → yield*, stesso valore
+packages/server/src/services/contact/_test/refreshPriorities.db.test.ts:90#1f478f0c helper diventato Effect: await → yield*, stesso valore
+packages/server/src/services/contact/_test/refreshPriorities.db.test.ts:135#1f478f0c helper diventato Effect: await → yield*, stesso valore
+packages/server/src/services/contact/_test/refreshPriorities.db.test.ts:154#8ba5d77b helper diventato Effect: await → yield*, stesso valore
+packages/server/src/services/contact/_test/refreshPriorities.db.test.ts:178#1d9260f0 helper diventato Effect: await → yield*, stesso valore
+packages/server/src/services/contact/_test/refreshPriorities.db.test.ts:179#7ccd0331 helper diventato Effect: await → yield*, stesso valore
+packages/server/src/services/contact/_test/refreshPriorities.db.test.ts:190#1f478f0c helper diventato Effect: await → yield*, stesso valore
+
+# packages/server/src/services/export/_test/callStats.db.test.ts
+base:packages/server/src/services/export/_test/callStats.db.test.ts:42#51fd67f8 helper diventato Effect: await → yield*, stesso valore
+base:packages/server/src/services/export/_test/callStats.db.test.ts:81#214c3e16 helper diventato Effect: await → yield*, stesso valore
+base:packages/server/src/services/export/_test/callStats.db.test.ts:115#7bb4f168 helper diventato Effect: await → yield*, stesso valore
+base:packages/server/src/services/export/_test/callStats.db.test.ts:136#d366c9eb helper diventato Effect: await → yield*, stesso valore
+packages/server/src/services/export/_test/callStats.db.test.ts:51#a7a4bb9b helper diventato Effect: await → yield*, stesso valore
+packages/server/src/services/export/_test/callStats.db.test.ts:102#65963aa6 helper diventato Effect: await → yield*, stesso valore
+packages/server/src/services/export/_test/callStats.db.test.ts:148#bf0e8ff2 helper diventato Effect: await → yield*, stesso valore
+packages/server/src/services/export/_test/callStats.db.test.ts:177#b1b8144a helper diventato Effect: await → yield*, stesso valore
+
+# ======== T15
+# Eccezioni ad AC5 per T15 (import e storage): tutte nella categoria "helper diventato Effect".
+# <file>:<riga>#<hash> = catena aggiunta; base:<file>:<riga>#<hash> = catena tolta.
+
+# packages/server/src/services/import/_test/concurrency.pg.test.ts
+base:packages/server/src/services/import/_test/concurrency.pg.test.ts:275#43a74920 Promise del test diventata Effect (Fiber.join): await → yield*, stesso valore
+packages/server/src/services/import/_test/concurrency.pg.test.ts:297#5075b8fb Promise del test diventata Effect (Fiber.join): await → yield*, stesso valore
+
+# packages/server/src/services/import/_test/history.db.test.ts
+base:packages/server/src/services/import/_test/history.db.test.ts:214#7f28a840 helper diventato Effect: await → yield*, stesso valore
+base:packages/server/src/services/import/_test/history.db.test.ts:218#99d3aa4a helper diventato Effect: await → yield*, stesso valore
+base:packages/server/src/services/import/_test/history.db.test.ts:229#8593a64a helper diventato Effect: await → yield*, stesso valore
+packages/server/src/services/import/_test/history.db.test.ts:250#453fb7fe helper diventato Effect: await → yield*, stesso valore
+packages/server/src/services/import/_test/history.db.test.ts:254#08d6f414 helper diventato Effect: await → yield*, stesso valore
+packages/server/src/services/import/_test/history.db.test.ts:271#e0b7d972 helper diventato Effect: await → yield*, stesso valore
+
+# packages/server/src/services/import/_test/lookup.db.test.ts
+base:packages/server/src/services/import/_test/lookup.db.test.ts:128#a33d90e1 helper diventato Effect: await → yield*, stesso valore
+packages/server/src/services/import/_test/lookup.db.test.ts:171#17e6b5cb helper diventato Effect: await → yield*, stesso valore
+
+# packages/server/src/services/import/_test/purge.db.test.ts
+base:packages/server/src/services/import/_test/purge.db.test.ts:223#b8e57b5d helper diventato Effect: await → yield*, stesso valore
+packages/server/src/services/import/_test/purge.db.test.ts:276#5839c79c helper diventato Effect: await → yield*, stesso valore
+
+# packages/server/src/services/import/_test/queue.test.ts
+base:packages/server/src/services/import/_test/queue.test.ts:37#c7b69c7d helper diventato Effect: await → yield*, stesso valore
+base:packages/server/src/services/import/_test/queue.test.ts:54#2f46b174 helper diventato Effect: await → yield*, stesso valore
+base:packages/server/src/services/import/_test/queue.test.ts:57#ba0ecfe1 helper diventato Effect: await → yield*, stesso valore
+base:packages/server/src/services/import/_test/queue.test.ts:73#ddd81e60 helper diventato Effect: await → yield*, stesso valore
+base:packages/server/src/services/import/_test/queue.test.ts:78#4cf68575 helper diventato Effect: await → yield*, stesso valore
+base:packages/server/src/services/import/_test/queue.test.ts:193#a6b07398 helper diventato Effect: await → yield*, stesso valore
+packages/server/src/services/import/_test/queue.test.ts:37#5a441c6d helper diventato Effect: await → yield*, stesso valore
+packages/server/src/services/import/_test/queue.test.ts:56#db7f4610 helper diventato Effect: await → yield*, stesso valore
+packages/server/src/services/import/_test/queue.test.ts:59#90940af0 helper diventato Effect: await → yield*, stesso valore
+packages/server/src/services/import/_test/queue.test.ts:79#eaedef47 helper diventato Effect: await → yield*, stesso valore
+packages/server/src/services/import/_test/queue.test.ts:86#e2316b07 helper diventato Effect: await → yield*, stesso valore
+packages/server/src/services/import/_test/queue.test.ts:215#4374227b helper diventato Effect: await → yield*, stesso valore
+
+# packages/server/src/services/import/_test/run.pg.test.ts
+base:packages/server/src/services/import/_test/run.pg.test.ts:145#4afca98e Promise del test diventata Effect (Fiber.join): await → yield*, stesso valore
+base:packages/server/src/services/import/_test/run.pg.test.ts:215#a31b3607 Promise del test diventata Effect (Fiber.join): await → yield*, stesso valore
+packages/server/src/services/import/_test/run.pg.test.ts:156#a33d2c12 Promise del test diventata Effect (Fiber.join): await → yield*, stesso valore
+packages/server/src/services/import/_test/run.pg.test.ts:254#d703ecad Promise del test diventata Effect (Fiber.join): await → yield*, stesso valore
+
+# packages/server/src/services/import/_test/upload.db.test.ts
+base:packages/server/src/services/import/_test/upload.db.test.ts:149#9580f5ce helper diventato Effect: await → yield*, stesso valore
+base:packages/server/src/services/import/_test/upload.db.test.ts:279#a86f4651 helper diventato Effect: await → yield*, stesso valore
+base:packages/server/src/services/import/_test/upload.db.test.ts:293#7d9b9eae helper diventato Effect: await → yield*, stesso valore
+base:packages/server/src/services/import/_test/upload.db.test.ts:305#7d9b9eae helper diventato Effect: await → yield*, stesso valore
+base:packages/server/src/services/import/_test/upload.db.test.ts:329#36f982e4 helper diventato Effect: await → yield*, stesso valore
+base:packages/server/src/services/import/_test/upload.db.test.ts:333#6aa59e52 helper diventato Effect: await → yield*, stesso valore
+packages/server/src/services/import/_test/upload.db.test.ts:156#7dc864c3 helper diventato Effect: await → yield*, stesso valore
+packages/server/src/services/import/_test/upload.db.test.ts:318#19b959b5 helper diventato Effect: await → yield*, stesso valore
+packages/server/src/services/import/_test/upload.db.test.ts:334#97f41cdf helper diventato Effect: await → yield*, stesso valore
+packages/server/src/services/import/_test/upload.db.test.ts:350#97f41cdf helper diventato Effect: await → yield*, stesso valore
+packages/server/src/services/import/_test/upload.db.test.ts:382#5f3d4448 helper diventato Effect: await → yield*, stesso valore
+packages/server/src/services/import/_test/upload.db.test.ts:388#ff15995f helper diventato Effect: await → yield*, stesso valore
+
+# packages/server/src/services/storage/_test/config.test.ts
+base:packages/server/src/services/storage/_test/config.test.ts:30#dd51daa5 helper diventato Effect: await → yield*, stesso valore
+base:packages/server/src/services/storage/_test/config.test.ts:36#ea618a4c helper diventato Effect: await → yield*, stesso valore
+base:packages/server/src/services/storage/_test/config.test.ts:52#a4b2084e helper diventato Effect: await → yield*, stesso valore
+base:packages/server/src/services/storage/_test/config.test.ts:72#b5963074 helper diventato Effect: await → yield*, stesso valore
+packages/server/src/services/storage/_test/config.test.ts:30#a8c220de helper diventato Effect: await → yield*, stesso valore
+packages/server/src/services/storage/_test/config.test.ts:38#3a6b275b helper diventato Effect: await → yield*, stesso valore
+packages/server/src/services/storage/_test/config.test.ts:60#faa058a4 helper diventato Effect: await → yield*, stesso valore
+packages/server/src/services/storage/_test/config.test.ts:86#08e34885 helper diventato Effect: await → yield*, stesso valore
+
+# packages/server/src/services/storage/_test/gcs.test.ts
+base:packages/server/src/services/storage/_test/gcs.test.ts:206#397447e1 helper diventato Effect: await → yield*, stesso valore
+packages/server/src/services/storage/_test/gcs.test.ts:230#b313c7a8 helper diventato Effect: await → yield*, stesso valore
+
+# ======== T16
+# apps/api/src/cron/_test/cron.db.test.ts
+base:apps/api/src/cron/_test/cron.db.test.ts:424#c71ba7d2  helper diventato Effect: await → yield*, stesso valore
+apps/api/src/cron/_test/cron.db.test.ts:421#8f506fe6  helper diventato Effect: await → yield*, stesso valore
+base:apps/api/src/cron/_test/cron.db.test.ts:443#4a627707  helper diventato Effect: await → yield*, stesso valore
+apps/api/src/cron/_test/cron.db.test.ts:445#a3217f63  helper diventato Effect: await → yield*, stesso valore
+base:apps/api/src/cron/_test/cron.db.test.ts:583#67aba1ac  await expect(send(outcome)).resolves.toBeUndefined() diventa expect(yield* send(outcome)).toBeUndefined(): send ora è un Effect
+apps/api/src/cron/_test/cron.db.test.ts:604#ffb798e6  il valore del programma letto con yield* al posto di resolves

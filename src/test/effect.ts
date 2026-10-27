@@ -7,8 +7,11 @@ import { type ServerContext, ServerLive } from "@mito/server/effect/server"
  */
 export const provideServer = Effect.provide(ServerLive)
 
-// Goes away in T17 (effect-4 PLAN): tests use `it.effect` and `provideServer`
-/** Runs a server program with `ServerLive`, as the edges do. */
+/**
+ * Runs a server program with `ServerLive` and returns a Promise, as the edges
+ * do. Tests use `it.effect` and `provideServer`; this stays for a cell of an
+ * `each` table that must return a Promise (`deactivate.pg.test.ts`).
+ */
 export const runServer = <A, E>(program: Effect.Effect<A, E, ServerContext>) =>
   Effect.runPromiseExit(program.pipe(Effect.provide(ServerLive)))
 
