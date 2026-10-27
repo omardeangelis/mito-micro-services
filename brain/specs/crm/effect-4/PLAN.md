@@ -574,7 +574,8 @@ G0 ─┬─ T1 ─ T2 ─ T3 ─┬─ T4 ─┬─ T7 ─ T8 ══ PR 1 in de
 - **log**: 2026-10-27.
   - `adversarial-review` (round PR 2 in `REPORT.md`): **DO NOT SHIP** sulla lettera di AC3 (i titoli di `each` cambiano forma in 12 file; decisione di Omar), su `sequence.hooks` (corretto in `01a042a`) e sui documenti.
   - I gate locali sul branch: suite intera verde dopo `01a042a`, `tsc` pulito, lo script exit 0.
-  - Da fare: la decisione su AC3; i documenti (riga di vitest nel §4 della roadmap, W3, debito "nessuno") dopo la #111 in `dev`; la PR quando Omar la chiede.
+  - AC3 corretto nella SPEC (Omar, 2026-10-27): la forma dei titoli `each` di vitest 5 è accettata. AC3 è Met.
+  - Da fare: i documenti (riga di vitest nel §4 della roadmap, W3, debito "nessuno") dopo la #111 in `dev`; la PR quando Omar la chiede.
 - **files edited/created**:
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a

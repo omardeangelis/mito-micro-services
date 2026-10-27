@@ -57,7 +57,7 @@
 |-----------|--------|-------|
 | AC1 | Met (PR 1) | `effect` 4.0.6, una copia, solo import da `"effect"` |
 | AC2 | Met (PR 2) | vitest ^5.0.5, vite ^7.3.7, progetti in `test.projects` |
-| AC3 | Unmet alla lettera (PR 2) | Ambiente, fuso, pool e timer uguali per ogni file; i titoli di `each` cambiano forma in 12 file. Decisione di Omar |
+| AC3 | Met (PR 2) | Ambiente, fuso, pool e timer uguali per ogni file. I titoli di `each` cambiano forma in 12 file: AC3 corretto per accettarlo (Omar, 2026-10-27) |
 | AC5 | Met per le PR 1 e 2; lo script ha buchi (v7) | Da correggere prima delle PR 3 e 4 |
 | AC6 | Met | Test di T2 |
 | AC7 | Met | Suite nominate verdi, anche su Postgres |
@@ -83,7 +83,6 @@
   - fare la prova nel browser su `mito_local`;
   - aprire la PR (con Leonardo, D4).
 - **PR 2:**
-  - la decisione su AC3;
   - i documenti dopo la #111;
   - aprire la PR.
 - **PR 3 e PR 4:** da iniziare dopo il merge delle PR 1 e 2 in `dev`.
@@ -107,3 +106,4 @@
 | Date | Feedback | Changes |
 |------|----------|---------|
 | 2026-10-27 | G0: SPEC approvata; D8, D9, D14 confermate | `SPEC.md` `approved`, OQ2 chiusa; `PLAN.md` aggiornato (commit `55d6fa2`) |
+| 2026-10-27 | AC3: la forma dei titoli `each` non conta | AC3 corretto nella SPEC, con una riga nel registro delle decisioni; AC3 Met per la PR 2 |

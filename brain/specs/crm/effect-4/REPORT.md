@@ -84,7 +84,7 @@ Il BLOCKER di v3 sta nello script di AC5, che serve a tutte e quattro le PR. È 
 
 ### Human Review Checklist
 
-1. **AC3.** Decidi se accettare il cambio di formato dei titoli `each`. Se sì, AC3 nella SPEC va corretto con l'eccezione e i 12 file.
+1. **AC3.** Decidi se accettare il cambio di formato dei titoli `each`. Se sì, AC3 nella SPEC va corretto con l'eccezione e i 12 file. *Fatto il 2026-10-27: Omar lo accetta, AC3 è corretto.*
 2. **`sequence.hooks`.** Va fissato a `parallel` in `vitest.config.ts`, oppure la differenza va accettata in D16. Poi la suite intera con `TEST_DATABASE_URL` deve restare a 4408 test verdi e 6 saltati.
 3. **Lo script corretto** va riverificato da `claude/effect-4`:
    - con l'harness dello scratchpad, 19/19;
@@ -103,7 +103,7 @@ Il BLOCKER di v3 sta nello script di AC5, che serve a tutte e quattro le PR. È 
 | Criterion | Met / Unmet / Blocked | Notes |
 |-----------|-----------------------|-------|
 | AC2 | Met | vitest ^5.0.5, vite ^7.3.7; `vitest.workspace.ts` tolto; i progetti in `test.projects`; comandi invariati |
-| AC3 | Unmet (alla lettera) | Ambiente, fuso, pool e timer uguali per ogni file; gli stessi test e stati. I titoli `each` cambiano forma in 12 file: serve la correzione di AC3 |
+| AC3 | Unmet (alla lettera) → Met dopo la correzione | Ambiente, fuso, pool e timer uguali per ogni file; gli stessi test e stati. I titoli `each` cambiano forma in 12 file: AC3 corretto il 2026-10-27 per accettarlo |
 | AC5 | Met | 0 asserzioni cambiate; lo script è stato reso più severo dopo la revisione |
 | AC12 | Blocked | Aspetta la #111 in `dev` |
 | AC13 | Unmet | "Nessun debito nuovo" sta solo nelle note su `claude/effect-4`; manca nella roadmap |
