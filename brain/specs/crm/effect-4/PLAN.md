@@ -714,6 +714,10 @@ G0 ─┬─ T1 ─ T2 ─ T3 ─┬─ T4 ─┬─ T7 ─ T8 ══ PR 1 in de
   - AC8: su `dev` il grep trova 50 file. Su HEAD trova solo i bordi: la cella di `deactivate.pg.test.ts:609`, le due factory di `vi.mock` della rotta del download e `runServer` stesso in `src/test/effect.ts`, che resta per quella cella. `fixedClock` e `at` tolti da `analytics/_test/clock.ts`. Il grep degli orologi trova `concurrency.pg.test.ts` e `apply.db.test.ts` (AC8 corretto).
   - AC5: le eccezioni dei cinque task sono in un solo `eccezioni-pr3.txt`; lo script dà `ok, 55 test file(s) checked, 1621 chain(s) compared, 216 exception(s) used`. Il confronto a coppie delle righe tolte e aggiunte mostra che cambia solo `await` → `yield*`, salvo il test nuovo di `withCurrentEnv` e il `.resolves` riscritto.
   - `tsc`, ESLint e Prettier puliti sul diff.
+  - Suite intera su `dev` e sul branch, reporter JSON: stessi nomi e stati in ogni file; in più solo i 2 test di `currentEnv.test.ts` (4415 verdi, 6 saltati).
+  - **Debito (AC13):** nessuno nuovo. Il §8 della roadmap elenca come scelte i bordi a Promise, la cella `each` con `runServer`, i due `runSync` nelle factory di `vi.mock` e i due orologi a passi.
+  - `adversarial-review` (round PR 3 in `REPORT.md`): **DO NOT SHIP**, 9 passate su 11 SHIP; i mutanti nel codice di produzione (43 di v4, 21 di v5) fanno fallire gli stessi test su `dev` e sul branch. Corretti dopo la revisione: `queue.test.ts` (fibre staccate) e i due test del budget di `processDueAlerts` in `it.live`, con i mutanti di v6 ora uccisi; lo script confronta per valore le tabelle `each` e le condizioni passate per nome (harness 41/41; la tabella `writers` di `operatorLock.pg` ha la sua eccezione); `AGENTS.md`, il §8, il conteggio di AC8, tre import vuoti. Lo script dà `ok, 55 test file(s) checked, 1620 chain(s) compared, 218 exception(s) used`; suite 4415 verdi.
+  - Da fare: la decisione di Omar sulla categoria di AC5 `expect(await X)` → `expect(yield* X)` (con `provideServer`/`Effect.exit` e `Fiber.join`), poi la PR verso `dev` e la CI.
 - **files edited/created**:
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a

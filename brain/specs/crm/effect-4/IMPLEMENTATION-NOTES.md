@@ -65,7 +65,8 @@
 | AC13 | Met per le PR 1 (TD12) e 2 (nessun debito) | PR 2: la frase nel §8 della roadmap |
 | AC14 | Met per le PR 1 e 2 | CI verde su #113 e #114 |
 | AC4 | Met (PR 3, T12) | `@effect/vitest` 4.0.6 |
-| AC8 | In corso (PR 3) | T12 fatto; T13–T16 in corso |
+| AC8 | Met (PR 3) dopo le correzioni della revisione | I bordi e i due orologi a passi nel log di T17 e nel §8; `queue.test.ts` e il budget di `processDueAlerts` in `it.live` |
+| AC5 (PR 3) | Met nei fatti, da firmare | 218 eccezioni, tutte `await` → `yield*` dello stesso valore (con `provideServer`/`Effect.exit`, `Fiber.join`, la tabella `writers`), più il test nuovo e un `.resolves`. La categoria aspetta Omar |
 | AC9–AC11 | Non iniziati | PR 4 |
 | AC15 | Non verificato | Staging, dopo il merge della #114 |
 
@@ -81,7 +82,7 @@
 
 - **PR 1** (in `dev`, [#114](https://github.com/omardeangelis/mito-micro-services/pull/114)): la prova nel browser su `mito_local` e la revisione di Leonardo (D4) sui file dell'auth, rinviate; AC15 su staging.
 - **PR 2:** in `dev` ([#113](https://github.com/omardeangelis/mito-micro-services/pull/113)).
-- **PR 3** (`claude/effect-vitest`): T13–T16 in corso, poi T17.
+- **PR 3** (`claude/effect-vitest`): T12–T16 fatti, T17 quasi: manca la decisione di Omar su AC5, poi la PR e la CI.
 - **PR 4:** dopo il merge della PR 3 in `dev` (T18 dipende da T17).
 
 ## PR 2 – vitest 5
@@ -97,6 +98,15 @@
   - I titoli di `test.each` cambiano formato in 12 file: nessuna opzione di vitest 5 riporta quello di v1.
 - **I documenti della PR 2** (riga di vitest nel §4 della roadmap e W3) partono da righe che esistono solo nella PR #111. Si scrivono su `claude/vitest-5` dopo che la #111 è in `dev` e `dev` è unito nel branch: scritti prima, andrebbero in conflitto con la #111.
 - **Debito della PR 2 (AC13):** nessuno di nuovo. L'avviso del peer `@types/node` di vitest 5 lo chiude la riga di `@types/node` già nel §4 della roadmap.
+
+## PR 3 – @effect/vitest
+
+- **Esecuzione:** T12 su un worker del modello più forte nel worktree della sessione; T13–T16 in parallelo su quattro worker del modello bilanciato, ognuno nel suo worktree e branch, uniti dal supervisore. Il worker di T16 aveva riportato indietro `PLAN.md` e queste note nel suo commit: nel merge sono rimasti quelli del branch.
+- **Deviazioni:**
+  - AC5: oltre all'equivalenza `await X` = `yield* Effect.promise(() => X)`, le eccezioni ammettono `expect(await X)` → `expect(yield* X)` quando l'helper o il programma X diventa un Effect con lo stesso valore. Senza, gli helper dei test avrebbero tenuto runner a Promise, contro AC8. Decisa dal supervisore durante T13–T16: aspetta la firma di Omar.
+  - AC8: il secondo orologio a passi, in `apply.db.test.ts`, c'era già su `dev` e la SPEC non lo nominava.
+  - `runServer` resta per una cella di una tabella `each`, che lo script confronta e che deve restituire una Promise come l'altra riga.
+- **Sorprese:** `it.effect.each` passa la riga intera come un argomento solo; le scadenze lette dal `Clock` vogliono `TestClock.setTime(Date.now())`, se no `statement_timeout` riceve un valore enorme; `TestClock.setTime` fallisce sotto `it.live`; un `TestClock` è condiviso dalle fibre di un test (in `run.pg.test.ts` va riportato indietro prima di liberare il lock).
 
 ## Steering
 
