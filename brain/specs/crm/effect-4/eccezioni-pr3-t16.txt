@@ -1,0 +1,3 @@
+# apps/api/src/cron/_test/cron.db.test.ts
+base:apps/api/src/cron/_test/cron.db.test.ts:583#67aba1ac  await expect(send(outcome)).resolves.toBeUndefined() diventa expect(yield* send(outcome)).toBeUndefined(): send ora è un Effect
+apps/api/src/cron/_test/cron.db.test.ts:593#ffb798e6  il valore del programma letto con yield* al posto di resolves

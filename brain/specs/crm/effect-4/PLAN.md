@@ -471,13 +471,11 @@ G0 ─┬─ T1 ─ T2 ─ T3 ─┬─ T4 ─┬─ T7 ─ T8 ══ PR 1 in de
   6. **`IMPLEMENTATION-NOTES.md`**, sezione "PR 1": i punti sopra, l'elenco di D14 completo e le deviazioni.
   7. **PR verso `dev`** quando Omar la chiede, dopo il merge di `dev` nel branch, con la revisione di Leonardo (D4). Prima di GA1 si avvisa Leonardo della PR #46 (§13).
 - **validation**: tutti i punti annotati; REPORT SHIP.
-- **status**: Done (con la prova su `mito_local` e la revisione di Leonardo rinviate)
+- **status**: In progress
 - **log**: 2026-10-27.
   - Fatti: AC1 (una copia di `effect` 4.0.6, nessun import da sottopercorsi); AC5 (lo script con `eccezioni-pr1.txt`, 41 eccezioni, exit 0); AC14 in un worktree di scratchpad senza `.env*` (install, lint, `tsc`, `db:check`, test con Postgres 312 file / 4413 verdi / 6 saltati, `next build` con `SKIP_ENV_VALIDATION=true` e i placeholder, `api:build`, `api:smoke`, tutti verdi).
   - `adversarial-review` (round PR 1 in `REPORT.md`): **DO NOT SHIP**, 7 passate su 8 SHIP. Il blocco è lo script di AC5 (v7): una rinomina pura non è confrontata, i marcatori con argomenti o opzioni e le tabelle di `each` passano. Da fare anche: un test diretto di `withCurrentEnv` (v3) e due righe nel Context della SPEC (v4).
   - Non fatti: la prova nel browser su `mito_local` (serve un `.env.development.local` locale; chiesto a Omar), la PR verso `dev`.
-  - [PR #114](https://github.com/omardeangelis/mito-micro-services/pull/114) aperta, `dev` (con la #113) unito nel branch in `8734153`: il lockfile si unisce da solo, suite 4413 verdi, CI verde. **In `dev` il 2026-10-27 (`43ec443`), su richiesta di Omar, senza la prova su `mito_local` né la revisione di Leonardo (GA1 non pieno): restano da fare su `dev`.**
-  - I tre punti aperti della revisione sono chiusi nella PR 3, prima della conversione: lo script di AC5 (`a7b5d3d`, harness 38/38, i 17 casi nuovi falliscono con lo script di prima), il test di `withCurrentEnv` e le due note nella SPEC (`c68be23`).
 - **files edited/created**:
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
@@ -572,13 +570,13 @@ G0 ─┬─ T1 ─ T2 ─ T3 ─┬─ T4 ─┬─ T7 ─ T8 ══ PR 1 in de
     - si rifà la sonda di T9 su `dev` e quella di T10 sul branch, perché la base è cambiata.
   - La PR verso `dev` quando Omar la chiede.
 - **validation**: tutti i punti annotati; REPORT SHIP; la CI della PR verde.
-- **status**: Done
+- **status**: In progress
 - **log**: 2026-10-27.
   - `adversarial-review` (round PR 2 in `REPORT.md`): **DO NOT SHIP** sulla lettera di AC3 (i titoli di `each` cambiano forma in 12 file; decisione di Omar), su `sequence.hooks` (corretto in `01a042a`) e sui documenti.
   - I gate locali sul branch: suite intera verde dopo `01a042a`, `tsc` pulito, lo script exit 0.
   - AC3 corretto nella SPEC (Omar, 2026-10-27): la forma dei titoli `each` di vitest 5 è accettata. AC3 è Met.
   - La #111 in `dev` (`723fc10`), unita nel branch. Documenti in `d7674cd`: la riga di vitest nel §4 della roadmap, W3, e nel §8 "nessun debito nuovo" (AC12, AC13). `AGENTS.md` non cita `vitest.workspace.ts`.
-  - [PR #113](https://github.com/omardeangelis/mito-micro-services/pull/113) aperta verso `dev`, CI verde, in `dev` il 2026-10-27 (`9a970bc`).
+  - [PR #113](https://github.com/omardeangelis/mito-micro-services/pull/113) aperta verso `dev`. Da fare: la CI verde, poi il merge.
 - **files edited/created**:
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
@@ -612,14 +610,9 @@ G0 ─┬─ T1 ─ T2 ─ T3 ─┬─ T4 ─┬─ T7 ─ T8 ══ PR 1 in de
   - i file convertiti verdi, con lo stesso numero di test;
   - lo script di T1 esce con 0, con le eccezioni `resolves`/`rejects` annotate;
   - `TestClock` usato almeno in un test del modello.
-- **status**: Done
-- **log**: 2026-10-27, `f26e44a` (worker sul modello più forte, rivisto dal supervisore).
-  - `@effect/vitest` 4.0.6 (AC4). `provideServer` in `src/test/effect.ts`; `runServer`, `fixedClock` e `at` restano finché T13–T16 non li hanno tolti dai loro file, e li toglie T17.
-  - `db.db.test.ts` 20 → 20: 13 `it.effect`, 3 `it.live` (`ServerLive`, osserva la console), 4 restano `it` (`runTrpc`, un bordo). `TestClock.setTime(T)` al posto di `fixedClock(T)`. Il mutante di T2 (`runPromiseExit` senza il contesto) fa ancora fallire due test. `errorReporter.test.ts` 1 → 1 `it.effect`; `trpc.db.test.ts` resta `it`.
-  - `currentEnv.test.ts` convertito: `it.effect` e `it.live` tengono il `ConfigProvider` di default (`@effect/vitest` `internal.ts:62,451-452`), e con `withCurrentEnv` reso l'identità il test fallisce.
-  - Le regole sono in `AGENTS.md` (sezione Effect). Misurate su 4.0.6: il `TestClock` parte da 0 e un `sleep` di Effect resta fermo senza `TestClock.adjust`; `vi.useFakeTimers` non muove il `TestClock`; il logger di `ServerLive` scrive sulla console della fibra, che `it.effect` sostituisce con `TestConsole`. Gli hook restano quelli di `vitest` (`sequence.hooks: "parallel"`).
-  - Gate: lo script con `eccezioni-pr3.txt` exit 0 (6 eccezioni, il test nuovo di `withCurrentEnv`); `tsc` ed ESLint puliti; suite 313 file / 4415 verdi / 6 saltati.
-- **files edited/created**: `package.json`, `pnpm-lock.yaml`, `src/test/effect.ts`, `packages/server/src/services/analytics/_test/clock.ts`, `packages/server/src/effect/_test/{db.db,errorReporter}.test.ts`, `packages/server/src/shared/_test/currentEnv.test.ts`, `AGENTS.md`, `brain/specs/crm/effect-4/eccezioni-pr3.txt`
+- **status**: Planned
+- **log**:
+- **files edited/created**:
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -635,8 +628,8 @@ G0 ─┬─ T1 ─ T2 ─ T3 ─┬─ T4 ─┬─ T7 ─ T8 ══ PR 1 in de
   - i file verdi, con lo stesso numero di test;
   - lo script di T1 esce con 0, eccezioni annotate;
   - `git grep -nE "Effect\.run(Promise|PromiseExit|Sync)\(|runServer\(" -- <file del task>` trova solo i bordi elencati.
-- **status**: In progress
-- **log**: 2026-10-27, assegnato a un worker (modello bilanciato) nel suo worktree, sul branch `claude/effect-vitest-t13`, con le eccezioni in `eccezioni-pr3-t13.txt`.
+- **status**: Planned
+- **log**:
 - **files edited/created**:
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
@@ -652,8 +645,8 @@ G0 ─┬─ T1 ─ T2 ─ T3 ─┬─ T4 ─┬─ T7 ─ T8 ══ PR 1 in de
   - `lockRule` e `operatorRule` restano helper di test che girano programmi su ogni scrittore: si convertono dove eseguono programmi Effect, senza toccare le loro tabelle di casi.
   - `alert.db.test.ts:269` osserva la console (`it.live`).
 - **validation**: come T13, sulle sue cartelle.
-- **status**: In progress
-- **log**: 2026-10-27, assegnato a un worker (modello bilanciato) nel suo worktree, sul branch `claude/effect-vitest-t14`, con le eccezioni in `eccezioni-pr3-t14.txt`.
+- **status**: Planned
+- **log**:
 - **files edited/created**:
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
@@ -671,8 +664,8 @@ G0 ─┬─ T1 ─ T2 ─ T3 ─┬─ T4 ─┬─ T7 ─ T8 ══ PR 1 in de
   - `run.db.test.ts:509-534` (fibra staccata sull'orologio reale) e `queue.test.ts:162-176` (attese reali da 200 ms in su) vanno con `it.live`.
   - `gcs.test.ts` prova anche il client a Promise: quella parte resta `it`.
 - **validation**: come T13, sulle sue cartelle (i `*.pg.test.ts` con `TEST_DATABASE_URL`).
-- **status**: In progress
-- **log**: 2026-10-27, assegnato a un worker (modello bilanciato) nel suo worktree, sul branch `claude/effect-vitest-t15`, con le eccezioni in `eccezioni-pr3-t15.txt`.
+- **status**: Planned
+- **log**:
 - **files edited/created**:
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
@@ -686,8 +679,8 @@ G0 ─┬─ T1 ─ T2 ─ T3 ─┬─ T4 ─┬─ T7 ─ T8 ══ PR 1 in de
 - **location**: `apps/api/src/**/_test/*`, `packages/db/src/_test/migrate.pg.test.ts`, `src/app/api/export/download/_test/*`
 - **description**: Conversione con le regole di T12. I test delle rotte (Hono, Next.js) sono bordi e restano `it`. Si convertono solo le parti che eseguono un programma Effect per preparare o controllare. L'elenco dei bordi va nel log.
 - **validation**: come T13, sulle sue cartelle, con i bordi elencati come eccezioni di AC8.
-- **status**: In progress
-- **log**: 2026-10-27, assegnato a un worker (modello bilanciato) nel suo worktree, sul branch `claude/effect-vitest-t16`, con le eccezioni in `eccezioni-pr3-t16.txt`.
+- **status**: Planned
+- **log**:
 - **files edited/created**:
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a

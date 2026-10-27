@@ -58,16 +58,13 @@
 | AC1 | Met (PR 1) | `effect` 4.0.6, una copia, solo import da `"effect"` |
 | AC2 | Met (PR 2) | vitest ^5.0.5, vite ^7.3.7, progetti in `test.projects` |
 | AC3 | Met (PR 2) | Ambiente, fuso, pool e timer uguali per ogni file. I titoli di `each` cambiano forma in 12 file: AC3 corretto per accettarlo (Omar, 2026-10-27) |
-| AC5 | Met per le PR 1 e 2 | Lo script corretto nella PR 3 (`a7b5d3d`): la rinomina, i marcatori con argomenti, opzioni e titolo, le tabelle di `each`, `assert`, `ctx.expect`, l'`await` dei `resolves`/`rejects`, le eccezioni con l'hash. Sul diff della PR 1 trova le stesse 41 differenze |
+| AC5 | Met per le PR 1 e 2; lo script ha buchi (v7) | Da correggere prima delle PR 3 e 4 |
 | AC6 | Met | Test di T2 |
 | AC7 | Met | Suite nominate verdi, anche su Postgres |
 | AC12 | Met per le PR 1 e 2 | PR 2: `d7674cd` su `claude/vitest-5` |
 | AC13 | Met per le PR 1 (TD12) e 2 (nessun debito) | PR 2: la frase nel §8 della roadmap |
-| AC14 | Met per le PR 1 e 2 | CI verde su #113 e #114 |
-| AC4 | Met (PR 3, T12) | `@effect/vitest` 4.0.6 |
-| AC8 | In corso (PR 3) | T12 fatto; T13–T16 in corso |
-| AC9–AC11 | Non iniziati | PR 4 |
-| AC15 | Non verificato | Staging, dopo il merge della #114 |
+| AC14 | Met in locale per le PR 1 e 2 | La CI delle PR non è ancora partita |
+| AC4, AC8–AC11, AC15 | Non iniziati | PR 3, PR 4, staging |
 
 ## Pre-existing Issues
 
@@ -79,10 +76,14 @@
 
 ## Remaining Work
 
-- **PR 1** (in `dev`, [#114](https://github.com/omardeangelis/mito-micro-services/pull/114)): la prova nel browser su `mito_local` e la revisione di Leonardo (D4) sui file dell'auth, rinviate; AC15 su staging.
-- **PR 2:** in `dev` ([#113](https://github.com/omardeangelis/mito-micro-services/pull/113)).
-- **PR 3** (`claude/effect-vitest`): T13–T16 in corso, poi T17.
-- **PR 4:** dopo il merge della PR 3 in `dev` (T18 dipende da T17).
+- **PR 1:**
+  - correggere lo script di AC5 (BLOCKER e MAJOR di v7);
+  - aggiungere il test diretto di `withCurrentEnv`;
+  - scrivere le due righe nel Context della SPEC;
+  - fare la prova nel browser su `mito_local`;
+  - aprire la PR (con Leonardo, D4).
+- **PR 2:** [PR #113](https://github.com/omardeangelis/mito-micro-services/pull/113) aperta; la CI verde, poi il merge.
+- **PR 3 e PR 4:** da iniziare dopo il merge delle PR 1 e 2 in `dev`.
 
 ## PR 2 – vitest 5
 
@@ -104,4 +105,3 @@
 |------|----------|---------|
 | 2026-10-27 | G0: SPEC approvata; D8, D9, D14 confermate | `SPEC.md` `approved`, OQ2 chiusa; `PLAN.md` aggiornato (commit `55d6fa2`) |
 | 2026-10-27 | AC3: la forma dei titoli `each` non conta | AC3 corretto nella SPEC, con una riga nel registro delle decisioni; AC3 Met per la PR 2 |
-| 2026-10-27 | "Mergiale e fai partire 3 e 4" | #113 e #114 in `dev` a CI verde, senza la prova su `mito_local` e senza la revisione di Leonardo chieste da GA1. I punti aperti della revisione della PR 1 (script, test di `withCurrentEnv`, note nella SPEC) entrano nella PR 3, prima della conversione |

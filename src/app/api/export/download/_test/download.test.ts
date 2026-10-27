@@ -1,13 +1,6 @@
 // @vitest-environment node
-import {
-  afterEach,
-  beforeAll,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  vi,
-} from "vitest"
+import { afterEach, beforeAll, beforeEach, vi } from "vitest"
+import { describe, expect, it } from "@effect/vitest"
 import { Effect } from "effect"
 import { NextRequest } from "next/server"
 import { getServerAuthSession, type Session } from "@mito/server/auth"
@@ -36,15 +29,13 @@ const XLSX_CONTENT_TYPE =
 
 /** Puts a file in the export folder of the bucket, as the import does. */
 const putInBucket = (name: string, body: Uint8Array) =>
-  Effect.runPromise(
-    Effect.flatMap(Storage, (storage) =>
-      storage.upload({
-        key: `export/${name}`,
-        body,
-        contentType: XLSX_CONTENT_TYPE,
-      })
-    ).pipe(Effect.provide(StorageLive))
-  )
+  Effect.flatMap(Storage, (storage) =>
+    storage.upload({
+      key: `export/${name}`,
+      body,
+      contentType: XLSX_CONTENT_TYPE,
+    })
+  ).pipe(Effect.provide(StorageLive))
 
 const signInAs = (userId: string) =>
   vi.mocked(getServerAuthSession).mockResolvedValue({
@@ -108,17 +99,25 @@ describe.each(methods)("download dell'export (%s)", (method, handler) => {
       expect(await response.text()).toBe("File name not provided")
     })
 
-    it("un file che non è un errore dell'import risponde 404, anche se c'è", async () => {
-      await putInBucket(
-        "export_chiamate_23-10-2026.xlsx",
-        new TextEncoder().encode("note dei clienti")
-      )
+    it.effect(
+      "un file che non è un errore dell'import risponde 404, anche se c'è",
+      () =>
+        Effect.gen(function* () {
+          yield* putInBucket(
+            "export_chiamate_23-10-2026.xlsx",
+            new TextEncoder().encode("note dei clienti")
+          )
 
-      const response = await download("export_chiamate_23-10-2026.xlsx")
+          const response = yield* Effect.promise(() =>
+            download("export_chiamate_23-10-2026.xlsx")
+          )
 
-      expect(response.status).toBe(404)
-      expect(await response.text()).toBe("File not found")
-    })
+          expect(response.status).toBe(404)
+          expect(yield* Effect.promise(() => response.text())).toBe(
+            "File not found"
+          )
+        })
+    )
 
     it("un nome che esce dalla cartella export risponde 404", async () => {
       const response = await download("../error-import-23-10-2026.xlsx")
@@ -127,17 +126,25 @@ describe.each(methods)("download dell'export (%s)", (method, handler) => {
       expect(await response.text()).toBe("File not found")
     })
 
-    it("un nome con un suffisso dopo .xlsx risponde 404, anche se il file c'è", async () => {
-      await putInBucket(
-        "error-import-23-10-2026.xlsx.old",
-        new TextEncoder().encode("vecchio errore")
-      )
+    it.effect(
+      "un nome con un suffisso dopo .xlsx risponde 404, anche se il file c'è",
+      () =>
+        Effect.gen(function* () {
+          yield* putInBucket(
+            "error-import-23-10-2026.xlsx.old",
+            new TextEncoder().encode("vecchio errore")
+          )
 
-      const response = await download("error-import-23-10-2026.xlsx.old")
+          const response = yield* Effect.promise(() =>
+            download("error-import-23-10-2026.xlsx.old")
+          )
 
-      expect(response.status).toBe(404)
-      expect(await response.text()).toBe("File not found")
-    })
+          expect(response.status).toBe(404)
+          expect(yield* Effect.promise(() => response.text())).toBe(
+            "File not found"
+          )
+        })
+    )
 
     it("un errore dell'import che non c'è nel bucket risponde 500", async () => {
       const response = await download("error-import-01-01-2026.xlsx")
@@ -146,21 +153,31 @@ describe.each(methods)("download dell'export (%s)", (method, handler) => {
       expect(await response.text()).toBe("Error downloading file")
     })
 
-    it("un errore dell'import che c'è si scarica con gli stessi byte, come allegato", async () => {
-      // Not text: a download that goes through a string would alter these
-      const bytes = new Uint8Array([0x50, 0x4b, 0x03, 0x04, 0x00, 0x80, 0xff])
-      await putInBucket("error-import-23-10-2026.xlsx", bytes)
+    it.effect(
+      "un errore dell'import che c'è si scarica con gli stessi byte, come allegato",
+      () =>
+        Effect.gen(function* () {
+          // Not text: a download that goes through a string would alter these
+          const bytes = new Uint8Array([
+            0x50, 0x4b, 0x03, 0x04, 0x00, 0x80, 0xff,
+          ])
+          yield* putInBucket("error-import-23-10-2026.xlsx", bytes)
 
-      const response = await download("error-import-23-10-2026.xlsx")
+          const response = yield* Effect.promise(() =>
+            download("error-import-23-10-2026.xlsx")
+          )
 
-      expect(response.status).toBe(200)
-      expect(new Uint8Array(await response.arrayBuffer())).toEqual(bytes)
-      expect(response.headers.get("Content-Type")).toBe(
-        "application/octet-stream"
-      )
-      expect(response.headers.get("Content-Disposition")).toBe(
-        "attachment; filename=error-import-23-10-2026.xlsx"
-      )
-    })
+          expect(response.status).toBe(200)
+          expect(
+            new Uint8Array(yield* Effect.promise(() => response.arrayBuffer()))
+          ).toEqual(bytes)
+          expect(response.headers.get("Content-Type")).toBe(
+            "application/octet-stream"
+          )
+          expect(response.headers.get("Content-Disposition")).toBe(
+            "attachment; filename=error-import-23-10-2026.xlsx"
+          )
+        })
+    )
   })
 })

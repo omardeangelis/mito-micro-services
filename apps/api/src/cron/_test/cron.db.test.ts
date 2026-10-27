@@ -1,13 +1,5 @@
-import {
-  afterAll,
-  afterEach,
-  beforeAll,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  vi,
-} from "vitest"
+import { afterAll, afterEach, beforeAll, beforeEach, vi } from "vitest"
+import { describe, expect, it } from "@effect/vitest"
 import { Cause, Duration, Effect, Layer, Option } from "effect"
 import { eq, getTableName } from "drizzle-orm"
 import { Hono } from "hono"
@@ -24,7 +16,7 @@ import { cronRun } from "@mito/db/schema/cronRun"
 import { practices } from "@mito/db/schema/pratiche"
 import { taskEventLog } from "@mito/db/schema/taskEventLog"
 import { ServerLive } from "@mito/server/effect/server"
-import { failureTag } from "@/test/effect"
+import { failureTag, provideServer } from "@/test/effect"
 import {
   FAILPOINT_SCHEMA,
   migrateUpTo,
@@ -472,72 +464,91 @@ describe("cron alert del backend: le chiamate di alert.js", () => {
       if (next === undefined) throw new Error("more calls than answers")
       return next === "error" ? Effect.fail("db down") : Effect.succeed(next)
     })
-    return Effect.runPromiseExit(
-      alertJob(processAlerts, { maxCalls, retryDelay: Duration.zero }).pipe(
-        Effect.provide(ServerLive)
-      )
-    ).then((exit) => ({ exit, calls }))
+    return alertJob(processAlerts, {
+      maxCalls,
+      retryDelay: Duration.zero,
+    }).pipe(
+      provideServer,
+      Effect.exit,
+      Effect.map((exit) => ({ exit, calls }))
+    )
   }
 
-  it("chiama di nuovo finché restano alert, e somma i conteggi", async () => {
-    const { exit, calls } = await runAlerts([
-      answer({ found: 5, processed: 3, remaining: 2 }),
-      answer({ found: 2, processed: 1, skipped: 1 }),
-    ])
+  it.effect("chiama di nuovo finché restano alert, e somma i conteggi", () =>
+    Effect.gen(function* () {
+      const { exit, calls } = yield* runAlerts([
+        answer({ found: 5, processed: 3, remaining: 2 }),
+        answer({ found: 2, processed: 1, skipped: 1 }),
+      ])
 
-    expect(calls).toBe(2)
-    expect(exit).toMatchObject({
-      _tag: "Success",
-      value: { found: 5, processed: 4, skipped: 1, failed: 0, calls: 2 },
+      expect(calls).toBe(2)
+      expect(exit).toMatchObject({
+        _tag: "Success",
+        value: { found: 5, processed: 4, skipped: 1, failed: 0, calls: 2 },
+      })
     })
-  })
+  )
 
-  it("riprova gli alert falliti e si ferma in errore quando riprovarli non ne chiude nessuno", async () => {
-    const { exit, calls } = await runAlerts([
-      answer({ found: 3, processed: 1, failed: 2 }),
-      answer({ found: 2, processed: 1, failed: 1 }),
-      answer({ found: 1, failed: 1 }),
-    ])
+  it.effect(
+    "riprova gli alert falliti e si ferma in errore quando riprovarli non ne chiude nessuno",
+    () =>
+      Effect.gen(function* () {
+        const { exit, calls } = yield* runAlerts([
+          answer({ found: 3, processed: 1, failed: 2 }),
+          answer({ found: 2, processed: 1, failed: 1 }),
+          answer({ found: 1, failed: 1 }),
+        ])
 
-    expect(calls).toBe(3)
-    expect(exit).toMatchObject({
-      _tag: "Failure",
-      cause: {
-        reasons: [{ _tag: "Fail", error: { _tag: "AlertsFailed", failed: 1 } }],
-      },
+        expect(calls).toBe(3)
+        expect(exit).toMatchObject({
+          _tag: "Failure",
+          cause: {
+            reasons: [
+              { _tag: "Fail", error: { _tag: "AlertsFailed", failed: 1 } },
+            ],
+          },
+        })
+      })
+  )
+
+  it.effect("una chiamata fallita va su Sentry e si riprova", () =>
+    Effect.gen(function* () {
+      const { exit, calls } = yield* runAlerts([
+        "error",
+        answer({ found: 1, processed: 1 }),
+      ])
+
+      expect(calls).toBe(2)
+      expect(exit._tag).toBe("Success")
+      expect(reportedErrors.map(({ data }) => data)).toEqual([
+        { cron: "alert", call: 1 },
+      ])
     })
-  })
+  )
 
-  it("una chiamata fallita va su Sentry e si riprova", async () => {
-    const { exit, calls } = await runAlerts([
-      "error",
-      answer({ found: 1, processed: 1 }),
-    ])
+  it.effect(
+    "dopo il numero massimo di chiamate con alert ancora aperti si ferma in errore",
+    () =>
+      Effect.gen(function* () {
+        const { exit, calls } = yield* runAlerts(
+          [
+            answer({ found: 9, processed: 1, remaining: 8 }),
+            answer({ found: 8, processed: 1, remaining: 7 }),
+          ],
+          2
+        )
 
-    expect(calls).toBe(2)
-    expect(exit._tag).toBe("Success")
-    expect(reportedErrors.map(({ data }) => data)).toEqual([
-      { cron: "alert", call: 1 },
-    ])
-  })
-
-  it("dopo il numero massimo di chiamate con alert ancora aperti si ferma in errore", async () => {
-    const { exit, calls } = await runAlerts(
-      [
-        answer({ found: 9, processed: 1, remaining: 8 }),
-        answer({ found: 8, processed: 1, remaining: 7 }),
-      ],
-      2
-    )
-
-    expect(calls).toBe(2)
-    expect(exit).toMatchObject({
-      _tag: "Failure",
-      cause: {
-        reasons: [{ _tag: "Fail", error: { _tag: "AlertsLeft", calls: 2 } }],
-      },
-    })
-  })
+        expect(calls).toBe(2)
+        expect(exit).toMatchObject({
+          _tag: "Failure",
+          cause: {
+            reasons: [
+              { _tag: "Fail", error: { _tag: "AlertsLeft", calls: 2 } },
+            ],
+          },
+        })
+      })
+  )
 })
 
 describe("report dei cron", () => {
@@ -554,15 +565,15 @@ describe("report dei cron", () => {
     )
   })
 
-  it("lo manda al webhook, e un errore di Slack non lo fa fallire", async () => {
-    const fetchSpy = vi
-      .spyOn(globalThis, "fetch")
-      .mockResolvedValueOnce(new Response("ok"))
-      .mockRejectedValueOnce(new Error("Slack down"))
-    vi.spyOn(console, "log").mockImplementation(() => undefined)
-    vi.spyOn(console, "info").mockImplementation(() => undefined)
-    const send = (outcome: CronOutcome) =>
-      Effect.runPromise(
+  it.effect("lo manda al webhook, e un errore di Slack non lo fa fallire", () =>
+    Effect.gen(function* () {
+      const fetchSpy = vi
+        .spyOn(globalThis, "fetch")
+        .mockResolvedValueOnce(new Response("ok"))
+        .mockRejectedValueOnce(new Error("Slack down"))
+      vi.spyOn(console, "log").mockImplementation(() => undefined)
+      vi.spyOn(console, "info").mockImplementation(() => undefined)
+      const send = (outcome: CronOutcome) =>
         Effect.flatMap(CronReport, (report) => report.send(outcome)).pipe(
           Effect.provide(
             slackReport({
@@ -571,22 +582,22 @@ describe("report dei cron", () => {
             })
           )
         )
-      )
-    const outcome: CronOutcome = {
-      job: "update",
-      status: "failed",
-      durationMs: 0,
-      counters: {},
-    }
+      const outcome: CronOutcome = {
+        job: "update",
+        status: "failed",
+        durationMs: 0,
+        counters: {},
+      }
 
-    await send(outcome)
-    await expect(send(outcome)).resolves.toBeUndefined()
+      yield* send(outcome)
+      expect(yield* send(outcome)).toBeUndefined()
 
-    expect(fetchSpy).toHaveBeenCalledTimes(2)
-    const [url, init] = fetchSpy.mock.calls[0]!
-    expect(url).toBe("https://hooks.slack.test/x")
-    expect(JSON.parse(String(init?.body))).toEqual({
-      text: ":rotating_light: *cron update* (staging): fallito · 0.0 s",
+      expect(fetchSpy).toHaveBeenCalledTimes(2)
+      const [url, init] = fetchSpy.mock.calls[0]!
+      expect(url).toBe("https://hooks.slack.test/x")
+      expect(JSON.parse(String(init?.body))).toEqual({
+        text: ":rotating_light: *cron update* (staging): fallito · 0.0 s",
+      })
     })
-  })
+  )
 })
