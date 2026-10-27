@@ -28,6 +28,7 @@ Migrated from `docs/` on 2026-09-24. Source material for future `create-spec` ru
 - `chore/migration/` — per-phase overviews (`fase-0` … `fase-5`), per-task files for phases 0–1, and `attivita-manuali-provider.md`
 - [[chore/migrazione-effect|migrazione-effect]] — verso "solo Effect": servizi (L1), bordo tRPC come adapter (L2), trasporto `HttpApi` per la SPA (L3); chiusa per L1 e L2 il 2026-10-27, L3 e il debito aperto nella roadmap
 - [[chore/roadmap-nuovo-stack|roadmap-nuovo-stack]] — roadmap in serie verso il nuovo stack in prod: Effect 4, app React su `HttpApi`, un solo rilascio, poi le dismissioni (draft)
+- [[chore/migrazione-frontend-react|migrazione-frontend-react]] — il filone frontend della roadmap: `apps/web` su Vite, React 19 e `HttpApi`, task per task, rotte, server action → mutation, collaudo di parità (draft)
 
 ## Raw sources
 
