@@ -298,9 +298,12 @@ G0 ─┬─ T1 ─ T2 ─ T3 ─┬─ T4 ─┬─ T7 ─ T8 ══ PR 1 in de
   - in `transaction`, `Runtime.runPromiseExit(Runtime.defaultRuntime as any)` al posto del runtime del chiamante;
   - in `promise.ts`, `throw exit.cause` al posto di `throw failure.value`.
 - **validation**: i test nuovi verdi su `dev`; i tre mutanti uccisi; nessun file di produzione cambiato; lo script di T1 fra `dev` e il commit esce con 0, con i soli test nuovi nel file di eccezioni.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-10-27, worker sonnet; review del supervisore passata dopo una correzione banale (tolto un `afterEach(vi.restoreAllMocks)` ripetuto: il file ne ha già uno globale).
+  - Test nuovi, verdi su Effect 3: in `describe("ServerLive")` `logWarning` → `console.warn` e `logInfo` → `console.info`, una volta e mai `console.log`; `describe("transaction e il contesto del chiamante")` con il `Clock` fisso e un servizio `Probe` forniti fuori; in `gcs.test.ts` "rejects with the thrown error itself when the GCS client dies". Il caso dell'errore tipato era già fissato da `gcs.test.ts:449`.
+  - Mutanti uccisi: M1 (logger senza `withLeveledConsole`) → i due test nuovi e quello di `logError`; M2 (`Runtime.defaultRuntime`) → i due test del contesto, rifatto dal supervisore; M3 (`throw exit.cause`) → il test nuovo e quello della riga 449. Nessun file di produzione cambiato.
+  - `db.db.test.ts` + `gcs.test.ts`: 52/52. Lo script fra `origin/dev` e il commit esce con 0 con le sole 9 catene nuove in `eccezioni-pr1.txt`.
+- **files edited/created**: `packages/server/src/effect/_test/db.db.test.ts`, `packages/server/src/services/storage/_test/gcs.test.ts`, `brain/specs/crm/effect-4/eccezioni-pr1.txt` (nuovo)
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -476,9 +479,14 @@ G0 ─┬─ T1 ─ T2 ─ T3 ─┬─ T4 ─┬─ T7 ─ T8 ══ PR 1 in de
 
   In più il reporter JSON salva i nomi e lo stato dei test. Il risultato è la base di AC3, e va nella sezione "PR 2" di `IMPLEMENTATION-NOTES.md`.
 - **validation**: la sonda copre tutti i file che la CI esegue, uno per progetto in cui girano; il reporter JSON ha lo stesso numero di test della CI.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-10-27, worker haiku; la prima esecuzione aveva 14 file non caricati (`better-auth` mancava nel worktree, rimedio `pnpm install --frozen-lockfile`), la seconda è completa. Review del supervisore passata.
+  - vitest 1.6.1, `pnpm run test --run` con `TEST_DATABASE_URL` (Postgres locale): exit 0; 315 file (312 eseguiti, 3 saltati per intero: `cronCli.test.ts`, `import.perf.pg.test.ts`, `callStats.perf.pg.test.ts`); 4408 test verdi, 6 saltati.
+  - Sonda: 312 righe, nessun file due volte. `unit` 263 (117 jsdom, 146 node), `pg` 21 node, `utc` 14 e `rome` 14 (8 jsdom, 6 node ciascuno).
+  - `unit` e `pg` girano in thread (`isMainThread` falso) e vedono il fuso dell'host, non il `TZ: "UTC"` di `test.env`; `utc` e `rome` girano in processi figli e vedono il loro fuso.
+  - Timer finti in ogni file: `setTimeout`, `setImmediate` e `Date` sì; `performance.now`, `queueMicrotask` e `process.nextTick` no.
+  - File nello scratchpad della sessione (`probe/probe-v1.jsonl`, `report-v1.json`, `summary-v1.txt`); la sonda è `probe/probe.setup.ts`, da rifare in T10 con `PROBE_OUT`.
+- **files edited/created**: nessuno nel repo (modifiche temporanee annullate)
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a

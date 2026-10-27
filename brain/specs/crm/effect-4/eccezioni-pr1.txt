@@ -1,0 +1,14 @@
+# Eccezioni ad AC5 per la PR 1 (scripts/check-assertions.mjs assertions origin/dev HEAD --exceptions questo file).
+# <file>:<riga> = catena aggiunta (riga nel head); base:<file>:<riga> = catena tolta (riga nel base).
+# Le righe si rigenerano al gate T8.
+
+# T2: test nuovi di caratterizzazione (AC6)
+packages/server/src/effect/_test/db.db.test.ts:172 T2, test nuovo (AC6)
+packages/server/src/effect/_test/db.db.test.ts:185 T2, test nuovo (AC6)
+packages/server/src/effect/_test/db.db.test.ts:275 T2, test nuovo (AC6)
+packages/server/src/effect/_test/db.db.test.ts:276 T2, test nuovo (AC6)
+packages/server/src/effect/_test/db.db.test.ts:279 T2, test nuovo (AC6)
+packages/server/src/effect/_test/db.db.test.ts:288 T2, test nuovo (AC6)
+packages/server/src/effect/_test/db.db.test.ts:289 T2, test nuovo (AC6)
+packages/server/src/effect/_test/db.db.test.ts:292 T2, test nuovo (AC6)
+packages/server/src/services/storage/_test/gcs.test.ts:478 T2, test nuovo (AC6)
