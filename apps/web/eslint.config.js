@@ -5,7 +5,7 @@ import globals from "globals"
 import tseslint from "typescript-eslint"
 
 // The rules of the root .eslintrc.cjs that apply to a React app, without
-// eslint-config-next (F1.a.1 of brain/chore/migrazione-frontend-react.md)
+// eslint-config-next (1.a.1 of brain/chore/migrazione-frontend-react.md)
 export default tseslint.config(
   { ignores: ["dist"] },
   js.configs.recommended,
