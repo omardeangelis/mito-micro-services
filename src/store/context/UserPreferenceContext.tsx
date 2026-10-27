@@ -18,7 +18,7 @@ import {
   readBrowserPreferences,
   writePreferenceCookie,
   type PreferenceKey,
-} from "@/lib/preferences/cookies"
+} from "@mito/client/preferences/cookies"
 import { type UserPreference } from "@mito/domain/schemas"
 import { TableSkeleton } from "@/components/custom/table/TableSkeleton"
 

@@ -1,6 +1,6 @@
 "use client"
 import { cn } from "@/lib/utils"
-import { formatBigNumber } from "@/lib/utils/format"
+import { formatBigNumber } from "@mito/client/format"
 import { DonutChart, Card } from "@tremor/react"
 import { useEffect, useMemo, useRef } from "react"
 

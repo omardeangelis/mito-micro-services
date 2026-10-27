@@ -47,7 +47,7 @@ import {
 } from "./CustomerHandoverDialog"
 import { useUserPreferenceContext } from "@/store/context/useUserPreferenceContext"
 import { sourceValues } from "@mito/db/schema/customers"
-import { parseInputValue, parseStringToNumber } from "@/lib/utils/format"
+import { parseInputValue, parseStringToNumber } from "@mito/client/format"
 
 const customerformSchema = insertCustomerSchema
   .pick({

@@ -1,7 +1,7 @@
 "use client"
 
 import { currencyFormatter } from "@/lib/utils"
-import { formatBigNumberWithCurrency } from "@/lib/utils/format"
+import { formatBigNumberWithCurrency } from "@mito/client/format"
 import { Card, DeltaBar, BadgeDelta } from "@tremor/react"
 import { type RouterOutputs } from "@/trpc/shared"
 import { financeCardFormattingSettings } from "@mito/domain/constants/timeframes"

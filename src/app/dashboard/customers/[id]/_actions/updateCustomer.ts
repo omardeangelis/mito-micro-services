@@ -5,7 +5,7 @@ import { api } from "@/trpc/server"
 import { z } from "zod"
 import { insertCustomerSchema } from "@mito/domain/schemas"
 import { cleanObject } from "@/lib/utils"
-import { sanitizeRedditoValue } from "@/lib/utils/format"
+import { sanitizeRedditoValue } from "@mito/client/format"
 
 type FormState = {
   message: string

@@ -1,4 +1,4 @@
-import { type Preview } from "@/lib/import/session"
+import { type Preview } from "@mito/client/import/session"
 import { count, formatLabels } from "./format"
 
 /** The numbers of the preview (AC7): nothing is written yet. */
