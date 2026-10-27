@@ -133,7 +133,7 @@ Dal 2026-10-27 la prod passa tutta insieme, in una sola finestra serale (R10 di 
 
 **Prima della finestra:**
 - il redirect Azure di prod per better-auth e la query di controllo degli account sul database di prod (G3 di [[specs/crm/auth-better-auth/PLAN]]);
-- le variabili del servizio Cloud Run di prod e dei progetti Vercel di prod: quello dell'app React e quello dell'app Next;
+- le variabili del servizio Cloud Run di prod e dei progetti Vercel di prod: quello dell'app React e quello dell'app Next. Quelle di better-auth vanno sul servizio Cloud Run e sul progetto dell'app Next, con gli stessi valori: `BETTER_AUTH_SECRET`, un secret nuovo per la prod (almeno 32 caratteri), e `BETTER_AUTH_URL`, il dominio di prod. `AUTH_TEST_LOGIN` in prod non si imposta: con `true` accende il login di prova via email (OQ6 di [[specs/crm/auth-better-auth/SPEC]]);
 - il runbook della finestra con i comandi, provato su staging con i tempi (checklist di S6).
 
 **La finestra:**

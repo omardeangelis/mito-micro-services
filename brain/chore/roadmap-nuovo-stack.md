@@ -20,10 +20,10 @@ updated: 2026-10-27
 
 Questa pagina mette in fila il lavoro che porta in prod il nuovo stack: backend su Effect 4 con `HttpApi`, app React in `apps/web`, Next.js e tRPC spenti. **Dal 2026-10-27 è il punto d'ingresso del piano:** l'ordine dei lavori, le decisioni e il debito aperto della migrazione (§8) stanno qui. Le altre pagine restano il dettaglio:
 - [[chore/migrazione-gcp]]: dove gira il codice, la checklist del go/no-go e la finestra del rilascio in prod;
-- [[specs/crm/auth-better-auth/PLAN]]: l'auth (1.2);
+- [[specs/crm/auth-better-auth/PLAN]]: l'auth (1.2, e la PR D prima di S6);
 - [[chore/migrazione-effect]], chiusa per L1 e L2: le regole per i servizi (§2), come si costruisce `HttpApi` (§3), le route REST (§6) e il debito chiuso (§7).
 
-**Il punto di partenza (2026-10-27).** L1 e L2 di [[chore/migrazione-effect]] sono fatti per tutti i router: ogni procedura tRPC è un adapter di un servizio Effect. Restano il passo 8 (l'auth: la PR C1 di better-auth è in `dev`, la C2 e la D no), che qui è il punto 1.2, e la P2 di [[specs/crm/gestione-operatori/PLAN]], che qui è nella fase 5. L3, il trasporto, non è iniziato: sono le fasi 2 e 3. `dev` → `main` è fermo fino al go/no-go dello staging (S6 di [[chore/migrazione-gcp]]).
+**Il punto di partenza (2026-10-27).** L1 e L2 di [[chore/migrazione-effect]] sono fatti per tutti i router: ogni procedura tRPC è un adapter di un servizio Effect. Restano il passo 8 (l'auth: le PR C1 e C2 di better-auth sono in `dev`, la D no), che qui è il punto 1.2, e la P2 di [[specs/crm/gestione-operatori/PLAN]], che qui è nella fase 5. L3, il trasporto, non è iniziato: sono le fasi 2 e 3. `dev` → `main` è fermo fino al go/no-go dello staging (S6 di [[chore/migrazione-gcp]]).
 
 ## 1. Decisioni del 2026-10-27
 
@@ -67,9 +67,9 @@ I due filoni partono insieme e non hanno bisogno l'uno dell'altro.
 | # | Attività | Fatto quando |
 |---|---|---|
 | 1.1 | **Effect 3 → 4** in `packages/server` (122 file che importano `effect`), `apps/api` (13), `src` (10) e `packages/db` (2), seguendo il `MIGRATION.md` di Effect 4. `AGENTS.md` passa a Effect 4 nella stessa PR | I gate di CI verdi (lint, tsc, test, build, `api:build`, `api:smoke`) con le stesse asserzioni |
-| 1.2 | **better-auth: C2 (il passaggio) e D (la pulizia)** di [[specs/crm/auth-better-auth/PLAN]], su Effect 4. Chiude il passo 8 di [[chore/migrazione-effect]] e TD4 | Il login di Azure e via email funziona su staging su better-auth, con i comportamenti della disattivazione |
+| 1.2 | **better-auth: la C2 (il passaggio)** di [[specs/crm/auth-better-auth/PLAN]], in `dev` con la [PR #108](https://github.com/omardeangelis/mito-micro-services/pull/108) del 2026-10-27, prima di Effect 4. Da lì il login di Next.js e del backend lo fa better-auth. La D (la pulizia: via NextAuth) aspetta G2, la prova del login su staging, che va con le altre prove a fine migrazione: è un prerequisito della fase 4, e con lei si chiudono il passo 8 di [[chore/migrazione-effect]] e TD4 | La C2 in `dev` con i gate di CI verdi. Il login di Azure e via email su staging, con i comportamenti della disattivazione, lo prova G2 |
 
-1.1 e 1.2 vanno una dopo l'altra, non insieme: la C2 tocca `api/trpc.ts`, l'auth e `services/operator/deactivate.ts`, che Effect 4 riscrive comunque.
+La C2 è andata prima di Effect 4. 1.1 converte anche il codice che ha toccato (`auth.ts`, `services/operator/deactivate.ts`, la route del download dell'export): i file che importano `effect` restano gli stessi, perché better-auth era già in `dev` con la C1. La D non va insieme a 1.1: tocca anche lei `deactivate.ts`.
 
 **Frontend, in parallelo con 1.1 e 1.2:**
 
@@ -77,7 +77,7 @@ I due filoni partono insieme e non hanno bisogno l'uno dell'altro.
 |---|---|---|
 | 1.a | **`apps/web`:** Vite, React 19, React Router, Tailwind 4 (R7), variabili `VITE_*` validate, `@sentry/react`. Con Tailwind 4 la configurazione passa da `tailwind.config.ts` al CSS: i token di oggi (colori, font) si riportano lì | La pagina vuota gira in sviluppo con gli stili di oggi |
 | 1.b | **Componenti:** i componenti shadcn e Radix di `src/components/ui` che servono, su React 19. I grafici con il chart di shadcn (R4), al posto dei componenti Tremor dei 5 file della dashboard (`Card`, `BarChart`, `DonutChart`, `ProgressCircle`, `DeltaBar`, `BadgeDelta`). `recharts` diventa una dipendenza dichiarata: oggi `DonutCard.tsx` lo importa e arriva solo tramite Tremor. react-day-picker 8 con React 19 è da verificare | I componenti girano in una pagina di prova, senza Tremor in `apps/web` |
-| 1.c | **Shell e routing, per desktop:** sidebar, le rotte delle 14 pagine, link diretti, le parallel route `@admin` e `@blacklist` del profilo come tab. La schermata di login con il client di better-auth (`better-auth/react`), che si collega quando 1.2 è in `dev` | Si naviga fra tutte le rotte, vuote |
+| 1.c | **Shell e routing, per desktop:** sidebar, le rotte delle 14 pagine, link diretti, le parallel route `@admin` e `@blacklist` del profilo come tab. La schermata di login con il client di better-auth (`better-auth/react`), collegata al backend, che con la C2 serve già `/api/auth/*` di better-auth | Si naviga fra tutte le rotte, vuote |
 
 ### Fase 2: primo contatto (insieme)
 
@@ -89,7 +89,7 @@ Serve a fissare le convenzioni su un gruppo piccolo, prima di farne nove.
 | 2.2 | Frontend | Il data layer è TanStack Query 5 su `HttpApiClient` (R8). Uno spike fissa come si usano insieme: il runtime di Effect che esegue le chiamate nel `queryFn`, le chiavi delle query, l'invalidazione dopo una mutation, gli errori taggati negli stati di errore. La shell legge l'utente corrente dal gruppo: ruolo e `operatorId` per i permessi |
 | 2.3 | Insieme | Le convenzioni, scritte nel §3 di [[chore/migrazione-effect]]: prefisso, metodo e path per ogni procedura, `POST .../search` per le liste con filtri annidati, errore → status, come il frontend ricava il client e invalida le query, come si scrivono i test di contratto. Il progetto Vercel dell'app React (R9), con la rewrite del prefisso di `HttpApi` verso Cloud Run accanto a quelle di oggi |
 
-**Prerequisiti:** 1.1, 1.2 e la fase 1 del frontend.
+**Prerequisiti:** 1.1, la C2 di 1.2 e la fase 1 del frontend. La D di better-auth non serve.
 **Fatto quando:** l'app React su staging fa login e mostra l'utente corrente passando da `HttpApi`.
 
 ### Fase 3: gruppo per gruppo
@@ -115,7 +115,7 @@ Ordine proposto. Lo decide il frontend, perché segue le pagine: una pagina è f
 
 ### Fase 4: rilascio in prod, tutto insieme (R10)
 
-**Prerequisiti:** il go/no-go S6 di [[chore/migrazione-gcp]] con la sua checklist, e la fase 3 finita.
+**Prerequisiti:** il go/no-go S6 di [[chore/migrazione-gcp]] con la sua checklist, la fase 3 finita, e la PR D di better-auth in `dev` prima che parta l'osservazione di S6, che non vuole merge: la D aspetta G2, e il gate di prod G3 la vuole in prod insieme alla B, alla C1 e alla C2.
 
 Un solo merge `dev` → `main` e una sola finestra serale, in cui la prod passa tutta al nuovo stack: i dati da Supabase a Cloud SQL, il backend di prod su Cloud Run con GCS e better-auth, i cron da GitHub Actions a Cloud Scheduler, l'app React sul dominio. Il runbook della finestra è nella fase P di [[chore/migrazione-gcp]], e si prova su staging prima del go/no-go.
 
@@ -175,9 +175,9 @@ Il 2026-10-27 ogni documento qui sotto ha ricevuto un rimando a questa pagina. R
 
 | Documento | Fatto il 2026-10-27 | Resta, e quando |
 |---|---|---|
-| `AGENTS.md` | Il rimando a questa pagina nella mappa del repo | "`effect` 3.x" → 4.x, con la PR 1.1 |
+| `AGENTS.md` | Il rimando a questa pagina nella mappa del repo; l'auth su better-auth dopo la C2 (`getServerAuthSession(headers)`, `requestSession`) | "`effect` 3.x" → 4.x, con la PR 1.1 |
 | [[chore/migrazione-effect]] | Chiusa per L1 e L2; i vincoli del §3 aggiornati (R2, R8, R10); la regola sui cutover del §4 e del §6 superata (R10); il debito aperto spostato nel §8 | Le convenzioni di `HttpApi` nel §3, con 2.3 |
-| [[chore/migrazione-gcp]] | Il principio "un passo alla volta" e la fase P riscritti per la finestra unica (R10); la riga del rollback nella checklist di S6 | Il runbook della finestra con i comandi, provato su staging prima del go/no-go |
+| [[chore/migrazione-gcp]] | Il principio "un passo alla volta" e la fase P riscritti per la finestra unica (R10), con le variabili di better-auth per la prod; la riga del rollback nella checklist di S6 | Il runbook della finestra con i comandi, provato su staging prima del go/no-go |
 | [[specs/crm/auth-better-auth/SPEC]] e il suo PLAN | Il vincolo "mai due cambi nella stessa notte" e il gate G3 portati sulla finestra unica (R10) | – |
 | [[chore/manutenzione-dipendenze]] | W2 annullata, W3 ridotta (R1), Effect 4 (R2) | – |
 | [[chore/migration_plan]] | Superato da questa pagina | – |
@@ -195,7 +195,7 @@ Regole:
 |---|---|---|---|---|---|---|
 | TD1 | `[PREVISTO]` | Colonna `users.preferences` (testo JSON) non più letta né scritta | PR P2 di [[specs/crm/gestione-operatori/PLAN]]: le preferenze di layout passano ai cookie | Toglierla è una migrazione distruttiva: si aspetta di essere sicuri che nessuno la legga e che non serva tornare indietro | Migrazione `ALTER TABLE ... DROP COLUMN preferences`, poi `pnpm db:generate`; schema `packages/db/src/schema/users.ts`; la applica Omar, come le altre | P2 in prod da almeno un mese, `git grep "preferences"` su `@mito/db` e `@mito/server` senza letture della colonna, e in una release senza cutover GCP; nella roadmap: fase 5 |
 | TD2 | `[PREVISTO]` | `user.getUserPreference` restituisce solo `role` e `operatorId`, con un nome che parla di preferenze, e doppia in parte `operator.getUserOperator` | PR P2 | Rinominarla tocca 5 file della UI per nessun cambio di comportamento | Un'unica lettura "utente corrente", che sostituisce le due | Con L3, quando le procedure si riscrivono comunque come endpoint `HttpApi`; nella roadmap: 2.1 |
-| TD4 | `[PREVISTO]` | `auth.ts` rifiuta il login dei disattivati e l'override di `getSessionAndUser` ne invalida le sessioni | PR 4 di [[specs/crm/gestione-operatori/PLAN]] (AC16, AC17) | È codice NextAuth v4, che il passo 8 sostituisce | La spec del sostituto di NextAuth li conserva, con gli stessi test sull'adapter e su `sessionFromRequest` | Passo 8; nella roadmap: 1.2 |
+| TD4 | `[OPEN]`; dal 2026-10-27 il comportamento è su better-auth | Il rifiuto del login dei disattivati e l'invalidazione delle loro sessioni stavano nel codice NextAuth v4 di `auth.ts` (`signIn` e l'override di `getSessionAndUser`) | PR 4 di [[specs/crm/gestione-operatori/PLAN]] (AC16, AC17) | Dalla C2 ([PR #108](https://github.com/omardeangelis/mito-micro-services/pull/108)) li fa better-auth, con i test di `packages/server/src/betterAuth/_test/` (Azure, link via email, sessione) e quello di `deactivate`, che cancella anche `auth_session`. Restano i pezzi di NextAuth che toglie la D: `services/auth/users.ts` senza chiamanti e la cancellazione da `sessions` in `deactivate` | La PR D (T11) toglie NextAuth; T13 chiude la voce e porta il flusso [[domains/crm/flows/accesso-utente-disattivato]] su better-auth | Passo 8; nella roadmap: la D, prima di S6 |
 | TD5 | `[OPEN]` | Route `src/app/api/cron/*`, script `scheduled/*.js` e 8 workflow GitHub dei cron | Passo "cron" (§4 di [[chore/migrazione-effect]]) | La prod usa ancora GitHub Actions finché i cron non passano a Cloud Scheduler | Toglierli tutti insieme | Dopo il passaggio dei cron di prod a Cloud Scheduler ([[chore/migrazione-gcp]]); nella roadmap: fase 5 |
-| TD6 | `[OPEN]` per la parte che resta; il resto è chiuso nel §7 di [[chore/migrazione-effect]] | `Sentry.trpcMiddleware` di `api/trpc.ts` importa ancora `@sentry/nextjs`, con lo shim `apps/api/src/shims/sentry.ts` e il suo alias in `apps/api/build.mjs`. `services/auth/login.ts` della [PR #99](https://github.com/omardeangelis/mito-micro-services/pull/99) importa di nuovo `server-only`: oggi il bundle del backend non lo contiene | Passo 0 (§4 di [[chore/migrazione-effect]]) | `api/trpc.ts` lo riscrive il passo 8 ([[specs/crm/auth-better-auth/SPEC]]) | Togliere `Sentry.trpcMiddleware`, lo shim e l'alias quando `trpc.ts` non importa più `@sentry/nextjs`. Togliere l'import di `server-only` da `services/auth/login.ts` quando il passo 8 lo porta nel bundle del backend, altrimenti il backend non parte (`api:smoke` lo segnala) | Passo 8; nella roadmap: 1.2, al più tardi la fase 5 con tRPC |
+| TD6 | `[OPEN]` per `Sentry.trpcMiddleware`. L'import di `server-only` è `[CLOSED 2026-10-27]`; il resto è chiuso nel §7 di [[chore/migrazione-effect]] | `Sentry.trpcMiddleware` di `api/trpc.ts` importa ancora `@sentry/nextjs`, con lo shim `apps/api/src/shims/sentry.ts` e il suo alias in `apps/api/build.mjs` | Passo 0 (§4 di [[chore/migrazione-effect]]) | Né la C2 né la D di better-auth riscrivono il middleware di Sentry: resta finché resta tRPC. L'import di `server-only` in `services/auth/login.ts` (della [PR #99](https://github.com/omardeangelis/mito-micro-services/pull/99)) l'ha tolto la C2 ([PR #108](https://github.com/omardeangelis/mito-micro-services/pull/108)), perché con lui il backend non partiva (`api:smoke`) | Togliere `Sentry.trpcMiddleware`, lo shim e l'alias insieme a tRPC e a `@sentry/nextjs` | Nella roadmap: fase 5 |
 | TD10 (a) | `[OPEN]`, in `dev` con la [PR #86](https://github.com/omardeangelis/mito-micro-services/pull/86) del 2026-10-25 | Chi ha un `chatId` legge e scrive le note di quella chat, qualunque sia il cliente | [[specs/crm/chat-storage-effect/PLAN]] (§14; AC17 della SPEC), PR di `chat` | Il passo 5 non cambia comportamento | Proposta: chiudere senza codice. `customer` non ha una regola di visibilità per operatore: `getCustomerById` è `operatorProcedure` senza filtri sull'attore, quindi ogni operatore attivo vede ogni cliente. Le 4 procedure di `chat` sono già `operatorProcedure`, e "chi può vedere il cliente della chat" vuol dire già "ogni operatore attivo". Se un giorno arriva una visibilità per operatore, la voce rinasce nella sua spec | Con la conferma di Leonardo |
