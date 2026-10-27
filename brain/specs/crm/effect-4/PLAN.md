@@ -575,7 +575,8 @@ G0 ─┬─ T1 ─ T2 ─ T3 ─┬─ T4 ─┬─ T7 ─ T8 ══ PR 1 in de
   - `adversarial-review` (round PR 2 in `REPORT.md`): **DO NOT SHIP** sulla lettera di AC3 (i titoli di `each` cambiano forma in 12 file; decisione di Omar), su `sequence.hooks` (corretto in `01a042a`) e sui documenti.
   - I gate locali sul branch: suite intera verde dopo `01a042a`, `tsc` pulito, lo script exit 0.
   - AC3 corretto nella SPEC (Omar, 2026-10-27): la forma dei titoli `each` di vitest 5 è accettata. AC3 è Met.
-  - Da fare: i documenti (riga di vitest nel §4 della roadmap, W3, debito "nessuno") dopo la #111 in `dev`; la PR quando Omar la chiede.
+  - La #111 in `dev` (`723fc10`), unita nel branch. Documenti in `d7674cd`: la riga di vitest nel §4 della roadmap, W3, e nel §8 "nessun debito nuovo" (AC12, AC13). `AGENTS.md` non cita `vitest.workspace.ts`.
+  - [PR #113](https://github.com/omardeangelis/mito-micro-services/pull/113) aperta verso `dev`. Da fare: la CI verde, poi il merge.
 - **files edited/created**:
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a

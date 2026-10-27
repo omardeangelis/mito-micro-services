@@ -61,8 +61,8 @@
 | AC5 | Met per le PR 1 e 2; lo script ha buchi (v7) | Da correggere prima delle PR 3 e 4 |
 | AC6 | Met | Test di T2 |
 | AC7 | Met | Suite nominate verdi, anche su Postgres |
-| AC12 | PR 1 met; PR 2 blocked | La PR 2 aspetta la #111 in `dev` |
-| AC13 | PR 1 met (TD12); PR 2 da scrivere | La frase "nessun debito" va nella roadmap |
+| AC12 | Met per le PR 1 e 2 | PR 2: `d7674cd` su `claude/vitest-5` |
+| AC13 | Met per le PR 1 (TD12) e 2 (nessun debito) | PR 2: la frase nel §8 della roadmap |
 | AC14 | Met in locale per le PR 1 e 2 | La CI delle PR non è ancora partita |
 | AC4, AC8–AC11, AC15 | Non iniziati | PR 3, PR 4, staging |
 
@@ -82,9 +82,7 @@
   - scrivere le due righe nel Context della SPEC;
   - fare la prova nel browser su `mito_local`;
   - aprire la PR (con Leonardo, D4).
-- **PR 2:**
-  - i documenti dopo la #111;
-  - aprire la PR.
+- **PR 2:** [PR #113](https://github.com/omardeangelis/mito-micro-services/pull/113) aperta; la CI verde, poi il merge.
 - **PR 3 e PR 4:** da iniziare dopo il merge delle PR 1 e 2 in `dev`.
 
 ## PR 2 – vitest 5
