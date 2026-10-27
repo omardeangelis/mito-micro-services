@@ -709,7 +709,7 @@ G0 ─┬─ T1 ─ T2 ─ T3 ─┬─ T4 ─┬─ T7 ─ T8 ══ PR 1 in de
   6. `adversarial-review` caso B sulla PR 3, contro AC4, AC5, AC8, AC12 (PR 3), AC13 e AC14.
   7. La PR verso `dev` quando Omar la chiede.
 - **validation**: tutti i punti annotati; REPORT SHIP.
-- **status**: In progress
+- **status**: Done
 - **log**: 2026-10-27.
   - AC4: `@effect/vitest` 4.0.6, come `effect`.
   - AC8: su `dev` il grep trova 50 file. Su HEAD trova solo i bordi: la cella di `deactivate.pg.test.ts:609`, le due factory di `vi.mock` della rotta del download e `runServer` stesso in `src/test/effect.ts`, che resta per quella cella. `fixedClock` e `at` tolti da `analytics/_test/clock.ts`. Il grep degli orologi trova `concurrency.pg.test.ts` e `apply.db.test.ts` (AC8 corretto).
@@ -719,6 +719,7 @@ G0 ─┬─ T1 ─ T2 ─ T3 ─┬─ T4 ─┬─ T7 ─ T8 ══ PR 1 in de
   - **Debito (AC13):** nessuno nuovo. Il §8 della roadmap elenca come scelte i bordi a Promise, la cella `each` con `runServer`, i due `runSync` nelle factory di `vi.mock` e i due orologi a passi.
   - `adversarial-review` (round PR 3 in `REPORT.md`): **DO NOT SHIP**, 9 passate su 11 SHIP; i mutanti nel codice di produzione (43 di v4, 21 di v5) fanno fallire gli stessi test su `dev` e sul branch. Corretti dopo la revisione: `queue.test.ts` (fibre staccate) e i due test del budget di `processDueAlerts` in `it.live`, con i mutanti di v6 ora uccisi; lo script confronta per valore le tabelle `each` e le condizioni passate per nome (harness 41/41; la tabella `writers` di `operatorLock.pg` ha la sua eccezione); `AGENTS.md`, il §8, il conteggio di AC8, tre import vuoti. Lo script dà `ok, 55 test file(s) checked, 1620 chain(s) compared, 218 exception(s) used`; suite 4415 verdi.
   - Omar firma la categoria di AC5 `expect(await X)` → `expect(yield* X)` (D17): AC5 nella SPEC la elenca. I punti 1–5 del checklist della revisione sono chiusi; restano la CI della PR e il merge.
+  - Merge di `dev` nel branch (nessuna migrazione; il lockfile di `dev` più le sole righe di `@effect/vitest`), suite 4415 verdi. PR [#116](https://github.com/omardeangelis/mito-micro-services/pull/116): CI verde (Lint, Test, Build, Web), unita in `dev` (`e7ead47`).
 - **files edited/created**:
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
@@ -745,8 +746,8 @@ G0 ─┬─ T1 ─ T2 ─ T3 ─┬─ T4 ─┬─ T7 ─ T8 ══ PR 1 in de
   - il controllo di AC9: `git grep -nP "export const \w+Live\b" -- packages apps src` trova 8 righe su `dev` e nessuna sul branch, e ogni `Context.Service` ha un id che inizia con `@mito/`;
   - lo script di T1 esce con 0;
   - `pnpm api:build`.
-- **status**: Planned
-- **log**:
+- **status**: In progress
+- **log**: 2026-10-27, branch `claude/effect-style` da `dev` (`e7ead47`). Basi su `dev`: AC9 8 righe `*Live`, AC10 61 classi in 19 file, AC11 73 funzioni (una in meno della misura di T1, con il codice entrato in `dev` nel frattempo).
 - **files edited/created**:
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
