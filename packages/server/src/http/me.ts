@@ -17,7 +17,7 @@ const decodePreference = Schema.decodeUnknownOption(UserPreference)
  * unknown) stays out, as the Next.js app skips it before writing a cookie
  * (`validPreferences`), instead of failing the whole response
  */
-const validPreferences = (stored: object): UserPreference =>
+const validPreferences = (stored: Record<string, unknown>): UserPreference =>
   Object.assign(
     {},
     ...Object.entries(stored).map(([key, value]) =>
