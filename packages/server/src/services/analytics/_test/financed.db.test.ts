@@ -1,4 +1,9 @@
-import { beforeAll, beforeEach, describe, expect, it } from "vitest"
+import { beforeAll, beforeEach } from "vitest"
+import { describe, expect, it } from "@effect/vitest"
+import { Effect } from "effect"
+import { TestClock } from "effect/testing"
+import { type ServerContext } from "@mito/server/effect/server"
+import { provideServer } from "@/test/effect"
 import { db } from "@mito/db"
 import { practices, stateEnum } from "@mito/db/schema/pratiche"
 import {
@@ -14,7 +19,13 @@ import {
 } from "@/test/factories"
 import { actorOf } from "../../contact/actor"
 import { financedAverage, financedByBranch, financedTotal } from "../financed"
-import { at, DAY, T } from "./clock"
+import { DAY, T } from "./clock"
+
+/** The program with the `Clock` stopped at `millis`: the `TestClock` of `it.effect`. */
+const at = <A, E>(
+  millis: number,
+  program: Effect.Effect<A, E, ServerContext>
+) => TestClock.setTime(millis).pipe(Effect.andThen(program), provideServer)
 
 // Quali pratiche contano negli importi (AC12–AC14), con il Clock fermo a `T`
 // e `30d`:
@@ -85,14 +96,15 @@ const customerOf = async (operatorId: number | null) =>
   (await createCustomer({ operatorId })).id
 
 /** Il totale e la media di `actor`, senza le finestre. */
-async function amountsOf(actor: Actor) {
-  const total = await at(T, financedTotal({ timeFrame: "30d", actor }))
-  const average = await at(T, financedAverage({ timeFrame: "30d", actor }))
-  return {
-    total: { reference: total.reference, comparison: total.comparison },
-    average: { reference: average.reference, comparison: average.comparison },
-  }
-}
+const amountsOf = (actor: Actor) =>
+  Effect.gen(function* () {
+    const total = yield* at(T, financedTotal({ timeFrame: "30d", actor }))
+    const average = yield* at(T, financedAverage({ timeFrame: "30d", actor }))
+    return {
+      total: { reference: total.reference, comparison: total.comparison },
+      average: { reference: average.reference, comparison: average.comparison },
+    }
+  })
 
 beforeAll(async () => {
   await migrateUpTo()
@@ -103,98 +115,144 @@ beforeEach(async () => {
 })
 
 describe("una pratica conta una volta (AC12)", () => {
-  it("una pratica con Intestatario, Coobbligato e Garante dello stesso operatore somma il suo importo una volta nel totale, e vale una pratica nella media", async () => {
-    const operator = await createOperator({ role: "OPERATORE" })
-    const three = [
-      await customerOf(operator.id),
-      await customerOf(operator.id),
-      await customerOf(operator.id),
-    ]
-    await inBothWindows(three, [1000, 4000])
-    await inBothWindows([await customerOf(operator.id)], [2000, 8000])
+  it.effect(
+    "una pratica con Intestatario, Coobbligato e Garante dello stesso operatore somma il suo importo una volta nel totale, e vale una pratica nella media",
+    () =>
+      Effect.gen(function* () {
+        const operator = yield* Effect.promise(() =>
+          createOperator({ role: "OPERATORE" })
+        )
+        const three = [
+          yield* Effect.promise(() => customerOf(operator.id)),
+          yield* Effect.promise(() => customerOf(operator.id)),
+          yield* Effect.promise(() => customerOf(operator.id)),
+        ]
+        yield* Effect.promise(() => inBothWindows(three, [1000, 4000]))
+        const value1 = yield* Effect.promise(() => customerOf(operator.id))
+        yield* Effect.promise(() => inBothWindows([value1], [2000, 8000]))
 
-    expect(await amountsOf(actorOf(operator))).toEqual({
-      total: { reference: 3000, comparison: 12000 },
-      average: { reference: 1500, comparison: 6000 },
-    })
-  })
+        expect(yield* amountsOf(actorOf(operator))).toEqual({
+          total: { reference: 3000, comparison: 12000 },
+          average: { reference: 1500, comparison: 6000 },
+        })
+      })
+  )
 })
 
 describe("due pratiche con lo stesso importo (AC12)", () => {
-  it("contano tutte e due, nel totale e nella media: una pratica una volta, non un importo una volta", async () => {
-    const operator = await createOperator({ role: "OPERATORE" })
-    const three = [
-      await customerOf(operator.id),
-      await customerOf(operator.id),
-      await customerOf(operator.id),
-    ]
-    await inBothWindows(three, [1000, 2000])
-    await inBothWindows([await customerOf(operator.id)], [1000, 2000])
-    await inBothWindows([await customerOf(operator.id)], [4000, 8000])
+  it.effect(
+    "contano tutte e due, nel totale e nella media: una pratica una volta, non un importo una volta",
+    () =>
+      Effect.gen(function* () {
+        const operator = yield* Effect.promise(() =>
+          createOperator({ role: "OPERATORE" })
+        )
+        const three = [
+          yield* Effect.promise(() => customerOf(operator.id)),
+          yield* Effect.promise(() => customerOf(operator.id)),
+          yield* Effect.promise(() => customerOf(operator.id)),
+        ]
+        yield* Effect.promise(() => inBothWindows(three, [1000, 2000]))
+        const value3 = yield* Effect.promise(() => customerOf(operator.id))
+        yield* Effect.promise(() => inBothWindows([value3], [1000, 2000]))
+        const value5 = yield* Effect.promise(() => customerOf(operator.id))
+        yield* Effect.promise(() => inBothWindows([value5], [4000, 8000]))
 
-    expect(await amountsOf(actorOf(operator))).toEqual({
-      total: { reference: 6000, comparison: 12000 },
-      average: { reference: 2000, comparison: 4000 },
-    })
-  })
-
-  it("contano tutte e due nella ciambella", async () => {
-    const operator = await createOperator({ role: "OPERATORE" })
-    for (const amount of [1000, 1000, 4000]) {
-      await practiceOf([await customerOf(operator.id)], {
-        desPuntoVendita: "Roma",
-        importoFinanziato: String(amount),
-        dataLiquidazione: REFERENCE,
+        expect(yield* amountsOf(actorOf(operator))).toEqual({
+          total: { reference: 6000, comparison: 12000 },
+          average: { reference: 2000, comparison: 4000 },
+        })
       })
-    }
+  )
 
-    expect(await at(T, financedByBranch({ timeFrame: "30d" }))).toEqual([
-      { data: "Roma", total: 6000 },
-    ])
-  })
+  it.effect("contano tutte e due nella ciambella", () =>
+    Effect.gen(function* () {
+      const operator = yield* Effect.promise(() =>
+        createOperator({ role: "OPERATORE" })
+      )
+      for (const amount of [1000, 1000, 4000]) {
+        const value7 = yield* Effect.promise(() => customerOf(operator.id))
+        yield* Effect.promise(() =>
+          practiceOf([value7], {
+            desPuntoVendita: "Roma",
+            importoFinanziato: String(amount),
+            dataLiquidazione: REFERENCE,
+          })
+        )
+      }
+
+      expect(yield* at(T, financedByBranch({ timeFrame: "30d" }))).toEqual([
+        { data: "Roma", total: 6000 },
+      ])
+    })
+  )
 })
 
 describe("quali pratiche vede il chiamante (AC13)", () => {
-  it("una pratica con clienti di due operatori conta una volta per ciascuno dei due, e una volta per l'admin", async () => {
-    const operatorA = await createOperator({ role: "OPERATORE" })
-    const operatorB = await createOperator({ role: "OPERATORE" })
-    const admin = await createOperator({ role: "ADMIN" })
-    const customerA = await customerOf(operatorA.id)
-    const customerB = await customerOf(operatorB.id)
-    await inBothWindows([customerA, customerB], [1000, 2000])
-    await inBothWindows([await customerOf(operatorA.id)], [4000, 8000])
-    await inBothWindows([await customerOf(operatorB.id)], [16000, 32000])
+  it.effect(
+    "una pratica con clienti di due operatori conta una volta per ciascuno dei due, e una volta per l'admin",
+    () =>
+      Effect.gen(function* () {
+        const operatorA = yield* Effect.promise(() =>
+          createOperator({ role: "OPERATORE" })
+        )
+        const operatorB = yield* Effect.promise(() =>
+          createOperator({ role: "OPERATORE" })
+        )
+        const admin = yield* Effect.promise(() =>
+          createOperator({ role: "ADMIN" })
+        )
+        const customerA = yield* Effect.promise(() => customerOf(operatorA.id))
+        const customerB = yield* Effect.promise(() => customerOf(operatorB.id))
+        yield* Effect.promise(() =>
+          inBothWindows([customerA, customerB], [1000, 2000])
+        )
+        const value9 = yield* Effect.promise(() => customerOf(operatorA.id))
+        yield* Effect.promise(() => inBothWindows([value9], [4000, 8000]))
+        const value11 = yield* Effect.promise(() => customerOf(operatorB.id))
+        yield* Effect.promise(() => inBothWindows([value11], [16000, 32000]))
 
-    expect(await amountsOf(actorOf(operatorA))).toEqual({
-      total: { reference: 5000, comparison: 10000 },
-      average: { reference: 2500, comparison: 5000 },
-    })
-    expect(await amountsOf(actorOf(operatorB))).toEqual({
-      total: { reference: 17000, comparison: 34000 },
-      average: { reference: 8500, comparison: 17000 },
-    })
-    expect(await amountsOf(actorOf(admin))).toEqual({
-      total: { reference: 21000, comparison: 42000 },
-      average: { reference: 7000, comparison: 14000 },
-    })
-  })
+        expect(yield* amountsOf(actorOf(operatorA))).toEqual({
+          total: { reference: 5000, comparison: 10000 },
+          average: { reference: 2500, comparison: 5000 },
+        })
+        expect(yield* amountsOf(actorOf(operatorB))).toEqual({
+          total: { reference: 17000, comparison: 34000 },
+          average: { reference: 8500, comparison: 17000 },
+        })
+        expect(yield* amountsOf(actorOf(admin))).toEqual({
+          total: { reference: 21000, comparison: 42000 },
+          average: { reference: 7000, comparison: 14000 },
+        })
+      })
+  )
 
-  it("una pratica con soli clienti senza operatore resta fuori per l'admin e per l'operatore", async () => {
-    const operator = await createOperator({ role: "OPERATORE" })
-    const admin = await createOperator({ role: "ADMIN" })
-    await inBothWindows([await customerOf(operator.id)], [1000, 2000])
-    await inBothWindows(
-      [await customerOf(null), await customerOf(null)],
-      [4000, 8000]
-    )
+  it.effect(
+    "una pratica con soli clienti senza operatore resta fuori per l'admin e per l'operatore",
+    () =>
+      Effect.gen(function* () {
+        const operator = yield* Effect.promise(() =>
+          createOperator({ role: "OPERATORE" })
+        )
+        const admin = yield* Effect.promise(() =>
+          createOperator({ role: "ADMIN" })
+        )
+        const value13 = yield* Effect.promise(() => customerOf(operator.id))
+        yield* Effect.promise(() => inBothWindows([value13], [1000, 2000]))
+        const value15 = yield* Effect.promise(() => customerOf(null))
+        const value16 = yield* Effect.promise(() => customerOf(null))
+        yield* Effect.promise(() =>
+          inBothWindows([value15, value16], [4000, 8000])
+        )
 
-    const onlyAssigned = {
-      total: { reference: 1000, comparison: 2000 },
-      average: { reference: 1000, comparison: 2000 },
-    }
-    expect(await amountsOf(actorOf(operator))).toEqual(onlyAssigned)
-    expect(await amountsOf(actorOf(admin))).toEqual(onlyAssigned)
-  })
+        const onlyAssigned = {
+          total: { reference: 1000, comparison: 2000 },
+          average: { reference: 1000, comparison: 2000 },
+        }
+        expect(yield* amountsOf(actorOf(operator))).toEqual(onlyAssigned)
+        expect(yield* amountsOf(actorOf(admin))).toEqual(onlyAssigned)
+      })
+  )
 })
 
 describe("contano solo le pratiche finanziate (AC14)", () => {
@@ -210,55 +268,80 @@ describe("contano solo le pratiche finanziate (AC14)", () => {
     }
   }
 
-  it("nel totale e nella media contano `Liquidata`, `Chiusa` ed `Estinta anticipata`; `Rifiutata`, `Rinunciata` e `Stornata` non cambiano il risultato", async () => {
-    const admin = await createOperator({ role: "ADMIN" })
-    const operator = await createOperator({ role: "OPERATORE" })
-    await seedStates(await customerOf(operator.id))
+  it.effect(
+    "nel totale e nella media contano `Liquidata`, `Chiusa` ed `Estinta anticipata`; `Rifiutata`, `Rinunciata` e `Stornata` non cambiano il risultato",
+    () =>
+      Effect.gen(function* () {
+        const admin = yield* Effect.promise(() =>
+          createOperator({ role: "ADMIN" })
+        )
+        const operator = yield* Effect.promise(() =>
+          createOperator({ role: "OPERATORE" })
+        )
+        const value18 = yield* Effect.promise(() => customerOf(operator.id))
+        yield* Effect.promise(() => seedStates(value18))
 
-    expect(await amountsOf(actorOf(admin))).toEqual({
-      total: { reference: 13000, comparison: 832000 },
-      average: { reference: 13000 / 3, comparison: 832000 / 3 },
-    })
-  })
+        expect(yield* amountsOf(actorOf(admin))).toEqual({
+          total: { reference: 13000, comparison: 832000 },
+          average: { reference: 13000 / 3, comparison: 832000 / 3 },
+        })
+      })
+  )
 
-  it("nella ciambella contano `Liquidata`, `Chiusa` ed `Estinta anticipata`; `Rifiutata`, `Rinunciata` e `Stornata` non cambiano il risultato", async () => {
-    const operator = await createOperator({ role: "OPERATORE" })
-    await seedStates(await customerOf(operator.id))
+  it.effect(
+    "nella ciambella contano `Liquidata`, `Chiusa` ed `Estinta anticipata`; `Rifiutata`, `Rinunciata` e `Stornata` non cambiano il risultato",
+    () =>
+      Effect.gen(function* () {
+        const operator = yield* Effect.promise(() =>
+          createOperator({ role: "OPERATORE" })
+        )
+        const value20 = yield* Effect.promise(() => customerOf(operator.id))
+        yield* Effect.promise(() => seedStates(value20))
 
-    expect(await at(T, financedByBranch({ timeFrame: "30d" }))).toEqual([
-      { data: "Roma", total: 13000 },
-    ])
-  })
+        expect(yield* at(T, financedByBranch({ timeFrame: "30d" }))).toEqual([
+          { data: "Roma", total: 13000 },
+        ])
+      })
+  )
 })
 
 describe("la ciambella non segue i clienti", () => {
-  it("conta anche le pratiche senza clienti, e quelle con soli clienti senza operatore, ognuna una volta", async () => {
-    const operator = await createOperator({ role: "OPERATORE" })
-    await practiceOf([], {
-      desPuntoVendita: "Roma",
-      importoFinanziato: "1000",
-    })
-    await practiceOf([await customerOf(null)], {
-      desPuntoVendita: "Roma",
-      importoFinanziato: "2000",
-      dataLiquidazione: REFERENCE,
-    })
-    await practiceOf(
-      [
-        await customerOf(operator.id),
-        await customerOf(operator.id),
-        await customerOf(operator.id),
-      ],
-      {
-        desPuntoVendita: null,
-        importoFinanziato: "4000",
-        dataLiquidazione: REFERENCE,
-      }
-    )
+  it.effect(
+    "conta anche le pratiche senza clienti, e quelle con soli clienti senza operatore, ognuna una volta",
+    () =>
+      Effect.gen(function* () {
+        const operator = yield* Effect.promise(() =>
+          createOperator({ role: "OPERATORE" })
+        )
+        yield* Effect.promise(() =>
+          practiceOf([], {
+            desPuntoVendita: "Roma",
+            importoFinanziato: "1000",
+          })
+        )
+        const value22 = yield* Effect.promise(() => customerOf(null))
+        yield* Effect.promise(() =>
+          practiceOf([value22], {
+            desPuntoVendita: "Roma",
+            importoFinanziato: "2000",
+            dataLiquidazione: REFERENCE,
+          })
+        )
+        const value24 = yield* Effect.promise(() => customerOf(operator.id))
+        const value25 = yield* Effect.promise(() => customerOf(operator.id))
+        const value26 = yield* Effect.promise(() => customerOf(operator.id))
+        yield* Effect.promise(() =>
+          practiceOf([value24, value25, value26], {
+            desPuntoVendita: null,
+            importoFinanziato: "4000",
+            dataLiquidazione: REFERENCE,
+          })
+        )
 
-    expect(await at(T, financedByBranch({ timeFrame: "30d" }))).toEqual([
-      { data: "Roma", total: 3000 },
-      { data: null, total: 4000 },
-    ])
-  })
+        expect(yield* at(T, financedByBranch({ timeFrame: "30d" }))).toEqual([
+          { data: "Roma", total: 3000 },
+          { data: null, total: 4000 },
+        ])
+      })
+  )
 })

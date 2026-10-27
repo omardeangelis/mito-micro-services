@@ -58,13 +58,17 @@
 | AC1 | Met (PR 1) | `effect` 4.0.6, una copia, solo import da `"effect"` |
 | AC2 | Met (PR 2) | vitest ^5.0.5, vite ^7.3.7, progetti in `test.projects` |
 | AC3 | Met (PR 2) | Ambiente, fuso, pool e timer uguali per ogni file. I titoli di `each` cambiano forma in 12 file: AC3 corretto per accettarlo (Omar, 2026-10-27) |
-| AC5 | Met per le PR 1 e 2; lo script ha buchi (v7) | Da correggere prima delle PR 3 e 4 |
+| AC5 | Met per le PR 1 e 2 | Lo script corretto nella PR 3 (`a7b5d3d`): la rinomina, i marcatori con argomenti, opzioni e titolo, le tabelle di `each`, `assert`, `ctx.expect`, l'`await` dei `resolves`/`rejects`, le eccezioni con l'hash. Sul diff della PR 1 trova le stesse 41 differenze |
 | AC6 | Met | Test di T2 |
 | AC7 | Met | Suite nominate verdi, anche su Postgres |
 | AC12 | Met per le PR 1 e 2 | PR 2: `d7674cd` su `claude/vitest-5` |
 | AC13 | Met per le PR 1 (TD12) e 2 (nessun debito) | PR 2: la frase nel §8 della roadmap |
-| AC14 | Met in locale per le PR 1 e 2 | La CI delle PR non è ancora partita |
-| AC4, AC8–AC11, AC15 | Non iniziati | PR 3, PR 4, staging |
+| AC14 | Met per le PR 1 e 2 | CI verde su #113 e #114 |
+| AC4 | Met (PR 3, T12) | `@effect/vitest` 4.0.6 |
+| AC8 | Met (PR 3) dopo le correzioni della revisione | I bordi e i due orologi a passi nel log di T17 e nel §8; `queue.test.ts` e il budget di `processDueAlerts` in `it.live` |
+| AC5 (PR 3) | Met | 218 eccezioni, tutte `await` → `yield*` dello stesso valore (con `provideServer`/`Effect.exit`, `Fiber.join`, la tabella `writers`), più il test nuovo e un `.resolves`. Categoria firmata da Omar (D17) |
+| AC9–AC11 | Non iniziati | PR 4 |
+| AC15 | Non verificato | Staging, dopo il merge della #114 |
 
 ## Pre-existing Issues
 
@@ -76,14 +80,10 @@
 
 ## Remaining Work
 
-- **PR 1:**
-  - correggere lo script di AC5 (BLOCKER e MAJOR di v7);
-  - aggiungere il test diretto di `withCurrentEnv`;
-  - scrivere le due righe nel Context della SPEC;
-  - fare la prova nel browser su `mito_local`;
-  - aprire la PR (con Leonardo, D4).
-- **PR 2:** [PR #113](https://github.com/omardeangelis/mito-micro-services/pull/113) aperta; la CI verde, poi il merge.
-- **PR 3 e PR 4:** da iniziare dopo il merge delle PR 1 e 2 in `dev`.
+- **PR 1** (in `dev`, [#114](https://github.com/omardeangelis/mito-micro-services/pull/114)): la prova nel browser su `mito_local` e la revisione di Leonardo (D4) sui file dell'auth, rinviate; AC15 su staging.
+- **PR 2:** in `dev` ([#113](https://github.com/omardeangelis/mito-micro-services/pull/113)).
+- **PR 3** (`claude/effect-vitest`): T12–T16 fatti; T17: AC5 firmato (D17), restano la PR, la CI e il merge.
+- **PR 4:** dopo il merge della PR 3 in `dev` (T18 dipende da T17).
 
 ## PR 2 – vitest 5
 
@@ -99,9 +99,20 @@
 - **I documenti della PR 2** (riga di vitest nel §4 della roadmap e W3) partono da righe che esistono solo nella PR #111. Si scrivono su `claude/vitest-5` dopo che la #111 è in `dev` e `dev` è unito nel branch: scritti prima, andrebbero in conflitto con la #111.
 - **Debito della PR 2 (AC13):** nessuno di nuovo. L'avviso del peer `@types/node` di vitest 5 lo chiude la riga di `@types/node` già nel §4 della roadmap.
 
+## PR 3 – @effect/vitest
+
+- **Esecuzione:** T12 su un worker del modello più forte nel worktree della sessione; T13–T16 in parallelo su quattro worker del modello bilanciato, ognuno nel suo worktree e branch, uniti dal supervisore. Il worker di T16 aveva riportato indietro `PLAN.md` e queste note nel suo commit: nel merge sono rimasti quelli del branch.
+- **Deviazioni:**
+  - AC5: oltre all'equivalenza `await X` = `yield* Effect.promise(() => X)`, le eccezioni ammettono `expect(await X)` → `expect(yield* X)` quando l'helper o il programma X diventa un Effect con lo stesso valore. Senza, gli helper dei test avrebbero tenuto runner a Promise, contro AC8. Proposta dal supervisore durante T13–T16, firmata da Omar dopo la revisione (D17).
+  - AC8: il secondo orologio a passi, in `apply.db.test.ts`, c'era già su `dev` e la SPEC non lo nominava.
+  - `runServer` resta per una cella di una tabella `each`, che lo script confronta e che deve restituire una Promise come l'altra riga.
+- **Sorprese:** `it.effect.each` passa la riga intera come un argomento solo; le scadenze lette dal `Clock` vogliono `TestClock.setTime(Date.now())`, se no `statement_timeout` riceve un valore enorme; `TestClock.setTime` fallisce sotto `it.live`; un `TestClock` è condiviso dalle fibre di un test (in `run.pg.test.ts` va riportato indietro prima di liberare il lock).
+
 ## Steering
 
 | Date | Feedback | Changes |
 |------|----------|---------|
 | 2026-10-27 | G0: SPEC approvata; D8, D9, D14 confermate | `SPEC.md` `approved`, OQ2 chiusa; `PLAN.md` aggiornato (commit `55d6fa2`) |
 | 2026-10-27 | AC3: la forma dei titoli `each` non conta | AC3 corretto nella SPEC, con una riga nel registro delle decisioni; AC3 Met per la PR 2 |
+| 2026-10-27 | "Mergiale e fai partire 3 e 4" | #113 e #114 in `dev` a CI verde, senza la prova su `mito_local` e senza la revisione di Leonardo chieste da GA1. I punti aperti della revisione della PR 1 (script, test di `withCurrentEnv`, note nella SPEC) entrano nella PR 3, prima della conversione |
+| 2026-10-27 | "Accetto i nuovi AC5 rules" | Categoria `expect(await X)` → `expect(yield* X)` firmata: D17 nel piano, AC5 e la riga del registro nella SPEC; PR 3 aperta verso `dev` |

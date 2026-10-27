@@ -340,3 +340,10 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 - Verdict: DO NOT SHIP
 - Impact: critical
 - Verifiers: 8 (1 blocker, 2 major, tutti sullo script di AC5; 7 passate su 8 SHIP)
+
+## [2026-10-27] review | Effect 4, PR 3 (@effect/vitest)
+- Report: [[specs/crm/effect-4/REPORT]]
+- Scope: spec
+- Verdict: DO NOT SHIP
+- Impact: critical
+- Verifiers: 11 (0 blocker, 5 major: un test con fibre staccate sotto `it.effect`, AC5 allargato senza la firma di Omar, `AGENTS.md`, il §8, le tabelle `each` per nome nello script; 9 passate su 11 SHIP)

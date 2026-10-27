@@ -1,13 +1,6 @@
-import {
-  afterEach,
-  beforeAll,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  vi,
-} from "vitest"
-import { Cause, Exit } from "effect"
+import { afterEach, beforeAll, beforeEach, vi } from "vitest"
+import { describe, expect, it } from "@effect/vitest"
+import { Cause, Effect, Exit } from "effect"
 import { eq } from "drizzle-orm"
 import { type TaskStatus } from "@mito/domain/schemas"
 import { customers } from "@mito/db/schema/customers"
@@ -23,7 +16,7 @@ import {
   resetDb,
   testDb,
 } from "@/test/db"
-import { runServer } from "@/test/effect"
+import { provideServer } from "@/test/effect"
 import {
   createAlert,
   createCustomer,
@@ -529,69 +522,100 @@ describe("regola «stesso operatore»: customer.bulkUpdateCustomers", () => {
 describe("regola «stesso operatore»: il cron degli alert (processDueAlerts)", () => {
   const NOW = new Date("2026-09-25T06:00:00.000Z")
 
-  it("un alert che scade oggi crea il followup dell'operatore del cliente", async () => {
-    await createSystemOperator()
-    const operator = await createOperator()
-    const { customer, contact } = await seedContact(operator, "richiamare")
-    await createAlert({
-      taskId: contact.id,
-      deadline: new Date("2026-09-25T08:00:00.000Z"),
-    })
-    await assertContactOperatorMatchesCustomer()
+  it.effect(
+    "un alert che scade oggi crea il followup dell'operatore del cliente",
+    () =>
+      Effect.gen(function* () {
+        yield* Effect.promise(() => createSystemOperator())
+        const operator = yield* Effect.promise(() => createOperator())
+        const { customer, contact } = yield* Effect.promise(() =>
+          seedContact(operator, "richiamare")
+        )
+        yield* Effect.promise(() =>
+          createAlert({
+            taskId: contact.id,
+            deadline: new Date("2026-09-25T08:00:00.000Z"),
+          })
+        )
+        yield* Effect.promise(() => assertContactOperatorMatchesCustomer())
 
-    const exit = await runServer(processDueAlerts(NOW, { budgetMs: 60_000 }))
+        const exit = yield* processDueAlerts(NOW, { budgetMs: 60_000 }).pipe(
+          provideServer,
+          Effect.exit
+        )
 
-    if (Exit.isFailure(exit)) throw new Error(Cause.pretty(exit.cause))
-    expect(exit.value).toMatchObject({ processed: 1, failed: 0 })
-    const { active } = await expectAligned(customer.id)
-    expect(active).toMatchObject([
-      { state: "followup", operatorId: operator.id },
-    ])
-  })
+        if (Exit.isFailure(exit)) throw new Error(Cause.pretty(exit.cause))
+        expect(exit.value).toMatchObject({ processed: 1, failed: 0 })
+        const { active } = yield* Effect.promise(() =>
+          expectAligned(customer.id)
+        )
+        expect(active).toMatchObject([
+          { state: "followup", operatorId: operator.id },
+        ])
+      })
+  )
 })
 
 describe("regola «stesso operatore»: deactivateOperator", () => {
-  it("i clienti dell'operatore passano alla destinazione con i loro contatti attivi, con le righe dei contatti", async () => {
-    const admin = await createOperator({ role: "ADMIN" })
-    const leaving = await createOperator()
-    const target = await createOperator()
-    const first = await seedContact(leaving, "richiamare")
-    const second = await seedContact(leaving, "app.to")
-    const bare = await createCustomer({ operatorId: leaving.id })
-    const ofTarget = await seedContact(target)
-    await assertContactOperatorMatchesCustomer()
+  it.effect(
+    "i clienti dell'operatore passano alla destinazione con i loro contatti attivi, con le righe dei contatti",
+    () =>
+      Effect.gen(function* () {
+        const admin = yield* Effect.promise(() =>
+          createOperator({ role: "ADMIN" })
+        )
+        const leaving = yield* Effect.promise(() => createOperator())
+        const target = yield* Effect.promise(() => createOperator())
+        const first = yield* Effect.promise(() =>
+          seedContact(leaving, "richiamare")
+        )
+        const second = yield* Effect.promise(() =>
+          seedContact(leaving, "app.to")
+        )
+        const bare = yield* Effect.promise(() =>
+          createCustomer({ operatorId: leaving.id })
+        )
+        const ofTarget = yield* Effect.promise(() => seedContact(target))
+        yield* Effect.promise(() => assertContactOperatorMatchesCustomer())
 
-    const exit = await runServer(
-      deactivateOperator({
-        operatorId: leaving.id,
-        toOperatorId: target.id,
-        actor: { role: "ADMIN", operatorId: admin.id },
+        const exit = yield* deactivateOperator({
+          operatorId: leaving.id,
+          toOperatorId: target.id,
+          actor: { role: "ADMIN", operatorId: admin.id },
+        }).pipe(provideServer, Effect.exit)
+
+        if (Exit.isFailure(exit)) throw new Error(Cause.pretty(exit.cause))
+        expect(exit.value).toEqual({
+          customersMoved: 3,
+          contactsMoved: 2,
+          practicesMoved: 0,
+        })
+        for (const { customer, contact } of [first, second]) {
+          const { customer: after } = yield* Effect.promise(() =>
+            expectAligned(customer.id)
+          )
+          expect(after.operatorId).toBe(target.id)
+          expect(
+            yield* Effect.promise(() => reassignRows(customer.id))
+          ).toEqual(
+            expect.arrayContaining([
+              expect.objectContaining({
+                taskId: contact.id,
+                source: "deactivation",
+                fromOperatorId: leaving.id,
+                toOperatorId: target.id,
+              }),
+            ])
+          )
+        }
+        const { customer: bareAfter } = yield* Effect.promise(() =>
+          expectAligned(bare.id)
+        )
+        expect(bareAfter.operatorId).toBe(target.id)
+        yield* Effect.promise(() => expectAligned(ofTarget.customer.id))
+        expect(
+          yield* Effect.promise(() => logOf(ofTarget.customer.id))
+        ).toEqual([])
       })
-    )
-
-    if (Exit.isFailure(exit)) throw new Error(Cause.pretty(exit.cause))
-    expect(exit.value).toEqual({
-      customersMoved: 3,
-      contactsMoved: 2,
-      practicesMoved: 0,
-    })
-    for (const { customer, contact } of [first, second]) {
-      const { customer: after } = await expectAligned(customer.id)
-      expect(after.operatorId).toBe(target.id)
-      expect(await reassignRows(customer.id)).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({
-            taskId: contact.id,
-            source: "deactivation",
-            fromOperatorId: leaving.id,
-            toOperatorId: target.id,
-          }),
-        ])
-      )
-    }
-    const { customer: bareAfter } = await expectAligned(bare.id)
-    expect(bareAfter.operatorId).toBe(target.id)
-    await expectAligned(ofTarget.customer.id)
-    expect(await logOf(ofTarget.customer.id)).toEqual([])
-  })
+  )
 })

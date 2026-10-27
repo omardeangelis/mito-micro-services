@@ -1,8 +1,19 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest"
+import { afterAll, beforeAll, beforeEach } from "vitest"
+import { describe, expect, it } from "@effect/vitest"
+import { Effect } from "effect"
+import { TestClock } from "effect/testing"
+import { type ServerContext } from "@mito/server/effect/server"
+import { provideServer } from "@/test/effect"
 import { migrateUpTo, resetDb, testClient } from "@/test/db"
 import { createCustomer, createPractice } from "@/test/factories"
 import { financedByBranch } from "../financed"
-import { at, DAY, T } from "./clock"
+import { DAY, T } from "./clock"
+
+/** The program with the `Clock` stopped at `millis`: the `TestClock` of `it.effect`. */
+const at = <A, E>(
+  millis: number,
+  program: Effect.Effect<A, E, ServerContext>
+) => TestClock.setTime(millis).pipe(Effect.andThen(program), provideServer)
 
 // L'ordine della ciambella lo dà la query (`ORDER BY` sul punto vendita, AC15).
 // PGlite parte con `enable_seqscan = off` e raggruppa con un Sort, che
@@ -29,27 +40,35 @@ beforeEach(async () => {
 })
 
 describe("financedByBranch: l'ordine dei punti vendita", () => {
-  it("restituisce i punti vendita in ordine di nome, con quello vuoto per ultimo, qualunque sia il piano", async () => {
-    const customerId = (await createCustomer()).id
-    // Un passo primo rispetto a 31 visita ogni punto vendita una volta, in
-    // ordine sparso
-    for (let k = 0; k < BRANCHES.length; k++) {
-      await createPractice({
-        customerId,
-        desPuntoVendita: BRANCHES[(k * 7) % BRANCHES.length],
-        importoFinanziato: "1000",
-        dataLiquidazione: new Date(T - 15 * DAY),
+  it.effect(
+    "restituisce i punti vendita in ordine di nome, con quello vuoto per ultimo, qualunque sia il piano",
+    () =>
+      Effect.gen(function* () {
+        const customerId = (yield* Effect.promise(() => createCustomer())).id
+        // Un passo primo rispetto a 31 visita ogni punto vendita una volta, in
+        // ordine sparso
+        for (let k = 0; k < BRANCHES.length; k++) {
+          yield* Effect.promise(() =>
+            createPractice({
+              customerId,
+              desPuntoVendita: BRANCHES[(k * 7) % BRANCHES.length],
+              importoFinanziato: "1000",
+              dataLiquidazione: new Date(T - 15 * DAY),
+            })
+          )
+        }
+        yield* Effect.promise(() =>
+          createPractice({
+            customerId,
+            desPuntoVendita: null,
+            importoFinanziato: "1000",
+            dataLiquidazione: new Date(T - 15 * DAY),
+          })
+        )
+
+        const rows = yield* at(T, financedByBranch({ timeFrame: "30d" }))
+
+        expect(rows.map((row) => row.data)).toEqual([...BRANCHES, null])
       })
-    }
-    await createPractice({
-      customerId,
-      desPuntoVendita: null,
-      importoFinanziato: "1000",
-      dataLiquidazione: new Date(T - 15 * DAY),
-    })
-
-    const rows = await at(T, financedByBranch({ timeFrame: "30d" }))
-
-    expect(rows.map((row) => row.data)).toEqual([...BRANCHES, null])
-  })
+  )
 })

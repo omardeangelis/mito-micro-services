@@ -1,13 +1,14 @@
 import { gzipSync } from "node:zlib"
-import { beforeAll, beforeEach, describe, expect, it } from "vitest"
+import { beforeAll, beforeEach } from "vitest"
+import { describe, expect, it } from "@effect/vitest"
 import { asc } from "drizzle-orm"
-import { Cause, Clock, Effect, Exit, Layer } from "effect"
+import { Cause, Effect, Exit, Fiber, Layer } from "effect"
+import { TestClock } from "effect/testing"
 import { importRun } from "@mito/db/schema/importRun"
 import { type Cells } from "@mito/domain/import/classify"
 import { waveColumns } from "@mito/domain/import/formats"
 import { toFileBody } from "@mito/domain/import/payload"
 import { waveCells } from "@mito/domain/import/_test/cells"
-import { fixedClock } from "../../analytics/_test/clock"
 import { type Db, DbLive } from "../../../effect/db"
 import { ImportConfig, importSettings } from "../config"
 import { ImportQueue, type ImportTask } from "../queue"
@@ -67,38 +68,38 @@ describe.skipIf(!hasTestDatabase)("un import alla volta", () => {
   const run = <A, E>(
     program: Effect.Effect<A, E, Db | ImportConfig | ImportQueue>,
     at?: Date
-  ) => {
-    const timed = at
-      ? program.pipe(
-          Effect.provideService(Clock.Clock, fixedClock(at.getTime()))
-        )
-      : program
-    return Effect.runPromiseExit(timed.pipe(Effect.provide(layer())))
-  }
+  ) =>
+    Effect.gen(function* () {
+      // Without `at`, the time of the moment: the TestClock is shared by the
+      // runs of a test, so each one sets it before it starts
+      yield* TestClock.setTime((at ?? new Date()).getTime())
+      return yield* program.pipe(Effect.provide(layer()), Effect.exit)
+    })
 
-  const uploadOf = async (createdBy: string) => {
-    const exit = await run(
-      createUpload({
-        createdBy,
-        fileName: FILE_NAME,
-        format: "wave",
-        parts: 1,
-        data: gzipSync(
-          JSON.stringify(
-            toFileBody(
-              waveColumns,
-              rows.map((cells, index) => ({
-                row: index + 2,
-                cells: waveCells(cells),
-              }))
+  const uploadOf = (createdBy: string) =>
+    Effect.gen(function* () {
+      const exit = yield* run(
+        createUpload({
+          createdBy,
+          fileName: FILE_NAME,
+          format: "wave",
+          parts: 1,
+          data: gzipSync(
+            JSON.stringify(
+              toFileBody(
+                waveColumns,
+                rows.map((cells, index) => ({
+                  row: index + 2,
+                  cells: waveCells(cells),
+                }))
+              )
             )
-          )
-        ),
-      })
-    )
-    if (Exit.isFailure(exit)) throw new Error(String(exit.cause))
-    return exit.value
-  }
+          ),
+        })
+      )
+      if (Exit.isFailure(exit)) throw new Error(String(exit.cause))
+      return exit.value
+    })
 
   const failureOf = (exit: Exit.Exit<unknown, unknown>) =>
     Exit.isFailure(exit) &&
@@ -115,104 +116,143 @@ describe.skipIf(!hasTestDatabase)("un import alla volta", () => {
         .orderBy(asc(importRun.id))
     ).map(({ status }) => status)
 
-  it("un import salvato da un'altra connessione mentre questo parte: ImportAlreadyRunning con il suo admin, dall'indice unico", async () => {
-    const anna = await createOperator({
-      role: "ADMIN",
-      name: "Anna",
-      surname: "Rossi",
-    })
-    const other = await createUser({ role: "ADMIN" })
-    const uploadId = await uploadOf(other.id)
-    // Anna's import, not committed yet: the start doesn't see it, and its
-    // insert waits on the index
-    const anchor = await createCustomer({ tempID: "anchor" })
-    const held = await holdCustomerLock(anchor.id)
-    await held.db.insert(importRun).values({
-      startedAt: new Date("2026-10-25T09:05:00.000Z"),
-      startedBy: anna.userId,
-      fileName: FILE_NAME,
-      format: "wave",
-      rowsTotal: 1,
-      rowsDiscarded: 0,
-    })
+  it.effect(
+    "un import salvato da un'altra connessione mentre questo parte: ImportAlreadyRunning con il suo admin, dall'indice unico",
+    () =>
+      Effect.gen(function* () {
+        const anna = yield* Effect.promise(() =>
+          createOperator({
+            role: "ADMIN",
+            name: "Anna",
+            surname: "Rossi",
+          })
+        )
+        const other = yield* Effect.promise(() => createUser({ role: "ADMIN" }))
+        const uploadId = yield* uploadOf(other.id)
+        // Anna's import, not committed yet: the start doesn't see it, and its
+        // insert waits on the index
+        const anchor = yield* Effect.promise(() =>
+          createCustomer({ tempID: "anchor" })
+        )
+        const held = yield* Effect.promise(() => holdCustomerLock(anchor.id))
+        yield* Effect.promise(() =>
+          held.db.insert(importRun).values({
+            startedAt: new Date("2026-10-25T09:05:00.000Z"),
+            startedBy: anna.userId,
+            fileName: FILE_NAME,
+            format: "wave",
+            rowsTotal: 1,
+            rowsDiscarded: 0,
+          })
+        )
 
-    const started = run(
-      startImport({ uploadId, expected: [2, 3], startedBy: other.id })
-    )
-    await waitUntilBlocked(1)
-    await held.release()
+        const startedFiber = yield* Effect.forkChild(
+          run(startImport({ uploadId, expected: [2, 3], startedBy: other.id }))
+        )
+        const started = Fiber.join(startedFiber)
+        yield* Effect.promise(() => waitUntilBlocked(1))
+        yield* Effect.promise(() => held.release())
 
-    expect(failureOf(await started)).toMatchObject({
-      _tag: "ImportAlreadyRunning",
-      startedBy: "Anna Rossi",
-      time: "10:05",
-    })
-    expect(await statuses()).toEqual(["running"])
-    expect(tasks).toEqual([])
-  })
-
-  it("due conferme insieme di due admin: una parte, l'altra riceve ImportAlreadyRunning (AC22)", async () => {
-    const [anna, luca] = [
-      await createOperator({ role: "ADMIN", name: "Anna", surname: "Rossi" }),
-      await createOperator({ role: "ADMIN", name: "Luca", surname: "Bianchi" }),
-    ]
-    const [first, second] = [
-      await uploadOf(anna.userId),
-      await uploadOf(luca.userId),
-    ]
-
-    const exits = await Promise.all([
-      run(
-        startImport({
-          uploadId: first,
-          expected: [2, 3],
-          startedBy: anna.userId,
+        expect(failureOf(yield* started)).toMatchObject({
+          _tag: "ImportAlreadyRunning",
+          startedBy: "Anna Rossi",
+          time: "10:05",
         })
-      ),
-      run(
-        startImport({
-          uploadId: second,
-          expected: [2, 3],
-          startedBy: luca.userId,
-        })
-      ),
-    ])
+        expect(yield* Effect.promise(() => statuses())).toEqual(["running"])
+        expect(tasks).toEqual([])
+      })
+  )
 
-    const tags = exits.map((exit) =>
-      Exit.isSuccess(exit)
-        ? "started"
-        : (failureOf(exit) as { _tag: string })._tag
-    )
-    expect(tags.sort()).toEqual(["ImportAlreadyRunning", "started"])
-    expect(await statuses()).toEqual(["running"])
-    expect(tasks).toHaveLength(1)
-  })
+  it.effect(
+    "due conferme insieme di due admin: una parte, l'altra riceve ImportAlreadyRunning (AC22)",
+    () =>
+      Effect.gen(function* () {
+        const [anna, luca] = [
+          yield* Effect.promise(() =>
+            createOperator({ role: "ADMIN", name: "Anna", surname: "Rossi" })
+          ),
+          yield* Effect.promise(() =>
+            createOperator({ role: "ADMIN", name: "Luca", surname: "Bianchi" })
+          ),
+        ]
+        const [first, second] = [
+          yield* uploadOf(anna.userId),
+          yield* uploadOf(luca.userId),
+        ]
 
-  it("la pulizia degli import scaduti lascia stare quello che sta scrivendo: finisce completato (D8)", async () => {
-    const admin = await createUser({ role: "ADMIN" })
-    const customer = await createCustomer({ tempID: "1", fiscalCode: CF_A })
-    await createPractice({ customerId: customer.id, praticaId: "P1" })
-    const uploadId = await uploadOf(admin.id)
-    const start = new Date()
-    const started = await run(
-      startImport({ uploadId, expected: [2, 3], startedBy: admin.id }),
-      start
-    )
-    if (Exit.isFailure(started)) throw new Error(String(started.cause))
+        const exits = yield* Effect.all(
+          [
+            run(
+              startImport({
+                uploadId: first,
+                expected: [2, 3],
+                startedBy: anna.userId,
+              })
+            ),
+            run(
+              startImport({
+                uploadId: second,
+                expected: [2, 3],
+                startedBy: luca.userId,
+              })
+            ),
+          ],
+          { concurrency: "unbounded" }
+        )
 
-    // The import waits for P1 inside its transaction, holding its row
-    const p1 = await holdPracticeLock("P1")
-    const executed = run(executeImport(started.value.runId))
-    await waitUntilBlocked(1)
-    const another = await uploadOf(admin.id)
-    const late = await run(
-      startImport({ uploadId: another, expected: [2, 3], startedBy: admin.id }),
-      new Date(start.getTime() + 31 * 60_000)
-    )
-    await p1.release()
+        const tags = exits.map((exit) =>
+          Exit.isSuccess(exit)
+            ? "started"
+            : (failureOf(exit) as { _tag: string })._tag
+        )
+        expect(tags.sort()).toEqual(["ImportAlreadyRunning", "started"])
+        expect(yield* Effect.promise(() => statuses())).toEqual(["running"])
+        expect(tasks).toHaveLength(1)
+      })
+  )
 
-    expect(failureOf(late)).toMatchObject({ _tag: "ImportAlreadyRunning" })
-    expect(await executed).toEqual(Exit.succeed("completed"))
-    expect(await statuses()).toEqual(["completed"])
-  })
+  it.effect(
+    "la pulizia degli import scaduti lascia stare quello che sta scrivendo: finisce completato (D8)",
+    () =>
+      Effect.gen(function* () {
+        const admin = yield* Effect.promise(() => createUser({ role: "ADMIN" }))
+        const customer = yield* Effect.promise(() =>
+          createCustomer({ tempID: "1", fiscalCode: CF_A })
+        )
+        yield* Effect.promise(() =>
+          createPractice({ customerId: customer.id, praticaId: "P1" })
+        )
+        const uploadId = yield* uploadOf(admin.id)
+        const start = new Date()
+        const started = yield* run(
+          startImport({ uploadId, expected: [2, 3], startedBy: admin.id }),
+          start
+        )
+        if (Exit.isFailure(started)) throw new Error(String(started.cause))
+
+        // The import waits for P1 inside its transaction, holding its row
+        const p1 = yield* Effect.promise(() => holdPracticeLock("P1"))
+        const executedFiber = yield* Effect.forkChild(
+          run(executeImport(started.value.runId))
+        )
+        const executed = Fiber.join(executedFiber)
+        yield* Effect.promise(() => waitUntilBlocked(1))
+        const another = yield* uploadOf(admin.id)
+        const late = yield* run(
+          startImport({
+            uploadId: another,
+            expected: [2, 3],
+            startedBy: admin.id,
+          }),
+          new Date(start.getTime() + 31 * 60_000)
+        )
+        // The TestClock is shared: back to the time the running import started at
+        yield* TestClock.setTime(start.getTime())
+        yield* Effect.promise(() => p1.release())
+
+        expect(failureOf(late)).toMatchObject({ _tag: "ImportAlreadyRunning" })
+        expect(yield* executed).toEqual(Exit.succeed("completed"))
+        expect(yield* Effect.promise(() => statuses())).toEqual(["completed"])
+      })
+  )
 })

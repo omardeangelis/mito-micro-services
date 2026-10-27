@@ -1,11 +1,12 @@
-import { beforeAll, beforeEach, describe, expect, it } from "vitest"
-import { Exit } from "effect"
+import { beforeAll, beforeEach } from "vitest"
+import { describe, expect, it } from "@effect/vitest"
+import { Effect, Exit } from "effect"
 import { eq } from "drizzle-orm"
 import { readContactError } from "@mito/domain/contact/errors"
 import { customers } from "@mito/db/schema/customers"
 import { createTestCaller } from "@/test/caller"
 import { logOf, migrateUpTo, resetDb, tasksOf, testDb } from "@/test/db"
-import { runServer } from "@/test/effect"
+import { provideServer } from "@/test/effect"
 import {
   createCustomer,
   createOperator,
@@ -201,39 +202,51 @@ describe("task.reassign", () => {
     })
   })
 
-  it("il servizio rifiuta da solo un OPERATORE che è l'operatore del cliente con ContactForbidden e non modifica nulla (AC50)", async () => {
-    const owner = await createOperator({ name: "Anna", surname: "Bianchi" })
-    const colleague = await createOperator()
-    const customer = await createCustomer({
-      operatorId: owner.id,
-      updatedAt: longAgo,
-    })
-    const contact = await createTask({
-      customerId: customer.id,
-      operatorId: owner.id,
-    })
-    const before = await tasksOf(customer.id)
+  it.effect(
+    "il servizio rifiuta da solo un OPERATORE che è l'operatore del cliente con ContactForbidden e non modifica nulla (AC50)",
+    () =>
+      Effect.gen(function* () {
+        const owner = yield* Effect.promise(() =>
+          createOperator({ name: "Anna", surname: "Bianchi" })
+        )
+        const colleague = yield* Effect.promise(() => createOperator())
+        const customer = yield* Effect.promise(() =>
+          createCustomer({
+            operatorId: owner.id,
+            updatedAt: longAgo,
+          })
+        )
+        const contact = yield* Effect.promise(() =>
+          createTask({
+            customerId: customer.id,
+            operatorId: owner.id,
+          })
+        )
+        const before = yield* Effect.promise(() => tasksOf(customer.id))
 
-    const exit = await runServer(
-      reassign({
-        taskId: contact.id,
-        operatorId: colleague.id,
-        actor: { operatorId: owner.id, role: "OPERATORE" },
+        const exit = yield* reassign({
+          taskId: contact.id,
+          operatorId: colleague.id,
+          actor: { operatorId: owner.id, role: "OPERATORE" },
+        }).pipe(provideServer, Effect.exit)
+
+        expect(Exit.isFailure(exit) && exit.cause).toMatchObject({
+          reasons: [
+            { error: { _tag: "ContactForbidden", assignee: "Anna Bianchi" } },
+          ],
+        })
+        expect(yield* Effect.promise(() => tasksOf(customer.id))).toEqual(
+          before
+        )
+        expect(yield* Effect.promise(() => logOf(customer.id))).toEqual([])
+        expect(
+          yield* Effect.promise(() => customerRow(customer.id))
+        ).toMatchObject({
+          operatorId: owner.id,
+          updatedAt: longAgo,
+        })
       })
-    )
-
-    expect(Exit.isFailure(exit) && exit.cause).toMatchObject({
-      reasons: [
-        { error: { _tag: "ContactForbidden", assignee: "Anna Bianchi" } },
-      ],
-    })
-    expect(await tasksOf(customer.id)).toEqual(before)
-    expect(await logOf(customer.id)).toEqual([])
-    expect(await customerRow(customer.id)).toMatchObject({
-      operatorId: owner.id,
-      updatedAt: longAgo,
-    })
-  })
+  )
 
   it.each([
     ["che non esiste", async () => -1],

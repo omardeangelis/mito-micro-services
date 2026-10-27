@@ -1,5 +1,7 @@
 import { Effect } from "effect"
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { TestClock } from "effect/testing"
+import { beforeEach, vi } from "vitest"
+import { describe, expect, it } from "@effect/vitest"
 import type { StorageConfig } from "../config"
 import {
   StorageDeleteError,
@@ -50,15 +52,12 @@ const withStorage = <A, E>(
 const runOk = <A, E>(
   program: Effect.Effect<A, E, Storage>,
   cfg: StorageConfig = config
-) => Effect.runPromise(Effect.provide(program, makeGcsStorageLayer(cfg)))
+) => Effect.provide(program, makeGcsStorageLayer(cfg))
 
 const runFail = <E>(
   program: Effect.Effect<unknown, E, Storage>,
   cfg: StorageConfig = config
-) =>
-  Effect.runPromise(
-    Effect.flip(Effect.provide(program, makeGcsStorageLayer(cfg)))
-  )
+) => Effect.flip(runOk(program, cfg))
 
 beforeEach(() => {
   vi.resetAllMocks()
@@ -79,345 +78,422 @@ beforeEach(() => {
 })
 
 describe("client creation", () => {
-  it("creates the GCS client only when the layer is built", async () => {
-    const layer = makeGcsStorageLayer(config)
-    expect(gcs.clientOptions).not.toHaveBeenCalled()
+  it.effect("creates the GCS client only when the layer is built", () =>
+    Effect.gen(function* () {
+      const layer = makeGcsStorageLayer(config)
+      expect(gcs.clientOptions).not.toHaveBeenCalled()
 
-    await Effect.runPromise(
-      Effect.provide(
+      yield* Effect.provide(
         withStorage((s) => s.exists("a.txt")),
         layer
       )
-    )
-    expect(gcs.clientOptions).toHaveBeenCalledTimes(1)
-  })
-
-  it("passes the project and service-account credentials to the client", async () => {
-    const credentials = {
-      client_email: "sa@p.iam.gserviceaccount.com",
-      private_key: "KEY",
-    }
-    await runOk(
-      withStorage((s) => s.exists("a.txt")),
-      { bucket: "b", projectId: "p", credentials }
-    )
-    expect(gcs.clientOptions).toHaveBeenCalledWith({
-      projectId: "p",
-      credentials,
+      expect(gcs.clientOptions).toHaveBeenCalledTimes(1)
     })
-  })
+  )
 
-  it("uses Application Default Credentials when no credentials are given", async () => {
-    await runOk(
-      withStorage((s) => s.exists("a.txt")),
-      { bucket: "b" }
-    )
-    expect(gcs.clientOptions).toHaveBeenCalledWith({})
-  })
+  it.effect(
+    "passes the project and service-account credentials to the client",
+    () =>
+      Effect.gen(function* () {
+        const credentials = {
+          client_email: "sa@p.iam.gserviceaccount.com",
+          private_key: "KEY",
+        }
+        yield* runOk(
+          withStorage((s) => s.exists("a.txt")),
+          { bucket: "b", projectId: "p", credentials }
+        )
+        expect(gcs.clientOptions).toHaveBeenCalledWith({
+          projectId: "p",
+          credentials,
+        })
+      })
+  )
+
+  it.effect(
+    "uses Application Default Credentials when no credentials are given",
+    () =>
+      Effect.gen(function* () {
+        yield* runOk(
+          withStorage((s) => s.exists("a.txt")),
+          { bucket: "b" }
+        )
+        expect(gcs.clientOptions).toHaveBeenCalledWith({})
+      })
+  )
 })
 
 describe("upload", () => {
-  it("saves the body with content type, cache control and custom metadata", async () => {
-    const result = await runOk(
-      withStorage((s) =>
-        s.upload({
-          key: "avatars/a.txt",
-          body: "hello",
-          contentType: "text/plain",
-          cacheControl: "public, max-age=60",
-          metadata: { owner: "u1" },
-        })
-      )
-    )
+  it.effect(
+    "saves the body with content type, cache control and custom metadata",
+    () =>
+      Effect.gen(function* () {
+        const result = yield* runOk(
+          withStorage((s) =>
+            s.upload({
+              key: "avatars/a.txt",
+              body: "hello",
+              contentType: "text/plain",
+              cacheControl: "public, max-age=60",
+              metadata: { owner: "u1" },
+            })
+          )
+        )
 
-    expect(result).toEqual({ key: "avatars/a.txt" })
-    expect(gcs.bucket).toHaveBeenCalledWith("test-bucket")
-    expect(gcs.file).toHaveBeenCalledWith("avatars/a.txt")
-    expect(gcs.save).toHaveBeenCalledWith(Buffer.from("hello"), {
-      metadata: {
-        contentType: "text/plain",
-        cacheControl: "public, max-age=60",
-        metadata: { owner: "u1" },
-      },
+        expect(result).toEqual({ key: "avatars/a.txt" })
+        expect(gcs.bucket).toHaveBeenCalledWith("test-bucket")
+        expect(gcs.file).toHaveBeenCalledWith("avatars/a.txt")
+        expect(gcs.save).toHaveBeenCalledWith(Buffer.from("hello"), {
+          metadata: {
+            contentType: "text/plain",
+            cacheControl: "public, max-age=60",
+            metadata: { owner: "u1" },
+          },
+        })
+      })
+  )
+
+  it.effect("maps a failed save to StorageUploadError carrying the key", () =>
+    Effect.gen(function* () {
+      gcs.save.mockRejectedValue(new Error("network down"))
+      const error = yield* runFail(
+        withStorage((s) =>
+          s.upload({ key: "a.pdf", body: "x", contentType: "application/pdf" })
+        )
+      )
+
+      expect(error).toBeInstanceOf(StorageUploadError)
+      expect(error.key).toBe("a.pdf")
     })
-  })
+  )
 
-  it("maps a failed save to StorageUploadError carrying the key", async () => {
-    gcs.save.mockRejectedValue(new Error("network down"))
-    const error = await runFail(
-      withStorage((s) =>
-        s.upload({ key: "a.pdf", body: "x", contentType: "application/pdf" })
+  it.effect("rejects a body over maxUploadBytes before calling GCS", () =>
+    Effect.gen(function* () {
+      const error = yield* runFail(
+        withStorage((s) =>
+          s.upload({
+            key: "a.bin",
+            body: new Uint8Array(5),
+            contentType: "application/octet-stream",
+          })
+        ),
+        { bucket: "b", maxUploadBytes: 4 }
       )
-    )
 
-    expect(error).toBeInstanceOf(StorageUploadError)
-    expect(error.key).toBe("a.pdf")
-  })
-
-  it("rejects a body over maxUploadBytes before calling GCS", async () => {
-    const error = await runFail(
-      withStorage((s) =>
-        s.upload({
-          key: "a.bin",
-          body: new Uint8Array(5),
-          contentType: "application/octet-stream",
-        })
-      ),
-      { bucket: "b", maxUploadBytes: 4 }
-    )
-
-    expect(error).toBeInstanceOf(StorageValidationError)
-    expect(gcs.save).not.toHaveBeenCalled()
-  })
+      expect(error).toBeInstanceOf(StorageValidationError)
+      expect(gcs.save).not.toHaveBeenCalled()
+    })
+  )
 })
 
 describe("download", () => {
-  it("returns the object bytes", async () => {
-    gcs.download.mockResolvedValue([Buffer.from("%PDF-1.4")])
-    const data = await runOk(withStorage((s) => s.download("resume/a.pdf")))
+  it.effect("returns the object bytes", () =>
+    Effect.gen(function* () {
+      gcs.download.mockResolvedValue([Buffer.from("%PDF-1.4")])
+      const data = yield* runOk(withStorage((s) => s.download("resume/a.pdf")))
 
-    expect(Buffer.from(data).toString()).toBe("%PDF-1.4")
-    expect(gcs.file).toHaveBeenCalledWith("resume/a.pdf")
-  })
+      expect(Buffer.from(data).toString()).toBe("%PDF-1.4")
+      expect(gcs.file).toHaveBeenCalledWith("resume/a.pdf")
+    })
+  )
 
-  it("maps a 404 from GCS to StorageNotFoundError", async () => {
-    gcs.download.mockRejectedValue(
-      Object.assign(new Error("No such object"), { code: 404 })
-    )
-    const error = await runFail(withStorage((s) => s.download("missing.pdf")))
+  it.effect("maps a 404 from GCS to StorageNotFoundError", () =>
+    Effect.gen(function* () {
+      gcs.download.mockRejectedValue(
+        Object.assign(new Error("No such object"), { code: 404 })
+      )
+      const error = yield* runFail(
+        withStorage((s) => s.download("missing.pdf"))
+      )
 
-    expect(error).toBeInstanceOf(StorageNotFoundError)
-    expect(error.key).toBe("missing.pdf")
-  })
+      expect(error).toBeInstanceOf(StorageNotFoundError)
+      expect(error.key).toBe("missing.pdf")
+    })
+  )
 
-  it("maps any other failure to StorageDownloadError", async () => {
-    gcs.download.mockRejectedValue(
-      Object.assign(new Error("server error"), { code: 500 })
-    )
-    const error = await runFail(withStorage((s) => s.download("a.pdf")))
+  it.effect("maps any other failure to StorageDownloadError", () =>
+    Effect.gen(function* () {
+      gcs.download.mockRejectedValue(
+        Object.assign(new Error("server error"), { code: 500 })
+      )
+      const error = yield* runFail(withStorage((s) => s.download("a.pdf")))
 
-    expect(error).toBeInstanceOf(StorageDownloadError)
-  })
+      expect(error).toBeInstanceOf(StorageDownloadError)
+    })
+  )
 })
 
 describe("exists", () => {
-  it("returns the flag reported by GCS", async () => {
-    gcs.exists.mockResolvedValueOnce([false])
-    expect(await runOk(withStorage((s) => s.exists("a.txt")))).toBe(false)
-  })
+  it.effect("returns the flag reported by GCS", () =>
+    Effect.gen(function* () {
+      gcs.exists.mockResolvedValueOnce([false])
+      expect(yield* runOk(withStorage((s) => s.exists("a.txt")))).toBe(false)
+    })
+  )
 })
 
 describe("remove", () => {
-  it("deletes with ignoreNotFound, so a missing object is not an error", async () => {
-    await runOk(withStorage((s) => s.remove("a.pdf")))
-    expect(gcs.remove).toHaveBeenCalledWith({ ignoreNotFound: true })
-  })
+  it.effect(
+    "deletes with ignoreNotFound, so a missing object is not an error",
+    () =>
+      Effect.gen(function* () {
+        yield* runOk(withStorage((s) => s.remove("a.pdf")))
+        expect(gcs.remove).toHaveBeenCalledWith({ ignoreNotFound: true })
+      })
+  )
 
-  it("maps a failed delete to StorageDeleteError", async () => {
-    gcs.remove.mockRejectedValue(new Error("denied"))
-    const error = await runFail(withStorage((s) => s.remove("a.pdf")))
+  it.effect("maps a failed delete to StorageDeleteError", () =>
+    Effect.gen(function* () {
+      gcs.remove.mockRejectedValue(new Error("denied"))
+      const error = yield* runFail(withStorage((s) => s.remove("a.pdf")))
 
-    expect(error).toBeInstanceOf(StorageDeleteError)
-  })
+      expect(error).toBeInstanceOf(StorageDeleteError)
+    })
+  )
 })
 
 describe("removeByPrefix", () => {
-  it.each(["", "/", "   "])(
+  it.effect.each(["", "/", "   "])(
     "refuses the prefix %j without listing or deleting",
-    async (prefix) => {
-      const error = await runFail(withStorage((s) => s.removeByPrefix(prefix)))
+    (prefix) =>
+      Effect.gen(function* () {
+        const error = yield* runFail(
+          withStorage((s) => s.removeByPrefix(prefix))
+        )
 
-      expect(error).toBeInstanceOf(StorageValidationError)
-      expect(gcs.getFiles).not.toHaveBeenCalled()
-    }
+        expect(error).toBeInstanceOf(StorageValidationError)
+        expect(gcs.getFiles).not.toHaveBeenCalled()
+      })
   )
 
-  it("deletes every listed object and returns the count", async () => {
-    const a = { name: "tmp/a", delete: vi.fn().mockResolvedValue([undefined]) }
-    const b = { name: "tmp/b", delete: vi.fn().mockResolvedValue([undefined]) }
-    gcs.getFiles.mockResolvedValue([[a, b]])
+  it.effect("deletes every listed object and returns the count", () =>
+    Effect.gen(function* () {
+      const a = {
+        name: "tmp/a",
+        delete: vi.fn().mockResolvedValue([undefined]),
+      }
+      const b = {
+        name: "tmp/b",
+        delete: vi.fn().mockResolvedValue([undefined]),
+      }
+      gcs.getFiles.mockResolvedValue([[a, b]])
 
-    const deleted = await runOk(withStorage((s) => s.removeByPrefix("tmp/")))
+      const deleted = yield* runOk(withStorage((s) => s.removeByPrefix("tmp/")))
 
-    expect(deleted).toBe(2)
-    expect(gcs.getFiles).toHaveBeenCalledWith(
-      expect.objectContaining({ prefix: "tmp/" })
-    )
-    expect(a.delete).toHaveBeenCalledWith({ ignoreNotFound: true })
-    expect(b.delete).toHaveBeenCalledWith({ ignoreNotFound: true })
-  })
+      expect(deleted).toBe(2)
+      expect(gcs.getFiles).toHaveBeenCalledWith(
+        expect.objectContaining({ prefix: "tmp/" })
+      )
+      expect(a.delete).toHaveBeenCalledWith({ ignoreNotFound: true })
+      expect(b.delete).toHaveBeenCalledWith({ ignoreNotFound: true })
+    })
+  )
 
-  it("maps a failed delete to StorageDeleteError carrying the object key", async () => {
-    const a = {
-      name: "tmp/a",
-      delete: vi.fn().mockRejectedValue(new Error("denied")),
-    }
-    gcs.getFiles.mockResolvedValue([[a]])
-    const error = await runFail(withStorage((s) => s.removeByPrefix("tmp/")))
+  it.effect(
+    "maps a failed delete to StorageDeleteError carrying the object key",
+    () =>
+      Effect.gen(function* () {
+        const a = {
+          name: "tmp/a",
+          delete: vi.fn().mockRejectedValue(new Error("denied")),
+        }
+        gcs.getFiles.mockResolvedValue([[a]])
+        const error = yield* runFail(
+          withStorage((s) => s.removeByPrefix("tmp/"))
+        )
 
-    expect(error).toBeInstanceOf(StorageDeleteError)
-    expect(error.key).toBe("tmp/a")
-  })
+        expect(error).toBeInstanceOf(StorageDeleteError)
+        expect(error.key).toBe("tmp/a")
+      })
+  )
 
-  it("maps a failed listing to StorageListError", async () => {
-    gcs.getFiles.mockRejectedValue(new Error("unavailable"))
-    const error = await runFail(withStorage((s) => s.removeByPrefix("tmp/")))
+  it.effect("maps a failed listing to StorageListError", () =>
+    Effect.gen(function* () {
+      gcs.getFiles.mockRejectedValue(new Error("unavailable"))
+      const error = yield* runFail(withStorage((s) => s.removeByPrefix("tmp/")))
 
-    expect(error).toBeInstanceOf(StorageListError)
-  })
+      expect(error).toBeInstanceOf(StorageListError)
+    })
+  )
 })
 
 describe("list", () => {
-  it("maps objects to key, size and updated, and passes prefix and limit to GCS", async () => {
-    gcs.getFiles.mockResolvedValue([
-      [
-        {
-          name: "docs/a.txt",
-          metadata: { size: "12", updated: "2026-01-02T03:04:05.000Z" },
-        },
-      ],
-    ])
+  it.effect(
+    "maps objects to key, size and updated, and passes prefix and limit to GCS",
+    () =>
+      Effect.gen(function* () {
+        gcs.getFiles.mockResolvedValue([
+          [
+            {
+              name: "docs/a.txt",
+              metadata: { size: "12", updated: "2026-01-02T03:04:05.000Z" },
+            },
+          ],
+        ])
 
-    const listed = await runOk(
-      withStorage((s) => s.list("docs/", { limit: 5 }))
-    )
+        const listed = yield* runOk(
+          withStorage((s) => s.list("docs/", { limit: 5 }))
+        )
 
-    expect(listed).toEqual([
-      {
-        key: "docs/a.txt",
-        size: 12,
-        updated: new Date("2026-01-02T03:04:05.000Z"),
-      },
-    ])
-    expect(gcs.getFiles).toHaveBeenCalledWith({
-      prefix: "docs/",
-      autoPaginate: true,
-      maxResults: 5,
+        expect(listed).toEqual([
+          {
+            key: "docs/a.txt",
+            size: 12,
+            updated: new Date("2026-01-02T03:04:05.000Z"),
+          },
+        ])
+        expect(gcs.getFiles).toHaveBeenCalledWith({
+          prefix: "docs/",
+          autoPaginate: true,
+          maxResults: 5,
+        })
+      })
+  )
+
+  it.effect("never returns more objects than the limit", () =>
+    Effect.gen(function* () {
+      const page = [{ name: "a" }, { name: "b" }, { name: "c" }].map(
+        (file) => ({
+          ...file,
+          metadata: { size: 1, updated: "2026-01-01T00:00:00.000Z" },
+        })
+      )
+      gcs.getFiles.mockResolvedValue([page])
+
+      const listed = yield* runOk(withStorage((s) => s.list("", { limit: 2 })))
+      expect(listed.map((object) => object.key)).toEqual(["a", "b"])
     })
-  })
+  )
 
-  it("never returns more objects than the limit", async () => {
-    const page = [{ name: "a" }, { name: "b" }, { name: "c" }].map((file) => ({
-      ...file,
-      metadata: { size: 1, updated: "2026-01-01T00:00:00.000Z" },
-    }))
-    gcs.getFiles.mockResolvedValue([page])
+  it.effect("maps a failed listing to StorageListError", () =>
+    Effect.gen(function* () {
+      gcs.getFiles.mockRejectedValue(new Error("unavailable"))
+      const error = yield* runFail(withStorage((s) => s.list("docs/")))
 
-    const listed = await runOk(withStorage((s) => s.list("", { limit: 2 })))
-    expect(listed.map((object) => object.key)).toEqual(["a", "b"])
-  })
-
-  it("maps a failed listing to StorageListError", async () => {
-    gcs.getFiles.mockRejectedValue(new Error("unavailable"))
-    const error = await runFail(withStorage((s) => s.list("docs/")))
-
-    expect(error).toBeInstanceOf(StorageListError)
-  })
+      expect(error).toBeInstanceOf(StorageListError)
+    })
+  )
 })
 
 describe("signed URLs", () => {
-  // 2026-01-01T00:00:00Z. Only Date is faked, so Effect's clock reads this time.
+  // 2026-01-01T00:00:00Z, the time each test sets on the TestClock.
   const NOW_MS = 1767225600000
 
-  beforeEach(() => {
-    vi.useFakeTimers({ toFake: ["Date"] })
-    vi.setSystemTime(NOW_MS)
-  })
+  it.effect(
+    "signs a V4 read URL that expires after 15 minutes by default",
+    () =>
+      Effect.gen(function* () {
+        yield* TestClock.setTime(NOW_MS)
+        const url = yield* runOk(
+          withStorage((s) => s.signedDownloadUrl("resume/a.pdf"))
+        )
 
-  afterEach(() => {
-    vi.useRealTimers()
-  })
-
-  it("signs a V4 read URL that expires after 15 minutes by default", async () => {
-    const url = await runOk(
-      withStorage((s) => s.signedDownloadUrl("resume/a.pdf"))
-    )
-
-    expect(url).toBe("https://signed.example/url")
-    expect(gcs.getSignedUrl).toHaveBeenCalledWith({
-      version: "v4",
-      action: "read",
-      expires: NOW_MS + 900_000,
-    })
-  })
-
-  it("sets an attachment disposition with the filename", async () => {
-    await runOk(
-      withStorage((s) =>
-        s.signedDownloadUrl("resume/a.pdf", { filename: "Mario Rossi CV.pdf" })
-      )
-    )
-
-    expect(gcs.getSignedUrl).toHaveBeenCalledWith({
-      version: "v4",
-      action: "read",
-      expires: NOW_MS + 900_000,
-      responseDisposition: 'attachment; filename="Mario Rossi CV.pdf"',
-    })
-  })
-
-  it("removes quotes and line breaks from the filename", async () => {
-    await runOk(
-      withStorage((s) =>
-        s.signedDownloadUrl("resume/a.pdf", { filename: 'ev"il\r\nname.pdf' })
-      )
-    )
-
-    expect(gcs.getSignedUrl).toHaveBeenCalledWith(
-      expect.objectContaining({
-        responseDisposition: 'attachment; filename="evilname.pdf"',
+        expect(url).toBe("https://signed.example/url")
+        expect(gcs.getSignedUrl).toHaveBeenCalledWith({
+          version: "v4",
+          action: "read",
+          expires: NOW_MS + 900_000,
+        })
       })
-    )
-  })
+  )
 
-  it("omits the disposition when no filename is given", async () => {
-    await runOk(withStorage((s) => s.signedDownloadUrl("resume/a.pdf")))
-
-    const options = (
-      gcs.getSignedUrl.mock.calls[0] as unknown[] | undefined
-    )?.[0] as Record<string, unknown>
-    expect(options).not.toHaveProperty("responseDisposition")
-  })
-
-  it("honours expiresInSeconds", async () => {
-    await runOk(
-      withStorage((s) =>
-        s.signedDownloadUrl("resume/a.pdf", { expiresInSeconds: 60 })
+  it.effect("sets an attachment disposition with the filename", () =>
+    Effect.gen(function* () {
+      yield* TestClock.setTime(NOW_MS)
+      yield* runOk(
+        withStorage((s) =>
+          s.signedDownloadUrl("resume/a.pdf", {
+            filename: "Mario Rossi CV.pdf",
+          })
+        )
       )
-    )
 
-    expect(gcs.getSignedUrl).toHaveBeenCalledWith(
-      expect.objectContaining({ expires: NOW_MS + 60_000 })
-    )
-  })
-
-  it("signs a V4 write URL bound to the content type", async () => {
-    await runOk(
-      withStorage((s) =>
-        s.signedUploadUrl("resume/a.pdf", { contentType: "application/pdf" })
-      )
-    )
-
-    expect(gcs.getSignedUrl).toHaveBeenCalledWith({
-      version: "v4",
-      action: "write",
-      expires: NOW_MS + 900_000,
-      contentType: "application/pdf",
+      expect(gcs.getSignedUrl).toHaveBeenCalledWith({
+        version: "v4",
+        action: "read",
+        expires: NOW_MS + 900_000,
+        responseDisposition: 'attachment; filename="Mario Rossi CV.pdf"',
+      })
     })
-  })
+  )
 
-  it("maps a signing failure to StorageSignError", async () => {
-    gcs.getSignedUrl.mockRejectedValue(
-      new Error("Max allowed expiration is seven days")
-    )
-    const error = await runFail(
-      withStorage((s) =>
-        s.signedUploadUrl("a.pdf", { contentType: "application/pdf" })
+  it.effect("removes quotes and line breaks from the filename", () =>
+    Effect.gen(function* () {
+      yield* TestClock.setTime(NOW_MS)
+      yield* runOk(
+        withStorage((s) =>
+          s.signedDownloadUrl("resume/a.pdf", { filename: 'ev"il\r\nname.pdf' })
+        )
       )
-    )
 
-    expect(error).toBeInstanceOf(StorageSignError)
-  })
+      expect(gcs.getSignedUrl).toHaveBeenCalledWith(
+        expect.objectContaining({
+          responseDisposition: 'attachment; filename="evilname.pdf"',
+        })
+      )
+    })
+  )
+
+  it.effect("omits the disposition when no filename is given", () =>
+    Effect.gen(function* () {
+      yield* TestClock.setTime(NOW_MS)
+      yield* runOk(withStorage((s) => s.signedDownloadUrl("resume/a.pdf")))
+
+      const options = (
+        gcs.getSignedUrl.mock.calls[0] as unknown[] | undefined
+      )?.[0] as Record<string, unknown>
+      expect(options).not.toHaveProperty("responseDisposition")
+    })
+  )
+
+  it.effect("honours expiresInSeconds", () =>
+    Effect.gen(function* () {
+      yield* TestClock.setTime(NOW_MS)
+      yield* runOk(
+        withStorage((s) =>
+          s.signedDownloadUrl("resume/a.pdf", { expiresInSeconds: 60 })
+        )
+      )
+
+      expect(gcs.getSignedUrl).toHaveBeenCalledWith(
+        expect.objectContaining({ expires: NOW_MS + 60_000 })
+      )
+    })
+  )
+
+  it.effect("signs a V4 write URL bound to the content type", () =>
+    Effect.gen(function* () {
+      yield* TestClock.setTime(NOW_MS)
+      yield* runOk(
+        withStorage((s) =>
+          s.signedUploadUrl("resume/a.pdf", { contentType: "application/pdf" })
+        )
+      )
+
+      expect(gcs.getSignedUrl).toHaveBeenCalledWith({
+        version: "v4",
+        action: "write",
+        expires: NOW_MS + 900_000,
+        contentType: "application/pdf",
+      })
+    })
+  )
+
+  it.effect("maps a signing failure to StorageSignError", () =>
+    Effect.gen(function* () {
+      yield* TestClock.setTime(NOW_MS)
+      gcs.getSignedUrl.mockRejectedValue(
+        new Error("Max allowed expiration is seven days")
+      )
+      const error = yield* runFail(
+        withStorage((s) =>
+          s.signedUploadUrl("a.pdf", { contentType: "application/pdf" })
+        )
+      )
+
+      expect(error).toBeInstanceOf(StorageSignError)
+    })
+  )
 })
 
 describe("Promise facade", () => {

@@ -1,10 +1,21 @@
-import { beforeAll, beforeEach, describe, expect, it } from "vitest"
+import { beforeAll, beforeEach } from "vitest"
+import { describe, expect, it } from "@effect/vitest"
+import { Effect } from "effect"
+import { TestClock } from "effect/testing"
+import { type ServerContext } from "@mito/server/effect/server"
+import { provideServer } from "@/test/effect"
 import { type Actor } from "@mito/domain/contact/permissions"
 import { migrateUpTo, resetDb } from "@/test/db"
 import { createOperator, createTask } from "@/test/factories"
 import { actorOf } from "../../contact/actor"
 import { contactProgress } from "../contactProgress"
-import { at, T } from "./clock"
+import { T } from "./clock"
+
+/** The program with the `Clock` stopped at `millis`: the `TestClock` of `it.effect`. */
+const at = <A, E>(
+  millis: number,
+  program: Effect.Effect<A, E, ServerContext>
+) => TestClock.setTime(millis).pipe(Effect.andThen(program), provideServer)
 
 // "Contatti con esito" sulla coda attuale (AC17): solo i contatti attivi;
 // completati gli stati con un esito, da fare quelli in coda; `nessuno` e lo
@@ -44,77 +55,140 @@ beforeEach(async () => {
 })
 
 describe("contactProgress: la coda attuale", () => {
-  it("un contatto non attivo con un esito non conta: un contatto non attivo in `app.to` non conta in `done`", async () => {
-    const operator = await createOperator({ role: "OPERATORE" })
-    await createTask({
-      state: "app.to",
-      isActive: false,
-      operatorId: operator.id,
+  it.effect(
+    "un contatto non attivo con un esito non conta: un contatto non attivo in `app.to` non conta in `done`",
+    () =>
+      Effect.gen(function* () {
+        const operator = yield* Effect.promise(() =>
+          createOperator({ role: "OPERATORE" })
+        )
+        yield* Effect.promise(() =>
+          createTask({
+            state: "app.to",
+            isActive: false,
+            operatorId: operator.id,
+          })
+        )
+
+        expect(yield* progressOf(actorOf(operator))).toEqual({
+          done: 0,
+          todo: 0,
+        })
+      })
+  )
+
+  it.effect(
+    "dei contatti attivi, `done` conta gli stati con un esito e `todo` quelli in coda; `nessuno` e lo stato vuoto in nessuno dei due",
+    () =>
+      Effect.gen(function* () {
+        const operator = yield* Effect.promise(() =>
+          createOperator({ role: "OPERATORE" })
+        )
+        for (const state of STATES) {
+          yield* Effect.promise(() =>
+            createTask({ state, isActive: true, operatorId: operator.id })
+          )
+        }
+
+        // done: app.to, caricato, erogata, non interessato, richiamare;
+        // todo: chiamare, followup, non risponde
+        expect(yield* progressOf(actorOf(operator))).toEqual({
+          done: 5,
+          todo: 3,
+        })
+      })
+  )
+
+  it.effect("`followup` e `non risponde` sono fra i da fare", () =>
+    Effect.gen(function* () {
+      const operator = yield* Effect.promise(() =>
+        createOperator({ role: "OPERATORE" })
+      )
+      yield* Effect.promise(() =>
+        createTask({
+          state: "followup",
+          isActive: true,
+          operatorId: operator.id,
+        })
+      )
+      yield* Effect.promise(() =>
+        createTask({
+          state: "non risponde",
+          isActive: true,
+          operatorId: operator.id,
+        })
+      )
+
+      expect(yield* progressOf(actorOf(operator))).toEqual({ done: 0, todo: 2 })
     })
+  )
 
-    expect(await progressOf(actorOf(operator))).toEqual({ done: 0, todo: 0 })
-  })
+  it.effect("i contatti non attivi non contano, in nessuno stato", () =>
+    Effect.gen(function* () {
+      const operator = yield* Effect.promise(() =>
+        createOperator({ role: "OPERATORE" })
+      )
+      for (const state of STATES) {
+        yield* Effect.promise(() =>
+          createTask({ state, isActive: false, operatorId: operator.id })
+        )
+      }
 
-  it("dei contatti attivi, `done` conta gli stati con un esito e `todo` quelli in coda; `nessuno` e lo stato vuoto in nessuno dei due", async () => {
-    const operator = await createOperator({ role: "OPERATORE" })
-    for (const state of STATES) {
-      await createTask({ state, isActive: true, operatorId: operator.id })
-    }
-
-    // done: app.to, caricato, erogata, non interessato, richiamare;
-    // todo: chiamare, followup, non risponde
-    expect(await progressOf(actorOf(operator))).toEqual({ done: 5, todo: 3 })
-  })
-
-  it("`followup` e `non risponde` sono fra i da fare", async () => {
-    const operator = await createOperator({ role: "OPERATORE" })
-    await createTask({
-      state: "followup",
-      isActive: true,
-      operatorId: operator.id,
+      expect(yield* progressOf(actorOf(operator))).toEqual({ done: 0, todo: 0 })
     })
-    await createTask({
-      state: "non risponde",
-      isActive: true,
-      operatorId: operator.id,
-    })
+  )
 
-    expect(await progressOf(actorOf(operator))).toEqual({ done: 0, todo: 2 })
-  })
+  it.effect(
+    "un ADMIN conta tutti i contatti attivi, di ogni operatore e senza operatore; un OPERATORE solo i suoi",
+    () =>
+      Effect.gen(function* () {
+        const operatorA = yield* Effect.promise(() =>
+          createOperator({ role: "OPERATORE" })
+        )
+        const operatorB = yield* Effect.promise(() =>
+          createOperator({ role: "OPERATORE" })
+        )
+        const admin = yield* Effect.promise(() =>
+          createOperator({ role: "ADMIN" })
+        )
+        yield* Effect.promise(() => seedContacts(operatorA.id))
+        yield* Effect.promise(() => seedContacts(operatorB.id))
+        yield* Effect.promise(() => seedContacts(null))
 
-  it("i contatti non attivi non contano, in nessuno stato", async () => {
-    const operator = await createOperator({ role: "OPERATORE" })
-    for (const state of STATES) {
-      await createTask({ state, isActive: false, operatorId: operator.id })
-    }
+        expect(yield* progressOf(actorOf(admin))).toEqual({ done: 15, todo: 9 })
+        expect(yield* progressOf(actorOf(operatorA))).toEqual({
+          done: 5,
+          todo: 3,
+        })
+        expect(yield* progressOf(actorOf(operatorB))).toEqual({
+          done: 5,
+          todo: 3,
+        })
+      })
+  )
 
-    expect(await progressOf(actorOf(operator))).toEqual({ done: 0, todo: 0 })
-  })
+  it.effect(
+    "un contatto attivo creato due anni fa conta ancora: nessun filtro di data",
+    () =>
+      Effect.gen(function* () {
+        const operator = yield* Effect.promise(() =>
+          createOperator({ role: "OPERATORE" })
+        )
+        const twoYearsAgo = new Date()
+        twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2)
+        yield* Effect.promise(() =>
+          createTask({
+            state: "erogata",
+            isActive: true,
+            operatorId: operator.id,
+            createdAt: twoYearsAgo,
+          })
+        )
 
-  it("un ADMIN conta tutti i contatti attivi, di ogni operatore e senza operatore; un OPERATORE solo i suoi", async () => {
-    const operatorA = await createOperator({ role: "OPERATORE" })
-    const operatorB = await createOperator({ role: "OPERATORE" })
-    const admin = await createOperator({ role: "ADMIN" })
-    await seedContacts(operatorA.id)
-    await seedContacts(operatorB.id)
-    await seedContacts(null)
-
-    expect(await progressOf(actorOf(admin))).toEqual({ done: 15, todo: 9 })
-    expect(await progressOf(actorOf(operatorA))).toEqual({ done: 5, todo: 3 })
-    expect(await progressOf(actorOf(operatorB))).toEqual({ done: 5, todo: 3 })
-  })
-
-  it("un contatto attivo creato due anni fa conta ancora: nessun filtro di data", async () => {
-    const operator = await createOperator({ role: "OPERATORE" })
-    const twoYearsAgo = new Date()
-    twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2)
-    await createTask({
-      state: "erogata",
-      isActive: true,
-      operatorId: operator.id,
-      createdAt: twoYearsAgo,
-    })
-
-    expect(await progressOf(actorOf(operator))).toEqual({ done: 1, todo: 0 })
-  })
+        expect(yield* progressOf(actorOf(operator))).toEqual({
+          done: 1,
+          todo: 0,
+        })
+      })
+  )
 })

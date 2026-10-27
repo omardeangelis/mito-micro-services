@@ -136,6 +136,7 @@ I test della PR 3 fanno da guardia. Cambiano solo nei nomi importati, mai nelle 
 | D14 | Eccezione chiusa ad AC5 per le asserzioni che leggono la forma di `Cause` ed `Exit` di v3 (elenco nel §6) | Omar, 2026-10-27 (G0), dopo la verifica del piano (OQ2 della SPEC, chiusa) |
 | D15 | `Config` letto con un `ConfigProvider.fromEnv()` creato a ogni lettura in `storageLayer` e `importQueueChoice`; nei test, `ConfigProvider.fromEnv({ env })` al posto di `fromMap` | Tiene il comportamento di v3; `fromUnknown` con un oggetto annidato dà `None` (prova della verifica) |
 | D16 | vitest 5 con `pool: "threads"` (fuori dai fusi), `fakeTimers.toFake` e `exclude` di v1; `clearMocks` al default `true` | I default cambiati, misurati con prove su vitest 1.6 e 5 |
+| D17 | AC5, nella PR 3: `expect(await X)` → `expect(yield* X)` quando l'helper o il programma X diventa un `Effect` con lo stesso valore (anche `runServer(P)` → `P.pipe(provideServer, Effect.exit)` e Promise → `Fiber.join`), annotato in `eccezioni-pr3.txt` | Omar, 2026-10-27, dopo la revisione della PR 3: senza, gli helper dei test terrebbero runner a Promise, contro AC8 |
 
 ## 5. Assunzioni e vincoli
 
@@ -471,11 +472,13 @@ G0 ─┬─ T1 ─ T2 ─ T3 ─┬─ T4 ─┬─ T7 ─ T8 ══ PR 1 in de
   6. **`IMPLEMENTATION-NOTES.md`**, sezione "PR 1": i punti sopra, l'elenco di D14 completo e le deviazioni.
   7. **PR verso `dev`** quando Omar la chiede, dopo il merge di `dev` nel branch, con la revisione di Leonardo (D4). Prima di GA1 si avvisa Leonardo della PR #46 (§13).
 - **validation**: tutti i punti annotati; REPORT SHIP.
-- **status**: In progress
+- **status**: Done (con la prova su `mito_local` e la revisione di Leonardo rinviate)
 - **log**: 2026-10-27.
   - Fatti: AC1 (una copia di `effect` 4.0.6, nessun import da sottopercorsi); AC5 (lo script con `eccezioni-pr1.txt`, 41 eccezioni, exit 0); AC14 in un worktree di scratchpad senza `.env*` (install, lint, `tsc`, `db:check`, test con Postgres 312 file / 4413 verdi / 6 saltati, `next build` con `SKIP_ENV_VALIDATION=true` e i placeholder, `api:build`, `api:smoke`, tutti verdi).
   - `adversarial-review` (round PR 1 in `REPORT.md`): **DO NOT SHIP**, 7 passate su 8 SHIP. Il blocco è lo script di AC5 (v7): una rinomina pura non è confrontata, i marcatori con argomenti o opzioni e le tabelle di `each` passano. Da fare anche: un test diretto di `withCurrentEnv` (v3) e due righe nel Context della SPEC (v4).
   - Non fatti: la prova nel browser su `mito_local` (serve un `.env.development.local` locale; chiesto a Omar), la PR verso `dev`.
+  - [PR #114](https://github.com/omardeangelis/mito-micro-services/pull/114) aperta, `dev` (con la #113) unito nel branch in `8734153`: il lockfile si unisce da solo, suite 4413 verdi, CI verde. **In `dev` il 2026-10-27 (`43ec443`), su richiesta di Omar, senza la prova su `mito_local` né la revisione di Leonardo (GA1 non pieno): restano da fare su `dev`.**
+  - I tre punti aperti della revisione sono chiusi nella PR 3, prima della conversione: lo script di AC5 (`a7b5d3d`, harness 38/38, i 17 casi nuovi falliscono con lo script di prima), il test di `withCurrentEnv` e le due note nella SPEC (`c68be23`).
 - **files edited/created**:
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
@@ -570,13 +573,13 @@ G0 ─┬─ T1 ─ T2 ─ T3 ─┬─ T4 ─┬─ T7 ─ T8 ══ PR 1 in de
     - si rifà la sonda di T9 su `dev` e quella di T10 sul branch, perché la base è cambiata.
   - La PR verso `dev` quando Omar la chiede.
 - **validation**: tutti i punti annotati; REPORT SHIP; la CI della PR verde.
-- **status**: In progress
+- **status**: Done
 - **log**: 2026-10-27.
   - `adversarial-review` (round PR 2 in `REPORT.md`): **DO NOT SHIP** sulla lettera di AC3 (i titoli di `each` cambiano forma in 12 file; decisione di Omar), su `sequence.hooks` (corretto in `01a042a`) e sui documenti.
   - I gate locali sul branch: suite intera verde dopo `01a042a`, `tsc` pulito, lo script exit 0.
   - AC3 corretto nella SPEC (Omar, 2026-10-27): la forma dei titoli `each` di vitest 5 è accettata. AC3 è Met.
   - La #111 in `dev` (`723fc10`), unita nel branch. Documenti in `d7674cd`: la riga di vitest nel §4 della roadmap, W3, e nel §8 "nessun debito nuovo" (AC12, AC13). `AGENTS.md` non cita `vitest.workspace.ts`.
-  - [PR #113](https://github.com/omardeangelis/mito-micro-services/pull/113) aperta verso `dev`. Da fare: la CI verde, poi il merge.
+  - [PR #113](https://github.com/omardeangelis/mito-micro-services/pull/113) aperta verso `dev`, CI verde, in `dev` il 2026-10-27 (`9a970bc`).
 - **files edited/created**:
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
@@ -610,9 +613,14 @@ G0 ─┬─ T1 ─ T2 ─ T3 ─┬─ T4 ─┬─ T7 ─ T8 ══ PR 1 in de
   - i file convertiti verdi, con lo stesso numero di test;
   - lo script di T1 esce con 0, con le eccezioni `resolves`/`rejects` annotate;
   - `TestClock` usato almeno in un test del modello.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-10-27, `f26e44a` (worker sul modello più forte, rivisto dal supervisore).
+  - `@effect/vitest` 4.0.6 (AC4). `provideServer` in `src/test/effect.ts`; `runServer`, `fixedClock` e `at` restano finché T13–T16 non li hanno tolti dai loro file, e li toglie T17.
+  - `db.db.test.ts` 20 → 20: 13 `it.effect`, 3 `it.live` (`ServerLive`, osserva la console), 4 restano `it` (`runTrpc`, un bordo). `TestClock.setTime(T)` al posto di `fixedClock(T)`. Il mutante di T2 (`runPromiseExit` senza il contesto) fa ancora fallire due test. `errorReporter.test.ts` 1 → 1 `it.effect`; `trpc.db.test.ts` resta `it`.
+  - `currentEnv.test.ts` convertito: `it.effect` e `it.live` tengono il `ConfigProvider` di default (`@effect/vitest` `internal.ts:62,451-452`), e con `withCurrentEnv` reso l'identità il test fallisce.
+  - Le regole sono in `AGENTS.md` (sezione Effect). Misurate su 4.0.6: il `TestClock` parte da 0 e un `sleep` di Effect resta fermo senza `TestClock.adjust`; `vi.useFakeTimers` non muove il `TestClock`; il logger di `ServerLive` scrive sulla console della fibra, che `it.effect` sostituisce con `TestConsole`. Gli hook restano quelli di `vitest` (`sequence.hooks: "parallel"`).
+  - Gate: lo script con `eccezioni-pr3.txt` exit 0 (6 eccezioni, il test nuovo di `withCurrentEnv`); `tsc` ed ESLint puliti; suite 313 file / 4415 verdi / 6 saltati.
+- **files edited/created**: `package.json`, `pnpm-lock.yaml`, `src/test/effect.ts`, `packages/server/src/services/analytics/_test/clock.ts`, `packages/server/src/effect/_test/{db.db,errorReporter}.test.ts`, `packages/server/src/shared/_test/currentEnv.test.ts`, `AGENTS.md`, `brain/specs/crm/effect-4/eccezioni-pr3.txt`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -628,8 +636,8 @@ G0 ─┬─ T1 ─ T2 ─ T3 ─┬─ T4 ─┬─ T7 ─ T8 ══ PR 1 in de
   - i file verdi, con lo stesso numero di test;
   - lo script di T1 esce con 0, eccezioni annotate;
   - `git grep -nE "Effect\.run(Promise|PromiseExit|Sync)\(|runServer\(" -- <file del task>` trova solo i bordi elencati.
-- **status**: Planned
-- **log**:
+- **status**: Done
+- **log**: 2026-10-27, worker sul modello bilanciato, rivisto e unito dal supervisore. `2e1f39a` (merge `9c64d4b`). 16 file, 110 → 110 test. Restano `it` i test che passano da `createTestCaller` o dall'`handler` HTTP. L'unico `runServer(` rimasto è una cella della tabella `each` di `deactivate.pg.test.ts:609`, che deve restituire una Promise come l'altra riga (lo script confronta le tabelle). 34 eccezioni: `expect(await X)` → `expect(yield* X)`, anche nella forma `runServer(P)` → `P.pipe(provideServer, Effect.exit)`. `it.effect.each` passa la riga intera come un argomento solo.
 - **files edited/created**:
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
@@ -645,8 +653,8 @@ G0 ─┬─ T1 ─ T2 ─ T3 ─┬─ T4 ─┬─ T7 ─ T8 ══ PR 1 in de
   - `lockRule` e `operatorRule` restano helper di test che girano programmi su ogni scrittore: si convertono dove eseguono programmi Effect, senza toccare le loro tabelle di casi.
   - `alert.db.test.ts:269` osserva la console (`it.live`).
 - **validation**: come T13, sulle sue cartelle.
-- **status**: Planned
-- **log**:
+- **status**: Done
+- **log**: 2026-10-27, worker sul modello bilanciato, rivisto e unito dal supervisore. `bebb005` (merge `ebdcd8c`). 17 file convertiti, 583 test verdi prima e dopo. Nessun `it.live`: le rotte dei cron in `src/app/api/cron` sono bordi e restano `it`, e la spia sulla console di `alert.db.test.ts` vede ancora la console, perché la rotta usa il suo runtime. I tre `Cause.pretty` di `lockRule` sono invariati. 120 eccezioni: helper diventati Effect, e 8 righe in cui la Promise di un invio concorrente diventa una fibra (`yield* Fiber.join`).
 - **files edited/created**:
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
@@ -664,8 +672,8 @@ G0 ─┬─ T1 ─ T2 ─ T3 ─┬─ T4 ─┬─ T7 ─ T8 ══ PR 1 in de
   - `run.db.test.ts:509-534` (fibra staccata sull'orologio reale) e `queue.test.ts:162-176` (attese reali da 200 ms in su) vanno con `it.live`.
   - `gcs.test.ts` prova anche il client a Promise: quella parte resta `it`.
 - **validation**: come T13, sulle sue cartelle (i `*.pg.test.ts` con `TEST_DATABASE_URL`).
-- **status**: Planned
-- **log**:
+- **status**: Done
+- **log**: 2026-10-27, worker sul modello bilanciato, rivisto e unito dal supervisore. `539aa0f` (merge `8e73189`). 16 file, 189 → 189 test. `it.live`: i due tentativi della coda in `queue.test.ts` (`Schedule.exponential`) e la fibra staccata di `run.db.test.ts`. Restano `it` la facciata a Promise di `gcs.test.ts` e `import.perf.pg.test.ts`. Un secondo orologio a passi scritto a mano, già su `dev`, in `apply.db.test.ts:770` (la scadenza che passa fra un blocco e l'altro): AC8 corretto per nominarlo. Le scadenze `Date.now() + …` lette dal `Clock` vogliono `TestClock.setTime(Date.now())`, se no `statement_timeout` riceve un valore enorme. 50 eccezioni, tutte helper diventati Effect.
 - **files edited/created**:
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
@@ -679,8 +687,8 @@ G0 ─┬─ T1 ─ T2 ─ T3 ─┬─ T4 ─┬─ T7 ─ T8 ══ PR 1 in de
 - **location**: `apps/api/src/**/_test/*`, `packages/db/src/_test/migrate.pg.test.ts`, `src/app/api/export/download/_test/*`
 - **description**: Conversione con le regole di T12. I test delle rotte (Hono, Next.js) sono bordi e restano `it`. Si convertono solo le parti che eseguono un programma Effect per preparare o controllare. L'elenco dei bordi va nel log.
 - **validation**: come T13, sulle sue cartelle, con i bordi elencati come eccezioni di AC8.
-- **status**: Planned
-- **log**:
+- **status**: Done
+- **log**: 2026-10-27, worker sul modello bilanciato, rivisto e unito dal supervisore. `b85a8af`, `9f6a998` (merge `c6289da`). 11 file, 129 → 129 test. Le rotte Hono e Next.js restano `it`. Bordi: i due `Effect.runSync` nelle factory di `vi.mock` di `download.test.ts:21` e `downloadGuards.test.ts:27`, che costruiscono lo storage in memoria al caricamento del modulo. 6 eccezioni: `failureOf` diventato Effect e un `.resolves` riscritto. Il worker aveva riportato indietro `PLAN.md` e le note nel suo commit: nel merge restano quelli del branch.
 - **files edited/created**:
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
@@ -701,8 +709,16 @@ G0 ─┬─ T1 ─ T2 ─ T3 ─┬─ T4 ─┬─ T7 ─ T8 ══ PR 1 in de
   6. `adversarial-review` caso B sulla PR 3, contro AC4, AC5, AC8, AC12 (PR 3), AC13 e AC14.
   7. La PR verso `dev` quando Omar la chiede.
 - **validation**: tutti i punti annotati; REPORT SHIP.
-- **status**: Planned
-- **log**:
+- **status**: In progress
+- **log**: 2026-10-27.
+  - AC4: `@effect/vitest` 4.0.6, come `effect`.
+  - AC8: su `dev` il grep trova 50 file. Su HEAD trova solo i bordi: la cella di `deactivate.pg.test.ts:609`, le due factory di `vi.mock` della rotta del download e `runServer` stesso in `src/test/effect.ts`, che resta per quella cella. `fixedClock` e `at` tolti da `analytics/_test/clock.ts`. Il grep degli orologi trova `concurrency.pg.test.ts` e `apply.db.test.ts` (AC8 corretto).
+  - AC5: le eccezioni dei cinque task sono in un solo `eccezioni-pr3.txt`; lo script dà `ok, 55 test file(s) checked, 1621 chain(s) compared, 216 exception(s) used`. Il confronto a coppie delle righe tolte e aggiunte mostra che cambia solo `await` → `yield*`, salvo il test nuovo di `withCurrentEnv` e il `.resolves` riscritto.
+  - `tsc`, ESLint e Prettier puliti sul diff.
+  - Suite intera su `dev` e sul branch, reporter JSON: stessi nomi e stati in ogni file; in più solo i 2 test di `currentEnv.test.ts` (4415 verdi, 6 saltati).
+  - **Debito (AC13):** nessuno nuovo. Il §8 della roadmap elenca come scelte i bordi a Promise, la cella `each` con `runServer`, i due `runSync` nelle factory di `vi.mock` e i due orologi a passi.
+  - `adversarial-review` (round PR 3 in `REPORT.md`): **DO NOT SHIP**, 9 passate su 11 SHIP; i mutanti nel codice di produzione (43 di v4, 21 di v5) fanno fallire gli stessi test su `dev` e sul branch. Corretti dopo la revisione: `queue.test.ts` (fibre staccate) e i due test del budget di `processDueAlerts` in `it.live`, con i mutanti di v6 ora uccisi; lo script confronta per valore le tabelle `each` e le condizioni passate per nome (harness 41/41; la tabella `writers` di `operatorLock.pg` ha la sua eccezione); `AGENTS.md`, il §8, il conteggio di AC8, tre import vuoti. Lo script dà `ok, 55 test file(s) checked, 1620 chain(s) compared, 218 exception(s) used`; suite 4415 verdi.
+  - Omar firma la categoria di AC5 `expect(await X)` → `expect(yield* X)` (D17): AC5 nella SPEC la elenca. I punti 1–5 del checklist della revisione sono chiusi; restano la CI della PR e il merge.
 - **files edited/created**:
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
@@ -873,7 +889,7 @@ G0 ─┬─ T1 ─ T2 ─ T3 ─┬─ T4 ─┬─ T7 ─ T8 ══ PR 1 in de
 
 - **L'interfaccia pubblica.** Le procedure via `createTestCaller`, i servizi via i loro programmi, le rotte via HTTP, come oggi. Nessun test nuovo chiama un dettaglio interno di Effect.
 - **Il rosso, in un refactor.** I test di T2 e T19 si scrivono sul codice di oggi e devono essere verdi su `dev`. Il rosso che li rende utili sono i mutanti di T2, uccisi prima del passaggio. Per ogni altro task, il `tdd_target` è un test esistente che deve restare verde con il codice nuovo. Durante il lavoro è rosso: le API tolte non compilano, la fibra non vede il contesto, il provider di default non vede l'ambiente cambiato.
-- **AC5, con lo script di T1.** Nessuna asserzione cambia in nessuna PR. Le uniche eccezioni sono i test nuovi (T2, T19), l'elenco chiuso di D14 nella PR 1 e, nella PR 3, i `resolves`/`rejects` annotati. L'equivalenza `await X` = `yield* Effect.promise(() => X)` la applica lo script. Se un'asserzione va cambiata per altri motivi, ci si ferma e si chiede.
+- **AC5, con lo script di T1.** Nessuna asserzione cambia in nessuna PR. Le uniche eccezioni sono i test nuovi (T2, T19), l'elenco chiuso di D14 nella PR 1 e, nella PR 3, i `resolves`/`rejects` annotati. L'equivalenza `await X` = `yield* Effect.promise(() => X)` la applica lo script. Nella PR 3 vale anche D17: `expect(await X)` → `expect(yield* X)` quando X diventa un `Effect` con lo stesso valore, annotato riga per riga. Se un'asserzione va cambiata per altri motivi, ci si ferma e si chiede.
 - **Lo stato verde fra un task e l'altro della PR 1.** `tsc` sull'intero repo è rosso finché T4 e T5 non sono fatti. Ogni task controlla:
   - `tsc` filtrato sui suoi file;
   - i test delle sue cartelle, che girano anche se altri file non compilano, perché vitest traspila senza controllare i tipi.

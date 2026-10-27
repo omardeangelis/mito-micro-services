@@ -1,12 +1,13 @@
-import { beforeAll, beforeEach, describe, expect, it } from "vitest"
-import { Exit } from "effect"
+import { beforeAll, beforeEach } from "vitest"
+import { describe, expect, it } from "@effect/vitest"
+import { Effect, Exit, Fiber } from "effect"
 import { eq } from "drizzle-orm"
 import { chat, messages } from "@mito/db/schema/chat"
 import { customers } from "@mito/db/schema/customers"
 import { chatToOperator } from "@mito/db/schema/relations/chatToOperator"
 import { sendCustomerMessage } from "../sendCustomerMessage"
 import { createTestCaller } from "@/test/caller"
-import { failureTag, runServer } from "@/test/effect"
+import { failureTag, provideServer } from "@/test/effect"
 import { createCustomer, createOperator } from "@/test/factories"
 import {
   hasTestDatabase,
@@ -22,7 +23,10 @@ import {
 // customer before it writes, as "Avvia una chat" and "Elimina nota" do (AC6).
 
 const send = (chatId: number, operator: { id: number }, content: string) =>
-  runServer(sendCustomerMessage({ chatId, content, operatorId: operator.id }))
+  sendCustomerMessage({ chatId, content, operatorId: operator.id }).pipe(
+    provideServer,
+    Effect.exit
+  )
 
 const notesOf = (chatId: number) =>
   pgDb
@@ -56,73 +60,121 @@ describe.skipIf(!hasTestDatabase)(
       await resetDb()
     })
 
-    it("mentre un'altra transazione tiene il lock del cliente, l'invio di chi è già nella chat aspetta", async () => {
-      const operator = await createOperator()
-      const { customer, chatId } = await seedChat(operator)
-      const held = await holdCustomerLock(customer.id)
+    it.effect(
+      "mentre un'altra transazione tiene il lock del cliente, l'invio di chi è già nella chat aspetta",
+      () =>
+        Effect.gen(function* () {
+          const operator = yield* Effect.promise(() => createOperator())
+          const { customer, chatId } = yield* Effect.promise(() =>
+            seedChat(operator)
+          )
+          const held = yield* Effect.promise(() =>
+            holdCustomerLock(customer.id)
+          )
 
-      const sending = send(chatId, operator, "Nota")
-      await waitUntilBlocked(1)
-      expect(await notesOf(chatId)).toEqual([])
+          const sending = yield* send(chatId, operator, "Nota").pipe(
+            Effect.forkChild
+          )
+          yield* Effect.promise(() => waitUntilBlocked(1))
+          expect(yield* Effect.promise(() => notesOf(chatId))).toEqual([])
 
-      await held.release()
-      expect(Exit.isSuccess(await sending)).toBe(true)
-      expect(await notesOf(chatId)).toEqual([
-        { operatorId: operator.id, content: "Nota" },
-      ])
-    })
+          yield* Effect.promise(() => held.release())
+          expect(Exit.isSuccess(yield* Fiber.join(sending))).toBe(true)
+          expect(yield* Effect.promise(() => notesOf(chatId))).toEqual([
+            { operatorId: operator.id, content: "Nota" },
+          ])
+        })
+    )
 
-    it("due invii insieme di un operatore che non è nella chat salvano tutte e due le note e una sola riga dell'operatore", async () => {
-      const author = await createOperator()
-      const colleague = await createOperator()
-      const { customer, chatId } = await seedChat(author)
-      const held = await holdCustomerLock(customer.id)
+    it.effect(
+      "due invii insieme di un operatore che non è nella chat salvano tutte e due le note e una sola riga dell'operatore",
+      () =>
+        Effect.gen(function* () {
+          const author = yield* Effect.promise(() => createOperator())
+          const colleague = yield* Effect.promise(() => createOperator())
+          const { customer, chatId } = yield* Effect.promise(() =>
+            seedChat(author)
+          )
+          const held = yield* Effect.promise(() =>
+            holdCustomerLock(customer.id)
+          )
 
-      const first = send(chatId, colleague, "Prima")
-      const second = send(chatId, colleague, "Seconda")
-      await waitUntilBlocked(2)
-      await held.release()
+          const first = yield* send(chatId, colleague, "Prima").pipe(
+            Effect.forkChild
+          )
+          const second = yield* send(chatId, colleague, "Seconda").pipe(
+            Effect.forkChild
+          )
+          yield* Effect.promise(() => waitUntilBlocked(2))
+          yield* Effect.promise(() => held.release())
 
-      expect(Exit.isSuccess(await first)).toBe(true)
-      expect(Exit.isSuccess(await second)).toBe(true)
-      expect(
-        (await notesOf(chatId)).map(({ content }) => content).sort()
-      ).toEqual(["Prima", "Seconda"])
-      expect(
-        (await operatorsOf(chatId)).filter(
-          ({ operatorId }) => operatorId === colleague.id
-        )
-      ).toHaveLength(1)
-    })
+          expect(Exit.isSuccess(yield* Fiber.join(first))).toBe(true)
+          expect(Exit.isSuccess(yield* Fiber.join(second))).toBe(true)
+          expect(
+            (yield* Effect.promise(() => notesOf(chatId)))
+              .map(({ content }) => content)
+              .sort()
+          ).toEqual(["Prima", "Seconda"])
+          expect(
+            (yield* Effect.promise(() => operatorsOf(chatId))).filter(
+              ({ operatorId }) => operatorId === colleague.id
+            )
+          ).toHaveLength(1)
+        })
+    )
 
-    it("se la chat sparisce mentre l'invio aspetta il lock, fallisce con ChatMissing e non salva niente", async () => {
-      const operator = await createOperator()
-      const { customer, chatId } = await seedChat(operator)
-      await pgDb
-        .insert(messages)
-        .values({ chatId, operatorId: operator.id, content: "L'ultima nota" })
-      const held = await holdCustomerLock(customer.id)
+    it.effect(
+      "se la chat sparisce mentre l'invio aspetta il lock, fallisce con ChatMissing e non salva niente",
+      () =>
+        Effect.gen(function* () {
+          const operator = yield* Effect.promise(() => createOperator())
+          const { customer, chatId } = yield* Effect.promise(() =>
+            seedChat(operator)
+          )
+          yield* Effect.promise(() =>
+            pgDb.insert(messages).values({
+              chatId,
+              operatorId: operator.id,
+              content: "L'ultima nota",
+            })
+          )
+          const held = yield* Effect.promise(() =>
+            holdCustomerLock(customer.id)
+          )
 
-      const sending = send(chatId, operator, "Nota inviata")
-      await waitUntilBlocked(1)
-      // A colleague deletes the last note, and the chat goes with it
-      await held.db.delete(messages).where(eq(messages.chatId, chatId))
-      await held.db
-        .delete(chatToOperator)
-        .where(eq(chatToOperator.chatId, chatId))
-      await held.db
-        .update(customers)
-        .set({ chatId: null })
-        .where(eq(customers.id, customer.id))
-      await held.db.delete(chat).where(eq(chat.id, chatId))
-      await held.release()
+          const sending = yield* send(chatId, operator, "Nota inviata").pipe(
+            Effect.forkChild
+          )
+          yield* Effect.promise(() => waitUntilBlocked(1))
+          // A colleague deletes the last note, and the chat goes with it
+          yield* Effect.promise(() =>
+            held.db.delete(messages).where(eq(messages.chatId, chatId))
+          )
+          yield* Effect.promise(() =>
+            held.db
+              .delete(chatToOperator)
+              .where(eq(chatToOperator.chatId, chatId))
+          )
+          yield* Effect.promise(() =>
+            held.db
+              .update(customers)
+              .set({ chatId: null })
+              .where(eq(customers.id, customer.id))
+          )
+          yield* Effect.promise(() =>
+            held.db.delete(chat).where(eq(chat.id, chatId))
+          )
+          yield* Effect.promise(() => held.release())
 
-      expect(failureTag(await sending)).toBe("ChatMissing")
-      expect(await notesOf(chatId)).toEqual([])
-      expect(await pgDb.select().from(chat).where(eq(chat.id, chatId))).toEqual(
-        []
-      )
-      expect(await operatorsOf(chatId)).toEqual([])
-    })
+          expect(failureTag(yield* Fiber.join(sending))).toBe("ChatMissing")
+          expect(yield* Effect.promise(() => notesOf(chatId))).toEqual([])
+          expect(
+            yield* Effect.promise(() =>
+              pgDb.select().from(chat).where(eq(chat.id, chatId))
+            )
+          ).toEqual([])
+          expect(yield* Effect.promise(() => operatorsOf(chatId))).toEqual([])
+        })
+    )
   }
 )
