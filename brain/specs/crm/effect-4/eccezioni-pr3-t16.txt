@@ -1,0 +1,7 @@
+# apps/api/src/cron/_test/cron.db.test.ts
+base:apps/api/src/cron/_test/cron.db.test.ts:424#c71ba7d2  helper diventato Effect: await → yield*, stesso valore
+apps/api/src/cron/_test/cron.db.test.ts:421#8f506fe6  helper diventato Effect: await → yield*, stesso valore
+base:apps/api/src/cron/_test/cron.db.test.ts:443#4a627707  helper diventato Effect: await → yield*, stesso valore
+apps/api/src/cron/_test/cron.db.test.ts:445#a3217f63  helper diventato Effect: await → yield*, stesso valore
+base:apps/api/src/cron/_test/cron.db.test.ts:583#67aba1ac  await expect(send(outcome)).resolves.toBeUndefined() diventa expect(yield* send(outcome)).toBeUndefined(): send ora è un Effect
+apps/api/src/cron/_test/cron.db.test.ts:604#ffb798e6  il valore del programma letto con yield* al posto di resolves
