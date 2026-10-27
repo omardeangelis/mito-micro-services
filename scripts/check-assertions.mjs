@@ -2,13 +2,18 @@
 // Guard for the Effect 3 -> 4 migration (spec brain/specs/crm/effect-4).
 //
 //   check-assertions.mjs assertions <base> <head> [--exceptions <file>]
-//     Compares the assertion chains (`expect(...)...`, `assert.x...`) of every
-//     test file touched between two git refs. Reads the AST, not lines.
+//     Compares the assertion chains (`expect(...)...`, `assert(...)`,
+//     `ctx.expect(...)`), the test and suite declarations with their modifiers,
+//     `each` tables, options and titles, and the `ctx.skip()` calls of every
+//     test file touched between two git refs. Reads the AST, not lines. It
+//     does not replace reading the diff: a value moved into a constant, or an
+//     assertion moved into a helper nobody calls, keeps the same chains.
 //   check-assertions.mjs gen-wrappers <ref>
 //     Lists the functions whose body is, or returns, a bare `Effect.gen(...)`.
 //
 // Runs git in the current directory.
 import { execFileSync, spawnSync } from "node:child_process"
+import { createHash } from "node:crypto"
 import { readFileSync } from "node:fs"
 import ts from "typescript"
 
@@ -21,6 +26,11 @@ const isTestPath = (p) =>
   p.startsWith("src/test/") ||
   p.split("/").includes("_test") ||
   /\.test\.tsx?$/.test(p)
+
+// The files vitest runs, and the project a name puts them in (vitest.config.ts).
+const isRunnableTest = (p) => /\.(?:test|spec)\.[cm]?[jt]sx?$/.test(p)
+const projectOf = (p) =>
+  /\.pg\.test\./.test(p) ? "pg" : /\.db\.test\./.test(p) ? "db" : "unit"
 
 const parse = (path, text) =>
   ts.createSourceFile(
@@ -86,14 +96,15 @@ const tokenKey = (printed) => {
   const tokens = []
   const braces = [] // true for a `${` of a template, false for a plain `{`
   let prev
-  for (let k = scanner.scan(); k !== ts.SyntaxKind.EndOfFileToken; ) {
+  for (let k = scanner.scan(); k !== ts.SyntaxKind.EndOfFileToken;) {
     if (k === ts.SyntaxKind.TemplateHead) braces.push(true)
     else if (k === ts.SyntaxKind.OpenBraceToken) braces.push(false)
     else if (k === ts.SyntaxKind.CloseBraceToken) {
       if (braces.pop()) k = scanner.reScanTemplateToken(false)
       if (k === ts.SyntaxKind.TemplateMiddle) braces.push(true)
     } else if (
-      (k === ts.SyntaxKind.SlashToken || k === ts.SyntaxKind.SlashEqualsToken) &&
+      (k === ts.SyntaxKind.SlashToken ||
+        k === ts.SyntaxKind.SlashEqualsToken) &&
       !OPERAND_END.has(prev)
     ) {
       k = scanner.reScanSlashToken()
@@ -105,7 +116,10 @@ const tokenKey = (printed) => {
   return tokens
     .filter(
       (t, i) =>
-        !(t.kind === ts.SyntaxKind.CommaToken && CLOSERS.has(tokens[i + 1]?.kind))
+        !(
+          t.kind === ts.SyntaxKind.CommaToken &&
+          CLOSERS.has(tokens[i + 1]?.kind)
+        )
     )
     .map((t) => t.text)
     .join(SEP)
@@ -142,9 +156,18 @@ const chainStart = (id) => {
   const accessed = ts.isPropertyAccessExpression(p) && p.expression === id
   if (CALLED_OR_ACCESSED.has(id.text)) return called || accessed
   if (id.text === "assertType") return called
-  if (id.text === "assert") return accessed
+  if (id.text === "assert") return called || accessed
   return false
 }
+
+// `ctx.expect(...)`, the `expect` of the test context
+const isContextExpect = (n) =>
+  ts.isPropertyAccessExpression(n) &&
+  n.name.text === "expect" &&
+  ts.isIdentifier(n.expression) &&
+  !!n.parent &&
+  ts.isCallExpression(n.parent) &&
+  n.parent.expression === n
 
 const climb = (id) => {
   let node = id
@@ -166,7 +189,15 @@ const climb = (id) => {
 // Test and suite declarations: `it`, `test`, `describe`, `suite` and their
 // modifiers. Only skip/only/todo and the like count, so `it` -> `it.effect`
 // is free.
-const TEST_ROOTS = { it: "test", test: "test", describe: "describe", suite: "describe" }
+const TEST_ROOTS = {
+  it: "test",
+  test: "test",
+  describe: "describe",
+  suite: "describe",
+}
+// `layer(L)("name", (it) => ...)` of @effect/vitest is a suite: only when called
+// twice, so a plain `layer(...)` call is not one.
+const CURRIED_ROOTS = { layer: "describe" }
 const MODIFIERS = new Set([
   "skip",
   "only",
@@ -178,9 +209,18 @@ const MODIFIERS = new Set([
   "sequential",
 ])
 
+// Modifiers whose arguments decide which tests run, or with which values.
+const ARG_MODIFIERS = new Set(["skipIf", "runIf", "each", "for"])
+// Test options that skip, focus or invert a test.
+const OPTION_MODIFIERS = new Set(
+  [...MODIFIERS].filter((m) => !ARG_MODIFIERS.has(m))
+)
+
 const markerChain = (call) => {
   const names = []
+  const args = [] // [modifier, arguments] of skipIf/runIf/each/for
   let n = call.expression
+  let curried = false
   for (;;) {
     if (ts.isPropertyAccessExpression(n)) names.unshift(n.name.text)
     else if (
@@ -188,17 +228,95 @@ const markerChain = (call) => {
       ts.isStringLiteralLike(n.argumentExpression)
     ) {
       names.unshift(n.argumentExpression.text)
-    } else if (!(ts.isCallExpression(n) || ts.isNonNullExpression(n))) break
+    } else if (ts.isCallExpression(n)) {
+      curried = true
+      const callee = n.expression
+      const name = ts.isPropertyAccessExpression(callee)
+        ? callee.name.text
+        : null
+      if (name && ARG_MODIFIERS.has(name)) args.unshift([name, n.arguments])
+    } else if (!ts.isNonNullExpression(n)) break
     n = n.expression
   }
-  return ts.isIdentifier(n) && Object.hasOwn(TEST_ROOTS, n.text)
-    ? { root: TEST_ROOTS[n.text], names }
-    : null
+  if (!ts.isIdentifier(n)) return null
+  if (Object.hasOwn(TEST_ROOTS, n.text))
+    return { root: TEST_ROOTS[n.text], names, args }
+  if (curried && Object.hasOwn(CURRIED_ROOTS, n.text)) {
+    return { root: CURRIED_ROOTS[n.text], names, args }
+  }
+  return null
 }
 
-const markerKey = (call) => {
-  const { root, names } = markerChain(call)
-  return `${root}:${[...new Set(names.filter((x) => MODIFIERS.has(x)))].sort().join(".")}`
+// The options object of `it(name, { skip: true }, fn)`: its skip/only/todo/...
+// properties, whatever their value.
+const optionsKey = (call, sf) =>
+  call.arguments
+    .filter(ts.isObjectLiteralExpression)
+    .flatMap((o) => o.properties)
+    .filter(
+      (p) =>
+        p.name &&
+        (ts.isIdentifier(p.name) || ts.isStringLiteralLike(p.name)) &&
+        OPTION_MODIFIERS.has(p.name.text)
+    )
+    .map((p) => normalize(p, sf))
+    .sort()
+
+const markerKey = (call, sf) => {
+  const { root, names, args } = markerChain(call)
+  const modifiers = [...new Set(names.filter((x) => MODIFIERS.has(x)))].sort()
+  const parts = [`${root}:${modifiers.join(".")}`]
+  for (const [name, list] of args) {
+    parts.push(`${name}(${list.map((a) => normalize(a, sf)).join(",")})`)
+  }
+  const options = optionsKey(call, sf)
+  if (options.length) parts.push(`options{${options.join(",")}}`)
+  const [title] = call.arguments
+  if (title && !ts.isFunctionLike(title))
+    parts.push(`title=${normalize(title, sf)}`)
+  return parts.join(SEP)
+}
+
+// `ctx.skip()` (or a destructured `skip()`) inside a test body: the names the
+// test callbacks give to their context.
+const contextSkips = (sf) => {
+  const out = []
+  const walk = (n, ctxNames) => {
+    if (ts.isCallExpression(n) && markerChain(n)) {
+      const names = new Set(ctxNames)
+      for (const a of n.arguments) {
+        if (!ts.isFunctionLike(a) || !a.parameters?.length) continue
+        const first = a.parameters[0].name
+        if (ts.isIdentifier(first)) names.add(`${first.text}.skip`)
+        else if (ts.isObjectBindingPattern(first)) {
+          for (const el of first.elements) {
+            const prop = el.propertyName ?? el.name
+            if (
+              ts.isIdentifier(prop) &&
+              prop.text === "skip" &&
+              ts.isIdentifier(el.name)
+            ) {
+              names.add(el.name.text)
+            }
+          }
+        }
+      }
+      ts.forEachChild(n, (c) => walk(c, names))
+      return
+    }
+    if (ts.isCallExpression(n)) {
+      const e = n.expression
+      const name = ts.isIdentifier(e)
+        ? e.text
+        : ts.isPropertyAccessExpression(e) && ts.isIdentifier(e.expression)
+          ? `${e.expression.text}.${e.name.text}`
+          : null
+      if (name && ctxNames.has(name)) out.push(n)
+    }
+    ts.forEachChild(n, (c) => walk(c, ctxNames))
+  }
+  walk(sf, new Set())
+  return out
 }
 
 const markersOf = (sf) => {
@@ -221,12 +339,50 @@ const markersOf = (sf) => {
   return out
 }
 
+// A `.resolves`/`.rejects` chain asserts only when awaited or returned: what
+// settles it is part of the chain.
+const settledBy = (chain) => {
+  let async = false
+  for (let n = chain; n; n = n.expression) {
+    if (
+      ts.isPropertyAccessExpression(n) &&
+      ["resolves", "rejects"].includes(n.name.text)
+    ) {
+      async = true
+      break
+    }
+    if (!(
+      ts.isPropertyAccessExpression(n) ||
+      ts.isCallExpression(n) ||
+      ts.isElementAccessExpression(n) ||
+      ts.isNonNullExpression(n)
+    ))
+      break
+  }
+  if (!async) return ""
+  let child = chain
+  while (child.parent && ts.isParenthesizedExpression(child.parent))
+    child = child.parent
+  const p = child.parent
+  if (p && ts.isAwaitExpression(p)) return `await${SEP}`
+  if (
+    p &&
+    (ts.isReturnStatement(p) || (ts.isArrowFunction(p) && p.body === child))
+  ) {
+    return `return${SEP}`
+  }
+  return `floating${SEP}`
+}
+
+const hashOf = (key) => createHash("sha1").update(key).digest("hex").slice(0, 8)
+
 const chainsOf = (path, text) => {
   if (!text) return []
   const sf = parse(path, text)
   const found = []
   const walk = (n) => {
     if (ts.isIdentifier(n) && chainStart(n)) found.push(climb(n))
+    else if (isContextExpect(n)) found.push(climb(n))
     ts.forEachChild(n, walk)
   }
   walk(sf)
@@ -245,14 +401,21 @@ const chainsOf = (path, text) => {
     .filter((c) => !seen.has(c) && seen.add(c))
     .map((c) => ({
       pos: c.getStart(sf),
-      key: normalize(c, sf),
+      key: settledBy(c) + normalize(c, sf),
       text: c.getText(sf),
     }))
   for (const c of markersOf(sf)) {
     items.push({
       pos: c.getStart(sf),
-      key: `marker${SEP}${markerKey(c)}`,
+      key: `marker${SEP}${markerKey(c, sf)}`,
       text: c.getText(sf).split("\n")[0],
+    })
+  }
+  for (const c of contextSkips(sf)) {
+    items.push({
+      pos: c.getStart(sf),
+      key: `context-skip${SEP}${normalize(c, sf)}`,
+      text: c.getText(sf),
     })
   }
   return items
@@ -276,7 +439,7 @@ const changedFiles = (base, head) => {
   const out = git(["diff", "--name-status", "-M", "-z", base, head])
   const f = out.split("\0")
   const files = []
-  for (let i = 0; i < f.length && f[i]; ) {
+  for (let i = 0; i < f.length && f[i];) {
     const status = f[i][0]
     if (status === "R" || status === "C") {
       files.push({ status, oldPath: f[i + 1], newPath: f[i + 2] })
@@ -298,41 +461,66 @@ const changedFiles = (base, head) => {
   )
 }
 
+// One line per chain the change is allowed to add or remove, as the failure
+// output prints it, followed by the reason:
+//   <file>:<line>#<hash> <reason>        a chain added (line in head)
+//   base:<file>:<line>#<hash> <reason>   a chain removed (line in base)
+//   rename:<old path> <reason>           a test file that stops running, or
+//                                        changes project, on purpose
+// The hash is the chain's own, so a different chain on the same line is not
+// covered. Each line covers one chain, and a line that covers nothing fails.
 const readExceptions = (file) => {
-  const added = new Map() // "path:line" -> { used, raw }
-  const removed = new Map()
+  const entries = new Map() // token -> { used, raw }
   for (const raw of readFileSync(file, "utf8").split("\n")) {
     const line = raw.trim()
     if (!line || line.startsWith("#")) continue
     const token = line.split(/\s+/)[0]
-    const isBase = token.startsWith("base:")
-    const loc = isBase ? token.slice(5) : token
-    if (!/^.+:\d+$/.test(loc)) {
-      console.warn(`warning: unreadable exceptions line: ${line}`)
-      continue
+    if (!/^(?:(?:base:)?.+:\d+#[0-9a-f]{8}|rename:.+)$/.test(token)) {
+      console.error(`unreadable exceptions line: ${line}`)
+      process.exit(2)
     }
-    ;(isBase ? removed : added).set(loc, { used: false, raw: line })
+    entries.set(token, { used: false, raw: line })
   }
-  return { added, removed }
+  return entries
 }
 
 const indent = (text) => text.split("\n").join("\n      ")
 
 const runAssertions = (base, head, exceptionsFile) => {
-  const exc = exceptionsFile
-    ? readExceptions(exceptionsFile)
-    : { added: new Map(), removed: new Map() }
+  const exc = exceptionsFile ? readExceptions(exceptionsFile) : new Map()
+  const covered = (token) => {
+    const e = exc.get(token)
+    if (!e || e.used) return false
+    e.used = true
+    return true
+  }
   const files = changedFiles(base, head)
   const failures = []
   let compared = 0
-  let used = 0
 
   for (const file of files) {
-    const before = file.oldPath ? show(base, file.oldPath) : ""
-    const after = file.newPath ? show(head, file.newPath) : ""
-    if (before === after) continue
-    const baseChains = chainsOf(file.oldPath ?? file.newPath, before)
-    const headChains = chainsOf(file.newPath ?? file.oldPath, after)
+    const lines = []
+    const { oldPath, newPath } = file
+    // A test file renamed so that vitest no longer runs it, or runs it in
+    // another project, loses or moves all its tests even with the same text.
+    let runs = true
+    if (oldPath && newPath && oldPath !== newPath && isRunnableTest(oldPath)) {
+      const lost = !isRunnableTest(newPath)
+      runs = !lost
+      if (lost || projectOf(oldPath) !== projectOf(newPath)) {
+        const what = lost
+          ? "vitest no longer runs it"
+          : `project ${projectOf(oldPath)} -> ${projectOf(newPath)}`
+        if (!covered(`rename:${oldPath}`)) {
+          lines.push(`! rename:${oldPath}  renamed to ${newPath}: ${what}`)
+        }
+      }
+    }
+    const before = oldPath ? show(base, oldPath) : ""
+    const after = newPath && runs ? show(head, newPath) : ""
+    if (before === after && !lines.length) continue
+    const baseChains = chainsOf(oldPath ?? newPath, before)
+    const headChains = chainsOf(newPath ?? oldPath, after)
 
     // Cancel equal keys pairwise (multiset), in order of appearance.
     const pool = new Map()
@@ -350,39 +538,25 @@ const runAssertions = (base, head, exceptionsFile) => {
     }
     const added = [...pool.values()].flat().sort((a, b) => a.line - b.line)
 
-    const lines = []
     for (const c of removed) {
-      const e = exc.removed.get(`${file.oldPath}:${c.line}`)
-      if (e) {
-        e.used = true
-        used++
-      } else lines.push(`- ${file.oldPath}@base:${c.line}  ${indent(c.text)}`)
+      const token = `base:${oldPath}:${c.line}#${hashOf(c.key)}`
+      if (!covered(token)) lines.push(`- ${token}  ${indent(c.text)}`)
     }
     for (const c of added) {
-      const e = exc.added.get(`${file.newPath}:${c.line}`)
-      if (e) {
-        e.used = true
-        used++
-      } else lines.push(`+ ${file.newPath}@head:${c.line}  ${indent(c.text)}`)
+      const token = `${newPath}:${c.line}#${hashOf(c.key)}`
+      if (!covered(token)) lines.push(`+ ${token}  ${indent(c.text)}`)
     }
     if (lines.length) failures.push(lines.join("\n"))
   }
 
-  for (const [kind, map] of [
-    ["", exc.added],
-    ["base:", exc.removed],
-  ]) {
-    for (const [loc, e] of map) {
-      if (!e.used) {
-        console.warn(`warning: exception matched nothing: ${kind}${loc}`)
-      }
-    }
-  }
+  const unused = [...exc.values()].filter((e) => !e.used)
+  for (const e of unused) console.log(`? exception covers nothing: ${e.raw}`)
+  const used = exc.size - unused.length
 
-  if (failures.length) {
-    console.log(failures.join("\n"))
+  if (failures.length || unused.length) {
+    if (failures.length) console.log(failures.join("\n"))
     console.log(
-      `\ncheck-assertions: FAILED, assertions changed in ${failures.length} file(s)`
+      `\ncheck-assertions: FAILED, assertions changed in ${failures.length} file(s), ${unused.length} unused exception(s)`
     )
     process.exit(1)
   }
@@ -400,7 +574,9 @@ const unwrap = (n) => {
 
 const isEffectGen = (n) => {
   n = unwrap(n)
-  return !!n && ts.isCallExpression(n) && isMember(n.expression, "Effect", "gen")
+  return (
+    !!n && ts.isCallExpression(n) && isMember(n.expression, "Effect", "gen")
+  )
 }
 
 const bodyIsGen = (fn) => {
