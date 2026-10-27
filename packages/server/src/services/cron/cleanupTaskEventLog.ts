@@ -9,10 +9,8 @@ import { type Db, type DbError, query } from "@mito/server/effect/db"
  * The `cleanupTaskEventLog` cron: deletes the event log rows older than three
  * months before `now`. Returns how many it deleted.
  */
-export const cleanupTaskEventLog = (
-  now: Date
-): Effect.Effect<number, DbError, Db> =>
-  Effect.gen(function* () {
+export const cleanupTaskEventLog = Effect.fn("cron.cleanupTaskEventLog")(
+  function* (now: Date): Effect.fn.Return<number, DbError, Db> {
     const cutoff = subMonths(now, RETENTION_MONTHS)
 
     const deleted = yield* query((client) =>
@@ -22,4 +20,5 @@ export const cleanupTaskEventLog = (
         .returning({ id: taskEventLog.id })
     )
     return deleted.length
-  })
+  }
+)

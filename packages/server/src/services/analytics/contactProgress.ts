@@ -12,8 +12,8 @@ import { query } from "../../effect/db"
  * still in the queue (`callStates`); `nessuno` and no state count in neither.
  * An admin counts every active contact, an operator those assigned to them.
  */
-export const contactProgress = ({ actor }: { actor: Actor }) =>
-  Effect.gen(function* () {
+export const contactProgress = Effect.fn("analytics.contactProgress")(
+  function* ({ actor }: { actor: Actor }) {
     const accessCondition =
       actor.role === "ADMIN" ? undefined : eq(task.operatorId, actor.operatorId)
 
@@ -36,4 +36,5 @@ export const contactProgress = ({ actor }: { actor: Actor }) =>
       { concurrency: "unbounded" }
     )
     return { done, todo }
-  })
+  }
+)

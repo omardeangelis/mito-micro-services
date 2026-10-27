@@ -46,34 +46,31 @@ const customersWith = (codes: {
  * updates them too (D11). The fiscal code of one a row recognizes is a key of
  * the file already. By `id`.
  */
-const customersOf = (keys: LookupKeys) =>
-  Effect.gen(function* () {
-    const found = yield* customersWith(keys)
+const customersOf = Effect.fnUntraced(function* (keys: LookupKeys) {
+  const found = yield* customersWith(keys)
 
-    // The ones `recognize` of `planRows` can pick
-    const fiscalCodes = new Set(keys.fiscalCodes)
-    const vatCodes = new Set(keys.vatCodes)
-    const moreVatCodes = [
-      ...new Set(
-        found
-          .filter((customer) =>
-            customer.fiscalCode
-              ? fiscalCodes.has(customer.fiscalCode)
-              : !!customer.vatCode && vatCodes.has(customer.vatCode)
-          )
-          .map((customer) => customer.vatCode)
-          .filter((code): code is string => !!code && !vatCodes.has(code))
-      ),
-    ]
-    const more = yield* customersWith({
-      fiscalCodes: [],
-      vatCodes: moreVatCodes,
-      customerCodes: [],
-    })
-    return new Map(
-      [...found, ...more].map((customer) => [customer.id, customer])
-    )
+  // The ones `recognize` of `planRows` can pick
+  const fiscalCodes = new Set(keys.fiscalCodes)
+  const vatCodes = new Set(keys.vatCodes)
+  const moreVatCodes = [
+    ...new Set(
+      found
+        .filter((customer) =>
+          customer.fiscalCode
+            ? fiscalCodes.has(customer.fiscalCode)
+            : !!customer.vatCode && vatCodes.has(customer.vatCode)
+        )
+        .map((customer) => customer.vatCode)
+        .filter((code): code is string => !!code && !vatCodes.has(code))
+    ),
+  ]
+  const more = yield* customersWith({
+    fiscalCodes: [],
+    vatCodes: moreVatCodes,
+    customerCodes: [],
   })
+  return new Map([...found, ...more].map((customer) => [customer.id, customer]))
+})
 
 /** Locks the customers in one statement, in order of `id` (D5). */
 const lockCustomers = (ids: readonly string[]) =>
@@ -103,47 +100,46 @@ const byId = (a: CrmCustomer, b: CrmCustomer) =>
  * lock, and locks again if the codes brought others meanwhile. Until the end
  * of the transaction they keep the codes it read.
  */
-export const lookupExisting = (
+export const lookupExisting = Effect.fn("import.lookupExisting")(function* (
   keys: LookupKeys,
   { lock = false }: { lock?: boolean } = {}
-) =>
-  Effect.gen(function* () {
-    let found = yield* customersOf(keys)
-    if (lock) {
-      const held = new Set<string>()
-      while ([...found.keys()].some((id) => !held.has(id))) {
-        for (const id of found.keys()) held.add(id)
-        yield* lockCustomers([...held])
-        found = yield* customersOf(keys)
-      }
+) {
+  let found = yield* customersOf(keys)
+  if (lock) {
+    const held = new Set<string>()
+    while ([...found.keys()].some((id) => !held.has(id))) {
+      for (const id of found.keys()) held.add(id)
+      yield* lockCustomers([...held])
+      found = yield* customersOf(keys)
     }
+  }
 
-    const praticaIds = keys.praticaIds.length
-      ? (yield* query((client) => {
-          const select = client
-            .select({ praticaId: practices.praticaId })
-            .from(practices)
-            .where(anyOf(practices.praticaId, keys.praticaIds))
-          return lock
-            ? select.orderBy(asc(practices.praticaId)).for("update")
-            : select
-        })).map(({ praticaId }) => praticaId)
-      : []
-    const links = praticaIds.length
-      ? yield* query((client) =>
-          client
-            .select({
-              customerId: customerToPratica.customerId,
-              praticaId: customerToPratica.praticaId,
-            })
-            .from(customerToPratica)
-            .where(anyOf(customerToPratica.praticaId, praticaIds))
-        )
-      : []
+  const praticaIds = keys.praticaIds.length
+    ? (yield* query((client) => {
+        const select = client
+          .select({ praticaId: practices.praticaId })
+          .from(practices)
+          .where(anyOf(practices.praticaId, keys.praticaIds))
+        return lock
+          ? select.orderBy(asc(practices.praticaId)).for("update")
+          : select
+      })).map(({ praticaId }) => praticaId)
+    : []
+  const links = praticaIds.length
+    ? yield* query((client) =>
+        client
+          .select({
+            customerId: customerToPratica.customerId,
+            praticaId: customerToPratica.praticaId,
+          })
+          .from(customerToPratica)
+          .where(anyOf(customerToPratica.praticaId, praticaIds))
+      )
+    : []
 
-    return {
-      customers: [...found.values()].sort(byId),
-      praticaIds,
-      links,
-    } satisfies CrmState
-  })
+  return {
+    customers: [...found.values()].sort(byId),
+    praticaIds,
+    links,
+  } satisfies CrmState
+})
