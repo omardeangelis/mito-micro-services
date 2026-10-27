@@ -13,4 +13,4 @@ import { backendSession } from "./backendSession"
 export const getPageSession = () =>
   env.BACKEND_URL
     ? backendSession({ url: env.BACKEND_URL, cookie: headers().get("cookie") })
-    : getServerAuthSession()
+    : getServerAuthSession(new Headers(headers()))

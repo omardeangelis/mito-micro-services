@@ -26,7 +26,14 @@ export default defineConfig({
     // Server tests on the in-memory database (src/test/db.ts)
     environmentMatchGlobs: [["**/*.db.test.ts", "node"]],
     setupFiles: ["src/test/setup.ts"],
-    env: { TZ: "UTC", SKIP_ENV_VALIDATION: "true" },
+    env: {
+      TZ: "UTC",
+      SKIP_ENV_VALIDATION: "true",
+      // better-auth of the app (getAuth), as on staging: https, so the
+      // cookies are __Secure- (src/test/authSession.ts)
+      BETTER_AUTH_URL: "https://staging-crm.example.it",
+      BETTER_AUTH_SECRET: "test-secret-of-better-auth-0123456789",
+    },
     coverage: {
       // you can include other reporters, but 'json-summary' is required, json is recommended
       reporter: ["text", "json-summary", "json"],

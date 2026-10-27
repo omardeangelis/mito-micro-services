@@ -61,6 +61,9 @@ export function buildAuth(config: AuthConfig) {
     baseURL: config.baseURL,
     secret: config.secret,
     trustedOrigins: [config.baseURL],
+    // The check of the origin also under NODE_ENV=test, where better-auth
+    // skips it by default: the tests see what production does
+    advanced: { disableOriginCheck: false },
     database: drizzleAdapter(authDb, {
       provider: "pg",
       // User and account of a sign-up in one transaction

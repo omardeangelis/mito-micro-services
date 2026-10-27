@@ -83,7 +83,7 @@ describe("migrazione auth_data_c2", () => {
         refreshToken: null,
       },
       {
-        id: expect.any(String),
+        id: expect.any(String) as string,
         userId: "newer",
         accountId: "oid-of-bruno",
         refreshToken: null,

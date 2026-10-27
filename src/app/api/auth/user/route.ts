@@ -6,10 +6,10 @@ import { users } from "@mito/db/schema/users"
 import { eq } from "drizzle-orm"
 import { NextResponse } from "next/server"
 
-async function handler() {
+async function handler(request: Request) {
   try {
-    const session = await getServerAuthSession()
-    if (!session || !session.user) {
+    const session = await getServerAuthSession(request.headers)
+    if (!session?.user) {
       return
     }
     const result = await db
