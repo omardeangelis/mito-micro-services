@@ -66,7 +66,7 @@ I due filoni partono insieme e non hanno bisogno l'uno dell'altro.
 
 | # | Attività | Fatto quando |
 |---|---|---|
-| 1.1 | **Effect 3 → 4** in `packages/server` (122 file che importano `effect`), `apps/api` (13), `src` (10) e `packages/db` (2), seguendo il `MIGRATION.md` di Effect 4. `AGENTS.md` passa a Effect 4 nella stessa PR | I gate di CI verdi (lint, tsc, test, build, `api:build`, `api:smoke`) con le stesse asserzioni |
+| 1.1 | **Effect 3 → 4** in `packages/server` (122 file che importano `effect`), `apps/api` (13), `src` (10) e `packages/db` (2), seguendo il `MIGRATION.md` di Effect 4, più lo stile di Effect 4 (decisione di Omar del 2026-10-27). Quattro PR, con spec e piano in [[specs/crm/effect-4/SPEC]] e [[specs/crm/effect-4/PLAN]]: **1** Effect 4 con i soli cambi necessari, e `AGENTS.md` a Effect 4; **2** vitest 1.6 → 5, in parallelo alla 1, perché `@effect/vitest` 4 lo richiede; **3** i test che eseguono programmi Effect su `@effect/vitest`; **4** servizi con layer statici, errori in `Schema.TaggedError` e funzioni con `Effect.fn` | Le quattro PR in `dev` con i gate di CI verdi (lint, tsc, test, build, `api:build`, `api:smoke`) e le stesse asserzioni |
 | 1.2 | **better-auth: la C2 (il passaggio)** di [[specs/crm/auth-better-auth/PLAN]], prima di Effect 4. **Fatta:** in `dev` con la [PR #108](https://github.com/omardeangelis/mito-micro-services/pull/108) del 2026-10-27. Da lì il login di Next.js e del backend lo fa better-auth. La D (la pulizia: via NextAuth) aspetta G2, la prova del login su staging, che va con le altre prove a fine migrazione: è un prerequisito della fase 4, e con lei si chiudono il passo 8 di [[chore/migrazione-effect]] e TD4 | La C2 in `dev` con i gate di CI verdi. Il login di Azure e via email su staging, con i comportamenti della disattivazione, lo prova G2 |
 
 La C2 è andata prima di Effect 4, come previsto. 1.1 converte anche il codice che tocca (`auth.ts`, `services/operator/deactivate.ts`, la route del download dell'export): i file che importano `effect` restano gli stessi, perché better-auth era già in `dev` con la C1 (contati dopo la C2: 122, 13, 10 e 2, come nella tabella). La D non va insieme a 1.1: tocca anche lei `deactivate.ts`.
@@ -95,7 +95,7 @@ Serve a fissare le convenzioni su un gruppo piccolo, prima di farne nove.
 ### Fase 3: gruppo per gruppo
 
 Per ogni gruppo:
-- **Backend:** la definizione del gruppo; gli handler, che chiamano i servizi di L1 come oggi gli adapter tRPC; gli errori del dominio da `Data.TaggedError` a `Schema.TaggedError`; i test di contratto riscritti sugli endpoint (autorizzazione, codice e messaggio di ogni errore, forma della risposta). L'adapter tRPC resta.
+- **Backend:** la definizione del gruppo; gli handler, che chiamano i servizi di L1 come oggi gli adapter tRPC; lo status HTTP degli errori del dominio, che sono già `Schema.TaggedError` dalla PR 4 di 1.1; i test di contratto riscritti sugli endpoint (autorizzazione, codice e messaggio di ogni errore, forma della risposta). L'adapter tRPC resta.
 - **Frontend:** le pagine che leggono il gruppo. Ogni pagina si confronta con quella di Next sugli stessi dati di staging (stessi numeri, filtri e azioni), da ADMIN e da OPERATORE.
 
 Ordine proposto. Lo decide il frontend, perché segue le pagine: una pagina è finita quando ci sono tutti i gruppi che legge.
@@ -145,7 +145,9 @@ Parte dopo il rilascio (R6).
 
 | Pacchetto | Oggi | Cosa | Quando |
 |---|---|---|---|
-| `effect` | 3.22 | → 4.x | 1.1 |
+| `effect` | 3.22 | → `~4.0.6` | 1.1 (PR 1) |
+| `@effect/vitest` | – | `~4.0.6`, la stessa di `effect` | 1.1 (PR 3) |
+| `vitest`, `vite` | 1.6, transitiva | vitest → 5, `vite` dichiarata (≥ 6.4, la 7 per `@vitejs/plugin-react` 4.7) | 1.1 (PR 2) |
 | `drizzle-orm`, `drizzle-kit` | 0.45.4, 0.31.11 | restano (R3) | – |
 | `zod`, `drizzle-zod` | 3.25, 0.5.1 | non si aggiornano; nel backend e nell'app React li sostituisce `Schema` | escono nella fase 5 |
 | `@trpc/*`, `superjson` | 10.45.4 | non si aggiornano | fase 5 |
@@ -156,7 +158,7 @@ Parte dopo il rilascio (R6).
 | `@tanstack/react-query` | 4.44 | `apps/web` parte dalla 5 (R8); la radice resta sulla 4 con l'app Next | 2.2 |
 | `@sentry/node` | 8.55.2 | → ultima | fase 5 |
 | `@supabase/supabase-js`, `jsonwebtoken` | 2.44, 9.0.3 | escono | fase 5 |
-| `vitest`, `@types/node` (a 22, come Node), `@google-cloud/storage`, `nodemailer` | 1.6, 20, 7, 7 | → ultima, una PR per famiglia, con le regole di [[chore/manutenzione-dipendenze]] | quando serve, fuori dalle settimane di cutover |
+| `@types/node` (a 22, come Node), `@google-cloud/storage`, `nodemailer` | 20, 7, 7 | → ultima, una PR per famiglia, con le regole di [[chore/manutenzione-dipendenze]] | quando serve, fuori dalle settimane di cutover |
 
 L'app React parte con le versioni correnti di quello che usa: non eredita le versioni del `package.json` della radice.
 

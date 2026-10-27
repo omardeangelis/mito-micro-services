@@ -118,3 +118,4 @@
 - [Worktree gate substitutes](feedback_worktree_gate_substitutes.md) — literal next lint via git-archive clone; throwaway pg15 container for the pg project; build green != lint
 - [Distinct-value fixtures](feedback_distinct_value_fixtures_hide_distinct_aggregates.md) — all-different amounts hide sumDistinct/avgDistinct mutants
 - [Round history per commit](feedback_round_history_per_commit_probes.md) — overlay red; tsc per commit; old-tree compare after rewrite; seeded differential probe
+- [Effect 4 / vitest 5 upgrade probes](feedback_effect4_vitest5_upgrade_probes.md) — Cause shape, Config env snapshot, TestConsole, await in it.effect, restoreAllMocks, vacuous git grep -E

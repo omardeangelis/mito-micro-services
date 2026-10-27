@@ -21,8 +21,10 @@ links:
   - "[[specs/crm/analytics-effect/PLAN]]"
   - "[[specs/crm/auth-better-auth/SPEC]]"
   - "[[specs/crm/auth-better-auth/PLAN]]"
+  - "[[specs/crm/effect-4/SPEC]]"
+  - "[[specs/crm/effect-4/PLAN]]"
 created: 2026-09-24
-updated: 2026-10-26
+updated: 2026-10-27
 ---
 
 # CRM — Specs
@@ -43,3 +45,4 @@ Spec page map for the `crm` domain. Entry point for discovery before writing a n
 | [[specs/crm/import-pratiche/SPEC\|import-pratiche]] | Implemented sui branch (PR A–G in draft), ingested, con [[specs/crm/import-pratiche/PLAN\|piano]] e [[specs/crm/import-pratiche/REPORT\|review]] (DO NOT SHIP su `bb956d6`, BLOCKER e MAJOR corretti) | Import dei file Wave e Standard riscritto: solo admin, anteprima con i numeri prima della conferma, tutto o niente, continua a scheda chiusa, storico degli import, report errori senza storage, ogni riga importata o segnalata. Logica in Effect con tRPC come trasporto; regole di conversione invariate. Passo 3 di [[chore/migrazione-effect]]. |
 | [[specs/crm/analytics-effect/SPEC\|analytics-effect]] | Implemented, in `dev` dalla [PR #95](https://github.com/omardeangelis/mito-micro-services/pull/95) del 2026-10-26, con [[specs/crm/analytics-effect/PLAN\|piano]] e [[specs/crm/analytics-effect/REPORT\|review]] (SHIP al giro 2) | Passo 6 di [[chore/migrazione-effect]]: il router `analytics` su Effect (servizi in `services/analytics/`, procedure adapter), con caratterizzazione e refactor a comportamento invariato e, come ultimo round dello stesso branch, le correzioni della dashboard "Analisi Andamento": finestre calcolate a ogni richiesta, ogni pratica contata una volta, card admin solo per gli admin, "Contatti con esito" sulla coda attuale, titoli che dicono che cosa misurano, importi come numeri. Piano: [[specs/crm/analytics-effect/PLAN]] (19 task e G0, una PR). |
 | [[specs/crm/auth-better-auth/SPEC\|auth-better-auth]] | Draft | Passo 8 di [[chore/migrazione-effect]]: NextAuth v4 sostituito da better-auth (Azure in produzione, link via email fuori), stessa regola dei disattivati (login rifiutato, sessione nulla), sessione letta nello stesso modo su Vercel e Cloud Run e contesto tRPC su Effect con codici invariati. Un nuovo login per tutti al passaggio. |
+| [[specs/crm/effect-4/SPEC\|effect-4]] | Draft, con [[specs/crm/effect-4/PLAN\|piano]] | Punto 1.1 di [[chore/roadmap-nuovo-stack]]: `effect` 3 → 4 senza cambi di comportamento, vitest 5, test su `@effect/vitest`, poi lo stile di Effect 4 nel codice (servizi con layer statici, `Schema.TaggedError`, `Effect.fn`). Quattro PR verso `dev` |
