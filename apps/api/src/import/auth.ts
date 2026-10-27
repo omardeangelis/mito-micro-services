@@ -1,10 +1,11 @@
-import { Context, Data, Effect, Layer } from "effect"
+import { Context, Effect, Layer, Schema } from "effect"
 import { type JWTVerifyGetKey } from "jose"
 import { type OidcCaller, type OidcUnauthorized, verifyIdToken } from "../oidc"
 
 /** The service has no caller for the import tasks: none runs. */
-export class ImportNotConfigured extends Data.TaggedError(
-  "ImportNotConfigured"
+export class ImportNotConfigured extends Schema.TaggedError<ImportNotConfigured>()(
+  "ImportNotConfigured",
+  {}
 ) {}
 
 export class ImportAuth extends Context.Service<

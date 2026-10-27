@@ -1,4 +1,4 @@
-import { Data, Effect } from "effect"
+import { Effect, Schema } from "effect"
 import { eq } from "drizzle-orm"
 import { operators } from "@mito/db/schema/operators"
 import { users } from "@mito/db/schema/users"
@@ -7,22 +7,34 @@ import { isUserDisabled } from "./disabled"
 import { matchUserEmail } from "./users"
 
 /** The user signing in is deactivated (gestione-operatori, AC17). */
-export class UserDisabled extends Data.TaggedError("UserDisabled") {}
+export class UserDisabled extends Schema.TaggedError<UserDisabled>()(
+  "UserDisabled",
+  {}
+) {}
 
 /** In a test environment, an address without a user that isn't allowed. */
-export class EmailNotAllowed extends Data.TaggedError("EmailNotAllowed") {}
+export class EmailNotAllowed extends Schema.TaggedError<EmailNotAllowed>()(
+  "EmailNotAllowed",
+  {}
+) {}
 
 /**
  * A user has this email in another letter case. better-auth looks users up by
  * the lowercase email, so it didn't find them and would sign up a second one.
  */
-export class EmailOtherCase extends Data.TaggedError("EmailOtherCase") {}
+export class EmailOtherCase extends Schema.TaggedError<EmailOtherCase>()(
+  "EmailOtherCase",
+  {}
+) {}
 
 /**
  * A user already has this email, and the account signing in isn't linked to
  * them: never linked by the email alone (AC3).
  */
-export class EmailTaken extends Data.TaggedError("EmailTaken") {}
+export class EmailTaken extends Schema.TaggedError<EmailTaken>()(
+  "EmailTaken",
+  {}
+) {}
 
 export type LoginRefused =
   UserDisabled | EmailNotAllowed | EmailOtherCase | EmailTaken

@@ -1,4 +1,4 @@
-import { Context, Data, Effect, Exit, Layer, Option } from "effect"
+import { Context, Effect, Exit, Layer, Option, Schema } from "effect"
 import { eq, type ExtractTablesWithRelations } from "drizzle-orm"
 import { type PgDatabase } from "drizzle-orm/pg-core"
 import { type PostgresJsQueryResultHKT } from "drizzle-orm/postgres-js"
@@ -32,11 +32,11 @@ export class Tx extends Context.Service<
 >()("@mito/server/effect/Tx") {}
 
 /** A query the database driver rejected. `code` is the Postgres SQLSTATE. */
-export class DbError extends Data.TaggedError("DbError")<{
-  readonly cause: unknown
-  readonly message: string
-  readonly code: string | undefined
-}> {}
+export class DbError extends Schema.TaggedError<DbError>()("DbError", {
+  cause: Schema.Defect(),
+  message: Schema.String,
+  code: Schema.UndefinedOr(Schema.String),
+}) {}
 
 const toDbError = (error: unknown) => {
   const cause = driverError(error)
@@ -49,9 +49,10 @@ const toDbError = (error: unknown) => {
 }
 
 /** The customer doesn't exist, or the contact has no customer. */
-export class CustomerMissing extends Data.TaggedError("CustomerMissing")<{
-  readonly customerId: string | null
-}> {}
+export class CustomerMissing extends Schema.TaggedError<CustomerMissing>()(
+  "CustomerMissing",
+  { customerId: Schema.NullOr(Schema.String) }
+) {}
 
 /**
  * Runs a Drizzle call on the transaction in progress, or on `Db` outside one.

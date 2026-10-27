@@ -1,5 +1,6 @@
 import { TRPCError } from "@trpc/server"
-import { Data } from "effect"
+import { Schema } from "effect"
+import { taskStatus } from "@mito/db/schema/task"
 import {
   CONTACT_ERROR_MARKER,
   type ContactErrorCause,
@@ -8,58 +9,110 @@ import {
 } from "@mito/domain/contact/errors"
 import { type CustomerMissing } from "../../effect/db"
 
+/**
+ * The schemas of a code's payload, checked against the type the interface
+ * reads (`ContactErrorPayload`): the class's fields are its payload.
+ */
+const payloadOf =
+  <C extends ContactErrorCode>() =>
+  <const F extends Schema.Struct.Fields>(
+    fields: F &
+      ([Schema.Struct.Type<F>] extends [ContactErrorPayload<C>]
+        ? [ContactErrorPayload<C>] extends [Schema.Struct.Type<F>]
+          ? unknown
+          : never
+        : never)
+  ): F =>
+    fields
+
+const TaskStatus = Schema.Literals(taskStatus)
+
 /** The contact doesn't exist. */
-export class ContactNotFound extends Data.TaggedError("ContactNotFound") {}
+export class ContactNotFound extends Schema.TaggedError<ContactNotFound>()(
+  "ContactNotFound",
+  {}
+) {}
 
 /** The contact is no longer the customer's active one (AC27). */
-export class ContactSuperseded extends Data.TaggedError("ContactSuperseded")<
-  ContactErrorPayload<"CONTACT_SUPERSEDED">
-> {}
+export class ContactSuperseded extends Schema.TaggedError<ContactSuperseded>()(
+  "ContactSuperseded",
+  payloadOf<"CONTACT_SUPERSEDED">()({
+    activeTaskId: Schema.NullOr(Schema.Number),
+  })
+) {}
 
 /** The actor may not edit the contact (AC49, AC51). */
-export class ContactForbidden extends Data.TaggedError("ContactForbidden")<
-  ContactErrorPayload<"CONTACT_FORBIDDEN">
-> {}
+export class ContactForbidden extends Schema.TaggedError<ContactForbidden>()(
+  "ContactForbidden",
+  payloadOf<"CONTACT_FORBIDDEN">()({ assignee: Schema.NullOr(Schema.String) })
+) {}
 
 /** The state change isn't allowed (AC30). */
-export class TransitionRejected extends Data.TaggedError("TransitionRejected")<
-  ContactErrorPayload<"CONTACT_TRANSITION_REJECTED">
-> {}
+export class TransitionRejected extends Schema.TaggedError<TransitionRejected>()(
+  "TransitionRejected",
+  payloadOf<"CONTACT_TRANSITION_REJECTED">()({
+    from: Schema.NullOr(TaskStatus),
+    to: TaskStatus,
+  })
+) {}
 
 /** The contact has an open alert the user hasn't confirmed to close. */
-export class AlertConfirmationRequired extends Data.TaggedError(
-  "AlertConfirmationRequired"
-)<ContactErrorPayload<"ALERT_CONFIRMATION_REQUIRED">> {}
+export class AlertConfirmationRequired extends Schema.TaggedError<AlertConfirmationRequired>()(
+  "AlertConfirmationRequired",
+  payloadOf<"ALERT_CONFIRMATION_REQUIRED">()({
+    alert: Schema.Struct({
+      id: Schema.Number,
+      // Any Date, as before: `Schema.Date` refuses an invalid one
+      deadline: Schema.instanceOf(Date),
+      message: Schema.NullOr(Schema.String),
+    }),
+  })
+) {}
 
 /**
  * The alert doesn't exist (AC29). An alert already closed is not an error:
  * `resolveAlert` returns `{ resolved: false }` (F14).
  */
-export class AlertNotFound extends Data.TaggedError("AlertNotFound") {}
+export class AlertNotFound extends Schema.TaggedError<AlertNotFound>()(
+  "AlertNotFound",
+  {}
+) {}
 
 /** A callback can't be set in the contact's state (AC46). */
-export class CallbackNotAllowed extends Data.TaggedError("CallbackNotAllowed")<
-  ContactErrorPayload<"CALLBACK_NOT_ALLOWED">
-> {}
+export class CallbackNotAllowed extends Schema.TaggedError<CallbackNotAllowed>()(
+  "CallbackNotAllowed",
+  payloadOf<"CALLBACK_NOT_ALLOWED">()({ state: Schema.NullOr(TaskStatus) })
+) {}
 
 /** The callback's deadline is today or earlier (AC44, D22). */
-export class DeadlineInPast extends Data.TaggedError("DeadlineInPast") {}
+export class DeadlineInPast extends Schema.TaggedError<DeadlineInPast>()(
+  "DeadlineInPast",
+  {}
+) {}
 
 /** The customer doesn't exist. */
-export class CustomerNotFound extends Data.TaggedError("CustomerNotFound") {}
+export class CustomerNotFound extends Schema.TaggedError<CustomerNotFound>()(
+  "CustomerNotFound",
+  {}
+) {}
 
 /** The customer has no operator (AC67). */
-export class CustomerUnassigned extends Data.TaggedError(
-  "CustomerUnassigned"
+export class CustomerUnassigned extends Schema.TaggedError<CustomerUnassigned>()(
+  "CustomerUnassigned",
+  {}
 ) {}
 
 /** The customer already has an active contact (AC67). */
-export class ContactAlreadyActive extends Data.TaggedError(
-  "ContactAlreadyActive"
-)<ContactErrorPayload<"CONTACT_ALREADY_ACTIVE">> {}
+export class ContactAlreadyActive extends Schema.TaggedError<ContactAlreadyActive>()(
+  "ContactAlreadyActive",
+  payloadOf<"CONTACT_ALREADY_ACTIVE">()({ activeTaskId: Schema.Number })
+) {}
 
 /** The operator doesn't exist (AC47). */
-export class OperatorNotFound extends Data.TaggedError("OperatorNotFound") {}
+export class OperatorNotFound extends Schema.TaggedError<OperatorNotFound>()(
+  "OperatorNotFound",
+  {}
+) {}
 
 export type ContactError =
   | ContactNotFound

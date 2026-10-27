@@ -1,4 +1,4 @@
-import { Cause, Clock, Data, Duration, Effect, Result } from "effect"
+import { Cause, Clock, Duration, Effect, Result, Schema } from "effect"
 import { type Db } from "@mito/server/effect/db"
 import { ErrorReporter } from "@mito/server/effect/errorReporter"
 import { processDueAlerts } from "@mito/server/services/contact/processDueAlerts"
@@ -9,20 +9,21 @@ import { updateCustomerAge } from "@mito/server/services/cron/updateCustomerAge"
 import { updatePractices } from "@mito/server/services/cron/updatePractices"
 
 /** A step of a job failed: plain async code threw, or a service's DbError. */
-export class CronStepFailed extends Data.TaggedError("CronStepFailed")<{
-  readonly step: string
-  readonly cause: unknown
-}> {}
+export class CronStepFailed extends Schema.TaggedError<CronStepFailed>()(
+  "CronStepFailed",
+  { step: Schema.String, cause: Schema.Defect() }
+) {}
 
 /** The alerts that failed stay failed when tried again. */
-export class AlertsFailed extends Data.TaggedError("AlertsFailed")<{
-  readonly failed: number
-}> {}
+export class AlertsFailed extends Schema.TaggedError<AlertsFailed>()(
+  "AlertsFailed",
+  { failed: Schema.Number }
+) {}
 
 /** Some alerts are still open after the last call. */
-export class AlertsLeft extends Data.TaggedError("AlertsLeft")<{
-  readonly calls: number
-}> {}
+export class AlertsLeft extends Schema.TaggedError<AlertsLeft>()("AlertsLeft", {
+  calls: Schema.Number,
+}) {}
 
 export type CronJob = {
   /**

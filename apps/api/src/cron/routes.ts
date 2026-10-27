@@ -1,4 +1,4 @@
-import { Cause, Clock, Data, Effect, Exit, type Layer, Option } from "effect"
+import { Cause, Clock, Effect, Exit, type Layer, Option, Schema } from "effect"
 import { Hono } from "hono"
 import { type Db } from "@mito/server/effect/db"
 import { ErrorReporter } from "@mito/server/effect/errorReporter"
@@ -7,7 +7,7 @@ import { type CronJob, cronJobs, utcDay } from "./jobs"
 import { finishRun, startRun } from "./registry"
 import { CronReport } from "./report"
 
-class UnknownJob extends Data.TaggedError("UnknownJob") {}
+class UnknownJob extends Schema.TaggedError<UnknownJob>()("UnknownJob", {}) {}
 
 export type CronContext = CronAuth | CronReport | Db | ErrorReporter
 

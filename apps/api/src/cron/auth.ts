@@ -1,4 +1,4 @@
-import { Context, Data, Effect, Layer } from "effect"
+import { Context, Effect, Layer, Schema } from "effect"
 import { type JWTVerifyGetKey } from "jose"
 import { type OidcCaller, verifyIdToken } from "../oidc"
 
@@ -12,12 +12,16 @@ export { googleKeys } from "../oidc"
 export type CronCaller = OidcCaller
 
 /** The request has no valid token of the scheduler. */
-export class CronUnauthorized extends Data.TaggedError("CronUnauthorized")<{
-  readonly reason: string
-}> {}
+export class CronUnauthorized extends Schema.TaggedError<CronUnauthorized>()(
+  "CronUnauthorized",
+  { reason: Schema.String }
+) {}
 
 /** The service has no CronCaller: no cron runs. */
-export class CronNotConfigured extends Data.TaggedError("CronNotConfigured") {}
+export class CronNotConfigured extends Schema.TaggedError<CronNotConfigured>()(
+  "CronNotConfigured",
+  {}
+) {}
 
 export class CronAuth extends Context.Service<
   CronAuth,

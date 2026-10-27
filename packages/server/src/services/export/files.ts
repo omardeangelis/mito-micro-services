@@ -1,4 +1,4 @@
-import { Data, Effect } from "effect"
+import { Effect, Schema } from "effect"
 import { Storage, storageLayer } from "../storage/index"
 
 const EXPORT_PATH = "export"
@@ -15,9 +15,10 @@ const exportKey = (name: string) => `${EXPORT_PATH}/${name}`
 const IMPORT_ERROR_FILE = /^error-import-\d{2}-\d{2}-\d{4}\.xlsx$/
 
 /** The name is not a file of export/ a user may download. */
-export class ExportFileNotAllowed extends Data.TaggedError(
-  "ExportFileNotAllowed"
-)<{ readonly name: string }> {}
+export class ExportFileNotAllowed extends Schema.TaggedError<ExportFileNotAllowed>()(
+  "ExportFileNotAllowed",
+  { name: Schema.String }
+) {}
 
 /**
  * Writes an xlsx file under export/. The bucket is private: the file is found

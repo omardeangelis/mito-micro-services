@@ -1,14 +1,15 @@
 import fs from "fs"
 import path from "path"
-import { Data, Effect } from "effect"
+import { Effect, Schema } from "effect"
 import { drizzle } from "drizzle-orm/postgres-js"
 import { migrate } from "drizzle-orm/postgres-js/migrator"
 import type postgres from "postgres"
 
 /** The migrations could not be read or applied: none of the pending ones is. */
-export class MigrationError extends Data.TaggedError("MigrationError")<{
-  cause: unknown
-}> {}
+export class MigrationError extends Schema.TaggedError<MigrationError>()(
+  "MigrationError",
+  { cause: Schema.Defect() }
+) {}
 
 /**
  * Migrations never applied, dated between ones already applied: Drizzle's
@@ -16,9 +17,10 @@ export class MigrationError extends Data.TaggedError("MigrationError")<{
  * skip them and report success. It happens when a branch merges a migration
  * generated before one already deployed (`pnpm db:check` catches it on the PR).
  */
-export class MigrationOutOfOrder extends Data.TaggedError(
-  "MigrationOutOfOrder"
-)<{ tags: string[] }> {}
+export class MigrationOutOfOrder extends Schema.TaggedError<MigrationOutOfOrder>()(
+  "MigrationOutOfOrder",
+  { tags: Schema.mutable(Schema.Array(Schema.String)) }
+) {}
 
 const attempt = <A>(run: () => Promise<A>) =>
   Effect.tryPromise({

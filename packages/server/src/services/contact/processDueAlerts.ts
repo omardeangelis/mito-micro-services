@@ -1,4 +1,4 @@
-import { Clock, Data, Effect } from "effect"
+import { Clock, Effect, Schema } from "effect"
 import { and, asc, desc, eq, sql } from "drizzle-orm"
 import { SYSTEM_OPERATOR_USER_ID } from "@mito/domain/constants/operator"
 import { type Alert, type Task } from "@mito/domain/schemas"
@@ -18,9 +18,10 @@ import { type ErrorReporter, forEachIsolated } from "../../effect/errorReporter"
 import { replaceActiveContact } from "./activeContact"
 
 /** The synthetic operator the cron acts as is missing from `operators`. */
-export class SystemOperatorMissing extends Data.TaggedError(
-  "SystemOperatorMissing"
-)<Record<never, never>> {}
+export class SystemOperatorMissing extends Schema.TaggedError<SystemOperatorMissing>()(
+  "SystemOperatorMissing",
+  {}
+) {}
 
 type DueAlert = { task: Task; alert: Alert }
 

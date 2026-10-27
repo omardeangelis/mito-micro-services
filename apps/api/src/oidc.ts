@@ -1,4 +1,4 @@
-import { Data, Effect } from "effect"
+import { Effect, Schema } from "effect"
 import { createRemoteJWKSet, jwtVerify, type JWTVerifyGetKey } from "jose"
 
 /**
@@ -9,9 +9,10 @@ import { createRemoteJWKSet, jwtVerify, type JWTVerifyGetKey } from "jose"
 export type OidcCaller = { audience: string; serviceAccount: string }
 
 /** The request has no valid token of the caller. */
-export class OidcUnauthorized extends Data.TaggedError("OidcUnauthorized")<{
-  readonly reason: string
-}> {}
+export class OidcUnauthorized extends Schema.TaggedError<OidcUnauthorized>()(
+  "OidcUnauthorized",
+  { reason: Schema.String }
+) {}
 
 // Google's ID tokens carry either form of the issuer
 const GOOGLE_ISSUERS = ["https://accounts.google.com", "accounts.google.com"]

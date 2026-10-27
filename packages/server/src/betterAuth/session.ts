@@ -1,4 +1,4 @@
-import { Context, Data, Effect, Layer } from "effect"
+import { Context, Effect, Layer, Schema } from "effect"
 import { type Db, type DbError } from "../effect/db"
 import { isUserDisabled } from "../services/auth/disabled"
 import { type Auth } from "./config"
@@ -42,9 +42,10 @@ export class AuthSession extends Context.Service<
 }
 
 /** better-auth couldn't read the session (its database, a bad cookie format). */
-export class SessionReadFailed extends Data.TaggedError("SessionReadFailed")<{
-  readonly cause: unknown
-}> {}
+export class SessionReadFailed extends Schema.TaggedError<SessionReadFailed>()(
+  "SessionReadFailed",
+  { cause: Schema.Defect() }
+) {}
 
 /**
  * The session as the app sees it: none for a deactivated user, at every read
