@@ -3,9 +3,9 @@ domain: crm
 type: review
 scope: spec
 spec: effect-4
-review_target: "branch claude/vitest-5 (PR 2 di 4)"
-base_ref: origin/dev (5adbfc1)
-head_ref: claude/vitest-5 (b1cd256)
+review_target: "branch claude/effect-vitest (PR 3 di 4)"
+base_ref: origin/dev (43ec443)
+head_ref: claude/effect-vitest (b686eac)
 verdict: do-not-ship
 review_impact: critical
 human_in_loop: true
@@ -23,6 +23,91 @@ updated: 2026-10-27
 # Review Report: Effect 4, vitest 5 e lo stile di Effect 4
 
 La spec ha quattro PR, ognuna con la sua revisione. Ogni revisione è un round qui sotto, con lo stesso round in `RUBRIC.md`.
+
+## [Round: 2026-10-27 — PR 3, @effect/vitest]
+
+### Verdict
+
+**DO NOT SHIP** · impact: critical
+
+La conversione è sana: 9 passate su 11 danno SHIP, e i mutanti nel codice di produzione (43 di v4, 21 di v5) fanno fallire gli stessi test su `dev` e sul branch. Le due obiezioni:
+- **Due test persi sul `TestClock` fermo (v6).** `queue.test.ts:223` avvia fibre staccate sotto `it.effect` e non coglie più un ritardo di pulizia invertito che su `dev` coglieva (AC8 vuole `it.live`). I due test del budget di `processDueAlerts.db.test.ts:57,85` non vedono più il tempo che passa.
+- **AC5 allargato senza la firma di Omar (v11, v2).** La riga del registro delle decisioni che ammette `expect(await X)` → `expect(yield* X)` è firmata "Supervisore"; il corpo di AC5 elenca ancora solo la regola stretta, e la frase "cambia solo `await` → `yield*`" non dice delle 8 coppie con `provideServer`/`Effect.exit` e `Fiber.join`.
+
+### Coverage
+
+- **Passate eseguite:** 11/11 (v1, v2, v4, v5, v6 sul modello più forte; v3, v7, v8, v9, v10, v11 su sonnet).
+- **Passate saltate o fallite:** nessuna.
+- **UI pass:** non prevista, nessuna superficie visibile cambia.
+
+### Findings
+
+| Severity | Verifier | Location | Finding | Fix | Durable? |
+|---|---|---|---|---|---|
+| MAJOR | v6 | `services/import/_test/queue.test.ts:223` | Fibre staccate sotto `it.effect`: con `now` e `at` entrambi 0 il ritardo è 0 comunque; il mutante `now - at` al posto di `at - now` (queue.ts:148) muore su `dev`, sopravvive sul branch, muore con `it.live` | `it.live` | no |
+| MAJOR | v11, v2 | `SPEC.md` (AC5 e il registro) | AC5 allargato dal supervisore: la riga non è di Omar, il corpo di AC5 non elenca la categoria nuova né le forme `provideServer`/`Fiber.join` | Conferma di Omar, poi AC5 e il piano aggiornati | no |
+| MAJOR | v11 | `AGENTS.md:53` | Dice "mai un `Clock` scritto a mano" (AC8 ne tiene due) e "`it.live` se confronta il `Clock` con `now()`" (nessun test lo fa); manca la regola che morde, `TestClock.setTime(Date.now())` per le scadenze lette dal `Clock` | Riscrivere le tre frasi | no |
+| MAJOR | v11 | roadmap §8 riga 208, log di T17 | "Nessun debito" non nomina le factory di `vi.mock` con `runSync` né i due orologi a passi; il log di T17 non ha la riga del debito | Completare la frase come "decisioni, non debito"; riga nel log | no |
+| MAJOR | v1 | `scripts/check-assertions.mjs:213,270` | Una tabella `each` passata per nome (`it.each(cases)`) si confronta per nome: cambiare `cases` passa. Nella PR 3 l'unica toccata (`writers` di `operatorLock.pg`) è stata verificata a mano | Risolvere la dichiarazione nello stesso file; caso nell'harness. Prima della PR 4 | sì |
+| MINOR | v6 | `contact/_test/processDueAlerts.db.test.ts:57,85` | Il budget non vede il tempo: il mutante `start - now` passa sul branch (su `dev` no); il confine `>` invece muore solo sul branch | `it.live`, o un caso con `TestClock` che supera il budget | no |
+| MINOR | v1 | script | Una catena spostata in un test `it.fails`/`it.skip` dello stesso file passa; le rinomine fuori dai fusi utc/rome o in `dist/` passano; `.spec.*` fuori da `_test` non è controllato; `settledBy` guarda solo `resolves`/`rejects` | Titoli e modificatori del test nella chiave; leggere `vitest.config.ts` | sì |
+| MINOR | v11 | `SPEC.md:118`, `PLAN.md` | Su `dev` il grep di AC8 trova 50 file, non 49; AC5 parla di 14 `resolves`/`rejects` annotati, ma ne è cambiato uno (gli altri restano bordi); le note dicono T13–T16 in corso | Aggiornare | no |
+| NIT | v4, v5, v8, v2 | `session.db.test.ts:2`, `deactivate.db.test.ts:2`, `roles.batch.db.test.ts:2` | `import {} from "@effect/vitest"` vuoto | Togliere | no |
+| NIT | v6 | `concurrency.pg.test.ts:328` | Il commento dice "l'unica eccezione di AC8" | "una delle due" | no |
+| NIT | v5 | `deactivate.db.test.ts:742,775,1015` | `vi.spyOn(console, "error")` non zittisce più niente sotto `it.effect` | Toglierlo in una pulizia | no |
+| NIT | v8 | test di analytics | `at` copiato quattro volte | Facoltativo: in un helper | no |
+
+### What passed
+
+- **AC4 (v10):** `@effect/vitest` 4.0.6 come `effect`, una sola copia di `effect`, i peer soddisfatti; nessun import di `@effect/vitest` fuori dai test né nei bundle.
+- **AC5 (v1, v2):** lo script corretto regge 75 attacchi sui casi di AC5; le 216 eccezioni sono 105 coppie identiche a livello di token dopo le riscritture ammesse, più le 6 righe del test nuovo; ogni helper diventato un Effect restituisce lo stesso valore, con lo stesso istante e lo stesso layer.
+- **AC8 (v6, v8):** gli istanti di `fixedClock` diventano gli stessi `TestClock.setTime`; i `setTime(Date.now())` servono (toglierli rompe 7 test); i test della console di `ServerLive` sono `it.live` e mordono; i due orologi a passi si comportano come prima; i bordi del grep sono quattro e sono veri bordi.
+- **Parità (v3, v4):** stessi nomi e stati in ogni file, i `*.pg.test.ts` girati; 566 test su 567 fanno lo stesso numero di asserzioni (l'altro è un `vi.waitFor`).
+- **Auth (v5):** 21 mutanti sulle guardie (sessioni, utenti disattivati, ruoli, lock) fanno fallire gli stessi test su `dev` e sul branch; l'ordine delle corse nei test pg è invariato.
+- **Isolamento (v7):** nessuna dipendenza dall'ordine introdotta, con i file e i test rimescolati su più seed.
+- **`withCurrentEnv` (v9):** il test uccide sei mutanti, compreso quello che rende l'helper un'identità.
+- **AC14 (v10):** lint, `tsc`, `db:check`, la suite (4415 verdi, 6 saltati), `next build` con i placeholder, `api:build` e `api:smoke` verdi in un worktree senza `.env*`.
+
+### Per-concern verdicts
+
+| Verifier | Concern | Verdict | Note |
+|---|---|---|---|
+| v1 | Script di AC5 | SHIP | Le tabelle `each` per nome da correggere prima della PR 4 |
+| v2 | Eccezioni di AC5 | SHIP | La firma di Omar sulla categoria nuova |
+| v3 | Parità dei test | SHIP | |
+| v4 | Fedeltà d'esecuzione | SHIP | 43 mutanti |
+| v5 | Test dell'auth | SHIP | 21 mutanti |
+| v6 | Tempo e console | DO NOT SHIP | `queue.test.ts:223` |
+| v7 | Isolamento | SHIP | |
+| v8 | Helper e codice di produzione | SHIP | |
+| v9 | Test di `withCurrentEnv` | SHIP | |
+| v10 | Dipendenze e gate | SHIP | |
+| v11 | Documenti e contratto | DO NOT SHIP | AC5 senza firma, `AGENTS.md`, §8 |
+
+### Human Review Checklist
+
+1. **AC5.** Omar decide se accettare la categoria `expect(await X)` → `expect(yield* X)` (con `runServer(P)` → `P.pipe(provideServer, Effect.exit)` e Promise → `Fiber.join`). Se sì, la riga del registro porta il suo nome e il corpo di AC5 la elenca; se no, gli helper tornano a runner a Promise e AC8 resta scoperto in quei file.
+2. **AC8.** `queue.test.ts:223` e i due test del budget di `processDueAlerts` in `it.live`; rifatti i mutanti di v6 (`now - at`, `start - now`).
+3. **`AGENTS.md`**, il §8 della roadmap, i numeri della SPEC e le note corretti come nei findings.
+4. **Lo script**: le tabelle `each` passate per nome, con un caso nell'harness, prima che la PR 4 lo usi come gate.
+5. **Rifare** `node scripts/check-assertions.mjs assertions origin/dev HEAD --exceptions brain/specs/crm/effect-4/eccezioni-pr3.txt` e la suite intera con `TEST_DATABASE_URL`.
+6. **La CI della PR** verde, poi il merge in `dev`.
+
+### Acceptance criteria check
+
+| Criterion | Met / Unmet / Blocked | Notes |
+|-----------|-----------------------|-------|
+| AC4 | Met | `@effect/vitest` 4.0.6 |
+| AC5 | Met nei fatti; da firmare | Nessuna asserzione cambia di valore; la categoria `await` → `yield*` aspetta Omar |
+| AC8 | Unmet | `queue.test.ts:223` sotto `it.effect` con fibre staccate; il resto Met |
+| AC12 | Unmet | `AGENTS.md` contraddice AC8 in due punti |
+| AC13 | Unmet | Il §8 non è completo; manca la riga nel log di T17 |
+| AC14 | Met in locale | Tutti i gate in un worktree pulito; la CI della PR non è partita |
+
+### Notes for docs-maintenance
+
+- **Durable findings** per `brain/tech-debt/crm/effect-4.md`, se restano dopo il merge: i buchi dello script di AC5 elencati da v1 (tabelle per nome, catene spostate in test `fails`/`skip`, rinomine nei progetti dei fusi).
+- **Pagine di dominio da collegare:** nessuna (strumenti di test).
 
 ## [Round: 2026-10-27 — PR 2, vitest 5]
 
