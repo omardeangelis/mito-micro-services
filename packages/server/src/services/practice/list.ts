@@ -47,77 +47,105 @@ const praticaSearchColumns = {
  * soddisfano i filtri, contate una volta ciascuna come le righe di `data`.
  * `total` resta l'array `[{ total }]` della query.
  */
-export const listPractices = (
+export const listPractices = Effect.fn("practice.listPractices")(function* (
   input: PracticeListQuery,
   operator: Pick<ResolvedOperator, "id" | "role">
-) =>
-  Effect.gen(function* () {
-    const { page, perPage, filterBy, sortedBy, orderBy, q, searchBy } = input
-    const productCondition = filterBy?.productId
-      ? filterBy.productId.split("-").map((p) => getProductKey(p))
-      : undefined
-    const filterQuery = and(
-      filterBy?.state ? eq(practices.state, filterBy.state) : undefined,
-      filterBy?.productId
-        ? inArray(practices.productId, productCondition as string[])
-        : undefined,
-      filterBy?.file ? eq(practices.fileName, filterBy.file) : undefined,
-      q ? ilike(praticaSearchColumns[searchBy], containsPattern(q)) : undefined,
-      filterBy?.onlyMe && operator.role === "OPERATORE"
-        ? eq(customers.operatorId, operator.id)
-        : undefined,
-      advancedFiltersWhere(input.advancedFilters, PRATICA_FILTER_QUERY_MAP)
-    )
+) {
+  const { page, perPage, filterBy, sortedBy, orderBy, q, searchBy } = input
+  const productCondition = filterBy?.productId
+    ? filterBy.productId.split("-").map((p) => getProductKey(p))
+    : undefined
+  const filterQuery = and(
+    filterBy?.state ? eq(practices.state, filterBy.state) : undefined,
+    filterBy?.productId
+      ? inArray(practices.productId, productCondition as string[])
+      : undefined,
+    filterBy?.file ? eq(practices.fileName, filterBy.file) : undefined,
+    q ? ilike(praticaSearchColumns[searchBy], containsPattern(q)) : undefined,
+    filterBy?.onlyMe && operator.role === "OPERATORE"
+      ? eq(customers.operatorId, operator.id)
+      : undefined,
+    advancedFiltersWhere(input.advancedFilters, PRATICA_FILTER_QUERY_MAP)
+  )
 
-    const sortedFn = sortedBy === "desc" ? desc : asc
+  const sortedFn = sortedBy === "desc" ? desc : asc
 
-    const order_by = () => {
-      switch (orderBy) {
-        case "praticaId":
-          return practices.praticaId
-        case "productId":
-          return practices.productId
-        case "importoFinanziato":
-          return practices.importoFinanziato
-        case "importoErogato":
-          return practices.importoErogato
-        case "dataLiquidazione":
-          return practices.dataLiquidazione
-        case "stato":
-          return practices.state
-        case "importoRata":
-          return practices.importoRata
-        case "rateTotali":
-          return practices.rateTotali
-        case "ratePagate":
-          return practices.ratePagate
-        case "updatedAt":
-          return practices.updatedAt
-        case "operatore":
-          return operators.name
-        case "createdAt":
-          return practices.createdAt
-        default:
-          return practices.updatedAt
-      }
+  const order_by = () => {
+    switch (orderBy) {
+      case "praticaId":
+        return practices.praticaId
+      case "productId":
+        return practices.productId
+      case "importoFinanziato":
+        return practices.importoFinanziato
+      case "importoErogato":
+        return practices.importoErogato
+      case "dataLiquidazione":
+        return practices.dataLiquidazione
+      case "stato":
+        return practices.state
+      case "importoRata":
+        return practices.importoRata
+      case "rateTotali":
+        return practices.rateTotali
+      case "ratePagate":
+        return practices.ratePagate
+      case "updatedAt":
+        return practices.updatedAt
+      case "operatore":
+        return operators.name
+      case "createdAt":
+        return practices.createdAt
+      default:
+        return practices.updatedAt
     }
+  }
 
-    const total = query((client) =>
+  const total = query((client) =>
+    client
+      .select({
+        total: countDistinct(practices.praticaId),
+      })
+      .from(practices)
+      .innerJoin(
+        customerToPratica,
+        eq(practices.praticaId, customerToPratica.praticaId)
+      )
+      .innerJoin(customers, eq(customers.id, customerToPratica.customerId))
+      .where(filterQuery)
+  )
+
+  const data = query((client) => {
+    const customersName = client
+      .select({
+        id: practices.id,
+        praticaId: practices.praticaId,
+        productId: practices.productId,
+        importoFinanziato: castAsNumber(practices.importoFinanziato),
+        importoErogato: practices.importoErogato,
+        dataLiquidazione: practices.dataLiquidazione,
+        stato: practices.state,
+        importoRata: practices.importoRata,
+        rateTotali: practices.rateTotali,
+        ratePagate: practices.ratePagate,
+        updatedAt: practices.updatedAt,
+        createdAt: practices.createdAt,
+        operatore: operators.name,
+      })
+      .from(practices)
+      .innerJoin(
+        customerToPratica,
+        eq(practices.praticaId, customerToPratica.praticaId)
+      )
+      .innerJoin(customers, eq(customers.id, customerToPratica.customerId))
+      .leftJoin(operators, eq(operators.id, practices.operatorId))
+      .where(filterQuery)
+
+    // La union si ordina solo per colonne del risultato: per questo il nome
+    // dell'operatore è nella select. A pari valore decide l'ID pratica
+    return union(
+      customersName,
       client
-        .select({
-          total: countDistinct(practices.praticaId),
-        })
-        .from(practices)
-        .innerJoin(
-          customerToPratica,
-          eq(practices.praticaId, customerToPratica.praticaId)
-        )
-        .innerJoin(customers, eq(customers.id, customerToPratica.customerId))
-        .where(filterQuery)
-    )
-
-    const data = query((client) => {
-      const customersName = client
         .select({
           id: practices.id,
           praticaId: practices.praticaId,
@@ -141,40 +169,11 @@ export const listPractices = (
         .innerJoin(customers, eq(customers.id, customerToPratica.customerId))
         .leftJoin(operators, eq(operators.id, practices.operatorId))
         .where(filterQuery)
-
-      // La union si ordina solo per colonne del risultato: per questo il nome
-      // dell'operatore è nella select. A pari valore decide l'ID pratica
-      return union(
-        customersName,
-        client
-          .select({
-            id: practices.id,
-            praticaId: practices.praticaId,
-            productId: practices.productId,
-            importoFinanziato: castAsNumber(practices.importoFinanziato),
-            importoErogato: practices.importoErogato,
-            dataLiquidazione: practices.dataLiquidazione,
-            stato: practices.state,
-            importoRata: practices.importoRata,
-            rateTotali: practices.rateTotali,
-            ratePagate: practices.ratePagate,
-            updatedAt: practices.updatedAt,
-            createdAt: practices.createdAt,
-            operatore: operators.name,
-          })
-          .from(practices)
-          .innerJoin(
-            customerToPratica,
-            eq(practices.praticaId, customerToPratica.praticaId)
-          )
-          .innerJoin(customers, eq(customers.id, customerToPratica.customerId))
-          .leftJoin(operators, eq(operators.id, practices.operatorId))
-          .where(filterQuery)
-      )
-        .limit(perPage)
-        .offset((page - 1) * perPage)
-        .orderBy(sortedFn(order_by()), asc(practices.praticaId))
-    })
-
-    return yield* Effect.all({ total, data }, { concurrency: "unbounded" })
+    )
+      .limit(perPage)
+      .offset((page - 1) * perPage)
+      .orderBy(sortedFn(order_by()), asc(practices.praticaId))
   })
+
+  return yield* Effect.all({ total, data }, { concurrency: "unbounded" })
+})

@@ -100,11 +100,10 @@ export const createContact = ({
     Effect.catchIf(
       (error): error is DbError =>
         error instanceof DbError && error.code === UNIQUE_VIOLATION,
-      (error) =>
-        Effect.gen(function* () {
-          const active = yield* activeTaskIdOf(customerId)
-          if (active === null) return yield* error
-          return yield* new ContactAlreadyActive({ activeTaskId: active })
-        })
+      Effect.fnUntraced(function* (error: DbError) {
+        const active = yield* activeTaskIdOf(customerId)
+        if (active === null) return yield* error
+        return yield* new ContactAlreadyActive({ activeTaskId: active })
+      })
     )
   )

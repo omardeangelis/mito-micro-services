@@ -11,9 +11,9 @@ import { NotAnOperator } from "../operator/errors"
  * an operator fails with `NotAnOperator`: every user is an operator.
  * Preferences stored as malformed JSON are a defect, as before.
  */
-export const getCurrentUser = (
+export const getCurrentUser = Effect.fn("user.getCurrentUser")(function* (
   userId: string
-): Effect.Effect<
+): Effect.fn.Return<
   {
     preferences: UserPreference
     role: (typeof userRoles.enumValues)[number]
@@ -21,27 +21,26 @@ export const getCurrentUser = (
   },
   NotAnOperator | DbError,
   Db
-> =>
-  Effect.gen(function* () {
-    const rows = yield* query((client) =>
-      client
-        .select({
-          preference: users.preferences,
-          role: users.role,
-          operatorId: operators.id,
-        })
-        .from(users)
-        .innerJoin(operators, eq(users.id, operators.userId))
-        .where(eq(users.id, userId))
-    )
-    const row = rows[0]
-    if (!row) return yield* new NotAnOperator()
-    const preferences = yield* Effect.sync(
-      () => JSON.parse(row.preference ?? "{}") as UserPreference
-    )
-    return {
-      preferences,
-      role: row.role,
-      operatorId: row.operatorId,
-    }
-  })
+> {
+  const rows = yield* query((client) =>
+    client
+      .select({
+        preference: users.preferences,
+        role: users.role,
+        operatorId: operators.id,
+      })
+      .from(users)
+      .innerJoin(operators, eq(users.id, operators.userId))
+      .where(eq(users.id, userId))
+  )
+  const row = rows[0]
+  if (!row) return yield* new NotAnOperator()
+  const preferences = yield* Effect.sync(
+    () => JSON.parse(row.preference ?? "{}") as UserPreference
+  )
+  return {
+    preferences,
+    role: row.role,
+    operatorId: row.operatorId,
+  }
+})

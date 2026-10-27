@@ -17,10 +17,8 @@ const IDS_PER_UPDATE = 5_000
  * one transaction: a failure leaves every priority as it was. One UPDATE per
  * contact, as before, didn't fit the 60 s of the function in prod.
  */
-export const refreshPriorities = (
-  taskId?: number
-): Effect.Effect<void, DbError, Db> =>
-  Effect.gen(function* () {
+export const refreshPriorities = Effect.fn("contact.refreshPriorities")(
+  function* (taskId?: number): Effect.fn.Return<void, DbError, Db> {
     const contacts = yield* query((client) =>
       client
         .select({
@@ -97,4 +95,5 @@ export const refreshPriorities = (
         { discard: true }
       )
     )
-  })
+  }
+)
