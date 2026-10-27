@@ -8,6 +8,10 @@ import { Schema } from "effect"
 const Env = Schema.Struct({
   // "staging" only on the staging project, as APP_ENV of the Next.js app
   VITE_APP_ENV: Schema.optional(Schema.Literal("staging")),
+  // VERCEL_ENV of the build, which vite.config.ts copies here
+  VITE_VERCEL_ENV: Schema.optional(Schema.String),
+  // The DSN of the Sentry project, as NEXT_PUBLIC_SENTRY_DSN of the Next.js app
+  VITE_SENTRY_DSN: Schema.optional(Schema.String),
 })
 
 export type Env = typeof Env.Type
