@@ -34,13 +34,14 @@ export const uploadExportFile = (name: string, body: Uint8Array) =>
   )
 
 /** Reads a file of export/, only one of `IMPORT_ERROR_FILE`. */
-export const downloadExportFile = (name: string) =>
-  Effect.gen(function* () {
+export const downloadExportFile = Effect.fn("export.downloadExportFile")(
+  function* (name: string) {
     if (!IMPORT_ERROR_FILE.test(name))
       return yield* new ExportFileNotAllowed({ name })
     const storage = yield* Storage
     return yield* storage.download(exportKey(name))
-  })
+  }
+)
 
 /** Runs a storage program; a failure comes back as `Failure`, not thrown. */
 export const runExportStorage = <A, E>(program: Effect.Effect<A, E, Storage>) =>

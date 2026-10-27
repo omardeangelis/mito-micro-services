@@ -68,22 +68,21 @@ const endRun = (runId: number, ending: Ending, finishedAt: Date) =>
   )
 
 /** Imports past their deadline become interrupted, and their rows go (D8). */
-const interrupt = (ids: number[], now: number) =>
-  Effect.gen(function* () {
-    yield* query((client) =>
-      client
-        .update(importRun)
-        .set({
-          status: "interrupted",
-          failureReason: failureReasons.timedOut,
-          finishedAt: new Date(now),
-        })
-        .where(inArray(importRun.id, ids))
-    )
-    yield* query((client) =>
-      client.delete(importUpload).where(inArray(importUpload.runId, ids))
-    )
-  })
+const interrupt = Effect.fnUntraced(function* (ids: number[], now: number) {
+  yield* query((client) =>
+    client
+      .update(importRun)
+      .set({
+        status: "interrupted",
+        failureReason: failureReasons.timedOut,
+        finishedAt: new Date(now),
+      })
+      .where(inArray(importRun.id, ids))
+  )
+  yield* query((client) =>
+    client.delete(importUpload).where(inArray(importUpload.runId, ids))
+  )
+})
 
 /**
  * The imports still running `timeoutMs` after their start that no
@@ -132,72 +131,73 @@ export const PURGE_AFTER_DEADLINE_MS = 60_000
  *   and the cleanup comes again a minute after the deadline (or now, if it
  *   has passed).
  */
-export const purgeUpload = (uploadId: string) =>
-  Effect.gen(function* () {
-    const { timeoutMs } = yield* ImportConfig
-    const now = yield* Clock.currentTimeMillis
-    const purge = yield* transaction(
-      Effect.gen(function* () {
-        const [upload] = yield* query((client) =>
+export const purgeUpload = Effect.fn("import.purgeUpload")(function* (
+  uploadId: string
+) {
+  const { timeoutMs } = yield* ImportConfig
+  const now = yield* Clock.currentTimeMillis
+  const purge = yield* transaction(
+    Effect.gen(function* () {
+      const [upload] = yield* query((client) =>
+        client
+          .select({ id: importUpload.id, runId: importUpload.runId })
+          .from(importUpload)
+          .where(eq(importUpload.id, uploadId))
+          .for("update")
+      )
+      if (!upload) return { outcome: "gone" as const }
+      const { runId } = upload
+      if (runId !== null) {
+        const [run] = yield* query((client) =>
           client
-            .select({ id: importUpload.id, runId: importUpload.runId })
-            .from(importUpload)
-            .where(eq(importUpload.id, uploadId))
-            .for("update")
+            .select({
+              status: importRun.status,
+              startedAt: importRun.startedAt,
+            })
+            .from(importRun)
+            .where(eq(importRun.id, runId))
         )
-        if (!upload) return { outcome: "gone" as const }
-        const { runId } = upload
-        if (runId !== null) {
-          const [run] = yield* query((client) =>
-            client
-              .select({
-                status: importRun.status,
-                startedAt: importRun.startedAt,
-              })
-              .from(importRun)
-              .where(eq(importRun.id, runId))
-          )
-          if (run?.status === "running") {
-            const deadline = run.startedAt.getTime() + timeoutMs
-            if (now < deadline) {
-              return {
-                outcome: "kept" as const,
-                again: deadline + PURGE_AFTER_DEADLINE_MS,
-              }
+        if (run?.status === "running") {
+          const deadline = run.startedAt.getTime() + timeoutMs
+          if (now < deadline) {
+            return {
+              outcome: "kept" as const,
+              again: deadline + PURGE_AFTER_DEADLINE_MS,
             }
-            // A transaction that holds it is the import, or its end
-            const [free] = yield* query((client) =>
-              client
-                .select({ id: importRun.id })
-                .from(importRun)
-                .where(
-                  and(eq(importRun.id, runId), eq(importRun.status, "running"))
-                )
-                .for("update", { skipLocked: true })
-            )
-            if (!free) {
-              return {
-                outcome: "kept" as const,
-                again: now + PURGE_AFTER_DEADLINE_MS,
-              }
-            }
-            yield* interrupt([runId], now)
-            return { outcome: "interrupted" as const }
           }
+          // A transaction that holds it is the import, or its end
+          const [free] = yield* query((client) =>
+            client
+              .select({ id: importRun.id })
+              .from(importRun)
+              .where(
+                and(eq(importRun.id, runId), eq(importRun.status, "running"))
+              )
+              .for("update", { skipLocked: true })
+          )
+          if (!free) {
+            return {
+              outcome: "kept" as const,
+              again: now + PURGE_AFTER_DEADLINE_MS,
+            }
+          }
+          yield* interrupt([runId], now)
+          return { outcome: "interrupted" as const }
         }
-        yield* deleteUpload(upload.id)
-        return { outcome: "deleted" as const }
-      })
-    )
-    if (purge.outcome === "kept") {
-      yield* (yield* ImportQueue).enqueue({
-        kind: "purge",
-        uploadId,
-        at: new Date(purge.again),
-      })
-    }
-    return purge.outcome
-  })
+      }
+      yield* deleteUpload(upload.id)
+      return { outcome: "deleted" as const }
+    })
+  )
+  if (purge.outcome === "kept") {
+    yield* (yield* ImportQueue).enqueue({
+      kind: "purge",
+      uploadId,
+      at: new Date(purge.again),
+    })
+  }
+  return purge.outcome
+})
 
 /** The import running now, if any, with the name of its admin. */
 const runningImport = query((client) =>
@@ -304,39 +304,40 @@ const createRun = (input: StartInput, now: Date) =>
  * - If the queue doesn't take the task, the import is failed, its rows go,
  *   and the admin gets the error.
  */
-export const startImport = (input: StartInput) =>
-  Effect.gen(function* () {
-    const queue = yield* ImportQueue
-    if (!queue.available) return yield* new ImportUnavailable()
-    yield* interruptExpired
-    const now = new Date(yield* Clock.currentTimeMillis)
+export const startImport = Effect.fn("import.startImport")(function* (
+  input: StartInput
+) {
+  const queue = yield* ImportQueue
+  if (!queue.available) return yield* new ImportUnavailable()
+  yield* interruptExpired
+  const now = new Date(yield* Clock.currentTimeMillis)
 
-    const runId = yield* createRun(input, now).pipe(
-      Effect.catchIf(isUniqueViolation, () =>
-        Effect.flatMap(runningImport, (running) =>
-          Option.isSome(running)
-            ? Effect.fail(alreadyRunning(running.value))
-            : // It ended between its insert and this read: one more go
-              createRun(input, now)
-        )
+  const runId = yield* createRun(input, now).pipe(
+    Effect.catchIf(isUniqueViolation, () =>
+      Effect.flatMap(runningImport, (running) =>
+        Option.isSome(running)
+          ? Effect.fail(alreadyRunning(running.value))
+          : // It ended between its insert and this read: one more go
+            createRun(input, now)
       )
     )
+  )
 
-    yield* queue
-      .enqueue({ kind: "run", runId })
-      .pipe(
-        Effect.tapError(() =>
-          Effect.flatMap(Clock.currentTimeMillis, (at) =>
-            endRun(
-              runId,
-              { status: "failed", reason: failureReasons.queueFailed },
-              new Date(at)
-            )
+  yield* queue
+    .enqueue({ kind: "run", runId })
+    .pipe(
+      Effect.tapError(() =>
+        Effect.flatMap(Clock.currentTimeMillis, (at) =>
+          endRun(
+            runId,
+            { status: "failed", reason: failureReasons.queueFailed },
+            new Date(at)
           )
         )
       )
-    return { runId }
-  })
+    )
+  return { runId }
+})
 
 /** How a failed run ends, and what the log says of it: no values. */
 const endingOf = (cause: Cause.Cause<unknown>): Ending & { log: string } => {
@@ -397,80 +398,81 @@ export type RunOutcome = "completed" | "failed" | "interrupted" | "skipped"
  * - After a rollback, the run is failed or interrupted in a transaction of
  *   its own, with a readable reason (AC29, AC30), and its rows go.
  */
-export const executeImport = (runId: number) =>
-  Effect.gen(function* () {
-    const { timeoutMs } = yield* ImportConfig
-    const now = new Date(yield* Clock.currentTimeMillis)
-    const [claimed] = yield* query((client) =>
-      client
-        .update(importRun)
-        .set({ claimedAt: now })
-        .where(
-          and(
-            eq(importRun.id, runId),
-            eq(importRun.status, "running"),
-            isNull(importRun.claimedAt)
-          )
-        )
-        .returning({ id: importRun.id })
-    )
-    if (!claimed) return "skipped" as const
-
-    const exit = yield* Effect.exit(
-      retryOnDeadlock(
-        transaction(
-          Effect.gen(function* () {
-            // Held to the end: the cleanup of D8 leaves it alone
-            const [run] = yield* query((client) =>
-              client
-                .select()
-                .from(importRun)
-                .where(eq(importRun.id, runId))
-                .for("update")
-            )
-            if (run?.status !== "running") return false
-            const [upload] = yield* query((client) =>
-              client
-                .select({
-                  id: importUpload.id,
-                  expected: importUpload.expected,
-                })
-                .from(importUpload)
-                .where(eq(importUpload.runId, runId))
-            )
-            if (!upload) {
-              return yield* new ImportInputInvalid({
-                reason: failureReasons.rowsMissing,
-              })
-            }
-            const { rows } = yield* loadUpload(upload.id)
-            const counts = yield* applyImport({
-              format: run.format,
-              fileName: run.fileName,
-              rows,
-              expected: upload.expected ?? [],
-              now,
-              deadline: run.startedAt.getTime() + timeoutMs,
-            })
-            const finishedAt = new Date(yield* Clock.currentTimeMillis)
-            yield* query((client) =>
-              client
-                .update(importRun)
-                .set({ status: "completed", finishedAt, ...counts })
-                .where(eq(importRun.id, runId))
-            )
-            yield* deleteUpload(upload.id)
-            return true
-          })
+export const executeImport = Effect.fn("import.executeImport")(function* (
+  runId: number
+) {
+  const { timeoutMs } = yield* ImportConfig
+  const now = new Date(yield* Clock.currentTimeMillis)
+  const [claimed] = yield* query((client) =>
+    client
+      .update(importRun)
+      .set({ claimedAt: now })
+      .where(
+        and(
+          eq(importRun.id, runId),
+          eq(importRun.status, "running"),
+          isNull(importRun.claimedAt)
         )
       )
-    )
+      .returning({ id: importRun.id })
+  )
+  if (!claimed) return "skipped" as const
 
-    if (Exit.isSuccess(exit)) {
-      return exit.value ? ("completed" as const) : ("skipped" as const)
-    }
-    const ending = endingOf(exit.cause)
-    yield* endRun(runId, ending, new Date(yield* Clock.currentTimeMillis))
-    yield* Effect.logWarning(`Import ${runId} ${ending.status}: ${ending.log}`)
-    return ending.status
-  })
+  const exit = yield* Effect.exit(
+    retryOnDeadlock(
+      transaction(
+        Effect.gen(function* () {
+          // Held to the end: the cleanup of D8 leaves it alone
+          const [run] = yield* query((client) =>
+            client
+              .select()
+              .from(importRun)
+              .where(eq(importRun.id, runId))
+              .for("update")
+          )
+          if (run?.status !== "running") return false
+          const [upload] = yield* query((client) =>
+            client
+              .select({
+                id: importUpload.id,
+                expected: importUpload.expected,
+              })
+              .from(importUpload)
+              .where(eq(importUpload.runId, runId))
+          )
+          if (!upload) {
+            return yield* new ImportInputInvalid({
+              reason: failureReasons.rowsMissing,
+            })
+          }
+          const { rows } = yield* loadUpload(upload.id)
+          const counts = yield* applyImport({
+            format: run.format,
+            fileName: run.fileName,
+            rows,
+            expected: upload.expected ?? [],
+            now,
+            deadline: run.startedAt.getTime() + timeoutMs,
+          })
+          const finishedAt = new Date(yield* Clock.currentTimeMillis)
+          yield* query((client) =>
+            client
+              .update(importRun)
+              .set({ status: "completed", finishedAt, ...counts })
+              .where(eq(importRun.id, runId))
+          )
+          yield* deleteUpload(upload.id)
+          return true
+        })
+      )
+    )
+  )
+
+  if (Exit.isSuccess(exit)) {
+    return exit.value ? ("completed" as const) : ("skipped" as const)
+  }
+  const ending = endingOf(exit.cause)
+  yield* endRun(runId, ending, new Date(yield* Clock.currentTimeMillis))
+  yield* Effect.logWarning(`Import ${runId} ${ending.status}: ${ending.log}`)
+  return ending.status
+})

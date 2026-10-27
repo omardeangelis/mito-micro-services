@@ -50,36 +50,34 @@ export type SignUpRules = {
  * a user has the email in any letter case, and in a test environment only for
  * the allowed addresses.
  */
-export const admitNewUser = (
+export const admitNewUser = Effect.fn("auth.admitNewUser")(function* (
   email: string | null | undefined,
   rules: SignUpRules
-): Effect.Effect<void, LoginRefused | DbError, Db> =>
-  Effect.gen(function* () {
-    if (!email) return yield* new EmailNotAllowed()
-    const match = yield* matchUserEmail(email)
-    if (match === "exact") return yield* new EmailTaken()
-    if (match === "other-case") return yield* new EmailOtherCase()
-    if (rules.testLogin && !rules.allowedEmails.has(email.toLowerCase())) {
-      return yield* new EmailNotAllowed()
-    }
-  })
+): Effect.fn.Return<void, LoginRefused | DbError, Db> {
+  if (!email) return yield* new EmailNotAllowed()
+  const match = yield* matchUserEmail(email)
+  if (match === "exact") return yield* new EmailTaken()
+  if (match === "other-case") return yield* new EmailOtherCase()
+  if (rules.testLogin && !rules.allowedEmails.has(email.toLowerCase())) {
+    return yield* new EmailNotAllowed()
+  }
+})
 
 /**
  * Whether the email login may send a link to `email` (AC9, AC11, AC12): to the
  * user with this email in lowercase, unless deactivated; to an address without
  * a user only when a new user may have it.
  */
-export const admitMagicLink = (
+export const admitMagicLink = Effect.fn("auth.admitMagicLink")(function* (
   email: string,
   rules: SignUpRules
-): Effect.Effect<void, LoginRefused | DbError, Db> =>
-  Effect.gen(function* () {
-    if (yield* isUserDisabled({ email })) return yield* new UserDisabled()
-    // In lowercase, as better-auth looks the user up and signs them up
-    const lowercase = email.toLowerCase()
-    if ((yield* matchUserEmail(lowercase)) === "exact") return
-    yield* admitNewUser(lowercase, rules)
-  })
+): Effect.fn.Return<void, LoginRefused | DbError, Db> {
+  if (yield* isUserDisabled({ email })) return yield* new UserDisabled()
+  // In lowercase, as better-auth looks the user up and signs them up
+  const lowercase = email.toLowerCase()
+  if ((yield* matchUserEmail(lowercase)) === "exact") return
+  yield* admitNewUser(lowercase, rules)
+})
 
 /** Whether the user `userId` may have a new session: not when deactivated (AC11). */
 export const admitSession = (

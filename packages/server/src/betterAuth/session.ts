@@ -51,35 +51,37 @@ export class SessionReadFailed extends Schema.TaggedError<SessionReadFailed>()(
  * The session as the app sees it: none for a deactivated user, at every read
  * and without cache (D3, AC15).
  */
-export const activeSession = (
+export const activeSession = Effect.fn("betterAuth.activeSession")(function* (
   found: Found | null
-): Effect.Effect<Session | null, DbError, Db> =>
-  Effect.gen(function* () {
-    if (!found) return null
-    if (yield* isUserDisabled({ id: found.user.id })) return null
-    const { id, name, email, image } = found.user
-    return {
-      user: { id, name, email, image },
-      expires: found.session.expiresAt.toISOString(),
-    }
-  })
+): Effect.fn.Return<Session | null, DbError, Db> {
+  if (!found) return null
+  if (yield* isUserDisabled({ id: found.user.id })) return null
+  const { id, name, email, image } = found.user
+  return {
+    user: { id, name, email, image },
+    expires: found.session.expiresAt.toISOString(),
+  }
+})
 
 /**
  * The session of the request with `headers`, or null: no cookie, an expired
  * or deleted session, or a deactivated user.
+ *
+ * Untraced on purpose: a function made with `Effect.fn` puts a stack-trace
+ * annotation on the `Fail` of its `Exit`, and `session.db.test.ts` compares the
+ * whole `Exit`.
  */
-export const readSession = (
+export const readSession = Effect.fnUntraced(function* (
   headers: Headers
-): Effect.Effect<
+): Effect.fn.Return<
   Session | null,
   SessionReadFailed | DbError,
   AuthSession | Db
-> =>
-  Effect.gen(function* () {
-    const { read } = yield* AuthSession
-    const found = yield* Effect.tryPromise({
-      try: () => read(headers),
-      catch: (cause) => new SessionReadFailed({ cause }),
-    })
-    return yield* activeSession(found)
+> {
+  const { read } = yield* AuthSession
+  const found = yield* Effect.tryPromise({
+    try: () => read(headers),
+    catch: (cause) => new SessionReadFailed({ cause }),
   })
+  return yield* activeSession(found)
+})

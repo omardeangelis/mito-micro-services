@@ -66,23 +66,26 @@ export class ImportQueue extends Context.Service<
     fetchImpl: typeof fetch = fetch
   ) => {
     const failed = (reason: string) => new ImportQueueFailed({ reason })
-    const call = (what: string, url: string, init: RequestInit) =>
-      Effect.gen(function* () {
-        const response = yield* Effect.tryPromise({
-          try: () => fetchImpl(url, init),
-          catch: () => failed(`${what} unreachable`),
-        })
-        if (!response.ok) {
-          return yield* failed(`${what} answered ${response.status}`)
-        }
-        return yield* Effect.tryPromise({
-          try: () => response.json() as Promise<unknown>,
-          catch: () => failed(`${what} answered no JSON`),
-        })
+    const call = Effect.fnUntraced(function* (
+      what: string,
+      url: string,
+      init: RequestInit
+    ) {
+      const response = yield* Effect.tryPromise({
+        try: () => fetchImpl(url, init),
+        catch: () => failed(`${what} unreachable`),
       })
+      if (!response.ok) {
+        return yield* failed(`${what} answered ${response.status}`)
+      }
+      return yield* Effect.tryPromise({
+        try: () => response.json() as Promise<unknown>,
+        catch: () => failed(`${what} answered no JSON`),
+      })
+    })
 
-    const enqueue = (task: ImportTask) =>
-      Effect.gen(function* () {
+    const enqueue = Effect.fn("import.enqueue")(
+      function* (task: ImportTask) {
         const token = yield* call("metadata server", METADATA_TOKEN_URL, {
           headers: { "Metadata-Flavor": "Google" },
         })
@@ -117,12 +120,12 @@ export class ImportQueue extends Context.Service<
             }),
           }
         )
-      }).pipe(
-        Effect.retry({
-          times: 2,
-          schedule: Schedule.exponential("200 millis"),
-        })
-      )
+      },
+      Effect.retry({
+        times: 2,
+        schedule: Schedule.exponential("200 millis"),
+      })
+    )
 
     return Layer.succeed(
       ImportQueue,

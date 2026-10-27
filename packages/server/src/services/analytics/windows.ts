@@ -27,16 +27,17 @@ export type FinanceWindows = {
  * - `comparison`: from now − 2N days, included, to now − N days, excluded
  *   (`comparison.end` is `reference.start`).
  */
-export const financeWindows = (timeFrame: TimeFrame) =>
-  Effect.gen(function* () {
-    const now = yield* Clock.currentTimeMillis
-    const span = DAYS[timeFrame] * DAY_MS
+export const financeWindows = Effect.fn("analytics.financeWindows")(function* (
+  timeFrame: TimeFrame
+) {
+  const now = yield* Clock.currentTimeMillis
+  const span = DAYS[timeFrame] * DAY_MS
 
-    return {
-      reference: { start: new Date(now - span), end: new Date(now) },
-      comparison: {
-        start: new Date(now - 2 * span),
-        end: new Date(now - span),
-      },
-    } satisfies FinanceWindows
-  })
+  return {
+    reference: { start: new Date(now - span), end: new Date(now) },
+    comparison: {
+      start: new Date(now - 2 * span),
+      end: new Date(now - span),
+    },
+  } satisfies FinanceWindows
+})
