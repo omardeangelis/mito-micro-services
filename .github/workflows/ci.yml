@@ -115,3 +115,26 @@ jobs:
       # Starts the bundle and calls it: what fails only outside Next.js
       - name: Backend smoke
         run: pnpm api:smoke
+
+  # The React app (apps/web), with its own gates until it replaces the
+  # Next.js app (brain/chore/migrazione-frontend-react.md)
+  web:
+    name: Web
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: package.json
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: ESLint
+        run: pnpm web:lint
+      - name: Vitest
+        run: pnpm web:test
+      # tsc --noEmit, then vite build
+      - name: Build
+        run: pnpm web:build

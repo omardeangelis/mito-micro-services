@@ -23,10 +23,14 @@
     "seed:local:cron": "tsx --conditions=react-server src/server/db/seeds/local/cron.cli.ts",
     "seed:local:verify": "tsx src/server/db/seeds/local/verify.cli.ts",
     "db:copy-check:dev": "cross-env NODE_ENV=development tsx src/server/db/scripts/runCopyCheck.ts",
-    "dev": "turbo run dev dev:web",
+    "dev": "turbo run dev dev:web --filter=!@mito/web",
     "dev:web": "next dev",
     "lint:dev": "next lint --fix",
     "start": "next start",
+    "web:dev": "turbo run dev --filter=@mito/web --filter=@mito/api",
+    "web:build": "pnpm --filter @mito/web build",
+    "web:test": "pnpm --filter @mito/web exec vitest --run",
+    "web:lint": "pnpm --filter @mito/web lint",
     "api:build": "node apps/api/build.mjs",
     "api:start": "node --enable-source-maps apps/api/dist/server.js",
     "api:smoke": "node apps/api/smoke.mjs",
@@ -163,6 +167,7 @@
     "tsx": "^4.23.15",
     "turbo": "2.11.7",
     "typescript": "^5.9.3",
+    "vite": "^5.4.21",
     "vitest": "^1.6.1"
   },
   "ct3aMetadata": {

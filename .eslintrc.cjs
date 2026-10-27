@@ -1,5 +1,7 @@
 /** @type {import("eslint").Linter.Config} */
 const config = {
+  // apps/web has its own flat config (apps/web/eslint.config.js)
+  ignorePatterns: ["apps/web"],
   parser: "@typescript-eslint/parser",
   parserOptions: {
     project: true,

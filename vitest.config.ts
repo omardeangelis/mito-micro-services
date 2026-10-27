@@ -21,8 +21,14 @@ export default defineConfig({
   test: {
     name: "unit",
     environment: "jsdom",
-    // On a real Postgres, in the other project of vitest.workspace.ts
-    exclude: [...configDefaults.exclude, "**/*.pg.test.ts", ...timeZoneTests],
+    exclude: [
+      ...configDefaults.exclude,
+      // The React app has its own vitest (apps/web/vite.config.ts)
+      "apps/web/**",
+      // On a real Postgres, in the other project of vitest.workspace.ts
+      "**/*.pg.test.ts",
+      ...timeZoneTests,
+    ],
     // Server tests on the in-memory database (src/test/db.ts)
     environmentMatchGlobs: [["**/*.db.test.ts", "node"]],
     setupFiles: ["src/test/setup.ts"],
