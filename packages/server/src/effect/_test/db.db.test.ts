@@ -7,7 +7,7 @@ import {
   it,
   vi,
 } from "vitest"
-import { Cause, Data, Effect, Exit } from "effect"
+import { Cause, Clock, Context, Data, Effect, Exit } from "effect"
 import { TRPCError } from "@trpc/server"
 import { sql } from "drizzle-orm"
 import { users } from "@mito/db/schema/users"
@@ -18,8 +18,14 @@ import { migrateUpTo, resetDb, testClient, testDb } from "@/test/db"
 import { failureTag, isDefect, runServer } from "@/test/effect"
 import { failAtCommit } from "@/test/failpoint"
 import { reportedErrors } from "@/test/errorReporter"
+import { fixedClock, T } from "@mito/server/services/analytics/_test/clock"
 
 class Boom extends Data.TaggedError("Boom")<Record<never, never>> {}
+
+class Probe extends Context.Tag("test/Probe")<
+  Probe,
+  { readonly value: string }
+>() {}
 
 const insertUser = (id: string) =>
   query((client) => client.insert(users).values({ id, email: `${id}@t.it` }))
@@ -152,6 +158,34 @@ describe("transaction", () => {
   })
 })
 
+describe("transaction e il contesto del chiamante", () => {
+  it("dentro la transazione Clock.currentTimeMillis vale l'istante dell'orologio fisso fornito dal chiamante", async () => {
+    const exit = await runServer(
+      transaction(
+        Effect.gen(function* () {
+          yield* insertUser("u1")
+          return yield* Clock.currentTimeMillis
+        })
+      ).pipe(Effect.withClock(fixedClock(T)))
+    )
+
+    expect(exit).toEqual(Exit.succeed(T))
+  })
+
+  it("dentro la transazione si vede un servizio fornito dal chiamante", async () => {
+    const exit = await runServer(
+      transaction(
+        Effect.gen(function* () {
+          yield* insertUser("u1")
+          return (yield* Probe).value
+        })
+      ).pipe(Effect.provideService(Probe, { value: "dal chiamante" }))
+    )
+
+    expect(exit).toEqual(Exit.succeed("dal chiamante"))
+  })
+})
+
 describe("transaction al COMMIT", () => {
   it("un COMMIT che fallisce per un vincolo differito arriva al chiamante come DbError con il codice SQLSTATE, e non resta nessuna scrittura", async () => {
     await failAtCommit(users)
@@ -232,6 +266,32 @@ describe("runTrpc", () => {
 })
 
 describe("ServerLive", () => {
+  it("manda Effect.logWarning su console.warn, non su console.log", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined)
+    const log = vi.spyOn(console, "log").mockImplementation(() => undefined)
+
+    await runServer(Effect.logWarning("attenzione a questo"))
+
+    expect(warn).toHaveBeenCalledTimes(1)
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining("attenzione a questo")
+    )
+    expect(log).not.toHaveBeenCalled()
+  })
+
+  it("manda Effect.logInfo su console.info, non su console.log", async () => {
+    const info = vi.spyOn(console, "info").mockImplementation(() => undefined)
+    const log = vi.spyOn(console, "log").mockImplementation(() => undefined)
+
+    await runServer(Effect.logInfo("un'informazione"))
+
+    expect(info).toHaveBeenCalledTimes(1)
+    expect(info).toHaveBeenCalledWith(
+      expect.stringContaining("un'informazione")
+    )
+    expect(log).not.toHaveBeenCalled()
+  })
+
   it("manda Effect.logError su console.error", async () => {
     const error = vi.spyOn(console, "error").mockImplementation(() => undefined)
 
