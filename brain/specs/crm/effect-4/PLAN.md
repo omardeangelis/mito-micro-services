@@ -47,7 +47,7 @@ updated: 2026-10-27
   - **Il resto:** `Data.TaggedError` 63; `Clock.currentTimeMillis` 19 e `ClockTypeId` 12; `Context.Tag` 11; `Either` 7; `ConfigProvider.fromMap` 2; `Config` 10; `Runtime` 2; `ManagedRuntime` 1; `Logger` 4.
 - I 10 servizi (`Context.Tag`): `Db`, `Tx` (`effect/db.ts`), `ErrorReporter` (`effect/errorReporter.ts`), `ImportConfig`, `ImportQueue` (`services/import/`), `Storage` (`services/storage/storage.ts`, id `"gcs-storage-kit/Storage"`), `AuthSession` (`betterAuth/session.ts`), `CronAuth`, `CronReport` (`apps/api/src/cron/`), `ImportAuth` (`apps/api/src/import/auth.ts`).
 - 61 classi `Data.TaggedError` di produzione, in 19 file.
-- Almeno 75 funzioni che restituiscono un `Effect.gen` (43 esportate); prettier spesso manda `Effect.gen(` a capo.
+- 74 funzioni che restituiscono un `Effect.gen` (misurate da T1; la stima era 75); prettier spesso manda `Effect.gen(` a capo.
 - 49 file di test eseguono programmi Effect (`Effect.run*` o `runServer`). 11 sono "puri"; 38 leggono anche il database con le Promise di Drizzle, in 400 righe `expect(await …)`, e contengono 14 `await expect(…).resolves/rejects`.
 - vitest 1.6.1 con `vitest.workspace.ts`:
   - `unit` è la configurazione della radice: jsdom, e i `*.db.test.ts` in `node` con `environmentMatchGlobs`, nel pool `threads` di default;
@@ -264,11 +264,15 @@ G0 ─┬─ T1 ─ T2 ─ T3 ─┬─ T4 ─┬─ T7 ─ T8 ══ PR 1 in de
     - un'indentazione cambiata esce con 0;
     - un `expect(await f())` riscritto in `expect(yield* Effect.promise(() => f()))` esce con 0;
     - una catena coperta dal file di eccezioni esce con 0.
-  - **`gen-wrappers` su `dev`:** trova almeno 75 funzioni, tra cui `lockCustomer` e `query` (`effect/db.ts`).
+  - **`gen-wrappers` su `dev`:** trova almeno 74 funzioni, tra cui `lockCustomer` e `query` (`effect/db.ts`).
   - **La ricerca di D14:** trova almeno i punti del §6.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-10-27, worker sonnet, review del supervisore passata al primo giro.
+  - RED: `t1-harness.sh` (scratchpad, 10 casi, 11 controlli) 0/11 senza script, 11/11 con lo script.
+  - `gen-wrappers origin/dev`: 74 funzioni, con `query` (`db.ts:58`) e `lockCustomer` (`db.ts:200`). La soglia di AC11 passa da 75 a 74: le forme escluse sono programmi (`run: Effect.gen(...)` in `apps/api/src/cron/jobs.ts`, `const x = Effect.gen(...)`), `Effect.gen(...).pipe(...)` e frecce il cui corpo è `transaction(Effect.gen(...))` (23), che non restituiscono direttamente un `Effect.gen`.
+  - `assertions origin/dev HEAD`: exit 0. Le virgole finali prima di `)`, `]`, `}` non contano (un formatter le aggiunge o le toglie).
+  - La ricerca di D14 su `dev` trova i punti del §6 e nient'altro fra le asserzioni (`IMPLEMENTATION-NOTES.md`).
+- **files edited/created**: `scripts/check-assertions.mjs` (nuovo)
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
