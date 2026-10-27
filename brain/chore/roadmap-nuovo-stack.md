@@ -7,6 +7,7 @@ links:
   - "[[chore/migrazione-gcp]]"
   - "[[chore/manutenzione-dipendenze]]"
   - "[[chore/migrazione-frontend-react]]"
+  - "[[chore/fase-2-httpapi]]"
   - "[[chore/migration/fase-3-frontend-spa]]"
   - "[[specs/crm/auth-better-auth/PLAN]]"
   - "[[specs/crm/gestione-operatori/PLAN]]"
@@ -23,6 +24,7 @@ Questa pagina mette in fila il lavoro che porta in prod il nuovo stack: backend 
 - [[chore/migrazione-gcp]]: dove gira il codice, la checklist del go/no-go e la finestra del rilascio in prod;
 - [[specs/crm/auth-better-auth/PLAN]]: l'auth (1.2, e la PR D prima di S6);
 - [[chore/migrazione-frontend-react]]: il filone frontend (1.a, 1.b, 1.c, 2.2, 2.3 e le pagine della fase 3), task per task, con la mappa delle rotte e delle server action;
+- [[chore/fase-2-httpapi]]: la fase 2 (2.1, 2.2, 2.3), con le decisioni da prendere (H1–H20) e i task del backend, del frontend e dello staging;
 - [[chore/migrazione-effect]], chiusa per L1 e L2: le regole per i servizi (§2), come si costruisce `HttpApi` (§3), le route REST (§6) e il debito chiuso (§7).
 
 **Il punto di partenza (2026-10-27).** L1 e L2 di [[chore/migrazione-effect]] sono fatti per tutti i router: ogni procedura tRPC è un adapter di un servizio Effect. Restano il passo 8 (l'auth: le PR C1 e C2 di better-auth sono in `dev`, la C2 con la [PR #108](https://github.com/omardeangelis/mito-micro-services/pull/108) del 2026-10-27; la D non è iniziata e aspetta G2), che qui è il punto 1.2, e la P2 di [[specs/crm/gestione-operatori/PLAN]], che qui è nella fase 5. L3, il trasporto, non è iniziato: sono le fasi 2 e 3. `dev` → `main` è fermo fino al go/no-go dello staging (S6 di [[chore/migrazione-gcp]]).
@@ -83,7 +85,7 @@ La C2 è andata prima di Effect 4, come previsto. 1.1 converte anche il codice c
 
 ### Fase 2: primo contatto (insieme)
 
-Serve a fissare le convenzioni su un gruppo piccolo, prima di farne nove.
+Serve a fissare le convenzioni su un gruppo piccolo, prima di farne nove. Il piano, con le decisioni H1–H20 e i task, è [[chore/fase-2-httpapi]].
 
 | # | Filone | Attività |
 |---|---|---|
