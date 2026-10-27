@@ -12,7 +12,7 @@ import { resolve } from "path"
  * processes, where TZ applies (worker threads keep the process's)
  */
 export const timeZoneTests = [
-  "src/lib/import/**/_test/**/*.test.ts",
+  "packages/client/src/import/**/_test/**/*.test.ts",
   "packages/domain/src/import/**/_test/**/*.test.ts",
   "packages/domain/src/utils/_test/{romeClock,dates}.test.ts",
   "src/app/dashboard/_components/_test/FinanceCard.dates.test.tsx",
@@ -26,6 +26,8 @@ const defaultExclude = [
   "**/cypress/**",
   "**/.{idea,git,cache,output,temp}/**",
   "**/{karma,rollup,webpack,vite,vitest,jest,ava,babel,nyc,cypress,tsup,build,eslint,prettier}.config.*",
+  // The React app has its own vitest (apps/web/vite.config.ts)
+  "apps/web/**",
 ]
 
 // Server tests on the in-memory database (src/test/db.ts), in node

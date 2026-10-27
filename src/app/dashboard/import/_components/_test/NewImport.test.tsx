@@ -2,8 +2,8 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { TRPCClientError } from "@trpc/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { type LookupKeys } from "@mito/domain/import/payload"
-import type * as ReadImportFile from "@/lib/import/readImportFile"
-import { type Preview } from "@/lib/import/session"
+import type * as ReadImportFile from "@mito/client/import/readImportFile"
+import { type Preview } from "@mito/client/import/session"
 import { NewImport } from "../NewImport"
 
 const keys: LookupKeys = {
@@ -53,7 +53,7 @@ const mocks = vi.hoisted(() => {
   return { reader, utils, watch: vi.fn(), opened: [] as File[] }
 })
 
-vi.mock("@/lib/import/readImportFile", async (importOriginal) => ({
+vi.mock("@mito/client/import/readImportFile", async (importOriginal) => ({
   ...(await importOriginal<typeof ReadImportFile>()),
   openImportFile: (file: File) => {
     mocks.opened.push(file)
@@ -175,7 +175,8 @@ describe("NewImport", () => {
   })
 
   it("cancelling the reading ends it and calls nothing (AC17, AC18)", async () => {
-    const { ImportReadCancelled } = await import("@/lib/import/readImportFile")
+    const { ImportReadCancelled } =
+      await import("@mito/client/import/readImportFile")
     reader.read.mockReturnValue(
       new Promise((_, reject) =>
         reader.cancel.mockImplementation(() =>

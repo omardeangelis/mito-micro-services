@@ -25,7 +25,7 @@ import { useContactMutationFeedback } from "@/components/custom/contact/useConta
 import { SYSTEM_OPERATOR_USER_ID } from "@mito/domain/constants/operator"
 import { operatorDisplayName } from "@mito/domain/contact/permissions"
 import { type Operator } from "@mito/domain/schemas"
-import { formatDeadline } from "@/lib/utils/format"
+import { formatDeadline } from "@mito/client/format"
 import { api } from "@/trpc/react"
 
 /** What the modal says about the customer's active contact. */

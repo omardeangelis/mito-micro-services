@@ -1,6 +1,6 @@
 import { render, screen, within } from "@testing-library/react"
 import { describe, expect, it, vi } from "vitest"
-import { formatBigNumber } from "@/lib/utils/format"
+import { formatBigNumber } from "@mito/client/format"
 import { DonutCard } from "../DonutCard"
 
 // Recharts ha bisogno di un contenitore misurato, che jsdom non ha: la

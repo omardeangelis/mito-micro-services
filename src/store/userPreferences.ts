@@ -8,7 +8,7 @@ import {
   clearPreferenceCookies,
   readBrowserPreferences,
   writePreferenceCookie,
-} from "@/lib/preferences/cookies"
+} from "@mito/client/preferences/cookies"
 
 export interface UserPreferenceStore {
   preferences?: Partial<UserPreference>

@@ -7,9 +7,9 @@ import {
   ImportReadCancelled,
   type ImportReader,
   openImportFile,
-} from "@/lib/import/readImportFile"
-import { type Preview } from "@/lib/import/session"
-import { uploadAndStart } from "@/lib/import/upload"
+} from "@mito/client/import/readImportFile"
+import { type Preview } from "@mito/client/import/session"
+import { uploadAndStart } from "@mito/client/import/upload"
 import { api } from "@/trpc/react"
 
 // The steps of a new import (T17): choose a file, read it in the worker,

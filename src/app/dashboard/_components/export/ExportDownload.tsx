@@ -20,7 +20,7 @@ export function ExportDownload({
     try {
       // `xlsx` is heavy: it loads only when an admin asks for the file
       const { downloadCallStats } =
-        await import("@/lib/export/callStatsWorkbook")
+        await import("@mito/client/export/callStatsWorkbook")
       downloadCallStats(stats, period)
     } catch (error) {
       console.error("Export download failed:", error)

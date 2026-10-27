@@ -1,5 +1,5 @@
 // Rows of the two layouts as papaparse gives them from an Excel file
-// (src/lib/import/parseWorkbook.ts): the codes as text, the other numbers
+// (packages/client/src/import/parseWorkbook.ts): the codes as text, the other numbers
 // typed, the dates as Excel shows them, the empty cells null
 
 export type Cells = Record<string, unknown>

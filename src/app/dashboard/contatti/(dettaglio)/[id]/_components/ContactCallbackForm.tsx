@@ -21,7 +21,7 @@ import {
 import { canSetCallback } from "@mito/domain/contact/status"
 import { isDueOrOverdue } from "@mito/domain/contact/time"
 import { type TaskStatus } from "@mito/domain/schemas"
-import { formatDeadline } from "@/lib/utils/format"
+import { formatDeadline } from "@mito/client/format"
 import { api } from "@/trpc/react"
 import { detailHrefFromDa } from "../../../_lib/detailHrefFromDa"
 import { useContactSheet } from "../../_components/ContactSheet"

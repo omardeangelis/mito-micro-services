@@ -11,7 +11,7 @@ last_updated: 2026-06-11
 # Fase 3 — Frontend React SPA (`apps/web`)
 
 > [!warning] In parte superato (2026-10-27)
-> L'ordine e le decisioni sono in [[chore/roadmap-nuovo-stack]] (fasi 1–3, decisioni R1–R9), che supera questa pagina dove dice altro: React 19 invece di 18; Tailwind 4; `HttpApi` con TanStack Query 5 su `HttpApiClient` invece degli hook tRPC e di `AppRouter`; i grafici con il chart di shadcn invece di Tremor; l'app servita da Vercel come sito statico, con le rewrite verso Cloud Run come reverse proxy di D6; il layout da telefono dopo il rilascio. Restano validi lo spostamento dei componenti senza `next/*` (F3.T2), i web worker in Vite, Sentry (F3.T8) e il collaudo di parità (F3.T9). I task si riscrivono con il punto 1.a della roadmap.
+> L'ordine e le decisioni sono in [[chore/roadmap-nuovo-stack]] (fasi 1–3, decisioni R1–R9), che supera questa pagina dove dice altro: React 19 invece di 18; Tailwind 4; `HttpApi` con TanStack Query 5 su `HttpApiClient` invece degli hook tRPC e di `AppRouter`; i grafici con il chart di shadcn invece di Tremor; l'app servita da Vercel come sito statico, con le rewrite verso Cloud Run come reverse proxy di D6; il layout da telefono dopo il rilascio. Restano validi lo spostamento dei componenti senza `next/*` (F3.T2), i web worker in Vite, Sentry (F3.T8) e il collaudo di parità (F3.T9). I task riscritti sono in [[chore/migrazione-frontend-react]].
 
 ## Obiettivo
 

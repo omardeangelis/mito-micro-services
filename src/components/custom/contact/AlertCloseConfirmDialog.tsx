@@ -10,7 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { formatDeadline } from "@/lib/utils/format"
+import { formatDeadline } from "@mito/client/format"
 
 type CloseableAlert = { id: number; deadline: Date; message: string | null }
 
