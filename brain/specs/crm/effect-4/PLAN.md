@@ -123,7 +123,7 @@ I test della PR 3 fanno da guardia. Cambiano solo nei nomi importati, mai nelle 
 | D1 | SPEC corta + PLAN in `brain/specs/crm/effect-4/` | Omar, 2026-10-27 |
 | D2 | Comportamento invariato e stesse asserzioni in ogni PR (AC5); se un test fallisce per la semantica di v4 si corregge il codice | Roadmap 1.1, "con le stesse asserzioni" |
 | D3 | Niente fase 2: né `HttpApi` né `Schema` per gli input | Roadmap |
-| D4 | Revisione obbligatoria di Leonardo sulla PR 1 e sulla PR 4 | Regola 5 del §2 della roadmap: toccano i file dell'auth |
+| D4 | Revisione obbligatoria di Leonardo sulla PR 1 e sulla PR 4. **2026-10-28, Omar:** non obbligatoria; per la PR 4 basta la prova su `mito_local` | Regola 5 del §2 della roadmap: toccano i file dell'auth |
 | D5 | `effect` e `@effect/vitest` a `~4.0.6` | I moduli `http-api` della fase 2 sono `@stability unstable` |
 | D6 | Quattro PR: Effect 4 e vitest 5 in parallelo, poi `@effect/vitest`, poi lo stile nel codice | Omar, 2026-10-27 |
 | D7 | La PR 4 adotta (a) servizi e layer, (b) `Effect.fn`, (c) `Schema.TaggedError`; la (d) è la PR 3. La PR 4 è un'eccezione approvata alla regola di `AGENTS.md` "solo il codice che la modifica tocca", e la descrizione della PR lo dice | Omar, 2026-10-27 |
@@ -879,6 +879,7 @@ G0 ─┬─ T1 ─ T2 ─ T3 ─┬─ T4 ─┬─ T7 ─ T8 ══ PR 1 in de
 - **log**:
   - 2026-10-27. Dopo il merge di T20a–c: `tsc` 0 errori; suite 330 file, 4504 verdi / 6 saltati; AC5 `ok, 48 test file(s) checked, 958 chain(s) compared, 321 exception(s) used`; AC11 `gen-wrappers` solo `transaction`; `api:build`, `api:smoke`.
   - 2026-10-28. Punti 1–5 e 7 fatti. La revisione dice DO NOT SHIP per il test di D8 svuotato dagli span: corretto con D18, e il mutante di v4 ora fa fallire il test. Corretti anche i MINOR: `DbError.message` in stringa (test nuovo in `db.db.test.ts`), la precedenza fra `Effect.fn` e `fnUntraced` in `AGENTS.md` e nel §2, `operatore.md`, AC11 (73 su `dev`, `readSession` e `applyMigrations`), le note. Punto 8: lo script è tolto, e il sorgente resta nella storia di `dev` (`git show e7ead47:scripts/check-assertions.mjs`) invece che nelle note. Restano il punto 6 (serve un `.env.development.local`) e il 9 (Leonardo, D4).
+  - 2026-10-28. Punto 6 fatto: prova su `mito_local` verde, con le sole variabili locali passate a `next dev` (dettagli nelle note). Omar: la revisione di Leonardo non è obbligatoria (D4 cambiata). Resta il punto 9 senza la revisione: la PR quando Omar la chiede.
 - **files edited/created**:
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
@@ -930,7 +931,7 @@ G0 ─┬─ T1 ─ T2 ─ T3 ─┬─ T4 ─┬─ T7 ─ T8 ══ PR 1 in de
 | GA2 | Staging, dopo GA1 | AC15: deploy del backend verde, `/health`, un cron lanciato a mano, login e le pagine Clienti, Contatti e Dashboard con `BACKEND_URL`, un import di prova |
 | GB1 | Merge della PR 2 in `dev` | CI verde; AC2, AC3 annotati con la sonda; REPORT SHIP |
 | GC1 | Merge della PR 3 in `dev` | CI verde; AC4, AC5, AC8 annotati; REPORT SHIP |
-| GD1 | Merge della PR 4 in `dev` | CI verde; AC5, AC9, AC10, AC11 annotati; prova su `mito_local`; REPORT SHIP; approvazione di Leonardo |
+| GD1 | Merge della PR 4 in `dev` | CI verde; AC5, AC9, AC10, AC11 annotati; prova su `mito_local`; REPORT SHIP (dopo le correzioni) |
 | GD2 | Staging, dopo GD1 | AC15, come GA2 |
 | G3 | Prod | Nel rilascio unico della migrazione, nella sua finestra (fase 4 della roadmap) |
 

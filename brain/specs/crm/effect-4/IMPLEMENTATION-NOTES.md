@@ -87,7 +87,7 @@
 - **PR 1** (in `dev`, [#114](https://github.com/omardeangelis/mito-micro-services/pull/114)): la prova nel browser su `mito_local` e la revisione di Leonardo (D4) sui file dell'auth, rinviate; AC15 su staging.
 - **PR 2:** in `dev` ([#113](https://github.com/omardeangelis/mito-micro-services/pull/113)).
 - **PR 3:** in `dev` ([#116](https://github.com/omardeangelis/mito-micro-services/pull/116)).
-- **PR 4** (`claude/effect-style`, da `dev` `e7ead47`): T18–T21 fatti, correzioni della revisione fatte. Prima della PR verso `dev`: la prova su `mito_local` (T8.4, serve un `.env.development.local` locale) e la revisione di Leonardo sui file dell'auth (D4). La descrizione della PR dice D7.
+- **PR 4** (`claude/effect-style`, da `dev` `e7ead47`): T18–T21 fatti, correzioni della revisione fatte, prova su `mito_local` verde (2026-10-28). La revisione di Leonardo non è più obbligatoria (Omar, 2026-10-28). Resta la PR verso `dev`, con D7 nella descrizione.
 
 ## PR 2 – vitest 5
 
@@ -127,6 +127,16 @@
   - due input malformati, che nessuna fonte reale produce, ora lanciano invece di passare: un `tags` non stringa in un journal di drizzle rotto, e un errore del driver con un `message` non stringa. Il secondo è corretto (`String(...)` in `toDbError`, con un test in `db.db.test.ts`).
 - **La revisione (DO NOT SHIP, 2026-10-28):** gli span di `Effect.fn` leggono `currentTimeNanos` del `Clock`, e l'orologio a passi di `apply.db.test.ts` dava lo stesso copione a millisecondi e nanosecondi. Il test "la scadenza che passa tra un blocco e l'altro annulla anche il primo" scadeva prima del primo blocco. Corretto nella fixture (scelta di Omar): i nanosecondi sono costanti, come nell'orologio di `concurrency.pg.test.ts`. Il mutante di v4 (`timeLeft` che ignora la scadenza dopo il primo blocco) ora fa fallire il test. Nessuna asserzione cambiata.
 
+- **Prova su `mito_local` (T8.4, 2026-10-28):** `next dev` di questo worktree, che non ha file `.env*`, con le sole variabili locali (database `mito_local`, un `BETTER_AUTH_SECRET` nuovo, `AUTH_TEST_LOGIN=true`, storage placeholder); `mito_local` portato a 18 migrazioni con `db:local:migrate`. ADMIN del seed `malco.bellucci.01@mito.test`, `agent-browser`. Verde, nessun errore in console né dal server:
+  - login via email: il link nel log del server, `/dashboard`;
+  - Dashboard; Clienti; Contatti; Pratiche; il dettaglio di `C004592` con le sue note; il dettaglio del contatto 1006;
+  - un import Standard di 2 righe (una valida, una senza importi): anteprima 1 importabile e 1 scartata, poi "Completato" con cliente, pratica e legame scritti;
+  - l'export delle chiamate: `chiamate_2026-09-29_2026-10-28.xlsx`, foglio "Chiamate", 29 righe. Il file è letto dal blob nella pagina: il click di `agent-browser` non arrivava al pulsante, il click dal DOM sì;
+  - Profilo con la tab Admin (Gestisci operatori);
+  - l'uscita: `POST /api/auth/sign-out` 200, riga di sessione cancellata, ritorno a `/login`.
+  - Senza sessione le procedure danno 401. `/dashboard` mostra il guscio vuoto invece di rimandare a `/login`: c'è anche su `dev`, perché `src/middleware.ts` non esiste (piano di `auth-better-auth`), e la PR 4 non tocca quei file.
+  - A fine prova le righe dell'import sono cancellate e `mito_local` è com'era (10.000 clienti, nessun import, nessuna sessione).
+
 ## Steering
 
 | Date | Feedback | Changes |
@@ -136,3 +146,4 @@
 | 2026-10-27 | "Mergiale e fai partire 3 e 4" | #113 e #114 in `dev` a CI verde, senza la prova su `mito_local` e senza la revisione di Leonardo chieste da GA1. I punti aperti della revisione della PR 1 (script, test di `withCurrentEnv`, note nella SPEC) entrano nella PR 3, prima della conversione |
 | 2026-10-27 | "Accetto i nuovi AC5 rules" | Categoria `expect(await X)` → `expect(yield* X)` firmata: D17 nel piano, AC5 e la riga del registro nella SPEC; PR 3 aperta verso `dev` |
 | 2026-10-28 | "Scelgo la strada a e poi fixa il resto" | Orologio di `apply.db.test.ts` con nanosecondi costanti; `DbError.message` in stringa; `AGENTS.md`, §2 di `migrazione-effect.md`, `operatore.md`, AC11 e queste note; script di AC5 tolto |
+| 2026-10-28 | "La revisione non è mandatoria, puoi fare un test in locale invece?" | D4 non vale più per la PR 4; prova su `mito_local` fatta, verde (sezione PR 4) |
