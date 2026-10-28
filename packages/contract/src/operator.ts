@@ -39,14 +39,14 @@ export const DeactivationResult = Schema.Struct({
  * the procedures of the tRPC router `operator` the pages in React use, each
  * with its name (H8). Those of the admin tab of the profile are admins only.
  *
- * | procedure                   | method and path                              |
- * | --------------------------- | -------------------------------------------- |
- * | getAllUniqueOperators       | GET /operator                                |
- * | getOperatorById             | GET /operator/:id                            |
- * | updateOperatorsRole         | PUT /operator/roles                          |
- * | getDeactivationImpact       | GET /operator/:operatorId/deactivation       |
+ * | procedure                   | method and path                                |
+ * | --------------------------- | ---------------------------------------------- |
+ * | getAllUniqueOperators       | GET /operator                                  |
+ * | getOperatorById             | GET /operator/:id                              |
+ * | updateOperatorsRole         | POST /operator/bulk-update-role                |
+ * | getDeactivationImpact       | GET /operator/:operatorId/deactivation         |
  * | getOperatorsForDeactivation | GET /operator/:operatorId/deactivation/targets |
- * | deactivate                  | POST /operator/:operatorId/deactivation      |
+ * | deactivate                  | POST /operator/:operatorId/deactivate          |
  */
 export class OperatorGroup extends HttpApiGroup.make("operator")
   .add(
@@ -63,7 +63,7 @@ export class OperatorGroup extends HttpApiGroup.make("operator")
     })
   )
   .add(
-    HttpApiEndpoint.put("updateOperatorsRole", "/operator/roles", {
+    HttpApiEndpoint.post("updateOperatorsRole", "/operator/bulk-update-role", {
       // All or nothing; the changes as they were sent
       payload: Schema.Array(RoleChange),
       success: Schema.Array(RoleChange),
@@ -95,7 +95,7 @@ export class OperatorGroup extends HttpApiGroup.make("operator")
     ).middleware(AdminOnly)
   )
   .add(
-    HttpApiEndpoint.post("deactivate", "/operator/:operatorId/deactivation", {
+    HttpApiEndpoint.post("deactivate", "/operator/:operatorId/deactivate", {
       params: { operatorId: IntegerId },
       // Who gets the operator's customers, contacts and practices
       payload: Schema.Struct({ toOperatorId: OperatorId }),

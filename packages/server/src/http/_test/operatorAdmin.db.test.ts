@@ -9,6 +9,8 @@ import {
   HandoverSameOperator,
   LastAdmin,
   NotAdmin,
+  NotAnOperator,
+  OperatorDisabled,
   OperatorIsAdmin,
   OperatorNotFound,
   Unauthorized,
@@ -24,6 +26,7 @@ import {
   createPractice,
   createSystemOperator,
   createTask,
+  createUser,
 } from "@/test/factories"
 import { apiHandlersLayer } from "../api"
 import { SessionReader } from "../session"
@@ -73,6 +76,15 @@ const isDisabled = (userId: string) =>
       .from(users)
       .where(eq(users.id, userId))
       .then(([row]) => row?.disabledAt !== null)
+  )
+
+const disabledBy = (userId: string) =>
+  given(() =>
+    testDb
+      .select({ disabledBy: users.disabledBy })
+      .from(users)
+      .where(eq(users.id, userId))
+      .then(([row]) => row?.disabledBy)
   )
 
 const operatorOfCustomer = (customerId: string) =>
@@ -135,9 +147,33 @@ describe("solo gli admin", () => {
       assert.instanceOf(yield* Effect.flip(call(api)), Unauthorized)
     })
   )
+
+  it.effect.each(calls)(
+    "un ADMIN disattivato che chiama %s è OperatorDisabled",
+    ([, call]) =>
+      Effect.gen(function* () {
+        const admin = yield* given(() =>
+          createOperator({ role: "ADMIN", disabledAt: new Date() })
+        )
+        const api = yield* clientAs(admin.userId)
+
+        assert.instanceOf(yield* Effect.flip(call(api)), OperatorDisabled)
+      })
+  )
+
+  it.effect.each(calls)(
+    "un ADMIN senza operatore che chiama %s è NotAnOperator",
+    ([, call]) =>
+      Effect.gen(function* () {
+        const user = yield* given(() => createUser({ role: "ADMIN" }))
+        const api = yield* clientAs(user.id)
+
+        assert.instanceOf(yield* Effect.flip(call(api)), NotAnOperator)
+      })
+  )
 })
 
-describe("PUT /operator/roles", () => {
+describe("POST /operator/bulk-update-role", () => {
   it.effect("cambia il ruolo degli operatori della lista e la dà com'è", () =>
     Effect.gen(function* () {
       const admin = yield* given(() => createOperator({ role: "ADMIN" }))
@@ -230,7 +266,7 @@ describe("PUT /operator/roles", () => {
   )
 })
 
-describe("POST /operator/:operatorId/deactivation", () => {
+describe("POST /operator/:operatorId/deactivate", () => {
   it.effect(
     "sposta il portafoglio, disattiva l'utente e dà i tre conteggi",
     () =>
@@ -255,6 +291,8 @@ describe("POST /operator/:operatorId/deactivation", () => {
         })
         assert.strictEqual(yield* operatorOfCustomer(customer.id), target.id)
         assert.isTrue(yield* isDisabled(leaving.userId))
+        // Who disabled it is the admin of the session, not one of the body
+        assert.strictEqual(yield* disabledBy(leaving.userId), admin.id)
       })
   )
 
