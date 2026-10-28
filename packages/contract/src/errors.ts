@@ -1,4 +1,5 @@
 import { Schema } from "effect"
+import { TaskStatus } from "./schemas"
 
 /**
  * The errors the endpoints declare: they travel as `{ _tag, ... }` with the
@@ -121,6 +122,73 @@ export class ContactAlreadyActive extends Schema.TaggedError<ContactAlreadyActiv
   { httpApiStatus: 409 }
 ) {}
 
+/**
+ * The contact is no longer the customer's active one, `activeTaskId` is (AC27;
+ * tRPC CONFLICT, `CONTACT_SUPERSEDED`).
+ */
+export class ContactSuperseded extends Schema.TaggedError<ContactSuperseded>()(
+  "ContactSuperseded",
+  { activeTaskId: Schema.NullOr(Schema.Number) },
+  { httpApiStatus: 409 }
+) {}
+
+/**
+ * The state change isn't allowed (AC30; tRPC BAD_REQUEST,
+ * `CONTACT_TRANSITION_REJECTED`).
+ */
+export class TransitionRejected extends Schema.TaggedError<TransitionRejected>()(
+  "TransitionRejected",
+  { from: Schema.NullOr(TaskStatus), to: TaskStatus },
+  { httpApiStatus: 400 }
+) {}
+
+/**
+ * The contact has an open alert the user hasn't confirmed to close (tRPC
+ * PRECONDITION_FAILED, `ALERT_CONFIRMATION_REQUIRED`): the client asks, then
+ * sends its id
+ */
+export class AlertConfirmationRequired extends Schema.TaggedError<AlertConfirmationRequired>()(
+  "AlertConfirmationRequired",
+  {
+    alert: Schema.Struct({
+      id: Schema.Number,
+      deadline: Schema.Date,
+      message: Schema.NullOr(Schema.String),
+    }),
+  },
+  { httpApiStatus: 412 }
+) {}
+
+/**
+ * The alert doesn't exist (AC29; tRPC NOT_FOUND, `ALERT_NOT_FOUND`). One
+ * already closed is no error.
+ */
+export class AlertNotFound extends Schema.TaggedError<AlertNotFound>()(
+  "AlertNotFound",
+  {},
+  { httpApiStatus: 404 }
+) {}
+
+/**
+ * A callback can't be set in the contact's state (AC46; tRPC BAD_REQUEST,
+ * `CALLBACK_NOT_ALLOWED`).
+ */
+export class CallbackNotAllowed extends Schema.TaggedError<CallbackNotAllowed>()(
+  "CallbackNotAllowed",
+  { state: Schema.NullOr(TaskStatus) },
+  { httpApiStatus: 400 }
+) {}
+
+/**
+ * The callback's deadline is today or earlier (AC44, D22; tRPC BAD_REQUEST,
+ * `DEADLINE_IN_PAST`).
+ */
+export class DeadlineInPast extends Schema.TaggedError<DeadlineInPast>()(
+  "DeadlineInPast",
+  {},
+  { httpApiStatus: 400 }
+) {}
+
 /** A practice with this `praticaId` exists (tRPC CONFLICT, `PRACTICE_EXISTS`). */
 export class PracticeExists extends Schema.TaggedError<PracticeExists>()(
   "PracticeExists",
@@ -173,6 +241,12 @@ const apiErrors = [
   ContactForbidden,
   CustomerUnassigned,
   ContactAlreadyActive,
+  ContactSuperseded,
+  TransitionRejected,
+  AlertConfirmationRequired,
+  AlertNotFound,
+  CallbackNotAllowed,
+  DeadlineInPast,
   PracticeExists,
   CustomerExists,
   ChatMissing,
