@@ -253,6 +253,10 @@ export function fakeContacts(
           )
         )
         .handle("getOperatorById", unserved)
+        .handle("updateOperatorsRole", unserved)
+        .handle("getDeactivationImpact", unserved)
+        .handle("getOperatorsForDeactivation", unserved)
+        .handle("deactivate", unserved)
     ),
     // The customer of a detail, for its notes: a customer with no chat
     HttpApiBuilder.group(MitoApi, "customer", (handlers) =>

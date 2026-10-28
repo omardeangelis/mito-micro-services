@@ -312,6 +312,30 @@ export class ImportQueueFailed extends Schema.TaggedError<ImportQueueFailed>()(
   { httpApiStatus: 500 }
 ) {}
 
+/**
+ * The operator to deactivate is an admin, who must be demoted first (AC3;
+ * tRPC BAD_REQUEST, `OPERATOR_IS_ADMIN`)
+ */
+export class OperatorIsAdmin extends Schema.TaggedError<OperatorIsAdmin>()(
+  "OperatorIsAdmin",
+  {},
+  { httpApiStatus: 400 }
+) {}
+
+/** An admin may not deactivate themselves (AC4; tRPC BAD_REQUEST). */
+export class CannotDeactivateSelf extends Schema.TaggedError<CannotDeactivateSelf>()(
+  "CannotDeactivateSelf",
+  {},
+  { httpApiStatus: 400 }
+) {}
+
+/** The change would leave no admin (AC18; tRPC BAD_REQUEST, `LAST_ADMIN`). */
+export class LastAdmin extends Schema.TaggedError<LastAdmin>()(
+  "LastAdmin",
+  {},
+  { httpApiStatus: 400 }
+) {}
+
 const apiErrors = [
   Unauthorized,
   NotAnOperator,
@@ -347,6 +371,9 @@ const apiErrors = [
   ImportAlreadyRunning,
   ImportUnavailable,
   ImportQueueFailed,
+  OperatorIsAdmin,
+  CannotDeactivateSelf,
+  LastAdmin,
 ] as const
 
 /** An error some endpoint declares. */
