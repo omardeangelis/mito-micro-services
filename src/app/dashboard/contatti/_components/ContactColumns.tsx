@@ -20,7 +20,10 @@ import { cn, formatDateAsDMY } from "@/lib/utils"
 import type { ContactRow } from "@mito/server/services/contact/getContacts"
 import { customerNameOf } from "../_lib/customerName"
 import { customerCellId, customerNameId } from "../_lib/ids"
-import { withFilterChange, type ContactsListState } from "../_lib/searchParams"
+import {
+  withFilterChange,
+  type ContactsListState,
+} from "@mito/client/contact/searchParams"
 import { ContactRowActions } from "./ContactRowActions"
 import { ContactRowState } from "./ContactRowState"
 import { useContactsNavigation } from "./ContactsListShell"

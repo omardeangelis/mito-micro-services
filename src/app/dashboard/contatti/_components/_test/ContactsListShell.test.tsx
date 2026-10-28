@@ -3,7 +3,10 @@ import userEvent from "@testing-library/user-event"
 import { useState } from "react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { listHref } from "../../_lib/listHref"
-import { defaultState, withFilterChange } from "../../_lib/searchParams"
+import {
+  defaultState,
+  withFilterChange,
+} from "@mito/client/contact/searchParams"
 import { ContactsListShell, useContactsNavigation } from "../ContactsListShell"
 
 const mocks = vi.hoisted(() => ({

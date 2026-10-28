@@ -8,7 +8,7 @@ import {
   serialize,
   withFilterChange,
   type ContactsListState,
-} from "./searchParams"
+} from "@mito/client/contact/searchParams"
 
 /** The quiet time after the last key before the search text goes to the address */
 const SEARCH_DELAY_MS = 300

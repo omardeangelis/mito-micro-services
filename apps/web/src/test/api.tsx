@@ -27,7 +27,10 @@ import { ApiClient } from "@/api/runtime"
 import { Toaster } from "@/components/ui/toaster"
 
 /** The handlers of a group of the contract, by its name */
-type GroupService<Name extends string> = HttpApiGroup.Service<"mito", Name>
+export type GroupService<Name extends string> = HttpApiGroup.Service<
+  "mito",
+  Name
+>
 
 /** The groups of the contract */
 type ApiGroups =

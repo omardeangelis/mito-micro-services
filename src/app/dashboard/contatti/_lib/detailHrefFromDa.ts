@@ -1,4 +1,8 @@
-import { detailHref, parse, returnHref } from "./searchParams"
+import {
+  detailHref,
+  parse,
+  returnHref,
+} from "@mito/client/contact/searchParams"
 
 /**
  * The detail of `id` carrying the list state `da` (the `da` parameter of the

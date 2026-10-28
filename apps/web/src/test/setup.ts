@@ -1,6 +1,7 @@
 import "@testing-library/jest-dom/vitest"
 import { cleanup } from "@testing-library/react"
 import { afterEach } from "vitest"
+import { clearToasts } from "@/components/ui/use-toast"
 
 // jsdom lacks what Radix reads on pointer and menu interactions (as in
 // src/test/setup.ts of the Next.js app)
@@ -29,4 +30,5 @@ if (!Reflect.has(window, "ResizeObserver")) {
 
 afterEach(() => {
   cleanup()
+  clearToasts()
 })

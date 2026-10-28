@@ -70,24 +70,6 @@ export const formatDateAsDMHM = (date: Date) => {
   return `${date.getDate()}/${date.getMonth() + 1} - ${formatTime(date)}`
 }
 
-// The Italian day, not the one of the process: a server in UTC (Vercel) and a
-// browser in Rome must print the same text, or the page fails to hydrate
-const italianDay = new Intl.DateTimeFormat("en-US", {
-  timeZone: "Europe/Rome",
-  day: "numeric",
-  month: "numeric",
-  year: "numeric",
-})
-
-// "d/m/yyyy" (no padding) in the Italian day of the instant
-export const formatDateAsDMY = (date: Date) => {
-  if (Number.isNaN(date.getTime())) return ""
-  const parts = italianDay.formatToParts(date)
-  const part = (type: Intl.DateTimeFormatPartTypes) =>
-    parts.find((p) => p.type === type)?.value
-  return `${part("day")}/${part("month")}/${part("year")}`
-}
-
 /** The array in slices of `size`, in order. */
 export function splitArray<T>(array: T[], size: number): T[][] {
   const res = [] as T[][]
@@ -98,3 +80,4 @@ export function splitArray<T>(array: T[], size: number): T[][] {
 }
 
 export { cleanObject } from "@mito/domain/utils/object"
+export { formatDateAsDMY } from "@mito/client/format"

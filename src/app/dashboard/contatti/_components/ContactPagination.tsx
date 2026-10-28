@@ -18,7 +18,10 @@ import {
 } from "@/components/ui/select"
 import { PER_PAGES } from "@mito/domain/constants/pagination"
 import { listHref } from "../_lib/listHref"
-import { withFilterChange, type ContactsListState } from "../_lib/searchParams"
+import {
+  withFilterChange,
+  type ContactsListState,
+} from "@mito/client/contact/searchParams"
 import { useContactsNavigation } from "./ContactsListShell"
 import { navigateOnPlainClick } from "./navigateOnPlainClick"
 

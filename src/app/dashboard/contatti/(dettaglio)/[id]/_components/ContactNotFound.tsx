@@ -1,6 +1,6 @@
 import Link from "next/link"
 import { buttonVariants } from "@/components/ui/button"
-import { returnHref } from "../../../_lib/searchParams"
+import { returnHref } from "@mito/client/contact/searchParams"
 
 /**
  * The detail of a contact that does not exist (AC26): shown inside the sheet,

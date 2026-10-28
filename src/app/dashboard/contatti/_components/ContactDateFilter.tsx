@@ -13,7 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { type DateProblem } from "../_lib/addressable"
-import { type ContactsListState } from "../_lib/searchParams"
+import { type ContactsListState } from "@mito/client/contact/searchParams"
 
 type DateField = ContactsListState["dateField"]
 

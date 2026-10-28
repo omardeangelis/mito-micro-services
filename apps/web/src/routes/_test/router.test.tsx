@@ -1,9 +1,15 @@
 import { screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { createMemoryRouter, RouterProvider } from "react-router"
-import { afterEach, describe, expect, it, vi } from "vitest"
+import {
+  createBrowserRouter,
+  createMemoryRouter,
+  RouterProvider,
+} from "react-router"
+import { afterEach, describe, expect, it, onTestFinished, vi } from "vitest"
 import { routes } from "@/router"
+import { Layer } from "effect"
 import { ada, fakeMe, renderWithApi } from "@/test/api"
+import { fakeCustomers } from "@/test/customers"
 
 const captureException = vi.hoisted(() => vi.fn())
 vi.mock("@sentry/react", () => ({ captureException }))
@@ -102,9 +108,30 @@ describe("le rotte (§5)", () => {
     expect(backend.state.reads).toBe(0)
   })
 
+  it("un link diretto a /dashboard/customers apre la lista dei clienti (3.1)", async () => {
+    const customers = fakeCustomers()
+    // The history of the browser: the table writes its sort and its page
+    // from `window.location`, as in the app
+    window.history.replaceState(null, "", "/dashboard/customers")
+    const router = createBrowserRouter(routes)
+    onTestFinished(() => {
+      router.dispose()
+      window.history.replaceState(null, "", "/")
+    })
+    renderWithApi(<RouterProvider router={router} />, {
+      handlers: Layer.merge(backend.handlers, customers.handlers),
+      auth: backend.auth,
+    })
+
+    // The first import of the page and its modules, in a cold test run
+    expect(
+      await screen.findByText("RSSMRA80A01H501U", {}, { timeout: 5000 })
+    ).toBeInTheDocument()
+    expect(customers.state.searches).toHaveLength(1)
+  })
+
   it.each([
     ["/dashboard", "Home", "3.5"],
-    ["/dashboard/customers", "Customers", "3.1"],
     ["/dashboard/customers/new", "Nuovo customer", "3.1"],
     ["/dashboard/customers/42", "Customer", "3.1"],
     ["/dashboard/customers/42/connect", "Collega il customer", "3.1"],

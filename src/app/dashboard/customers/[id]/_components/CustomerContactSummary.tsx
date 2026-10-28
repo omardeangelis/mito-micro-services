@@ -3,7 +3,7 @@ import Link from "next/link"
 import {
   customerContactsState,
   detailHref,
-} from "@/app/dashboard/contatti/_lib/searchParams"
+} from "@mito/client/contact/searchParams"
 import { priorityLabels } from "@/app/dashboard/contatti/_lib/priorityLabels"
 import { PriorityBadge } from "@/components/custom/badge/priority"
 import { TaskStatusBadge } from "@/components/custom/badge/TaskStatusBadge"

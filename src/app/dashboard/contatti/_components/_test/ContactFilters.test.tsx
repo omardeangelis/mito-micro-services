@@ -5,7 +5,7 @@ import {
   defaultState,
   parse,
   type ContactsListState,
-} from "../../_lib/searchParams"
+} from "@mito/client/contact/searchParams"
 import { ContactFilters } from "../ContactFilters"
 import { ContactsListShell } from "../ContactsListShell"
 

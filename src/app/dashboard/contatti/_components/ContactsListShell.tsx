@@ -15,7 +15,10 @@ import {
 import { focusIsLost } from "@/components/custom/contact/focus"
 import { addressable } from "../_lib/addressable"
 import { listHref } from "../_lib/listHref"
-import { defaultState, type ContactsListState } from "../_lib/searchParams"
+import {
+  defaultState,
+  type ContactsListState,
+} from "@mito/client/contact/searchParams"
 
 /** Where the focus goes when the control that had it is gone: the table */
 const TABLE_SELECTOR = "[data-contacts-table]"

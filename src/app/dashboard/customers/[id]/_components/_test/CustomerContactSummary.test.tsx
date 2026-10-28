@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 import {
   customerContactsState,
   detailHref,
-} from "@/app/dashboard/contatti/_lib/searchParams"
+} from "@mito/client/contact/searchParams"
 import { CustomerContactSummary } from "../CustomerContactSummary"
 
 // La scheda cliente mostra il contatto attivo in sola lettura (AC64): lo stato,

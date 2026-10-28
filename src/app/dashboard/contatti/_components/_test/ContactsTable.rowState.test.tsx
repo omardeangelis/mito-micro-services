@@ -4,7 +4,10 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { useState } from "react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { type ContactRow } from "@mito/server/services/contact/getContacts"
-import { defaultState, type ContactsListState } from "../../_lib/searchParams"
+import {
+  defaultState,
+  type ContactsListState,
+} from "@mito/client/contact/searchParams"
 import { ContactsListShell } from "../ContactsListShell"
 import { ContactsTable } from "../ContactsTable"
 

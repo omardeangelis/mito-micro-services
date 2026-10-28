@@ -21,7 +21,10 @@ import { type TaskStatus } from "@mito/domain/schemas"
 import type { ContactRow } from "@mito/server/services/contact/getContacts"
 import { api } from "@/trpc/react"
 import { customerNameOf } from "../_lib/customerName"
-import { detailHref, type ContactsListState } from "../_lib/searchParams"
+import {
+  detailHref,
+  type ContactsListState,
+} from "@mito/client/contact/searchParams"
 import { useRowChanged } from "./rowChange"
 
 type Props = {

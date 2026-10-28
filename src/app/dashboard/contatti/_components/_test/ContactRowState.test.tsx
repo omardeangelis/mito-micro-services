@@ -6,7 +6,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import { describeContactError } from "@/components/custom/contact/describeContactError"
 import { type ContactErrorData } from "@mito/domain/contact/errors"
 import { type ContactRow } from "@mito/server/services/contact/getContacts"
-import { defaultState, detailHref } from "../../_lib/searchParams"
+import { defaultState, detailHref } from "@mito/client/contact/searchParams"
 import { ContactRowState } from "../ContactRowState"
 
 type Call = {

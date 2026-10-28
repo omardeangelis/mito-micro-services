@@ -10,7 +10,7 @@ import {
   defaultState,
   type ActiveFilterKey,
   type ContactsListState,
-} from "../_lib/searchParams"
+} from "@mito/client/contact/searchParams"
 import { useContactsNavigation } from "./ContactsListShell"
 import { navigateOnPlainClick } from "./navigateOnPlainClick"
 

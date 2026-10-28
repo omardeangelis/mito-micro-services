@@ -10,7 +10,7 @@ import {
   parse,
   withFilterChange,
   type ContactsListState,
-} from "../searchParams"
+} from "@mito/client/contact/searchParams"
 import { useContactFilters } from "../useContactFilters"
 
 const mocks = vi.hoisted(() => ({

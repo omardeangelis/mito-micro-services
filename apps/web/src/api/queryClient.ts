@@ -10,7 +10,8 @@ declare module "@tanstack/react-query" {
   }
 }
 
-const showError = (error: ApiFailure) => {
+/** The toast of a failed call, with its text */
+export const showApiError = (error: ApiFailure) => {
   toast({ variant: "destructive", title: describeApiError(error) })
 }
 
@@ -22,8 +23,13 @@ const showError = (error: ApiFailure) => {
  */
 export const makeQueryClient = () =>
   new QueryClient({
-    queryCache: new QueryCache({ onError: showError }),
-    mutationCache: new MutationCache({ onError: showError }),
+    // A query with `meta.toastErrors: false` shows its failures itself
+    queryCache: new QueryCache({
+      onError: (error, query) => {
+        if (query.meta?.toastErrors !== false) showApiError(error)
+      },
+    }),
+    mutationCache: new MutationCache({ onError: showApiError }),
     defaultOptions: {
       queries: {
         retry: (failures, error) =>

@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest"
 import { addressable, dateProblemOf } from "../addressable"
-import { defaultState, type ContactsListState } from "../searchParams"
+import {
+  defaultState,
+  type ContactsListState,
+} from "@mito/client/contact/searchParams"
 
 const withDays = (
   from: string | undefined,
