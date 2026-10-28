@@ -8,7 +8,8 @@
 # 4. api: the backend (apps/api) to Cloud Run, after a backup of the database
 #    when there are migrations, then the migrations
 #    (apps/api/gcp/deploy-staging.sh);
-# 5. web: the frontend to Vercel, after the API it calls;
+# 5. web: the frontend (apps/web, the React app) to Vercel, after the API it
+#    calls;
 # then a Slack message with how it went, in every case.
 name: Deploy Platform to Staging
 env:
@@ -248,115 +249,36 @@ jobs:
             echo "::error::The staging project has domains besides $STAGING_DOMAIN and *.vercel.app: remove them (staging project → Settings → Domains), a production deployment would take them"
             exit 1
           fi
-      # The Production variables of the staging project. A .vercel folder in
-      # the commit would be merged into what vercel pull writes
+      # The link to the staging project (.vercel/project.json), which
+      # `vercel deploy --prebuilt` reads. A .vercel folder in the commit would
+      # be merged into what vercel pull writes
       - name: Pull Vercel Environment Information
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: |
           rm -rf .vercel
           vercel pull --yes --environment=production
-      # A production deployment of the staging project is staging only with
-      # APP_ENV=staging; without it the app would be production
-      - name: Check the build is staging
-        run: |
-          file=.vercel/.env.production.local
-          if ! grep -qx 'VERCEL_ENV="production"' "$file"; then
-            echo "::error::vercel pull wrote no VERCEL_ENV=\"production\": turn on Enable access to System Environment Variables in the staging project"
-            exit 1
-          fi
-          if grep -qx 'APP_ENV="\[SENSITIVE\]"' "$file"; then
-            echo "::error::APP_ENV in the staging project is a Secret, so the build can't read it: delete it and create it again as Config"
-            exit 1
-          fi
-          if ! grep -qx 'APP_ENV="staging"' "$file"; then
-            echo "::error::Set APP_ENV=staging in the Production variables of the staging project: without it staging is production"
-            exit 1
-          fi
-          if grep -q '^SKIP_ENV_VALIDATION=' "$file"; then
-            echo "::error::Remove SKIP_ENV_VALIDATION from the Production variables of the staging project: the build would skip the check of the required ones"
-            exit 1
-          fi
-          if grep -q '^NODE_ENV=' "$file"; then
-            echo "::warning::NODE_ENV has no effect on Vercel, which sets it to production: remove it from the staging project, APP_ENV=staging marks staging"
-          fi
-      # Staging must not reach the production database or storage. Each
-      # environment keeps both in one Supabase project, whose ref is the host
-      # of NEXT_PUBLIC_SUPABASE_URL (https://<ref>.supabase.co) and is also in
-      # the connection string, as the host (db.<ref>.supabase.co) or the
-      # pooler user (postgres.<ref>). Production is read from the production
-      # project, staging from the variables the build just pulled. Prints
-      # names only, and removes the files it pulls
-      - name: Check staging has its own database and storage
+      # The React app (apps/web), static: it reads no variable of the Vercel
+      # project, only the VITE_* ones set here (src/env.ts), and has no
+      # database. VITE_APP_ENV=staging keeps it from being production, as
+      # APP_ENV did for the Next.js app; the test login is on, as on the
+      # backend (AUTH_TEST_LOGIN in deploy-staging.sh)
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Build the React app
         env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          PRODUCTION_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-        run: |
-          dir="$(mktemp -d "$RUNNER_TEMP/staging-env-check.XXXXXX")"
-          trap 'rm -rf "$dir"' EXIT
-          # A stop signal waits for the running command, then removes the files
-          trap 'exit 1' TERM INT
-          VERCEL_PROJECT_ID="$PRODUCTION_PROJECT_ID" vercel env pull "$dir/Production" --yes --environment=production > /dev/null
-          cp .vercel/.env.production.local "$dir/Staging"
-          for view in Production Staging; do
-            if [ ! -s "$dir/$view" ]; then
-              echo "::error::Vercel gave no $view variables"
-              exit 1
-            fi
-          done
-          project_ref() {
-            sed -nE 's#^NEXT_PUBLIC_SUPABASE_URL="https://([a-z0-9]+)\.supabase\.co/?"$#\1#p' "$1"
-          }
-          # Set, and not only spaces or escaped line breaks
-          has_value() {
-            local value="${1#*=}"
-            value="${value#\"}"
-            value="${value%\"}"
-            value="${value//\\n/}"
-            value="${value//\\r/}"
-            [ -n "${value//[[:space:]]/}" ]
-          }
-          prod_ref="$(project_ref "$dir/Production")"
-          if ! [[ "$prod_ref" =~ ^[a-z0-9]+$ ]]; then
-            echo "::error::NEXT_PUBLIC_SUPABASE_URL in Production is not one https://<project>.supabase.co: the check can't tell the projects apart"
-            exit 1
-          fi
-          file="$dir/Staging"
-          staging_ref="$(project_ref "$file")"
-          if ! [[ "$staging_ref" =~ ^[a-z0-9]+$ ]]; then
-            echo "::error::NEXT_PUBLIC_SUPABASE_URL in the staging project is not one https://<project>.supabase.co"
-            exit 1
-          fi
-          status=0
-          if [ "$staging_ref" = "$prod_ref" ]; then
-            echo "::error::The storage of the staging project is the production one"
-            status=1
-          fi
-          connection="$(grep '^SUPABASE_DB_CONNECTION_STRING=' "$file" || true)"
-          if ! has_value "$connection"; then
-            echo "::error::SUPABASE_DB_CONNECTION_STRING is not set in the staging project"
-            status=1
-          elif [ "$connection" = 'SUPABASE_DB_CONNECTION_STRING="[SENSITIVE]"' ]; then
-            echo "::error::SUPABASE_DB_CONNECTION_STRING in the staging project is a Secret, so the check can't read it: save it as Config"
-            status=1
-          else
-            connection="${connection,,}"
-            if [[ "$connection" == *"$prod_ref"* ]] || ! [[ "$connection" =~ (@db\.${staging_ref}\.supabase\.co[:/]|://postgres\.${staging_ref}[:@]) ]]; then
-              echo "::error::SUPABASE_DB_CONNECTION_STRING in the staging project is not the database of the project of its NEXT_PUBLIC_SUPABASE_URL, or is the production one"
-              status=1
-            fi
-          fi
-          for name in SUPABASE_MITO_PSW SUPABASE_KEY; do
-            if ! has_value "$(grep "^$name=" "$file" || true)"; then
-              echo "::error::$name is not set in the staging project"
-              status=1
-            fi
-          done
-          exit "$status"
-      # Without the token: the build runs the install scripts and the code of
-      # the branch, and needs only what vercel pull wrote
+          VERCEL_ENV: production
+          VITE_APP_ENV: staging
+          VITE_AUTH_TEST_LOGIN: "true"
+        run: pnpm web:build
+      # The build as a prebuilt deployment, with every /api sent to the
+      # backend of staging and the headers of next.config.js
+      # (apps/web/vercelOutput.ts): the settings of the project stay as they
+      # are. Without the token, as the build before
       - name: Build Project Artifacts
-        run: vercel build --prod
+        run: pnpm exec tsx apps/web/vercelOutput.ts "$BACKEND_ORIGIN"
+        env:
+          BACKEND_ORIGIN: https://mito-crm-staging-869830994359.europe-west3.run.app
       - name: Deploy Project Artifacts to Vercel
         id: deploy
         env:

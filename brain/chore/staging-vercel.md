@@ -3,7 +3,7 @@ domain: platform
 title: Staging su Vercel
 type: checklist-operativa
 status: in_progress
-last_updated: 2026-10-09
+last_updated: 2026-10-28
 ---
 
 # Staging su Vercel
@@ -16,6 +16,8 @@ Due progetti Vercel, nel team `spatalos-projects`:
 Lo staging è una deployment di Production del suo progetto (`vercel --prod`): prende le variabili Production di quel progetto e ha `VERCEL_ENV=production`. Lo separa dalla produzione `APP_ENV=staging`, che c'è solo nel progetto di staging: senza, l'app lo tratterebbe come la produzione, con il solo login Azure senza filtro e gli errori mandati a Sentry (`src/env.js`). `NODE_ENV` non serve a questo: Vercel lo mette sempre a `production`, nella build e nelle funzioni.
 
 I due progetti non condividono variabili, domini né protezione. `vercel.json` spegne i deploy dai commit. Senza i controlli del workflow restano possibili un Redeploy, un Promote o un Instant Rollback dalla dashboard, `vercel` o `vercel alias set` a mano, e le chiamate all'API con un token del team: non si usano (vedi sotto e «Limiti noti»).
+
+**Dal 2026-10-28 lo staging pubblica l'app React (`apps/web`), non più l'app Next.js** (richiesta di Leonardo). È statica: il workflow fa `pnpm web:build` con `VITE_APP_ENV=staging` e `VITE_AUTH_TEST_LOGIN=true`, e `apps/web/vercelOutput.ts` ne fa una deployment prebuilt (Build Output API) con gli header di `next.config.js` e ogni `/api/*` mandato al backend di staging su Cloud Run (HttpApi, better-auth, l'export, tRPC). Le impostazioni del progetto Vercel non cambiano, e le sue variabili non servono più al build: per questo non ci sono più i passi "Check the build is staging" e "Check staging has its own database and storage", che proteggevano il build di Next.js dal database di prod; il database e lo storage dello staging sono quelli del backend (`apps/api/gcp/deploy-staging.sh`). Restano i controlli sul progetto (protezione, Git, dominio). I cron di GitHub dello staging, che chiamano `/api/cron/*` dell'app Next.js, sullo staging non hanno più una rotta: lì i cron sono quelli di Cloud Scheduler sul backend. La produzione resta l'app Next.js finché non c'è il backend di prod. Le parti qui sotto su `APP_ENV`, Supabase e il build di Next.js valgono per la produzione e per lo staging fino a questa data.
 
 Questo documento sostituisce, per lo staging, il piano di migrazione che lo voleva su Railway (`brain/chore/migration/`).
 
