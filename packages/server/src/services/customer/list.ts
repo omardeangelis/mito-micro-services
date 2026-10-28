@@ -28,7 +28,8 @@ import { containsPattern } from "../../shared/sql"
 
 /**
  * What the customers list reads from the request. The router's zod schema
- * (`getAllCustomersInput`) parses into this shape.
+ * (`getAllCustomersInput`) parses into this shape, the `CustomerListQuery` of
+ * @mito/contract too (with `searchBy` set).
  */
 export type CustomerListQuery = {
   page: number
@@ -41,12 +42,12 @@ export type CustomerListQuery = {
   sortedBy?: "asc" | "desc"
   filterBy?: {
     operatore?: number
-    sede?: string[]
-    ambito?: string[]
-    jobs?: string[]
+    sede?: readonly string[]
+    ambito?: readonly string[]
+    jobs?: readonly string[]
     file?: string
   }
-  advancedFilters?: AdvancedFilter[]
+  advancedFilters?: readonly AdvancedFilter[]
 }
 
 // Colonne in cui cerca ogni valore di `search_by`: il codice fiscale cerca

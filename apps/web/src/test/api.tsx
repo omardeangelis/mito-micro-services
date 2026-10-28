@@ -5,8 +5,16 @@ import { HttpApiBuilder, type HttpApiGroup } from "effect/http-api"
 import { type ReactNode } from "react"
 import { onTestFinished } from "vitest"
 import { MitoApi } from "@mito/contract/api"
-import { type OperatorDisabled, type Unauthorized } from "@mito/contract/errors"
-import { Authenticated, CurrentUser } from "@mito/contract/middleware"
+import {
+  NotAdmin,
+  type OperatorDisabled,
+  type Unauthorized,
+} from "@mito/contract/errors"
+import {
+  AdminOnly,
+  Authenticated,
+  CurrentUser,
+} from "@mito/contract/middleware"
 import {
   type Operator,
   type Role,
@@ -18,12 +26,63 @@ import { makeQueryClient } from "@/api/queryClient"
 import { ApiClient } from "@/api/runtime"
 import { Toaster } from "@/components/ui/toaster"
 
-/** The handlers of the groups of the contract, written with `HttpApiBuilder.group` */
-export type FakeHandlers = Layer.Layer<
-  HttpApiGroup.Service<"mito", "me">,
+/** The handlers of a group of the contract, by its name */
+type GroupService<Name extends string> = HttpApiGroup.Service<"mito", Name>
+
+/** The groups of the contract */
+type ApiGroups = GroupService<"me"> | GroupService<"customer">
+
+/**
+ * The handlers of some groups of the contract, written with
+ * `HttpApiBuilder.group`: the groups a test doesn't give are `unserved`
+ */
+export type FakeHandlers<Groups extends ApiGroups = ApiGroups> = Layer.Layer<
+  Groups,
   never,
-  Authenticated
+  Authenticated | AdminOnly
 >
+
+/** A call the test didn't expect: it dies, a 500 */
+const unserved = () => Effect.die("not served by this test")
+
+/** Every group, with every endpoint `unserved` */
+const unservedGroups = Layer.mergeAll(
+  HttpApiBuilder.group(MitoApi, "me", (handlers) =>
+    handlers
+      .handle("getCurrentUser", unserved)
+      .handle("updateOperatorInfo", unserved)
+  ),
+  HttpApiBuilder.group(MitoApi, "customer", (handlers) =>
+    handlers
+      .handle("getAllCustomers", unserved)
+      .handle("getCustomersByFiscalCodeOrVatCode", unserved)
+      .handle("getAllCustomerForPratica", unserved)
+      .handle("getCustomerUnderReview", unserved)
+      .handle("getAllAvailableComune", unserved)
+      .handle("getAllAvaliableSede", unserved)
+      .handle("getAllAvailableAmbito", unserved)
+      .handle("getAllAvailableJobs", unserved)
+      .handle("getAllFileName", unserved)
+      .handle("getCustomerById", unserved)
+      .handle("getAllPraticaByCustomer", unserved)
+      .handle("insertCustomer", unserved)
+      .handle("updateCustomerFromDashboard", unserved)
+      .handle("handleCustomerBlackList", unserved)
+      .handle("handover", unserved)
+      .handle("assignToYourself", unserved)
+      .handle("updateLastEdit", unserved)
+      .handle("bulkUpdateCustomers", unserved)
+  )
+)
+
+/** `AdminOnly` as the backend runs it: an operator is `NotAdmin` */
+const adminOnly = Layer.succeed(AdminOnly)((endpoint) =>
+  Effect.gen(function* () {
+    const { actor } = yield* CurrentUser
+    if (actor.role !== "ADMIN") return yield* new NotAdmin()
+    return yield* endpoint
+  })
+)
 
 /** The middleware of the fake backend: signed in as `operator` */
 export const signedInAs = (
@@ -72,7 +131,7 @@ export function fakeMe(initial: {
     failing: false,
     ...initial,
   }
-  const handlers: FakeHandlers = HttpApiBuilder.group(
+  const handlers: FakeHandlers<GroupService<"me">> = HttpApiBuilder.group(
     MitoApi,
     "me",
     (handlers) =>
@@ -101,21 +160,25 @@ export function fakeMe(initial: {
 
 /**
  * Renders `ui` under the `ApiProvider` of the app, on a backend in memory:
- * the handlers serve the contract through its web handler, and the client
+ * the handlers of the test, and `unserved` for the groups it doesn't give,
+ * serve the contract through its web handler, and the client
  * of the app calls it with its `fetch` (F9, H14). The toasts are rendered
  * too. No mock of modules or of the global `fetch`
  */
-export function renderWithApi(
+export function renderWithApi<Groups extends ApiGroups>(
   ui: ReactNode,
   {
     handlers,
     auth,
-  }: { handlers: FakeHandlers; auth: Layer.Layer<Authenticated> }
+  }: { handlers: FakeHandlers<Groups>; auth: Layer.Layer<Authenticated> }
 ) {
+  // The groups of the test over the unserved ones
+  const groups: FakeHandlers = Layer.merge(unservedGroups, handlers)
   const backend = HttpRouter.toWebHandler(
     HttpApiBuilder.layer(MitoApi).pipe(
-      Layer.provide(handlers),
+      Layer.provide(groups),
       Layer.provide(auth),
+      Layer.provide(adminOnly),
       Layer.provide(inMemoryPlatform)
     ),
     { disableLogger: true }
