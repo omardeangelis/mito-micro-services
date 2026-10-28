@@ -87,7 +87,7 @@ Le regole con cui si scrive un gruppo di `HttpApi`. Vengono da H7–H16 di [[cho
 
 **Dove sta il codice.**
 - La definizione è in `@mito/contract` (`packages/contract`): `MitoApi` (`api.ts`), un file per gruppo, gli errori che viaggiano (`errors.ts`), gli `Schema` condivisi (`schemas.ts`), i middleware dichiarati (`middleware.ts`). Dipende solo da `effect` e dai moduli puri di `@mito/domain`; niente `@mito/db`, `@mito/server`, `@mito/env`, `drizzle-*`, `zod` (H5).
-- Gli handler sono in `packages/server/src/http/`, uno per gruppo, e `ApiHandlersLive` (`api.ts`) li unisce. Il backend li monta in `apps/api/src/httpApi.ts`, su `/api/v1` (H7), prima di `/api/trpc`.
+- Gli handler sono in `packages/server/src/http/`, uno per gruppo, e `apiHandlersLayer` (`api.ts`) li unisce. Il backend li monta in `apps/api/src/httpApi.ts`, su `/api/v1` (H7), prima di `/api/trpc`.
 - Il client è in `apps/web/src/api/`, un modulo per gruppo (H12).
 
 **Il gruppo e gli endpoint (H8).**
@@ -104,7 +104,7 @@ Le regole con cui si scrive un gruppo di `HttpApi`. Vengono da H7–H16 di [[cho
 - Un errore del servizio che dopo il middleware non può succedere (es. `NotAnOperator` in `me`) diventa un *defect*, non un errore dichiarato.
 
 **L'autorizzazione (H10).**
-- Ogni gruppo ha il middleware `Authenticated`, che fornisce `CurrentUser` (operatore e `Actor`). `AuthenticatedLive` legge la sessione con `SessionReader` (quella che il backend ha già letto per la richiesta) e chiama `resolveActor`: 401 `Unauthorized` senza sessione, 401 `OperatorDisabled`, 400 `NotAnOperator`.
+- Ogni gruppo ha il middleware `Authenticated`, che fornisce `CurrentUser` (operatore e `Actor`). `authenticatedLayer` legge la sessione con `SessionReader` (quella che il backend ha già letto per la richiesta) e chiama `resolveActor`: 401 `Unauthorized` senza sessione, 401 `OperatorDisabled`, 400 `NotAnOperator`.
 - Gli endpoint dell'admin hanno anche `AdminOnly` (403). È dichiarato nel contratto; l'implementazione arriva con il primo gruppo che lo usa.
 - Le PR che toccano i middleware hanno la revisione di Leonardo.
 
