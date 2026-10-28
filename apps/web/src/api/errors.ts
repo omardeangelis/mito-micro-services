@@ -18,6 +18,12 @@ export const describeApiError = (error: ApiFailure): string => {
       return "Solo un admin può farlo"
     case "OperatorNotFound":
       return "Operatore non trovato"
+    case "CustomerNotFound":
+      return "Cliente non trovato"
+    case "CustomerAssignmentForbidden":
+      return "Non puoi cambiare l'operatore di questo cliente"
+    case "HandoverSameOperator":
+      return "Il cliente è già di questo operatore"
     case "ApiUnavailable":
       return "Il servizio non risponde, riprova tra poco"
     default: {

@@ -104,7 +104,7 @@ Le regole con cui si scrive un gruppo di `HttpApi`. Vengono da H7–H16 di [[cho
 
 **L'autorizzazione (H10).**
 - Ogni gruppo ha il middleware `Authenticated`, che fornisce `CurrentUser` (operatore e `Actor`). `AuthenticatedLive` legge la sessione con `SessionReader` (quella che il backend ha già letto per la richiesta) e chiama `resolveActor`: 401 `Unauthorized` senza sessione, 401 `OperatorDisabled`, 400 `NotAnOperator`.
-- Gli endpoint dell'admin hanno anche `AdminOnly` (403). È dichiarato nel contratto; l'implementazione arriva con il primo gruppo che lo usa.
+- Gli endpoint dell'admin hanno anche `AdminOnly` (403 `NotAdmin`), messo sull'endpoint con `.middleware(AdminOnly)` prima del `.middleware(Authenticated)` del gruppo: gira dopo `Authenticated` e legge il ruolo da `CurrentUser` (`packages/server/src/http/adminOnly.ts`, dal gruppo `customer`, 3.1a). Il client di `HttpApiTest` e il backend in memoria di `apps/web` chiedono un'implementazione di ogni middleware dell'API, anche per un gruppo che non lo usa.
 - Le PR che toccano i middleware hanno la revisione di Leonardo.
 
 **Come si scrive l'handler.** È un adapter senza logica (H16): legge `CurrentUser`, chiama il servizio di L1, traduce gli errori, chiude con `unexpectedAs500`. Per non far chiedere `Db` a ogni richiesta (diventerebbe un requisito `HttpRouter.Request<"Requires", Db>`), il gruppo cattura i servizi quando si costruisce, con `Effect.context<Db | ErrorReporter>()`, e ogni handler li fornisce con `Effect.provide(services)`.

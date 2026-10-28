@@ -36,9 +36,39 @@ export class NotAdmin extends Schema.TaggedError<NotAdmin>()(
   { httpApiStatus: 403 }
 ) {}
 
-/** The operator to write doesn't exist (tRPC BAD_REQUEST). */
+/**
+ * The operator to write, or the one a customer goes to, doesn't exist or can't
+ * work: disabled, or the system operator (tRPC BAD_REQUEST, `OPERATOR_NOT_FOUND`).
+ */
 export class OperatorNotFound extends Schema.TaggedError<OperatorNotFound>()(
   "OperatorNotFound",
+  {},
+  { httpApiStatus: 400 }
+) {}
+
+/** The customer doesn't exist (tRPC NOT_FOUND, `CUSTOMER_NOT_FOUND`). */
+export class CustomerNotFound extends Schema.TaggedError<CustomerNotFound>()(
+  "CustomerNotFound",
+  {},
+  { httpApiStatus: 404 }
+) {}
+
+/**
+ * The operator may not change the customer's operator (D13; tRPC FORBIDDEN,
+ * `CUSTOMER_ASSIGNMENT_FORBIDDEN`).
+ */
+export class CustomerAssignmentForbidden extends Schema.TaggedError<CustomerAssignmentForbidden>()(
+  "CustomerAssignmentForbidden",
+  {},
+  { httpApiStatus: 403 }
+) {}
+
+/**
+ * The handover's target is already the customer's operator (D13; tRPC
+ * BAD_REQUEST, `HANDOVER_SAME_OPERATOR`).
+ */
+export class HandoverSameOperator extends Schema.TaggedError<HandoverSameOperator>()(
+  "HandoverSameOperator",
   {},
   { httpApiStatus: 400 }
 ) {}
@@ -49,6 +79,9 @@ const apiErrors = [
   OperatorDisabled,
   NotAdmin,
   OperatorNotFound,
+  CustomerNotFound,
+  CustomerAssignmentForbidden,
+  HandoverSameOperator,
 ] as const
 
 /** An error some endpoint declares. */

@@ -11,7 +11,7 @@ import {
   OperatorNotFound,
   Unauthorized,
 } from "../errors"
-import { Authenticated, CurrentUser } from "../middleware"
+import { AdminOnly, Authenticated, CurrentUser } from "../middleware"
 import { inMemoryPlatform } from "../testing"
 
 const operator = {
@@ -58,10 +58,14 @@ const signedIn = Layer.succeed(Authenticated)((endpoint) =>
 const failingWith = (error: Unauthorized | OperatorDisabled) =>
   Layer.succeed(Authenticated)(() => Effect.fail(error))
 
+// The client needs every middleware of the API, `AdminOnly` of `customer` too
+const anyRole = Layer.succeed(AdminOnly)((endpoint) => endpoint)
+
 const client = (auth: Layer.Layer<Authenticated>) =>
   HttpApiTest.groups(MitoApi, ["me"]).pipe(
     Effect.provide(meHandlers),
     Effect.provide(auth),
+    Effect.provide(anyRole),
     Effect.provide(inMemoryPlatform)
   )
 

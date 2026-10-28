@@ -5,7 +5,9 @@ import { Etag, HttpPlatform } from "effect/http"
 import { HttpApiBuilder } from "effect/http-api"
 import { MitoApi } from "@mito/contract/api"
 import { ServerLive } from "../effect/server"
+import { AdminOnlyLive } from "./adminOnly"
 import { AuthenticatedLive } from "./authenticated"
+import { CustomerLive } from "./customer"
 import { MeLive } from "./me"
 import { SessionReaderLive } from "./session"
 
@@ -13,8 +15,8 @@ import { SessionReaderLive } from "./session"
  * The groups of the contract with their middleware. It still needs the
  * session (`SessionReader`) and `ServerLive`: the tests give theirs
  */
-export const ApiHandlersLive = Layer.mergeAll(MeLive).pipe(
-  Layer.provideMerge(AuthenticatedLive)
+export const ApiHandlersLive = Layer.mergeAll(MeLive, CustomerLive).pipe(
+  Layer.provideMerge(Layer.merge(AuthenticatedLive, AdminOnlyLive))
 )
 
 // HttpApi serves no files: the platform without a file system
