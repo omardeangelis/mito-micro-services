@@ -37,6 +37,7 @@ export const LookupKeys = Schema.Struct({
   customerCodes: Schema.Array(Schema.String),
   praticaIds: Schema.Array(Schema.String),
 })
+export type LookupKeys = typeof LookupKeys.Type
 
 /** What the CRM has of the file's keys (`CrmState` of @mito/domain) */
 export const CrmState = Schema.Struct({
@@ -53,6 +54,7 @@ export const CrmState = Schema.Struct({
     Schema.Struct({ customerId: Schema.String, praticaId: Schema.String })
   ),
 })
+export type CrmState = typeof CrmState.Type
 
 /**
  * A part of the compressed body, in base64 (`uploadPartSchema`): the first
@@ -71,6 +73,7 @@ export const UploadPart = Schema.Union([
     data: Schema.String,
   }),
 ])
+export type UploadPart = typeof UploadPart.Type
 
 /** An import as the history shows it (`ImportSummary` of the server) */
 export const ImportSummary = Schema.Struct({

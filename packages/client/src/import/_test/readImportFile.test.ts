@@ -4,18 +4,11 @@ import { type CrmState } from "@mito/domain/import/plan"
 import {
   ImportReadCancelled,
   ImportReadFailed,
-  type ReaderRequest,
   type ReaderResponse,
   type ReaderWorker,
   openImportFile,
 } from "../readImportFile"
-import {
-  type ImportSession,
-  compressedBody,
-  errorReport,
-  previewImport,
-  readImport,
-} from "../session"
+import { inProcessWorker } from "./inProcessWorker"
 import { waveFile, waveRow } from "./workbooks"
 
 // The page's side of the worker (T14): the checks of AC5 before reading, one
@@ -23,58 +16,6 @@ import { waveFile, waveRow } from "./workbooks"
 
 const NOW = new Date("2025-01-15T10:00:00.000Z")
 const emptyCrm: CrmState = { customers: [], praticaIds: [], links: [] }
-
-/** A worker in this process, running what read.worker.ts runs. */
-const inProcessWorker = () => {
-  let session: ImportSession | undefined
-  const worker: ReaderWorker & { terminated: boolean; requests: string[] } = {
-    terminated: false,
-    requests: [],
-    onmessage: null,
-    onerror: null,
-    terminate: () => {
-      worker.terminated = true
-    },
-    postMessage: (request: ReaderRequest) => {
-      worker.requests.push(request.type)
-      void (async (): Promise<ReaderResponse> => {
-        switch (request.type) {
-          case "read": {
-            const result = readImport(
-              await request.file.arrayBuffer(),
-              request.fileName,
-              new Date(request.now)
-            )
-            session = result.ok ? result.session : undefined
-            return {
-              type: "read",
-              result: result.ok
-                ? { ok: true, format: result.session.format, keys: result.keys }
-                : result,
-            }
-          }
-          case "preview":
-            return {
-              type: "preview",
-              preview: previewImport(session!, request.crm),
-            }
-          case "body":
-            return { type: "body", body: await compressedBody(session!) }
-          case "report":
-            return {
-              type: "report",
-              ...errorReport(session!, new Date(request.today)),
-            }
-        }
-      })().then((data) => {
-        if (!worker.terminated) {
-          worker.onmessage?.({ data } as MessageEvent<ReaderResponse>)
-        }
-      })
-    },
-  }
-  return worker
-}
 
 const waveUpload = (name = "0125_import.xlsx") =>
   new File([waveFile(waveRow())], name)
