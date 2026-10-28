@@ -261,3 +261,35 @@ export const formatDateAsDMY = (date: Date) => {
     parts.find((p) => p.type === type)?.value
   return `${part("day")}/${part("month")}/${part("year")}`
 }
+
+// if minutes < 10 add a 0 before the minutes
+// if hours < 10 add a 0 before the hours
+export const formatTime = (date: Date) => {
+  const minutes =
+    date.getMinutes() < 10 ? `0${date.getMinutes()}` : date.getMinutes()
+  const hours = date.getHours() < 10 ? `0${date.getHours()}` : date.getHours()
+
+  return `${hours}:${minutes}`
+}
+
+//Write an utils that takes a Date object and return a string in the format "dd/mm - hh:mm"
+// If is today return oggi - hh:mm
+// If is yesterday return ieri - hh:mm
+export const formatDateAsDMHM = (date: Date) => {
+  const today = new Date()
+  const yesterday = new Date()
+  yesterday.setDate(yesterday.getDate() - 1)
+
+  const isToday = today.toDateString() === date.toDateString()
+  const isYesterday = yesterday.toDateString() === date.toDateString()
+
+  if (isToday) {
+    return `oggi - ${formatTime(date)}`
+  }
+
+  if (isYesterday) {
+    return `ieri - ${formatTime(date)}`
+  }
+
+  return `${date.getDate()}/${date.getMonth() + 1} - ${formatTime(date)}`
+}

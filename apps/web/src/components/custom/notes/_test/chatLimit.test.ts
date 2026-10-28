@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { MAX_CHAT_LIMIT } from "@mito/domain/constants/chat"
-import { parseChatLimit } from "../chatLimit"
+import { chatLimitOf, parseChatLimit } from "../chatLimit"
 
 describe("parseChatLimit: quanti messaggi della chat mostra il dettaglio (AC57)", () => {
   it.each([
@@ -32,4 +32,16 @@ describe("parseChatLimit: quanti messaggi della chat mostra il dettaglio (AC57)"
       expect(parseChatLimit(value)).toBeUndefined()
     }
   )
+})
+
+describe("chatLimitOf: il limit dei parametri dell'indirizzo", () => {
+  it.each([
+    ["?limit=20", 20],
+    ["?tab=note&limit=10", 10],
+    ["", undefined],
+    ["?limit=abc", undefined],
+    ["?limit=5&limit=10", undefined],
+  ])("legge '%s'", (search, expected) => {
+    expect(chatLimitOf(new URLSearchParams(search))).toBe(expected)
+  })
 })

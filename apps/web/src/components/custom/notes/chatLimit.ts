@@ -16,3 +16,9 @@ export const parseChatLimit = (
   const limit = Number(value)
   return limit <= MAX_CHAT_LIMIT ? limit : undefined
 }
+
+/** The `limit` of the address's search params, read as `parseChatLimit` reads it */
+export const chatLimitOf = (params: URLSearchParams): number | undefined => {
+  const values = params.getAll("limit")
+  return parseChatLimit(values.length === 1 ? values[0] : values)
+}

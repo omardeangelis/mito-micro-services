@@ -42,6 +42,12 @@ export const describeApiError = (error: ApiFailure): string => {
       return "Questa pratica esiste già"
     case "CustomerExists":
       return "Un cliente collegato esiste già"
+    case "ChatMissing":
+      return "Chat non trovata"
+    case "MessageMissing":
+      return "Nota non trovata"
+    case "NotMessageAuthor":
+      return "Solo l'autore della nota può eliminarla"
     case "ApiUnavailable":
       return "Il servizio non risponde, riprova tra poco"
     default: {

@@ -138,6 +138,27 @@ export class CustomerExists extends Schema.TaggedError<CustomerExists>()(
   { httpApiStatus: 409 }
 ) {}
 
+/** The chat doesn't exist, or went with its last note (tRPC NOT_FOUND). */
+export class ChatMissing extends Schema.TaggedError<ChatMissing>()(
+  "ChatMissing",
+  { chatId: Schema.Number },
+  { httpApiStatus: 404 }
+) {}
+
+/** The note doesn't exist any more (tRPC NOT_FOUND). */
+export class MessageMissing extends Schema.TaggedError<MessageMissing>()(
+  "MessageMissing",
+  { messageId: Schema.Number },
+  { httpApiStatus: 404 }
+) {}
+
+/** Only the author of a note deletes it, not an admin either (tRPC FORBIDDEN). */
+export class NotMessageAuthor extends Schema.TaggedError<NotMessageAuthor>()(
+  "NotMessageAuthor",
+  { messageId: Schema.Number },
+  { httpApiStatus: 403 }
+) {}
+
 const apiErrors = [
   Unauthorized,
   NotAnOperator,
@@ -154,6 +175,9 @@ const apiErrors = [
   ContactAlreadyActive,
   PracticeExists,
   CustomerExists,
+  ChatMissing,
+  MessageMissing,
+  NotMessageAuthor,
 ] as const
 
 /** An error some endpoint declares. */

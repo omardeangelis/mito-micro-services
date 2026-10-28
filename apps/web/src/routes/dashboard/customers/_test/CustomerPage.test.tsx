@@ -20,7 +20,7 @@ import { renderCustomers } from "./page"
 
 // The customer sheet on a backend in memory, as the tests of
 // `customers/[id]` of the Next.js app: the master data, the active contact,
-// "Crea contatto", the handover, "Assegna a te" and the practices
+// "Crea contatto", the handover, "Assegna a te", the practices and the notes
 
 const PATH = "/dashboard/customers/customer-1"
 
@@ -50,9 +50,13 @@ const withContact = (state: "chiamare" | "caricato" = "chiamare") => {
   })
 }
 
-const open = async (backend = backendWith(), role: Role = "ADMIN") => {
+const open = async (
+  backend = backendWith(),
+  role: Role = "ADMIN",
+  path = PATH
+) => {
   const user = userEvent.setup()
-  renderCustomers(PATH, backend, {
+  renderCustomers(path, backend, {
     ui: <CustomerPage />,
     route: "/dashboard/customers/:id",
     role,
@@ -446,5 +450,46 @@ describe("CustomerPage, l'operatore del cliente", () => {
     )
     expect(backend.state.selfAssigned).toEqual(["customer-1"])
     expect(screen.queryByRole("button", { name: "Assegna a te" })).toBeNull()
+  })
+})
+
+describe("CustomerPage, le note", () => {
+  const note = (id: number) => ({
+    id,
+    content: `Nota ${id}`,
+    sendDate: new Date("2026-10-15T09:00:00Z"),
+    operatorId: ada.id,
+  })
+
+  it("senza chat la scheda offre 'Avvia una chat'", async () => {
+    await open()
+
+    expect(
+      await screen.findByRole("button", { name: "Avvia una chat" })
+    ).toBeTruthy()
+  })
+
+  it("con la chat mostra le ultime 5 note, o le ultime `limit` dell'indirizzo", async () => {
+    const backend = backendWith({
+      customers: [customerOf({ chatId: 3 })],
+      chats: { 3: Array.from({ length: 12 }, (_, index) => note(index + 1)) },
+    })
+    await open(backend, "ADMIN", `${PATH}?limit=10`)
+
+    expect(await screen.findByText("10 / 12")).toBeTruthy()
+    expect(screen.getByText("Nota 3")).toBeTruthy()
+    expect(screen.queryByText("Nota 2")).toBeNull()
+    expect(backend.state.chatReads).toEqual([{ id: 3, limit: 10 }])
+  })
+
+  it("un limit non valido nell'indirizzo è ignorato: le note partono da 5", async () => {
+    const backend = backendWith({
+      customers: [customerOf({ chatId: 3 })],
+      chats: { 3: Array.from({ length: 12 }, (_, index) => note(index + 1)) },
+    })
+    await open(backend, "ADMIN", `${PATH}?limit=0x10`)
+
+    expect(await screen.findByText("5 / 12")).toBeTruthy()
+    expect(backend.state.chatReads).toEqual([{ id: 3, limit: 5 }])
   })
 })
