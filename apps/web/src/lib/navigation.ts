@@ -22,11 +22,18 @@ type NavigateOptions = { scroll?: boolean }
 
 export const useRouter = () => {
   const navigate = useNavigate()
+  // As the router of Next.js, a push to the address already in the bar
+  // replaces it: the effects that write the URL on mount (the sort, the
+  // pagination) add no entry to the history
   const push = useCallback(
-    (href: string, options?: NavigateOptions) =>
-      void navigate(toPath(href), {
+    (href: string, options?: NavigateOptions) => {
+      const path = toPath(href)
+      const { pathname, search, hash } = window.location
+      void navigate(path, {
+        replace: path === `${pathname}${search}${hash}`,
         preventScrollReset: options?.scroll === false,
-      }),
+      })
+    },
     [navigate]
   )
   const replace = useCallback(

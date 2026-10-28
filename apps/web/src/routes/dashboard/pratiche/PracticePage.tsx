@@ -1,4 +1,4 @@
-import { Link, useParams } from "react-router"
+import { Link, useLocation } from "react-router"
 import { usePracticeCustomers } from "@/api/customer"
 import { usePractice } from "@/api/pratiche"
 import { CollassableSection } from "@/components/custom/CollassableItem"
@@ -13,7 +13,7 @@ import { PracticeGeneralForm } from "./detail/_components/PracticeGeneralForm"
  * A practice that doesn't exist says so in the page
  */
 export function Component() {
-  const { id = "" } = useParams()
+  const id = praticaIdOf(useLocation().pathname)
   const practice = usePractice(id)
   const customers = usePracticeCustomers(id, {
     enabled: practice.data !== undefined,
@@ -61,6 +61,20 @@ export function Component() {
       </div>
     </div>
   )
+}
+
+/**
+ * The `praticaId` of the address, decoded once from its last segment: the
+ * param of React Router decodes a `%` escape in the ID itself again
+ */
+const praticaIdOf = (pathname: string) => {
+  const segment = pathname.slice(pathname.lastIndexOf("/") + 1)
+  try {
+    return decodeURIComponent(segment)
+  } catch {
+    // A link written by hand with a broken escape: the segment as it is
+    return segment
+  }
 }
 
 /** As the page `notFound()` of the Next.js app shows, inside the dashboard */

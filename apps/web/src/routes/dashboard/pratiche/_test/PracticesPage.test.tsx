@@ -131,6 +131,18 @@ describe("PracticesPage, ordinamento", () => {
     expect(currentParams().get("sorted_by")).toBe("asc")
   })
 
+  it("con pagina e ordinamento già nell'indirizzo non aggiunge voci alla cronologia", async () => {
+    const entries = window.history.length
+    renderPratiche(
+      "/dashboard/pratiche?page=1&per_page=20&order_by=updatedAt&sorted_by=asc",
+      fakePratiche()
+    )
+    await showRows()
+    await act(() => new Promise((resolve) => setTimeout(resolve, 50)))
+
+    expect(window.history.length).toBe(entries)
+  })
+
   it("un ordinamento che esiste resta, con la sua direzione", async () => {
     const backend = fakePratiche()
     renderPratiche(

@@ -66,6 +66,20 @@ describe("PracticePage, i dati della pratica", () => {
     expect(screen.getByDisplayValue("AB/1 ?x")).toBeTruthy()
   })
 
+  it("un ID con un '%' si decodifica una volta sola", async () => {
+    const backend = fakePratiche({
+      practices: [practiceOf({ praticaId: "A%2FB 50%" })],
+      customers: { "A%2FB 50%": [practiceCustomer()] },
+    })
+    renderPratiche(
+      `/dashboard/pratiche/${encodeURIComponent("A%2FB 50%")}`,
+      backend
+    )
+    await showDetail()
+
+    expect(backend.state.detailReads).toEqual(["A%2FB 50%"])
+  })
+
   it("una pratica che non esiste lo dice nella pagina, con il ritorno alla lista", async () => {
     const user = userEvent.setup()
     renderPratiche("/dashboard/pratiche/nessuna", fakePratiche())
