@@ -81,6 +81,7 @@ export function fakeImport(
     failingLookup: false,
     failingUpload: false,
     failingList: false,
+    failingActive: false,
   }
 
   const answer = <A>(name: string, failing: boolean, read: () => A) =>
@@ -112,7 +113,9 @@ export function fakeImport(
             return Effect.succeed({ runId: 7 })
           })
         )
-        .handle("active", () => answer("active", false, () => state.active))
+        .handle("active", () =>
+          answer("active", state.failingActive, () => state.active)
+        )
         .handle("list", ({ query }) =>
           answer("list", state.failingList, () => {
             state.pages.push(query.page)

@@ -114,6 +114,9 @@ export const useImportClient = () => {
   )
 }
 
+/** The groups whose data an import writes */
+const writtenGroups = ["customer", "pratiche", "task", "analytics"] as const
+
 /** The history and the latest import read again, after a start or an end */
 export const useInvalidateImports = () => {
   const queryClient = useQueryClient()
@@ -124,15 +127,16 @@ export const useInvalidateImports = () => {
       active: () =>
         queryClient.invalidateQueries({ queryKey: importKeys.active() }),
       /**
-       * What a completed import wrote, in any page: customers, practices,
-       * contacts, the cards and the "File" filter, as `router.refresh()` and
-       * `getAllFileName` of the Next.js app
+       * What a completed import wrote, in any page: customers and the "File"
+       * filter, practices, contacts and the cards of the home, as
+       * `router.refresh()` and `getAllFileName` of the Next.js app
        */
       written: () =>
-        queryClient.invalidateQueries({
-          predicate: (query) =>
-            query.queryKey[0] !== "me" && query.queryKey[0] !== "import",
-        }),
+        Promise.all(
+          writtenGroups.map((group) =>
+            queryClient.invalidateQueries({ queryKey: [group] })
+          )
+        ),
     }),
     [queryClient]
   )

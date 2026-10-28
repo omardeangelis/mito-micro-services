@@ -164,12 +164,26 @@ describe("ImportStatusProvider", () => {
     const backend = fakeImport({ active: completedRun })
     renderStatus(backend)
     await wait(0)
-    const files = fileReads
+
+    // Right away: a notice would still be on screen (it lasts 10 s)
+    expect(screen.queryByText("Import completato")).toBeNull()
+    // The "File" filter read once, when it mounted, and never again
+    expect(fileReads).toBe(1)
+    await wait(30_000)
+    expect(backend.asked("active")).toBe(1)
+    expect(fileReads).toBe(1)
+  })
+
+  it("una domanda fallita sull'ultimo import non mostra toast: è dietro ogni pagina", async () => {
+    const backend = fakeImport({ active: importRun() })
+    backend.state.failingActive = true
+    renderStatus(backend)
     await wait(30_000)
 
-    expect(backend.asked("active")).toBe(1)
-    expect(screen.queryByText("Import completato")).toBeNull()
-    expect(fileReads).toBe(files)
+    expect(backend.asked("active")).toBeGreaterThan(0)
+    expect(
+      screen.queryByText("Il servizio non risponde, riprova tra poco")
+    ).toBeNull()
   })
 
   it("per un operatore non chiede mai (AC1)", async () => {
