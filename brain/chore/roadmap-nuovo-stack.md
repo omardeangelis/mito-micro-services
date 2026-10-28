@@ -100,7 +100,7 @@ Serve a fissare le convenzioni su un gruppo piccolo, prima di farne nove. Il pia
 
 Per ogni gruppo:
 - **Backend:** la definizione del gruppo; gli handler, che chiamano i servizi di L1 come oggi gli adapter tRPC; lo status HTTP degli errori del dominio, che sono già `Schema.TaggedError` dalla PR 4 di 1.1; i test di contratto riscritti sugli endpoint (autorizzazione, codice e messaggio di ogni errore, forma della risposta). L'adapter tRPC resta.
-- **Frontend:** le pagine che leggono il gruppo. Ogni pagina si confronta con quella di Next sugli stessi dati di staging (stessi numeri, filtri e azioni), da ADMIN e da OPERATORE.
+- **Frontend:** le pagine che leggono il gruppo. Ogni pagina si confronta con quella di Next sugli stessi dati di staging (stessi numeri, filtri e azioni), da ADMIN e da OPERATORE. Dal 2026-10-28 lo staging ha solo l'app React, e il collaudo lo fa Leonardo a mano lì (§7 di [[chore/migrazione-frontend-react]]).
 
 Ordine proposto. Lo decide il frontend, perché segue le pagine: una pagina è finita quando ci sono tutti i gruppi che legge.
 

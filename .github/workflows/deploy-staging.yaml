@@ -15,8 +15,8 @@ name: Deploy Platform to Staging
 env:
   VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
   # Staging is its own Vercel project, staging-mito-micro-services: a
-  # production deployment there, with that project's Production variables and
-  # APP_ENV=staging, which keeps the app from being production (packages/env/src/index.js)
+  # production deployment there of the React app, built with
+  # VITE_APP_ENV=staging, which keeps it from being production (apps/web/src/env.ts)
   VERCEL_PROJECT_ID: ${{ secrets.VERCEL_STAGING_PROJECT_ID }}
   # The fixed address of staging, a production domain of the staging project
   # (brain/chore/staging-vercel.md)
@@ -258,6 +258,9 @@ jobs:
         run: |
           rm -rf .vercel
           vercel pull --yes --environment=production
+          # The variables it writes are the Next.js app's, credentials
+          # included: the React build reads none, so they don't stay on disk
+          rm -f .vercel/.env.*
       # The React app (apps/web), static: it reads no variable of the Vercel
       # project, only the VITE_* ones set here (src/env.ts), and has no
       # database. VITE_APP_ENV=staging keeps it from being production, as

@@ -41,8 +41,10 @@ export const backendOriginOf = (value: string) => {
 /**
  * The routes of the deployment, in order: the headers; every /api to the
  * backend (HttpApi, better-auth, the REST routes of the export, tRPC while it
- * stays), so the cookie stays first-party; the files of the build; any other
- * path to index.html, where React Router reads it
+ * stays), so the cookie stays first-party; the files of the build; a 404
+ * for a missing asset (a chunk of an older deploy: never index.html, cached
+ * as immutable); any other path to index.html, where React Router reads it.
+ * The headers go on the answers of the backend too, as in next.config.js
  */
 export const vercelOutputConfig = (backendOrigin: string) => ({
   version: 3,
@@ -55,6 +57,7 @@ export const vercelOutputConfig = (backendOrigin: string) => ({
     },
     { src: "/api/(.*)", dest: `${backendOriginOf(backendOrigin)}/api/$1` },
     { handle: "filesystem" },
+    { src: "/assets/(.*)", status: 404 },
     { src: "/(.*)", dest: "/index.html" },
   ],
 })

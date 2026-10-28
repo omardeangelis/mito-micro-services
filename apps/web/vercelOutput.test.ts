@@ -14,10 +14,11 @@ import {
 const BACKEND = "https://mito-crm-staging-869830994359.europe-west3.run.app"
 
 describe("vercelOutputConfig", () => {
-  it("manda ogni /api al backend, serve i file e il resto a index.html", () => {
+  it("manda ogni /api al backend, serve i file, un asset che manca è 404 e il resto va a index.html", () => {
     expect(vercelOutputConfig(BACKEND).routes.slice(2)).toEqual([
       { src: "/api/(.*)", dest: `${BACKEND}/api/$1` },
       { handle: "filesystem" },
+      { src: "/assets/(.*)", status: 404 },
       { src: "/(.*)", dest: "/index.html" },
     ])
   })
