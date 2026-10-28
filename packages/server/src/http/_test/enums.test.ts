@@ -35,6 +35,8 @@ import { MAX_CHAT_LIMIT as domainChatLimit } from "@mito/domain/constants/chat"
 import { messages } from "@mito/db/schema/chat"
 import { MAX_CHAT_LIMIT, SavedMessage } from "@mito/contract/chat"
 import { taskStatus } from "@mito/db/schema/task"
+import { TimeFrame } from "@mito/contract/analytics"
+import { TIMEFRAMEOPTIONS } from "@mito/domain/constants/timeframes"
 
 // The contract writes the enums again, since it doesn't import @mito/db (H5):
 // here they are compared with the database's and the domain's
@@ -56,6 +58,7 @@ describe("gli enum e il cliente del contratto", () => {
     expect(ContactsDateField.literals).toEqual(
       dateField.removeDefault().options
     )
+    expect(TimeFrame.literals).toEqual(TIMEFRAMEOPTIONS)
   })
 
   // A new column of `messages` would be dropped from the saved note
