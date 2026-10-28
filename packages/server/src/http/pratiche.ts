@@ -8,6 +8,7 @@ import {
   PracticeNotFound,
 } from "@mito/contract/errors"
 import { CurrentUser } from "@mito/contract/middleware"
+import { getAllPraticheInput } from "@mito/domain/practice/listInput"
 import { type Db } from "../effect/db"
 import { type ErrorReporter } from "../effect/errorReporter"
 import { updateCustomerContacts } from "../services/customer/profile"
@@ -35,16 +36,17 @@ export const praticheLayer = HttpApiBuilder.group(
         .handle("getAllPratiche", ({ payload }) =>
           Effect.gen(function* () {
             const { actor } = yield* CurrentUser
-            // The defaults of `getAllPraticheInput`
-            return yield* listPractices(
-              {
-                ...payload,
-                orderBy: payload.orderBy ?? "updatedAt",
-                sortedBy: payload.sortedBy ?? "asc",
-                searchBy: payload.searchBy ?? "praticaId",
-              },
-              { id: actor.operatorId, role: actor.role }
-            ).pipe(unexpectedAs500("getAllPratiche"))
+            return yield* Effect.sync(() =>
+              // The defaults of the procedure's input. The contract has the
+              // same limits, so the payload passes: a drift between the two
+              // is a defect, logged and reported as a 500
+              getAllPraticheInput.parse(payload)
+            ).pipe(
+              Effect.flatMap((input) =>
+                listPractices(input, { id: actor.operatorId, role: actor.role })
+              ),
+              unexpectedAs500("getAllPratiche")
+            )
           }).pipe(Effect.provide(services))
         )
         .handle("getAllAvailableRegion", () =>

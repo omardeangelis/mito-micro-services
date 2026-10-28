@@ -1,13 +1,16 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, Layer } from "effect"
-import { HttpApiTest } from "effect/http-api"
-import { beforeAll, beforeEach } from "vitest"
+import { HttpRouter } from "effect/http"
+import { HttpApiBuilder, HttpApiTest } from "effect/http-api"
+import { beforeAll, beforeEach, onTestFinished } from "vitest"
 import { eq } from "drizzle-orm"
 import { MitoApi } from "@mito/contract/api"
-import { isApiError, PracticeNotFound } from "@mito/contract/errors"
+import { PracticeNotFound } from "@mito/contract/errors"
 import { inMemoryPlatform } from "@mito/contract/testing"
 import { customers } from "@mito/db/schema/customers"
 import { practices } from "@mito/db/schema/pratiche"
+import { getAllPraticheInput } from "@mito/domain/practice/listInput"
+import { serverLayer } from "@mito/server/effect/server"
 import { migrateUpTo, resetDb, testDb } from "@/test/db"
 import { provideServer } from "@/test/effect"
 import {
@@ -40,6 +43,37 @@ const clientAs = (userId: string) =>
     Effect.provide(inMemoryPlatform),
     provideServer
   )
+
+/**
+ * The status of a request the backend receives as it is, with no client to
+ * encode it: what the server itself rejects
+ */
+const statusOf = (
+  userId: string,
+  method: string,
+  path: string,
+  body: unknown
+) =>
+  Effect.promise(async () => {
+    const web = HttpRouter.toWebHandler(
+      HttpApiBuilder.layer(MitoApi).pipe(
+        Layer.provide(apiHandlersLayer),
+        Layer.provide(sessionOf(userId)),
+        Layer.provide(serverLayer),
+        Layer.provide(inMemoryPlatform)
+      ),
+      { disableLogger: true }
+    )
+    onTestFinished(() => web.dispose())
+    const response = await web.handler(
+      new Request(`http://localhost/api/v1${path}`, {
+        method,
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+      })
+    )
+    return response.status
+  })
 
 const given = <A>(setup: () => Promise<A>) => Effect.promise(setup)
 
@@ -99,13 +133,7 @@ describe("POST /api/v1/pratiche/search", () => {
           payload: { page: 1, perPage: 30 },
         })
         const procedure = yield* listPractices(
-          {
-            page: 1,
-            perPage: 30,
-            orderBy: "updatedAt",
-            sortedBy: "asc",
-            searchBy: "praticaId",
-          },
+          getAllPraticheInput.parse({ page: 1, perPage: 30 }),
           { id: operator.id, role: "OPERATORE" }
         ).pipe(provideServer)
 
@@ -165,16 +193,18 @@ describe("POST /api/v1/pratiche/search", () => {
       })
   )
 
-  it.effect("una pagina che non è un intero non parte", () =>
+  it.effect("una pagina che non è un intero il server la rifiuta", () =>
     Effect.gen(function* () {
       const operator = yield* given(() => createOperator())
-      const api = yield* clientAs(operator.userId)
 
-      const error = yield* Effect.flip(
-        api.pratiche.getAllPratiche({ payload: { page: 1.5, perPage: 30 } })
+      const status = yield* statusOf(
+        operator.userId,
+        "POST",
+        "/pratiche/search",
+        { page: 1.5, perPage: 30 }
       )
 
-      assert.isFalse(isApiError(error))
+      assert.strictEqual(status, 400)
     })
   )
 })
@@ -269,23 +299,22 @@ describe("PATCH /api/v1/pratiche/:id/state", () => {
     })
   )
 
-  it.effect("uno stato che non esiste non parte", () =>
+  it.effect("uno stato che non esiste il server lo rifiuta", () =>
     Effect.gen(function* () {
       const operator = yield* given(() => createOperator())
       const customer = yield* given(() => createCustomer())
       const practice = yield* given(() =>
         createPractice({ customerId: customer.id })
       )
-      const api = yield* clientAs(operator.userId)
 
-      const error = yield* Effect.flip(
-        api.pratiche.updatePraticaFromDashboard({
-          params: { id: practice.id },
-          payload: { state: "Erogata" as "Chiusa" },
-        })
+      const status = yield* statusOf(
+        operator.userId,
+        "PATCH",
+        `/pratiche/${practice.id}/state`,
+        { state: "Erogata" }
       )
 
-      assert.isFalse(isApiError(error))
+      assert.strictEqual(status, 400)
       assert.strictEqual(
         (yield* practiceRow(practice.praticaId)).state,
         "Liquidata"
@@ -322,30 +351,22 @@ describe("PATCH /api/v1/pratiche/customer-preview/:id", () => {
   )
 
   it.effect(
-    "senza email né telefono, o con un telefono troppo lungo, non scrive",
+    "senza email né telefono, o con un telefono troppo lungo, il server non scrive",
     () =>
       Effect.gen(function* () {
         const operator = yield* given(() => createOperator())
         const customer = yield* given(() =>
           createCustomer({ email: "a@example.com", phoneNumber: "1" })
         )
-        const api = yield* clientAs(operator.userId)
+        const path = `/pratiche/customer-preview/${customer.id}`
 
-        const empty = yield* Effect.flip(
-          api.pratiche.updateCustomerPreview({
-            params: { id: customer.id },
-            payload: {},
-          })
-        )
-        const tooLong = yield* Effect.flip(
-          api.pratiche.updateCustomerPreview({
-            params: { id: customer.id },
-            payload: { phoneNumber: "1".repeat(21) },
-          })
-        )
+        const empty = yield* statusOf(operator.userId, "PATCH", path, {})
+        const tooLong = yield* statusOf(operator.userId, "PATCH", path, {
+          phoneNumber: "1".repeat(21),
+        })
 
-        assert.isFalse(isApiError(empty))
-        assert.isFalse(isApiError(tooLong))
+        assert.strictEqual(empty, 400)
+        assert.strictEqual(tooLong, 400)
         const row = yield* customerRow(customer.id)
         assert.strictEqual(row.email, "a@example.com")
         assert.strictEqual(row.phoneNumber, "1")

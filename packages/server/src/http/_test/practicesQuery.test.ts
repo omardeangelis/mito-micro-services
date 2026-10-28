@@ -73,3 +73,14 @@ describe("PracticeListQuery del contratto", () => {
     }
   )
 })
+
+// The one difference: `Schema.isInt` takes only safe integers, where zod
+// takes any. A page past 2^53 fails the query there, a 400 here
+describe("PracticeListQuery del contratto, oltre gli interi sicuri", () => {
+  it.each([2 ** 53, 1e20])("rifiuta la pagina %s, che zod accetta", (page) => {
+    const input = { page, perPage: 30 }
+
+    expect(decoded(input)).toBeNull()
+    expect(getAllPraticheInput.safeParse(input).success).toBe(true)
+  })
+})

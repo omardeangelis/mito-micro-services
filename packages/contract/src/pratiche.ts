@@ -88,7 +88,8 @@ const Integer = Schema.Number.check(Schema.isInt())
  * @mito/domain/practice/listInput: without `orderBy`, `sortedBy` and
  * `searchBy` the handler gives the procedure's defaults; an unknown `orderBy`
  * gives the default order; extra keys (the `sqlFilter` of an old frontend)
- * are dropped
+ * are dropped. A page past the safe integers is a 400, where the procedure
+ * accepts it and its query fails
  */
 export const PracticeListQuery = Schema.Struct({
   page: Integer,
