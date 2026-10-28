@@ -202,6 +202,8 @@ export function fakeCustomers(
     handovers: [] as { id: string; toOperatorId: number }[],
     selfAssigned: [] as string[],
     createdContacts: [] as { customerId: string; source: string }[],
+    /** The ids of the contacts whose detail was read, in order */
+    contactReads: [] as string[],
     /** What the next write answers instead of succeeding */
     insertFails: false,
     updateFails: false,
@@ -230,6 +232,10 @@ export function fakeCustomers(
     handled: [] as BulkHandleTask[],
     /** While set, the calls of the bulk assignment wait for it */
     gate: undefined as Promise<void> | undefined,
+    /** While set, "Crea contatto" waits for it before it answers */
+    createContactGate: undefined as Promise<void> | undefined,
+    /** While set, the detail of a contact waits for it before it answers */
+    contactGate: undefined as Promise<void> | undefined,
     /** The list dies, a 500 */
     failingList: false,
     /** The bulk assignments die, a 500 */
@@ -403,37 +409,49 @@ export function fakeCustomers(
           Effect.sync(() => state.customerAlerts[params.id] ?? [])
         )
         .handle("getContactById", ({ params }) =>
-          Effect.suspend(() => {
-            const contact = state.contacts[params.id]
-            return contact
-              ? Effect.succeed(contact)
-              : Effect.fail(new ContactNotFound())
-          })
+          Effect.promise(() => state.contactGate ?? Promise.resolve()).pipe(
+            Effect.andThen(
+              Effect.suspend(() => {
+                state.contactReads.push(params.id)
+                const contact = state.contacts[params.id]
+                return contact
+                  ? Effect.succeed(contact)
+                  : Effect.fail(new ContactNotFound())
+              })
+            )
+          )
         )
         .handle("createContact", ({ payload }) =>
-          Effect.suspend(() => {
-            if (state.createContactError)
-              return Effect.fail(state.createContactError)
-            state.createdContacts.push(payload)
-            const customer = state.customers.find(
-              ({ id }) => id === payload.customerId
-            )!
-            const task = taskOf({
-              id: 2000 + state.createdContacts.length,
-              customerId: customer.id,
-              operatorId: customer.operatorId,
-            })
-            state.tasks.push(task)
-            const operator =
-              state.operators.find(({ id }) => id === customer.operatorId) ??
-              null
-            state.contacts[String(task.id)] = contactDetailOf(
-              task,
-              customer,
-              operator
+          Effect.promise(
+            () => state.createContactGate ?? Promise.resolve()
+          ).pipe(
+            Effect.andThen(
+              Effect.suspend(() => {
+                if (state.createContactError)
+                  return Effect.fail(state.createContactError)
+                state.createdContacts.push(payload)
+                const customer = state.customers.find(
+                  ({ id }) => id === payload.customerId
+                )!
+                const task = taskOf({
+                  id: 2000 + state.createdContacts.length,
+                  customerId: customer.id,
+                  operatorId: customer.operatorId,
+                })
+                state.tasks.push(task)
+                const operator =
+                  state.operators.find(
+                    ({ id }) => id === customer.operatorId
+                  ) ?? null
+                state.contacts[String(task.id)] = contactDetailOf(
+                  task,
+                  customer,
+                  operator
+                )
+                return Effect.succeed({ taskId: task.id })
+              })
             )
-            return Effect.succeed({ taskId: task.id })
-          })
+          )
         )
         .handle("bulkHandleTask", ({ payload }) =>
           waitGate(payload.customerIds).pipe(

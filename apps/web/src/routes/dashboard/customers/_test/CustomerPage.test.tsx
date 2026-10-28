@@ -1,8 +1,12 @@
-import { screen, waitFor, within } from "@testing-library/react"
+import { act, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { describe, expect, it } from "vitest"
 import { type Role } from "@mito/contract/schemas"
-import { ContactForbidden } from "@mito/contract/errors"
+import {
+  ContactAlreadyActive,
+  ContactForbidden,
+  CustomerUnassigned,
+} from "@mito/contract/errors"
 import { ada } from "@/test/api"
 import {
   contactDetailOf,
@@ -71,9 +75,16 @@ const fieldOf = (label: string) =>
       .closest<HTMLElement>('[data-slot="form-item"]')!
   ).getByRole("textbox")
 
+/** The focus reaches `element`, and is still there a while later */
+const focusStaysOn = async (element: HTMLElement) => {
+  await waitFor(() => expect(document.activeElement).toBe(element))
+  await new Promise((resolve) => setTimeout(resolve, 200))
+  expect(document.activeElement).toBe(element)
+}
+
 describe("CustomerPage, la scheda", () => {
   it("mostra l'anagrafica, l'operatore e le pratiche del cliente", async () => {
-    await open()
+    const { backend } = await open()
 
     expect(fieldOf("Nome")).toHaveValue("Mario")
     expect(fieldOf("Email")).toHaveValue("mario@example.com")
@@ -87,6 +98,10 @@ describe("CustomerPage, la scheda", () => {
     expect(
       screen.getByRole("button", { name: "Aggiungi Pratica" })
     ).toBeDisabled()
+    // Without an active contact: "Crea contatto", and no contact read (AC66)
+    expect(screen.getByRole("button", { name: "Crea contatto" })).toBeTruthy()
+    expect(screen.queryByRole("link", { name: "Gestisci contatto" })).toBeNull()
+    expect(backend.state.contactReads).toEqual([])
   })
 
   it("un cliente che non esiste dà l'errore della rotta", async () => {
@@ -133,11 +148,13 @@ describe("CustomerPage, la scheda", () => {
 })
 
 describe("CustomerPage, il contatto attivo", () => {
-  it("mostra il riepilogo del contatto, con il link per gestirlo", async () => {
-    await open(withContact("caricato"))
+  it("mostra il riepilogo del contatto attivo letto dal suo dettaglio, con il link per gestirlo (AC64)", async () => {
+    const { backend } = await open(withContact("caricato"))
 
     const link = await screen.findByRole("link", { name: "Gestisci contatto" })
     expect(link.getAttribute("href")).toContain("/dashboard/contatti/1000")
+    expect(backend.state.contactReads).toEqual(["1000"])
+    expect(screen.getByText("Nessun alert")).toBeTruthy()
     expect(screen.queryByRole("button", { name: "Crea contatto" })).toBeNull()
     // A contact in caricato lets the practice in
     expect(
@@ -157,6 +174,141 @@ describe("CustomerPage, il contatto attivo", () => {
       { customerId: "customer-1", source: "detail" },
     ])
     expect(screen.queryByRole("button", { name: "Crea contatto" })).toBeNull()
+  })
+
+  it("con un alert aperto il riepilogo e il passaggio di consegne dicono la scadenza", async () => {
+    const customer = customerOf()
+    const task = taskOf({ alertId: 4 })
+    const deadline = new Date("2026-11-05T09:00:00Z")
+    const { user } = await open(
+      backendWith({
+        customers: [customer],
+        tasks: [task],
+        customerAlerts: {
+          "customer-1": [
+            {
+              id: 4,
+              deadline,
+              message: null,
+              isResolved: false,
+              updatedAt: deadline,
+              resolvedByName: null,
+              resolvedBySurname: null,
+            },
+          ],
+        },
+        contacts: {
+          [String(task.id)]: {
+            ...contactDetailOf(task, customer, null),
+            alert: { id: 4, deadline, message: null },
+          },
+        },
+      })
+    )
+
+    expect(screen.getByText("5/11/2026")).toBeTruthy()
+    await user.click(
+      screen.getByRole("button", { name: "Passaggio di consegne" })
+    )
+    expect(
+      await screen.findByRole("dialog", { name: "Passaggio di consegne" })
+    ).toHaveTextContent("prossimo alert")
+  })
+
+  it("'Crea contatto' resta in attesa finché il riepilogo prende il suo posto, poi il focus va a 'Gestisci contatto'", async () => {
+    const backend = backendWith()
+    const { user } = await open(backend)
+    // The detail of the new contact answers after the active contact, as
+    // the sheet reads them one after the other
+    backend.state.contactGate = new Promise((resolve) =>
+      setTimeout(resolve, 50)
+    )
+    const button = screen.getByRole("button", { name: "Crea contatto" })
+    // Every state of the button, until it leaves the page
+    const states: string[] = []
+    const observer = new MutationObserver(() =>
+      states.push(
+        button.isConnected ? String(button.getAttribute("aria-busy")) : "gone"
+      )
+    )
+    observer.observe(document.body, {
+      attributes: true,
+      childList: true,
+      subtree: true,
+    })
+
+    await user.click(button)
+    const link = await screen.findByRole("link", { name: "Gestisci contatto" })
+    observer.disconnect()
+
+    const fromClick = states.slice(states.indexOf("true"))
+    expect(fromClick).not.toContain("false")
+    expect(fromClick).toContain("gone")
+    await focusStaysOn(link)
+  })
+
+  it("se un collega l'ha creato nel frattempo il toast lo dice, si vede il suo contatto e il focus va lì (AC67)", async () => {
+    const backend = backendWith()
+    const { user } = await open(backend)
+    // The colleague's contact, created after the page was read
+    const customer = customerOf()
+    const task = taskOf()
+    backend.state.tasks.push(task)
+    backend.state.contacts[String(task.id)] = contactDetailOf(task, customer, {
+      id: 1,
+      name: "Anna",
+      surname: "Verdi",
+    })
+    backend.state.createContactError = new ContactAlreadyActive({
+      activeTaskId: task.id,
+    })
+
+    await user.click(screen.getByRole("button", { name: "Crea contatto" }))
+
+    expect(
+      await screen.findByText("Questo cliente ha già un contatto attivo")
+    ).toBeTruthy()
+    const link = await screen.findByRole("link", { name: "Gestisci contatto" })
+    await focusStaysOn(link)
+    expect(backend.state.createdContacts).toEqual([])
+  })
+
+  it("con un altro errore la card resta, e il focus con lei", async () => {
+    const backend = backendWith()
+    backend.state.createContactError = new CustomerUnassigned()
+    const { user } = await open(backend)
+    const button = screen.getByRole("button", { name: "Crea contatto" })
+
+    await user.click(button)
+
+    expect(await screen.findByText("Cliente non assegnato")).toBeTruthy()
+    await waitFor(() => expect(button).not.toHaveAttribute("aria-busy", "true"))
+    expect(screen.queryByRole("link", { name: "Gestisci contatto" })).toBeNull()
+    expect(document.activeElement).toBe(button)
+  })
+
+  it("se intanto l'operatore è passato a un altro campo, 'Gestisci contatto' non gli prende il focus", async () => {
+    const backend = backendWith()
+    let answer = () => undefined as void
+    backend.state.createContactGate = new Promise<void>((resolve) => {
+      answer = resolve
+    })
+    const { user } = await open(backend)
+
+    await user.click(screen.getByRole("button", { name: "Crea contatto" }))
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "Crea contatto" })
+      ).toHaveAttribute("aria-busy", "true")
+    )
+    const email = fieldOf("Email")
+    act(() => email.focus())
+    answer()
+
+    await screen.findByRole("link", { name: "Gestisci contatto" })
+    // The time the observer of the focus would have to move it
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    expect(document.activeElement).toBe(email)
   })
 
   it("se il backend rifiuta 'Crea contatto' il toast dice perché", async () => {
@@ -180,13 +332,25 @@ describe("CustomerPage, il contatto attivo", () => {
     )
   })
 
-  it("'Crea contatto' non c'è per l'operatore di un cliente non suo", async () => {
+  it("'Crea contatto' non c'è per l'operatore di un cliente non suo (AC66)", async () => {
     await open(
       backendWith({ customers: [customerOf({ operatorId: 1 })] }),
       "OPERATORE"
     )
 
     expect(screen.queryByRole("button", { name: "Crea contatto" })).toBeNull()
+    expect(
+      screen.queryByText("Il cliente non ha un contatto attivo")
+    ).toBeNull()
+  })
+
+  it.each([
+    ["l'operatore del cliente", "OPERATORE"],
+    ["un amministratore", "ADMIN"],
+  ] as const)("%s vede 'Crea contatto' (AC66)", async (_who, role) => {
+    await open(backendWith(), role)
+
+    expect(screen.getByRole("button", { name: "Crea contatto" })).toBeTruthy()
   })
 })
 

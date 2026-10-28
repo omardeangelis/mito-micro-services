@@ -8,7 +8,7 @@ import { useActor } from "@/components/custom/contact/useActor"
 import { useSavingUntilRefreshed } from "@/components/custom/contact/useSavingUntilRefreshed"
 import { Button } from "@/components/ui/button"
 import { canCreateContact } from "@mito/domain/contact/permissions"
-import { useCreateContact } from "@/api/task"
+import { useCreateContact, useLoadActiveContact } from "@/api/task"
 import { ContactAlreadyActive } from "@mito/contract/errors"
 
 type CustomerCreateContactProps = {
@@ -57,7 +57,9 @@ const focusWhenRendered = (root: FocusRoot) => {
  * contact (AC66, AC67): to admins and to the customer's operator only. It
  * creates an active contact in `chiamare` for the customer's operator, through
  * `task.createContact`. The wait lasts until the refreshed
- * page is on screen, where the summary of the contact takes this card's place.
+ * page is on screen, where the summary of the contact takes this card's place:
+ * the refresh reads the new contact too, which the sheet reads only after the
+ * active contact has answered.
  */
 export const CustomerCreateContact = (props: CustomerCreateContactProps) => {
   const actor = useActor()
@@ -72,14 +74,14 @@ export const CustomerCreateContact = (props: CustomerCreateContactProps) => {
 
   // From the call until the refreshed page is rendered. The wait ends here
   // only while the card stays on screen (an error with no new contact); when
-  // the contact appears the card is unmounted instead: see the cleanup
+  // the contact appears the card is unmounted instead: see the cleanup, which
+  // hands the focus over. The summary takes the card's place, so while the
+  // card is here the link is not, and the focus stays on the button
   const { pending, start, finishAfterRefresh, awaitRefresh, refresh } =
-    useSavingUntilRefreshed(() => {
-      if (!handoffFocus.current) return
-      handoffFocus.current = false
-      focusManageLink(rootRef.current ?? document)
-    })
+    useSavingUntilRefreshed()
   const createContact = useCreateContact()
+  const loadActiveContact = useLoadActiveContact()
+  const loadContact = () => loadActiveContact(props.customerId)
 
   useEffect(
     () => () => {
@@ -107,14 +109,14 @@ export const CustomerCreateContact = (props: CustomerCreateContactProps) => {
       .then(
         () => {
           handoffFocus.current = true
-          finishAfterRefresh()
+          finishAfterRefresh(loadContact)
         },
         (error) => {
           awaitRefresh()
           // A colleague created it meanwhile: the toast of the mutation says
           // so and the refresh shows the contact
           handoffFocus.current = error instanceof ContactAlreadyActive
-          refresh()
+          refresh(loadContact)
         }
       )
   }

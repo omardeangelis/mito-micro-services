@@ -23,7 +23,7 @@ export const describeApiError = (error: ApiFailure): string => {
     case "CustomerAssignmentForbidden":
       return "Non puoi cambiare l'operatore di questo cliente"
     case "HandoverSameOperator":
-      return "Il cliente è già di questo operatore"
+      return "Il cliente è già assegnato a questo operatore"
     case "CustomerMissing":
       return `Cliente non trovato: ${error.customerId}`
     case "ContactNotFound":

@@ -4,6 +4,7 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query"
+import { useCallback } from "react"
 import { Effect } from "effect"
 import { type BulkHandleTask } from "@mito/contract/task"
 import { useRun } from "./ApiProvider"
@@ -80,9 +81,8 @@ export const useBulkHandleTask = () => {
 }
 
 /** The active contact of a customer, or none (`GET /task/by-customer/:id/active`) */
-export const useActiveTask = (customerId: string) => {
-  const run = useRun()
-  return useQuery({
+const activeTaskOptions = (run: Run, customerId: string) =>
+  queryOptions({
     queryKey: taskKeys.active(customerId),
     queryFn: ({ signal }) =>
       run(
@@ -94,20 +94,20 @@ export const useActiveTask = (customerId: string) => {
         }),
         signal
       ),
+  })
+
+export const useActiveTask = (customerId: string) =>
+  useQuery({
+    ...activeTaskOptions(useRun(), customerId),
     ...routeErrorWhenEmpty,
   })
-}
 
 /**
  * The alerts of a customer, open and closed
  * (`GET /task/by-customer/:id/alerts`)
  */
-export const useCustomerAlerts = (
-  customerId: string,
-  { enabled }: { enabled: boolean }
-) => {
-  const run = useRun()
-  return useQuery({
+const customerAlertsOptions = (run: Run, customerId: string) =>
+  queryOptions({
     queryKey: taskKeys.customerAlerts(customerId),
     queryFn: ({ signal }) =>
       run(
@@ -119,18 +119,21 @@ export const useCustomerAlerts = (
         }),
         signal
       ),
+  })
+
+export const useCustomerAlerts = (
+  customerId: string,
+  { enabled }: { enabled: boolean }
+) =>
+  useQuery({
+    ...customerAlertsOptions(useRun(), customerId),
     enabled,
     ...routeErrorWhenEmpty,
   })
-}
 
 /** The detail of a contact (`GET /task/:id`) */
-export const useContactDetail = (
-  id: string,
-  { enabled }: { enabled: boolean }
-) => {
-  const run = useRun()
-  return useQuery({
+const contactOptions = (run: Run, id: string) =>
+  queryOptions({
     queryKey: taskKeys.contact(id),
     queryFn: ({ signal }) =>
       run(
@@ -140,9 +143,45 @@ export const useContactDetail = (
         }),
         signal
       ),
+  })
+
+export const useContactDetail = (
+  id: string,
+  { enabled }: { enabled: boolean }
+) =>
+  useQuery({
+    ...contactOptions(useRun(), id),
     enabled,
     ...routeErrorWhenEmpty,
   })
+
+/**
+ * Reads what the summary of the active contact of a customer shows: the
+ * contact, its detail and the alerts when it has one. The customer sheet
+ * reads them one after the other; after a refresh this reads them before
+ * its end, so the end of the wait finds them on screen
+ */
+export const useLoadActiveContact = () => {
+  const run = useRun()
+  const queryClient = useQueryClient()
+  return useCallback(
+    async (customerId: string) => {
+      // The sheet reads it, so the refresh has read it again already
+      const [task] = await queryClient.ensureQueryData(
+        activeTaskOptions(run, customerId)
+      )
+      if (!task) return
+      await Promise.all([
+        queryClient.ensureQueryData(contactOptions(run, String(task.id))),
+        // From the backend: without a contact with an alert the sheet
+        // didn't read them, and what the cache holds may be old
+        task.alertId === null
+          ? undefined
+          : queryClient.fetchQuery(customerAlertsOptions(run, customerId)),
+      ])
+    },
+    [run, queryClient]
+  )
 }
 
 /**

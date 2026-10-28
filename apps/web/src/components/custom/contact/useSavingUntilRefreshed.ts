@@ -34,9 +34,9 @@ export const useSavingUntilRefreshed = (onSettled?: () => void) => {
   const awaitRefresh = () => {
     awaitingRefresh.current = true
   }
-  const finishAfterRefresh = () => {
+  const finishAfterRefresh = (then?: () => Promise<unknown>) => {
     awaitRefresh()
-    refresh()
+    refresh(then)
   }
 
   return {
