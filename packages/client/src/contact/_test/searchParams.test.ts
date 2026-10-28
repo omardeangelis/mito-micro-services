@@ -11,7 +11,7 @@ import {
   serialize,
   toContactsInput,
   withFilterChange,
-} from "@/app/dashboard/contatti/_lib/searchParams"
+} from "@mito/client/contact/searchParams"
 import { DEFAULT_PER_PAGE, PER_PAGES } from "@mito/domain/constants/pagination"
 import {
   MAX_OPERATOR_IDS,

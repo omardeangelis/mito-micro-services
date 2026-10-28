@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { formatDateAsDMY } from "../index"
+import { formatDateAsDMY } from "../format"
 
 // The expected strings are written by hand: the formatter prints the Italian
 // day, whatever the zone of the process (a Vercel server runs in UTC).

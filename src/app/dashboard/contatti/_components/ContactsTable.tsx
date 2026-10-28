@@ -22,7 +22,10 @@ import type {
   CustomerFilter,
 } from "@mito/server/services/contact/getContacts"
 import { groupContacts } from "../_lib/groupContacts"
-import { detailHref, type ContactsListState } from "../_lib/searchParams"
+import {
+  detailHref,
+  type ContactsListState,
+} from "@mito/client/contact/searchParams"
 import {
   ariaSortOf,
   contactColumns,

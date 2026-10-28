@@ -19,7 +19,7 @@ import Link from "next/link"
 import React, { useCallback } from "react"
 import { cn, formatDateAsDMY } from "@/lib/utils"
 import { SortableHeader } from "@/components/custom/table/TableHeaders"
-import { seeContactsHref } from "@/app/dashboard/contatti/_lib/searchParams"
+import { seeContactsHref } from "@mito/client/contact/searchParams"
 import { handleCustomerBlackList } from "../_actions/handleCustomerBlackList"
 import { type Customer } from "@mito/domain/schemas"
 

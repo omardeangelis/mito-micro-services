@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/sheet"
 import { cn } from "@/lib/utils"
 import { saveReturnFocus } from "../../_lib/returnFocus"
-import { returnHref } from "../../_lib/searchParams"
+import { returnHref } from "@mito/client/contact/searchParams"
 
 /** What the content of the detail asks of the shell around it. */
 export type ContactSheetApi = {

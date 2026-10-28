@@ -6,7 +6,7 @@ import {
   defaultState,
   detailHref,
   type ContactsListState,
-} from "../../_lib/searchParams"
+} from "@mito/client/contact/searchParams"
 import { ContactsListShell } from "../ContactsListShell"
 import { ContactsTable } from "../ContactsTable"
 

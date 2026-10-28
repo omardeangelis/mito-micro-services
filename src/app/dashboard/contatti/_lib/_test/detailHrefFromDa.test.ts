@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest"
 import { detailHrefFromDa } from "../detailHrefFromDa"
-import { defaultState, detailHref, parse } from "../searchParams"
+import {
+  defaultState,
+  detailHref,
+  parse,
+} from "@mito/client/contact/searchParams"
 
 describe("detailHrefFromDa", () => {
   it("porta al contatto la vista della lista che il dettaglio ha già (AC25, AC27)", () => {

@@ -13,7 +13,10 @@ import {
 } from "@/components/ui/dropdown-menu"
 import type { ContactRow } from "@mito/server/services/contact/getContacts"
 import { contactActionsId, customerNameId } from "../_lib/ids"
-import { detailHref, type ContactsListState } from "../_lib/searchParams"
+import {
+  detailHref,
+  type ContactsListState,
+} from "@mito/client/contact/searchParams"
 
 // The menu is rendered in a portal, but React still bubbles its clicks through
 // the row that holds it: every click inside stops here, or the row would open
