@@ -85,6 +85,8 @@ export function fakeProfile(
     blacklistChanges: [] as Array<{ id: string; blackListStatus: string }>,
     // How many times the impact was read
     impactReads: 0,
+    // While set, a blacklist change waits for it before it is saved
+    blacklistHeld: undefined as Promise<void> | undefined,
     // Refusals of the server
     roleRejected: undefined as LastAdmin | OperatorNotFound | undefined,
     deactivateRejected: undefined as
@@ -198,20 +200,29 @@ export function fakeProfile(
         .handle("insertCustomer", unserved)
         .handle("updateCustomerFromDashboard", unserved)
         .handle("handleCustomerBlackList", ({ params, payload }) =>
-          down(state.failingBlacklist, () => {
-            state.blacklistChanges.push({
-              id: params.id,
-              blackListStatus: payload.blackListStatus,
-            })
-            // A whitelisted customer is no longer under review
-            state.underReview = state.underReview.flatMap((customer) =>
-              customer.id !== params.id
-                ? [customer]
-                : payload.blackListStatus === "whitelisted"
-                  ? []
-                  : [{ ...customer, blackListStatus: payload.blackListStatus }]
+          Effect.promise(() => state.blacklistHeld ?? Promise.resolve()).pipe(
+            Effect.andThen(
+              down(state.failingBlacklist, () => {
+                state.blacklistChanges.push({
+                  id: params.id,
+                  blackListStatus: payload.blackListStatus,
+                })
+                // A whitelisted customer is no longer under review
+                state.underReview = state.underReview.flatMap((customer) =>
+                  customer.id !== params.id
+                    ? [customer]
+                    : payload.blackListStatus === "whitelisted"
+                      ? []
+                      : [
+                          {
+                            ...customer,
+                            blackListStatus: payload.blackListStatus,
+                          },
+                        ]
+                )
+              })
             )
-          })
+          )
         )
         .handle("handover", unserved)
         .handle("assignToYourself", unserved)

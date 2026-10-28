@@ -146,6 +146,37 @@ describe("il tab Admin", () => {
     )
   })
 
+  it("dopo il salvataggio fa rileggere l'utente corrente, il cui ruolo può essere cambiato", async () => {
+    const user = userEvent.setup()
+    const { queryClient } = await openAdmin(1)
+    // The current user the shell reads, for the role of the menu and tabs
+    const me = ["me", "getCurrentUser"]
+    queryClient.setQueryData(me, {})
+
+    await changeRoleAndSave(user)
+
+    await screen.findByText("Ruoli aggiornati")
+    expect(queryClient.getQueryState(me)?.isInvalidated).toBe(true)
+  })
+
+  it("una disattivazione fa rileggere clienti, task, pratiche e analisi", async () => {
+    const user = userEvent.setup()
+    const { queryClient } = await openAdmin(1)
+    // What other pages read, with the customers of Bruno
+    const moved = ["customer", "task", "pratiche", "analytics"].map(
+      (group) => [group, "letto"] as const
+    )
+    for (const key of moved) queryClient.setQueryData(key, [])
+
+    await deactivateBruno(user)
+
+    await waitFor(() =>
+      expect(
+        moved.map((key) => queryClient.getQueryState(key)?.isInvalidated)
+      ).toEqual([true, true, true, true])
+    )
+  })
+
   it("scegliere due volte il ruolo di una riga manda l'ultimo", async () => {
     const user = userEvent.setup()
     const { backend } = await openAdmin(3)

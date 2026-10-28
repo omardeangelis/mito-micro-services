@@ -212,6 +212,26 @@ describe("il dialog Disattiva", () => {
     )
   })
 
+  it("dopo una disattivazione riuscita, la volta dopo Esc riporta il focus al bottone della riga", async () => {
+    const { user, backend } = await setup()
+    // The operators are not read again: Mario's row stays
+    backend.state.failingOperators = true
+    await openAndPick(user)
+    await user.click(confirm())
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull())
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole("heading", { name: "Gestisci operatori" })
+      )
+    )
+
+    await openDialog(user)
+    await user.keyboard("{Escape}")
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull())
+    await waitFor(() => expect(document.activeElement).toBe(rowButton()))
+  })
+
   it("Esc chiude il dialog e il focus torna al bottone della riga", async () => {
     const { user } = await setup()
     await openDialog(user)

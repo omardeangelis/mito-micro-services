@@ -139,6 +139,8 @@ export const OperatorTable = ({
                 <TableCell>
                   <div className="flex w-full justify-end">
                     <Select
+                      // A role chosen while saving would not be sent
+                      disabled={updateRoles.isPending}
                       value={
                         shown.find((edit) => edit.id === row.id)?.role ?? ""
                       }

@@ -69,6 +69,24 @@ describe("il tab Blacklist", () => {
     ])
   })
 
+  it("mentre il cambio si salva DM lo mostra già, ed è fermo", async () => {
+    const user = userEvent.setup()
+    const { backend } = openBlacklist()
+    let release: (() => void) | undefined
+    backend.state.blacklistHeld = new Promise((resolve) => {
+      release = resolve
+    })
+    await screen.findByText("Giulia")
+
+    await user.click(dmSwitches()[0]!)
+
+    await waitFor(() => expect(dmSwitches()[0]).toBeDisabled())
+    expect(dmSwitches()[0]).toHaveAttribute("aria-checked", "true")
+    release?.()
+    await waitFor(() => expect(dmSwitches()[0]).toBeEnabled())
+    expect(dmSwitches()[0]).toHaveAttribute("aria-checked", "true")
+  })
+
   it("DM spento su un cliente in blacklist lo toglie dalla lista", async () => {
     const user = userEvent.setup()
     const { backend } = openBlacklist()

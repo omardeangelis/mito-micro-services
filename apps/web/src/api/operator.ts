@@ -88,7 +88,7 @@ export const useOperator = (id: number) => {
 }
 
 /**
- * The roles of some operators (`PUT /operator/roles`, admin), all or none:
+ * The roles of some operators (`POST /operator/bulk-update-role`, admin), all or none:
  * then the operators and the current user, whose role may be one of them, are
  * read again. The table says its failures itself
  */
@@ -169,7 +169,7 @@ const movedGroups = ["customer", "task", "pratiche", "analytics"] as const
 
 /**
  * The deactivation of an operator, whose customers, active contacts and
- * practices go to `toOperatorId` (`POST /operator/:operatorId/deactivation`,
+ * practices go to `toOperatorId` (`POST /operator/:operatorId/deactivate`,
  * admin): then the operators and what moved are read again. The dialog says
  * its failures itself
  */
