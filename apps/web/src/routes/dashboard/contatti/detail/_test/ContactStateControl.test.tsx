@@ -8,6 +8,7 @@ import { currentHref } from "../../_test/page"
 import {
   DA,
   detailPath,
+  gate,
   holdChanges,
   lastAlert,
   openDetail,
@@ -172,6 +173,34 @@ describe("la riapertura (AC34, AC35, A12)", () => {
     await waitFor(() =>
       expect(backend.state.queries.length).toBeGreaterThan(reads)
     )
+    expect(navigations).toEqual([
+      "PUSH /dashboard/contatti?stato=richiamare&pagina=2",
+    ])
+  })
+})
+
+describe("la riapertura e la chiusura della finestra (AC25, AC35)", () => {
+  it("se la finestra sta già chiudendo non naviga: la sua navigazione verrebbe scartata e si resterebbe sul contatto nuovo", async () => {
+    // The list is not loaded yet: the close waits for it while the answer
+    // of the reopening comes
+    const list = gate()
+    const { user, backend, navigations } = await openDetail(
+      [
+        contactDetail({ contact: { state: "non interessato" } }),
+        contactDetail({ contact: { id: 202, state: "chiamare" } }),
+      ],
+      { listGate: list.closed }
+    )
+    backend.state.changeAnswer = () => ({ saved: true, reopenedAs: 202 })
+    const open = holdChanges(backend)
+    await choose(user, "chiamare")
+
+    await user.keyboard("{Escape}")
+    open()
+    await waitFor(() => expect(backend.state.changes).toHaveLength(1))
+    list.open()
+
+    await screen.findByRole("table", { name: "Contatti" })
     expect(navigations).toEqual([
       "PUSH /dashboard/contatti?stato=richiamare&pagina=2",
     ])

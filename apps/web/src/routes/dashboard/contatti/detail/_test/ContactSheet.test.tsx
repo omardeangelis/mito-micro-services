@@ -11,6 +11,7 @@ import {
   holdWrites,
   openDetail,
   sheet,
+  gate,
   sheetStatus,
 } from "./detail"
 
@@ -84,16 +85,68 @@ describe("il guscio del dettaglio: chiusura (AC25)", () => {
     await findList()
   })
 
-  it("Esc, clic sul fondo e la X, anche insieme, fanno una sola navigazione", async () => {
-    const { user, navigations } = await openDetail()
+  it("Esc, clic sul fondo e la X, anche insieme mentre la lista carica, fanno una sola navigazione", async () => {
+    // The list is not loaded yet, as after a direct link to the detail: the
+    // close waits for it, with the sheet on screen
+    const list = gate()
+    const { user, navigations } = await openDetail(undefined, {
+      listGate: list.closed,
+    })
     const close = screen.getByRole("button", { name: "Chiudi" })
 
     await user.keyboard("{Escape}")
     await user.click(document.body)
     await user.click(close)
 
+    expect(close.getAttribute("aria-busy")).toBe("true")
+    list.open()
     await findList()
     expect(navigations).toEqual([
+      "PUSH /dashboard/contatti?stato=richiamare&pagina=2",
+    ])
+  })
+
+  it("una chiusura scartata da un link della finestra non la blocca: si chiude di nuovo", async () => {
+    const list = gate()
+    const { user, navigations } = await openDetail(
+      [
+        contactDetail({
+          customerContacts: [
+            {
+              id: 88,
+              state: "erogata",
+              isActive: false,
+              closedAt: null,
+              createdAt: new Date("2026-09-10T08:00:00Z"),
+              operator: null,
+            },
+          ],
+        }),
+        contactDetail({ contact: { id: 88, state: "erogata" } }),
+      ],
+      { listGate: list.closed }
+    )
+
+    // Esc waits for the list; the link to another contact discards it
+    await user.keyboard("{Escape}")
+    await user.click(
+      within(
+        screen.getByRole("region", { name: "Contatti precedenti" })
+      ).getByRole("link")
+    )
+    await waitFor(() => expect(currentHref()).toBe(detailPath(88, DA)))
+    list.open()
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "Chiudi" }).getAttribute("aria-busy")
+      ).toBe("false")
+    )
+
+    await user.keyboard("{Escape}")
+
+    await findList()
+    expect(navigations).toEqual([
+      `PUSH ${detailPath(88, DA)}`,
       "PUSH /dashboard/contatti?stato=richiamare&pagina=2",
     ])
   })

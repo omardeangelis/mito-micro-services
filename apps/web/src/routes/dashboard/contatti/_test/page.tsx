@@ -30,10 +30,16 @@ export function renderContacts(
     role = "OPERATORE",
     preferences,
     detail = false,
+    listGate,
   }: {
     role?: Role | null
     preferences?: UserPreferenceInitProps["preferences"]
     detail?: boolean
+    /**
+     * The list is a lazy route whose module loads when this resolves, as
+     * the first time in the app: a navigation to it waits until then
+     */
+    listGate?: Promise<void>
   } = {}
 ) {
   window.history.replaceState(null, "", path)
@@ -42,7 +48,12 @@ export function renderContacts(
       path: "/dashboard/contatti",
       errorElement: <ContactsError />,
       children: [
-        { index: true, element: <ContactsPage /> },
+        listGate
+          ? {
+              index: true,
+              lazy: () => listGate.then(() => ({ Component: ContactsPage })),
+            }
+          : { index: true, element: <ContactsPage /> },
         {
           path: ":id",
           element: detail ? <ContactPage /> : <p>dettaglio</p>,

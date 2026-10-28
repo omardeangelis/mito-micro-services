@@ -7,7 +7,12 @@ import {
   useState,
   type ReactNode,
 } from "react"
-import { useNavigate, useParams, useSearchParams } from "react-router"
+import {
+  useLocation,
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from "react-router"
 import {
   Sheet,
   SheetContent,
@@ -76,6 +81,7 @@ export function ContactSheet({ children }: { children: ReactNode }) {
   const navigate = useNavigate()
   const params = useParams()
   const [searchParams] = useSearchParams()
+  const { key: locationKey } = useLocation()
   const [closing, setClosing] = useState(false)
 
   const titleRef = useRef<HTMLHeadingElement>(null)
@@ -127,6 +133,14 @@ export function ContactSheet({ children }: { children: ReactNode }) {
     },
     []
   )
+
+  // A navigation that lands while the sheet stays (a link in the content,
+  // clicked while the list of the close still loads) discarded the close: the
+  // sheet closes again, or the guard would never come down
+  useEffect(() => {
+    closingRef.current = false
+    setClosing(false)
+  }, [locationKey])
 
   // Esc, the overlay and the X, even all at once, are one navigation. Not while
   // a reopening navigates: it would discard this one, or be discarded by it,

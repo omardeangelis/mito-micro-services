@@ -29,7 +29,7 @@ export function Component() {
   const operators = useAssignableOperators({ enabled: canReassign })
 
   const content = () => {
-    if (detail.error?._tag === "ContactNotFound" && !detail.isPlaceholderData) {
+    if (detail.error?._tag === "ContactNotFound") {
       return <ContactNotFound da={values.length > 1 ? values : da} />
     }
     // The content comes whole, as the page of the Next.js app awaited it

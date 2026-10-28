@@ -26,6 +26,7 @@ export async function openDetail(
   {
     da = DA,
     role,
+    listGate,
     backend = fakeContacts({
       details: Object.fromEntries(
         details.map((detail) => [detail.contact.id, detail])
@@ -35,13 +36,15 @@ export async function openDetail(
     /** `null`: no list state */
     da?: string | null
     role?: Role | null
+    /** The list loads its module when this resolves (see `renderContacts`) */
+    listGate?: Promise<void>
     backend?: ReturnType<typeof fakeContacts>
   } = {}
 ) {
   const view = renderContacts(
     detailPath(details[0]?.contact.id ?? 101, da ?? undefined),
     backend,
-    { role, detail: true }
+    { role, detail: true, listGate }
   )
   await findContent()
   return { ...view, backend, user: userEvent.setup({ pointerEventsCheck: 0 }) }
@@ -69,6 +72,15 @@ const sheetElement = () =>
  */
 export const toastLink = (name: string) =>
   screen.getByRole("link", { name, hidden: true })
+
+/** A gate, open when `open` is called */
+export const gate = () => {
+  let open!: () => void
+  const closed = new Promise<void>((resolve) => {
+    open = resolve
+  })
+  return { closed, open }
+}
 
 /** Holds the writes of the detail other than the state until it is called */
 export const holdWrites = (backend: ReturnType<typeof fakeContacts>) => {

@@ -1,4 +1,5 @@
 import { queryOptions, useQuery } from "@tanstack/react-query"
+import { useState } from "react"
 import { Effect } from "effect"
 import { useRun } from "./ApiProvider"
 import { routeErrorWhenEmpty } from "./queryClient"
@@ -32,14 +33,21 @@ export const useActiveOperators = () =>
 /**
  * The operators a contact can be given to, for a page that needs them to
  * render (the detail of a contact, for the admin): read only when `enabled`,
- * and a failure with none on screen goes to the error of the route
+ * and a failure with none on screen goes to the error of the route. Only a
+ * failure of a read after the page mounted: TanStack Query doesn't ask again
+ * on mount a query that throws to the route, and another page (a filter, a
+ * form) may have left a failed read of the same key in the cache
  */
-export const useAssignableOperators = ({ enabled }: { enabled: boolean }) =>
-  useQuery({
+export const useAssignableOperators = ({ enabled }: { enabled: boolean }) => {
+  const [mountedAt] = useState(Date.now)
+  return useQuery({
     ...activeOperatorsOptions(useRun()),
     enabled,
-    ...routeErrorWhenEmpty,
+    meta: routeErrorWhenEmpty.meta,
+    throwOnError: (_error, query) =>
+      query.state.data === undefined && query.state.errorUpdatedAt >= mountedAt,
   })
+}
 
 /**
  * An operator by id, null when there is none (`GET /operator/:id`): the

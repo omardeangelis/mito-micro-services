@@ -1,6 +1,8 @@
-import { screen, waitFor, within } from "@testing-library/react"
+import { act, screen, waitFor, within } from "@testing-library/react"
 import { beforeEach, describe, expect, it } from "vitest"
 import { type ContactDetail } from "@mito/contract/task"
+import { OperatorNotFound } from "@mito/contract/errors"
+import { operatorKeys } from "@/api/operator"
 import { contactDetail, contactRow, fakeContacts } from "@/test/contacts"
 import { currentHref, renderContacts } from "../../_test/page"
 import { DA, detailPath, findContent, openDetail, sheet } from "./detail"
@@ -447,6 +449,32 @@ describe("quando il dettaglio non si legge", () => {
 
     await findContent()
     expect(screen.getByRole("heading", { name: "Rossi Mario" })).toBeTruthy()
+  })
+
+  it("una lettura degli operatori fallita prima, su un'altra pagina, non porta all'errore: si rileggono", async () => {
+    const backend = fakeContacts({
+      details: { 101: contactDetail({ canReassign: true }) },
+    })
+    const { router, queryClient } = renderContacts("/altrove", backend, {
+      detail: true,
+      role: "ADMIN",
+    })
+    await screen.findByText("altra pagina")
+    // What a filter or a form that read them leaves in the cache
+    queryClient
+      .getQueryCache()
+      .build(queryClient, { queryKey: operatorKeys.active() })
+      .setState({
+        status: "error",
+        error: new OperatorNotFound(),
+        errorUpdatedAt: Date.now() - 1000,
+      })
+
+    await act(() => router.navigate(detailPath(101)))
+
+    expect(
+      await screen.findByRole("combobox", { name: "Cambia operatore" })
+    ).toBeTruthy()
   })
 
   it("per l'amministratore anche gli operatori servono: senza va all'errore", async () => {
