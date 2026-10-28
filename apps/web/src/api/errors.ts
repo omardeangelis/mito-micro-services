@@ -26,6 +26,22 @@ export const describeApiError = (error: ApiFailure): string => {
       return "Il cliente è già di questo operatore"
     case "CustomerMissing":
       return `Cliente non trovato: ${error.customerId}`
+    case "ContactNotFound":
+      return "Contatto non trovato"
+    case "ContactForbidden":
+      return `Non puoi modificare questo contatto: ${
+        error.assignee === null
+          ? "non è assegnato"
+          : `è assegnato a ${error.assignee}`
+      }`
+    case "CustomerUnassigned":
+      return "Cliente non assegnato"
+    case "ContactAlreadyActive":
+      return "Questo cliente ha già un contatto attivo"
+    case "PracticeExists":
+      return "Questa pratica esiste già"
+    case "CustomerExists":
+      return "Un cliente collegato esiste già"
     case "ApiUnavailable":
       return "Il servizio non risponde, riprova tra poco"
     default: {

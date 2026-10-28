@@ -176,6 +176,10 @@ export function fakeCustomers(
             )
           )
         )
+        .handle("getActiveTask", unserved)
+        .handle("getCustomerAlerts", unserved)
+        .handle("getContactById", unserved)
+        .handle("createContact", unserved)
         .handle("bulkHandleTask", ({ payload }) =>
           waitGate(payload.customerIds).pipe(
             Effect.andThen(
