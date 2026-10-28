@@ -38,6 +38,18 @@ export const describeApiError = (error: ApiFailure): string => {
       return "Cliente non assegnato"
     case "ContactAlreadyActive":
       return "Questo cliente ha già un contatto attivo"
+    case "ContactSuperseded":
+      return "Questo contatto è stato sostituito da uno più recente"
+    case "TransitionRejected":
+      return `Non si può passare da ${error.from ?? "nessuno"} a ${error.to}`
+    case "AlertConfirmationRequired":
+      return "Il contatto ha un richiamo aperto da confermare"
+    case "AlertNotFound":
+      return "Alert non trovato"
+    case "CallbackNotAllowed":
+      return `Non si può impostare un richiamo con lo stato ${error.state ?? "nessuno"}`
+    case "DeadlineInPast":
+      return "Il richiamo si imposta da domani"
     case "PracticeExists":
       return "Questa pratica esiste già"
     case "CustomerExists":

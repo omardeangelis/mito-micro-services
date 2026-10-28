@@ -504,6 +504,7 @@ export function fakeCustomers(
         .handle("getCustomerAlerts", ({ params }) =>
           Effect.sync(() => state.customerAlerts[params.id] ?? [])
         )
+        .handle("getContacts", unserved)
         .handle("getContactById", ({ params }) =>
           Effect.promise(() => state.contactGate ?? Promise.resolve()).pipe(
             Effect.andThen(
@@ -549,6 +550,11 @@ export function fakeCustomers(
             )
           )
         )
+        .handle("changeState", unserved)
+        .handle("setPriority", unserved)
+        .handle("reassign", unserved)
+        .handle("setCallback", unserved)
+        .handle("resolveAlert", unserved)
         .handle("bulkHandleTask", ({ payload }) =>
           waitGate(payload.customerIds).pipe(
             Effect.andThen(

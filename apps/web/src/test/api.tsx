@@ -92,8 +92,14 @@ const unservedGroups = Layer.mergeAll(
       .handle("getCustomersWithActiveAlerts", unserved)
       .handle("getActiveTask", unserved)
       .handle("getCustomerAlerts", unserved)
+      .handle("getContacts", unserved)
       .handle("getContactById", unserved)
       .handle("createContact", unserved)
+      .handle("changeState", unserved)
+      .handle("setPriority", unserved)
+      .handle("reassign", unserved)
+      .handle("setCallback", unserved)
+      .handle("resolveAlert", unserved)
       .handle("bulkHandleTask", unserved)
   ),
   HttpApiBuilder.group(MitoApi, "pratiche", (handlers) =>

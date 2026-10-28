@@ -4,6 +4,23 @@ import { Schema } from "effect"
 export const Role = Schema.Literals(["ADMIN", "OPERATORE"])
 export type Role = typeof Role.Type
 
+/**
+ * `taskStatus` of @mito/db/schema/task: a server test compares them (H5).
+ * Here, not in `./task`, since the errors use it too
+ */
+export const TaskStatus = Schema.Literals([
+  "chiamare",
+  "non interessato",
+  "app.to",
+  "caricato",
+  "richiamare",
+  "non risponde",
+  "erogata",
+  "nessuno",
+  "followup",
+])
+export type TaskStatus = typeof TaskStatus.Type
+
 /** An operator row, as `operatorSelectCompleteResponse` of @mito/domain. */
 export const Operator = Schema.Struct({
   id: Schema.Number,
