@@ -1,0 +1,183 @@
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from "react"
+import {
+  ImportReadCancelled,
+  type ImportReader,
+  openImportFile,
+} from "@mito/client/import/readImportFile"
+import { type Preview } from "@mito/client/import/session"
+import { uploadAndStart } from "@mito/client/import/upload"
+import { useImportClient, useInvalidateImports } from "@/api/import"
+import { describeApiError, isApiFailure } from "@/api/errors"
+import { useImportStatus } from "../ImportStatus"
+
+// The steps of a new import (T17), as `useNewImport` of the Next.js app:
+// choose a file, read it in the worker, preview it, confirm it. Nothing is
+// written before `POST /import/start` answers; cancelling at any step ends the
+// worker without calling the server (AC17)
+
+export type NewImportState =
+  | { step: "choose"; message?: string }
+  | { step: "reading"; fileName: string }
+  | { step: "preview"; fileName: string; preview: Preview; message?: string }
+  | { step: "sending"; fileName: string; preview: Preview }
+  | { step: "started"; fileName: string }
+
+/**
+ * How the page opens a file: in the worker of @mito/client. The tests give
+ * their own reader, as `openImportFile` lets them give their own worker
+ */
+export const OpenImportFile = createContext<(file: File) => ImportReader>(
+  (file) => openImportFile(file)
+)
+
+/** How long the link of a downloaded report lives, as FileSaver.js keeps it. */
+const REVOKE_AFTER_MS = 40_000
+
+/**
+ * The server's own messages, for the errors the admin can act on: those the
+ * procedures gave as BAD_REQUEST, CONFLICT, PRECONDITION_FAILED and NOT_FOUND
+ */
+const readableErrors = new Set([
+  "ImportInputInvalid",
+  "ImportRowRejected",
+  "ImportUploadMissing",
+  "ImportUploadClosed",
+  "ImportAlreadyRunning",
+  "ImportUnavailable",
+])
+
+const messageOf = (error: unknown, fallback: string) => {
+  if (isApiFailure(error) && readableErrors.has(error._tag)) {
+    return describeApiError(error)
+  }
+  if (error instanceof Error && error.message.startsWith("Il file")) {
+    return error.message
+  }
+  return fallback
+}
+
+export function useNewImport() {
+  const open = useContext(OpenImportFile)
+  const client = useImportClient()
+  const invalidate = useInvalidateImports()
+  const { watch } = useImportStatus()
+  const [state, setState] = useState<NewImportState>({ step: "choose" })
+  const reader = useRef<ImportReader | undefined>(undefined)
+
+  const drop = useCallback(() => {
+    reader.current?.cancel()
+    reader.current = undefined
+  }, [])
+  // Leaving the page ends the reading: the rows go with the worker
+  useEffect(() => drop, [drop])
+
+  const choose = useCallback(
+    async (file: File) => {
+      drop()
+      const current = open(file)
+      reader.current = current
+      setState({ step: "reading", fileName: file.name })
+      try {
+        const read = await current.read()
+        if (!read.ok) {
+          drop()
+          return setState({ step: "choose", message: read.message })
+        }
+        const crm = await client.lookup(read.keys)
+        const preview = await current.preview(crm)
+        if (reader.current !== current) return
+        setState({ step: "preview", fileName: file.name, preview })
+      } catch (error) {
+        if (error instanceof ImportReadCancelled || reader.current !== current)
+          return
+        drop()
+        setState({
+          step: "choose",
+          message: messageOf(
+            error,
+            "L'anteprima non si è potuta calcolare: riprova"
+          ),
+        })
+      }
+    },
+    [drop, open, client]
+  )
+
+  const cancel = useCallback(() => {
+    drop()
+    setState({ step: "choose" })
+  }, [drop])
+
+  const downloadReport = useCallback(async () => {
+    const current = reader.current
+    if (!current) return
+    try {
+      const { fileName, bytes } = await current.report()
+      const url = URL.createObjectURL(
+        new Blob([bytes], {
+          type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        })
+      )
+      const link = document.createElement("a")
+      link.href = url
+      link.download = fileName
+      link.click()
+      // Revoked at once, the download can stop in Safari and Firefox
+      setTimeout(() => URL.revokeObjectURL(url), REVOKE_AFTER_MS)
+    } catch (error) {
+      if (error instanceof ImportReadCancelled || reader.current !== current)
+        return
+      setState((now) =>
+        now.step === "preview"
+          ? {
+              ...now,
+              message: "Il report errori non si è potuto creare: riprova",
+            }
+          : now
+      )
+    }
+  }, [])
+
+  // Two clicks in the same tick see the same step: only the first sends
+  const sending = useRef(false)
+  const confirm = useCallback(async () => {
+    const current = reader.current
+    if (!current || state.step !== "preview" || sending.current) return
+    sending.current = true
+    const { fileName, preview } = state
+    setState({ step: "sending", fileName, preview })
+    try {
+      const body = await current.body()
+      const { runId } = await uploadAndStart(client, {
+        body,
+        fileName,
+        format: preview.format,
+        expected: preview.expected,
+      })
+      drop()
+      setState({ step: "started", fileName })
+      // The notice of its end follows it from here (D15), the history shows it
+      watch(runId)
+      await invalidate.lists()
+    } catch (error) {
+      if (error instanceof ImportReadCancelled) return
+      setState({
+        step: "preview",
+        fileName,
+        preview,
+        message: messageOf(error, "L'import non è partito: riprova"),
+      })
+    } finally {
+      sending.current = false
+    }
+  }, [client, drop, invalidate, state, watch])
+
+  return { state, choose, cancel, confirm, downloadReport }
+}

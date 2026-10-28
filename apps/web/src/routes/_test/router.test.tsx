@@ -12,6 +12,7 @@ import { ada, fakeMe, renderWithApi } from "@/test/api"
 import { contactDetail, fakeContacts } from "@/test/contacts"
 import { fakeCustomers } from "@/test/customers"
 import { fakeHome } from "@/test/home"
+import { fakeImport } from "@/test/import"
 import { fakePratiche } from "@/test/pratiche"
 
 const captureException = vi.hoisted(() => vi.fn())
@@ -31,12 +32,16 @@ vi.mock("@/lib/authClient", () => ({
 // The current user of `GET /api/v1/me` (2.2.2)
 let backend = fakeMe({})
 
-// The current user, and the home of the dashboard (3.5) where most routes
-// land
+// The current user, the home of the dashboard (3.5) where most routes land,
+// and the latest import the shell asks an admin for (3.6)
 const open = (path: string) => {
   const router = createMemoryRouter(routes, { initialEntries: [path] })
   renderWithApi(<RouterProvider router={router} />, {
-    handlers: Layer.merge(backend.handlers, fakeHome().handlers),
+    handlers: Layer.mergeAll(
+      backend.handlers,
+      fakeHome().handlers,
+      fakeImport().handlers
+    ),
     auth: backend.auth,
   })
   return router
@@ -261,12 +266,21 @@ describe("le rotte (§5)", () => {
     expect(screen.getByRole("navigation")).toBeInTheDocument()
   })
 
-  it("un link diretto a /dashboard/import apre la sua pagina", async () => {
+  it("un link diretto a /dashboard/import apre l'import a un admin (3.6)", async () => {
+    backend = fakeMe({ role: "ADMIN" })
     open("/dashboard/import")
 
     expect(await heading()).toHaveTextContent("Import")
-    expect(screen.getByText("Arriva con il task 3.6")).toBeInTheDocument()
+    expect(
+      await screen.findByRole("button", { name: "Scegli il file" })
+    ).toBeInTheDocument()
     expect(screen.getByRole("navigation")).toBeInTheDocument()
+  })
+
+  it("/dashboard/import non esiste per un operatore (AC1)", async () => {
+    open("/dashboard/import")
+
+    expect(await heading()).toHaveTextContent("Pagina non trovata")
   })
 
   it("dal menu si passa da una pagina all'altra", async () => {
