@@ -1,7 +1,13 @@
 import { useSearchParams } from "react-router"
+import { useCurrentUser } from "@/api/me"
+import { useAssignableOperators } from "@/api/operator"
+import { LoadingSpinner } from "@/components/custom/loading-spinner"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
 import { useUserPreferenceContext } from "@/store/context/useUserPreferenceContext"
+import { BlackList } from "./_components/BlackList"
+import { OperatorTable } from "./_components/OperatorTable"
+import { ProfileForm } from "./_components/ProfileForm"
 import { LogoutFloatingButton } from "./LogoutFloatingButton"
 
 const TABS = ["profile", "admin", "blacklist"] as const
@@ -15,7 +21,7 @@ const isTab = (value: string | null): value is ProfileTab =>
  * `@admin` and `@blacklist` (§5): Admin and Blacklist only for the ADMIN, the
  * tab in the URL (`?tab=admin`), so a link opens it and the back button
  * returns to the previous one. A tab the user can't see opens the profile.
- * The content of each tab arrives with 3.8
+ * Each tab reads its data when it opens
  */
 export function Component() {
   const isAdmin = useUserPreferenceContext((state) => state.role) === "ADMIN"
@@ -54,20 +60,53 @@ export function Component() {
           ) : null}
         </TabsList>
         <TabsContent value="profile">
-          Il profilo arriva con il task 3.8
+          <OwnProfile />
           <LogoutFloatingButton />
         </TabsContent>
         {isAdmin ? (
           <>
             <TabsContent value="admin">
-              Gli operatori arrivano con il task 3.8
+              <Operators />
             </TabsContent>
             <TabsContent value="blacklist">
-              La blacklist arriva con il task 3.8
+              <BlackList />
             </TabsContent>
           </>
         ) : null}
       </Tabs>
     </section>
   )
+}
+
+const Loading = () => (
+  <div className="flex h-36 items-center justify-center">
+    <LoadingSpinner />
+  </div>
+)
+
+/**
+ * The own name and surname, as the page of the profile of the Next.js app.
+ * Without the current user the page can't show them: a failed read goes to
+ * the error of the route
+ */
+const OwnProfile = () => {
+  const { data, error } = useCurrentUser()
+  if (!data) {
+    if (error) throw error
+    return <Loading />
+  }
+  return (
+    <div className="flex flex-col gap-4">
+      <h1 className="text-lg font-medium">Aggiorna le tue informazioni</h1>
+      <ProfileForm operator={data.operator} />
+    </div>
+  )
+}
+
+/** The operators, as the parallel route `@admin` of the Next.js app */
+const Operators = () => {
+  const operatorId = useUserPreferenceContext((state) => state.operatorId)
+  const { data } = useAssignableOperators({ enabled: true })
+  if (!data) return <Loading />
+  return <OperatorTable data={data} currentOperatorId={operatorId} />
 }

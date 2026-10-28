@@ -36,6 +36,7 @@ export const customerKeys = {
     [...customerKeys.all, "getCustomerById", { id }] as const,
   practices: (id: string) =>
     [...customerKeys.all, "getAllPraticaByCustomer", { id }] as const,
+  underReview: () => [...customerKeys.all, "getCustomerUnderReview"] as const,
   ofPractice: (praticaId: string) =>
     [
       ...customerKeys.all,
@@ -157,9 +158,29 @@ export const useFileNames = (table: FileTable) =>
   )
 
 /**
+ * The customers in review or blacklisted (`GET /customer/under-review`), for
+ * the blacklist of the profile: a first failure goes to the error of the route
+ */
+export const useCustomersUnderReview = () => {
+  const run = useRun()
+  return useQuery({
+    queryKey: customerKeys.underReview(),
+    queryFn: ({ signal }) =>
+      run(
+        Effect.gen(function* () {
+          const client = yield* ApiClient
+          return yield* client.customer.getCustomerUnderReview()
+        }),
+        signal
+      ),
+    ...routeErrorWhenEmpty,
+  })
+}
+
+/**
  * The blacklist status of a customer (`POST /customer/:id/blacklist-status`):
- * then the lists and the details of the customers are read again (§6). The
- * blacklist of the profile joins them with its page (3.8)
+ * then the lists and the details of the customers, the blacklist of the
+ * profile among them, are read again (§6)
  */
 export const useSetBlackListStatus = () => {
   const run = useRun()
