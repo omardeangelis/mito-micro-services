@@ -59,6 +59,7 @@ Migrated from `docs/` on 2026-09-24. Source material for future `create-spec` ru
 | crm | [[specs/crm/import-pratiche/SPEC]] | Implemented sui branch (PR #77, #78, #81, #82, #85, #88, #89, in draft), ingested (piano: [[specs/crm/import-pratiche/PLAN]], review: [[specs/crm/import-pratiche/REPORT]]) |
 | crm | [[specs/crm/analytics-effect/SPEC]] | Implemented sul branch `claude/analytics-effect-spec`, PR verso `dev` da aprire (piano: [[specs/crm/analytics-effect/PLAN]], review: [[specs/crm/analytics-effect/REPORT]]) |
 | crm | [[specs/crm/auth-better-auth/SPEC]] | Draft (piano: [[specs/crm/auth-better-auth/PLAN]]) |
+| crm | [[specs/crm/auth-due-frontend/SPEC]] | Approved |
 
 - [[specs/crm/crm-specs|crm-specs]] — CRM spec page map
 
