@@ -206,6 +206,10 @@ describe("il cambio di stato nella riga (AC9, AC31, A9)", () => {
     await user.click(open)
     expect(await screen.findByText("dettaglio")).toBeTruthy()
     expect(currentHref()).toBe(detailHref(202, defaultState))
+    // The toast goes with the link, as with the `Link` of Next.js
+    await waitFor(() =>
+      expect(screen.queryByText("Rossi Mario: chiamare")).toBeNull()
+    )
   })
 
   it("riselezionare lo stato attuale non è possibile: non c'è fra le opzioni (AC40)", async () => {
@@ -310,6 +314,13 @@ describe("quando il server rifiuta (AC49, AC52)", () => {
     await pointerReaches(active)
     await user.click(active)
     expect(await screen.findByText("dettaglio")).toBeTruthy()
+    await waitFor(() =>
+      expect(
+        screen.queryByText(
+          "Questo contatto è stato sostituito da uno più recente"
+        )
+      ).toBeNull()
+    )
   })
 
   it("con il backend che non risponde il valore torna indietro e dice 'Modifica non salvata, riprova' (AC39)", async () => {

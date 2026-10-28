@@ -74,7 +74,9 @@ export const useContactMutationFeedback = ({
         activeContactHref && activeTaskId !== null
           ? activeContactHref(activeTaskId)
           : null
-      toast({
+      // The link prevents the default of its click, which Radix reads as
+      // "keep the toast": the link closes it itself
+      const shown = toast({
         variant: "destructive",
         duration: 8000,
         description: describeRejection(error),
@@ -84,10 +86,10 @@ export const useContactMutationFeedback = ({
                 <ToastAction altText="Vai al contatto attivo" asChild>
                   <a
                     href={href}
-                    onClick={navigateOnPlainClick(
-                      (to) => void navigate(to, { preventScrollReset: true }),
-                      href
-                    )}
+                    onClick={navigateOnPlainClick((to) => {
+                      shown.dismiss()
+                      void navigate(to, { preventScrollReset: true })
+                    }, href)}
                   >
                     Vai al contatto attivo
                   </a>

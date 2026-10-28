@@ -159,7 +159,7 @@ describe("quando il backend non risponde", () => {
     expect(currentHref()).toBe("/dashboard/contatti")
   })
 
-  it("se fallisce una pagina dopo, la lista resta a schermo con il toast", async () => {
+  it("se fallisce una pagina dopo, la lista mostra il suo errore, come in Next.js, e 'Riprova' chiede la stessa pagina", async () => {
     const backend = fakeContacts()
     backend.state.page = pageOf
     const { user } = renderContacts("/dashboard/contatti", backend)
@@ -169,13 +169,80 @@ describe("quando il backend non risponde", () => {
     await user.click(screen.getByRole("link", { name: "Pagina successiva" }))
 
     expect(
-      await screen.findByText("Il servizio non risponde, riprova tra poco")
+      await screen.findByText("Non è stato possibile caricare i contatti")
     ).toBeTruthy()
-    expect(screen.getByRole("link", { name: "Rossi Mario" })).toBeTruthy()
-    expect(table().getAttribute("aria-busy")).toBe("false")
+    // No toast: the error of the route says it
     expect(
-      screen.queryByText("Non è stato possibile caricare i contatti")
+      screen.queryByText("Il servizio non risponde, riprova tra poco")
     ).toBeNull()
+    expect(currentHref()).toBe("/dashboard/contatti?pagina=2")
+
+    backend.state.failingList = false
+    await user.click(screen.getByRole("button", { name: "Riprova" }))
+
+    expect(await screen.findByRole("link", { name: "Verdi Anna" })).toBeTruthy()
+    expect(currentHref()).toBe("/dashboard/contatti?pagina=2")
+  })
+
+  it("un filtro la cui pagina fallisce non resta acceso su una lista che non lo applica", async () => {
+    const backend = fakeContacts()
+    backend.state.page = (query) =>
+      query.onlyMe === true
+        ? { contacts: [anna], total: 1, previous: [], customerFilter: null }
+        : pageOf(query)
+    const { user } = renderContacts("/dashboard/contatti", backend)
+    await findTable()
+    backend.state.failingList = true
+
+    await user.click(screen.getByRole("switch", { name: "Solo i miei" }))
+
+    expect(
+      await screen.findByText("Non è stato possibile caricare i contatti")
+    ).toBeTruthy()
+    expect(screen.queryByRole("table", { name: "Contatti" })).toBeNull()
+
+    backend.state.failingList = false
+    await user.click(screen.getByRole("button", { name: "Riprova" }))
+
+    expect(await screen.findByRole("link", { name: "Verdi Anna" })).toBeTruthy()
+    expect(
+      screen
+        .getByRole("switch", { name: "Solo i miei" })
+        .getAttribute("aria-checked")
+    ).toBe("true")
+  })
+
+  it("dopo una pagina fallita, tornarci da un contatto la chiede di nuovo", async () => {
+    const backend = fakeContacts()
+    backend.state.page = pageOf
+    const { user, router } = renderContacts("/dashboard/contatti", backend)
+    await findTable()
+    backend.state.failingList = true
+    await user.click(screen.getByRole("link", { name: "Pagina successiva" }))
+    await screen.findByText("Non è stato possibile caricare i contatti")
+    backend.state.failingList = false
+
+    await act(() => router.navigate("/dashboard/contatti/101"))
+    await screen.findByText("dettaglio")
+    await act(() => router.navigate(-1))
+
+    expect(await screen.findByRole("link", { name: "Verdi Anna" })).toBeTruthy()
+    expect(currentHref()).toBe("/dashboard/contatti?pagina=2")
+  })
+
+  it("dopo l'errore della prima pagina, tornare sulla lista la chiede di nuovo", async () => {
+    const backend = fakeContacts()
+    backend.state.failingList = true
+    const { router } = renderContacts("/dashboard/contatti", backend)
+    await screen.findByText("Non è stato possibile caricare i contatti")
+    backend.state.failingList = false
+
+    await act(() => router.navigate("/altrove"))
+    await screen.findByText("altra pagina")
+    await act(() => router.navigate("/dashboard/contatti"))
+
+    expect(await findTable()).toBeTruthy()
+    expect(screen.getByRole("link", { name: "Rossi Mario" })).toBeTruthy()
   })
 
   it("se gli operatori del filtro non arrivano la lista mostra il suo errore", async () => {

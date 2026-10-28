@@ -2,15 +2,21 @@ import * as Sentry from "@sentry/react"
 import { useQueryClient } from "@tanstack/react-query"
 import { useEffect } from "react"
 import { useLocation, useNavigate, useRouteError } from "react-router"
+import { isApiFailure } from "@/api/errors"
 import { Button } from "@/components/ui/button"
 
 /**
  * What the contacts show when one of their pages fails, as
  * `contatti/error.tsx` of the Next.js app: the rest of the dashboard stays,
  * and the text of the error, which may carry details of the server, is not
- * shown. "Riprova" forgets the queries that failed, so the page asks them
- * again instead of finding the error in the cache, and navigates to the same
- * address, which takes the error of the route away
+ * shown.
+ *
+ * The queries that failed and that no page shows any more are forgotten as
+ * soon as the error is on screen: TanStack Query doesn't ask again on mount a
+ * query that threw to the route, so the page would find the error in the
+ * cache, now and when the reader comes back. "Riprova" navigates to the same
+ * address, which takes the error of the route away. A failure that is not of
+ * the backend (a chunk of the app that didn't load) loads the app again
  */
 export function ContactsError() {
   const error = useRouteError()
@@ -20,13 +26,22 @@ export function ContactsError() {
 
   useEffect(() => {
     Sentry.captureException(error)
-  }, [error])
+    queryClient.removeQueries({
+      predicate: (query) =>
+        query.state.status === "error" && query.getObserversCount() === 0,
+    })
+  }, [error, queryClient])
 
   const retry = () => {
-    queryClient.removeQueries({
-      predicate: (query) => query.state.status === "error",
+    if (!isApiFailure(error)) {
+      window.location.reload()
+      return
+    }
+    void navigate(location, {
+      replace: true,
+      state: location.state as unknown,
+      preventScrollReset: true,
     })
-    void navigate(location, { replace: true, preventScrollReset: true })
   }
 
   return (

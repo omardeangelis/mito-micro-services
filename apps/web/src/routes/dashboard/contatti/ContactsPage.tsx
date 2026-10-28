@@ -40,9 +40,8 @@ type View = { state: ContactsListState; page: ContactsPage; now: Date }
  * with the operators of the filter, and the skeleton while the first one
  * loads. As the transition of the Next.js app, the list shows the page and
  * the address it had until the page of the new address is read: the
- * controls and the table always speak of the same address. If the first page
- * fails the route shows its error; a later one leaves the list on screen,
- * with the toast
+ * controls and the table always speak of the same address. A page that
+ * fails shows the error of the route, as `contatti/error.tsx`
  */
 export function Component() {
   const searchParams = useSearchParams()

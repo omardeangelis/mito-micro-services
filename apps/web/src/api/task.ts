@@ -5,18 +5,17 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query"
-import { useCallback, useEffect, useRef } from "react"
+import { useCallback } from "react"
 import { Effect, Schema } from "effect"
 import {
   type BulkHandleTask,
   ContactsQuery,
-  type ContactsPage,
   type TaskStatus,
 } from "@mito/contract/task"
 import { type GetContactsInput } from "@mito/domain/contact/listInput"
 import { useRun } from "./ApiProvider"
 import { allBatches, customerKeys } from "./customer"
-import { routeErrorWhenEmpty, showApiError } from "./queryClient"
+import { routeErrorWhenEmpty } from "./queryClient"
 import { ApiClient, type Run } from "./runtime"
 
 /** The keys of the group `task`: `[group, endpoint, input]` (H12) */
@@ -57,28 +56,17 @@ export const contactsOptions = (run: Run, input: GetContactsInput) =>
 /**
  * The page of `input`, and when it was read. While another page loads the
  * previous one stays, as the Next.js app keeps the page during a navigation
- * (`isPlaceholderData`); if that page fails, the last page shown stays too,
- * with the toast. When no page was shown yet, a failure goes to the error of
- * the route, with no toast
+ * (`isPlaceholderData`). A page that fails goes to the error of the route,
+ * as `contatti/error.tsx` of the Next.js app, with no toast: the filters and
+ * the address of a list left on screen would speak of a page it doesn't show.
+ * A page already on screen that fails to read again stays, with the toast
  */
-export const useContacts = (input: GetContactsInput) => {
-  // The last page on screen: a failed page has no data of its own, and
-  // `keepPreviousData` keeps the previous one only while it loads
-  const shown = useRef<ContactsPage | undefined>(undefined)
-  const result = useQuery({
+export const useContacts = (input: GetContactsInput) =>
+  useQuery({
     ...contactsOptions(useRun(), input),
     placeholderData: keepPreviousData,
-    meta: { toastErrors: false },
-    throwOnError: () => shown.current === undefined,
+    ...routeErrorWhenEmpty,
   })
-  if (result.data !== undefined) shown.current = result.data
-  // The toast of a later page, once per failure
-  const { error, errorUpdatedAt } = result
-  useEffect(() => {
-    if (error && shown.current !== undefined) showApiError(error)
-  }, [error, errorUpdatedAt])
-  return result
-}
 
 /**
  * The state of a contact (`POST /task/:id/state`). The caller shows a

@@ -111,7 +111,9 @@ export function ContactRowState({
         (result) => {
           // Before the refresh: the table looks for the row in what it brings
           rowChanged(contact.id, customerName)
-          toast({
+          // The link prevents the default of its click, which Radix reads
+          // as "keep the toast": the link closes it itself
+          const shown = toast({
             type: "background",
             duration: result.reopened ? 8000 : 5000,
             description: `${customerName}: ${toState}`,
@@ -128,8 +130,10 @@ export function ContactRowState({
                       <a
                         href={detailHref(result.taskId, state)}
                         onClick={navigateOnPlainClick(
-                          (href) =>
-                            void navigate(href, { preventScrollReset: true }),
+                          (href) => {
+                            shown.dismiss()
+                            void navigate(href, { preventScrollReset: true })
+                          },
                           detailHref(result.taskId, state)
                         )}
                       >
