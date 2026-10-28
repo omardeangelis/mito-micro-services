@@ -1,6 +1,7 @@
 import { queryOptions, useQuery } from "@tanstack/react-query"
 import { Effect } from "effect"
 import { useRun } from "./ApiProvider"
+import { routeErrorWhenEmpty } from "./queryClient"
 import { ApiClient, type Run } from "./runtime"
 
 /** The keys of the group `operator`: `[group, endpoint, input]` (H12) */
@@ -27,6 +28,18 @@ export const activeOperatorsOptions = (run: Run) =>
 
 export const useActiveOperators = () =>
   useQuery(activeOperatorsOptions(useRun()))
+
+/**
+ * The operators a contact can be given to, for a page that needs them to
+ * render (the detail of a contact, for the admin): read only when `enabled`,
+ * and a failure with none on screen goes to the error of the route
+ */
+export const useAssignableOperators = ({ enabled }: { enabled: boolean }) =>
+  useQuery({
+    ...activeOperatorsOptions(useRun()),
+    enabled,
+    ...routeErrorWhenEmpty,
+  })
 
 /**
  * An operator by id, null when there is none (`GET /operator/:id`): the

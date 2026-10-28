@@ -10,6 +10,7 @@ import { Effect, Schema } from "effect"
 import {
   type BulkHandleTask,
   ContactsQuery,
+  type PriorityBand,
   type TaskStatus,
 } from "@mito/contract/task"
 import { type GetContactsInput } from "@mito/domain/contact/listInput"
@@ -91,6 +92,117 @@ export const useChangeState = () => {
           return yield* client.task.changeState({
             params: { id: taskId },
             payload,
+          })
+        })
+      ),
+    meta: { toastErrors: false },
+  })
+}
+
+/**
+ * The priority of a contact (`POST /task/:id/priority`): a band set by hand,
+ * or `auto`, which gives it back to the cron. The caller shows a rejection
+ * itself, as for `useChangeState`
+ */
+export const useSetPriority = () => {
+  const run = useRun()
+  return useMutation({
+    mutationFn: ({
+      taskId,
+      priority,
+    }: {
+      taskId: number
+      priority: PriorityBand | "auto"
+    }) =>
+      run(
+        Effect.gen(function* () {
+          const client = yield* ApiClient
+          return yield* client.task.setPriority({
+            params: { id: taskId },
+            payload: { priority },
+          })
+        })
+      ),
+    meta: { toastErrors: false },
+  })
+}
+
+/**
+ * The operator of a contact (`POST /task/:id/reassign`, admin). The caller
+ * shows a rejection itself
+ */
+export const useReassign = () => {
+  const run = useRun()
+  return useMutation({
+    mutationFn: ({
+      taskId,
+      operatorId,
+    }: {
+      taskId: number
+      operatorId: number
+    }) =>
+      run(
+        Effect.gen(function* () {
+          const client = yield* ApiClient
+          return yield* client.task.reassign({
+            params: { id: taskId },
+            payload: { operatorId },
+          })
+        })
+      ),
+    meta: { toastErrors: false },
+  })
+}
+
+/**
+ * A callback on a contact (`POST /task/:id/callback`), which replaces the
+ * open alert the form showed. The caller shows a rejection itself
+ */
+export const useSetCallback = () => {
+  const run = useRun()
+  return useMutation({
+    mutationFn: ({
+      taskId,
+      ...payload
+    }: {
+      taskId: number
+      deadline: Date
+      message: string | null
+      replacesAlertId: number | null
+    }) =>
+      run(
+        Effect.gen(function* () {
+          const client = yield* ApiClient
+          return yield* client.task.setCallback({
+            params: { id: taskId },
+            payload,
+          })
+        })
+      ),
+    meta: { toastErrors: false },
+  })
+}
+
+/**
+ * Closes an open alert (`DELETE /task/alerts/:id`). The caller shows a
+ * rejection itself
+ */
+export const useResolveAlert = () => {
+  const run = useRun()
+  return useMutation({
+    mutationFn: ({
+      alertId,
+      source,
+    }: {
+      alertId: number
+      source: "list" | "detail"
+    }) =>
+      run(
+        Effect.gen(function* () {
+          const client = yield* ApiClient
+          return yield* client.task.resolveAlert({
+            params: { id: alertId },
+            query: { source },
           })
         })
       ),
@@ -227,6 +339,22 @@ export const useContactDetail = (
     ...contactOptions(useRun(), id),
     enabled,
     ...routeErrorWhenEmpty,
+  })
+
+/**
+ * The contact of the detail page. While another contact loads (a reopening,
+ * "Vai al contatto attivo") the one on screen stays, as the Next.js app keeps
+ * the page until the new one is ready. `ContactNotFound` stays on the page,
+ * which says so inside the sheet (AC26); any other failure with nothing on
+ * screen goes to the error of the route, as `contatti/error.tsx`
+ */
+export const useContactPage = (id: string) =>
+  useQuery({
+    ...contactOptions(useRun(), id),
+    placeholderData: keepPreviousData,
+    meta: { toastErrors: "withData" },
+    throwOnError: (error, query) =>
+      query.state.data === undefined && error._tag !== "ContactNotFound",
   })
 
 /**
