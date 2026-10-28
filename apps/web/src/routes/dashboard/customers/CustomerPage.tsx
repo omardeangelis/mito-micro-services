@@ -3,6 +3,7 @@ import { useParams } from "react-router"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useCustomer } from "@/api/customer"
 import { useActiveTask, useContactDetail, useCustomerAlerts } from "@/api/task"
+import { CustomerChatSection } from "@/components/custom/notes/CustomerChatSection"
 import { CustomerSheet } from "./detail/_components/CustomerSheet"
 import { CustomerPraticaSection } from "./detail/_components/CustomersPraticaSection"
 import { CustomerFormSection } from "./detail/_components/CustomerFormSection"
@@ -15,8 +16,8 @@ import { type ContactDetail, type Task } from "@mito/contract/task"
 /**
  * The customer sheet (`/dashboard/customers/:id`), as `customers/[id]/page.tsx`
  * of the Next.js app: the master data, the active contact (its summary, or
- * "Crea contatto") and the practices. The notes arrive with 3.4. The sheet
- * waits for what the server page read before rendering
+ * "Crea contatto"), the practices and the notes. The sheet waits for what
+ * the server page read before rendering
  */
 export function Component() {
   const { id = "" } = useParams()
@@ -86,6 +87,7 @@ export function Component() {
         />
       )}
       <CustomerPraticaSection id={id} activeTaskState={activeTask?.state} />
+      <CustomerChatSection key={id} customerId={id} />
     </CustomerSheet>
   )
 }

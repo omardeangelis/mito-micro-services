@@ -23,3 +23,12 @@ export const UserPreference = Schema.Struct({
   contactTableVisibleColumns: Schema.optional(Schema.Array(Schema.String)),
 })
 export type UserPreference = typeof UserPreference.Type
+
+/**
+ * An id of a Postgres `integer` column, in the path: a larger one fails
+ * validation (400) instead of the query (a 500)
+ */
+export const IntegerId = Schema.FiniteFromString.check(
+  Schema.isInt(),
+  Schema.isBetween({ minimum: 1, maximum: 2_147_483_647 })
+)

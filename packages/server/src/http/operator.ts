@@ -3,7 +3,10 @@ import { HttpApiBuilder } from "effect/http-api"
 import { MitoApi } from "@mito/contract/api"
 import { type Db } from "../effect/db"
 import { type ErrorReporter } from "../effect/errorReporter"
-import { listActiveOperators } from "../services/operator/queries"
+import {
+  getOperatorById,
+  listActiveOperators,
+} from "../services/operator/queries"
 import { unexpectedAs500 } from "./unexpected"
 
 /**
@@ -18,11 +21,19 @@ export const operatorLayer = HttpApiBuilder.group(
       // The database and the reporter of the layer, so the handlers need
       // nothing per request but `CurrentUser`
       const services = yield* Effect.context<Db | ErrorReporter>()
-      return handlers.handle("getAllUniqueOperators", () =>
-        listActiveOperators().pipe(
-          unexpectedAs500("getAllUniqueOperators"),
-          Effect.provide(services)
+      return handlers
+        .handle("getAllUniqueOperators", () =>
+          listActiveOperators().pipe(
+            unexpectedAs500("getAllUniqueOperators"),
+            Effect.provide(services)
+          )
         )
-      )
+        .handle("getOperatorById", ({ params }) =>
+          getOperatorById(params.id).pipe(
+            Effect.map((operator) => operator ?? null),
+            unexpectedAs500("getOperatorById"),
+            Effect.provide(services)
+          )
+        )
     })
 )

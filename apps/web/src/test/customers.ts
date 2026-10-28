@@ -11,6 +11,7 @@ import {
   type NewCustomer,
 } from "@mito/contract/customer"
 import {
+  ChatMissing,
   type ContactAlreadyActive,
   type ContactForbidden,
   ContactNotFound,
@@ -20,10 +21,14 @@ import {
   type CustomerNotFound,
   type CustomerUnassigned,
   type HandoverSameOperator,
+  MessageMissing,
+  NotMessageAuthor,
   type OperatorNotFound,
   type PracticeExists,
 } from "@mito/contract/errors"
 import { type NewPratica } from "@mito/contract/pratiche"
+import { type ChatMessage } from "@mito/contract/chat"
+import { CurrentUser } from "@mito/contract/middleware"
 import { type OperatorWithRole as OperatorWithRoleSchema } from "@mito/contract/me"
 import {
   type ActiveAlert,
@@ -36,6 +41,19 @@ import { ada, type FakeHandlers, type GroupService } from "./api"
 
 type OperatorWithRole = typeof OperatorWithRoleSchema.Type
 type CustomerPractice = typeof CustomerPracticeSchema.Type
+
+/**
+ * How the backend answers a note sent: saved (with `id`, or the next one),
+ * saved as none (`null`), its chat gone, or down (a 500)
+ */
+export type SendAnswer = { id?: number } | "none" | "missing" | "down"
+/** How the backend answers the trash of a note */
+export type DeleteAnswer = "deleted" | "gone" | "forbidden" | "down"
+/** How the backend answers "Avvia una chat" */
+export type StartAnswer = "started" | "down"
+
+/** A write the test answers, by hand while `holdNotes` is set */
+type Held<Call, Answer> = Call & { answer: (answer?: Answer) => void }
 
 /** A call the test didn't expect: it dies, a 500 */
 const unserved = () => Effect.die("not served by this test")
@@ -165,7 +183,7 @@ export const operatorWithRole = (
 
 /**
  * A backend in memory for the pages of the customers: the groups `customer`,
- * `operator`, `task` and `pratiche`, as far as the pages call them. `state`
+ * `operator`, `task`, `pratiche` and `chat`, as far as the pages call them. `state`
  * is what the next calls answer, and what they received
  */
 export function fakeCustomers(
@@ -182,6 +200,7 @@ export function fakeCustomers(
     customerAlerts: Record<string, CustomerAlert[]>
     contacts: Record<string, ContactDetail>
     regions: (string | null)[]
+    chats: Record<number, ChatMessage[]>
   }> = {}
 ) {
   const state = {
@@ -234,6 +253,28 @@ export function fakeCustomers(
       | undefined,
     createPraticaError: undefined as
       PracticeExists | CustomerExists | CustomerMissing | undefined,
+    /** The notes of each chat, oldest first */
+    chats: {} as Record<number, ChatMessage[]>,
+    /** While set, the writes of the notes wait for the test to answer them */
+    holdNotes: false,
+    /** The notes sent, the trashes and the chats started, in order */
+    sends: [] as Held<{ chatId: number; content: string }, SendAnswer>[],
+    deletes: [] as Held<{ id: number }, DeleteAnswer>[],
+    chatStarts: [] as Held<{ customerId: string }, StartAnswer>[],
+    /** The customers whose last edit was set to now, in order */
+    touched: [] as string[],
+    /** The reads of the notes, in order */
+    chatReads: [] as { id: number; limit: number | undefined }[],
+    /** While set, the reads of the notes wait for it */
+    chatGate: undefined as Promise<void> | undefined,
+    /** While set, the detail of a customer waits for it */
+    customerGate: undefined as Promise<void> | undefined,
+    /** The authors looked up, in order */
+    operatorReads: [] as number[],
+    /** While set, the lookup of an author waits for it */
+    operatorGate: undefined as Promise<void> | undefined,
+    /** The lookup of an author dies, a 500 */
+    failingOperator: false,
     /** The queries of the list, in order */
     searches: [] as CustomerListQuery[],
     blackListed: [] as { id: string; blackListStatus: BlackListStatus }[],
@@ -271,6 +312,22 @@ export function fakeCustomers(
       )
     )
 
+  /** A write of the notes, answered now or, while `holdNotes`, by the test */
+  const held = <Call extends object, Answer>(
+    calls: Held<Call, Answer>[],
+    call: Call
+  ) =>
+    Effect.callback<Answer | undefined>((resume) => {
+      calls.push({
+        ...call,
+        answer: (answer) => resume(Effect.succeed(answer)),
+      })
+      if (!state.holdNotes) resume(Effect.succeed(undefined))
+    })
+
+  let nextNoteId = 5000
+  let nextChatId = 300
+
   /** The customer, and its active contact, go to `operatorId` */
   const moveCustomer = (customerId: string, operatorId: number) => {
     state.customers = state.customers.map((customer) =>
@@ -288,6 +345,7 @@ export function fakeCustomers(
     | GroupService<"operator">
     | GroupService<"task">
     | GroupService<"pratiche">
+    | GroupService<"chat">
   > = Layer.mergeAll(
     HttpApiBuilder.group(MitoApi, "customer", (handlers) =>
       handlers
@@ -325,8 +383,12 @@ export function fakeCustomers(
           Effect.sync(() => state.files.map((fileName) => ({ fileName })))
         )
         .handle("getCustomerById", ({ params }) =>
-          Effect.sync(
-            () => state.customers.find(({ id }) => id === params.id) ?? null
+          Effect.promise(() => state.customerGate ?? Promise.resolve()).pipe(
+            Effect.andThen(
+              Effect.sync(
+                () => state.customers.find(({ id }) => id === params.id) ?? null
+              )
+            )
           )
         )
         .handle("getAllPraticaByCustomer", ({ params }) =>
@@ -384,7 +446,11 @@ export function fakeCustomers(
             return Effect.void
           })
         )
-        .handle("updateLastEdit", unserved)
+        .handle("updateLastEdit", ({ params }) =>
+          Effect.sync(() => {
+            state.touched.push(params.id)
+          })
+        )
         .handle("bulkUpdateCustomers", ({ payload }) =>
           waitGate(payload.customerIds).pipe(
             Effect.andThen(
@@ -396,9 +462,26 @@ export function fakeCustomers(
         )
     ),
     HttpApiBuilder.group(MitoApi, "operator", (handlers) =>
-      handlers.handle("getAllUniqueOperators", () =>
-        Effect.sync(() => state.operators)
-      )
+      handlers
+        .handle("getAllUniqueOperators", () =>
+          Effect.sync(() => state.operators)
+        )
+        .handle("getOperatorById", ({ params }) =>
+          Effect.suspend(() => {
+            state.operatorReads.push(params.id)
+            return Effect.promise(() => state.operatorGate ?? Promise.resolve())
+          }).pipe(
+            Effect.andThen(
+              Effect.suspend(() =>
+                state.failingOperator
+                  ? Effect.die("backend down")
+                  : Effect.succeed(
+                      state.operators.find(({ id }) => id === params.id) ?? null
+                    )
+              )
+            )
+          )
+        )
     ),
     HttpApiBuilder.group(MitoApi, "task", (handlers) =>
       handlers
@@ -487,6 +570,88 @@ export function fakeCustomers(
               return Effect.fail(state.createPraticaError)
             state.createdPratiche.push(payload)
             return Effect.succeed({ praticaId: payload.pratica.praticaId })
+          })
+        )
+    ),
+    HttpApiBuilder.group(MitoApi, "chat", (handlers) =>
+      handlers
+        .handle("getChatMessagesById", ({ params, query }) =>
+          Effect.suspend(() => {
+            state.chatReads.push({ id: params.id, limit: query.limit })
+            return Effect.promise(() => state.chatGate ?? Promise.resolve())
+          }).pipe(
+            Effect.andThen(
+              Effect.sync(() => {
+                const notes = state.chats[params.id] ?? []
+                return {
+                  messages: notes.slice(-(query.limit ?? 5)),
+                  total: notes.length,
+                }
+              })
+            )
+          )
+        )
+        .handle("insertMessage", ({ params, payload }) =>
+          Effect.gen(function* () {
+            const { operator } = yield* CurrentUser
+            const answer = yield* held(state.sends, {
+              chatId: params.id,
+              content: payload.content,
+            })
+            if (answer === "down") return yield* Effect.die("backend down")
+            if (answer === "missing")
+              return yield* new ChatMissing({ chatId: params.id })
+            if (answer === "none") return null
+            const note = {
+              id: answer?.id ?? nextNoteId++,
+              operatorId: operator.id,
+              sendDate: new Date(),
+              content: payload.content,
+            }
+            ;(state.chats[params.id] ??= []).push(note)
+            return { ...note, chatId: params.id, notifyDate: null }
+          })
+        )
+        .handle("createNewCustomerChat", ({ payload }) =>
+          Effect.gen(function* () {
+            const answer = yield* held(state.chatStarts, {
+              customerId: payload.customerId,
+            })
+            if (answer === "down") return yield* Effect.die("backend down")
+            const customer = state.customers.find(
+              ({ id }) => id === payload.customerId
+            )!
+            const id = customer.chatId ?? nextChatId++
+            state.chats[id] ??= []
+            state.customers = state.customers.map((current) =>
+              current.id === customer.id ? { ...current, chatId: id } : current
+            )
+            return { id }
+          })
+        )
+        .handle("deleteMessage", ({ params }) =>
+          Effect.gen(function* () {
+            const answer = yield* held(state.deletes, { id: params.id })
+            if (answer === "down") return yield* Effect.die("backend down")
+            if (answer === "gone")
+              return yield* new MessageMissing({ messageId: params.id })
+            if (answer === "forbidden")
+              return yield* new NotMessageAuthor({ messageId: params.id })
+            // The last note takes its chat with it
+            for (const [chatId, notes] of Object.entries(state.chats)) {
+              const left = notes.filter(({ id }) => id !== params.id)
+              if (left.length === notes.length) continue
+              if (left.length > 0) {
+                state.chats[Number(chatId)] = left
+                continue
+              }
+              delete state.chats[Number(chatId)]
+              state.customers = state.customers.map((customer) =>
+                customer.chatId === Number(chatId)
+                  ? { ...customer, chatId: null }
+                  : customer
+              )
+            }
           })
         )
     )

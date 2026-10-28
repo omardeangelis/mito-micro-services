@@ -39,6 +39,7 @@ type ApiGroups =
   | GroupService<"operator">
   | GroupService<"task">
   | GroupService<"pratiche">
+  | GroupService<"chat">
 
 /**
  * The handlers of some groups of the contract, written with
@@ -82,7 +83,9 @@ const unservedGroups = Layer.mergeAll(
       .handle("bulkUpdateCustomers", unserved)
   ),
   HttpApiBuilder.group(MitoApi, "operator", (handlers) =>
-    handlers.handle("getAllUniqueOperators", unserved)
+    handlers
+      .handle("getAllUniqueOperators", unserved)
+      .handle("getOperatorById", unserved)
   ),
   HttpApiBuilder.group(MitoApi, "task", (handlers) =>
     handlers
@@ -97,6 +100,13 @@ const unservedGroups = Layer.mergeAll(
     handlers
       .handle("getAllAvailableRegion", unserved)
       .handle("createPratica", unserved)
+  ),
+  HttpApiBuilder.group(MitoApi, "chat", (handlers) =>
+    handlers
+      .handle("getChatMessagesById", unserved)
+      .handle("insertMessage", unserved)
+      .handle("createNewCustomerChat", unserved)
+      .handle("deleteMessage", unserved)
   )
 )
 
@@ -227,13 +237,17 @@ export function renderWithApi<Groups extends ApiGroups>(
     await backend.dispose()
   })
 
+  const wrap = (node: ReactNode) => (
+    <ApiProvider runtime={runtime} queryClient={queryClient}>
+      {node}
+      <Toaster />
+    </ApiProvider>
+  )
+  const result = render(wrap(ui))
   return {
     queryClient,
-    ...render(
-      <ApiProvider runtime={runtime} queryClient={queryClient}>
-        {ui}
-        <Toaster />
-      </ApiProvider>
-    ),
+    ...result,
+    /** `ui` drawn again with new props, on the same backend and cache */
+    rerender: (next: ReactNode) => result.rerender(wrap(next)),
   }
 }

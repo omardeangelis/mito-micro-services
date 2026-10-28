@@ -355,3 +355,22 @@ export const useAssignToYourself = () => {
       ),
   })
 }
+
+/**
+ * The customer's last edit is now (`POST /customer/:id/mark-updated`), after
+ * a note is sent or deleted. Nothing to show when it fails
+ */
+export const useUpdateLastEdit = () => {
+  const run = useRun()
+  return useMutation({
+    mutationKey: [...customerKeys.all, "updateLastEdit"],
+    mutationFn: ({ id }: { id: string }) =>
+      run(
+        Effect.gen(function* () {
+          const client = yield* ApiClient
+          return yield* client.customer.updateLastEdit({ params: { id } })
+        })
+      ),
+    meta: { toastErrors: false },
+  })
+}
