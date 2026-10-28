@@ -27,8 +27,9 @@ export const NewPracticeValues = Schema.Struct({
   dataLiquidazione: Schema.Date,
   dataEstinzione: Schema.optional(Schema.NullOr(Schema.Date)),
   importoRata: Schema.String,
-  rateTotali: Schema.Number,
-  ratePagate: Schema.Number,
+  // A number, as `z.number()`: NaN never reaches the integer columns
+  rateTotali: Schema.Finite,
+  ratePagate: Schema.Finite,
   tassoPratica: decimal,
   desPuntoVendita: column(255),
   desConvenzionato: column(255),

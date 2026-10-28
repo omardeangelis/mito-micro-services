@@ -96,6 +96,23 @@ describe("ConnectCustomerPage, la pratica", () => {
     expect(page.backend.state.createdPratiche).toEqual([])
   })
 
+  it("rate totali svuotate o un ID troppo lungo hanno il loro messaggio, e non salvano", async () => {
+    const page = await setup()
+
+    await page.fillPractice()
+    await page.user.clear(screen.getByLabelText("Rate Totali"))
+    await page.user.clear(screen.getByLabelText("ID Pratica"))
+    await page.user.click(screen.getByLabelText("ID Pratica"))
+    await page.user.paste("P".repeat(256))
+    await page.submit()
+
+    expect(await screen.findByText("Deve essere un numero")).toBeTruthy()
+    expect(
+      screen.getByText("Expected a value with a length of at most 255")
+    ).toBeTruthy()
+    expect(page.backend.state.createdPratiche).toEqual([])
+  })
+
   it("se la pratica esiste già lo dice sotto l'ID, senza toast, e resta", async () => {
     const backend = fakeCustomers()
     backend.state.createPraticaError = new PracticeExists()
@@ -202,6 +219,26 @@ describe("ConnectCustomerPage, i clienti aggiunti", () => {
     const page = await setup()
 
     await page.user.click(screen.getByRole("button", { name: "Nuovo Cliente" }))
+    await page.fillPractice()
+    await page.submit()
+
+    expect(
+      await screen.findByText("Salva o rimuovi i clienti aggiunti")
+    ).toBeTruthy()
+    expect(page.backend.state.createdPratiche).toEqual([])
+  })
+
+  it("un cliente salvato e riaperto con 'Modifica' va salvato di nuovo", async () => {
+    const page = await setup()
+
+    await page.user.click(screen.getByRole("button", { name: "Nuovo Cliente" }))
+    await fillCustomer(page.user, relatedForm(), "BNCLCU80A01H501U")
+    await page.user.click(
+      within(relatedForm()).getByRole("button", { name: "Salva" })
+    )
+    await page.user.click(
+      await screen.findByRole("button", { name: "Modifica" })
+    )
     await page.fillPractice()
     await page.submit()
 

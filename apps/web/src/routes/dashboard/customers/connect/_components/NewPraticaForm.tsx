@@ -35,7 +35,7 @@ import { useCreatePratica, useRegions } from "@/api/pratiche"
 import { describeApiError } from "@/api/errors"
 import { Required, schemaResolver } from "@/lib/form"
 import { CheckCircle } from "lucide-react"
-import { column } from "../../_lib/customerForm"
+import { codeIssues, column } from "../../_lib/customerForm"
 
 type CustomerSaveResponse = Promise<{
   success: 0 | 1
@@ -59,7 +59,7 @@ type RelatedCustomerEntry = {
 // amounts and the instalments as the user types them
 const schema = Schema.Struct({
   customerID: Schema.String,
-  praticaId: Required(Schema.String),
+  praticaId: Required(Schema.String).check(Schema.isMaxLength(255)),
   productId: Required(Schema.String),
   state: Required(PracticeState),
   importoFinanziato: Required(Schema.String),
@@ -67,7 +67,11 @@ const schema = Schema.Struct({
   importoRichiesto: Required(Schema.String),
   dataLiquidazione: Required(Schema.Date),
   dataEstinzione: Schema.optional(Schema.Date),
-  rateTotali: Required(Schema.String),
+  rateTotali: Required(Schema.String).check(
+    Schema.makeFilter((value) => !isNaN(parseInt(value)), {
+      message: "Deve essere un numero",
+    })
+  ),
   ratePagate: Schema.optional(Schema.String),
   importoRata: Required(Schema.String),
   tassoPratica: Schema.optional(Schema.String),
@@ -175,6 +179,14 @@ function NewPraticaFormFields({
 
   const deleteRelatedCustomer = useCallback((id: string) => {
     setRelatedCustomers((prev) => prev.filter((customer) => customer.id !== id))
+  }, [])
+
+  // A saved customer opened again with "Modifica" is unsaved until it is
+  // saved again: the Next.js app sent its old values
+  const editRelatedCustomer = useCallback((id: string) => {
+    setRelatedCustomers((prev) =>
+      prev.map((c) => (c.id === id ? { id: c.id } : c))
+    )
   }, [])
 
   const onCustomerSave = useCallback(
@@ -609,6 +621,7 @@ function NewPraticaFormFields({
         <NewRelatedCustomerFormList
           customers={relatedCustomers}
           onDelete={deleteRelatedCustomer}
+          onEdit={editRelatedCustomer}
           onCustomerSave={onCustomerSave}
         />
         <div className="h-6 w-full bg-background" />
@@ -637,8 +650,6 @@ const code = (length: number) =>
     )
   )
 
-const CODE_REQUIRED = "Uno tra Partita Iva e Codice Fiscale è obbligatorio"
-
 // The related customer of the Next.js app, with the limits of
 // `insertCustomerSchema`: one between the VAT code and the fiscal code
 const newRelatedCustomerSchema = Schema.Struct({
@@ -653,16 +664,7 @@ const newRelatedCustomerSchema = Schema.Struct({
   ),
   fiscalCode: code(16),
   vatCode: code(11),
-}).check(
-  Schema.makeFilter((schema) =>
-    !schema.vatCode && !schema.fiscalCode
-      ? [
-          { path: ["vatCode"], issue: CODE_REQUIRED },
-          { path: ["fiscalCode"], issue: CODE_REQUIRED },
-        ]
-      : undefined
-  )
-)
+}).check(codeIssues)
 
 type NewRelatedCustomerFormValues = typeof newRelatedCustomerSchema.Encoded
 
@@ -671,12 +673,14 @@ const relatedRoles = ["Coobbligato", "Garante"] as const
 type NewRelatedCustomerFormListProps = {
   customers: RelatedCustomerEntry[]
   onDelete: (id: string) => void
+  onEdit: (id: string) => void
   onCustomerSave: CustomerSave
 }
 
 const NewRelatedCustomerFormList = ({
   customers,
   onDelete,
+  onEdit,
   onCustomerSave,
 }: NewRelatedCustomerFormListProps) => {
   return (
@@ -688,6 +692,7 @@ const NewRelatedCustomerFormList = ({
             <div className="h-6 w-full bg-background" />
             <NewRelatedCustomerForm
               onDelete={onDelete}
+              onEdit={onEdit}
               onCustomerSave={onCustomerSave}
               customers={customer}
             />
@@ -700,11 +705,13 @@ const NewRelatedCustomerFormList = ({
 
 const NewRelatedCustomerForm = ({
   onDelete,
+  onEdit,
   customers,
   onCustomerSave,
 }: {
   customers: RelatedCustomerEntry
   onDelete: (id: string) => void
+  onEdit: (id: string) => void
   onCustomerSave: CustomerSave
 }) => {
   const form = useForm<NewRelatedCustomerFormValues>({
@@ -737,7 +744,13 @@ const NewRelatedCustomerForm = ({
             <h4>{form.getValues("fiscalCode")}</h4>
           </div>
           <div className="flex items-center gap-4">
-            <Button variant="default" onClick={() => setSaved(false)}>
+            <Button
+              variant="default"
+              onClick={() => {
+                setSaved(false)
+                onEdit(customers.id)
+              }}
+            >
               Modifica
             </Button>
           </div>
