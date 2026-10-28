@@ -1,6 +1,8 @@
 import { HttpApi } from "effect/http-api"
+import { AnalyticsGroup } from "./analytics"
 import { ChatGroup } from "./chat"
 import { CustomerGroup } from "./customer"
+import { ExportGroup } from "./export"
 import { MeGroup } from "./me"
 import { OperatorGroup } from "./operator"
 import { PraticheGroup } from "./pratiche"
@@ -14,4 +16,6 @@ export class MitoApi extends HttpApi.make("mito")
   .add(TaskGroup)
   .add(PraticheGroup)
   .add(ChatGroup)
+  .add(AnalyticsGroup)
+  .add(ExportGroup)
   .prefix("/api/v1") {}

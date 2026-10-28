@@ -6,9 +6,11 @@ import { HttpApiBuilder } from "effect/http-api"
 import { MitoApi } from "@mito/contract/api"
 import { serverLayer } from "../effect/server"
 import { adminOnlyLayer } from "./adminOnly"
+import { analyticsLayer } from "./analytics"
 import { authenticatedLayer } from "./authenticated"
 import { chatLayer } from "./chat"
 import { customerLayer } from "./customer"
+import { exportLayer } from "./export"
 import { meLayer } from "./me"
 import { operatorLayer } from "./operator"
 import { praticheLayer } from "./pratiche"
@@ -25,7 +27,9 @@ export const apiHandlersLayer = Layer.mergeAll(
   operatorLayer,
   taskLayer,
   praticheLayer,
-  chatLayer
+  chatLayer,
+  analyticsLayer,
+  exportLayer
 ).pipe(Layer.provideMerge(Layer.merge(authenticatedLayer, adminOnlyLayer)))
 
 // HttpApi serves no files: the platform without a file system

@@ -70,6 +70,8 @@ export const describeApiError = (error: ApiFailure): string => {
       return "Nota non trovata"
     case "NotMessageAuthor":
       return "Solo l'autore della nota può eliminarla"
+    case "InvalidPeriod":
+      return "Periodo non valido"
     case "ApiUnavailable":
       return "Il servizio non risponde, riprova tra poco"
     default: {

@@ -234,6 +234,18 @@ export class NotMessageAuthor extends Schema.TaggedError<NotMessageAuthor>()(
   { httpApiStatus: 403 }
 ) {}
 
+/**
+ * The period of the calls export isn't two existing days, in order, inside
+ * the days selectable now (tRPC BAD_REQUEST of `exportPeriodInput`). A
+ * missing or repeated `from` or `to` is the 400 of the query's schema, with
+ * no tag
+ */
+export class InvalidPeriod extends Schema.TaggedError<InvalidPeriod>()(
+  "InvalidPeriod",
+  {},
+  { httpApiStatus: 400 }
+) {}
+
 const apiErrors = [
   Unauthorized,
   NotAnOperator,
@@ -260,6 +272,7 @@ const apiErrors = [
   ChatMissing,
   MessageMissing,
   NotMessageAuthor,
+  InvalidPeriod,
 ] as const
 
 /** An error some endpoint declares. */
