@@ -253,6 +253,13 @@ const italianDay = new Intl.DateTimeFormat("en-US", {
   year: "numeric",
 })
 
+/** An amount in euro, in Italian: a decimal column arrives as its digits */
+export const currencyFormatter = (value: number | string) =>
+  new Intl.NumberFormat("it-IT", {
+    style: "currency",
+    currency: "EUR",
+  }).format(Number(value))
+
 // "d/m/yyyy" (no padding) in the Italian day of the instant
 export const formatDateAsDMY = (date: Date) => {
   if (Number.isNaN(date.getTime())) return ""

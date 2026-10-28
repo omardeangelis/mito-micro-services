@@ -11,6 +11,7 @@ import { Layer } from "effect"
 import { ada, fakeMe, renderWithApi } from "@/test/api"
 import { contactDetail, fakeContacts } from "@/test/contacts"
 import { fakeCustomers } from "@/test/customers"
+import { fakePratiche } from "@/test/pratiche"
 
 const captureException = vi.hoisted(() => vi.fn())
 vi.mock("@sentry/react", () => ({ captureException }))
@@ -189,6 +190,33 @@ describe("le rotte (§5)", () => {
   }, 15000)
 
   it.each([
+    ["/dashboard/pratiche", "PR-2026-1"],
+    ["/dashboard/pratiche/PR-2026-1", "Dettaglio Pratica"],
+  ])(
+    "un link diretto a %s apre la sua pagina (3.3)",
+    async (path, text) => {
+      const pratiche = fakePratiche()
+      window.history.replaceState(null, "", path)
+      const router = createBrowserRouter(routes)
+      onTestFinished(() => {
+        router.dispose()
+        window.history.replaceState(null, "", "/")
+      })
+      renderWithApi(<RouterProvider router={router} />, {
+        handlers: Layer.merge(backend.handlers, pratiche.handlers),
+        auth: backend.auth,
+      })
+
+      // The first import of the page and its modules, in a cold and busy
+      // test run
+      expect(
+        await screen.findByText(text, {}, { timeout: 10000 })
+      ).toBeInTheDocument()
+    },
+    15000
+  )
+
+  it.each([
     ["/dashboard/customers/new", "Nuovo cliente"],
     ["/dashboard/customers/customer-1", "Scheda Cliente"],
     ["/dashboard/customers/customer-1/connect", "Dettaglio Pratica"],
@@ -218,8 +246,6 @@ describe("le rotte (§5)", () => {
 
   it.each([
     ["/dashboard", "Home", "3.5"],
-    ["/dashboard/pratiche", "Pratiche", "3.3"],
-    ["/dashboard/pratiche/7", "Pratica", "3.3"],
     ["/dashboard/import", "Import", "3.6"],
   ])("un link diretto a %s apre la sua pagina", async (path, title, task) => {
     open(path)
@@ -229,24 +255,16 @@ describe("le rotte (§5)", () => {
     expect(screen.getByRole("navigation")).toBeInTheDocument()
   })
 
-  it("la pagina riceve l'id della rotta", async () => {
-    open("/dashboard/pratiche/7")
-
-    await heading()
-    expect(screen.getByText("id").nextSibling).toHaveTextContent("7")
-  })
-
   it("dal menu si passa da una pagina all'altra", async () => {
+    backend = fakeMe({ role: "ADMIN" })
     const user = userEvent.setup()
     const router = open("/dashboard")
     await heading()
 
-    await user.click(screen.getByRole("link", { name: "Pratiche" }))
+    await user.click(screen.getByRole("link", { name: "Import" }))
 
-    expect(
-      await screen.findByRole("heading", { name: "Pratiche" })
-    ).toBeVisible()
-    expect(router.state.location.pathname).toBe("/dashboard/pratiche")
+    expect(await screen.findByRole("heading", { name: "Import" })).toBeVisible()
+    expect(router.state.location.pathname).toBe("/dashboard/import")
   })
 
   it("un indirizzo che non è una rotta mostra la 404", async () => {

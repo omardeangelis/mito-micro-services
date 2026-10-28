@@ -32,12 +32,6 @@ export const getUrlParmsWithMultipleValue = (params: string) => {
   }
 }
 
-export const currencyFormatter = (value: number | string) =>
-  new Intl.NumberFormat("it-IT", {
-    style: "currency",
-    currency: "EUR",
-  }).format(Number(value))
-
 /** The array in slices of `size`, in order. */
 export function splitArray<T>(array: T[], size: number): T[][] {
   const res = [] as T[][]
@@ -49,6 +43,7 @@ export function splitArray<T>(array: T[], size: number): T[][] {
 
 export { cleanObject } from "@mito/domain/utils/object"
 export {
+  currencyFormatter,
   formatDateAsDMHM,
   formatDateAsDMY,
   formatTime,
