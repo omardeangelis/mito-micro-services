@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react"
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import userEvent from "@testing-library/user-event"
 import { describe, expect, it, vi } from "vitest"
 import { LogoutFloatingButton } from "@/routes/dashboard/profile/LogoutFloatingButton"
@@ -27,7 +28,11 @@ describe("LogoutFloatingButton", () => {
       draftKey,
       JSON.stringify({ operatorId: 11, text: "Nota di un cliente" })
     )
-    render(<LogoutFloatingButton />)
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <LogoutFloatingButton />
+      </QueryClientProvider>
+    )
 
     await userEvent
       .setup()
@@ -38,7 +43,11 @@ describe("LogoutFloatingButton", () => {
 
   it("uscendo dimentica le note in eliminazione: il prossimo operatore non vede attese", async () => {
     startDeleting("c-42", 905, [])
-    render(<LogoutFloatingButton />)
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <LogoutFloatingButton />
+      </QueryClientProvider>
+    )
 
     await userEvent
       .setup()

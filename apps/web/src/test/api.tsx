@@ -7,7 +7,11 @@ import { onTestFinished } from "vitest"
 import { MitoApi } from "@mito/contract/api"
 import { type OperatorDisabled, type Unauthorized } from "@mito/contract/errors"
 import { Authenticated, CurrentUser } from "@mito/contract/middleware"
-import { type Operator, type Role } from "@mito/contract/schemas"
+import {
+  type Operator,
+  type Role,
+  type UserPreference,
+} from "@mito/contract/schemas"
 import { inMemoryPlatform } from "@mito/contract/testing"
 import { ApiProvider } from "@/api/ApiProvider"
 import { makeQueryClient } from "@/api/queryClient"
@@ -38,6 +42,62 @@ export const rejectingWith = (
   error: Unauthorized | OperatorDisabled
 ): Layer.Layer<Authenticated> =>
   Layer.succeed(Authenticated)(() => Effect.fail(error))
+
+/** An operator for the fake backends, with a name and a surname */
+export const ada: Operator = {
+  id: 7,
+  name: "Ada",
+  surname: "Lovelace",
+  userId: "user-7",
+  createdAt: new Date("2026-10-01T08:00:00.000Z"),
+  updatedAt: null,
+}
+
+/**
+ * A backend in memory for the group `me`, whose current user the test can
+ * change between two calls (another sign-in, a refetch): `state` is what the
+ * next `GET /me` answers, and `reads` counts them
+ */
+export function fakeMe(initial: {
+  operator?: Operator
+  role?: Role
+  preferences?: UserPreference
+}) {
+  const state = {
+    operator: ada,
+    role: "OPERATORE" as Role,
+    preferences: {} as UserPreference,
+    reads: 0,
+    // A backend that doesn't answer: `GET /me` dies, a 500
+    failing: false,
+    ...initial,
+  }
+  const handlers: FakeHandlers = HttpApiBuilder.group(
+    MitoApi,
+    "me",
+    (handlers) =>
+      handlers
+        .handle("getCurrentUser", () =>
+          Effect.suspend(() => {
+            state.reads++
+            if (state.failing) return Effect.die("backend down")
+            return Effect.succeed({
+              role: state.role,
+              operatorId: state.operator.id,
+              operator: state.operator,
+              preferences: state.preferences,
+            })
+          })
+        )
+        .handle("updateOperatorInfo", ({ payload }) =>
+          Effect.sync(() => {
+            state.operator = { ...state.operator, ...payload }
+            return { ...state.operator, role: state.role }
+          })
+        )
+  )
+  return { state, handlers, auth: signedInAs(state.operator, state.role) }
+}
 
 /**
  * Renders `ui` under the `ApiProvider` of the app, on a backend in memory:

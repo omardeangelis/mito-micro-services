@@ -1,9 +1,11 @@
-import { Navigate, type RouteObject } from "react-router"
+import { type RouteObject } from "react-router"
 import { AppLoading } from "./routes/AppLoading"
 import { ContactsError } from "./routes/dashboard/contatti/ContactsError"
 import { DashboardShell } from "./routes/dashboard/DashboardShell"
+import { RequireSession } from "./routes/dashboard/RequireSession"
 import { NotFound } from "./routes/NotFound"
 import { RouteError } from "./routes/RouteError"
+import { StartPage } from "./routes/StartPage"
 
 // The pages for development only (the components of 1.b): out of the
 // production bundle, since Vite drops the branch when DEV is false
@@ -27,7 +29,14 @@ export const routes: RouteObject[] = [
     errorElement: <RouteError />,
     hydrateFallbackElement: <AppLoading />,
     children: [
-      { path: "/", element: <Navigate to="/dashboard" replace /> },
+      {
+        path: "/",
+        element: (
+          <RequireSession>
+            <StartPage />
+          </RequireSession>
+        ),
+      },
       { path: "/login", lazy: () => import("./routes/login/LoginPage") },
       {
         path: "/dashboard",
