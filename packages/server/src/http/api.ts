@@ -11,6 +11,7 @@ import { authenticatedLayer } from "./authenticated"
 import { chatLayer } from "./chat"
 import { customerLayer } from "./customer"
 import { exportLayer } from "./export"
+import { importGroupLayer } from "./import"
 import { meLayer } from "./me"
 import { operatorLayer } from "./operator"
 import { praticheLayer } from "./pratiche"
@@ -29,7 +30,8 @@ export const apiHandlersLayer = Layer.mergeAll(
   praticheLayer,
   chatLayer,
   analyticsLayer,
-  exportLayer
+  exportLayer,
+  importGroupLayer
 ).pipe(Layer.provideMerge(Layer.merge(authenticatedLayer, adminOnlyLayer)))
 
 // HttpApi serves no files: the platform without a file system

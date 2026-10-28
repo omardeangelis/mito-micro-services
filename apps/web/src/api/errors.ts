@@ -72,6 +72,22 @@ export const describeApiError = (error: ApiFailure): string => {
       return "Solo l'autore della nota può eliminarla"
     case "InvalidPeriod":
       return "Periodo non valido"
+    case "ImportInputInvalid":
+      return error.reason
+    case "ImportUploadMissing":
+      return "Il file inviato non c'è più: ricomincia l'import"
+    case "ImportUploadClosed":
+      return "Il file inviato è già in importazione"
+    case "ImportRowRejected":
+      return `Riga ${error.row}: ${error.rule}`
+    case "ImportTimedOut":
+      return "L'import non è finito entro 30 minuti dall'inizio"
+    case "ImportAlreadyRunning":
+      return `C'è già un import in corso, avviato da ${error.startedBy} alle ${error.time}`
+    case "ImportUnavailable":
+      return "L'import non è disponibile su questo ambiente"
+    case "ImportQueueFailed":
+      return "La coda dell'import non ha accettato l'import: riprova"
     case "ApiUnavailable":
       return "Il servizio non risponde, riprova tra poco"
     default: {
