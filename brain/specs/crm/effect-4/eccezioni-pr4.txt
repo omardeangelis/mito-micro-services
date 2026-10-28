@@ -4,7 +4,7 @@
 # T18: titoli di `describe` che nominano un layer rinominato (tabella del §3 del piano).
 # Cambia solo il titolo della suite: i test dentro e le loro asserzioni sono gli stessi.
 base:packages/server/src/effect/_test/db.db.test.ts:330#5469c519 describe("ServerLive")
-packages/server/src/effect/_test/db.db.test.ts:330#4ff05f6a describe("serverLayer")
+packages/server/src/effect/_test/db.db.test.ts:348#4ff05f6a describe("serverLayer")
 base:packages/server/src/effect/_test/errorReporter.test.ts:42#19d157ab describe("SentryReporterLive")
 packages/server/src/effect/_test/errorReporter.test.ts:39#9f80a1fe describe("ErrorReporter.layer")
 base:packages/server/src/services/storage/_test/supabase.test.ts:75#72977dd2 describe("makeSupabaseStorageLayer")
@@ -327,3 +327,7 @@ packages/server/src/services/storage/_test/errors.classes.test.ts:66#7b4e6e72 ex
 packages/server/src/services/storage/_test/errors.classes.test.ts:68#902e781d expect({ ...error }).toStrictEqual({
 packages/server/src/services/storage/_test/errors.classes.test.ts:75#1845a4ad it.each(classes)("$tag con una cause che non è un Error", ({ Class }) => {
 packages/server/src/services/storage/_test/errors.classes.test.ts:78#00a777e4 expect(error.cause).toBe(cause)
+
+# Revisione della PR 4: il test nuovo di DbError con un message che non è una stringa (AC10)
+packages/server/src/effect/_test/db.db.test.ts:284#c5cd69d9 it.effect("un errore del driver con un message che non è una stringa è comunque un DbError")
+packages/server/src/effect/_test/db.db.test.ts:298#64e6d570 expect(exit).toEqual(Exit.succeed(["42", cause]))

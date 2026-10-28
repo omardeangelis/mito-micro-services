@@ -97,6 +97,8 @@ La spec ha quattro PR, ognuna con la sua revisione. Ogni revisione è un round q
 6. **La prova su `mito_local`** (T8.4), che chiede un `.env.development.local` locale.
 7. **Leonardo** rivede i file dell'auth (D4), poi la PR con D7 nella descrizione e la CI verde.
 
+**Stato del checklist (2026-10-28):** 1 deciso da Omar, strada (a) (D18 nel piano): il mutante di v4 ora fa fallire il test; 2 e 3 fatti (`a922139`); 4 fatto (script `ok` con 323 eccezioni, suite intera a macchina scarica); 5 fatto; 6 e 7 aperti.
+
 ### Acceptance criteria check
 
 | Criterion | Met / Unmet / Blocked | Notes |
