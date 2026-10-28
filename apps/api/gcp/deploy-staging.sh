@@ -54,9 +54,9 @@ LOGIN_SECRETS=$(for name in AZURE_AD_CLIENT_ID AZURE_AD_CLIENT_SECRET \
 # two flags
 AUTH_ALLOWED_EMAILS=info@sevedemo.com,info@spatalo.tech
 # The frontends that share this backend (spec auth-due-frontend): exact
-# hosts, with the scheme of BETTER_AUTH_URL. Until the React app of staging
-# has its domain, only the Next.js one, so the login stays as it was. In the
-# same ^;^ flag, for the commas of the list to come
+# hosts, with the scheme of BETTER_AUTH_URL. Only the domain of staging, which
+# serves the React app since 2026-10-28 (brain/chore/staging-vercel.md). In
+# the same ^;^ flag, for the commas of a list
 FRONTEND_HOSTS=${FRONTEND#https://}
 
 # The workflow reads where the deploy stopped, and the revision serving the
