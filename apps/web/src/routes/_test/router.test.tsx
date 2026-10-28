@@ -149,11 +149,13 @@ describe("le rotte (§5)", () => {
         auth: backend.auth,
       })
 
+      // The first import of the page and its modules, in a cold and busy
+      // test run
       expect(
-        await screen.findByText(title, {}, { timeout: 5000 })
+        await screen.findByText(title, {}, { timeout: 10000 })
       ).toBeInTheDocument()
     },
-    10000
+    15000
   )
 
   it.each([
