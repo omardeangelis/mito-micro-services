@@ -1,10 +1,11 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest"
 import { eq } from "drizzle-orm"
 import { operators } from "@mito/db/schema/operators"
+import { task } from "@mito/db/schema/task"
 import { migrateUpTo, resetDb, testDb } from "@/test/db"
 import { signIn } from "@/test/authSession"
 import { reportedErrors } from "@/test/errorReporter"
-import { createOperator } from "@/test/factories"
+import { createCustomer, createOperator, createTask } from "@/test/factories"
 import { failNextUpdateOf } from "@/test/failpoint"
 import { app } from "../app"
 
@@ -108,5 +109,61 @@ describe("/api/v1 sul backend", () => {
       { endpoint: "updateOperatorInfo" },
     ])
     expect(await nameOf(operator.id)).toBe(operator.name)
+  })
+})
+
+// What the contract refuses never reaches the handler: the backend answers
+// 400, whatever the client in front of it checks
+describe("/api/v1/task sul backend, con un input che il contratto rifiuta", () => {
+  const post = (cookie: string, path: string, body: unknown) =>
+    app.request(path, {
+      method: "POST",
+      headers: { cookie, "content-type": "application/json" },
+      body: JSON.stringify(body),
+    })
+
+  it("la lista dei contatti con un perPage che la procedura non accetta è un 400", async () => {
+    const operator = await createOperator()
+    const { cookie } = await signIn(operator.userId)
+
+    const refused = await post(cookie, "/api/v1/task/contacts", { perPage: 30 })
+    const accepted = await post(cookie, "/api/v1/task/contacts", {
+      perPage: 50,
+    })
+
+    expect(refused.status).toBe(400)
+    expect(accepted.status).toBe(200)
+  })
+
+  it("un cambio di stato a uno stato che non esiste, o su un id oltre l'intero di Postgres, è un 400 e non scrive niente", async () => {
+    const operator = await createOperator()
+    const customer = await createCustomer({ operatorId: operator.id })
+    const contact = await createTask({
+      customerId: customer.id,
+      operatorId: operator.id,
+    })
+    const { cookie } = await signIn(operator.userId)
+    const change = { source: "list", confirmedAlertId: null }
+
+    const unknownState = await post(
+      cookie,
+      `/api/v1/task/${contact.id}/state`,
+      {
+        ...change,
+        toState: "inventato",
+      }
+    )
+    const tooLarge = await post(cookie, "/api/v1/task/2147483648/state", {
+      ...change,
+      toState: "app.to",
+    })
+
+    expect(unknownState.status).toBe(400)
+    expect(tooLarge.status).toBe(400)
+    const [row] = await testDb
+      .select()
+      .from(task)
+      .where(eq(task.id, contact.id))
+    expect(row?.state).toBe("chiamare")
   })
 })

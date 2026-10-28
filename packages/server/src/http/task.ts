@@ -118,10 +118,13 @@ export const taskLayer = HttpApiBuilder.group(MitoApi, "task", (handlers) =>
       .handle("getContacts", ({ payload }) =>
         Effect.gen(function* () {
           const { actor } = yield* CurrentUser
-          // The defaults of the procedure's input: the contract has the same
-          // limits, so the payload always passes
-          const filters = getContactsInput.parse(payload)
-          return yield* getContacts({ ...filters, actor }).pipe(
+          return yield* Effect.sync(() =>
+            // The defaults of the procedure's input. The contract has the
+            // same limits, so the payload passes: a drift between the two is
+            // a defect, logged and reported as a 500
+            getContactsInput.parse(payload)
+          ).pipe(
+            Effect.flatMap((filters) => getContacts({ ...filters, actor })),
             unexpectedAs500("getContacts")
           )
         }).pipe(Effect.provide(services))

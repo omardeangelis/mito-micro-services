@@ -12,7 +12,6 @@ import {
   ContactNotFound,
   ContactSuperseded,
   DeadlineInPast,
-  isApiError,
   NotAdmin,
   OperatorNotFound,
   TransitionRejected,
@@ -153,21 +152,6 @@ describe("POST /api/v1/task/contacts", () => {
       })
   )
 
-  it.effect(
-    "un perPage che la procedura non accetta non passa lo schema del contratto",
-    () =>
-      Effect.gen(function* () {
-        const operator = yield* given(() => createOperator())
-        const api = yield* clientAs(operator.userId)
-
-        const error = yield* Effect.flip(
-          api.task.getContacts({ payload: { perPage: 30 as never } })
-        )
-
-        assert.isFalse(isApiError(error))
-      })
-  )
-
   it.effect("senza sessione è Unauthorized", () =>
     Effect.gen(function* () {
       const api = yield* clientAs(null)
@@ -258,28 +242,6 @@ describe("POST /api/v1/task/:id/state", () => {
       )
       assert.strictEqual((yield* taskRow(contact.id))?.state, "chiamare")
     })
-  )
-
-  it.effect(
-    "un id oltre l'intero di Postgres non passa lo schema del contratto",
-    () =>
-      Effect.gen(function* () {
-        const operator = yield* given(() => createOperator())
-        const api = yield* clientAs(operator.userId)
-
-        const error = yield* Effect.flip(
-          api.task.changeState({
-            params: { id: 2_147_483_648 },
-            payload: {
-              toState: "app.to",
-              source: "list",
-              confirmedAlertId: null,
-            },
-          })
-        )
-
-        assert.isFalse(isApiError(error))
-      })
   )
 })
 

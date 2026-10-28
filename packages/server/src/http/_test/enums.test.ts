@@ -18,12 +18,18 @@ import { customerRoleEnum } from "@mito/db/schema/relations/customerToPratica"
 import { customerSearchBy } from "@mito/domain/constants/customerSearch"
 import {
   CONTACTS_PER_PAGES,
+  ContactsDateField,
+  ContactsOrderBy,
+  ContactsSortedBy,
   MAX_OPERATOR_IDS,
   PriorityBand,
   TaskStatus,
 } from "@mito/contract/task"
 import { PER_PAGES } from "@mito/domain/constants/pagination"
-import { MAX_OPERATOR_IDS as domainMaxOperatorIds } from "@mito/domain/contact/listInput"
+import {
+  MAX_OPERATOR_IDS as domainMaxOperatorIds,
+  getContactsInput,
+} from "@mito/domain/contact/listInput"
 import { priorityBands } from "@mito/domain/contact/priority"
 import { MAX_CHAT_LIMIT as domainChatLimit } from "@mito/domain/constants/chat"
 import { messages } from "@mito/db/schema/chat"
@@ -44,6 +50,12 @@ describe("gli enum e il cliente del contratto", () => {
     expect(PriorityBand.literals).toEqual(priorityBands)
     expect(CONTACTS_PER_PAGES).toEqual(PER_PAGES)
     expect(MAX_OPERATOR_IDS).toBe(domainMaxOperatorIds)
+    const { orderBy, sortedBy, dateField } = getContactsInput.shape
+    expect(ContactsOrderBy.literals).toEqual(orderBy.removeDefault().options)
+    expect(ContactsSortedBy.literals).toEqual(sortedBy.removeDefault().options)
+    expect(ContactsDateField.literals).toEqual(
+      dateField.removeDefault().options
+    )
   })
 
   // A new column of `messages` would be dropped from the saved note

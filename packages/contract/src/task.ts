@@ -127,6 +127,29 @@ export const CONTACTS_PER_PAGES = [20, 50, 100, 200, 500] as const
 /** `MAX_OPERATOR_IDS` of @mito/domain/contact/listInput. */
 export const MAX_OPERATOR_IDS = 100
 
+/**
+ * The column of the order of the contacts list; "customer" is the surname,
+ * then the name (AC13)
+ */
+export const ContactsOrderBy = Schema.Literals([
+  "priority",
+  "closedAt",
+  "nextAlert",
+  "createdAt",
+  "updatedAt",
+  "customer",
+])
+
+/** The direction of the order of the contacts list. */
+export const ContactsSortedBy = Schema.Literals(["asc", "desc"])
+
+/** The date the `from` and `to` of the contacts list bound. */
+export const ContactsDateField = Schema.Literals([
+  "closedAt",
+  "nextAlert",
+  "createdAt",
+])
+
 /** An integer from `minimum` to `maximum`. */
 const IntBetween = (minimum: number, maximum: number) =>
   Schema.Number.check(Schema.isInt(), Schema.isBetween({ minimum, maximum }))
@@ -160,24 +183,15 @@ const Day = Schema.String.check(
 
 /**
  * The filters, order and page of the contacts list, as `getContactsInput` of
- * @mito/domain/contact/listInput, with the same limits: a server test checks
- * that the two accept the same inputs. Every field may be left out; the
+ * @mito/domain/contact/listInput, with the same limits: server tests check
+ * that the two accept the same inputs and have the same enums. Every field may be left out; the
  * server applies the defaults of `getContactsInput`
  */
 export const ContactsQuery = Schema.Struct({
   page: Schema.optional(IntBetween(1, 10_000)),
   perPage: Schema.optional(Schema.Literals(CONTACTS_PER_PAGES)),
-  orderBy: Schema.optional(
-    Schema.Literals([
-      "priority",
-      "closedAt",
-      "nextAlert",
-      "createdAt",
-      "updatedAt",
-      "customer",
-    ])
-  ),
-  sortedBy: Schema.optional(Schema.Literals(["asc", "desc"])),
+  orderBy: Schema.optional(ContactsOrderBy),
+  sortedBy: Schema.optional(ContactsSortedBy),
   // 0 stands for "Non assegnato"
   operatorIds: Schema.optional(
     Schema.Array(IntBetween(0, 2_147_483_647)).check(
@@ -205,9 +219,7 @@ export const ContactsQuery = Schema.Struct({
   customerId: Schema.optional(
     Schema.String.check(Schema.isMaxLength(64), hasNoNul)
   ),
-  dateField: Schema.optional(
-    Schema.Literals(["closedAt", "nextAlert", "createdAt"])
-  ),
+  dateField: Schema.optional(ContactsDateField),
   from: Schema.optional(Day),
   to: Schema.optional(Day),
   hasAlert: Schema.optional(Schema.Boolean),
