@@ -53,6 +53,11 @@ LOGIN_SECRETS=$(for name in AZURE_AD_CLIENT_ID AZURE_AD_CLIENT_SECRET \
 # (gcloud topic escaping), so the comma stays in the value; gcloud merges the
 # two flags
 AUTH_ALLOWED_EMAILS=info@sevedemo.com,info@spatalo.tech
+# The frontends that share this backend (spec auth-due-frontend): exact
+# hosts, with the scheme of BETTER_AUTH_URL. Until the React app of staging
+# has its domain, only the Next.js one, so the login stays as it was. In the
+# same ^;^ flag, for the commas of the list to come
+FRONTEND_HOSTS=staging-crm.dbmito.it
 
 # The workflow reads where the deploy stopped, and the revision serving the
 # traffic, for its Slack message (send-deploy-report.ts): it sets these files
@@ -102,7 +107,7 @@ gcloud run deploy mito-crm-staging --project=$P --region=$R \
   --add-cloudsql-instances=$INSTANCE \
   --set-secrets=$DB_SECRETS$LOGIN_SECRETS,SUPABASE_KEY=${S}SUPABASE_KEY:latest,NEXT_PUBLIC_SUPABASE_URL=${S}NEXT_PUBLIC_SUPABASE_URL:latest,NEXTAUTH_SECRET=${S}NEXTAUTH_SECRET:latest,BETTER_AUTH_SECRET=${S}BETTER_AUTH_SECRET:latest,CRON_SLACK_WEBHOOK_URL=${S}CRON_SLACK_WEBHOOK_URL:latest \
   --set-env-vars=$DB_ENV,NEXT_PUBLIC_APP_ENV=staging,NEXTAUTH_URL=$FRONTEND,BETTER_AUTH_URL=$FRONTEND,AUTH_TEST_LOGIN=true,TZ=UTC,CRON_OIDC_AUDIENCE=$URL,CRON_OIDC_SERVICE_ACCOUNT=mito-crm-scheduler-staging@mito-crm.iam.gserviceaccount.com,CRON_REPORT_ENV=staging,GCS_BUCKET=mito-crm-staging-storage,$IMPORT_ENV \
-  "--set-env-vars=^;^AUTH_ALLOWED_EMAILS=$AUTH_ALLOWED_EMAILS" \
+  "--set-env-vars=^;^AUTH_ALLOWED_EMAILS=$AUTH_ALLOWED_EMAILS;BETTER_AUTH_ALLOWED_HOSTS=$FRONTEND_HOSTS" \
   --timeout=1800 \
   --no-traffic --tag=$REVISION_TAG \
   ${COMMIT_SHA:+--update-labels=deployed-sha=$COMMIT_SHA} \

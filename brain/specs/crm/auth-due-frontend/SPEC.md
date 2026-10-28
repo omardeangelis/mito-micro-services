@@ -65,7 +65,7 @@ Chi è coinvolto:
 
 ## Acceptance Criteria
 
-"Elenco" è la variabile con gli host ammessi. "Indirizzo principale" è `BETTER_AUTH_URL`, che resta obbligatorio. "Base della richiesta" è l'indirizzo che il backend ricava per una richiesta, con questa regola: l'host inoltrato (`x-forwarded-host`) se è nell'elenco; altrimenti l'header `Host`, se è nell'elenco; altrimenti l'indirizzo principale. Lo schema è sempre quello dell'indirizzo principale.
+"Elenco" è la variabile con gli host ammessi. "Indirizzo principale" è `BETTER_AUTH_URL`, che resta obbligatorio. "Base della richiesta" è l'indirizzo che il backend ricava per una richiesta, con la regola di better-auth: l'host è quello inoltrato (`x-forwarded-host`) se è ben formato, altrimenti l'header `Host`; se quell'host è nell'elenco la base è lui, altrimenti l'indirizzo principale. Lo schema è sempre quello dell'indirizzo principale.
 
 ### Senza elenco nulla cambia
 
@@ -93,7 +93,7 @@ AC3–AC5 valgono su Vercel solo se OQ1 è verificata.
   - `/api/v1/me` risponde 401 senza cookie;
   - nessun link e nessun redirect puntano all'host non ammesso.
 
-  Un `x-forwarded-host` malformato si ignora, e vale `Host` con la stessa regola.
+  Un `x-forwarded-host` malformato si ignora, e vale `Host` con la stessa regola; uno ben formato ma non ammesso porta all'indirizzo principale, anche se `Host` è ammesso.
 - **AC9**: Il redirect di fine login non porta mai fuori dalla base della richiesta, qualunque `callbackURL` mandi il client: AC5 e AC6 di [[specs/crm/auth-better-auth/SPEC]] valgono per ogni host ammesso. Un login che passa da una rewrite di Vercel (l'URL della richiesta è su `run.app`, la base è l'host inoltrato) finisce bene.
 - **AC10**: Le regole di chi entra non cambiano con l'host: il disattivato è rifiutato, valgono le email ammesse in prova, e nessun account si aggancia per la sola email (AC3, AC9, AC11, AC15 di [[specs/crm/auth-better-auth/SPEC]]).
 - **AC11**: `api:smoke` avvia il bundle con un elenco che non contiene l'host con cui lo chiama (`127.0.0.1:<porta>`). `/api/auth/get-session` risponde 200 con `null`, e `/api/v1/me` 401.
@@ -139,7 +139,7 @@ AC3–AC5 valgono su Vercel solo se OQ1 è verificata.
 
 | # | Question | Affects | Owner | Status |
 |---|----------|---------|-------|--------|
-| 1 | Una richiesta che passa dalla rewrite di Vercel arriva a Cloud Run con `x-forwarded-host` = l'host del frontend e `x-forwarded-proto` = `https`? La documentazione di Vercel (Rewrites → "Identifying the visitor at your origin") dice di sì per le rewrite verso un'origine esterna. Resta da vedere su staging, con le rewrite di `next.config.js`: dopo il merge, con l'elenco con il solo dominio di Next, un login con il link via email su staging deve finire su `staging-crm.dbmito.it`. Se non regge, la scelta torna a Leonardo (alternativa di H18). | AC3–AC5, AC9, AC13 | Claude, con il deploy di staging dopo il merge | Documentata, da verificare su staging |
+| 1 | Una richiesta che passa dalla rewrite di Vercel arriva a Cloud Run con `x-forwarded-host` = l'host del frontend e `x-forwarded-proto` = `https`? La documentazione di Vercel (Rewrites → "Identifying the visitor at your origin") dice di sì per le rewrite verso un'origine esterna. Su staging si vede solo con il secondo host: con l'elenco del solo dominio di Next, un host inoltrato mancante o sbagliato porta comunque all'indirizzo principale, cioè a Next, e il login resta com'è oggi. Per questo la prova è il primo login dell'app React su staging (2.3.1): il link via email deve puntare al dominio di React. Se non regge, React finisce sul dominio di Next (nessun buco, solo il login di React che non funziona) e la scelta torna a Leonardo (alternativa di H18). | AC3–AC5, AC9, AC13 | Claude, con 2.3.1 | Documentata, da verificare con 2.3.1 |
 | 2 | Chiudere il backend al traffico che non viene da Vercel, con un header segreto messo dalla rewrite (la documentazione di Vercel lo suggerisce). Le rewrite di `next.config.js` non possono aggiungere header; quelle di `vercel.json` (2.3.1) sì. Proposta: con la fase 4. | Superficie di Cloud Run | Omar | Open |
 | 3 | Il dominio dell'app React di staging (H17): il nome esatto `*.vercel.app` del progetto, o un sottodominio di `dbmito.it`. | AC13, AC14 | Omar | Open, non blocca il codice |
 | 4 | In prod, alla finestra del rilascio (fase 4), l'elenco ha il dominio di prod e quello del Next di rollback: quale dominio prende il Next di rollback? | AC14 | Omar, con la fase 4 | Open |

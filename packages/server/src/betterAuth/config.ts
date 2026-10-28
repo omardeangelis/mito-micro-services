@@ -21,8 +21,18 @@ import {
 
 /** What `buildAuth` needs; `authFromEnv` reads it from `@mito/env`. */
 export type AuthConfig = {
-  /** The frontend's address: cookies, callbacks and trusted origin. */
+  /**
+   * The frontend's address: cookies, callbacks and trusted origin. With
+   * `allowedHosts`, the principal one: its scheme is every host's, and a
+   * request from a host not in the list gets it.
+   */
   readonly baseURL: string
+  /**
+   * The hosts of the frontends that share this backend (spec
+   * auth-due-frontend), exact names as `parseAllowedHosts` reads them: each
+   * request gets the one it comes from, forwarded by the rewrite.
+   */
+  readonly allowedHosts?: readonly string[]
   readonly secret: string
   readonly azure?: {
     readonly clientId: string
@@ -37,6 +47,10 @@ export type AuthConfig = {
 } & SignUpRules
 
 const DAY = 24 * 60 * 60
+
+/** The scheme of `url`, as better-auth's dynamic `baseURL` takes it. */
+export const schemeOf = (url: string): "http" | "https" =>
+  new URL(url).protocol === "http:" ? "http" : "https"
 
 /** The provider's tokens are never kept (AC31). */
 const withoutTokens = <T extends object>(account: T) => ({
@@ -58,12 +72,24 @@ const withoutTokens = <T extends object>(account: T) => ({
 export function buildAuth(config: AuthConfig) {
   const { sendMagicLink } = config
   return betterAuth({
-    baseURL: config.baseURL,
+    baseURL: config.allowedHosts
+      ? {
+          allowedHosts: [...config.allowedHosts],
+          // Never from the request: behind Cloud Run its URL is http, and
+          // anyone calling the backend directly sets x-forwarded-proto (AC6)
+          protocol: schemeOf(config.baseURL),
+          fallback: config.baseURL,
+        }
+      : config.baseURL,
     secret: config.secret,
     trustedOrigins: [config.baseURL],
-    // The check of the origin also under NODE_ENV=test, where better-auth
-    // skips it by default: the tests see what production does
-    advanced: { disableOriginCheck: false },
+    advanced: {
+      // The check of the origin also under NODE_ENV=test, where better-auth
+      // skips it by default: the tests see what production does
+      disableOriginCheck: false,
+      // The host a rewrite forwards, only when it is in `allowedHosts`
+      trustedProxyHeaders: config.allowedHosts !== undefined,
+    },
     database: drizzleAdapter(authDb, {
       provider: "pg",
       // User and account of a sign-up in one transaction
