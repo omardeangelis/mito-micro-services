@@ -43,7 +43,7 @@ const toDbError = (error: unknown) => {
   const code = (cause as { code?: unknown } | null)?.code
   return new DbError({
     cause,
-    message: cause instanceof Error ? cause.message : String(cause),
+    message: String(cause instanceof Error ? cause.message : cause),
     code: typeof code === "string" ? code : undefined,
   })
 }

@@ -16,7 +16,7 @@ links:
   - "[[tech-debt/crm/gestione-operatori]]"
   - "[[chore/migrazione-effect]]"
 created: 2026-10-23
-updated: 2026-10-27
+updated: 2026-10-28
 ---
 
 # Operatore
@@ -57,7 +57,7 @@ Un operatore **lavora** quando esiste, ha un utente e non è disattivato. È il 
 
 ### Errori
 
-Le procedure restituiscono un errore tipizzato (`Data.TaggedError`) mappato a tRPC in un solo punto (`operatorErrorToTrpc`). I codici stanno in `contactErrorCodes` di `@mito/domain`, leggibili in-process e via `BACKEND_URL`.
+Le procedure restituiscono un errore tipizzato (`Schema.TaggedError`) mappato a tRPC in un solo punto (`operatorErrorToTrpc`). I codici stanno in `contactErrorCodes` di `@mito/domain`, leggibili in-process e via `BACKEND_URL`.
 
 | Errore | Codice | tRPC | Messaggio |
 |---|---|---|---|

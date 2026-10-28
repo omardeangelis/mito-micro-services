@@ -7,7 +7,7 @@ links:
   - "[[chore/migrazione-effect]]"
   - "[[chore/manutenzione-dipendenze]]"
 created: 2026-10-27
-updated: 2026-10-27
+updated: 2026-10-28
 ---
 
 # Plan: Effect 4, vitest 5 e lo stile di Effect 4 (punto 1.1 della roadmap)
@@ -137,6 +137,7 @@ I test della PR 3 fanno da guardia. Cambiano solo nei nomi importati, mai nelle 
 | D15 | `Config` letto con un `ConfigProvider.fromEnv()` creato a ogni lettura in `storageLayer` e `importQueueChoice`; nei test, `ConfigProvider.fromEnv({ env })` al posto di `fromMap` | Tiene il comportamento di v3; `fromUnknown` con un oggetto annidato dà `None` (prova della verifica) |
 | D16 | vitest 5 con `pool: "threads"` (fuori dai fusi), `fakeTimers.toFake` e `exclude` di v1; `clearMocks` al default `true` | I default cambiati, misurati con prove su vitest 1.6 e 5 |
 | D17 | AC5, nella PR 3: `expect(await X)` → `expect(yield* X)` quando l'helper o il programma X diventa un `Effect` con lo stesso valore (anche `runServer(P)` → `P.pipe(provideServer, Effect.exit)` e Promise → `Fiber.join`), annotato in `eccezioni-pr3.txt` | Omar, 2026-10-27, dopo la revisione della PR 3: senza, gli helper dei test terrebbero runner a Promise, contro AC8 |
+| D18 | Un orologio a passi scritto a mano avanza solo sui millisecondi; i metodi in nanosecondi sono costanti (`apply.db.test.ts`, come già `concurrency.pg.test.ts`). `applyImport` e `lookupExisting` restano `Effect.fn` | Omar, 2026-10-28, dopo la revisione della PR 4: gli span di `Effect.fn` leggono i nanosecondi e consumavano il copione del test di D8. L'alternativa, `fnUntraced` nell'import, era una terza deviazione da D9 e toglieva la traccia in produzione |
 
 ## 5. Assunzioni e vincoli
 
@@ -875,7 +876,9 @@ G0 ─┬─ T1 ─ T2 ─ T3 ─┬─ T4 ─┬─ T7 ─ T8 ══ PR 1 in de
   9. **La PR verso `dev`** quando Omar la chiede, con la revisione di Leonardo (D4). La descrizione della PR dice che è un'eccezione approvata alla regola "solo il codice che la modifica tocca" (D7).
 - **validation**: tutti i punti annotati; REPORT SHIP.
 - **status**: In progress
-- **log**: 2026-10-27. Dopo il merge di T20a–c: `tsc` 0 errori; suite 330 file, 4504 verdi / 6 saltati; AC5 `ok, 48 test file(s) checked, 958 chain(s) compared, 321 exception(s) used`; AC11 `gen-wrappers` solo `transaction`; `api:build`, `api:smoke`.
+- **log**:
+  - 2026-10-27. Dopo il merge di T20a–c: `tsc` 0 errori; suite 330 file, 4504 verdi / 6 saltati; AC5 `ok, 48 test file(s) checked, 958 chain(s) compared, 321 exception(s) used`; AC11 `gen-wrappers` solo `transaction`; `api:build`, `api:smoke`.
+  - 2026-10-28. Punti 1–5 e 7 fatti. La revisione dice DO NOT SHIP per il test di D8 svuotato dagli span: corretto con D18, e il mutante di v4 ora fa fallire il test. Corretti anche i MINOR: `DbError.message` in stringa (test nuovo in `db.db.test.ts`), la precedenza fra `Effect.fn` e `fnUntraced` in `AGENTS.md` e nel §2, `operatore.md`, AC11 (73 su `dev`, `readSession` e `applyMigrations`), le note. Punto 8: lo script è tolto, e il sorgente resta nella storia di `dev` (`git show e7ead47:scripts/check-assertions.mjs`) invece che nelle note. Restano il punto 6 (serve un `.env.development.local`) e il 9 (Leonardo, D4).
 - **files edited/created**:
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a

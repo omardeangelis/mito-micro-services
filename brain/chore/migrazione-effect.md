@@ -13,7 +13,7 @@ links:
   - "[[specs/crm/analytics-effect/SPEC]]"
   - "[[specs/crm/export-chiamate/SPEC]]"
 created: 2026-10-22
-updated: 2026-10-27
+updated: 2026-10-28
 ---
 
 # Verso "solo Effect": servizi, bordo, trasporto
@@ -50,7 +50,7 @@ Valgono per ogni router portato a L1 e L2:
 3. **I test nuovi vanno sui servizi** (`services/<dominio>/_test/*.db.test.ts`, `*.pg.test.ts` per i lock). Sulle procedure restano solo i test di contratto: autorizzazione, codice e messaggio di ogni errore, forma della risposta. In L3 si riscrivono solo questi ultimi.
 4. **Gli input zod restano nelle procedure.** I tipi dei servizi non derivano da zod. Gli schemi zod di `@mito/domain` servono anche ai form della UI, e passarli a `Schema` è un lavoro a parte (§3).
 5. **Nessuna query Drizzle nei file `api/routers/**` o in `api/trpc.ts`.** Si controlla con un `git grep "from \"drizzle-orm\"" packages/server/src/api` che, a fine L2, deve restare vuoto.
-6. **Lo stile di Effect 4** (PR 4 di [[specs/crm/effect-4/PLAN]], regole in `AGENTS.md`): errori in `Schema.TaggedError`, servizi `Context.Service` con id `@mito/<pacchetto>/<percorso>/<Nome>` e layer statici (`layer`, varianti con un suffisso), funzioni con `Effect.fn("<area>.<nome>")` se esportate e `Effect.fnUntraced` per gli helper e i percorsi caldi.
+6. **Lo stile di Effect 4** (PR 4 di [[specs/crm/effect-4/PLAN]], regole in `AGENTS.md`): errori in `Schema.TaggedError`, servizi `Context.Service` con id `@mito/<pacchetto>/<percorso>/<Nome>` e layer statici (`layer`, varianti con un suffisso), o una costante `<nome>Layer` dove un layer statico farebbe un import circolare (`serverLayer`, `storageLayer`); funzioni con `Effect.fn("<area>.<nome>")` se esportate, anche quando un ciclo le chiama per ogni elemento, e `Effect.fnUntraced` per gli helper e i percorsi caldi. Esportate ma `fnUntraced`: `query` e `lockCustomer`, da cui passa ogni query, e `readSession` e `applyMigrations`, i cui test confrontano l'`Exit` intero. Un orologio scritto a mano nei test avanza solo sui millisecondi: gli span di `Effect.fn` leggono i nanosecondi.
 
 ## 3. L3: `HttpApi`
 

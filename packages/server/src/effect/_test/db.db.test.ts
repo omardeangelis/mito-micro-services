@@ -280,6 +280,24 @@ describe("query", () => {
         expect(exit).toEqual(Exit.succeed("23505"))
       })
   )
+
+  it.effect(
+    "un errore del driver con un message che non è una stringa è comunque un DbError",
+    () =>
+      Effect.gen(function* () {
+        const cause = Object.assign(new Error(), { message: 42 })
+
+        const exit = yield* query(() => Promise.reject(cause)).pipe(
+          Effect.catchTag("DbError", (error) =>
+            Effect.succeed([error.message, error.cause])
+          ),
+          provideServer,
+          Effect.exit
+        )
+
+        expect(exit).toEqual(Exit.succeed(["42", cause]))
+      })
+  )
 })
 
 // runTrpc is an edge: these tests go through its Promise interface, so they
