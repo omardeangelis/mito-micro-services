@@ -822,6 +822,34 @@ describe("CustomerChat, attesa dell'eliminazione", () => {
     )
   })
 
+  it("eliminata l'unica nota, la sezione legge il cliente prima delle note: non disegna la chat vuota e il focus va comunque ad 'Avvia una chat'", async () => {
+    backend.state.chats = { 3: [note(1, "Prima nota")] }
+    renderNotes(section("c-42"))
+    await screen.findByText("Prima nota")
+    const user = userEvent.setup()
+    // The customer answers late, after the notes would have
+    let arrive!: () => void
+    backend.state.customerGate = new Promise<void>((resolve) => {
+      arrive = resolve
+    })
+
+    await user.click(trash("Prima nota"))
+    await waitFor(() => expect(backend.state.deletes).toHaveLength(1))
+    act(() => backend.state.deletes[0]!.answer("deleted"))
+    await flush()
+
+    // The notes wait for the customer: the old chat stays as it was
+    expect(backend.state.chatReads).toHaveLength(1)
+    expect(screen.queryByText("0 / 0")).toBeNull()
+    expect(screen.getByText("Prima nota")).toBeTruthy()
+
+    act(() => arrive())
+
+    const start = await screen.findByRole("button", { name: "Avvia una chat" })
+    await waitFor(() => expect(document.activeElement).toBe(start))
+    expect(status().textContent).toBe("Nota eliminata")
+  })
+
   it("due note sparite con un solo aggiornamento: lo stato dice 'Note eliminate' e il focus va accanto all'ultima eliminata", async () => {
     const { reload, queryClient } = renderChat([
       note(1, "Prima nota"),
@@ -1342,10 +1370,23 @@ describe("CustomerChatSection, le note del cliente", () => {
     expect(await screen.findByText("Nota 7")).toBeTruthy()
     expect(screen.queryByText("Nota 2")).toBeNull()
     expect(screen.getByText("5 / 7")).toBeTruthy()
+    let arrive!: () => void
+    backend.state.chatGate = new Promise<void>((resolve) => {
+      arrive = resolve
+    })
 
     await user.click(
       screen.getByRole("button", { name: "Carica altri messaggi" })
     )
+    await waitFor(() => expect(backend.state.chatReads).toHaveLength(2))
+    await flush()
+
+    // While the longer list loads, the notes on screen stay
+    expect(screen.getByText("Nota 7")).toBeTruthy()
+    expect(screen.getByText("5 / 7")).toBeTruthy()
+    expect(document.querySelector('[data-slot="skeleton"]')).toBeNull()
+
+    act(() => arrive())
 
     // The section reads the longer list, which takes the place of the first
     expect(

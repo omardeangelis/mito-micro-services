@@ -210,7 +210,7 @@ describe("GET /api/v1/chat/:id", () => {
       })
   )
 
-  it.effect("un limit oltre 500 è rifiutato prima del servizio", () =>
+  it.effect("un limit oltre 500 non passa lo schema del contratto", () =>
     Effect.gen(function* () {
       const operator = yield* given(() => createOperator())
       const api = yield* clientAs(operator.userId)
@@ -311,16 +311,18 @@ describe("GET /api/v1/operator/:id", () => {
     })
   )
 
-  it.effect("un id oltre l'intero di Postgres è rifiutato, non un 500", () =>
-    Effect.gen(function* () {
-      const operator = yield* given(() => createOperator())
-      const api = yield* clientAs(operator.userId)
+  it.effect(
+    "un id oltre l'intero di Postgres non passa lo schema del contratto",
+    () =>
+      Effect.gen(function* () {
+        const operator = yield* given(() => createOperator())
+        const api = yield* clientAs(operator.userId)
 
-      const error = yield* Effect.flip(
-        api.operator.getOperatorById({ params: { id: 2_147_483_648 } })
-      )
+        const error = yield* Effect.flip(
+          api.operator.getOperatorById({ params: { id: 2_147_483_648 } })
+        )
 
-      assert.isFalse(isApiError(error))
-    })
+        assert.isFalse(isApiError(error))
+      })
   )
 })

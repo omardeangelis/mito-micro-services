@@ -1,4 +1,5 @@
 import {
+  type QueryClient,
   queryOptions,
   useMutation,
   useQuery,
@@ -58,6 +59,16 @@ export const useLoadChat = () => {
 }
 
 /**
+ * The customer, then its notes, read again, as `revalidatePath` refreshed
+ * them in one step: in this order, the section sees a chat gone with its last
+ * note (no `chatId`) before it could draw that chat empty
+ */
+const rereadCustomerAndChat = (queryClient: QueryClient) =>
+  queryClient
+    .invalidateQueries({ queryKey: customerKeys.all })
+    .then(() => queryClient.invalidateQueries({ queryKey: chatKeys.all }))
+
+/**
  * "Commenta" (`POST /chat/:id/messages`): the note saved, or null when the
  * backend saved none. Then the notes on screen are read again, as
  * `revalidatePath` of the server action did. The chat shows its failure
@@ -84,9 +95,7 @@ export const useInsertMessage = () => {
       void queryClient.invalidateQueries({ queryKey: chatKeys.all })
     },
     onError: (error) => {
-      if (error._tag !== "ChatMissing") return
-      void queryClient.invalidateQueries({ queryKey: customerKeys.all })
-      void queryClient.invalidateQueries({ queryKey: chatKeys.all })
+      if (error._tag === "ChatMissing") void rereadCustomerAndChat(queryClient)
     },
   })
 }
@@ -116,8 +125,7 @@ export const useDeleteMessage = () => {
       ),
     meta: { toastErrors: false },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: customerKeys.all })
-      void queryClient.invalidateQueries({ queryKey: chatKeys.all })
+      void rereadCustomerAndChat(queryClient)
     },
   })
 }

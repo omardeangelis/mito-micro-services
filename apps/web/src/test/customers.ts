@@ -267,6 +267,8 @@ export function fakeCustomers(
     chatReads: [] as { id: number; limit: number | undefined }[],
     /** While set, the reads of the notes wait for it */
     chatGate: undefined as Promise<void> | undefined,
+    /** While set, the detail of a customer waits for it */
+    customerGate: undefined as Promise<void> | undefined,
     /** The authors looked up, in order */
     operatorReads: [] as number[],
     /** While set, the lookup of an author waits for it */
@@ -381,8 +383,12 @@ export function fakeCustomers(
           Effect.sync(() => state.files.map((fileName) => ({ fileName })))
         )
         .handle("getCustomerById", ({ params }) =>
-          Effect.sync(
-            () => state.customers.find(({ id }) => id === params.id) ?? null
+          Effect.promise(() => state.customerGate ?? Promise.resolve()).pipe(
+            Effect.andThen(
+              Effect.sync(
+                () => state.customers.find(({ id }) => id === params.id) ?? null
+              )
+            )
           )
         )
         .handle("getAllPraticaByCustomer", ({ params }) =>
