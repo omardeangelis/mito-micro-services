@@ -1,5 +1,8 @@
 import { type ApiFailure } from "./runtime"
 
+/** What a call to the backend fails with, for the code out of `src/api` */
+export type { ApiFailure }
+
 /**
  * The text the user reads for a failed call (F8, H13), as
  * `describeContactError` of the Next.js app: one case per error of the

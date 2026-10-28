@@ -11,7 +11,7 @@ import {
 // are invalidated (§6 of brain/chore/migrazione-frontend-react.md)
 
 /** An href of the same origin, absolute or not, as the path React Router takes */
-const toPath = (href: string) => {
+export const toPath = (href: string) => {
   const url = new URL(href, window.location.href)
   return url.origin === window.location.origin
     ? `${url.pathname}${url.search}${url.hash}`
