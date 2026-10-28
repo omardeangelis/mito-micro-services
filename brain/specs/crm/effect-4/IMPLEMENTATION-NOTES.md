@@ -84,10 +84,11 @@
 
 ## Remaining Work
 
-- **PR 1** (in `dev`, [#114](https://github.com/omardeangelis/mito-micro-services/pull/114)): la prova nel browser su `mito_local` e la revisione di Leonardo (D4) sui file dell'auth, rinviate; AC15 su staging.
+- **PR 1:** in `dev` ([#114](https://github.com/omardeangelis/mito-micro-services/pull/114)). La prova nel browser su `mito_local` è quella del 2026-10-28, fatta sul branch della PR 4 che contiene la PR 1. La revisione di Leonardo (D4) non è più obbligatoria.
 - **PR 2:** in `dev` ([#113](https://github.com/omardeangelis/mito-micro-services/pull/113)).
 - **PR 3:** in `dev` ([#116](https://github.com/omardeangelis/mito-micro-services/pull/116)).
-- **PR 4** (`claude/effect-style`, da `dev` `e7ead47`): T18–T21 fatti, correzioni della revisione fatte, prova su `mito_local` verde (2026-10-28). La revisione di Leonardo non è più obbligatoria (Omar, 2026-10-28). Resta la PR verso `dev`, con D7 nella descrizione.
+- **PR 4:** in `dev` ([#121](https://github.com/omardeangelis/mito-micro-services/pull/121), 2026-10-28), con D7 nella descrizione. Prima del merge `dev` è entrata nel branch con la fase 2 di HttpApi (#117–#120): `packages/server/src/http/`, `apps/api/src/httpApi.ts` e `apps/web/src/api/runtime.ts` sono passati allo stile della PR 4 (H1 di [[chore/fase-2-httpapi]]), e il test `betterAuth/_test/hosts.db.test.ts` ha preso i nomi nuovi senza cambiare le asserzioni.
+- **AC15:** resta, su staging, dopo il deploy del merge della #121: `/health`, un cron lanciato a mano, login e pagine con `BACKEND_URL`, un import di prova.
 
 ## PR 2 – vitest 5
 
