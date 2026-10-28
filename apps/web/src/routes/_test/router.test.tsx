@@ -131,9 +131,32 @@ describe("le rotte (§5)", () => {
   })
 
   it.each([
+    ["/dashboard/customers/new", "Nuovo cliente"],
+    ["/dashboard/customers/customer-1", "Scheda Cliente"],
+  ])(
+    "un link diretto a %s apre la sua pagina (3.1)",
+    async (path, title) => {
+      const customers = fakeCustomers()
+      window.history.replaceState(null, "", path)
+      const router = createBrowserRouter(routes)
+      onTestFinished(() => {
+        router.dispose()
+        window.history.replaceState(null, "", "/")
+      })
+      renderWithApi(<RouterProvider router={router} />, {
+        handlers: Layer.merge(backend.handlers, customers.handlers),
+        auth: backend.auth,
+      })
+
+      expect(
+        await screen.findByText(title, {}, { timeout: 5000 })
+      ).toBeInTheDocument()
+    },
+    10000
+  )
+
+  it.each([
     ["/dashboard", "Home", "3.5"],
-    ["/dashboard/customers/new", "Nuovo customer", "3.1"],
-    ["/dashboard/customers/42", "Customer", "3.1"],
     ["/dashboard/customers/42/connect", "Collega il customer", "3.1"],
     ["/dashboard/contatti", "Contatti", "3.2"],
     ["/dashboard/contatti/76006", "Contatto", "3.2"],

@@ -23,10 +23,15 @@ export const showApiError = (error: ApiFailure) => {
  */
 export const makeQueryClient = () =>
   new QueryClient({
-    // A query with `meta.toastErrors: false` shows its failures itself
+    // A query with `meta.toastErrors: false` shows its failures itself; one
+    // with "withData" only when it has data, since without it goes to the
+    // error of the route (`routeErrorWhenEmpty`)
     queryCache: new QueryCache({
       onError: (error, query) => {
-        if (query.meta?.toastErrors !== false) showApiError(error)
+        const toastErrors = query.meta?.toastErrors
+        if (toastErrors === false) return
+        if (toastErrors === "withData" && query.state.data === undefined) return
+        showApiError(error)
       },
     }),
     mutationCache: new MutationCache({ onError: showApiError }),
@@ -37,3 +42,14 @@ export const makeQueryClient = () =>
       },
     },
   })
+
+/**
+ * The options of a query a page can't show without: its first failure goes
+ * to the error of the route, without a toast; a later one leaves the data on
+ * screen, with the toast
+ */
+export const routeErrorWhenEmpty = {
+  meta: { toastErrors: "withData" },
+  throwOnError: (_error: unknown, query: { state: { data: unknown } }) =>
+    query.state.data === undefined,
+} as const

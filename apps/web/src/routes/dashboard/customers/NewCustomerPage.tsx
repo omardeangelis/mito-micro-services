@@ -1,5 +1,15 @@
-import { PagePlaceholder } from "@/routes/_components/PagePlaceholder"
+import { NewCustomerForm } from "./new/_components/NewCustomerForm"
 
 export function Component() {
-  return <PagePlaceholder title="Nuovo customer" task="3.1" />
+  return (
+    <div className="dashbaord-layout">
+      <div className="relative">
+        <div className="dashboard-content">
+          <div className="rounded-lg border border-neutral-200 p-4">
+            <NewCustomerForm />
+          </div>
+        </div>
+      </div>
+    </div>
+  )
 }
