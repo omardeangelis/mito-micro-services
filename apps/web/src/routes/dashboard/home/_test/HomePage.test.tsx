@@ -1,6 +1,7 @@
 import { act, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { describe, expect, it } from "vitest"
+import { formatBigNumberWithCurrency } from "@mito/client/format"
 import { fakeHome } from "@/test/home"
 import { practiceRow } from "@/test/pratiche"
 import { renderHome } from "./page"
@@ -59,6 +60,35 @@ describe("HomePage, il periodo dell'indirizzo (AC11)", () => {
     await waitFor(() => expect(backend.state.totalReads).toContain("90d"))
     expect(backend.state.averageReads).toContain("90d")
     await waitFor(() => expect(selector()).toBe("90d"))
+  })
+
+  it("mentre il nuovo periodo arriva tutte le card restano sul periodo di prima, poi cambiano insieme", async () => {
+    const backend = fakeHome({
+      average: { reference: 5_000, comparison: 4_000 },
+      branches: [{ data: "Roma", total: 150_000 }],
+    })
+    const { router } = renderHome("/dashboard", backend, { role: "ADMIN" })
+    await screen.findByText("Roma")
+    // The amount the card of the average shows
+    const average = () =>
+      screen
+        .getByText("Finanziato medio per pratica")
+        .parentElement?.querySelector(".text-2xl")?.textContent
+
+    backend.state.average = { reference: 9_000, comparison: 4_000 }
+    backend.state.branches = [{ data: "Torino", total: 300 }]
+    const release = backend.holdBranches()
+    await act(() => router.navigate("/dashboard?tf=90d"))
+    await waitFor(() => expect(backend.state.averageReads).toContain("90d"))
+
+    // The average of 90d is there, the branches not yet: the row stays on 30d
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    expect(average()).toBe(formatBigNumberWithCurrency(5_000))
+    expect(screen.getByText("Roma")).toBeInTheDocument()
+
+    release()
+    expect(await screen.findByText("Torino")).toBeInTheDocument()
+    expect(average()).toBe(formatBigNumberWithCurrency(9_000))
   })
 
   it("con indietro torna al periodo di prima", async () => {
@@ -142,6 +172,12 @@ describe("HomePage, le card dell'operatore", () => {
       "10/02/2026",
       "12/03/2026",
     ])
+  })
+
+  it("se non si sa chi è l'utente, perché `/me` è fallito, mostra l'errore della rotta", async () => {
+    renderHome("/dashboard", fakeHome(), { role: undefined })
+
+    expect(await screen.findByText("errore della rotta")).toBeTruthy()
   })
 
   it("se le card non arrivano mostra l'errore della rotta", async () => {

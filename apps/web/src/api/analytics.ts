@@ -1,4 +1,4 @@
-import { keepPreviousData, useQuery } from "@tanstack/react-query"
+import { useQuery } from "@tanstack/react-query"
 import { Effect } from "effect"
 import { type TimeFrame } from "@mito/contract/analytics"
 import { useRun } from "./ApiProvider"
@@ -20,8 +20,8 @@ export const analyticsKeys = {
 // The cards of "Analisi Andamento": the page can't show them without their
 // numbers, so a first failure goes to the error of the route, as a failed
 // server component of the Next.js app (`routeErrorWhenEmpty`). While another
-// time frame loads, the cards keep the numbers of the one before, as the
-// transition of the Next.js app did
+// time frame loads, the row of cards keeps showing the one before
+// (`DataSection`)
 
 /** The amount financed in the time frame and in the one before it, summed */
 export const useFinancedTotal = (timeFrame: TimeFrame) => {
@@ -38,7 +38,6 @@ export const useFinancedTotal = (timeFrame: TimeFrame) => {
         }),
         signal
       ),
-    placeholderData: keepPreviousData,
     ...routeErrorWhenEmpty,
   })
 }
@@ -58,7 +57,6 @@ export const useFinancedAverage = (timeFrame: TimeFrame) => {
         }),
         signal
       ),
-    placeholderData: keepPreviousData,
     ...routeErrorWhenEmpty,
   })
 }
@@ -78,7 +76,6 @@ export const useFinancedByBranch = (timeFrame: TimeFrame) => {
         }),
         signal
       ),
-    placeholderData: keepPreviousData,
     ...routeErrorWhenEmpty,
   })
 }

@@ -88,6 +88,8 @@ export function fakeHome(
     failingCards: false,
     // The calls don't answer: a 500
     failingCalls: false,
+    // The branches answer once this settles (`holdBranches`)
+    branchesHeld: undefined as Promise<void> | undefined,
   }
 
   const card = <A>(read: () => A) =>
@@ -115,10 +117,14 @@ export function fakeHome(
           })
         )
         .handle("getFinancedByBranch", ({ query }) =>
-          card(() => {
-            state.branchReads.push(query.timeFrame ?? "30d")
-            return state.branches
-          })
+          Effect.promise(() => state.branchesHeld ?? Promise.resolve()).pipe(
+            Effect.andThen(
+              card(() => {
+                state.branchReads.push(query.timeFrame ?? "30d")
+                return state.branches
+              })
+            )
+          )
         )
         .handle("getContactProgress", () =>
           card(() => {
@@ -151,5 +157,17 @@ export function fakeHome(
         .handle("updateCustomerPreview", unserved)
     )
   )
-  return { state, handlers }
+  /** Holds the answers of the branches until the function it returns runs */
+  const holdBranches = () => {
+    let resolve: (() => void) | undefined
+    state.branchesHeld = new Promise((settle) => {
+      resolve = settle
+    })
+    return () => {
+      state.branchesHeld = undefined
+      resolve?.()
+    }
+  }
+
+  return { state, handlers, holdBranches }
 }

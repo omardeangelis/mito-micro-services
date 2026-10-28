@@ -22,7 +22,7 @@ export function Component() {
   }, [searchParams])
 
   return (
-    <main className="dashabord-container">
+    <section className="dashabord-container">
       <div className="dashabord-layout">
         <div className="relative h-[inherit]">
           <div className="dashboard-content rounded-lg bg-white">
@@ -48,6 +48,6 @@ export function Component() {
           </div>
         </div>
       </div>
-    </main>
+    </section>
   )
 }

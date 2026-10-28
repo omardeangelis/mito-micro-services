@@ -11,13 +11,15 @@ import { Component as HomePage } from "../HomePage"
  * Renders the home at `path`, on the history of the browser, so
  * `window.location` follows the navigations as in the app: the other
  * addresses show "altra pagina", an error of a route "errore della rotta".
- * The signed-in operator is Ada (7)
+ * The signed-in operator is Ada (7). With `role: undefined` the page doesn't
+ * know the role, as when `GET /me` failed: the fake backend doesn't serve it
  */
 export function renderHome(
   path: string,
   backend: ReturnType<typeof fakeHome>,
-  { role = "OPERATORE" }: { role?: Role } = {}
+  options: { role?: Role | undefined } = {}
 ) {
+  const role = "role" in options ? options.role : "OPERATORE"
   window.history.replaceState(null, "", path)
   const router = createBrowserRouter([
     {
@@ -38,7 +40,7 @@ export function renderHome(
       <UserPreferenceContext value={store}>
         <RouterProvider router={router} />
       </UserPreferenceContext>,
-      { handlers: backend.handlers, auth: signedInAs(ada, role) }
+      { handlers: backend.handlers, auth: signedInAs(ada, role ?? "OPERATORE") }
     ),
   }
 }
