@@ -44,7 +44,7 @@ export const routes: RouteObject[] = [
         children: [
           {
             index: true,
-            lazy: () => import("./routes/dashboard/DashboardHome"),
+            lazy: () => import("./routes/dashboard/home/HomePage"),
           },
           {
             path: "customers",

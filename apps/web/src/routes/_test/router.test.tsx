@@ -11,6 +11,7 @@ import { Layer } from "effect"
 import { ada, fakeMe, renderWithApi } from "@/test/api"
 import { contactDetail, fakeContacts } from "@/test/contacts"
 import { fakeCustomers } from "@/test/customers"
+import { fakeHome } from "@/test/home"
 import { fakePratiche } from "@/test/pratiche"
 
 const captureException = vi.hoisted(() => vi.fn())
@@ -30,16 +31,25 @@ vi.mock("@/lib/authClient", () => ({
 // The current user of `GET /api/v1/me` (2.2.2)
 let backend = fakeMe({})
 
+// The current user, and the home of the dashboard (3.5) where most routes
+// land
 const open = (path: string) => {
   const router = createMemoryRouter(routes, { initialEntries: [path] })
   renderWithApi(<RouterProvider router={router} />, {
-    handlers: backend.handlers,
+    handlers: Layer.merge(backend.handlers, fakeHome().handlers),
     auth: backend.auth,
   })
   return router
 }
 
 const heading = () => screen.findByRole("heading", { level: 1 })
+
+/**
+ * The home of the dashboard, once it is on screen: after the first import of
+ * the page and its charts, in a cold test run
+ */
+const home = () =>
+  screen.findByRole("heading", { name: "Analisi Andamento" }, { timeout: 5000 })
 
 afterEach(() => {
   backend = fakeMe({})
@@ -80,7 +90,7 @@ describe("la sessione (F6)", () => {
   it("con una sessione /login porta alla dashboard", async () => {
     const router = open("/login")
 
-    expect(await heading()).toHaveTextContent("Home")
+    expect(await home()).toBeInTheDocument()
     expect(router.state.location.pathname).toBe("/dashboard")
   })
 })
@@ -89,7 +99,7 @@ describe("le rotte (§5)", () => {
   it("/ porta a /dashboard", async () => {
     const router = open("/")
 
-    expect(await heading()).toHaveTextContent("Home")
+    expect(await home()).toBeInTheDocument()
     expect(router.state.location.pathname).toBe("/dashboard")
   })
 
@@ -244,14 +254,18 @@ describe("le rotte (§5)", () => {
     15000
   )
 
-  it.each([
-    ["/dashboard", "Home", "3.5"],
-    ["/dashboard/import", "Import", "3.6"],
-  ])("un link diretto a %s apre la sua pagina", async (path, title, task) => {
-    open(path)
+  it("un link diretto a /dashboard apre la home (3.5)", async () => {
+    open("/dashboard")
 
-    expect(await heading()).toHaveTextContent(title)
-    expect(screen.getByText(`Arriva con il task ${task}`)).toBeInTheDocument()
+    expect(await home()).toBeInTheDocument()
+    expect(screen.getByRole("navigation")).toBeInTheDocument()
+  })
+
+  it("un link diretto a /dashboard/import apre la sua pagina", async () => {
+    open("/dashboard/import")
+
+    expect(await heading()).toHaveTextContent("Import")
+    expect(screen.getByText("Arriva con il task 3.6")).toBeInTheDocument()
     expect(screen.getByRole("navigation")).toBeInTheDocument()
   })
 
@@ -259,7 +273,7 @@ describe("le rotte (§5)", () => {
     backend = fakeMe({ role: "ADMIN" })
     const user = userEvent.setup()
     const router = open("/dashboard")
-    await heading()
+    await home()
 
     await user.click(screen.getByRole("link", { name: "Import" }))
 
@@ -284,7 +298,7 @@ describe("il menu per ruolo (2.2.2)", () => {
   ] as const)("per un %s il link a Import c'è: %s", async (role, hasImport) => {
     backend = fakeMe({ role })
     open("/dashboard")
-    await heading()
+    await home()
 
     const nav = screen.getByRole("navigation")
     expect(within(nav).queryByRole("link", { name: "Import" }) !== null).toBe(

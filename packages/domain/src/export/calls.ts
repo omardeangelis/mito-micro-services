@@ -51,7 +51,10 @@ export type OperatorCalls = CallTotals & {
 }
 
 /** The calls export of a period: one row per operator with calls, and the totals. */
-export type CallStats = { rows: OperatorCalls[]; totals: CallTotals }
+export type CallStats = {
+  rows: readonly OperatorCalls[]
+  totals: CallTotals
+}
 
 const byName = (a: OperatorCalls, b: OperatorCalls) =>
   a.surname.localeCompare(b.surname, "it") ||
