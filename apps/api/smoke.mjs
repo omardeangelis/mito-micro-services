@@ -21,6 +21,10 @@ const child = spawn(
       // better-auth stops without them, and adds Microsoft only with the
       // three Azure ones
       BETTER_AUTH_URL: "https://smoke.example.it",
+      // Two frontends, neither the 127.0.0.1 this script calls: the backend
+      // reads the session on the principal address instead of failing
+      // (spec auth-due-frontend, AC8 and AC11)
+      BETTER_AUTH_ALLOWED_HOSTS: "smoke.example.it,web.smoke.example.it",
       BETTER_AUTH_SECRET: "smoke-placeholder-of-at-least-32-chars",
       AZURE_AD_CLIENT_ID: "smoke-placeholder",
       AZURE_AD_CLIENT_SECRET: "smoke-placeholder",
@@ -63,6 +67,10 @@ await expect("/api/v1/me", 401)
 // better-auth's routes, without a cookie: they answer without the database.
 // The session of NextAuth's shape, for the frontend of the deploy before (D16)
 await expect("/api/auth/get-session", 200)
+const session = await fetch(`http://127.0.0.1:${port}/api/auth/get-session`)
+const body = await session.text()
+if (body !== "null")
+  fail(`/api/auth/get-session answered ${body}, expected null`)
 await expect("/api/auth/session", 200)
 // Outside the allowlist of authHandler (D9)
 await expect("/api/auth/providers", 404)
