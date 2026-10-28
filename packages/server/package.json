@@ -8,6 +8,7 @@
     "./*": "./src/*.ts"
   },
   "dependencies": {
+    "@mito/contract": "workspace:*",
     "@mito/db": "workspace:*",
     "@mito/domain": "workspace:*",
     "@mito/env": "workspace:*"
