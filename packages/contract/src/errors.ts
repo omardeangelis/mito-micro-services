@@ -73,6 +73,16 @@ export class HandoverSameOperator extends Schema.TaggedError<HandoverSameOperato
   { httpApiStatus: 400 }
 ) {}
 
+/**
+ * A customer of a bulk assignment doesn't exist (tRPC BAD_REQUEST, "Cliente
+ * non trovato: <id>"): the customers before it stay assigned.
+ */
+export class CustomerMissing extends Schema.TaggedError<CustomerMissing>()(
+  "CustomerMissing",
+  { customerId: Schema.NullOr(Schema.String) },
+  { httpApiStatus: 400 }
+) {}
+
 const apiErrors = [
   Unauthorized,
   NotAnOperator,
@@ -82,6 +92,7 @@ const apiErrors = [
   CustomerNotFound,
   CustomerAssignmentForbidden,
   HandoverSameOperator,
+  CustomerMissing,
 ] as const
 
 /** An error some endpoint declares. */
