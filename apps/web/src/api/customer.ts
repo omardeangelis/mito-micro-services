@@ -36,6 +36,12 @@ export const customerKeys = {
     [...customerKeys.all, "getCustomerById", { id }] as const,
   practices: (id: string) =>
     [...customerKeys.all, "getAllPraticaByCustomer", { id }] as const,
+  ofPractice: (praticaId: string) =>
+    [
+      ...customerKeys.all,
+      "getAllCustomerForPratica",
+      { id: praticaId },
+    ] as const,
 }
 
 /** The codes `getCustomersByFiscalCodeOrVatCode` looks for */
@@ -251,6 +257,23 @@ export const useCustomerPractices = (id: string) =>
       client.customer.getAllPraticaByCustomer({ params: { id } })
     )
   )
+
+/**
+ * The customers of a practice, with their operator and role
+ * (`GET /customer/by-practice/:id`): the detail of a practice can't show
+ * without them
+ */
+export const usePracticeCustomers = (
+  praticaId: string,
+  { enabled = true }: { enabled?: boolean } = {}
+) =>
+  useQuery({
+    ...optionQuery(useRun(), customerKeys.ofPractice(praticaId), (client) =>
+      client.customer.getAllCustomerForPratica({ params: { id: praticaId } })
+    ),
+    ...routeErrorWhenEmpty,
+    enabled,
+  })
 
 /** The customers with one of the codes (`GET /customer/by-code`) */
 export const customersByCodeOptions = (run: Run, codes: CustomerCodesInput) =>
