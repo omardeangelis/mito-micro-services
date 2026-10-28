@@ -18,7 +18,7 @@ import { unexpectedAs500 } from "./unexpected"
  * operator. No session is 401 `Unauthorized`, a user without an operator
  * 400 `NotAnOperator`, a deactivated one 401 `OperatorDisabled`, as in tRPC
  */
-export const AuthenticatedLive = Layer.effect(
+export const authenticatedLayer = Layer.effect(
   Authenticated,
   Effect.gen(function* () {
     const sessions = yield* SessionReader

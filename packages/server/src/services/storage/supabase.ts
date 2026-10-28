@@ -53,11 +53,13 @@ const call = <A, E>(
       : Effect.fail(onError(result.error))
   )
 
-export const makeSupabaseStorageLayer = (
+export const supabaseStorageLayer = (
   options: SupabaseStorageOptions
 ): Layer.Layer<Storage> =>
   Layer.sync(Storage, () =>
-    supabaseService(options.client().storage.from(options.bucket), options)
+    Storage.of(
+      supabaseService(options.client().storage.from(options.bucket), options)
+    )
   )
 
 type Bucket = ReturnType<SupabaseClient["storage"]["from"]>
@@ -99,65 +101,63 @@ const supabaseService = (
   }
 
   return {
-    upload: (input) =>
-      Effect.gen(function* () {
-        yield* assertMaxBytes(input.body, options.maxUploadBytes)
-        // cacheControl and metadata are not passed: Supabase reads them differently
-        yield* call(
-          () =>
-            bucket.upload(input.key, input.body, {
-              contentType: input.contentType,
-              upsert: true,
-            }),
-          (cause) =>
-            new StorageUploadError({
-              key: input.key,
-              message: `Upload of "${input.key}" failed`,
-              cause,
-            })
-        )
-        return { key: input.key }
-      }),
+    upload: Effect.fn("storage.upload")(function* (input) {
+      yield* assertMaxBytes(input.body, options.maxUploadBytes)
+      // cacheControl and metadata are not passed: Supabase reads them differently
+      yield* call(
+        () =>
+          bucket.upload(input.key, input.body, {
+            contentType: input.contentType,
+            upsert: true,
+          }),
+        (cause) =>
+          new StorageUploadError({
+            key: input.key,
+            message: `Upload of "${input.key}" failed`,
+            cause,
+          })
+      )
+      return { key: input.key }
+    }),
 
-    download: (key) =>
-      Effect.gen(function* () {
-        const result = yield* Effect.tryPromise({
-          try: () => bucket.download(key),
-          catch: (cause) =>
-            new StorageDownloadError({
-              key,
-              message: `Download of "${key}" failed`,
-              cause,
-            }),
-        })
-        if (result.error) {
-          return yield* isNotFound(result.error)
-            ? Effect.fail(
-                new StorageNotFoundError({
-                  key,
-                  message: `No object at "${key}"`,
-                  cause: result.error,
-                })
-              )
-            : Effect.fail(
-                new StorageDownloadError({
-                  key,
-                  message: `Download of "${key}" failed`,
-                  cause: result.error,
-                })
-              )
-        }
-        const blob = result.data
-        return yield* Effect.tryPromise({
-          try: async () => new Uint8Array(await blob.arrayBuffer()),
-          catch: (cause) =>
-            new StorageDownloadError({
-              key,
-              message: `Download of "${key}" failed`,
-              cause,
-            }),
-        })
-      }),
+    download: Effect.fn("storage.download")(function* (key) {
+      const result = yield* Effect.tryPromise({
+        try: () => bucket.download(key),
+        catch: (cause) =>
+          new StorageDownloadError({
+            key,
+            message: `Download of "${key}" failed`,
+            cause,
+          }),
+      })
+      if (result.error) {
+        return yield* isNotFound(result.error)
+          ? Effect.fail(
+              new StorageNotFoundError({
+                key,
+                message: `No object at "${key}"`,
+                cause: result.error,
+              })
+            )
+          : Effect.fail(
+              new StorageDownloadError({
+                key,
+                message: `Download of "${key}" failed`,
+                cause: result.error,
+              })
+            )
+      }
+      const blob = result.data
+      return yield* Effect.tryPromise({
+        try: async () => new Uint8Array(await blob.arrayBuffer()),
+        catch: (cause) =>
+          new StorageDownloadError({
+            key,
+            message: `Download of "${key}" failed`,
+            cause,
+          }),
+      })
+    }),
 
     exists: (key) =>
       list(key).pipe(
@@ -186,22 +186,21 @@ const supabaseService = (
       ),
 
     // One folder only: Supabase does not list recursively
-    removeByPrefix: (prefix) =>
-      Effect.gen(function* () {
-        yield* assertDeletablePrefix(prefix)
-        const objects = yield* list(prefix)
-        if (objects.length === 0) return 0
-        const keys = objects.map((object) => object.key)
-        yield* call(
-          () => bucket.remove(keys),
-          (cause) =>
-            new StorageDeleteError({
-              message: `Delete under "${prefix}" failed`,
-              cause,
-            })
-        )
-        return keys.length
-      }),
+    removeByPrefix: Effect.fn("storage.removeByPrefix")(function* (prefix) {
+      yield* assertDeletablePrefix(prefix)
+      const objects = yield* list(prefix)
+      if (objects.length === 0) return 0
+      const keys = objects.map((object) => object.key)
+      yield* call(
+        () => bucket.remove(keys),
+        (cause) =>
+          new StorageDeleteError({
+            message: `Delete under "${prefix}" failed`,
+            cause,
+          })
+      )
+      return keys.length
+    }),
 
     list: (prefix, listOptions) => list(prefix, listOptions?.limit),
 

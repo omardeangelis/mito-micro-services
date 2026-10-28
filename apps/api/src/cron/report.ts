@@ -8,16 +8,6 @@ export type CronOutcome = {
   counters: Record<string, number>
 }
 
-/**
- * Tells the team about every cron call, succeeded, failed or skipped: the
- * channel is the record of what runs and when, so a missing message is a
- * signal too. It never fails: a report must not break the job it tells about.
- */
-export class CronReport extends Context.Service<
-  CronReport,
-  { readonly send: (outcome: CronOutcome) => Effect.Effect<void> }
->()("CronReport") {}
-
 const ICONS = {
   succeeded: ":white_check_mark:",
   failed: ":rotating_light:",
@@ -50,39 +40,55 @@ const logOutcome = (outcome: CronOutcome) =>
     })
   )
 
-/** Writes each outcome to the log only. */
-export const logReport = Layer.succeed(CronReport, { send: logOutcome })
+/**
+ * Tells the team about every cron call, succeeded, failed or skipped: the
+ * channel is the record of what runs and when, so a missing message is a
+ * signal too. It never fails: a report must not break the job it tells about.
+ */
+export class CronReport extends Context.Service<
+  CronReport,
+  { readonly send: (outcome: CronOutcome) => Effect.Effect<void> }
+>()("@mito/api/cron/CronReport") {
+  /** Writes each outcome to the log only. */
+  static readonly layerLog = Layer.succeed(
+    CronReport,
+    CronReport.of({ send: logOutcome })
+  )
 
-/** Writes each outcome to the log and posts it to a Slack webhook. */
-export const slackReport = ({
-  webhookUrl,
-  environment,
-}: {
-  webhookUrl: string
-  environment: string
-}) =>
-  Layer.succeed(CronReport, {
-    send: (outcome) =>
-      logOutcome(outcome).pipe(
-        Effect.andThen(
-          Effect.tryPromise(() =>
-            fetch(webhookUrl, {
-              method: "POST",
-              headers: { "content-type": "application/json" },
-              body: JSON.stringify({
-                text: formatReport(environment, outcome),
-              }),
-              signal: AbortSignal.timeout(5_000),
-            })
-          )
-        ),
-        Effect.flatMap((response) =>
-          response.ok
-            ? Effect.void
-            : Effect.fail(new Error(`Slack answered ${response.status}`))
-        ),
-        Effect.catch((error) =>
-          Effect.logWarning("Cron report not sent to Slack", error)
-        )
-      ),
-  })
+  /** Writes each outcome to the log and posts it to a Slack webhook. */
+  static readonly layerSlack = ({
+    webhookUrl,
+    environment,
+  }: {
+    webhookUrl: string
+    environment: string
+  }) =>
+    Layer.succeed(
+      CronReport,
+      CronReport.of({
+        send: (outcome) =>
+          logOutcome(outcome).pipe(
+            Effect.andThen(
+              Effect.tryPromise(() =>
+                fetch(webhookUrl, {
+                  method: "POST",
+                  headers: { "content-type": "application/json" },
+                  body: JSON.stringify({
+                    text: formatReport(environment, outcome),
+                  }),
+                  signal: AbortSignal.timeout(5_000),
+                })
+              )
+            ),
+            Effect.flatMap((response) =>
+              response.ok
+                ? Effect.void
+                : Effect.fail(new Error(`Slack answered ${response.status}`))
+            ),
+            Effect.catch((error) =>
+              Effect.logWarning("Cron report not sent to Slack", error)
+            )
+          ),
+      })
+    )
+}

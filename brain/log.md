@@ -348,6 +348,13 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 - Impact: critical
 - Verifiers: 11 (0 blocker, 5 major: un test con fibre staccate sotto `it.effect`, AC5 allargato senza la firma di Omar, `AGENTS.md`, il §8, le tabelle `each` per nome nello script; 9 passate su 11 SHIP)
 
+## [2026-10-28] review | Effect 4, PR 4 (lo stile di Effect 4)
+- Report: [[specs/crm/effect-4/REPORT]]
+- Scope: spec
+- Verdict: DO NOT SHIP
+- Impact: critical
+- Verifiers: 10 (0 blocker, 1 major: gli span di `Effect.fn` consumano l'orologio a passi di `apply.db.test.ts` e svuotano un test di D8; 9 passate su 10 SHIP)
+
 ## [2026-10-28] spec | Login di better-auth da due frontend sullo stesso backend
 - Created spec: [[specs/crm/auth-due-frontend/SPEC]]
 - Domain: crm

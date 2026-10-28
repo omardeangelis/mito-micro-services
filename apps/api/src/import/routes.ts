@@ -1,4 +1,4 @@
-import { Cause, Data, Effect, Exit, type Layer, Option } from "effect"
+import { Cause, Effect, Exit, type Layer, Option, Schema } from "effect"
 import { type Context, Hono } from "hono"
 import { type Db, type DbError } from "@mito/server/effect/db"
 import { type ImportConfig } from "@mito/server/services/import/config"
@@ -10,7 +10,10 @@ import { type ImportQueue } from "@mito/server/services/import/queue"
 import { executeImport, purgeUpload } from "@mito/server/services/import/run"
 import { ImportAuth } from "./auth"
 
-class UnknownTask extends Data.TaggedError("UnknownTask") {}
+class UnknownTask extends Schema.TaggedError<UnknownTask>()(
+  "UnknownTask",
+  {}
+) {}
 
 export type ImportRouteContext = ImportAuth | Db | ImportConfig | ImportQueue
 

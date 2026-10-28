@@ -72,41 +72,44 @@ export const createUpload = (input: {
  * start, so no rows stay; if the queue doesn't take the cleanup, they go at
  * once.
  */
-export const beginUpload = (input: Parameters<typeof createUpload>[0]) =>
-  Effect.gen(function* () {
-    const queue = yield* ImportQueue
-    if (!queue.available) return yield* new ImportUnavailable()
-    const { uploadTtlMs } = yield* ImportConfig
-    const uploadId = yield* createUpload(input)
-    const at = new Date((yield* Clock.currentTimeMillis) + uploadTtlMs)
-    yield* queue
-      .enqueue({ kind: "purge", uploadId, at })
-      .pipe(Effect.tapError(() => deleteUpload(uploadId)))
-    return uploadId
-  })
+export const beginUpload = Effect.fn("import.beginUpload")(function* (
+  input: Parameters<typeof createUpload>[0]
+) {
+  const queue = yield* ImportQueue
+  if (!queue.available) return yield* new ImportUnavailable()
+  const { uploadTtlMs } = yield* ImportConfig
+  const uploadId = yield* createUpload(input)
+  const at = new Date((yield* Clock.currentTimeMillis) + uploadTtlMs)
+  yield* queue
+    .enqueue({ kind: "purge", uploadId, at })
+    .pipe(Effect.tapError(() => deleteUpload(uploadId)))
+  return uploadId
+})
 
 /**
  * The admin's upload, locked until the transaction ends: a part, the start of
  * the import and the cleanup lock it, so a part can't arrive once the import
  * has it (D14).
  */
-export const lockUpload = (uploadId: string, createdBy: string) =>
-  Effect.gen(function* () {
-    const [upload] = yield* query((client) =>
-      client
-        .select()
-        .from(importUpload)
-        .where(
-          and(
-            eq(importUpload.id, uploadId),
-            eq(importUpload.createdBy, createdBy)
-          )
+export const lockUpload = Effect.fn("import.lockUpload")(function* (
+  uploadId: string,
+  createdBy: string
+) {
+  const [upload] = yield* query((client) =>
+    client
+      .select()
+      .from(importUpload)
+      .where(
+        and(
+          eq(importUpload.id, uploadId),
+          eq(importUpload.createdBy, createdBy)
         )
-        .for("update")
-    )
-    if (!upload) return yield* new ImportUploadMissing({ uploadId })
-    return upload
-  })
+      )
+      .for("update")
+  )
+  if (!upload) return yield* new ImportUploadMissing({ uploadId })
+  return upload
+})
 
 /** A later part of the admin's upload. A part sent again replaces the first. */
 export const saveUploadPart = (input: {
@@ -182,52 +185,53 @@ const fewArrays = (json: Buffer) => {
  * of `MAX_ROWS` rows before it is parsed, the schema of the body, the columns
  * of the layout it says.
  */
-export const loadUpload = (uploadId: string) =>
-  Effect.gen(function* () {
-    const [upload] = yield* query((client) =>
-      client.select().from(importUpload).where(eq(importUpload.id, uploadId))
-    )
-    if (!upload) return yield* new ImportUploadMissing({ uploadId })
-    const parts = yield* query((client) =>
-      client
-        .select({ data: importUploadPart.data })
-        .from(importUploadPart)
-        .where(eq(importUploadPart.uploadId, uploadId))
-        .orderBy(asc(importUploadPart.part))
-    )
-    // One row per part (the key), each below `parts` (saveUploadPart)
-    if (parts.length !== upload.parts) {
-      return yield* invalid("Il file non è arrivato per intero")
-    }
+export const loadUpload = Effect.fn("import.loadUpload")(function* (
+  uploadId: string
+) {
+  const [upload] = yield* query((client) =>
+    client.select().from(importUpload).where(eq(importUpload.id, uploadId))
+  )
+  if (!upload) return yield* new ImportUploadMissing({ uploadId })
+  const parts = yield* query((client) =>
+    client
+      .select({ data: importUploadPart.data })
+      .from(importUploadPart)
+      .where(eq(importUploadPart.uploadId, uploadId))
+      .orderBy(asc(importUploadPart.part))
+  )
+  // One row per part (the key), each below `parts` (saveUploadPart)
+  if (parts.length !== upload.parts) {
+    return yield* invalid("Il file non è arrivato per intero")
+  }
 
-    const json = yield* Effect.tryPromise({
-      try: () =>
-        gunzipAsync(Buffer.concat(parts.map(({ data }) => data)), {
-          maxOutputLength: MAX_BODY_BYTES,
-        }),
-      catch: (error) =>
-        invalid(
-          (error as { code?: unknown }).code === "ERR_BUFFER_TOO_LARGE"
-            ? "Il file inviato è troppo grande"
-            : "Il file inviato non si legge"
-        ),
-    })
-    if (!fewArrays(json)) return yield* invalid(tooManyRows)
-    const raw = yield* Effect.try({
-      try: () => JSON.parse(json.toString("utf8")) as unknown,
-      catch: () => invalid("Il file inviato non si legge"),
-    })
-    const body = fileBodySchema.safeParse(raw)
-    if (!body.success) return yield* invalid(bodyProblem(body.error.issues))
-
-    const detected = detectFormat(body.data.columns)
-    if (!("format" in detected) || detected.format !== upload.format) {
-      return yield* invalid(
-        `Le colonne del file non sono quelle del formato ${formatNames[upload.format]}`
-      )
-    }
-    return { upload, rows: fromFileBody(body.data) }
+  const json = yield* Effect.tryPromise({
+    try: () =>
+      gunzipAsync(Buffer.concat(parts.map(({ data }) => data)), {
+        maxOutputLength: MAX_BODY_BYTES,
+      }),
+    catch: (error) =>
+      invalid(
+        (error as { code?: unknown }).code === "ERR_BUFFER_TOO_LARGE"
+          ? "Il file inviato è troppo grande"
+          : "Il file inviato non si legge"
+      ),
   })
+  if (!fewArrays(json)) return yield* invalid(tooManyRows)
+  const raw = yield* Effect.try({
+    try: () => JSON.parse(json.toString("utf8")) as unknown,
+    catch: () => invalid("Il file inviato non si legge"),
+  })
+  const body = fileBodySchema.safeParse(raw)
+  if (!body.success) return yield* invalid(bodyProblem(body.error.issues))
+
+  const detected = detectFormat(body.data.columns)
+  if (!("format" in detected) || detected.format !== upload.format) {
+    return yield* invalid(
+      `Le colonne del file non sono quelle del formato ${formatNames[upload.format]}`
+    )
+  }
+  return { upload, rows: fromFileBody(body.data) }
+})
 
 /** Deletes the upload with its parts. */
 export const deleteUpload = (uploadId: string) =>

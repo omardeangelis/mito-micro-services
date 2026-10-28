@@ -1,11 +1,6 @@
 import { Cause, Effect, Layer, Option } from "effect"
-import { ImportConfigLive } from "./config"
-import {
-  importQueueChoice,
-  importQueueCloudTasks,
-  importQueueDisabled,
-  importQueueInProcess,
-} from "./queue"
+import { ImportConfig } from "./config"
+import { ImportQueue, importQueueChoice } from "./queue"
 import { executeImport, purgeUpload } from "./run"
 
 /** What the log says of a task that failed: its tag, never a message. */
@@ -22,13 +17,13 @@ const logFailure = (what: string) => (cause: Cause.Cause<unknown>) => {
  * The queue of this environment (`importQueueChoice`, D13). In process, the
  * tasks run the same services as the backend's routes.
  */
-const ImportQueueLive = Layer.unwrap(
+const importQueueLayer = Layer.unwrap(
   Effect.map(importQueueChoice, (choice) => {
     switch (choice.kind) {
       case "cloudTasks":
-        return importQueueCloudTasks(choice.settings)
+        return ImportQueue.layerCloudTasks(choice.settings)
       case "inProcess":
-        return importQueueInProcess({
+        return ImportQueue.layerInProcess({
           run: (runId) =>
             executeImport(runId).pipe(
               Effect.asVoid,
@@ -41,15 +36,15 @@ const ImportQueueLive = Layer.unwrap(
             ),
         })
       case "disabled":
-        return importQueueDisabled
+        return ImportQueue.layerDisabled
     }
   })
 )
 
 /**
  * The services of the import's procedures: the queue and the limits. They
- * need the database, which `ServerLive` gives.
+ * need the database, which `serverLayer` gives.
  */
-export const ImportLive = ImportQueueLive.pipe(
-  Layer.provideMerge(ImportConfigLive)
+export const importLayer = importQueueLayer.pipe(
+  Layer.provideMerge(ImportConfig.layer)
 )

@@ -13,7 +13,7 @@ import { createTestCaller } from "@/test/caller"
 import { createCustomer, createOperator, createTask } from "@/test/factories"
 import { failNextInsertInto } from "@/test/failpoint"
 import { failureTag, provideServer } from "@/test/effect"
-import { type ServerContext } from "@mito/server/effect/server"
+import { type ServerServices } from "@mito/server/effect/server"
 
 // As the callers do: lock the customer, then replace its contact
 const replaceExit = (customerId: string, operatorId?: number) =>
@@ -33,8 +33,8 @@ const replace = (customerId: string, operatorId?: number) =>
     return exit.value
   })
 
-/** The program as the edges run it: with `ServerContext` and nothing else. */
-const inServer = <A, E>(program: Effect.Effect<A, E, ServerContext>) =>
+/** The program as the edges run it: with `ServerServices` and nothing else. */
+const inServer = <A, E>(program: Effect.Effect<A, E, ServerServices>) =>
   program.pipe(provideServer, Effect.exit)
 
 beforeAll(async () => {

@@ -21,15 +21,19 @@ vi.mock("@mito/server/effect/errorReporter", async (importOriginal) => {
   const original = await importOriginal<typeof ErrorReporterModule>()
   const { Effect, Layer } = await import("effect")
   const { reportedErrors } = await import("@/test/errorReporter")
-  return {
-    ...original,
-    SentryReporterLive: Layer.succeed(original.ErrorReporter, {
-      report: (cause, data) =>
-        Effect.sync(() => {
-          reportedErrors.push({ cause, data })
-        }),
-    }),
+  // The same service (its id), with the layer that `serverLayer` reads
+  class ErrorReporter extends original.ErrorReporter {
+    static override readonly layer = Layer.succeed(
+      original.ErrorReporter,
+      original.ErrorReporter.of({
+        report: (cause, data) =>
+          Effect.sync(() => {
+            reportedErrors.push({ cause, data })
+          }),
+      })
+    )
   }
+  return { ...original, ErrorReporter }
 })
 
 beforeEach(async () => {

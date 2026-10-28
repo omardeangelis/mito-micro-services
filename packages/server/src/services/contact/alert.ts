@@ -18,18 +18,18 @@ export type ContactSource = "list" | "detail"
  *   alert linked since (R7, as the cron does).
  * - Writes one `alert_resolved` row with `source`.
  */
-export const resolveOpenAlert = ({
-  contact,
-  alertId,
-  actor,
-  source,
-}: {
-  contact: EditableContact
-  alertId: number
-  actor: Actor
-  source: ContactSource
-}): Effect.Effect<{ resolved: boolean }, DbError, Db | Tx> =>
-  Effect.gen(function* () {
+export const resolveOpenAlert = Effect.fn("contact.resolveOpenAlert")(
+  function* ({
+    contact,
+    alertId,
+    actor,
+    source,
+  }: {
+    contact: EditableContact
+    alertId: number
+    actor: Actor
+    source: ContactSource
+  }): Effect.fn.Return<{ resolved: boolean }, DbError, Db | Tx> {
     // Outside a transaction the three writes would commit apart
     yield* Tx
     const taskId = contact.task.id
@@ -70,4 +70,5 @@ export const resolveOpenAlert = ({
       })
     )
     return { resolved: true }
-  })
+  }
+)

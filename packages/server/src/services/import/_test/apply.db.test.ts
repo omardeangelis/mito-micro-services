@@ -12,7 +12,7 @@ import { type Cells, classifyRows } from "@mito/domain/import/classify"
 import { groupRows, lookupKeys } from "@mito/domain/import/group"
 import { planRows } from "@mito/domain/import/plan"
 import { waveCells } from "@mito/domain/import/_test/cells"
-import { type Db, DbLive, transaction } from "../../../effect/db"
+import { Db, transaction } from "../../../effect/db"
 import { applyImport } from "../apply"
 import { ImportConfig, importSettings } from "../config"
 import { lookupExisting } from "../lookup"
@@ -56,7 +56,7 @@ const withDb = <A, E>(
   program.pipe(
     Effect.provide(
       Layer.merge(
-        DbLive,
+        Db.layer,
         Layer.succeed(ImportConfig, { ...importSettings, batchSize })
       )
     ),
@@ -764,14 +764,15 @@ describe("scadenza (D8)", () => {
         // The time of each reading: the start and the first batch in time, the
         // second batch past the deadline. Hand-written, as the step clock of
         // concurrency.pg.test.ts: it advances on every read, which TestClock
-        // cannot do
+        // cannot do. Only the milliseconds step: the spans of Effect.fn read
+        // the nanoseconds, which must not consume the readings
         const times = [0, 0, 2_000]
         const next = () => times.shift() ?? 2_000
         const clock: Clock.Clock = {
           currentTimeMillisUnsafe: next,
           currentTimeMillis: Effect.sync(next),
-          currentTimeNanosUnsafe: () => BigInt(next()) * 1_000_000n,
-          currentTimeNanos: Effect.sync(() => BigInt(next()) * 1_000_000n),
+          currentTimeNanosUnsafe: () => 0n,
+          currentTimeNanos: Effect.succeed(0n),
           monotonicTimeNanosUnsafe: () => 0n,
           monotonicTimeNanos: Effect.succeed(0n),
           sleep: () => Effect.void,

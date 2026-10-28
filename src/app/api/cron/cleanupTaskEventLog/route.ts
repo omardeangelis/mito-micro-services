@@ -1,7 +1,7 @@
 import * as Sentry from "@sentry/nextjs"
 import { Cause, Effect, Exit } from "effect"
 import { NextResponse } from "next/server"
-import { DbLive } from "@mito/server/effect/db"
+import { Db } from "@mito/server/effect/db"
 import { cleanupTaskEventLog } from "@mito/server/services/cron/cleanupTaskEventLog"
 import { authCheck } from "../../_utils/auth"
 
@@ -14,7 +14,7 @@ export async function GET(request: Request) {
   if (authResponse) return authResponse
 
   const exit = await Effect.runPromiseExit(
-    cleanupTaskEventLog(new Date()).pipe(Effect.provide(DbLive))
+    cleanupTaskEventLog(new Date()).pipe(Effect.provide(Db.layer))
   )
 
   if (Exit.isFailure(exit)) {

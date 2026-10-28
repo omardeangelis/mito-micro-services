@@ -150,7 +150,7 @@ Parte dopo il rilascio (R6).
 | Pacchetto | Oggi | Cosa | Quando |
 |---|---|---|---|
 | `effect` | 3.22 | → `~4.0.6`: 4.0.6, in `dev` con la [PR #114](https://github.com/omardeangelis/mito-micro-services/pull/114) (PR 1 di 1.1) del 2026-10-27 | 1.1 (PR 1) |
-| `@effect/vitest` | – | `~4.0.6`, la stessa di `effect`: 4.0.6 sul branch `claude/effect-vitest` (PR 3 di 1.1), non ancora in `dev` | 1.1 (PR 3) |
+| `@effect/vitest` | – | `~4.0.6`, la stessa di `effect`: 4.0.6, in `dev` con la [PR #116](https://github.com/omardeangelis/mito-micro-services/pull/116) (PR 3 di 1.1) del 2026-10-27 | 1.1 (PR 3) |
 | `vitest`, `vite` | 1.6, transitiva | vitest → 5, `vite` dichiarata (≥ 6.4, la 7 per `@vitejs/plugin-react` 4.7): vitest 5.0.5 e vite 7.3.7, in `dev` con la [PR #113](https://github.com/omardeangelis/mito-micro-services/pull/113) (PR 2 di 1.1) del 2026-10-27, con i progetti di test in `vitest.config.ts` al posto di `vitest.workspace.ts` | 1.1 (PR 2) |
 | `drizzle-orm`, `drizzle-kit` | 0.45.4, 0.31.11 | restano (R3) | – |
 | `zod`, `drizzle-zod` | 3.25, 0.5.1 | non si aggiornano; nel backend e nell'app React li sostituisce `Schema` | escono nella fase 5 |
@@ -210,3 +210,4 @@ Regole:
 Punti chiusi senza debito nuovo:
 - **1.1, PR 2 (vitest 5):** nessun debito. L'avviso di pnpm sul *peer* `@types/node` di vitest 5 (`^22 || >=24`, opzionale) lo chiude la riga di `@types/node` nel §4.
 - **1.1, PR 3 (`@effect/vitest`):** nessun debito. I test che eseguono un programma Effect usano `it.effect` o `it.live`. Restano, per scelta e non come debito: i bordi a Promise (le procedure tRPC, le rotte, il client storage a Promise); una cella di una tabella `each` in `deactivate.pg.test.ts` che deve restituire una Promise come l'altra riga, e per lei `runServer` in `src/test/effect.ts`; i due `Effect.runSync` nelle factory di `vi.mock` dei test della rotta del download, che costruiscono lo storage in memoria al caricamento del modulo; i due orologi a passi scritti a mano di `services/import/_test/` (AC8).
+- **1.1, PR 4 (lo stile di Effect 4):** nessun debito. Restano per scelta: `transaction`, `retryOnDeadlock` e `runTrpc` funzioni normali, perché prendono un programma (AC11); `applyMigrations` e `betterAuth.readSession` in `Effect.fnUntraced` invece di `Effect.fn`, perché la traccia aggiunge un'annotazione alla `Cause` e due test confrontano l'`Exit` intero; i nomi dei layer di `apps/api` e dello storage come costanti (`cronLayer`, `importRouteLayer`, `storageLayer`, …), come dice la tabella del §3 del piano.

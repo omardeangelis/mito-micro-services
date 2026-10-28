@@ -76,33 +76,35 @@ const summarizer = Effect.gen(function* () {
 })
 
 /** A page of the history, from the most recent import, and how many there are. */
-export const listImports = (page: number) =>
-  Effect.gen(function* () {
-    const offset = (Math.max(1, Math.floor(page)) - 1) * HISTORY_PAGE_SIZE
-    const rows = yield* query((client) =>
-      selectRuns(client)
-        .orderBy(desc(importRun.startedAt), desc(importRun.id))
-        .limit(HISTORY_PAGE_SIZE)
-        .offset(offset)
-    )
-    const [total] = yield* query((client) =>
-      client.select({ count: count() }).from(importRun)
-    )
-    const toSummary = yield* summarizer
-    return { imports: rows.map(toSummary), total: total?.count ?? 0 }
-  })
+export const listImports = Effect.fn("import.listImports")(function* (
+  page: number
+) {
+  const offset = (Math.max(1, Math.floor(page)) - 1) * HISTORY_PAGE_SIZE
+  const rows = yield* query((client) =>
+    selectRuns(client)
+      .orderBy(desc(importRun.startedAt), desc(importRun.id))
+      .limit(HISTORY_PAGE_SIZE)
+      .offset(offset)
+  )
+  const [total] = yield* query((client) =>
+    client.select({ count: count() }).from(importRun)
+  )
+  const toSummary = yield* summarizer
+  return { imports: rows.map(toSummary), total: total?.count ?? 0 }
+})
 
 /**
  * The admin's latest import, if any (D15): while it runs the page asks again
  * every 3 seconds, and its end is the notice (AC21).
  */
-export const activeImport = (startedBy: string) =>
-  Effect.gen(function* () {
-    const [row] = yield* query((client) =>
-      selectRuns(client)
-        .where(eq(importRun.startedBy, startedBy))
-        .orderBy(desc(importRun.startedAt), desc(importRun.id))
-        .limit(1)
-    )
-    return row ? (yield* summarizer)(row) : null
-  })
+export const activeImport = Effect.fn("import.activeImport")(function* (
+  startedBy: string
+) {
+  const [row] = yield* query((client) =>
+    selectRuns(client)
+      .where(eq(importRun.startedBy, startedBy))
+      .orderBy(desc(importRun.startedAt), desc(importRun.id))
+      .limit(1)
+  )
+  return row ? (yield* summarizer)(row) : null
+})

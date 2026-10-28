@@ -1,4 +1,4 @@
-import { Cause, Clock, Data, Duration, Effect, Result } from "effect"
+import { Cause, Clock, Duration, Effect, Result, Schema } from "effect"
 import { type Db } from "@mito/server/effect/db"
 import { ErrorReporter } from "@mito/server/effect/errorReporter"
 import { processDueAlerts } from "@mito/server/services/contact/processDueAlerts"
@@ -9,20 +9,21 @@ import { updateCustomerAge } from "@mito/server/services/cron/updateCustomerAge"
 import { updatePractices } from "@mito/server/services/cron/updatePractices"
 
 /** A step of a job failed: plain async code threw, or a service's DbError. */
-export class CronStepFailed extends Data.TaggedError("CronStepFailed")<{
-  readonly step: string
-  readonly cause: unknown
-}> {}
+export class CronStepFailed extends Schema.TaggedError<CronStepFailed>()(
+  "CronStepFailed",
+  { step: Schema.String, cause: Schema.Defect() }
+) {}
 
 /** The alerts that failed stay failed when tried again. */
-export class AlertsFailed extends Data.TaggedError("AlertsFailed")<{
-  readonly failed: number
-}> {}
+export class AlertsFailed extends Schema.TaggedError<AlertsFailed>()(
+  "AlertsFailed",
+  { failed: Schema.Number }
+) {}
 
 /** Some alerts are still open after the last call. */
-export class AlertsLeft extends Data.TaggedError("AlertsLeft")<{
-  readonly calls: number
-}> {}
+export class AlertsLeft extends Schema.TaggedError<AlertsLeft>()("AlertsLeft", {
+  calls: Schema.Number,
+}) {}
 
 export type CronJob = {
   /**
@@ -68,62 +69,61 @@ type AlertCall = {
  *   alerts get their followup today. When trying them again closes none, the
  *   job fails.
  */
-export const alertJob = <E, R>(
+export const alertJob = Effect.fn("cron.alertJob")(function* <E, R>(
   processAlerts: Effect.Effect<AlertCall, E, R>,
   {
     maxCalls = 20,
     retryDelay = Duration.seconds(10),
   }: { maxCalls?: number; retryDelay?: Duration.Input } = {}
-) =>
-  Effect.gen(function* () {
-    const reporter = yield* ErrorReporter
-    let retryingFailed = false
-    let found: number | undefined
-    let processed = 0
-    let skipped = 0
-    for (let call = 1; call <= maxCalls; call++) {
-      const result = yield* Effect.result(
-        processAlerts.pipe(
-          Effect.tapCause((cause) =>
-            Effect.gen(function* () {
-              yield* Effect.logError("Alert call failed", Cause.pretty(cause))
-              yield* reporter.report(cause, { cron: "alert", call })
-            })
-          )
+) {
+  const reporter = yield* ErrorReporter
+  let retryingFailed = false
+  let found: number | undefined
+  let processed = 0
+  let skipped = 0
+  for (let call = 1; call <= maxCalls; call++) {
+    const result = yield* Effect.result(
+      processAlerts.pipe(
+        Effect.tapCause(
+          Effect.fnUntraced(function* (cause: Cause.Cause<E>) {
+            yield* Effect.logError("Alert call failed", Cause.pretty(cause))
+            yield* reporter.report(cause, { cron: "alert", call })
+          })
         )
       )
-      if (Result.isFailure(result)) {
-        yield* Effect.sleep(retryDelay)
-        continue
-      }
-      const body = result.success
-      found ??= body.found
-      processed += body.processed
-      skipped += body.skipped
-      const counters = {
-        found,
-        processed,
-        skipped,
-        failed: body.failed,
-        calls: call,
-      }
-      if (body.remaining > 0) {
-        // The next call takes the ones left, failed ones included: it is not
-        // a retry of failed alerts
-        retryingFailed = false
-        continue
-      }
-      // Every call takes all the open alerts again: one that gets through
-      // them with none failed leaves none behind
-      if (body.failed === 0) return counters
-      if (retryingFailed && body.processed === 0) {
-        return yield* new AlertsFailed({ failed: body.failed })
-      }
-      retryingFailed = true
+    )
+    if (Result.isFailure(result)) {
       yield* Effect.sleep(retryDelay)
+      continue
     }
-    return yield* new AlertsLeft({ calls: maxCalls })
-  })
+    const body = result.success
+    found ??= body.found
+    processed += body.processed
+    skipped += body.skipped
+    const counters = {
+      found,
+      processed,
+      skipped,
+      failed: body.failed,
+      calls: call,
+    }
+    if (body.remaining > 0) {
+      // The next call takes the ones left, failed ones included: it is not
+      // a retry of failed alerts
+      retryingFailed = false
+      continue
+    }
+    // Every call takes all the open alerts again: one that gets through
+    // them with none failed leaves none behind
+    if (body.failed === 0) return counters
+    if (retryingFailed && body.processed === 0) {
+      return yield* new AlertsFailed({ failed: body.failed })
+    }
+    retryingFailed = true
+    yield* Effect.sleep(retryDelay)
+  }
+  return yield* new AlertsLeft({ calls: maxCalls })
+})
 
 // Each call stops taking new alerts after 40 s, as on Vercel
 const ALERT_BUDGET_MS = 40_000

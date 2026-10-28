@@ -13,6 +13,109 @@ updated: 2026-10-27
 
 La spec ha quattro PR, ognuna con la sua revisione. Ogni revisione è un round qui sotto, con lo stesso round in `REPORT.md`.
 
+## [Round: 2026-10-27 — PR 4, lo stile di Effect 4]
+
+### Change set under review
+
+- **Scope:** spec implementation, PR 4 di 4 (T18, T19, T20a–c, T21 del piano)
+- **Target:** branch `claude/effect-style`
+- **Compared:** `origin/dev` (merge base, con le PR 1–3) → `claude/effect-style` (`8e8bded`)
+- **Files touched:** 128, +3777/−2497: `packages/server/src/services` (81), `apps/api` (14), `packages/server/src/effect` (7), `packages/server/src/betterAuth` (5), `src/app/api` (7), `src/test` (2), `packages/db/src/migrate.ts`, 17 file di test nuovi (T19), `eccezioni-pr4.txt`, `AGENTS.md`, `brain/chore/migrazione-effect.md`, `brain/chore/roadmap-nuovo-stack.md`, documenti della spec. Dominio `crm`.
+- **Contratto:** AC5, AC9, AC10, AC11, AC12 (PR 4), AC13, AC14. AC15 (staging dopo il merge) è fuori dalla revisione e sta nella checklist umana.
+- **Superfici di rischio:** auth (`betterAuth/session.ts`, `services/auth/*`, `packages/server/src/auth.ts`, OIDC di cron e import in `apps/api`), configurazione che sceglie i layer (`ImportConfig`, `ImportQueue`, `Storage`), il runner delle migrazioni che gira nel deploy di staging (`packages/db/src/migrate.ts`), il nucleo delle transazioni (`effect/db.ts`). D4: revisione di Leonardo obbligatoria.
+
+### Routing rubric (review-classifier output)
+
+```json
+{
+  "taskType": "refactor",
+  "secondaryType": "security",
+  "domainsTouched": ["crm"],
+  "adversarialVerifiers": {
+    "count": 10,
+    "passes": [
+      {
+        "id": "v1",
+        "charter": "Auth/identity gates (D4). Verify every auth decision allows and denies exactly as on dev after T18–T20: betterAuth/session.ts (readSession left Effect.fnUntraced, AuthSession service id and static layerOf), packages/server/src/auth.ts and getServerAuthSession/requestSession on both runtimes, services/auth/* (login.ts errors and Effect.fn conversions), apps/api cron auth (CronAuth), import auth (ImportAuth) and oidc.verifyIdToken (now Effect.fn, area oidc) — deactivated users, missing/invalid OIDC token, wrong audience/issuer, missing session. Check that no catchTag/catchIf on an auth error stopped matching after the Schema.TaggedError switch and that no traced span or Cause annotation changes which branch a gate takes. Scope: allow/deny outcomes and their HTTP/tRPC codes on auth paths only; not constructor validation (v2) nor generic Cause readers (v3/v4).",
+        "complexity": "high"
+      },
+      {
+        "id": "v2",
+        "charter": "Error-class construction fidelity (AC10). For all 61 classes in the 19 files, verify the Schema.TaggedError keeps the same _tag, fields and message, and that each field schema accepts every value the 119 construction sites can pass at runtime (not just the literals the tests use): explicit undefined vs absent keys (optional vs optionalKey), unknown cause (Defect()/optional, same instance preserved), invalid Date (instanceOf(Date)), Literals(taskStatus), Struct copying alert and mutable(Array(String)) copying tags, DbError.code UndefinedOr, stripped keys outside the schema, the payloadOf compile-time check against ContactErrorPayload. Hunt for a construction site fed by external or DB data where the new constructor throws where Data.TaggedError did not, and for any change in instanceof, Error.cause, Equal/Hash or toJSON semantics. Judge whether the 89 new T19 tests (green on Data.TaggedError at a28e409) actually pin the values the code passes, including the two private classes UnknownJob/UnknownTask covered only by 404 tests. Scope: building the error value; not how edges translate it.",
+        "complexity": "high"
+      },
+      {
+        "id": "v3",
+        "charter": "Error translation at the edges. Verify that every place that turns a typed error into an outward response produces the same result as on dev: the tRPC translator (runTrpc, mapping to TRPCError codes and messages), HTTP translators of the apps/api cron and import routes and of src/app/api route handlers (status, body, the 404 for UnknownJob/UnknownTask), the export download route, errors read in both shapes over HTTP with BACKEND_URL (readContactError, deleteMessage: serialized data/cause of a Schema.TaggedError vs Data.TaggedError), and what the ErrorReporter/Sentry receives (error identity, message, extra fields). Scope: the translators and serialization; not the auth allow/deny decisions (v1) nor Effect.fn span semantics (v4).",
+        "complexity": "high"
+      },
+      {
+        "id": "v4",
+        "charter": "Effect.fn / Effect.fnUntraced conversion semantics (AC11), outside effect/db.ts (v8) and auth (v1). For the ~72 converted functions verify behavior equivalence: a traced Effect.fn adds a span and a StackTrace annotation to the Cause — find every production reader of a Cause/Exit (Cause.squash, reasons[0], findError, pretty, logs, tapCause in cron jobs, ErrorReporter.forEachIsolated) and every test comparing an Exit structurally (toMatchObject/toStrictEqual on Exit.fail) that could change, beyond the two deviations already found (readSession, applyMigrations); the ServerLive/serverLayer logger (Logger.formatLogFmt + Logger.tracerLogger) now printing span fields inside traced functions; pipeables passed as extra Effect.fn arguments applied per call exactly as the old .pipe (import.enqueue with Effect.retry times 2 exponential 200ms on Cloud Tasks: same retried scope, token fetch included or not as before); Effect.fn.Return types and generics; laziness (no work moved to call time); fnUntraced chosen for helpers and per-element callbacks and the D9 choice to keep findWorkingOperator/replaceActiveContact/loadOperator/touchCustomer traced in bulk reassignment; combinators left plain; run `node scripts/check-assertions.mjs gen-wrappers` and confirm only transaction remains. Scope: function-wrapping semantics; not error construction (v2) nor service identity (v5).",
+        "complexity": "high"
+      },
+      {
+        "id": "v5",
+        "charter": "Service identity and static layers (AC9). Verify the 10 Context.Service classes have ids from the package path, unique and stable, and that renaming the ids changed no runtime lookup (two classes with the same id, a service provided under one id and read under another, Next.js and apps/api bundles each holding one copy); that static layer properties and variants (layer, layerOf, layerInProcess, layerCloudTasks, layerDisabled, ErrorReporter.layer) keep layer memoization and construction count (no getter or factory building a new layer per access, no second Db client), and that declaration order (importSettings, logOutcome before the classes) introduces no undefined-at-import or circular-import hazard; ServerLive → serverLayer and ServerContext → ServerServices provide the same set of services in both runtimes; no exported *Live remains. Critically examine the Sentry mock in src/test/setup.ts, now a subclass of ErrorReporter with its own static layer: does every production path under test (serverLayer, forEachIsolated, cron and import routes) really get the mocked layer, or do some tests now hit the real reporter or silently stop recording into reportedErrors. Scope: service wiring; not config-dependent choice of layer (v6).",
+        "complexity": "high"
+      },
+      {
+        "id": "v6",
+        "charter": "Secrets/config-driven layer selection. Verify that turning ImportConfig, ImportQueue and Storage into static layers and variants did not move any environment or Config read: importQueueChoice still fails safe (no Cloud Tasks or in-process queue chosen by accident), the storage backend choice and its Redacted credentials are read at the same time as before (layer build, not module load), withCurrentEnv (D15) still sees an environment changed between tests and between requests, and no static property evaluates process.env or Config at import time — which would capture production values from .env in Next.js or the backend. Scope: when and from where configuration is read; not service identity (v5).",
+        "complexity": "high"
+      },
+      {
+        "id": "v7",
+        "charter": "Assertion integrity (AC5). Run `node scripts/check-assertions.mjs assertions` between origin/dev and HEAD and audit eccezioni-pr4.txt line by line: the 8 T18 lines change only the describe title (ServerLive, SentryReporterLive, makeSupabaseStorageLayer, StorageLive) and no chain under them; the 313 T19 lines belong only to the 17 new test files and to no pre-existing file; no existing expect/assert chain, skip/only marker or test count changed anywhere else (only imports and renamed identifiers in touched test files). Judge whether the exception file could mask a changed matcher or expected value. Scope: the test diff and the guard; not whether the new tests are strong enough (v2).",
+        "complexity": "medium"
+      },
+      {
+        "id": "v8",
+        "charter": "Database core (packages/server/src/effect/db.ts). Verify transaction, retryOnDeadlock, query and lockCustomer behave as on dev after T18–T20: Db/Tx service identity and the in-transaction detection lockCustomer relies on (defect outside a transaction), DbError (Schema, code UndefinedOr) still read correctly by the deadlock retry and by the DbError-as-defect rule, commit/rollback via Exit unchanged when the inner program carries Effect.fn span/StackTrace annotations, nested transaction still a defect, query/lockCustomer as fnUntraced adding no annotation on the hot path, transaction left a plain combinator. Scope: this file and its direct contract with callers only.",
+        "complexity": "high"
+      },
+      {
+        "id": "v9",
+        "charter": "Migration runner on the deploy path (packages/db/src/migrate.ts). Verify the converted error classes and applyMigrations (fnUntraced, Exit compared with toStrictEqual in migrate.pg.test.ts) keep the exact outcome of the migrate step that runs in deploy-staging.yaml before the backend deploy: same success/failure, exit code and logged message, journal checks (when ordering, prevId chain) unchanged, and the new constraint that a journal with non-string tags now throws at error construction — could a real drizzle journal or snapshot trip it and turn a reported error into a crash. No schema or migration file may change (spec constraint). Scope: the migration runner only.",
+        "complexity": "medium"
+      },
+      {
+        "id": "v10",
+        "charter": "Docs, debt and gates (AC12 PR 4, AC13, AC14, D7, D11). Verify AGENTS.md Effect section, §2 of brain/chore/migrazione-effect.md and the roadmap (phase 3 now only adds the HTTP status, §8 debt, row 1.1 closed) state the rules as the code actually ships them, including the fnUntraced exceptions forced by Exit comparisons and the static-layer naming; that the §8 debt record names what this PR leaves (or states none); that the plan/notes record the D7 exception; whether the removal of scripts/check-assertions.mjs (D11, T21 step 8) is still pending and planned after this review with its source kept in IMPLEMENTATION-NOTES.md; and that all CI gates pass (next lint, tsc --noEmit, db:check, test --run with pg, build with placeholders, api:build, api:smoke), with no Schema import pulled into a client bundle.",
+        "complexity": "medium"
+      }
+    ]
+  },
+  "taskComplexity": "high",
+  "reviewImpact": "critical",
+  "humanInLoop": true,
+  "nextStep": "Run v1–v10 as 10 independent adversarial-verifier passes in parallel: strongest model (Opus) for v1, v2, v3, v4, v5, v6, v8; balanced for v7, v9, v10. Give each the diff of its scope (origin/dev...8e8bded), SPEC AC5/AC9–AC14, the T18–T21 logs of PLAN.md and eccezioni-pr4.txt. REPORT.md must end with a human checklist: Leonardo signs off v1 (D4); rerun check-assertions in both modes; AC9/AC10 git-grep checks at 0; spot-check the setup.ts ErrorReporter mock; CI green; after merge, AC15 on staging (health, a manual cron run, login and Clienti/Contatti/Dashboard with BACKEND_URL, a test import)."
+}
+```
+
+### Classifier rationale
+
+Sulla carta è un refactor di stile a comportamento invariato, ma tocca 128 file e cambia tre cose che il codice legge a runtime: l'identità dei servizi (id e layer), la costruzione degli errori (ora valida i campi e può lanciare) e la forma della `Cause` (un `Effect.fn` con traccia aggiunge span e annotazione `StackTrace`, che ha già costretto due eccezioni). Passa sopra auth, configurazione che sceglie i layer, nucleo delle transazioni e runner delle migrazioni del deploy: D4 chiede la revisione di Leonardo, quindi `critical` con una persona nel giro. Ogni cambio di semantica ha la sua passata, e auth, configurazione, `effect/db.ts` e `migrate.ts` hanno una passata ciascuno perché sono superfici sensibili per `AGENTS.md`. Lo script di AC5 resta l'unico guardiano delle asserzioni (v7), mentre la forza dei test nuovi di T19 si giudica con la validazione dei costruttori (v2).
+
+### Overrides applied
+
+Nessuno.
+
+### Verification plan (derived)
+
+| Pass | Concern | Complexity | Model tier |
+|------|---------|------------|------------|
+| v1 | Auth (D4) | high | il più forte |
+| v2 | Costruzione degli errori (AC10) | high | il più forte |
+| v3 | Traduzione degli errori ai bordi | high | il più forte |
+| v4 | Semantica di `Effect.fn` (AC11) | high | il più forte |
+| v5 | Identità dei servizi e layer statici (AC9) | high | il più forte |
+| v6 | Configurazione e scelta dei layer | high | il più forte |
+| v7 | Integrità delle asserzioni (AC5) | medium | sonnet |
+| v8 | Nucleo delle transazioni (`effect/db.ts`) | high | il più forte |
+| v9 | Runner delle migrazioni | medium | sonnet |
+| v10 | Documenti, debito e gate (AC12–AC14) | medium | sonnet |
+
 ## [Round: 2026-10-27 — PR 2, vitest 5]
 
 ### Change set under review

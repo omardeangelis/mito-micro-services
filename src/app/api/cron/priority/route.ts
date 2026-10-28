@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { Cause, Effect, Exit } from "effect"
 import { ErrorReporter } from "@mito/server/effect/errorReporter"
-import { ServerLive } from "@mito/server/effect/server"
+import { serverLayer } from "@mito/server/effect/server"
 import { refreshPriorities } from "@mito/server/services/contact/refreshPriorities"
 import { authCheck } from "../../_utils/auth"
 
@@ -27,14 +27,14 @@ async function handler(req: NextRequest) {
       yield* refreshPriorities(id ? Number(id) : undefined)
     }).pipe(
       // The response is a 200 either way: report here, or nobody will
-      Effect.tapCause((cause) =>
-        Effect.gen(function* () {
+      Effect.tapCause(
+        Effect.fnUntraced(function* (cause: Cause.Cause<unknown>) {
           yield* Effect.logError("Priority cron failed", Cause.pretty(cause))
           const reporter = yield* ErrorReporter
           yield* reporter.report(cause, { route: "/api/cron/priority" })
         })
       ),
-      Effect.provide(ServerLive)
+      Effect.provide(serverLayer)
     )
   )
 

@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server"
-import { Data } from "effect"
+import { Schema } from "effect"
 import {
   type ContactError,
   contactErrorCause,
@@ -8,13 +8,15 @@ import {
 import { type CustomerMissing } from "../../effect/db"
 
 /** The actor may not change the customer's operator (D13). */
-export class CustomerAssignmentForbidden extends Data.TaggedError(
-  "CustomerAssignmentForbidden"
+export class CustomerAssignmentForbidden extends Schema.TaggedError<CustomerAssignmentForbidden>()(
+  "CustomerAssignmentForbidden",
+  {}
 ) {}
 
 /** The handover's target is already the customer's operator (D13). */
-export class HandoverSameOperator extends Data.TaggedError(
-  "HandoverSameOperator"
+export class HandoverSameOperator extends Schema.TaggedError<HandoverSameOperator>()(
+  "HandoverSameOperator",
+  {}
 ) {}
 
 export type CustomerError = CustomerAssignmentForbidden | HandoverSameOperator

@@ -29,9 +29,7 @@ const DELETE_CONCURRENCY = 10
  * built, not when this module is imported, so importing the kit has no side
  * effects and reads no environment.
  */
-export const makeGcsStorageLayer = (
-  config: StorageConfig
-): Layer.Layer<Storage> =>
+export const gcsStorageLayer = (config: StorageConfig): Layer.Layer<Storage> =>
   Layer.sync(Storage, () => {
     const client = new GoogleCloudStorage({
       ...(config.projectId !== undefined
@@ -41,7 +39,7 @@ export const makeGcsStorageLayer = (
         ? { credentials: config.credentials }
         : {}),
     })
-    return gcsService(client.bucket(config.bucket), config)
+    return Storage.of(gcsService(client.bucket(config.bucket), config))
   })
 
 /** GCS reports a missing object as an API error with code 404. */
@@ -104,21 +102,20 @@ const gcsService = (bucket: Bucket, config: StorageConfig): StorageService => {
     config.signedUrlTtlSeconds ?? DEFAULT_SIGNED_URL_TTL_SECONDS
 
   return {
-    upload: (input) =>
-      Effect.gen(function* () {
-        const data = toBuffer(input.body)
-        yield* assertMaxBytes(data, config.maxUploadBytes)
-        yield* Effect.tryPromise({
-          try: () => bucket.file(input.key).save(data, uploadOptions(input)),
-          catch: (cause) =>
-            new StorageUploadError({
-              key: input.key,
-              message: `Upload of "${input.key}" failed`,
-              cause,
-            }),
-        })
-        return { key: input.key }
-      }),
+    upload: Effect.fn("storage.upload")(function* (input) {
+      const data = toBuffer(input.body)
+      yield* assertMaxBytes(data, config.maxUploadBytes)
+      yield* Effect.tryPromise({
+        try: () => bucket.file(input.key).save(data, uploadOptions(input)),
+        catch: (cause) =>
+          new StorageUploadError({
+            key: input.key,
+            message: `Upload of "${input.key}" failed`,
+            cause,
+          }),
+      })
+      return { key: input.key }
+    }),
 
     download: (key) =>
       Effect.map(
@@ -167,34 +164,33 @@ const gcsService = (bucket: Bucket, config: StorageConfig): StorageService => {
         })
       ),
 
-    removeByPrefix: (prefix) =>
-      Effect.gen(function* () {
-        yield* assertDeletablePrefix(prefix)
-        const files = yield* listFiles(bucket, prefix, undefined)
-        yield* Effect.forEach(
-          files,
-          (file) =>
-            Effect.tryPromise({
-              try: () => file.delete({ ignoreNotFound: true }),
-              catch: (cause) =>
-                new StorageDeleteError({
-                  key: file.name,
-                  message: `Delete of "${file.name}" failed`,
-                  cause,
-                }),
-            }),
-          { concurrency: DELETE_CONCURRENCY, discard: true }
-        )
-        return files.length
-      }),
+    removeByPrefix: Effect.fn("storage.removeByPrefix")(function* (prefix) {
+      yield* assertDeletablePrefix(prefix)
+      const files = yield* listFiles(bucket, prefix, undefined)
+      yield* Effect.forEach(
+        files,
+        (file) =>
+          Effect.tryPromise({
+            try: () => file.delete({ ignoreNotFound: true }),
+            catch: (cause) =>
+              new StorageDeleteError({
+                key: file.name,
+                message: `Delete of "${file.name}" failed`,
+                cause,
+              }),
+          }),
+        { concurrency: DELETE_CONCURRENCY, discard: true }
+      )
+      return files.length
+    }),
 
     list: (prefix, options) =>
       Effect.map(listFiles(bucket, prefix, options?.limit), (files) =>
         files.map(toObjectInfo)
       ),
 
-    signedDownloadUrl: (key, options) =>
-      Effect.gen(function* () {
+    signedDownloadUrl: Effect.fn("storage.signedDownloadUrl")(
+      function* (key, options) {
         const expires = yield* expiresAt(
           options?.expiresInSeconds ?? defaultTtl
         )
@@ -220,10 +216,11 @@ const gcsService = (bucket: Bucket, config: StorageConfig): StorageService => {
             }),
         })
         return url
-      }),
+      }
+    ),
 
-    signedUploadUrl: (key, options) =>
-      Effect.gen(function* () {
+    signedUploadUrl: Effect.fn("storage.signedUploadUrl")(
+      function* (key, options) {
         const expires = yield* expiresAt(options.expiresInSeconds ?? defaultTtl)
         const [url] = yield* Effect.tryPromise({
           try: () =>
@@ -241,6 +238,7 @@ const gcsService = (bucket: Bucket, config: StorageConfig): StorageService => {
             }),
         })
         return url
-      }),
+      }
+    ),
   }
 }

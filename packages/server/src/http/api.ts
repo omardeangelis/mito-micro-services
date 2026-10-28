@@ -4,17 +4,17 @@ import * as Path from "effect/Path"
 import { Etag, HttpPlatform } from "effect/http"
 import { HttpApiBuilder } from "effect/http-api"
 import { MitoApi } from "@mito/contract/api"
-import { ServerLive } from "../effect/server"
-import { AuthenticatedLive } from "./authenticated"
-import { MeLive } from "./me"
-import { SessionReaderLive } from "./session"
+import { serverLayer } from "../effect/server"
+import { authenticatedLayer } from "./authenticated"
+import { meLayer } from "./me"
+import { SessionReader } from "./session"
 
 /**
  * The groups of the contract with their middleware. It still needs the
- * session (`SessionReader`) and `ServerLive`: the tests give theirs
+ * session (`SessionReader`) and `serverLayer`: the tests give theirs
  */
-export const ApiHandlersLive = Layer.mergeAll(MeLive).pipe(
-  Layer.provideMerge(AuthenticatedLive)
+export const apiHandlersLayer = Layer.mergeAll(meLayer).pipe(
+  Layer.provideMerge(authenticatedLayer)
 )
 
 // HttpApi serves no files: the platform without a file system
@@ -27,9 +27,9 @@ const platform = Layer.mergeAll(
 )
 
 /** `MitoApi` as the backend serves it, at `/api/v1` (apps/api/src/httpApi.ts) */
-export const MitoApiLive = HttpApiBuilder.layer(MitoApi).pipe(
-  Layer.provide(ApiHandlersLive),
-  Layer.provide(SessionReaderLive),
-  Layer.provide(ServerLive),
+export const mitoApiLayer = HttpApiBuilder.layer(MitoApi).pipe(
+  Layer.provide(apiHandlersLayer),
+  Layer.provide(SessionReader.layer),
+  Layer.provide(serverLayer),
   Layer.provide(platform)
 )

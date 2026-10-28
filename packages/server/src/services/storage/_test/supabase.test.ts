@@ -4,11 +4,8 @@ import { Blob } from "node:buffer"
 import { Effect } from "effect"
 import { afterEach, beforeEach, vi } from "vitest"
 import { describe, expect, it } from "@effect/vitest"
-import { StorageLive } from "../layer"
-import {
-  makeSupabaseStorageLayer,
-  type SupabaseStorageOptions,
-} from "../supabase"
+import { storageLayer } from "../layer"
+import { supabaseStorageLayer, type SupabaseStorageOptions } from "../supabase"
 import { Storage, type StorageService } from "../storage"
 
 // Every call the layer makes to Supabase lands in these mocks: no network.
@@ -42,7 +39,7 @@ const from = vi.fn()
 const fakeClient = { storage: { from } }
 
 const layerFor = (extra: Partial<SupabaseStorageOptions> = {}) =>
-  makeSupabaseStorageLayer({
+  supabaseStorageLayer({
     client: () => fakeClient as unknown as SupabaseClient,
     bucket: "mito-storage",
     ...extra,
@@ -72,7 +69,7 @@ afterEach(() => {
   vi.unstubAllEnvs()
 })
 
-describe("makeSupabaseStorageLayer", () => {
+describe("supabaseStorageLayer", () => {
   it.effect("opens the configured bucket", () =>
     Effect.gen(function* () {
       bucket.list.mockResolvedValue({ data: [], error: null })
@@ -481,14 +478,14 @@ describe("makeSupabaseStorageLayer", () => {
   })
 })
 
-describe("StorageLive", () => {
+describe("storageLayer", () => {
   it.effect("uses GCS and not Supabase when GCS_BUCKET is set", () =>
     Effect.gen(function* () {
       vi.stubEnv("GCS_BUCKET", "b")
 
       yield* Effect.provide(
         Effect.flatMap(Storage, () => Effect.void),
-        StorageLive
+        storageLayer
       )
 
       expect(gcs.clientOptions).toHaveBeenCalledTimes(1)
@@ -510,7 +507,7 @@ describe("StorageLive", () => {
 
         const objects = yield* Effect.provide(
           Effect.flatMap(Storage, (storage) => storage.list("export/")),
-          StorageLive
+          storageLayer
         )
 
         expect(supabase.createClient).toHaveBeenCalledWith(

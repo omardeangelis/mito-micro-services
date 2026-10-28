@@ -3,7 +3,7 @@ import { beforeAll, beforeEach } from "vitest"
 import { describe, expect, it } from "@effect/vitest"
 import { Effect } from "effect"
 import { TestClock } from "effect/testing"
-import { type ServerContext } from "@mito/server/effect/server"
+import { type ServerServices } from "@mito/server/effect/server"
 import { provideServer } from "@/test/effect"
 import { type Actor } from "@mito/domain/contact/permissions"
 import { migrateUpTo, resetDb } from "@/test/db"
@@ -19,7 +19,7 @@ import { DAY, T } from "./clock"
 /** The program with the `Clock` stopped at `millis`: the `TestClock` of `it.effect`. */
 const at = <A, E>(
   millis: number,
-  program: Effect.Effect<A, E, ServerContext>
+  program: Effect.Effect<A, E, ServerServices>
 ) => TestClock.setTime(millis).pipe(Effect.andThen(program), provideServer)
 
 // Le finestre degli importi dall'orologio del server, lette a ogni chiamata

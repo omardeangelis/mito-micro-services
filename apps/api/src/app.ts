@@ -9,9 +9,9 @@ import { requestSession } from "@mito/server/requestSession"
 import { GET as authUser } from "@/app/api/auth/user/route"
 import { httpApi } from "./httpApi"
 import { restRoutes } from "./rest"
-import { cronLive } from "./cron/live"
+import { cronLayer } from "./cron/live"
 import { cronRoutes } from "./cron/routes"
-import { importLive } from "./import/live"
+import { importRouteLayer } from "./import/live"
 import { importRoutes } from "./import/routes"
 
 /**
@@ -27,10 +27,10 @@ app.get("/health", (c) => c.json({ ok: true }))
 
 // Cloud Scheduler's calls, with its OIDC token: outside /api, so no Vercel
 // rewrite reaches them and they read no session
-app.route("/internal/cron", cronRoutes(cronLive(process.env)))
+app.route("/internal/cron", cronRoutes(cronLayer(process.env)))
 
 // The tasks of the import queue (Cloud Tasks), with its OIDC token, the same
-app.route("/internal/import", importRoutes(importLive(process.env)))
+app.route("/internal/import", importRoutes(importRouteLayer(process.env)))
 
 app.use("/api/*", async (c, next) => {
   const session = await readRequestSession(c.req.raw.headers)

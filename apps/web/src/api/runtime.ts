@@ -1,5 +1,5 @@
 import * as Sentry from "@sentry/react"
-import { Cause, Context, Data, Effect, Layer, ManagedRuntime } from "effect"
+import { Cause, Context, Effect, Layer, ManagedRuntime, Schema } from "effect"
 import { FetchHttpClient } from "effect/http"
 import { HttpApiClient } from "effect/http-api"
 import { MitoApi } from "@mito/contract/api"
@@ -11,32 +11,33 @@ import { type ApiError, isApiError } from "@mito/contract/errors"
  * use it (H12 of brain/chore/fase-2-httpapi.md)
  */
 export class ApiClient extends Context.Service<ApiClient>()(
-  "@mito/web/ApiClient",
+  "@mito/web/api/ApiClient",
   { make: HttpApiClient.make(MitoApi) }
-) {}
-
-/**
- * The client of the app: `fetch` of the browser on the origin of the page,
- * where Vercel (and Vite in development) forwards /api to the backend, so the
- * session cookie stays first-party (F10)
- */
-export const ApiClientLive: Layer.Layer<ApiClient> = Layer.effect(
-  ApiClient,
-  ApiClient.make
-).pipe(Layer.provide(FetchHttpClient.layer))
+) {
+  /**
+   * The client of the app: `fetch` of the browser on the origin of the page,
+   * where Vercel (and Vite in development) forwards /api to the backend, so
+   * the session cookie stays first-party (F10)
+   */
+  static readonly layer: Layer.Layer<ApiClient> = Layer.effect(
+    ApiClient,
+    ApiClient.make
+  ).pipe(Layer.provide(FetchHttpClient.layer))
+}
 
 export type ApiRuntime = ManagedRuntime.ManagedRuntime<ApiClient, never>
 
 /** The runtime of the app, created once (`ApiProvider` takes another in the tests) */
-export const appRuntime: ApiRuntime = ManagedRuntime.make(ApiClientLive)
+export const appRuntime: ApiRuntime = ManagedRuntime.make(ApiClient.layer)
 
 /**
  * The backend didn't answer with a response of the contract: the network, a
  * 5xx, a body that doesn't decode. The only error the queries retry
  */
-export class ApiUnavailable extends Data.TaggedError("ApiUnavailable")<{
-  readonly cause: unknown
-}> {}
+export class ApiUnavailable extends Schema.TaggedError<ApiUnavailable>()(
+  "ApiUnavailable",
+  { cause: Schema.Defect() }
+) {}
 
 /** What a call to the backend fails with: an error of the contract, or none */
 export type ApiFailure = ApiError | ApiUnavailable

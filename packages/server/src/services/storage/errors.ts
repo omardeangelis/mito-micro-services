@@ -1,52 +1,62 @@
-import { Data } from "effect"
+import { Schema } from "effect"
 
 /**
  * Fields shared by every storage error. `key` is the object involved, when
  * there is one. `cause` is kept for diagnostics: do not log it in plain text,
  * since GCS client errors can carry request details.
  */
-type StorageErrorFields = {
-  readonly key?: string
-  readonly message: string
-  readonly cause?: unknown
+const storageErrorFields = {
+  // The adapters pass `key: undefined` when there is none: `optional`, not
+  // `optionalKey`, takes it
+  key: Schema.optional(Schema.String),
+  message: Schema.String,
+  cause: Schema.optional(Schema.Defect()),
 }
 
 /** The configuration is missing or invalid (see `storageConfigFromEnv`). */
-export class StorageConfigError extends Data.TaggedError(
-  "StorageConfigError"
-)<StorageErrorFields> {}
+export class StorageConfigError extends Schema.TaggedError<StorageConfigError>()(
+  "StorageConfigError",
+  storageErrorFields
+) {}
 
 /** Writing an object failed. */
-export class StorageUploadError extends Data.TaggedError(
-  "StorageUploadError"
-)<StorageErrorFields> {}
+export class StorageUploadError extends Schema.TaggedError<StorageUploadError>()(
+  "StorageUploadError",
+  storageErrorFields
+) {}
 
 /** Reading an object failed for a reason other than "not found". */
-export class StorageDownloadError extends Data.TaggedError(
-  "StorageDownloadError"
-)<StorageErrorFields> {}
+export class StorageDownloadError extends Schema.TaggedError<StorageDownloadError>()(
+  "StorageDownloadError",
+  storageErrorFields
+) {}
 
 /** The object does not exist. */
-export class StorageNotFoundError extends Data.TaggedError(
-  "StorageNotFoundError"
-)<StorageErrorFields> {}
+export class StorageNotFoundError extends Schema.TaggedError<StorageNotFoundError>()(
+  "StorageNotFoundError",
+  storageErrorFields
+) {}
 
 /** Deleting an object failed. */
-export class StorageDeleteError extends Data.TaggedError(
-  "StorageDeleteError"
-)<StorageErrorFields> {}
+export class StorageDeleteError extends Schema.TaggedError<StorageDeleteError>()(
+  "StorageDeleteError",
+  storageErrorFields
+) {}
 
 /** Listing objects failed. */
-export class StorageListError extends Data.TaggedError(
-  "StorageListError"
-)<StorageErrorFields> {}
+export class StorageListError extends Schema.TaggedError<StorageListError>()(
+  "StorageListError",
+  storageErrorFields
+) {}
 
 /** Generating a signed URL failed. */
-export class StorageSignError extends Data.TaggedError(
-  "StorageSignError"
-)<StorageErrorFields> {}
+export class StorageSignError extends Schema.TaggedError<StorageSignError>()(
+  "StorageSignError",
+  storageErrorFields
+) {}
 
 /** The input was rejected before reaching the bucket (size, prefix, content type...). */
-export class StorageValidationError extends Data.TaggedError(
-  "StorageValidationError"
-)<StorageErrorFields> {}
+export class StorageValidationError extends Schema.TaggedError<StorageValidationError>()(
+  "StorageValidationError",
+  storageErrorFields
+) {}

@@ -22,14 +22,12 @@ vi.mock("@mito/server/services/storage/layer", async () => {
   const { Effect, Layer } = await import("effect")
   // Not the index: it re-exports this module
   const { Storage } = await import("@mito/server/services/storage/storage")
-  const { makeMemoryStorageLayer } =
+  const { memoryStorageLayer } =
     await import("@mito/server/services/storage/memory")
-  const service = Effect.runSync(
-    Effect.provide(Storage, makeMemoryStorageLayer())
-  )
+  const service = Effect.runSync(Effect.provide(Storage, memoryStorageLayer()))
   storage.memory = service
   return {
-    StorageLive: Layer.succeed(Storage, {
+    storageLayer: Layer.succeed(Storage, {
       ...service,
       download: (key: string) => storage.download(key),
     }),

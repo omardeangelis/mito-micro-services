@@ -1,24 +1,27 @@
 import { TRPCError } from "@trpc/server"
-import { Data } from "effect"
+import { Schema } from "effect"
 import { type CustomerMissing } from "../../effect/db"
 
 /** The chat doesn't exist, or it was deleted while the call waited. */
-export class ChatMissing extends Data.TaggedError("ChatMissing")<{
-  readonly chatId: number
-}> {}
+export class ChatMissing extends Schema.TaggedError<ChatMissing>()(
+  "ChatMissing",
+  { chatId: Schema.Number }
+) {}
 
 /**
  * The note doesn't exist any more, or its chat has no customer (any more): the
  * customer may be gone while the deletion waited for its lock.
  */
-export class MessageMissing extends Data.TaggedError("MessageMissing")<{
-  readonly messageId: number
-}> {}
+export class MessageMissing extends Schema.TaggedError<MessageMissing>()(
+  "MessageMissing",
+  { messageId: Schema.Number }
+) {}
 
 /** Only the author of a note deletes it, not even an administrator. */
-export class NotMessageAuthor extends Data.TaggedError("NotMessageAuthor")<{
-  readonly messageId: number
-}> {}
+export class NotMessageAuthor extends Schema.TaggedError<NotMessageAuthor>()(
+  "NotMessageAuthor",
+  { messageId: Schema.Number }
+) {}
 
 /**
  * The `TRPCError` for a chat error, passed to `runTrpc` by the chat

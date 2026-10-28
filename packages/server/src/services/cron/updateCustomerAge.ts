@@ -8,33 +8,32 @@ import { type Db, type DbError, query } from "@mito/server/effect/db"
  * month and day. It adds one at every run, so it runs once a day. Returns how
  * many it updated.
  */
-const updateCustomerAge = (
+const updateCustomerAge = Effect.fnUntraced(function* (
   todayMonth: number,
   todayDay: number
-): Effect.Effect<number, DbError, Db> =>
-  Effect.gen(function* () {
-    const customersToUpdate = yield* query((client) =>
-      client
-        .select()
-        .from(customers)
-        .where(
-          sql`EXTRACT(MONTH FROM "birthday_date") = ${todayMonth} AND EXTRACT(DAY FROM "birthday_date") = ${todayDay}`
-        )
-    )
-
-    for (const customer of customersToUpdate) {
-      const newAge = Number(customer.age) + 1
-
-      yield* query((client) =>
-        client
-          .update(customers)
-          .set({
-            age: newAge,
-          })
-          .where(eq(customers.id, customer.id))
+): Effect.fn.Return<number, DbError, Db> {
+  const customersToUpdate = yield* query((client) =>
+    client
+      .select()
+      .from(customers)
+      .where(
+        sql`EXTRACT(MONTH FROM "birthday_date") = ${todayMonth} AND EXTRACT(DAY FROM "birthday_date") = ${todayDay}`
       )
-    }
-    return customersToUpdate.length
-  })
+  )
+
+  for (const customer of customersToUpdate) {
+    const newAge = Number(customer.age) + 1
+
+    yield* query((client) =>
+      client
+        .update(customers)
+        .set({
+          age: newAge,
+        })
+        .where(eq(customers.id, customer.id))
+    )
+  }
+  return customersToUpdate.length
+})
 
 export { updateCustomerAge }

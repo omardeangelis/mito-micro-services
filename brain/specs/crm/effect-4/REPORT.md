@@ -3,9 +3,9 @@ domain: crm
 type: review
 scope: spec
 spec: effect-4
-review_target: "branch claude/effect-vitest (PR 3 di 4)"
-base_ref: origin/dev (43ec443)
-head_ref: claude/effect-vitest (b686eac)
+review_target: "branch claude/effect-style (PR 4 di 4)"
+base_ref: origin/dev (e7ead47)
+head_ref: claude/effect-style (eeb7c06)
 verdict: do-not-ship
 review_impact: critical
 human_in_loop: true
@@ -17,12 +17,104 @@ links:
 ingested: false
 last_ingested: null
 created: 2026-10-27
-updated: 2026-10-27
+updated: 2026-10-28
 ---
 
 # Review Report: Effect 4, vitest 5 e lo stile di Effect 4
 
 La spec ha quattro PR, ognuna con la sua revisione. Ogni revisione è un round qui sotto, con lo stesso round in `RUBRIC.md`.
+
+## [Round: 2026-10-28 — PR 4, lo stile di Effect 4]
+
+### Verdict
+
+**DO NOT SHIP** · impact: critical
+
+9 passate su 10 danno SHIP. Servizi, errori ed `Effect.fn` si comportano come su `dev` in tutto ciò che si vede da fuori: risposte tRPC e HTTP, eventi di Sentry, auth, transazioni, configurazione, migrazioni. L'obiezione è una sola:
+- **Un test di D8 è diventato vuoto (v4).** `import.applyImport` e `import.lookupExisting` sono ora `Effect.fn` con traccia. Lo span che aprono legge `currentTimeNanos` del `Clock` all'inizio e alla fine, e l'orologio a passi di `apply.db.test.ts:770` dà la stessa sequenza a millisecondi e nanosecondi. Il test "la scadenza che passa tra un blocco e l'altro annulla anche il primo" ora scade prima di scrivere il primo blocco, cioè copre lo stesso caso del test della riga 742. Un mutante che tiene l'import parziale fallisce su `dev` e passa sul branch. Nessun gate lo vede: nessuna asserzione è cambiata.
+
+### Coverage
+
+- **Passate eseguite:** 10/10 (v1, v2, v3, v4, v5, v6, v8 sul modello più forte; v7, v9, v10 su sonnet).
+- **Passate saltate o fallite:** nessuna.
+- **UI pass:** non prevista, nessuna superficie visibile cambia.
+- **Suite sotto carico:** con dieci passate in parallelo (load average ~100) molte passate hanno visto timeout degli hook; rilanciati con meno worker, i file passano. Nessun fallimento di asserzione.
+
+### Findings
+
+| Severity | Verifier | Location | Finding | Fix | Durable? |
+|---|---|---|---|---|---|
+| MAJOR | v4 | `services/import/_test/apply.db.test.ts:770-778` | Gli span di `Effect.fn` consumano le letture dell'orologio a passi (anche i metodi in nanosecondi leggono il copione): il test della scadenza fra due blocchi non scrive più il primo blocco, e un mutante che tiene l'import parziale sopravvive solo sul branch | Metodi in nanosecondi costanti nell'orologio del test (verificato: verde, uccide il mutante); oppure `applyImport`/`lookupExisting` in `Effect.fnUntraced`. Tocca un test o D9: decide Omar | no |
+| MINOR | v8, v2 | `packages/server/src/effect/db.ts:46` | `DbError` con `message: Schema.String` lancia se il driver rifiuta con un `Error` il cui `message` non è una stringa (su `dev` dava `DbError`; ora un *defect*, e `tx.failed` non si segna). Nessun driver reale lo fa, ma è la lettera di AC10 | `String(cause.message)` e un caso in `db.errors.test.ts` | no |
+| MINOR | v10 | `AGENTS.md:58` | La frase su `scripts/check-assertions.mjs` resta dopo che T21 toglie lo script (D11) | Toglierla nello stesso commit; il sorgente nelle note | no |
+| MINOR | v10, v1 | `AGENTS.md:52`, §2 di `migrazione-effect.md`, AC11 | La precedenza fra "esportata ⇒ `Effect.fn`" e "per elemento ⇒ `fnUntraced`" non è detta; il §2 non nomina le costanti `<nome>Layer` né le eccezioni `fnUntraced`; AC11 non nomina `readSession` | Una frase in `AGENTS.md`, il §2 completo, la riga nel registro della SPEC | no |
+| MINOR | v10, v9, v2 | `IMPLEMENTATION-NOTES.md` | Le differenze note di T19 (copie di `alert` e `tags`, ordine delle chiavi, i due casi di input malformato) sono solo nel log; la tabella degli AC dice ancora "AC9–AC11 non iniziati"; D7 non è nelle note | Aggiornare le note; D7 nella descrizione della PR | no |
+| MINOR | v10 | `brain/domains/crm/concepts/operatore.md:60` | Dice ancora `Data.TaggedError` | Una parola | no |
+| NIT | v5 | `apps/api/smoke.mjs` | Nessun test né lo smoke passa da `cronLayer` (provato a mano sul bundle: 503 e 401 come su `dev`) | Una chiamata a `/internal/cron/<job>` nello smoke | no |
+| NIT | v1 | `services/auth`, `oidc.ts` | Quattro mutanti delle regole di login sopravvivono su `dev` e sul branch (`EmailTaken`, `!email`, `toLowerCase`, `algorithms`) | Test in un seguito | sì |
+| NIT | v2 | `contact/errors.ts:17-26` | `payloadOf` accetta `Schema.Any` | Rifiutare `any` nel controllo | no |
+| NIT | v2, v3, v9 | errori con campi | `_tag` è ora la prima chiave (`JSON.stringify`, `inspect`); `alert` e `tags` sono copie | Nessuno: nessuno li legge | no |
+| NIT | v3, v4 | log | `Cause.pretty` aggiunge due righe `at <area.nome>` dentro le funzioni con traccia; Sentry riceve lo stesso evento | Nessuno (AC11) | no |
+| NIT | v4 | `analytics/financed.ts:110` | `financedTotal` e `financedAverage` condividono lo span `analytics.financedOverWindows` | Facoltativo: un nome per funzione | no |
+| NIT | v4 | `SPEC.md:126` | AC11 dice "almeno 74" su `dev`; oggi sono 73 | Aggiornare il numero | no |
+| NIT | v8 | `effect/_test/db.db.test.ts` | Nessun test fissa il *defect* di `lockCustomer` fuori da una transazione (già su `dev`) | Un caso `it.effect` | sì |
+
+### What passed
+
+- **Auth (v1):** 30 mutanti sull'auth danno gli stessi test falliti su `dev` e sul branch; `cronLayer`/`importRouteLayer` in 75 combinazioni di ambiente e header e il bundle reale (cron, import, sessione con e senza cookie) rispondono byte per byte come su `dev`.
+- **AC10 (v2):** 59 classi con 449 input, versione `Data` contro versione `Schema`: stessi `_tag`, `message`, `instanceof`, `cause` (stessa istanza), `Equal`/`Hash`, `Exit`; nessuno dei 119 punti di costruzione può passare un valore che il costruttore nuovo rifiuta; i test di T19 sono verdi su `Data` e falliscono su ogni mutante che restringe uno schema.
+- **Bordi (v3):** 56 traduzioni tRPC, il corpo HTTP, `readContactError` nelle due forme, `runTrpc` e l'evento di Sentry identici su `dev` e sul branch.
+- **AC11 (v4):** nessun lettore di `Cause` in produzione cambia esito; il logger non stampa gli span; il retry di `import.enqueue` ripete tutto il corpo come prima; tipi e generics uguali; `gen-wrappers` trova solo `transaction`; le due deviazioni `fnUntraced` servono (il mutante che le traccia rompe esattamente quei due test).
+- **AC9 (v5):** id unici, letti per stringa, una copia per bundle; nessun secondo client del database, nessun import circolare; il mock di Sentry uccide tre mutanti e il reporter vero non viene mai costruito in 102 file di test.
+- **Configurazione (v6):** le variabili lette al caricamento dei moduli sono le stesse su `dev` e sul branch; scelta della coda e dello storage identiche cambiando l'ambiente fra un'esecuzione e l'altra; le credenziali non compaiono negli errori.
+- **AC5 (v7):** lo script passa con 321 eccezioni, tutte usate; le 8 di T18 sono solo titoli, le 313 di T19 solo nei 17 file nuovi; gli stessi 353 test nei 29 file modificati, più gli 89 nuovi.
+- **Transazioni (v8):** rollback, deadlock, transazione annidata e `lockCustomer` identici su `dev` e sul branch contro Postgres; `query` e `lockCustomer` senza span.
+- **Migrazioni (v9):** stesso risultato, exit code e messaggio in cinque scenari reali.
+- **AC14 (v10):** `next lint`, `next build` con i placeholder, `tsc`, `db:check`, `api:build`, `api:smoke` verdi; `Schema` non arriva nei bundle del browser.
+
+### Per-concern verdicts
+
+| Verifier | Concern | Verdict | Note |
+|---|---|---|---|
+| v1 | Auth (D4) | SHIP | 30 mutanti, parità |
+| v2 | Costruzione degli errori (AC10) | SHIP | `DbError.message` |
+| v3 | Traduzione ai bordi | SHIP | |
+| v4 | `Effect.fn` (AC11) | DO NOT SHIP | `apply.db.test.ts:770` |
+| v5 | Servizi e layer (AC9) | SHIP | |
+| v6 | Configurazione | SHIP | |
+| v7 | Asserzioni (AC5) | SHIP | |
+| v8 | Transazioni | SHIP | `DbError.message` |
+| v9 | Migrazioni | SHIP | |
+| v10 | Documenti e gate | SHIP | Note e `AGENTS.md` prima della PR |
+
+### Human Review Checklist
+
+1. **Il test di D8.** Omar sceglie fra: (a) metodi in nanosecondi costanti nell'orologio a passi di `apply.db.test.ts` (cambia la fixture di un test, nessuna asserzione); (b) `applyImport` e `lookupExisting` in `Effect.fnUntraced`, terza deviazione da D9. Poi il mutante di v4 (`timeLeft` che ignora la scadenza dopo un blocco scritto) deve fallire.
+2. **`DbError.message`** con `String(cause.message)` e il suo caso di test.
+3. **I documenti:** `AGENTS.md` (precedenza fra `Effect.fn` e `fnUntraced`, la frase sullo script), il §2 di `migrazione-effect.md`, `operatore.md`, le note (AC, differenze di T19, D7), il numero di AC11.
+4. **Rifare** lo script di AC5 e la suite intera con `TEST_DATABASE_URL`, a macchina scarica.
+5. **Togliere lo script** (D11) con il sorgente nelle note, dopo l'ultimo controllo.
+6. **La prova su `mito_local`** (T8.4), che chiede un `.env.development.local` locale.
+7. **Leonardo** rivede i file dell'auth (D4), poi la PR con D7 nella descrizione e la CI verde.
+
+**Stato del checklist (2026-10-28):** 1 deciso da Omar, strada (a) (D18 nel piano): il mutante di v4 ora fa fallire il test; 2 e 3 fatti (`a922139`); 4 fatto (script `ok` con 323 eccezioni, suite intera a macchina scarica); 5 fatto; 6 fatto (prova su `mito_local` verde, vedi le note); 7: Omar toglie l'obbligo della revisione di Leonardo, restano la PR con D7 e la CI verde.
+
+### Acceptance criteria check
+
+| Criterion | Met / Unmet / Blocked | Notes |
+|---|---|---|
+| AC5 | Met alla lettera; un test svuotato | Nessuna asserzione cambiata, ma `apply.db.test.ts:770` non controlla più quello che diceva |
+| AC9 | Met | 0 `*Live`, id `@mito/` |
+| AC10 | Met nei fatti | `DbError.message` da correggere per la lettera |
+| AC11 | Met | Solo `transaction`; due deviazioni documentate |
+| AC12 | Parziale | `AGENTS.md` e §2 da completare |
+| AC13 | Met | §8: nessun debito |
+| AC14 | Met in locale | La CI della PR non è partita |
+
+### Notes for docs-maintenance
+
+- **Durable findings** per il §8 della roadmap o `brain/tech-debt/crm/effect-4.md`: i quattro mutanti dell'auth che sopravvivono già su `dev`; il *defect* di `lockCustomer` fuori transazione senza test.
+- **Pagine di dominio da collegare:** `brain/domains/crm/concepts/operatore.md` (il tipo degli errori).
 
 ## [Round: 2026-10-27 — PR 3, @effect/vitest]
 

@@ -130,3 +130,10 @@
 - [Test conversion execution fidelity](feedback_test_conversion_execution_fidelity.md) — per-test assertionCalls diff, floating-Effect TS scan, base/head mutant diff
 - [Frozen TestClock probes](feedback_frozen_testclock_probes.md) — log reads of a never-set TestClock; sign mutants base-kill/head-survive, boundary opposite
 - [Test conversion kill parity](feedback_test_conversion_kill_parity.md) — same mutants base vs head, compare failing sets; `(cell ?? sentinel)` not reversed
+- [Schema error at catch site](feedback_schema_error_at_catch_site.md) — Schema.TaggedError in a tryPromise catch: non-string Error.message -> defect, skips tapError
+- [Error-class edge differential](feedback_error_class_edge_differential.md) — base/head tsx probe: keys, rest spread, ref identity, trpc shapes, Sentry beforeSend; flush 2000
+- [Test mock coverage tracer](feedback_test_mock_coverage_tracer.md) — make the real layer write a trace file; positive control via vi.unmock; avoid skipped files under load
+- [Base-tree node_modules realpath](feedback_base_tree_node_modules_realpath.md) — whole-dir symlink runs head code in the base tree; pass-unique scratch dir
+- [Schema error construction diff](feedback_schema_error_construction_differential.md) — one probe on both versions; equivalent mutants; numeric strings
+- [Load timeouts, rerun failed files](feedback_load_timeouts_rerun_failed_files.md) — load avg 100 gives hook timeouts; rerun failed files with --maxWorkers=4 --hookTimeout
+- [Effect.fn span clock reads](feedback_effect_fn_span_clock_reads.md) — spans consume scripted test clocks (nanos); label reads base vs head + mutant

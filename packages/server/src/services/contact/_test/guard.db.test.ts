@@ -12,7 +12,7 @@ import {
 } from "../../../effect/db"
 import { migrateUpTo, resetDb, testDb } from "@/test/db"
 import { failureTag, provideServer } from "@/test/effect"
-import { type ServerContext } from "@mito/server/effect/server"
+import { type ServerServices } from "@mito/server/effect/server"
 import {
   createAlert,
   createCustomer,
@@ -21,8 +21,8 @@ import {
 } from "@/test/factories"
 import { loadEditableContact, touchCustomer } from "../guard"
 
-/** The program as the edges run it: with `ServerContext` and nothing else. */
-const inServer = <A, E>(program: Effect.Effect<A, E, ServerContext>) =>
+/** The program as the edges run it: with `ServerServices` and nothing else. */
+const inServer = <A, E>(program: Effect.Effect<A, E, ServerServices>) =>
   program.pipe(provideServer, Effect.exit)
 
 const load = (taskId: number, actor: Actor) =>

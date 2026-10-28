@@ -1,6 +1,6 @@
 import { Effect, Exit } from "effect"
 import { type Db } from "../effect/db"
-import { ServerLive } from "../effect/server"
+import { serverLayer } from "../effect/server"
 import { onAuthDb } from "./database"
 
 /**
@@ -21,7 +21,7 @@ export async function admits<E extends { readonly _tag: string }>(
       Effect.tapCause((cause) =>
         Effect.logError("Sign-in database step failed", cause)
       ),
-      Effect.provide(ServerLive)
+      Effect.provide(serverLayer)
     )
   )
   if (Exit.isSuccess(exit)) return exit.value

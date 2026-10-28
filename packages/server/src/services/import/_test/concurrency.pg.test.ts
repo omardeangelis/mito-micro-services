@@ -9,10 +9,10 @@ import { classifyRows } from "@mito/domain/import/classify"
 import { groupRows, lookupKeys } from "@mito/domain/import/group"
 import { planRows } from "@mito/domain/import/plan"
 import { waveCells } from "@mito/domain/import/_test/cells"
-import { DbLive, transaction } from "../../../effect/db"
+import { Db, transaction } from "../../../effect/db"
 import { deactivateOperator } from "../../operator/deactivate"
 import { applyImport } from "../apply"
-import { ImportConfigLive } from "../config"
+import { ImportConfig } from "../config"
 import { lookupExisting } from "../lookup"
 import { provideServer } from "@/test/effect"
 import {
@@ -89,7 +89,7 @@ describe.skipIf(!hasTestDatabase)(
       await resetDb()
     })
 
-    const layer = Layer.merge(DbLive, ImportConfigLive)
+    const layer = Layer.merge(Db.layer, ImportConfig.layer)
 
     /**
      * A customer without operator with P2 and P1 of `operatorId`, P2 first in
@@ -208,7 +208,7 @@ describe.skipIf(!hasTestDatabase)("lock e scadenza dell'import", () => {
     await resetDb()
   })
 
-  const layer = Layer.merge(DbLive, ImportConfigLive)
+  const layer = Layer.merge(Db.layer, ImportConfig.layer)
   const VAT = "01234567890"
   // A row with the fiscal code of z-a: today's rule updates also the
   // customers with its VAT number (D11)

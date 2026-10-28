@@ -49,19 +49,19 @@ export type EditableContact = {
  * - `ContactForbidden`: neither the contact nor the customer is the
  *   operator's (D2, A1, AC49), with the contact's operator.
  */
-export const loadEditableContact = (
-  taskId: number,
-  actor: Actor
-): Effect.Effect<
-  EditableContact,
-  | ContactNotFound
-  | ContactSuperseded
-  | ContactForbidden
-  | CustomerMissing
-  | DbError,
-  Db | Tx
-> =>
-  Effect.gen(function* () {
+export const loadEditableContact = Effect.fn("contact.loadEditableContact")(
+  function* (
+    taskId: number,
+    actor: Actor
+  ): Effect.fn.Return<
+    EditableContact,
+    | ContactNotFound
+    | ContactSuperseded
+    | ContactForbidden
+    | CustomerMissing
+    | DbError,
+    Db | Tx
+  > {
     // Unlocked: the customer is locked first, then the task
     const [unlocked] = yield* query((client) =>
       client
@@ -104,7 +104,8 @@ export const loadEditableContact = (
       taskOperator,
       openAlert: yield* loadOpenAlert(current.alertId),
     }
-  })
+  }
+)
 
 /**
  * `lockCustomer` for a customer id that comes from the user: a missing one is
@@ -124,46 +125,45 @@ export const lockCustomerOrNotFound = (
  * `markCustomerUpdated` does (`services/customer/profile.ts`), on the row the
  * transaction locked.
  */
-export const touchCustomer = (
+export const touchCustomer = Effect.fn("contact.touchCustomer")(function* (
   customer: LockedCustomer
-): Effect.Effect<void, DbError, Db | Tx> =>
-  Effect.gen(function* () {
-    // Outside a transaction the row would no longer be locked
-    yield* Tx
-    yield* query((client) =>
-      client
-        .update(customers)
-        .set({ updatedAt: new Date() })
-        .where(eq(customers.id, customer.id))
-    )
-  })
+): Effect.fn.Return<void, DbError, Db | Tx> {
+  // Outside a transaction the row would no longer be locked
+  yield* Tx
+  yield* query((client) =>
+    client
+      .update(customers)
+      .set({ updatedAt: new Date() })
+      .where(eq(customers.id, customer.id))
+  )
+})
 
 /** The operator of `operatorId` as a contact shows it, or null. */
-export const loadOperator = (operatorId: number | null) =>
-  Effect.gen(function* () {
-    if (operatorId === null) return null
-    const [operator] = yield* query((client) =>
-      client
-        .select({
-          id: operators.id,
-          name: operators.name,
-          surname: operators.surname,
-        })
-        .from(operators)
-        .where(eq(operators.id, operatorId))
-    )
-    return operator ?? null
-  })
+export const loadOperator = Effect.fn("contact.loadOperator")(function* (
+  operatorId: number | null
+) {
+  if (operatorId === null) return null
+  const [operator] = yield* query((client) =>
+    client
+      .select({
+        id: operators.id,
+        name: operators.name,
+        surname: operators.surname,
+      })
+      .from(operators)
+      .where(eq(operators.id, operatorId))
+  )
+  return operator ?? null
+})
 
 /** The alert of `alertId` while it is open, else null. */
-const loadOpenAlert = (alertId: number | null) =>
-  Effect.gen(function* () {
-    if (alertId === null) return null
-    const [open] = yield* query((client) =>
-      client
-        .select()
-        .from(alert)
-        .where(and(eq(alert.id, alertId), eq(alert.isResolved, false)))
-    )
-    return open ?? null
-  })
+const loadOpenAlert = Effect.fnUntraced(function* (alertId: number | null) {
+  if (alertId === null) return null
+  const [open] = yield* query((client) =>
+    client
+      .select()
+      .from(alert)
+      .where(and(eq(alert.id, alertId), eq(alert.isResolved, false)))
+  )
+  return open ?? null
+})

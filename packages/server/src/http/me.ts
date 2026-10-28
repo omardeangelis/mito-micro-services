@@ -30,7 +30,7 @@ const validPreferences = (stored: Record<string, unknown>): UserPreference =>
  * `user.getUserPreference`, `operator.getUserOperator` and
  * `operator.updateOperatorInfo` call, with no logic of their own (H16)
  */
-export const MeLive = HttpApiBuilder.group(MitoApi, "me", (handlers) =>
+export const meLayer = HttpApiBuilder.group(MitoApi, "me", (handlers) =>
   Effect.gen(function* () {
     // The database and the reporter of the layer, so the handlers need
     // nothing per request but `CurrentUser`

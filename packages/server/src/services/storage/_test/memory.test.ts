@@ -1,13 +1,13 @@
 import { Effect } from "effect"
 import { describe, expect, it } from "@effect/vitest"
 import { StorageNotFoundError, StorageValidationError } from "../errors"
-import { makeMemoryStorageLayer, type MemoryStorageOptions } from "../memory"
+import { memoryStorageLayer, type MemoryStorageOptions } from "../memory"
 import { Storage } from "../storage"
 
 const run = <A, E>(
   program: Effect.Effect<A, E, Storage>,
   options?: MemoryStorageOptions
-) => Effect.provide(program, makeMemoryStorageLayer(options))
+) => Effect.provide(program, memoryStorageLayer(options))
 
 const bytes = (text: string) => new TextEncoder().encode(text)
 const text = (data: Uint8Array) => new TextDecoder().decode(data)
