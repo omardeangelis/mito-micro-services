@@ -37,6 +37,8 @@ import { MAX_CHAT_LIMIT, SavedMessage } from "@mito/contract/chat"
 import { taskStatus } from "@mito/db/schema/task"
 import { TimeFrame } from "@mito/contract/analytics"
 import { TIMEFRAMEOPTIONS } from "@mito/domain/constants/timeframes"
+import { ImportFormat, ImportStatus } from "@mito/contract/import"
+import { importFormat, importRunStatus } from "@mito/db/schema/importRun"
 
 // The contract writes the enums again, since it doesn't import @mito/db (H5):
 // here they are compared with the database's and the domain's
@@ -48,6 +50,8 @@ describe("gli enum e il cliente del contratto", () => {
     expect(PracticeState.literals).toEqual(stateEnum)
     expect(CustomerSearchBy.literals).toEqual(customerSearchBy.options)
     expect(TaskStatus.literals).toEqual(taskStatus)
+    expect(ImportFormat.literals).toEqual(importFormat)
+    expect(ImportStatus.literals).toEqual(importRunStatus)
     expect(MAX_CHAT_LIMIT).toBe(domainChatLimit)
     expect(PriorityBand.literals).toEqual(priorityBands)
     expect(CONTACTS_PER_PAGES).toEqual(PER_PAGES)

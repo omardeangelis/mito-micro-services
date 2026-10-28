@@ -246,6 +246,72 @@ export class InvalidPeriod extends Schema.TaggedError<InvalidPeriod>()(
   { httpApiStatus: 400 }
 ) {}
 
+/**
+ * What the browser sent for an import can't be imported: too big,
+ * unreadable, not the layout it says, or out of the procedure's limits (tRPC
+ * BAD_REQUEST). `reason` is readable, without the values of the rows
+ */
+export class ImportInputInvalid extends Schema.TaggedError<ImportInputInvalid>()(
+  "ImportInputInvalid",
+  { reason: Schema.String },
+  { httpApiStatus: 400 }
+) {}
+
+/** The upload of an import isn't there any more (tRPC NOT_FOUND). */
+export class ImportUploadMissing extends Schema.TaggedError<ImportUploadMissing>()(
+  "ImportUploadMissing",
+  {},
+  { httpApiStatus: 404 }
+) {}
+
+/** The upload is already being imported (tRPC CONFLICT). */
+export class ImportUploadClosed extends Schema.TaggedError<ImportUploadClosed>()(
+  "ImportUploadClosed",
+  {},
+  { httpApiStatus: 409 }
+) {}
+
+/**
+ * A row the admin expected to import can't be saved now: the row and the
+ * rule (tRPC BAD_REQUEST)
+ */
+export class ImportRowRejected extends Schema.TaggedError<ImportRowRejected>()(
+  "ImportRowRejected",
+  { row: Schema.Number, rule: Schema.String },
+  { httpApiStatus: 400 }
+) {}
+
+/** The import didn't end within 30 minutes of its start (tRPC TIMEOUT). */
+export class ImportTimedOut extends Schema.TaggedError<ImportTimedOut>()(
+  "ImportTimedOut",
+  {},
+  { httpApiStatus: 408 }
+) {}
+
+/**
+ * Another import is running: who started it and when, as "10:05" in Rome
+ * (tRPC CONFLICT)
+ */
+export class ImportAlreadyRunning extends Schema.TaggedError<ImportAlreadyRunning>()(
+  "ImportAlreadyRunning",
+  { startedBy: Schema.String, time: Schema.String },
+  { httpApiStatus: 409 }
+) {}
+
+/** This environment has no queue for the imports (tRPC PRECONDITION_FAILED). */
+export class ImportUnavailable extends Schema.TaggedError<ImportUnavailable>()(
+  "ImportUnavailable",
+  {},
+  { httpApiStatus: 412 }
+) {}
+
+/** The queue didn't take the import (tRPC INTERNAL_SERVER_ERROR). */
+export class ImportQueueFailed extends Schema.TaggedError<ImportQueueFailed>()(
+  "ImportQueueFailed",
+  {},
+  { httpApiStatus: 500 }
+) {}
+
 const apiErrors = [
   Unauthorized,
   NotAnOperator,
@@ -273,6 +339,14 @@ const apiErrors = [
   MessageMissing,
   NotMessageAuthor,
   InvalidPeriod,
+  ImportInputInvalid,
+  ImportUploadMissing,
+  ImportUploadClosed,
+  ImportRowRejected,
+  ImportTimedOut,
+  ImportAlreadyRunning,
+  ImportUnavailable,
+  ImportQueueFailed,
 ] as const
 
 /** An error some endpoint declares. */

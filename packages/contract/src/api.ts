@@ -3,6 +3,7 @@ import { AnalyticsGroup } from "./analytics"
 import { ChatGroup } from "./chat"
 import { CustomerGroup } from "./customer"
 import { ExportGroup } from "./export"
+import { ImportGroup } from "./import"
 import { MeGroup } from "./me"
 import { OperatorGroup } from "./operator"
 import { PraticheGroup } from "./pratiche"
@@ -18,4 +19,5 @@ export class MitoApi extends HttpApi.make("mito")
   .add(ChatGroup)
   .add(AnalyticsGroup)
   .add(ExportGroup)
+  .add(ImportGroup)
   .prefix("/api/v1") {}

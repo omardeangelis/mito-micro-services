@@ -42,6 +42,7 @@ type ApiGroups =
   | GroupService<"chat">
   | GroupService<"analytics">
   | GroupService<"export">
+  | GroupService<"import">
 
 /**
  * The handlers of some groups of the contract, written with
@@ -129,6 +130,14 @@ const unservedGroups = Layer.mergeAll(
   ),
   HttpApiBuilder.group(MitoApi, "export", (handlers) =>
     handlers.handle("callStats", unserved)
+  ),
+  HttpApiBuilder.group(MitoApi, "import", (handlers) =>
+    handlers
+      .handle("lookup", unserved)
+      .handle("upload", unserved)
+      .handle("start", unserved)
+      .handle("active", unserved)
+      .handle("list", unserved)
   )
 )
 
