@@ -34,8 +34,14 @@ export type PracticeListQuery = {
     onlyMe?: boolean
   }
   q?: string
-  advancedFilters?: AdvancedFilter[]
+  advancedFilters?: readonly AdvancedFilter[]
 }
+
+/**
+ * The column cast to `numeric`, as the driver reads it: its digits, a string
+ * (`castAsNumber` says number)
+ */
+const numericText = (column: PgColumn) => castAsNumber(column).mapWith(String)
 
 // Colonna in cui cerca ogni valore di `search_by`
 const praticaSearchColumns = {
@@ -121,7 +127,7 @@ export const listPractices = Effect.fn("practice.listPractices")(function* (
         id: practices.id,
         praticaId: practices.praticaId,
         productId: practices.productId,
-        importoFinanziato: castAsNumber(practices.importoFinanziato),
+        importoFinanziato: numericText(practices.importoFinanziato),
         importoErogato: practices.importoErogato,
         dataLiquidazione: practices.dataLiquidazione,
         stato: practices.state,
@@ -150,7 +156,7 @@ export const listPractices = Effect.fn("practice.listPractices")(function* (
           id: practices.id,
           praticaId: practices.praticaId,
           productId: practices.productId,
-          importoFinanziato: castAsNumber(practices.importoFinanziato),
+          importoFinanziato: numericText(practices.importoFinanziato),
           importoErogato: practices.importoErogato,
           dataLiquidazione: practices.dataLiquidazione,
           stato: practices.state,

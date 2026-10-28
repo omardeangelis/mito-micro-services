@@ -29,7 +29,7 @@ export type PraticheColumnSelectedProps = {
   id: string | number
   praticaId: string | null
   productId: string | number | null
-  importoFinanziato: number | null
+  importoFinanziato: number | string | null
   dataLiquidazione: Date | null
   stato: PraticaState | null
   updatedAt: Date | null

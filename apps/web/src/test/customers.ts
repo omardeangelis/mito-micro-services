@@ -567,6 +567,10 @@ export function fakeCustomers(
     ),
     HttpApiBuilder.group(MitoApi, "pratiche", (handlers) =>
       handlers
+        .handle("getAllPratiche", unserved)
+        .handle("getPraticaById", unserved)
+        .handle("updatePraticaFromDashboard", unserved)
+        .handle("updateCustomerPreview", unserved)
         .handle("getAllAvailableRegion", () =>
           Effect.sync(() => state.regions.map((region) => ({ region })))
         )
