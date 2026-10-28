@@ -15,6 +15,7 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 # xlsx comes from a tarball in the repo (package.json)
 COPY vendor ./vendor
 COPY packages/config/package.json ./packages/config/
+COPY packages/contract/package.json ./packages/contract/
 COPY packages/db/package.json ./packages/db/
 COPY packages/domain/package.json ./packages/domain/
 COPY packages/env/package.json ./packages/env/
@@ -24,6 +25,7 @@ COPY apps/api/package.json ./apps/api/
 RUN pnpm install --frozen-lockfile --ignore-scripts
 # tsconfig.json extends the one of packages/config
 COPY packages/config ./packages/config
+COPY packages/contract ./packages/contract
 COPY packages/db ./packages/db
 COPY packages/domain ./packages/domain
 COPY packages/env ./packages/env
@@ -39,6 +41,7 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 # xlsx comes from a tarball in the repo (package.json)
 COPY vendor ./vendor
 COPY packages/config/package.json ./packages/config/
+COPY packages/contract/package.json ./packages/contract/
 COPY packages/db/package.json ./packages/db/
 COPY packages/domain/package.json ./packages/domain/
 COPY packages/env/package.json ./packages/env/
