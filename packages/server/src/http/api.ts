@@ -9,15 +9,20 @@ import { adminOnlyLayer } from "./adminOnly"
 import { authenticatedLayer } from "./authenticated"
 import { customerLayer } from "./customer"
 import { meLayer } from "./me"
+import { operatorLayer } from "./operator"
 import { SessionReader } from "./session"
+import { taskLayer } from "./task"
 
 /**
  * The groups of the contract with their middleware. It still needs the
  * session (`SessionReader`) and `serverLayer`: the tests give theirs
  */
-export const apiHandlersLayer = Layer.mergeAll(meLayer, customerLayer).pipe(
-  Layer.provideMerge(Layer.merge(authenticatedLayer, adminOnlyLayer))
-)
+export const apiHandlersLayer = Layer.mergeAll(
+  meLayer,
+  customerLayer,
+  operatorLayer,
+  taskLayer
+).pipe(Layer.provideMerge(Layer.merge(authenticatedLayer, adminOnlyLayer)))
 
 // HttpApi serves no files: the platform without a file system
 const noFiles = FileSystem.layerNoop({})

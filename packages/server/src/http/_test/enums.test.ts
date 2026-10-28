@@ -16,16 +16,19 @@ import {
 import { stateEnum } from "@mito/db/schema/pratiche"
 import { customerRoleEnum } from "@mito/db/schema/relations/customerToPratica"
 import { customerSearchBy } from "@mito/domain/constants/customerSearch"
+import { TaskStatus } from "@mito/contract/task"
+import { taskStatus } from "@mito/db/schema/task"
 
 // The contract writes the enums again, since it doesn't import @mito/db (H5):
 // here they are compared with the database's and the domain's
-describe("gli enum e il cliente del gruppo customer", () => {
+describe("gli enum e il cliente del contratto", () => {
   it("sono quelli del database e del dominio, nello stesso ordine", () => {
     expect(BlackListStatus.literals).toEqual(blackListStatus)
     expect(CustomerSource.literals).toEqual(sourceValues)
     expect(CustomerRole.literals).toEqual(customerRoleEnum)
     expect(PracticeState.literals).toEqual(stateEnum)
     expect(CustomerSearchBy.literals).toEqual(customerSearchBy.options)
+    expect(TaskStatus.literals).toEqual(taskStatus)
   })
 
   // A new column of `customers` would be dropped from the responses

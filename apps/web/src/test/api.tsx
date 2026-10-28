@@ -30,7 +30,11 @@ import { Toaster } from "@/components/ui/toaster"
 type GroupService<Name extends string> = HttpApiGroup.Service<"mito", Name>
 
 /** The groups of the contract */
-type ApiGroups = GroupService<"me"> | GroupService<"customer">
+type ApiGroups =
+  | GroupService<"me">
+  | GroupService<"customer">
+  | GroupService<"operator">
+  | GroupService<"task">
 
 /**
  * The handlers of some groups of the contract, written with
@@ -72,6 +76,14 @@ const unservedGroups = Layer.mergeAll(
       .handle("assignToYourself", unserved)
       .handle("updateLastEdit", unserved)
       .handle("bulkUpdateCustomers", unserved)
+  ),
+  HttpApiBuilder.group(MitoApi, "operator", (handlers) =>
+    handlers.handle("getAllUniqueOperators", unserved)
+  ),
+  HttpApiBuilder.group(MitoApi, "task", (handlers) =>
+    handlers
+      .handle("getCustomersWithActiveAlerts", unserved)
+      .handle("bulkHandleTask", unserved)
   )
 )
 
