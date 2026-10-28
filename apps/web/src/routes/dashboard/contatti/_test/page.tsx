@@ -10,15 +10,18 @@ import {
 } from "@/store/userPreferences"
 import { ada, renderWithApi, signedInAs } from "@/test/api"
 import { type fakeContacts } from "@/test/contacts"
+import { Component as ContactPage } from "../ContactPage"
 import { ContactsError } from "../ContactsError"
 import { Component as ContactsPage } from "../ContactsPage"
 
 /**
- * Renders the contacts list at `path`, on the history of the browser, so
- * `window.location` follows the navigations as in the app: the detail of a
- * contact shows "dettaglio", the other addresses "altra pagina", an error of
- * the route `ContactsError`, as in the app. The signed-in user is Ada, with `role`;
- * with `role: null` the store doesn't know them yet
+ * Renders the contacts at `path`, on the history of the browser, so
+ * `window.location` follows the navigations as in the app: the list, the
+ * detail of a contact (with `detail`; otherwise it shows "dettaglio"), the
+ * other addresses as "altra pagina", an error of the route `ContactsError`,
+ * as in the app. The
+ * signed-in user is Ada, with `role`; with `role: null` the store doesn't
+ * know them yet
  */
 export function renderContacts(
   path: string,
@@ -26,19 +29,37 @@ export function renderContacts(
   {
     role = "OPERATORE",
     preferences,
+    detail = false,
+    listGate,
   }: {
     role?: Role | null
     preferences?: UserPreferenceInitProps["preferences"]
+    detail?: boolean
+    /**
+     * The list is a lazy route whose module loads when this resolves, as
+     * the first time in the app: a navigation to it waits until then
+     */
+    listGate?: Promise<void>
   } = {}
 ) {
   window.history.replaceState(null, "", path)
   const router = createBrowserRouter([
     {
       path: "/dashboard/contatti",
-      element: <ContactsPage />,
       errorElement: <ContactsError />,
+      children: [
+        listGate
+          ? {
+              index: true,
+              lazy: () => listGate.then(() => ({ Component: ContactsPage })),
+            }
+          : { index: true, element: <ContactsPage /> },
+        {
+          path: ":id",
+          element: detail ? <ContactPage /> : <p>dettaglio</p>,
+        },
+      ],
     },
-    { path: "/dashboard/contatti/:id", element: <p>dettaglio</p> },
     { path: "*", element: <p>altra pagina</p> },
   ])
   const store = createUserPreferenceStore(

@@ -9,7 +9,7 @@ import { afterEach, describe, expect, it, onTestFinished, vi } from "vitest"
 import { routes } from "@/router"
 import { Layer } from "effect"
 import { ada, fakeMe, renderWithApi } from "@/test/api"
-import { fakeContacts } from "@/test/contacts"
+import { contactDetail, fakeContacts } from "@/test/contacts"
 import { fakeCustomers } from "@/test/customers"
 
 const captureException = vi.hoisted(() => vi.fn())
@@ -48,16 +48,25 @@ afterEach(() => {
 })
 
 describe("la sessione (F6)", () => {
-  it("senza sessione /dashboard e le sue pagine portano al login", async () => {
-    auth.session = null
-    const router = open("/dashboard/contatti/76006")
+  it(
+    "senza sessione /dashboard e le sue pagine portano al login",
+    { timeout: 15000 },
+    async () => {
+      auth.session = null
+      const router = open("/dashboard/contatti/76006")
 
-    expect(
-      await screen.findByRole("button", { name: "Accedi" })
-    ).toBeInTheDocument()
-    expect(router.state.location.pathname).toBe("/login")
-    expect(screen.queryByRole("navigation")).toBeNull()
-  })
+      // After the first import of the page of the address, in a cold test run
+      expect(
+        await screen.findByRole(
+          "button",
+          { name: "Accedi" },
+          { timeout: 10000 }
+        )
+      ).toBeInTheDocument()
+      expect(router.state.location.pathname).toBe("/login")
+      expect(screen.queryByRole("navigation")).toBeNull()
+    }
+  )
 
   it("mentre la sessione si legge non mostra né la pagina né il login", () => {
     auth.isPending = true
@@ -154,6 +163,31 @@ describe("le rotte (§5)", () => {
     ])
   }, 15000)
 
+  it("un link diretto al dettaglio di un contatto lo apre nella sua finestra (3.2)", async () => {
+    const contacts = fakeContacts({ details: { 101: contactDetail() } })
+    window.history.replaceState(null, "", "/dashboard/contatti/101")
+    const router = createBrowserRouter(routes)
+    onTestFinished(() => {
+      router.dispose()
+      window.history.replaceState(null, "", "/")
+    })
+    renderWithApi(<RouterProvider router={router} />, {
+      handlers: Layer.merge(backend.handlers, contacts.handlers),
+      auth: backend.auth,
+    })
+
+    // The first import of the page and its modules, in a cold test run
+    const sheet = await screen.findByRole(
+      "dialog",
+      { name: "Dettaglio contatto" },
+      { timeout: 10000 }
+    )
+    expect(
+      await within(sheet).findByRole("heading", { name: "Rossi Mario" })
+    ).toBeInTheDocument()
+    expect(contacts.state.detailReads).toEqual(["101"])
+  }, 15000)
+
   it.each([
     ["/dashboard/customers/new", "Nuovo cliente"],
     ["/dashboard/customers/customer-1", "Scheda Cliente"],
@@ -184,7 +218,6 @@ describe("le rotte (§5)", () => {
 
   it.each([
     ["/dashboard", "Home", "3.5"],
-    ["/dashboard/contatti/76006", "Contatto", "3.2"],
     ["/dashboard/pratiche", "Pratiche", "3.3"],
     ["/dashboard/pratiche/7", "Pratica", "3.3"],
     ["/dashboard/import", "Import", "3.6"],
@@ -197,10 +230,10 @@ describe("le rotte (§5)", () => {
   })
 
   it("la pagina riceve l'id della rotta", async () => {
-    open("/dashboard/contatti/76006")
+    open("/dashboard/pratiche/7")
 
     await heading()
-    expect(screen.getByText("id").nextSibling).toHaveTextContent("76006")
+    expect(screen.getByText("id").nextSibling).toHaveTextContent("7")
   })
 
   it("dal menu si passa da una pagina all'altra", async () => {

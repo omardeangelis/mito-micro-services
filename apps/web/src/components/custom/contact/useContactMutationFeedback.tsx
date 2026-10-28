@@ -29,9 +29,10 @@ export type ContactMutationFeedbackOptions = {
 /**
  * The reason of a rejected contact change, as `describeContactError` of the
  * Next.js app: the texts of the contract, but a change the server never
- * answered is "not saved", and an operator it doesn't know is "not valid"
+ * answered is "not saved", and an operator it doesn't know is "not valid".
+ * The detail says it also inside the sheet, which hides the toasts
  */
-const describeRejection = (error: ApiFailure): string => {
+export const describeRejection = (error: ApiFailure): string => {
   switch (error._tag) {
     case "ApiUnavailable":
       return "Modifica non salvata, riprova"
