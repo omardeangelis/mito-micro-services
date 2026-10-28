@@ -117,6 +117,9 @@ export const ContactsPage = Schema.Struct({
 })
 export type ContactsPage = typeof ContactsPage.Type
 
+/** The customer of the `customerId` filter of the list. */
+export type CustomerFilter = NonNullable<ContactsPage["customerFilter"]>
+
 /** `priorityBands` of @mito/domain/contact/priority. */
 export const PriorityBand = Schema.Literals(["low", "medium", "high", "urgent"])
 export type PriorityBand = typeof PriorityBand.Type

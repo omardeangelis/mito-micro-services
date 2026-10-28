@@ -1,12 +1,18 @@
 import {
+  keepPreviousData,
   queryOptions,
   useMutation,
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query"
 import { useCallback } from "react"
-import { Effect } from "effect"
-import { type BulkHandleTask } from "@mito/contract/task"
+import { Effect, Schema } from "effect"
+import {
+  type BulkHandleTask,
+  ContactsQuery,
+  type TaskStatus,
+} from "@mito/contract/task"
+import { type GetContactsInput } from "@mito/domain/contact/listInput"
 import { useRun } from "./ApiProvider"
 import { allBatches, customerKeys } from "./customer"
 import { routeErrorWhenEmpty } from "./queryClient"
@@ -22,6 +28,74 @@ export const taskKeys = {
   customerAlerts: (customerId: string) =>
     [...taskKeys.all, "getCustomerAlerts", { id: customerId }] as const,
   contact: (id: string) => [...taskKeys.all, "getContactById", { id }] as const,
+  contacts: (input: GetContactsInput) =>
+    [...taskKeys.all, "getContacts", input] as const,
+}
+
+/**
+ * One page of the contacts list (`POST /task/contacts`), for the input
+ * `toContactsInput` gives: the payload is that input, which the contract
+ * takes as it is for a state `parse` gave
+ */
+export const contactsOptions = (run: Run, input: GetContactsInput) =>
+  queryOptions({
+    queryKey: taskKeys.contacts(input),
+    queryFn: ({ signal }) =>
+      run(
+        Effect.gen(function* () {
+          const payload = yield* Schema.decodeUnknownEffect(ContactsQuery)(
+            input
+          ).pipe(Effect.orDie)
+          const client = yield* ApiClient
+          return yield* client.task.getContacts({ payload })
+        }),
+        signal
+      ),
+  })
+
+/**
+ * The page of `input`, and when it was read. While another page loads the
+ * previous one stays, as the Next.js app keeps the page during a navigation
+ * (`isPlaceholderData`). A page that fails goes to the error of the route,
+ * as `contatti/error.tsx` of the Next.js app, with no toast: the filters and
+ * the address of a list left on screen would speak of a page it doesn't show.
+ * A page already on screen that fails to read again stays, with the toast
+ */
+export const useContacts = (input: GetContactsInput) =>
+  useQuery({
+    ...contactsOptions(useRun(), input),
+    placeholderData: keepPreviousData,
+    ...routeErrorWhenEmpty,
+  })
+
+/**
+ * The state of a contact (`POST /task/:id/state`). The caller shows a
+ * rejection itself (`useContactMutationFeedback`), no toast, and reads the
+ * page again (`refresh`)
+ */
+export const useChangeState = () => {
+  const run = useRun()
+  return useMutation({
+    mutationFn: ({
+      taskId,
+      ...payload
+    }: {
+      taskId: number
+      toState: TaskStatus
+      source: "list" | "detail"
+      confirmedAlertId: number | null
+    }) =>
+      run(
+        Effect.gen(function* () {
+          const client = yield* ApiClient
+          return yield* client.task.changeState({
+            params: { id: taskId },
+            payload,
+          })
+        })
+      ),
+    meta: { toastErrors: false },
+  })
 }
 
 /**

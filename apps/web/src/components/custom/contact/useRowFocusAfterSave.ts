@@ -72,7 +72,9 @@ const restoreFocus = ({ cell, row, table, rowIndex }: Origin) => {
  * `forget()` when something else takes the focus (a confirmation modal). If
  * the row unmounts while a save is remembered, the focus is settled then.
  */
-export const useRowFocusAfterSave = (cellRef: React.RefObject<HTMLElement>) => {
+export const useRowFocusAfterSave = (
+  cellRef: React.RefObject<HTMLElement | null>
+) => {
   const origin = useRef<Origin | null>(null)
 
   const remember = useCallback(() => {

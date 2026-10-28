@@ -9,6 +9,7 @@ import { afterEach, describe, expect, it, onTestFinished, vi } from "vitest"
 import { routes } from "@/router"
 import { Layer } from "effect"
 import { ada, fakeMe, renderWithApi } from "@/test/api"
+import { fakeContacts } from "@/test/contacts"
 import { fakeCustomers } from "@/test/customers"
 
 const captureException = vi.hoisted(() => vi.fn())
@@ -130,6 +131,29 @@ describe("le rotte (§5)", () => {
     expect(customers.state.searches).toHaveLength(1)
   })
 
+  it("un link diretto a /dashboard/contatti apre la lista dei contatti (3.2)", async () => {
+    const contacts = fakeContacts()
+    window.history.replaceState(null, "", "/dashboard/contatti?stato=chiamare")
+    const router = createBrowserRouter(routes)
+    onTestFinished(() => {
+      router.dispose()
+      window.history.replaceState(null, "", "/")
+    })
+    renderWithApi(<RouterProvider router={router} />, {
+      handlers: Layer.merge(backend.handlers, contacts.handlers),
+      auth: backend.auth,
+    })
+
+    // The first import of the page and its modules, in a cold test run
+    expect(
+      await screen.findByRole("table", { name: "Contatti" }, { timeout: 10000 })
+    ).toBeInTheDocument()
+    expect(screen.getByRole("link", { name: "Rossi Mario" })).toBeVisible()
+    expect(contacts.state.queries).toEqual([
+      expect.objectContaining({ states: ["chiamare"] }),
+    ])
+  }, 15000)
+
   it.each([
     ["/dashboard/customers/new", "Nuovo cliente"],
     ["/dashboard/customers/customer-1", "Scheda Cliente"],
@@ -160,7 +184,6 @@ describe("le rotte (§5)", () => {
 
   it.each([
     ["/dashboard", "Home", "3.5"],
-    ["/dashboard/contatti", "Contatti", "3.2"],
     ["/dashboard/contatti/76006", "Contatto", "3.2"],
     ["/dashboard/pratiche", "Pratiche", "3.3"],
     ["/dashboard/pratiche/7", "Pratica", "3.3"],

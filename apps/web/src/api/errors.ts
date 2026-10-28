@@ -1,4 +1,12 @@
-import { type ApiFailure } from "./runtime"
+import { isApiError } from "@mito/contract/errors"
+import { ApiUnavailable, type ApiFailure } from "./runtime"
+
+/** What a call to the backend fails with, for the code out of `src/api` */
+export type { ApiFailure }
+
+/** A failure of a call to the backend, not of the app (a chunk, a bug) */
+export const isApiFailure = (error: unknown): error is ApiFailure =>
+  isApiError(error) || error instanceof ApiUnavailable
 
 /**
  * The text the user reads for a failed call (F8, H13), as
