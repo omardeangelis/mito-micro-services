@@ -43,6 +43,50 @@ const withBody = (request: Request, body: Record<string, unknown>) =>
   })
 
 /**
+ * A forwarded or `Host` header better-auth reads as a host: the checks of its
+ * `validateProxyHeader` (utils/url), so both pick the same header
+ */
+const isHostHeader = (value: string | null): value is string =>
+  !!value &&
+  !/\.\.|\0|\s|^\.|[<>'"]|javascript:|file:|data:/i.test(value) &&
+  (/^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*(:[0-9]{1,5})?$/.test(
+    value
+  ) ||
+    /^(\d{1,3}\.){3}\d{1,3}(:[0-9]{1,5})?$/.test(value) ||
+    /^\[[0-9a-fA-F:]+\](:[0-9]{1,5})?$/.test(value) ||
+    /^localhost(:[0-9]{1,5})?$/i.test(value))
+
+/**
+ * The frontend a request comes from, as better-auth resolves it (spec
+ * auth-due-frontend): with a static `baseURL` always that one; with the
+ * allowed hosts, the forwarded host (or else `Host`) when it is in the list,
+ * on the scheme of the config, and the principal address otherwise
+ */
+function frontendOf(auth: Auth): (request: Request) => string {
+  const { baseURL } = auth.options
+  if (typeof baseURL === "string") return () => baseURL
+  if (!baseURL?.fallback || !baseURL.protocol)
+    throw new Error("better-auth needs a fallback and a protocol")
+  const { allowedHosts, protocol, fallback } = baseURL
+  const allowed = new Set(allowedHosts.map((host) => host.toLowerCase()))
+  const trustForwarded = auth.options.advanced?.trustedProxyHeaders === true
+  return (request) => {
+    const forwarded = trustForwarded
+      ? request.headers.get("x-forwarded-host")
+      : null
+    const header = request.headers.get("host")
+    // The order of better-auth's getHostFromSource: the forwarded host, the
+    // Host header, the URL of the request
+    const host = isHostHeader(forwarded)
+      ? forwarded
+      : isHostHeader(header)
+        ? header
+        : new URL(request.url).host
+    return allowed.has(host.toLowerCase()) ? `${protocol}://${host}` : fallback
+  }
+}
+
+/**
  * The end of a login, from the provider or the link: a redirect to one of
  * the two destinations, or `loginFailed`. better-auth's error redirects carry
  * the code and the message of the error, the 500s its message.
@@ -64,11 +108,10 @@ function endOfLogin(response: Response, baseURL: string) {
  * better-auth adds.
  */
 export function authHandler(auth: Auth) {
-  const { baseURL } = auth.options
-  if (typeof baseURL !== "string")
-    throw new Error("better-auth needs a baseURL")
+  const frontend = frontendOf(auth)
   return async (request: Request): Promise<Response> => {
     const url = new URL(request.url)
+    const baseURL = frontend(request)
     if (!url.pathname.startsWith(`${BASE_PATH}/`)) return notFound()
     const path = url.pathname.slice(BASE_PATH.length)
     const route = `${request.method} ${path}`

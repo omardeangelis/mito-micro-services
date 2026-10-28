@@ -5,6 +5,7 @@
   "description": "Le variabili d'ambiente validate (@t3-oss/env-nextjs), per l'app, il server e next.config.js. Usa @t3-oss/env-nextjs e zod della root",
   "type": "module",
   "exports": {
-    ".": "./src/index.js"
+    ".": "./src/index.js",
+    "./allowedHosts": "./src/allowedHosts.js"
   }
 }

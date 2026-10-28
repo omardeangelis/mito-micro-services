@@ -1,5 +1,6 @@
 import { createEnv } from "@t3-oss/env-nextjs"
 import { z } from "zod"
+import { parseAllowedHosts } from "./allowedHosts.js"
 
 /**
  * The production deployment, as the build saw it: next.config.js reads
@@ -65,6 +66,18 @@ export const env = createEnv({
     // (packages/server/src/betterAuth/index.ts)
     BETTER_AUTH_SECRET: z.string().optional(),
     BETTER_AUTH_URL: z.string().url().optional(),
+    // The other frontends of the same backend (spec auth-due-frontend):
+    // exact hosts, comma separated, with the scheme of BETTER_AUTH_URL
+    BETTER_AUTH_ALLOWED_HOSTS: z
+      .string()
+      .optional()
+      .superRefine((value, ctx) => {
+        try {
+          parseAllowedHosts(value, process.env.BETTER_AUTH_URL)
+        } catch (error) {
+          ctx.addIssue({ code: "custom", message: String(error) })
+        }
+      }),
     // Exactly "true" turns on the test logins (the email link, the addresses
     // of AUTH_ALLOWED_EMAILS); anything else, or unset, leaves them off
     AUTH_TEST_LOGIN: z.string().optional(),
@@ -118,6 +131,7 @@ export const env = createEnv({
     AUTH_ALLOWED_EMAILS: process.env.AUTH_ALLOWED_EMAILS,
     BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET,
     BETTER_AUTH_URL: process.env.BETTER_AUTH_URL,
+    BETTER_AUTH_ALLOWED_HOSTS: process.env.BETTER_AUTH_ALLOWED_HOSTS,
     AUTH_TEST_LOGIN: process.env.AUTH_TEST_LOGIN,
     NEXT_PUBLIC_VERCEL_ENV: process.env.NEXT_PUBLIC_VERCEL_ENV,
     NEXT_PUBLIC_APP_ENV: process.env.NEXT_PUBLIC_APP_ENV,

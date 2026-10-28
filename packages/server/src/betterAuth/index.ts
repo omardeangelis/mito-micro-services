@@ -1,4 +1,5 @@
 import { env } from "@mito/env"
+import { parseAllowedHosts } from "@mito/env/allowedHosts"
 import { type Auth, type AuthConfig, buildAuth } from "./config"
 import { magicLinkSender } from "./mail"
 
@@ -6,6 +7,7 @@ type AuthEnv = Parameters<typeof magicLinkSender>[0] &
   Partial<
     Record<
       | "BETTER_AUTH_URL"
+      | "BETTER_AUTH_ALLOWED_HOSTS"
       | "BETTER_AUTH_SECRET"
       | "AUTH_TEST_LOGIN"
       | "AUTH_ALLOWED_EMAILS"
@@ -35,6 +37,10 @@ export function authConfigFrom(vars: AuthEnv): AuthConfig {
   const testLogin = vars.AUTH_TEST_LOGIN === "true"
   return {
     baseURL: vars.BETTER_AUTH_URL,
+    allowedHosts: parseAllowedHosts(
+      vars.BETTER_AUTH_ALLOWED_HOSTS,
+      vars.BETTER_AUTH_URL
+    ),
     secret: vars.BETTER_AUTH_SECRET,
     azure:
       AZURE_AD_CLIENT_ID && AZURE_AD_CLIENT_SECRET && AZURE_AD_TENANT_ID

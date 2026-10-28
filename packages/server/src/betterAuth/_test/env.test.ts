@@ -70,6 +70,26 @@ describe("authConfigFrom", () => {
     ).toBeUndefined()
   })
 
+  it("legge gli host dei frontend, e senza la variabile non ne ha (auth-due-frontend AC1, AC2)", () => {
+    expect(
+      authConfigFrom({
+        ...REQUIRED,
+        BETTER_AUTH_ALLOWED_HOSTS: "staging-crm.dbmito.it, Mito-Web.vercel.app",
+      }).allowedHosts
+    ).toEqual(["staging-crm.dbmito.it", "mito-web.vercel.app"])
+    expect(authConfigFrom(REQUIRED).allowedHosts).toBeUndefined()
+    expect(
+      authConfigFrom({ ...REQUIRED, BETTER_AUTH_ALLOWED_HOSTS: " " })
+        .allowedHosts
+    ).toBeUndefined()
+  })
+
+  it("si ferma con un host che non è un nome esatto", () => {
+    expect(() =>
+      authConfigFrom({ ...REQUIRED, BETTER_AUTH_ALLOWED_HOSTS: "*.vercel.app" })
+    ).toThrow(/BETTER_AUTH_ALLOWED_HOSTS/)
+  })
+
   it("si ferma con un secret più corto di 32 caratteri", () => {
     expect(() =>
       authConfigFrom({ ...REQUIRED, BETTER_AUTH_SECRET: "[SENSITIVE]" })
