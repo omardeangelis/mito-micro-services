@@ -210,7 +210,7 @@ describe("POST /api/v1/task/bulk-assign", () => {
       )
       const missing = yield* assign(operator.id, [customer.id, "nessuno"])
       assert.instanceOf(missing, CustomerMissing)
-      assert.strictEqual((missing as CustomerMissing).customerId, "nessuno")
+      assert.strictEqual(missing.customerId, "nessuno")
       // The customers before the missing one stay assigned
       const contact = yield* activeContactOf(customer.id)
       assert.strictEqual(contact?.operatorId, operator.id)
