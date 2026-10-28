@@ -309,6 +309,23 @@ describe("origini e host non ammessi (AC7, AC8)", () => {
     expect(new URL(sent[0]!).origin).toBe(`https://${REACT}`)
   })
 
+  it("senza Host vale l'host dell'URL, come in better-auth", async () => {
+    const operator = await activeOperator()
+
+    await authHandler(auth())(
+      new Request(`https://${REACT}/api/auth/sign-in/magic-link`, {
+        method: "POST",
+        headers: { ...json, origin: `https://${REACT}` },
+        body: JSON.stringify({ email: operator.email }),
+      })
+    )
+    const link = new URL(sent[0]!)
+    expect(link.origin).toBe(`https://${REACT}`)
+
+    const verify = await authHandler(auth())(new Request(link))
+    expect(location(verify)).toBe(`https://${REACT}/dashboard`)
+  })
+
   it("la sessione letta da un host non ammesso non è un errore: senza cookie è null", async () => {
     const handler = authHandler(auth())
 
@@ -348,6 +365,63 @@ describe("origini e host non ammessi (AC7, AC8)", () => {
       (await read(new Headers({ host: BACKEND_HOST, cookie })))?.user.id
     ).toBe(operator.userId)
     expect(await read(new Headers({ host: BACKEND_HOST }))).toBeNull()
+  })
+})
+
+describe("le regole di chi entra non cambiano con l'host (AC7, AC10)", () => {
+  it("da React un utente disattivato non ha il link né una sessione", async () => {
+    const operator = await createOperator({ disabledAt: new Date() })
+    await testDb
+      .update(users)
+      .set({ emailConfirmed: true })
+      .where(eq(users.id, operator.userId))
+
+    await requestLink(
+      authHandler(auth()),
+      `${operator.userId}@test.local`,
+      forwardedFrom(REACT, { origin: `https://${REACT}` })
+    )
+
+    expect(sent).toEqual([])
+    expect(await testDb.select().from(authSessions)).toEqual([])
+  })
+
+  it("da React un indirizzo non ammesso non riceve il link", async () => {
+    await requestLink(
+      authHandler(auth()),
+      "estraneo@x.it",
+      forwardedFrom(REACT, { origin: `https://${REACT}` })
+    )
+
+    expect(sent).toEqual([])
+  })
+
+  it("da React l'uscita con un'origine non ammessa è rifiutata e la sessione resta", async () => {
+    const operator = await activeOperator()
+    const handler = authHandler(auth())
+    await requestLink(
+      handler,
+      operator.email,
+      forwardedFrom(REACT, { origin: `https://${REACT}` })
+    )
+    const verify = await openLink(handler, sent[0]!, REACT)
+    const cookie = verify.headers
+      .getSetCookie()
+      .map((value) => value.split(";")[0])
+      .join("; ")
+
+    const response = await handler(
+      new Request(`${BACKEND}/api/auth/sign-out`, {
+        method: "POST",
+        headers: forwardedFrom(REACT, {
+          origin: "https://evil.example",
+          cookie,
+        }),
+      })
+    )
+
+    expect(response.status).toBe(403)
+    expect(await testDb.select().from(authSessions)).toHaveLength(1)
   })
 })
 

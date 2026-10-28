@@ -69,14 +69,20 @@ function frontendOf(auth: Auth): (request: Request) => string {
     throw new Error("better-auth needs a fallback and a protocol")
   const { allowedHosts, protocol, fallback } = baseURL
   const allowed = new Set(allowedHosts.map((host) => host.toLowerCase()))
+  const trustForwarded = auth.options.advanced?.trustedProxyHeaders === true
   return (request) => {
-    const forwarded = request.headers.get("x-forwarded-host")
+    const forwarded = trustForwarded
+      ? request.headers.get("x-forwarded-host")
+      : null
+    const header = request.headers.get("host")
+    // The order of better-auth's getHostFromSource: the forwarded host, the
+    // Host header, the URL of the request
     const host = isHostHeader(forwarded)
       ? forwarded
-      : request.headers.get("host")
-    return isHostHeader(host) && allowed.has(host.toLowerCase())
-      ? `${protocol}://${host}`
-      : fallback
+      : isHostHeader(header)
+        ? header
+        : new URL(request.url).host
+    return allowed.has(host.toLowerCase()) ? `${protocol}://${host}` : fallback
   }
 }
 
