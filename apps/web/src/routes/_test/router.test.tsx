@@ -133,6 +133,7 @@ describe("le rotte (§5)", () => {
   it.each([
     ["/dashboard/customers/new", "Nuovo cliente"],
     ["/dashboard/customers/customer-1", "Scheda Cliente"],
+    ["/dashboard/customers/customer-1/connect", "Dettaglio Pratica"],
   ])(
     "un link diretto a %s apre la sua pagina (3.1)",
     async (path, title) => {
@@ -148,16 +149,17 @@ describe("le rotte (§5)", () => {
         auth: backend.auth,
       })
 
+      // The first import of the page and its modules, in a cold and busy
+      // test run
       expect(
-        await screen.findByText(title, {}, { timeout: 5000 })
+        await screen.findByText(title, {}, { timeout: 10000 })
       ).toBeInTheDocument()
     },
-    10000
+    15000
   )
 
   it.each([
     ["/dashboard", "Home", "3.5"],
-    ["/dashboard/customers/42/connect", "Collega il customer", "3.1"],
     ["/dashboard/contatti", "Contatti", "3.2"],
     ["/dashboard/contatti/76006", "Contatto", "3.2"],
     ["/dashboard/pratiche", "Pratiche", "3.3"],
@@ -172,10 +174,10 @@ describe("le rotte (§5)", () => {
   })
 
   it("la pagina riceve l'id della rotta", async () => {
-    open("/dashboard/customers/42/connect")
+    open("/dashboard/contatti/76006")
 
     await heading()
-    expect(screen.getByText("id").nextSibling).toHaveTextContent("42")
+    expect(screen.getByText("id").nextSibling).toHaveTextContent("76006")
   })
 
   it("dal menu si passa da una pagina all'altra", async () => {

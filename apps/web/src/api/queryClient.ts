@@ -34,7 +34,13 @@ export const makeQueryClient = () =>
         showApiError(error)
       },
     }),
-    mutationCache: new MutationCache({ onError: showApiError }),
+    // A mutation with `meta.toastErrors: false` shows its failures itself
+    mutationCache: new MutationCache({
+      onError: (error, _variables, _result, mutation) => {
+        if (mutation.meta?.toastErrors === false) return
+        showApiError(error)
+      },
+    }),
     defaultOptions: {
       queries: {
         retry: (failures, error) =>

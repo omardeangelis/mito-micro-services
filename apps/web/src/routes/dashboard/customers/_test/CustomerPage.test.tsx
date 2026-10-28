@@ -241,6 +241,7 @@ describe("CustomerPage, il contatto attivo", () => {
     const link = await screen.findByRole("link", { name: "Gestisci contatto" })
     observer.disconnect()
 
+    expect(states).toContain("true")
     const fromClick = states.slice(states.indexOf("true"))
     expect(fromClick).not.toContain("false")
     expect(fromClick).toContain("gone")

@@ -27,8 +27,9 @@ export const NewPracticeValues = Schema.Struct({
   dataLiquidazione: Schema.Date,
   dataEstinzione: Schema.optional(Schema.NullOr(Schema.Date)),
   importoRata: Schema.String,
-  rateTotali: Schema.Number,
-  ratePagate: Schema.Number,
+  // A number, as `z.number()`: NaN never reaches the integer columns
+  rateTotali: Schema.Finite,
+  ratePagate: Schema.Finite,
   tassoPratica: decimal,
   desPuntoVendita: column(255),
   desConvenzionato: column(255),
@@ -37,11 +38,11 @@ export const NewPracticeValues = Schema.Struct({
 export type NewPracticeValues = typeof NewPracticeValues.Type
 
 /** The address `z.string().email()` of zod 3 accepts. */
+export const emailPattern =
+  /^(?!\.)(?!.*\.\.)([A-Z0-9_'+\-.]*)[A-Z0-9_+-]@([A-Z0-9][A-Z0-9-]*\.)+[A-Z]{2,}$/i
+
 const Email = Schema.String.check(
-  Schema.isPattern(
-    /^(?!\.)(?!.*\.\.)([A-Z0-9_'+\-.]*)[A-Z0-9_+-]@([A-Z0-9][A-Z0-9-]*\.)+[A-Z]{2,}$/i,
-    { message: "Invalid email" }
-  )
+  Schema.isPattern(emailPattern, { message: "Invalid email" })
 )
 
 /**

@@ -3,6 +3,7 @@ import { Effect } from "effect"
 import { type NewPratica } from "@mito/contract/pratiche"
 import { useRun } from "./ApiProvider"
 import { customerKeys } from "./customer"
+import { routeErrorWhenEmpty } from "./queryClient"
 import { ApiClient } from "./runtime"
 
 /** The keys of the group `pratiche`: `[group, endpoint, input]` (H12) */
@@ -11,10 +12,14 @@ export const praticheKeys = {
   regions: () => [...praticheKeys.all, "getAllAvailableRegion"] as const,
 }
 
-/** The regions of the practices (`GET /pratiche/regions`) */
+/**
+ * The regions of the practices (`GET /pratiche/regions`), for the form of a
+ * new practice: its first failure goes to the error of the route
+ */
 export const useRegions = () => {
   const run = useRun()
   return useQuery({
+    ...routeErrorWhenEmpty,
     queryKey: praticheKeys.regions(),
     queryFn: ({ signal }) =>
       run(
@@ -29,12 +34,14 @@ export const useRegions = () => {
 
 /**
  * "Nuova pratica" (`POST /pratiche`): the practice, its holder and the new
- * customers. Then the customers and the practices are read again (§6)
+ * customers. Then the customers and the practices are read again (§6). No
+ * toast: the form shows the error under "ID Pratica", as the Next.js app
  */
 export const useCreatePratica = () => {
   const run = useRun()
   const queryClient = useQueryClient()
   return useMutation({
+    meta: { toastErrors: false },
     mutationFn: (payload: NewPratica) =>
       run(
         Effect.gen(function* () {
