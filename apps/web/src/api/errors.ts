@@ -58,6 +58,8 @@ export const describeApiError = (error: ApiFailure): string => {
       return `Non si può impostare un richiamo con lo stato ${error.state ?? "nessuno"}`
     case "DeadlineInPast":
       return "Il richiamo si imposta da domani"
+    case "PracticeNotFound":
+      return "Pratica non trovata"
     case "PracticeExists":
       return "Questa pratica esiste già"
     case "CustomerExists":

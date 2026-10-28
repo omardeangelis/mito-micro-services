@@ -189,6 +189,13 @@ export class DeadlineInPast extends Schema.TaggedError<DeadlineInPast>()(
   { httpApiStatus: 400 }
 ) {}
 
+/** The practice doesn't exist (tRPC NOT_FOUND, `PRACTICE_NOT_FOUND`). */
+export class PracticeNotFound extends Schema.TaggedError<PracticeNotFound>()(
+  "PracticeNotFound",
+  {},
+  { httpApiStatus: 404 }
+) {}
+
 /** A practice with this `praticaId` exists (tRPC CONFLICT, `PRACTICE_EXISTS`). */
 export class PracticeExists extends Schema.TaggedError<PracticeExists>()(
   "PracticeExists",
@@ -247,6 +254,7 @@ const apiErrors = [
   AlertNotFound,
   CallbackNotAllowed,
   DeadlineInPast,
+  PracticeNotFound,
   PracticeExists,
   CustomerExists,
   ChatMissing,

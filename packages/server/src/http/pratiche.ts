@@ -5,12 +5,18 @@ import {
   CustomerExists,
   CustomerMissing,
   PracticeExists,
+  PracticeNotFound,
 } from "@mito/contract/errors"
 import { CurrentUser } from "@mito/contract/middleware"
 import { type Db } from "../effect/db"
 import { type ErrorReporter } from "../effect/errorReporter"
-import { listRegions } from "../services/practice/queries"
-import { createPracticeWithCustomers } from "../services/practice/writes"
+import { updateCustomerContacts } from "../services/customer/profile"
+import { listPractices } from "../services/practice/list"
+import { getPracticeById, listRegions } from "../services/practice/queries"
+import {
+  createPracticeWithCustomers,
+  updatePracticeFromDashboard,
+} from "../services/practice/writes"
 import { unexpectedAs500 } from "./unexpected"
 
 /**
@@ -26,6 +32,21 @@ export const praticheLayer = HttpApiBuilder.group(
       // nothing per request but `CurrentUser`
       const services = yield* Effect.context<Db | ErrorReporter>()
       return handlers
+        .handle("getAllPratiche", ({ payload }) =>
+          Effect.gen(function* () {
+            const { actor } = yield* CurrentUser
+            // The defaults of `getAllPraticheInput`
+            return yield* listPractices(
+              {
+                ...payload,
+                orderBy: payload.orderBy ?? "updatedAt",
+                sortedBy: payload.sortedBy ?? "asc",
+                searchBy: payload.searchBy ?? "praticaId",
+              },
+              { id: actor.operatorId, role: actor.role }
+            ).pipe(unexpectedAs500("getAllPratiche"))
+          }).pipe(Effect.provide(services))
+        )
         .handle("getAllAvailableRegion", () =>
           listRegions().pipe(
             unexpectedAs500("getAllAvailableRegion"),
@@ -50,6 +71,27 @@ export const praticheLayer = HttpApiBuilder.group(
               unexpectedAs500("createPratica")
             )
           }).pipe(Effect.provide(services))
+        )
+        .handle("getPraticaById", ({ params }) =>
+          getPracticeById(params.id).pipe(
+            Effect.catchTag("PracticeNotFound", () =>
+              Effect.fail(new PracticeNotFound())
+            ),
+            unexpectedAs500("getPraticaById"),
+            Effect.provide(services)
+          )
+        )
+        .handle("updatePraticaFromDashboard", ({ params, payload }) =>
+          updatePracticeFromDashboard(params.id, payload).pipe(
+            unexpectedAs500("updatePraticaFromDashboard"),
+            Effect.provide(services)
+          )
+        )
+        .handle("updateCustomerPreview", ({ params, payload }) =>
+          updateCustomerContacts(params.id, payload).pipe(
+            unexpectedAs500("updateCustomerPreview"),
+            Effect.provide(services)
+          )
         )
     })
 )

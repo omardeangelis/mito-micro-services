@@ -104,8 +104,12 @@ const unservedGroups = Layer.mergeAll(
   ),
   HttpApiBuilder.group(MitoApi, "pratiche", (handlers) =>
     handlers
+      .handle("getAllPratiche", unserved)
       .handle("getAllAvailableRegion", unserved)
       .handle("createPratica", unserved)
+      .handle("getPraticaById", unserved)
+      .handle("updatePraticaFromDashboard", unserved)
+      .handle("updateCustomerPreview", unserved)
   ),
   HttpApiBuilder.group(MitoApi, "chat", (handlers) =>
     handlers
