@@ -73,94 +73,91 @@ export type GetContactByIdResult = {
  * `ContactNotFound` for an id that isn't one, a missing contact, and a contact
  * with no customer.
  */
-export const getContactById = ({
+export const getContactById = Effect.fn("contact.getContactById")(function* ({
   id,
   actor,
 }: {
   id: string
   actor: Actor
-}): Effect.Effect<GetContactByIdResult, ContactNotFound | DbError, Db> =>
-  Effect.gen(function* () {
-    const taskId = parseTaskId(id)
-    if (taskId === null) return yield* new ContactNotFound()
+}): Effect.fn.Return<GetContactByIdResult, ContactNotFound | DbError, Db> {
+  const taskId = parseTaskId(id)
+  if (taskId === null) return yield* new ContactNotFound()
 
-    const [row] = yield* query((client) =>
-      client
-        .select({
-          id: task.id,
-          state: task.state,
-          priority: task.priority,
-          customPriority: task.customPriority,
-          isActive: task.isActive,
-          closedAt: task.closedAt,
-          createdAt: task.createdAt,
-          updatedAt: task.updatedAt,
-          operator: {
-            id: operators.id,
-            name: operators.name,
-            surname: operators.surname,
-          },
-          customer: {
-            id: customers.id,
-            name: customers.name,
-            surname: customers.surname,
-            phoneNumber: customers.phoneNumber,
-            fiscalCode: customers.fiscalCode,
-            vatCode: customers.vatCode,
-            blackListStatus: customers.blackListStatus,
-            operatorId: customers.operatorId,
-          },
-          alert: {
-            id: alert.id,
-            deadline: alert.deadline,
-            message: alert.message,
-          },
-        })
-        .from(task)
-        .innerJoin(customers, eq(customers.id, task.customerId))
-        .leftJoin(operators, eq(operators.id, task.operatorId))
-        .leftJoin(alert, openAlertOf)
-        .where(eq(task.id, taskId))
-    )
-    if (!row) return yield* new ContactNotFound()
+  const [row] = yield* query((client) =>
+    client
+      .select({
+        id: task.id,
+        state: task.state,
+        priority: task.priority,
+        customPriority: task.customPriority,
+        isActive: task.isActive,
+        closedAt: task.closedAt,
+        createdAt: task.createdAt,
+        updatedAt: task.updatedAt,
+        operator: {
+          id: operators.id,
+          name: operators.name,
+          surname: operators.surname,
+        },
+        customer: {
+          id: customers.id,
+          name: customers.name,
+          surname: customers.surname,
+          phoneNumber: customers.phoneNumber,
+          fiscalCode: customers.fiscalCode,
+          vatCode: customers.vatCode,
+          blackListStatus: customers.blackListStatus,
+          operatorId: customers.operatorId,
+        },
+        alert: {
+          id: alert.id,
+          deadline: alert.deadline,
+          message: alert.message,
+        },
+      })
+      .from(task)
+      .innerJoin(customers, eq(customers.id, task.customerId))
+      .leftJoin(operators, eq(operators.id, task.operatorId))
+      .leftJoin(alert, openAlertOf)
+      .where(eq(task.id, taskId))
+  )
+  if (!row) return yield* new ContactNotFound()
 
-    const { customer, alert: openAlert, ...contact } = row
-    const closedAlerts = yield* query((client) =>
-      customerAlerts(client, customer.id, { onlyClosed: true })
-    )
-    const customerContacts = yield* query((client) =>
-      client
-        .select({
-          id: task.id,
-          state: task.state,
-          isActive: task.isActive,
-          closedAt: task.closedAt,
-          createdAt: task.createdAt,
-          operator: {
-            id: operators.id,
-            name: operators.name,
-            surname: operators.surname,
-          },
-        })
-        .from(task)
-        .leftJoin(operators, eq(operators.id, task.operatorId))
-        .where(and(eq(task.customerId, customer.id), ne(task.id, contact.id)))
-        .orderBy(desc(task.createdAt), desc(task.id))
-    )
-    return {
-      contact,
+  const { customer, alert: openAlert, ...contact } = row
+  const closedAlerts = yield* query((client) =>
+    customerAlerts(client, customer.id, { onlyClosed: true })
+  )
+  const customerContacts = yield* query((client) =>
+    client
+      .select({
+        id: task.id,
+        state: task.state,
+        isActive: task.isActive,
+        closedAt: task.closedAt,
+        createdAt: task.createdAt,
+        operator: {
+          id: operators.id,
+          name: operators.name,
+          surname: operators.surname,
+        },
+      })
+      .from(task)
+      .leftJoin(operators, eq(operators.id, task.operatorId))
+      .where(and(eq(task.customerId, customer.id), ne(task.id, contact.id)))
+      .orderBy(desc(task.createdAt), desc(task.id))
+  )
+  return {
+    contact,
+    customer,
+    alert: openAlert,
+    customerContacts,
+    history: closedAlerts.map(({ isResolved, ...entry }) => entry),
+    activeTaskId: contact.isActive ? null : yield* activeTaskIdOf(customer.id),
+    editability: contactEditability(actor, {
+      isActive: contact.isActive,
+      taskOperator: contact.operator,
       customer,
-      alert: openAlert,
-      customerContacts,
-      history: closedAlerts.map(({ isResolved, ...entry }) => entry),
-      activeTaskId: contact.isActive
-        ? null
-        : yield* activeTaskIdOf(customer.id),
-      editability: contactEditability(actor, {
-        isActive: contact.isActive,
-        taskOperator: contact.operator,
-        customer,
-      }),
-      canReassign: contact.isActive && canReassign(actor),
-    }
-  })
+    }),
+    canReassign: contact.isActive && canReassign(actor),
+  }
+})

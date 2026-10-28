@@ -1,7 +1,7 @@
 import { beforeAll, beforeEach } from "vitest"
 import { describe, expect, it } from "@effect/vitest"
 import { Effect } from "effect"
-import { DbLive } from "../../../effect/db"
+import { Db } from "../../../effect/db"
 import { callStats } from "../callStats"
 import { migrateUpTo, resetDb } from "@/test/db"
 import { createOperator, createTaskEvent } from "@/test/factories"
@@ -21,7 +21,8 @@ const PERIOD = {
 }
 const INSIDE = new Date("2026-10-01T10:00:00.000Z")
 
-const run = (period = PERIOD) => callStats(period).pipe(Effect.provide(DbLive))
+const run = (period = PERIOD) =>
+  callStats(period).pipe(Effect.provide(Db.layer))
 
 describe("callStats", () => {
   it.effect(

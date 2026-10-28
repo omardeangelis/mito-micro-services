@@ -1,5 +1,9 @@
 import { Cause, Effect, Exit, Option, type Layer } from "effect"
-import { Storage, StorageLive, type StorageConfigError } from "../storage/index"
+import {
+  Storage,
+  storageLayer,
+  type StorageConfigError,
+} from "../storage/index"
 
 const EXPORT_PATH = "export"
 
@@ -47,7 +51,7 @@ const deleteExport = Effect.gen(function* () {
  * and how many it couldn't.
  */
 export async function deleteExportFiles(
-  storage: Layer.Layer<Storage, StorageConfigError> = StorageLive
+  storage: Layer.Layer<Storage, StorageConfigError> = storageLayer
 ): Promise<{ deleted: number; failed: number }> {
   const exit = await Effect.runPromiseExit(
     Effect.provide(deleteExport, storage)

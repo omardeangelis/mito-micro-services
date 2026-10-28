@@ -31,9 +31,10 @@ const encodePath = (key: string): string =>
  * deterministic (`memory://<bucket>/<key>?action=read...`): they are not valid
  * against GCS.
  */
-export const makeMemoryStorageLayer = (
+export const memoryStorageLayer = (
   options: MemoryStorageOptions = {}
-): Layer.Layer<Storage> => Layer.sync(Storage, () => makeMemoryService(options))
+): Layer.Layer<Storage> =>
+  Layer.sync(Storage, () => Storage.of(makeMemoryService(options)))
 
 const makeMemoryService = (options: MemoryStorageOptions): StorageService => {
   const bucket = options.bucket ?? "memory"
@@ -53,18 +54,17 @@ const makeMemoryService = (options: MemoryStorageOptions): StorageService => {
   }
 
   return {
-    upload: (input) =>
-      Effect.gen(function* () {
-        // Copy the bytes, so later changes by the caller do not alter the stored object.
-        const data =
-          typeof input.body === "string"
-            ? encoder.encode(input.body)
-            : input.body.slice()
-        yield* assertMaxBytes(data, options.maxUploadBytes)
-        const updated = new Date(yield* Clock.currentTimeMillis)
-        objects.set(input.key, { body: data, updated })
-        return { key: input.key }
-      }),
+    upload: Effect.fn("storage.upload")(function* (input) {
+      // Copy the bytes, so later changes by the caller do not alter the stored object.
+      const data =
+        typeof input.body === "string"
+          ? encoder.encode(input.body)
+          : input.body.slice()
+      yield* assertMaxBytes(data, options.maxUploadBytes)
+      const updated = new Date(yield* Clock.currentTimeMillis)
+      objects.set(input.key, { body: data, updated })
+      return { key: input.key }
+    }),
 
     download: (key) =>
       Effect.suspend(() => {
@@ -86,17 +86,16 @@ const makeMemoryService = (options: MemoryStorageOptions): StorageService => {
         objects.delete(key)
       }),
 
-    removeByPrefix: (prefix) =>
-      Effect.gen(function* () {
-        yield* assertDeletablePrefix(prefix)
-        return yield* Effect.sync(() => {
-          const matching = Array.from(objects.keys()).filter((key) =>
-            key.startsWith(prefix)
-          )
-          for (const key of matching) objects.delete(key)
-          return matching.length
-        })
-      }),
+    removeByPrefix: Effect.fn("storage.removeByPrefix")(function* (prefix) {
+      yield* assertDeletablePrefix(prefix)
+      return yield* Effect.sync(() => {
+        const matching = Array.from(objects.keys()).filter((key) =>
+          key.startsWith(prefix)
+        )
+        for (const key of matching) objects.delete(key)
+        return matching.length
+      })
+    }),
 
     list: (prefix, listOptions) =>
       Effect.sync(() => {

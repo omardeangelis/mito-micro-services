@@ -1,6 +1,6 @@
 import { Cause, Effect, Exit, ManagedRuntime, Option } from "effect"
 import type { StorageConfig } from "./config"
-import { makeGcsStorageLayer } from "./gcs"
+import { gcsStorageLayer } from "./gcs"
 import { Storage, type StorageService } from "./storage"
 
 /**
@@ -24,7 +24,7 @@ export type StorageClient = {
  * the first call, not when this function runs.
  */
 export const createStorageClient = (config: StorageConfig): StorageClient => {
-  const runtime = ManagedRuntime.make(makeGcsStorageLayer(config))
+  const runtime = ManagedRuntime.make(gcsStorageLayer(config))
 
   const run = <A, E>(
     use: (service: StorageService) => Effect.Effect<A, E>

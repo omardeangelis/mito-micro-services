@@ -14,32 +14,36 @@ export class ErrorReporter extends Context.Service<
       data: Record<string, unknown>
     ) => Effect.Effect<void>
   }
->()("ErrorReporter") {}
-
-export const SentryReporterLive = Layer.succeed(ErrorReporter, {
-  report: (cause, data) =>
-    Effect.sync(() => {
-      Sentry.captureException(Cause.squash(cause), {
-        contexts: { details: data },
-      })
-    }),
-})
+>()("@mito/server/effect/ErrorReporter") {
+  /** Reports to Sentry. */
+  static readonly layer = Layer.succeed(
+    ErrorReporter,
+    ErrorReporter.of({
+      report: (cause, data) =>
+        Effect.sync(() => {
+          Sentry.captureException(Cause.squash(cause), {
+            contexts: { details: data },
+          })
+        }),
+    })
+  )
+}
 
 /**
  * Runs `f` on each item in order, with its index, and keeps going when one
  * fails: an error, a defect (a thrown exception) or an interruption. Each
  * failure is logged and reported with `describe(item)`.
  */
-export const forEachIsolated = <A, B, E, R>(
-  items: Iterable<A>,
-  f: (item: A, index: number) => Effect.Effect<B, E, R>,
-  describe: (item: A) => Record<string, unknown>
-): Effect.Effect<
-  { succeeded: B[]; failed: number },
-  never,
-  R | ErrorReporter
-> =>
-  Effect.gen(function* () {
+export const forEachIsolated = Effect.fn("errorReporter.forEachIsolated")(
+  function* <A, B, E, R>(
+    items: Iterable<A>,
+    f: (item: A, index: number) => Effect.Effect<B, E, R>,
+    describe: (item: A) => Record<string, unknown>
+  ): Effect.fn.Return<
+    { succeeded: B[]; failed: number },
+    never,
+    R | ErrorReporter
+  > {
     const reporter = yield* ErrorReporter
     const succeeded: B[] = []
     let failed = 0
@@ -59,4 +63,5 @@ export const forEachIsolated = <A, B, E, R>(
       yield* reporter.report(exit.cause, data)
     }
     return { succeeded, failed }
-  })
+  }
+)

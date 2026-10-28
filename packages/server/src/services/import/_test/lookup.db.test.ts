@@ -10,7 +10,7 @@ import { customers } from "@mito/db/schema/customers"
 import { practices } from "@mito/db/schema/pratiche"
 import { customerToPratica } from "@mito/db/schema/relations/customerToPratica"
 import { importUpload } from "@mito/db/schema/importRun"
-import { DbLive } from "../../../effect/db"
+import { Db } from "../../../effect/db"
 import { lookupExisting } from "../lookup"
 import { migrateUpTo, resetDb, testDb } from "@/test/db"
 import { createCustomer, createPractice } from "@/test/factories"
@@ -44,7 +44,7 @@ const keys = (values: Partial<LookupKeys>): LookupKeys => ({
 })
 
 const lookup = (values: LookupKeys) =>
-  lookupExisting(values).pipe(Effect.provide(DbLive))
+  lookupExisting(values).pipe(Effect.provide(Db.layer))
 
 /** The preview of the rows on the CRM of the test, as the browser makes it. */
 const preview = (...rows: Cells[]) =>

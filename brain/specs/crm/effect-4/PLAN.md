@@ -7,7 +7,7 @@ links:
   - "[[chore/migrazione-effect]]"
   - "[[chore/manutenzione-dipendenze]]"
 created: 2026-10-27
-updated: 2026-10-27
+updated: 2026-10-28
 ---
 
 # Plan: Effect 4, vitest 5 e lo stile di Effect 4 (punto 1.1 della roadmap)
@@ -123,7 +123,7 @@ I test della PR 3 fanno da guardia. Cambiano solo nei nomi importati, mai nelle 
 | D1 | SPEC corta + PLAN in `brain/specs/crm/effect-4/` | Omar, 2026-10-27 |
 | D2 | Comportamento invariato e stesse asserzioni in ogni PR (AC5); se un test fallisce per la semantica di v4 si corregge il codice | Roadmap 1.1, "con le stesse asserzioni" |
 | D3 | Niente fase 2: né `HttpApi` né `Schema` per gli input | Roadmap |
-| D4 | Revisione obbligatoria di Leonardo sulla PR 1 e sulla PR 4 | Regola 5 del §2 della roadmap: toccano i file dell'auth |
+| D4 | Revisione obbligatoria di Leonardo sulla PR 1 e sulla PR 4. **2026-10-28, Omar:** non obbligatoria; per la PR 4 basta la prova su `mito_local` | Regola 5 del §2 della roadmap: toccano i file dell'auth |
 | D5 | `effect` e `@effect/vitest` a `~4.0.6` | I moduli `http-api` della fase 2 sono `@stability unstable` |
 | D6 | Quattro PR: Effect 4 e vitest 5 in parallelo, poi `@effect/vitest`, poi lo stile nel codice | Omar, 2026-10-27 |
 | D7 | La PR 4 adotta (a) servizi e layer, (b) `Effect.fn`, (c) `Schema.TaggedError`; la (d) è la PR 3. La PR 4 è un'eccezione approvata alla regola di `AGENTS.md` "solo il codice che la modifica tocca", e la descrizione della PR lo dice | Omar, 2026-10-27 |
@@ -137,6 +137,7 @@ I test della PR 3 fanno da guardia. Cambiano solo nei nomi importati, mai nelle 
 | D15 | `Config` letto con un `ConfigProvider.fromEnv()` creato a ogni lettura in `storageLayer` e `importQueueChoice`; nei test, `ConfigProvider.fromEnv({ env })` al posto di `fromMap` | Tiene il comportamento di v3; `fromUnknown` con un oggetto annidato dà `None` (prova della verifica) |
 | D16 | vitest 5 con `pool: "threads"` (fuori dai fusi), `fakeTimers.toFake` e `exclude` di v1; `clearMocks` al default `true` | I default cambiati, misurati con prove su vitest 1.6 e 5 |
 | D17 | AC5, nella PR 3: `expect(await X)` → `expect(yield* X)` quando l'helper o il programma X diventa un `Effect` con lo stesso valore (anche `runServer(P)` → `P.pipe(provideServer, Effect.exit)` e Promise → `Fiber.join`), annotato in `eccezioni-pr3.txt` | Omar, 2026-10-27, dopo la revisione della PR 3: senza, gli helper dei test terrebbero runner a Promise, contro AC8 |
+| D18 | Un orologio a passi scritto a mano avanza solo sui millisecondi; i metodi in nanosecondi sono costanti (`apply.db.test.ts`, come già `concurrency.pg.test.ts`). `applyImport` e `lookupExisting` restano `Effect.fn` | Omar, 2026-10-28, dopo la revisione della PR 4: gli span di `Effect.fn` leggono i nanosecondi e consumavano il copione del test di D8. L'alternativa, `fnUntraced` nell'import, era una terza deviazione da D9 e toglieva la traccia in produzione |
 
 ## 5. Assunzioni e vincoli
 
@@ -709,7 +710,7 @@ G0 ─┬─ T1 ─ T2 ─ T3 ─┬─ T4 ─┬─ T7 ─ T8 ══ PR 1 in de
   6. `adversarial-review` caso B sulla PR 3, contro AC4, AC5, AC8, AC12 (PR 3), AC13 e AC14.
   7. La PR verso `dev` quando Omar la chiede.
 - **validation**: tutti i punti annotati; REPORT SHIP.
-- **status**: In progress
+- **status**: Done
 - **log**: 2026-10-27.
   - AC4: `@effect/vitest` 4.0.6, come `effect`.
   - AC8: su `dev` il grep trova 50 file. Su HEAD trova solo i bordi: la cella di `deactivate.pg.test.ts:609`, le due factory di `vi.mock` della rotta del download e `runServer` stesso in `src/test/effect.ts`, che resta per quella cella. `fixedClock` e `at` tolti da `analytics/_test/clock.ts`. Il grep degli orologi trova `concurrency.pg.test.ts` e `apply.db.test.ts` (AC8 corretto).
@@ -719,6 +720,7 @@ G0 ─┬─ T1 ─ T2 ─ T3 ─┬─ T4 ─┬─ T7 ─ T8 ══ PR 1 in de
   - **Debito (AC13):** nessuno nuovo. Il §8 della roadmap elenca come scelte i bordi a Promise, la cella `each` con `runServer`, i due `runSync` nelle factory di `vi.mock` e i due orologi a passi.
   - `adversarial-review` (round PR 3 in `REPORT.md`): **DO NOT SHIP**, 9 passate su 11 SHIP; i mutanti nel codice di produzione (43 di v4, 21 di v5) fanno fallire gli stessi test su `dev` e sul branch. Corretti dopo la revisione: `queue.test.ts` (fibre staccate) e i due test del budget di `processDueAlerts` in `it.live`, con i mutanti di v6 ora uccisi; lo script confronta per valore le tabelle `each` e le condizioni passate per nome (harness 41/41; la tabella `writers` di `operatorLock.pg` ha la sua eccezione); `AGENTS.md`, il §8, il conteggio di AC8, tre import vuoti. Lo script dà `ok, 55 test file(s) checked, 1620 chain(s) compared, 218 exception(s) used`; suite 4415 verdi.
   - Omar firma la categoria di AC5 `expect(await X)` → `expect(yield* X)` (D17): AC5 nella SPEC la elenca. I punti 1–5 del checklist della revisione sono chiusi; restano la CI della PR e il merge.
+  - Merge di `dev` nel branch (nessuna migrazione; il lockfile di `dev` più le sole righe di `@effect/vitest`), suite 4415 verdi. PR [#116](https://github.com/omardeangelis/mito-micro-services/pull/116): CI verde (Lint, Test, Build, Web), unita in `dev` (`e7ead47`).
 - **files edited/created**:
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
@@ -745,8 +747,13 @@ G0 ─┬─ T1 ─ T2 ─ T3 ─┬─ T4 ─┬─ T7 ─ T8 ══ PR 1 in de
   - il controllo di AC9: `git grep -nP "export const \w+Live\b" -- packages apps src` trova 8 righe su `dev` e nessuna sul branch, e ogni `Context.Service` ha un id che inizia con `@mito/`;
   - lo script di T1 esce con 0;
   - `pnpm api:build`.
-- **status**: Planned
-- **log**:
+- **status**: Done
+- **log**: 2026-10-27, branch `claude/effect-style` da `dev` (`e7ead47`). Basi su `dev`: AC9 8 righe `*Live`, AC10 61 classi in 19 file, AC11 73 funzioni (una in meno della misura di T1, con il codice entrato in `dev` nel frattempo).
+  - Worker del modello più forte, `e03c9d9`: i 10 servizi con id `@mito/…` e i layer statici della tabella del §3, costruiti con `Servizio.of`; nessuna costante `<nome>Layer` in più (nessun import circolare). Per i layer statici, `importSettings` e `logOutcome` stanno prima delle classi che li leggono. Anche il servizio `Probe` di `db.db.test.ts` prende un id `@mito/`.
+  - Il mock di `src/test/setup.ts` restituisce una sottoclasse di `ErrorReporter` con il `layer` che scrive in `reportedErrors` (stesso id, quindi stesso servizio). Verificato: con la classe originale 3 test di `alert.db.test.ts` falliscono.
+  - Il `tdd_target` non esiste con quel nome: lo coprono i test di `runTrpc` in `db.db.test.ts` (`DbError` e *defect* → `INTERNAL_SERVER_ERROR` con il messaggio) e i 2 di `trpc.db.test.ts`, verdi con `serverLayer`.
+  - Quattro titoli di `describe` nominavano i layer vecchi (`ServerLive`, `SentryReporterLive`, `makeSupabaseStorageLayer`, `StorageLive`): rinominati dal supervisore, con 8 righe in `eccezioni-pr4.txt` (cambia solo il titolo della suite).
+  - Gate: `tsc` 0 errori; ESLint sui 63 file; suite 4415 verdi / 6 saltati; AC5 `ok, 31 test file(s) checked, 958 chain(s) compared, 8 exception(s) used`; AC9 0 righe `*Live` (8 su `dev`), ogni id `@mito/`; `api:build` e `api:smoke` verdi.
 - **files edited/created**:
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
@@ -773,8 +780,12 @@ G0 ─┬─ T1 ─ T2 ─ T3 ─┬─ T4 ─┬─ T7 ─ T8 ══ PR 1 in de
   - i test del punto 1 verdi prima e dopo;
   - tutti i test verdi, in particolare `*/_test/errors.db.test.ts`, `trpc.db.test.ts`, `cron.db.test.ts` e `routes.db.test.ts`;
   - lo script di T1 esce con 0, con i test nuovi nel file di eccezioni.
-- **status**: Planned
-- **log**:
+- **status**: Done
+- **log**: 2026-10-27, worker del modello più forte.
+  - `a28e409`: 17 file di test nuovi (89 test), uno per file di errori, verdi su `Data.TaggedError`; le loro catene in `eccezioni-pr4.txt` (313 righe). `UnknownJob` e `UnknownTask` sono privati delle rotte: li coprono i test del 404 (`cron.db.test.ts:225`, `import/_test/routes.db.test.ts:228,344`).
+  - `65225e7`: le 61 classi in `Schema.TaggedError`, nessun test toccato, nessun punto di costruzione cambiato (`new X()` funziona ancora). Schemi: `String`, `Number`, `NullOr`, `UndefinedOr` (`DbError.code`), `optional` per `key?`/`cause?` dello storage, `Defect()` per `cause`, `instanceOf(Date)` per la scadenza dell'alert (anche non valida, stessa istanza), `Literals(taskStatus)`, `Struct` per `alert`, `mutable(Array(String))` per `tags`. I payload dei contatti sono controllati in compilazione contro `ContactErrorPayload` (`payloadOf`).
+  - Differenze verificate: `Struct` e `Array` copiano `alert` e `tags` (contenuto uguale); le chiavi fuori dallo schema si perdono, ma tutti i 119 punti di costruzione passano un letterale; `_tag` è la prima chiave nello spread. Un `tags` non stringa in un journal di drizzle malformato ora lancerebbe.
+  - Gate: AC10 0 righe (61 su `dev`); `tsc` 0 errori fuori da `.next/`; ESLint; suite 330 file, 4504 verdi / 6 saltati; AC5 `ok, 48 test file(s) checked, 958 chain(s) compared, 321 exception(s) used`, nessuna catena esistente cambiata; `api:build`, `api:smoke`.
 - **files edited/created**:
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
@@ -795,8 +806,11 @@ G0 ─┬─ T1 ─ T2 ─ T3 ─┬─ T4 ─┬─ T7 ─ T8 ══ PR 1 in de
   - `node scripts/check-assertions.mjs gen-wrappers HEAD` non trova niente nelle sue cartelle (su `dev` ne trova);
   - i test delle sue cartelle verdi;
   - lo script di T1 esce con 0.
-- **status**: Planned
-- **log**:
+- **status**: Done
+- **log**: 2026-10-27, worker del modello bilanciato in un worktree suo, `c6d154f`, unito in `0b656f5`.
+  - 23 funzioni: in `Effect.fn` le esportate (`contact.replaceActiveContact`, `contact.activeTaskIdOf`, `contact.resolveOpenAlert`, `contact.getContactById`, `contact.loadEditableContact`, `contact.touchCustomer`, `contact.loadOperator`, `contact.findWorkingOperator`, `contact.processDueAlerts`, `contact.refreshPriorities`, `customer.listCustomers`, `customer.listPracticesOfCustomer`, `customer.listCustomersOfPractice`, `operator.updateOperatorInfo`, `practice.listPractices`, `user.getCurrentUser`); in `Effect.fnUntraced` gli helper e le callback per elemento (`assignCustomer`, `loadOpenAlert`, `processAlert`, la callback di `forEachIsolated`, il gestore di `catchIf` in `createContact`, `lockActiveContact`, `moveCustomerAndContact`).
+  - Scelta: `findWorkingOperator`, `replaceActiveContact`, `loadOperator` e `touchCustomer` sono esportate e girano anche una volta per cliente nell'assegnazione in blocco; restano `Effect.fn` (D9: esportate). Il costo della traccia, per qualche centinaio di clienti, è trascurabile.
+  - Il `tdd_target` è in `reassign.disabled.db.test.ts`, verde. Suite intera 4504 verdi; AC5 nessun test toccato.
 - **files edited/created**:
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
@@ -810,8 +824,11 @@ G0 ─┬─ T1 ─ T2 ─ T3 ─┬─ T4 ─┬─ T7 ─ T8 ══ PR 1 in de
 - **location**: `packages/server/src/services/{import,storage,export,chat,analytics,cron,auth}/**`, `packages/server/src/betterAuth/**` (non i test)
 - **description**: Come T20a. Nell'import, le funzioni chiamate per ogni riga del file sono percorsi caldi e usano `Effect.fnUntraced`.
 - **validation**: come T20a, sulle sue cartelle.
-- **status**: Planned
-- **log**:
+- **status**: Done
+- **log**: 2026-10-27, worker del modello bilanciato in un worktree suo, `4d4dc24`, unito in `b50ad3d`.
+  - 38 funzioni in 21 file. `Effect.fn` per le esportate di analytics, auth, chat, cron, export, import e per i metodi dei tre backend dello storage (`storage.upload`, …, un nome per metodo); `import.enqueue` di `ImportQueue.layerCloudTasks` passa il suo `Effect.retry` come secondo argomento di `Effect.fn`. `Effect.fnUntraced` per gli helper (`financedIn`, `updateCustomerAge`, `updatePractices`, `customersOf`, `interrupt`, `call` della coda). Nessuna funzione dell'import gira per riga del file: le esportate sono `Effect.fn`.
+  - **Deviazione:** `betterAuth.readSession` è `Effect.fnUntraced`. Un `Effect.fn` con traccia aggiunge alla `Cause` un'annotazione `StackTrace`, e `session.db.test.ts:159` (`toMatchObject(Exit.fail(…))`) fallisce; il test non si cambia (AC5).
+  - `apply.db.test.ts` verde; suite intera 4504 verdi; `api:build`, `api:smoke`.
 - **files edited/created**:
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
@@ -825,8 +842,11 @@ G0 ─┬─ T1 ─ T2 ─ T3 ─┬─ T4 ─┬─ T7 ─ T8 ══ PR 1 in de
 - **location**: `packages/server/src/effect/**`, `apps/api/src/**`, `packages/db/src/migrate.ts`, `src/app/api/**`, `src/server/db/seeds/local/cron.ts` (non i test)
 - **description**: Come T20a. `query` e `lockCustomer` di `effect/db.ts` usano `Effect.fnUntraced` (percorsi caldi), e `transaction`, `retryOnDeadlock` e `runTrpc` restano funzioni normali.
 - **validation**: come T20a, sulle sue cartelle, più `pnpm api:build`.
-- **status**: Planned
-- **log**:
+- **status**: Done
+- **log**: 2026-10-27, worker del modello bilanciato in un worktree suo, `d2a7642`, unito in `142c5c1`.
+  - 11 funzioni: `query` e `lockCustomer` `Effect.fnUntraced`; `errorReporter.forEachIsolated`, `cron.alertJob`, `oidc.verifyIdToken` (area `oidc`: la usano sia il cron sia l'import) `Effect.fn`; `runCron`, `checkOrder`, le callback di `tapCause` di `jobs.ts` e delle due rotte cron di Next.js `Effect.fnUntraced`. `src/server/db/seeds/local/cron.ts` non ha `Effect.gen`.
+  - **Deviazione:** `applyMigrations` è `Effect.fnUntraced`, per la stessa annotazione `StackTrace`: `migrate.pg.test.ts` confronta l'`Exit` con `toStrictEqual`.
+  - `gen-wrappers` trova solo `transaction` (`effect/db.ts:111`), combinatore che AC11 lascia funzione normale.
 - **files edited/created**:
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
@@ -855,8 +875,11 @@ G0 ─┬─ T1 ─ T2 ─ T3 ─┬─ T4 ─┬─ T7 ─ T8 ══ PR 1 in de
   8. **Lo script di T1** si toglie dal repo, e il suo sorgente resta in `IMPLEMENTATION-NOTES.md` (D11).
   9. **La PR verso `dev`** quando Omar la chiede, con la revisione di Leonardo (D4). La descrizione della PR dice che è un'eccezione approvata alla regola "solo il codice che la modifica tocca" (D7).
 - **validation**: tutti i punti annotati; REPORT SHIP.
-- **status**: Planned
+- **status**: In progress
 - **log**:
+  - 2026-10-27. Dopo il merge di T20a–c: `tsc` 0 errori; suite 330 file, 4504 verdi / 6 saltati; AC5 `ok, 48 test file(s) checked, 958 chain(s) compared, 321 exception(s) used`; AC11 `gen-wrappers` solo `transaction`; `api:build`, `api:smoke`.
+  - 2026-10-28. Punti 1–5 e 7 fatti. La revisione dice DO NOT SHIP per il test di D8 svuotato dagli span: corretto con D18, e il mutante di v4 ora fa fallire il test. Corretti anche i MINOR: `DbError.message` in stringa (test nuovo in `db.db.test.ts`), la precedenza fra `Effect.fn` e `fnUntraced` in `AGENTS.md` e nel §2, `operatore.md`, AC11 (73 su `dev`, `readSession` e `applyMigrations`), le note. Punto 8: lo script è tolto, e il sorgente resta nella storia di `dev` (`git show e7ead47:scripts/check-assertions.mjs`) invece che nelle note. Restano il punto 6 (serve un `.env.development.local`) e il 9 (Leonardo, D4).
+  - 2026-10-28. Punto 6 fatto: prova su `mito_local` verde, con le sole variabili locali passate a `next dev` (dettagli nelle note). Omar: la revisione di Leonardo non è obbligatoria (D4 cambiata). Resta il punto 9 senza la revisione: la PR quando Omar la chiede.
 - **files edited/created**:
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
@@ -908,7 +931,7 @@ G0 ─┬─ T1 ─ T2 ─ T3 ─┬─ T4 ─┬─ T7 ─ T8 ══ PR 1 in de
 | GA2 | Staging, dopo GA1 | AC15: deploy del backend verde, `/health`, un cron lanciato a mano, login e le pagine Clienti, Contatti e Dashboard con `BACKEND_URL`, un import di prova |
 | GB1 | Merge della PR 2 in `dev` | CI verde; AC2, AC3 annotati con la sonda; REPORT SHIP |
 | GC1 | Merge della PR 3 in `dev` | CI verde; AC4, AC5, AC8 annotati; REPORT SHIP |
-| GD1 | Merge della PR 4 in `dev` | CI verde; AC5, AC9, AC10, AC11 annotati; prova su `mito_local`; REPORT SHIP; approvazione di Leonardo |
+| GD1 | Merge della PR 4 in `dev` | CI verde; AC5, AC9, AC10, AC11 annotati; prova su `mito_local`; REPORT SHIP (dopo le correzioni) |
 | GD2 | Staging, dopo GD1 | AC15, come GA2 |
 | G3 | Prod | Nel rilascio unico della migrazione, nella sua finestra (fase 4 della roadmap) |
 

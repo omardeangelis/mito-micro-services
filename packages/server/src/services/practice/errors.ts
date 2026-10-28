@@ -1,16 +1,25 @@
 import { TRPCError } from "@trpc/server"
-import { Data } from "effect"
+import { Schema } from "effect"
 import { contactErrorCause } from "../contact/errors"
 import { type CustomerMissing } from "../../effect/db"
 
 /** The practice doesn't exist. */
-export class PracticeNotFound extends Data.TaggedError("PracticeNotFound") {}
+export class PracticeNotFound extends Schema.TaggedError<PracticeNotFound>()(
+  "PracticeNotFound",
+  {}
+) {}
 
 /** A practice with this `praticaId` already exists. */
-export class PracticeExists extends Data.TaggedError("PracticeExists") {}
+export class PracticeExists extends Schema.TaggedError<PracticeExists>()(
+  "PracticeExists",
+  {}
+) {}
 
 /** A customer the new practice adds already exists. */
-export class CustomerExists extends Data.TaggedError("CustomerExists") {}
+export class CustomerExists extends Schema.TaggedError<CustomerExists>()(
+  "CustomerExists",
+  {}
+) {}
 
 export type PracticeError = PracticeNotFound | PracticeExists | CustomerExists
 

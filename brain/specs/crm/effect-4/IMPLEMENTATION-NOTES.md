@@ -67,7 +67,11 @@
 | AC4 | Met (PR 3, T12) | `@effect/vitest` 4.0.6 |
 | AC8 | Met (PR 3) dopo le correzioni della revisione | I bordi e i due orologi a passi nel log di T17 e nel §8; `queue.test.ts` e il budget di `processDueAlerts` in `it.live` |
 | AC5 (PR 3) | Met | 218 eccezioni, tutte `await` → `yield*` dello stesso valore (con `provideServer`/`Effect.exit`, `Fiber.join`, la tabella `writers`), più il test nuovo e un `.resolves`. Categoria firmata da Omar (D17) |
-| AC9–AC11 | Non iniziati | PR 4 |
+| AC5 (PR 4) | Met | 321 eccezioni: 8 titoli di `describe` rinominati da T18, 313 catene dei test nuovi di T19. Un test di D8 svuotato dagli span, corretto nella fixture (vedi PR 4) |
+| AC9 | Met (PR 4) | 0 `*Live`; id `@mito/<pacchetto>/<percorso>/<Nome>`, letti per stringa |
+| AC10 | Met (PR 4) | 0 `Data.TaggedError` (61 su `dev`); 89 test nuovi verdi prima e dopo; `DbError.message` corretto dopo la revisione |
+| AC11 | Met (PR 4) | `gen-wrappers` trova solo `transaction` (73 su `dev`); `fnUntraced` esportate: `query`, `lockCustomer`, `applyMigrations`, `readSession` |
+| AC12–AC14 (PR 4) | Met in locale | `AGENTS.md`, §2 di `migrazione-effect.md`, §8 della roadmap; la CI parte con la PR |
 | AC15 | Non verificato | Staging, dopo il merge della #114 |
 
 ## Pre-existing Issues
@@ -80,10 +84,11 @@
 
 ## Remaining Work
 
-- **PR 1** (in `dev`, [#114](https://github.com/omardeangelis/mito-micro-services/pull/114)): la prova nel browser su `mito_local` e la revisione di Leonardo (D4) sui file dell'auth, rinviate; AC15 su staging.
+- **PR 1:** in `dev` ([#114](https://github.com/omardeangelis/mito-micro-services/pull/114)). La prova nel browser su `mito_local` è quella del 2026-10-28, fatta sul branch della PR 4 che contiene la PR 1. La revisione di Leonardo (D4) non è più obbligatoria.
 - **PR 2:** in `dev` ([#113](https://github.com/omardeangelis/mito-micro-services/pull/113)).
-- **PR 3** (`claude/effect-vitest`): T12–T16 fatti; T17: AC5 firmato (D17), restano la PR, la CI e il merge.
-- **PR 4:** dopo il merge della PR 3 in `dev` (T18 dipende da T17).
+- **PR 3:** in `dev` ([#116](https://github.com/omardeangelis/mito-micro-services/pull/116)).
+- **PR 4:** in `dev` ([#121](https://github.com/omardeangelis/mito-micro-services/pull/121), 2026-10-28), con D7 nella descrizione. Prima del merge `dev` è entrata nel branch con la fase 2 di HttpApi (#117–#120): `packages/server/src/http/`, `apps/api/src/httpApi.ts` e `apps/web/src/api/runtime.ts` sono passati allo stile della PR 4 (H1 di [[chore/fase-2-httpapi]]), e il test `betterAuth/_test/hosts.db.test.ts` ha preso i nomi nuovi senza cambiare le asserzioni.
+- **AC15:** resta, su staging, dopo il deploy del merge della #121: `/health`, un cron lanciato a mano, login e pagine con `BACKEND_URL`, un import di prova.
 
 ## PR 2 – vitest 5
 
@@ -108,6 +113,31 @@
   - `runServer` resta per una cella di una tabella `each`, che lo script confronta e che deve restituire una Promise come l'altra riga.
 - **Sorprese:** `it.effect.each` passa la riga intera come un argomento solo; le scadenze lette dal `Clock` vogliono `TestClock.setTime(Date.now())`, se no `statement_timeout` riceve un valore enorme; `TestClock.setTime` fallisce sotto `it.live`; un `TestClock` è condiviso dalle fibre di un test (in `run.pg.test.ts` va riportato indietro prima di liberare il lock).
 
+## PR 4 – lo stile di Effect 4
+
+- **Esecuzione:** T18 e T19 in sequenza nel worktree della sessione; T20a, T20b e T20c in parallelo, ognuno nel suo worktree e branch, uniti dal supervisore in `claude/effect-style`.
+- **D7:** la PR 4 converte file che nessuna modifica di prodotto tocca. È un'eccezione approvata alla regola di `AGENTS.md` "solo il codice che la modifica tocca" (Omar, 2026-10-27), e la descrizione della PR lo dice.
+- **Deviazioni:**
+  - `readSession` e `applyMigrations` sono esportate ma `Effect.fnUntraced`: un `Effect.fn` con traccia aggiunge un'annotazione `StackTrace` alla `Cause` del fallimento, e i loro test confrontano l'`Exit` intero.
+  - Le costanti `<nome>Layer` (`serverLayer`, `storageLayer`, `cronLayer`, `importRouteLayer`) dove un layer statico farebbe un import circolare.
+  - Lo script di AC5 non è copiato in queste note (D11 diceva il sorgente qui): resta nella storia di `dev`, `git show e7ead47:scripts/check-assertions.mjs`.
+- **Differenze note di T19** (verificate, nessuno le legge):
+  - `Schema.Struct` e `Schema.Array` copiano `alert` e `tags`: stesso contenuto, istanza diversa;
+  - `_tag` è la prima chiave nello spread, in `JSON.stringify` e in `inspect`;
+  - le chiavi fuori dallo schema si perdono, ma i 119 punti di costruzione passano tutti un letterale;
+  - due input malformati, che nessuna fonte reale produce, ora lanciano invece di passare: un `tags` non stringa in un journal di drizzle rotto, e un errore del driver con un `message` non stringa. Il secondo è corretto (`String(...)` in `toDbError`, con un test in `db.db.test.ts`).
+- **La revisione (DO NOT SHIP, 2026-10-28):** gli span di `Effect.fn` leggono `currentTimeNanos` del `Clock`, e l'orologio a passi di `apply.db.test.ts` dava lo stesso copione a millisecondi e nanosecondi. Il test "la scadenza che passa tra un blocco e l'altro annulla anche il primo" scadeva prima del primo blocco. Corretto nella fixture (scelta di Omar): i nanosecondi sono costanti, come nell'orologio di `concurrency.pg.test.ts`. Il mutante di v4 (`timeLeft` che ignora la scadenza dopo il primo blocco) ora fa fallire il test. Nessuna asserzione cambiata.
+
+- **Prova su `mito_local` (T8.4, 2026-10-28):** `next dev` di questo worktree, che non ha file `.env*`, con le sole variabili locali (database `mito_local`, un `BETTER_AUTH_SECRET` nuovo, `AUTH_TEST_LOGIN=true`, storage placeholder); `mito_local` portato a 18 migrazioni con `db:local:migrate`. ADMIN del seed `malco.bellucci.01@mito.test`, `agent-browser`. Verde, nessun errore in console né dal server:
+  - login via email: il link nel log del server, `/dashboard`;
+  - Dashboard; Clienti; Contatti; Pratiche; il dettaglio di `C004592` con le sue note; il dettaglio del contatto 1006;
+  - un import Standard di 2 righe (una valida, una senza importi): anteprima 1 importabile e 1 scartata, poi "Completato" con cliente, pratica e legame scritti;
+  - l'export delle chiamate: `chiamate_2026-09-29_2026-10-28.xlsx`, foglio "Chiamate", 29 righe. Il file è letto dal blob nella pagina: il click di `agent-browser` non arrivava al pulsante, il click dal DOM sì;
+  - Profilo con la tab Admin (Gestisci operatori);
+  - l'uscita: `POST /api/auth/sign-out` 200, riga di sessione cancellata, ritorno a `/login`.
+  - Senza sessione le procedure danno 401. `/dashboard` mostra il guscio vuoto invece di rimandare a `/login`: c'è anche su `dev`, perché `src/middleware.ts` non esiste (piano di `auth-better-auth`), e la PR 4 non tocca quei file.
+  - A fine prova le righe dell'import sono cancellate e `mito_local` è com'era (10.000 clienti, nessun import, nessuna sessione).
+
 ## Steering
 
 | Date | Feedback | Changes |
@@ -116,3 +146,5 @@
 | 2026-10-27 | AC3: la forma dei titoli `each` non conta | AC3 corretto nella SPEC, con una riga nel registro delle decisioni; AC3 Met per la PR 2 |
 | 2026-10-27 | "Mergiale e fai partire 3 e 4" | #113 e #114 in `dev` a CI verde, senza la prova su `mito_local` e senza la revisione di Leonardo chieste da GA1. I punti aperti della revisione della PR 1 (script, test di `withCurrentEnv`, note nella SPEC) entrano nella PR 3, prima della conversione |
 | 2026-10-27 | "Accetto i nuovi AC5 rules" | Categoria `expect(await X)` → `expect(yield* X)` firmata: D17 nel piano, AC5 e la riga del registro nella SPEC; PR 3 aperta verso `dev` |
+| 2026-10-28 | "Scelgo la strada a e poi fixa il resto" | Orologio di `apply.db.test.ts` con nanosecondi costanti; `DbError.message` in stringa; `AGENTS.md`, §2 di `migrazione-effect.md`, `operatore.md`, AC11 e queste note; script di AC5 tolto |
+| 2026-10-28 | "La revisione non è mandatoria, puoi fare un test in locale invece?" | D4 non vale più per la PR 4; prova su `mito_local` fatta, verde (sezione PR 4) |

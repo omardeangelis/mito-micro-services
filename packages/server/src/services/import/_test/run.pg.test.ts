@@ -9,7 +9,7 @@ import { type Cells } from "@mito/domain/import/classify"
 import { waveColumns } from "@mito/domain/import/formats"
 import { toFileBody } from "@mito/domain/import/payload"
 import { waveCells } from "@mito/domain/import/_test/cells"
-import { type Db, DbLive } from "../../../effect/db"
+import { Db } from "../../../effect/db"
 import { ImportConfig, importSettings } from "../config"
 import { ImportQueue, type ImportTask } from "../queue"
 import { executeImport, startImport } from "../run"
@@ -57,7 +57,7 @@ describe.skipIf(!hasTestDatabase)("un import alla volta", () => {
 
   const layer = () =>
     Layer.mergeAll(
-      DbLive,
+      Db.layer,
       Layer.succeed(ImportConfig, importSettings),
       Layer.succeed(ImportQueue, {
         available: true,

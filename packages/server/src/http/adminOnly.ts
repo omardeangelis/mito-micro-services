@@ -6,7 +6,7 @@ import { AdminOnly, CurrentUser } from "@mito/contract/middleware"
  * `AdminOnly` on the backend, in place of `adminProcedure` (H10): after
  * `Authenticated`, an operator who is not an admin is 403 `NotAdmin`
  */
-export const AdminOnlyLive = Layer.succeed(AdminOnly)((endpoint) =>
+export const adminOnlyLayer = Layer.succeed(AdminOnly)((endpoint) =>
   Effect.gen(function* () {
     const { actor } = yield* CurrentUser
     if (actor.role !== "ADMIN") return yield* new NotAdmin()

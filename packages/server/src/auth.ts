@@ -1,7 +1,7 @@
 import { Cause, Effect, Exit, Layer } from "effect"
 import { getAuth } from "./betterAuth"
-import { authSessionOf, readSession, type Session } from "./betterAuth/session"
-import { ServerLive } from "./effect/server"
+import { AuthSession, readSession, type Session } from "./betterAuth/session"
+import { serverLayer } from "./effect/server"
 import { requestSession } from "./requestSession"
 
 export type { Session }
@@ -17,7 +17,7 @@ export async function readRequestSession(
 ): Promise<Session | null> {
   const exit = await Effect.runPromiseExit(
     readSession(headers).pipe(
-      Effect.provide(Layer.merge(authSessionOf(getAuth()), ServerLive))
+      Effect.provide(Layer.merge(AuthSession.layerOf(getAuth()), serverLayer))
     )
   )
   if (Exit.isSuccess(exit)) return exit.value

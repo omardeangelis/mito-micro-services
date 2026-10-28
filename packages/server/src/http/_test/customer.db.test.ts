@@ -24,7 +24,7 @@ import {
   createPractice,
   createTask,
 } from "@/test/factories"
-import { ApiHandlersLive } from "../api"
+import { apiHandlersLayer } from "../api"
 import { SessionReader } from "../session"
 
 /** The session the backend read for the request: `userId`'s, or none */
@@ -41,7 +41,7 @@ const sessionOf = (userId: string | null) =>
 /** The client of the group `customer`, on the real handlers and the test database */
 const clientAs = (userId: string | null) =>
   HttpApiTest.groups(MitoApi, ["customer"]).pipe(
-    Effect.provide(ApiHandlersLive),
+    Effect.provide(apiHandlersLayer),
     Effect.provide(sessionOf(userId)),
     Effect.provide(inMemoryPlatform),
     provideServer

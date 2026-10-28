@@ -9,9 +9,9 @@ import { type Cells, classifyRows } from "@mito/domain/import/classify"
 import { groupRows, lookupKeys } from "@mito/domain/import/group"
 import { planRows } from "@mito/domain/import/plan"
 import { waveCells } from "@mito/domain/import/_test/cells"
-import { DbLive, transaction } from "../../../effect/db"
+import { Db, transaction } from "../../../effect/db"
 import { applyImport } from "../apply"
-import { ImportConfigLive } from "../config"
+import { ImportConfig } from "../config"
 import { lookupExisting } from "../lookup"
 import { createCustomer, createPractice } from "@/test/factories"
 import {
@@ -40,7 +40,7 @@ describe.skipIf(!hasTestDatabase)("import e scritture concorrenti", () => {
     await resetDb()
   })
 
-  const layer = Layer.merge(DbLive, ImportConfigLive)
+  const layer = Layer.merge(Db.layer, ImportConfig.layer)
 
   /** The import of the Wave rows, confirmed as the preview gives them. */
   const importRows = (rows: { row: number; cells: Cells }[]) =>

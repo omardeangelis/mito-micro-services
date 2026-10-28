@@ -40,94 +40,95 @@ export const findCustomersByCode = (input: CustomerCodes) =>
   )
 
 /** The practices a customer signed, each with the customer's role in it. */
-export const listPracticesOfCustomer = (customerId: string) =>
-  Effect.gen(function* () {
-    const praticaIDs = yield* query((client) =>
-      client
-        .select({
-          id: customerToPratica.praticaId,
-          customerRole: customerToPratica.customerRole,
-        })
-        .from(customerToPratica)
-        .where(eq(customerToPratica.customerId, customerId))
-    )
+export const listPracticesOfCustomer = Effect.fn(
+  "customer.listPracticesOfCustomer"
+)(function* (customerId: string) {
+  const praticaIDs = yield* query((client) =>
+    client
+      .select({
+        id: customerToPratica.praticaId,
+        customerRole: customerToPratica.customerRole,
+      })
+      .from(customerToPratica)
+      .where(eq(customerToPratica.customerId, customerId))
+  )
 
-    if (praticaIDs.length === 0) {
-      return []
-    }
+  if (praticaIDs.length === 0) {
+    return []
+  }
 
-    const pratiche = yield* query((client) =>
-      client
-        .select({
-          id: practices.id,
-          praticaId: practices.praticaId,
-          productId: practices.productId,
-          state: practices.state,
-          dataLiquidazione: practices.dataLiquidazione,
-        })
-        .from(practices)
-        .where(
-          inArray(
-            practices.praticaId,
-            praticaIDs.map((p) => p.id)
-          )
+  const pratiche = yield* query((client) =>
+    client
+      .select({
+        id: practices.id,
+        praticaId: practices.praticaId,
+        productId: practices.productId,
+        state: practices.state,
+        dataLiquidazione: practices.dataLiquidazione,
+      })
+      .from(practices)
+      .where(
+        inArray(
+          practices.praticaId,
+          praticaIDs.map((p) => p.id)
         )
-    )
+      )
+  )
 
-    return pratiche.map((p) => ({
-      ...p,
-      customerRole: praticaIDs.find((pp) => pp.id === p.praticaId)!
-        .customerRole,
-    }))
-  })
+  return pratiche.map((p) => ({
+    ...p,
+    customerRole: praticaIDs.find((pp) => pp.id === p.praticaId)!.customerRole,
+  }))
+})
 
 /** The customers of a practice, each with the operator and the role in it. */
-export const listCustomersOfPractice = (praticaId: string) =>
-  Effect.gen(function* () {
-    const customersIDs = yield* query((client) =>
-      client
-        .select({
-          id: customerToPratica.customerId,
-          customerRole: customerToPratica.customerRole,
-        })
-        .from(customerToPratica)
-        .where(eq(customerToPratica.praticaId, praticaId))
-    )
+export const listCustomersOfPractice = Effect.fn(
+  "customer.listCustomersOfPractice"
+)(function* (praticaId: string) {
+  const customersIDs = yield* query((client) =>
+    client
+      .select({
+        id: customerToPratica.customerId,
+        customerRole: customerToPratica.customerRole,
+      })
+      .from(customerToPratica)
+      .where(eq(customerToPratica.praticaId, praticaId))
+  )
 
-    if (customersIDs.length === 0) {
-      return []
-    }
+  if (customersIDs.length === 0) {
+    return []
+  }
 
-    const praticaCustomers = yield* query((client) =>
-      client
-        .select({
-          id: customers.id,
-          name: customers.name,
-          surname: customers.surname,
-          email: customers.email,
-          fiscalCode: customers.fiscalCode,
-          vatCode: customers.vatCode,
-          phoneNumber: customers.phoneNumber,
-          blackListStatus: customers.blackListStatus,
-          operatorId: customers.operatorId,
-          operatorName: operators.name,
-          operatorSurname: operators.surname,
-        })
-        .from(customers)
-        .leftJoin(operators, eq(customers.operatorId, operators.id))
-        .where(
-          inArray(
-            customers.id,
-            customersIDs.map((c) => c.id)
-          )
+  const praticaCustomers = yield* query((client) =>
+    client
+      .select({
+        id: customers.id,
+        name: customers.name,
+        surname: customers.surname,
+        email: customers.email,
+        fiscalCode: customers.fiscalCode,
+        vatCode: customers.vatCode,
+        phoneNumber: customers.phoneNumber,
+        blackListStatus: customers.blackListStatus,
+        operatorId: customers.operatorId,
+        operatorName: operators.name,
+        operatorSurname: operators.surname,
+      })
+      .from(customers)
+      .leftJoin(operators, eq(customers.operatorId, operators.id))
+      .where(
+        inArray(
+          customers.id,
+          customersIDs.map((c) => c.id)
         )
-    )
+      )
+  )
 
-    return praticaCustomers.map((c) => ({
-      ...c,
-      customerRole: customersIDs.find((cc) => cc.id === c.id)!.customerRole,
-    }))
-  })
+  return praticaCustomers.map((c) => ({
+    ...c,
+    customerRole: customersIDs.find((cc) => cc.id === c.id)!.customerRole,
+  }))
+})
 
 /**
  * The customers in review or blacklisted, with their operator and the number

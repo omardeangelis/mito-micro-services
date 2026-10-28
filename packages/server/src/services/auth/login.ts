@@ -1,4 +1,4 @@
-import { Data, Effect } from "effect"
+import { Effect, Schema } from "effect"
 import { eq } from "drizzle-orm"
 import { operators } from "@mito/db/schema/operators"
 import { users } from "@mito/db/schema/users"
@@ -7,22 +7,34 @@ import { isUserDisabled } from "./disabled"
 import { matchUserEmail } from "./users"
 
 /** The user signing in is deactivated (gestione-operatori, AC17). */
-export class UserDisabled extends Data.TaggedError("UserDisabled") {}
+export class UserDisabled extends Schema.TaggedError<UserDisabled>()(
+  "UserDisabled",
+  {}
+) {}
 
 /** In a test environment, an address without a user that isn't allowed. */
-export class EmailNotAllowed extends Data.TaggedError("EmailNotAllowed") {}
+export class EmailNotAllowed extends Schema.TaggedError<EmailNotAllowed>()(
+  "EmailNotAllowed",
+  {}
+) {}
 
 /**
  * A user has this email in another letter case. better-auth looks users up by
  * the lowercase email, so it didn't find them and would sign up a second one.
  */
-export class EmailOtherCase extends Data.TaggedError("EmailOtherCase") {}
+export class EmailOtherCase extends Schema.TaggedError<EmailOtherCase>()(
+  "EmailOtherCase",
+  {}
+) {}
 
 /**
  * A user already has this email, and the account signing in isn't linked to
  * them: never linked by the email alone (AC3).
  */
-export class EmailTaken extends Data.TaggedError("EmailTaken") {}
+export class EmailTaken extends Schema.TaggedError<EmailTaken>()(
+  "EmailTaken",
+  {}
+) {}
 
 export type LoginRefused =
   UserDisabled | EmailNotAllowed | EmailOtherCase | EmailTaken
@@ -38,36 +50,34 @@ export type SignUpRules = {
  * a user has the email in any letter case, and in a test environment only for
  * the allowed addresses.
  */
-export const admitNewUser = (
+export const admitNewUser = Effect.fn("auth.admitNewUser")(function* (
   email: string | null | undefined,
   rules: SignUpRules
-): Effect.Effect<void, LoginRefused | DbError, Db> =>
-  Effect.gen(function* () {
-    if (!email) return yield* new EmailNotAllowed()
-    const match = yield* matchUserEmail(email)
-    if (match === "exact") return yield* new EmailTaken()
-    if (match === "other-case") return yield* new EmailOtherCase()
-    if (rules.testLogin && !rules.allowedEmails.has(email.toLowerCase())) {
-      return yield* new EmailNotAllowed()
-    }
-  })
+): Effect.fn.Return<void, LoginRefused | DbError, Db> {
+  if (!email) return yield* new EmailNotAllowed()
+  const match = yield* matchUserEmail(email)
+  if (match === "exact") return yield* new EmailTaken()
+  if (match === "other-case") return yield* new EmailOtherCase()
+  if (rules.testLogin && !rules.allowedEmails.has(email.toLowerCase())) {
+    return yield* new EmailNotAllowed()
+  }
+})
 
 /**
  * Whether the email login may send a link to `email` (AC9, AC11, AC12): to the
  * user with this email in lowercase, unless deactivated; to an address without
  * a user only when a new user may have it.
  */
-export const admitMagicLink = (
+export const admitMagicLink = Effect.fn("auth.admitMagicLink")(function* (
   email: string,
   rules: SignUpRules
-): Effect.Effect<void, LoginRefused | DbError, Db> =>
-  Effect.gen(function* () {
-    if (yield* isUserDisabled({ email })) return yield* new UserDisabled()
-    // In lowercase, as better-auth looks the user up and signs them up
-    const lowercase = email.toLowerCase()
-    if ((yield* matchUserEmail(lowercase)) === "exact") return
-    yield* admitNewUser(lowercase, rules)
-  })
+): Effect.fn.Return<void, LoginRefused | DbError, Db> {
+  if (yield* isUserDisabled({ email })) return yield* new UserDisabled()
+  // In lowercase, as better-auth looks the user up and signs them up
+  const lowercase = email.toLowerCase()
+  if ((yield* matchUserEmail(lowercase)) === "exact") return
+  yield* admitNewUser(lowercase, rules)
+})
 
 /** Whether the user `userId` may have a new session: not when deactivated (AC11). */
 export const admitSession = (

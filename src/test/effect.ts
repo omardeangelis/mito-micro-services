@@ -1,19 +1,19 @@
 import { Cause, Effect, Exit, Option, Result } from "effect"
-import { type ServerContext, ServerLive } from "@mito/server/effect/server"
+import { type ServerServices, serverLayer } from "@mito/server/effect/server"
 
 /**
- * Provides `ServerLive` to a server program, inside `it.effect` or `it.live`:
+ * Provides `serverLayer` to a server program, inside `it.effect` or `it.live`:
  * `yield* program.pipe(provideServer, Effect.exit)`.
  */
-export const provideServer = Effect.provide(ServerLive)
+export const provideServer = Effect.provide(serverLayer)
 
 /**
- * Runs a server program with `ServerLive` and returns a Promise, as the edges
+ * Runs a server program with `serverLayer` and returns a Promise, as the edges
  * do. Tests use `it.effect` and `provideServer`; this stays for a cell of an
  * `each` table that must return a Promise (`deactivate.pg.test.ts`).
  */
-export const runServer = <A, E>(program: Effect.Effect<A, E, ServerContext>) =>
-  Effect.runPromiseExit(program.pipe(Effect.provide(ServerLive)))
+export const runServer = <A, E>(program: Effect.Effect<A, E, ServerServices>) =>
+  Effect.runPromiseExit(program.pipe(Effect.provide(serverLayer)))
 
 /** The `_tag` of the error in `cause`, if it holds one. */
 export const causeTag = (cause: Cause.Cause<unknown>) => {

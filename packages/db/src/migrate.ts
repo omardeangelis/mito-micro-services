@@ -1,14 +1,15 @@
 import fs from "fs"
 import path from "path"
-import { Data, Effect } from "effect"
+import { Effect, Schema } from "effect"
 import { drizzle } from "drizzle-orm/postgres-js"
 import { migrate } from "drizzle-orm/postgres-js/migrator"
 import type postgres from "postgres"
 
 /** The migrations could not be read or applied: none of the pending ones is. */
-export class MigrationError extends Data.TaggedError("MigrationError")<{
-  cause: unknown
-}> {}
+export class MigrationError extends Schema.TaggedError<MigrationError>()(
+  "MigrationError",
+  { cause: Schema.Defect() }
+) {}
 
 /**
  * Migrations never applied, dated between ones already applied: Drizzle's
@@ -16,9 +17,10 @@ export class MigrationError extends Data.TaggedError("MigrationError")<{
  * skip them and report success. It happens when a branch merges a migration
  * generated before one already deployed (`pnpm db:check` catches it on the PR).
  */
-export class MigrationOutOfOrder extends Data.TaggedError(
-  "MigrationOutOfOrder"
-)<{ tags: string[] }> {}
+export class MigrationOutOfOrder extends Schema.TaggedError<MigrationOutOfOrder>()(
+  "MigrationOutOfOrder",
+  { tags: Schema.mutable(Schema.Array(Schema.String)) }
+) {}
 
 const attempt = <A>(run: () => Promise<A>) =>
   Effect.tryPromise({
@@ -54,25 +56,27 @@ const appliedDates = (client: postgres.Sql) =>
  * the last applied: what predates the first is the schema the database had
  * before its migrations were tracked.
  */
-const checkOrder = (client: postgres.Sql, folder: string) =>
-  Effect.gen(function* () {
-    const applied = yield* appliedDates(client)
-    if (applied.length === 0) return
-    const first = Math.min(...applied)
-    const last = Math.max(...applied)
-    const { entries } = yield* attempt(
-      async () =>
-        JSON.parse(
-          fs.readFileSync(path.join(folder, "meta/_journal.json"), "utf8")
-        ) as { entries: { when: number; tag: string }[] }
+const checkOrder = Effect.fnUntraced(function* (
+  client: postgres.Sql,
+  folder: string
+) {
+  const applied = yield* appliedDates(client)
+  if (applied.length === 0) return
+  const first = Math.min(...applied)
+  const last = Math.max(...applied)
+  const { entries } = yield* attempt(
+    async () =>
+      JSON.parse(
+        fs.readFileSync(path.join(folder, "meta/_journal.json"), "utf8")
+      ) as { entries: { when: number; tag: string }[] }
+  )
+  const tags = entries
+    .filter(
+      ({ when }) => when > first && when < last && !applied.includes(when)
     )
-    const tags = entries
-      .filter(
-        ({ when }) => when > first && when < last && !applied.includes(when)
-      )
-      .map(({ tag }) => tag)
-    if (tags.length > 0) return yield* new MigrationOutOfOrder({ tags })
-  })
+    .map(({ tag }) => tag)
+  if (tags.length > 0) return yield* new MigrationOutOfOrder({ tags })
+})
 
 /**
  * Applies the migrations of `folder` still pending on the database of
@@ -83,10 +87,12 @@ const checkOrder = (client: postgres.Sql, folder: string) =>
  * production do. Fails with `MigrationOutOfOrder`, applying nothing, when
  * the migrator would skip a pending migration.
  */
-export const applyMigrations = (client: postgres.Sql, folder: string) =>
-  Effect.gen(function* () {
-    yield* checkOrder(client, folder)
-    const before = yield* appliedMigrations(client)
-    yield* attempt(() => migrate(drizzle(client), { migrationsFolder: folder }))
-    return (yield* appliedMigrations(client)) - before
-  })
+export const applyMigrations = Effect.fnUntraced(function* (
+  client: postgres.Sql,
+  folder: string
+) {
+  yield* checkOrder(client, folder)
+  const before = yield* appliedMigrations(client)
+  yield* attempt(() => migrate(drizzle(client), { migrationsFolder: folder }))
+  return (yield* appliedMigrations(client)) - before
+})

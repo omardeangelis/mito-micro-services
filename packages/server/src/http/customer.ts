@@ -50,7 +50,7 @@ const assignmentErrors = {
  * The group `customer`: adapters of the services the procedures of the tRPC
  * router `customer` call, with no logic of their own (H16)
  */
-export const CustomerLive = HttpApiBuilder.group(
+export const customerLayer = HttpApiBuilder.group(
   MitoApi,
   "customer",
   (handlers) =>

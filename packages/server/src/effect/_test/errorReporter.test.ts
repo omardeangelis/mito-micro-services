@@ -3,10 +3,7 @@ import * as Sentry from "@sentry/node"
 import { afterEach, beforeEach, vi } from "vitest"
 import { describe, expect, it } from "@effect/vitest"
 import { Cause, Effect } from "effect"
-import {
-  ErrorReporter,
-  SentryReporterLive,
-} from "@mito/server/effect/errorReporter"
+import { ErrorReporter } from "@mito/server/effect/errorReporter"
 
 // The real layer: src/test/setup.ts replaces it in every test with one that
 // only pushes into `reportedErrors`
@@ -39,12 +36,12 @@ afterEach(async () => {
   await Sentry.close()
 })
 
-describe("SentryReporterLive", () => {
+describe("ErrorReporter.layer", () => {
   it.effect("manda a Sentry l'errore della causa, con i dati del caso", () =>
     Effect.gen(function* () {
       yield* Effect.flatMap(ErrorReporter, (reporter) =>
         reporter.report(Cause.fail(new Error("boom")), { alertId: 7 })
-      ).pipe(Effect.provide(SentryReporterLive))
+      ).pipe(Effect.provide(ErrorReporter.layer))
       yield* Effect.promise(() => Sentry.flush(2000))
 
       // Every item of every envelope, in the order the SDK sent them

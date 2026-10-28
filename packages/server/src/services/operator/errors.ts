@@ -1,25 +1,38 @@
 import { TRPCError } from "@trpc/server"
-import { Data } from "effect"
+import { Schema } from "effect"
 import { type ContactError, contactErrorCause } from "../contact/errors"
 import { type CustomerError, customerErrorToTrpc } from "../customer/errors"
 import { type CustomerMissing } from "../../effect/db"
 
 /** The signed-in user has no operator row. */
-export class NotAnOperator extends Data.TaggedError("NotAnOperator") {}
+export class NotAnOperator extends Schema.TaggedError<NotAnOperator>()(
+  "NotAnOperator",
+  {}
+) {}
 
 /** The operator is deactivated: they may not use the app (AC16, AC25). */
-export class OperatorDisabled extends Data.TaggedError("OperatorDisabled") {}
+export class OperatorDisabled extends Schema.TaggedError<OperatorDisabled>()(
+  "OperatorDisabled",
+  {}
+) {}
 
 /** The target is an admin, who must be demoted before deactivation (AC3). */
-export class OperatorIsAdmin extends Data.TaggedError("OperatorIsAdmin") {}
+export class OperatorIsAdmin extends Schema.TaggedError<OperatorIsAdmin>()(
+  "OperatorIsAdmin",
+  {}
+) {}
 
 /** An admin may not deactivate themselves (AC4). */
-export class CannotDeactivateSelf extends Data.TaggedError(
-  "CannotDeactivateSelf"
+export class CannotDeactivateSelf extends Schema.TaggedError<CannotDeactivateSelf>()(
+  "CannotDeactivateSelf",
+  {}
 ) {}
 
 /** The change would leave no admin: at least one must remain (AC18). */
-export class LastAdmin extends Data.TaggedError("LastAdmin") {}
+export class LastAdmin extends Schema.TaggedError<LastAdmin>()(
+  "LastAdmin",
+  {}
+) {}
 
 export type OperatorError =
   | NotAnOperator

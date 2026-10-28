@@ -10,9 +10,12 @@ import { getServerAuthSession, type Session } from "../auth"
 export class SessionReader extends Context.Service<
   SessionReader,
   { readonly read: (headers: Headers) => Effect.Effect<Session | null> }
->()("@mito/server/SessionReader") {}
-
-/** A session that can't be read is a defect, a 500, as in tRPC */
-export const SessionReaderLive = Layer.succeed(SessionReader)({
-  read: (headers) => Effect.promise(() => getServerAuthSession(headers)),
-})
+>()("@mito/server/http/SessionReader") {
+  /** A session that can't be read is a defect, a 500, as in tRPC */
+  static readonly layer = Layer.succeed(
+    SessionReader,
+    SessionReader.of({
+      read: (headers) => Effect.promise(() => getServerAuthSession(headers)),
+    })
+  )
+}

@@ -1,7 +1,7 @@
 import { beforeAll, beforeEach } from "vitest"
 import { describe, expect, it } from "@effect/vitest"
 import { Effect, Fiber } from "effect"
-import { type ServerContext } from "@mito/server/effect/server"
+import { type ServerServices } from "@mito/server/effect/server"
 import { eq } from "drizzle-orm"
 import { readContactError } from "@mito/domain/contact/errors"
 import { customers } from "@mito/db/schema/customers"
@@ -58,7 +58,7 @@ function deactivation(userId: string) {
 }
 
 /** Starts the program as the edges run it, in a fiber of the test. */
-const forked = <A, E>(program: Effect.Effect<A, E, ServerContext>) =>
+const forked = <A, E>(program: Effect.Effect<A, E, ServerServices>) =>
   program.pipe(provideServer, Effect.exit, Effect.forkChild)
 
 const forkedAsIs = <A, E>(program: Effect.Effect<A, E>) =>

@@ -7,12 +7,12 @@ import {
   uploadPartSchema,
 } from "@mito/domain/import/payload"
 import { type DbError } from "../../../effect/db"
-import { type ServerContext } from "../../../effect/server"
+import { type ServerServices } from "../../../effect/server"
 import { runTrpc } from "../../../effect/trpc"
 import { type ImportConfig } from "../../../services/import/config"
 import { type ImportError } from "../../../services/import/errors"
 import { activeImport, listImports } from "../../../services/import/history"
-import { ImportLive } from "../../../services/import/live"
+import { importLayer } from "../../../services/import/live"
 import { lookupExisting } from "../../../services/import/lookup"
 import { type ImportQueue } from "../../../services/import/queue"
 import { startImport } from "../../../services/import/run"
@@ -66,14 +66,14 @@ const importErrorToTrpc = (error: ImportError) => {
   }
 }
 
-/** Runs an import service with its queue and limits (`ImportLive`). */
+/** Runs an import service with its queue and limits (`importLayer`). */
 const runImport = <A>(
   program: Effect.Effect<
     A,
     ImportError | DbError,
-    ServerContext | ImportConfig | ImportQueue
+    ServerServices | ImportConfig | ImportQueue
   >
-) => runTrpc(program.pipe(Effect.provide(ImportLive)), importErrorToTrpc)
+) => runTrpc(program.pipe(Effect.provide(importLayer)), importErrorToTrpc)
 
 export const lookup = adminProcedure
   .input(lookupKeysSchema)

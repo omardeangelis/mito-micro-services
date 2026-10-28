@@ -1,4 +1,4 @@
-import { Context, Data, Effect, Exit, Layer, Option } from "effect"
+import { Context, Effect, Exit, Layer, Option, Schema } from "effect"
 import { eq, type ExtractTablesWithRelations } from "drizzle-orm"
 import { type PgDatabase } from "drizzle-orm/pg-core"
 import { type PostgresJsQueryResultHKT } from "drizzle-orm/postgres-js"
@@ -15,9 +15,11 @@ export type DbClient = PgDatabase<
 >
 
 /** The Drizzle client of `@mito/db`. */
-export class Db extends Context.Service<Db, DbClient>()("Db") {}
-
-export const DbLive = Layer.succeed(Db, db)
+export class Db extends Context.Service<Db, DbClient>()(
+  "@mito/server/effect/Db"
+) {
+  static readonly layer = Layer.succeed(Db, Db.of(db))
+}
 
 /**
  * The transaction `transaction` opened. `failed` records a query that failed
@@ -27,51 +29,51 @@ export const DbLive = Layer.succeed(Db, db)
 export class Tx extends Context.Service<
   Tx,
   { readonly client: DbClient; failed: boolean }
->()("Tx") {}
+>()("@mito/server/effect/Tx") {}
 
 /** A query the database driver rejected. `code` is the Postgres SQLSTATE. */
-export class DbError extends Data.TaggedError("DbError")<{
-  readonly cause: unknown
-  readonly message: string
-  readonly code: string | undefined
-}> {}
+export class DbError extends Schema.TaggedError<DbError>()("DbError", {
+  cause: Schema.Defect(),
+  message: Schema.String,
+  code: Schema.UndefinedOr(Schema.String),
+}) {}
 
 const toDbError = (error: unknown) => {
   const cause = driverError(error)
   const code = (cause as { code?: unknown } | null)?.code
   return new DbError({
     cause,
-    message: cause instanceof Error ? cause.message : String(cause),
+    message: String(cause instanceof Error ? cause.message : cause),
     code: typeof code === "string" ? code : undefined,
   })
 }
 
 /** The customer doesn't exist, or the contact has no customer. */
-export class CustomerMissing extends Data.TaggedError("CustomerMissing")<{
-  readonly customerId: string | null
-}> {}
+export class CustomerMissing extends Schema.TaggedError<CustomerMissing>()(
+  "CustomerMissing",
+  { customerId: Schema.NullOr(Schema.String) }
+) {}
 
 /**
  * Runs a Drizzle call on the transaction in progress, or on `Db` outside one.
  * A driver error becomes a `DbError`.
  */
-export const query = <A>(
+export const query = Effect.fnUntraced(function* <A>(
   f: (client: DbClient) => Promise<A>
-): Effect.Effect<A, DbError, Db> =>
-  Effect.gen(function* () {
-    const tx = Option.getOrUndefined(yield* Effect.serviceOption(Tx))
-    const client = tx ? tx.client : yield* Db
-    return yield* Effect.tryPromise({
-      try: () => f(client),
-      catch: toDbError,
-    }).pipe(
-      Effect.tapError(() =>
-        Effect.sync(() => {
-          if (tx) tx.failed = true
-        })
-      )
+): Effect.fn.Return<A, DbError, Db> {
+  const tx = Option.getOrUndefined(yield* Effect.serviceOption(Tx))
+  const client = tx ? tx.client : yield* Db
+  return yield* Effect.tryPromise({
+    try: () => f(client),
+    catch: toDbError,
+  }).pipe(
+    Effect.tapError(() =>
+      Effect.sync(() => {
+        if (tx) tx.failed = true
+      })
     )
-  })
+  )
+})
 
 /** How many times a transaction that hit a deadlock runs again. */
 const DEADLOCK_RETRIES = 2
@@ -206,19 +208,18 @@ export type LockedCustomer = {
  * `src/test/operatorRule.ts`, run on every writer of operators in
  * `operatorRule.db.test.ts`.
  */
-export const lockCustomer = (
+export const lockCustomer = Effect.fnUntraced(function* (
   customerId: string | null
-): Effect.Effect<LockedCustomer, DbError | CustomerMissing, Db | Tx> =>
-  Effect.gen(function* () {
-    yield* Tx
-    if (!customerId) return yield* new CustomerMissing({ customerId })
-    const [customer] = yield* query((client) =>
-      client
-        .select({ id: customers.id, operatorId: customers.operatorId })
-        .from(customers)
-        .where(eq(customers.id, customerId))
-        .for("update")
-    )
-    if (!customer) return yield* new CustomerMissing({ customerId })
-    return customer as LockedCustomer
-  })
+): Effect.fn.Return<LockedCustomer, DbError | CustomerMissing, Db | Tx> {
+  yield* Tx
+  if (!customerId) return yield* new CustomerMissing({ customerId })
+  const [customer] = yield* query((client) =>
+    client
+      .select({ id: customers.id, operatorId: customers.operatorId })
+      .from(customers)
+      .where(eq(customers.id, customerId))
+      .for("update")
+  )
+  if (!customer) return yield* new CustomerMissing({ customerId })
+  return customer as LockedCustomer
+})

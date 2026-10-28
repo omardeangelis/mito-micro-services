@@ -8,7 +8,7 @@ import {
   authVerifications,
 } from "@mito/db/schema/auth"
 import { users } from "@mito/db/schema/users"
-import { ServerLive } from "../effect/server"
+import { serverLayer } from "../effect/server"
 import { authDb, onAuthDb } from "./database"
 import { admits } from "./run"
 import {
@@ -170,7 +170,7 @@ export function buildAuth(config: AuthConfig) {
                 Effect.tapCause((cause) =>
                   Effect.logError("Sign-up database step failed", cause)
                 ),
-                Effect.provide(ServerLive)
+                Effect.provide(serverLayer)
               )
             )
             if (Exit.isFailure(exit)) throw new Error("Sign-up failed")

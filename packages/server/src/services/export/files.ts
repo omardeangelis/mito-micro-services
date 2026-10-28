@@ -1,5 +1,5 @@
-import { Data, Effect } from "effect"
-import { Storage, StorageLive } from "../storage/index"
+import { Effect, Schema } from "effect"
+import { Storage, storageLayer } from "../storage/index"
 
 const EXPORT_PATH = "export"
 const XLSX_CONTENT_TYPE =
@@ -15,9 +15,10 @@ const exportKey = (name: string) => `${EXPORT_PATH}/${name}`
 const IMPORT_ERROR_FILE = /^error-import-\d{2}-\d{2}-\d{4}\.xlsx$/
 
 /** The name is not a file of export/ a user may download. */
-export class ExportFileNotAllowed extends Data.TaggedError(
-  "ExportFileNotAllowed"
-)<{ readonly name: string }> {}
+export class ExportFileNotAllowed extends Schema.TaggedError<ExportFileNotAllowed>()(
+  "ExportFileNotAllowed",
+  { name: Schema.String }
+) {}
 
 /**
  * Writes an xlsx file under export/. The bucket is private: the file is found
@@ -33,14 +34,15 @@ export const uploadExportFile = (name: string, body: Uint8Array) =>
   )
 
 /** Reads a file of export/, only one of `IMPORT_ERROR_FILE`. */
-export const downloadExportFile = (name: string) =>
-  Effect.gen(function* () {
+export const downloadExportFile = Effect.fn("export.downloadExportFile")(
+  function* (name: string) {
     if (!IMPORT_ERROR_FILE.test(name))
       return yield* new ExportFileNotAllowed({ name })
     const storage = yield* Storage
     return yield* storage.download(exportKey(name))
-  })
+  }
+)
 
 /** Runs a storage program; a failure comes back as `Failure`, not thrown. */
 export const runExportStorage = <A, E>(program: Effect.Effect<A, E, Storage>) =>
-  Effect.runPromise(program.pipe(Effect.provide(StorageLive), Effect.result))
+  Effect.runPromise(program.pipe(Effect.provide(storageLayer), Effect.result))

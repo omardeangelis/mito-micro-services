@@ -9,11 +9,11 @@ import { OperatorNotFound } from "../contact/errors"
  * Writes the operator's name and surname and returns its row after the
  * update. An `operatorId` with no operator is `OperatorNotFound`.
  */
-export const updateOperatorInfo = (
-  operatorId: number,
-  values: { name?: string | null; surname?: string | null }
-): Effect.Effect<Operator, OperatorNotFound | DbError, Db> =>
-  Effect.gen(function* () {
+export const updateOperatorInfo = Effect.fn("operator.updateOperatorInfo")(
+  function* (
+    operatorId: number,
+    values: { name?: string | null; surname?: string | null }
+  ): Effect.fn.Return<Operator, OperatorNotFound | DbError, Db> {
     const [row] = yield* query((client) =>
       client
         .update(operators)
@@ -23,4 +23,5 @@ export const updateOperatorInfo = (
     )
     if (!row) return yield* new OperatorNotFound()
     return row
-  })
+  }
+)

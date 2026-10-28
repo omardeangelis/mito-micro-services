@@ -1,13 +1,7 @@
 import { vi } from "vitest"
 import { describe, expect, it } from "@effect/vitest"
 import { ConfigProvider, Effect, Exit } from "effect"
-import {
-  ImportQueue,
-  type ImportTask,
-  importQueueChoice,
-  importQueueCloudTasks,
-  importQueueInProcess,
-} from "../queue"
+import { ImportQueue, type ImportTask, importQueueChoice } from "../queue"
 
 // The queue of the imports (T10a, D13): which one an environment gets, and
 // the tasks it puts in Cloud Tasks
@@ -115,7 +109,7 @@ describe("Cloud Tasks", () => {
   const enqueue = (task: ImportTask, fetchImpl: typeof fetch) =>
     Effect.flatMap(ImportQueue, (queue) => queue.enqueue(task)).pipe(
       Effect.provide(
-        importQueueCloudTasks(
+        ImportQueue.layerCloudTasks(
           { queue: QUEUE, audience: SERVICE, serviceAccount: TASKS_ACCOUNT },
           fetchImpl
         )
@@ -224,7 +218,7 @@ describe("coda in processo (sviluppo locale)", () => {
   it.live("un task di pulizia può rimettersi in coda", () =>
     Effect.gen(function* () {
       const purged: string[] = []
-      const queue = importQueueInProcess({
+      const queue = ImportQueue.layerInProcess({
         run: () => Effect.void,
         purge: (uploadId) =>
           Effect.gen(function* () {

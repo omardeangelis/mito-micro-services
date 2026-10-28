@@ -1,4 +1,4 @@
-import { Context, Data, Effect, Layer } from "effect"
+import { Context, Effect, Layer, Schema } from "effect"
 import { type JWTVerifyGetKey } from "jose"
 import { type OidcCaller, verifyIdToken } from "../oidc"
 
@@ -12,12 +12,16 @@ export { googleKeys } from "../oidc"
 export type CronCaller = OidcCaller
 
 /** The request has no valid token of the scheduler. */
-export class CronUnauthorized extends Data.TaggedError("CronUnauthorized")<{
-  readonly reason: string
-}> {}
+export class CronUnauthorized extends Schema.TaggedError<CronUnauthorized>()(
+  "CronUnauthorized",
+  { reason: Schema.String }
+) {}
 
 /** The service has no CronCaller: no cron runs. */
-export class CronNotConfigured extends Data.TaggedError("CronNotConfigured") {}
+export class CronNotConfigured extends Schema.TaggedError<CronNotConfigured>()(
+  "CronNotConfigured",
+  {}
+) {}
 
 export class CronAuth extends Context.Service<
   CronAuth,
@@ -27,21 +31,27 @@ export class CronAuth extends Context.Service<
       authorization: string | undefined
     ) => Effect.Effect<void, CronUnauthorized | CronNotConfigured>
   }
->()("CronAuth") {}
+>()("@mito/api/cron/CronAuth") {
+  /**
+   * Lets a request through only with the scheduler's Google ID token
+   * (`verifyIdToken`).
+   */
+  static readonly layerOidc = (caller: CronCaller, keys: JWTVerifyGetKey) =>
+    Layer.succeed(
+      CronAuth,
+      CronAuth.of({
+        verify: (authorization) =>
+          verifyIdToken(caller, keys, authorization).pipe(
+            Effect.mapError(({ reason }) => new CronUnauthorized({ reason }))
+          ),
+      })
+    )
 
-/**
- * Lets a request through only with the scheduler's Google ID token
- * (`verifyIdToken`).
- */
-export const cronAuth = (caller: CronCaller, keys: JWTVerifyGetKey) =>
-  Layer.succeed(CronAuth, {
-    verify: (authorization) =>
-      verifyIdToken(caller, keys, authorization).pipe(
-        Effect.mapError(({ reason }) => new CronUnauthorized({ reason }))
-      ),
-  })
-
-/** Without a CronCaller every cron request is refused. */
-export const cronAuthDisabled = Layer.succeed(CronAuth, {
-  verify: () => Effect.fail(new CronNotConfigured()),
-})
+  /** Without a CronCaller every cron request is refused. */
+  static readonly layerDisabled = Layer.succeed(
+    CronAuth,
+    CronAuth.of({
+      verify: () => Effect.fail(new CronNotConfigured()),
+    })
+  )
+}

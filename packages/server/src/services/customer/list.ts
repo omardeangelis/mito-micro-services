@@ -151,105 +151,104 @@ const customersOrder = ({ orderBy, sortedBy }: CustomerListQuery): SQL[] => {
  * filters. No join with the task: each customer is a single row. `operatorId`
  * is the caller's operator, used by `onlyMe`.
  */
-export const listCustomers = (
+export const listCustomers = Effect.fn("customer.listCustomers")(function* (
   input: CustomerListQuery,
   operatorId: number
-): Effect.Effect<
+): Effect.fn.Return<
   { allCustomers: CustomerListRow[]; total: number },
   DbError,
   Db
-> =>
-  Effect.gen(function* () {
-    const { searchBy, q } = input
+> {
+  const { searchBy, q } = input
 
-    const operatorFilter = input.onlyMe
-      ? operatorId
-      : input.filterBy?.operatore
-        ? input.filterBy.operatore
-        : undefined
+  const operatorFilter = input.onlyMe
+    ? operatorId
+    : input.filterBy?.operatore
+      ? input.filterBy.operatore
+      : undefined
 
-    const getSearchedBy = () => {
-      if (!q) return undefined
-      return or(
-        ...customerSearchColumns[searchBy].map((column) =>
-          ilike(column, containsPattern(q))
-        )
+  const getSearchedBy = () => {
+    if (!q) return undefined
+    return or(
+      ...customerSearchColumns[searchBy].map((column) =>
+        ilike(column, containsPattern(q))
       )
-    }
+    )
+  }
 
-    const unassignedFilter = input.filterBy?.operatore === 0
+  const unassignedFilter = input.filterBy?.operatore === 0
 
-    const filterQuery = and(
-      getSearchedBy(),
-      input.showDM ? eq(customers.blackListStatus, "blacklisted") : undefined,
-      unassignedFilter
-        ? isNull(customers.operatorId)
-        : operatorFilter
-          ? eq(customers.operatorId, operatorFilter)
-          : undefined,
-
-      input.filterBy?.sede && input.filterBy.sede.length > 0
-        ? inArray(customers.sede, input.filterBy.sede)
+  const filterQuery = and(
+    getSearchedBy(),
+    input.showDM ? eq(customers.blackListStatus, "blacklisted") : undefined,
+    unassignedFilter
+      ? isNull(customers.operatorId)
+      : operatorFilter
+        ? eq(customers.operatorId, operatorFilter)
         : undefined,
-      input.filterBy?.ambito && input.filterBy.ambito.length > 0
-        ? inArray(customers.ambitoLavorativo, input.filterBy.ambito)
-        : undefined,
-      input.filterBy?.jobs && input.filterBy.jobs.length > 0
-        ? inArray(customers.occupazione, input.filterBy.jobs)
-        : undefined,
-      input.filterBy?.file
-        ? eq(customers.fileName, input.filterBy.file)
-        : undefined
-    )
 
-    // Lo stesso `where` per la pagina e per il totale
-    const where = and(
-      filterQuery,
-      advancedFiltersWhere(input.advancedFilters, CUSTOMER_FILTER_QUERY_MAP)
-    )
+    input.filterBy?.sede && input.filterBy.sede.length > 0
+      ? inArray(customers.sede, input.filterBy.sede)
+      : undefined,
+    input.filterBy?.ambito && input.filterBy.ambito.length > 0
+      ? inArray(customers.ambitoLavorativo, input.filterBy.ambito)
+      : undefined,
+    input.filterBy?.jobs && input.filterBy.jobs.length > 0
+      ? inArray(customers.occupazione, input.filterBy.jobs)
+      : undefined,
+    input.filterBy?.file
+      ? eq(customers.fileName, input.filterBy.file)
+      : undefined
+  )
 
-    const allCustomers = query((client) =>
-      client
-        .select({
-          id: customers.id,
-          name: customers.name,
-          surname: customers.surname,
-          fiscalCode: customers.fiscalCode,
-          email: customers.email,
-          phoneNumber: customers.phoneNumber,
-          comune: customers.comune,
-          vatCode: customers.vatCode,
-          birthdayDate: customers.birthdayDate,
-          blackListStatus: customers.blackListStatus,
-          sede: customers.sede,
-          ambitoLavorativo: customers.ambitoLavorativo,
-          occupazione: customers.occupazione,
-          createdAt: customers.createdAt,
-          updatedAt: customers.updatedAt,
-          operatore: {
-            id: operators.id,
-            name: operators.name,
-            surname: operators.surname,
-          },
-          signedPractices,
-        })
-        .from(customers)
-        .leftJoin(operators, eq(customers.operatorId, operators.id))
-        .where(where)
-        .orderBy(...customersOrder(input))
-        .limit(input.perPage)
-        .offset((input.page - 1) * input.perPage)
-    )
+  // Lo stesso `where` per la pagina e per il totale
+  const where = and(
+    filterQuery,
+    advancedFiltersWhere(input.advancedFilters, CUSTOMER_FILTER_QUERY_MAP)
+  )
 
-    const total = query((client) =>
-      client
-        .select({ total: count(customers.id) })
-        .from(customers)
-        .where(where)
-    ).pipe(Effect.map(([row]) => row?.total ?? 0))
+  const allCustomers = query((client) =>
+    client
+      .select({
+        id: customers.id,
+        name: customers.name,
+        surname: customers.surname,
+        fiscalCode: customers.fiscalCode,
+        email: customers.email,
+        phoneNumber: customers.phoneNumber,
+        comune: customers.comune,
+        vatCode: customers.vatCode,
+        birthdayDate: customers.birthdayDate,
+        blackListStatus: customers.blackListStatus,
+        sede: customers.sede,
+        ambitoLavorativo: customers.ambitoLavorativo,
+        occupazione: customers.occupazione,
+        createdAt: customers.createdAt,
+        updatedAt: customers.updatedAt,
+        operatore: {
+          id: operators.id,
+          name: operators.name,
+          surname: operators.surname,
+        },
+        signedPractices,
+      })
+      .from(customers)
+      .leftJoin(operators, eq(customers.operatorId, operators.id))
+      .where(where)
+      .orderBy(...customersOrder(input))
+      .limit(input.perPage)
+      .offset((input.page - 1) * input.perPage)
+  )
 
-    return yield* Effect.all(
-      { allCustomers, total },
-      { concurrency: "unbounded" }
-    )
-  })
+  const total = query((client) =>
+    client
+      .select({ total: count(customers.id) })
+      .from(customers)
+      .where(where)
+  ).pipe(Effect.map(([row]) => row?.total ?? 0))
+
+  return yield* Effect.all(
+    { allCustomers, total },
+    { concurrency: "unbounded" }
+  )
+})

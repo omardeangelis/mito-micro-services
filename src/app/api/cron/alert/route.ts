@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { Cause, Effect, Exit } from "effect"
 import { ErrorReporter } from "@mito/server/effect/errorReporter"
-import { ServerLive } from "@mito/server/effect/server"
+import { serverLayer } from "@mito/server/effect/server"
 import { processDueAlerts } from "@mito/server/services/contact/processDueAlerts"
 import { authCheck } from "../../_utils/auth"
 
@@ -27,14 +27,14 @@ export async function GET(request: Request) {
           : Effect.void
       ),
       // The response is a 200 either way: report here, or nobody will
-      Effect.tapCause((cause) =>
-        Effect.gen(function* () {
+      Effect.tapCause(
+        Effect.fnUntraced(function* (cause: Cause.Cause<unknown>) {
           yield* Effect.logError("Alert cron failed", Cause.pretty(cause))
           const reporter = yield* ErrorReporter
           yield* reporter.report(cause, { route: "/api/cron/alert" })
         })
       ),
-      Effect.provide(ServerLive)
+      Effect.provide(serverLayer)
     )
   )
 

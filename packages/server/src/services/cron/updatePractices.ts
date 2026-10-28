@@ -11,46 +11,47 @@ import { DAYS_PER_RATE } from "@mito/domain/constants/practice"
  * One UPDATE per practice, outside a transaction: a failure leaves the
  * practices already written updated.
  */
-const updatePractices = (today: string): Effect.Effect<number, DbError, Db> =>
-  Effect.gen(function* () {
-    const practicesToUpdate = yield* query((client) =>
-      client.select().from(practices).where(sql`
+const updatePractices = Effect.fnUntraced(function* (
+  today: string
+): Effect.fn.Return<number, DbError, Db> {
+  const practicesToUpdate = yield* query((client) =>
+    client.select().from(practices).where(sql`
       DATE("data_liquidazione") + INTERVAL '1 day' * "rate_pagate" * ${DAYS_PER_RATE} = ${today}
     `)
-    )
+  )
 
-    let updated = 0
-    for (const practice of practicesToUpdate) {
-      // if the last import was before than a month ago, don't update
-      if (!shouldUpdate(practice.lastImportUpdate)) {
-        continue
-      }
-
-      const newRatePagate =
-        practice.rateTotali <= practice.ratePagate
-          ? practice.ratePagate
-          : practice.ratePagate + 1
-
-      const newDebitoResiduo =
-        Number(practice.debitoResiduo) - Number(practice.importoRata)
-
-      const newState =
-        newRatePagate == practice.rateTotali ? "Chiusa" : practice.state
-
-      yield* query((client) =>
-        client
-          .update(practices)
-          .set({
-            ratePagate: newRatePagate,
-            debitoResiduo: newDebitoResiduo.toString(),
-            state: newState,
-          })
-          .where(eq(practices.id, practice.id))
-      )
-      updated++
+  let updated = 0
+  for (const practice of practicesToUpdate) {
+    // if the last import was before than a month ago, don't update
+    if (!shouldUpdate(practice.lastImportUpdate)) {
+      continue
     }
-    return updated
-  })
+
+    const newRatePagate =
+      practice.rateTotali <= practice.ratePagate
+        ? practice.ratePagate
+        : practice.ratePagate + 1
+
+    const newDebitoResiduo =
+      Number(practice.debitoResiduo) - Number(practice.importoRata)
+
+    const newState =
+      newRatePagate == practice.rateTotali ? "Chiusa" : practice.state
+
+    yield* query((client) =>
+      client
+        .update(practices)
+        .set({
+          ratePagate: newRatePagate,
+          debitoResiduo: newDebitoResiduo.toString(),
+          state: newState,
+        })
+        .where(eq(practices.id, practice.id))
+    )
+    updated++
+  }
+  return updated
+})
 
 export { updatePractices }
 

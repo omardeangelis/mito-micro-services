@@ -17,7 +17,7 @@ import { T } from "@mito/server/services/analytics/_test/clock"
 class Boom extends Data.TaggedError("Boom")<Record<never, never>> {}
 
 class Probe extends Context.Service<Probe, { readonly value: string }>()(
-  "test/Probe"
+  "@mito/server/effect/_test/Probe"
 ) {}
 
 const insertUser = (id: string) =>
@@ -280,6 +280,24 @@ describe("query", () => {
         expect(exit).toEqual(Exit.succeed("23505"))
       })
   )
+
+  it.effect(
+    "un errore del driver con un message che non è una stringa è comunque un DbError",
+    () =>
+      Effect.gen(function* () {
+        const cause = Object.assign(new Error(), { message: 42 })
+
+        const exit = yield* query(() => Promise.reject(cause)).pipe(
+          Effect.catchTag("DbError", (error) =>
+            Effect.succeed([error.message, error.cause])
+          ),
+          provideServer,
+          Effect.exit
+        )
+
+        expect(exit).toEqual(Exit.succeed(["42", cause]))
+      })
+  )
 })
 
 // runTrpc is an edge: these tests go through its Promise interface, so they
@@ -325,9 +343,9 @@ describe("runTrpc", () => {
   })
 })
 
-// it.live: ServerLive's logger writes to the console of the fiber, which
+// it.live: serverLayer's logger writes to the console of the fiber, which
 // it.effect replaces with TestConsole
-describe("ServerLive", () => {
+describe("serverLayer", () => {
   it.live("manda Effect.logWarning su console.warn, non su console.log", () =>
     Effect.gen(function* () {
       const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined)

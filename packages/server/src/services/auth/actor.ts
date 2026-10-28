@@ -31,17 +31,16 @@ export type ResolvedOperator = Omit<
  * one with `OperatorDisabled`: the session read may be older than the
  * deactivation, or come from a test caller (AC16).
  */
-export const resolveActor = (
+export const resolveActor = Effect.fn("auth.resolveActor")(function* (
   userId: string
-): Effect.Effect<
+): Effect.fn.Return<
   { operator: ResolvedOperator; actor: Actor },
   NotAnOperator | OperatorDisabled | DbError,
   Db
-> =>
-  Effect.gen(function* () {
-    const [row] = yield* query((client) => operatorOfUser(client, userId))
-    if (!row) return yield* new NotAnOperator()
-    const { disabledAt, ...operator } = row
-    if (disabledAt !== null) return yield* new OperatorDisabled()
-    return { operator, actor: actorOf(operator) }
-  })
+> {
+  const [row] = yield* query((client) => operatorOfUser(client, userId))
+  if (!row) return yield* new NotAnOperator()
+  const { disabledAt, ...operator } = row
+  if (disabledAt !== null) return yield* new OperatorDisabled()
+  return { operator, actor: actorOf(operator) }
+})

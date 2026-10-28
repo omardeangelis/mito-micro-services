@@ -156,216 +156,217 @@ const nonEmpty = <K extends string>(
  * - Fails with `ImportTimedOut` once past `deadline`, checked between the
  *   batches, and the database stops a statement that would run past it.
  */
-export const applyImport = (input: ImportInput) =>
-  Effect.gen(function* () {
-    yield* Tx
-    const { batchSize } = yield* ImportConfig
+export const applyImport = Effect.fn("import.applyImport")(function* (
+  input: ImportInput
+) {
+  yield* Tx
+  const { batchSize } = yield* ImportConfig
 
-    // Before each step: the time to the deadline, the timeout of the
-    // statements that follow (D8)
-    const timeLeft = Effect.gen(function* () {
-      const left = input.deadline - (yield* Clock.currentTimeMillis)
-      if (left <= 0) return yield* new ImportTimedOut()
-      yield* query((client) =>
-        client.execute(
-          sql.raw(`SET LOCAL statement_timeout = ${Math.ceil(left)}`)
-        )
-      )
-    })
-    yield* timeLeft
+  // Before each step: the time to the deadline, the timeout of the
+  // statements that follow (D8)
+  const timeLeft = Effect.gen(function* () {
+    const left = input.deadline - (yield* Clock.currentTimeMillis)
+    if (left <= 0) return yield* new ImportTimedOut()
     yield* query((client) =>
       client.execute(
-        sql.raw(`SET LOCAL idle_in_transaction_session_timeout = '60s'`)
+        sql.raw(`SET LOCAL statement_timeout = ${Math.ceil(left)}`)
       )
     )
-
-    const expected = new Set(input.expected)
-    const classified = classifyRows(
-      input.format,
-      input.rows,
-      input.now,
-      input.fileName
+  })
+  yield* timeLeft
+  yield* query((client) =>
+    client.execute(
+      sql.raw(`SET LOCAL idle_in_transaction_session_timeout = '60s'`)
     )
-    const present = new Set(classified.map(({ row }) => row))
-    const absent = input.expected.find((row) => !present.has(row))
-    if (absent !== undefined) {
-      return yield* new ImportInputInvalid({
-        reason: `La riga ${absent} attesa non è tra le righe del file`,
-      })
-    }
-    const confirmed = classified.map((row) =>
-      row.kind === "discarded" || expected.has(row.row)
-        ? row
-        : { row: row.row, kind: "discarded" as const, reasons: [notConfirmed] }
-    )
+  )
 
-    const crm = yield* lookupExisting(lookupKeys(groupRows(confirmed)), {
-      lock: true,
+  const expected = new Set(input.expected)
+  const classified = classifyRows(
+    input.format,
+    input.rows,
+    input.now,
+    input.fileName
+  )
+  const present = new Set(classified.map(({ row }) => row))
+  const absent = input.expected.find((row) => !present.has(row))
+  if (absent !== undefined) {
+    return yield* new ImportInputInvalid({
+      reason: `La riga ${absent} attesa non è tra le righe del file`,
     })
-    const plan = planRows(confirmed, crm)
-    const rejected = plan.discarded.find(({ row }) => expected.has(row))
-    if (rejected) {
+  }
+  const confirmed = classified.map((row) =>
+    row.kind === "discarded" || expected.has(row.row)
+      ? row
+      : { row: row.row, kind: "discarded" as const, reasons: [notConfirmed] }
+  )
+
+  const crm = yield* lookupExisting(lookupKeys(groupRows(confirmed)), {
+    lock: true,
+  })
+  const plan = planRows(confirmed, crm)
+  const rejected = plan.discarded.find(({ row }) => expected.has(row))
+  if (rejected) {
+    return yield* new ImportRowRejected({
+      row: rejected.row,
+      rule: rejected.reasons.join("; "),
+    })
+  }
+
+  // New customers, with the id and the hash of today's import. A customer
+  // code taken in the meantime fails the import on its row
+  const newIds = plan.customersNew.map(() => nanoid())
+  let customersCreated = 0
+  for (const { start, batch } of chunks(plan.customersNew, batchSize)) {
+    yield* timeLeft
+    const values = batch.map((customer: ConvertedCustomer, index) => {
+      const id = newIds[start + index]!
+      return {
+        ...customer,
+        id,
+        uniqueHash: createHashForCustomer({ id, tempID: customer.tempID }),
+      }
+    })
+    const inserted = yield* query((client) =>
+      client
+        .insert(customers)
+        .values(values)
+        .onConflictDoNothing({ target: customers.tempID })
+        .returning({ tempID: customers.tempID })
+    )
+    if (inserted.length < values.length) {
+      const saved = new Set(inserted.map(({ tempID }) => tempID))
+      const index = batch.findIndex(({ tempID }) => !saved.has(tempID))
       return yield* new ImportRowRejected({
-        row: rejected.row,
-        rule: rejected.reasons.join("; "),
+        row: plan.newRows.customers[start + index]!,
+        rule: reasons.duplicateCustomerCode,
       })
     }
+    customersCreated += inserted.length
+  }
 
-    // New customers, with the id and the hash of today's import. A customer
-    // code taken in the meantime fails the import on its row
-    const newIds = plan.customersNew.map(() => nanoid())
-    let customersCreated = 0
-    for (const { start, batch } of chunks(plan.customersNew, batchSize)) {
-      yield* timeLeft
-      const values = batch.map((customer: ConvertedCustomer, index) => {
-        const id = newIds[start + index]!
-        return {
-          ...customer,
-          id,
-          uniqueHash: createHashForCustomer({ id, tempID: customer.tempID }),
-        }
+  // A customer two rows update gets the values of both, the later on top
+  const updates = new Map<string, Record<string, unknown>>()
+  for (const { customer, ids } of plan.customerUpdates) {
+    const values = nonEmpty(customer, customerFields)
+    for (const id of ids) updates.set(id, { ...updates.get(id), ...values })
+  }
+  let customersUpdated = 0
+  const customerColumns = customers as unknown as Record<string, PgColumn>
+  for (const { batch } of chunks([...updates], batchSize)) {
+    yield* timeLeft
+    const updated = yield* query((client) =>
+      client
+        .update(customers)
+        .set({
+          ...(Object.fromEntries(
+            customerFields.map((field) => [
+              field,
+              keepIfEmpty(customers[field]),
+            ])
+          ) as Record<(typeof customerFields)[number], SQL>),
+          lastImportUpdate: input.now,
+          updatedAt: input.now,
+        })
+        .from(
+          recordset(
+            customerColumns,
+            "id",
+            customerFields,
+            batch.map(([id, values]) => ({ ...values, id }))
+          )
+        )
+        .where(sql`${customers.id} = v."id"`)
+        .returning({ id: customers.id })
+    )
+    customersUpdated += updated.length
+  }
+
+  // New practices; one created in the meantime fails the import on its row
+  let practicesCreated = 0
+  for (const { start, batch } of chunks(plan.practicesNew, batchSize)) {
+    yield* timeLeft
+    const inserted = yield* query((client) =>
+      client
+        .insert(practices)
+        .values(batch.map((practice: PracticeWrite) => practice))
+        .onConflictDoNothing({ target: practices.praticaId })
+        .returning({ praticaId: practices.praticaId })
+    )
+    if (inserted.length < batch.length) {
+      const saved = new Set(inserted.map(({ praticaId }) => praticaId))
+      const index = batch.findIndex(({ praticaId }) => !saved.has(praticaId))
+      return yield* new ImportRowRejected({
+        row: plan.newRows.practices[start + index]!,
+        rule: "La pratica è stata creata da un altro mentre l'import partiva",
       })
-      const inserted = yield* query((client) =>
-        client
-          .insert(customers)
-          .values(values)
-          .onConflictDoNothing({ target: customers.tempID })
-          .returning({ tempID: customers.tempID })
-      )
-      if (inserted.length < values.length) {
-        const saved = new Set(inserted.map(({ tempID }) => tempID))
-        const index = batch.findIndex(({ tempID }) => !saved.has(tempID))
-        return yield* new ImportRowRejected({
-          row: plan.newRows.customers[start + index]!,
-          rule: reasons.duplicateCustomerCode,
+    }
+    practicesCreated += inserted.length
+  }
+
+  // `last_import_update` moves only with the paid rates (AC36)
+  let practicesUpdated = 0
+  const practiceColumns = practices as unknown as Record<string, PgColumn>
+  for (const { batch } of chunks(plan.practiceUpdates, batchSize)) {
+    yield* timeLeft
+    const updated = yield* query((client) =>
+      client
+        .update(practices)
+        .set({
+          ...(Object.fromEntries(
+            practiceFields.map((field) => [
+              field,
+              keepIfEmpty(practices[field]),
+            ])
+          ) as Record<(typeof practiceFields)[number], SQL>),
+          lastImportUpdate: sql`CASE WHEN v."rate_pagate" IS DISTINCT FROM ${practices.ratePagate} THEN ${input.now.toISOString()}::timestamptz ELSE ${practices.lastImportUpdate} END`,
+          // As today: the import doesn't move it on a practice that exists
+          updatedAt: sql`${practices.updatedAt}`,
         })
-      }
-      customersCreated += inserted.length
-    }
-
-    // A customer two rows update gets the values of both, the later on top
-    const updates = new Map<string, Record<string, unknown>>()
-    for (const { customer, ids } of plan.customerUpdates) {
-      const values = nonEmpty(customer, customerFields)
-      for (const id of ids) updates.set(id, { ...updates.get(id), ...values })
-    }
-    let customersUpdated = 0
-    const customerColumns = customers as unknown as Record<string, PgColumn>
-    for (const { batch } of chunks([...updates], batchSize)) {
-      yield* timeLeft
-      const updated = yield* query((client) =>
-        client
-          .update(customers)
-          .set({
-            ...(Object.fromEntries(
-              customerFields.map((field) => [
-                field,
-                keepIfEmpty(customers[field]),
-              ])
-            ) as Record<(typeof customerFields)[number], SQL>),
-            lastImportUpdate: input.now,
-            updatedAt: input.now,
-          })
-          .from(
-            recordset(
-              customerColumns,
-              "id",
-              customerFields,
-              batch.map(([id, values]) => ({ ...values, id }))
-            )
-          )
-          .where(sql`${customers.id} = v."id"`)
-          .returning({ id: customers.id })
-      )
-      customersUpdated += updated.length
-    }
-
-    // New practices; one created in the meantime fails the import on its row
-    let practicesCreated = 0
-    for (const { start, batch } of chunks(plan.practicesNew, batchSize)) {
-      yield* timeLeft
-      const inserted = yield* query((client) =>
-        client
-          .insert(practices)
-          .values(batch.map((practice: PracticeWrite) => practice))
-          .onConflictDoNothing({ target: practices.praticaId })
-          .returning({ praticaId: practices.praticaId })
-      )
-      if (inserted.length < batch.length) {
-        const saved = new Set(inserted.map(({ praticaId }) => praticaId))
-        const index = batch.findIndex(({ praticaId }) => !saved.has(praticaId))
-        return yield* new ImportRowRejected({
-          row: plan.newRows.practices[start + index]!,
-          rule: "La pratica è stata creata da un altro mentre l'import partiva",
-        })
-      }
-      practicesCreated += inserted.length
-    }
-
-    // `last_import_update` moves only with the paid rates (AC36)
-    let practicesUpdated = 0
-    const practiceColumns = practices as unknown as Record<string, PgColumn>
-    for (const { batch } of chunks(plan.practiceUpdates, batchSize)) {
-      yield* timeLeft
-      const updated = yield* query((client) =>
-        client
-          .update(practices)
-          .set({
-            ...(Object.fromEntries(
-              practiceFields.map((field) => [
-                field,
-                keepIfEmpty(practices[field]),
-              ])
-            ) as Record<(typeof practiceFields)[number], SQL>),
-            lastImportUpdate: sql`CASE WHEN v."rate_pagate" IS DISTINCT FROM ${practices.ratePagate} THEN ${input.now.toISOString()}::timestamptz ELSE ${practices.lastImportUpdate} END`,
-            // As today: the import doesn't move it on a practice that exists
-            updatedAt: sql`${practices.updatedAt}`,
-          })
-          .from(
-            recordset(
-              practiceColumns,
-              "praticaId",
-              practiceFields,
-              batch.map((practice) => ({
-                ...nonEmpty(practice, practiceFields),
-                praticaId: practice.praticaId,
-              }))
-            )
-          )
-          .where(sql`${practices.praticaId} = v."pratica_id"`)
-          .returning({ praticaId: practices.praticaId })
-      )
-      practicesUpdated += updated.length
-    }
-
-    // A link that exists stays as it is, role included (AC37)
-    let linksCreated = 0
-    for (const { batch } of chunks(plan.linksNew, batchSize)) {
-      yield* timeLeft
-      const inserted = yield* query((client) =>
-        client
-          .insert(customerToPratica)
-          .values(
-            batch.map(({ customer, praticaId, role }) => ({
-              customerId:
-                "id" in customer ? customer.id : newIds[customer.newCustomer]!,
-              praticaId,
-              customerRole: role,
+        .from(
+          recordset(
+            practiceColumns,
+            "praticaId",
+            practiceFields,
+            batch.map((practice) => ({
+              ...nonEmpty(practice, practiceFields),
+              praticaId: practice.praticaId,
             }))
           )
-          .onConflictDoNothing()
-          .returning({ praticaId: customerToPratica.praticaId })
-      )
-      linksCreated += inserted.length
-    }
+        )
+        .where(sql`${practices.praticaId} = v."pratica_id"`)
+        .returning({ praticaId: practices.praticaId })
+    )
+    practicesUpdated += updated.length
+  }
 
-    return {
-      rowsTotal: plan.counts.rows,
-      rowsDiscarded: plan.counts.discarded,
-      customersCreated,
-      customersUpdated,
-      practicesCreated,
-      practicesUpdated,
-      linksCreated,
-    } satisfies ImportCounts
-  })
+  // A link that exists stays as it is, role included (AC37)
+  let linksCreated = 0
+  for (const { batch } of chunks(plan.linksNew, batchSize)) {
+    yield* timeLeft
+    const inserted = yield* query((client) =>
+      client
+        .insert(customerToPratica)
+        .values(
+          batch.map(({ customer, praticaId, role }) => ({
+            customerId:
+              "id" in customer ? customer.id : newIds[customer.newCustomer]!,
+            praticaId,
+            customerRole: role,
+          }))
+        )
+        .onConflictDoNothing()
+        .returning({ praticaId: customerToPratica.praticaId })
+    )
+    linksCreated += inserted.length
+  }
+
+  return {
+    rowsTotal: plan.counts.rows,
+    rowsDiscarded: plan.counts.discarded,
+    customersCreated,
+    customersUpdated,
+    practicesCreated,
+    practicesUpdated,
+    linksCreated,
+  } satisfies ImportCounts
+})

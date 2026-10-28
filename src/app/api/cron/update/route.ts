@@ -1,7 +1,7 @@
 import * as Sentry from "@sentry/nextjs"
 import { Cause, Effect, Exit } from "effect"
 import { NextResponse } from "next/server"
-import { DbLive } from "@mito/server/effect/db"
+import { Db } from "@mito/server/effect/db"
 import { updateCustomerAge } from "@mito/server/services/cron/updateCustomerAge"
 import { updatePractices } from "@mito/server/services/cron/updatePractices"
 import { format } from "date-fns"
@@ -25,7 +25,7 @@ export async function GET(request: Request) {
     Effect.gen(function* () {
       yield* updatePractices(todayFormatted)
       yield* updateCustomerAge(todayMonth, todayDay)
-    }).pipe(Effect.provide(DbLive))
+    }).pipe(Effect.provide(Db.layer))
   )
 
   if (Exit.isFailure(exit)) {

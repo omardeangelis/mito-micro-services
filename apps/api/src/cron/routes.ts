@@ -1,4 +1,4 @@
-import { Cause, Clock, Data, Effect, Exit, type Layer, Option } from "effect"
+import { Cause, Clock, Effect, Exit, type Layer, Option, Schema } from "effect"
 import { Hono } from "hono"
 import { type Db } from "@mito/server/effect/db"
 import { ErrorReporter } from "@mito/server/effect/errorReporter"
@@ -7,7 +7,7 @@ import { type CronJob, cronJobs, utcDay } from "./jobs"
 import { finishRun, startRun } from "./registry"
 import { CronReport } from "./report"
 
-class UnknownJob extends Data.TaggedError("UnknownJob") {}
+class UnknownJob extends Schema.TaggedError<UnknownJob>()("UnknownJob", {}) {}
 
 export type CronContext = CronAuth | CronReport | Db | ErrorReporter
 
@@ -16,55 +16,54 @@ export type CronContext = CronAuth | CronReport | Db | ErrorReporter
  * UTC day (`startRun`), then the outcome in `cron_run`, in the report and,
  * for a failure, in Sentry.
  */
-const runCron = (
+const runCron = Effect.fnUntraced(function* (
   name: string,
   jobs: Record<string, CronJob>,
   authorization: string | undefined
-) =>
-  Effect.gen(function* () {
-    yield* (yield* CronAuth).verify(authorization)
-    const job = Object.hasOwn(jobs, name) ? jobs[name] : undefined
-    if (!job) return yield* new UnknownJob()
+) {
+  yield* (yield* CronAuth).verify(authorization)
+  const job = Object.hasOwn(jobs, name) ? jobs[name] : undefined
+  if (!job) return yield* new UnknownJob()
 
-    const report = yield* CronReport
-    const start = yield* Clock.currentTimeMillis
-    const runId = yield* startRun(name, utcDay(new Date(start)), job.rerunnable)
-    if (runId === undefined) {
-      yield* report.send({
-        job: name,
-        status: "skipped",
-        durationMs: 0,
-        counters: {},
-      })
-      return {
-        status: 200 as const,
-        body: { job: name, skipped: "already ran today" },
-      }
-    }
-
-    const exit = yield* Effect.exit(job.run)
-    const durationMs = (yield* Clock.currentTimeMillis) - start
-    if (Exit.isSuccess(exit)) {
-      yield* finishRun(runId, "succeeded", exit.value)
-      yield* report.send({
-        job: name,
-        status: "succeeded",
-        durationMs,
-        counters: exit.value,
-      })
-      return { status: 200 as const, body: { job: name, counters: exit.value } }
-    }
-    yield* Effect.logError(`Cron ${name} failed`, Cause.pretty(exit.cause))
-    yield* (yield* ErrorReporter).report(exit.cause, { cron: name })
-    yield* finishRun(runId, "failed", null)
+  const report = yield* CronReport
+  const start = yield* Clock.currentTimeMillis
+  const runId = yield* startRun(name, utcDay(new Date(start)), job.rerunnable)
+  if (runId === undefined) {
     yield* report.send({
       job: name,
-      status: "failed",
-      durationMs,
+      status: "skipped",
+      durationMs: 0,
       counters: {},
     })
-    return { status: 500 as const, body: { job: name, error: "failed" } }
+    return {
+      status: 200 as const,
+      body: { job: name, skipped: "already ran today" },
+    }
+  }
+
+  const exit = yield* Effect.exit(job.run)
+  const durationMs = (yield* Clock.currentTimeMillis) - start
+  if (Exit.isSuccess(exit)) {
+    yield* finishRun(runId, "succeeded", exit.value)
+    yield* report.send({
+      job: name,
+      status: "succeeded",
+      durationMs,
+      counters: exit.value,
+    })
+    return { status: 200 as const, body: { job: name, counters: exit.value } }
+  }
+  yield* Effect.logError(`Cron ${name} failed`, Cause.pretty(exit.cause))
+  yield* (yield* ErrorReporter).report(exit.cause, { cron: name })
+  yield* finishRun(runId, "failed", null)
+  yield* report.send({
+    job: name,
+    status: "failed",
+    durationMs,
+    counters: {},
   })
+  return { status: 500 as const, body: { job: name, error: "failed" } }
+})
 
 /**
  * The cron routes, POST /<job>, with the services they need. Cloud Scheduler

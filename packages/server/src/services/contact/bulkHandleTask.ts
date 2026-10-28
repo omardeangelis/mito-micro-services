@@ -22,7 +22,7 @@ type LogRow = typeof taskEventLog.$inferInsert
  * lock rule of `lockCustomer`), so a target disabled while the run goes on
  * stops it at the next customer.
  */
-const assignCustomer = ({
+const assignCustomer = Effect.fnUntraced(function* ({
   customerId,
   operatorId,
   state,
@@ -35,157 +35,153 @@ const assignCustomer = ({
   /** The actor confirmed closing the customer's open alert */
   resolveAlert: boolean
   actorOperatorId: number
-}) =>
-  Effect.gen(function* () {
-    // Users first, then customers: the target before the customer
-    yield* findWorkingOperator(operatorId)
-    const customer = yield* lockCustomer(customerId)
-    // With more than one active task, the most recently updated one
-    const [customerTask] = yield* query((client) =>
-      client
-        .select()
-        .from(task)
-        .where(and(eq(task.customerId, customerId), eq(task.isActive, true)))
-        .orderBy(desc(task.updatedAt), desc(task.id))
-        .limit(1)
-    )
+}) {
+  // Users first, then customers: the target before the customer
+  yield* findWorkingOperator(operatorId)
+  const customer = yield* lockCustomer(customerId)
+  // With more than one active task, the most recently updated one
+  const [customerTask] = yield* query((client) =>
+    client
+      .select()
+      .from(task)
+      .where(and(eq(task.customerId, customerId), eq(task.isActive, true)))
+      .orderBy(desc(task.updatedAt), desc(task.id))
+      .limit(1)
+  )
 
-    const stateChange = (taskId: number, fromState: Task["state"]): LogRow[] =>
-      fromState === state
-        ? []
-        : [
-            {
-              customerId,
-              taskId,
-              actorOperatorId,
-              action: "state_change",
-              source: "bulk",
-              fromState,
-              toState: state,
-            },
-          ]
-    const operatorReassign = (
-      taskId: number,
-      fromOperatorId: number | null
-    ): LogRow[] =>
-      fromOperatorId === operatorId
-        ? []
-        : [
-            {
-              customerId,
-              taskId,
-              actorOperatorId,
-              action: "operator_reassign",
-              source: "bulk",
-              fromOperatorId,
-              toOperatorId: operatorId,
-            },
-          ]
-    const insertLogRows = (rows: LogRow[]) =>
-      rows.length === 0
-        ? Effect.void
-        : query((client) => client.insert(taskEventLog).values(rows))
-    const setCustomerOperator = query((client) =>
-      client
-        .update(customers)
-        .set({ operatorId })
-        .where(eq(customers.id, customerId))
-    )
+  const stateChange = (taskId: number, fromState: Task["state"]): LogRow[] =>
+    fromState === state
+      ? []
+      : [
+          {
+            customerId,
+            taskId,
+            actorOperatorId,
+            action: "state_change",
+            source: "bulk",
+            fromState,
+            toState: state,
+          },
+        ]
+  const operatorReassign = (
+    taskId: number,
+    fromOperatorId: number | null
+  ): LogRow[] =>
+    fromOperatorId === operatorId
+      ? []
+      : [
+          {
+            customerId,
+            taskId,
+            actorOperatorId,
+            action: "operator_reassign",
+            source: "bulk",
+            fromOperatorId,
+            toOperatorId: operatorId,
+          },
+        ]
+  const insertLogRows = (rows: LogRow[]) =>
+    rows.length === 0
+      ? Effect.void
+      : query((client) => client.insert(taskEventLog).values(rows))
+  const setCustomerOperator = query((client) =>
+    client
+      .update(customers)
+      .set({ operatorId })
+      .where(eq(customers.id, customerId))
+  )
 
-    // 1. No active contact: a new one
-    if (!customerTask) {
-      const { created } = yield* replaceActiveContact({
-        customer,
-        values: {
-          operatorId,
-          state,
-          priority: bandValue("urgent"),
-          closedAt: null,
-        },
-      })
-      yield* setCustomerOperator
-      yield* insertLogRows([
-        ...stateChange(created.id, null),
-        ...operatorReassign(created.id, customer.operatorId),
-      ])
-      return
-    }
-
-    // 2. Open alert whose closing the actor confirmed, or
-    // 3. a contact with an outcome and no alert: a new contact that keeps
-    //    "Contattato il"
-    const alertId =
-      resolveAlert && customerTask.alertId ? customerTask.alertId : null
-    if (
-      alertId !== null ||
-      (customerTask.state !== "chiamare" &&
-        customerTask.state !== "followup" &&
-        // Non distruggere chi ha un alert pendente (callback pianificato): per
-        // questi clienti riassegniamo solo l'operatore, preservando task e alert.
-        // La rimozione avviene solo su conferma esplicita.
-        !customerTask.alertId)
-    ) {
-      if (alertId !== null) {
-        yield* query((client) =>
-          client
-            .update(task)
-            .set({ alertId: null })
-            .where(eq(task.id, customerTask.id))
-        )
-      }
-      const { created } = yield* replaceActiveContact({
-        customer,
-        values: {
-          operatorId,
-          state,
-          priority: bandValue("urgent"),
-          closedAt: customerTask.closedAt,
-        },
-        // As at base, where the previous task was written first
-        mostRecent: alertId !== null,
-      })
-      if (alertId !== null) {
-        // Risolto in modo NON distruttivo: isResolved=true, record conservato,
-        // il cron non lo riattiva
-        yield* query((client) =>
-          client
-            .update(alert)
-            .set({ isResolved: true, resolvedBy: actorOperatorId })
-            .where(eq(alert.id, alertId))
-        )
-      }
-      yield* setCustomerOperator
-      yield* insertLogRows([
-        ...(alertId !== null
-          ? [
-              {
-                customerId,
-                taskId: customerTask.id,
-                alertId,
-                actorOperatorId,
-                action: "alert_resolved",
-                source: "bulk",
-              } as const,
-            ]
-          : []),
-        ...stateChange(created.id, customerTask.state),
-        ...operatorReassign(created.id, customerTask.operatorId),
-      ])
-      return
-    }
-
-    // 4. `chiamare` or `followup`, or an alert not confirmed: reassign only
-    yield* query((client) =>
-      client
-        .update(task)
-        .set({ operatorId })
-        .where(eq(task.id, customerTask.id))
-    )
+  // 1. No active contact: a new one
+  if (!customerTask) {
+    const { created } = yield* replaceActiveContact({
+      customer,
+      values: {
+        operatorId,
+        state,
+        priority: bandValue("urgent"),
+        closedAt: null,
+      },
+    })
     yield* setCustomerOperator
-    yield* insertLogRows(
-      operatorReassign(customerTask.id, customerTask.operatorId)
-    )
-  })
+    yield* insertLogRows([
+      ...stateChange(created.id, null),
+      ...operatorReassign(created.id, customer.operatorId),
+    ])
+    return
+  }
+
+  // 2. Open alert whose closing the actor confirmed, or
+  // 3. a contact with an outcome and no alert: a new contact that keeps
+  //    "Contattato il"
+  const alertId =
+    resolveAlert && customerTask.alertId ? customerTask.alertId : null
+  if (
+    alertId !== null ||
+    (customerTask.state !== "chiamare" &&
+      customerTask.state !== "followup" &&
+      // Non distruggere chi ha un alert pendente (callback pianificato): per
+      // questi clienti riassegniamo solo l'operatore, preservando task e alert.
+      // La rimozione avviene solo su conferma esplicita.
+      !customerTask.alertId)
+  ) {
+    if (alertId !== null) {
+      yield* query((client) =>
+        client
+          .update(task)
+          .set({ alertId: null })
+          .where(eq(task.id, customerTask.id))
+      )
+    }
+    const { created } = yield* replaceActiveContact({
+      customer,
+      values: {
+        operatorId,
+        state,
+        priority: bandValue("urgent"),
+        closedAt: customerTask.closedAt,
+      },
+      // As at base, where the previous task was written first
+      mostRecent: alertId !== null,
+    })
+    if (alertId !== null) {
+      // Risolto in modo NON distruttivo: isResolved=true, record conservato,
+      // il cron non lo riattiva
+      yield* query((client) =>
+        client
+          .update(alert)
+          .set({ isResolved: true, resolvedBy: actorOperatorId })
+          .where(eq(alert.id, alertId))
+      )
+    }
+    yield* setCustomerOperator
+    yield* insertLogRows([
+      ...(alertId !== null
+        ? [
+            {
+              customerId,
+              taskId: customerTask.id,
+              alertId,
+              actorOperatorId,
+              action: "alert_resolved",
+              source: "bulk",
+            } as const,
+          ]
+        : []),
+      ...stateChange(created.id, customerTask.state),
+      ...operatorReassign(created.id, customerTask.operatorId),
+    ])
+    return
+  }
+
+  // 4. `chiamare` or `followup`, or an alert not confirmed: reassign only
+  yield* query((client) =>
+    client.update(task).set({ operatorId }).where(eq(task.id, customerTask.id))
+  )
+  yield* setCustomerOperator
+  yield* insertLogRows(
+    operatorReassign(customerTask.id, customerTask.operatorId)
+  )
+})
 
 /**
  * "Assegnazione massiva": assigns `customerIds` to the working operator
