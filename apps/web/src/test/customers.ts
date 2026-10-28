@@ -15,11 +15,15 @@ import {
   type ContactForbidden,
   ContactNotFound,
   type CustomerAssignmentForbidden,
+  type CustomerExists,
+  type CustomerMissing,
   type CustomerNotFound,
   type CustomerUnassigned,
   type HandoverSameOperator,
   type OperatorNotFound,
+  type PracticeExists,
 } from "@mito/contract/errors"
+import { type NewPratica } from "@mito/contract/pratiche"
 import { type OperatorWithRole as OperatorWithRoleSchema } from "@mito/contract/me"
 import {
   type ActiveAlert,
@@ -160,9 +164,9 @@ export const operatorWithRole = (
 })
 
 /**
- * A backend in memory for the customers list: the groups `customer`,
- * `operator` and `task`, as far as the list calls them. `state` is what the
- * next calls answer, and what they received
+ * A backend in memory for the pages of the customers: the groups `customer`,
+ * `operator`, `task` and `pratiche`, as far as the pages call them. `state`
+ * is what the next calls answer, and what they received
  */
 export function fakeCustomers(
   initial: Partial<{
@@ -177,6 +181,7 @@ export function fakeCustomers(
     tasks: Task[]
     customerAlerts: Record<string, CustomerAlert[]>
     contacts: Record<string, ContactDetail>
+    regions: (string | null)[]
   }> = {}
 ) {
   const state = {
@@ -196,6 +201,8 @@ export function fakeCustomers(
     customerAlerts: {} as Record<string, CustomerAlert[]>,
     /** The details of the contacts, by id */
     contacts: {} as Record<string, ContactDetail>,
+    /** The regions of the practices */
+    regions: ["Lazio", null, "Lombardia"] as (string | null)[],
     /** The new customers, the master data saved, in order */
     inserted: [] as NewCustomer[],
     updated: [] as { id: string; profile: CustomerProfile }[],
@@ -204,6 +211,7 @@ export function fakeCustomers(
     createdContacts: [] as { customerId: string; source: string }[],
     /** The ids of the contacts whose detail was read, in order */
     contactReads: [] as string[],
+    createdPratiche: [] as NewPratica[],
     /** What the next write answers instead of succeeding */
     insertFails: false,
     updateFails: false,
@@ -224,6 +232,8 @@ export function fakeCustomers(
       | ContactForbidden
       | ContactAlreadyActive
       | undefined,
+    createPraticaError: undefined as
+      PracticeExists | CustomerExists | CustomerMissing | undefined,
     /** The queries of the list, in order */
     searches: [] as CustomerListQuery[],
     blackListed: [] as { id: string; blackListStatus: BlackListStatus }[],
@@ -274,7 +284,10 @@ export function fakeCustomers(
   }
 
   const handlers: FakeHandlers<
-    GroupService<"customer"> | GroupService<"operator"> | GroupService<"task">
+    | GroupService<"customer">
+    | GroupService<"operator">
+    | GroupService<"task">
+    | GroupService<"pratiche">
   > = Layer.mergeAll(
     HttpApiBuilder.group(MitoApi, "customer", (handlers) =>
       handlers
@@ -461,6 +474,20 @@ export function fakeCustomers(
               })
             )
           )
+        )
+    ),
+    HttpApiBuilder.group(MitoApi, "pratiche", (handlers) =>
+      handlers
+        .handle("getAllAvailableRegion", () =>
+          Effect.sync(() => state.regions.map((region) => ({ region })))
+        )
+        .handle("createPratica", ({ payload }) =>
+          Effect.suspend(() => {
+            if (state.createPraticaError)
+              return Effect.fail(state.createPraticaError)
+            state.createdPratiche.push(payload)
+            return Effect.succeed({ praticaId: payload.pratica.praticaId })
+          })
         )
     )
   )

@@ -37,11 +37,11 @@ export const NewPracticeValues = Schema.Struct({
 export type NewPracticeValues = typeof NewPracticeValues.Type
 
 /** The address `z.string().email()` of zod 3 accepts. */
+export const emailPattern =
+  /^(?!\.)(?!.*\.\.)([A-Z0-9_'+\-.]*)[A-Z0-9_+-]@([A-Z0-9][A-Z0-9-]*\.)+[A-Z]{2,}$/i
+
 const Email = Schema.String.check(
-  Schema.isPattern(
-    /^(?!\.)(?!.*\.\.)([A-Z0-9_'+\-.]*)[A-Z0-9_+-]@([A-Z0-9][A-Z0-9-]*\.)+[A-Z]{2,}$/i,
-    { message: "Invalid email" }
-  )
+  Schema.isPattern(emailPattern, { message: "Invalid email" })
 )
 
 /**

@@ -113,13 +113,18 @@ export const useComuni = () =>
     )
   )
 
-/** The sedi of the customers (`GET /customer/options/sedi`) */
-export const useSedi = () =>
-  useQuery(
-    optionQuery(useRun(), customerKeys.sedi(), (client) =>
+/**
+ * The sedi of the customers (`GET /customer/options/sedi`). For a page that
+ * can't show without them (`required`), the first failure goes to the error
+ * of the route
+ */
+export const useSedi = ({ required = false } = {}) =>
+  useQuery({
+    ...optionQuery(useRun(), customerKeys.sedi(), (client) =>
       client.customer.getAllAvaliableSede()
-    )
-  )
+    ),
+    ...(required ? routeErrorWhenEmpty : {}),
+  })
 
 /** The ambiti of the customers (`GET /customer/options/ambiti`) */
 export const useAmbiti = () =>
