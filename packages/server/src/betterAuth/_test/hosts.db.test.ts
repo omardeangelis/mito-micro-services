@@ -11,9 +11,9 @@ import { Effect, Layer } from "effect"
 import { eq } from "drizzle-orm"
 import { authSessions, authVerifications } from "@mito/db/schema/auth"
 import { users } from "@mito/db/schema/users"
-import { DbLive } from "../../effect/db"
+import { Db } from "../../effect/db"
 import { authHandler } from "../handler"
-import { authSessionOf, readSession } from "../session"
+import { AuthSession, readSession } from "../session"
 import { fakeMicrosoft, linkMicrosoft, testAuth } from "./harness"
 import { migrateUpTo, resetDb, testDb } from "@/test/db"
 import { createOperator } from "@/test/factories"
@@ -357,7 +357,7 @@ describe("origini e host non ammessi (AC7, AC8)", () => {
     const read = (headers: Headers) =>
       Effect.runPromise(
         readSession(headers).pipe(
-          Effect.provide(Layer.merge(authSessionOf(instance), DbLive))
+          Effect.provide(Layer.merge(AuthSession.layerOf(instance), Db.layer))
         )
       )
 
