@@ -370,4 +370,61 @@ describe("CustomerBulkDialog, le chiamate al backend", () => {
     )
     expect(screen.queryByText("Clienti assegnati")).toBeNull()
   })
+
+  it("oltre 30 clienti li divide in 30 chiamate al più, e assegna tutti", async () => {
+    const backend = backendFor()
+    const ids = Array.from({ length: 61 }, (_, i) => `c-${i + 1}`)
+    const user = await setup(backend)
+    act(() => {
+      useCustomerTableStore.setState({ selectedCustomer: ids })
+    })
+    await choose(user, "Assegna Clienti")
+    await pickOperator(user, "Mario Rossi")
+    await user.click(screen.getByRole("button", { name: "Assegna clienti" }))
+
+    expect(await screen.findByText("Clienti assegnati")).toBeTruthy()
+    // ceil(61 / 30) = 3 customers per call: 21 calls
+    expect(backend.state.assigned).toHaveLength(21)
+    expect(
+      backend.state.assigned.every((call) => call.customerIds.length <= 3)
+    ).toBe(true)
+    expect(
+      backend.state.assigned.flatMap((call) => call.customerIds).sort()
+    ).toEqual([...ids].sort())
+  })
+
+  it("se una chiamata fallisce, la lista si rilegge dopo che le altre hanno scritto", async () => {
+    const backend = backendFor()
+    backend.state.failingCustomerIds = ["c-1"]
+    const finish = hold(backend)
+    const user = userEvent.setup()
+    // The whole page: its list is what is read again
+    renderCustomers("/dashboard/customers", backend)
+    await screen.findByText("RSSMRA80A01H501U")
+    act(() => {
+      useCustomerTableStore.setState({
+        bulkActionDialogOpen: true,
+        selectedCustomer: ["c-1", "c-2", "c-3"],
+      })
+    })
+    await screen.findByText("Cosa vuoi assegnare?")
+    await choose(user, "Assegna Clienti")
+    await pickOperator(user, "Mario Rossi")
+    await user.click(screen.getByRole("button", { name: "Assegna clienti" }))
+    // The call of c-1 failed, the other two wait
+    await act(() => new Promise((resolve) => setTimeout(resolve, 50)))
+    const reads = backend.state.searches.length
+
+    await finish()
+
+    expect(
+      await screen.findByText("Il servizio non risponde, riprova tra poco")
+    ).toBeTruthy()
+    expect(
+      backend.state.assigned.flatMap((call) => call.customerIds).sort()
+    ).toEqual(["c-2", "c-3"])
+    await waitFor(() =>
+      expect(backend.state.searches.length).toBeGreaterThan(reads)
+    )
+  })
 })

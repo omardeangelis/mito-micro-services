@@ -5,12 +5,14 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query"
+import { useEffect, useRef } from "react"
 import { Effect } from "effect"
 import {
   type BlackListStatus,
   type CustomerListQuery,
 } from "@mito/contract/customer"
 import { useRun } from "./ApiProvider"
+import { showApiError } from "./queryClient"
 import { ApiClient, type Run } from "./runtime"
 import { taskKeys } from "./task"
 
@@ -46,15 +48,32 @@ export const customerListOptions = (run: Run, query: CustomerListQuery) =>
 
 /**
  * The page of `query`. While another page loads the previous one stays, as
- * the Next.js app keeps the page during a navigation; when there is none, a
- * failure goes to the error of the route
+ * the Next.js app keeps the page during a navigation; if that page fails,
+ * the last page shown stays too, with the toast. When no page was shown yet,
+ * a failure goes to the error of the route, with no toast
  */
-export const useCustomerList = (query: CustomerListQuery) =>
-  useQuery({
+export const useCustomerList = (query: CustomerListQuery) => {
+  // The last page on screen: a failed page has no data of its own, and
+  // `keepPreviousData` keeps the previous one only while it loads
+  const shown = useRef<CustomerListQueryData | undefined>(undefined)
+  const result = useQuery({
     ...customerListOptions(useRun(), query),
     placeholderData: keepPreviousData,
-    throwOnError: (_error, failed) => failed.state.data === undefined,
+    meta: { toastErrors: false },
+    throwOnError: () => shown.current === undefined,
   })
+  if (result.data !== undefined) shown.current = result.data
+  // The toast of a later page, once per failure
+  const { error, errorUpdatedAt } = result
+  useEffect(() => {
+    if (error && shown.current !== undefined) showApiError(error)
+  }, [error, errorUpdatedAt])
+  return { ...result, data: result.data ?? shown.current }
+}
+
+type CustomerListQueryData = Awaited<
+  ReturnType<NonNullable<ReturnType<typeof customerListOptions>["queryFn"]>>
+>
 
 /** The options of a filter of the list: an endpoint without input */
 const optionQuery = <A, E>(
@@ -116,8 +135,8 @@ export const useFileNames = (table: FileTable) =>
 
 /**
  * The blacklist status of a customer (`POST /customer/:id/blacklist-status`):
- * then the lists and the details of the customers are read again, the
- * blacklist of the profile with them (§6)
+ * then the lists and the details of the customers are read again (§6). The
+ * blacklist of the profile joins them with its page (3.8)
  */
 export const useSetBlackListStatus = () => {
   const run = useRun()
@@ -147,8 +166,8 @@ export const useSetBlackListStatus = () => {
 /**
  * The customers of each batch to an operator, without new contacts
  * (`POST /customer/bulk-assign`, admin): the batches go in parallel, and
- * when they end the customers and the tasks are read again, the ones of the
- * batches that went through too (§6)
+ * when all of them end, failed or not, the customers and the tasks are read
+ * again, the ones of the batches that went through too (§6)
  */
 export const useBulkAssignCustomers = () => {
   const run = useRun()
@@ -157,7 +176,7 @@ export const useBulkAssignCustomers = () => {
     mutationFn: (
       batches: readonly { operatorId: number; customerIds: readonly string[] }[]
     ) =>
-      Promise.all(
+      allBatches(
         batches.map((payload) =>
           run(
             Effect.gen(function* () {
@@ -173,4 +192,20 @@ export const useBulkAssignCustomers = () => {
         queryClient.invalidateQueries({ queryKey: taskKeys.all }),
       ]),
   })
+}
+
+/**
+ * The results of parallel batches once all of them end: the first failure
+ * if one failed. `Promise.all` would reject at the first one, and the reads
+ * that follow would miss the batches still writing
+ */
+export const allBatches = async <A>(
+  batches: readonly Promise<A>[]
+): Promise<A[]> => {
+  const results = await Promise.allSettled(batches)
+  const failed = results.find(
+    (result): result is PromiseRejectedResult => result.status === "rejected"
+  )
+  if (failed) throw failed.reason
+  return results.map((result) => (result as PromiseFulfilledResult<A>).value)
 }

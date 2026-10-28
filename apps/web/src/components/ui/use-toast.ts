@@ -189,4 +189,8 @@ function useToast() {
   }
 }
 
-export { useToast, toast }
+// MITO: empties the toasts between two tests (src/test/setup.ts): the state
+// lives in the module, and a toast lives 1000 s
+const clearToasts = () => dispatch({ type: "REMOVE_TOAST" })
+
+export { useToast, toast, clearToasts }

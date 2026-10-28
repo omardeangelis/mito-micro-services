@@ -90,15 +90,26 @@ export function fakeCustomers(
     failingList: false,
     /** The bulk assignments die, a 500 */
     failingBulk: false,
+    /** The bulk assignments with one of these customers die at once */
+    failingCustomerIds: [] as string[],
     ...initial,
   }
-  const waitGate = Effect.promise(() => state.gate ?? Promise.resolve()).pipe(
-    Effect.andThen(
-      Effect.suspend(() =>
-        state.failingBulk ? Effect.die("backend down") : Effect.void
+  /**
+   * A bulk assignment of `customerIds`: it dies at once when one of them is
+   * in `failingCustomerIds`, otherwise it waits for the gate
+   */
+  const waitGate = (customerIds: readonly string[]) =>
+    Effect.suspend(() =>
+      customerIds.some((id) => state.failingCustomerIds.includes(id))
+        ? Effect.die("backend down")
+        : Effect.promise(() => state.gate ?? Promise.resolve())
+    ).pipe(
+      Effect.andThen(
+        Effect.suspend(() =>
+          state.failingBulk ? Effect.die("backend down") : Effect.void
+        )
       )
     )
-  )
 
   const handlers: FakeHandlers<
     GroupService<"customer"> | GroupService<"operator"> | GroupService<"task">
@@ -140,7 +151,7 @@ export function fakeCustomers(
         .handle("assignToYourself", unserved)
         .handle("updateLastEdit", unserved)
         .handle("bulkUpdateCustomers", ({ payload }) =>
-          waitGate.pipe(
+          waitGate(payload.customerIds).pipe(
             Effect.andThen(
               Effect.sync(() => {
                 state.assigned.push(payload)
@@ -166,7 +177,7 @@ export function fakeCustomers(
           )
         )
         .handle("bulkHandleTask", ({ payload }) =>
-          waitGate.pipe(
+          waitGate(payload.customerIds).pipe(
             Effect.andThen(
               Effect.sync(() => {
                 state.handled.push(payload)

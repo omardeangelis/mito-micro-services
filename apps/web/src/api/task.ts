@@ -7,7 +7,7 @@ import {
 import { Effect } from "effect"
 import { type BulkHandleTask } from "@mito/contract/task"
 import { useRun } from "./ApiProvider"
-import { customerKeys } from "./customer"
+import { allBatches, customerKeys } from "./customer"
 import { ApiClient, type Run } from "./runtime"
 
 /** The keys of the group `task`: `[group, endpoint, input]` (H12) */
@@ -47,15 +47,15 @@ export type BulkHandleTaskBatch = typeof BulkHandleTask.Type
 /**
  * A contact to call for the customers of each batch, assigned to an operator
  * (`POST /task/bulk-assign`, admin): the batches go in parallel, and when
- * they end the customers and the tasks are read again, the ones of the
- * batches that went through too (§6)
+ * all of them end, failed or not, the customers and the tasks are read
+ * again, the ones of the batches that went through too (§6)
  */
 export const useBulkHandleTask = () => {
   const run = useRun()
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (batches: readonly BulkHandleTaskBatch[]) =>
-      Promise.all(
+      allBatches(
         batches.map((payload) =>
           run(
             Effect.gen(function* () {

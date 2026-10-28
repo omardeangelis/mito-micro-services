@@ -76,6 +76,10 @@ describe("CustomersPage, la lista", () => {
     renderCustomers("/dashboard/customers", backend)
 
     expect(await screen.findByText("errore della rotta")).toBeTruthy()
+    // The error of the route only, with no toast
+    expect(
+      screen.queryByText("Il servizio non risponde, riprova tra poco")
+    ).toBeNull()
   })
 
   it("se non arriva una pagina dopo la prima, la tabella resta con il toast", async () => {
@@ -86,11 +90,21 @@ describe("CustomersPage, la lista", () => {
     backend.state.failingList = true
     await act(() => router.navigate("/dashboard/customers?page=2"))
 
-    expect(
-      await screen.findByText("Il servizio non risponde, riprova tra poco")
-    ).toBeTruthy()
+    // Page 2 failed: one toast, and the page stays
+    await waitFor(() =>
+      expect(
+        screen.getAllByText("Il servizio non risponde, riprova tra poco")
+      ).toHaveLength(1)
+    )
+    await waitFor(() =>
+      expect(backend.state.searches.at(-1)).toMatchObject({ page: 2 })
+    )
+    await act(() => new Promise((resolve) => setTimeout(resolve, 50)))
     expect(screen.getByText("RSSMRA80A01H501U")).toBeTruthy()
     expect(screen.queryByText("errore della rotta")).toBeNull()
+    expect(
+      screen.getAllByText("Il servizio non risponde, riprova tra poco")
+    ).toHaveLength(1)
   })
 })
 
