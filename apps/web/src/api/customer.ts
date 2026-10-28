@@ -9,10 +9,13 @@ import { useEffect, useRef } from "react"
 import { Effect } from "effect"
 import {
   type BlackListStatus,
+  type CustomerCodes,
   type CustomerListQuery,
+  type CustomerProfile,
+  type NewCustomer,
 } from "@mito/contract/customer"
 import { useRun } from "./ApiProvider"
-import { showApiError } from "./queryClient"
+import { routeErrorWhenEmpty, showApiError } from "./queryClient"
 import { ApiClient, type Run } from "./runtime"
 import { taskKeys } from "./task"
 
@@ -27,7 +30,16 @@ export const customerKeys = {
   jobs: () => [...customerKeys.all, "getAllAvailableJobs"] as const,
   fileNames: (table: FileTable) =>
     [...customerKeys.all, "getAllFileName", { table }] as const,
+  byCode: (codes: CustomerCodesInput) =>
+    [...customerKeys.all, "getCustomersByFiscalCodeOrVatCode", codes] as const,
+  detail: (id: string) =>
+    [...customerKeys.all, "getCustomerById", { id }] as const,
+  practices: (id: string) =>
+    [...customerKeys.all, "getAllPraticaByCustomer", { id }] as const,
 }
+
+/** The codes `getCustomersByFiscalCodeOrVatCode` looks for */
+export type CustomerCodesInput = typeof CustomerCodes.Encoded
 
 /** The tables whose import files name the options of the file filter */
 export type FileTable = "customers" | "practices"
@@ -208,4 +220,133 @@ export const allBatches = async <A>(
   )
   if (failed) throw failed.reason
   return results.map((result) => (result as PromiseFulfilledResult<A>).value)
+}
+
+/** A customer, or null when there is none (`GET /customer/:id`) */
+export const customerOptions = (run: Run, id: string) =>
+  queryOptions({
+    queryKey: customerKeys.detail(id),
+    queryFn: ({ signal }) =>
+      run(
+        Effect.gen(function* () {
+          const client = yield* ApiClient
+          return yield* client.customer.getCustomerById({ params: { id } })
+        }),
+        signal
+      ),
+  })
+
+export const useCustomer = (id: string) =>
+  useQuery({ ...customerOptions(useRun(), id), ...routeErrorWhenEmpty })
+
+/** The practices of a customer, with its role (`GET /customer/:id/practices`) */
+export const useCustomerPractices = (id: string) =>
+  useQuery(
+    optionQuery(useRun(), customerKeys.practices(id), (client) =>
+      client.customer.getAllPraticaByCustomer({ params: { id } })
+    )
+  )
+
+/** The customers with one of the codes (`GET /customer/by-code`) */
+export const customersByCodeOptions = (run: Run, codes: CustomerCodesInput) =>
+  optionQuery(run, customerKeys.byCode(codes), (client) =>
+    client.customer.getCustomersByFiscalCodeOrVatCode({ query: codes })
+  )
+
+/**
+ * Reads the customers with one of the codes, as `ensureData` of tRPC did
+ * before a new customer is saved: always from the backend
+ */
+export const useFindCustomersByCode = () => {
+  const run = useRun()
+  const queryClient = useQueryClient()
+  return (codes: CustomerCodesInput) =>
+    queryClient.fetchQuery(customersByCodeOptions(run, codes))
+}
+
+/**
+ * A new customer of whoever creates it (`POST /customer`): then the lists of
+ * the customers are read again
+ */
+export const useInsertCustomer = () => {
+  const run = useRun()
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (payload: NewCustomer) =>
+      run(
+        Effect.gen(function* () {
+          const client = yield* ApiClient
+          return yield* client.customer.insertCustomer({ payload })
+        })
+      ),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: customerKeys.all }),
+  })
+}
+
+/**
+ * The master data of a customer (`PATCH /customer/:id`): then its detail and
+ * the lists of the customers are read again (§6)
+ */
+export const useUpdateCustomer = () => {
+  const run = useRun()
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, profile }: { id: string; profile: CustomerProfile }) =>
+      run(
+        Effect.gen(function* () {
+          const client = yield* ApiClient
+          return yield* client.customer.updateCustomerFromDashboard({
+            params: { id },
+            payload: profile,
+          })
+        })
+      ),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: customerKeys.all }),
+  })
+}
+
+/**
+ * "Passaggio di consegne" (`POST /customer/:id/handover`): the customer and
+ * its active contact go to another operator. The caller reads the page again
+ * (`refresh`), on success and on a rejection alike
+ */
+export const useHandover = () => {
+  const run = useRun()
+  return useMutation({
+    mutationFn: ({
+      customerId,
+      toOperatorId,
+    }: {
+      customerId: string
+      toOperatorId: number
+    }) =>
+      run(
+        Effect.gen(function* () {
+          const client = yield* ApiClient
+          return yield* client.customer.handover({
+            params: { id: customerId },
+            payload: { toOperatorId },
+          })
+        })
+      ),
+  })
+}
+
+/**
+ * "Assegna a te" (`POST /customer/:id/assign-to-yourself`). The caller reads
+ * the page again (`refresh`), on success and on a rejection alike
+ */
+export const useAssignToYourself = () => {
+  const run = useRun()
+  return useMutation({
+    mutationFn: ({ id }: { id: string }) =>
+      run(
+        Effect.gen(function* () {
+          const client = yield* ApiClient
+          return yield* client.customer.assignToYourself({ params: { id } })
+        })
+      ),
+  })
 }

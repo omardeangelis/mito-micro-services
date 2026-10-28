@@ -69,8 +69,8 @@ export const CustomerSearchBy = Schema.Literals([
 ])
 export type CustomerSearchBy = typeof CustomerSearchBy.Type
 
-const Text = Schema.NullOr(Schema.String)
-const Count = Schema.NullOr(Schema.Number)
+export const Text = Schema.NullOr(Schema.String)
+export const Count = Schema.NullOr(Schema.Number)
 
 /** A customer row, as `select().from(customers)`. */
 export const Customer = Schema.Struct({
@@ -108,7 +108,7 @@ export const Customer = Schema.Struct({
 export type Customer = typeof Customer.Type
 
 /** The operator of a row, from a left join: null when it has none. */
-const RowOperator = Schema.NullOr(
+export const RowOperator = Schema.NullOr(
   Schema.Struct({ id: Schema.Number, name: Text, surname: Text })
 )
 

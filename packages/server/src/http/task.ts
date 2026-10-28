@@ -1,12 +1,26 @@
 import { Effect } from "effect"
 import { HttpApiBuilder } from "effect/http-api"
 import { MitoApi } from "@mito/contract/api"
-import { CustomerMissing, OperatorNotFound } from "@mito/contract/errors"
+import {
+  ContactAlreadyActive,
+  ContactForbidden,
+  ContactNotFound,
+  CustomerMissing,
+  CustomerNotFound,
+  CustomerUnassigned,
+  OperatorNotFound,
+} from "@mito/contract/errors"
 import { CurrentUser } from "@mito/contract/middleware"
 import { type Db } from "../effect/db"
 import { type ErrorReporter } from "../effect/errorReporter"
 import { bulkHandleTask } from "../services/contact/bulkHandleTask"
-import { listCustomersWithActiveAlerts } from "../services/contact/queries"
+import { createContact } from "../services/contact/createContact"
+import { getContactById } from "../services/contact/getContactById"
+import {
+  getActiveTask,
+  listCustomerAlerts,
+  listCustomersWithActiveAlerts,
+} from "../services/contact/queries"
 import { unexpectedAs500 } from "./unexpected"
 
 /**
@@ -24,6 +38,45 @@ export const taskLayer = HttpApiBuilder.group(MitoApi, "task", (handlers) =>
           unexpectedAs500("getCustomersWithActiveAlerts"),
           Effect.provide(services)
         )
+      )
+      .handle("getActiveTask", ({ params }) =>
+        getActiveTask(params.id).pipe(
+          unexpectedAs500("getActiveTask"),
+          Effect.provide(services)
+        )
+      )
+      .handle("getCustomerAlerts", ({ params }) =>
+        listCustomerAlerts(params.id).pipe(
+          unexpectedAs500("getCustomerAlerts"),
+          Effect.provide(services)
+        )
+      )
+      .handle("getContactById", ({ params }) =>
+        Effect.gen(function* () {
+          const { actor } = yield* CurrentUser
+          return yield* getContactById({ id: params.id, actor }).pipe(
+            Effect.catchTag("ContactNotFound", () =>
+              Effect.fail(new ContactNotFound())
+            ),
+            unexpectedAs500("getContactById")
+          )
+        }).pipe(Effect.provide(services))
+      )
+      .handle("createContact", ({ payload }) =>
+        Effect.gen(function* () {
+          const { actor } = yield* CurrentUser
+          return yield* createContact({ ...payload, actor }).pipe(
+            Effect.catchTags({
+              CustomerNotFound: () => Effect.fail(new CustomerNotFound()),
+              CustomerUnassigned: () => Effect.fail(new CustomerUnassigned()),
+              ContactForbidden: ({ assignee }) =>
+                Effect.fail(new ContactForbidden({ assignee })),
+              ContactAlreadyActive: ({ activeTaskId }) =>
+                Effect.fail(new ContactAlreadyActive({ activeTaskId })),
+            }),
+            unexpectedAs500("createContact")
+          )
+        }).pipe(Effect.provide(services))
       )
       .handle("bulkHandleTask", ({ payload }) =>
         Effect.gen(function* () {

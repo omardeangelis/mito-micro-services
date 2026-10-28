@@ -12,7 +12,7 @@ import { type fakeCustomers } from "@/test/customers"
 import { Component as CustomersPage } from "../CustomersPage"
 
 /**
- * Renders `ui` at `/dashboard/customers` (the page itself by default), on the
+ * Renders `ui` at `route` (the customers list by default), on the
  * history of the browser, so `window.location` follows the navigations as in
  * the app: the other addresses show "altra pagina", an error of the route
  * "errore della rotta". The preferences start from `preferences` and the
@@ -25,16 +25,19 @@ export function renderCustomers(
     role = "ADMIN",
     preferences,
     ui = <CustomersPage />,
+    route = "/dashboard/customers",
   }: {
     role?: Role
     preferences?: UserPreferenceInitProps["preferences"]
     ui?: ReactNode
+    /** The route of `ui`, with its params */
+    route?: string
   } = {}
 ) {
   window.history.replaceState(null, "", path)
   const router = createBrowserRouter([
     {
-      path: "/dashboard/customers",
+      path: route,
       element: ui,
       errorElement: <p>errore della rotta</p>,
     },

@@ -83,6 +83,61 @@ export class CustomerMissing extends Schema.TaggedError<CustomerMissing>()(
   { httpApiStatus: 400 }
 ) {}
 
+/** The contact doesn't exist (tRPC NOT_FOUND, `CONTACT_NOT_FOUND`). */
+export class ContactNotFound extends Schema.TaggedError<ContactNotFound>()(
+  "ContactNotFound",
+  {},
+  { httpApiStatus: 404 }
+) {}
+
+/**
+ * The operator may not create or edit the contact (AC49, AC51; tRPC
+ * FORBIDDEN, `CONTACT_FORBIDDEN`): `assignee` is who it belongs to, null when
+ * nobody
+ */
+export class ContactForbidden extends Schema.TaggedError<ContactForbidden>()(
+  "ContactForbidden",
+  { assignee: Schema.NullOr(Schema.String) },
+  { httpApiStatus: 403 }
+) {}
+
+/**
+ * The customer has no operator, so no contact (AC67; tRPC
+ * PRECONDITION_FAILED, `CUSTOMER_UNASSIGNED`).
+ */
+export class CustomerUnassigned extends Schema.TaggedError<CustomerUnassigned>()(
+  "CustomerUnassigned",
+  {},
+  { httpApiStatus: 412 }
+) {}
+
+/**
+ * The customer already has an active contact, `activeTaskId` (AC67; tRPC
+ * CONFLICT, `CONTACT_ALREADY_ACTIVE`).
+ */
+export class ContactAlreadyActive extends Schema.TaggedError<ContactAlreadyActive>()(
+  "ContactAlreadyActive",
+  { activeTaskId: Schema.Number },
+  { httpApiStatus: 409 }
+) {}
+
+/** A practice with this `praticaId` exists (tRPC CONFLICT, `PRACTICE_EXISTS`). */
+export class PracticeExists extends Schema.TaggedError<PracticeExists>()(
+  "PracticeExists",
+  {},
+  { httpApiStatus: 409 }
+) {}
+
+/**
+ * A customer the new practice adds already exists (tRPC CONFLICT,
+ * `CUSTOMER_EXISTS`).
+ */
+export class CustomerExists extends Schema.TaggedError<CustomerExists>()(
+  "CustomerExists",
+  {},
+  { httpApiStatus: 409 }
+) {}
+
 const apiErrors = [
   Unauthorized,
   NotAnOperator,
@@ -93,6 +148,12 @@ const apiErrors = [
   CustomerAssignmentForbidden,
   HandoverSameOperator,
   CustomerMissing,
+  ContactNotFound,
+  ContactForbidden,
+  CustomerUnassigned,
+  ContactAlreadyActive,
+  PracticeExists,
+  CustomerExists,
 ] as const
 
 /** An error some endpoint declares. */
