@@ -80,6 +80,55 @@ Valgono per ogni router portato a L1 e L2:
 - **La SPA usa solo `HttpApi`.** L'app Next.js di oggi resta su tRPC e non si porta a `HttpApi`: le stesse chiamate della UI si riscriverebbero due volte, una per il trasporto e una per la SPA. È lo stesso ragionamento del §1 sui router.
 - **tRPC si toglie quando si spegne l'app Next.js**, insieme a `@trpc/*`, `runTrpc` e ai traduttori `xErrorToTrpc`.
 
+
+### Le convenzioni di L3 (fase 2, 2026-10-28)
+
+Le regole con cui si scrive un gruppo di `HttpApi`. Vengono da H7–H16 di [[chore/fase-2-httpapi]] (§3): H7–H11 confermate da Omar il 2026-10-27; H12–H16 sono ancora proposte, ma il gruppo `me` (2.1.2, 2.2.1, 2.2.2) le applica già, e si cambiano solo con una sua decisione. Il gruppo `me` è l'esempio da copiare: `packages/contract/src/me.ts`, `packages/server/src/http/me.ts`, `apps/web/src/api/me.ts`.
+
+**Dove sta il codice.**
+- La definizione è in `@mito/contract` (`packages/contract`): `MitoApi` (`api.ts`), un file per gruppo, gli errori che viaggiano (`errors.ts`), gli `Schema` condivisi (`schemas.ts`), i middleware dichiarati (`middleware.ts`). Dipende solo da `effect` e dai moduli puri di `@mito/domain`; niente `@mito/db`, `@mito/server`, `@mito/env`, `drizzle-*`, `zod` (H5).
+- Gli handler sono in `packages/server/src/http/`, uno per gruppo, e `ApiHandlersLive` (`api.ts`) li unisce. Il backend li monta in `apps/api/src/httpApi.ts`, su `/api/v1` (H7), prima di `/api/trpc`.
+- Il client è in `apps/web/src/api/`, un modulo per gruppo (H12).
+
+**Il gruppo e gli endpoint (H8).**
+- Un gruppo per router di tRPC, con lo stesso nome, più `me`. L'identificatore dell'endpoint è il nome della procedura (`client.customer.getCustomerById`).
+- Metodo e path: lettura con input piatto `GET /<gruppo>/...`; lettura con filtri annidati `POST /<gruppo>/search`; creazione `POST /<gruppo>`; modifica `PATCH /<gruppo>/:id`; azione `POST /<gruppo>/:id/<azione>`; cancellazione `DELETE /<gruppo>/:id`; scrittura su più righe `POST /<gruppo>/bulk-<azione>`. Niente metodo `QUERY`.
+- La PR del gruppo porta la tabella procedura → metodo e path.
+
+**La forma (H11).** La risposta ha i campi dell'output della procedura di oggi, con le date come `Schema.Date`; un test per endpoint lo controlla. L'input è lo zod di oggi riscritto in `Schema`, con gli stessi limiti (es. `Schema.String.check(Schema.isMaxLength(255))`).
+
+**Gli errori (H9).**
+- Un errore che un endpoint dichiara è uno `Schema.TaggedError` del contratto, con `httpApiStatus` uguale al codice tRPC di oggi (400, 401, 403, 404, 409) e lo stesso `message`.
+- Fino alla fase 5 i servizi restano sui loro `Data.TaggedError`: l'handler li traduce in quelli del contratto con `Effect.catchTag`, come fa `xErrorToTrpc` per tRPC. Le classi passano al contratto quando tRPC si spegne (scarto di 2.1.2).
+- `DbError` e i *defect* diventano 500 con un corpo generico: `unexpectedAs500(endpoint)` di `http/unexpected.ts` li scrive nel log e li riporta a `ErrorReporter`. Ogni handler lo mette in fondo al suo programma.
+- Un errore del servizio che dopo il middleware non può succedere (es. `NotAnOperator` in `me`) diventa un *defect*, non un errore dichiarato.
+
+**L'autorizzazione (H10).**
+- Ogni gruppo ha il middleware `Authenticated`, che fornisce `CurrentUser` (operatore e `Actor`). `AuthenticatedLive` legge la sessione con `SessionReader` (quella che il backend ha già letto per la richiesta) e chiama `resolveActor`: 401 `Unauthorized` senza sessione, 401 `OperatorDisabled`, 400 `NotAnOperator`.
+- Gli endpoint dell'admin hanno anche `AdminOnly` (403). È dichiarato nel contratto; l'implementazione arriva con il primo gruppo che lo usa.
+- Le PR che toccano i middleware hanno la revisione di Leonardo.
+
+**Come si scrive l'handler.** È un adapter senza logica (H16): legge `CurrentUser`, chiama il servizio di L1, traduce gli errori, chiude con `unexpectedAs500`. Per non far chiedere `Db` a ogni richiesta (diventerebbe un requisito `HttpRouter.Request<"Requires", Db>`), il gruppo cattura i servizi quando si costruisce, con `Effect.context<Db | ErrorReporter>()`, e ogni handler li fornisce con `Effect.provide(services)`.
+
+**Il client in `apps/web` (H12, H13).**
+- `runtime.ts` ha il `ManagedRuntime` con `ApiClient` (`HttpApiClient.make(MitoApi)`); `useRun()` di `ApiProvider.tsx` esegue un programma con il `signal` di TanStack Query. Un errore dichiarato arriva com'è; il resto (rete, 5xx, decodifica) diventa `ApiUnavailable` e va a Sentry.
+- `<gruppo>.ts` ha le chiavi (`[gruppo, endpoint, input]`, con una factory per gruppo), le `queryOptions`, gli hook delle query e delle mutation, con le invalidazioni accanto alla mutation.
+- Il `QueryClient` (`queryClient.ts`) ritenta solo `ApiUnavailable` e mostra nel toast l'errore di ogni query e mutation fallita; il tipo `error` è `ApiFailure` per tutte. `describeApiError` (`errors.ts`) dà il testo, con uno `switch` esaustivo sul `_tag`: un errore nuovo nel contratto va aggiunto lì, o `tsc` si ferma.
+- Le pagine usano solo gli hook dei gruppi: ESLint vieta `@/api/runtime`, `effect/http` ed `effect/http-api` fuori da `src/api`, `src/test` e dai test.
+- Al logout `queryClient.clear()`.
+
+**I test (H14).**
+- Contratto: `packages/contract/src/_test/`, in `node` (`// @vitest-environment node`).
+- Backend: `packages/server/src/http/_test/<gruppo>.db.test.ts` con `HttpApiTest.groups` sugli handler veri, PGlite e un `SessionReader` finto; autorizzazione, status, `_tag` di ogni errore, forma della risposta. In più un test su `app.request` (`apps/api/src/_test/httpApi.db.test.ts`: cookie, prefisso, 500 riportato) e la chiamata in `api:smoke`.
+- Frontend: `renderWithApi(ui, { handlers, auth })` di `apps/web/src/test/api.tsx`, con handler in memoria scritti con `HttpApiBuilder.group` sul contratto (`fakeMe` è l'esempio) e `signedInAs` o `rejectingWith` come middleware. Niente mock di moduli né di `fetch`. `HttpApiTest` non gira in jsdom (`Expected ArrayBuffer`): `renderWithApi` serve il gruppo con `HttpRouter.toWebHandler` e passa al client un `fetch` che lo chiama.
+
+**La convivenza con tRPC (H16, F3).** Fino alla fase 5:
+- un'operazione nuova su una pagina già portata in `apps/web` va nei due posti, la procedura tRPC per Next e l'endpoint per React, adapter tutti e due dello stesso servizio;
+- su una pagina non ancora portata va solo in tRPC;
+- le procedure tRPC di un gruppo portato restano finché c'è l'app Next.
+
+**Ancora da fare.** L'OpenAPI a `/api/v1/openapi.json` fuori dalla prod (H15) non c'è: è una proposta, e non serve finché nessuno la legge.
+
 ## 4. Ordine dei passi per L1 e L2
 
 L'ordine segue il rischio della Mappa del 21/10, con un'eccezione: `user` e `operator` vanno per primi perché la disattivazione degli operatori ci si appoggia.

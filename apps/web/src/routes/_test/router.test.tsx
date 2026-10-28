@@ -1,9 +1,9 @@
-import { render, screen, within } from "@testing-library/react"
+import { screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { createMemoryRouter, RouterProvider } from "react-router"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { routes } from "@/router"
-import { useUserPreferenceContext } from "@/store/context/useUserPreferenceContext"
+import { ada, fakeMe, renderWithApi } from "@/test/api"
 
 const captureException = vi.hoisted(() => vi.fn())
 vi.mock("@sentry/react", () => ({ captureException }))
@@ -19,15 +19,22 @@ vi.mock("@/lib/authClient", () => ({
   },
 }))
 
+// The current user of `GET /api/v1/me` (2.2.2)
+let backend = fakeMe({})
+
 const open = (path: string) => {
   const router = createMemoryRouter(routes, { initialEntries: [path] })
-  render(<RouterProvider router={router} />)
+  renderWithApi(<RouterProvider router={router} />, {
+    handlers: backend.handlers,
+    auth: backend.auth,
+  })
   return router
 }
 
 const heading = () => screen.findByRole("heading", { level: 1 })
 
 afterEach(() => {
+  backend = fakeMe({})
   vi.restoreAllMocks()
   auth.session = { user: { name: "Ada" } }
   auth.isPending = false
@@ -67,6 +74,32 @@ describe("le rotte (§5)", () => {
 
     expect(await heading()).toHaveTextContent("Home")
     expect(router.state.location.pathname).toBe("/dashboard")
+  })
+
+  it.each([
+    ["senza nome", { ...ada, name: null }],
+    ["senza cognome", { ...ada, surname: "" }],
+  ])(
+    "/ porta un operatore %s al profilo del primo accesso",
+    async (_, operator) => {
+      backend = fakeMe({ operator })
+      const router = open("/")
+
+      await screen.findAllByRole("tab")
+      expect(router.state.location.pathname).toBe("/dashboard/profile")
+      expect(router.state.location.search).toBe("?firstTime=true")
+    }
+  )
+
+  it("/ senza sessione porta al login, senza chiedere l'utente corrente", async () => {
+    auth.session = null
+    const router = open("/")
+
+    expect(
+      await screen.findByRole("button", { name: "Accedi" })
+    ).toBeInTheDocument()
+    expect(router.state.location.pathname).toBe("/login")
+    expect(backend.state.reads).toBe(0)
   })
 
   it.each([
@@ -118,6 +151,22 @@ describe("le rotte (§5)", () => {
   })
 })
 
+describe("il menu per ruolo (2.2.2)", () => {
+  it.each([
+    ["ADMIN", true],
+    ["OPERATORE", false],
+  ] as const)("per un %s il link a Import c'è: %s", async (role, hasImport) => {
+    backend = fakeMe({ role })
+    open("/dashboard")
+    await heading()
+
+    const nav = screen.getByRole("navigation")
+    expect(within(nav).queryByRole("link", { name: "Import" }) !== null).toBe(
+      hasImport
+    )
+  })
+})
+
 describe("il profilo", () => {
   it("un operatore vede solo il tab Profile, anche con ?tab=admin", async () => {
     open("/dashboard/profile?tab=admin")
@@ -128,47 +177,10 @@ describe("il profilo", () => {
   })
 
   it("un admin apre il tab dell'URL, e cambiarlo cambia l'URL", async () => {
-    // The role arrives with phase 2: here it is set in the store
-    function AsAdmin() {
-      const setRole = useUserPreferenceContext((state) => state.setRole)
-      return (
-        <button type="button" onClick={() => setRole("ADMIN")}>
-          admin
-        </button>
-      )
-    }
+    backend = fakeMe({ role: "ADMIN" })
     const user = userEvent.setup()
-    const router = createMemoryRouter(
-      [
-        {
-          path: "/dashboard",
-          lazy: async () => ({
-            Component: (await import("@/routes/dashboard/DashboardShell"))
-              .DashboardShell,
-          }),
-          children: [
-            {
-              path: "profile",
-              lazy: async () => {
-                const { Component: Profile } =
-                  await import("@/routes/dashboard/profile/ProfilePage")
-                return {
-                  Component: () => (
-                    <>
-                      <AsAdmin />
-                      <Profile />
-                    </>
-                  ),
-                }
-              },
-            },
-          ],
-        },
-      ],
-      { initialEntries: ["/dashboard/profile?tab=blacklist"] }
-    )
-    render(<RouterProvider router={router} />)
-    await user.click(await screen.findByRole("button", { name: "admin" }))
+    const router = open("/dashboard/profile?tab=blacklist")
+    await screen.findAllByRole("tab")
 
     expect(screen.getByRole("tab", { name: "Blacklist" })).toHaveAttribute(
       "aria-selected",

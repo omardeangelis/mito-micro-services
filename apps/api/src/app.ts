@@ -7,6 +7,7 @@ import { getAuth } from "@mito/server/betterAuth/index"
 import { authHandler } from "@mito/server/betterAuth/handler"
 import { requestSession } from "@mito/server/requestSession"
 import { GET as authUser } from "@/app/api/auth/user/route"
+import { httpApi } from "./httpApi"
 import { restRoutes } from "./rest"
 import { cronLayer } from "./cron/live"
 import { cronRoutes } from "./cron/routes"
@@ -56,6 +57,10 @@ app.get("/api/auth/session", () => {
 app.all("/api/auth/*", (c) => authHandler(getAuth())(c.req.raw))
 
 app.route("/", restRoutes())
+
+// The API of the React app (HttpApi), inside the session read above: the
+// endpoints read it from there, not from the cookie again
+app.all("/api/v1/*", (c) => httpApi.handler(c.req.raw))
 
 app.all("/api/trpc/*", (c) =>
   fetchRequestHandler({

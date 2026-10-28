@@ -1,6 +1,8 @@
 import { render, screen } from "@testing-library/react"
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import userEvent from "@testing-library/user-event"
 import { beforeEach, describe, expect, it, vi } from "vitest"
+import { meKeys } from "@/api/me"
 import { LogoutFloatingButton } from "@/routes/dashboard/profile/LogoutFloatingButton"
 import { UserPreferenceContext } from "@/store/context/UserPreferenceContext"
 import { createUserPreferenceStore } from "@/store/userPreferences"
@@ -22,10 +24,14 @@ describe("LogoutFloatingButton, cookie delle preferenze (AC33)", () => {
     store.getState().setDashboardCollapsed(true)
     store.getState().setContactTableVisibleColumns(["CF"])
     expect(document.cookie).toContain("mito-pref-ds=true")
+    const queryClient = new QueryClient()
+    queryClient.setQueryData(meKeys.current(), { role: "ADMIN" })
     render(
-      <UserPreferenceContext.Provider value={store}>
-        <LogoutFloatingButton />
-      </UserPreferenceContext.Provider>
+      <QueryClientProvider client={queryClient}>
+        <UserPreferenceContext.Provider value={store}>
+          <LogoutFloatingButton />
+        </UserPreferenceContext.Provider>
+      </QueryClientProvider>
     )
 
     await userEvent
@@ -34,5 +40,7 @@ describe("LogoutFloatingButton, cookie delle preferenze (AC33)", () => {
 
     expect(document.cookie).not.toContain("mito-pref-")
     expect(store.getState().preferences).toBeUndefined()
+    // Nor what the backend answered for this operator (H12)
+    expect(queryClient.getQueryData(meKeys.current())).toBeUndefined()
   })
 })
