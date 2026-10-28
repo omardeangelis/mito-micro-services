@@ -482,6 +482,10 @@ export function fakeCustomers(
             )
           )
         )
+        .handle("updateOperatorsRole", unserved)
+        .handle("getDeactivationImpact", unserved)
+        .handle("getOperatorsForDeactivation", unserved)
+        .handle("deactivate", unserved)
     ),
     HttpApiBuilder.group(MitoApi, "task", (handlers) =>
       handlers

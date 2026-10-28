@@ -89,6 +89,10 @@ const unservedGroups = Layer.mergeAll(
     handlers
       .handle("getAllUniqueOperators", unserved)
       .handle("getOperatorById", unserved)
+      .handle("updateOperatorsRole", unserved)
+      .handle("getDeactivationImpact", unserved)
+      .handle("getOperatorsForDeactivation", unserved)
+      .handle("deactivate", unserved)
   ),
   HttpApiBuilder.group(MitoApi, "task", (handlers) =>
     handlers

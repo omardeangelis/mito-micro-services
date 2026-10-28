@@ -14,6 +14,7 @@ import { fakeCustomers } from "@/test/customers"
 import { fakeHome } from "@/test/home"
 import { fakeImport } from "@/test/import"
 import { fakePratiche } from "@/test/pratiche"
+import { fakeProfile } from "@/test/profile"
 
 const captureException = vi.hoisted(() => vi.fn())
 vi.mock("@sentry/react", () => ({ captureException }))
@@ -33,15 +34,20 @@ vi.mock("@/lib/authClient", () => ({
 let backend = fakeMe({})
 
 // The current user, the home of the dashboard (3.5) where most routes land,
-// and the latest import the shell asks an admin for (3.6)
-const open = (path: string) => {
+// and the latest import the shell asks an admin for (3.6); the groups of the
+// page in `page`, under the current user of `backend`
+const open = (
+  path: string,
+  page?: ReturnType<typeof fakeProfile>["handlers"]
+) => {
   const router = createMemoryRouter(routes, { initialEntries: [path] })
+  const handlers = Layer.mergeAll(
+    backend.handlers,
+    fakeHome().handlers,
+    fakeImport().handlers
+  )
   renderWithApi(<RouterProvider router={router} />, {
-    handlers: Layer.mergeAll(
-      backend.handlers,
-      fakeHome().handlers,
-      fakeImport().handlers
-    ),
+    handlers: page ? Layer.merge(page, handlers) : handlers,
     auth: backend.auth,
   })
   return router
@@ -333,7 +339,10 @@ describe("il profilo", () => {
   it("un admin apre il tab dell'URL, e cambiarlo cambia l'URL", async () => {
     backend = fakeMe({ role: "ADMIN" })
     const user = userEvent.setup()
-    const router = open("/dashboard/profile?tab=blacklist")
+    const router = open(
+      "/dashboard/profile?tab=blacklist",
+      fakeProfile().handlers
+    )
     await screen.findAllByRole("tab")
 
     expect(screen.getByRole("tab", { name: "Blacklist" })).toHaveAttribute(
@@ -345,7 +354,7 @@ describe("il profilo", () => {
 
     expect(router.state.location.search).toBe("?tab=admin")
     expect(
-      screen.getByText("Gli operatori arrivano con il task 3.8")
+      await screen.findByRole("heading", { name: "Gestisci operatori" })
     ).toBeVisible()
 
     await user.click(screen.getByRole("tab", { name: "Profile" }))

@@ -88,6 +88,12 @@ export const describeApiError = (error: ApiFailure): string => {
       return "L'import non è disponibile su questo ambiente"
     case "ImportQueueFailed":
       return "La coda dell'import non ha accettato l'import: riprova"
+    case "OperatorIsAdmin":
+      return "Declassa l'admin a operatore prima di disattivarlo"
+    case "CannotDeactivateSelf":
+      return "Non puoi disattivare te stesso"
+    case "LastAdmin":
+      return "Deve restare almeno un admin"
     case "ApiUnavailable":
       return "Il servizio non risponde, riprova tra poco"
     default: {
