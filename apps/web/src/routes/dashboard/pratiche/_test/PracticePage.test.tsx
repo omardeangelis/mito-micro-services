@@ -296,7 +296,7 @@ describe("PracticePage, i clienti", () => {
     const sections = () =>
       screen
         .getAllByRole("heading", { name: "Cliente" })
-        .map((heading) => heading.closest<HTMLElement>(".bg-neutral-50")!)
+        .map((heading) => heading.closest<HTMLElement>(".bg-muted")!)
     // The second customer is closed, as in the Next.js app: it opens
     await user.click(
       within(sections()[1]!).getByRole("button", {

@@ -5,6 +5,14 @@ import { ToggleGroup as ToggleGroupPrimitive } from "radix-ui"
 
 import { toggleVariants } from "@/components/ui/toggle"
 
+// MITO: the item gives back the 6 px of the track's border and padding, so
+// the group has the height of a control (appendix C)
+const itemHeights = {
+  default: "h-6",
+  sm: "h-5",
+  lg: "h-7",
+} as const
+
 const ToggleGroupContext = React.createContext<
   VariantProps<typeof toggleVariants> & {
     spacing?: number
@@ -34,7 +42,8 @@ function ToggleGroup({
       data-spacing={spacing}
       style={{ "--gap": spacing } as React.CSSProperties}
       className={cn(
-        "group/toggle-group data-[spacing=default]:data-[variant=outline]:shadow-xs flex w-fit items-center gap-[--spacing(var(--gap))] rounded-md",
+        // The track of AC15: muted, with a border
+        "group/toggle-group rounded-card flex w-fit items-center gap-[--spacing(var(--gap))] border border-border bg-muted p-0.5",
         className
       )}
       {...props}
@@ -55,6 +64,7 @@ function ToggleGroupItem({
 }: React.ComponentProps<typeof ToggleGroupPrimitive.Item> &
   VariantProps<typeof toggleVariants>) {
   const context = React.useContext(ToggleGroupContext)
+  const itemSize = context.size ?? size ?? "default"
 
   return (
     <ToggleGroupPrimitive.Item
@@ -63,12 +73,12 @@ function ToggleGroupItem({
       data-size={context.size ?? size}
       data-spacing={context.spacing}
       className={cn(
-        toggleVariants({
-          variant: context.variant ?? variant,
-          size: context.size ?? size,
-        }),
-        "w-auto min-w-0 shrink-0 px-3 focus:z-10 focus-visible:z-10",
-        "data-[spacing=0]:rounded-none data-[spacing=0]:data-[variant=outline]:border-l-0 data-[spacing=0]:shadow-none data-[spacing=0]:first:rounded-l-md data-[spacing=0]:data-[variant=outline]:first:border-l data-[spacing=0]:last:rounded-r-md",
+        // The track gives the look, so the variant adds nothing here
+        toggleVariants({ variant: "default", size: itemSize }),
+        itemHeights[itemSize],
+        "w-auto min-w-0 shrink-0 px-3 focus-visible:z-10",
+        // The chosen item of AC15: card, foreground, shadow-xs, border
+        "data-[state=on]:shadow-xs text-muted-foreground data-[state=on]:border-border data-[state=on]:bg-card data-[state=on]:text-foreground",
         className
       )}
       {...props}

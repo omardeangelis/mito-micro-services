@@ -58,6 +58,8 @@ function PaginationLink({
           variant: isActive ? "outline" : "ghost",
           size,
         }),
+        // The current page (AC22): the outline button, weight 600
+        isActive && "font-semibold",
         className
       )}
       {...props}
@@ -107,7 +109,10 @@ function PaginationEllipsis({
     <span
       aria-hidden
       data-slot="pagination-ellipsis"
-      className={cn("flex size-9 items-center justify-center", className)}
+      className={cn(
+        "size-7.5 flex items-center justify-center text-muted-foreground",
+        className
+      )}
       {...props}
     >
       <MoreHorizontalIcon className="size-4" />

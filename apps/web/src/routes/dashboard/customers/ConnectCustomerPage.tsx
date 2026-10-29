@@ -11,7 +11,7 @@ export function Component() {
   return (
     <div className="dashbaord-layout">
       <div className="relative">
-        <div className="dashboard-content bg-background p-0">
+        <div className="dashboard-content p-0">
           <NewPraticaForm customerID={id} />
         </div>
       </div>

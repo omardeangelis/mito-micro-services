@@ -107,6 +107,7 @@ beforeEach(async () => {
 describe("solo gli admin", () => {
   /** Each endpoint of the tab, on operator 1 */
   const calls: [string, (api: Client) => Effect.Effect<unknown, unknown>][] = [
+    ["getTeam", (api) => api.operator.getTeam()],
     [
       "updateOperatorsRole",
       (api) => api.operator.updateOperatorsRole({ payload: [] }),
@@ -423,6 +424,45 @@ describe("POST /operator/:operatorId/deactivate", () => {
 
       assert.isFalse(yield* isDisabled(leaving.userId))
     })
+  )
+})
+
+describe("GET /operator/team", () => {
+  it.effect(
+    "i membri attivi con ruolo ed email, per cognome e nome, senza disattivati e sistema",
+    () =>
+      Effect.gen(function* () {
+        const admin = yield* given(() =>
+          createOperator({ role: "ADMIN", name: "Anna", surname: "Zeta" })
+        )
+        const luca = yield* given(() =>
+          createOperator({ name: "Luca", surname: "Alfa" })
+        )
+        yield* given(() =>
+          createOperator({ name: "Ex", surname: "Dis", disabledAt: new Date() })
+        )
+        yield* given(() => createSystemOperator())
+        const api = yield* clientAs(admin.userId)
+
+        const team = yield* api.operator.getTeam()
+
+        assert.deepStrictEqual(team, [
+          {
+            id: luca.id,
+            name: "Luca",
+            surname: "Alfa",
+            email: `${luca.userId}@test.local`,
+            role: "OPERATORE",
+          },
+          {
+            id: admin.id,
+            name: "Anna",
+            surname: "Zeta",
+            email: `${admin.userId}@test.local`,
+            role: "ADMIN",
+          },
+        ])
+      })
   )
 })
 

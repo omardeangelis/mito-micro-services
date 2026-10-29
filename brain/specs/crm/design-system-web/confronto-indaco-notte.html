@@ -1,0 +1,381 @@
+<title>Indaco notte a confronto</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400..700&family=Geist+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: la stessa scena di MITO due volte, affiancata (scelto | consigliato), poi la lista delle differenze.
+   Solo tema chiaro, come l'app: i colori sono i token di Indaco notte dell'appendice A della spec. */
+:root {
+  --bg: #f2f2f2; --card: #ffffff; --fg: #171717; --muted-fg: #5f5f5f; --subtle: #898989;
+  --muted: #f6f6f6; --accent: #f8f8f8; --border: #e5e5e5; --border-strong: #d5d5d5;
+  --input: #d1d1d1; --input-hover: #b7b7b7; --input-3to1: #949494; --control: #808080; --switch-off: #cacaca; --knob: #ffffff;
+  --primary: #2f3b97; --primary-hover: #232b87; --primary-fg: #ffffff;
+  --primary-soft: #ebf0ff; --primary-soft-border: #d0dbff; --primary-soft-fg: #364491;
+  --ring: #576bcb; --ring-soft: #576bcb42;
+  --success: #168b49; --success-soft: #e3fbe8; --success-soft-border: #b7e7c3; --success-soft-fg: #07602f;
+  --warning-soft: #fff5e0; --warning-soft-border: #f4d79e; --warning-soft-fg: #854a0b;
+  --destructive-text: #c2272a;
+  --blue-bg: #eaf5ff; --blue-bd: #bfe1ff; --blue-fg: #00598f; --blue-dot: #0090e2;
+  --amber-bg: #fff2dc; --amber-bd: #f3d8ac; --amber-fg: #824d00; --amber-dot-proto: #e5a400; --amber-dot-spec: #b28d00;
+  --magenta-bg: #ffedfd; --magenta-bd: #f6cdf1; --magenta-fg: #7b3577; --magenta-dot: #bd60b6;
+  --teal-bg: #dcfbf7; --teal-bd: #abebe4; --teal-fg: #00635d; --teal-dot: #009e95;
+  --orange-dot: #d4651c; --indigo-dot: #8177e5; --neutral-dot: #8c8c8c;
+  --chart-soft: #cbd6fb;
+  --shadow-xs: #16161612; --shadow-card: 0 1px 2px 0 #1616160d; --shadow-pop: 0 18px 40px -12px #0b0b0b3d, 0 2px 6px #0b0b0b12;
+  --annot: #d6336c;
+  --font: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--font); font-size: 13px; line-height: 1.45; -webkit-font-smoothing: antialiased; }
+.page { max-width: 1320px; margin: 0 auto; padding-block: 28px 56px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 22px; }
+h1, h2, h3, p { margin: 0; }
+code, .mono { font-family: var(--mono); font-size: 12px; }
+
+/* ---------- Testata ---------- */
+.top { display: grid; gap: 10px; max-width: 76ch; }
+.eyebrow { font-size: 11.5px; font-weight: 550; letter-spacing: .06em; text-transform: uppercase; color: var(--muted-fg); }
+h1 { font-size: 26px; font-weight: 650; letter-spacing: -.015em; text-wrap: balance; }
+.lead { font-size: 14px; color: var(--muted-fg); max-width: 68ch; }
+.lead b { color: var(--fg); font-weight: 600; }
+
+.controls { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; }
+.seg { display: inline-flex; padding: 2px; background: var(--card); border: 1px solid var(--border-strong); border-radius: 8px; box-shadow: 0 1px 2px var(--shadow-xs); }
+.seg input { position: absolute; opacity: 0; pointer-events: none; }
+.seg label { height: 26px; padding: 0 12px; display: inline-flex; align-items: center; border-radius: 6px; font-weight: 500; color: var(--muted-fg); cursor: pointer; white-space: nowrap; }
+.seg label:hover { color: var(--fg); background: var(--accent); }
+.seg input:checked + label { background: var(--primary-soft); color: var(--primary-soft-fg); box-shadow: inset 0 0 0 1px var(--primary-soft-border); }
+.seg input:focus-visible + label { outline: 2px solid var(--ring); outline-offset: 2px; }
+.mark-toggle { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 500; }
+.mark-toggle .swatch { width: 18px; height: 12px; border: 2px dashed var(--annot); border-radius: 3px; }
+
+/* ---------- Le due scene ---------- */
+.stage { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
+.stage[data-view="proto"] .variant[data-v="spec"], .stage[data-view="spec"] .variant[data-v="proto"] { display: none; }
+.stage[data-view="proto"], .stage[data-view="spec"] { grid-template-columns: minmax(0, 760px); }
+@media (max-width: 1060px) { .stage { grid-template-columns: minmax(0, 1fr); } }
+
+.variant { container-type: inline-size; background: var(--bg); border: 1px solid var(--border-strong); border-radius: 14px; padding: 14px; display: grid; gap: 12px; min-width: 0; }
+.variant[data-v="proto"] { --sw-off: var(--switch-off); --amber-dot: var(--amber-dot-proto); }
+.variant[data-v="spec"] { --sw-off: var(--control); --amber-dot: var(--amber-dot-spec); }
+.v-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 12px; padding: 2px 2px 0; }
+.v-head h2 { font-size: 15px; font-weight: 650; }
+.v-head p { font-size: 12px; color: var(--muted-fg); }
+
+.scene { display: grid; gap: 10px; }
+.scene-row { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
+@container (min-width: 560px) { .scene-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+
+.card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--shadow-card); min-width: 0; }
+.panel { padding: 14px; display: grid; gap: 12px; align-content: start; }
+.panel-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 2px 10px; }
+.panel-head h3 { font-size: 14px; font-weight: 650; }
+.panel-head span { font-size: 12px; color: var(--muted-fg); }
+
+/* Tabella (stile Grafite: intestazione su muted, righe da 38 px) */
+.tablewrap { overflow-x: auto; border-radius: 10px; }
+table { width: 100%; border-collapse: separate; border-spacing: 0; font-variant-numeric: tabular-nums; min-width: 470px; }
+th { background: var(--muted); color: var(--muted-fg); font-size: 12px; font-weight: 550; text-align: left; height: 36px; padding: 0 12px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+td { height: 38px; padding: 0 12px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+tbody tr:last-child td { border-bottom: 0; }
+tbody tr:hover td { background: var(--accent); }
+.cust { font-weight: 550; }
+
+.badge { display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border-radius: 99px; font-size: 12px; font-weight: 550; line-height: 1; border: 1px solid var(--bd); background: var(--bg-t); color: var(--fg-t); }
+.t-blue { --bg-t: var(--blue-bg); --bd: var(--blue-bd); --fg-t: var(--blue-fg); }
+.t-amber { --bg-t: var(--amber-bg); --bd: var(--amber-bd); --fg-t: var(--amber-fg); }
+.t-magenta { --bg-t: var(--magenta-bg); --bd: var(--magenta-bd); --fg-t: var(--magenta-fg); }
+.t-teal { --bg-t: var(--teal-bg); --bd: var(--teal-bd); --fg-t: var(--teal-fg); }
+
+.pri { display: inline-flex; align-items: center; gap: 7px; font-weight: 500; white-space: nowrap; }
+.pri .bars { display: inline-flex; align-items: flex-end; gap: 2px; height: 12px; }
+.pri i { width: 3px; border-radius: 1px; background: var(--border-strong); }
+.pri i:nth-child(1) { height: 4px; } .pri i:nth-child(2) { height: 7px; } .pri i:nth-child(3) { height: 10px; } .pri i:nth-child(4) { height: 12px; }
+.pri i.on { background: var(--muted-fg); }
+.pri.urgent { color: var(--destructive-text); font-weight: 600; }
+.pri.urgent i.on { background: var(--destructive-text); }
+.variant[data-v="spec"] .pri-label { display: none; }
+
+.due { display: inline-flex; align-items: center; gap: 8px; }
+.due-flag { display: inline-flex; align-items: center; gap: 4px; font-weight: 550; }
+.due-flag svg { width: 14px; height: 14px; flex: none; }
+.due-flag.late { color: var(--destructive-text); }
+.variant[data-v="proto"] .due-flag.today { color: var(--fg); }
+.variant[data-v="proto"] .due-flag.today svg { color: var(--primary); }
+.variant[data-v="spec"] .due-flag.today { color: var(--amber-fg); }
+
+/* Moduli */
+.label { display: block; font-weight: 550; font-size: 12.5px; margin-bottom: 6px; }
+.input { height: 30px; width: 100%; border: 1px solid var(--input); border-radius: 8px; padding: 0 10px; background: var(--card); color: var(--fg); font: inherit; transition: border-color .15s, box-shadow .15s; }
+.input:hover { border-color: var(--input-hover); }
+.input:focus { outline: none; border-color: var(--ring); box-shadow: 0 0 0 3px var(--ring-soft); }
+.opt { display: flex; align-items: center; gap: 10px; min-height: 26px; }
+.check { appearance: none; -webkit-appearance: none; width: 16px; height: 16px; margin: 0; border: 1.5px solid var(--control); border-radius: 4px; background: var(--card); display: inline-grid; place-content: center; cursor: pointer; flex: none; }
+.check:checked { background: var(--primary); border-color: var(--primary); }
+.check:checked::after { content: ""; width: 8px; height: 4.5px; border: 2px solid var(--primary-fg); border-top: 0; border-right: 0; transform: rotate(-45deg) translate(1px, -1px); }
+.check:focus-visible, .switch:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+.switch { width: 34px; height: 20px; border-radius: 99px; background: var(--sw-off, var(--switch-off)); border: 0; padding: 0; position: relative; cursor: pointer; flex: none; transition: background-color .18s; }
+.switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: var(--knob); box-shadow: 0 1px 2px var(--shadow-xs); transition: transform .18s cubic-bezier(.25, 1, .5, 1); }
+.switch[aria-checked="true"] { background: var(--primary); }
+.switch[aria-checked="true"]::after { transform: translateX(14px); }
+
+/* Toast */
+.toast { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border-radius: 12px; box-shadow: var(--shadow-pop); border: 1px solid; }
+.toast b { display: block; font-weight: 650; }
+.toast p { font-size: 12.5px; margin-top: 2px; }
+.toast svg { width: 18px; height: 18px; flex: none; margin-top: 1px; color: var(--success); }
+.variant[data-v="proto"] .toast { background: var(--card); border-color: var(--border); }
+.variant[data-v="proto"] .toast p { color: var(--muted-fg); }
+.variant[data-v="spec"] .toast { background: var(--success-soft); border-color: var(--success-soft-border); color: var(--success-soft-fg); }
+.variant[data-v="spec"] .toast svg { display: none; }
+
+/* Grafici */
+.donut-wrap { display: grid; grid-template-columns: 112px minmax(0, 1fr); gap: 14px; align-items: center; }
+.donut { width: 112px; height: 112px; display: block; }
+.donut text { fill: var(--fg); font-family: var(--font); }
+.donut .sub { fill: var(--muted-fg); }
+.legend { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-size: 12.5px; min-width: 0; }
+.legend li { display: grid; grid-template-columns: 9px minmax(0, 1fr) auto; gap: 8px; align-items: center; }
+.legend i { width: 9px; height: 9px; border-radius: 3px; background: var(--dot); }
+.legend em { font-style: normal; color: var(--muted-fg); font-variant-numeric: tabular-nums; }
+.ring-row { display: flex; align-items: center; gap: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+.ring { width: 52px; height: 52px; flex: none; }
+.ring-row b { display: block; font-size: 20px; font-weight: 650; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.ring-row span { font-size: 12px; color: var(--muted-fg); }
+
+/* Segni delle differenze */
+.stage.mark [data-diff] { outline: 2px dashed var(--annot); outline-offset: 3px; border-radius: 6px; }
+.stage.mark .toast[data-diff] { border-radius: 12px; }
+
+/* ---------- Lista delle differenze ---------- */
+.list-head { display: grid; gap: 4px; margin-top: 10px; }
+.list-head h2 { font-size: 18px; font-weight: 650; }
+.list-head p { color: var(--muted-fg); max-width: 72ch; }
+.diffs { display: grid; gap: 10px; }
+.diff { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 18px; padding: 16px; }
+@media (max-width: 860px) { .diff { grid-template-columns: minmax(0, 1fr); } }
+.diff-text { display: grid; gap: 8px; align-content: start; min-width: 0; }
+.diff-title { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.diff-title h3 { font-size: 15px; font-weight: 650; }
+.chip { display: inline-flex; align-items: center; height: 20px; padding: 0 8px; border-radius: 99px; font-size: 11.5px; font-weight: 550; border: 1px solid; white-space: nowrap; }
+.chip.open { background: var(--warning-soft); border-color: var(--warning-soft-border); color: var(--warning-soft-fg); }
+.chip.spec { background: var(--muted); border-color: var(--border-strong); color: var(--muted-fg); }
+.diff-text p { color: var(--muted-fg); max-width: 64ch; }
+.diff-text p b { color: var(--fg); font-weight: 600; }
+.pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; align-content: start; }
+.sample { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px 9px; display: grid; gap: 8px; align-content: start; background: var(--card); min-width: 0; }
+.sample-k { font-size: 11px; font-weight: 550; letter-spacing: .05em; text-transform: uppercase; color: var(--muted-fg); }
+.sample-body { min-height: 34px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.sample-v { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; font-size: 12px; color: var(--muted-fg); }
+.sample-v .ratio { font-weight: 600; color: var(--fg); font-variant-numeric: tabular-nums; }
+.ratio.fail { color: var(--destructive-text); }
+.ratio.pass { color: var(--success-soft-fg); }
+.sample.alt { background: var(--muted); border-style: dashed; }
+.sample.alt .sample-k { color: var(--subtle); }
+.dotbig { width: 26px; height: 26px; border-radius: 50%; }
+.mini-toast { padding: 8px 10px; font-size: 12px; box-shadow: none; }
+.mini-toast b { font-size: 12px; }
+.sample .toast p { font-size: 11.5px; }
+
+.foot { color: var(--muted-fg); font-size: 12.5px; max-width: 78ch; border-top: 1px solid var(--border-strong); padding-top: 14px; }
+
+@media (prefers-reduced-motion: reduce) { .switch, .switch::after, .input { transition: none; } }
+@media (max-width: 480px) { h1 { font-size: 22px; } .donut-wrap { grid-template-columns: minmax(0, 1fr); justify-items: start; } .pair { grid-template-columns: minmax(0, 1fr); } }
+</style>
+
+<div class="page">
+  <header class="top">
+    <span class="eyebrow">MITO · design system di apps/web</span>
+    <h1>Indaco notte a confronto</h1>
+    <p class="lead">A sinistra c'è Indaco notte com'è nel prototipo che hai scelto. A destra c'è come lo porta la spec, con la tua decisione sulla domanda 2. Token, misure, carattere e toni degli stati sono identici: cambiano <b>cinque dettagli</b>, segnati col tratteggio. Un sesto, il bordo dei campi, resta com'è.</p>
+  </header>
+
+  <div class="controls">
+    <div class="seg" role="radiogroup" aria-label="Cosa mostrare">
+      <input type="radio" name="view" id="view-both" value="both" checked><label for="view-both">Affiancati</label>
+      <input type="radio" name="view" id="view-proto" value="proto"><label for="view-proto">Solo scelto</label>
+      <input type="radio" name="view" id="view-spec" value="spec"><label for="view-spec">Solo consigliato</label>
+    </div>
+    <label class="mark-toggle" for="mark"><input type="checkbox" class="check" id="mark" checked><span class="swatch" aria-hidden="true"></span>Segna le differenze</label>
+  </div>
+
+  <div class="stage mark" id="stage" data-view="both">
+    <section class="variant" data-v="proto" aria-labelledby="h-proto">
+      <div class="v-head"><h2 id="h-proto">Scelto</h2><p>Indaco notte del prototipo</p></div>
+      <div class="scene" data-scene></div>
+    </section>
+    <section class="variant" data-v="spec" aria-labelledby="h-spec">
+      <div class="v-head"><h2 id="h-spec">Consigliato</h2><p>Come lo porta la spec</p></div>
+      <div class="scene" data-scene></div>
+    </section>
+  </div>
+
+  <div class="list-head">
+    <h2>Le differenze, una per una</h2>
+    <p>Prima le due della domanda 2, decise il 29 ottobre, poi le altre. I rapporti sono misurati sul bianco delle card, come chiede WCAG: 3:1 per riconoscere un controllo o una fetta di grafico, 4,5:1 per il testo.</p>
+  </div>
+
+  <div class="diffs">
+    <article class="card diff">
+      <div class="diff-text">
+        <div class="diff-title"><h3>Switch spento</h3><span class="chip spec">Nella spec · domanda 2</span></div>
+        <p>Lo stato di uno switch si legge solo dal binario e dalla posizione del pomello. Con il grigio del prototipo il binario sta a 1,64:1 sul bianco, e il pomello bianco quasi sparisce: chi vede poco contrasto non capisce se lo switch è spento o se non c'è.</p>
+        <p><b>Deciso:</b> il binario spento prende <code>control</code>, lo stesso grigio del bordo delle checkbox, a 3,95:1. <b>Costo:</b> gli switch spenti pesano un po' di più nella pagina.</p>
+      </div>
+      <div class="pair">
+        <div class="sample"><span class="sample-k">Scelto</span><div class="sample-body"><button type="button" class="switch" role="switch" aria-checked="false" aria-label="Switch spento, valore del prototipo" style="--sw-off: var(--switch-off)"></button></div><div class="sample-v"><code>switch-off #cacaca</code><span class="ratio fail">1,64:1</span></div></div>
+        <div class="sample"><span class="sample-k">Consigliato</span><div class="sample-body"><button type="button" class="switch" role="switch" aria-checked="false" aria-label="Switch spento, valore consigliato" style="--sw-off: var(--control)"></button><input type="checkbox" class="check" aria-label="Checkbox vuota, per confronto"></div><div class="sample-v"><code>control #808080</code><span class="ratio pass">3,95:1</span></div></div>
+      </div>
+    </article>
+
+    <article class="card diff">
+      <div class="diff-text">
+        <div class="diff-title"><h3>Bordo dei campi</h3><span class="chip spec">Nella spec · domanda 2</span></div>
+        <p>Anche il bordo dei campi sta sotto il 3:1, a 1,53:1. Qui però l'informazione c'è lo stesso: ogni campo ha un'etichetta visibile sopra, e quando lo usi il focus sta a 4,8:1.</p>
+        <p><b>Deciso:</b> resta com'è. Portarlo a 3:1 vuol dire un grigio come quello a destra, che rende pesanti tutti i moduli senza dire niente di nuovo.</p>
+      </div>
+      <div class="pair">
+        <div class="sample"><span class="sample-k">Scelto e consigliato</span><div class="sample-body" style="width:100%"><input class="input" id="s-in-a" value="Marco Rossi" aria-label="Campo con il bordo del prototipo"></div><div class="sample-v"><code>input #d1d1d1</code><span class="ratio">1,53:1</span></div></div>
+        <div class="sample alt"><span class="sample-k">A 3:1, non consigliato</span><div class="sample-body" style="width:100%"><input class="input" id="s-in-b" value="Marco Rossi" aria-label="Campo con un bordo a 3:1" style="border-color: var(--input-3to1)"></div><div class="sample-v"><code>#949494</code><span class="ratio">3,03:1</span></div></div>
+      </div>
+    </article>
+
+    <article class="card diff">
+      <div class="diff-text">
+        <div class="diff-title"><h3>Punto ambra dei grafici</h3><span class="chip spec">Già nella spec</span></div>
+        <p>È la sesta fetta della ciambella per sede e il colore di <code>CircleCard</code> fra il 25 e il 50%. Nel prototipo sta a 2,18:1 sul bianco, sotto il 3:1 che la review della spec di analytics chiede per le fette.</p>
+        <p><b>Nella spec</b> è più scuro e più giallo: 3,13:1, e resta lontano dall'arancio della seconda fetta. I badge ambra non cambiano: usano il testo ambra, non il punto.</p>
+      </div>
+      <div class="pair">
+        <div class="sample"><span class="sample-k">Scelto</span><div class="sample-body"><span class="dotbig" style="background: var(--amber-dot-proto)"></span><span class="dotbig" style="background: var(--orange-dot)" title="Arancio, per confronto"></span></div><div class="sample-v"><code>#e5a400</code><span class="ratio fail">2,18:1</span></div></div>
+        <div class="sample"><span class="sample-k">Consigliato</span><div class="sample-body"><span class="dotbig" style="background: var(--amber-dot-spec)"></span><span class="dotbig" style="background: var(--orange-dot)" title="Arancio, per confronto"></span></div><div class="sample-v"><code>#b28d00</code><span class="ratio pass">3,13:1</span></div></div>
+      </div>
+    </article>
+
+    <article class="card diff">
+      <div class="diff-text">
+        <div class="diff-title"><h3>Priorità</h3><span class="chip spec">Già nella spec</span></div>
+        <p>Le barre restano, al posto delle frecce colorate di oggi: i colori sono già degli stati del contatto, quindi la priorità si legge dalla forma. Il prototipo ci aggiungeva il nome della fascia.</p>
+        <p><b>Nella spec</b> le barre sono da sole, come oggi è da sola la freccia. Il nome sarebbe un testo nuovo in ogni riga di Contatti, e cambierebbe il nome accessibile del controllo nel dettaglio.</p>
+      </div>
+      <div class="pair">
+        <div class="sample"><span class="sample-k">Scelto</span><div class="sample-body"><span class="pri"><span class="bars" aria-hidden="true"><i class="on"></i><i class="on"></i><i class="on"></i><i></i></span>Alta</span><span class="pri urgent"><span class="bars" aria-hidden="true"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></span>Urgente</span></div><div class="sample-v">barre e nome</div></div>
+        <div class="sample"><span class="sample-k">Consigliato</span><div class="sample-body"><span class="pri" role="img" aria-label="Priorità alta"><span class="bars"><i class="on"></i><i class="on"></i><i class="on"></i><i></i></span></span><span class="pri urgent" role="img" aria-label="Priorità urgente"><span class="bars"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></span></span></div><div class="sample-v">solo barre</div></div>
+      </div>
+    </article>
+
+    <article class="card diff">
+      <div class="diff-text">
+        <div class="diff-title"><h3>Toast</h3><span class="chip spec">Già nella spec</span></div>
+        <p>Nel prototipo il toast è bianco con un'icona colorata, e il colore sta tutto nell'icona. I toast di oggi non hanno un'icona.</p>
+        <p><b>Nella spec</b> il colore passa al fondo, con le stesse terne <code>*-soft</code> degli avvisi: il testo verde scuro sta a 7,06:1. Aggiungere l'icona sarebbe un contenuto nuovo.</p>
+      </div>
+      <div class="pair">
+        <div class="sample"><span class="sample-k">Scelto</span><div class="variant-like" data-v="proto"><div class="toast mini-toast" style="background: var(--card); border-color: var(--border)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg><div><b>Contatto aggiornato</b><p style="color: var(--muted-fg)">Marco Rossi ora è in stato App.to.</p></div></div></div></div>
+        <div class="sample"><span class="sample-k">Consigliato</span><div class="toast mini-toast" style="background: var(--success-soft); border-color: var(--success-soft-border); color: var(--success-soft-fg)"><div><b>Contatto aggiornato</b><p>Marco Rossi ora è in stato App.to.</p></div></div></div>
+      </div>
+    </article>
+
+    <article class="card diff">
+      <div class="diff-text">
+        <div class="diff-title"><h3>Scadenza di oggi</h3><span class="chip spec">Già nella spec</span></div>
+        <p>Nella colonna Alert di Contatti, "Oggi" nel prototipo è nero con l'icona indaco, il colore dei link e della selezione: dal resto della riga si stacca solo per il peso.</p>
+        <p><b>Nella spec</b> resta ambra, come oggi nell'app (<code>text-amber-800</code>), con il testo ambra dei badge a 6,98:1. "Scaduto" resta rosso in tutti e due.</p>
+      </div>
+      <div class="pair">
+        <div class="sample"><span class="sample-k">Scelto</span><div class="sample-body"><span class="due">29/10/2026<span class="due-flag" style="color: var(--fg)"><svg viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Oggi</span></span></div><div class="sample-v"><code>foreground</code> e icona <code>primary</code></div></div>
+        <div class="sample"><span class="sample-k">Consigliato</span><div class="sample-body"><span class="due">29/10/2026<span class="due-flag" style="color: var(--amber-fg)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Oggi</span></span></div><div class="sample-v"><code>tag-amber-text #824d00</code><span class="ratio pass">6,98:1</span></div></div>
+      </div>
+    </article>
+  </div>
+
+  <p class="foot">Le righe, gli stati, le sedi e gli importi sono esempi. I valori dei colori sono quelli dell'appendice A della spec; lo switch spento a destra è la decisione della domanda 2.</p>
+</div>
+
+<template id="scene-tpl">
+  <div class="card">
+    <div class="panel-head" style="padding: 12px 14px 10px"><h3>Contatti</h3><span>coda di oggi, 3 di 18</span></div>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Nome e cognome</th><th>Stato</th><th>Priorità</th><th>Alert</th></tr></thead>
+        <tbody>
+          <tr><td class="cust">Marco Rossi</td><td><span class="badge t-blue">Chiamare</span></td>
+            <td><span class="pri" role="img" aria-label="Priorità alta" data-diff><span class="bars"><i class="on"></i><i class="on"></i><i class="on"></i><i></i></span><span class="pri-label" aria-hidden="true">Alta</span></span></td>
+            <td><span class="due">29/10/2026<span class="due-flag today" data-diff><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Oggi</span></span></td></tr>
+          <tr><td class="cust">Giulia Bianchi</td><td><span class="badge t-amber">Richiamare</span></td>
+            <td><span class="pri urgent" role="img" aria-label="Priorità urgente" data-diff><span class="bars"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></span><span class="pri-label" aria-hidden="true">Urgente</span></span></td>
+            <td><span class="due">27/10/2026<span class="due-flag late"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4M12 17h.01"/></svg>Scaduto</span></span></td></tr>
+          <tr><td class="cust">Paolo Greco</td><td><span class="badge t-magenta">Follow-up</span></td>
+            <td><span class="pri" role="img" aria-label="Priorità bassa" data-diff><span class="bars"><i class="on"></i><i></i><i></i><i></i></span><span class="pri-label" aria-hidden="true">Bassa</span></span></td>
+            <td><span class="due">04/11/2026</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="scene-row">
+    <div style="display:grid; gap:10px; align-content:start; min-width:0">
+      <div class="card panel">
+        <div class="panel-head"><h3>Preferenze</h3></div>
+        <div><label class="label" data-for="name">Nome e cognome</label><input class="input" data-id="name" value="Sara Rinaldi"></div>
+        <div class="opt"><input type="checkbox" class="check" data-id="mine"><label data-for="mine">Solo i miei contatti</label></div>
+        <div class="opt"><button type="button" class="switch" role="switch" aria-checked="true" data-label="sw1"></button><span data-lid="sw1">Notifiche degli alert</span></div>
+        <div class="opt"><button type="button" class="switch" role="switch" aria-checked="false" data-label="sw2" data-diff></button><span data-lid="sw2">Riepilogo via email</span></div>
+      </div>
+      <div class="toast" role="presentation" data-diff><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg><div><b>Contatto aggiornato</b><p>Marco Rossi ora è in stato App.to.</p></div></div>
+    </div>
+    <div class="card panel">
+      <div class="panel-head"><h3>Finanziato per sede</h3><span>ottobre</span></div>
+      <div class="donut-wrap">
+        <svg class="donut" viewBox="0 0 42 42" role="img" aria-label="Finanziato per sede: Milano 412, Roma 318, Torino 196, Napoli 152, Bologna 121, Firenze 85 mila euro" data-donut></svg>
+        <ul class="legend" data-legend></ul>
+      </div>
+      <div class="ring-row">
+        <svg class="ring" viewBox="0 0 42 42" aria-hidden="true" data-diff><circle cx="21" cy="21" r="15.915" fill="none" stroke="var(--chart-soft)" stroke-width="5"/><circle cx="21" cy="21" r="15.915" fill="none" stroke="var(--amber-dot)" stroke-width="5" stroke-linecap="round" stroke-dasharray="38 62" stroke-dashoffset="25"/></svg>
+        <div><b>38%</b><span>pratiche liquidate sull'obiettivo del mese</span></div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script>
+(() => {
+  const SEDI = [["Milano", 412, "var(--blue-dot)"], ["Roma", 318, "var(--orange-dot)"], ["Torino", 196, "var(--indigo-dot)"], ["Napoli", 152, "var(--teal-dot)"], ["Bologna", 121, "var(--magenta-dot)"], ["Firenze", 85, "var(--amber-dot)"]];
+  const total = SEDI.reduce((a, s) => a + s[1], 0);
+  const eur = (k) => (k * 1000).toLocaleString("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
+  const tpl = document.getElementById("scene-tpl");
+
+  document.querySelectorAll(".variant").forEach((variant) => {
+    const v = variant.dataset.v;
+    const scene = variant.querySelector("[data-scene]");
+    scene.appendChild(tpl.content.cloneNode(true));
+
+    // ids unici per variante, così etichette e campi restano collegati
+    scene.querySelectorAll("[data-id]").forEach((el) => { el.id = v + "-" + el.dataset.id; });
+    scene.querySelectorAll("[data-for]").forEach((el) => { el.htmlFor = v + "-" + el.dataset.for; });
+    scene.querySelectorAll("[data-lid]").forEach((el) => { el.id = v + "-" + el.dataset.lid; });
+    scene.querySelectorAll("[data-label]").forEach((el) => { el.setAttribute("aria-labelledby", v + "-" + el.dataset.label); });
+
+    let acc = 0;
+    const segs = SEDI.map(([name, val, color]) => {
+      const pct = (val / total) * 100, off = 25 - acc; acc += pct;
+      const len = Math.max(pct - 0.8, 0.3);
+      return `<circle cx="21" cy="21" r="15.915" fill="none" stroke="${color}" stroke-width="5.5" stroke-dasharray="${len} ${100 - len}" stroke-dashoffset="${off}"/>`;
+    }).join("");
+    scene.querySelector("[data-donut]").innerHTML = `<circle cx="21" cy="21" r="15.915" fill="none" stroke="var(--muted)" stroke-width="5.5"/>${segs}<text x="21" y="21.2" text-anchor="middle" font-size="6.4" font-weight="650">1,28</text><text class="sub" x="21" y="26.4" text-anchor="middle" font-size="3.3">mln €</text>`;
+    scene.querySelector("[data-legend]").innerHTML = SEDI.map(([name, val, color]) =>
+      `<li${name === "Firenze" ? " data-diff" : ""}><i style="--dot:${color}"></i><span>${name}</span><em>${eur(val)}</em></li>`).join("");
+  });
+
+  // lo switch si accende e si spegne in tutte e due le scene e nei campioni
+  document.addEventListener("click", (e) => {
+    const sw = e.target.closest('[role="switch"]');
+    if (sw) sw.setAttribute("aria-checked", sw.getAttribute("aria-checked") === "true" ? "false" : "true");
+  });
+
+  const stage = document.getElementById("stage");
+  document.querySelectorAll('input[name="view"]').forEach((r) => r.addEventListener("change", () => { stage.dataset.view = r.value; }));
+  document.getElementById("mark").addEventListener("change", (e) => stage.classList.toggle("mark", e.target.checked));
+})();
+</script>

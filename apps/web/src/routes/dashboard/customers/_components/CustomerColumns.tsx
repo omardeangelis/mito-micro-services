@@ -32,7 +32,7 @@ export const CustomerColumns: ColumnDef<CustomerColumnSelectedProps>[] = [
       return (
         <div
           className={cn(
-            "flex h-12 items-center",
+            "h-7.5 flex items-center",
             table.getFilteredSelectedRowModel().rows.length ? "w-40" : "w-12"
           )}
         >
@@ -62,15 +62,17 @@ export const CustomerColumns: ColumnDef<CustomerColumnSelectedProps>[] = [
                 Edit
               </Button>
               <div>
-                <p className="text-xxs font-bold text-gray-600">Selezionati</p>
+                <p className="text-xxs font-bold text-muted-foreground">
+                  Selezionati
+                </p>
                 <p className="flex items-center gap-1 text-xxs">
                   <span
                     className={cn(
                       "font-bold",
                       table.getFilteredSelectedRowModel().rows.length ===
                         table.getFilteredRowModel().rows.length
-                        ? "text-green-500"
-                        : "text-gray-500"
+                        ? "text-success-soft-foreground"
+                        : "text-muted-foreground"
                     )}
                   >
                     {table.getFilteredSelectedRowModel().rows.length}
@@ -88,7 +90,7 @@ export const CustomerColumns: ColumnDef<CustomerColumnSelectedProps>[] = [
     },
     cell: ({ row }) => (
       <div
-        className="flex h-12 w-12 items-center"
+        className="h-7.5 flex w-12 items-center"
         onClick={(e) => {
           e.stopPropagation()
         }}
@@ -276,7 +278,7 @@ export const CustomerColumns: ColumnDef<CustomerColumnSelectedProps>[] = [
     accessorKey: "operatore",
     cell: (props) => (
       <div className="flex items-center justify-center">
-        <Avatar className="flex items-center justify-center bg-blue-100">
+        <Avatar className="bg-tag-neutral-bg text-tag-neutral-text size-7.5 flex items-center justify-center">
           {props.row.original.operatore?.name?.at(0)}{" "}
           {props.row.original.operatore?.surname?.at(0)}
         </Avatar>

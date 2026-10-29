@@ -20,8 +20,8 @@ export function CustomerPraticaSection(props: CustomerPraticaSectionProps) {
     return <Skeleton className="h-56 w-full rounded-md" />
   if (pratica.length === 0)
     return (
-      <div className="mt-8 flex items-center justify-between rounded-md border bg-white p-4">
-        <p className="text-gray-500">
+      <div className="rounded-card mt-8 flex items-center justify-between border border-border bg-card p-4">
+        <p className="text-muted-foreground">
           Il Cliente non ha ancora nessuna pratica
         </p>
         <CreatePraticaTooltipButton disabled={!canAddPractice} id={id}>
@@ -30,9 +30,9 @@ export function CustomerPraticaSection(props: CustomerPraticaSectionProps) {
       </div>
     )
   return (
-    <div className="mt-8 space-y-4 rounded-md border bg-white p-4">
+    <div className="rounded-card mt-8 space-y-4 border border-border bg-card p-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-medium">Pratiche Cliente</h2>
+        <h2 className="text-lg">Pratiche Cliente</h2>
         <CreatePraticaTooltipButton disabled={!canAddPractice} id={id}>
           Aggiungi Pratica
         </CreatePraticaTooltipButton>

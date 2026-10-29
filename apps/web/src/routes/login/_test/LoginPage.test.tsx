@@ -37,11 +37,16 @@ describe("pagina di login", () => {
     expect(screen.getByRole("alert")).toHaveTextContent("Accesso non riuscito")
   })
 
-  it("senza errore non mostra avvisi, solo Accedi", () => {
+  it("senza errore non mostra avvisi, solo Accedi con Microsoft", () => {
     open("/login")
 
     expect(screen.queryByRole("alert")).toBeNull()
-    expect(screen.getByRole("button", { name: "Accedi" })).toBeInTheDocument()
+    expect(
+      screen.getByRole("button", { name: "Accedi con Microsoft" })
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole("button", { name: "Entra come admin" })
+    ).toBeNull()
   })
 
   it("senza VITE_AUTH_TEST_LOGIN non c'è il campo email (OQ6)", () => {
@@ -55,6 +60,19 @@ describe("pagina di login", () => {
     open("/login")
 
     expect(screen.getByLabelText("Email")).toBeInTheDocument()
+  })
+
+  it("con il login di prova, in vite dev, offre l'accesso rapido", () => {
+    env.VITE_AUTH_TEST_LOGIN = "true"
+    open("/login")
+
+    // vitest runs with import.meta.env.DEV, as `vite dev`
+    expect(
+      screen.getByRole("button", { name: "Entra come admin" })
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole("button", { name: "Entra come operatore" })
+    ).toBeInTheDocument()
   })
 
   it("con una sessione manda alla dashboard", async () => {

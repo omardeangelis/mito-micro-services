@@ -122,14 +122,14 @@ export function ContactPriorityControl({
           aria-busy={pending}
           aria-disabled={pending}
           data-contact-priority-trigger=""
-          className="h-8 justify-between gap-2 px-2"
+          className="justify-between gap-2 px-2"
         >
           <PriorityBadge priority={priority ?? 0} />
           <span>{label}</span>
           {pending ? (
             <LoadingSpinner className="h-4 w-4 shrink-0 motion-reduce:animate-none" />
           ) : (
-            <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
+            <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
           )}
         </Button>
       </DropdownMenuPrimitive.Trigger>
@@ -139,7 +139,7 @@ export function ContactPriorityControl({
           sideOffset={4}
           // The look of the shared content, none of its animate-*, fade-*,
           // zoom-* and slide-* classes
-          className="z-50 min-w-[var(--radix-dropdown-menu-trigger-width)] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md"
+          className="shadow-pop z-50 min-w-[var(--radix-dropdown-menu-trigger-width)] overflow-hidden rounded-md border border-border bg-card p-1 text-foreground"
         >
           <DropdownMenuPrimitive.RadioGroup
             value={saved}
@@ -149,7 +149,7 @@ export function ContactPriorityControl({
               <DropdownMenuPrimitive.RadioItem
                 key={choice}
                 value={choice}
-                className="relative flex cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground focus:ring-2 focus:ring-inset focus:ring-ring data-[disabled]:pointer-events-none data-[disabled]:opacity-50"
+                className="relative flex cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm focus:bg-accent focus:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring data-[disabled]:pointer-events-none data-[disabled]:opacity-50"
               >
                 <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
                   <DropdownMenuPrimitive.ItemIndicator>

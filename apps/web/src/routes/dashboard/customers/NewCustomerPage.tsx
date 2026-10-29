@@ -5,7 +5,7 @@ export function Component() {
     <div className="dashbaord-layout">
       <div className="relative">
         <div className="dashboard-content">
-          <div className="rounded-lg border border-neutral-200 p-4">
+          <div className="rounded-lg border border-border p-4">
             <NewCustomerForm />
           </div>
         </div>

@@ -25,19 +25,21 @@ export function ExportCharts({ rows }: { rows: readonly OperatorCalls[] }) {
   return (
     <div className="grid gap-4 lg:grid-cols-2">
       <Card>
-        <h3 className="text-sm text-neutral-400">Risposte e non risposte</h3>
+        <h3 className="text-sm text-muted-foreground">
+          Risposte e non risposte
+        </h3>
         <BarChart
           className="mt-4 h-72"
           data={answeredSeries(rows)}
           index="Operatore"
           categories={["Risposte", "Non risposte"]}
-          colors={["emerald", "rose"]}
+          colors={["green", "orange"]}
           stack
           yAxisWidth={40}
         />
       </Card>
       <Card>
-        <h3 className="text-sm text-neutral-400">
+        <h3 className="text-sm text-muted-foreground">
           Appuntamenti fissati sulle risposte
         </h3>
         <ol className="mt-4 space-y-3" aria-label="Classifica appuntamenti">
@@ -49,9 +51,9 @@ export function ExportCharts({ rows }: { rows: readonly OperatorCalls[] }) {
                   <span>{operatorName(row)}</span>
                   <span className="tabular-nums">{percent.format(rate)}</span>
                 </div>
-                <div className="h-2 rounded bg-neutral-100">
+                <div className="h-2 rounded bg-muted">
                   <div
-                    className="h-2 rounded bg-blue-500"
+                    className="bg-tag-teal-dot h-2 rounded"
                     style={{ width: `${rate * 100}%` }}
                   />
                 </div>

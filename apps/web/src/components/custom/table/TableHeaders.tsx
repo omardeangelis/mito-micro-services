@@ -21,9 +21,14 @@ export function SortableHeader<T>({
   return (
     <Button
       variant="ghost"
+      // 26 px: with the 2 px outline at 2 px of AC13 it stays inside the
+      // 36 px header, whose table clips what overflows
+      size="sm"
       className={cn(
-        "w-full",
-        isActive ? "text-blue-500" : "text-gray-500",
+        // The header's 12 px and weight 550 (AC14); the sorted column is in
+        // foreground, the others in muted-foreground
+        "font-label w-full text-xs",
+        isActive ? "text-foreground" : "text-muted-foreground",
         className
       )}
       onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}

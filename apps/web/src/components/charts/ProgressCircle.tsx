@@ -1,6 +1,6 @@
 import { type ReactNode } from "react"
 import { cn } from "@/lib/utils"
-import { chartColor } from "./palette"
+import { chartColor, type ChartColor } from "./palette"
 
 const sizes = {
   xs: { radius: 15, strokeWidth: 3 },
@@ -14,12 +14,12 @@ type Props = {
   /** From 0 to 100; above 100 the circle is full */
   value: number
   size?: keyof typeof sizes
-  color?: string
+  color?: ChartColor
   className?: string
   children?: ReactNode
 }
 
-/** Tremor's ProgressCircle: the same sizes, the track at 20% of the color */
+/** Tremor's ProgressCircle: the same sizes, the track in chart-1-soft */
 export const ProgressCircle = ({
   value,
   size = "md",
@@ -31,7 +31,6 @@ export const ProgressCircle = ({
   const shown = Math.min(Math.max(value, 0), 100)
   const r = radius - strokeWidth / 2
   const circumference = 2 * Math.PI * r
-  const stroke = chartColor(color)
   return (
     <div
       className={cn(
@@ -52,10 +51,10 @@ export const ProgressCircle = ({
           cy={radius}
           strokeWidth={strokeWidth}
           fill="transparent"
-          stroke={stroke}
           strokeLinecap="round"
-          opacity={0.2}
+          className="stroke-chart-1-soft"
         />
+        {/* The color is a token, so it goes in the style (D11) */}
         <circle
           data-testid="progress"
           r={r}
@@ -65,8 +64,8 @@ export const ProgressCircle = ({
           strokeDasharray={`${circumference} ${circumference}`}
           strokeDashoffset={circumference - (shown / 100) * circumference}
           fill="transparent"
-          stroke={stroke}
           strokeLinecap="round"
+          style={{ stroke: chartColor(color) }}
           className="transition-all duration-300 ease-in-out"
         />
       </svg>

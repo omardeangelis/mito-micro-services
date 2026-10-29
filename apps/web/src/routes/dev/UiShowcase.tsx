@@ -1,5 +1,6 @@
 import { useState } from "react"
 import { useForm } from "react-hook-form"
+import { PlusIcon } from "lucide-react"
 import {
   Accordion,
   AccordionContent,
@@ -119,9 +120,126 @@ import {
   DonutChart,
   ProgressCircle,
 } from "@/components/charts"
+import { PriorityBadge } from "@/components/custom/badge/priority"
+import { TaskStatusBadge } from "@/components/custom/badge/TaskStatusBadge"
+import { importTone, productTone, type Tone } from "@/lib/tones"
+import { BlackListBadge } from "@/routes/dashboard/customers/_components/BlackListBadge"
+import { statusLabels } from "@/routes/dashboard/import/_components/format"
+import { type BlackListStatus } from "@mito/contract/customer"
+import { type ProductMapType } from "@mito/domain/constants/productMap"
+import { allStates } from "@mito/domain/contact/status"
+import { bandValue, priorityBands } from "@mito/domain/contact/priority"
 
-// Every component of src/components/ui, on React 19 and Tailwind 4: the test
-// page of 1.b.1, only in development (src/router.tsx)
+// Every token and component state of the design system, on React 19 and
+// Tailwind 4 (AC22): the page the browser check reads. Only in development
+// (src/router.tsx)
+
+const tones: Tone[] = [
+  "blue",
+  "indigo",
+  "magenta",
+  "orange",
+  "amber",
+  "teal",
+  "green",
+  "red",
+  "neutral",
+]
+
+// The tokens of appendix A, in its order; each is the CSS variable `--<name>`
+const tokens = [
+  "background",
+  "card",
+  "popover",
+  "foreground",
+  "card-foreground",
+  "popover-foreground",
+  "secondary-foreground",
+  "accent-foreground",
+  "muted",
+  "secondary",
+  "muted-foreground",
+  "subtle",
+  "accent",
+  "primary",
+  "primary-hover",
+  "primary-foreground",
+  "primary-soft",
+  "primary-soft-border",
+  "primary-soft-foreground",
+  "link",
+  "ring",
+  "ring-soft",
+  "success",
+  "success-soft",
+  "success-soft-border",
+  "success-soft-foreground",
+  "warning",
+  "warning-soft",
+  "warning-soft-border",
+  "warning-soft-foreground",
+  "destructive",
+  "destructive-hover",
+  "destructive-foreground",
+  "destructive-text",
+  "destructive-ring",
+  "destructive-soft",
+  "destructive-soft-border",
+  "destructive-soft-foreground",
+  "border",
+  "border-strong",
+  "input",
+  "input-hover",
+  "control",
+  "tooltip",
+  "tooltip-foreground",
+  "sidebar",
+  "sidebar-foreground",
+  "sidebar-muted",
+  "sidebar-accent",
+  "sidebar-primary",
+  "sidebar-primary-foreground",
+  "chart-1",
+  "chart-1-soft",
+  "overlay",
+]
+
+// Appendix B: four variables for each tone
+const toneTokens = tones.flatMap((tone) =>
+  ["bg", "border", "text", "dot"].map((part) => `tag-${tone}-${part}`)
+)
+
+const blacklistStates: BlackListStatus[] = [
+  "blacklisted",
+  "review",
+  "whitelisted",
+]
+
+const importStatuses = Object.keys(
+  statusLabels
+) as (keyof typeof statusLabels)[]
+
+const productTypes: (ProductMapType | undefined)[] = [
+  "Personale",
+  "auto",
+  "Finalizzato",
+  undefined,
+]
+
+const buttonVariants = [
+  "default",
+  "outline",
+  "secondary",
+  "ghost",
+  "destructive",
+  "link",
+  "disabled",
+] as const
+
+const buttonSizes = ["default", "xs", "sm", "lg"] as const
+const iconSizes = ["icon", "icon-xs", "icon-sm", "icon-lg"] as const
+
+const toastVariants = ["default", "success", "info", "destructive"] as const
 
 const Section = ({
   title,
@@ -130,10 +248,36 @@ const Section = ({
   title: string
   children: React.ReactNode
 }) => (
-  <section className="space-y-3 rounded-lg bg-card p-4">
+  <section className="rounded-card space-y-3 border bg-card p-4">
     <h2 className="text-sm font-semibold text-muted-foreground">{title}</h2>
     <div className="flex flex-wrap items-start gap-3">{children}</div>
   </section>
+)
+
+/** A sample with the name of what it shows under it */
+const Sample = ({
+  name,
+  children,
+}: {
+  name: string
+  children: React.ReactNode
+}) => (
+  <div className="flex flex-col items-start gap-1.5">
+    {children}
+    <span className="text-xs text-muted-foreground">{name}</span>
+  </div>
+)
+
+/** The swatch of a token: its fill and its name */
+const Swatch = ({ token }: { token: string }) => (
+  <div className="flex items-center gap-2">
+    <span
+      data-token={token}
+      className="rounded-control border-border-strong size-7 shrink-0 border"
+      style={{ background: `var(--${token})` }}
+    />
+    <span className="text-xs">{token}</span>
+  </div>
 )
 
 const ExampleForm = () => {
@@ -167,23 +311,62 @@ const ExampleForm = () => {
 
 export function UiShowcase() {
   const [date, setDate] = useState<Date | undefined>(new Date(2026, 9, 27))
+  // A toast of each variant can be open together; leaving the page restores it
 
   return (
     <main className="space-y-4 p-4">
       <h1 className="text-lg font-semibold">Componenti UI</h1>
 
+      <section className="rounded-card space-y-3 border bg-card p-4">
+        <h2 className="text-sm font-semibold text-muted-foreground">Token</h2>
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(13rem,1fr))] gap-x-4 gap-y-2">
+          {[...tokens, ...toneTokens].map((token) => (
+            <Swatch key={token} token={token} />
+          ))}
+        </div>
+      </section>
+
       <Section title="Button">
-        <Button>Default</Button>
-        <Button variant="secondary">Secondary</Button>
-        <Button variant="outline">Outline</Button>
-        <Button variant="destructive">Destructive</Button>
-        <Button variant="ghost">Ghost</Button>
-        <Button variant="link">Link</Button>
-        <Button size="sm">Small</Button>
-        <Button disabled>Disabled</Button>
+        {buttonVariants.map((variant) => (
+          <div
+            key={variant}
+            className="flex w-full flex-wrap items-center gap-3"
+          >
+            <span className="w-24 text-xs text-muted-foreground">
+              {variant}
+            </span>
+            {buttonSizes.map((size) => (
+              <Button key={size} variant={variant} size={size}>
+                {size}
+              </Button>
+            ))}
+            {iconSizes.map((size) => (
+              <Button
+                key={size}
+                variant={variant}
+                size={size}
+                aria-label={`${variant} ${size}`}
+              >
+                <PlusIcon />
+              </Button>
+            ))}
+          </div>
+        ))}
+        <div className="flex w-full flex-wrap items-center gap-3">
+          <span className="w-24 text-xs text-muted-foreground">attribute</span>
+          <Button disabled>Disabled attribute</Button>
+          <Button variant="outline" disabled>
+            Outline disabled
+          </Button>
+        </div>
       </Section>
 
       <Section title="Badge">
+        {tones.map((tone) => (
+          <Badge key={tone} tone={tone}>
+            {tone}
+          </Badge>
+        ))}
         <Badge>Default</Badge>
         <Badge variant="secondary">Secondary</Badge>
         <Badge variant="destructive">Destructive</Badge>
@@ -192,6 +375,35 @@ export function UiShowcase() {
         <Badge variant="outline">Outline</Badge>
         <Badge size="xs">xs</Badge>
         <Badge size="lg">lg</Badge>
+      </Section>
+
+      <Section title="Significati dei toni">
+        {allStates.map((state) => (
+          <TaskStatusBadge key={state} status={state} />
+        ))}
+        {blacklistStates.map((state) => (
+          <Sample key={state} name={state}>
+            <BlackListBadge state={state} />
+          </Sample>
+        ))}
+        {importStatuses.map((status) => (
+          <Badge key={status} tone={importTone(status)}>
+            {statusLabels[status]}
+          </Badge>
+        ))}
+        {productTypes.map((type) => (
+          <Sample key={type ?? "other"} name={`product ${type ?? "other"}`}>
+            <Badge tone={productTone(type)}>{type ?? "Altro"}</Badge>
+          </Sample>
+        ))}
+      </Section>
+
+      <Section title="Priorità">
+        {priorityBands.map((band) => (
+          <Sample key={band} name={band}>
+            <PriorityBadge priority={bandValue(band)} />
+          </Sample>
+        ))}
       </Section>
 
       <Section title="Alert">
@@ -230,28 +442,89 @@ export function UiShowcase() {
         </div>
       </Section>
 
-      <Section title="Input, Textarea, Label, Checkbox, Switch, Radio">
+      <Section title="Campi: i cinque stati di AC11">
         <div className="w-64 space-y-2">
-          <Label htmlFor="email">Email</Label>
-          <Input id="email" placeholder="nome@esempio.it" />
+          <Label htmlFor="field-rest">Riposo</Label>
+          <Input id="field-rest" placeholder="nome@esempio.it" />
+        </div>
+        <div className="w-64 space-y-2">
+          <Label htmlFor="field-hover">Hover (classe dello stato)</Label>
+          <Input
+            id="field-hover"
+            className="border-input-hover"
+            placeholder="nome@esempio.it"
+          />
+        </div>
+        <div className="w-64 space-y-2">
+          <Label htmlFor="field-focus">Focus (classi dello stato)</Label>
+          <Input
+            id="field-focus"
+            className="ring-ring-soft border-ring ring-[3px]"
+            placeholder="nome@esempio.it"
+          />
+        </div>
+        <div className="w-64 space-y-2">
+          <Label htmlFor="field-error">Errore (aria-invalid)</Label>
+          <Input
+            id="field-error"
+            aria-invalid="true"
+            defaultValue="non è una email"
+          />
+        </div>
+        <div className="w-64 space-y-2">
+          <Label htmlFor="field-disabled">Disabilitato</Label>
+          <Input id="field-disabled" disabled placeholder="nome@esempio.it" />
+        </div>
+        <div className="w-64 space-y-2">
+          <Label htmlFor="field-try">Da provare con mouse e tastiera</Label>
+          <Input id="field-try" placeholder="nome@esempio.it" />
         </div>
         <Textarea className="w-64" placeholder="Una nota" />
+        <Textarea className="w-64" aria-invalid="true" defaultValue="Errore" />
+        <Textarea className="w-64" disabled placeholder="Disabilitato" />
+      </Section>
+
+      <Section title="Checkbox, radio, switch">
         <div className="flex items-center gap-2">
-          <Checkbox id="check" defaultChecked />
-          <Label htmlFor="check">Checkbox</Label>
+          <Checkbox id="check-on" defaultChecked />
+          <Label htmlFor="check-on">Checkbox acceso</Label>
         </div>
         <div className="flex items-center gap-2">
-          <Switch id="switch" defaultChecked />
-          <Label htmlFor="switch">Switch</Label>
+          <Checkbox id="check-off" />
+          <Label htmlFor="check-off">Checkbox spento</Label>
+        </div>
+        <div className="flex items-center gap-2">
+          <Checkbox id="check-mixed" checked="indeterminate" />
+          <Label htmlFor="check-mixed">Checkbox misto</Label>
+        </div>
+        <div className="flex items-center gap-2">
+          <Checkbox id="check-disabled" disabled />
+          <Label htmlFor="check-disabled">Checkbox disabilitato</Label>
+        </div>
+        <div className="flex items-center gap-2">
+          <Switch id="switch-on" defaultChecked />
+          <Label htmlFor="switch-on">Switch acceso</Label>
+        </div>
+        <div className="flex items-center gap-2">
+          <Switch id="switch-off" />
+          <Label htmlFor="switch-off">Switch spento</Label>
+        </div>
+        <div className="flex items-center gap-2">
+          <Switch id="switch-disabled" disabled />
+          <Label htmlFor="switch-disabled">Switch disabilitato</Label>
         </div>
         <RadioGroup defaultValue="a">
           <div className="flex items-center gap-2">
-            <RadioGroupItem value="a" id="ra" />
-            <Label htmlFor="ra">Opzione A</Label>
+            <RadioGroupItem value="a" id="radio-on" />
+            <Label htmlFor="radio-on">Radio acceso</Label>
           </div>
           <div className="flex items-center gap-2">
-            <RadioGroupItem value="b" id="rb" />
-            <Label htmlFor="rb">Opzione B</Label>
+            <RadioGroupItem value="b" id="radio-off" />
+            <Label htmlFor="radio-off">Radio spento</Label>
+          </div>
+          <div className="flex items-center gap-2">
+            <RadioGroupItem value="c" id="radio-disabled" disabled />
+            <Label htmlFor="radio-disabled">Radio disabilitato</Label>
           </div>
         </RadioGroup>
       </Section>
@@ -356,14 +629,21 @@ export function UiShowcase() {
             <ContextMenuItem>Copia</ContextMenuItem>
           </ContextMenuContent>
         </ContextMenu>
-        <Button
-          variant="secondary"
-          onClick={() =>
-            toast({ title: "Salvato", description: "Il cliente è aggiornato" })
-          }
-        >
-          Toast
-        </Button>
+        {toastVariants.map((variant) => (
+          <Button
+            key={variant}
+            variant="secondary"
+            onClick={() =>
+              toast({
+                title: "Salvato",
+                description: "Il cliente è aggiornato",
+                variant,
+              })
+            }
+          >
+            Toast {variant}
+          </Button>
+        ))}
       </Section>
 
       <Section title="Command, Calendar">
@@ -408,8 +688,14 @@ export function UiShowcase() {
                 <Badge variant="success">Attivo</Badge>
               </TableCell>
             </TableRow>
-            <TableRow>
+            <TableRow data-state="selected">
               <TableCell>Giulia Bianchi</TableCell>
+              <TableCell>
+                <Badge variant="secondary">Nuovo</Badge>
+              </TableCell>
+            </TableRow>
+            <TableRow>
+              <TableCell>Luca Verdi</TableCell>
               <TableCell>
                 <Badge variant="secondary">Nuovo</Badge>
               </TableCell>
@@ -441,7 +727,7 @@ export function UiShowcase() {
       <Section title="Grafici (al posto di Tremor)">
         <ChartCard className="w-96 space-y-4">
           <div className="space-y-1">
-            <h3 className="text-sm text-neutral-500">
+            <h3 className="text-sm text-muted-foreground">
               Finanziato totale per sede
             </h3>
             <p className="text-2xl">€ 1,9 Mln</p>
@@ -457,14 +743,7 @@ export function UiShowcase() {
             ]}
             category="total"
             index="name"
-            colors={[
-              "blue-500",
-              "amber-600",
-              "emerald-600",
-              "violet-500",
-              "rose-500",
-              "gray-500",
-            ]}
+            colors={["blue", "orange", "indigo", "teal", "magenta", "neutral"]}
             valueFormatter={(n) => `€ ${n}`}
             className="h-32 w-32"
           />
@@ -472,28 +751,26 @@ export function UiShowcase() {
         <ChartCard className="w-96 space-y-8">
           <div className="flex items-start justify-between gap-2">
             <div className="space-y-1">
-              <h3 className="text-sm text-neutral-500">Finanziato nel mese</h3>
+              <h3 className="text-sm text-muted-foreground">
+                Finanziato nel mese
+              </h3>
               <p className="text-2xl">€ 320.000</p>
             </div>
-            <BadgeDelta
-              size="md"
-              deltaType="increase"
-              className="text-emerald-700"
-            >
-              18%
-            </BadgeDelta>
+            <BadgeDelta deltaType="increase">18%</BadgeDelta>
           </div>
           <DeltaBar value={18} />
           <DeltaBar value={-42} />
         </ChartCard>
         <ChartCard className="flex w-72 items-center gap-5">
           <ProgressCircle value={75} size="xl" color="blue">
-            <span className="text-xs font-medium text-slate-700">75%</span>
+            <span className="text-xs font-medium text-foreground">75%</span>
           </ProgressCircle>
           <p className="text-sm font-medium">15/20 (75%)</p>
         </ChartCard>
         <ChartCard className="w-[36rem]">
-          <h3 className="text-sm text-neutral-400">Risposte e non risposte</h3>
+          <h3 className="text-sm text-muted-foreground">
+            Risposte e non risposte
+          </h3>
           <BarChart
             className="mt-4 h-72"
             data={[
@@ -503,7 +780,7 @@ export function UiShowcase() {
             ]}
             index="Operatore"
             categories={["Risposte", "Non risposte"]}
-            colors={["emerald", "rose"]}
+            colors={["green", "orange"]}
             stack
             yAxisWidth={40}
           />

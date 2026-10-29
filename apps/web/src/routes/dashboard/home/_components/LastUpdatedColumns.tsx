@@ -6,10 +6,10 @@ import {
   type ProductMapKey,
   getAllProductLabels,
   getProductLabel,
-  getLabelColorByProductType,
   getProductType,
 } from "@mito/domain/constants/productMap"
 import { Badge } from "@/components/ui/badge"
+import { productTone } from "@/lib/tones"
 import { SortableHeader } from "@/components/custom/table/TableHeaders"
 import {
   DropDownCilpBoard,
@@ -44,10 +44,7 @@ export const LastUpdatedPracticesColumns: ColumnDef<PracticeListRow>[] = [
       if (!product) return null
       return (
         <div className="text-xs capitalize">
-          <Badge
-            variant="outline"
-            className={getLabelColorByProductType(getProductType(product)!)}
-          >
+          <Badge tone={productTone(getProductType(product))}>
             {getProductLabel(product)?.toLowerCase()}
           </Badge>
         </div>

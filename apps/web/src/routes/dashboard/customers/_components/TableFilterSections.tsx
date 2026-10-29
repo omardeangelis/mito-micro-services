@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useMemo } from "react"
+import React, {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+} from "react"
 import { Form, FormField, FormItem } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { useForm } from "react-hook-form"
@@ -180,8 +186,30 @@ export function TableFilterSections<TData>({ allColumns }: Props<TData>) {
     return { searchClasses, filterClasses }
   }, [filterOption])
 
+  // The bar is sticky over the list, and its height changes: a row of chips
+  // under it for each active filter or search. The page reads it to stop the
+  // scroll to a focused control below the bar (WCAG 2.4.11)
+  const barRef = useRef<HTMLDivElement>(null)
+  useLayoutEffect(() => {
+    const bar = barRef.current
+    const layout = bar?.closest<HTMLElement>(".dashbaord-layout")
+    if (!bar || !layout) return
+    const write = () =>
+      layout.style.setProperty("--filters-height", `${bar.offsetHeight}px`)
+    write()
+    const observer = new ResizeObserver(write)
+    observer.observe(bar)
+    return () => {
+      observer.disconnect()
+      layout.style.removeProperty("--filters-height")
+    }
+  }, [])
+
   return (
-    <div className="sticky left-0 top-0 z-10 flex w-full flex-col gap-2 border-b border-neutral-200 bg-card p-4">
+    <div
+      ref={barRef}
+      className="sticky left-0 top-0 z-10 flex w-full flex-col gap-2 border-b border-border bg-card p-4"
+    >
       <div className="flex w-full items-center gap-2">
         <ToggleGroupDemo />
         <div className={filterClasses.searchClasses}>

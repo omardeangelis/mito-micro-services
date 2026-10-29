@@ -180,11 +180,7 @@ export function CustomerHandoverDialog({
         <div className="flex flex-col gap-2">
           <Label htmlFor="handover-operator">Nuovo operatore</Label>
           <Select value={selectedId} onValueChange={setSelectedId}>
-            <SelectTrigger
-              id="handover-operator"
-              ref={triggerRef}
-              className="bg-white"
-            >
+            <SelectTrigger id="handover-operator" ref={triggerRef}>
               <SelectValue placeholder="Seleziona un operatore" />
             </SelectTrigger>
             <SelectContent>

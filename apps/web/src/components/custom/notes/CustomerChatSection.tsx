@@ -46,7 +46,7 @@ export function CustomerChatSection({ customerId }: { customerId: string }) {
       {chat ? (
         <CollassableSection defaultValue={["item-1"]}>
           <CustomerChat
-            className="bg-white"
+            className="bg-card"
             customerId={customerId}
             chatId={chat.id}
             messages={chat.messages}

@@ -69,7 +69,7 @@ export function MultiSelectFilter<T extends string | number>({
           variant="outline"
           aria-label={name}
           // The look of the dropdowns of Clienti
-          className="justify-between border-input bg-background px-3 font-normal"
+          className="justify-between border-input px-3 font-normal"
         >
           {label}
           {count > 0 ? (
@@ -77,7 +77,10 @@ export function MultiSelectFilter<T extends string | number>({
               {count}
             </span>
           ) : null}
-          <ChevronDown className="ml-2 h-4 w-4 opacity-50" aria-hidden />
+          <ChevronDown
+            className="ml-2 h-4 w-4 text-muted-foreground"
+            aria-hidden
+          />
         </Button>
       </PopoverTrigger>
       <PopoverContent align="start">

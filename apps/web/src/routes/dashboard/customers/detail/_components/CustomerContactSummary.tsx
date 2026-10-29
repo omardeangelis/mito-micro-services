@@ -48,9 +48,9 @@ export const CustomerContactSummary = (props: CustomerContactSummaryProps) => {
   const priority = contact.priority ?? 0
 
   return (
-    <div className="mt-8 rounded-md border bg-white p-4">
+    <div className="rounded-card mt-8 border border-border bg-card p-4">
       <div className="mb-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-        <h2 className="text-lg font-medium">Stato del cliente</h2>
+        <h2 className="text-lg">Stato del cliente</h2>
         <Link
           to={detailHref(contact.id, customerContactsState(props.customerId))}
           data-contact-manage-link=""
@@ -65,7 +65,7 @@ export const CustomerContactSummary = (props: CustomerContactSummaryProps) => {
         </Field>
         <Field label="Operatore">
           {contact.operator === null ? (
-            <span className="text-neutral-600">Non assegnato</span>
+            <span className="text-muted-foreground">Non assegnato</span>
           ) : (
             operatorDisplayName(contact.operator)
           )}
@@ -76,7 +76,7 @@ export const CustomerContactSummary = (props: CustomerContactSummaryProps) => {
         </Field>
         <Field label="Prossimo alert">
           {alert === null ? (
-            <span className="text-neutral-600">Nessun alert</span>
+            <span className="text-muted-foreground">Nessun alert</span>
           ) : (
             formatDateAsDMY(alert.deadline)
           )}

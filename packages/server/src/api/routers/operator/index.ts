@@ -4,6 +4,7 @@ import {
   getDeactivationImpact,
   getOperatorById,
   getOperatorsForDeactivation,
+  getTeam,
   getUserOperator,
   getUserPublicOperator,
 } from "./GET/index"
@@ -19,6 +20,7 @@ export const operatorRouter = createTRPCRouter({
   getDeactivationImpact,
   getOperatorById,
   getOperatorsForDeactivation,
+  getTeam,
   getUserOperator,
   getUserPublicOperator,
   updateOperatorInfo,

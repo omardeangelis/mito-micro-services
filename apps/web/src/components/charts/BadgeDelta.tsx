@@ -29,45 +29,32 @@ const Arrow = ({
   </svg>
 )
 
-// Tremor: the 500 at 10% on the fill and at 20% on the ring, the text in 600
+// Appendix B: the soft fill and text of the change. Appendix C: 20 px high,
+// the text at 11.5 px, weight 600
 const colors: Record<DeltaType, string> = {
-  increase: "bg-[#10b981]/10 text-[#059669] ring-[#10b981]/20",
-  decrease: "bg-[#ef4444]/10 text-[#dc2626] ring-[#ef4444]/20",
-  unchanged: "bg-[#f97316]/10 text-[#ea580c] ring-[#f97316]/20",
+  increase: "bg-success-soft text-success-soft-foreground",
+  decrease: "bg-destructive-soft text-destructive-soft-foreground",
+  unchanged: "bg-muted text-muted-foreground",
 }
-
-const sizes = {
-  xs: "px-2 py-0.5 text-xs",
-  sm: "px-2.5 py-0.5 text-sm",
-  md: "px-3 py-0.5 text-base",
-  lg: "px-3.5 py-0.5 text-lg",
-  xl: "px-4 py-1 text-xl",
-} as const
 
 /** Tremor's BadgeDelta with text: an arrow and the change */
 export const BadgeDelta = ({
   deltaType = "increase",
-  size = "sm",
   className,
   children,
 }: {
   deltaType?: DeltaType
-  size?: keyof typeof sizes
   className?: string
   children?: ReactNode
 }) => (
   <span
     className={cn(
-      "inline-flex w-max shrink-0 cursor-default items-center justify-center rounded-md ring-1 ring-inset",
+      "inline-flex h-5 w-max shrink-0 cursor-default items-center justify-center gap-1 rounded-full px-[7px] text-[11.5px] font-semibold tabular-nums",
       colors[deltaType],
-      sizes[size],
       className
     )}
   >
-    <Arrow
-      type={deltaType}
-      className={cn("shrink-0", children ? "-ml-1 mr-1.5 h-4 w-4" : "h-4 w-4")}
-    />
+    <Arrow type={deltaType} className="size-3 shrink-0" />
     {children ? <span className="whitespace-nowrap">{children}</span> : null}
   </span>
 )

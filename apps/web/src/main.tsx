@@ -1,4 +1,4 @@
-import "@fontsource-variable/inter"
+import "@fontsource-variable/geist"
 import "./styles/globals.css"
 import "./env"
 

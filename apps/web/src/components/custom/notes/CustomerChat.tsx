@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button"
-import { Avatar } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Textarea } from "@/components/ui/textarea"
 import { AccordionContent, AccordionTrigger } from "@/components/ui/accordion"
 import {
@@ -380,7 +380,7 @@ export function CustomerChat({
 
   return (
     <section {...rest}>
-      <div className="rounded-md border border-neutral-200 p-4">
+      <div className="rounded-md border border-border p-4">
         <div className="flex w-full items-center justify-between">
           <div className="flex items-center gap-4">
             <h4 className="font-medium">Note</h4>
@@ -420,7 +420,7 @@ export function CustomerChat({
                         onDeleteFailed={handleDeleteFailed}
                       />
                       {index !== rows.length - 1 ? (
-                        <hr className="mb-2 border border-neutral-100" />
+                        <hr className="mb-2 border border-border" />
                       ) : null}
                     </Fragment>
                   ))}
@@ -444,7 +444,7 @@ export function CustomerChat({
                 <p
                   id={failedId}
                   role="alert"
-                  className="-mt-4 text-sm text-red-700"
+                  className="text-destructive-text -mt-4 text-sm"
                 >
                   Nota non inviata, riprova
                 </p>
@@ -515,8 +515,8 @@ export function CustomerNewChat({
   }
 
   return (
-    <section className={cn("bg-white shadow-sm", className)}>
-      <div className="rounded-md border border-neutral-200 p-8">
+    <section className={cn("bg-card shadow-card", className)}>
+      <div className="rounded-md border border-border p-8">
         <div className="flex items-center justify-between">
           <h4 className="font-medium">Inizia una nuova chat</h4>
           <Button
@@ -537,7 +537,7 @@ export function CustomerNewChat({
           <p
             id={failedId}
             role="alert"
-            className="mt-4 text-right text-sm text-red-700"
+            className="text-destructive-text mt-4 text-right text-sm"
           >
             Chat non avviata, riprova
           </p>
@@ -598,12 +598,14 @@ const CustomerNote = memo(function CustomerNote({
       aria-busy={sending || deleting}
       className="group relative flex w-full items-center gap-4 py-4"
     >
-      <Avatar className="bg-neutral-400" />
+      <Avatar>
+        <AvatarFallback />
+      </Avatar>
       <div className="flex flex-col justify-between">
         {/* min-h-7: the line keeps its height when the name arrives */}
         <div className="flex min-h-7 w-full items-center gap-4">
           {data ? (
-            <h6 className="text-lg font-medium">
+            <h6 className="font-heading text-lg">
               {data.name} {data.surname}
             </h6>
           ) : null}

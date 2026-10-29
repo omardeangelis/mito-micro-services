@@ -137,3 +137,11 @@
 - [Schema error construction diff](feedback_schema_error_construction_differential.md) — one probe on both versions; equivalent mutants; numeric strings
 - [Load timeouts, rerun failed files](feedback_load_timeouts_rerun_failed_files.md) — load avg 100 gives hook timeouts; rerun failed files with --maxWorkers=4 --hookTimeout
 - [Effect.fn span clock reads](feedback_effect_fn_span_clock_reads.md) — spans consume scripted test clocks (nanos); label reads base vs head + mutant
+- [Design-system spec+plan checks](feedback_design_system_spec_checks.md) — prototype tokens, size-class test selectors, twMerge theme keys, page wrappers, engines
+- [Root tsc and untracked JS](feedback_root_tsc_untracked_js.md) — root tsc checks every **/*.js; untracked brain script fails the lint gate
+- [Lockfile re-resolve baseline](feedback_lockfile_reresolve_baseline.md) — frozen check is specifier-only; diff re-resolves of HEAD and working tree
+- [Transition-list swap probes](feedback_transition_list_swap_probes.md) — token motion diff, focusin getAnimations log, outline-color flash, pause+scrub, wrong-selector charters
+- [Color gate detector probes](feedback_color_gate_detector_probes.md) — Tailwind compile(), legacy-tree recall, comment heuristics, mutant battery, ESLint lintText
+- [Scroll-model parity probes](feedback_scroll_model_parity_probes.md) — emulate old chain (display:contents + height auto), Tab loops vs sticky bars, capture diff
+- [Token/meaning-map probes](feedback_token_meaning_map_probes.md) — candidatesToCss sweep, spec-table diff, twMerge via strip-types, vitest related mutants; Appendix C tokens unpinned
+- [Restyle UI pass probes](feedback_restyle_ui_pass_probes.md) — focus scan needs transition:none; oklch breaks contrast probe; pnpm axe path; forms plugin removal

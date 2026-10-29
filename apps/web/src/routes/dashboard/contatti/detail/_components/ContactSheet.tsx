@@ -168,7 +168,7 @@ export function ContactSheet({ children }: { children: ReactNode }) {
         }}
       >
         <SheetContent
-          className="min-w-[80%] overflow-y-auto bg-neutral-100"
+          className="min-w-[80%] overflow-y-auto"
           aria-describedby={undefined}
           closeProps={{ "aria-label": "Chiudi", "aria-busy": closing }}
           // Radix would focus the first tabbable element
@@ -184,7 +184,7 @@ export function ContactSheet({ children }: { children: ReactNode }) {
             <SheetTitle
               ref={titleRef}
               tabIndex={-1}
-              className="text-2xl font-semibold outline-none"
+              className="font-heading text-title outline-none"
             >
               Dettaglio contatto
             </SheetTitle>
@@ -197,7 +197,7 @@ export function ContactSheet({ children }: { children: ReactNode }) {
               className={cn(
                 status === null
                   ? "sr-only"
-                  : "rounded-md border bg-white px-3 py-2 text-sm"
+                  : "rounded-md border bg-card px-3 py-2 text-sm"
               )}
             >
               {status === null ? null : <p key={status.key}>{status.text}</p>}

@@ -1,22 +1,17 @@
 import { useEffect, useMemo, useRef } from "react"
 import { type BranchTotal } from "@mito/contract/analytics"
 import { formatBigNumber } from "@mito/client/format"
-import { Card, chartColor, DonutChart } from "@/components/charts"
+import { Card, DonutChart } from "@/components/charts"
+import { type Tone, toneDot } from "@/lib/tones"
+import { cn } from "@/lib/utils"
 
-type Slice = { name: string; total: number; color: string }
+type Slice = { name: string; total: number; color: Tone }
 
 const valueFormatter = (number: number) => `€ ${formatBigNumber(number)}`
 
-// Distinti fra loro, e almeno 3:1 sul bianco
-const colors = [
-  "blue-500",
-  "amber-600",
-  "emerald-600",
-  "violet-500",
-  "rose-500",
-  "cyan-600",
-]
-const othersColor = "gray-500"
+// I punti dei toni, nell'ordine dell'appendice B di design-system-web
+const colors: Tone[] = ["blue", "orange", "indigo", "teal", "magenta", "amber"]
+const othersColor: Tone = "neutral"
 
 /** Una fetta per sede finché ce n'è un colore; oltre, le prime e "Altre". */
 const slicesOf = (data: readonly BranchTotal[]): Slice[] => {
@@ -65,8 +60,10 @@ export function DonutCard({ data }: { data: readonly BranchTotal[] }) {
   return (
     <Card className="w-full space-y-4">
       <div className="space-y-1">
-        <h2 className="text-sm text-neutral-500">Finanziato totale per sede</h2>
-        <p className="text-2xl">{valueFormatter(sum)}</p>
+        <h2 className="text-sm text-muted-foreground">
+          Finanziato totale per sede
+        </h2>
+        <p className="font-heading text-2xl">{valueFormatter(sum)}</p>
       </div>
       <div className="flex flex-wrap items-center gap-6">
         <div ref={chart} aria-hidden="true" className="shrink-0">
@@ -86,8 +83,10 @@ export function DonutCard({ data }: { data: readonly BranchTotal[] }) {
               <li key={slice.name} className="flex items-start gap-2">
                 <span
                   aria-hidden="true"
-                  className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full"
-                  style={{ backgroundColor: chartColor(slice.color) }}
+                  className={cn(
+                    "mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full",
+                    toneDot[slice.color]
+                  )}
                 />
                 {/* Va a capo: le sedi si distinguono spesso solo alla fine */}
                 <span className="min-w-0 flex-1 break-words">{slice.name}</span>

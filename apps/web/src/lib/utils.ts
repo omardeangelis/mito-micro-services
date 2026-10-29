@@ -1,10 +1,19 @@
 import { type ClassValue, clsx } from "clsx"
 import { extendTailwindMerge } from "tailwind-merge"
 
-// text-xxs is a font size of the theme (styles/globals.css): without it
-// tailwind-merge reads it as a color and drops the text color next to it
+// The sizes, weights, radii and shadows of the theme (styles/globals.css):
+// without them tailwind-merge reads text-xxs as a color, font-heading as a
+// family and shadow-card as a shadow color, so it drops a class it should
+// keep or keeps two classes of the same property
 const twMerge = extendTailwindMerge({
-  extend: { theme: { text: ["xxs"] } },
+  extend: {
+    theme: {
+      text: ["xxs", "title"],
+      "font-weight": ["label", "heading"],
+      radius: ["control", "card", "sheet", "nav", "check"],
+      shadow: ["card", "pop", "sidebar-active"],
+    },
+  },
 })
 
 /** The class names of a component, with the later Tailwind classes winning */

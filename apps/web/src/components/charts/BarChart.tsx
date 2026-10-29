@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/chart"
 import { cn } from "@/lib/utils"
 import { NoData } from "./NoData"
-import { chartColor } from "./palette"
+import { chartColor, type ChartColor } from "./palette"
 
 type Props<T extends Record<string, unknown>> = {
   data: T[]
@@ -22,8 +22,8 @@ type Props<T extends Record<string, unknown>> = {
   index: string
   /** The keys of the series, one bar (or one segment, with stack) each */
   categories: string[]
-  /** One color per category ("emerald", or "emerald-600") */
-  colors: string[]
+  /** One color per category: a tone, or chart-1 for a single series */
+  colors: ChartColor[]
   stack?: boolean
   yAxisWidth?: number
   valueFormatter?: (value: number) => string
@@ -31,11 +31,14 @@ type Props<T extends Record<string, unknown>> = {
   className?: string
 }
 
-const axisTick = { fill: "#6b7280", fontSize: 12 }
+// The colors are tokens: the fixed ones as classes, those of the series in
+// the style, never in an SVG attribute (D11). recharts gives both to the mark
+const axisTick = { className: "fill-muted-foreground", fontSize: 12 }
 
 /**
  * Tremor's BarChart, on recharts: horizontal grid lines, the axes without
- * lines, the legend on top, the tooltip with one row per series
+ * lines, the legend on top, the tooltip with one row per series. A single
+ * series has the track of each bar in chart-1-soft
  */
 export function BarChart<T extends Record<string, unknown>>({
   data,
@@ -49,7 +52,8 @@ export function BarChart<T extends Record<string, unknown>>({
   className,
 }: Props<T>) {
   const colorOf = (category: string) =>
-    chartColor(colors[categories.indexOf(category)] ?? "gray-500")
+    chartColor(colors[categories.indexOf(category)] ?? "neutral")
+  const single = categories.length === 1
   return (
     <div className={cn("h-80 w-full", className)}>
       {data.length === 0 ? (
@@ -81,7 +85,7 @@ export function BarChart<T extends Record<string, unknown>>({
             <Tooltip
               isAnimationActive={false}
               wrapperStyle={{ outline: "none" }}
-              cursor={{ fill: "#d1d5db", opacity: 0.15 }}
+              cursor={{ className: "fill-muted stroke-none" }}
               position={{ y: 0 }}
               content={({ active, payload, label }) =>
                 active && payload && payload.length > 0 ? (
@@ -113,7 +117,8 @@ export function BarChart<T extends Record<string, unknown>>({
                 dataKey={category}
                 name={category}
                 stackId={stack ? "a" : undefined}
-                fill={colorOf(category)}
+                style={{ fill: colorOf(category) }}
+                background={single ? { className: "fill-chart-1-soft" } : false}
                 isAnimationActive={false}
               />
             ))}

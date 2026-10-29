@@ -51,8 +51,8 @@ export const underReview = (
 })
 
 /**
- * A backend in memory for the profile: the current user (`me`), the
- * operators of the admin tab with their roles and deactivations, and the
+ * A backend in memory for the settings: the current user (`me`), the
+ * members of the team with their roles and deactivations, and the
  * customers of the blacklist. Each write is kept, in order, and changes what
  * the next read answers, as the backend does
  */
@@ -135,6 +135,17 @@ export function fakeProfile(
       handlers
         .handle("getAllUniqueOperators", () =>
           down(state.failingOperators, () => state.operators)
+        )
+        .handle("getTeam", () =>
+          down(state.failingOperators, () =>
+            state.operators.map(({ id, name, surname, role, userId }) => ({
+              id,
+              name,
+              surname,
+              role,
+              email: `${userId}@mito.test`,
+            }))
+          )
         )
         .handle("getOperatorById", unserved)
         .handle("updateOperatorsRole", ({ payload }) =>

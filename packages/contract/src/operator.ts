@@ -27,6 +27,15 @@ export const DeactivationImpact = Schema.Struct({
   practices: Schema.Number,
 })
 
+/** A member of the team, for the admin: the operator, its role and email */
+export const TeamMember = Schema.Struct({
+  id: Schema.Number,
+  name: Schema.NullOr(Schema.String),
+  surname: Schema.NullOr(Schema.String),
+  email: Schema.String,
+  role: Role,
+})
+
 /** What a deactivation moved */
 export const DeactivationResult = Schema.Struct({
   customersMoved: Schema.Number,
@@ -42,6 +51,7 @@ export const DeactivationResult = Schema.Struct({
  * | procedure                   | method and path                                |
  * | --------------------------- | ---------------------------------------------- |
  * | getAllUniqueOperators       | GET /operator                                  |
+ * | getTeam                     | GET /operator/team                             |
  * | getOperatorById             | GET /operator/:id                              |
  * | updateOperatorsRole         | POST /operator/bulk-update-role                |
  * | getDeactivationImpact       | GET /operator/:operatorId/deactivation         |
@@ -54,6 +64,12 @@ export class OperatorGroup extends HttpApiGroup.make("operator")
       // The operators whose user is not disabled
       success: Schema.Array(OperatorWithRole),
     })
+  )
+  .add(
+    HttpApiEndpoint.get("getTeam", "/operator/team", {
+      // The active operators with their email, by surname then name
+      success: Schema.Array(TeamMember),
+    }).middleware(AdminOnly)
   )
   .add(
     HttpApiEndpoint.get("getOperatorById", "/operator/:id", {

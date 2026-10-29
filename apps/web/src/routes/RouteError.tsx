@@ -21,7 +21,7 @@ export function RouteError() {
 export function ErrorFallback({ onRetry }: { onRetry: () => void }) {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-4">
-      <h2 className="text-lg font-semibold">
+      <h2 className="font-heading text-lg">
         C&apos;è stato un errore Temporaneo
       </h2>
       <Button onClick={onRetry}>Riprova</Button>

@@ -167,9 +167,9 @@ describe("ContactStateSelect", () => {
     await user.click(trigger())
 
     for (const option of screen.getAllByRole("menuitemradio")) {
-      expect(option.className).toContain("focus:ring-2")
-      expect(option.className).toContain("focus:ring-inset")
-      expect(option.className).toContain("focus:ring-ring")
+      expect(option.className).toContain("focus-visible:outline-2")
+      expect(option.className).toContain("focus-visible:outline-offset-2")
+      expect(option.className).toContain("focus-visible:outline-ring")
     }
   })
 

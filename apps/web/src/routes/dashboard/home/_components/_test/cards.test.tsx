@@ -33,19 +33,32 @@ beforeAll(() => {
   )
 })
 
-/** The hex of the colors of the progress circle (`chartColor`) */
-const hex = {
-  green: "#22c55e",
-  blue: "#3b82f6",
-  yellow: "#eab308",
-  red: "#ef4444",
+/** The token of the dot of a tone (appendix B of design-system-web) */
+const dot = (tone: string) => `var(--color-tag-${tone}-dot)`
+
+// The color of a mark: a property of its style or a fill-/stroke-/bg- class,
+// never an SVG attribute with var() (D11 of design-system-web)
+const paint = (el: Element, prop: "fill" | "stroke" | "background-color") => {
+  if (prop !== "background-color")
+    expect(el.getAttribute(prop) ?? "").not.toContain("var(")
+  const style = new RegExp(`(^|;)\\s*${prop}:\\s*([^;]+)`).exec(
+    el.getAttribute("style") ?? ""
+  )?.[2]
+  if (style !== undefined) return style.trim()
+  const prefix = prop === "background-color" ? "bg" : prop
+  const token = (el.getAttribute("class") ?? "")
+    .split(/\s+/)
+    .find((c) => c.startsWith(`${prefix}-`))
+  return token === undefined
+    ? el.getAttribute(prop)
+    : `var(--color-${token.slice(prefix.length + 1)})`
 }
 
 describe("CircleCard: il colore segue la percentuale mostrata (AC22)", () => {
   const renderCard = (done: number, todo: number) => {
     const { container } = render(<CircleCard done={done} todo={todo} />)
     return {
-      stroke: screen.getByTestId("progress").getAttribute("stroke"),
+      stroke: paint(screen.getByTestId("progress"), "stroke"),
       shown: container.querySelector(".text-xs")?.textContent,
     }
   }
@@ -53,8 +66,8 @@ describe("CircleCard: il colore segue la percentuale mostrata (AC22)", () => {
   it.each([
     { done: 0, todo: 0, shown: "0%", color: "red" },
     { done: 25, todo: 75, shown: "25%", color: "red" },
-    { done: 26, todo: 74, shown: "26%", color: "yellow" },
-    { done: 50, todo: 50, shown: "50%", color: "yellow" },
+    { done: 26, todo: 74, shown: "26%", color: "amber" },
+    { done: 50, todo: 50, shown: "50%", color: "amber" },
     { done: 51, todo: 49, shown: "51%", color: "blue" },
     { done: 76, todo: 24, shown: "76%", color: "green" },
     // 75,4% si mostra 75%: blu, non verde
@@ -64,7 +77,7 @@ describe("CircleCard: il colore segue la percentuale mostrata (AC22)", () => {
   ] as const)(
     "con $done completati e $todo da fare mostra $shown ed è $color",
     ({ done, todo, shown, color }) => {
-      expect(renderCard(done, todo)).toEqual({ stroke: hex[color], shown })
+      expect(renderCard(done, todo)).toEqual({ stroke: dot(color), shown })
     }
   )
 
@@ -265,7 +278,14 @@ describe("DonutCard: le fette", () => {
   })
 
   it("con 6 sedi le mostra tutte, per importo", () => {
-    render(<DonutCard data={sedi.filter((s) => s.data !== "Pisa")} />)
+    const { container } = render(
+      <DonutCard data={sedi.filter((s) => s.data !== "Pisa")} />
+    )
+    expect(
+      [...container.querySelectorAll(".recharts-pie-sector path")].map((path) =>
+        paint(path, "fill")
+      )
+    ).toEqual(["blue", "orange", "indigo", "teal", "magenta", "amber"].map(dot))
 
     expect(legend().map((row) => row?.split("€")[0])).toEqual([
       "Bari",
@@ -282,17 +302,15 @@ describe("DonutCard: le fette", () => {
 
     const slices = [
       ...container.querySelectorAll(".recharts-pie-sector path"),
-    ].map((path) => path.getAttribute("fill"))
+    ].map((path) => paint(path, "fill"))
     const dots = within(screen.getByRole("list"))
       .getAllByRole("listitem")
-      .map((item) => item.querySelector("span")!.style.backgroundColor)
-    expect(new Set(slices).size).toBe(6)
-    // jsdom reads a style in rgb: the hex of each slice, in rgb
-    const rgb = (color: string | null) =>
-      `rgb(${[1, 3, 5]
-        .map((i) => parseInt(color!.slice(i, i + 2), 16))
-        .join(", ")})`
-    expect(dots).toEqual(slices.map(rgb))
+      .map((item) => paint(item.querySelector("span")!, "background-color"))
+    // The named slices in the order of appendix B, then `Altre`
+    expect(slices).toEqual(
+      ["blue", "orange", "indigo", "teal", "magenta", "neutral"].map(dot)
+    )
+    expect(dots).toEqual(slices)
   })
 
   it("senza importi dice `Nessun importo nel periodo` e non c'è legenda", () => {

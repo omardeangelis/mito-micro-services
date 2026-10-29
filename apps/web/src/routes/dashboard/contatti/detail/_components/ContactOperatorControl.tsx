@@ -114,7 +114,7 @@ export function ContactOperatorControl({
         aria-label="Cambia operatore"
         aria-busy={pending}
         aria-disabled={pending}
-        className="h-9 w-full max-w-56"
+        className="w-full max-w-56"
       >
         {/* The name is given, not taken from the chosen item: an operator
             that isn't in the list can't be found there */}

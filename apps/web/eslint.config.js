@@ -89,6 +89,18 @@ export default tseslint.config(
         "error",
         { patterns: [...appImports, dbImports, transportImports] },
       ],
+      // The color of a product is its tone (spec design-system-web, D5). The
+      // name is banned wherever it appears, so an alias, a namespace, a
+      // dynamic or a relative import are caught as well
+      "no-restricted-syntax": [
+        "error",
+        {
+          // The name, and the string of a computed access (`map["…"]`)
+          selector:
+            ":matches(Identifier[name='getLabelColorByProductType'], Literal[value='getLabelColorByProductType'])",
+          message: "Color a product with productTone of @/lib/tones",
+        },
+      ],
     },
   },
   {

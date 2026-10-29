@@ -1,0 +1,1491 @@
+<title>Palette MITO</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Geist:wght@400;500;600;700&family=Hanken+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a control rail on the left, the MITO app rendered live with the chosen palette on the right; the rail stacks above it on narrow screens.
+   The chrome (--c-*) follows the viewer's theme; the app inside the frame (--m-*, --t-*) is set by the palette and stays light unless "Scuro" is chosen. */
+:root {
+  --c-bg: #f3f4f6;
+  --c-panel: #ffffff;
+  --c-ink: #16171a;
+  --c-muted: #5d6169;
+  --c-line: #e1e3e8;
+  --c-fill: #eceef1;
+  --c-hi: #16171a;
+  --c-good: #1d7a4b;
+  --c-good-bg: #e7f5ec;
+  --c-bad: #b42318;
+  --c-bad-bg: #fdecea;
+  --f-ui: "Hanken Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --c-bg: #111214; --c-panel: #1a1b1e; --c-ink: #ececee; --c-muted: #a2a5ac; --c-line: #2c2e33;
+    --c-fill: #23252a; --c-hi: #ececee; --c-good: #63cf95; --c-good-bg: #173325; --c-bad: #f98b80; --c-bad-bg: #3a1a17;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --c-bg: #111214; --c-panel: #1a1b1e; --c-ink: #ececee; --c-muted: #a2a5ac; --c-line: #2c2e33;
+  --c-fill: #23252a; --c-hi: #ececee; --c-good: #63cf95; --c-good-bg: #173325; --c-bad: #f98b80; --c-bad-bg: #3a1a17;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  background: var(--c-bg); color: var(--c-ink); font-family: var(--f-ui); font-size: 14px; line-height: 1.45;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 16px;
+}
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+.shell { display: grid; grid-template-columns: 336px minmax(0, 1fr); gap: 16px; align-items: start; max-width: 1680px; margin-inline: auto; }
+.panel {
+  position: sticky; top: calc(16px + env(safe-area-inset-top, 0px));
+  max-height: calc(100dvh - 32px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+  overflow: auto; background: var(--c-panel); border: 1px solid var(--c-line); border-radius: 14px;
+  padding: 18px 16px 20px; display: flex; flex-direction: column; gap: 22px;
+}
+.stage { min-width: 0; display: flex; flex-direction: column; gap: 12px; }
+@media (max-width: 1080px) {
+  .shell { grid-template-columns: minmax(0, 1fr); }
+  .panel { position: static; max-height: none; }
+}
+
+.p-head h1 { font-size: 21px; font-weight: 700; letter-spacing: -0.015em; margin: 0; text-wrap: balance; }
+.p-head p { margin: 6px 0 0; color: var(--c-muted); font-size: 13px; }
+.p-sec { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.p-sec > h2 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--c-muted); font-weight: 600; margin: 0; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.p-mod { text-transform: none; letter-spacing: 0; font-weight: 600; font-size: 11.5px; color: var(--c-ink); background: var(--c-fill); border-radius: 99px; padding: 1px 8px; }
+
+.presets { display: grid; gap: 8px; }
+.preset { position: relative; display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 12px; align-items: center; padding: 8px; border: 1px solid var(--c-line); border-radius: 12px; cursor: pointer; background: var(--c-panel); transition: border-color .15s; }
+.preset:hover { border-color: var(--c-muted); }
+.preset:has(input:checked) { border-color: var(--c-hi); box-shadow: 0 0 0 1px var(--c-hi); }
+.preset:has(input:focus-visible) { outline: 2px solid var(--c-hi); outline-offset: 2px; }
+.preset input { position: absolute; opacity: 0; pointer-events: none; }
+.p-name { font-weight: 650; font-size: 14px; display: block; }
+.p-mood { font-size: 12px; color: var(--c-muted); line-height: 1.35; display: block; margin-top: 2px; }
+.mini { height: 58px; border-radius: 7px; overflow: hidden; display: grid; grid-template-columns: 26px 1fr; border: 1px solid var(--c-line); }
+.mini-side { padding: 7px 4px; display: flex; flex-direction: column; gap: 4px; }
+.mini-side i { display: block; height: 5px; border-radius: 2px; }
+.mini-main { padding: 6px 6px 6px 7px; display: flex; flex-direction: column; gap: 5px; }
+.mini-line { height: 4px; border-radius: 2px; }
+.mini-tags { display: flex; gap: 3px; align-items: center; }
+.mini-tags i { height: 9px; width: 15px; border-radius: 5px; box-sizing: border-box; }
+.mini-tags i.dot { width: 7px; height: 7px; border-radius: 50%; }
+.mini-btn { margin-top: auto; align-self: flex-end; width: 28px; height: 10px; border-radius: 3px; }
+
+.p-why { font-size: 12.5px; line-height: 1.45; color: var(--c-muted); background: var(--c-fill); border-radius: 10px; padding: 10px 12px; display: grid; gap: 6px; }
+.p-why p { margin: 0; }
+.p-why b { color: var(--c-ink); font-weight: 600; }
+.p-note { margin: 0; font-size: 12.5px; color: var(--c-muted); line-height: 1.45; }
+.p-note b { color: var(--c-ink); font-weight: 600; }
+
+.ctl { border: 0; padding: 0; margin: 0; min-width: 0; display: grid; gap: 6px; }
+.ctl legend, .sl-head { font-size: 12.5px; font-weight: 600; padding: 0; display: flex; justify-content: space-between; width: 100%; }
+.sl-head output { font-family: var(--f-mono); font-weight: 500; font-size: 11.5px; color: var(--c-muted); }
+.p-head code, .p-css code { font-family: var(--f-mono); font-size: .9em; }
+.seg { position: relative; display: flex; background: var(--c-fill); border-radius: 9px; padding: 2px; gap: 2px; }
+.seg input { position: absolute; opacity: 0; width: 1px; height: 1px; pointer-events: none; }
+.seg label { flex: 1 1 0; min-width: 0; text-align: center; padding: 5px 4px; border-radius: 7px; font-size: 12.5px; cursor: pointer; color: var(--c-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: background-color .15s, color .15s; }
+.seg label:hover { color: var(--c-ink); }
+.seg input:checked + label { background: var(--c-panel); color: var(--c-ink); font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,.08), 0 0 0 1px var(--c-line); }
+.seg input:focus-visible + label { outline: 2px solid var(--c-hi); outline-offset: 1px; }
+.sliders, .ctls { display: grid; gap: 14px; }
+.sl { display: grid; gap: 4px; }
+input[type="range"] { -webkit-appearance: none; appearance: none; width: 100%; height: 22px; background: transparent; margin: 0; cursor: pointer; }
+input[type="range"]::-webkit-slider-runnable-track { height: 10px; border-radius: 99px; background: var(--track, var(--c-fill)); box-shadow: inset 0 0 0 1px rgba(0,0,0,.08); }
+input[type="range"]::-moz-range-track { height: 10px; border-radius: 99px; background: var(--track, var(--c-fill)); }
+input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; margin-top: -4px; border-radius: 50%; background: #fff; border: 2px solid #16171a; box-shadow: 0 1px 3px rgba(0,0,0,.25); }
+input[type="range"]::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: #fff; border: 2px solid #16171a; }
+input[type="range"]:focus-visible { outline: 2px solid var(--c-hi); outline-offset: 2px; border-radius: 99px; }
+
+.cl { list-style: none; margin: 0; padding: 0; }
+.cl li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; align-items: center; font-size: 12.5px; padding: 6px 0; border-bottom: 1px dashed var(--c-line); }
+.cl li:last-child { border-bottom: 0; }
+.cl small { display: block; color: var(--c-muted); font-size: 11px; }
+.cl .r { font-family: var(--f-mono); font-size: 11.5px; font-variant-numeric: tabular-nums; }
+.grade { font-size: 10.5px; font-weight: 700; letter-spacing: .03em; padding: 2px 7px; border-radius: 99px; min-width: 44px; text-align: center; }
+.grade.ok { background: var(--c-good-bg); color: var(--c-good); }
+.grade.no { background: var(--c-bad-bg); color: var(--c-bad); }
+
+.c-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.c-btn { height: 34px; padding: 0 14px; border-radius: 9px; border: 1px solid var(--c-line); background: var(--c-panel); color: var(--c-ink); font: 600 13px var(--f-ui); cursor: pointer; }
+.c-btn:hover { border-color: var(--c-muted); }
+.c-btn.primary { background: var(--c-ink); color: var(--c-panel); border-color: var(--c-ink); }
+.c-btn:focus-visible { outline: 2px solid var(--c-hi); outline-offset: 2px; }
+.c-note { font-size: 12px; color: var(--c-muted); margin: 0; min-height: 1.2em; }
+.p-css summary { cursor: pointer; font-size: 12.5px; font-weight: 600; }
+.p-css pre { margin: 8px 0 0; max-height: 280px; overflow: auto; font: 11px/1.5 var(--f-mono); background: var(--c-fill); border-radius: 8px; padding: 10px; white-space: pre; }
+
+.st-bar { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; justify-content: space-between; }
+.st-title { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; min-width: 0; }
+.st-title b { font-size: 16px; font-weight: 700; }
+.st-title span { color: var(--c-muted); font-size: 12.5px; }
+.st-ctl { display: flex; gap: 10px; flex-wrap: wrap; }
+.st-ctl .seg { min-width: 210px; }
+.st-ctl .seg label { flex: 1 0 auto; padding-inline: 12px; }
+.frame { container-type: inline-size; border-radius: 14px; overflow: hidden; border: 1px solid var(--c-line); box-shadow: 0 1px 2px rgba(0,0,0,.04), 0 10px 30px -18px rgba(0,0,0,.25); --frame-h: clamp(640px, calc(100dvh - 104px), 920px); }
+@media (max-width: 1080px) { .frame { --frame-h: 760px; } }
+
+/* ============ The MITO app, styled only through the palette's tokens ============ */
+.mito { font-family: var(--m-font); font-size: var(--m-fs); line-height: 1.4; color: var(--m-fg); -webkit-font-smoothing: antialiased; }
+.mito button, .mito input, .mito select, .mito textarea { font: inherit; color: inherit; }
+.mito :focus-visible { outline: 2px solid var(--m-focus); outline-offset: 2px; }
+.mito h1, .mito h2, .mito h3, .mito p { margin: 0; }
+.m-app { position: relative; display: grid; grid-template-columns: 228px minmax(0, 1fr); height: var(--frame-h); background: var(--m-frame); overflow: hidden; }
+
+.m-side { background: var(--m-side); color: var(--m-side-fg); display: flex; flex-direction: column; gap: 2px; padding: 14px 10px; border-right: 1px solid var(--m-side-border); min-width: 0; }
+.m-brand { display: flex; align-items: center; gap: 10px; padding: 2px 8px 16px; min-width: 0; }
+.m-logo { width: 28px; height: 28px; flex: none; border-radius: max(4px, calc(var(--m-radius) - 2px)); background: var(--m-logo-bg); color: var(--m-logo-fg); display: grid; place-items: center; font-weight: 700; font-size: 14px; }
+.m-brand-text b { display: block; font-weight: 650; color: var(--m-side-active-fg-strong); font-size: calc(var(--m-fs) + 1px); }
+.m-brand-text span { display: block; font-size: 11.5px; color: var(--m-side-muted); }
+.m-side-label { font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--m-side-muted); padding: 12px 10px 6px; font-weight: 600; }
+.m-nav { display: flex; align-items: center; gap: 10px; height: 34px; padding: 0 10px; border-radius: max(4px, calc(var(--m-radius) - 1px)); color: var(--m-side-fg); font-weight: 500; border: 0; background: transparent; width: 100%; text-align: left; cursor: pointer; transition: background-color .15s, color .15s; }
+.m-nav:hover { background: var(--m-side-hover); color: var(--m-side-active-fg-strong); }
+.m-nav[aria-current="page"] { background: var(--m-side-active); color: var(--m-side-active-fg); box-shadow: var(--m-side-active-shadow); }
+.m-nav svg { width: 17px; height: 17px; flex: none; }
+.m-nav .m-count { margin-left: auto; font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums; padding: 1px 7px; border-radius: 99px; background: var(--m-count-bg); color: var(--m-count-fg); }
+.m-user { margin-top: auto; display: flex; align-items: center; gap: 10px; padding: 10px 8px 2px; border-top: 1px solid var(--m-side-border); min-width: 0; }
+.m-user-text b { display: block; font-weight: 600; color: var(--m-side-active-fg-strong); font-size: calc(var(--m-fs) - .5px); }
+.m-user-text span { display: block; font-size: 11.5px; color: var(--m-side-muted); }
+
+.m-main { min-width: 0; display: flex; flex-direction: column; background: var(--m-surface); overflow: hidden; }
+.mito[data-surfaces="layered"] .m-main { margin: 8px 8px 8px 0; border-radius: calc(var(--m-radius) + 4px); border: 1px solid var(--m-sheet-border); box-shadow: var(--m-shadow-card); }
+.mito[data-surfaces="layered"] .m-side { border-right-color: transparent; }
+.m-top { position: relative; display: flex; align-items: center; gap: 12px; padding: 0 16px 0 20px; border-bottom: 1px solid var(--m-border); min-height: 52px; }
+.m-crumb { color: var(--m-fg-muted); display: flex; gap: 8px; align-items: center; min-width: 0; white-space: nowrap; }
+.m-crumb b { color: var(--m-fg); font-weight: 600; }
+.m-top-right { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+.m-scroll { flex: 1; overflow: auto; padding: 22px 24px 28px; }
+
+.m-icon-btn { width: var(--m-ctl); height: var(--m-ctl); display: inline-grid; place-items: center; border-radius: var(--m-radius); border: 0; background: transparent; color: var(--m-fg-muted); cursor: pointer; position: relative; flex: none; transition: background-color .15s, color .15s; }
+.m-icon-btn:hover { background: var(--m-hover); color: var(--m-fg); }
+.m-icon-btn svg { width: 17px; height: 17px; }
+.m-icon-btn[disabled] { opacity: .45; cursor: not-allowed; }
+.m-ping { position: absolute; top: 6px; right: 7px; width: 7px; height: 7px; border-radius: 50%; background: var(--m-danger); box-shadow: 0 0 0 2px var(--m-surface); }
+
+.m-head { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
+.m-head h1 { font-size: calc(var(--m-fs) + 7px); font-weight: 650; letter-spacing: -0.015em; text-wrap: balance; }
+.m-head p { margin-top: 3px; color: var(--m-fg-muted); }
+.m-actions { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; }
+
+.m-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: var(--m-ctl); padding: 0 13px; border-radius: var(--m-radius); font-weight: 550; border: 1px solid transparent; cursor: pointer; white-space: nowrap; transition: background-color .15s cubic-bezier(.25,1,.5,1), border-color .15s, color .15s; }
+.m-btn svg { width: 15px; height: 15px; flex: none; }
+.m-btn.sm { height: calc(var(--m-ctl) - 4px); padding: 0 10px; font-size: calc(var(--m-fs) - .5px); }
+.m-btn.primary { background: var(--m-primary); color: var(--m-primary-fg); box-shadow: 0 1px 2px var(--m-shadow-xs); }
+.m-btn.primary:hover { background: var(--m-primary-hover); }
+.mito[data-primary="tonal"] .m-btn.primary { box-shadow: inset 0 0 0 1px var(--m-primary-bd); }
+.m-btn.secondary { background: var(--m-surface); border-color: var(--m-border-strong); color: var(--m-fg); box-shadow: 0 1px 2px var(--m-shadow-xs); }
+.m-btn.secondary:hover { background: var(--m-hover); }
+.m-btn.ghost { background: transparent; color: var(--m-fg-muted); }
+.m-btn.ghost:hover { background: var(--m-hover); color: var(--m-fg); }
+.m-btn.danger { background: var(--m-danger-btn); color: var(--m-danger-btn-fg); }
+.m-btn.danger:hover { background: var(--m-danger-hover); }
+.m-btn.danger-ghost { background: transparent; color: var(--m-danger); }
+.m-btn.danger-ghost:hover { background: var(--m-danger-soft); }
+.m-btn.link { height: auto; padding: 0; border: 0; background: none; color: var(--m-link); text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
+.m-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+.m-label { display: block; font-weight: 550; font-size: calc(var(--m-fs) - .5px); margin-bottom: 6px; }
+.m-input { height: var(--m-ctl); border: 1px solid var(--m-input); border-radius: var(--m-radius); padding: 0 10px; background: var(--m-surface); color: var(--m-fg); width: 100%; transition: border-color .15s, box-shadow .15s; }
+textarea.m-input { height: auto; padding: 8px 10px; resize: vertical; line-height: 1.45; }
+.m-input::placeholder { color: var(--m-fg-muted); }
+.m-input:hover { border-color: var(--m-border-strong-hover); }
+.m-input:focus, .m-input.is-focus { outline: none; border-color: var(--m-focus); box-shadow: 0 0 0 3px var(--m-ring); }
+.m-input.is-error { border-color: var(--m-danger); box-shadow: 0 0 0 3px var(--m-danger-ring); }
+.m-input:disabled { background: var(--m-sunken); color: var(--m-fg-muted); cursor: not-allowed; }
+.m-hint { font-size: 12px; color: var(--m-fg-muted); margin-top: 5px; }
+.m-err { font-size: 12px; color: var(--m-danger); margin-top: 5px; display: flex; gap: 5px; align-items: center; }
+.m-err svg { width: 13px; height: 13px; }
+.m-select { position: relative; }
+.m-select select { appearance: none; -webkit-appearance: none; padding-right: 30px; cursor: pointer; }
+.m-select svg { position: absolute; right: 9px; top: 50%; width: 15px; height: 15px; transform: translateY(-50%); pointer-events: none; color: var(--m-fg-muted); }
+.m-field-icon { position: relative; flex: 1 1 260px; max-width: 380px; }
+.m-field-icon > svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 15px; height: 15px; color: var(--m-fg-muted); pointer-events: none; }
+.m-field-icon input { padding-left: 32px; }
+
+.m-check { appearance: none; -webkit-appearance: none; width: 16px; height: 16px; border: 1.5px solid var(--m-control); border-radius: max(3px, calc(var(--m-radius) / 2)); background: var(--m-surface); display: inline-grid; place-content: center; margin: 0; cursor: pointer; vertical-align: middle; transition: background-color .12s, border-color .12s; }
+.m-check:checked, .m-check:indeterminate { background: var(--m-strong); border-color: var(--m-strong); }
+.m-check:checked::after { content: ""; width: 8px; height: 4.5px; border: 2px solid var(--m-strong-fg); border-top: 0; border-right: 0; transform: rotate(-45deg) translate(1px, -1px); }
+.m-check:indeterminate::after { content: ""; width: 8px; height: 2px; background: var(--m-strong-fg); border-radius: 1px; }
+.m-switch { width: 34px; height: 20px; border-radius: 99px; background: var(--m-switch-off); border: 0; position: relative; cursor: pointer; padding: 0; flex: none; transition: background-color .18s; }
+.m-switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: var(--m-knob); box-shadow: 0 1px 2px var(--m-shadow-xs); transition: transform .18s cubic-bezier(.25,1,.5,1); }
+.m-switch[aria-checked="true"] { background: var(--m-strong); }
+.m-switch[aria-checked="true"]::after { transform: translateX(14px); background: var(--m-strong-fg); }
+
+.m-badge { --bg: var(--t-neutral-bg); --bd: var(--t-neutral-bd); --fg: var(--t-neutral-fg); --dot: var(--t-neutral-dot); --solid: var(--t-neutral-solid); --solidfg: var(--t-neutral-solidfg);
+  display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 0 8px; border-radius: 99px; font-size: 12px; font-weight: 550; line-height: 1; white-space: nowrap; background: var(--bg); color: var(--fg); border: 1px solid var(--bd); }
+.mito[data-badge="dot"] .m-badge { background: var(--m-surface); border-color: var(--m-border-strong); color: var(--m-fg); padding-left: 7px; }
+.mito[data-badge="dot"] .m-badge::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--dot); flex: none; }
+.mito[data-badge="solid"] .m-badge { background: var(--solid); border-color: transparent; color: var(--solidfg); }
+.m-badge .m-chev { width: 12px; height: 12px; margin-right: -3px; opacity: .65; }
+.m-pri { display: inline-flex; align-items: center; gap: 7px; font-weight: 500; white-space: nowrap; }
+.m-pri .bars { display: inline-flex; align-items: flex-end; gap: 2px; height: 12px; }
+.m-pri i { width: 3px; border-radius: 1px; background: var(--m-border-strong); }
+.m-pri i:nth-child(1) { height: 4px; } .m-pri i:nth-child(2) { height: 7px; } .m-pri i:nth-child(3) { height: 10px; } .m-pri i:nth-child(4) { height: 12px; }
+.m-pri i.on { background: var(--m-fg-muted); }
+.m-pri.urgent { color: var(--m-danger); font-weight: 600; }
+.m-pri.urgent i.on { background: var(--m-danger); }
+.m-av { --bg: var(--t-neutral-bg); --fg: var(--t-neutral-fg); --bd: var(--t-neutral-bd); width: 24px; height: 24px; border-radius: 50%; display: inline-grid; place-items: center; font-size: 10px; font-weight: 650; background: var(--bg); color: var(--fg); box-shadow: inset 0 0 0 1px var(--bd); flex: none; letter-spacing: .02em; }
+.m-av.lg { width: 32px; height: 32px; font-size: 12px; }
+
+.m-toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 12px; }
+.m-tabs { display: inline-flex; gap: 2px; padding: 3px; background: var(--m-sunken); border: 1px solid var(--m-border); border-radius: calc(var(--m-radius) + 2px); flex-wrap: wrap; }
+.m-tabs button { border: 0; background: transparent; height: calc(var(--m-ctl) - 8px); padding: 0 10px; border-radius: max(3px, calc(var(--m-radius) - 1px)); color: var(--m-fg-muted); font-weight: 550; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; white-space: nowrap; transition: background-color .15s, color .15s; }
+.m-tabs button:hover { color: var(--m-fg); }
+.m-tabs button[aria-selected="true"] { background: var(--m-surface); color: var(--m-fg); box-shadow: 0 1px 2px var(--m-shadow-xs), 0 0 0 1px var(--m-border); }
+.m-tabcount { font-size: 11px; color: var(--m-fg-muted); font-variant-numeric: tabular-nums; font-weight: 500; }
+
+.m-bulk { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 7px 8px 7px 14px; margin-bottom: 10px; border-radius: calc(var(--m-radius) + 2px); background: var(--m-soft); color: var(--m-soft-fg); border: 1px solid var(--m-soft-bd); }
+.m-bulk > span { margin-right: auto; }
+
+.m-tablewrap { overflow-x: auto; border: 1px solid var(--m-border); border-radius: calc(var(--m-radius) + 2px); background: var(--m-surface); }
+.m-table { width: 100%; border-collapse: separate; border-spacing: 0; font-variant-numeric: tabular-nums; min-width: 900px; }
+.m-table.narrow { min-width: 620px; }
+.m-table th { background: var(--m-sunken); color: var(--m-fg-muted); font-weight: 550; font-size: calc(var(--m-fs) - 1px); text-align: left; padding: 0 12px; height: 36px; border-bottom: 1px solid var(--m-border); white-space: nowrap; }
+.m-table th .m-sorted { display: inline-flex; align-items: center; gap: 4px; color: var(--m-fg); }
+.m-table th svg { width: 13px; height: 13px; }
+.m-table td { padding: 0 12px; height: var(--m-row); border-bottom: 1px solid var(--m-border); white-space: nowrap; transition: background-color .12s; }
+.m-table tbody tr:last-child td { border-bottom: 0; }
+.m-table tbody tr.click { cursor: pointer; }
+.m-table tbody tr:hover td { background: var(--m-hover); }
+.m-table tbody tr[aria-selected="true"] td { background: var(--m-soft); }
+.m-table .w-check { width: 40px; padding-right: 0; }
+.m-table .w-act { width: 44px; text-align: right; padding-right: 6px; }
+.m-table .num { text-align: right; }
+.m-cust { font-weight: 550; color: var(--m-fg); }
+.m-dim { color: var(--m-fg-muted); }
+.m-code { font-variant-numeric: tabular-nums; letter-spacing: .02em; color: var(--m-fg-muted); font-size: calc(var(--m-fs) - .5px); }
+.m-op { display: inline-flex; align-items: center; gap: 8px; }
+.m-alert { display: inline-flex; align-items: center; gap: 6px; color: var(--m-fg-muted); }
+.m-alert svg { width: 14px; height: 14px; flex: none; }
+.m-alert.today { color: var(--m-fg); font-weight: 550; }
+.m-alert.today svg { color: var(--m-link); }
+.m-alert.late { color: var(--m-danger); font-weight: 550; }
+.m-tfoot { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-top: 12px; color: var(--m-fg-muted); font-size: calc(var(--m-fs) - .5px); font-variant-numeric: tabular-nums; }
+.m-pager { display: flex; gap: 2px; align-items: center; }
+.m-pager button { min-width: 30px; height: 30px; border: 0; background: transparent; border-radius: var(--m-radius); color: var(--m-fg-muted); cursor: pointer; font-variant-numeric: tabular-nums; }
+.m-pager button:hover:not(:disabled) { background: var(--m-hover); color: var(--m-fg); }
+.m-pager button[aria-current="page"] { background: var(--m-surface); color: var(--m-fg); font-weight: 600; box-shadow: 0 0 0 1px var(--m-border-strong); }
+.m-pager button:disabled { opacity: .45; cursor: not-allowed; }
+.m-pager svg { width: 15px; height: 15px; vertical-align: middle; }
+
+.m-card { background: var(--m-surface); border: 1px solid var(--m-border); border-radius: calc(var(--m-radius) + 2px); box-shadow: var(--m-shadow-card); }
+.m-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; margin-bottom: 14px; }
+.m-kpi { padding: 14px 16px 15px; display: grid; gap: 6px; align-content: start; }
+.m-kpi .lbl { color: var(--m-fg-muted); font-size: calc(var(--m-fs) - .5px); display: flex; align-items: center; gap: 6px; }
+.m-kpi .lbl svg { width: 14px; height: 14px; }
+.m-kpi .val { font-size: calc(var(--m-fs) + 11px); font-weight: 650; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.m-kpi .sub { font-size: 12px; color: var(--m-fg-muted); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.m-delta { display: inline-flex; align-items: center; height: 20px; padding: 0 7px; border-radius: 99px; font-size: 11.5px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.m-delta.up { background: var(--m-success-soft); color: var(--m-success-fg); }
+.m-delta.down { background: var(--m-danger-soft); color: var(--m-danger-fg); }
+.m-delta.flat { background: var(--m-sunken); color: var(--m-fg-muted); }
+.m-grid2 { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); gap: 12px; margin-bottom: 14px; }
+.m-panel { padding: 16px; min-width: 0; }
+.m-panel-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
+.m-panel-head h2, .m-sec-title { font-size: calc(var(--m-fs) + 1px); font-weight: 650; }
+.m-panel-head span { font-size: 12px; color: var(--m-fg-muted); }
+.m-chart { display: grid; grid-template-columns: 38px minmax(0, 1fr); gap: 8px; }
+.m-yaxis { position: relative; height: 170px; font-size: 11px; color: var(--m-fg-muted); font-variant-numeric: tabular-nums; }
+.m-yaxis span { position: absolute; right: 0; transform: translateY(50%); }
+.m-plot { position: relative; height: 170px; display: grid; grid-template-columns: repeat(6, 1fr); gap: 14px; align-items: end; border-bottom: 1px solid var(--m-border-strong); padding: 0 4px; }
+.m-plot::before { content: ""; position: absolute; inset: 0; background: linear-gradient(to bottom, var(--m-border) 0 1px, transparent 1px) 0 0 / 100% 33.333%; pointer-events: none; }
+.m-bar { position: relative; border-radius: max(2px, calc(var(--m-radius) / 2)) max(2px, calc(var(--m-radius) / 2)) 0 0; background: var(--m-chart-soft); }
+.m-bar.cur { background: var(--m-chart); }
+.m-bar span { position: absolute; bottom: calc(100% + 4px); left: 50%; transform: translateX(-50%); font-size: 11px; color: var(--m-fg-muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.m-bar.cur span { color: var(--m-fg); font-weight: 650; }
+.m-xaxis { grid-column: 2; display: grid; grid-template-columns: repeat(6, 1fr); gap: 14px; padding: 0 4px; font-size: 11.5px; color: var(--m-fg-muted); text-align: center; }
+.m-donut-wrap { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 18px; align-items: center; }
+.m-donut { width: 150px; height: 150px; display: block; }
+.m-donut text { fill: var(--m-fg); font-family: var(--m-font); }
+.m-donut .sub { fill: var(--m-fg-muted); }
+.m-legend { list-style: none; margin: 0; padding: 0; display: grid; gap: 7px; font-size: calc(var(--m-fs) - .5px); min-width: 0; }
+.m-legend li { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto auto; gap: 8px; align-items: center; }
+.m-legend i { --dot: var(--t-neutral-dot); width: 9px; height: 9px; border-radius: 3px; background: var(--dot); }
+.m-legend b { font-weight: 600; font-variant-numeric: tabular-nums; }
+.m-legend em { font-style: normal; color: var(--m-fg-muted); font-variant-numeric: tabular-nums; min-width: 4ch; text-align: right; }
+
+.m-import { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; margin-bottom: 14px; }
+.m-drop { padding: 22px; border: 1.5px dashed var(--m-border-strong); border-radius: calc(var(--m-radius) + 2px); display: grid; justify-items: center; align-content: center; gap: 8px; text-align: center; background: var(--m-sunken); min-height: 190px; }
+.m-drop svg { width: 26px; height: 26px; color: var(--m-fg-muted); }
+.m-drop p { color: var(--m-fg-muted); font-size: calc(var(--m-fs) - .5px); }
+.m-progress { height: 8px; border-radius: 99px; background: var(--m-sunken); box-shadow: inset 0 0 0 1px var(--m-border); overflow: hidden; }
+.m-progress > i { display: block; height: 100%; width: var(--p); background: var(--m-chart); border-radius: 99px; }
+.m-stats { display: flex; gap: 18px; flex-wrap: wrap; font-size: calc(var(--m-fs) - .5px); color: var(--m-fg-muted); font-variant-numeric: tabular-nums; }
+.m-stats b { color: var(--m-fg); font-weight: 650; display: block; font-size: calc(var(--m-fs) + 3px); }
+.m-stats .bad b { color: var(--m-danger); }
+.m-file { display: flex; align-items: center; gap: 10px; }
+.m-file-ic { width: 34px; height: 34px; border-radius: var(--m-radius); display: grid; place-items: center; background: var(--m-soft); color: var(--m-soft-fg); flex: none; }
+.m-file-ic svg { width: 17px; height: 17px; }
+
+.m-note { display: flex; gap: 10px; padding: 10px 12px; border-radius: calc(var(--m-radius) + 2px); border: 1px solid; font-size: calc(var(--m-fs) - .5px); line-height: 1.45; }
+.m-note svg { width: 17px; height: 17px; flex: none; margin-top: 1px; }
+.m-note b { font-weight: 650; display: block; }
+.m-note.info { background: var(--m-soft); border-color: var(--m-soft-bd); color: var(--m-soft-fg); }
+.m-note.success { background: var(--m-success-soft); border-color: var(--m-success-bd); color: var(--m-success-fg); }
+.m-note.warning { background: var(--m-warning-soft); border-color: var(--m-warning-bd); color: var(--m-warning-fg); }
+.m-note.danger { background: var(--m-danger-soft); border-color: var(--m-danger-bd); color: var(--m-danger-fg); }
+.m-note .m-btn.link { color: inherit; font-weight: 650; }
+
+.m-scrim { position: absolute; inset: 0; background: var(--m-overlay); opacity: 0; pointer-events: none; transition: opacity .2s ease-out; z-index: 8; }
+.m-sheet { position: absolute; top: 0; right: 0; bottom: 0; width: min(440px, 94%); background: var(--m-surface); border-left: 1px solid var(--m-border); box-shadow: var(--m-shadow-pop); transform: translateX(100%); visibility: hidden; transition: transform .26s cubic-bezier(.32,.72,0,1), visibility 0s linear .26s; display: flex; flex-direction: column; z-index: 9; }
+.m-app.sheet-open .m-scrim { opacity: 1; pointer-events: auto; }
+.m-app.sheet-open .m-sheet { transform: none; visibility: visible; transition: transform .26s cubic-bezier(.32,.72,0,1), visibility 0s; }
+.m-sheet-head { display: flex; gap: 12px; align-items: flex-start; padding: 18px 18px 14px 20px; border-bottom: 1px solid var(--m-border); }
+.m-sheet-head h2 { font-size: calc(var(--m-fs) + 4px); font-weight: 650; }
+.m-sheet-head p { color: var(--m-fg-muted); font-size: calc(var(--m-fs) - .5px); margin-top: 2px; font-variant-numeric: tabular-nums; }
+.m-sheet-head .m-icon-btn { margin-left: auto; }
+.m-sheet-body { flex: 1; overflow: auto; padding: 16px 20px 20px; display: grid; gap: 16px; align-content: start; }
+.m-sheet-foot { display: flex; gap: 8px; align-items: center; padding: 12px 20px; border-top: 1px solid var(--m-border); background: var(--m-sunken); }
+.m-sheet-foot .grow { flex: 1; }
+.m-form { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 12px; }
+.m-form .full { grid-column: 1 / -1; }
+.m-segbtn { position: relative; display: flex; border: 1px solid var(--m-input); border-radius: var(--m-radius); overflow: hidden; height: var(--m-ctl); }
+.m-segbtn label { flex: 1; display: grid; place-items: center; cursor: pointer; font-size: calc(var(--m-fs) - .5px); color: var(--m-fg-muted); border-right: 1px solid var(--m-input); font-weight: 550; transition: background-color .12s; }
+.m-segbtn label:last-of-type { border-right: 0; }
+.m-segbtn input { position: absolute; opacity: 0; pointer-events: none; }
+.m-segbtn input:checked + label { background: var(--m-soft); color: var(--m-soft-fg); }
+.m-segbtn input:focus-visible + label { outline: 2px solid var(--m-focus); outline-offset: -2px; }
+.m-timeline { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.m-timeline li { --dot: var(--t-neutral-dot); display: grid; grid-template-columns: 9px minmax(0, 1fr); gap: 10px; font-size: calc(var(--m-fs) - .5px); }
+.m-timeline li::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--dot); margin-top: 5px; }
+.m-timeline span { display: block; color: var(--m-fg-muted); font-size: 12px; margin-top: 1px; }
+.m-confirm { display: grid; gap: 10px; }
+.m-confirm .m-row { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.m-pop { position: absolute; top: 48px; right: 12px; width: min(340px, calc(100% - 24px)); background: var(--m-surface); border: 1px solid var(--m-border); border-radius: calc(var(--m-radius) + 4px); box-shadow: var(--m-shadow-pop); padding: 6px; z-index: 6; transform-origin: top right; animation: m-pop-in .16s cubic-bezier(.25,1,.5,1); }
+@keyframes m-pop-in { from { opacity: 0; transform: translateY(-4px) scale(.97); } }
+.m-pop h3 { font-size: calc(var(--m-fs) - .5px); font-weight: 650; padding: 8px 10px 6px; }
+.m-pop ul { list-style: none; margin: 0; padding: 0; }
+.m-pop li { --dot: var(--t-neutral-dot); display: grid; grid-template-columns: 8px minmax(0, 1fr); gap: 10px; padding: 8px 10px; border-radius: var(--m-radius); font-size: calc(var(--m-fs) - .5px); }
+.m-pop li:hover { background: var(--m-hover); }
+.m-pop li::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--dot); margin-top: 6px; }
+.m-pop li span { display: block; color: var(--m-fg-muted); font-size: 12px; }
+
+.m-toast { position: absolute; right: 16px; bottom: 16px; display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; width: min(360px, calc(100% - 32px)); background: var(--m-surface); border: 1px solid var(--m-border); border-radius: calc(var(--m-radius) + 4px); box-shadow: var(--m-shadow-pop); opacity: 0; transform: translateY(8px); transition: opacity .2s ease-out, transform .2s cubic-bezier(.25,1,.5,1); pointer-events: none; z-index: 12; }
+.m-toast.show { opacity: 1; transform: none; }
+.m-toast svg { width: 18px; height: 18px; flex: none; margin-top: 1px; }
+.m-toast.k-success svg { color: var(--m-success); }
+.m-toast.k-danger svg { color: var(--m-danger); }
+.m-toast.k-info svg { color: var(--m-link); }
+.m-toast b { font-weight: 650; display: block; }
+.m-toast p { color: var(--m-fg-muted); font-size: calc(var(--m-fs) - .5px); margin-top: 2px; }
+.m-toast.static { position: static; opacity: 1; transform: none; pointer-events: auto; width: auto; max-width: 380px; }
+
+/* The comparison of the Indaco iterations: one card per palette, each scene carries its own tokens */
+.cmp { display: grid; gap: 12px; }
+.cmp-intro { background: var(--c-panel); border: 1px solid var(--c-line); border-radius: 14px; padding: 14px 16px; font-size: 13px; color: var(--c-muted); display: grid; gap: 6px; }
+.cmp-intro h2 { margin: 0; font-size: 15px; color: var(--c-ink); }
+.cmp-intro p { margin: 0; max-width: 92ch; }
+.cmp-intro b { color: var(--c-ink); font-weight: 600; }
+.cmp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 360px), 1fr)); gap: 12px; }
+.cmp-card { background: var(--c-panel); border: 1px solid var(--c-line); border-radius: 14px; overflow: hidden; display: flex; flex-direction: column; min-width: 0; }
+.cmp-card.is-current { border-color: var(--c-hi); box-shadow: 0 0 0 1px var(--c-hi); }
+.cmp-head { padding: 12px 14px 10px; display: grid; gap: 5px; }
+.cmp-head h3 { margin: 0; font-size: 14px; font-weight: 650; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.cmp-tag { font-size: 11px; font-weight: 600; color: var(--c-muted); background: var(--c-fill); border-radius: 99px; padding: 1px 8px; }
+.cmp-metrics { display: flex; flex-wrap: wrap; gap: 2px 12px; font: 11.5px/1.45 var(--f-mono); color: var(--c-muted); font-variant-numeric: tabular-nums; }
+.cmp-metrics i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; vertical-align: -1px; margin-right: 5px; box-shadow: inset 0 0 0 1px rgba(0,0,0,.14); }
+.cmp-scene { background: var(--m-surface); border-block: 1px solid var(--c-line); padding: 14px; display: grid; gap: 12px; }
+.cmp-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.cmp-row .m-actions { margin-left: auto; }
+.cmp-h { font-size: calc(var(--m-fs) + 3px); font-weight: 650; margin-right: 6px; }
+.cmp-scene .m-bulk { margin-bottom: 0; }
+.cmp-scene .m-table { min-width: 0; }
+.cmp-scene .m-input { flex: 1 1 160px; width: auto; }
+.cmp-foot { border-top: 1px solid var(--m-border); padding-top: 12px; }
+.cmp-why { padding: 10px 14px 4px; font-size: 12.5px; line-height: 1.45; color: var(--c-muted); display: grid; gap: 4px; flex: 1; }
+.cmp-why p { margin: 0; }
+.cmp-why b { color: var(--c-ink); font-weight: 600; }
+.cmp-use { margin: 8px 14px 14px; align-self: flex-start; }
+.cmp-use[disabled] { cursor: default; color: var(--c-muted); border-style: dashed; }
+
+/* The design-system sheet */
+.m-sys { height: var(--frame-h); overflow: auto; background: var(--m-surface); padding: 26px 28px 40px; }
+.s-intro { max-width: 70ch; color: var(--m-fg-muted); margin-bottom: 26px; }
+.s-intro h1 { color: var(--m-fg); font-size: calc(var(--m-fs) + 8px); font-weight: 650; letter-spacing: -0.015em; margin-bottom: 6px; }
+.s-sec { padding-top: 22px; margin-top: 22px; border-top: 1px solid var(--m-border); display: grid; gap: 16px; }
+.s-sec > header h2 { font-size: calc(var(--m-fs) + 3px); font-weight: 650; }
+.s-sec > header p { color: var(--m-fg-muted); margin-top: 3px; max-width: 70ch; }
+.s-group h3 { font-size: 11.5px; text-transform: uppercase; letter-spacing: .07em; color: var(--m-fg-muted); font-weight: 650; margin-bottom: 10px; }
+.s-swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); gap: 12px; }
+.s-sw { display: grid; gap: 8px; min-width: 0; }
+.s-chip { height: 58px; border-radius: var(--m-radius); border: 1px solid var(--m-border); display: grid; place-items: center; font-weight: 650; font-size: 18px; }
+.s-meta { display: grid; gap: 1px; font-size: 12px; min-width: 0; }
+.s-meta b { font-weight: 600; font-size: calc(var(--m-fs) - .5px); }
+.s-meta code { font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 11px; color: var(--m-fg-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.s-ratio { justify-self: start; margin-top: 4px; font-size: 11px; font-weight: 650; padding: 1px 7px; border-radius: 99px; font-variant-numeric: tabular-nums; }
+.s-ratio.pass { background: var(--m-success-soft); color: var(--m-success-fg); }
+.s-ratio.fail { background: var(--m-danger-soft); color: var(--m-danger-fg); }
+.s-badges { display: grid; gap: 16px; }
+.s-brow { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 12px; align-items: start; }
+.s-brow > div:first-child { font-weight: 600; font-size: calc(var(--m-fs) - .5px); padding-top: 2px; }
+.s-brow > div:first-child span { display: block; font-weight: 400; color: var(--m-fg-muted); font-size: 12px; margin-top: 2px; }
+.s-wrap { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.s-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px 20px; align-items: start; }
+.s-stack { display: grid; gap: 10px; }
+.s-inline { display: flex; align-items: center; gap: 10px; font-size: calc(var(--m-fs) - .5px); }
+.s-type { display: grid; gap: 14px; }
+.s-type > div { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 16px; align-items: baseline; }
+.s-type small { color: var(--m-fg-muted); font-size: 12px; }
+.s-tip { position: relative; display: inline-block; background: var(--m-tooltip); color: var(--m-tooltip-fg); font-size: 12px; padding: 5px 8px; border-radius: max(4px, calc(var(--m-radius) - 2px)); }
+
+@container (max-width: 820px) {
+  .m-app { grid-template-columns: 60px minmax(0, 1fr); }
+  .m-side { padding-inline: 8px; align-items: center; }
+  .m-brand { padding: 2px 0 14px; }
+  .m-brand-text, .m-side-label, .m-nav .lbl, .m-nav .m-count, .m-user-text { display: none; }
+  .m-nav { width: 40px; justify-content: center; padding: 0; }
+  .m-user { padding-inline: 0; justify-content: center; }
+  .m-grid2, .m-import { grid-template-columns: minmax(0, 1fr); }
+}
+@container (max-width: 560px) {
+  .m-scroll { padding: 16px 14px 22px; }
+  .m-top { padding-left: 14px; }
+  .m-actions { margin-left: 0; }
+  .m-donut-wrap { grid-template-columns: minmax(0, 1fr); justify-items: center; }
+  .m-form { grid-template-columns: minmax(0, 1fr); }
+  .m-sys { padding: 18px 16px 30px; }
+  .s-brow, .s-type > div { grid-template-columns: minmax(0, 1fr); gap: 6px; }
+  .mito[data-surfaces="layered"] .m-main { margin: 6px 6px 6px 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .m-sheet { transform: none; opacity: 0; transition: opacity .15s, visibility 0s linear .15s; }
+  .m-app.sheet-open .m-sheet { opacity: 1; transition: opacity .15s, visibility 0s; }
+  .m-toast { transform: none; }
+  .m-pop { animation: none; }
+  .m-switch::after { transition: none; }
+}
+</style>
+
+<div class="shell">
+  <aside class="panel" aria-label="Controlli della palette">
+    <header class="p-head">
+      <h1>Palette MITO</h1>
+      <p>Cinque proposte di tema chiaro per la nuova app React (<code>apps/web</code>), più sei iterazioni su Indaco. Scegli un punto di partenza, regola i dettagli e guarda le schermate cambiare dal vivo.</p>
+    </header>
+
+    <section class="p-sec" aria-labelledby="h-presets">
+      <h2 id="h-presets">Punti di partenza</h2>
+      <div class="presets" id="presets" role="radiogroup" aria-labelledby="h-presets"></div>
+      <div class="p-why" id="p-why" aria-live="polite"></div>
+    </section>
+
+    <section class="p-sec" aria-labelledby="h-iter">
+      <h2 id="h-iter">Iterazioni su Indaco</h2>
+      <p class="p-note">Stessa struttura di Indaco, cambia il colore delle azioni. Nella vista <b>Confronto</b> le vedi tutte affiancate.</p>
+      <div class="presets" id="presets-i" role="radiogroup" aria-labelledby="h-iter"></div>
+      <div class="p-why" id="p-why-i" aria-live="polite" hidden></div>
+    </section>
+
+    <section class="p-sec" aria-labelledby="h-tune">
+      <h2 id="h-tune">Regola <span class="p-mod" id="p-mod" hidden>Modificata</span></h2>
+      <div class="sliders">
+        <div class="sl">
+          <div class="sl-head"><label for="sl-h">Tinta dell'accento</label><output id="o-h" for="sl-h"></output></div>
+          <input type="range" id="sl-h" min="0" max="359" step="1">
+        </div>
+        <div class="sl">
+          <div class="sl-head"><label for="sl-c">Intensità</label><output id="o-c" for="sl-c"></output></div>
+          <input type="range" id="sl-c" min="0.03" max="0.28" step="0.005">
+        </div>
+        <div class="sl">
+          <div class="sl-head"><label for="sl-l">Luminosità</label><output id="o-l" for="sl-l"></output></div>
+          <input type="range" id="sl-l" min="0.36" max="0.66" step="0.005">
+        </div>
+      </div>
+      <div class="ctls" id="ctls"></div>
+    </section>
+
+    <section class="p-sec" aria-labelledby="h-contrast">
+      <h2 id="h-contrast">Contrasto <span id="h-contrast-mode" class="p-mod">tema chiaro</span></h2>
+      <ul class="cl" id="cl"></ul>
+    </section>
+
+    <section class="p-sec" aria-labelledby="h-export">
+      <h2 id="h-export">Porta in apps/web</h2>
+      <div class="c-row">
+        <button class="c-btn primary" id="b-copy" type="button">Copia token CSS</button>
+        <button class="c-btn" id="b-reset" type="button">Ripristina</button>
+      </div>
+      <p class="c-note" id="copy-note" role="status"></p>
+      <details class="p-css" id="css-box">
+        <summary>Mostra il CSS (<code>:root</code> e <code>.dark</code>)</summary>
+        <pre id="css-out" tabindex="0"></pre>
+      </details>
+    </section>
+  </aside>
+
+  <main class="stage">
+    <div class="st-bar">
+      <div class="st-title"><b id="st-name"></b><span id="st-meta"></span></div>
+      <div class="st-ctl">
+        <div class="seg" role="radiogroup" aria-label="Vista">
+          <input type="radio" name="view" id="v-screens" value="screens"><label for="v-screens">Schermate</label>
+          <input type="radio" name="view" id="v-system" value="system"><label for="v-system">Sistema</label>
+          <input type="radio" name="view" id="v-compare" value="compare"><label for="v-compare">Confronto</label>
+        </div>
+        <div class="seg" role="radiogroup" aria-label="Tema dell'app">
+          <input type="radio" name="mode" id="t-light" value="light"><label for="t-light">Chiaro</label>
+          <input type="radio" name="mode" id="t-dark" value="dark"><label for="t-dark">Scuro</label>
+        </div>
+      </div>
+    </div>
+
+    <div class="frame">
+      <div class="mito" id="mito">
+        <div class="m-app" id="m-app">
+          <nav class="m-side" aria-label="Navigazione MITO">
+            <div class="m-brand"><div class="m-logo" aria-hidden="true">M</div><div class="m-brand-text"><b>Mito SRL</b><span>Gestionale</span></div></div>
+            <div id="m-navs"></div>
+            <div class="m-user"><span class="m-av lg tone-indigo" aria-hidden="true">SR</span><div class="m-user-text"><b>Sara Rinaldi</b><span>Admin</span></div></div>
+          </nav>
+          <div class="m-main">
+            <div class="m-top">
+              <div class="m-crumb" id="m-crumb"></div>
+              <div class="m-top-right">
+                <button class="m-icon-btn" type="button" data-bell aria-expanded="false" aria-controls="m-pop" aria-label="Notifiche, 3 nuove"><span id="ic-bell"></span><span class="m-ping" aria-hidden="true"></span></button>
+              </div>
+              <div class="m-pop" id="m-pop" hidden></div>
+            </div>
+            <div class="m-scroll" id="m-scroll"></div>
+          </div>
+          <div class="m-scrim" data-act="close" aria-hidden="true"></div>
+          <aside class="m-sheet" id="m-sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title" inert></aside>
+          <div class="m-toast" id="m-toast" role="status" aria-live="polite"></div>
+        </div>
+        <div class="m-sys" id="m-sys" hidden></div>
+      </div>
+    </div>
+    <div class="cmp" id="cmp" hidden></div>
+  </main>
+</div>
+
+<script>
+(() => {
+  "use strict";
+  const $ = (s, r = document) => r.querySelector(s);
+  const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+  const esc = (s) => String(s).replace(/[&<>"]/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch]));
+
+  /* ---------- Color: OKLCH -> sRGB with chroma reduced into gamut, WCAG contrast ---------- */
+  function lin(l, c, h) {
+    const hr = (h * Math.PI) / 180, a = c * Math.cos(hr), b = c * Math.sin(hr);
+    const l_ = l + 0.3963377774 * a + 0.2158037573 * b;
+    const m_ = l - 0.1055613458 * a - 0.0638541728 * b;
+    const s_ = l - 0.0894841775 * a - 1.291485548 * b;
+    const L = l_ ** 3, M = m_ ** 3, S = s_ ** 3;
+    return [
+      4.0767416621 * L - 3.3077115913 * M + 0.2309699292 * S,
+      -1.2684380046 * L + 2.6097574011 * M - 0.3413193965 * S,
+      -0.0041960863 * L - 0.7034186147 * M + 1.707614701 * S,
+    ];
+  }
+  const inGamut = (v) => v.every((x) => x >= -1e-4 && x <= 1 + 1e-4);
+  const gamma = (v) => { v = clamp(v, 0, 1); return v <= 0.0031308 ? 12.92 * v : 1.055 * Math.pow(v, 1 / 2.4) - 0.055; };
+  const ungamma = (v) => (v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4));
+  const hex2 = (n) => n.toString(16).padStart(2, "0");
+  function col(l, c, h, a = 1) {
+    l = clamp(l, 0, 1); c = Math.max(0, c); h = ((h % 360) + 360) % 360;
+    let rgb = lin(l, c, h);
+    if (!inGamut(rgb)) {
+      let lo = 0, hi = c;
+      for (let i = 0; i < 22; i++) { const mid = (lo + hi) / 2; if (inGamut(lin(l, mid, h))) lo = mid; else hi = mid; }
+      c = lo; rgb = lin(l, c, h);
+    }
+    const b8 = rgb.map((v) => Math.round(gamma(v) * 255));
+    const hex = "#" + b8.map(hex2).join("");
+    const y = 0.2126 * ungamma(b8[0] / 255) + 0.7152 * ungamma(b8[1] / 255) + 0.0722 * ungamma(b8[2] / 255);
+    return { l, c, h, a, hex, y, css: a < 1 ? hex + hex2(Math.round(a * 255)) : hex };
+  }
+  const ratio = (x, y) => (Math.max(x.y, y.y) + 0.05) / (Math.min(x.y, y.y) + 0.05);
+  const fmtR = (r) => r.toFixed(1).replace(".", ",") + ":1";
+  const oklchStr = (k) => `oklch(${(k.l * 100).toFixed(1)}% ${k.c.toFixed(3)} ${k.h.toFixed(1)}${k.a < 1 ? " / " + Math.round(k.a * 100) + "%" : ""})`;
+
+  /* ---------- Palette definitions ---------- */
+  const NEUTRALS = { cool: { h: 255, c: 0.012 }, pure: { h: 0, c: 0 }, warm: { h: 70, c: 0.01 }, accent: { h: null, c: 0.011 } };
+  const TONES = { blue: 245, indigo: 285, magenta: 330, orange: 48, amber: 80, teal: 188, green: 150, red: 24, neutral: null };
+  const FONTS = {
+    inter: '"Inter", ui-sans-serif, system-ui, sans-serif',
+    geist: '"Geist", ui-sans-serif, system-ui, sans-serif',
+    plex: '"IBM Plex Sans", ui-sans-serif, system-ui, sans-serif',
+    figtree: '"Figtree", ui-sans-serif, system-ui, sans-serif',
+  };
+  const FONT_NAMES = { inter: "Inter", geist: "Geist", plex: "IBM Plex Sans", figtree: "Figtree" };
+
+  const PRESETS = [
+    { id: "grafite", name: "Grafite", mood: "Inchiostro su bianco, l'accento solo per selezione e link",
+      win: "Cambia il meno possibile: chi usa il gestionale oggi si ritrova subito, ma con gerarchia e stati finalmente leggibili.",
+      cost: "Poca personalità: il colore arriva quasi solo dagli stati.",
+      cfg: { h: 255, c: 0.15, l: 0.52, primary: "ink", neutral: "pure", surfaces: "flat", sidebar: "light", badge: "dot", radius: "8", density: "compact", font: "inter" } },
+    { id: "ardesia", name: "Ardesia", mood: "Blu notte istituzionale, barra laterale scura",
+      win: "Trasmette affidabilità, adatta a un prodotto di credito; la cornice scura separa bene navigazione e lavoro.",
+      cost: "Il blu del primario è vicino al blu dello stato Chiamare: le etichette devono fare il lavoro.",
+      cfg: { h: 258, c: 0.15, l: 0.43, primary: "accent", neutral: "cool", surfaces: "layered", sidebar: "dark", badge: "soft", radius: "8", density: "comfortable", font: "plex" } },
+    { id: "indaco", name: "Indaco", mood: "Il riferimento kargul portato in chiaro: indaco elettrico, badge con bordo",
+      win: "Moderna e riconoscibile; riprende dal riferimento la scala di grigi fine e i tag a tre toni.",
+      cost: "L'indaco saturo stanca su molte ore: va tenuto su azioni e selezione, mai su grandi superfici.",
+      cfg: { h: 274, c: 0.26, l: 0.49, primary: "accent", neutral: "pure", surfaces: "layered", sidebar: "light", badge: "soft", radius: "8", density: "compact", font: "geist" } },
+    { id: "petrolio", name: "Petrolio", mood: "Petrolio e grigi azzurrati, calma per chi passa la giornata al telefono",
+      win: "Bassa fatica visiva nelle liste lunghe; la barra laterale tinta dà identità senza gridare.",
+      cost: "Accento tenue: il bottone primario si nota meno, va aiutato con la posizione.",
+      cfg: { h: 210, c: 0.09, l: 0.48, primary: "accent", neutral: "accent", surfaces: "layered", sidebar: "tint", badge: "soft", radius: "12", density: "comfortable", font: "figtree" } },
+    { id: "ametista", name: "Ametista", mood: "Prugna su neutri caldi, badge pieni",
+      win: "Calda e lontana da qualunque banca o CRM standard; gli stati si riconoscono a colpo d'occhio.",
+      cost: "I badge pieni rendono rumorose le tabelle lunghe; il prugna è vicino al magenta di Follow-up.",
+      cfg: { h: 318, c: 0.15, l: 0.47, primary: "accent", neutral: "warm", surfaces: "flat", sidebar: "light", badge: "solid", radius: "12", density: "comfortable", font: "inter" } },
+    // Indaco iterations: same structure, one lever per variant on the color of the actions (chroma, lightness, colored area)
+    { id: "indaco-temperato", group: "indaco", name: "Indaco temperato", mood: "Lo stesso indaco, un passo indietro di intensità",
+      lever: "croma 0,26 → 0,19, luminosità 49% → 45%",
+      win: "Il cambio più piccolo: resta riconoscibile come Indaco ma smette di vibrare sul bianco.",
+      cost: "È ancora un colore pieno su ogni bottone primario: se stanca la quantità, non basta.",
+      cfg: { h: 276, c: 0.19, l: 0.45, primary: "accent", neutral: "pure", surfaces: "layered", sidebar: "light", badge: "soft", radius: "8", density: "compact", font: "geist" } },
+    { id: "indaco-notte", group: "indaco", name: "Indaco notte", mood: "Più scuro e meno saturo: il bottone pesa come un titolo",
+      lever: "croma 0,26 → 0,15, luminosità 49% → 40%",
+      win: "Il bottone si legge come testo importante, non come un'insegna; in tema chiaro il testo bianco sale da 7,0 a 9,6:1.",
+      cost: "Si avvicina al blu notte di Ardesia; nelle pagine con tante azioni i bottoni pesano di più.",
+      cfg: { h: 272, c: 0.15, l: 0.4, primary: "accent", neutral: "pure", surfaces: "layered", sidebar: "light", badge: "soft", radius: "8", density: "compact", font: "geist" } },
+    { id: "indaco-polvere", group: "indaco", name: "Indaco polvere", mood: "Indaco spento verso il grigio, quasi carta da zucchero",
+      lever: "croma 0,26 → 0,10",
+      win: "La più riposante su molte ore: l'accento non compete mai con i nove colori degli stati.",
+      cost: "Le righe selezionate diventano quasi grigie e il primario rischia di sembrare spento accanto ai secondari.",
+      cfg: { h: 280, c: 0.1, l: 0.48, primary: "accent", neutral: "pure", surfaces: "layered", sidebar: "light", badge: "soft", radius: "8", density: "compact", font: "geist" } },
+    { id: "indaco-tonale", group: "indaco", name: "Indaco tonale", mood: "Bottoni a fondo chiaro, l'indaco pieno solo su checkbox e switch",
+      lever: "bottone tonale, croma 0,20",
+      win: "Toglie le superfici sature più grandi: il colore resta, ma su aree piccole. Regge bene le schermate con più azioni.",
+      cost: "L'azione principale si stacca meno dalla secondaria e, nella barra di selezione, dal fondo: posizione ed etichetta devono aiutarla.",
+      cfg: { h: 274, c: 0.2, l: 0.48, primary: "tonal", neutral: "pure", surfaces: "layered", sidebar: "light", badge: "soft", radius: "8", density: "compact", font: "geist" } },
+    { id: "indaco-inchiostro", group: "indaco", name: "Inchiostro indaco", mood: "Bottoni quasi neri tinti d'indaco, il colore per selezione e link",
+      lever: "bottone inchiostro, croma 0,20",
+      win: "Azioni calme come in Grafite, ma con un'identità: l'indaco resta su selezione, link, focus e grafici.",
+      cost: "Il colore arriva da poche aree: la personalità è più sottile, e il primario si distingue dal testo solo per forma.",
+      cfg: { h: 274, c: 0.2, l: 0.48, primary: "deep", neutral: "pure", surfaces: "layered", sidebar: "light", badge: "soft", radius: "8", density: "compact", font: "geist" } },
+    { id: "indaco-grafite", group: "indaco", name: "Indaco grafite", mood: "Barra laterale, token e spazi di Indaco; azioni e tabella di Grafite",
+      lever: "bottoni, checkbox e switch nel nero di Grafite, badge con punto; l'indaco resta su logo, selezione, link e focus",
+      win: "Le azioni smettono di chiamare l'occhio: il nero si legge come testo forte, e l'indaco resta dove serve a orientarsi. I badge con punto tengono quieta la tabella anche con nove stati.",
+      cost: "Il primario si distingue dal testo solo per forma e peso; gli stati si riconoscono dal punto e dall'etichetta, meno a colpo d'occhio dei badge colorati.",
+      cfg: { h: 274, c: 0.26, l: 0.49, primary: "ink", neutral: "pure", surfaces: "layered", sidebar: "light", badge: "dot", radius: "8", density: "compact", font: "geist", logo: "accent" } },
+  ];
+  const FAMILY = PRESETS.filter((p) => p.id === "indaco" || p.group === "indaco");
+
+  const CONTROLS = [
+    { key: "primary", label: "Bottone primario", opts: [["accent", "Pieno"], ["tonal", "Tonale"], ["deep", "Inchiostro"], ["ink", "Nero"]] },
+    { key: "neutral", label: "Grigi", opts: [["cool", "Freddi"], ["pure", "Puri"], ["warm", "Caldi"], ["accent", "Tinti"]] },
+    { key: "surfaces", label: "Superfici", opts: [["layered", "A strati"], ["flat", "Piatte"]] },
+    { key: "sidebar", label: "Barra laterale", opts: [["light", "Chiara"], ["tint", "Tinta"], ["dark", "Scura"]] },
+    { key: "badge", label: "Badge di stato", opts: [["soft", "Morbidi"], ["dot", "Con punto"], ["solid", "Pieni"]] },
+    { key: "radius", label: "Angoli", opts: [["4", "4 px"], ["8", "8 px"], ["12", "12 px"]] },
+    { key: "density", label: "Densità", opts: [["compact", "Compatta"], ["comfortable", "Comoda"]] },
+    { key: "font", label: "Carattere", opts: [["inter", "Inter"], ["geist", "Geist"], ["plex", "Plex"], ["figtree", "Figtree"]] },
+  ];
+
+  /* ---------- Tokens from a configuration ---------- */
+  function tone(h, dark, n) {
+    if (h === null) {
+      return dark
+        ? { bg: n(0.27), bd: n(0.345), fg: n(0.86), dot: n(0.62), solid: n(0.6) }
+        : { bg: n(0.955), bd: n(0.885), fg: n(0.4, 1.3), dot: n(0.64), solid: n(0.46) };
+    }
+    const y = h >= 60 && h <= 110;
+    return dark
+      ? { bg: col(0.275, 0.045, h), bd: col(0.355, 0.07, h), fg: col(0.87, 0.085, h), dot: col(0.72, 0.15, h), solid: col(0.72, 0.14, h) }
+      : { bg: col(0.965, 0.032, h), bd: col(0.895, 0.065, h), fg: col(y ? 0.47 : 0.45, y ? 0.105 : 0.13, y ? h - 14 : h), dot: col(y ? 0.76 : 0.63, 0.16, h), solid: col(y ? 0.83 : 0.5, 0.15, h) };
+  }
+
+  function build(cfg, dark) {
+    const N = NEUTRALS[cfg.neutral] || NEUTRALS.pure;
+    const nh = N.h === null ? cfg.h : N.h, nc = N.c;
+    const n = (l, m = 1, a = 1) => col(l, nc * m, nh, a);
+    const ah = cfg.h, ac = cfg.c, al = cfg.l, sc = Math.min(ac, 0.2);
+    const A = (l, c = ac, a = 1) => col(l, c, ah, a);
+    const white = col(1, 0, 0);
+    const pick = (bg, alt) => (ratio(white, bg) >= 4.5 ? white : alt);
+    const layered = cfg.surfaces === "layered";
+    const T = {};
+
+    if (!dark) {
+      T.surface = white; T.sunken = n(0.972); T.hover = n(0.978); T.border = n(0.922); T.borderStrong = n(0.872);
+      T.input = n(0.86); T.inputHover = n(0.78); T.control = n(0.6); T.switchOff = n(0.84); T.knob = white;
+      T.fg = n(0.205, 1.5); T.muted = n(0.485, 1.3); T.subtle = n(0.63);
+      if (cfg.primary === "ink") { T.primary = n(0.235, 1.5); T.primaryHover = n(0.33, 1.5); }
+      else if (cfg.primary === "deep") { const dc = Math.min(ac * 0.3, 0.065); T.primary = A(0.29, dc); T.primaryHover = A(0.36, dc * 1.1); }
+      else if (cfg.primary === "tonal") { const tc = Math.min(ac * 0.3, 0.07); T.primary = A(0.905, tc); T.primaryHover = A(0.875, tc * 1.15); }
+      else { T.primary = A(al); T.primaryHover = A(al - 0.05); }
+      T.primaryFg = cfg.primary === "tonal" ? A(0.37, Math.min(ac, 0.17)) : pick(T.primary, n(0.17));
+      T.primaryBd = cfg.primary === "tonal" ? A(0.82, Math.min(ac * 0.4, 0.09)) : T.primary;
+      // strong: the filled accent for small selected controls (checkbox, switch, logo); a tonal button keeps it solid
+      T.strong = cfg.primary === "tonal" ? A(Math.min(al, 0.5)) : T.primary;
+      // the logo keeps the accent when the actions are ink (Indaco grafite)
+      const logo = cfg.logo === "accent" ? A(Math.min(al, 0.5)) : T.strong;
+      T.strongFg = pick(T.strong, n(0.17));
+      T.soft = A(0.955, sc * 0.18); T.softBd = A(0.895, sc * 0.35); T.softFg = A(0.42, sc * 0.85);
+      T.link = A(Math.min(al, 0.5)); T.focus = A(0.56); T.ring = A(0.6, ac, 0.26);
+      T.success = col(0.56, 0.14, 152); T.successFg = col(0.43, 0.11, 152); T.successSoft = col(0.966, 0.035, 152); T.successBd = col(0.885, 0.07, 152);
+      T.warning = col(0.64, 0.14, 66); T.warningFg = col(0.47, 0.105, 60); T.warningSoft = col(0.973, 0.042, 86); T.warningBd = col(0.89, 0.08, 84);
+      T.danger = col(0.53, 0.19, 26); T.dangerFg = col(0.47, 0.17, 26); T.dangerSoft = col(0.967, 0.022, 20); T.dangerBd = col(0.89, 0.06, 22);
+      T.dangerBtn = T.danger; T.dangerHover = col(0.48, 0.18, 26); T.dangerBtnFg = pick(T.dangerBtn, n(0.17)); T.dangerRing = col(0.6, 0.19, 26, 0.2);
+      T.chart = A(clamp(al, 0.45, 0.6)); T.chartSoft = A(0.88, sc * 0.35);
+      T.overlay = n(0.2, 1, 0.32); T.tooltip = n(0.22, 1.5); T.tooltipFg = white;
+      T.shadowXs = n(0.2, 1, 0.07).css;
+      T.shadowCard = `0 1px 2px 0 ${n(0.2, 1, 0.05).css}`;
+      T.shadowPop = `0 18px 40px -12px ${n(0.15, 1, 0.24).css}, 0 2px 6px ${n(0.15, 1, 0.07).css}`;
+      if (cfg.sidebar === "dark") {
+        const sh = Math.min(0.04, ac * 0.2);
+        T.side = A(0.235, sh); T.sideFg = A(0.82, 0.015); T.sideMuted = A(0.66, 0.02); T.sideActive = A(0.33, sh * 1.4);
+        T.sideActiveFg = white; T.sideStrong = white; T.sideHover = A(0.29, sh); T.sideBorder = A(0.29, sh);
+        T.logoBg = white; T.logoFg = cfg.primary === "ink" && cfg.logo !== "accent" ? n(0.2) : A(Math.min(al, 0.5));
+        T.countBg = A(0.36, sh * 1.5); T.countFg = A(0.92, 0.02);
+      } else if (cfg.sidebar === "tint") {
+        T.side = A(0.957, sc * 0.13); T.sideFg = A(0.39, sc * 0.32); T.sideMuted = A(0.49, sc * 0.25); T.sideActive = A(0.905, sc * 0.32);
+        T.sideActiveFg = A(0.28, sc * 0.75); T.sideStrong = A(0.22, sc * 0.4); T.sideHover = A(0.93, sc * 0.2); T.sideBorder = A(0.915, sc * 0.2);
+        T.logoBg = logo; T.logoFg = pick(logo, n(0.17)); T.countBg = A(0.89, sc * 0.35); T.countFg = A(0.32, sc * 0.7);
+      } else {
+        T.side = layered ? n(0.962) : n(0.983); T.sideFg = n(0.4, 1.3); T.sideMuted = n(0.47); T.sideActive = layered ? white : T.soft;
+        T.sideActiveFg = layered ? T.fg : T.softFg; T.sideStrong = T.fg; T.sideHover = layered ? n(0.935) : n(0.955); T.sideBorder = layered ? T.side : T.border;
+        T.logoBg = logo; T.logoFg = pick(logo, n(0.17)); T.countBg = layered ? n(0.915) : n(0.94); T.countFg = n(0.38);
+      }
+      T.sideActiveShadow = cfg.sidebar === "light" && layered ? `0 1px 2px ${n(0.2, 1, 0.08).css}, 0 0 0 1px ${T.border.css}` : "none";
+      T.sheetBorder = cfg.sidebar === "light" ? T.border : T.side;
+    } else {
+      T.surface = n(0.205); T.sunken = n(0.232); T.hover = n(0.245); T.border = n(0.285); T.borderStrong = n(0.345);
+      T.input = n(0.335); T.inputHover = n(0.42); T.control = n(0.58); T.switchOff = n(0.4); T.knob = n(0.88);
+      T.fg = n(0.96, 0.4); T.muted = n(0.73); T.subtle = n(0.58);
+      const vivid = A(clamp(al + 0.17, 0.6, 0.72), ac * 0.92);
+      if (cfg.primary === "ink") { T.primary = n(0.95, 0.4); T.primaryHover = n(0.87, 0.4); }
+      else if (cfg.primary === "deep") { const dc = Math.min(ac * 0.15, 0.03); T.primary = A(0.93, dc); T.primaryHover = A(0.86, dc); }
+      else if (cfg.primary === "tonal") { const tc = Math.min(ac * 0.45, 0.09); T.primary = A(0.34, tc); T.primaryHover = A(0.38, tc); }
+      else { T.primary = vivid; T.primaryHover = A(clamp(al + 0.21, 0.64, 0.76), ac * 0.92); }
+      T.primaryFg = cfg.primary === "tonal" ? A(0.9, Math.min(ac * 0.35, 0.07)) : pick(T.primary, n(0.17));
+      T.primaryBd = cfg.primary === "tonal" ? A(0.45, Math.min(ac * 0.5, 0.1)) : T.primary;
+      T.strong = cfg.primary === "tonal" ? vivid : T.primary;
+      const logo = cfg.logo === "accent" ? vivid : T.strong;
+      T.strongFg = pick(T.strong, n(0.17));
+      T.soft = A(0.3, sc * 0.4); T.softBd = A(0.38, sc * 0.5); T.softFg = A(0.88, sc * 0.45);
+      T.link = A(0.78, ac * 0.7); T.focus = A(0.72, ac * 0.8); T.ring = A(0.7, ac, 0.3);
+      T.success = col(0.75, 0.15, 152); T.successFg = col(0.84, 0.11, 152); T.successSoft = col(0.28, 0.05, 152); T.successBd = col(0.37, 0.07, 152);
+      T.warning = col(0.8, 0.14, 78); T.warningFg = col(0.87, 0.1, 84); T.warningSoft = col(0.29, 0.05, 72); T.warningBd = col(0.38, 0.07, 72);
+      T.danger = col(0.72, 0.16, 24); T.dangerFg = col(0.84, 0.09, 22); T.dangerSoft = col(0.29, 0.065, 22); T.dangerBd = col(0.38, 0.09, 22);
+      T.dangerBtn = col(0.57, 0.19, 26); T.dangerHover = col(0.62, 0.19, 26); T.dangerBtnFg = pick(T.dangerBtn, n(0.17)); T.dangerRing = col(0.65, 0.19, 26, 0.3);
+      T.chart = A(0.68, ac * 0.85); T.chartSoft = A(0.37, sc * 0.5);
+      T.overlay = col(0, 0, 0, 0.55); T.tooltip = n(0.92, 0.4); T.tooltipFg = n(0.18);
+      T.shadowXs = col(0, 0, 0, 0.35).css; T.shadowCard = "none";
+      T.shadowPop = `0 18px 44px -10px ${col(0, 0, 0, 0.6).css}, 0 0 0 1px ${n(0.3).css}`;
+      if (cfg.sidebar === "dark") {
+        const sh = Math.min(0.03, ac * 0.15);
+        T.side = A(0.15, sh); T.sideActive = A(0.255, sh * 1.4); T.sideHover = A(0.21, sh); T.sideBorder = A(0.22, sh);
+      } else if (cfg.sidebar === "tint") {
+        T.side = A(0.18, sc * 0.12); T.sideActive = A(0.29, sc * 0.4); T.sideHover = A(0.235, sc * 0.2); T.sideBorder = A(0.25, sc * 0.15);
+      } else {
+        T.side = layered ? n(0.165) : n(0.185); T.sideActive = n(0.26); T.sideHover = n(0.225); T.sideBorder = layered ? T.side : n(0.26);
+      }
+      T.sideFg = n(0.76); T.sideMuted = n(0.62); T.sideActiveFg = n(0.97, 0.3); T.sideStrong = n(0.97, 0.3);
+      T.logoBg = logo; T.logoFg = pick(logo, n(0.17)); T.countBg = n(0.3); T.countFg = n(0.86);
+      T.sideActiveShadow = "none"; T.sheetBorder = n(0.27);
+    }
+    T.frame = layered ? T.side : T.surface;
+    T.tones = {};
+    for (const [k, h] of Object.entries(TONES)) {
+      const t = tone(h, dark, n);
+      t.solidFg = ratio(white, t.solid) >= 4.5 ? white : n(0.17);
+      T.tones[k] = t;
+    }
+    return T;
+  }
+
+  const VARS = {
+    frame: "frame", surface: "surface", sunken: "sunken", hover: "hover", border: "border", "border-strong": "borderStrong",
+    "border-strong-hover": "inputHover", input: "input", control: "control", "switch-off": "switchOff", knob: "knob",
+    fg: "fg", "fg-muted": "muted", "fg-subtle": "subtle", primary: "primary", "primary-hover": "primaryHover", "primary-fg": "primaryFg", "primary-bd": "primaryBd", strong: "strong", "strong-fg": "strongFg",
+    soft: "soft", "soft-bd": "softBd", "soft-fg": "softFg", link: "link", focus: "focus", ring: "ring",
+    success: "success", "success-fg": "successFg", "success-soft": "successSoft", "success-bd": "successBd",
+    warning: "warning", "warning-fg": "warningFg", "warning-soft": "warningSoft", "warning-bd": "warningBd",
+    danger: "danger", "danger-fg": "dangerFg", "danger-soft": "dangerSoft", "danger-bd": "dangerBd",
+    "danger-btn": "dangerBtn", "danger-hover": "dangerHover", "danger-btn-fg": "dangerBtnFg", "danger-ring": "dangerRing",
+    chart: "chart", "chart-soft": "chartSoft", overlay: "overlay", tooltip: "tooltip", "tooltip-fg": "tooltipFg",
+    side: "side", "side-fg": "sideFg", "side-muted": "sideMuted", "side-active": "sideActive", "side-active-fg": "sideActiveFg",
+    "side-active-fg-strong": "sideStrong", "side-hover": "sideHover", "side-border": "sideBorder",
+    "logo-bg": "logoBg", "logo-fg": "logoFg", "count-bg": "countBg", "count-fg": "countFg", "sheet-border": "sheetBorder",
+  };
+
+  /* ---------- Sample data (fictional people, the real domain's states and columns) ---------- */
+  const OPS = { gf: { name: "Giulia Ferri", tone: "magenta" }, lm: { name: "Luca Moretti", tone: "teal" }, ac: { name: "Andrea Conti", tone: "amber" }, sr: { name: "Sara Rinaldi", tone: "indigo" } };
+  const STATES = {
+    chiamare: { label: "Chiamare", tone: "blue" }, followup: { label: "Follow-up", tone: "magenta" }, "non risponde": { label: "Non risponde", tone: "orange" },
+    richiamare: { label: "Richiamare", tone: "amber" }, "app.to": { label: "App.to", tone: "teal" }, caricato: { label: "Caricato", tone: "indigo" },
+    erogata: { label: "Erogata", tone: "green" }, "non interessato": { label: "Non interessato", tone: "red" }, nessuno: { label: "Nessuno", tone: "neutral" },
+  };
+  const ALL_STATES = ["chiamare", "non interessato", "app.to", "caricato", "richiamare", "non risponde", "erogata", "nessuno", "followup"];
+  // Priority is told by shape (signal bars), not by hue: the nine contact states already use the hues
+  const PRI = { urgent: { label: "Urgente", lvl: 4 }, high: { label: "Alta", lvl: 3 }, medium: { label: "Media", lvl: 2 }, low: { label: "Bassa", lvl: 1 } };
+  const PSTATES = { Liquidata: "green", Chiusa: "neutral", "Estinta anticipata": "teal", Rinunciata: "amber", Rifiutata: "red", Stornata: "magenta" };
+  const PCOUNTS = { Liquidata: 214, Chiusa: 61, "Estinta anticipata": 28, Rinunciata: 19, Rifiutata: 14, Stornata: 6 };
+  const SOURCES = { spontaneo: "green", passaparola: "amber", inbound: "blue", outbound: "indigo", "call center": "teal", "post vendita": "orange", digital: "magenta", banca: "neutral" };
+
+  const CONTACTS = [
+    { id: 1, name: "Marco Rossi", phone: "333 412 8890", cf: "RSSMRC78C12F205X", state: "chiamare", pri: "urgent", op: "gf", alert: { t: "Oggi, 15:30", k: "today" }, upd: "29/10/2026" },
+    { id: 2, name: "Laura Bianchi", phone: "347 220 1934", cf: "BNCLRA85E52H501K", state: "app.to", pri: "medium", op: "lm", alert: { t: "30/10, 10:00" }, upd: "29/10/2026" },
+    { id: 3, name: "Gennaro Esposito", phone: "320 556 7712", cf: "SPSGNR63A01F839T", state: "non risponde", pri: "high", op: "gf", alert: { t: "Domani, 09:00" }, upd: "28/10/2026" },
+    { id: 4, name: "Elena Ricci", phone: "366 774 2290", cf: "RCCLNE81R60A944B", state: "followup", pri: "urgent", op: null, alert: { t: "Scaduto il 27/10", k: "late" }, upd: "27/10/2026" },
+    { id: 5, name: "Davide Colombo", phone: "348 902 3311", cf: "CLMDVD72M03F205Q", state: "richiamare", pri: "medium", op: "lm", alert: { t: "04/11, 11:30" }, upd: "27/10/2026" },
+    { id: 6, name: "Francesca Romano", phone: "339 118 0045", cf: "RMNFNC90T45L219P", state: "erogata", pri: "low", op: "ac", alert: null, upd: "26/10/2026" },
+    { id: 7, name: "Salvatore Marino", phone: "380 345 6612", cf: "MRNSVT58P14G273D", state: "caricato", pri: "medium", op: "ac", alert: null, upd: "26/10/2026" },
+    { id: 8, name: "Edilnord S.r.l.", phone: "02 4471 2290", cf: "04512870963", state: "chiamare", pri: "high", op: "sr", alert: { t: "Oggi, 17:00", k: "today" }, upd: "25/10/2026" },
+    { id: 9, name: "Chiara Greco", phone: "351 228 9087", cf: "GRCCHR95D41D612M", state: "non interessato", pri: "low", op: "gf", alert: null, upd: "24/10/2026" },
+    { id: 10, name: "Antonio Bruno", phone: "333 671 2043", cf: "BRNNTN66H22L736F", state: "nessuno", pri: "low", op: null, alert: null, upd: "22/10/2026" },
+  ];
+  const PRACTICES = [
+    { id: "PR-2026-01873", cust: "Francesca Romano", prod: "Prestito personale", fin: 24500, rata: 289, dur: 120, state: "Liquidata", date: "26/10/2026" },
+    { id: "PR-2026-01868", cust: "Salvatore Marino", prod: "Repeat business", fin: 12000, rata: 198, dur: 72, state: "Liquidata", date: "23/10/2026" },
+    { id: "PR-2026-01851", cust: "Paolo Fontana", prod: "Disintermediato automotive", fin: 18900, rata: 356, dur: 60, state: "Chiusa", date: "20/10/2026" },
+    { id: "PR-2026-01847", cust: "Marta Lombardi", prod: "Prestito personale", fin: 8500, rata: 162, dur: 60, state: "Rinunciata", date: "19/10/2026" },
+    { id: "PR-2026-01832", cust: "Giorgio Barbieri", prod: "Prestito personale", fin: 31000, rata: 342, dur: 120, state: "Estinta anticipata", date: "15/10/2026" },
+    { id: "PR-2026-01829", cust: "Alessia Moretti", prod: "Repeat business", fin: 15000, rata: 233, dur: 84, state: "Rifiutata", date: "14/10/2026" },
+    { id: "PR-2026-01811", cust: "Edilnord S.r.l.", prod: "Finalizzato", fin: 42000, rata: 812, dur: 60, state: "Liquidata", date: "09/10/2026" },
+    { id: "PR-2026-01806", cust: "Luca De Santis", prod: "Prestito personale", fin: 6000, rata: 118, dur: 60, state: "Stornata", date: "08/10/2026" },
+    { id: "PR-2026-01799", cust: "Valentina Costa", prod: "Disintermediato automotive", fin: 22300, rata: 398, dur: 72, state: "Liquidata", date: "06/10/2026" },
+  ];
+  const CUSTOMERS = [
+    { name: "Marco Rossi", cf: "RSSMRC78C12F205X", phone: "333 412 8890", city: "Milano", src: "inbound", prat: 0, op: "gf" },
+    { name: "Laura Bianchi", cf: "BNCLRA85E52H501K", phone: "347 220 1934", city: "Roma", src: "passaparola", prat: 1, op: "lm" },
+    { name: "Gennaro Esposito", cf: "SPSGNR63A01F839T", phone: "320 556 7712", city: "Napoli", src: "call center", prat: 0, op: "gf" },
+    { name: "Francesca Romano", cf: "RMNFNC90T45L219P", phone: "339 118 0045", city: "Torino", src: "digital", prat: 2, op: "ac" },
+    { name: "Salvatore Marino", cf: "MRNSVT58P14G273D", phone: "380 345 6612", city: "Palermo", src: "post vendita", prat: 3, op: "ac" },
+    { name: "Edilnord S.r.l.", cf: "04512870963", phone: "02 4471 2290", city: "Milano", src: "banca", prat: 1, op: "sr" },
+    { name: "Davide Colombo", cf: "CLMDVD72M03F205Q", phone: "348 902 3311", city: "Milano", src: "outbound", prat: 0, op: "lm" },
+    { name: "Elena Ricci", cf: "RCCLNE81R60A944B", phone: "366 774 2290", city: "Bologna", src: "spontaneo", prat: 0, op: null },
+  ];
+  const MONTHS = [["Mag", 0.98], ["Giu", 1.12], ["Lug", 1.05], ["Ago", 0.71], ["Set", 1.14], ["Ott", 1.28]];
+  const QUICK = {
+    all: { label: "Tutti", count: 128, test: () => true },
+    call: { label: "In coda", count: 18, test: (r) => ["chiamare", "followup", "non risponde"].includes(r.state) },
+    alert: { label: "Con alert", count: 9, test: (r) => !!r.alert },
+    free: { label: "Non assegnati", count: 6, test: (r) => !r.op },
+  };
+  const eur = new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
+  const num = new Intl.NumberFormat("it-IT");
+
+  /* ---------- Icons (lucide-like strokes, as the app uses lucide-react) ---------- */
+  const I = {
+    home: '<path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M10 21v-6h4v6"/>',
+    users: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.4 3.3-5.5 6.5-5.5s5.9 2.1 6.5 5.5"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8"/><path d="M18 14.8c2 .7 3.2 2.5 3.5 5.2"/>',
+    phone: '<path d="M5 3h3.5l1.8 4.5-2.3 1.5a11 11 0 0 0 7 7l1.5-2.3L21 15.5V19a2 2 0 0 1-2 2A17 17 0 0 1 3 5a2 2 0 0 1 2-2z"/>',
+    folder: '<path d="M3 6.5A1.5 1.5 0 0 1 4.5 5H9l2 2.5h8.5A1.5 1.5 0 0 1 21 9v9.5a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 18.5z"/>',
+    upload: '<path d="M12 15V4"/><path d="m7 9 5-5 5 5"/><path d="M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/>',
+    search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
+    bell: '<path d="M6 8a6 6 0 1 1 12 0c0 7 3 8 3 8H3s3-1 3-8"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/>',
+    plus: '<path d="M12 5v14M5 12h14"/>',
+    dots: '<circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/>',
+    chev: '<path d="m6 9 6 6 6-6"/>',
+    left: '<path d="m15 18-6-6 6-6"/>',
+    right: '<path d="m9 18 6-6-6-6"/>',
+    down: '<path d="M12 5v14M6 13l6 6 6-6"/>',
+    x: '<path d="M18 6 6 18M6 6l12 12"/>',
+    clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+    alert: '<path d="M10.3 3.9 2.4 18a2 2 0 0 0 1.7 3h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/>',
+    info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>',
+    ok: '<circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/>',
+    ko: '<circle cx="12" cy="12" r="9"/><path d="m9 9 6 6M15 9l-6 6"/>',
+    download: '<path d="M12 4v11"/><path d="m7 10 5 5 5-5"/><path d="M4 19h16"/>',
+    file: '<path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8z"/><path d="M14 3v5h5"/>',
+    euro: '<path d="M17 6.5A7 7 0 1 0 17 17.5"/><path d="M4 10h9M4 14h9"/>',
+    cal: '<rect x="3" y="4.5" width="18" height="16" rx="2"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/>',
+    trash: '<path d="M4 7h16M10 11v6M14 11v6"/><path d="M6 7l1 13h10l1-13M9 7V4h6v3"/>',
+  };
+  const icon = (n, cls = "") => `<svg${cls ? ` class="${cls}"` : ""} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${I[n]}</svg>`;
+  const initials = (name) => name.split(" ").map((p) => p[0]).slice(0, 2).join("").toUpperCase();
+  const badge = (label, t, editable = false) => `<span class="m-badge tone-${t}">${esc(label)}${editable ? icon("chev", "m-chev") : ""}</span>`;
+  const stateBadge = (s, editable = false) => badge(STATES[s].label, STATES[s].tone, editable);
+  const priBadge = (p) => `<span class="m-pri${p === "urgent" ? " urgent" : ""}"><span class="bars" aria-hidden="true">${[1, 2, 3, 4].map((i) => `<i${i <= PRI[p].lvl ? ' class="on"' : ""}></i>`).join("")}</span>${PRI[p].label}</span>`;
+  const opCell = (op) => (op ? `<span class="m-op"><span class="m-av tone-${OPS[op].tone}" aria-hidden="true">${initials(OPS[op].name)}</span>${OPS[op].name}</span>` : `<span class="m-dim">Non assegnato</span>`);
+  const alertCell = (a) => {
+    if (!a) return `<span class="m-dim" aria-label="Nessun alert">—</span>`;
+    const ic = a.k === "late" ? "alert" : a.k === "today" ? "bell" : "clock";
+    return `<span class="m-alert ${a.k || ""}">${icon(ic)}${a.t}</span>`;
+  };
+
+  /* ---------- State ---------- */
+  const KEY = "mito-palette-v1";
+  const state = { preset: "indaco", view: "screens", dark: false, screen: "contatti", quick: "all", q: "", pf: "Tutte", sel: new Set([1, 8]), page: 1, openId: null, opener: null };
+  let cfg = { ...PRESETS[2].cfg };
+  try {
+    const s = JSON.parse(localStorage.getItem(KEY) || "null");
+    if (s && s.cfg && PRESETS.some((p) => p.id === s.preset)) {
+      state.preset = s.preset; cfg = { ...PRESETS.find((p) => p.id === s.preset).cfg, ...s.cfg };
+      if (["screens", "system", "compare"].includes(s.view)) state.view = s.view;
+      state.dark = !!s.dark;
+      if (["home", "clienti", "contatti", "pratiche", "import"].includes(s.screen)) state.screen = s.screen;
+    }
+  } catch (e) { /* storage unavailable: start from defaults */ }
+  const fromHash = PRESETS.find((p) => p.id === location.hash.slice(1));
+  if (fromHash) { state.preset = fromHash.id; cfg = { ...fromHash.cfg }; }
+  const save = () => {
+    try { localStorage.setItem(KEY, JSON.stringify({ preset: state.preset, cfg, view: state.view, dark: state.dark, screen: state.screen })); } catch (e) { /* ignore */ }
+  };
+  const presetOf = () => PRESETS.find((p) => p.id === state.preset);
+  const isModified = () => JSON.stringify(presetOf().cfg) !== JSON.stringify(cfg);
+
+  /* ---------- Chrome: presets and controls ---------- */
+  const presetsEl = $("#presets"), iterEl = $("#presets-i");
+  function presetCard(p) {
+    const T = build(p.cfg, false);
+    const tagFor = (k) => {
+      const t = T.tones[k];
+      if (p.cfg.badge === "dot") return `<i class="dot" style="background:${t.dot.hex}"></i>`;
+      if (p.cfg.badge === "solid") return `<i style="background:${t.solid.hex}"></i>`;
+      return `<i style="background:${t.bg.hex};border:1px solid ${t.bd.hex}"></i>`;
+    };
+    const lay = p.cfg.surfaces === "layered";
+    return `<label class="preset" for="p-${p.id}">
+      <input type="radio" name="preset" id="p-${p.id}" value="${p.id}">
+      <span class="mini" aria-hidden="true" style="background:${T.frame.hex}">
+        <span class="mini-side" style="background:${T.side.hex}"><i style="background:${T.logoBg.hex};width:9px;height:9px;border-radius:3px;margin-bottom:3px"></i><i style="background:${T.sideActive.hex}${T.sideActiveShadow !== "none" ? ";box-shadow:0 0 0 1px " + T.border.hex : ""}"></i><i style="background:${T.sideFg.hex};opacity:.35;width:70%"></i><i style="background:${T.sideFg.hex};opacity:.35;width:80%"></i></span>
+        <span class="mini-main" style="background:${T.surface.hex};${lay ? "margin:3px 3px 3px 0;border-radius:4px;" : ""}">
+          <span class="mini-line" style="background:${T.fg.hex};width:46%"></span>
+          <span class="mini-tags">${tagFor("blue")}${tagFor("teal")}${tagFor("orange")}</span>
+          <span class="mini-line" style="background:${T.border.hex};width:90%"></span>
+          <span class="mini-btn" style="background:${T.primary.hex}"></span>
+        </span>
+      </span>
+      <span><span class="p-name">${p.name}</span><span class="p-mood">${p.mood}</span></span>
+    </label>`;
+  }
+  presetsEl.innerHTML = PRESETS.filter((p) => !p.group).map(presetCard).join("");
+  iterEl.innerHTML = PRESETS.filter((p) => p.group === "indaco").map(presetCard).join("");
+
+  $("#ctls").innerHTML = CONTROLS.map((c) => `<fieldset class="ctl"><legend>${c.label}</legend><div class="seg">${c.opts.map(([v, l]) => `<input type="radio" name="c-${c.key}" id="c-${c.key}-${v}" value="${v}"><label for="c-${c.key}-${v}">${l}</label>`).join("")}</div></fieldset>`).join("");
+
+  /* ---------- Rendering the app ---------- */
+  const mito = $("#mito"), app = $("#m-app"), scroll = $("#m-scroll");
+  const SCREENS = [
+    ["home", "Home", "home"], ["clienti", "Clienti", "users"], ["contatti", "Contatti", "phone", 18], ["pratiche", "Pratiche", "folder"], ["import", "Import", "upload"],
+  ];
+  $("#ic-bell").outerHTML = icon("bell");
+  $("#m-navs").innerHTML = `<div class="m-side-label">Lavoro</div>` + SCREENS.slice(0, 4).map(navBtn).join("") + `<div class="m-side-label">Amministrazione</div>` + navBtn(SCREENS[4]);
+  function navBtn([id, label, ic, count]) {
+    return `<button class="m-nav" type="button" data-nav="${id}" aria-label="${label}">${icon(ic)}<span class="lbl">${label}</span>${count ? `<span class="m-count">${count}</span>` : ""}</button>`;
+  }
+  // tone classes for badges, avatars, dots
+  const toneCss = Object.keys(TONES).map((k) => `.mito .tone-${k}{--bg:var(--t-${k}-bg);--bd:var(--t-${k}-bd);--fg:var(--t-${k}-fg);--dot:var(--t-${k}-dot);--solid:var(--t-${k}-solid);--solidfg:var(--t-${k}-solidfg)}`).join("\n");
+  const st = document.createElement("style"); st.textContent = toneCss; document.head.appendChild(st);
+
+  function applyTokens(T) { applyTo(mito, T, cfg, state.dark); }
+  function applyTo(el, T, cfg, dark) {
+    const s = el.style;
+    for (const [v, k] of Object.entries(VARS)) s.setProperty("--m-" + v, T[k].css);
+    for (const [k, t] of Object.entries(T.tones)) for (const p of ["bg", "bd", "fg", "dot", "solid", "solidFg"]) s.setProperty(`--t-${k}-${p.toLowerCase()}`, t[p].css);
+    s.setProperty("--m-shadow-xs", T.shadowXs); s.setProperty("--m-shadow-card", T.shadowCard); s.setProperty("--m-shadow-pop", T.shadowPop);
+    s.setProperty("--m-side-active-shadow", T.sideActiveShadow);
+    s.setProperty("--m-font", FONTS[cfg.font]); s.setProperty("--m-radius", cfg.radius + "px");
+    const comfy = cfg.density === "comfortable";
+    s.setProperty("--m-fs", comfy ? "14px" : "13px"); s.setProperty("--m-row", comfy ? "46px" : "38px"); s.setProperty("--m-ctl", comfy ? "34px" : "30px");
+    el.dataset.badge = cfg.badge; el.dataset.surfaces = cfg.surfaces; el.dataset.sidebar = cfg.sidebar; el.dataset.primary = cfg.primary;
+    s.colorScheme = dark ? "dark" : "light";
+  }
+
+  function head(title, sub, actions = "") {
+    return `<div class="m-head"><div><h1>${title}</h1><p>${sub}</p></div>${actions ? `<div class="m-actions">${actions}</div>` : ""}</div>`;
+  }
+
+  function contactRows() {
+    const q = state.q.trim().toLowerCase();
+    const rows = CONTACTS.filter((r) => QUICK[state.quick].test(r) && (!q || (r.name + " " + r.phone + " " + r.cf).toLowerCase().includes(q)));
+    if (!rows.length) return `<tr><td colspan="10" style="height:120px;text-align:center;white-space:normal" class="m-dim">Nessun contatto corrisponde alla ricerca. Prova con il codice fiscale completo.</td></tr>`;
+    return rows.map((r) => `<tr class="click" data-contact="${r.id}" aria-selected="${state.sel.has(r.id)}">
+      <td class="w-check" data-stop><input type="checkbox" class="m-check" data-row="${r.id}" ${state.sel.has(r.id) ? "checked" : ""} aria-label="Seleziona ${esc(r.name)}"></td>
+      <td><span class="m-cust">${r.name}</span></td>
+      <td class="m-dim">${r.phone}</td>
+      <td><span class="m-code">${r.cf}</span></td>
+      <td>${stateBadge(r.state, true)}</td>
+      <td>${priBadge(r.pri)}</td>
+      <td>${opCell(r.op)}</td>
+      <td>${alertCell(r.alert)}</td>
+      <td class="m-dim">${r.upd}</td>
+      <td class="w-act"><button class="m-icon-btn" type="button" data-open="${r.id}" aria-label="Apri ${esc(r.name)}">${icon("dots")}</button></td>
+    </tr>`).join("");
+  }
+  function bulkBar() {
+    const n = state.sel.size;
+    return n ? `<div class="m-bulk" role="region" aria-label="Azioni sui contatti selezionati"><span><b>${n}</b> ${n === 1 ? "contatto selezionato" : "contatti selezionati"}</span><button class="m-btn primary sm" type="button" data-act="assign">Assegna a operatore</button><button class="m-btn ghost sm" type="button" data-act="clear">Deseleziona</button></div>` : "";
+  }
+  function refreshContacts() {
+    const tb = $("#m-tbody"); if (!tb) return;
+    tb.innerHTML = contactRows();
+    $("#m-bulkslot").innerHTML = bulkBar();
+    const all = $("[data-all]");
+    if (all) { const vis = [...tb.querySelectorAll(".m-check")]; const on = vis.filter((c) => c.checked).length; all.checked = vis.length > 0 && on === vis.length; all.indeterminate = on > 0 && on < vis.length; }
+  }
+
+  const SCR = {
+    contatti: () => `${head("Contatti", "128 contatti · 18 in coda oggi", `<button class="m-btn secondary" type="button" data-act="export">${icon("download")}Esporta</button>`)}
+      <div class="m-toolbar">
+        <div class="m-field-icon">${icon("search")}<input class="m-input" id="m-q" type="search" placeholder="Cerca per nome, telefono o codice fiscale" value="${esc(state.q)}" aria-label="Cerca contatti" autocomplete="off"></div>
+        <div class="m-tabs" role="tablist" aria-label="Filtri rapidi">${Object.entries(QUICK).map(([k, v]) => `<button type="button" role="tab" aria-selected="${state.quick === k}" data-quick="${k}">${v.label}<span class="m-tabcount">${v.count}</span></button>`).join("")}</div>
+      </div>
+      <div id="m-bulkslot">${bulkBar()}</div>
+      <div class="m-tablewrap"><table class="m-table"><thead><tr>
+        <th class="w-check"><input type="checkbox" class="m-check" data-all aria-label="Seleziona tutti i contatti visibili"></th>
+        <th>Cliente</th><th>Telefono</th><th>CF</th><th>Stato</th>
+        <th aria-sort="descending"><span class="m-sorted">Priorità ${icon("down")}</span></th>
+        <th>Operatore</th><th>Prossimo alert</th><th>Aggiornato</th><th class="w-act"><span class="sr">Azioni</span></th>
+      </tr></thead><tbody id="m-tbody">${contactRows()}</tbody></table></div>
+      ${tfoot(128, 10)}`,
+
+    home: () => {
+      const max = 1.5;
+      const total = Object.values(PCOUNTS).reduce((a, b) => a + b, 0);
+      let acc = 0;
+      const segs = Object.entries(PCOUNTS).map(([s, v]) => {
+        const pct = (v / total) * 100, off = 25 - acc; acc += pct;
+        return `<circle cx="21" cy="21" r="15.915" fill="none" stroke="var(--t-${PSTATES[s]}-dot)" stroke-width="5.5" stroke-dasharray="${Math.max(pct - 0.7, 0.3)} ${100 - Math.max(pct - 0.7, 0.3)}" stroke-dashoffset="${off}"/>`;
+      }).join("");
+      return `${head("Buongiorno, Sara", "Giovedì 29 ottobre 2026 · i numeri sono del mese in corso")}
+      <div class="m-kpis">
+        <div class="m-card m-kpi"><span class="lbl">${icon("phone")}Contatti in coda oggi</span><span class="val">18</span><span class="sub"><span class="m-delta flat">+4</span>rispetto a ieri</span></div>
+        <div class="m-card m-kpi"><span class="lbl">${icon("cal")}Appuntamenti fissati</span><span class="val">7</span><span class="sub">questa settimana, 3 domani</span></div>
+        <div class="m-card m-kpi"><span class="lbl">${icon("euro")}Finanziato totale</span><span class="val">${eur.format(1284500)}</span><span class="sub"><span class="m-delta up">+12,4%</span>su settembre</span></div>
+        <div class="m-card m-kpi"><span class="lbl">${icon("folder")}Finanziato medio per pratica</span><span class="val">${eur.format(18350)}</span><span class="sub"><span class="m-delta down">−3,1%</span>su settembre</span></div>
+      </div>
+      <div class="m-grid2">
+        <section class="m-card m-panel" aria-labelledby="h-bars"><div class="m-panel-head"><h2 id="h-bars">Finanziato per mese</h2><span>milioni di euro, ultimi 6 mesi</span></div>
+          <div class="m-chart">
+            <div class="m-yaxis" aria-hidden="true"><span style="bottom:100%">1,5</span><span style="bottom:66.667%">1,0</span><span style="bottom:33.333%">0,5</span><span style="bottom:0">0</span></div>
+            <div class="m-plot" role="img" aria-label="Finanziato per mese: ${MONTHS.map(([m, v]) => m + " " + num.format(v) + " milioni").join(", ")}">${MONTHS.map(([m, v], i) => `<div class="m-bar ${i === MONTHS.length - 1 ? "cur" : ""}" style="height:${(v / max) * 100}%"><span>${num.format(v)}</span></div>`).join("")}</div>
+            <div class="m-xaxis" aria-hidden="true">${MONTHS.map(([m]) => `<span>${m}</span>`).join("")}</div>
+          </div>
+        </section>
+        <section class="m-card m-panel" aria-labelledby="h-donut"><div class="m-panel-head"><h2 id="h-donut">Pratiche per stato</h2><span>dall'inizio dell'anno</span></div>
+          <div class="m-donut-wrap">
+            <svg class="m-donut" viewBox="0 0 42 42" role="img" aria-label="${total} pratiche per stato"><circle cx="21" cy="21" r="15.915" fill="none" stroke="var(--m-sunken)" stroke-width="5.5"/>${segs}<text x="21" y="21" text-anchor="middle" font-size="7" font-weight="650">${total}</text><text class="sub" x="21" y="26.5" text-anchor="middle" font-size="3.2">pratiche</text></svg>
+            <ul class="m-legend">${Object.entries(PCOUNTS).map(([s, v]) => `<li><i class="tone-${PSTATES[s]}"></i><span>${s}</span><b>${v}</b><em>${Math.round((v / total) * 100)}%</em></li>`).join("")}</ul>
+          </div>
+        </section>
+      </div>
+      <section aria-labelledby="h-last"><div class="m-panel-head"><h2 id="h-last">Ultimi aggiornamenti</h2><span>contatti modificati negli ultimi 2 giorni</span></div>
+        <div class="m-tablewrap"><table class="m-table narrow"><thead><tr><th>Cliente</th><th>Stato</th><th>Operatore</th><th>Aggiornato</th></tr></thead><tbody>
+        ${CONTACTS.slice(0, 5).map((r) => `<tr class="click" data-contact="${r.id}"><td><span class="m-cust">${r.name}</span></td><td>${stateBadge(r.state)}</td><td>${opCell(r.op)}</td><td class="m-dim">${r.upd}</td></tr>`).join("")}
+        </tbody></table></div></section>`;
+    },
+
+    pratiche: () => {
+      const tabs = ["Tutte", ...Object.keys(PSTATES)];
+      const rows = PRACTICES.filter((p) => state.pf === "Tutte" || p.state === state.pf);
+      return `${head("Pratiche", "342 pratiche · 1.284.500 € liquidati a ottobre")}
+      <div class="m-toolbar"><div class="m-tabs" role="tablist" aria-label="Filtra per stato">${tabs.map((t) => `<button type="button" role="tab" aria-selected="${state.pf === t}" data-pf="${t}">${t}<span class="m-tabcount">${t === "Tutte" ? 342 : PCOUNTS[t]}</span></button>`).join("")}</div></div>
+      <div class="m-tablewrap"><table class="m-table"><thead><tr><th>Pratica</th><th>Cliente</th><th>Prodotto</th><th class="num">Finanziato</th><th class="num">Rata</th><th class="num">Durata</th><th>Stato</th><th aria-sort="descending"><span class="m-sorted">Data ${icon("down")}</span></th></tr></thead><tbody>
+      ${rows.length ? rows.map((p) => `<tr><td><span class="m-code">${p.id}</span></td><td><span class="m-cust">${p.cust}</span></td><td class="m-dim">${p.prod}</td><td class="num">${eur.format(p.fin)}</td><td class="num">${eur.format(p.rata)}</td><td class="num m-dim">${p.dur} mesi</td><td>${badge(p.state, PSTATES[p.state])}</td><td class="m-dim">${p.date}</td></tr>`).join("") : `<tr><td colspan="8" class="m-dim" style="height:110px;text-align:center">Nessuna pratica in questo stato nella pagina.</td></tr>`}
+      </tbody></table></div>
+      ${tfoot(state.pf === "Tutte" ? 342 : PCOUNTS[state.pf], 9)}`;
+    },
+
+    clienti: () => `${head("Clienti", "2.914 clienti · 46 nuovi questo mese", `<button class="m-btn primary" type="button" data-act="na">${icon("plus")}Nuovo cliente</button>`)}
+      <div class="m-toolbar"><div class="m-field-icon">${icon("search")}<input class="m-input" id="m-cq" type="search" placeholder="Cerca per codice fiscale" aria-label="Cerca clienti per codice fiscale" autocomplete="off"></div></div>
+      <div class="m-tablewrap"><table class="m-table"><thead><tr><th>Cliente</th><th>Codice fiscale / P. IVA</th><th>Telefono</th><th>Città</th><th>Fonte</th><th class="num">Pratiche</th><th>Operatore</th></tr></thead><tbody id="m-ctbody">
+      ${CUSTOMERS.map((c) => `<tr><td><span class="m-cust">${c.name}</span></td><td><span class="m-code">${c.cf}</span></td><td class="m-dim">${c.phone}</td><td>${c.city}</td><td>${badge(c.src, SOURCES[c.src])}</td><td class="num">${c.prat}</td><td>${opCell(c.op)}</td></tr>`).join("")}
+      </tbody></table></div>
+      ${tfoot(2914, 8)}`,
+
+    import: () => `${head("Import", "Carica contatti e clienti da Excel o CSV")}
+      <div class="m-import">
+        <div class="m-drop">${icon("upload")}<b>Trascina qui un file .xlsx o .csv</b><p>Fino a 10.000 righe. Le colonne si abbinano da sole se hanno i nomi del modello.</p><button class="m-btn secondary sm" type="button" data-act="na">Scegli file</button></div>
+        <div class="m-card m-panel" style="display:grid;gap:14px;align-content:start">
+          <div class="m-file"><span class="m-file-ic">${icon("file")}</span><div><b>contatti_novembre.xlsx</b><div class="m-dim" style="font-size:12px">Avviato da Sara Rinaldi · 2 minuti fa</div></div><span style="margin-left:auto">${badge("In corso", "blue")}</span></div>
+          <div><div class="m-progress" role="progressbar" aria-valuenow="78" aria-valuemin="0" aria-valuemax="100" aria-label="Avanzamento import" style="--p:78%"><i></i></div><div class="m-hint">Riga 1.896 di 2.430 · circa 40 secondi</div></div>
+          <div class="m-stats"><div><b>1.857</b>importate</div><div><b>31</b>già presenti</div><div class="bad"><b>8</b>scartate</div></div>
+        </div>
+      </div>
+      <div class="m-note warning" style="margin-bottom:14px">${icon("alert")}<div><b>39 righe di clienti_banca_q3.csv non sono state importate</b>Il codice fiscale non è valido. Correggile nel file e importalo di nuovo: le righe già presenti non si duplicano. <button class="m-btn link" type="button" data-act="na">Vedi le righe scartate</button></div></div>
+      <div class="m-tablewrap"><table class="m-table narrow"><thead><tr><th>File</th><th>Data</th><th class="num">Righe</th><th>Esito</th><th>Avviato da</th></tr></thead><tbody>
+        <tr><td><span class="m-cust">contatti_ottobre.xlsx</span></td><td class="m-dim">02/10/2026</td><td class="num">3.112</td><td>${badge("Completato", "green")}</td><td>${opCell("sr")}</td></tr>
+        <tr><td><span class="m-cust">clienti_banca_q3.csv</span></td><td class="m-dim">18/09/2026</td><td class="num">1.204</td><td>${badge("39 scartate", "amber")}</td><td>${opCell("sr")}</td></tr>
+        <tr><td><span class="m-cust">contatti_settembre.xlsx</span></td><td class="m-dim">01/09/2026</td><td class="num">2.876</td><td>${badge("Completato", "green")}</td><td>${opCell("lm")}</td></tr>
+        <tr><td><span class="m-cust">lista_eventi.csv</span></td><td class="m-dim">28/08/2026</td><td class="num">0</td><td>${badge("Non riuscito", "red")}</td><td>${opCell("lm")}</td></tr>
+      </tbody></table></div>`,
+  };
+
+  // The footer of a list: the range shown and the pages (the sample rows stay the same on every page)
+  function tfoot(total, per) {
+    const pages = Math.ceil(total / per), p = clamp(state.page, 1, pages);
+    const set = [...new Set([1, 2, 3, p, pages])].filter((n) => n >= 1 && n <= pages).sort((a, b) => a - b);
+    let out = "", prev = 0;
+    for (const n of set) {
+      if (n - prev > 1) out += `<span aria-hidden="true">…</span>`;
+      out += `<button type="button" data-page="${n}" ${n === p ? 'aria-current="page"' : ""} aria-label="Pagina ${n}">${num.format(n)}</button>`;
+      prev = n;
+    }
+    return `<div class="m-tfoot" data-total="${total}" data-per="${per}"><span>${num.format((p - 1) * per + 1)}–${num.format(Math.min(p * per, total))} di ${num.format(total)}</span><nav class="m-pager" aria-label="Pagine"><button type="button" data-page="${p - 1}" aria-label="Pagina precedente" ${p === 1 ? "disabled" : ""}>${icon("left")}</button>${out}<button type="button" data-page="${p + 1}" aria-label="Pagina successiva" ${p === pages ? "disabled" : ""}>${icon("right")}</button></nav></div>`;
+  }
+
+  function renderScreen() {
+    for (const b of document.querySelectorAll("[data-nav]")) {
+      if (b.dataset.nav === state.screen) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current");
+    }
+    const label = SCREENS.find((s) => s[0] === state.screen)[1];
+    $("#m-crumb").innerHTML = `<span>Mito</span><span aria-hidden="true">/</span><b>${label}</b>`;
+    scroll.innerHTML = SCR[state.screen]();
+    scroll.scrollTop = 0;
+    if (state.screen === "contatti") refreshContacts();
+  }
+
+  /* ---------- Sheet, popover, toast ---------- */
+  const sheet = $("#m-sheet");
+  function openSheet(id, opener) {
+    const r = CONTACTS.find((c) => c.id === id); if (!r) return;
+    state.openId = id; state.opener = opener || null;
+    const opts = ALL_STATES.filter((s) => s === r.state || (s !== "followup" && !(s === "chiamare" && (r.state === "followup" || r.state === "non risponde")))).sort((a, b) => (a === r.state ? -1 : b === r.state ? 1 : 0));
+    const priOrder = ["low", "medium", "high", "urgent"];
+    sheet.innerHTML = `<div class="m-sheet-head"><span class="m-av lg tone-${r.op ? OPS[r.op].tone : "neutral"}" aria-hidden="true">${initials(r.name)}</span><div><h2 id="sheet-title">${r.name}</h2><p>${r.cf} · ${r.phone}</p></div><button class="m-icon-btn" type="button" data-act="close" aria-label="Chiudi">${icon("x")}</button></div>
+      <div class="m-sheet-body">
+        <div class="s-wrap">${stateBadge(r.state)}${priBadge(r.pri)}${r.alert ? `<span class="m-badge tone-${r.alert.k === "late" ? "red" : "neutral"}">${r.alert.t}</span>` : ""}</div>
+        <div class="m-form">
+          <div><label class="m-label" for="f-state">Stato</label><div class="m-select"><select id="f-state" class="m-input">${opts.map((s) => `<option value="${s}" ${s === r.state ? "selected" : ""}>${STATES[s].label}</option>`).join("")}</select>${icon("chev")}</div></div>
+          <div><label class="m-label" for="f-op">Operatore</label><div class="m-select"><select id="f-op" class="m-input"><option value="">Non assegnato</option>${Object.entries(OPS).map(([k, o]) => `<option value="${k}" ${k === r.op ? "selected" : ""}>${o.name}</option>`).join("")}</select>${icon("chev")}</div></div>
+          <fieldset class="full" style="border:0;padding:0;margin:0"><legend class="m-label">Priorità</legend><div class="m-segbtn">${priOrder.map((p) => `<input type="radio" name="f-pri" id="f-pri-${p}" value="${p}" ${p === r.pri ? "checked" : ""}><label for="f-pri-${p}">${PRI[p].label}</label>`).join("")}</div></fieldset>
+          <div class="full"><label class="m-label" for="f-alert">Prossimo alert</label><input id="f-alert" class="m-input" value="${r.alert && r.alert.k !== "late" ? r.alert.t : "30/10/2026, 10:00"}"><p class="m-hint">L'operatore riceve la notifica all'ora indicata.</p></div>
+          <div class="full"><label class="m-label" for="f-note">Nota</label><textarea id="f-note" class="m-input" rows="3">Chiede di essere richiamato dopo le 17. Valuta un prestito personale da 15.000 € in 84 rate.</textarea></div>
+        </div>
+        <div><h3 class="m-sec-title" style="margin-bottom:10px">Storico</h3>
+          <ol class="m-timeline">
+            <li class="tone-${STATES[r.state].tone}"><div>${r.op ? OPS[r.op].name : "Sistema"} ha impostato <b>${STATES[r.state].label}</b><span>${r.upd}, 09:12</span></div></li>
+            <li class="tone-red"><div>Priorità alzata a <b>Urgente</b> dal controllo notturno<span>27/10/2026, 06:00</span></div></li>
+            <li class="tone-neutral"><div>Contatto creato dall'import di contatti_ottobre.xlsx<span>02/10/2026, 11:40</span></div></li>
+          </ol>
+        </div>
+        <div id="m-confirm"></div>
+      </div>
+      <div class="m-sheet-foot"><button class="m-btn danger-ghost" type="button" data-act="del">${icon("trash")}Elimina</button><span class="grow"></span><button class="m-btn secondary" type="button" data-act="close">Annulla</button><button class="m-btn primary" type="button" data-act="save">Salva</button></div>`;
+    app.classList.add("sheet-open"); sheet.inert = false;
+    requestAnimationFrame(() => $("#f-state").focus());
+  }
+  function closeSheet() {
+    if (!app.classList.contains("sheet-open")) return;
+    app.classList.remove("sheet-open"); sheet.inert = true;
+    const id = state.openId; state.openId = null;
+    const back = (state.opener && document.contains(state.opener)) ? state.opener : document.querySelector(`[data-open="${id}"]`);
+    if (back) back.focus();
+  }
+  let tt;
+  function toast(kind, title, desc) {
+    const el = $("#m-toast");
+    el.className = "m-toast k-" + kind;
+    el.innerHTML = `${icon(kind === "success" ? "ok" : kind === "danger" ? "ko" : "info")}<div><b>${title}</b><p>${desc}</p></div>`;
+    void el.offsetWidth; el.classList.add("show");
+    clearTimeout(tt); tt = setTimeout(() => el.classList.remove("show"), 4200);
+  }
+  const pop = $("#m-pop");
+  pop.innerHTML = `<h3>Notifiche</h3><ul>
+    <li class="tone-red"><div><b>Alert scaduto</b> per Elena Ricci<span>Ieri alle 16:00 · nessun operatore assegnato</span></div></li>
+    <li class="tone-green"><div><b>Import completato</b>: contatti_ottobre.xlsx<span>3.112 righe · 02/10/2026</span></div></li>
+    <li class="tone-blue"><div>Luca Moretti ti ha assegnato <b>3 contatti</b><span>Oggi alle 08:47</span></div></li></ul>`;
+  const bellBtn = $("[data-bell]");
+  function setPop(open) { pop.hidden = !open; bellBtn.setAttribute("aria-expanded", String(open)); }
+
+  /* ---------- Events inside the app ---------- */
+  mito.addEventListener("click", (e) => {
+    const t = e.target;
+    if (t.closest("[data-bell]")) { setPop(pop.hidden); return; }
+    if (!t.closest(".m-pop")) setPop(false);
+    const nav = t.closest("[data-nav]");
+    if (nav) { state.screen = nav.dataset.nav; state.page = 1; closeSheet(); renderScreen(); save(); return; }
+    const q = t.closest("[data-quick]");
+    if (q) { state.quick = q.dataset.quick; renderScreen(); return; }
+    const pf = t.closest("[data-pf]");
+    if (pf) { state.pf = pf.dataset.pf; state.page = 1; renderScreen(); return; }
+    const pg = t.closest("[data-page]");
+    if (pg && !pg.disabled) { state.page = +pg.dataset.page; const f = pg.closest(".m-tfoot"); if (f) f.outerHTML = tfoot(+f.dataset.total, +f.dataset.per); return; }
+    const sw = t.closest('[role="switch"]');
+    if (sw) { sw.setAttribute("aria-checked", String(sw.getAttribute("aria-checked") !== "true")); return; }
+    const act = t.closest("[data-act]");
+    if (act) { doAct(act.dataset.act); return; }
+    if (t.closest("[data-stop]")) return;
+    const open = t.closest("[data-open]");
+    if (open) { openSheet(+open.dataset.open, open); return; }
+    const row = t.closest("tr[data-contact]");
+    if (row) openSheet(+row.dataset.contact, row.querySelector("[data-open]") || null);
+  });
+  mito.addEventListener("change", (e) => {
+    const t = e.target;
+    if (t.matches(".m-check[data-row]")) { const id = +t.dataset.row; t.checked ? state.sel.add(id) : state.sel.delete(id); refreshContacts(); }
+    else if (t.matches("[data-all]")) { for (const c of document.querySelectorAll("#m-tbody .m-check")) { const id = +c.dataset.row; t.checked ? state.sel.add(id) : state.sel.delete(id); } refreshContacts(); }
+  });
+  mito.addEventListener("input", (e) => {
+    if (e.target.id === "m-q") { state.q = e.target.value; refreshContacts(); }
+    if (e.target.id === "m-cq") { const q = e.target.value.trim().toLowerCase(); for (const tr of document.querySelectorAll("#m-ctbody tr")) tr.hidden = !!q && !tr.textContent.toLowerCase().includes(q); }
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape") return;
+    if (app.classList.contains("sheet-open")) closeSheet();
+    else if (!pop.hidden) { setPop(false); bellBtn.focus(); }
+  });
+
+  function doAct(a) {
+    const r = CONTACTS.find((c) => c.id === state.openId);
+    switch (a) {
+      case "export": toast("info", "Export avviato", "Il file sarà pronto tra qualche minuto nella sezione Export del profilo."); break;
+      case "assign": {
+        const n = state.sel.size; for (const c of CONTACTS) if (state.sel.has(c.id)) c.op = "gf";
+        state.sel.clear(); refreshContacts();
+        toast("success", n === 1 ? "1 contatto assegnato" : `${n} contatti assegnati`, "Assegnati a Giulia Ferri, che ha meno contatti aperti in coda."); break;
+      }
+      case "clear": state.sel.clear(); refreshContacts(); break;
+      case "close": closeSheet(); break;
+      case "save": {
+        if (!r) break;
+        r.state = $("#f-state").value; r.op = $("#f-op").value || null; r.pri = (document.querySelector('input[name="f-pri"]:checked') || {}).value || r.pri; r.upd = "29/10/2026";
+        closeSheet(); if (state.screen === "contatti") refreshContacts(); else renderScreen();
+        toast("success", "Contatto aggiornato", `${r.name} ora è in stato ${STATES[r.state].label}.`); break;
+      }
+      case "del":
+        $("#m-confirm").innerHTML = `<div class="m-note danger m-confirm" role="alertdialog" aria-labelledby="del-t"><div style="display:flex;gap:10px">${icon("alert")}<div><b id="del-t">Eliminare ${r ? r.name : "il contatto"}?</b>Il contatto sparisce dalle code di tutti gli operatori. Le pratiche collegate restano.</div></div><div class="m-row"><button class="m-btn danger sm" type="button" data-act="del-ok">Elimina il contatto</button><button class="m-btn secondary sm" type="button" data-act="del-no">Annulla</button></div></div>`;
+        $("#m-confirm").scrollIntoView({ block: "nearest" }); $('[data-act="del-ok"]').focus(); break;
+      case "del-no": $("#m-confirm").innerHTML = ""; break;
+      case "del-ok": {
+        if (!r) break;
+        const i = CONTACTS.indexOf(r); CONTACTS.splice(i, 1); state.sel.delete(r.id);
+        state.opener = null; closeSheet(); renderScreen();
+        toast("success", "Contatto eliminato", `${r.name} non è più nelle code.`); break;
+      }
+      case "na": toast("info", "Non incluso nel prototipo", "Questa pagina serve a valutare colori e componenti, non il flusso completo."); break;
+    }
+  }
+
+  /* ---------- Design-system sheet ---------- */
+  const SW = [
+    ["Superfici", [["Cornice", "frame", "background"], ["Superficie", "surface", "card"], ["Incassato", "sunken", "muted"], ["Hover", "hover", "accent"], ["Bordo", "border", "border"], ["Bordo forte", "borderStrong", "border-strong"]]],
+    ["Testo", [["Testo", "fg", "foreground", "surface", 4.5], ["Secondario", "muted", "muted-foreground", "surface", 4.5], ["Secondario su incassato", "muted", "muted-foreground", "sunken", 4.5], ["Tenue, solo icone", "subtle", "subtle", "surface", 3]]],
+    ["Accento", [["Primario", "primary", "primary"], ["Testo su primario", "primaryFg", "primary-foreground", "primary", 4.5], ["Controlli selezionati", "strong", "primary-strong"], ["Spunta", "strongFg", "primary-strong-foreground", "strong", 3], ["Selezione", "soft", "primary-soft"], ["Testo su selezione", "softFg", "primary-soft-foreground", "soft", 4.5], ["Link", "link", "link", "surface", 4.5], ["Focus", "focus", "ring", "surface", 3]]],
+    ["Barra laterale", [["Fondo", "side", "sidebar"], ["Voce", "sideFg", "sidebar-foreground", "side", 4.5], ["Voce attiva", "sideActive", "sidebar-primary"], ["Testo voce attiva", "sideActiveFg", "sidebar-primary-foreground", "sideActive", 4.5]]],
+    ["Semantici", [["Successo", "successFg", "success-soft-foreground", "successSoft", 4.5], ["Avviso", "warningFg", "warning-soft-foreground", "warningSoft", 4.5], ["Errore su superficie", "danger", "destructive", "surface", 4.5], ["Errore su fondo", "dangerFg", "destructive-soft-foreground", "dangerSoft", 4.5], ["Bottone distruttivo", "dangerBtnFg", "destructive-foreground", "dangerBtn", 4.5], ["Bordo checkbox", "control", "control", "surface", 3]]],
+  ];
+  const ratioTag = (r, min) => `<span class="s-ratio ${r >= min ? "pass" : "fail"}">${fmtR(r)} ${r >= min ? (min === 3 ? "≥ 3" : r >= 7 ? "AAA" : "AA") : min === 3 ? "< 3" : "sotto AA"}</span>`;
+  function toneWorst(T, keys) {
+    let worst = Infinity, who = "";
+    for (const [label, k] of keys) {
+      const t = T.tones[k];
+      const r = cfg.badge === "soft" ? ratio(t.fg, t.bg) : cfg.badge === "solid" ? ratio(t.solidFg, t.solid) : ratio(T.fg, T.surface);
+      if (r < worst) { worst = r; who = label; }
+    }
+    return { r: worst, who };
+  }
+  function renderSystem(T) {
+    const groups = SW.map(([g, items]) => `<div class="s-group"><h3>${g}</h3><div class="s-swatches">${items.map(([label, k, name, bg, min]) => {
+      const c = T[k];
+      const chip = bg ? `<div class="s-chip" style="background:${T[bg].css};color:${c.css}">${min === 3 ? '<span style="width:22px;height:22px;border-radius:5px;border:2px solid currentColor;display:block"></span>' : "Aa"}</div>` : `<div class="s-chip" style="background:${c.css}"></div>`;
+      return `<div class="s-sw">${chip}<div class="s-meta"><b>${label}</b><code>--${name}</code><code>${c.hex}</code>${bg ? ratioTag(ratio(c, T[bg]), min) : ""}</div></div>`;
+    }).join("")}</div></div>`).join("");
+    const bgroups = [
+      ["Stato contatto", Object.entries(STATES).map(([, v]) => [v.label, v.tone])],
+      ["Stato pratica", Object.entries(PSTATES)],
+      ["Fonte cliente", Object.entries(SOURCES)],
+    ];
+    const badgesHTML = bgroups.map(([g, list]) => { const w = toneWorst(T, list); return `<div class="s-brow"><div>${g}<span>minimo ${fmtR(w.r)} (${esc(w.who)})</span></div><div class="s-wrap">${list.map(([l, t]) => badge(l, t)).join("")}</div></div>`; }).join("")
+      + `<div class="s-brow"><div>Priorità<span>forma, non colore: non compete con gli stati</span></div><div class="s-wrap" style="gap:18px">${Object.keys(PRI).reverse().map(priBadge).join("")}</div></div>`;
+    $("#m-sys").innerHTML = `<div class="s-intro"><h1>Sistema · ${presetOf().name}${isModified() ? " (modificata)" : ""}</h1><p>I colori sono calcolati in OKLCH e convertiti in sRGB; i rapporti seguono WCAG 2.2 (4,5:1 per il testo, 3:1 per icone e bordi dei controlli). I nomi dei token sono quelli che finiscono in <code>globals.css</code> con «Copia token CSS».</p></div>
+      <section class="s-sec"><header><h2>Colori</h2><p>Ogni colore di testo è misurato sul fondo su cui compare davvero.</p></header>${groups}</section>
+      <section class="s-sec"><header><h2>Stati e badge</h2><p>Una tinta per stato, la stessa in tabelle, filtri, grafici e storico. Il testo resta l'informazione principale: il colore aiuta a scorrere la lista.</p></header><div class="s-badges">${badgesHTML}</div></section>
+      <section class="s-sec"><header><h2>Componenti</h2></header>
+        <div class="s-stack"><div class="s-wrap"><button class="m-btn primary" type="button">Salva</button><button class="m-btn secondary" type="button">Annulla</button><button class="m-btn ghost" type="button">${icon("download")}Esporta</button><button class="m-btn danger" type="button">${icon("trash")}Elimina</button><button class="m-btn danger-ghost" type="button">Elimina</button><button class="m-btn link" type="button">Apri pratica</button><button class="m-btn primary" type="button" disabled>Disabilitato</button></div></div>
+        <div class="s-cols">
+          <div><label class="m-label" for="s-in1">Nome e cognome</label><input id="s-in1" class="m-input" placeholder="Mario Rossi"></div>
+          <div><label class="m-label" for="s-in2">Con focus</label><input id="s-in2" class="m-input is-focus" value="Marco Rossi"></div>
+          <div><label class="m-label" for="s-in3">Codice fiscale</label><input id="s-in3" class="m-input is-error" value="RSSMRC78C12F20" aria-invalid="true" aria-describedby="s-in3-e"><p class="m-err" id="s-in3-e">${icon("alert")}Il codice fiscale ha 16 caratteri: ne mancano 2.</p></div>
+          <div><label class="m-label" for="s-in4">Disabilitato</label><input id="s-in4" class="m-input" value="Sara Rinaldi" disabled></div>
+        </div>
+        <div class="s-cols">
+          <div class="s-stack">
+            <label class="s-inline"><input type="checkbox" class="m-check" checked> Solo i miei contatti</label>
+            <label class="s-inline"><input type="checkbox" class="m-check"> Includi le pratiche chiuse</label>
+            <div class="s-inline"><button type="button" class="m-switch" role="switch" aria-checked="true" aria-labelledby="sw1"></button><span id="sw1">Notifiche degli alert</span></div>
+            <div class="s-inline"><button type="button" class="m-switch" role="switch" aria-checked="false" aria-labelledby="sw2"></button><span id="sw2">Riepilogo via email</span></div>
+          </div>
+          <div class="s-stack"><div class="m-tabs" role="tablist" aria-label="Esempio di filtri"><button type="button" role="tab" aria-selected="true">Tutti<span class="m-tabcount">128</span></button><button type="button" role="tab" aria-selected="false">In coda<span class="m-tabcount">18</span></button><button type="button" role="tab" aria-selected="false">Con alert<span class="m-tabcount">9</span></button></div>
+            <div><div class="m-progress" role="progressbar" aria-label="Esempio di avanzamento" aria-valuenow="62" aria-valuemin="0" aria-valuemax="100" style="--p:62%"><i></i></div><p class="m-hint">Import al 62%</p></div>
+            <div class="s-wrap">${Object.entries(OPS).map(([, o]) => `<span class="m-av lg tone-${o.tone}" title="${o.name}">${initials(o.name)}</span>`).join("")}<span class="s-tip">Prossimo alert: oggi 15:30</span></div>
+          </div>
+        </div>
+        <div class="s-cols">
+          <div class="m-note info">${icon("info")}<div><b>L'import continua in background</b>Puoi chiudere la pagina, ti avvisiamo alla fine.</div></div>
+          <div class="m-note success">${icon("ok")}<div><b>Pratica liquidata</b>PR-2026-01873 · 24.500 € in 120 rate.</div></div>
+          <div class="m-note warning">${icon("alert")}<div><b>Alert in scadenza</b>3 contatti da richiamare entro un'ora.</div></div>
+          <div class="m-note danger">${icon("ko")}<div><b>Modifica non salvata</b>Luca Moretti ha cambiato questo contatto. Ricarica e riprova.</div></div>
+        </div>
+        <div class="m-toast static k-success" role="presentation">${icon("ok")}<div><b>Contatto aggiornato</b><p>Marco Rossi ora è in stato App.to.</p></div></div>
+      </section>
+      <section class="s-sec"><header><h2>Tipografia</h2><p>${FONT_NAMES[cfg.font]}, corpo ${cfg.density === "comfortable" ? "14" : "13"} px. Le cifre sono sempre tabellari, così importi e date si allineano in colonna.</p></header>
+        <div class="s-type">
+          <div><small>Titolo pagina</small><span style="font-size:calc(var(--m-fs) + 7px);font-weight:650;letter-spacing:-0.015em">Contatti</span></div>
+          <div><small>Titolo sezione</small><span style="font-size:calc(var(--m-fs) + 1px);font-weight:650">Ultimi aggiornamenti</span></div>
+          <div><small>Corpo</small><span>Chiede di essere richiamato dopo le 17. Valuta un prestito personale da 15.000 € in 84 rate.</span></div>
+          <div><small>Secondario</small><span class="m-dim">Avviato da Sara Rinaldi · 2 minuti fa</span></div>
+          <div><small>Etichetta</small><span style="font-size:11px;text-transform:uppercase;letter-spacing:.07em;font-weight:650;color:var(--m-fg-muted)">Amministrazione</span></div>
+          <div><small>Numeri</small><span style="font-size:calc(var(--m-fs) + 11px);font-weight:650;letter-spacing:-0.02em;font-variant-numeric:tabular-nums">1.284.500 €</span></div>
+          <div><small>Codici</small><span class="m-code">RSSMRC78C12F205X · PR-2026-01873</span></div>
+        </div>
+      </section>`;
+  }
+
+  /* ---------- Chrome: contrast list, export, sync ---------- */
+  function renderContrast(T) {
+    const badgeList = Object.entries(STATES).map(([, v]) => [v.label, v.tone]).concat(Object.entries(PSTATES));
+    const w = toneWorst(T, badgeList);
+    const rows = [
+      ["Testo sulla superficie", ratio(T.fg, T.surface), 4.5],
+      ["Testo secondario", Math.min(ratio(T.muted, T.surface), ratio(T.muted, T.sunken)), 4.5, "il peggiore tra superficie e intestazioni"],
+      ["Bottone primario", ratio(T.primaryFg, T.primary), 4.5],
+      ["Spunta della checkbox", ratio(T.strongFg, T.strong), 3, "segno sul controllo selezionato"],
+      ["Link e accento", ratio(T.link, T.surface), 4.5],
+      ["Riga selezionata", ratio(T.softFg, T.soft), 4.5],
+      ["Barra laterale", Math.min(ratio(T.sideFg, T.side), ratio(T.sideActiveFg, T.sideActive)), 4.5, "voci e voce attiva"],
+      ["Badge di stato", w.r, 4.5, "il più debole: " + w.who],
+      ["Errore", ratio(T.danger, T.surface), 4.5],
+      ["Bordo checkbox", ratio(T.control, T.surface), 3, "contorno di un controllo"],
+    ];
+    $("#cl").innerHTML = rows.map(([k, r, min, note]) => `<li><span>${k}${note ? `<small>${esc(note)}</small>` : ""}</span><span class="r">${fmtR(r)}</span><span class="grade ${r >= min ? "ok" : "no"}">${r >= min ? (min === 3 ? "OK" : r >= 7 ? "AAA" : "AA") : "BASSO"}</span></li>`).join("");
+    $("#h-contrast-mode").textContent = state.dark ? "tema scuro" : "tema chiaro";
+  }
+
+  const EXPORT = [
+    ["background", "frame"], ["foreground", "fg"], ["card", "surface"], ["card-foreground", "fg"], ["popover", "surface"], ["popover-foreground", "fg"],
+    ["primary", "primary"], ["primary-hover", "primaryHover"], ["primary-foreground", "primaryFg"], ["primary-border", "primaryBd"], ["primary-strong", "strong"], ["primary-strong-foreground", "strongFg"], ["primary-soft", "soft"], ["primary-soft-border", "softBd"], ["primary-soft-foreground", "softFg"],
+    ["secondary", "sunken"], ["secondary-foreground", "fg"], ["muted", "sunken"], ["muted-foreground", "muted"], ["subtle", "subtle"],
+    ["accent", "hover"], ["accent-foreground", "fg"], ["link", "link"],
+    ["success", "success"], ["success-soft", "successSoft"], ["success-soft-border", "successBd"], ["success-soft-foreground", "successFg"],
+    ["warning", "warning"], ["warning-soft", "warningSoft"], ["warning-soft-border", "warningBd"], ["warning-soft-foreground", "warningFg"],
+    ["destructive", "dangerBtn"], ["destructive-hover", "dangerHover"], ["destructive-foreground", "dangerBtnFg"], ["destructive-text", "danger"], ["destructive-soft", "dangerSoft"], ["destructive-soft-border", "dangerBd"], ["destructive-soft-foreground", "dangerFg"],
+    ["border", "border"], ["border-strong", "borderStrong"], ["input", "input"], ["control", "control"], ["ring", "focus"],
+    ["chart-1", "chart"], ["chart-1-soft", "chartSoft"], ["overlay", "overlay"],
+    ["sidebar", "side"], ["sidebar-foreground", "sideFg"], ["sidebar-muted", "sideMuted"], ["sidebar-primary", "sideActive"], ["sidebar-primary-foreground", "sideActiveFg"], ["sidebar-accent", "sideHover"], ["sidebar-border", "sideBorder"], ["sidebar-logo", "logoBg"], ["sidebar-logo-foreground", "logoFg"],
+  ];
+  function block(T) {
+    const lines = EXPORT.map(([n, k]) => `  --${n}: ${oklchStr(T[k])};`);
+    for (const [k, t] of Object.entries(T.tones)) {
+      lines.push(`  --tag-${k}-bg: ${oklchStr(t.bg)};`, `  --tag-${k}-border: ${oklchStr(t.bd)};`, `  --tag-${k}-text: ${oklchStr(t.fg)};`, `  --tag-${k}-dot: ${oklchStr(t.dot)};`);
+    }
+    return lines.join("\n");
+  }
+  const PRIMARY_NAMES = { accent: "pieno", tonal: "tonale (primary-strong per checkbox e switch)", deep: "inchiostro tinto", ink: "nero" };
+  function cssExport() {
+    const p = presetOf();
+    return `/* Palette MITO · ${p.name}${isModified() ? " (modificata)" : ""}
+   Bottone primario ${PRIMARY_NAMES[cfg.primary]} · carattere ${FONT_NAMES[cfg.font]} · raggio ${cfg.radius}px · densità ${cfg.density === "comfortable" ? "comoda" : "compatta"}
+   Superfici ${cfg.surfaces === "layered" ? "a strati" : "piatte"} · barra laterale ${{ light: "chiara", tint: "tinta", dark: "scura" }[cfg.sidebar]} · badge ${{ soft: "morbidi", dot: "con punto", solid: "pieni" }[cfg.badge]}
+   I valori sono colori completi: in @theme inline usare --color-<nome>: var(--<nome>), senza hsl(). */
+:root {
+  --radius: ${(+cfg.radius / 16).toString()}rem;
+${block(build(cfg, false))}
+}
+
+.dark {
+${block(build(cfg, true))}
+}
+`;
+  }
+
+  function renderCompare() {
+    const rows = [[1, true], [3, false], [2, true]].map(([id, on]) => {
+      const r = CONTACTS.find((x) => x.id === id);
+      return `<tr aria-selected="${on}"><td class="w-check"><input type="checkbox" class="m-check" ${on ? "checked" : ""} aria-label="Seleziona ${esc(r.name)}"></td><td><span class="m-cust">${r.name}</span></td><td>${stateBadge(r.state)}</td></tr>`;
+    }).join("");
+    const scene = (p) => `<div class="mito cmp-scene" data-scene="${p.id}">
+        <div class="cmp-row"><div><span class="cmp-h">Contatti</span><span class="m-dim">128 in coda</span></div><div class="m-actions"><button class="m-btn secondary sm" type="button">${icon("download")}Esporta</button><button class="m-btn primary sm" type="button">${icon("plus")}Nuovo contatto</button></div></div>
+        <div class="m-bulk"><span><b>2</b> contatti selezionati</span><button class="m-btn primary sm" type="button">Assegna a operatore</button><button class="m-btn ghost sm" type="button">Deseleziona</button></div>
+        <div class="m-tablewrap"><table class="m-table"><tbody>${rows}</tbody></table></div>
+        <div class="cmp-row"><input class="m-input is-focus" value="Marco Rossi" aria-label="Nome e cognome, ${esc(p.name)}"><button type="button" class="m-switch" role="switch" aria-checked="true" aria-label="Notifiche degli alert"></button></div>
+        <div class="cmp-row cmp-foot"><button class="m-btn link" type="button">Apri pratica</button><div class="m-actions"><button class="m-btn secondary" type="button">Annulla</button><button class="m-btn primary" type="button">Salva</button></div></div>
+      </div>`;
+    const cards = FAMILY.map((p) => {
+      const cur = p.id === state.preset, c = cur ? cfg : p.cfg, T = build(c, state.dark);
+      const tag = p.group ? "" : `<span class="cmp-tag">riferimento</span>`;
+      return `<article class="cmp-card${cur ? " is-current" : ""}" aria-labelledby="cmp-${p.id}">
+        <header class="cmp-head"><h3 id="cmp-${p.id}">${p.name}${cur && isModified() ? " · modificata" : ""}${tag}</h3>
+          <div class="cmp-metrics"><span><i style="background:${T.primary.hex}"></i>${T.primary.hex}</span><span>croma ${T.primary.c.toFixed(2).replace(".", ",")}</span><span>testo ${fmtR(ratio(T.primaryFg, T.primary))}</span></div></header>
+        ${scene(p)}
+        <div class="cmp-why"><p>${p.group ? `<b>Leva.</b> ${p.lever}.` : "<b>Leva.</b> nessuna: è l'Indaco proposto all'inizio."}</p><p><b>Quando vince.</b> ${p.win}</p><p><b>Cosa costa.</b> ${p.cost}</p></div>
+        <button class="c-btn cmp-use" type="button" data-use="${p.id}"${cur ? " disabled" : ""}>${cur ? "In uso nelle schermate" : "Usa nelle schermate"}</button>
+      </article>`;
+    }).join("");
+    $("#cmp").innerHTML = `<div class="cmp-intro"><h2>Indaco: le azioni a confronto</h2>
+        <p><b>Cosa stanca.</b> Nell'Indaco di partenza il bottone primario ha croma 0,26, il massimo che uno schermo mostra per quella tinta, e lo stesso colore pieno torna su bottoni, checkbox, switch e logo. Le prime cinque iterazioni muovono una leva alla volta: intensità, luminosità o quanta superficie è colorata. L'ultima, <b>Indaco grafite</b>, toglie il colore dalle azioni: bottoni, checkbox e switch passano al nero di Grafite, i badge al punto, e l'indaco resta su logo, selezione, link e focus. Grigi, superfici, spazi e carattere restano quelli di Indaco.</p>
+        <p>Le scene mostrano gli stessi elementi delle schermate: intestazione, barra di selezione, righe selezionate, campo con focus, switch e piede di un modulo. Passa il mouse sui bottoni per vedere lo stato hover.</p></div>
+      <div class="cmp-grid">${cards}</div>`;
+    for (const p of FAMILY) { const c = p.id === state.preset ? cfg : p.cfg; applyTo($(`[data-scene="${p.id}"]`), build(c, state.dark), c, state.dark); }
+  }
+
+  function syncChrome() {
+    for (const c of CONTROLS) { const r = document.getElementById(`c-${c.key}-${cfg[c.key]}`); if (r) r.checked = true; }
+    const pr = document.getElementById("p-" + state.preset); if (pr) pr.checked = true;
+    $("#sl-h").value = cfg.h; $("#sl-c").value = cfg.c; $("#sl-l").value = cfg.l;
+    $("#o-h").textContent = Math.round(cfg.h) + "°"; $("#o-c").textContent = cfg.c.toFixed(3); $("#o-l").textContent = Math.round(cfg.l * 100) + "%";
+    const stops = []; for (let h = 0; h <= 360; h += 30) stops.push(col(cfg.l, cfg.c, h).hex);
+    $("#sl-h").style.setProperty("--track", `linear-gradient(to right, ${stops.join(",")})`);
+    $("#sl-c").style.setProperty("--track", `linear-gradient(to right, ${col(cfg.l, 0.02, cfg.h).hex}, ${col(cfg.l, 0.28, cfg.h).hex})`);
+    $("#sl-l").style.setProperty("--track", `linear-gradient(to right, ${col(0.36, cfg.c, cfg.h).hex}, ${col(0.66, cfg.c, cfg.h).hex})`);
+    document.getElementById("v-" + state.view).checked = true;
+    document.getElementById(state.dark ? "t-dark" : "t-light").checked = true;
+    const p = presetOf(), mod = isModified();
+    $("#p-mod").hidden = !mod;
+    const why = `<p><b>Quando vince.</b> ${p.win}</p><p><b>Cosa costa.</b> ${p.cost}</p>`;
+    $("#p-why").hidden = !!p.group; $("#p-why-i").hidden = !p.group;
+    $(p.group ? "#p-why-i" : "#p-why").innerHTML = why;
+    $("#st-name").textContent = p.name + (mod ? " · modificata" : "");
+    $("#st-meta").textContent = `${FONT_NAMES[cfg.font]} · raggio ${cfg.radius} px · ${cfg.density === "comfortable" ? "comoda" : "compatta"} · ${state.dark ? "anteprima scura" : "tema chiaro"}${state.view === "compare" ? " · confronto delle iterazioni su Indaco" : ""}`;
+  }
+
+  function update() {
+    const T = build(cfg, state.dark);
+    applyTokens(T);
+    renderContrast(T);
+    syncChrome();
+    $("#m-app").hidden = state.view !== "screens";
+    $("#m-sys").hidden = state.view !== "system";
+    $(".frame").hidden = state.view === "compare";
+    $("#cmp").hidden = state.view !== "compare";
+    if (state.view === "system") renderSystem(T);
+    if (state.view === "compare") renderCompare();
+    if ($("#css-box").open) $("#css-out").textContent = cssExport();
+    save();
+  }
+
+  /* ---------- Chrome events ---------- */
+  const choose = (e) => {
+    const p = PRESETS.find((x) => x.id === e.target.value); if (!p) return;
+    state.preset = p.id; cfg = { ...p.cfg }; update();
+  };
+  presetsEl.addEventListener("change", choose);
+  iterEl.addEventListener("change", choose);
+  $("#cmp").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-use]"); if (!b) return;
+    const p = PRESETS.find((x) => x.id === b.dataset.use); if (!p) return;
+    state.preset = p.id; cfg = { ...p.cfg }; state.view = "screens"; update();
+    $(".stage").scrollIntoView({ block: "start" });
+  });
+  $("#ctls").addEventListener("change", (e) => { const key = e.target.name.replace(/^c-/, ""); cfg[key] = e.target.value; update(); });
+  for (const [id, key] of [["sl-h", "h"], ["sl-c", "c"], ["sl-l", "l"]]) $("#" + id).addEventListener("input", (e) => { cfg[key] = +e.target.value; update(); });
+  document.querySelectorAll('input[name="view"]').forEach((r) => r.addEventListener("change", (e) => { state.view = e.target.value; closeSheet(); update(); }));
+  document.querySelectorAll('input[name="mode"]').forEach((r) => r.addEventListener("change", (e) => { state.dark = e.target.value === "dark"; update(); }));
+  $("#b-reset").addEventListener("click", () => { cfg = { ...presetOf().cfg }; update(); $("#copy-note").textContent = `Ripristinata ${presetOf().name}.`; });
+  $("#css-box").addEventListener("toggle", () => { if ($("#css-box").open) $("#css-out").textContent = cssExport(); });
+  $("#b-copy").addEventListener("click", () => {
+    const text = cssExport(), note = $("#copy-note");
+    const fallback = () => {
+      const box = $("#css-box"); box.open = true; const pre = $("#css-out"); pre.textContent = text;
+      const range = document.createRange(); range.selectNodeContents(pre); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(range); pre.focus();
+      note.textContent = "Copia non disponibile qui: il CSS è selezionato qui sotto, usa ⌘C.";
+    };
+    try {
+      navigator.clipboard.writeText(text).then(() => { note.textContent = `Copiati ${text.split("\n").length} righe di CSS (${presetOf().name}${isModified() ? ", modificata" : ""}).`; }, fallback);
+    } catch (err) { fallback(); }
+  });
+
+  sheet.inert = true;
+  renderScreen();
+  update();
+})();
+</script>

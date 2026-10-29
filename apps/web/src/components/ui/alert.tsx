@@ -7,13 +7,13 @@ const alertVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-card text-card-foreground",
+        default: "border-border bg-card text-foreground",
         // MITO: the alerts of the Next.js app have a coloured background
         destructive:
-          "border-destructive/50 bg-red-100 text-destructive *:data-[slot=alert-description]:text-destructive/90 [&>svg]:text-current",
+          "border-destructive-soft-border bg-destructive-soft text-destructive-soft-foreground *:data-[slot=alert-description]:text-destructive-soft-foreground",
         success:
-          "border-success/50 bg-green-100 text-success [&>svg]:text-current",
-        info: "border-blue-200/50 bg-blue-100 text-blue-900",
+          "border-success-soft-border bg-success-soft text-success-soft-foreground *:data-[slot=alert-description]:text-success-soft-foreground",
+        info: "border-primary-soft-border bg-primary-soft text-primary-soft-foreground *:data-[slot=alert-description]:text-primary-soft-foreground",
       },
     },
     defaultVariants: {

@@ -90,17 +90,17 @@ describe("ReadOnlyReason", () => {
     expect(screen.queryByRole("button")).toBeNull()
   })
 
-  it("il testo ha contrasto sufficiente anche sulla riga evidenziata: text-neutral-600, non text-muted-foreground", () => {
+  it("il testo ha contrasto sufficiente anche sulla riga evidenziata: text-muted-foreground (6,0:1 su accent)", () => {
     render(<ReadOnlyReason editability={{ kind: "superseded" }} />)
 
     const text = screen.getByText("Concluso")
     const badge = text.closest<HTMLElement>("[title]")!
 
-    expect(badge.className).toContain("text-neutral-600")
-    expect(badge.className).not.toContain("text-muted-foreground")
+    expect(badge.className).toContain("text-muted-foreground")
+    expect(badge.className).not.toContain("text-neutral-600")
   })
 
-  it("anche l'indicazione usa text-neutral-600", () => {
+  it("anche l'indicazione usa text-muted-foreground", () => {
     render(
       <ReadOnlyReason
         editability={{ kind: "not_owner", assignee: null }}
@@ -111,8 +111,8 @@ describe("ReadOnlyReason", () => {
 
     const hintText = screen.getByText(hint)
 
-    expect(hintText.className).toContain("text-neutral-600")
-    expect(hintText.className).not.toContain("text-muted-foreground")
+    expect(hintText.className).toContain("text-muted-foreground")
+    expect(hintText.className).not.toContain("text-neutral-600")
   })
 
   it("con fit non ha larghezza fissa e il testo non è troncato", () => {

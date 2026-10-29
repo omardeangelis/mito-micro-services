@@ -149,6 +149,14 @@ export function authHandler(auth: Auth) {
             baseURL
           )
         }
+        case "POST /sign-in/dev-account": {
+          // 404 unless the quick login of local development is on (devLogin)
+          const body = await jsonBody(request)
+          const response = await auth.handler(
+            withBody(request, { account: body?.account })
+          )
+          return response.status >= 500 ? failed() : response
+        }
         case "GET /get-session": {
           const response = await auth.handler(request)
           if (response.status >= 500) return failed()

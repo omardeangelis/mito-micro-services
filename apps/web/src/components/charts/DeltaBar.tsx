@@ -1,9 +1,9 @@
 import { cn } from "@/lib/utils"
-import { chartColor } from "./palette"
 
 /**
- * Tremor's DeltaBar: a bar from the middle, to the right in emerald for a
- * value from 0 up, to the left in rose below 0. `value` goes from -100 to 100
+ * Tremor's DeltaBar: a bar from the middle, to the right in the green dot for
+ * a value from 0 up, to the left in the red dot below 0. `value` goes from
+ * -100 to 100
  */
 export const DeltaBar = ({
   value,
@@ -16,7 +16,7 @@ export const DeltaBar = ({
   return (
     <div
       className={cn(
-        "relative flex h-2 w-full items-center rounded-full bg-[#f3f4f6]",
+        "relative flex h-2 w-full items-center rounded-full bg-muted",
         className
       )}
     >
@@ -24,18 +24,18 @@ export const DeltaBar = ({
         {value < 0 ? (
           <div
             data-testid="delta-negative"
-            className="rounded-l-full"
-            style={{ width, backgroundColor: chartColor("rose") }}
+            className="bg-tag-red-dot rounded-l-full"
+            style={{ width }}
           />
         ) : null}
       </div>
-      <div className="z-10 h-4 w-1 rounded-full bg-[#374151] ring-2 ring-white" />
+      <div className="z-10 h-4 w-1 rounded-full bg-foreground ring-2 ring-card" />
       <div className="flex h-full w-1/2 justify-start">
         {value >= 0 ? (
           <div
             data-testid="delta-positive"
-            className="rounded-r-full"
-            style={{ width, backgroundColor: chartColor("emerald") }}
+            className="bg-tag-green-dot rounded-r-full"
+            style={{ width }}
           />
         ) : null}
       </div>

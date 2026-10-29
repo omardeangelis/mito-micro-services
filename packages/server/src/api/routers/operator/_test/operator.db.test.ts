@@ -78,6 +78,37 @@ describe("operator.getAllUniqueOperators", () => {
   })
 })
 
+describe("operator.getTeam", () => {
+  it("returns the active operators with their email, for an admin", async () => {
+    const admin = await createOperator({
+      role: "ADMIN",
+      name: "Anna",
+      surname: "Zeta",
+    })
+    await createOperator({ name: "Ex", disabledAt: new Date() })
+
+    const rows = await createTestCaller(admin).operator.getTeam()
+
+    expect(rows).toEqual([
+      {
+        id: admin.id,
+        name: "Anna",
+        surname: "Zeta",
+        email: `${admin.userId}@test.local`,
+        role: "ADMIN",
+      },
+    ])
+  })
+
+  it("rejects an OPERATORE with FORBIDDEN", async () => {
+    const operator = await createOperator()
+
+    await expect(
+      createTestCaller(operator).operator.getTeam()
+    ).rejects.toMatchObject({ code: "FORBIDDEN", message: "admin-only" })
+  })
+})
+
 describe("operator.getOperatorById", () => {
   it("returns the operator with the given id and its role", async () => {
     const operator = await createOperator({

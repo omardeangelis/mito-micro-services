@@ -127,7 +127,7 @@ export function ContactsEmptyState({ rowCount, ...rest }: Props) {
         <div className="flex flex-col items-center gap-3 px-4 py-10 text-center">
           <p className="font-medium">{message.text}</p>
           {message.filters.length > 0 ? (
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-muted-foreground">
               {`Filtri attivi: ${message.filters
                 .map((key) => filterNames[key])
                 .join(", ")}`}

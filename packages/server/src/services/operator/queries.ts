@@ -43,6 +43,27 @@ export const listDeactivationTargets = (operatorId: number) =>
       .orderBy(asc(operators.surname), asc(operators.name), asc(operators.id))
   )
 
+/**
+ * The team of the settings, for the admin: the active operators (as
+ * `listActiveOperators`) with their role and the email of their user, by
+ * surname then name.
+ */
+export const listTeam = () =>
+  query((client) =>
+    client
+      .select({
+        id: operators.id,
+        name: operators.name,
+        surname: operators.surname,
+        email: users.email,
+        role: users.role,
+      })
+      .from(operators)
+      .innerJoin(users, eq(operators.userId, users.id))
+      .where(isNull(users.disabledAt))
+      .orderBy(asc(operators.surname), asc(operators.name), asc(operators.id))
+  )
+
 /** The operator with `id` and its role, or `undefined`. */
 export const getOperatorById = (id: number) =>
   query((client) =>

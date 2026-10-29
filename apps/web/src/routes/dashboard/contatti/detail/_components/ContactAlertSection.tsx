@@ -5,7 +5,7 @@ import { ContactAlertCloseButton } from "./ContactAlertCloseButton"
 
 type ClosedAlert = ContactDetail["history"][number]
 
-const cardClass = "rounded-md border bg-white p-4 shadow-sm"
+const cardClass = "rounded-card border border-border bg-card p-4 shadow-card"
 
 /** "Nome Cognome" of who closed the alert, or `null` when the system did. */
 const closedByOf = (entry: ClosedAlert): string | null =>
@@ -27,7 +27,7 @@ function ClosedAlertItem({ entry }: { entry: ClosedAlert }) {
           <span className="min-w-0 break-words">{entry.message}</span>
         )}
       </div>
-      <p className="text-xs text-neutral-600">
+      <p className="text-xs text-muted-foreground">
         {closedBy === null
           ? `Chiuso dal sistema il ${closedOn}`
           : `Chiuso da ${closedBy} il ${closedOn}`}
@@ -75,7 +75,9 @@ export function ContactAlertSection({
           {action}
         </div>
         {alert === null ? (
-          <p className="mt-2 text-sm text-neutral-600">Nessun alert aperto</p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Nessun alert aperto
+          </p>
         ) : (
           <div className="mt-2 flex items-start justify-between gap-2">
             <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1 text-sm">
@@ -98,7 +100,9 @@ export function ContactAlertSection({
           Storico
         </h3>
         {history.length === 0 ? (
-          <p className="mt-2 text-sm text-neutral-600">Nessun alert chiuso</p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Nessun alert chiuso
+          </p>
         ) : (
           <ul className="mt-3 flex flex-col gap-3">
             {history.map((entry) => (

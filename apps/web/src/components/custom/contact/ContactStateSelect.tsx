@@ -64,13 +64,13 @@ export function ContactStateSelect({
           // A table finds the selector of a nearby row through it, when the
           // focused one leaves the page (`useRowFocusAfterSave`)
           data-contact-state-trigger=""
-          className="h-10 w-40 justify-between px-3"
+          className="w-40 justify-between px-3"
         >
           <TaskStatusBadge status={value ?? "nessuno"} />
           {pending ? (
             <LoadingSpinner className="h-4 w-4 shrink-0 motion-reduce:animate-none" />
           ) : (
-            <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
+            <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
           )}
         </Button>
       </DropdownMenuPrimitive.Trigger>
@@ -80,7 +80,7 @@ export function ContactStateSelect({
           sideOffset={4}
           // The look of the shared content, none of its animate-*, fade-*,
           // zoom-* and slide-* classes
-          className="z-50 min-w-[var(--radix-dropdown-menu-trigger-width)] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md"
+          className="shadow-pop z-50 min-w-[var(--radix-dropdown-menu-trigger-width)] overflow-hidden rounded-md border border-border bg-card p-1 text-foreground"
         >
           <DropdownMenuPrimitive.RadioGroup
             onValueChange={(state) => {
@@ -95,7 +95,7 @@ export function ContactStateSelect({
               <DropdownMenuPrimitive.RadioItem
                 key={state}
                 value={state}
-                className="relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none focus:bg-accent focus:text-accent-foreground focus:ring-2 focus:ring-inset focus:ring-ring data-[disabled]:pointer-events-none data-[disabled]:opacity-50"
+                className="relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm focus:bg-accent focus:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring data-[disabled]:pointer-events-none data-[disabled]:opacity-50"
               >
                 <TaskStatusBadge status={state} />
               </DropdownMenuPrimitive.RadioItem>

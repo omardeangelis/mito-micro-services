@@ -176,7 +176,7 @@ export const NewCustomerForm = () => {
                     <FormControl>
                       <Input {...field} value={field.value ?? ""} />
                     </FormControl>
-                    <FormMessage className="text-red-400" />
+                    <FormMessage />
                   </FormItem>
                 )}
               />
@@ -189,7 +189,7 @@ export const NewCustomerForm = () => {
                     <FormControl>
                       <Input {...field} value={field.value ?? ""} />
                     </FormControl>
-                    <FormMessage className="text-red-400" />
+                    <FormMessage />
                   </FormItem>
                 )}
               />
@@ -203,7 +203,7 @@ export const NewCustomerForm = () => {
                   <FormControl>
                     <Input {...field} value={field.value ?? ""} />
                   </FormControl>
-                  <FormMessage className="text-red-400" />
+                  <FormMessage />
                 </FormItem>
               )}
             />
@@ -217,7 +217,7 @@ export const NewCustomerForm = () => {
                     <FormControl>
                       <Input {...field} value={field.value ?? undefined} />
                     </FormControl>
-                    <FormMessage className="text-red-400" />
+                    <FormMessage />
                   </FormItem>
                 )}
               />
@@ -230,7 +230,7 @@ export const NewCustomerForm = () => {
                     <FormControl>
                       <Input {...field} value={field.value ?? undefined} />
                     </FormControl>
-                    <FormMessage className="text-red-400" />
+                    <FormMessage />
                   </FormItem>
                 )}
               />
@@ -246,7 +246,7 @@ export const NewCustomerForm = () => {
                   <FormControl>
                     <Input {...field} value={field.value ?? ""} />
                   </FormControl>
-                  <FormMessage className="text-red-400" />
+                  <FormMessage />
                 </FormItem>
               )}
             />
@@ -259,7 +259,7 @@ export const NewCustomerForm = () => {
                   <FormControl>
                     <Input {...field} value={field.value ?? ""} />
                   </FormControl>
-                  <FormMessage className="text-red-400" />
+                  <FormMessage />
                 </FormItem>
               )}
             />
@@ -273,7 +273,7 @@ export const NewCustomerForm = () => {
                     <FormControl>
                       <Input {...field} value={field.value ?? ""} />
                     </FormControl>
-                    <FormMessage className="text-red-400" />
+                    <FormMessage />
                   </FormItem>
                 )}
               />
@@ -286,7 +286,7 @@ export const NewCustomerForm = () => {
                     <FormControl>
                       <Input {...field} value={field.value ?? ""} />
                     </FormControl>
-                    <FormMessage className="text-red-400" />
+                    <FormMessage />
                   </FormItem>
                 )}
               />
@@ -303,7 +303,7 @@ export const NewCustomerForm = () => {
                     <FormControl>
                       <Input {...field} value={field.value ?? ""} />
                     </FormControl>
-                    <FormMessage className="text-red-400" />
+                    <FormMessage />
                   </FormItem>
                 )}
               />
@@ -316,7 +316,7 @@ export const NewCustomerForm = () => {
                     <FormControl>
                       <Input {...field} value={field.value ?? ""} />
                     </FormControl>
-                    <FormMessage className="text-red-400" />
+                    <FormMessage />
                   </FormItem>
                 )}
               />
@@ -334,7 +334,7 @@ export const NewCustomerForm = () => {
                       value={field.value?.toString()}
                     >
                       <FormControl>
-                        <SelectTrigger className="bg-white">
+                        <SelectTrigger>
                           <SelectValue>
                             {field.value ?? "Seleziona"}
                           </SelectValue>
@@ -351,7 +351,7 @@ export const NewCustomerForm = () => {
                         </SelectGroup>
                       </SelectContent>
                     </Select>
-                    <FormMessage className="text-red-400" />
+                    <FormMessage />
                   </FormItem>
                 )}
               />
@@ -364,7 +364,7 @@ export const NewCustomerForm = () => {
                     <FormControl>
                       <Input {...field} value={field.value ?? ""} />
                     </FormControl>
-                    <FormMessage className="text-red-400" />
+                    <FormMessage />
                   </FormItem>
                 )}
               />
@@ -396,7 +396,7 @@ export const NewCustomerForm = () => {
                       value={field.value?.toString()}
                     />
                   </FormControl>
-                  <FormMessage className="text-red-400" />
+                  <FormMessage />
                 </FormItem>
               )}
             />
@@ -422,7 +422,7 @@ export const NewCustomerForm = () => {
                         onBlur={field.onBlur}
                       />
                     </FormControl>
-                    <FormMessage className="text-red-400" />
+                    <FormMessage />
                   </FormItem>
                 )}
               />
@@ -435,7 +435,7 @@ export const NewCustomerForm = () => {
                     <FormControl>
                       <Input {...field} value={field.value ?? ""} />
                     </FormControl>
-                    <FormMessage className="text-red-400" />
+                    <FormMessage />
                   </FormItem>
                 )}
               />
@@ -450,7 +450,7 @@ export const NewCustomerForm = () => {
                   <FormControl>
                     <Input {...field} value={field.value ?? ""} />
                   </FormControl>
-                  <FormMessage className="text-red-400" />
+                  <FormMessage />
                 </FormItem>
               )}
             />

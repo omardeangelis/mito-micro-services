@@ -1,4 +1,5 @@
 import { render as renderInDom, screen } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
 import { MemoryRouter } from "react-router"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { DashboardLayout } from "../DashboardLayout"
@@ -33,7 +34,7 @@ const menu = () =>
     .map((link) => ({
       name: link.textContent?.trim() ?? "",
       href: link.getAttribute("href"),
-      active: link.className.includes("bg-slate-800"),
+      active: link.className.includes("bg-sidebar-primary"),
     }))
     .filter((link) => link.name !== "")
 
@@ -43,24 +44,70 @@ beforeEach(() => {
 })
 
 describe("il menu laterale (AC1)", () => {
-  it("ha 'Contatti' subito dopo 'Customers' e prima di 'Pratiche'", () => {
+  it("ha le voci in italiano: Analisi, Clienti, Pratiche, Chiamate, poi la sezione Impostazioni chiusa", () => {
     render(<DashboardLayout />)
 
-    const names = menu().map((link) => link.name)
-    expect(names.indexOf("Contatti")).toBe(names.indexOf("Customers") + 1)
-    expect(names.indexOf("Pratiche")).toBe(names.indexOf("Contatti") + 1)
+    expect(menu().map((link) => link.name)).toEqual([
+      "Mito SRL",
+      "Analisi",
+      "Clienti",
+      "Pratiche",
+      "Chiamate",
+    ])
+    expect(
+      screen.getByRole("button", { name: "Impostazioni" })
+    ).toHaveAttribute("aria-expanded", "false")
   })
 
-  it("'Contatti' apre /dashboard/contatti", () => {
+  it.each([
+    ["OPERATORE", ["Profilo"]],
+    ["ADMIN", ["Profilo", "Team", "Blacklist"]],
+  ] as const)(
+    "Impostazioni apre le sue pagine: per un %s %j",
+    async (role, pages) => {
+      mocks.role = role
+      render(<DashboardLayout />)
+
+      await userEvent
+        .setup()
+        .click(screen.getByRole("button", { name: "Impostazioni" }))
+
+      const names = menu().map((link) => link.name)
+      expect(names.slice(names.indexOf("Chiamate") + 1)).toEqual(
+        role === "ADMIN" ? ["Import", ...pages] : pages
+      )
+    }
+  )
+
+  it("su una pagina delle impostazioni la sezione è aperta e la pagina è attiva", () => {
+    mocks.role = "ADMIN"
+    mocks.pathname = "/dashboard/settings/team/4"
     render(<DashboardLayout />)
 
-    expect(menu().find((link) => link.name === "Contatti")?.href).toBe(
+    expect(
+      screen.getByRole("button", { name: "Impostazioni" })
+    ).toHaveAttribute("aria-expanded", "true")
+    expect(
+      menu()
+        .filter((link) => link.active)
+        .map((link) => link.name)
+    ).toEqual(["Team"])
+    expect(screen.getByRole("link", { name: "Team" })).toHaveAttribute(
+      "href",
+      "/dashboard/settings/team"
+    )
+  })
+
+  it("'Chiamate' apre /dashboard/contatti", () => {
+    render(<DashboardLayout />)
+
+    expect(menu().find((link) => link.name === "Chiamate")?.href).toBe(
       "/dashboard/contatti"
     )
   })
 
   it.each(["/dashboard/contatti", "/dashboard/contatti/76006"])(
-    "su %s è attiva solo 'Contatti'",
+    "su %s è attiva solo 'Chiamate'",
     (pathname) => {
       mocks.pathname = pathname
       render(<DashboardLayout />)
@@ -69,11 +116,11 @@ describe("il menu laterale (AC1)", () => {
         menu()
           .filter((link) => link.active)
           .map((link) => link.name)
-      ).toEqual(["Contatti"])
+      ).toEqual(["Chiamate"])
     }
   )
 
-  it("su Clienti è attiva solo 'Customers'", () => {
+  it("su /dashboard/customers è attiva solo 'Clienti'", () => {
     mocks.pathname = "/dashboard/customers"
     render(<DashboardLayout />)
 
@@ -81,7 +128,7 @@ describe("il menu laterale (AC1)", () => {
       menu()
         .filter((link) => link.active)
         .map((link) => link.name)
-    ).toEqual(["Customers"])
+    ).toEqual(["Clienti"])
   })
 })
 
@@ -99,13 +146,13 @@ describe("la voce 'Import' (AC1, AC28)", () => {
     expect(menu().map((link) => link.name)).not.toContain("Import")
   })
 
-  it("per un admin c'è, dopo 'Pratiche', e apre /dashboard/import", () => {
+  it("per un admin c'è, dopo 'Chiamate', e apre /dashboard/import", () => {
     mocks.role = "ADMIN"
     render(<DashboardLayout />)
 
     const links = menu()
     const names = links.map((link) => link.name)
-    expect(names.indexOf("Import")).toBe(names.indexOf("Pratiche") + 1)
+    expect(names.indexOf("Import")).toBe(names.indexOf("Chiamate") + 1)
     expect(links.find((link) => link.name === "Import")?.href).toBe(
       "/dashboard/import"
     )

@@ -1,4 +1,4 @@
-import { type RouteObject } from "react-router"
+import { Navigate, type RouteObject } from "react-router"
 import { AppLoading } from "./routes/AppLoading"
 import { ContactsError } from "./routes/dashboard/contatti/ContactsError"
 import { DashboardShell } from "./routes/dashboard/DashboardShell"
@@ -103,8 +103,35 @@ export const routes: RouteObject[] = [
             lazy: () => import("./routes/dashboard/import/ImportPage"),
           },
           {
+            // Where the server sends a new user, and the old tabs
             path: "profile",
-            lazy: () => import("./routes/dashboard/profile/ProfilePage"),
+            lazy: () =>
+              import("./routes/dashboard/settings/LegacyProfileRedirect"),
+          },
+          {
+            path: "settings",
+            children: [
+              {
+                index: true,
+                element: <Navigate to="profile" replace />,
+              },
+              {
+                path: "profile",
+                lazy: () => import("./routes/dashboard/settings/ProfilePage"),
+              },
+              {
+                path: "team",
+                lazy: () => import("./routes/dashboard/settings/TeamPage"),
+              },
+              {
+                path: "team/:id",
+                lazy: () => import("./routes/dashboard/settings/MemberPage"),
+              },
+              {
+                path: "blacklist",
+                lazy: () => import("./routes/dashboard/settings/BlacklistPage"),
+              },
+            ],
           },
         ],
       },

@@ -13,13 +13,6 @@ type FinanceCardProps = {
   windows: FinancedOverWindows["windows"]
 }
 
-// Il testo dei badge di Tremor (600) sta sotto il 4,5:1 sul loro fondo
-const badgeText = {
-  increase: "text-emerald-700",
-  decrease: "text-red-700",
-  unchanged: "text-orange-700",
-}
-
 /** Una data delle finestre, in ora di Roma (AC10) */
 const dayOf = (date: Date) =>
   date.toLocaleDateString("it-IT", financeCardFormattingSettings)
@@ -44,18 +37,14 @@ export const FinanceCard = (props: FinanceCardProps) => {
       <Card className="mx-auto h-full w-full space-y-8">
         <div className="flex items-start justify-between gap-2">
           <div className="space-y-1">
-            <h2 className="text-sm text-neutral-500">{props.title}</h2>
+            <h2 className="text-sm text-muted-foreground">{props.title}</h2>
             <p>
-              <span className="text-2xl">
+              <span className="font-heading text-2xl">
                 {formatBigNumberWithCurrency(referencePeriod.total)}
               </span>
             </p>
           </div>
-          <BadgeDelta
-            size="md"
-            className={badgeText[deltaType]}
-            deltaType={deltaType}
-          >
+          <BadgeDelta deltaType={deltaType}>
             {noComparison ? <span aria-hidden="true">—</span> : percentage}
           </BadgeDelta>
           {noComparison ? (
@@ -67,26 +56,26 @@ export const FinanceCard = (props: FinanceCardProps) => {
         <div>
           <div className="flex items-end justify-between gap-4">
             <div className="flex flex-col space-y-0.5">
-              <span className="text-xs text-neutral-500">
+              <span className="text-xs text-muted-foreground">
                 {dayOf(windows.comparison.start)}
               </span>
-              <span className="text-xs text-neutral-500">
+              <span className="text-xs text-muted-foreground">
                 {formatBigNumberWithCurrency(comparisonPeriod.total)}
               </span>
             </div>
             <div className="flex flex-col space-y-0.5">
-              <span className="text-xs text-neutral-500">
+              <span className="text-xs text-muted-foreground">
                 {dayOf(windows.reference.start)}
               </span>
-              <span className="text-xs text-neutral-500">
+              <span className="text-xs text-muted-foreground">
                 {currencyFormatter(diff)}
               </span>
             </div>
             <div className="flex flex-col space-y-0.5">
-              <span className="text-xs text-neutral-500">
+              <span className="text-xs text-muted-foreground">
                 {dayOf(windows.reference.end)}
               </span>
-              <span className="text-xs text-neutral-500">
+              <span className="text-xs text-muted-foreground">
                 {formatBigNumberWithCurrency(referencePeriod.total)}
               </span>
             </div>

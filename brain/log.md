@@ -12,6 +12,24 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 
 <!-- Entries are appended by create-spec (spec creation) and docs-maintenance (ingest). Format:
 
+## [2026-10-29] review | Design system di `apps/web` con la palette Indaco notte
+- Report: [[specs/crm/design-system-web/REPORT]] (caso B, 7 passaggi, poi due giri di verifica delle correzioni)
+- Domain: crm
+- Verdict: do-not-ship nei tre giri. Il giro 1 aveva 2 blocker e 10 major, il giro 2 5 major in parte, il giro 3 solo il gate dei colori (AC2). Tutto corretto; le correzioni del giro 3 non sono passate da un verificatore indipendente
+- Tech debt: [[tech-debt/crm/design-system-web]]
+
+## [2026-10-29] plan | Design system di `apps/web` con la palette Indaco notte
+- Plan: [[specs/crm/design-system-web/PLAN]] (una PR, 23 task e un gate in 9 wave; verifica DO NOT SHIP, 1 blocker e 4 major, corretti)
+- Domain: crm
+- Spec: tre significati di colore aggiunti all'appendice B dopo la verifica ("Risolvi alert", esito del dialog di assegnazione, area di trascinamento dell'import)
+
+## [2026-10-29] spec | Design system di `apps/web` con la palette Indaco notte
+- Created spec: [[specs/crm/design-system-web/SPEC]]
+- Domain: crm
+- Status: Draft
+- OQ2 chiusa da Omar lo stesso giorno: switch spento su `control`, bordo dei campi invariato; confronto prototipo/spec in `specs/crm/design-system-web/confronto-indaco-notte.html`
+- OQ1 chiusa da Omar: l'eccezione a R6, F2 e F3 vale per il solo aspetto, senza l'approvazione di Leonardo; annotata in [[chore/migrazione-frontend-react]] accanto a R6
+
 ## [2026-10-27] chore | Migrazione Effect: debito chiuso e stato allineato a `dev`
 - Pagina: [[chore/migrazione-effect]]; anche [[domains/crm/concepts/operatore]], [[domains/crm/crm-contract]], [[domains/crm/flows/export-chiamate-per-operatore-admin]], [[tech-debt/crm/export-chiamate]], [[chore/migrazione-gcp]]
 - In `dev` il 2026-10-26 e 2026-10-27: PR #98 e #103 (`server-only`), #104 (Sentry sul backend), #100 (TD3 a, b), #102 (TD7), #105 e #106 (TD10 b, c), #101 (ogni utente è un operatore); del passo 8 #94, #96, #97 e #99. Prima del merge, gate e prova nel browser su `mito_local` sul codice di tutte le PR insieme

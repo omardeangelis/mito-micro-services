@@ -3,7 +3,7 @@ import { useCurrentUser } from "@/api/me"
 import { AppLoading } from "./AppLoading"
 
 /** Where an operator without a name or surname completes the profile */
-export const FIRST_ACCESS = "/dashboard/profile?firstTime=true"
+export const FIRST_ACCESS = "/dashboard/settings/profile?firstTime=true"
 
 /**
  * `/`, as `DashboardInitialPage` of the Next.js app (2.2.2): with the

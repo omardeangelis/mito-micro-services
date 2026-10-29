@@ -14,7 +14,7 @@ import { DonutCard } from "./DonutCard"
 import { FinanceCard } from "./FinanceCard"
 
 const ProgressTitle = () => (
-  <h2 className="text-sm text-neutral-500">Contatti con esito</h2>
+  <h2 className="text-sm text-muted-foreground">Contatti con esito</h2>
 )
 
 /**

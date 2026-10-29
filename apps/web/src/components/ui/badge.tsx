@@ -1,26 +1,26 @@
 import * as React from "react"
 import { cva, type VariantProps } from "class-variance-authority"
+import { toneClasses, type Tone } from "@/lib/tones"
 import { cn } from "@/lib/utils"
 import { Slot } from "radix-ui"
 import { Skeleton } from "./skeleton"
 
 const badgeVariants = cva(
-  "inline-flex w-fit shrink-0 items-center justify-center gap-1 overflow-hidden rounded-full border border-transparent px-2 py-0.5 text-xs font-semibold whitespace-nowrap transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&>svg]:pointer-events-none [&>svg]:size-3",
+  "inline-flex w-fit shrink-0 items-center justify-center gap-1 overflow-hidden rounded-full border border-transparent px-2 py-0.5 text-xs font-semibold whitespace-nowrap transition-[color,box-shadow] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring aria-invalid:border-destructive-text [&>svg]:pointer-events-none [&>svg]:size-3",
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground [a&]:hover:bg-primary/90",
-        secondary:
-          "bg-secondary text-secondary-foreground [a&]:hover:bg-secondary/90",
-        destructive:
-          "bg-destructive text-white focus-visible:ring-destructive/20 dark:bg-destructive/60 dark:focus-visible:ring-destructive/40 [a&]:hover:bg-destructive/90",
+        // MITO: the variants sit on the tones of the theme (appendix B)
+        default: toneClasses.neutral,
+        secondary: toneClasses.neutral,
+        destructive: toneClasses.red,
         outline:
-          "border-border text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground",
+          "bg-card border-border-strong text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground",
         ghost: "[a&]:hover:bg-accent [a&]:hover:text-accent-foreground",
         link: "text-primary underline-offset-4 [a&]:hover:underline",
         // MITO: the states of tasks and contacts
-        success: "bg-emerald-100 text-emerald-800 [a&]:hover:bg-emerald-100/80",
-        warning: "bg-yellow-100 text-yellow-800 [a&]:hover:bg-yellow-100/80",
+        success: toneClasses.green,
+        warning: toneClasses.amber,
       },
       // MITO: the sizes of the Next.js app, md by default
       size: {
@@ -37,13 +37,21 @@ const badgeVariants = cva(
   }
 )
 
+// MITO: the size of a badge with a tone (22 px, 12 px text, weight 550)
+const toneBadge = "h-5.5 rounded-full border text-xs font-label"
+
 export type BadgeProps = React.ComponentProps<"span"> &
-  VariantProps<typeof badgeVariants> & { asChild?: boolean }
+  VariantProps<typeof badgeVariants> & {
+    asChild?: boolean
+    /** The color meaning of the badge (appendix B); it sets the size too */
+    tone?: Tone
+  }
 
 function Badge({
   className,
   variant = "default",
   size,
+  tone,
   asChild = false,
   ...props
 }: BadgeProps) {
@@ -53,7 +61,12 @@ function Badge({
     <Comp
       data-slot="badge"
       data-variant={variant}
-      className={cn(badgeVariants({ variant, size }), className)}
+      className={cn(
+        // The size of a tone always wins: `size` is ignored with it
+        badgeVariants({ variant, size: tone ? null : size }),
+        tone && [toneClasses[tone], toneBadge],
+        className
+      )}
       {...props}
     />
   )

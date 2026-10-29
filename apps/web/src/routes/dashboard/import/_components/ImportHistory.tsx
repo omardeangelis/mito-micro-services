@@ -10,7 +10,8 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { HISTORY_PAGE_SIZE } from "@mito/domain/import/payload"
-import { type ImportSummary, useImportList } from "@/api/import"
+import { useImportList } from "@/api/import"
+import { importTone } from "@/lib/tones"
 import {
   count,
   duration,
@@ -18,13 +19,6 @@ import {
   startedAt,
   statusLabels,
 } from "./format"
-
-const statusVariant = {
-  running: "secondary",
-  completed: "success",
-  failed: "destructive",
-  interrupted: "warning",
-} as const satisfies Record<ImportSummary["status"], string>
 
 /** The imports from the latest, 20 a page (AC28–AC30). */
 export function ImportHistory() {
@@ -34,7 +28,7 @@ export function ImportHistory() {
   if (isPending) return <p className="text-muted-foreground">Caricamento…</p>
   if (isError || !data) {
     return (
-      <p role="alert" className="text-destructive">
+      <p role="alert" className="text-destructive-text">
         Lo storico degli import non si carica: riprova tra poco
       </p>
     )
@@ -74,7 +68,7 @@ export function ImportHistory() {
               </TableCell>
               <TableCell>{formatLabels[run.format]}</TableCell>
               <TableCell>
-                <Badge variant={statusVariant[run.status]}>
+                <Badge tone={importTone(run.status)}>
                   {statusLabels[run.status]}
                 </Badge>
                 {run.failureReason ? (
