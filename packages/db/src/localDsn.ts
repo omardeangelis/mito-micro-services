@@ -11,6 +11,33 @@ export type LocalConnection = {
 }
 
 /**
+ * The local database, in the Postgres of docker-compose.yml. Written here: the
+ * `db:local:*` scripts and the local servers take it from this constant, no
+ * env file and no Supabase variable.
+ */
+export const LOCAL_DATABASE_URL =
+  "postgres://postgres:local@127.0.0.1:54329/mito_local"
+
+/**
+ * The variables that put the app on `mito_local`, in the shape `connect` reads
+ * (the DSN without the password, the password apart). `INSTANCE_UNIX_SOCKET`
+ * is emptied because `connect` takes it before the host. They are meant to
+ * override the shell and the env files of the development database
+ * (`with-local-db.ts`).
+ */
+export function localDatabaseEnv(): Record<string, string> {
+  const { host, port, user, password, database } = localConnection(
+    LOCAL_DATABASE_URL,
+    { database: "mito_local" }
+  )
+  return {
+    SUPABASE_DB_CONNECTION_STRING: `postgres://${user}@${host}:${port}/${database}`,
+    SUPABASE_MITO_PSW: password,
+    INSTANCE_UNIX_SOCKET: "",
+  }
+}
+
+/**
  * The connection to a Postgres on this machine, from `dsn`, or an error before
  * anything connects. The tests on a real database and the local database
  * scripts connect with it, so they never reach the development or the
