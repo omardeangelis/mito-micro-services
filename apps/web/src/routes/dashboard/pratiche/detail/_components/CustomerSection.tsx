@@ -97,11 +97,11 @@ export const CustomerSection = (props: Props) => {
   const formId = `customer-preview-${id}`
   const hasChanged = form.formState.isDirty
   return (
-    <div className="rounded-md bg-neutral-50 p-4 shadow-sm">
+    <div className="rounded-card bg-muted p-4 shadow-card">
       <div className="flex w-full items-center justify-between rounded-md">
         <div className="flex w-full items-center gap-4">
           <h4 className="font-medium">Cliente</h4>
-          <Badge variant="default">{customerRole}</Badge>
+          <Badge tone="neutral">{customerRole}</Badge>
           <BlackListBadge state={props.blackListStatus} />
         </div>
         <div className="flex items-center gap-4">
@@ -171,7 +171,7 @@ export const CustomerSection = (props: Props) => {
                         {...field}
                       />
                     </FormControl>
-                    <FormMessage className="text-red-400" />
+                    <FormMessage />
                   </FormItem>
                 )}
               />
@@ -189,7 +189,7 @@ export const CustomerSection = (props: Props) => {
                         {...field}
                       />
                     </FormControl>
-                    <FormMessage className="text-red-400" />
+                    <FormMessage />
                   </FormItem>
                 )}
               />

@@ -1,5 +1,30 @@
 import { describe, expect, it } from "vitest"
-import { localConnection } from "@mito/db/localDsn"
+import {
+  LOCAL_DATABASE_URL,
+  localConnection,
+  localDatabaseEnv,
+} from "@mito/db/localDsn"
+
+describe("localDatabaseEnv", () => {
+  it("mette l'app su mito_local: DSN senza password, password a parte, niente socket", () => {
+    expect(localDatabaseEnv()).toEqual({
+      SUPABASE_DB_CONNECTION_STRING:
+        "postgres://postgres@127.0.0.1:54329/mito_local",
+      SUPABASE_MITO_PSW: "local",
+      INSTANCE_UNIX_SOCKET: "",
+    })
+  })
+
+  it("è la connessione di LOCAL_DATABASE_URL, letta come fa connect", () => {
+    const env = localDatabaseEnv()
+    expect({
+      ...localConnection(env.SUPABASE_DB_CONNECTION_STRING!, {
+        database: "mito_local",
+      }),
+      password: env.SUPABASE_MITO_PSW,
+    }).toEqual(localConnection(LOCAL_DATABASE_URL, { database: "mito_local" }))
+  })
+})
 
 describe("localConnection", () => {
   it("un DSN locale dà la connessione, presa solo dal DSN", () => {

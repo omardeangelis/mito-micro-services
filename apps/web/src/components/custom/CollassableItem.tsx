@@ -40,7 +40,7 @@ export const CollassableSection = ({
                 {child}
               </AccordionItem>
               {index !== array.length - 1 ? (
-                <hr className="my-4 border border-neutral-100" />
+                <hr className="my-4 border border-border" />
               ) : null}
             </Fragment>
           )

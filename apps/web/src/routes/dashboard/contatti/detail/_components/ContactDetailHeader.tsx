@@ -27,7 +27,7 @@ const customerNameOf = (customer: ContactDetail["customer"]) =>
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="flex min-w-0 flex-col gap-1">
-      <dt className="text-xs font-medium text-neutral-600">{label}</dt>
+      <dt className="text-xs font-medium text-muted-foreground">{label}</dt>
       <dd className="flex min-h-6 min-w-0 items-center gap-2 break-words text-sm">
         {children}
       </dd>
@@ -57,9 +57,9 @@ export function ContactDetailHeader({
   const { blackListStatus } = customer
 
   return (
-    <div className="flex flex-col gap-4 rounded-md border bg-white p-4 shadow-sm">
+    <div className="rounded-card flex flex-col gap-4 border border-border bg-card p-4 shadow-card">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-        <h3 className="text-lg font-medium">{customerNameOf(customer)}</h3>
+        <h3 className="font-heading text-lg">{customerNameOf(customer)}</h3>
         {blackListStatus === "whitelisted" ? null : (
           <BlackListBadge
             state={blackListStatus}
@@ -131,7 +131,7 @@ export function ContactDetailHeader({
               da={da}
             />
           ) : contact.operator === null ? (
-            <span className="text-neutral-600">Non assegnato</span>
+            <span className="text-muted-foreground">Non assegnato</span>
           ) : (
             operatorDisplayName(contact.operator)
           )}

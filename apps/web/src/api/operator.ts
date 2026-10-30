@@ -16,6 +16,7 @@ import { ApiClient, type Run } from "./runtime"
 export const operatorKeys = {
   all: ["operator"] as const,
   active: () => [...operatorKeys.all, "getAllUniqueOperators"] as const,
+  team: () => [...operatorKeys.all, "getTeam"] as const,
   byId: (id: number) =>
     [...operatorKeys.all, "getOperatorById", { id }] as const,
   deactivationImpact: (operatorId: number) =>
@@ -44,6 +45,27 @@ export const activeOperatorsOptions = (run: Run) =>
 
 export const useActiveOperators = () =>
   useQuery(activeOperatorsOptions(useRun()))
+
+/**
+ * The team of the settings (`GET /operator/team`, admin): the active
+ * operators with role and email. A failure with none on screen goes to the
+ * error of the route
+ */
+export const useTeam = () => {
+  const run = useRun()
+  return useQuery({
+    queryKey: operatorKeys.team(),
+    queryFn: ({ signal }) =>
+      run(
+        Effect.gen(function* () {
+          const client = yield* ApiClient
+          return yield* client.operator.getTeam()
+        }),
+        signal
+      ),
+    ...routeErrorWhenEmpty,
+  })
+}
 
 /**
  * The operators a contact can be given to, for a page that needs them to

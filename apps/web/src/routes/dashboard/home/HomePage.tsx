@@ -25,13 +25,13 @@ export function Component() {
     <section className="dashabord-container">
       <div className="dashabord-layout">
         <div className="relative h-[inherit]">
-          <div className="dashboard-content rounded-lg bg-white">
+          <div className="dashboard-content">
             <div className="flex items-center justify-end gap-4">
               <ImportLink />
             </div>
             <div className="mt-8">
               <div className="flex flex-wrap items-center gap-4">
-                <h2 className="text-2xl">Analisi Andamento</h2>
+                <h2 className="font-heading text-title">Analisi Andamento</h2>
                 <TimeFrameSelector timeframe={timeframe} />
               </div>
               <div className="mt-4">
@@ -40,7 +40,9 @@ export function Component() {
             </div>
             <CallsSection />
             <div className="mt-8">
-              <h2 className="text-2xl">Ultime Pratiche Aggiornate</h2>
+              <h2 className="font-heading text-title">
+                Ultime Pratiche Aggiornate
+              </h2>
               <div className="mt-4">
                 <LastUpdatedSection />
               </div>

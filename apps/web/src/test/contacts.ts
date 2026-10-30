@@ -256,6 +256,7 @@ export function fakeContacts(
         .handle("updateOperatorsRole", unserved)
         .handle("getDeactivationImpact", unserved)
         .handle("getOperatorsForDeactivation", unserved)
+        .handle("getTeam", unserved)
         .handle("deactivate", unserved)
     ),
     // The customer of a detail, for its notes: a customer with no chat

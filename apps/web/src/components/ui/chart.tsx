@@ -3,8 +3,8 @@ import { ResponsiveContainer } from "recharts"
 import { cn } from "@/lib/utils"
 
 // The chart component of shadcn, reduced to what the dashboard uses (R4):
-// a measured container, the tooltip frame and the legend. The colors come
-// from the chart (palette.ts), not from CSS variables: they are few and fixed
+// a measured container, the tooltip frame and the legend. The colors of the
+// series come from the chart (palette.ts), the others are tokens
 
 export const ChartContainer = ({
   className,
@@ -15,7 +15,7 @@ export const ChartContainer = ({
 }) => (
   <div
     className={cn(
-      "[&_.recharts-surface]:outline-hidden [&_.recharts-sector]:outline-hidden flex justify-center text-xs [&_.recharts-cartesian-grid_line]:stroke-[#e5e7eb]",
+      "[&_.recharts-surface]:outline-hidden [&_.recharts-sector]:outline-hidden flex justify-center text-xs [&_.recharts-cartesian-grid_line]:stroke-border",
       className
     )}
     {...props}
@@ -41,10 +41,10 @@ export const ChartTooltipContent = ({
   label?: ReactNode
   items: ChartTooltipItem[]
 }) => (
-  <div className="rounded-lg border border-[#e5e7eb] bg-white text-sm shadow-[0_4px_6px_-1px_rgb(0_0_0/0.1),0_2px_4px_-2px_rgb(0_0_0/0.1)]">
+  <div className="shadow-pop rounded-lg border border-border bg-card text-sm text-foreground">
     {label !== undefined ? (
-      <div className="border-b border-[#e5e7eb] px-4 py-2">
-        <p className="font-medium text-[#374151]">{label}</p>
+      <div className="border-b border-border px-4 py-2">
+        <p className="font-medium text-foreground">{label}</p>
       </div>
     ) : null}
     <div className="space-y-1 px-4 py-2">
@@ -55,14 +55,14 @@ export const ChartTooltipContent = ({
         >
           <div className="flex items-center gap-2">
             <span
-              className="h-3 w-3 shrink-0 rounded-full border-2 border-white shadow-[0_4px_6px_-1px_rgb(0_0_0/0.1),0_2px_4px_-2px_rgb(0_0_0/0.1)]"
+              className="shadow-xs h-3 w-3 shrink-0 rounded-full border-2 border-card"
               style={{ backgroundColor: item.color }}
             />
-            <p className="whitespace-nowrap text-right text-[#6b7280]">
+            <p className="whitespace-nowrap text-right text-muted-foreground">
               {item.name}
             </p>
           </div>
-          <p className="whitespace-nowrap text-right font-medium tabular-nums text-[#374151]">
+          <p className="whitespace-nowrap text-right font-medium tabular-nums text-foreground">
             {item.value}
           </p>
         </div>
@@ -85,7 +85,7 @@ export const ChartLegendContent = ({
           className="h-2 w-2 shrink-0 rounded-full"
           style={{ backgroundColor: item.color }}
         />
-        <span className="whitespace-nowrap text-sm text-[#6b7280]">
+        <span className="whitespace-nowrap text-sm text-muted-foreground">
           {item.name}
         </span>
       </li>

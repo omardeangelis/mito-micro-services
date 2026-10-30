@@ -10,6 +10,7 @@ import {
 import { users } from "@mito/db/schema/users"
 import { serverLayer } from "../effect/server"
 import { authDb, onAuthDb } from "./database"
+import { type DevAccounts, devLogin } from "./devLogin"
 import { admits } from "./run"
 import {
   admitMagicLink,
@@ -44,6 +45,8 @@ export type AuthConfig = {
    * and a sender (AC7).
    */
   readonly sendMagicLink?: (email: string, url: string) => Promise<void>
+  /** The quick login of local development, with these accounts (`devLogin`). */
+  readonly devAccounts?: DevAccounts
 } & SignUpRules
 
 const DAY = 24 * 60 * 60
@@ -70,7 +73,7 @@ const withoutTokens = <T extends object>(account: T) => ({
  * `services/auth/login.ts` in its hooks.
  */
 export function buildAuth(config: AuthConfig) {
-  const { sendMagicLink } = config
+  const { sendMagicLink, devAccounts } = config
   return betterAuth({
     baseURL: config.allowedHosts
       ? {
@@ -141,8 +144,8 @@ export function buildAuth(config: AuthConfig) {
           },
         }
       : {},
-    plugins:
-      config.testLogin && sendMagicLink
+    plugins: [
+      ...(config.testLogin && sendMagicLink
         ? [
             magicLink({
               expiresIn: DAY,
@@ -156,7 +159,9 @@ export function buildAuth(config: AuthConfig) {
               },
             }),
           ]
-        : [],
+        : []),
+      ...(devAccounts ? [devLogin(devAccounts)] : []),
+    ],
     databaseHooks: {
       user: {
         create: {

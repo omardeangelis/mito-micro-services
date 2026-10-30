@@ -96,7 +96,7 @@ export function ContactPagination({ state, total }: Props) {
         </PaginationContent>
       </Pagination>
       <div className="flex flex-row items-center">
-        <p className="mr-1 w-full min-w-36 text-gray-600">
+        <p className="mr-1 w-full min-w-36 text-muted-foreground">
           {`${from} - ${to} di ${total}`}
         </p>
         <Select

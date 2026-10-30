@@ -103,7 +103,7 @@ export function PracticeGeneralForm({
           <div>
             <h4>Dettaglio Pratica</h4>
             {!canEdit ? (
-              <span className="text-xs text-neutral-400">
+              <span className="text-xs text-muted-foreground">
                 Modifica disabilitata: non sei l&apos;operatore assegnato
               </span>
             ) : null}
@@ -159,7 +159,7 @@ export function PracticeGeneralForm({
                       disabled
                     />
                   </FormControl>
-                  <FormMessage className="text-red-400" />
+                  <FormMessage />
                 </FormItem>
               )}
             />
@@ -182,7 +182,7 @@ export function PracticeGeneralForm({
                       disabled
                     />
                   </FormControl>
-                  <FormMessage className="text-red-400" />
+                  <FormMessage />
                 </FormItem>
               )}
             />
@@ -190,7 +190,7 @@ export function PracticeGeneralForm({
               control={form.control}
               name="state"
               render={({ field: { ref: _, ...field } }) => (
-                <FormItem className="w-full bg-white">
+                <FormItem className="w-full">
                   <FormLabel>Stato</FormLabel>
                   <Select
                     {...field}
@@ -198,7 +198,7 @@ export function PracticeGeneralForm({
                     value={field.value}
                   >
                     <FormControl>
-                      <SelectTrigger className="bg-white">
+                      <SelectTrigger>
                         <SelectValue>{field.value}</SelectValue>
                       </SelectTrigger>
                     </FormControl>
@@ -213,7 +213,7 @@ export function PracticeGeneralForm({
                       </SelectGroup>
                     </SelectContent>
                   </Select>
-                  <FormMessage className="text-red-400" />
+                  <FormMessage />
                 </FormItem>
               )}
             />
@@ -233,7 +233,7 @@ export function PracticeGeneralForm({
                       {...field}
                     />
                   </FormControl>
-                  <FormMessage className="text-red-400" />
+                  <FormMessage />
                 </FormItem>
               )}
             />
@@ -252,7 +252,7 @@ export function PracticeGeneralForm({
                         {...field}
                       />
                     </FormControl>
-                    <FormMessage className="text-red-400" />
+                    <FormMessage />
                   </FormItem>
                 )}
               />
@@ -270,7 +270,7 @@ export function PracticeGeneralForm({
                         {...field}
                       />
                     </FormControl>
-                    <FormMessage className="text-red-400" />
+                    <FormMessage />
                   </FormItem>
                 )}
               />
@@ -290,7 +290,7 @@ export function PracticeGeneralForm({
                       {...field}
                     />
                   </FormControl>
-                  <FormMessage className="text-red-400" />
+                  <FormMessage />
                 </FormItem>
               )}
             />
@@ -311,7 +311,7 @@ export function PracticeGeneralForm({
                         {...field}
                       />
                     </FormControl>
-                    <FormMessage className="text-red-400" />
+                    <FormMessage />
                   </FormItem>
                 )}
               />
@@ -330,7 +330,7 @@ export function PracticeGeneralForm({
                         {...field}
                       />
                     </FormControl>
-                    <FormMessage className="text-red-400" />
+                    <FormMessage />
                   </FormItem>
                 )}
               />
@@ -348,7 +348,7 @@ export function PracticeGeneralForm({
                         {...field}
                       />
                     </FormControl>
-                    <FormMessage className="text-red-400" />
+                    <FormMessage />
                   </FormItem>
                 )}
               />

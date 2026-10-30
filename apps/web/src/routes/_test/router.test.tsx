@@ -81,7 +81,7 @@ describe("la sessione (F6)", () => {
       expect(
         await screen.findByRole(
           "button",
-          { name: "Accedi" },
+          { name: "Accedi con Microsoft" },
           { timeout: 10000 }
         )
       ).toBeInTheDocument()
@@ -95,7 +95,9 @@ describe("la sessione (F6)", () => {
     open("/dashboard")
 
     expect(screen.queryByRole("navigation")).toBeNull()
-    expect(screen.queryByRole("button", { name: "Accedi" })).toBeNull()
+    expect(
+      screen.queryByRole("button", { name: "Accedi con Microsoft" })
+    ).toBeNull()
   })
 
   it("con una sessione /login porta alla dashboard", async () => {
@@ -123,8 +125,8 @@ describe("le rotte (§5)", () => {
       backend = fakeMe({ operator })
       const router = open("/")
 
-      await screen.findAllByRole("tab")
-      expect(router.state.location.pathname).toBe("/dashboard/profile")
+      await screen.findByRole("heading", { name: "Profilo" })
+      expect(router.state.location.pathname).toBe("/dashboard/settings/profile")
       expect(router.state.location.search).toBe("?firstTime=true")
     }
   )
@@ -134,7 +136,7 @@ describe("le rotte (§5)", () => {
     const router = open("/")
 
     expect(
-      await screen.findByRole("button", { name: "Accedi" })
+      await screen.findByRole("button", { name: "Accedi con Microsoft" })
     ).toBeInTheDocument()
     expect(router.state.location.pathname).toBe("/login")
     expect(backend.state.reads).toBe(0)
@@ -327,39 +329,45 @@ describe("il menu per ruolo (2.2.2)", () => {
   })
 })
 
-describe("il profilo", () => {
-  it("un operatore vede solo il tab Profile, anche con ?tab=admin", async () => {
-    open("/dashboard/profile?tab=admin")
+describe("le impostazioni", () => {
+  it.each([
+    [
+      "/dashboard/profile?firstTime=true",
+      "/dashboard/settings/profile",
+      "?firstTime=true",
+    ],
+    ["/dashboard/profile", "/dashboard/settings/profile", ""],
+    ["/dashboard/settings", "/dashboard/settings/profile", ""],
+  ])("%s porta a %s%s", async (from, pathname, search) => {
+    const router = open(from)
 
-    const tabs = await screen.findAllByRole("tab")
-    expect(tabs.map((tab) => tab.textContent)).toEqual(["Profile"])
-    expect(tabs[0]).toHaveAttribute("aria-selected", "true")
+    await screen.findByRole("heading", { name: "Profilo" })
+    expect(router.state.location.pathname).toBe(pathname)
+    expect(router.state.location.search).toBe(search)
   })
 
-  it("un admin apre il tab dell'URL, e cambiarlo cambia l'URL", async () => {
-    backend = fakeMe({ role: "ADMIN" })
-    const user = userEvent.setup()
-    const router = open(
+  it.each([
+    ["/dashboard/profile?tab=admin", "/dashboard/settings/team", "Team"],
+    [
       "/dashboard/profile?tab=blacklist",
-      fakeProfile().handlers
-    )
-    await screen.findAllByRole("tab")
+      "/dashboard/settings/blacklist",
+      "Blacklist",
+    ],
+  ])("per un admin %s porta a %s", async (from, pathname, heading) => {
+    backend = fakeMe({ role: "ADMIN" })
+    const router = open(from, fakeProfile().handlers)
 
-    expect(screen.getByRole("tab", { name: "Blacklist" })).toHaveAttribute(
-      "aria-selected",
-      "true"
-    )
-
-    await user.click(screen.getByRole("tab", { name: "Admin" }))
-
-    expect(router.state.location.search).toBe("?tab=admin")
     expect(
-      await screen.findByRole("heading", { name: "Gestisci operatori" })
+      await screen.findByRole("heading", { level: 1, name: heading })
     ).toBeVisible()
+    expect(router.state.location.pathname).toBe(pathname)
+  })
 
-    await user.click(screen.getByRole("tab", { name: "Profile" }))
+  it("un operatore che apre Team va al suo profilo", async () => {
+    const router = open("/dashboard/profile?tab=admin")
 
-    expect(router.state.location.search).toBe("")
+    await screen.findByRole("heading", { name: "Profilo" })
+    expect(router.state.location.pathname).toBe("/dashboard/settings/profile")
   })
 })
 

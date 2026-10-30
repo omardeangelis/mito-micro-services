@@ -252,7 +252,7 @@ export const CustomerForm = (props: Props) => {
   const assigning = assignToYourself.isPending || refreshing
 
   return (
-    <div className="mt-8 rounded-md border bg-white p-4">
+    <div className="rounded-card mt-8 border border-border bg-card p-4">
       <Form {...form}>
         <form
           className="flex flex-col gap-4"
@@ -260,7 +260,7 @@ export const CustomerForm = (props: Props) => {
           onSubmit={onSubmit}
         >
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-medium">Anagrafica</h2>
+            <h2 className="text-lg">Anagrafica</h2>
             <Button
               disabled={!hasFormChanged || pending || !canEdit}
               variant={
@@ -428,7 +428,7 @@ export const CustomerForm = (props: Props) => {
                       onBlur={field.onBlur}
                     />
                   </FormControl>
-                  <FormMessage className="text-red-400" />
+                  <FormMessage />
                 </FormItem>
               )}
             />
@@ -494,7 +494,7 @@ export const CustomerForm = (props: Props) => {
                       value={field.value?.toString()}
                     >
                       <FormControl>
-                        <SelectTrigger className="bg-white">
+                        <SelectTrigger>
                           <SelectValue>
                             {field.value ?? "Seleziona"}
                           </SelectValue>
@@ -511,7 +511,7 @@ export const CustomerForm = (props: Props) => {
                         </SelectGroup>
                       </SelectContent>
                     </Select>
-                    <FormMessage className="text-red-400" />
+                    <FormMessage />
                   </FormItem>
                 )}
               />
@@ -538,7 +538,7 @@ export const CustomerForm = (props: Props) => {
                     variant="link"
                     type="button"
                     aria-disabled={assigning}
-                    className="px-0 text-neutral-600"
+                    className="px-0 text-muted-foreground"
                     onClick={() => {
                       if (assigning) return
                       assign()

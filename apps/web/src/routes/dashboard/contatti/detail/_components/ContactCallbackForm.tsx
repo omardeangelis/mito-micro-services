@@ -136,13 +136,13 @@ export function ContactCallbackForm({ taskId, state, alert, da }: Props) {
           Imposta richiamo
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="min-w-20 bg-white p-4">
+      <PopoverContent className="min-w-20 p-4">
         <Form {...form}>
           <form className="flex flex-col gap-4" onSubmit={submit}>
             {/* Always mounted: an alert a colleague sets while the form is
                 open fills it, and a region that arrives with its content is
                 not always announced */}
-            <div className="text-sm text-gray-600" role="status">
+            <div className="text-sm text-muted-foreground" role="status">
               {replaced ? (
                 <>
                   <p className="font-medium">

@@ -27,13 +27,13 @@ export function ContactHistorySection({ contacts, da }: Props) {
   return (
     <section
       aria-labelledby={headingId}
-      className="rounded-md border bg-white p-4 shadow-sm"
+      className="rounded-card border border-border bg-card p-4 shadow-card"
     >
       <h3 id={headingId} className="text-base font-medium">
         Contatti precedenti
       </h3>
       {contacts.length === 0 ? (
-        <p className="mt-2 text-sm text-neutral-600">
+        <p className="mt-2 text-sm text-muted-foreground">
           Nessun contatto precedente
         </p>
       ) : (
@@ -43,7 +43,7 @@ export function ContactHistorySection({ contacts, da }: Props) {
               <Link
                 to={detailHrefFromDa(contact.id, da)}
                 preventScrollReset
-                className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-md border px-3 py-2 text-sm hover:bg-gray-100"
+                className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-md border px-3 py-2 text-sm hover:bg-accent"
                 onClick={(event) => {
                   // A modified click opens the link elsewhere: this sheet stays
                   // on this contact and must not promise its next one a focus
@@ -65,17 +65,17 @@ export function ContactHistorySection({ contacts, da }: Props) {
                 ) : null}
                 <span>
                   {contact.operator === null ? (
-                    <span className="text-neutral-600">Non assegnato</span>
+                    <span className="text-muted-foreground">Non assegnato</span>
                   ) : (
                     operatorDisplayName(contact.operator)
                   )}
                 </span>
                 {contact.closedAt === null ? null : (
-                  <span className="text-neutral-600">
+                  <span className="text-muted-foreground">
                     Contattato il {formatDateAsDMY(contact.closedAt)}
                   </span>
                 )}
-                <span className="text-neutral-600">
+                <span className="text-muted-foreground">
                   Creato il {formatDateAsDMY(contact.createdAt)}
                 </span>
               </Link>

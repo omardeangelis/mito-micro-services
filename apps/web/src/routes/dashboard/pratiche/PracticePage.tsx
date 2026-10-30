@@ -44,12 +44,12 @@ export function Component() {
     <div className="dashbaord-layout">
       <div className="relative">
         <div className="dashboard-content">
-          <div className="rounded-lg border border-neutral-200 p-4">
+          <div className="rounded-card border border-border p-4">
             <PracticeGeneralForm
               key={practice.data.id}
               initialValues={initialValues}
             />
-            <hr className="my-8 border border-neutral-100" />
+            <hr className="my-8 border border-border" />
 
             <CollassableSection key={id} defaultValue={["item-1"]}>
               {customers.data.map((customer) => (
@@ -82,7 +82,7 @@ function PracticeNotFound() {
   return (
     <div className="dashbaord-layout">
       <div className="flex flex-col items-start gap-2 p-4">
-        <h2 className="text-lg font-medium">Pratica non trovata</h2>
+        <h2 className="font-heading text-lg">Pratica non trovata</h2>
         <Link className="text-sm underline" to="/dashboard/pratiche">
           Torna a Pratiche
         </Link>

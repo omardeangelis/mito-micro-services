@@ -11,11 +11,14 @@ import {
   getPublicOperator,
   listActiveOperators,
   listDeactivationTargets,
+  listTeam,
 } from "../../../../services/operator/queries"
 
 export const getAllUniqueOperators = protectedProcedure.query(() =>
   runTrpc(listActiveOperators())
 )
+
+export const getTeam = adminProcedure.query(() => runTrpc(listTeam()))
 
 const getOperatorByIdInput = z.object({
   id: z.number().int().positive(),

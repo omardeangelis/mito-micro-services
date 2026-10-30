@@ -31,7 +31,7 @@ export function ExportDownload({
   return (
     <div className="flex items-center gap-2">
       {failed && (
-        <span role="alert" className="text-sm text-red-600">
+        <span role="alert" className="text-destructive-text text-sm">
           File non creato, riprova
         </span>
       )}

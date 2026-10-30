@@ -1,6 +1,7 @@
 import { env } from "@mito/env"
 import { parseAllowedHosts } from "@mito/env/allowedHosts"
 import { type Auth, type AuthConfig, buildAuth } from "./config"
+import { SEED_ACCOUNTS } from "./devLogin"
 import { magicLinkSender } from "./mail"
 
 type AuthEnv = Parameters<typeof magicLinkSender>[0] &
@@ -19,9 +20,18 @@ type AuthEnv = Parameters<typeof magicLinkSender>[0] &
   >
 
 /**
+ * Whether the frontend is on this machine. `NODE_ENV` alone isn't enough:
+ * `@mito/env` makes it "development" when it is missing
+ */
+const isLocal = (url: string) =>
+  ["localhost", "127.0.0.1", "[::1]"].includes(new URL(url).hostname)
+
+/**
  * The configuration of better-auth from these env vars. The test logins only
  * with `AUTH_TEST_LOGIN` exactly "true" (fail closed, OQ6), the email one also
- * with a sender; Azure when its three vars are set.
+ * with a sender, the quick one also in `NODE_ENV=development` with the
+ * frontend on this machine (on the seed of `mito_local`); Azure when its
+ * three vars are set.
  */
 export function authConfigFrom(vars: AuthEnv): AuthConfig {
   if (!vars.BETTER_AUTH_URL || !vars.BETTER_AUTH_SECRET) {
@@ -52,6 +62,12 @@ export function authConfigFrom(vars: AuthEnv): AuthConfig {
         : undefined,
     testLogin,
     sendMagicLink: testLogin ? magicLinkSender(vars) : undefined,
+    devAccounts:
+      testLogin &&
+      vars.NODE_ENV === "development" &&
+      isLocal(vars.BETTER_AUTH_URL)
+        ? SEED_ACCOUNTS
+        : undefined,
     allowedEmails: new Set(
       (vars.AUTH_ALLOWED_EMAILS ?? "")
         .split(",")

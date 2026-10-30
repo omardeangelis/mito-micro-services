@@ -10,7 +10,7 @@ links:
   - "[[chore/migrazione-gcp]]"
   - "[[chore/crm/design-lavorazioni-e-verticali]]"
 created: 2026-10-21
-updated: 2026-10-21
+updated: 2026-10-29
 ---
 
 # Spec: Seeder del database locale, con gli scenari dei cron
@@ -85,7 +85,7 @@ I ruoli del prodotto che compaiono nei dati sono `OPERATORE` e `ADMIN` (vedi la 
 
 ## Non-Goals
 
-- **Far girare l'app (UI, login) su `mito_local`.** Lo vieta D24 del piano di Contatti: il login con Azure AD e lo storage restano quelli di sviluppo. Questa spec riempie il database e valida i cron. Usare l'app sui dati del seed sarà una spec a parte, dopo questa (domanda 1, chiusa).
+- **Far girare l'app (UI, login) su `mito_local`.** Questa spec riempie il database e valida i cron, e non cambia come si avvia l'app. Il 2026-10-21 D24 del piano di Contatti teneva l'app fuori da `mito_local`, perché il login con Azure AD e lo storage restavano quelli di sviluppo. Il 2026-10-29 Omar ha deciso che i server locali girano sempre su `mito_local` (D24 aggiornata), senza una spec a parte (domanda 1).
 - **Il cron `delete-export`.** Lavora sui file dello storage sotto `export/`, non sul database, e `mito_local` non ha uno storage suo.
 - **La tabella `cron_run` e l'idempotenza del backend.** Il seeder la lascia vuota, così nessun cron viene saltato come "già girato oggi". L'idempotenza della rotta `/internal/cron/<job>` (autenticazione OIDC) resta coperta dai test di `api/src/cron/_test/`.
 - **Dati che violano le invarianti del dominio.** Non vengono generati: un alert aperto su un contatto non attivo, un alert collegato in un solo verso, un contatto senza cliente, un cliente con due contatti attivi, un contatto attivo con un operatore diverso da quello del cliente. Il comportamento dei cron su queste anomalie è già coperto dai test del cron `alert` e da quelli di `processDueAlerts`.
@@ -365,7 +365,7 @@ Gli script `seed:db`, `seed:delete`, `seed:delete:dev` e `seed:delete:test` svuo
 
 | # | Question | Affects | Owner | Status |
 |---|----------|---------|-------|--------|
-| 1 | Far girare l'app su `mito_local`, per vedere i dati del seed nelle liste e nella scheda cliente, va superato D24. Il login con il provider Email di `next dev` esiste già per gli utenti presenti nel database, ma lo storage resta quello di sviluppo. Default proposto: lo copre una spec a parte, dopo questa. | Non-Goals, AC16, AC17 | Omar | **Chiusa il 2026-10-21**: spec a parte, dopo questa |
+| 1 | Far girare l'app su `mito_local`, per vedere i dati del seed nelle liste e nella scheda cliente, va superato D24. Il login con il provider Email di `next dev` esiste già per gli utenti presenti nel database, ma lo storage resta quello di sviluppo. Default proposto: lo copre una spec a parte, dopo questa. | Non-Goals, AC16, AC17 | Omar | **Chiusa il 2026-10-21**: spec a parte, dopo questa. **Superata il 2026-10-29**: nessuna spec a parte, i server locali girano sempre su `mito_local` (D24 aggiornata) |
 | 2 | Le soglie di volume di AC30 (5.001 contatti con la stessa priorità, 1.000 alert scaduti, 200 pratiche, 100 compleanni, 1.000 righe di log vecchie) bastano per gli scenari di carico che servono? Default proposto: queste. | AC30 | Omar | **Chiusa il 2026-10-21**: le soglie vanno bene |
 | 3 | La quota di ogni ruolo fra i clienti con una sola pratica: AC10 chiedeva almeno 1/5 per ruolo. Default proposto: metà `Intestatario`, un quarto `Coobbligato`, un quarto `Garante`. | AC10 | Omar | **Chiusa il 2026-10-21**: 50% / 25% / 25% (AC10) |
 | 4 | `paths.personas` non è configurato. Gli utenti di questa spec sono sviluppatori, chi fa QA e Omar: va aggiunta una pagina delle persone del progetto? Default proposto: no, per questa spec basta Context. | Context | Omar | **Chiusa il 2026-10-21**: no, basta Context |
@@ -387,4 +387,4 @@ Gli script `seed:db`, `seed:delete`, `seed:delete:dev` e `seed:delete:test` svuo
 | Gli esiti attesi descrivono il codice di oggi, difetti compresi. | Il seeder serve a validare i cron così come sono. Una correzione cambia insieme cron ed esiti attesi. |
 | Gli script di seed di oggi entrano nella spec e si tolgono tutti e quattro, `seed:db`, `seed:delete`, `seed:delete:dev` e `seed:delete:test`, con i loro file (AC31–AC33; richiesta e scelta di Omar, 2026-10-21). | `seed:db` svuota il database indicato dalla shell, e `seed:delete:dev` svuota quello di sviluppo. Un seeder locale protetto, accanto a script che non lo sono, lascerebbe il rischio dov'è. |
 | `delete-export` e `cron_run` restano fuori (domanda 6, confermata da Omar il 2026-10-21). | Il primo lavora sullo storage, che il database locale non ha. Il secondo riguarda solo la rotta del backend con OIDC, già coperta dai suoi test. |
-| Le altre domande aperte le ha chiuse Omar il 2026-10-21, tutte con i default proposti: l'app su `mito_local` sarà una spec a parte (1); le soglie di AC30 restano (2); fra i clienti con una sola pratica i ruoli si dividono 50% / 25% / 25% (3, AC10); nessuna pagina delle persone (4). | Con queste soglie `priority` divide l'aggiornamento in blocchi e `alert` fa più chiamate. La divisione dei ruoli segue la prevalenza degli intestatari e lascia comunque gruppi grandi di coobbligati e garanti. |
+| Le altre domande aperte le ha chiuse Omar il 2026-10-21, tutte con i default proposti: l'app su `mito_local` sarà una spec a parte (1, poi superata: dal 2026-10-29 i server locali girano su `mito_local` senza spec a parte); le soglie di AC30 restano (2); fra i clienti con una sola pratica i ruoli si dividono 50% / 25% / 25% (3, AC10); nessuna pagina delle persone (4). | Con queste soglie `priority` divide l'aggiornamento in blocchi e `alert` fa più chiamate. La divisione dei ruoli segue la prevalenza degli intestatari e lascia comunque gruppi grandi di coobbligati e garanti. |

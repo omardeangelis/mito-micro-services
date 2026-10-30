@@ -45,18 +45,18 @@ export function AdminExportSection() {
         )}
       </div>
       {startsBeforeCompleteData(period) && (
-        <p role="status" className="text-sm text-amber-700">
+        <p role="status" className="text-warning-soft-foreground text-sm">
           Dati completi solo dal {italianDay(COMPLETE_DATA_SINCE)}
         </p>
       )}
       {!valid ? (
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-destructive-text text-sm">
           Scegli un periodo tra il {italianDay(first)} e il {italianDay(last)}
         </p>
       ) : isError ? (
         <div
           role="alert"
-          className="flex items-center gap-4 text-sm text-red-600"
+          className="text-destructive-text flex items-center gap-4 text-sm"
         >
           Non è stato possibile caricare le chiamate del periodo
           <Button variant="outline" size="sm" onClick={() => void refetch()}>
@@ -69,7 +69,7 @@ export function AdminExportSection() {
         <>
           <ExportKpis totals={data.totals} />
           {data.totals.calls === 0 ? (
-            <p className="text-sm text-neutral-500">
+            <p className="text-sm text-muted-foreground">
               Nessuna chiamata nel periodo
             </p>
           ) : (

@@ -17,8 +17,8 @@ export function Component() {
   return (
     <section className="dashabord-container">
       <div className="dashabord-layout">
-        <div className="dashboard-content rounded-lg bg-white">
-          <h1 className="text-2xl">Import</h1>
+        <div className="dashboard-content">
+          <h1 className="text-title font-heading">Import</h1>
           <section aria-labelledby="new-import" className="mt-6">
             <h2 id="new-import" className="text-xl">
               Nuovo import

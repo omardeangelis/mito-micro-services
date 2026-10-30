@@ -38,9 +38,9 @@ const InputWithCopy = React.forwardRef<HTMLInputElement, Props>(
                   })
                 })
             }}
-            className="absolute right-0 top-0 inline-flex h-10 w-10 items-center justify-center"
+            className="size-7.5 absolute right-0 top-0 inline-flex items-center justify-center"
           >
-            <CopyIcon size={20} className="text-gray-400" />
+            <CopyIcon size={20} className="text-muted-foreground" />
 
             <span className="sr-only">Toggle password visibility</span>
           </div>

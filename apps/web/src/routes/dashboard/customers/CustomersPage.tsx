@@ -20,7 +20,12 @@ export function Component() {
   const rows = useMemo(() => data && [...data.allCustomers], [data])
 
   return (
-    <div className="dashbaord-layout">
+    // The list scrolls under the filters bar (`sticky top-0`, 71 px, more
+    // with the chips of the filters: it writes its height in
+    // `--filters-height`) and over the pagination (`sticky bottom-0`, 46 px):
+    // scrolling to a focused control stops clear of both, with the 4 px of
+    // its outline (WCAG 2.4.11), as in Contatti
+    <div className="dashbaord-layout scroll-pb-[50px] scroll-pt-[calc(var(--filters-height,71px)+4px)]">
       {data && rows ? (
         <CustomersTable
           columns={CustomerColumns}

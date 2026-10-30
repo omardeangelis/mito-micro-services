@@ -32,7 +32,7 @@ export const CreatePraticaTooltipButton = ({
           </Button>
         </TooltipTrigger>
         <TooltipContent>
-          <p className="text-sm text-gray-500">
+          <p className="text-sm">
             {disabled
               ? "Puoi aggiungere una pratica solo se il cliente ha uno stato di caricato o erogato"
               : "Aggiungi una pratica"}

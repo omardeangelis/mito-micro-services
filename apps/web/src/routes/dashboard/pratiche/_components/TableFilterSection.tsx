@@ -120,7 +120,7 @@ export function TableFilterSection<TData>({ allColumns }: Props<TData>) {
   )
 
   return (
-    <div className="sticky left-0 top-0 z-10 flex w-full flex-col gap-2 border-b border-neutral-200 bg-card p-4">
+    <div className="sticky left-0 top-0 z-10 flex w-full flex-col gap-2 border-b border-border bg-card p-4">
       <div className="flex w-full items-center gap-2">
         <div className="flex w-full flex-col gap-2">
           <Form {...form}>

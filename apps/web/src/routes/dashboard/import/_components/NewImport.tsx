@@ -72,7 +72,7 @@ export function NewImport() {
           }}
           className={cn(
             "flex flex-col items-center gap-4 rounded-lg border-2 border-dashed p-8 text-center",
-            dragging ? "border-slate-800 bg-slate-50" : "border-gray-300"
+            dragging ? "bg-primary-soft border-primary" : "border-border-strong"
           )}
         >
           {state.step === "started" ? (
@@ -99,7 +99,7 @@ export function NewImport() {
             Scegli il file
           </Button>
           {state.step === "choose" && state.message ? (
-            <p role="alert" className="text-destructive">
+            <p role="alert" className="text-destructive-text">
               {state.message}
             </p>
           ) : null}
@@ -136,7 +136,7 @@ export function NewImport() {
             <p className="mt-4 font-bold">Nessuna riga da importare</p>
           ) : null}
           {state.step === "preview" && state.message ? (
-            <p role="alert" className="mt-4 text-destructive">
+            <p role="alert" className="text-destructive-text mt-4">
               {state.message}
             </p>
           ) : null}

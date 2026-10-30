@@ -122,8 +122,11 @@ export const CustomerCreateContact = (props: CustomerCreateContactProps) => {
   }
 
   return (
-    <div ref={cardRef} className="mt-8 rounded-md border bg-white p-4">
-      <h2 className="mb-2 text-lg font-medium">Stato del cliente</h2>
+    <div
+      ref={cardRef}
+      className="rounded-card mt-8 border border-border bg-card p-4"
+    >
+      <h2 className="mb-2 text-lg">Stato del cliente</h2>
       <div className="flex flex-wrap items-center gap-4">
         <p className="text-sm">Il cliente non ha un contatto attivo</p>
         <Button

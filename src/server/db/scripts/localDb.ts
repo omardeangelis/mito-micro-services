@@ -6,19 +6,19 @@ import postgres from "postgres"
 import { sql } from "drizzle-orm"
 import { drizzle } from "drizzle-orm/postgres-js"
 import { migrate } from "drizzle-orm/postgres-js/migrator"
-import { localConnection } from "@mito/db/localDsn"
+import { LOCAL_DATABASE_URL, localConnection } from "@mito/db/localDsn"
 import { migrateWithPushedSchema } from "@mito/db/pushedSchema"
 import * as schema from "@mito/db/schema/index"
 // Type only: a value import would load `server-only` and the global `db`
 import type { DbClient } from "@mito/server/effect/db"
 
 /**
- * The local database, in the Postgres of docker-compose.yml. Written here: the
- * `db:local:*` scripts read no env file, no Supabase variable and never
- * `loadEnv`, so they can't reach the development or the production database.
+ * The local database, in the Postgres of docker-compose.yml (the constant is
+ * in `@mito/db/localDsn`). The `db:local:*` scripts read no env file, no
+ * Supabase variable and never `loadEnv`, so they can't reach the development
+ * or the production database.
  */
-export const LOCAL_DATABASE_URL =
-  "postgres://postgres:local@127.0.0.1:54329/mito_local"
+export { LOCAL_DATABASE_URL }
 
 const MIGRATIONS_FOLDER = fileURLToPath(
   new URL("../../../../packages/db/migrations", import.meta.url)

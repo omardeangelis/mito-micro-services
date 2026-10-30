@@ -9,8 +9,8 @@ import { returnHref } from "@mito/client/contact/searchParams"
  */
 export function ContactNotFound({ da }: { da: string | string[] | undefined }) {
   return (
-    <div className="flex flex-col items-start gap-4 rounded-md border bg-white p-4">
-      <h3 className="text-lg font-medium">Contatto non trovato</h3>
+    <div className="rounded-card flex flex-col items-start gap-4 border border-border bg-card p-4">
+      <h3 className="font-heading text-lg">Contatto non trovato</h3>
       <Link
         to={returnHref(da)}
         preventScrollReset

@@ -33,11 +33,27 @@ beforeAll(() => {
   )
 })
 
+// The color of a mark: a property of its style or a fill-/stroke- class, never
+// an SVG attribute with var() (D11 of design-system-web)
+const paint = (el: Element, prop: "fill" | "stroke") => {
+  expect(el.getAttribute(prop) ?? "").not.toContain("var(")
+  const style = new RegExp(`(^|;)\\s*${prop}:\\s*([^;]+)`).exec(
+    el.getAttribute("style") ?? ""
+  )?.[2]
+  if (style !== undefined) return style.trim()
+  const token = (el.getAttribute("class") ?? "")
+    .split(/\s+/)
+    .find((c) => c.startsWith(`${prop}-`))
+  return token === undefined
+    ? el.getAttribute(prop)
+    : `var(--color-${token.slice(prop.length + 1)})`
+}
+
 describe("chartColor", () => {
-  it("dà l'hex di Tremor, e il 500 per un nome senza tonalità", () => {
-    expect(chartColor("blue-500")).toBe("#3b82f6")
-    expect(chartColor("emerald")).toBe("#10b981")
-    expect(chartColor("pink-300")).toBe("#6b7280")
+  it("dà il token del punto del tono, e quello neutral per un nome sconosciuto", () => {
+    expect(chartColor("blue")).toBe("var(--color-tag-blue-dot)")
+    expect(chartColor("chart-1")).toBe("var(--color-chart-1)")
+    expect(chartColor("pink-300")).toBe("var(--color-tag-neutral-dot)")
   })
 })
 
@@ -52,7 +68,7 @@ describe("ProgressCircle", () => {
     expect(Number(progress.getAttribute("stroke-dashoffset"))).toBeCloseTo(
       circumference * 0.25
     )
-    expect(progress).toHaveAttribute("stroke", "#22c55e")
+    expect(paint(progress, "stroke")).toBe("var(--color-tag-green-dot)")
   })
 
   it("oltre 100 resta pieno", () => {
@@ -120,14 +136,17 @@ describe("DonutChart", () => {
         ]}
         category="total"
         index="name"
-        colors={["blue-500", "amber-600"]}
+        colors={["blue", "amber"]}
       />
     )
 
     const fills = [
       ...container.querySelectorAll(".recharts-pie-sector path"),
-    ].map((path) => path.getAttribute("fill"))
-    expect(fills).toEqual(["#3b82f6", "#d97706"])
+    ].map((path) => paint(path, "fill"))
+    expect(fills).toEqual([
+      "var(--color-tag-blue-dot)",
+      "var(--color-tag-amber-dot)",
+    ])
   })
 })
 
@@ -138,7 +157,7 @@ describe("BarChart", () => {
         data={[{ Operatore: "Rossi", Risposte: 3, "Non risposte": 1 }]}
         index="Operatore"
         categories={["Risposte", "Non risposte"]}
-        colors={["emerald", "rose"]}
+        colors={["green", "orange"]}
         stack
       />
     )
@@ -153,7 +172,7 @@ describe("BarChart", () => {
         data={[]}
         index="Operatore"
         categories={["Risposte"]}
-        colors={["emerald"]}
+        colors={["green"]}
         noDataText="Nessuna chiamata"
       />
     )

@@ -44,7 +44,7 @@ export function ContactRowActions({ contact, state }: Props) {
         <Button
           type="button"
           variant="ghost"
-          className="h-8 w-8 p-0"
+          size="icon"
           id={actionsId}
           aria-label="Azioni per"
           aria-labelledby={`${actionsId} ${customerNameId(contact.id)}`}

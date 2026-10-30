@@ -131,7 +131,7 @@ export function ContactFilters({
     <div
       role="search"
       aria-label="Filtri dei contatti"
-      className="flex flex-wrap items-center gap-2 border-b border-neutral-200 bg-card p-4"
+      className="flex flex-wrap items-center gap-2 border-b border-border bg-card p-4"
     >
       <Input
         type="search"
@@ -189,7 +189,7 @@ export function ContactFilters({
             {advancedCount > 0 ? (
               <span
                 aria-hidden
-                className="absolute right-0 top-0 flex h-4 w-4 items-center justify-center rounded-full bg-blue-600 text-xs text-white"
+                className="absolute right-0 top-0 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground"
               >
                 {advancedCount}
               </span>
@@ -199,7 +199,7 @@ export function ContactFilters({
         <PopoverContent
           align="start"
           collisionPadding={16}
-          className="flex w-auto max-w-[calc(100vw-2rem)] flex-col gap-4 bg-white p-4"
+          className="flex w-auto max-w-[calc(100vw-2rem)] flex-col gap-4 p-4"
         >
           <ContactDateFilter
             field={filters.dateField}
@@ -248,7 +248,7 @@ export function ContactFilters({
         role="alert"
         className={
           dateProblem !== null
-            ? "basis-full text-sm text-destructive"
+            ? "text-destructive-text basis-full text-sm"
             : "sr-only"
         }
       >

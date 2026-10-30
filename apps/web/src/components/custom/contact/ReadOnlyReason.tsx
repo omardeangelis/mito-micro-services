@@ -38,8 +38,8 @@ export function ReadOnlyReason({
       <Badge
         variant="outline"
         size="sm"
-        // neutral-600: muted-foreground is 4.31:1 on a hovered table row
-        className="max-w-full font-normal text-neutral-600"
+        // muted-foreground is 6.0:1 on the hovered table row (accent)
+        className="max-w-full font-normal text-muted-foreground"
         title={reasonOf(editability)}
       >
         <span className={fit ? undefined : "truncate"}>
@@ -47,7 +47,7 @@ export function ReadOnlyReason({
         </span>
       </Badge>
       {unassigned && customerUnassigned && showHint ? (
-        <p className="mt-1 text-xs text-neutral-600">
+        <p className="mt-1 text-xs text-muted-foreground">
           Usa “Assegna a te” nella scheda cliente
         </p>
       ) : null}

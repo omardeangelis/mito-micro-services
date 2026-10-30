@@ -91,7 +91,16 @@ function SortButton({
     <Button
       type="button"
       variant="ghost"
-      className={cn("-ml-3 h-8 gap-1 px-3", isActive && "text-blue-700")}
+      // As `SortableHeader`, 26 px so that the focus outline stays inside the
+      // header; the label lines up with the cells, the outline stays inside
+      // the first column
+      size="sm"
+      className={cn(
+        // The header's 12 px and weight 550 (AC14), as `SortableHeader`; the
+        // sorted column is in foreground, the others in muted-foreground
+        "font-label -ml-2 gap-1 px-2 text-xs",
+        isActive ? "text-foreground" : "text-muted-foreground"
+      )}
       onClick={() =>
         navigateWith(state, (base) =>
           withFilterChange(base, { orderBy, sortedBy })
@@ -190,7 +199,7 @@ function AlertCell({
         <span
           className={cn(
             "inline-flex items-center gap-1 font-medium",
-            overdue ? "text-red-700" : "text-amber-800"
+            overdue ? "text-destructive-text" : "text-tag-amber-text"
           )}
         >
           {overdue ? (

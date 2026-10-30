@@ -10,7 +10,7 @@ links:
   - "[[chore/migration/fase-3-frontend-spa]]"
   - "[[specs/crm/auth-better-auth/PLAN]]"
 created: 2026-10-27
-updated: 2026-10-27
+updated: 2026-10-29
 ---
 
 # Piano del frontend: da Next.js all'app React in `apps/web`
@@ -19,7 +19,7 @@ updated: 2026-10-27
 
 Questa pagina è il dettaglio del **filone frontend** di [[chore/roadmap-nuovo-stack]]: i punti 1.a, 1.b, 1.c, 2.2, 2.3 e la parte frontend della fase 3. L'ordine delle fasi, le decisioni R1–R10 e il debito della migrazione restano nella roadmap; qui ci sono il come, i task e le mappe pagina per pagina. Riscrive i task di [[chore/migration/fase-3-frontend-spa]] (§7 della roadmap), che resta come storia: dove le due pagine dicono cose diverse vale questa.
 
-**Il perimetro (R6).** L'app React porta in prod lo status quo: stesse pagine, stessi flussi, stessi permessi. Niente cambi di prodotto, niente layout da telefono (R5, fase 6). Un miglioramento che sembra gratis (un filtro in più, una colonna spostata) si annota nel §9 e aspetta la fase 6: rompe il collaudo di parità.
+**Il perimetro (R6).** L'app React porta in prod lo status quo: stesse pagine, stessi flussi, stessi permessi. Niente cambi di prodotto, niente layout da telefono (R5, fase 6). Un miglioramento che sembra gratis (un filtro in più, una colonna spostata) si annota nel §9 e aspetta la fase 6: rompe il collaudo di parità. L'unica eccezione è l'aspetto di `apps/web` (colori, carattere, misure), che cambia con [[specs/crm/design-system-web/SPEC]] (decisione di Omar del 29/10/2026): R6, F2 e F3 valgono per comportamento e contenuto, e Next resta com'è.
 
 ## 1. Fotografia del frontend di oggi (2026-10-27)
 

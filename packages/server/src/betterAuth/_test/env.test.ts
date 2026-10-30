@@ -19,6 +19,30 @@ describe("authConfigFrom", () => {
     }
   })
 
+  it("accende l'accesso rapido solo in sviluppo, in locale e col login di prova", () => {
+    const on = {
+      ...REQUIRED,
+      BETTER_AUTH_URL: "http://localhost:3000",
+      AUTH_TEST_LOGIN: "true",
+      NODE_ENV: "development",
+    }
+    expect(authConfigFrom(on).devAccounts).toEqual({
+      admin: "seed-user-01",
+      operator: "seed-user-04",
+    })
+    // Staging: test login on, but NODE_ENV=production on Cloud Run
+    for (const vars of [
+      { ...on, NODE_ENV: "production" },
+      { ...on, NODE_ENV: "test" },
+      { ...on, NODE_ENV: undefined },
+      { ...on, AUTH_TEST_LOGIN: undefined },
+      // NODE_ENV missing is "development" for @mito/env: the address decides
+      { ...on, BETTER_AUTH_URL: "https://staging-crm.dbmito.it" },
+    ]) {
+      expect(authConfigFrom(vars).devAccounts).toBeUndefined()
+    }
+  })
+
   it("legge gli indirizzi ammessi senza spazi né maiuscole", () => {
     expect(
       authConfigFrom({

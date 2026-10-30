@@ -145,78 +145,76 @@ export function ContactsTable({
           {announcement}
         </div>
         <div className="dashboard-content">
-          <div className="rounded-md border">
-            <Table
-              ref={tableRef}
-              tabIndex={-1}
-              // Where the focus goes when the control it was on is gone
-              data-contacts-table=""
-              aria-label="Contatti"
-              className="overflow-hidden"
-              aria-busy={pending}
-            >
-              <TableHeader>
-                {table.getHeaderGroups().map((headerGroup) => (
-                  <TableRow key={headerGroup.id}>
-                    {headerGroup.headers.map((header) => (
-                      <TableHead
-                        key={header.id}
-                        aria-sort={ariaSortOf(state, header.column.id)}
-                      >
-                        {header.isPlaceholder
-                          ? null
-                          : flexRender(
-                              header.column.columnDef.header,
-                              header.getContext()
-                            )}
-                      </TableHead>
+          <Table
+            ref={tableRef}
+            tabIndex={-1}
+            // Where the focus goes when the control it was on is gone
+            data-contacts-table=""
+            aria-label="Contatti"
+            className="overflow-hidden"
+            aria-busy={pending}
+          >
+            <TableHeader>
+              {table.getHeaderGroups().map((headerGroup) => (
+                <TableRow key={headerGroup.id}>
+                  {headerGroup.headers.map((header) => (
+                    <TableHead
+                      key={header.id}
+                      aria-sort={ariaSortOf(state, header.column.id)}
+                    >
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(
+                            header.column.columnDef.header,
+                            header.getContext()
+                          )}
+                    </TableHead>
+                  ))}
+                </TableRow>
+              ))}
+            </TableHeader>
+            <TableBody>
+              {table.getRowModel().rows.map((row) => {
+                const isOpening = pending && openedId === row.original.id
+                const isPrevious = nestedIds.has(row.original.id)
+
+                return (
+                  <TableRow
+                    key={row.id}
+                    data-contact-id={row.original.id}
+                    data-previous={isPrevious ? "" : undefined}
+                    // No transition: the highlight of the hovered row and of
+                    // the one being opened changes at once (P17)
+                    className={cn(
+                      "cursor-pointer transition-none",
+                      isOpening && "bg-accent",
+                      isPrevious && "text-muted-foreground"
+                    )}
+                    aria-busy={isOpening || undefined}
+                    onClick={() => {
+                      setOpenedId(row.original.id)
+                      navigate(detailHref(row.original.id, state))
+                    }}
+                  >
+                    {row.getVisibleCells().map((cell) => (
+                      <TableCell key={cell.id}>
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext()
+                        )}
+                      </TableCell>
                     ))}
                   </TableRow>
-                ))}
-              </TableHeader>
-              <TableBody>
-                {table.getRowModel().rows.map((row) => {
-                  const isOpening = pending && openedId === row.original.id
-                  const isPrevious = nestedIds.has(row.original.id)
-
-                  return (
-                    <TableRow
-                      key={row.id}
-                      data-contact-id={row.original.id}
-                      data-previous={isPrevious ? "" : undefined}
-                      // No transition: the highlight of the hovered row and of
-                      // the one being opened changes at once (P17)
-                      className={cn(
-                        "cursor-pointer transition-none hover:bg-gray-100",
-                        isOpening && "bg-gray-100",
-                        isPrevious && "bg-neutral-50"
-                      )}
-                      aria-busy={isOpening || undefined}
-                      onClick={() => {
-                        setOpenedId(row.original.id)
-                        navigate(detailHref(row.original.id, state))
-                      }}
-                    >
-                      {row.getVisibleCells().map((cell) => (
-                        <TableCell key={cell.id}>
-                          {flexRender(
-                            cell.column.columnDef.cell,
-                            cell.getContext()
-                          )}
-                        </TableCell>
-                      ))}
-                    </TableRow>
-                  )
-                })}
-              </TableBody>
-            </Table>
-            <ContactsEmptyState
-              rowCount={contacts.length}
-              total={total}
-              state={state}
-              customerFilter={customerFilter}
-            />
-          </div>
+                )
+              })}
+            </TableBody>
+          </Table>
+          <ContactsEmptyState
+            rowCount={contacts.length}
+            total={total}
+            state={state}
+            customerFilter={customerFilter}
+          />
         </div>
         <div className="sticky bottom-0 left-0 z-10 flex w-full items-center justify-between bg-card px-4 py-2">
           <ContactPagination state={state} total={total} />

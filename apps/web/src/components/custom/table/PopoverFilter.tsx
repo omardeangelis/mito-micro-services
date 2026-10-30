@@ -185,13 +185,13 @@ export const PopoverDateFilter = ({
         <Button variant="secondary" className="relative">
           Filtri Avanzati
           {appliedFilter > 0 && (
-            <span className="absolute right-0 top-0 flex h-4 w-4 items-center justify-center rounded-full bg-blue-500 text-xs text-white">
+            <span className="absolute right-0 top-0 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">
               {appliedFilter}
             </span>
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-full min-w-[320px] rounded-md border bg-white p-4 shadow-sm">
+      <PopoverContent className="w-full min-w-[320px]">
         <ErrorBoundary handleError={clearAllFilters}>
           <div className="flex flex-col gap-4">
             <PopoverDateItemContext.Provider value={ctx}>
@@ -200,7 +200,7 @@ export const PopoverDateFilter = ({
                   <div className="w-full" key={filtro.id}>
                     <AdvancedFilter filtro={filtro} />
                     {errorsField.find((e) => e.id === filtro.id) && (
-                      <div className="mr-8 mt-1 flex items-center justify-end gap-4 text-xxs text-red-500">
+                      <div className="text-destructive-text mr-8 mt-1 flex items-center justify-end gap-4 text-xxs">
                         <span>
                           {errorsField.find((e) => e.id === filtro.id)?.error}
                         </span>
@@ -214,7 +214,7 @@ export const PopoverDateFilter = ({
               )}
             </PopoverDateItemContext.Provider>
 
-            <SelectPrimitive.Separator className="border border-neutral-100" />
+            <SelectPrimitive.Separator className="border border-border" />
             <footer className="flex items-center justify-between">
               <Button size="sm" variant="outline" onClick={addEmptyFilter}>
                 Aggiungi filtro
@@ -325,7 +325,8 @@ const AdvancedFilter = ({ filtro }: { filtro: CustomFilter }) => {
         <Input
           className={clsx(
             "h-8",
-            errorsField.find((e) => e.id === filtro.id) && "border-red-500"
+            errorsField.find((e) => e.id === filtro.id) &&
+              "border-destructive-text"
           )}
           value={filtro.value}
           placeholder={

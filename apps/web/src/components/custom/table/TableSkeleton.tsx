@@ -12,19 +12,21 @@ import {
   Table,
 } from "@/components/ui/table"
 
+// The rows are muted (AC19); the bars of the header are darker, which sits
+// on muted itself
 const TableSkeletonRow = () => (
   <TableRow>
     <TableCell>
-      <Skeleton className="h-4 w-[100px]" />
+      <Skeleton className="h-4 w-[100px] bg-muted" />
     </TableCell>
     <TableCell>
-      <Skeleton className="h-4 w-[200px]" />
+      <Skeleton className="h-4 w-[200px] bg-muted" />
     </TableCell>
     <TableCell>
-      <Skeleton className="h-4 w-[150px]" />
+      <Skeleton className="h-4 w-[150px] bg-muted" />
     </TableCell>
     <TableCell className="text-right">
-      <Skeleton className="h-4 w-[100px]" />
+      <Skeleton className="h-4 w-[100px] bg-muted" />
     </TableCell>
   </TableRow>
 )
@@ -35,16 +37,16 @@ export function TableSkeleton({ rows = 5 }) {
       <TableHeader>
         <TableRow>
           <TableHead className="w-[100px]">
-            <Skeleton className="h-4 w-[100px]" />
+            <Skeleton className="h-4 w-[100px] bg-border" />
           </TableHead>
           <TableHead>
-            <Skeleton className="h-4 w-[200px]" />
+            <Skeleton className="h-4 w-[200px] bg-border" />
           </TableHead>
           <TableHead>
-            <Skeleton className="h-4 w-[150px]" />
+            <Skeleton className="h-4 w-[150px] bg-border" />
           </TableHead>
           <TableHead className="text-right">
-            <Skeleton className="h-4 w-[100px]" />
+            <Skeleton className="h-4 w-[100px] bg-border" />
           </TableHead>
         </TableRow>
       </TableHeader>

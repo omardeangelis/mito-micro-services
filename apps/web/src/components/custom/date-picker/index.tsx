@@ -33,6 +33,12 @@ import { useAnalyticsStore } from "@/store/useAnalyticsStore"
 import { useRouter } from "@/lib/navigation"
 import { type Matcher } from "react-day-picker"
 
+// The trigger as a field (AC11): card with an input border, the halo of the
+// ring on focus and of destructive on error. The focus is the border and the
+// halo, so `outline-0` takes the outline of Button off
+const triggerField =
+  "h-7.5 rounded-control border border-input bg-card px-2.5 text-sm font-normal hover:border-input-hover hover:bg-card focus-visible:border-ring focus-visible:outline-0 focus-visible:ring-[3px] focus-visible:ring-ring-soft aria-invalid:border-destructive-text aria-invalid:ring-[3px] aria-invalid:ring-destructive-ring disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100"
+
 export function DatePicker(defaultDate: Date) {
   const [date, setDate] = React.useState<Date>(defaultDate ?? new Date())
 
@@ -42,7 +48,8 @@ export function DatePicker(defaultDate: Date) {
         <Button
           variant={"outline"}
           className={cn(
-            "w-[280px] justify-start text-left font-normal",
+            triggerField,
+            "w-[280px] justify-start text-left",
             !date && "text-muted-foreground"
           )}
         >
@@ -104,7 +111,8 @@ export function DatePickerFormItem({
             <Button
               variant={"outline"}
               className={cn(
-                "min-w-[240px] bg-white pl-3 text-left font-normal",
+                triggerField,
+                "min-w-[240px] pl-3 text-left",
                 !fieldValue && "text-muted-foreground"
               )}
             >

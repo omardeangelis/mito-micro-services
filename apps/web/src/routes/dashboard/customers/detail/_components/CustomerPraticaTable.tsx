@@ -7,11 +7,11 @@ import {
 import {
   type ProductMapKey,
   getAllProductLabels,
-  getLabelColorByProductType,
   getProductLabel,
   getProductType,
 } from "@mito/domain/constants/productMap"
 import { Badge } from "@/components/ui/badge"
+import { productTone } from "@/lib/tones"
 import {
   Table,
   TableBody,
@@ -45,9 +45,8 @@ const praticheTableColumns: ColumnDef<CustomerToPraticaColumn>[] = [
       return (
         <div className="text-xs capitalize">
           <Badge
-            variant="outline"
-            className={getLabelColorByProductType(
-              getProductType(product!.toString() as ProductMapKey)!
+            tone={productTone(
+              getProductType(product!.toString() as ProductMapKey)
             )}
           >
             {getProductLabel(product?.toString() as ProductMapKey)}
@@ -113,7 +112,7 @@ export const CustomerPraticaTable = (props: {
         {table.getRowModel().rows?.length ? (
           table.getRowModel().rows.map((row) => (
             <TableRow
-              className="cursor-pointer hover:bg-gray-100"
+              className="cursor-pointer"
               key={row.id}
               data-state={row.getIsSelected() && "selected"}
               onClick={() =>

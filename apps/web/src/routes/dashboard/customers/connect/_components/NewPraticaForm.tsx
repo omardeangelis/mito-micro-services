@@ -217,9 +217,9 @@ function NewPraticaFormFields({
   return (
     <>
       <div className="flex flex-col">
-        <div className="bg-background">
+        <div>
           <Form {...form}>
-            <form onSubmit={handleSubmit} className="mb-2 bg-white p-4">
+            <form onSubmit={handleSubmit} className="mb-2 bg-card p-4">
               <div className="flex items-center justify-between">
                 <div>
                   <h4>Dettaglio Pratica</h4>
@@ -274,7 +274,7 @@ function NewPraticaFormFields({
                             {...field}
                           />
                         </FormControl>
-                        <FormMessage className="text-red-400" />
+                        <FormMessage />
                       </FormItem>
                     )}
                   />
@@ -282,7 +282,7 @@ function NewPraticaFormFields({
                     control={form.control}
                     name="productId"
                     render={({ field: { ref: _, ...field } }) => (
-                      <FormItem className="w-full bg-white">
+                      <FormItem className="w-full">
                         <FormLabel>Tipo di Prodotto</FormLabel>
                         <Select
                           {...field}
@@ -290,7 +290,7 @@ function NewPraticaFormFields({
                           value={field.value ?? ""}
                         >
                           <FormControl>
-                            <SelectTrigger className="bg-white">
+                            <SelectTrigger>
                               <SelectValue>{field.value ?? ""}</SelectValue>
                             </SelectTrigger>
                           </FormControl>
@@ -305,7 +305,7 @@ function NewPraticaFormFields({
                             </SelectGroup>
                           </SelectContent>
                         </Select>
-                        <FormMessage className="text-red-400" />
+                        <FormMessage />
                       </FormItem>
                     )}
                   />
@@ -314,7 +314,7 @@ function NewPraticaFormFields({
                     control={form.control}
                     name="state"
                     render={({ field: { ref: _, ...field } }) => (
-                      <FormItem className="w-full bg-white">
+                      <FormItem className="w-full">
                         <FormLabel>Stato</FormLabel>
                         <Select
                           {...field}
@@ -322,7 +322,7 @@ function NewPraticaFormFields({
                           value={field.value}
                         >
                           <FormControl>
-                            <SelectTrigger className="bg-white">
+                            <SelectTrigger>
                               <SelectValue>
                                 {field.value
                                   ? convertNullToUndefined(field.value)
@@ -341,7 +341,7 @@ function NewPraticaFormFields({
                             </SelectGroup>
                           </SelectContent>
                         </Select>
-                        <FormMessage className="text-red-400" />
+                        <FormMessage />
                       </FormItem>
                     )}
                   />
@@ -363,7 +363,7 @@ function NewPraticaFormFields({
                               {...field}
                             />
                           </FormControl>
-                          <FormMessage className="text-red-400" />
+                          <FormMessage />
                         </FormItem>
                       )}
                     />
@@ -382,7 +382,7 @@ function NewPraticaFormFields({
                               {...field}
                             />
                           </FormControl>
-                          <FormMessage className="text-red-400" />
+                          <FormMessage />
                         </FormItem>
                       )}
                     />
@@ -404,7 +404,7 @@ function NewPraticaFormFields({
                               {...field}
                             />
                           </FormControl>
-                          <FormMessage className="text-red-400" />
+                          <FormMessage />
                         </FormItem>
                       )}
                     />
@@ -425,7 +425,7 @@ function NewPraticaFormFields({
                               {...field}
                             />
                           </FormControl>
-                          <FormMessage className="text-red-400" />
+                          <FormMessage />
                         </FormItem>
                       )}
                     />
@@ -445,7 +445,7 @@ function NewPraticaFormFields({
                               {...field}
                             />
                           </FormControl>
-                          <FormMessage className="text-red-400" />
+                          <FormMessage />
                         </FormItem>
                       )}
                     />
@@ -484,7 +484,7 @@ function NewPraticaFormFields({
                             }
                           >
                             <FormControl>
-                              <SelectTrigger className="bg-white">
+                              <SelectTrigger>
                                 <SelectValue />
                               </SelectTrigger>
                             </FormControl>
@@ -506,7 +506,7 @@ function NewPraticaFormFields({
                               </SelectGroup>
                             </SelectContent>
                           </Select>
-                          <FormMessage className="text-red-400" />
+                          <FormMessage />
                         </FormItem>
                       )}
                     />
@@ -532,7 +532,7 @@ function NewPraticaFormFields({
                             }
                           >
                             <FormControl>
-                              <SelectTrigger className="bg-white">
+                              <SelectTrigger>
                                 <SelectValue />
                               </SelectTrigger>
                             </FormControl>
@@ -556,7 +556,7 @@ function NewPraticaFormFields({
                             </SelectContent>
                           </Select>
 
-                          <FormMessage className="text-red-400" />
+                          <FormMessage />
                         </FormItem>
                       )}
                     />
@@ -577,7 +577,7 @@ function NewPraticaFormFields({
                               {...field}
                             />
                           </FormControl>
-                          <FormMessage className="text-red-400" />
+                          <FormMessage />
                         </FormItem>
                       )}
                     />
@@ -596,7 +596,7 @@ function NewPraticaFormFields({
                               {...field}
                             />
                           </FormControl>
-                          <FormMessage className="text-red-400" />
+                          <FormMessage />
                         </FormItem>
                       )}
                     />
@@ -624,10 +624,12 @@ function NewPraticaFormFields({
           onEdit={editRelatedCustomer}
           onCustomerSave={onCustomerSave}
         />
-        <div className="h-6 w-full bg-background" />
+        <div className="h-6 w-full" />
         <Button
           variant="outline"
-          className="mr-auto w-fit"
+          // Off the edges of the content that scrolls, which would clip the
+          // focus outline (AC13)
+          className="mb-4 ml-4 mr-auto w-fit"
           onClick={addRelatedCustomer}
         >
           Nuovo Cliente
@@ -684,12 +686,12 @@ const NewRelatedCustomerFormList = ({
   onCustomerSave,
 }: NewRelatedCustomerFormListProps) => {
   return (
-    <div className="bg-background">
+    <div>
       <div className="flex flex-col">
         {customers.map((customer) => (
           // By its id: a removed customer takes its form with it
           <div key={customer.id}>
-            <div className="h-6 w-full bg-background" />
+            <div className="h-6 w-full" />
             <NewRelatedCustomerForm
               onDelete={onDelete}
               onEdit={onEdit}
@@ -737,10 +739,10 @@ const NewRelatedCustomerForm = ({
 
   if (saved) {
     return (
-      <div className="rounded-md bg-background">
-        <div className="flex items-center justify-between rounded-md border border-emerald-100 bg-emerald-50 p-4">
+      <div>
+        <div className="rounded-card border-success-soft-border bg-success-soft flex items-center justify-between border p-4">
           <div className="flex items-center gap-2">
-            <CheckCircle size={16} className="fill-green-400"></CheckCircle>
+            <CheckCircle size={16} className="fill-success"></CheckCircle>
             <h4>{form.getValues("fiscalCode")}</h4>
           </div>
           <div className="flex items-center gap-4">
@@ -759,9 +761,12 @@ const NewRelatedCustomerForm = ({
     )
   }
   return (
-    <div className="rounded-md bg-background">
+    <div>
       <Form {...form}>
-        <form className="rounded-md bg-white p-4" onSubmit={handleSubmit}>
+        <form
+          className="rounded-card border bg-card p-4"
+          onSubmit={handleSubmit}
+        >
           <div className="flex items-center justify-between">
             <div>
               <h4>Aggiungi Cliente</h4>
@@ -811,7 +816,7 @@ const NewRelatedCustomerForm = ({
                           value={field.value ?? ""}
                         />
                       </FormControl>
-                      <FormMessage className="text-red-400" />
+                      <FormMessage />
                     </FormItem>
                   )}
                 />
@@ -829,7 +834,7 @@ const NewRelatedCustomerForm = ({
                           value={field.value ?? undefined}
                         />
                       </FormControl>
-                      <FormMessage className="text-red-400" />
+                      <FormMessage />
                     </FormItem>
                   )}
                 />
@@ -849,7 +854,7 @@ const NewRelatedCustomerForm = ({
                           value={field.value ?? ""}
                         />
                       </FormControl>
-                      <FormMessage className="text-red-400" />
+                      <FormMessage />
                     </FormItem>
                   )}
                 />
@@ -867,7 +872,7 @@ const NewRelatedCustomerForm = ({
                           value={field.value ?? undefined}
                         />
                       </FormControl>
-                      <FormMessage className="text-red-400" />
+                      <FormMessage />
                     </FormItem>
                   )}
                 />
@@ -890,7 +895,7 @@ const NewRelatedCustomerForm = ({
                           value={field.value ?? undefined}
                         />
                       </FormControl>
-                      <FormMessage className="text-red-400" />
+                      <FormMessage />
                     </FormItem>
                   )}
                 />
@@ -908,7 +913,7 @@ const NewRelatedCustomerForm = ({
                           value={field.value ?? undefined}
                         />
                       </FormControl>
-                      <FormMessage className="text-red-400" />
+                      <FormMessage />
                     </FormItem>
                   )}
                 />
@@ -928,7 +933,7 @@ const NewRelatedCustomerForm = ({
                           value={field.value ?? undefined}
                         />
                       </FormControl>
-                      <FormMessage className="text-red-400" />
+                      <FormMessage />
                     </FormItem>
                   )}
                 />
@@ -936,7 +941,7 @@ const NewRelatedCustomerForm = ({
                   name="role"
                   control={form.control}
                   render={({ field }) => (
-                    <FormItem className="w-full bg-white">
+                    <FormItem className="w-full">
                       <FormLabel>Ruolo</FormLabel>
                       <Select
                         {...field}
@@ -944,7 +949,7 @@ const NewRelatedCustomerForm = ({
                         value={field.value ? field.value : undefined}
                       >
                         <FormControl>
-                          <SelectTrigger className="bg-white">
+                          <SelectTrigger>
                             <SelectValue />
                           </SelectTrigger>
                         </FormControl>
@@ -959,7 +964,7 @@ const NewRelatedCustomerForm = ({
                           </SelectGroup>
                         </SelectContent>
                       </Select>
-                      <FormMessage className="text-red-400" />
+                      <FormMessage />
                     </FormItem>
                   )}
                 />

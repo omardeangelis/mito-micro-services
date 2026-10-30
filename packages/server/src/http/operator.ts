@@ -13,6 +13,7 @@ import {
   getOperatorById,
   listActiveOperators,
   listDeactivationTargets,
+  listTeam,
 } from "../services/operator/queries"
 import { updateOperatorsRole } from "../services/operator/roles"
 import { unexpectedAs500 } from "./unexpected"
@@ -35,6 +36,9 @@ export const operatorLayer = HttpApiBuilder.group(
             unexpectedAs500("getAllUniqueOperators"),
             Effect.provide(services)
           )
+        )
+        .handle("getTeam", () =>
+          listTeam().pipe(unexpectedAs500("getTeam"), Effect.provide(services))
         )
         .handle("getOperatorById", ({ params }) =>
           getOperatorById(params.id).pipe(

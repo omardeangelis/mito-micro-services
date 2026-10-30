@@ -2,7 +2,7 @@ import { Cell, Pie, PieChart, Tooltip } from "recharts"
 import { ChartContainer, ChartTooltipContent } from "@/components/ui/chart"
 import { cn } from "@/lib/utils"
 import { NoData } from "./NoData"
-import { chartColor } from "./palette"
+import { chartColor, type ChartColor } from "./palette"
 
 type Props<T extends Record<string, unknown>> = {
   data: T[]
@@ -10,8 +10,8 @@ type Props<T extends Record<string, unknown>> = {
   category: keyof T & string
   /** The key of the name of each slice */
   index: keyof T & string
-  /** One color per slice, in order ("blue-500", or "blue" for the 500) */
-  colors: string[]
+  /** One color per slice, in order: a tone */
+  colors: ChartColor[]
   valueFormatter?: (value: number) => string
   noDataText?: string
   className?: string
@@ -19,7 +19,8 @@ type Props<T extends Record<string, unknown>> = {
 
 /**
  * The donut of Tremor's DonutChart, on recharts: the ring from 75% of the
- * radius, the first slice at the top, clockwise, no label in the middle
+ * radius, the first slice at the top, clockwise, no label in the middle. The
+ * colors are tokens, so they go in the style and a class of the slice (D11)
  */
 export function DonutChart<T extends Record<string, unknown>>({
   data,
@@ -30,7 +31,7 @@ export function DonutChart<T extends Record<string, unknown>>({
   noDataText,
   className,
 }: Props<T>) {
-  const colorOf = (i: number) => chartColor(colors[i] ?? "gray-500")
+  const colorOf = (i: number) => chartColor(colors[i] ?? "neutral")
   return (
     <div className={cn("h-40 w-full", className)}>
       {data.length === 0 ? (
@@ -48,12 +49,15 @@ export function DonutChart<T extends Record<string, unknown>>({
               endAngle={-270}
               innerRadius="75%"
               outerRadius="100%"
-              stroke="#ffffff"
               strokeLinejoin="round"
               isAnimationActive={false}
             >
               {data.map((_, i) => (
-                <Cell key={i} fill={colorOf(i)} />
+                <Cell
+                  key={i}
+                  className="stroke-card"
+                  style={{ fill: colorOf(i) }}
+                />
               ))}
             </Pie>
             <Tooltip

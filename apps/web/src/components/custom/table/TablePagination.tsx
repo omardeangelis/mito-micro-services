@@ -80,7 +80,7 @@ export const TablePagination = ({ itemCount }: { itemCount: number }) => {
         </PaginationContent>
       </Pagination>
       <div className="flex flex-row items-center">
-        <p className="mr-1 w-full min-w-36 text-gray-400">
+        <p className="mr-1 w-full min-w-36 text-muted-foreground">
           {itemCount === 0
             ? "0 - 0"
             : `${

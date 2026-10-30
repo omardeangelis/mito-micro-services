@@ -215,10 +215,8 @@ describe("la tabella dei contatti", () => {
     })
 
     // A NULL priority is the lowest band, like the filter reads it
-    expect(rowOf("Nulla Test").querySelector("svg.lucide-arrow-down")).not.toBe(
-      null
-    )
-    expect(rowOf("Urgente Test").querySelector("svg.lucide-arrow-up")).not.toBe(
+    expect(rowOf("Nulla Test").querySelector('[data-level="1"]')).not.toBe(null)
+    expect(rowOf("Urgente Test").querySelector('[data-level="4"]')).not.toBe(
       null
     )
   })

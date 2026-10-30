@@ -16,10 +16,10 @@ export const CustomerSheet = (props: Props) => {
   const goBack = useHistoryBack()
   return (
     <Sheet open={true} onOpenChange={() => goBack("/dashboard/customers")}>
-      <SheetContent className="min-w-[80%] overflow-y-auto bg-neutral-100">
+      <SheetContent className="min-w-[80%] overflow-y-auto">
         <SheetHeader>
           <div className="flex items-center gap-4">
-            <SheetTitle className="text-2xl font-semibold">
+            <SheetTitle className="text-title font-heading">
               Scheda Cliente
             </SheetTitle>
             <BlackListBadge state={props.blackListStatus} />

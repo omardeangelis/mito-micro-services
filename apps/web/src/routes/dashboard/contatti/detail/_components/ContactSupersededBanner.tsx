@@ -21,7 +21,7 @@ export function ContactSupersededBanner({ activeTaskId, da }: Props) {
   return (
     <div
       role="note"
-      className="flex flex-col items-start gap-3 rounded-md border border-amber-300 bg-amber-50 p-4 text-amber-950 shadow-sm"
+      className="border-warning-soft-border bg-warning-soft text-warning-soft-foreground flex flex-col items-start gap-3 rounded-md border p-4"
     >
       <div className="flex flex-col gap-1">
         <p className="font-medium">Contatto concluso</p>

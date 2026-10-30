@@ -7,7 +7,7 @@ export const CallsSection = () => {
   if (role !== "ADMIN") return null
   return (
     <div className="mt-8">
-      <h2 className="text-2xl">Chiamate per operatore</h2>
+      <h2 className="font-heading text-title">Chiamate per operatore</h2>
       <div className="mt-4">
         <AdminExportSection />
       </div>

@@ -191,7 +191,7 @@ export const CustomerBulkDialog = (props: BulkActionDialogProps) => {
       ) : mode === null ? (
         <ModeChoice count={customerIds.length} onChoose={chooseMode} />
       ) : (
-        <DialogContent className="max-w-xl bg-white">
+        <DialogContent className="max-w-xl">
           <DialogHeader>
             <button
               type="button"
@@ -220,7 +220,7 @@ export const CustomerBulkDialog = (props: BulkActionDialogProps) => {
               <div className="grid w-full gap-2">
                 <Label htmlFor="bulk-operator">Operatore</Label>
                 <Select onValueChange={setOperatorId} value={operatorId}>
-                  <SelectTrigger id="bulk-operator" className="bg-white">
+                  <SelectTrigger id="bulk-operator">
                     <SelectValue>
                       {getOperatorName(Number(operatorId)) ||
                         "Seleziona operatore"}
@@ -338,7 +338,9 @@ const AlertResolveSection = (props: {
                 className="flex shrink-0 cursor-pointer items-center gap-2 text-xs"
               >
                 <span
-                  className={checked ? "text-red-500" : "text-muted-foreground"}
+                  className={
+                    checked ? "text-destructive-text" : "text-muted-foreground"
+                  }
                 >
                   Risolvi alert
                 </span>
@@ -374,7 +376,7 @@ const ModeChoice = (props: {
   return (
     // The export note makes the cards tall: on a short, narrow screen the
     // dialog scrolls instead of running off the top and the bottom
-    <DialogContent className="max-h-[calc(100dvh-2rem)] max-w-xl overflow-y-auto bg-white">
+    <DialogContent className="max-h-[calc(100dvh-2rem)] max-w-xl overflow-y-auto">
       <DialogHeader>
         <DialogTitle>Cosa vuoi assegnare?</DialogTitle>
         <DialogDescription>
@@ -446,7 +448,7 @@ const LoadingUpdate = (props: { mode: BulkType }) => {
   }, [steps.length])
 
   return (
-    <DialogContent className="max-w-md bg-white">
+    <DialogContent className="max-w-md">
       <DialogHeader>
         <DialogTitle>
           {props.mode === "chiamate"
@@ -499,9 +501,9 @@ const SuccessUpdate = (props: {
 }) => {
   const isChiamate = props.mode === "chiamate"
   return (
-    <DialogContent className="max-w-md bg-white">
+    <DialogContent className="max-w-md">
       <DialogHeader className="items-center text-center sm:pl-5 sm:text-center">
-        <div className="mb-2 flex h-14 w-14 items-center justify-center rounded-full bg-green-100">
+        <div className="bg-success-soft mb-2 flex h-14 w-14 items-center justify-center rounded-full">
           <CircleCheck className="h-8 w-8 text-success" />
         </div>
         <DialogTitle className="text-xl">

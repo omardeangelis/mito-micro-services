@@ -8,7 +8,7 @@
     "build": "node build.mjs",
     "start": "node --enable-source-maps dist/server.js",
     "smoke": "node smoke.mjs",
-    "dev": "node build.mjs && node --enable-source-maps --env-file=../../.env.development.local dist/server.js"
+    "dev": "node build.mjs && tsx ../../packages/db/scripts/with-local-db.ts node --enable-source-maps --env-file=../../.env.development.local dist/server.js"
   },
   "devDependencies": {
     "@mito/contract": "workspace:*",

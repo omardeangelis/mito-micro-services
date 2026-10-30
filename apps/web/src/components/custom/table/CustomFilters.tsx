@@ -286,7 +286,7 @@ export const FileCombobox = ({
             variant="outline"
             role="combobox"
             aria-expanded={open}
-            className="w-full min-w-[7rem] max-w-[12rem] justify-between gap-2 border-input bg-background px-3 font-normal"
+            className="w-full min-w-[7rem] max-w-[12rem] justify-between gap-2 border-input bg-card px-3 font-normal"
           >
             <span className="truncate">
               {value
