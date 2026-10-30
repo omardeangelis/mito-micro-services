@@ -145,3 +145,18 @@
 - [Scroll-model parity probes](feedback_scroll_model_parity_probes.md) — emulate old chain (display:contents + height auto), Tab loops vs sticky bars, capture diff
 - [Token/meaning-map probes](feedback_token_meaning_map_probes.md) — candidatesToCss sweep, spec-table diff, twMerge via strip-types, vitest related mutants; Appendix C tokens unpinned
 - [Restyle UI pass probes](feedback_restyle_ui_pass_probes.md) — focus scan needs transition:none; oklch breaks contrast probe; pnpm axe path; forms plugin removal
+- [Spec claim: scheduler, nav label, round 2](feedback_spec_claim_scheduler_and_nav_label.md) — scheduler config; nav label; date-shift reverse case; broadened AC
+- [Contract-first and constant change](feedback_plan_contract_first_and_constant_change.md) — new HttpApi endpoints break every group builder/fake; grep tests pinning derived values
+- [Export formula injection](feedback_export_formula_injection_probes.md) — TSV quote-wrapped `"=x"` bypasses leading-char guard; SheetJS DSV read as proxy; xlsx t="str" safe
+- [Library-emitted elements vacuous absence](feedback_library_emitted_elements_vacuous_absence.md) — querySelectorAll(X)=0 passes if the library never emits X; grep emitter first
+- [Retention constant probes](feedback_retention_constant_change_probes.md) — seed manifest predicts cron deletes (pg tests skipped locally); cutoff vs Rome-day sweep
+- [Once-flag test dedupe](feedback_once_flag_test_dedupe.md) — same-key components dedupe to one fetch: distinct keys, re-arm, per-client probes
+- [Calendar rule differential](feedback_calendar_rule_differential.md) — Hinnant reference diff + neg control; leap/ly/month-shift mutants; Date.UTC years 0-99
+- [Web role-change probe](feedback_web_role_change_probe.md) — standalone scratch vitest, mutable auth, gate /me by URL; fake read counters miss 403s
+- [WebHandler real clock](feedback_webhandler_real_clock_time_bomb.md) — toWebHandler status helpers skip TestClock; fake Date = tomorrow exposes date time bombs
+- [Composed copy, guard loops](feedback_composed_copy_and_guard_loop_probes.md) — value+caption per KPI kind; lagging /me guard; line-clamp via outerHTML into dev page
+- [Export file fidelity probes](feedback_export_file_fidelity_probes.md) — page-level blob capture; xlsx raw floats vs rounded CSV; FileReader strips BOM
+- [UI pass: text scale, oklch](feedback_ui_pass_text_scale_and_oklch.md) — font-size after load skips mount effects; contrast probe dies on oklch; layout-jump hang
+- [Suite date shift, edge-bound mutants](feedback_suite_date_shift_and_edge_bound_mutants.md) — offset Date in copy setup + install log; UTC today/periodBounds call-site mutants survive
+- [JS px query vs rem breakpoint](feedback_js_media_query_vs_rem_breakpoint.md) — inline html font-size is vacuous; CDP Page.setFontSizes; stale DOM after fast presses
+- [Capped chart note and jump probes](feedback_capped_chart_note_and_jump_probes.md) — notes/legend in fixed box; class mutants; legend wrap; init-script fetch delay; half-revert mutant

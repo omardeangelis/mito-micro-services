@@ -247,6 +247,16 @@ export class InvalidPeriod extends Schema.TaggedError<InvalidPeriod>()(
 ) {}
 
 /**
+ * The window of the analysis page is not valid: not two existing days in
+ * order, longer than 366 days, or after today (HTTP 400)
+ */
+export class InvalidWindow extends Schema.TaggedError<InvalidWindow>()(
+  "InvalidWindow",
+  {},
+  { httpApiStatus: 400 }
+) {}
+
+/**
  * What the browser sent for an import can't be imported: too big,
  * unreadable, not the layout it says, or out of the procedure's limits (tRPC
  * BAD_REQUEST). `reason` is readable, without the values of the rows
@@ -363,6 +373,7 @@ const apiErrors = [
   MessageMissing,
   NotMessageAuthor,
   InvalidPeriod,
+  InvalidWindow,
   ImportInputInvalid,
   ImportUploadMissing,
   ImportUploadClosed,

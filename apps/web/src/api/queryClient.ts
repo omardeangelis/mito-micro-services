@@ -21,16 +21,29 @@ export const showApiError = (error: ApiFailure) => {
  * since a declared error answers the same the second time. A failed call
  * shows its text in the toast
  */
-export const makeQueryClient = () =>
-  new QueryClient({
+export const makeQueryClient = () => {
+  // Whether the toast of the expired session is on screen: the charts of the
+  // analysis page fail together with `Unauthorized`, and it shows once. Any
+  // query that succeeds (the user signed in again) arms it again
+  let sessionToastShown = false
+  return new QueryClient({
     // A query with `meta.toastErrors: false` shows its failures itself; one
     // with "withData" only when it has data, since without it goes to the
-    // error of the route (`routeErrorWhenEmpty`)
+    // error of the route (`routeErrorWhenEmpty`); one with "session" shows
+    // only the expired session, once, and keeps any other failure in its own
+    // state (the charts of the analysis page)
     queryCache: new QueryCache({
+      onSuccess: () => {
+        sessionToastShown = false
+      },
       onError: (error, query) => {
         const toastErrors = query.meta?.toastErrors
         if (toastErrors === false) return
         if (toastErrors === "withData" && query.state.data === undefined) return
+        if (toastErrors === "session") {
+          if (error._tag !== "Unauthorized" || sessionToastShown) return
+          sessionToastShown = true
+        }
         showApiError(error)
       },
     }),
@@ -48,6 +61,7 @@ export const makeQueryClient = () =>
       },
     },
   })
+}
 
 /**
  * The options of a query a page can't show without: its first failure goes

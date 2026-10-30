@@ -1,5 +1,6 @@
 import { z } from "zod"
 import { romeDay, romeDayBounds } from "../contact/time"
+import { addDays, addMonths, isDay, noonOf } from "../utils/calendarDays"
 
 /**
  * The period of the calls export: calendar days in Rome, `YYYY-MM-DD`, both
@@ -11,36 +12,10 @@ export type ExportPeriod = { from: string; to: string }
 export const COMPLETE_DATA_SINCE = "2026-09-15"
 
 /** How many months of the contacts log the nightly cleanup keeps. */
-export const LOG_RETENTION_MONTHS = 3
-
-const DAY = /^\d{4}-\d{2}-\d{2}$/
-
-/** Noon UTC of a `YYYY-MM-DD` day: an instant in the same Rome day. */
-const noonOf = (day: string) => new Date(`${day}T12:00:00.000Z`)
-
-/** Whether `day` is a `YYYY-MM-DD` day that exists in the calendar. */
-const isDay = (day: string) =>
-  DAY.test(day) && noonOf(day).toISOString().slice(0, 10) === day
-
-/** `day` shifted by `months` months, clamped to the last day of the month. */
-function addMonths(day: string, months: number): string {
-  const [year = 0, month = 1, dayOfMonth = 1] = day.split("-").map(Number)
-  const firstOfMonth = new Date(Date.UTC(year, month - 1 + months, 1))
-  const lastDay = new Date(
-    Date.UTC(firstOfMonth.getUTCFullYear(), firstOfMonth.getUTCMonth() + 1, 0)
-  ).getUTCDate()
-  firstOfMonth.setUTCDate(Math.min(dayOfMonth, lastDay))
-  return firstOfMonth.toISOString().slice(0, 10)
-}
-
-const addDays = (day: string, days: number) => {
-  const date = noonOf(day)
-  date.setUTCDate(date.getUTCDate() + days)
-  return date.toISOString().slice(0, 10)
-}
+export const LOG_RETENTION_MONTHS = 25
 
 /**
- * The days a period can use at `now` (AC11b): from the day after the one 3
+ * The days a period can use at `now` (AC11b): from the day after the one 25
  * months ago, which the nightly cleanup may already have cut, to today.
  */
 export function selectableDays(now: Date): { first: string; last: string } {
@@ -49,6 +24,16 @@ export function selectableDays(now: Date): { first: string; last: string } {
     first: addDays(addMonths(today, -LOG_RETENTION_MONTHS), 1),
     last: today,
   }
+}
+
+/**
+ * The first day the calls export has complete data at `now` (AC16 of
+ * pagina-analisi): the later of the day the log has every call of and the
+ * first selectable day, the log keeps 25 months as the export does.
+ */
+export function callsCompleteSince(now: Date): string {
+  const { first } = selectableDays(now)
+  return COMPLETE_DATA_SINCE > first ? COMPLETE_DATA_SINCE : first
 }
 
 /** The period the export opens on: the last 30 days, today included. */

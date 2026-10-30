@@ -9,8 +9,9 @@ links:
   - "[[specs/crm/sezione-contatti/PLAN]]"
   - "[[chore/migrazione-gcp]]"
   - "[[chore/crm/design-lavorazioni-e-verticali]]"
+  - "[[specs/crm/pagina-analisi/SPEC]]"
 created: 2026-10-21
-updated: 2026-10-29
+updated: 2026-10-30
 ---
 
 # Spec: Seeder del database locale, con gli scenari dei cron
@@ -182,7 +183,7 @@ Un **legame** è una riga di `customers_to_pratiche`: un cliente, una pratica, u
   - almeno il 5% dei clienti ha una chat con da 1 a 4 note.
 - **AC26** — `task_event_log`:
   - contiene righe di ogni `action` e di ogni `source`, coerenti con i contatti a cui si riferiscono: cambi di stato con stato di partenza e di arrivo, riassegnazioni con operatore di partenza e di arrivo, alert risolti con il loro alert;
-  - le date di creazione cadono negli ultimi 6 mesi prima di D.
+  - le date di creazione cadono fra D − 31 mesi (6 mesi prima del confine di conservazione del log) e D (la conservazione è `LOG_RETENTION_MONTHS` di `@mito/domain/export/period`, 25 mesi: il seed la legge da lì).
 
 ### Scenari dei cron
 
@@ -197,7 +198,7 @@ Le righe generiche che per caso hanno le caratteristiche di uno scenario (per es
 
 Le corse si fanno in quest'ordine: `priority`, `alert`, `update`, `cleanup-task-event-log`. I primi tre girano in quest'ordine anche in prod. La **corsa di `alert`** continua finché non restano alert da processare (`remaining` = 0), con al massimo 20 chiamate, come lo script di prod e il job del backend.
 
-- **AC27** — Con `N` = 300 e con `N` = 10.000 esiste almeno una riga per ogni caso nominato in una riga delle tabelle: ogni stato, valore, giorno o tipo di cliente elencato. Per L1 e L2 c'è anche una riga sul giorno più vicino al confine (D − 3 mesi − 1 giorno e D − 3 mesi + 1 giorno).
+- **AC27** — Con `N` = 300 e con `N` = 10.000 esiste almeno una riga per ogni caso nominato in una riga delle tabelle: ogni stato, valore, giorno o tipo di cliente elencato. Per L1 e L2 c'è anche una riga sul giorno più vicino al confine (D − 25 mesi − 1 giorno e D − 25 mesi + 1 giorno).
 - **AC28** — È possibile lanciare su `mito_local`, per il giorno D, ognuno dei quattro cron della tabella:
   - senza avviare l'app né il backend;
   - con le stesse funzioni di servizio che usano le rotte di prod.
@@ -213,7 +214,7 @@ Le corse si fanno in quest'ordine: `priority`, `alert`, `update`, `cleanup-task-
   - almeno 1.000 alert aperti hanno la scadenza in D o prima;
   - almeno 200 pratiche sono selezionate da `update`;
   - almeno 100 clienti compiono gli anni in D;
-  - almeno 1.000 righe di `task_event_log` sono più vecchie di 3 mesi.
+  - almeno 1.000 righe di `task_event_log` sono più vecchie di 25 mesi (la conservazione del log).
 
 #### `priority` — ricalcolo della priorità dei contatti attivi
 
@@ -271,12 +272,12 @@ Il cron seleziona gli alert aperti collegati nei due versi con un contatto, con 
 
 #### `cleanup-task-event-log` — pulizia del log dei contatti
 
-Il cron cancella le righe di `task_event_log` create da più di 3 mesi di calendario. Il seed non scrive righe nel giorno D − 3 mesi, dove l'esito dipenderebbe dall'ora della corsa.
+Il cron cancella le righe di `task_event_log` create da più di `LOG_RETENTION_MONTHS` mesi di calendario (25). Il seed non scrive righe nel giorno D − 25 mesi, dove l'esito dipenderebbe dall'ora della corsa.
 
 | ID | Dati nel seed | Esito atteso dopo la corsa |
 |---|---|---|
-| L1 | Righe create 3 mesi e 1 giorno prima di D, o prima | cancellate |
-| L2 | Righe create 3 mesi meno 1 giorno prima di D, o dopo | tenute |
+| L1 | Righe create 25 mesi e 1 giorno prima di D, o prima | cancellate |
+| L2 | Righe create 25 mesi meno 1 giorno prima di D, o dopo | tenute |
 
 ### Gli script di seed di oggi
 
@@ -388,3 +389,4 @@ Gli script `seed:db`, `seed:delete`, `seed:delete:dev` e `seed:delete:test` svuo
 | Gli script di seed di oggi entrano nella spec e si tolgono tutti e quattro, `seed:db`, `seed:delete`, `seed:delete:dev` e `seed:delete:test`, con i loro file (AC31–AC33; richiesta e scelta di Omar, 2026-10-21). | `seed:db` svuota il database indicato dalla shell, e `seed:delete:dev` svuota quello di sviluppo. Un seeder locale protetto, accanto a script che non lo sono, lascerebbe il rischio dov'è. |
 | `delete-export` e `cron_run` restano fuori (domanda 6, confermata da Omar il 2026-10-21). | Il primo lavora sullo storage, che il database locale non ha. Il secondo riguarda solo la rotta del backend con OIDC, già coperta dai suoi test. |
 | Le altre domande aperte le ha chiuse Omar il 2026-10-21, tutte con i default proposti: l'app su `mito_local` sarà una spec a parte (1, poi superata: dal 2026-10-29 i server locali girano su `mito_local` senza spec a parte); le soglie di AC30 restano (2); fra i clienti con una sola pratica i ruoli si dividono 50% / 25% / 25% (3, AC10); nessuna pagina delle persone (4). | Con queste soglie `priority` divide l'aggiornamento in blocchi e `alert` fa più chiamate. La divisione dei ruoli segue la prevalenza degli intestatari e lascia comunque gruppi grandi di coobbligati e garanti. |
+| Il registro si conserva 25 mesi invece di 3 ([[specs/crm/pagina-analisi/SPEC]], AC16): AC26, AC27, AC30 e la tabella L1/L2 seguono `LOG_RETENTION_MONTHS`, e la storia del registro va da D − 31 mesi, i 6 mesi prima del confine (2026-10-30, da confermare con Omar). | Con la finestra di prima, il doppio della conservazione, nessuna riga sarebbe più vecchia di 25 mesi: AC30 e L1 non si potrebbero più provare. È un requisito che cambia con la costante, non solo un numero. |

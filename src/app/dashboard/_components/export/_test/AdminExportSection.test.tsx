@@ -74,7 +74,7 @@ describe("AdminExportSection", () => {
     render(<AdminExportSection />)
     expect((from() as HTMLInputElement).value).toBe("2026-09-24")
     expect((to() as HTMLInputElement).value).toBe("2026-10-23")
-    expect(from().getAttribute("min")).toBe("2026-07-24")
+    expect(from().getAttribute("min")).toBe("2024-09-24")
     expect(to().getAttribute("max")).toBe("2026-10-23")
     expect(mocks.calls.at(-1)).toEqual({
       input: { from: "2026-09-24", to: "2026-10-23" },
@@ -115,10 +115,10 @@ describe("AdminExportSection", () => {
 
   it("does not ask for a period outside the selectable days", () => {
     render(<AdminExportSection />)
-    fireEvent.change(from(), { target: { value: "2026-07-01" } })
+    fireEvent.change(from(), { target: { value: "2024-09-01" } })
     expect(mocks.calls.at(-1)?.enabled).toBe(false)
     expect(screen.getByRole("alert").textContent).toBe(
-      "Scegli un periodo tra il 24/07/2026 e il 23/10/2026"
+      "Scegli un periodo tra il 24/09/2024 e il 23/10/2026"
     )
   })
 

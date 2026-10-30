@@ -18,7 +18,7 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   await resetDb()
-  // 23 October 2026, 12:00 in Rome: the selectable days are 24/07–23/10
+  // 23 October 2026, 12:00 in Rome: the selectable days are 24/09/2024–23/10
   vi.useFakeTimers({
     now: new Date("2026-10-23T10:00:00.000Z"),
     toFake: ["Date"],
@@ -112,7 +112,7 @@ describe("export.callStats", () => {
   })
 
   it.each([
-    ["before the selectable days", { from: "2026-07-23", to: "2026-08-01" }],
+    ["before the selectable days", { from: "2024-09-23", to: "2026-08-01" }],
     ["after today", { from: "2026-10-01", to: "2026-10-24" }],
     ["inverted", { from: "2026-10-10", to: "2026-10-01" }],
   ])("refuses a period %s with BAD_REQUEST (AC11b)", async (_, period) => {

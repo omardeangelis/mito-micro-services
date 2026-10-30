@@ -1,6 +1,7 @@
 import { Link } from "react-router"
 import { cn } from "@/lib/utils"
 import {
+  ChartColumnIcon,
   FolderIcon,
   HomeIcon,
   PhoneCall,
@@ -44,6 +45,7 @@ export function DashboardLayout() {
   }, [preference?.dashboardCollapsed, updatedCollapsed])
 
   const isDashboard = pathname === "/dashboard/" || pathname === "/dashboard"
+  const isAnalisi = pathname.includes("dashboard/analisi")
   const isCustomers = pathname.includes("dashboard/customers")
   const isContatti = pathname.includes("dashboard/contatti")
   const isPratiche = pathname.includes("dashboard/pratiche")
@@ -117,6 +119,14 @@ export function DashboardLayout() {
           >
             <li className={itemContentClass}>
               <HomeIcon className={iconClass} />
+              {preference?.dashboardCollapsed ? null : (
+                <span className={labelClass}>Home</span>
+              )}
+            </li>
+          </Link>
+          <Link to="/dashboard/analisi" className={listItemClass(isAnalisi)}>
+            <li className={itemContentClass}>
+              <ChartColumnIcon className={iconClass} />
               {preference?.dashboardCollapsed ? null : (
                 <span className={labelClass}>Analisi</span>
               )}

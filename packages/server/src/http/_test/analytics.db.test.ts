@@ -75,7 +75,7 @@ const statusOf = (userId: string, path: string) =>
 
 const given = <A>(setup: () => Promise<A>) => Effect.promise(setup)
 
-// 23 October 2026, 12:00 in Rome: the days of the calls export are 24/07–23/10
+// 23 October 2026, 12:00 in Rome: the days of the calls export are 24/09/2024–23/10
 const NOW = new Date("2026-10-23T10:00:00.000Z")
 const DAY = 86_400_000
 
@@ -300,8 +300,8 @@ describe("GET /api/v1/export/call-stats", () => {
     ["un giorno che non esiste", { from: "2026-02-30", to: "2026-10-02" }],
     ["un periodo rovesciato", { from: "2026-10-02", to: "2026-10-01" }],
     [
-      "un giorno più vecchio di 3 mesi",
-      { from: "2026-07-23", to: "2026-10-01" },
+      "un giorno più vecchio di 25 mesi",
+      { from: "2024-09-23", to: "2026-10-01" },
     ],
     ["un giorno dopo oggi", { from: "2026-10-01", to: "2026-10-24" }],
   ]

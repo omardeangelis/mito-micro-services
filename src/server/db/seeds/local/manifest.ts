@@ -16,6 +16,7 @@
 // - D15: no timestamp written by the database in `expected`, except the seed
 //   `updatedAt` of the rows declared unchanged.
 import { SYSTEM_OPERATOR_USER_ID } from "@mito/domain/constants/operator"
+import { LOG_RETENTION_MONTHS } from "@mito/domain/export/period"
 import { addDays, romeDay, subMonthsDay } from "./day"
 import type {
   AlertRow,
@@ -625,10 +626,10 @@ function addCustomerScenarios(
 }
 
 // ---------------------------------------------------------------------------
-// `cleanup-task-event-log`: rows created before D - 3 months.
+// `cleanup-task-event-log`: rows created before D - LOG_RETENTION_MONTHS.
 
 function addLogScenarios(context: Context, log: readonly TaskEventLogRow[]) {
-  const cutoff = subMonthsDay(context.day, 3)
+  const cutoff = subMonthsDay(context.day, LOG_RETENTION_MONTHS)
   for (const row of log) {
     if (!(row.createdAt instanceof Date)) {
       throw new Error(`Riga di log ${row.id}: manca createdAt`)
@@ -636,8 +637,8 @@ function addLogScenarios(context: Context, log: readonly TaskEventLogRow[]) {
     const created = context.dayOf(row.createdAt)
     if (created === cutoff) {
       throw new Error(
-        `Riga di log ${row.id}: creata il ${created}, il giorno di D - 3 ` +
-          `mesi, dove l'esito di \`cleanup-task-event-log\` dipende dall'ora`
+        `Riga di log ${row.id}: creata il ${created}, il giorno di D - ` +
+          `${LOG_RETENTION_MONTHS} mesi, dove l'esito di \`cleanup-task-event-log\` dipende dall'ora`
       )
     }
     if (created < cutoff) {

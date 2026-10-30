@@ -17,6 +17,23 @@ import { query } from "../../effect/db"
 const manualSources = ["detail", "list"] as const
 
 /**
+ * The `where` of a call made in `[start, end)`: a manual change of state in
+ * the log of the contacts, from a state of `callFromStates` to one of
+ * `callToStates`. Shared by every query that counts calls (the export and the
+ * analysis page), so they never diverge.
+ */
+export const isCallIn = ({ start, end }: { start: Date; end: Date }) =>
+  and(
+    eq(taskEventLog.action, "state_change"),
+    inArray(taskEventLog.source, [...manualSources]),
+    inArray(taskEventLog.fromState, [...callFromStates]),
+    inArray(taskEventLog.toState, [...callToStates]),
+    ne(taskEventLog.fromState, taskEventLog.toState),
+    gte(taskEventLog.createdAt, start),
+    lt(taskEventLog.createdAt, end)
+  )
+
+/**
  * The calls each operator made in `[start, end)`: the manual changes of state
  * from a state of `callFromStates` to one of `callToStates` in the log of the
  * contacts (`isCall` in `@mito/domain/export/calls`), counted for the operator
@@ -42,17 +59,7 @@ export const callStats = Effect.fn("export.callStats")(function* ({
       })
       .from(taskEventLog)
       .innerJoin(operators, eq(operators.id, taskEventLog.actorOperatorId))
-      .where(
-        and(
-          eq(taskEventLog.action, "state_change"),
-          inArray(taskEventLog.source, [...manualSources]),
-          inArray(taskEventLog.fromState, [...callFromStates]),
-          inArray(taskEventLog.toState, [...callToStates]),
-          ne(taskEventLog.fromState, taskEventLog.toState),
-          gte(taskEventLog.createdAt, start),
-          lt(taskEventLog.createdAt, end)
-        )
-      )
+      .where(isCallIn({ start, end }))
       .groupBy(operators.id, operators.name, operators.surname)
   )
 

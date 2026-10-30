@@ -151,7 +151,8 @@ Per ogni pagina, nella stessa PR:
 | `/` | `src/app/page.tsx` | redirect a `/dashboard` |
 | `/login` | `src/app/login` | 1.c.2 |
 | `/dashboard` (layout) | `dashboard/layout.tsx`, `GeneralDasboardLayout`, `_context/ImportStatus` | guard, `UserPreferenceProvider`, `ImportStatusProvider`, sidebar |
-| `/dashboard` | `dashboard/page.tsx` | 3.5 |
+| `/dashboard` | `dashboard/page.tsx` | 3.5; nella barra laterale si chiama «Home» |
+| `/dashboard/analisi` | nessuna: pagina nuova, solo in `apps/web` | [[specs/crm/pagina-analisi/SPEC]] (2026-10-30): sei grafici con la tabella e l'export sotto, una finestra di giorni di Roma nell'indirizzo, i quattro endpoint `HttpApi` del gruppo `analytics` (`getFinancedSeries`, `getBranchTotals`, `getCallsByOperator`, `getMyCallSeries`) |
 | `/dashboard/customers` | `customers/page.tsx` | 3.1 |
 | `/dashboard/customers/new` | `customers/new` | 3.1 |
 | `/dashboard/customers/:id` | `customers/[id]` | 3.1, con le note di 3.4 |

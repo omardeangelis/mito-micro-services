@@ -10,6 +10,7 @@
 // `richiamare` contact of its customer, linked both ways; every resolved alert
 // (A5) is on a non-active contact.
 import { taskStatus } from "@mito/db/schema/index"
+import { LOG_RETENTION_MONTHS } from "@mito/domain/export/period"
 import { subMonthsDay } from "../day"
 import type {
   AlertRow,
@@ -30,6 +31,9 @@ import {
 import { createRandom, range } from "./random"
 import { contactScenarioCounts } from "./scenarios"
 
+/** Months of history the seed writes before the log retention cutoff. */
+const LOG_HISTORY_MONTHS = 6
+
 export const TASK_ID_START = 1000
 export const ALERT_ID_START = 1000
 
@@ -37,6 +41,8 @@ export const ALERT_ID_START = 1000
 const HISTORY_SHARE_OF_ACTIVE = 0.25
 /** Share of the customers without an active contact that have history. */
 const HISTORY_SHARE_OF_OTHERS = 0.3
+/** Share of the oldest contacts that close before the log retention cutoff. */
+const OLD_CONTACT_SHARE = 0.85
 /** Share of the non-active contacts worked by another operator (AC19). */
 const OTHER_OPERATOR_SHARE = 0.45
 /** Share of the eligible non-active contacts with an alert closed by hand. */
@@ -89,8 +95,13 @@ export function generateContacts({
     .map((operator) => operator.id)
     .filter((id) => id !== EMPTY_OPERATOR_ID && id !== SYSTEM_OPERATOR_ID)
   const adminIds = realOperatorIds.slice(0, ADMIN_COUNT)
-  const sixMonths = daysBetween(subMonthsDay(day, 6), day)
-  const cutoff = daysBetween(subMonthsDay(day, 3), day)
+  // The log reaches back 6 months before the retention cutoff, so there are
+  // rows to delete as well as rows to keep (AC26)
+  const horizon = daysBetween(
+    subMonthsDay(day, LOG_RETENTION_MONTHS + LOG_HISTORY_MONTHS),
+    day
+  )
+  const cutoff = daysBetween(subMonthsDay(day, LOG_RETENTION_MONTHS), day)
   const log = createLog({ rng, clock, cutoff, realOperatorIds, adminIds })
 
   // Active contacts: the same share of the customers of every operator, and
@@ -180,7 +191,7 @@ export function generateContacts({
   /** Oldest offset a contact of the customer may have. */
   const topOf = (customer: CustomerRow) =>
     Math.min(
-      sixMonths,
+      horizon,
       (customer.createdAt ? clock.offsetOf(customer.createdAt) : 60) - 1
     )
 
@@ -193,7 +204,9 @@ export function generateContacts({
       topOf(customers[i]!) >= cutoff + 1
   )
   if (boundaryIndex === undefined) {
-    throw new Error("Nessun cliente per le righe di log sul confine di 3 mesi")
+    throw new Error(
+      "Nessun cliente per le righe di log sul confine della conservazione"
+    )
   }
 
   const tasks: TaskRow[] = []
@@ -397,7 +410,13 @@ export function generateContacts({
       const segment = count > 0 ? Math.floor((top - low) / count) : 0
       for (let j = 0; j < count; j++) {
         const segHi = top - j * segment
-        const segLo = segHi - segment + 1
+        // The oldest contact of a customer that existed before the retention
+        // cutoff usually falls entirely before it, so the log has rows for
+        // `cleanup-task-event-log` to delete (L1, AC30)
+        const segLo =
+          j === 0 && top > cutoff + 1 && rng.chance(OLD_CONTACT_SHARE)
+            ? cutoff + 1
+            : segHi - segment + 1
         const co = avoidCutoff(rng.int(segLo, segHi), segLo, segHi)
         const cl = avoidCutoff(rng.int(segLo, co), segLo, co)
         pushPast(customer, co, cl, false)

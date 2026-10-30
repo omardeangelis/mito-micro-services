@@ -3,7 +3,7 @@ domain: _root
 type: index
 links: []
 created: 2026-09-24
-updated: 2026-10-29
+updated: 2026-10-30
 ---
 
 # Brain — Master Map
@@ -61,6 +61,7 @@ Migrated from `docs/` on 2026-09-24. Source material for future `create-spec` ru
 | crm | [[specs/crm/auth-better-auth/SPEC]] | Draft (piano: [[specs/crm/auth-better-auth/PLAN]]) |
 | crm | [[specs/crm/auth-due-frontend/SPEC]] | Approved |
 | crm | [[specs/crm/design-system-web/SPEC]] | Implemented (piano: [[specs/crm/design-system-web/PLAN]]; revisione: [[specs/crm/design-system-web/REPORT]]) |
+| crm | [[specs/crm/pagina-analisi/SPEC]] | Implemented nel worktree, senza commit; classifiche ai primi 8, legenda e note nel riquadro del grafico (AC19) (mappa: [[specs/crm/pagina-analisi/FLOW]]; piano: [[specs/crm/pagina-analisi/PLAN]]; revisione: [[specs/crm/pagina-analisi/REPORT]]) |
 
 - [[specs/crm/crm-specs|crm-specs]] — CRM spec page map
 
@@ -70,12 +71,14 @@ Migrated from `docs/` on 2026-09-24. Source material for future `create-spec` ru
 - [[tech-debt/crm/pratiche-effect]] — router `pratiche` e letture di `task` su Effect (bug della UI trovati nella prova e corretti, follow-up; le stranezze di TD9 corrette tranne (k), riaperta per l'import)
 - [[tech-debt/crm/export-chiamate]] — export chiamate (cron UTC/Roma, permessi dello storage, admin senza riga operatore)
 - [[tech-debt/crm/design-system-web]] — design system di `apps/web` (limiti del gate dei colori, test dei significati mancanti, focus preesistenti, Firefox e Safari non provati)
+- [[tech-debt/crm/pagina-analisi]] — pagina Analisi di `apps/web` (dai giri di revisione: seed, export, schede, classifiche; domande per Omar su AC15 e AC12)
 - [[tech-debt/crm/filtri-sql-sicuri]] — filtri avanzati sicuri (follow-up della review e di `$simplify`, errore `task_status` preesistente)
 
 ## Reviews
 
 > `adversarial-review` writes SHIP/DO-NOT-SHIP reports here. Standalone reviews land under `review/<slug>/`; spec-implementation reviews live inside the spec folder (`specs/<domain>/<spec>/REPORT.md`).
 
+- [[specs/crm/pagina-analisi/REPORT|crm/pagina-analisi]] — spec · ship (giro 6; checklist umana prima del rilascio) · critical · 2026-10-30
 - [[specs/crm/design-system-web/REPORT|crm/design-system-web]] — spec · do-not-ship (giro 3: solo il gate dei colori, corretto senza un controllo indipendente) · critical · 2026-10-29
 - [[specs/crm/sezione-contatti/REPORT|crm/sezione-contatti]] — spec · ship (terza verifica e smoke; prima do-not-ship) · critical · 2026-09-26
 - [[specs/crm/effect-4/REPORT|crm/effect-4]] — spec · do-not-ship (PR 1: lo script di AC5; PR 2: AC3 alla lettera e documenti; PR 3: AC8 su un test, la firma su AC5, documenti; PR 4: un test di D8 svuotato dagli span) · critical · 2026-10-28

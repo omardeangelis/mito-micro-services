@@ -15,7 +15,7 @@ export const DAYS = [
   "2027-03-01",
   "2026-03-29", // cambio all'ora legale
   "2026-10-25", // cambio all'ora solare
-  "2026-12-15", // D - 3 mesi cade in estate
+  "2026-11-15", // D - 25 mesi (conservazione del log) cade in estate
 ]
 
 // Generatore pseudo-casuale deterministico (mulberry32)

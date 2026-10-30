@@ -72,6 +72,8 @@ export const describeApiError = (error: ApiFailure): string => {
       return "Solo l'autore della nota può eliminarla"
     case "InvalidPeriod":
       return "Periodo non valido"
+    case "InvalidWindow":
+      return "Finestra di date non valida"
     case "ImportInputInvalid":
       return error.reason
     case "ImportUploadMissing":

@@ -44,11 +44,12 @@ beforeEach(() => {
 })
 
 describe("il menu laterale (AC1)", () => {
-  it("ha le voci in italiano: Analisi, Clienti, Pratiche, Chiamate, poi la sezione Impostazioni chiusa", () => {
+  it("ha le voci in italiano: Home, Analisi, Clienti, Pratiche, Chiamate, poi la sezione Impostazioni chiusa (AC1 di pagina-analisi)", () => {
     render(<DashboardLayout />)
 
     expect(menu().map((link) => link.name)).toEqual([
       "Mito SRL",
+      "Home",
       "Analisi",
       "Clienti",
       "Pratiche",
@@ -119,6 +120,31 @@ describe("il menu laterale (AC1)", () => {
       ).toEqual(["Chiamate"])
     }
   )
+
+  it("'Analisi' apre /dashboard/analisi, per i due ruoli (AC1 di pagina-analisi)", () => {
+    for (const role of ["OPERATORE", "ADMIN"] as const) {
+      mocks.role = role
+      const { unmount } = render(<DashboardLayout />)
+      expect(menu().find((link) => link.name === "Analisi")?.href).toBe(
+        "/dashboard/analisi"
+      )
+      unmount()
+    }
+  })
+
+  it.each([
+    ["/dashboard", "Home"],
+    ["/dashboard/analisi", "Analisi"],
+  ])("su %s è attiva solo '%s'", (pathname, name) => {
+    mocks.pathname = pathname
+    render(<DashboardLayout />)
+
+    expect(
+      menu()
+        .filter((link) => link.active)
+        .map((link) => link.name)
+    ).toEqual([name])
+  })
 
   it("su /dashboard/customers è attiva solo 'Clienti'", () => {
     mocks.pathname = "/dashboard/customers"

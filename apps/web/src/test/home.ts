@@ -132,6 +132,10 @@ export function fakeHome(
             return state.progress
           })
         )
+        .handle("getFinancedSeries", unserved)
+        .handle("getBranchTotals", unserved)
+        .handle("getCallsByOperator", unserved)
+        .handle("getMyCallSeries", unserved)
     ),
     HttpApiBuilder.group(MitoApi, "export", (handlers) =>
       handlers.handle("callStats", ({ query }) =>

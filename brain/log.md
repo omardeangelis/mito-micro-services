@@ -3,7 +3,7 @@ domain: _root
 type: index
 links: []
 created: 2026-09-24
-updated: 2026-10-27
+updated: 2026-10-30
 ---
 
 # Brain — Log
@@ -11,6 +11,29 @@ updated: 2026-10-27
 Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest when over.
 
 <!-- Entries are appended by create-spec (spec creation) and docs-maintenance (ingest). Format:
+
+## [2026-10-30] implement | Pagina Analisi: legenda e note nel riquadro, SHIP
+- Decisione di Omar su AC19: le note stanno nel riquadro del grafico, alto quanto lo scheletro; il quinto giro porta lì anche la legenda, che a 768 px spostava la pagina.
+- Sesto giro di [[specs/crm/pagina-analisi/REPORT]]: SHIP, minori corretti. Spec `implemented`, piano Complete; resta la checklist umana prima del rilascio.
+
+## [2026-10-30] implement | Pagina Analisi: classifiche ai primi 8
+- Decisione di Omar su AC19: le classifiche degli operatori mostrano i primi 8, il resto nella tabella e nel file; spec aggiornata in AC4, AC19, AC25 e nel Decision Log.
+- Quarto giro di [[specs/crm/pagina-analisi/REPORT]]: corretta la nota sotto lo stato vuoto e rafforzati i test; resta aperta una decisione, le note sotto il grafico che spostano «Dati del grafico» ([[specs/crm/pagina-analisi/IMPLEMENTATION-NOTES]] § Per Omar).
+
+## [2026-10-30] review | Pagina Analisi in `apps/web`
+- Report: [[specs/crm/pagina-analisi/REPORT]] (caso B, 11 passaggi, poi due giri sulle correzioni)
+- Domain: crm
+- Verdict: do-not-ship nei tre giri. Il giro 1 aveva 3 blocker e 4 major, il giro 2 2 major, il giro 3 2 major. Tutto corretto tranne AC19 sulle classifiche, che aspetta una decisione di Omar
+- Tech debt: [[tech-debt/crm/pagina-analisi]]
+
+## [2026-10-30] implement | Pagina Analisi in `apps/web`
+- Notes: [[specs/crm/pagina-analisi/IMPLEMENTATION-NOTES]] (parallelo a wave, supervisionato; T1–T19 fatti, prototipo cancellato, nulla committato)
+- Domain: crm
+
+## [2026-10-30] plan | Pagina Analisi in `apps/web`
+- Plan: [[specs/crm/pagina-analisi/PLAN]] (una PR, 19 task e un gate in 10 wave; verifica DO NOT SHIP, 0 blocker, 8 major e 11 minor, corretti)
+- Domain: crm
+- Decisioni tecniche D1–D18: regole di calendario nel dominio, serie per giorno dal server, quattro endpoint `HttpApi`, conservazione di 25 mesi, job di pulizia negli scheduler
 
 ## [2026-10-29] review | Design system di `apps/web` con la palette Indaco notte
 - Report: [[specs/crm/design-system-web/REPORT]] (caso B, 7 passaggi, poi due giri di verifica delle correzioni)
@@ -385,3 +408,16 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 - Spec: [[specs/crm/effect-4/SPEC]]; il punto 1.1 di [[chore/roadmap-nuovo-stack]] è chiuso
 - Il codice della fase 2 di HttpApi arrivato da `dev` è passato allo stile della PR 4 nello stesso merge
 - Resta AC15 su staging
+
+## [2026-10-30] spec | Pagina Analisi in `apps/web`
+- Created spec: [[specs/crm/pagina-analisi/SPEC]]
+- Flow: [[specs/crm/pagina-analisi/FLOW]]
+- Domain: crm
+- Status: Draft
+- Fonte: prototipo «Esplora · tabella» (`apps/web/src/prototypes/analisi/`, `/_dev/prototypes/analisi`), review `ux-advisor` e `ui-reviewer` del 2026-10-30
+- Quality gate: adversarial-verifier, SHIP al giro 4. Prima, tre volte DO NOT SHIP:
+  - giro 1: voce «Analisi» già usata dalla home; pulizia del registro creduta attiva;
+  - giro 2: confronto per settimana che entrava nella finestra stessa;
+  - giro 3: confronto per mese a fine mese.
+  Tutti recepiti.
+- 2026-10-30, domande aperte chiuse da Omar: conservazione 25 mesi con pulizia in R10, grafici delle chiamate dell'operatore nel tempo, voce «Home», solo `ADMIN` e `OPERATORE`, nomi lunghi con i puntini, portatili e testo al 125% sostenuti. Quality gate: SHIP al giro 5, con le tre correzioni minori recepite.

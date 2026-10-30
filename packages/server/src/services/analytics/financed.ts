@@ -46,17 +46,18 @@ const inReference = ({ start, end }: FinanceWindow) =>
   )
 
 /**
- * Practices settled in the comparison window, `end` excluded: it is the start
- * of the reference window, so a practice falls in one window only.
+ * Practices settled in the half-open window `[start, end)`, `end` excluded: for
+ * the comparison window it is the start of the reference window, so a practice
+ * falls in one window only.
  */
-const inComparison = ({ start, end }: FinanceWindow) =>
+export const inComparison = ({ start, end }: FinanceWindow) =>
   and(
     gte(practices.dataLiquidazione, start),
     lt(practices.dataLiquidazione, end)
   )
 
 /** Financed practices: in one of `FINANCED_STATES`. */
-const financed = () => inArray(practices.state, [...FINANCED_STATES])
+export const financed = () => inArray(practices.state, [...FINANCED_STATES])
 
 /**
  * The `aggregate` (`sum` or `avg`) of the amount financed by the financed
