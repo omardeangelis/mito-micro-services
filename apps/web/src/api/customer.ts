@@ -36,7 +36,8 @@ export const customerKeys = {
     [...customerKeys.all, "getCustomerById", { id }] as const,
   practices: (id: string) =>
     [...customerKeys.all, "getAllPraticaByCustomer", { id }] as const,
-  underReview: () => [...customerKeys.all, "getCustomerUnderReview"] as const,
+  underReview: (page: UnderReviewPage) =>
+    [...customerKeys.all, "getCustomerUnderReview", page] as const,
   ofPractice: (praticaId: string) =>
     [
       ...customerKeys.all,
@@ -157,22 +158,28 @@ export const useFileNames = (table: FileTable) =>
     )
   )
 
+/** The page of the customers under review that the blacklist shows */
+export type UnderReviewPage = { page: number; perPage: number }
+
 /**
- * The customers in review or blacklisted (`GET /customer/under-review`), for
- * the blacklist of the profile: a first failure goes to the error of the route
+ * A page of the customers in review or blacklisted (`GET
+ * /customer/under-review`), with how many there are, for the blacklist of
+ * the settings: while another page loads the one before stays on screen, and
+ * a first failure goes to the error of the route
  */
-export const useCustomersUnderReview = () => {
+export const useCustomersUnderReview = (page: UnderReviewPage) => {
   const run = useRun()
   return useQuery({
-    queryKey: customerKeys.underReview(),
+    queryKey: customerKeys.underReview(page),
     queryFn: ({ signal }) =>
       run(
         Effect.gen(function* () {
           const client = yield* ApiClient
-          return yield* client.customer.getCustomerUnderReview()
+          return yield* client.customer.getCustomerUnderReview({ query: page })
         }),
         signal
       ),
+    placeholderData: keepPreviousData,
     ...routeErrorWhenEmpty,
   })
 }

@@ -55,6 +55,31 @@ describe("la pagina Blacklist", () => {
     )
   })
 
+  it("mostra una pagina alla volta, coi conteggi di tutta la lista", async () => {
+    const user = userEvent.setup()
+    const many = Array.from({ length: 25 }, (_, index) =>
+      underReview({
+        id: `c-${index + 1}`,
+        name: `Cliente${index + 1}`,
+        blackListStatus: index < 5 ? "blacklisted" : "review",
+      })
+    )
+    const { router } = openBlacklist(many)
+
+    expect(await screen.findByText("Cliente1 Verdi")).toBeInTheDocument()
+    expect(dmSwitches()).toHaveLength(20)
+    expect(screen.queryByText("Cliente21 Verdi")).toBeNull()
+    expect(
+      screen.getByText("20 da verificare · 5 in blacklist")
+    ).toBeInTheDocument()
+
+    await user.click(screen.getByRole("link", { name: "Go to next page" }))
+
+    expect(await screen.findByText("Cliente21 Verdi")).toBeInTheDocument()
+    expect(dmSwitches()).toHaveLength(5)
+    expect(router.state.location.search).toContain("page=2")
+  })
+
   it("un cliente senza nome ha il link col suo codice", async () => {
     openBlacklist([
       underReview({ id: "c-3", name: null, surname: null, fiscalCode: null }),

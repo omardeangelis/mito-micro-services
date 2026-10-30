@@ -198,8 +198,17 @@ export function fakeProfile(
         .handle("getAllCustomers", unserved)
         .handle("getCustomersByFiscalCodeOrVatCode", unserved)
         .handle("getAllCustomerForPratica", unserved)
-        .handle("getCustomerUnderReview", () =>
-          down(state.failingUnderReview, () => state.underReview)
+        .handle("getCustomerUnderReview", ({ query }) =>
+          down(state.failingUnderReview, () => {
+            const start = (query.page - 1) * query.perPage
+            return {
+              customers: state.underReview.slice(start, start + query.perPage),
+              total: state.underReview.length,
+              blacklisted: state.underReview.filter(
+                (customer) => customer.blackListStatus === "blacklisted"
+              ).length,
+            }
+          })
         )
         .handle("getAllAvailableComune", unserved)
         .handle("getAllAvaliableSede", unserved)

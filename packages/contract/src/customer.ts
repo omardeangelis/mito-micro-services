@@ -173,6 +173,22 @@ export const CustomerUnderReview = Schema.Struct({
   signedPractices: Schema.Number,
 })
 
+/** The page of the customers under review, from 1 */
+const UnderReviewPage = Schema.FiniteFromString.check(
+  Schema.isInt(),
+  Schema.isBetween({ minimum: 1, maximum: 10_000 })
+)
+
+/**
+ * How many customers under review a page holds, up to `MAX_PER_PAGE` of
+ * @mito/domain/constants/pagination, written again since the contract
+ * doesn't import the domain
+ */
+const UnderReviewPerPage = Schema.FiniteFromString.check(
+  Schema.isInt(),
+  Schema.isBetween({ minimum: 1, maximum: 500 })
+)
+
 /** The id a write returns, in an array as `returning` gives it. */
 const ReturnedIds = Schema.Array(Schema.Struct({ id: Schema.String }))
 
@@ -308,7 +324,7 @@ const CustomerId = { id: Schema.String.check(Schema.isMinLength(1)) }
  * | getAllCustomers                    | POST /customer/search                      |
  * | getCustomersByFiscalCodeOrVatCode  | GET /customer/by-code                      |
  * | getAllCustomerForPratica           | GET /customer/by-practice/:id              |
- * | getCustomerUnderReview             | GET /customer/under-review                 |
+ * | getCustomerUnderReview             | GET /customer/under-review?page=&perPage=  |
  * | getAllAvailableComune              | GET /customer/options/comuni               |
  * | getAllAvaliableSede                | GET /customer/options/sedi                 |
  * | getAllAvailableAmbito              | GET /customer/options/ambiti               |
@@ -356,7 +372,13 @@ export class CustomerGroup extends HttpApiGroup.make("customer")
   )
   .add(
     HttpApiEndpoint.get("getCustomerUnderReview", "/customer/under-review", {
-      success: Schema.Array(CustomerUnderReview),
+      query: { page: UnderReviewPage, perPage: UnderReviewPerPage },
+      // A page of the list, how many there are and how many are blacklisted
+      success: Schema.Struct({
+        customers: Schema.Array(CustomerUnderReview),
+        total: Schema.Number,
+        blacklisted: Schema.Number,
+      }),
     })
   )
   .add(

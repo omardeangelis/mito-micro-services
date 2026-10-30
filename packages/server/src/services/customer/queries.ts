@@ -1,10 +1,10 @@
-import { eq, inArray, countDistinct, or, sql } from "drizzle-orm"
+import { count, eq, inArray, countDistinct, or, sql } from "drizzle-orm"
 import { Effect } from "effect"
 import { customerToPratica } from "@mito/db/schema/relations/customerToPratica"
 import { customers } from "@mito/db/schema/customers"
 import { practices } from "@mito/db/schema/pratiche"
 import { operators } from "@mito/db/schema/operators"
-import { query } from "../../effect/db"
+import { type DbClient, query } from "../../effect/db"
 
 /** The codes that identify a customer; `findCustomersByCode` reads them. */
 export type CustomerCodes = {
@@ -130,40 +130,68 @@ export const listCustomersOfPractice = Effect.fn(
   }))
 })
 
+/** The customers in review or blacklisted */
+const underReview = or(
+  eq(customers.blackListStatus, "review"),
+  eq(customers.blackListStatus, "blacklisted")
+)
+
 /**
  * The customers in review or blacklisted, with their operator and the number
  * of practices they signed, oldest update first and, on the same date, by id.
  */
+const selectCustomersUnderReview = (client: DbClient) =>
+  client
+    .select({
+      id: customers.id,
+      name: customers.name,
+      surname: customers.surname,
+      fiscalCode: customers.fiscalCode,
+      vatCode: customers.vatCode,
+      birthdayDate: customers.birthdayDate,
+      blackListStatus: customers.blackListStatus,
+      operatore: {
+        id: operators.id,
+        name: operators.name,
+        surname: operators.surname,
+      },
+      signedPractices: countDistinct(customerToPratica.praticaId),
+    })
+    .from(customers)
+    .where(underReview)
+    .leftJoin(customerToPratica, eq(customers.id, customerToPratica.customerId))
+    .leftJoin(operators, eq(customers.operatorId, operators.id))
+    .groupBy(customers.id, operators.id)
+    .orderBy(customers.updatedAt, customers.id)
+
+/** All the customers in review or blacklisted (the tRPC procedure). */
 export const listCustomersUnderReview = () =>
-  query((client) =>
-    client
-      .select({
-        id: customers.id,
-        name: customers.name,
-        surname: customers.surname,
-        fiscalCode: customers.fiscalCode,
-        vatCode: customers.vatCode,
-        birthdayDate: customers.birthdayDate,
-        blackListStatus: customers.blackListStatus,
-        operatore: {
-          id: operators.id,
-          name: operators.name,
-          surname: operators.surname,
-        },
-        signedPractices: countDistinct(customerToPratica.praticaId),
-      })
-      .from(customers)
-      .where(
-        or(
-          eq(customers.blackListStatus, "review"),
-          eq(customers.blackListStatus, "blacklisted")
-        )
-      )
-      .leftJoin(
-        customerToPratica,
-        eq(customers.id, customerToPratica.customerId)
-      )
-      .leftJoin(operators, eq(customers.operatorId, operators.id))
-      .groupBy(customers.id, operators.id)
-      .orderBy(customers.updatedAt, customers.id)
+  query((client) => selectCustomersUnderReview(client))
+
+/**
+ * A page of the customers in review or blacklisted, in the same order, with
+ * how many there are and how many of them are blacklisted
+ */
+export const listCustomersUnderReviewPage = Effect.fn(
+  "customer.listCustomersUnderReviewPage"
+)(function* (page: number, perPage: number) {
+  const rows = yield* query((client) =>
+    selectCustomersUnderReview(client)
+      .limit(perPage)
+      .offset((page - 1) * perPage)
   )
+  const counts = yield* query((client) =>
+    client
+      .select({ status: customers.blackListStatus, count: count() })
+      .from(customers)
+      .where(underReview)
+      .groupBy(customers.blackListStatus)
+  )
+  const countOf = (status: "review" | "blacklisted") =>
+    counts.find((row) => row.status === status)?.count ?? 0
+  return {
+    customers: rows,
+    total: countOf("review") + countOf("blacklisted"),
+    blacklisted: countOf("blacklisted"),
+  }
+})

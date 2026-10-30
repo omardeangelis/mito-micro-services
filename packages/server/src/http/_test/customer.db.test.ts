@@ -182,12 +182,55 @@ describe("le letture del gruppo customer", () => {
         yield* given(() => createPractice({ customerId: review.id }))
         const api = yield* clientAs(operator.userId)
 
-        const rows = yield* api.customer.getCustomerUnderReview()
+        const { customers: rows } = yield* api.customer.getCustomerUnderReview({
+          query: { page: 1, perPage: 20 },
+        })
 
         assert.strictEqual(rows.length, 1)
         assert.strictEqual(rows[0]?.id, review.id)
         assert.isNull(rows[0]?.operatore)
         assert.strictEqual(rows[0]?.signedPractices, 1)
+      })
+  )
+
+  it.effect(
+    "GET /customer/under-review dà una pagina alla volta, col totale e quanti sono in blacklist",
+    () =>
+      Effect.gen(function* () {
+        const operator = yield* given(() => createOperator())
+        const dates = ["2026-10-01", "2026-10-02", "2026-10-03"]
+        const [first, second, third] = yield* given(() =>
+          Promise.all(
+            dates.map((date, index) =>
+              createCustomer({
+                blackListStatus: index === 2 ? "blacklisted" : "review",
+                updatedAt: new Date(`${date}T10:00:00.000Z`),
+              })
+            )
+          )
+        )
+        yield* given(() => createCustomer())
+        const api = yield* clientAs(operator.userId)
+
+        const one = yield* api.customer.getCustomerUnderReview({
+          query: { page: 1, perPage: 2 },
+        })
+        const two = yield* api.customer.getCustomerUnderReview({
+          query: { page: 2, perPage: 2 },
+        })
+
+        assert.deepStrictEqual(
+          one.customers.map((customer) => customer.id),
+          [first?.id, second?.id]
+        )
+        assert.deepStrictEqual(
+          two.customers.map((customer) => customer.id),
+          [third?.id]
+        )
+        assert.strictEqual(one.total, 3)
+        assert.strictEqual(one.blacklisted, 1)
+        assert.strictEqual(two.total, 3)
+        assert.strictEqual(two.blacklisted, 1)
       })
   )
 
@@ -267,7 +310,11 @@ describe("le letture del gruppo customer", () => {
     Effect.gen(function* () {
       const api = yield* clientAs(null)
 
-      const error = yield* Effect.flip(api.customer.getCustomerUnderReview())
+      const error = yield* Effect.flip(
+        api.customer.getCustomerUnderReview({
+          query: { page: 1, perPage: 20 },
+        })
+      )
 
       assert.instanceOf(error, Unauthorized)
     })
