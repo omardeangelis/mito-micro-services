@@ -33,7 +33,7 @@ import {
   findCustomersByCode,
   getCustomerById,
   listCustomersOfPractice,
-  listCustomersUnderReview,
+  listCustomersUnderReviewPage,
   listPracticesOfCustomer,
 } from "../services/customer/queries"
 import { unexpectedAs500 } from "./unexpected"
@@ -80,8 +80,8 @@ export const customerLayer = HttpApiBuilder.group(
             Effect.provide(services)
           )
         )
-        .handle("getCustomerUnderReview", () =>
-          listCustomersUnderReview().pipe(
+        .handle("getCustomerUnderReview", ({ query }) =>
+          listCustomersUnderReviewPage(query.page, query.perPage).pipe(
             unexpectedAs500("getCustomerUnderReview"),
             Effect.provide(services)
           )
