@@ -7,7 +7,7 @@
   "paths": {
     "techDebt": "brain/tech-debt",
     "reviews": "brain/review",
-    "personas": null
+    "personas": "brain/personas.md"
   },
   "execution": {
     "delegation": "supervised"
