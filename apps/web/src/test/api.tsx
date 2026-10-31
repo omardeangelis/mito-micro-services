@@ -24,7 +24,7 @@ import { inMemoryPlatform } from "@mito/contract/testing"
 import { ApiProvider } from "@/api/ApiProvider"
 import { makeQueryClient } from "@/api/queryClient"
 import { ApiClient } from "@/api/runtime"
-import { Toaster } from "@/components/ui/toaster"
+import { Toaster } from "@/components/ui/sonner"
 
 /** The handlers of a group of the contract, by its name */
 export type GroupService<Name extends string> = HttpApiGroup.Service<

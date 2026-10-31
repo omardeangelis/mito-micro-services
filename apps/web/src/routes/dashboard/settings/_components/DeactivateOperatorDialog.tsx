@@ -22,7 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { useToast } from "@/components/ui/use-toast"
+import { toast } from "sonner"
 
 type DeactivateOperatorDialogProps = {
   operator: { id: number; name: string; surname: string }
@@ -54,7 +54,6 @@ export const DeactivateOperatorDialog = ({
   const [error, setError] = useState<string | null>(null)
   const selectRef = useRef<HTMLButtonElement>(null)
   const deactivatedRef = useRef(false)
-  const { toast } = useToast()
 
   const impact = useDeactivationImpact(operator.id, open)
   const targets = useOperatorsForDeactivation(operator.id, open)
@@ -101,11 +100,10 @@ export const DeactivateOperatorDialog = ({
     setOpen(false)
     setDestination("")
     const { customersMoved, contactsMoved, practicesMoved } = result
-    toast({
-      title: `Operatore disattivato: ${plural(customersMoved, "cliente", "clienti")}, ${plural(contactsMoved, "contatto", "contatti")}, ${plural(practicesMoved, "pratica", "pratiche")} passati a ${nameOf(destinationOperator)}`,
-      duration: 4000,
-      variant: "success",
-    })
+    toast.success(
+      `Operatore disattivato: ${plural(customersMoved, "cliente", "clienti")}, ${plural(contactsMoved, "contatto", "contatti")}, ${plural(practicesMoved, "pratica", "pratiche")} passati a ${nameOf(destinationOperator)}`,
+      { duration: 4000 }
+    )
   }
 
   return (

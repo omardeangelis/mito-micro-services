@@ -30,6 +30,11 @@ Migrated from `docs/` on 2026-09-24. Source material for future `create-spec` ru
 - [[chore/roadmap-nuovo-stack|roadmap-nuovo-stack]] — roadmap in serie verso il nuovo stack in prod: Effect 4, app React su `HttpApi`, un solo rilascio, poi le dismissioni (draft)
 - [[chore/migrazione-frontend-react|migrazione-frontend-react]] — il filone frontend della roadmap: `apps/web` su Vite, React 19 e `HttpApi`, task per task, rotte, server action → mutation, collaudo di parità (draft)
 
+### Motion (`chore/`)
+
+- [[chore/motion|motion]] — le decisioni di progetto sul movimento, che valgono sopra i riferimenti di `design-engineering`
+- [[chore/motion-stack|motion-stack]] — il profilo dello stack frontend (React 19 su Vite, `apps/web`) e la traduzione dei riferimenti di `design-engineering`
+
 ## Raw sources
 
 - `raw/assets/handover-cessioni-lavorazioni.html` — technical handover: Cessioni and coexisting lavorazioni
@@ -62,6 +67,7 @@ Migrated from `docs/` on 2026-09-24. Source material for future `create-spec` ru
 | crm | [[specs/crm/auth-due-frontend/SPEC]] | Approved |
 | crm | [[specs/crm/design-system-web/SPEC]] | Implemented (piano: [[specs/crm/design-system-web/PLAN]]; revisione: [[specs/crm/design-system-web/REPORT]]) |
 | crm | [[specs/crm/pagina-analisi/SPEC]] | Implemented nel worktree, senza commit; classifiche ai primi 8, legenda e note nel riquadro del grafico (AC19) (mappa: [[specs/crm/pagina-analisi/FLOW]]; piano: [[specs/crm/pagina-analisi/PLAN]]; revisione: [[specs/crm/pagina-analisi/REPORT]]) |
+| crm | [[specs/crm/toast-sonner/SPEC]] | Implemented (T11 aperto) |
 
 - [[specs/crm/crm-specs|crm-specs]] — CRM spec page map
 
@@ -78,6 +84,7 @@ Migrated from `docs/` on 2026-09-24. Source material for future `create-spec` ru
 
 > `adversarial-review` writes SHIP/DO-NOT-SHIP reports here. Standalone reviews land under `review/<slug>/`; spec-implementation reviews live inside the spec folder (`specs/<domain>/<spec>/REPORT.md`).
 
+- [[specs/crm/toast-sonner/REPORT|crm/toast-sonner]] — spec · ship (secondo giro; checklist umana e T11 prima dell'unione) · critical · 2026-10-31
 - [[specs/crm/pagina-analisi/REPORT|crm/pagina-analisi]] — spec · ship (giro 6; checklist umana prima del rilascio) · critical · 2026-10-30
 - [[specs/crm/design-system-web/REPORT|crm/design-system-web]] — spec · do-not-ship (giro 3: solo il gate dei colori, corretto senza un controllo indipendente) · critical · 2026-10-29
 - [[specs/crm/sezione-contatti/REPORT|crm/sezione-contatti]] — spec · ship (terza verifica e smoke; prima do-not-ship) · critical · 2026-09-26

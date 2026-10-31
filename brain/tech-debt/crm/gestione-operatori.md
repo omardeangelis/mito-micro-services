@@ -6,7 +6,7 @@ links:
   - "[[specs/crm/gestione-operatori/IMPLEMENTATION-NOTES]]"
   - "[[specs/crm/gestione-operatori/REPORT]]"
 created: 2026-10-23
-updated: 2026-10-26
+updated: 2026-10-31
 ---
 
 # Tech debt: Gestione operatori
@@ -103,7 +103,7 @@ Ingest della review alla chiusura della spec. I finding segnati come durevoli so
 - **[NIT]** La lista degli operatori arriva nel payload RSC anche agli OPERATORE (PR 5, v2) — `@admin/page.tsx:9`
   - Why it persists: preesistente, fuori perimetro.
   - Fix-or-evidence needed: voce "La lista degli operatori arriva anche agli OPERATORE" qui sopra.
-- **[MINOR]** Card di `ExportDialog` fuori dal dialog sotto i 500 px, anello di focus dei toast `default`/`info` a 1,74:1, hover di `ToastAction` in `success` a 1,07:1 (PR 5, v5 e v6) — `ExportDialog.tsx:489`, `toast.tsx`
+- **[MINOR]** Card di `ExportDialog` fuori dal dialog sotto i 500 px, ~~anello di focus dei toast `default`/`info` a 1,74:1, hover di `ToastAction` in `success` a 1,07:1~~ (PR 5, v5 e v6) — `ExportDialog.tsx:489`, `toast.tsx`. **La parte dei toast è chiusa il 2026-10-31 da [[specs/crm/toast-sonner/SPEC]]** (i toast sono di Sonner, con il contorno `ring` e senza `ToastAction`); resta aperta la parte delle card di `ExportDialog`
   - Why it persists: preesistenti, nei primitivi condivisi.
   - Fix-or-evidence needed: voce "Contrasto e nomi nei primitivi condivisi" di [[tech-debt/crm/sezione-contatti]].
 - Corretti nella PR 5, quindi non debito: contrasto del bottone `destructive` (dcea416) e la passata sulla Dialog condivisa (dcea416, 6eb42e0, a5c808a, cb51313).

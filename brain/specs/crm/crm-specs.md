@@ -29,8 +29,9 @@ links:
   - "[[specs/crm/pagina-analisi/SPEC]]"
   - "[[specs/crm/pagina-analisi/FLOW]]"
   - "[[specs/crm/pagina-analisi/PLAN]]"
+  - "[[specs/crm/toast-sonner/SPEC]]"
 created: 2026-09-24
-updated: 2026-10-30
+updated: 2026-10-31
 ---
 
 # CRM — Specs
@@ -55,3 +56,4 @@ Spec page map for the `crm` domain. Entry point for discovery before writing a n
 | [[specs/crm/effect-4/SPEC\|effect-4]] | Draft, con [[specs/crm/effect-4/PLAN\|piano]] | Punto 1.1 di [[chore/roadmap-nuovo-stack]]: `effect` 3 → 4 senza cambi di comportamento, vitest 5, test su `@effect/vitest`, poi lo stile di Effect 4 nel codice (servizi con layer statici, `Schema.TaggedError`, `Effect.fn`). Quattro PR verso `dev` |
 | [[specs/crm/design-system-web/SPEC\|design-system-web]] | Draft (piano: [[specs/crm/design-system-web/PLAN\|PLAN]]) | Design system di `apps/web` con la palette Indaco notte scelta nel prototipo Palette MITO (copia in [[specs/crm/design-system-web/prototipo-palette.html\|prototipo-palette.html]]): token in oklch nel solo tema chiaro, nessun colore fuori dai token, un tono per ognuno dei nove stati del contatto, priorità a barre, Geist e densità compatta, barra laterale chiara e foglio a strati. Cambia l'aspetto, non il contenuto: il collaudo di parità resta valido. Solo `apps/web`, Next.js escluso. |
 | [[specs/crm/pagina-analisi/SPEC\|pagina-analisi]] | Implemented, senza commit, con [[specs/crm/pagina-analisi/FLOW\|mappa del flusso]], [[specs/crm/pagina-analisi/PLAN\|piano]] e [[specs/crm/pagina-analisi/REPORT\|revisione]] (SHIP al giro 6); classifiche ai primi 8, legenda e note nel riquadro del grafico (AC19) | Pagina Analisi `/dashboard/analisi` in `apps/web`, dal prototipo vincitore «Esplora · tabella»: sei grafici ognuno con la sua domanda e la forma shadcn adatta, una finestra di dati per tutta la pagina (periodi, date personalizzate, confronto, raggruppamento, nell'indirizzo), la tabella dei dati sempre sotto il grafico con export CSV, Excel e Copia, «Esporta tutto», stati vuoti, di errore e di caricamento per grafico. Registro delle chiamate conservato più a lungo; l'operatore vede le sue chiamate. La home resta com'è. |
+| [[specs/crm/toast-sonner/SPEC\|toast-sonner]] | Implemented (T11 aperto) | Toast di `apps/web` con Sonner al posto del Toast di Radix, con la resa di Sonner (icone per tipo, fino a 3 toast impilati, animazione) e i colori dei token del design system; testi, momenti e durate di oggi invariati; tutti i toast annunciati in modo educato ai lettori di schermo. Vaul resta fuori. Solo `apps/web`, Next.js escluso. |

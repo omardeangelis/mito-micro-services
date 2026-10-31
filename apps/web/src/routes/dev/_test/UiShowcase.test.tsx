@@ -1,6 +1,6 @@
-import { act, render, screen, within } from "@testing-library/react"
+import { act, render, screen, waitFor, within } from "@testing-library/react"
 import { beforeAll, describe, expect, it, vi } from "vitest"
-import { Toaster } from "@/components/ui/toaster"
+import { Toaster } from "@/components/ui/sonner"
 import { UiShowcase } from "../UiShowcase"
 
 // The test page /_dev/ui of the spec design-system-web (AC22): what it shows,
@@ -229,7 +229,7 @@ describe("UiShowcase", () => {
     ).not.toBeNull()
   })
 
-  it("mostra un avviso per ogni variante e apre un toast per ogni variante", () => {
+  it("mostra un avviso per ogni variante e apre un toast per ogni tipo (AC3, AC11, AC29)", async () => {
     const { container } = renderPage()
     for (const surface of [
       "bg-card",
@@ -243,23 +243,18 @@ describe("UiShowcase", () => {
           .some((alert) => alert.className.split(/\s+/).includes(surface))
       ).toBe(true)
     }
-    // The app shows one toast at a time: each click replaces the last one
-    const toasts = screen
-      .getAllByRole("button", { name: /^Toast/ })
-      .map((button) => {
-        act(() => button.click())
-        return document
-          .querySelector("li[data-state=open]")!
-          .className.split(/\s+/)
-      })
-    for (const surface of [
-      "bg-card",
-      "bg-success-soft",
-      "bg-primary-soft",
-      "bg-destructive-soft",
-    ]) {
-      expect(toasts.some((c) => c.includes(surface))).toBe(true)
-    }
+    // One button per type; the toasts pile up, each with its type (the
+    // colour is read in the browser, T10)
+    const buttons = screen.getAllByRole("button", { name: /^Toast/ })
+    expect(buttons).toHaveLength(4)
+    for (const button of buttons) act(() => button.click())
+    await waitFor(() =>
+      expect(document.querySelectorAll("[data-sonner-toast]")).toHaveLength(4)
+    )
+    const types = [...document.querySelectorAll("[data-sonner-toast]")].map(
+      (node) => node.getAttribute("data-type")
+    )
+    expect(types.sort()).toEqual(["error", "info", "success", null].sort())
     expect(container.querySelector(".recharts-surface")).not.toBeNull()
   })
 })

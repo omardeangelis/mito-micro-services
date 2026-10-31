@@ -4,7 +4,7 @@ links:
   - "[[specs/crm/sezione-contatti/PLAN]]"
   - "[[tech-debt/crm/sezione-contatti]]"
 created: 2026-10-15
-updated: 2026-10-18
+updated: 2026-10-31
 ---
 
 # Decisioni sul movimento
@@ -26,7 +26,7 @@ Una review sul movimento non lo segnala come incoerenza con gli altri menu.
 **Rinvio documentato il 2026-10-15.** Le modali di PR3, la conferma (`AlertCloseConfirmDialog`) e il passaggio di consegne (`CustomerHandoverDialog`), usano la `Dialog` di `src/components/ui/` com'è: fade e zoom di 200 ms in entrata e in uscita, anche con `prefers-reduced-motion`.
 
 - Perché non ora: è una lacuna del primitivo condiviso, non della modale. Correggerla in PR3 cambierebbe tutte le Dialog dell'app, fuori perimetro (P6).
-- Dove si traccia: tech-debt "Lacune dei primitivi di movimento" in `brain/tech-debt/crm/sezione-contatti.md`, con Toast, Sheet, il contenuto di `Select` e `DropdownMenu` (anche il selettore della priorità di PR3), il `transform-origin` dei menu e `transition-all`.
+- Dove si traccia: tech-debt "Lacune dei primitivi di movimento" in `brain/tech-debt/crm/sezione-contatti.md`, con Sheet, il contenuto di `Select` e `DropdownMenu` (anche il selettore della priorità di PR3), il `transform-origin` dei menu e `transition-all`. Il Toast ne è uscito il 2026-10-31: ora è di Sonner (voce «Toast: il movimento è quello di Sonner»).
 
 Una review sul movimento non lo segnala come difetto di PR3: lo rimanda a quella voce.
 
@@ -51,7 +51,21 @@ Una review sul movimento non lo segnala come difetto.
 
 ## I toast dentro la Sheet non si annunciano: il guscio ha le sue regioni
 
-**Scoperta il 2026-10-18 (T5.6), regola per chi costruisce altre Sheet.** Con una Sheet (o una Dialog) aperta, Radix rende `aria-hidden` il resto della pagina, e il viewport dei toast sta fuori dalla Sheet: un toast di rifiuto non viene letto da un lettore di schermo.
+**Scoperta il 2026-10-18 (T5.6), riscritta il 2026-10-31 con il passaggio a Sonner ([[specs/crm/toast-sonner/SPEC]]).** Regola per chi costruisce altre Sheet. Con una Sheet (o una Dialog) aperta, Radix rende `aria-hidden` il resto della pagina, e la regione dei toast sta fuori dalla Sheet: un toast non viene letto da un lettore di schermo.
 
-- Cosa si fa: `ContactSheet` ha un nodo `role="status"` (l'avviso della riapertura, visibile) e uno `sr-only` `role="alert"` dove ogni rifiuto si ripete (`useContactSheet().announceAlert`, un nodo nuovo a ogni chiamata). I controlli del dettaglio lo chiamano oltre a `useContactMutationFeedback`, che mostra il toast.
-- I toast di successo della lista sono `type: "background"` (polite, 5000 ms; 8000 ms con [Apri]); quelli di rifiuto restano foreground (assertive, 8000 ms). In headless Radix monta il nodo degli annunci solo dopo un frame disegnato.
+- Cosa si fa: `ContactSheet` ha un nodo `role="status"` (l'avviso della riapertura, visibile, AC36) e uno `sr-only` `role="alert"` dove ogni rifiuto si ripete (`useContactSheet().announceAlert`, un nodo nuovo a ogni chiamata, AC37). I controlli del dettaglio lo chiamano oltre a `useContactMutationFeedback`, che mostra il toast. Il nodo `role="alert"` resta assertivo.
+- Sonner ha una sola regione `aria-live="polite"`, che non distingue i tipi. Il toast di rifiuto non è più assertivo (`foreground`) e i successi della lista non hanno più `type: "background"`: tutti i toast sono annunciati in modo educato (decisione di Omar, 2026-10-31, «Tutti educati»). Con la Sheet aperta l'annuncio assertivo di un rifiuto lo dà solo il nodo `role="alert"` di `ContactSheet`.
+- Durate di prima, che restano: 5000 ms per i successi della lista, 8000 ms con [Apri] e per i rifiuti.
+
+## Toast: il movimento è quello di Sonner
+
+**Decisa il 2026-10-31 ([[specs/crm/toast-sonner/SPEC]], passaggio `design-engineer` del piano, §7). Verificata nel browser lo stesso giorno (T10 del piano).** Eccezione voluta.
+
+- Dove: tutti i toast di `apps/web` (`src/components/ui/sonner.tsx`). Entrata, uscita, pila, apertura col puntatore e apertura con F8 sono di Sonner 2.0.8, senza modifiche.
+- Cosa si muove: `transform`, `opacity` e `height` in 400 ms, `box-shadow` in 200 ms, con la curva `ease` predefinita (Sonner non ne indica una). L'uscita parte con la stessa transizione, ma Sonner toglie il toast dal DOM dopo 200 ms (`TIME_BEFORE_UNMOUNT`): si vede solo la sua prima parte. La pila mostra al massimo 3 toast.
+- Perché è una deroga: i 400 ms superano il budget di ~300 ms del prodotto, e la curva è una parola chiave del browser invece di una curva nostra. Sono voluti (AC9): la resa è quella di Sonner, scelta da Omar.
+- F8: apre la pila con la stessa transizione di 400 ms. È la sola animazione su una scorciatoia da tastiera dell'app, ed è voluta: F8 è un gesto occasionale, la pila aperta dopo F8 è un criterio (AC24), e togliere l'animazione vorrebbe dire cambiare il movimento di Sonner, che AC9 tiene com'è. Con il movimento ridotto la pila si apre senza transizione.
+- Movimento ridotto: con `prefers-reduced-motion` non si muove niente. Lo fa la regola di Sonner, senza CSS nostro (AC10). Fuori dalla regola resta solo l'icona di `toast.promise` (`sonner-fade-in`, 300 ms), che l'app non usa: chi lo usa per primo aggiunge la regola per il movimento ridotto.
+- Di nostro non si anima niente: sui toast non ci sono `transition-*`, `duration-*`, `ease-*`, `animate-*` né classi di `tw-animate-css`. Il contorno `ring` del focus non ha transizione. Sul toast col focus resta però l'anello grigio di Sonner (`box-shadow` `0 0 0 2px`), che compare con la sua transizione di 200 ms sotto il nostro contorno (IMPLEMENTATION-NOTES di toast-sonner → Deviations).
+
+Una review sul movimento non segnala come difetti i 400 ms, la curva `ease`, l'uscita troncata né l'apertura della pila con F8.

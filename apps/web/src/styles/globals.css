@@ -347,3 +347,70 @@
     @apply grid grid-cols-3 items-baseline gap-4;
   }
 }
+
+/* Sonner's toasts in the tokens of the design system. Sonner injects its CSS
+   outside any layer, which beats every layer of Tailwind: this block is
+   outside them too and wins by specificity, starting from the toaster. Only
+   the colours (through Sonner's variables), the font and the focus are ours;
+   radius, shadow, width, icons, stack and motion stay Sonner's */
+[data-sonner-toaster] [data-sonner-toast][data-styled="true"] {
+  --normal-bg: var(--color-card);
+  --normal-border: var(--color-border);
+  --normal-text: var(--color-foreground);
+  font-family: var(--font-sans);
+  font-size: 13px;
+}
+[data-sonner-toaster]
+  [data-sonner-toast][data-styled="true"][data-type="success"] {
+  --normal-bg: var(--color-success-soft);
+  --normal-border: var(--color-success-soft-border);
+  --normal-text: var(--color-success-soft-foreground);
+}
+[data-sonner-toaster]
+  [data-sonner-toast][data-styled="true"][data-type="error"] {
+  --normal-bg: var(--color-destructive-soft);
+  --normal-border: var(--color-destructive-soft-border);
+  --normal-text: var(--color-destructive-soft-foreground);
+}
+[data-sonner-toaster]
+  [data-sonner-toast][data-styled="true"][data-type="info"] {
+  --normal-bg: var(--color-primary-soft);
+  --normal-border: var(--color-primary-soft-border);
+  --normal-text: var(--color-primary-soft-foreground);
+}
+[data-sonner-toaster] [data-sonner-toast][data-styled="true"] [data-title] {
+  font-weight: 600;
+}
+[data-sonner-toaster]
+  [data-sonner-toast][data-styled="true"]
+  [data-description] {
+  color: inherit;
+}
+[data-sonner-toaster] [data-sonner-toast][data-styled="true"] [data-button] {
+  font-family: var(--font-sans);
+  font-size: 13px;
+}
+/* The target of 24 px (Sonner draws it at 20) */
+[data-sonner-toaster]
+  [data-sonner-toast][data-styled="true"]
+  [data-close-button] {
+  width: 24px;
+  height: 24px;
+}
+/* The focus of the app, the ring 2 px at 2 px, in place of Sonner's grey one.
+   The toast keeps Sonner's focus shadow: the color gate takes no shadow but
+   the tokens' */
+[data-sonner-toaster] [data-sonner-toast]:focus-visible {
+  outline: 2px solid var(--color-ring);
+  outline-offset: 2px;
+}
+[data-sonner-toaster]
+  [data-sonner-toast][data-styled="true"]
+  [data-button]:focus-visible,
+[data-sonner-toaster]
+  [data-sonner-toast][data-styled="true"]
+  [data-close-button]:focus-visible {
+  box-shadow: none;
+  outline: 2px solid var(--color-ring);
+  outline-offset: 2px;
+}

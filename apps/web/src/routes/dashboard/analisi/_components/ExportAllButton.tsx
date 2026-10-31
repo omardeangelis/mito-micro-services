@@ -1,7 +1,7 @@
 import { DownloadIcon } from "lucide-react"
 import { type DayRange } from "@mito/domain/analytics/window"
 import { Button } from "@/components/ui/button"
-import { toast } from "@/components/ui/use-toast"
+import { toast } from "sonner"
 import {
   allFileName,
   exportAllSummary,
@@ -73,7 +73,7 @@ export function ExportAllButton({
     const window =
       windowed?.state.kind === "result" ? windowed.state.window : fallback
     const done = await downloadWorkbook(sheets, allFileName(window))
-    if (done && summary.toast !== null) toast({ title: summary.toast })
+    if (done && summary.toast !== null) toast(summary.toast)
   }
 
   return (

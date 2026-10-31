@@ -11,7 +11,7 @@ links:
   - "[[chore/migrazione-frontend-react]]"
   - "[[chore/migrazione-gcp]]"
 created: 2026-10-30
-updated: 2026-10-30
+updated: 2026-10-31
 ---
 
 # Spec: Pagina Analisi in `apps/web`
@@ -137,7 +137,7 @@ La mappa del flusso è [[specs/crm/pagina-analisi/FLOW]].
 - **AC7.** «Contatti con esito» porta il badge «Adesso», con un tooltip che spiega che non segue la finestra.
   - Il suo file ha nel nome solo la data di oggi (`mito_contatti-con-esito_2026-10-30.csv`).
   - La sua intestazione ha «Adesso» al posto di finestra, confronto e raggruppamento.
-- **AC8.** Cambi di finestra, di grafico e di stato sono istantanei: i grafici non si animano, e il passaggio dallo scheletro al grafico non ha transizioni. Le transizioni dei componenti del design system (menu, calendario, toast) restano come sono.
+- **AC8.** Cambi di finestra, di grafico e di stato sono istantanei: i grafici non si animano, e il passaggio dallo scheletro al grafico non ha transizioni. Le transizioni dei componenti del design system (menu, calendario, toast) restano come sono. _(Nota 2026-10-31: i toast ora sono di Sonner, e le loro transizioni sono le sue; vedi [[specs/crm/toast-sonner/SPEC]].)_
 
 ### Finestra di dati
 

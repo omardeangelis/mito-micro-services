@@ -4,8 +4,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { useToast } from "@/components/ui/use-toast"
-import { Toast as ToastPrimitives } from "radix-ui"
+import { toast } from "sonner"
 import { type PropsWithChildren } from "react"
 import { Button } from "@/components/ui/button"
 import { MoreHorizontal } from "lucide-react"
@@ -14,7 +13,6 @@ export const DropDownCilpBoard: React.FC<{ label: string; value: string }> = ({
   label,
   value,
 }) => {
-  const { toast } = useToast()
   return (
     <DropdownMenuItem
       className="cursor-pointer"
@@ -23,22 +21,20 @@ export const DropDownCilpBoard: React.FC<{ label: string; value: string }> = ({
         navigator.clipboard
           .writeText(value)
           .then(() => {
-            toast({
-              title: "Copiato con successo",
-              variant: "success",
-              closeManually: true,
-              action: (
-                <ToastPrimitives.Action altText="Copiato con successo">
-                  Chiudi
-                </ToastPrimitives.Action>
-              ),
+            // No close button: the «Chiudi» action closes the toast by itself
+            toast.success("Copiato con successo", {
+              closeButton: false,
+              action: {
+                label: "Chiudi",
+                onClick: () => {
+                  // Sonner closes the toast after its action: nothing to do here
+                },
+              },
             })
           })
           .catch(() => {
-            toast({
-              title: "Errore",
+            toast.error("Errore", {
               description: "Errore nel copiare l'ID",
-              variant: "destructive",
             })
           })
       }}

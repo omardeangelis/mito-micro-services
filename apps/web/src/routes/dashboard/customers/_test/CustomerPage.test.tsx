@@ -15,6 +15,7 @@ import {
   operatorWithRole,
   taskOf,
 } from "@/test/customers"
+import { expectToastLasts } from "@/test/toast"
 import { Component as CustomerPage } from "../CustomerPage"
 import { renderCustomers } from "./page"
 
@@ -373,6 +374,8 @@ describe("CustomerPage, l'anagrafica", () => {
     expect(
       await screen.findByText("Cliente aggiornato con successo")
     ).toBeTruthy()
+    // AC13: the toast of the saved form lasts 1 s
+    await expectToastLasts("Cliente aggiornato con successo", 1000)
     expect(backend.state.updated).toHaveLength(1)
     const [{ id, profile }] = backend.state.updated as [
       (typeof backend.state.updated)[number],

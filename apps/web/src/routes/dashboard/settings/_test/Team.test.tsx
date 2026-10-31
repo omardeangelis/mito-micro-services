@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest"
 import { LastAdmin, OperatorNotFound } from "@mito/contract/errors"
 import { ada } from "@/test/api"
 import { fakeProfile, operatorRow } from "@/test/profile"
+import { expectToastLasts } from "@/test/toast"
 import { renderSettings } from "./page"
 
 // Le pagine Team e del singolo membro: la lista, il ruolo (AC20a), il
@@ -144,6 +145,17 @@ describe("la pagina del membro", () => {
       ).toBeInTheDocument()
     )
     expect(save()).toBeDisabled()
+  })
+
+  it("«Ruolo aggiornato» dura 2 s (AC13)", { timeout: 10_000 }, async () => {
+    const user = userEvent.setup()
+    await openMember(2)
+
+    await pickRole(user, "Admin")
+    await user.click(save())
+
+    await screen.findByText("Ruolo aggiornato")
+    await expectToastLasts("Ruolo aggiornato", 2000)
   })
 
   it.each([

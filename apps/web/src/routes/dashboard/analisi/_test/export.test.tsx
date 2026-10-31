@@ -21,7 +21,11 @@ describe("«Dati del grafico» (AC2, AC29, AC35)", () => {
     const copied = await navigator.clipboard.readText()
     expect(copied.startsWith("Grafico\tFinanziato per sede")).toBe(true)
     expect(copied).toContain("Sede\tPratiche\tFinanziato (€)\tQuota (%)")
-    expect(await screen.findByText("Tabella copiata")).toBeInTheDocument()
+    expect(
+      (await screen.findByText("Tabella copiata")).closest(
+        "[data-sonner-toast]"
+      )
+    ).toBeInTheDocument()
   })
 
   it("the table is a region named «Dati del grafico», reachable with Tab", async () => {

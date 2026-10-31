@@ -1,5 +1,5 @@
 import { MutationCache, QueryCache, QueryClient } from "@tanstack/react-query"
-import { toast } from "@/components/ui/use-toast"
+import { toast } from "sonner"
 import { describeApiError } from "./errors"
 import { type ApiFailure, ApiUnavailable } from "./runtime"
 
@@ -12,7 +12,7 @@ declare module "@tanstack/react-query" {
 
 /** The toast of a failed call, with its text */
 export const showApiError = (error: ApiFailure) => {
-  toast({ variant: "destructive", title: describeApiError(error) })
+  toast.error(describeApiError(error))
 }
 
 /**

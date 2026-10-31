@@ -17,7 +17,7 @@ const AREAS = {
   T7: "components/ui/{checkbox,radio-group,switch}.tsx",
   T8: "components/ui/{popover,dropdown-menu,context-menu,command,dialog,sheet,tooltip,skeleton,calendar,accordion,card}.tsx components/custom/date-picker/",
   T9: "components/ui/{table,tabs,toggle,toggle-group,pagination}.tsx components/custom/table/",
-  T10: "components/ui/{alert,toast,toaster,avatar}.tsx",
+  T10: "components/ui/{alert,sonner,avatar}.tsx",
   T11: "components/layout/ routes/dashboard/DashboardShell.tsx",
   T12: "components/custom/badge/priority.tsx",
   T13: "components/custom/badge/TaskStatusBadge.tsx components/custom/contact/",

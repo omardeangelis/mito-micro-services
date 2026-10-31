@@ -9,7 +9,7 @@ links:
   - "[[domains/crm/concepts/stato-del-contatto]]"
   - "[[domains/crm/concepts/preferenze-di-layout]]"
 created: 2026-10-29
-updated: 2026-10-29
+updated: 2026-10-31
 ---
 
 # Spec: Design system di `apps/web` con la palette Indaco notte
@@ -57,14 +57,14 @@ I valori sono nelle appendici A, B e C. La spec cambia l'aspetto delle pagine, n
 - **L'app Next.js:** verrà spenta. I suoi stili, e le classi che `@mito/domain` le restituisce, restano come sono.
 - **Un tema scuro:** l'app ha solo il tema chiaro, senza selettore.
 - **Il layout sotto i 768 px:** va in fase 6 (R5).
-- **Cambi di contenuto (R6):**
+- **Cambi di contenuto (R6):** _(Nota 2026-10-31: per i toast non vale più, le icone per tipo sono un elemento nuovo; vedi [[specs/crm/toast-sonner/SPEC]].)_
   - pagine, colonne, azioni, testi e ordine degli elementi restano quelli di oggi;
   - restano anche le etichette inglesi della barra laterale ("Home", "Customers", "Profile");
   - niente elementi nuovi del prototipo che l'app non ha: barra della selezione massiva, barra in alto con il percorso, blocco utente e contatori nella barra laterale, card dei KPI.
 - **Il logo e il nome:** `/deutsche.png` e "Mito SRL" restano.
-- **Animazioni nuove:** restano le transizioni dei componenti di oggi.
+- **Animazioni nuove:** restano le transizioni dei componenti di oggi. _(Nota 2026-10-31: per i toast non vale più, l'animazione è quella di Sonner; vedi [[specs/crm/toast-sonner/SPEC]].)_
 - **Gli altri preset del prototipo:** Grafite, Ardesia, Indaco, Petrolio, Ametista e le altre iterazioni su Indaco.
-- **I componenti:** restano gli shadcn di F2, cambia solo il loro aspetto.
+- **I componenti:** restano gli shadcn di F2, cambia solo il loro aspetto. _(Nota 2026-10-31: per i toast non vale più, il componente è Sonner; vedi [[specs/crm/toast-sonner/SPEC]].)_
 
 ---
 
@@ -164,7 +164,7 @@ I valori sono nelle appendici A, B e C. La spec cambia l'aspetto delle pagine, n
 - **AC19.** Superfici sollevate:
   - popover, menu, select, dialog, sheet e toast hanno bordo e `shadow-pop`;
   - popover, menu, select, dialog e sheet sono su `card` con bordo `border`; il fondo e il bordo dei toast sono quelli di AC18;
-  - popover, dialog e toast hanno raggio 12 px;
+  - popover, dialog e toast hanno raggio 12 px; _(Nota 2026-10-31: per i toast non vale più, né il raggio di 12 px né `shadow-pop` della prima riga: raggio 8 px e ombra di Sonner, vedi [[specs/crm/toast-sonner/SPEC]], AC7)_;
   - dietro dialog e sheet c'è `overlay`;
   - il tooltip è su `tooltip` con testo `tooltip-foreground`;
   - lo skeleton è `muted`.
@@ -185,15 +185,17 @@ I valori sono nelle appendici A, B e C. La spec cambia l'aspetto delle pagine, n
 
 ### Parità
 
-- **AC23.** Ogni pagina di `apps/web` mostra gli stessi elementi, testi, colonne e azioni di prima.
-- **AC24.** I test di `apps/web` restano verdi con le stesse asserzioni, tranne quelle che leggono un colore (classe, attributo o stile), l'icona della priorità o le classi del focus. Possono cambiare solo i file della lista. Un file nuovo si aggiunge qui con il motivo, e solo se la sua asserzione rientra in una di queste tre categorie:
+- **AC23.** Ogni pagina di `apps/web` mostra gli stessi elementi, testi, colonne e azioni di prima. _(Nota 2026-10-31: per i toast non vale più, hanno le icone di Sonner; vedi [[specs/crm/toast-sonner/SPEC]].)_
+- **AC24.** I test di `apps/web` restano verdi con le stesse asserzioni, tranne quelle che leggono un colore (classe, attributo o stile), l'icona della priorità o le classi del focus. Possono cambiare solo i file della lista. Un file nuovo si aggiunge qui con il motivo, e solo se la sua asserzione rientra in una di queste categorie: un colore, l'icona della priorità, le classi del focus o _(Nota 2026-10-31, [[specs/crm/toast-sonner/SPEC]])_ una quarta, le asserzioni che leggono la struttura del toast di Radix. L'eccezione di Omar del 2026-10-29 vale anche per questi cambi:
   - `components/layout/_test/DashboardLayout.test.tsx`;
   - `components/custom/contact/_test/ReadOnlyReason.test.tsx`;
   - `components/custom/contact/_test/ContactStateSelect.test.tsx` (`focus:ring-inset`);
   - `routes/dashboard/contatti/_test/ContactsTable.test.tsx` (frecce della priorità);
   - `routes/dashboard/home/_components/_test/cards.test.tsx` (esadecimali di `CircleCard` e delle fette);
   - `components/charts/_test/charts.test.tsx` (palette di `chartColor`);
-  - `routes/dashboard/pratiche/_test/PracticePage.test.tsx` (trova le sezioni con `.bg-neutral-50`).
+  - `routes/dashboard/pratiche/_test/PracticePage.test.tsx` (trova le sezioni con `.bg-neutral-50`);
+  - _(aggiunti il 2026-10-31 da [[specs/crm/toast-sonner/SPEC]], quarta categoria: struttura del toast di Radix)_ `routes/dashboard/import/_test/ImportStatus.test.tsx`, `routes/dev/_test/UiShowcase.test.tsx`, `components/ui/_test/feedback.test.tsx`, `components/ui/_test/controls.test.tsx`, `api/_test/analisi.test.tsx`;
+  - _(2026-10-31)_ `components/ui/_test/toast.test.tsx`: cancellato, il Toast di Radix non c'è più (le prove di Sonner stanno in `sonner.test.tsx` e `overlay-toast.test.tsx`).
 - **AC25.** A 1024 × 768 e a 1280 × 800, nessuna pagina sotto `/dashboard` ha uno scroll orizzontale della finestra che prima non aveva. Le tabelle larghe scorrono nel loro contenitore come oggi.
 
 ---
@@ -263,7 +265,7 @@ I valori sono nelle appendici A, B e C. La spec cambia l'aspetto delle pagine, n
 | Fette della ciambella nell'ordine blu, arancio, indaco, verde acqua, magenta, ambra | Così due colori simili non stanno mai vicini sull'anello, nemmeno fra l'ultima fetta e la prima |
 | Titoli e testi mappati sulla misura di oggi (appendice C) | Titoli allo stesso livello oggi restano allo stesso livello, come i tre `h2` della Home |
 | Le soglie di `CircleCard` restano, sui punti `green`, `blue`, `amber` e `red` | AC22 di [[specs/crm/analytics-effect/SPEC]] |
-| Toast sui token `*-soft`, non bianchi con l'icona colorata come nel prototipo | I toast di oggi non hanno un'icona, e aggiungerla cambierebbe il contenuto |
+| Toast sui token `*-soft`, non bianchi con l'icona colorata come nel prototipo _(Nota 2026-10-31: non vale più, i toast hanno l'icona di Sonner nel colore `-soft-foreground` del tipo; vedi [[specs/crm/toast-sonner/SPEC]], AC5)_ | I toast di oggi non hanno un'icona, e aggiungerla cambierebbe il contenuto |
 | Delta della Home come nel prototipo: `success-soft`, `destructive-soft` e `muted` | È lo stile del preset |
 | La riga selezionata vince sul colore della blacklist | La selezione è l'azione in corso; il badge della riga mostra comunque lo stato della blacklist |
 | Geist al posto di Inter, densità compatta | Sono le scelte del preset: più righe di coda nella stessa schermata |

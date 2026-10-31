@@ -10,6 +10,7 @@ import {
   fakeContacts,
   superseded,
 } from "@/test/contacts"
+import { expectToastLasts, sleep } from "@/test/toast"
 import { currentHref, findTable, renderContacts } from "./page"
 
 // The state cell of a row, as the tests of `ContactRowState` of the Next.js
@@ -212,6 +213,31 @@ describe("il cambio di stato nella riga (AC9, AC31, A9)", () => {
     )
   })
 
+  it("riapertura: [Apri] con Ctrl apre una scheda nuova e lascia il toast (AC27)", async () => {
+    const { user, backend } = await setup(
+      contactRow({ state: "non interessato" })
+    )
+    backend.state.changeAnswer = () => ({ saved: true, reopenedAs: 202 })
+
+    await choose(user, "chiamare")
+
+    const text = await screen.findByText("Rossi Mario: chiamare")
+    const open = screen.getByRole("link", { name: "Apri" })
+    await pointerReaches(open)
+    await user.keyboard("{Control>}")
+    await user.click(open)
+    await user.keyboard("{/Control}")
+    // Sonner closes a toast a frame later, and keeps it 200 ms more: a toast
+    // still there at once proves nothing (D13)
+    await sleep(250)
+
+    expect(screen.queryByText("dettaglio")).toBeNull()
+    expect(text.closest("[data-sonner-toast]")).toHaveAttribute(
+      "data-removed",
+      "false"
+    )
+  })
+
   it("riselezionare lo stato attuale non è possibile: non c'è fra le opzioni (AC40)", async () => {
     const { user, backend } = await setup()
 
@@ -322,6 +348,37 @@ describe("quando il server rifiuta (AC49, AC52)", () => {
       ).toBeNull()
     )
   })
+
+  it(
+    "il toast del contatto sostituito dura 8 s (AC13)",
+    { timeout: 20_000 },
+    async () => {
+      const { user, backend } = await setup()
+      backend.state.changeAnswer = () => ({ rejected: superseded(303) })
+
+      await choose(user, "app.to")
+
+      const text = "Questo contatto è stato sostituito da uno più recente"
+      await screen.findByText(text)
+      await expectToastLasts(text, 8000)
+    }
+  )
+
+  it(
+    "riapertura: il toast con [Apri] dura 8 s (AC13)",
+    { timeout: 20_000 },
+    async () => {
+      const { user, backend } = await setup(
+        contactRow({ state: "non interessato" })
+      )
+      backend.state.changeAnswer = () => ({ saved: true, reopenedAs: 202 })
+
+      await choose(user, "chiamare")
+
+      await screen.findByText("Rossi Mario: chiamare")
+      await expectToastLasts("Rossi Mario: chiamare", 8000)
+    }
+  )
 
   it("con il backend che non risponde il valore torna indietro e dice 'Modifica non salvata, riprova' (AC39)", async () => {
     const { user, backend } = await setup()

@@ -1,6 +1,6 @@
 import { Fragment } from "react"
 import { type DayRange } from "@mito/domain/analytics/window"
-import { toast } from "@/components/ui/use-toast"
+import { toast } from "sonner"
 import { useCopyToClipboard } from "@/lib/hooks/useCopyToClipboard"
 import {
   downloadBlob,
@@ -124,11 +124,10 @@ export function DataSection({
 
   const onCopy = writeFile(async ({ header, table }) => {
     if (await copy(toTsv(header, table)))
-      toast({
-        title: "Tabella copiata",
+      toast("Tabella copiata", {
         description: "Pronta da incollare in un foglio.",
       })
-    else toast({ title: "Copia non riuscita", variant: "destructive" })
+    else toast.error("Copia non riuscita")
   })
 
   return (

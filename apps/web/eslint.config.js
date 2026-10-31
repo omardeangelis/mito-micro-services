@@ -36,6 +36,40 @@ const transportImports = {
   message: "Call the backend through the hooks of src/api",
 }
 
+// The toasts are Sonner's (spec toast-sonner, D12): the Toast of Radix and
+// the modules that wrapped it don't come back
+const toastImports = {
+  paths: [
+    {
+      name: "radix-ui",
+      importNames: ["Toast"],
+      message: 'The toasts are sonner\'s: import { toast } from "sonner"',
+    },
+    {
+      // The package of the Next.js app, hoisted to the root
+      name: "@radix-ui/react-toast",
+      message: 'The toasts are sonner\'s: import { toast } from "sonner"',
+    },
+  ],
+  patterns: [
+    {
+      group: [
+        "**/ui/toast",
+        "**/ui/toaster",
+        "**/ui/use-toast",
+        "./toast",
+        "./toaster",
+        "./use-toast",
+        "../toast",
+        "../toaster",
+        "../use-toast",
+        "@radix-ui/react-toast/*",
+      ],
+      message: 'The toasts are sonner\'s: import { toast } from "sonner"',
+    },
+  ],
+}
+
 // The rules of the root .eslintrc.cjs that apply to a React app, without
 // eslint-config-next (1.a.1 of brain/chore/migrazione-frontend-react.md)
 export default tseslint.config(
@@ -87,7 +121,15 @@ export default tseslint.config(
       ],
       "no-restricted-imports": [
         "error",
-        { patterns: [...appImports, dbImports, transportImports] },
+        {
+          paths: toastImports.paths,
+          patterns: [
+            ...appImports,
+            dbImports,
+            transportImports,
+            ...toastImports.patterns,
+          ],
+        },
       ],
       // The color of a product is its tone (spec design-system-web, D5). The
       // name is banned wherever it appears, so an alias, a namespace, a
@@ -108,14 +150,23 @@ export default tseslint.config(
     rules: {
       "no-restricted-imports": [
         "error",
-        { patterns: [...appImports, dbImports] },
+        {
+          paths: toastImports.paths,
+          patterns: [...appImports, dbImports, ...toastImports.patterns],
+        },
       ],
     },
   },
   {
     files: ["**/_test/**"],
     rules: {
-      "no-restricted-imports": ["error", { patterns: appImports }],
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: toastImports.paths,
+          patterns: [...appImports, ...toastImports.patterns],
+        },
+      ],
     },
   }
 )

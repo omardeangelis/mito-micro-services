@@ -28,7 +28,7 @@ import { currencyFormatter, formatDateAsDMY } from "@mito/client/format"
 import { PracticeState } from "@mito/contract/customer"
 import { type Practice } from "@mito/contract/pratiche"
 import { InputWithCopy } from "@/components/custom/input/InputWithCopy"
-import { useToast } from "@/components/ui/use-toast"
+import { toast } from "sonner"
 import { useUpdatePracticeState } from "@/api/pratiche"
 import { useUserPreferenceContext } from "@/store/context/useUserPreferenceContext"
 
@@ -77,7 +77,6 @@ export function PracticeGeneralForm({
   // FIX: Usa dirtyFields invece di isDirty per maggiore affidabilità
   const hasChanged = Object.keys(form.formState.dirtyFields).length > 0
 
-  const { toast } = useToast()
   const updateState = useUpdatePracticeState()
   const pending = updateState.isPending
   // As the server action: then the practice is read again, and its new
@@ -89,11 +88,7 @@ export function PracticeGeneralForm({
       // Il toast dice il motivo
       return
     }
-    toast({
-      title: "Pratica aggiornata con successo",
-      variant: "success",
-      duration: 1000,
-    })
+    toast.success("Pratica aggiornata con successo", { duration: 1000 })
   })
 
   return (

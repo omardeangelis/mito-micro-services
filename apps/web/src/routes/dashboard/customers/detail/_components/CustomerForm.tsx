@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/select"
 import { DatePickerFormItem } from "@/components/custom/date-picker"
 import { InputWithCopy } from "@/components/custom/input/InputWithCopy"
-import { useToast } from "@/components/ui/use-toast"
+import { toast } from "sonner"
 import { useAssignToYourself, useUpdateCustomer } from "@/api/customer"
 import { useRefreshAfterSave } from "@/components/custom/contact/useRefreshAfterSave"
 import { focusIsLost } from "@/components/custom/contact/focus"
@@ -149,7 +149,6 @@ export const CustomerForm = (props: Props) => {
     [currentFormValues]
   )
 
-  const { toast } = useToast()
   const updateCustomer = useUpdateCustomer()
   const pending = updateCustomer.isPending
 
@@ -172,11 +171,7 @@ export const CustomerForm = (props: Props) => {
       // Il toast dice il motivo
       return
     }
-    toast({
-      title: "Cliente aggiornato con successo",
-      variant: "success",
-      duration: 1000,
-    })
+    toast.success("Cliente aggiornato con successo", { duration: 1000 })
     // Questo assicura che dopo un salvataggio, i nuovi valori diventino i
     // valori iniziali
     const currentValues = form.getValues()
