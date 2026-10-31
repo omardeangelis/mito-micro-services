@@ -11,7 +11,7 @@ description: Ingest a spec folder into the brain domain layer by extracting and 
 - **Entrypoint type:** public entrypoint
 - **Upstream:** reviewed or implemented spec folder, or code changes that may require `brain/` updates
 - **Delegates to:** internal flow-writing phase, then internal concept-writing phase
-- **Downstream:** synced brain indexes, ingest metadata, brain log, and any required updates to the tech-debt store (`<techDebt>/`)
+- **Downstream:** synced brain indexes, ingest metadata, brain log, any required updates to the tech-debt store (`<techDebt>/`), and the status of the feature-improvement entries an ingested spec took up (`brain/feature-improvement/`)
 - **Entry conditions:** resolved spec folder for ingest work, or a concrete docs-affecting code change
 - **Stop conditions:** ingest bookkeeping complete, required docs updates complete, failures reported honestly
 
@@ -58,7 +58,8 @@ Verify the spec has `domain:` in frontmatter. Error if absent.
 Read in order:
 1. `SPEC.md` — mandatory. If missing, stop and report.
 2. `FLOW.md` — optional. The flow map `create-spec` wrote from the `ux-advisor` review of an approved prototype. When present, it is the primary, pre-structured source for flow extraction (Step 3); prefer it over re-deriving flows from acceptance criteria, and reconcile it with `IMPLEMENTATION-NOTES.md` deviations where they conflict. Its requirements cite `SPEC.md` acceptance criteria; the spec stays the source of truth.
-3. `IMPLEMENTATION-NOTES.md` — optional. If present, flows and concepts become `status: implemented`. If absent, status is `proposed`.
+3. `STATES.md` — optional. The state matrix `create-spec` wrote from a state sweep the user approved on the prototype. When present, use it with `FLOW.md` → States as the list of branch and recovery states for the flow page: each row cites its criterion. Leave its **Reach it** cells out of the flow page: they are test plumbing, not user-observable flow.
+4. `IMPLEMENTATION-NOTES.md` — optional. If present, flows and concepts become `status: implemented`. If absent, status is `proposed`.
    - Check its frontmatter. If it lacks frontmatter (no YAML block), add it now before continuing:
      ```yaml
      ---
@@ -74,7 +75,7 @@ Read in order:
      ---
      ```
 
-4. `REPORT.md` — optional. The spec's review in its review folder: `brain/specs/<domain>/<spec>/REPORT.md` under `review.location: spec-folder`, `<reviews>/<domain>/<spec>/REPORT.md` under `review-tree`. When present with `ingested: false`, it is a supplementary source like `IMPLEMENTATION-NOTES.md`: its confirmed durable findings go to the tech-debt store and its backlink is added to the pages written below. Do **not** turn review findings into flow or concept pages. Process it per `## Secondary: Review Ingest` (Steps 7–8 mark and log it).
+5. `REPORT.md` — optional. The spec's review in its review folder: `brain/specs/<domain>/<spec>/REPORT.md` under `review.location: spec-folder`, `<reviews>/<domain>/<spec>/REPORT.md` under `review-tree`. When present with `ingested: false`, it is a supplementary source like `IMPLEMENTATION-NOTES.md`: its confirmed durable findings go to the tech-debt store and its backlink is added to the pages written below. Do **not** turn review findings into flow or concept pages. Process it per `## Secondary: Review Ingest` (Steps 7–8 mark and log it).
 
 Verify `brain/domains/<domain>/` exists with a `<domain>.md` index file. If the domain is missing, scaffold it first: create `brain/domains/<domain>/` with a `<domain>.md` domain map and a `<domain>-contract.md` (sections **Owns**, **Does Not Own**, **Invariants**), plus empty `concepts/`, `flows/`, and `decisions/` subfolders. Then continue.
 
@@ -148,6 +149,8 @@ Also populate its `links` array with every flow and concept page written in Step
 
 If a sibling `REPORT.md` was found in Step 2 with `ingested: false`, process it now per [references/review-ingest.md](references/review-ingest.md): fold its durable findings into `<techDebt>/<domain>/<spec>.md`, backlink `[[<folder>/REPORT]]` into the flow/concept pages it bears on (and into the IMPLEMENTATION-NOTES `links`), then set its frontmatter `ingested: true` / `last_ingested: YYYY-MM-DD`. Never set `ingested: true` on a review report any other way.
 
+**Feature improvements.** When `IMPLEMENTATION-NOTES.md` is present, set each `brain/feature-improvement/` entry whose **Spec** line links this spec from `planned` to `done`, and bump the page's `updated`. Never add an entry here: an improvement candidate in `IMPLEMENTATION-NOTES.md` → Out of Scope Observations that has no outcome yet is proposed to the user (`brain/AGENTS.md` → Relationship to the feature-improvement store) and recorded only when they accept it.
+
 ### Step 8: Log entry
 
 Append to `brain/log.md` (cap at 50 entries; drop oldest when over):
@@ -199,6 +202,7 @@ Full contract: [references/review-ingest.md](references/review-ingest.md). In sh
 - Ingest an `IMPLEMENTATION-NOTES.md` with `ingested: true` — treat it as already reflected in domain pages
 - Ingest a `REPORT.md` with `ingested: true` — treat its findings as already folded into the tech-debt store
 - Synthesize review findings into flow or concept pages — reviews fold into the tech-debt store and backlinks only
+- Write a `brain/feature-improvement/` entry the user has not accepted — propose it instead
 - Proceed to concept writing when a flow write has failed
 - Document speculative or future-state features as current truth
 - Put agent task instructions inside human-facing docs pages

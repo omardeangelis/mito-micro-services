@@ -19,6 +19,7 @@ Tell the user:
 - the overall verdict (`SHIP` / `DO NOT SHIP`) and the impact level
 - the count of BLOCKER / MAJOR findings, and the single strongest objection if `DO NOT SHIP`
 - for `critical` reviews: that a human checklist is required before proceeding, and where it is
+- the feature-improvement candidates, each explained per `brain/AGENTS.md` → Relationship to the feature-improvement store, with one record-or-skip question per candidate. Record the accepted ones in `brain/feature-improvement/<domain>/<spec>.md` (case A: `brain/feature-improvement/<domain>/_unscoped.md`, with the report's domain) and fill each candidate's Outcome in `REPORT.md`
 - the suggested next step:
   - `DO NOT SHIP` → remediate the BLOCKER/MAJOR findings (this skill does not fix them), then re-run the review
   - `SHIP` (case B) → run `docs-maintenance` to ingest the spec and this review (fold durable findings into `<techDebt>/`)
@@ -31,4 +32,5 @@ Then stop and wait.
 - Fix, edit, or implement the reviewed code from this skill.
 - Set `ingested: true` on the report — that is `docs-maintenance`'s job.
 - Write domain `flows/`/`concepts/` or `<techDebt>/` pages — those are downstream of ingest.
+- Write a `brain/feature-improvement/` entry the user did not accept.
 - Continue into remediation or re-review without the user's go-ahead.

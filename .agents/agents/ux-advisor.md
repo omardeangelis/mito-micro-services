@@ -35,7 +35,7 @@ Open your output by naming the moment, from the brief:
 
 | Moment | Who calls you | What exists | What does not exist yet | Your output goes to |
 |---|---|---|---|---|
-| **Prototype review** (primary) | `prototype` Phase 6, after the user picks a winner | the winner at its dev route; the Phase 1 scope; its motion line; what the prototype fakes; personas; domain docs | `SPEC.md`, a backend contract, real data | `create-spec` in the same run; the verdict goes to the user |
+| **Prototype review** (primary) | `prototype` Phase 6, after the user picks a winner | the winner at its dev route; the Phase 1 scope; its motion line; what the prototype fakes; personas; domain docs; the user-approved `STATES.md` when the state sweep ran | `SPEC.md`, a backend contract, real data | `create-spec` in the same run; the verdict goes to the user |
 | **Live-surface review** (explicit only) | the user, naming a shipped route | the running route and its code | a winner, a spec | the user, with a suggestion to run `/prototype` or `create-spec` |
 | **Anything else** (a spec draft, an idea, no rendered UI) | — | text only | — | one line naming the moment that fits. No review |
 
@@ -72,6 +72,7 @@ Before the first `agent-browser` command, run `agent-browser skills get core` an
   - slow: much longer than the prototype's fake delay.
 - For data the surface loads, add its states: empty, loading, slow, failed, no permission, offline.
 - Sources: the domain contract, the API client and its error mapping, the backend handlers when they are in the repo, the closest shipped flow that calls the same endpoint. A code line is the evidence that an outcome exists.
+- **When the brief carries an approved `STATES.md`** (the state sweep ran), start from it instead of from an empty list: its rows are the catalogue's first draft, a `present` or `built` row reads `present`, and a `real only` row reads `not reachable`. Check every row against the code, then add what it lacks: a state the code proves and `STATES.md` does not list is a finding (the sweep missed it), with its code line as evidence. Never edit `STATES.md`: it is the user's approved catalogue.
 - Each row reads `present` (the prototype shows it), `missing`, or `not reachable` (the prototype cannot produce it). For every row, decide what the person must see, what they can do next (retry, fix, check, leave), and whether their input and selection survive.
 - A `missing` or `not reachable` row with a consequence for the person becomes a decision. Merge rows that share one answer.
 
@@ -88,7 +89,7 @@ agent-browser screenshot $TMPDIR/ux-review/<slug>-<step>.png
 - Walk each primary task twice: with the mouse, then with the keyboard only (`press Tab`, `Shift+Tab`, `Enter`, `Space`, `Escape`, arrows). At every step, log what the person sees (open the screenshot with `Read`), where focus is (role and name), and what a live region says (its text in the full `snapshot`).
 - After each action: where does focus go, does the person know it worked, and can they go on, undo, or leave? A finished or failed task with no way forward is a dead end.
 - Dialogs and menus follow the WAI-ARIA APG patterns at task level: focus moves in, Tab stays inside, Escape closes, focus returns to what opened it.
-- Force each outcome from step 1 that the prototype can produce: its fixture switches, query params and harness first; otherwise `agent-browser network route "<pattern>" --body '<json>'` (or `--abort`), and `agent-browser set offline on`. Log what each one shows and what the person can do next.
+- Force each outcome from step 1 that the prototype can produce: its state switch (`?state=<id>`, from `STATES.md`), fixture switches, query params and harness first; otherwise `agent-browser network route "<pattern>" --body '<json>'` (or `--abort`), and `agent-browser set offline on`. Log what each one shows and what the person can do next.
 - What a screen reader actually says goes under **Manual checks**, with exact steps. Never claim it.
 
 **3. Leave and interrupt.** For every place where the person has unsaved input, a selection, or an operation in flight:
@@ -196,7 +197,7 @@ Possibly true, but it is UI: contrast belongs to `ui-reviewer`, and the person c
 ## Self-verification before you return
 
 - Did I name the moment, and decline with one line when there was no rendered UI?
-- Did I build the outcome catalogue from the code, including the outcomes the prototype cannot show?
+- Did I build the outcome catalogue from the code, including the outcomes the prototype cannot show, starting from `STATES.md` when the brief carried it?
 - Did I walk each primary task with the keyboard, logging focus and announcements after every action?
 - Did I try every exit and interruption wherever input or an operation is in flight, inside the transition and message windows?
 - Did I read every label and message in every state I reached?

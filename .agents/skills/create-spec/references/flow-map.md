@@ -1,6 +1,6 @@
-# The prototype reviews and the `FLOW.md` map
+# The prototype reviews, the `FLOW.md` map and the `STATES.md` matrix
 
-Use this reference when the spec starts from an approved `prototype` winner that `ux-advisor`, `ui-reviewer`, or both reviewed. `prototype` Phase 6 runs them in parallel on the winner. One owner per concern:
+Use this reference when the spec starts from an approved `prototype` winner that `ux-advisor`, `ui-reviewer`, or both reviewed, or whose states the user approved in the state sweep (`prototype/STATE-SWEEP.md`). `prototype` Phase 6 runs them in parallel on the winner. One owner per concern:
 
 > UX → `ux-advisor` · static UI of the rendered page → `ui-reviewer` (bar and probes: the `ui-review` skill) · motion and interaction craft → `design-engineer` (`design-engineering`)
 
@@ -13,8 +13,10 @@ Two rules hold throughout:
 
 ## Where the reviews come from
 
-- **In context:** `prototype` Phase 6 opened this run right after the reviews.
-- **`UX-REVIEW.md` and `UI-REVIEW.md`:** the user stopped between the reviews and the spec, so `prototype` saved each one next to the surviving variant (`UI-REVIEW.md` next to `UX-REVIEW.md`). Read them from the cited prototype path. They are deleted with the prototype surface.
+- **In context:** `prototype` Phase 6 opened this run right after the reviews and, when the iterate loop changed the winner, after the user approved it at the approval gate.
+- **`UX-REVIEW.md` and `UI-REVIEW.md`:** the user stopped between the reviews and the spec, so `prototype` saved each one next to the surviving variant (`UI-REVIEW.md` next to `UX-REVIEW.md`). Read them from the cited prototype path. When the iterate loop applied changes, `CHANGES.md` sits beside them: the applied changes with their exact values, and whether the user approved the changed winner. They are all deleted with the prototype surface.
+
+**A changed winner needs the user's approval before the spec.** When the iterate loop applied changes and the user has not approved them (no approval in this run, or `CHANGES.md` says `approved: no`), show the winner's route and each change with its exact values before → after, and wait. Approved changes go to the Decision Log; a change the user reverts goes back to its review as a decision, and stays out of the Decision Log.
 
 Either review can be missing: `prototype` skips an agent that is not installed. Fold in the one you have.
 
@@ -27,7 +29,7 @@ Number the acceptance criteria (`AC1`, `AC2`, …) so `FLOW.md` can cite them.
 | Review section | Goes to |
 |---|---|
 | Verdict | one line in Context: the verdict and the review date |
-| Prototype changes (applied in the iterate loop) | Decision Log, each with its exact values: decisions already taken, like the winner's own |
+| Prototype changes (applied in the iterate loop and approved by the user) | Decision Log, each with its exact values: decisions already taken, like the winner's own |
 | Decisions | one acceptance criterion each, from the review's criterion text. P0 and P1 stay unless the user overrules them; a P2 the user drops goes to Non-Goals |
 | Task accessibility fixes | **one** criterion that lists them, one line each with its location |
 | Outcomes and states | each `missing` or `not reachable` row with a consequence is already a decision. A row whose outcome is a business fact nobody has decided becomes an open question |
@@ -49,7 +51,7 @@ Do not copy anything else from the review into the spec: the evidence stays in t
 | Mechanical fixes | **one** criterion that lists them, one line each with its location |
 | Not verified on device | Constraints ("verified manually on device: …"), each with its manual check, so the plan schedules them |
 | Open questions | Open Questions, each row with its default |
-| Prototype changes (applied in the iterate loop) | Decision Log, each with its exact values |
+| Prototype changes (applied in the iterate loop and approved by the user) | Decision Log, each with its exact values |
 | Checked and clean, Not tested | not copied; the evidence stays in the review |
 
 UI criteria keep the review's width range, state and engine, so the plan and the review pipeline can check them on screen.
@@ -69,6 +71,43 @@ Both reviewers can report the same defect: `ux-advisor` by what the person canno
 ## `FLOW.md` and UI criteria
 
 `FLOW.md` stays a flow map: UI criteria need no row in it. A merged criterion is cited where its UX consequence sits in the flow. Never add a row for a width range, a ratio or a focus ring alone.
+
+## The state sweep: `STATES.md`
+
+When the user ran the optional state sweep, `prototype` left `STATES.md` next to the winner: every state the real feature can show, the decisions taken on the states it built, the user's Needs you picks, and the approval line. The user approved it at the state gate before the reviews ran, so its states are decisions already taken, like the winner's own values.
+
+**An unapproved sweep needs the user first.** When it reads `approved: no`, show the state gate (`prototype/STATE-SWEEP.md` → Step 5) and wait. A state the user drops there goes to Non-Goals.
+
+| `STATES.md` section | Goes to |
+|---|---|
+| States (`present` and `built` rows) | **one acceptance criterion per action or region**, listing each of its states with what the person sees and can do next, from the row's Description. Do not write one criterion per state |
+| Decisions | Decision Log, each with its exact values: decisions already taken |
+| Needs you | Decision Log, with the pick and who took it |
+| Real only | a criterion when the decision is known (the user's pick, or a review decision on it); otherwise an Open Question with its default |
+| Dropped | Non-Goals, with the user's reason |
+
+**One state, one criterion.** A review decision about a state the sweep already covers amends that state's line in its criterion; it never adds a second criterion for the same state. A state a reviewer reports as missing from `STATES.md` becomes a line in its region's criterion and a new row in the matrix (next id, `Source` from the review's code line).
+
+Then write the matrix at `brain/specs/<domain>/<spec>/STATES.md`. Like `FLOW.md`, it is a map, not a second contract: every row cites the criterion that holds it. It outlives the prototype, which `implement-spec` deletes when the implementation lands, so it carries no screenshot paths.
+
+```markdown
+# State matrix: <feature>
+
+> Map of [[specs/<domain>/<spec>/SPEC]]. Every state cites an acceptance criterion there; `SPEC.md` is the contract.
+> Source: state sweep of the prototype at `<path>` (`<route>`), approved by the user on <date>.
+
+| id | Action or region | State | Real trigger | Source | Widths | Criterion | Reach it |
+|---|---|---|---|---|---|---|---|
+| S1 | Archive | success | `POST /projects/:id/archive` → 200 | `api/projects.ts:30` | 1440, 390 | AC5 | prototype `?state=S1` |
+| S4 | Archive | conflict: a teammate archived it first | → 409 `ConflictError` | `api/projects.ts:41` | 1440, 390 | AC5 | prototype `?state=S4` |
+| S9 | Archive | session expired mid-request | → 401, redirect to sign-in | `api/client.ts:88` | 1440 | open question 2 | real only |
+```
+
+Fill rules:
+
+- Keep the sweep's ids, so the matrix, the review and the catalogue name the same state the same way.
+- **Reach it** says how to open the state. Until the implementation lands it is the prototype's `?state=<id>`, or `real only`. `create-plan` plans a way to reach each state on the real surface (a fixture, a seed, a mocked response), and `implement-spec` writes it here as soon as the task that makes the state reachable lands, so the UI pass of `adversarial-review` can open every state on the real route.
+- A row with no criterion is a defect: add the criterion to `SPEC.md` or delete the row.
 
 ## Rejected findings
 

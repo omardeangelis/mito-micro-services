@@ -17,19 +17,22 @@ Use this reference before asking clarifying questions.
 5. Optionally read related domain concepts or flows when they are obviously relevant.
 6. Check for existing overlapping specs in:
    - `brain/specs/<domain>/<domain>-specs.md`
-7. If backlog context exists, inspect the parent epic/capability and every child story beneath it.
+7. Read the domain's recorded feature improvements in `brain/feature-improvement/<domain>/`, when the folder exists.
+   - Keep the `open` entries the request touches: they are candidates for the scope, not scope.
+   - Offer them to the user with your first questions, one line each (the improvement and why it matters), and let the user pick. Never add one to the spec on your own.
+8. If backlog context exists, inspect the parent epic/capability and every child story beneath it.
    Use your backlog / issue tracker as the source of truth for how to interpret module -> epic -> story shape.
    Harvest:
    - epic outcome and constraints
    - each child story title
    - each child story body and acceptance signals
    - cross-story blockers or sequencing assumptions that affect the problem statement
-8. Check existing DB schema when a matching domain schema file exists in the data/schema layer (`<app-or-package-path>`).
+9. Check existing DB schema when a matching domain schema file exists in the data/schema layer (`<app-or-package-path>`).
    Use it to:
    - avoid speccing duplicates
    - catch contradictions with the implemented model
    - surface open questions when a required field is absent
-9. Glance at the top-level repo structure only if needed for terminology or context.
+10. Glance at the top-level repo structure only if needed for terminology or context.
 
 ## Exploration rule
 

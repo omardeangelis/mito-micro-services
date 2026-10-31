@@ -11,6 +11,11 @@ Use this reference for the `$swarm-plan` phase.
   - A row with no criterion id is not a requirement; plan nothing for it.
   - Manual checks listed under Accessibility become validation steps (`review_mode: browser` or `mixed`).
 - **Older format:** Personas · Happy path · Error paths · Edge cases · Friction notes. Read each error path and edge case against the acceptance criteria: plan the ones a criterion covers, and record the rest as assumptions to confirm in the grill phase, not as silent scope.
+- **State matrix (`STATES.md`):** written by `create-spec` from a state sweep the user approved on the prototype. Every row is a state the user has already seen designed, citing the criterion that holds it.
+  - Each state needs a way to be reached on the real surface, without the prototype: a fixture, a seed script, a factory or a mocked response. Plan it as a task, or as an explicit part of the task that builds the state, and name it in the task so `implement-spec` can write it into the row's **Reach it** cell. Reuse the project's existing fixtures and factories before planning new ones.
+  - Every task with `review_mode: browser` or `mixed` that touches a region lists the state ids it is checked in, at the row's widths.
+  - A `real only` row with an open question is a planning ambiguity: resolve it in the grill phase or record it as an assumption.
+  - Order: a state's reach mechanism comes before the task that is checked in it.
 - **Order:** the flow's sequence and any friction note shape `depends_on` (for example, the empty state before polish, error recovery before animation). Encode them as ordering or task scope, not as free-floating prose.
 - **Open questions** still unresolved in `SPEC.md` are planning ambiguities: resolve them in the grill phase or record them as explicit assumptions in the plan.
 

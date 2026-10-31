@@ -31,7 +31,7 @@ Target size belongs to the `ui-review` bar: 24 px by default, 44 or 48 px when t
 
 | Moment | Who calls it | What exists | Output goes to |
 |---|---|---|---|
-| **Prototype review** (primary) | `prototype` Phase 6, after the user picks a winner, in parallel with `ux-advisor` | the winner at its route; the Phase 1 scope; the winner's values; what the prototype fakes; the project's UI bar | `create-spec` in the same run; the verdict goes to the user |
+| **Prototype review** (primary) | `prototype` Phase 6, after the user picks a winner, in parallel with `ux-advisor` | the winner at its route; the Phase 1 scope; the winner's values; what the prototype fakes; the project's UI bar; the user-approved `STATES.md` when the state sweep ran | `create-spec` in the same run; the verdict goes to the user |
 | **Live-surface review** (explicit only) | the user, naming a running route | the route and its code | the user, with a suggestion to run `/prototype` or `create-spec` |
 | **Anything else** (a spec draft, no rendered UI) | — | text only | one line naming the moment that fits; no review |
 
@@ -64,7 +64,7 @@ Before the first `agent-browser` command, run `agent-browser skills get core` an
 - The root `AGENTS.md` (fallback: `CLAUDE.md`), `brain/chore/ui-review.md` when present, then the code behind the surface: markup, styles, tokens, the media queries that set its breakpoints, the harness and fixtures. Then the brief.
 
 ### 2. Cover every state and width
-- **States:** every screen, step, fixture, error, empty, loading and open-overlay state the surface can show. On a prototype, reach them through its harness and fixtures; on a live route, through the interface and mocked responses (`agent-browser network route`), never by changing the server or data. Write the list down and go through all of it.
+- **States:** every screen, step, fixture, error, empty, loading and open-overlay state the surface can show. On a prototype, reach them through its harness and fixtures; on a live route, through the interface and mocked responses (`agent-browser network route`), never by changing the server or data. **When the brief carries an approved `STATES.md`** (the state sweep ran), its `present` and `built` rows are your list: open each with `<route>?state=<id>`, and add any state the harness shows that the file lacks. Never edit `STATES.md`. Write the list down and go through all of it.
 - **Widths:** from the project's minimum (default 280 px) to the widest breakpoint the CSS defines (default 1440 px): at least 280, 320, 375, 414, 768, 1024, 1280 and 1440, every CSS breakpoint ±1 px, and a phone in landscape. Repeat the narrow end at 1.25× root font size.
 - **Content:** the longest realistic values the data model, fixtures or code allow, injected into the page.
 - **In each state, at each width,** take a screenshot, open it with `Read`, and check every class of the bar:

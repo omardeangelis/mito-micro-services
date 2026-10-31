@@ -13,8 +13,8 @@ A divergence skill. It does ONE thing: take a described piece of UI ("a toast", 
 - **Role:** UI divergence explorer — builds N genuinely different variants of one described piece behind a visual picker
 - **Entrypoint type:** public entrypoint, **explicit invocation only** (`disable-model-invocation: true`) — never auto-triggered by a routing table. Other skills and agents may *suggest* a run; only the user invokes it.
 - **Upstream:** the user describing a UI piece to explore; open visual/interaction questions surfaced during `create-spec` / `create-plan` (the flow suggests a run, the user invokes it)
-- **Delegates to:** nothing while exploring — single-thread by design; consults the project's design knowledge during recon (root `AGENTS.md`, `brain/chore/`, the shipped **`design-engineering`** skill as the craft bar, and any brand or frontend-design skill the project ships — see "In a brain project"), and may brief the **`design-engineer`** agent for a motion review of the variants before presenting them. Once the user approves a winner, it spawns the **`ux-advisor`** and **`ui-reviewer`** agents in parallel to review it (Phase 6) — the only point in the flow that spawns them
-- **Downstream:** `create-spec` — the winner is never integrated by hand: its direction and exact values (easing, durations, layout, states, copy) and the decisions of the `ux-advisor` and `ui-reviewer` reviews enter `SPEC.md` (the UX ones also its `FLOW.md` map), then `PLAN.md`, and production code is written by `implement-spec` under the project's own coding standards
+- **Delegates to:** nothing while exploring — single-thread by design; consults the project's design knowledge during recon (root `AGENTS.md`, `brain/chore/`, the shipped **`design-engineering`** skill as the craft bar, and any brand or frontend-design skill the project ships — see "In a brain project"), and may brief the **`design-engineer`** agent for a motion review of the variants before presenting them. Once the user approves a winner, it offers the optional **state sweep** ([STATE-SWEEP.md](STATE-SWEEP.md)), which builds and captures every state of the winner for the user to approve, then spawns the **`ux-advisor`** and **`ui-reviewer`** agents in parallel to review it (Phase 6) — the only point in the flow that spawns them
+- **Downstream:** `create-spec`, once the user has approved the winner as it stands after the reviews (Phase 6 approval gate) — the winner is never integrated by hand: its direction and exact values (easing, durations, layout, states, copy), the states the user approved at the state gate, and the decisions of the `ux-advisor` and `ui-reviewer` reviews enter `SPEC.md` (the UX ones also its `FLOW.md` map, the states its `STATES.md` matrix), then `PLAN.md`, and production code is written by `implement-spec` under the project's own coding standards
 - **Precedence:** consumer of the project's design corpora — brand/identity rules win on color and typography, motion standards (the `design-engineering` skill, under the project's own tokens and documented motion decisions) win on anything motion, layout/aesthetic direction comes from the project's frontend-design guidance when it exists. Divergence never lowers their bars.
 
 ## Operating Posture
@@ -93,10 +93,11 @@ Close with where the picker is running (URL or file path), the keys to flip, and
 
 A chosen variant is an **answer to a design question**, not a feature ready to ship: it runs on a fake state machine, invented copy, and no backend contract. Writing it straight into production code skips every gate the project has — spec, plan, review.
 
-So, when the user picks, do exactly three things:
+So, when the user picks, do exactly four things:
 
 1. **Reduce the surface to the winner.** Delete the losing variants and the picker (with one variant left it has nothing to switch between); keep the winning variant reachable at its prototype route. It stays the live reference the spec points at.
-2. **Have the winner reviewed, for UX and for static UI, by two reviewers at once.** One owner per concern:
+2. **Offer the state sweep (optional, recommended).** Load [STATE-SWEEP.md](STATE-SWEEP.md) and ask whether to run it, recommending it by the rules there: it is worth it whenever the winner calls an operation, shows data that can be empty or fail, depends on permissions, has several steps, or will be used at phone width. On a yes, run it: inventory the states from the code, confirm the list with the user, build the missing states on the prototype surface behind a `?state=<id>` switch, capture each one, and **stop at the state gate until the user approves the catalogue**. No reviewer is briefed before that approval. On a no, go straight to step 3.
+3. **Have the winner reviewed, for UX and for static UI, by two reviewers at once.** One owner per concern:
 
    > UX → `ux-advisor` · static UI of the rendered page → `ui-reviewer` (bar and probes: the `ui-review` skill) · motion and interaction craft → `design-engineer` (`design-engineering`)
 
@@ -105,6 +106,7 @@ So, when the user picks, do exactly three things:
    - the scope from Phase 1;
    - the winner's values: its motion line with exact values, and the layout, states and copy it settled on;
    - what the prototype fakes (endpoints, data, permissions);
+   - when the state sweep ran: the approved `STATES.md` and how to open each state (`<route>?state=<id>`), per STATE-SWEEP.md → The brief for the reviewers;
    - its session name.
 
    Add for `ux-advisor` the personas path (`paths.personas` in `brain/brain.config.json`; `null` when the project has none). Add for `ui-reviewer` the project's UI bar: `brain/chore/ui-review.md` (its Project bar sets the widths, the target size and the engines), or the note that the project has none, so the agent's defaults apply.
@@ -114,9 +116,9 @@ So, when the user picks, do exactly three things:
    - if your tool cannot spawn subagents, run each charter inline (`.agents/agents/ux-advisor.md`, `.agents/agents/ui-reviewer.md`), one after the other, each on its own session.
 
    **One combined verdict.** Wait for both reviews, then relay one verdict to the user in one line: the stricter of the two (`iterate` over `proceed with decisions` over `proceed`), naming each reviewer's own. With one reviewer skipped, its partner's verdict stands alone. Then:
-   - `proceed` or `proceed with decisions` → step 3, passing both reviews on;
-   - `iterate` → run the iterate loop below, then step 3.
-3. **Enter the project's implementation flow with `create-spec`.** The prototype is the *input* to that flow: carry over its direction and its exact values — easing, durations, layout, states, copy — as spec decisions (the winner's motion line, expanded into a motion brief per `design-engineering/references/motion-brief.md`), pass both reviews on (their decisions become acceptance criteria), and note what the prototype faked (endpoints, permissions, real data) as the open questions the spec must answer. The prototype surface gets deleted per Hard Rule 5 only when the real implementation lands.
+   - `proceed` or `proceed with decisions` → step 4, passing both reviews on;
+   - `iterate` → run the iterate loop below, then the approval gate, then step 4.
+4. **Enter the project's implementation flow with `create-spec`.** The prototype is the *input* to that flow: carry over its direction and its exact values — easing, durations, layout, states, copy — as spec decisions (the winner's motion line, expanded into a motion brief per `design-engineering/references/motion-brief.md`), pass the approved `STATES.md` on when the sweep ran (its states become acceptance criteria and the spec's state matrix), pass both reviews on (their decisions become acceptance criteria), and note what the prototype faked (endpoints, permissions, real data) as the open questions the spec must answer. The prototype surface gets deleted per Hard Rule 5 only when the real implementation lands.
 
 **The iterate loop** — one loop for both reviewers, at most 2 rounds:
 
@@ -127,9 +129,24 @@ So, when the user picks, do exactly three things:
    - `ui-reviewer` re-runs the probes on the changed elements and on every class it had reported Checked and clean.
 
    Relay the new combined verdict, the stricter of the two.
-4. After the second round, go to step 3 regardless. The applied changes enter the spec as decisions already taken, with their exact values, like the winner's own.
+4. Leave the loop when the new verdict is not `iterate`, or after the second round regardless, and go to the approval gate.
 
-**If the user stops after the reviews**, save the latest of each verbatim next to the surviving variant: the UX review as `UX-REVIEW.md`, and the UI review as `UI-REVIEW.md` next to `UX-REVIEW.md`, so `create-spec` can pick them up from the cited prototype path later. Both are deleted with the prototype surface.
+**The approval gate** — the user approves the changed winner before `create-spec` opens. It runs whenever the iterate loop applied at least one change. The user picked the winner as it was; the reviewers' verdict says the changes meet their bar, not that the user still wants the result. Never open `create-spec` on a winner the user has not seen since it changed.
+
+1. Reload the winner at its prototype route (or the standalone file) and check every applied change the way its "how to check it on screen" says, at full speed and with reduced motion emulated. When browser tooling is available, screenshot each changed state and open each screenshot before showing it. When the state sweep ran, open every state a change can reach (`?state=<id>`), retake its screenshots in `states/`, update its row, description and decisions in `STATES.md`, and regenerate `STATES.html` (STATE-SWEEP.md → Step 4): a copy fix in one state can re-wrap another.
+2. Show the user, in one message:
+   - where the winner runs (URL or file path), so they can try it themselves;
+   - each applied change, labelled with its reviewer: finding → what changed, with the exact values before → after → how to check it on screen;
+   - the screenshots of the changed states;
+   - the last combined verdict, and the findings that go to the spec as decisions.
+3. **Stop and wait for the answer** — approve, revert a change, or adjust a change. Use your tool's structured question mechanism when it has one.
+   - **Approve** → step 4. The approved changes enter the spec as decisions already taken, with their exact values, like the winner's own.
+   - **Revert a change** → undo it on the surface. Its finding goes back to the spec as a decision, where the user can still reject it. Show the gate again.
+   - **Adjust a change** → apply the user's version under the same rules as a small change (the winner's surface only, same direction), check it on screen yourself, and show the gate again. An adjustment opens no review round; when it reaches beyond the change it adjusts, name the reviewer whose checks it may have broken and offer one regression pass from that agent.
+
+With no change applied (`proceed` or `proceed with decisions` on the first review), the user's own pick is the approval and step 4 follows directly.
+
+**If the user stops after the reviews**, save the latest of each verbatim next to the surviving variant: the UX review as `UX-REVIEW.md`, and the UI review as `UI-REVIEW.md` next to `UX-REVIEW.md`, so `create-spec` can pick them up from the cited prototype path later. When the iterate loop applied changes, also save `CHANGES.md` next to them: each applied change with its reviewer, its finding, and its exact values before → after, plus one line `approved: yes` or `approved: no` (`no` when the user stopped before answering the approval gate). `create-spec` shows an unapproved winner to the user before writing. `STATES.md`, when the sweep ran, is already there. All of them are deleted with the prototype surface.
 
 Never write production code directly from Phase 6, even when the variant looks finished. If the user explicitly asks for a direct integration anyway, say what the spec flow would have caught, then do it.
 
@@ -137,7 +154,7 @@ If the user instead wants another round, keep the harness and run Phase 3 again,
 
 ## In a brain project
 
-How the phases above bind to the brain / spec-driven workflow. Everything else is stack-agnostic and identical to the upstream skill (`omardeangelis/design-eng-skills`, `skills/prototype/`); the brain-specific parts are Hard Rule 1, the route-confirmation and feel paragraphs in Phase 1, the motion-ground recon bullet, the gate and motion lines in Phase 3, the feel-checks in Phase 5, Phase 6, the `tune` invocation, and this section — re-apply them when syncing the upstream.
+How the phases above bind to the brain / spec-driven workflow. Everything else is stack-agnostic and identical to the upstream skill (`omardeangelis/design-eng-skills`, `skills/prototype/`); the brain-specific parts are Hard Rule 1, the route-confirmation and feel paragraphs in Phase 1, the motion-ground recon bullet, the gate and motion lines in Phase 3, the feel-checks in Phase 5, Phase 6 and its state sweep ([STATE-SWEEP.md](STATE-SWEEP.md), adapted from the MIT-licensed `ui-sweep` skill of `ref-tools/marketplace`), the `tune` invocation, the `sweep` / `no sweep` invocations, and this section — re-apply them when syncing the upstream.
 
 - **Recon (Phase 2) reads the project, not assumptions.** Start from the root `AGENTS.md` (stack, styling system, design-system or component-library pointer, motion library) and `brain/chore/` (tech stack, product description — this is where the product's personality is usually written down). The stack profile `brain/chore/motion-stack.md` says how each motion API is spelled in this stack — in-project variants use it; on a non-React project without one, run `design-engineering/references/stack-adaptation.md` before Phase 3. The shipped **`design-engineering`** skill is the craft bar every variant must meet — load `references/standards.md`, plus `gestures.md`, `scroll.md`, or `implementation.md` as the piece requires; documented motion decisions in `brain/chore/` and the project's tokens win over it. Brand guidelines and a frontend-design skill, if the project ships them, govern color/type and layout. When motion is part of the exploration, brief the **`design-engineer`** agent with the variant set and their motion lines before Phase 5 (review mode, against `references/review.md`).
 - **Scope (Phase 1) names who the piece is for.** Read `brain/brain.config.json` (keys in `brain/AGENTS.md` → Project configuration; absent → the defaults there) and take the persona(s) from `<personas>`, using its segment names verbatim. When `paths.personas` is `null`, name the roles affected and say that `ux-advisor` will characterize users generically.
@@ -145,7 +162,7 @@ How the phases above bind to the brain / spec-driven workflow. Everything else i
 - **In-project branch (Phase 4):** keep the prototype surface in a single folder (e.g. `src/prototypes/<slug>/` — one file per variant plus the harness), exposed as a **dev-only** route (`/prototypes/<slug>`) guarded by the framework's dev flag so it never ships. Put the surface where the project's styling pipeline can see it (a Tailwind `@source` allowlist, a CSS-modules root, …) — markup outside that scope renders **silently unstyled**. Load the project's coding-standards skill before writing framework code, but never let the prototype leak into production imports.
 - **Standalone branch (Phase 4):** if `brain/chore/` contains an HTML prototyping kit (a starter file with the real tokens), duplicate it; otherwise write the single self-contained HTML file. Right choice for purely visual/motion pieces; pick the in-project branch when the piece needs the real component library's behavior.
 - **Picker in a framework** (per PICKER.md's "idiomatic" clause): a current-variant state + keyed re-mount so switching re-runs entrance animations; refs + a layout effect for the highlight measurement. Classes and values stay verbatim.
-- **Promotion (Phase 6) opens the brain flow, not a direct integration:** `ux-advisor` and `ui-reviewer` (review of the winner, in parallel) → `create-spec` → `create-plan` → `implement-spec` → `adversarial-review` (as `review.mode` sets) → `docs-maintenance`. The `SPEC.md` cites the prototype by path and route, inherits its exact values as decisions, and turns the decisions of both reviews into acceptance criteria; `create-plan` turns those values into task targets (`review_mode: browser`); only `implement-spec` writes production code, in the location the project's architecture dictates. The prototype folder and its route are deleted once the implementation lands (Hard Rule 5) — `implement-spec` does that as part of finalizing the spec folder.
+- **Promotion (Phase 6) opens the brain flow, not a direct integration:** the optional state sweep and its state gate (the user approves every state of the winner) → `ux-advisor` and `ui-reviewer` (review of the winner, in parallel) → the user's approval of the changed winner, when the iterate loop changed it → `create-spec` → `create-plan` → `implement-spec` → `adversarial-review` (as `review.mode` sets) → `docs-maintenance`. The `SPEC.md` cites the prototype by path and route, inherits its exact values as decisions, turns the approved states and the decisions of both reviews into acceptance criteria, and carries the state matrix into the spec folder's `STATES.md`; `create-plan` turns those values into task targets (`review_mode: browser`); only `implement-spec` writes production code, in the location the project's architecture dictates. The prototype folder and its route are deleted once the implementation lands (Hard Rule 5) — `implement-spec` does that as part of finalizing the spec folder.
 
 ## Invocation Variants
 
@@ -154,7 +171,9 @@ How the phases above bind to the brain / spec-driven workflow. Everything else i
 | `<description>` | Full workflow: scope → recon → 3 variants → picker → wait for choice |
 | `<description> x5` | Same, with that many variants (capped at 5) |
 | `riff <variant>` | New round: keep the harness, generate a fresh set diverging around the named variant's direction |
-| `keep <variant>` | Reduce the surface to that variant, have `ux-advisor` and `ui-reviewer` review it in parallel (one combined verdict; on `iterate`, at most 3 small changes per round chosen from both reviews, at most 2 rounds), then open `create-spec` with the winner and both reviews as input (Phase 6) |
+| `keep <variant>` | Reduce the surface to that variant, offer the state sweep (on a yes: inventory, confirm the list, build the missing states, capture them, and wait for the user's approval of the catalogue at the state gate), have `ux-advisor` and `ui-reviewer` review it in parallel (one combined verdict; on `iterate`, at most 3 small changes per round chosen from both reviews, at most 2 rounds; after any change, show the changed winner again and wait for the user's approval), then open `create-spec` with the winner and both reviews as input (Phase 6) |
+| `keep <variant>, sweep` | Same, and run the state sweep without asking whether to ([STATE-SWEEP.md](STATE-SWEEP.md)); the state gate still waits for the user's approval |
+| `keep <variant>, no sweep` | Same, and skip the state sweep without asking |
 | `keep <variant>, leave the picker` | Same, but leave the losing variants and the picker in place |
 | `tune <variant>: <what feels off>` | Diagnose with `design-engineering/references/diagnose.md` (slow it down, name the cause, change one variable), then add the result as a new picker entry beside the original (`Quiet` / `Quiet · tuned`) so the change is judged by flipping, not from memory — the one case where two entries share an axis |
 

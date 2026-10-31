@@ -10,6 +10,7 @@ Write `<output-folder>/REPORT.md` from [../assets/REPORT-TEMPLATE.md](../assets/
 2. **What passed.** Aggregate the `WHAT PASSED` evidence per concern so the report shows what was genuinely checked, not just what failed. A report with only failures hides coverage gaps.
 3. **Per-concern verdicts.** One row per rubric pass: charter → verifier verdict (`SHIP`/`DO NOT SHIP`) → one-line rationale. Note any pass that could not run.
 4. **Coverage note.** State which rubric passes ran, at what model, and any pass that was skipped or failed. Never imply full coverage when a pass is missing.
+5. **Feature-improvement candidates.** Collect the verifiers' `IMPROVEMENT CANDIDATES` into their section, deduplicated, each with its verifier. They are not findings: no severity, no effect on the verdict, and nothing reaches `brain/feature-improvement/` from this stage. The closeout proposes them to the user (references/stop-conditions.md).
 
 ## Severity scale
 

@@ -87,6 +87,14 @@ _Ordered, concrete steps a human must follow before anything proceeds — what t
 
 _One row per `SPEC.md` acceptance criterion: they are the contract. `FLOW.md` only locates them; a `FLOW.md` row with no criterion is not checked here._
 
+## Feature-improvement candidates
+
+_Not findings: what the reviewed feature could do better than its spec asks, noticed by a verifier. Proposed to the user at the closeout and recorded in `brain/feature-improvement/` only when the user accepts. Write "none" when there are none._
+
+| Candidate (verifier) | Evidence | Who gains | Size | Outcome |
+|----------------------|----------|-----------|------|---------|
+| v1 — | `file:line` | | small / medium / large | recorded / skipped |
+
 ## Notes for docs-maintenance
 
 - Durable findings to fold into `<techDebt>/<domain>/<spec>.md` (case B) or `<techDebt>/<best-fit-domain>/<slug>.md` (case A): <list, or "none">

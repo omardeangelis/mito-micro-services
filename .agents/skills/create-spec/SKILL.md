@@ -31,6 +31,8 @@ The output lives at `brain/specs/<domain>/<folder-name>/SPEC.md`.
 6. Read `references/folder-naming.md` to resolve the domain and spec folder path.
 7. Read `assets/SPEC-TEMPLATE.md` and write the spec. Name the target persona(s) in Context from `<personas>`, using its segment names verbatim. When `paths.personas` is `null`, name the roles affected and add an open question asking who the users are.
 8. **If the spec starts from an approved `prototype` winner** (handed over by `prototype` Phase 6 in this run, or cited by the user by path and route):
+   - when the reviews' iterate loop changed the winner, check the user approved it as changed (`prototype`'s approval gate). If they did not, or `CHANGES.md` next to the saved reviews says `approved: no`, show the winner's route and each applied change with its exact values, and wait for the user's approval before writing anything; a change the user reverts goes back to its review as a decision;
+   - when the state sweep ran (`STATES.md` next to the winner), check it reads `approved: yes`. If it reads `approved: no`, show the state gate (each state's screenshots, the decisions taken on the built states, the Needs you picks, the `real only` rows) and wait for the user's approval before writing anything. Then fold it per `references/flow-map.md` → The state sweep and write the spec folder's `STATES.md` matrix;
    - cite it in `SPEC.md` by path and route;
    - inherit its exact values (easing, durations, layout, states, copy) as decisions;
    - list what the prototype faked (endpoints, permissions, real data) under open questions.
@@ -40,13 +42,13 @@ The output lives at `brain/specs/<domain>/<folder-name>/SPEC.md`.
    - merge a UX finding and a UI finding on the same element into one criterion: the UI wording carries the cause and the fix, the UX wording the task consequence;
    - carry the UI review's "Not verified on device" checks into Constraints;
    - carry their open questions into Open Questions, each with its recommended default;
-   - record the prototype changes already applied in the Decision Log, with their exact values;
+   - record the prototype changes the user approved in the Decision Log, with their exact values;
    - write `FLOW.md`, the flow map that cites the criteria, from the template there. Only a UX review produces one; UI criteria need no row in it.
 
    When the user rejects a finding, offer to append it, with the reason, to its reviewer's page → Suppressed findings: `brain/chore/ux-review.md` for a UX finding, `brain/chore/ui-review.md` for a UI finding. Create the page on first use; leave the Project bar of `ui-review.md` for the user. Never spawn `ux-advisor` or `ui-reviewer` yourself: they run only from `prototype`.
 9. **If the spec is user-facing and no prototype review exists** (any acceptance criterion maps to a screen, form, navigation, or interaction a user perceives), write no `FLOW.md`. Say in one line that no UX or UI review ran, and suggest the user run **`prototype`** when a visual or interaction direction is open or the flow's states have never been seen rendered. `prototype` is explicit invocation only: never trigger it yourself; resume when the user brings a winner.
 10. Read `references/spec-quality-bar.md`. **Gate — `review.mode` ∈ {total}:** verify the spec against that bar **without spending orchestrator context**: delegate to the **`adversarial-verifier`** agent in quality-gate mode, briefed self-contained with the draft `SPEC.md` (and `FLOW.md` as a map, if written) and the quality bar as its rubric. Treat any BLOCKER it returns as a must-fix before saving. Skip only if the agent is absent; if your tool cannot spawn subagents, run its charter inline instead (see `brain/AGENTS.md` → Advisor subagents). — otherwise self-check the spec against the quality bar, offer the verifier pass in one line, and continue.
-11. Read `references/brain-bookkeeping.md` to update `index.md`, `<domain>-specs.md`, and `log.md`.
+11. Read `references/brain-bookkeeping.md` to update `index.md`, `<domain>-specs.md`, `log.md`, and the feature-improvement entries the spec took up or left out.
 12. Read `references/handoff.md` to choose the next-step recommendation and stop after user review.
 
 ## Workflow
@@ -68,7 +70,7 @@ The output lives at `brain/specs/<domain>/<folder-name>/SPEC.md`.
 - Clarifying-question strategy: see [references/questioning.md](references/questioning.md)
 - Domain and folder naming rules: see [references/folder-naming.md](references/folder-naming.md)
 - Acceptance-criteria and quality bar: see [references/spec-quality-bar.md](references/spec-quality-bar.md)
-- Prototype reviews (UX and UI) → acceptance criteria, and the `FLOW.md` map: see [references/flow-map.md](references/flow-map.md)
+- Prototype reviews (UX and UI) and the state sweep → acceptance criteria, the `FLOW.md` map and the `STATES.md` matrix: see [references/flow-map.md](references/flow-map.md)
 - brain index and log updates: see [references/brain-bookkeeping.md](references/brain-bookkeeping.md)
 - Review closeout and next-step routing: see [references/handoff.md](references/handoff.md)
 

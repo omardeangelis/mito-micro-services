@@ -26,7 +26,7 @@ Each brief tells the worker to:
 3. stay inside the listed files; if another file must change, make the smallest change and report why
 4. satisfy every listed acceptance criterion, not only the test
 5. run the listed validation commands and report their real output
-6. not edit `PLAN.md`, `IMPLEMENTATION-NOTES.md`, or tech-debt files, and not commit
+6. not edit `PLAN.md`, `IMPLEMENTATION-NOTES.md`, tech-debt or feature-improvement files, and not commit
 7. not run commands that rewrite shared generated state (installs, lockfiles, codegen) unless the brief says so; report the need instead
 8. stop and report instead of guessing when the brief and the code disagree
 
@@ -38,7 +38,8 @@ The worker returns, briefly:
 - a summary of the change
 - each validation command run, with its pass/fail result and the relevant output lines
 - deviations from the brief, assumptions made, and anything blocked or risky
+- improvements to the feature noticed on the way (not defects), one line each with its evidence, or "none"
 
 ## Scope rule
 
-The worker owns one task's code and its local validation. The supervising `implement-spec` run owns the contract (RED test), the review, the fix proposals, escalation, wave construction, and every write to the plan, the notes, and the tech-debt ledger.
+The worker owns one task's code and its local validation. The supervising `implement-spec` run owns the contract (RED test), the review, the fix proposals, escalation, wave construction, and every write to the plan, the notes, the tech-debt ledger, and the feature-improvement store.

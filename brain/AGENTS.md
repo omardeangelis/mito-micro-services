@@ -16,7 +16,7 @@ Primary skills here: `create-spec`, `create-plan`, `implement-spec`, `adversaria
 - Do not hand-write `domains/<domain>/flows/` or `domains/<domain>/concepts/` pages when that ingest workflow applies.
 - `SPEC.md` and `IMPLEMENTATION-NOTES.md` remain the source material, but the ingest orchestrator may update their frontmatter/link bookkeeping (`ingested`, `last_ingested`, backlinks) as part of the pipeline.
 - Use `adversarial-review` as an independent, bias-free quality gate on a code change or spec implementation: it classifies the change (`review-classifier`) then fans out independent `adversarial-verifier` passes and writes a SHIP / DO-NOT-SHIP `REPORT.md`.
-- Use `prototype` — **explicit invocation only**, never auto-routed — to explore N genuinely different variants of one UI piece behind a visual picker. When the user approves a winner, `prototype` has `ux-advisor` and `ui-reviewer` review it in the browser, in parallel (the only point in the flow that spawns them), then hands the winner and both reviews to `create-spec`. The winner is never integrated by hand, and the prototype surface is deleted once `implement-spec` lands the real implementation.
+- Use `prototype` — **explicit invocation only**, never auto-routed — to explore N genuinely different variants of one UI piece behind a visual picker. When the user approves a winner, `prototype` offers an optional, recommended **state sweep**: it lists every state the real feature can show, builds the missing ones on the prototype, captures each one, and waits for the user to approve the whole catalogue. Then `prototype` has `ux-advisor` and `ui-reviewer` review it in the browser, in parallel (the only point in the flow that spawns them), then hands the winner and both reviews to `create-spec`. When the reviews changed the winner, the user sees it again and approves it first. The winner is never integrated by hand, and the prototype surface is deleted once `implement-spec` lands the real implementation.
 - `design-engineering` is the motion-craft reference: it loads on its own whenever motion is written, reviewed, or fixed (standards with exact values, gestures, scroll, reduced motion, performance) and holds the review, audit, opportunities, diagnosis, and motion-brief procedures. Advisory motion work goes through the `design-engineer` agent, which routes to it. Its code examples are React; `chore/motion-stack.md` (written by its stack-adaptation procedure, at init or on first use) maps them to the project's own stack. Record project-specific motion decisions in `chore/` (e.g. `chore/motion.md`), not by editing the skill.
 
 ### Advisor subagents
@@ -40,6 +40,7 @@ Non-negotiables every spec-driven skill respects:
 - No code is written during `create-spec` or `create-plan`. Implementation happens only in `implement-spec`.
 - Tests describe behavior through public interfaces (see `tdd`). No horizontal slicing (all-tests-then-all-code).
 - Persistent implementation drift is tracked in `<techDebt>/<domain>/<spec>.md` (see Project configuration), not buried in spec folders.
+- Feature improvements found during work are proposed to the user and explained, and reach `feature-improvement/<domain>/<spec>.md` only once the user accepts them. No agent writes one on its own judgment (see `feature-improvement/` below).
 - Domain knowledge in `domains/` is written by `docs-maintenance`, not hand-authored.
 
 > Project-specific gates (build/test/lint commands, contract/codegen chains, conventions) live in the repo-root `AGENTS.md` (fallback: `CLAUDE.md` when no `AGENTS.md` exists), not here — that is the file every AI tool reads. The review policy lives in the project config below.
@@ -88,7 +89,7 @@ Skills mark each gate with **Gate — `review.mode` ∈ {…}**. In a mode outsi
 
 `execution.delegation` decides who writes each task's code in `implement-spec`, in both execution modes (`sequential` runs one task at a time, `parallel` runs waves; delegation is independent of that choice).
 
-- `supervised` (default): the orchestrator supervises. It writes each task's RED test, hands the task to one worker on the model tier the task's `complexity` names (`low` → fast, `medium` → balanced, `high` → strongest), reviews the result itself, and sends back a concrete fix when it fails. After two failed reviews, a worker one tier up takes the task; after that, the orchestrator does it or reports a blocker. Only the orchestrator writes `PLAN.md`, `IMPLEMENTATION-NOTES.md` and tech debt.
+- `supervised` (default): the orchestrator supervises. It writes each task's RED test, hands the task to one worker on the model tier the task's `complexity` names (`low` → fast, `medium` → balanced, `high` → strongest), reviews the result itself, and sends back a concrete fix when it fails. After two failed reviews, a worker one tier up takes the task; after that, the orchestrator does it or reports a blocker. Only the orchestrator writes `PLAN.md`, `IMPLEMENTATION-NOTES.md`, tech debt and feature improvements.
 - `inline`: the orchestrator writes the code of `sequential` tasks itself, and `parallel` workers inherit its model.
 
 `create-plan` (through `swarm-plan`) rates every task's `complexity` when it writes the plan.
@@ -110,6 +111,7 @@ PM-authored specifications organized by domain. Agents should treat their produc
 - `specs/<domain>/<domain>-specs.md` — domain spec page map (entry point for discovery)
 - `specs/<domain>/<spec-name>/SPEC.md` — individual spec file
 - `specs/<domain>/<spec-name>/FLOW.md` — optional flow **map** (Goal · Persona situations · Entry points · Happy path · States · Accessibility · Persona dependencies). `create-spec` writes it only when the spec starts from an approved prototype reviewed by `ux-advisor`. Every requirement in it cites a `SPEC.md` acceptance criterion: `SPEC.md` is the only acceptance contract, and a requirement stated only in `FLOW.md` is a defect. Older files with Personas · Error paths · Edge cases sections are still read. Consumed by `create-plan`, `implement-spec`, and `docs-maintenance`
+- `specs/<domain>/<spec-name>/STATES.md` — optional state **matrix**: every state of the feature the user approved in the prototype's state sweep, with its real trigger, its source line, its widths, the acceptance criterion that holds it, and how to reach it on the real surface. `create-spec` writes it only from an approved sweep. Like `FLOW.md` it is a map: every row cites a `SPEC.md` criterion. `create-plan` plans a way to reach each state, `implement-spec` fills the Reach it cells, and the UI pass of `adversarial-review` opens every state on the real route
 - `specs/<domain>/<spec-name>/PLAN.md` — optional implementation plan for that spec
 - `specs/<domain>/<spec-name>/IMPLEMENTATION-NOTES.md` — run-local reviewer context for that spec implementation; carries its own frontmatter and `ingested` tracking
 - `specs/<domain>/<spec-name>/RUBRIC.md` + `REPORT.md` — optional `adversarial-review` artifacts (routing rubric + SHIP/DO-NOT-SHIP verdict) for that spec implementation, under `review.location: spec-folder`
@@ -124,6 +126,29 @@ PM-authored specifications organized by domain. Agents should treat their produc
   - `review-tree` → `<reviews>/<domain>/<spec>/`, mirroring the spec path.
 
 `docs-maintenance` ingests each `REPORT.md`: it folds the durable findings into `<techDebt>/<domain>/<spec>.md` (case B) and marks the report `ingested: true`.
+
+### `feature-improvement/` — Feature Improvements
+
+Improvements to a feature, noticed while working: a capability it lacks, a step that could be shorter, a state people would want handled better. An improvement is what the feature could do better than its spec asked. A defect, or a gap against what was decided, is tech debt (`<techDebt>`) or a review finding instead.
+
+- `feature-improvement/<domain>/<spec>.md` — improvements to the feature one spec delivered
+- `feature-improvement/<domain>/_unscoped.md` — improvements to a feature no spec covers yet
+- Base frontmatter with `type: feature-improvement`, plus `spec: <spec folder> | null` and a link to the spec. List a new page in `index.md` → Feature improvements.
+
+One `##` entry per improvement, appended:
+
+```md
+## <short title>
+- **Status:** open | planned | done | dropped
+- **Proposed:** YYYY-MM-DD, by <skill> during <what it was doing>; accepted by the user
+- **Observed:** <what was seen, with the evidence: `file:line`, a screen, a measurement>
+- **Improvement:** <what the feature would do better>
+- **Why it matters:** <who gains and how; persona names from `<personas>` when set>
+- **Size:** small | medium | large
+- **Spec:** none | [[specs/<domain>/<spec>/SPEC]]
+```
+
+The status moves: `open` when recorded; `planned` when a spec takes it up (`create-spec`, with the user's yes, fills **Spec**); `done` when that spec is implemented and ingested (`docs-maintenance`); `dropped` when the user drops it, with the reason on the status line. Entries change status; they are never deleted.
 
 ### `personas.md` (`<personas>`) — Project Personas
 
@@ -166,7 +191,7 @@ Agent-owned synthesis layer. This is where the LLM writes.
 ```yaml
 ---
 domain: auth | user-management | documents
-type: concept | flow | decision | contract | index | spec | implementation-notes | personas
+type: concept | flow | decision | contract | index | spec | implementation-notes | personas | feature-improvement
 links: []
 created: YYYY-MM-DD
 updated: YYYY-MM-DD
@@ -246,3 +271,16 @@ When processing source material into domain knowledge:
 
 - `<techDebt>/<domain>/<spec>.md` owns persistent implementation drift tied to one spec; keep temporary execution notes in the spec folder instead
 - Durable review findings reach it through `docs-maintenance` (review ingest), never by hand-copying a `REPORT.md`
+
+## Relationship to the feature-improvement store (`feature-improvement/`)
+
+**Propose, never write on your own.** An agent that notices an improvement does not write it down. It explains it to the user and records it only when the user accepts:
+
+1. **Check it is new.** Read the page it would go to. When it is already there, name the entry instead of proposing it again.
+2. **Explain it.** What you saw and its evidence, the improvement, who gains and how, its size, and the page it would go to.
+3. **Ask at a pause.** Collect the proposals and put them to the user at the end of the run or phase, one decision per improvement (record or skip), with your tool's structured question mechanism when it has one. Ask earlier only when an improvement changes the work in progress.
+4. **Record only what the user accepted**, in their wording when they reword it. A skipped proposal is recorded nowhere and not proposed again in the same run.
+
+- Never widen the current scope to build an improvement: it is input for a later spec.
+- Never fold review findings or `IMPLEMENTATION-NOTES.md` observations into it in bulk: each entry is one proposal the user accepted.
+- `create-spec` reads the domain's `open` entries before it asks questions and offers the ones the request touches, so recorded improvements feed the next spec.
