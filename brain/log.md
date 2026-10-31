@@ -3,7 +3,7 @@ domain: _root
 type: index
 links: []
 created: 2026-09-24
-updated: 2026-10-30
+updated: 2026-10-31
 ---
 
 # Brain — Log
@@ -421,3 +421,27 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
   - giro 3: confronto per mese a fine mese.
   Tutti recepiti.
 - 2026-10-30, domande aperte chiuse da Omar: conservazione 25 mesi con pulizia in R10, grafici delle chiamate dell'operatore nel tempo, voce «Home», solo `ADMIN` e `OPERATORE`, nomi lunghi con i puntini, portatili e testo al 125% sostenuti. Quality gate: SHIP al giro 5, con le tre correzioni minori recepite.
+
+## [2026-10-31] chore | Profilo dello stack per il movimento
+- Created: [[chore/motion-stack]], dall'adattamento allo stack di `design-engineering`
+- Stack: React 19.3.1 sul web (SPA con Vite e React Router 8.5), ambito `apps/web`; l'app Next.js alla radice resta fuori
+- Nessuna libreria di movimento installata: Radix e `tw-animate-css` per entrata e uscita, `motion-reduce:` per componente
+- Da confermare: la variante `starting:` di Tailwind 4.3 e `viewTransition` di React Router 8.5; due decisioni aperte sulle dipendenze (Motion, Sonner e Vaul)
+
+## [2026-10-31] spec | Toast di `apps/web` con Sonner
+- Created: [[specs/crm/toast-sonner/SPEC]] (Draft, 37 criteri), da Sonner al posto del Toast di Radix; Vaul e Next.js fuori
+- Decisioni di Omar: resa di Sonner con i colori dei token, F8, tutti i toast educati, Esc, pausa e focus di Sonner senza gestori nostri sopra; unica eccezione AC34/AC35 (toast utilizzabili con una Sheet o una Dialog aperta). shadcn ha deprecato il suo Toast su Radix e indica Sonner
+- Quality gate: quattro giri di `adversarial-verifier`, l'ultimo DO NOT SHIP con tutti i rilievi corretti
+
+## [2026-10-31] plan | Toast di `apps/web` con Sonner
+- Created: [[specs/crm/toast-sonner/PLAN]]: 11 task in 4 ondate (contenitore e stile, sei migrazioni per area in parallelo, via Radix con divieto ESLint, poi browser, lettori di schermo di Omar e brain); decisioni tecniche D1–D13 da rivedere con Omar
+- Movimento: quello di Sonner senza modifiche; la regola di Sonner basta per il movimento ridotto (verificato sul `dist` di 2.0.8)
+- Verifica del piano: DO NOT SHIP con 1 blocker (doppio contenitore e regione senza nome in `ImportStatus.test.tsx`), 4 major e 6 minor, tutti corretti
+
+## [2026-10-31] implement | Toast di `apps/web` con Sonner
+- Implemented: [[specs/crm/toast-sonner/SPEC]]: i toast di `apps/web` sono di Sonner 2.0.8, senza più il Toast di Radix; provati nel browser (T10) AC4–AC12, AC15–AC17, AC19, AC20, AC22–AC24, AC31, AC33–AC35
+- Brain aggiornato: [[specs/crm/design-system-web/SPEC]] (note sui criteri superati, AC24 con sei file), [[specs/crm/pagina-analisi/SPEC]] AC8, [[chore/motion]] (annuncio dei toast, movimento di Sonner), [[chore/motion-stack]] rigenerato, [[chore/migrazione-frontend-react]] e le voci sui toast del tech-debt chiuse
+
+## [2026-10-31] review | Toast di `apps/web` con Sonner
+- Review: [[specs/crm/toast-sonner/REPORT]] ([[specs/crm/toast-sonner/RUBRIC]]): DO NOT SHIP, critical, 8 passaggi. Blocker: l'apertura della pila con F8 anima senza una decisione in [[chore/motion]]. Major: le durate di 8 s senza test; `@radix-ui/react-toast` fuori dal divieto ESLint
+- Secondo giro: corretti il blocker e i due major, più il buco del gate dei colori sulle variabili di Sonner; v1, v7 e v8 rilanciati, ship. Resta per Omar la copertura delle durate chiamata per chiamata

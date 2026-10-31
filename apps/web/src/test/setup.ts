@@ -1,7 +1,7 @@
 import "@testing-library/jest-dom/vitest"
 import { cleanup } from "@testing-library/react"
-import { afterEach } from "vitest"
-import { clearToasts } from "@/components/ui/use-toast"
+import { toast } from "sonner"
+import { afterEach, beforeEach } from "vitest"
 
 // jsdom lacks what Radix reads on pointer and menu interactions (as in
 // src/test/setup.ts of the Next.js app)
@@ -28,7 +28,13 @@ if (!Reflect.has(window, "ResizeObserver")) {
   }
 }
 
+// Sonner's toasts live in its module: a toast shown after the last test
+// ended (a late answer) would be shown again by the next Toaster
+beforeEach(() => {
+  toast.dismiss()
+})
+
 afterEach(() => {
   cleanup()
-  clearToasts()
+  toast.dismiss()
 })

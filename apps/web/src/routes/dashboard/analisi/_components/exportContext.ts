@@ -7,7 +7,7 @@ import {
   type Group,
 } from "@mito/domain/analytics/window"
 import { useCurrentUser } from "@/api/me"
-import { toast } from "@/components/ui/use-toast"
+import { toast } from "sonner"
 import { DASH } from "../_lib/results"
 import {
   type ExportContext,
@@ -73,6 +73,6 @@ export async function downloadWorkbook(
   } catch {
     done = false
   }
-  if (!done) toast({ title: EXCEL_FAILED, variant: "destructive" })
+  if (!done) toast.error(EXCEL_FAILED)
   return done
 }

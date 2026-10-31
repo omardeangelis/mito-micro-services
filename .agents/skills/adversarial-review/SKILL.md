@@ -36,7 +36,7 @@ adversarial-review (orchestrator)
   └─ 3. Verification phase           — UI pass: serve the changed routes first; fan out one adversarial-verifier per rubric pass (parallel) → raw findings; stop a server you started
   └─ 4. Report synthesis             — consolidate verdicts → REPORT.md (severities, verdict, human checklist)
   └─ 5. Brain bookkeeping            — frontmatter, index.md, log.md, tech-debt linkage
-  └─ 6. Stop                         — present verdict + next step, wait for the user
+  └─ 6. Stop                         — present verdict + improvement candidates + next step, wait for the user
 ```
 
 ## Quick start

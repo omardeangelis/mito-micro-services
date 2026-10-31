@@ -47,6 +47,7 @@ function SheetContent({
   side = "right",
   showCloseButton = true,
   closeProps,
+  onInteractOutside,
   ...props
 }: React.ComponentProps<typeof SheetPrimitive.Content> & {
   side?: "top" | "right" | "bottom" | "left"
@@ -74,6 +75,17 @@ function SheetContent({
             "inset-x-0 bottom-0 h-auto border-t border-border data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom",
           className
         )}
+        // MITO: the toasts live outside the overlay; Radix would read a press
+        // on them as outside and close it
+        onInteractOutside={(event) => {
+          const target = event.target
+          if (
+            target instanceof Element &&
+            target.closest("[data-sonner-toaster]")
+          )
+            event.preventDefault()
+          onInteractOutside?.(event)
+        }}
         {...props}
       >
         {children}

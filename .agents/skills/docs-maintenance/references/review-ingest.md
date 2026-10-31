@@ -82,5 +82,6 @@ When review ingest ran as part of a spec ingest (case B), extend that run's log 
 
 - Synthesize review findings into `flows/` or `concepts/` pages.
 - Overwrite an existing tech-debt page — always append a dated section.
+- Fold the report's Feature-improvement candidates into `brain/feature-improvement/` — the user decided on each at the review's closeout.
 - Re-judge findings or change their severity — carry the report's own classification.
 - Ingest a report twice — the `ingested: true` guard is authoritative.

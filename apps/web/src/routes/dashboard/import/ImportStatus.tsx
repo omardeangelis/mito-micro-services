@@ -7,8 +7,8 @@ import {
   useMemo,
   useRef,
 } from "react"
+import { toast } from "sonner"
 import { useActiveImport, useInvalidateImports } from "@/api/import"
-import { useToast } from "@/components/ui/use-toast"
 import { useUserPreferenceContext } from "@/store/context/useUserPreferenceContext"
 import { endingNotice } from "./_components/format"
 
@@ -17,7 +17,7 @@ import { endingNotice } from "./_components/format"
 // runs, `GET /import/active` is asked again every 3 seconds; when it ends, the
 // notice says how, and the lists show the new data (AC21, AC26). Operators
 // never ask, and nobody polls without an import running. The toast is
-// announced by its own live region (Radix), so there is no other
+// announced by Sonner's polite region, so there is no other
 
 const ImportStatusContext = createContext<{
   /** Follows an import from its start, even one that ends before the next ask */
@@ -27,7 +27,6 @@ const ImportStatusContext = createContext<{
 export function ImportStatusProvider({ children }: PropsWithChildren) {
   const isAdmin = useUserPreferenceContext((state) => state.role) === "ADMIN"
   const invalidate = useInvalidateImports()
-  const { toast } = useToast()
   const { data } = useActiveImport(isAdmin)
   // The import being followed: the one seen running, or the one just started
   const watched = useRef<number | undefined>(undefined)
@@ -41,12 +40,16 @@ export function ImportStatusProvider({ children }: PropsWithChildren) {
     if (watched.current !== data.id) return
     watched.current = undefined
     const notice = endingNotice(data)
-    if (notice) toast({ ...notice, duration: 10_000 })
+    if (notice) {
+      const { title, description, variant } = notice
+      const show = variant === "success" ? toast.success : toast.error
+      show(title, { description, duration: 10_000 })
+    }
     void invalidate.lists()
     // Only a completed import wrote something: customers, practices, the
     // home and the "File" filter
     if (data.status === "completed") void invalidate.written()
-  }, [data, toast, invalidate])
+  }, [data, invalidate])
 
   const watch = useCallback(
     (runId: number) => {

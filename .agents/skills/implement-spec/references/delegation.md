@@ -37,7 +37,7 @@ For every task, in the order the mode dictates:
    - run the task's validation yourself; for `review_mode: browser` or `mixed`, the browser validation is yours (lifecycle §10)
    - confirm nothing outside the task's files changed without a reported reason
    - check the acceptance criteria the task covers, not only the test
-5. **Pass:** run the shared upkeep (lifecycle §8). Only you write `PLAN.md`, `IMPLEMENTATION-NOTES.md`, and the tech-debt file.
+5. **Pass:** run the shared upkeep (lifecycle §8). Only you write `PLAN.md`, `IMPLEMENTATION-NOTES.md`, the tech-debt file, and feature improvements. A worker's improvement candidates go to **Out of Scope Observations** (lifecycle §7).
 6. **Fail:** climb the ladder.
 
 A trivial defect (a missing import, a typo, a one-line off-by-one) you may fix yourself and count the review as passed. Log it.

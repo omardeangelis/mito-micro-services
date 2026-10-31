@@ -9,6 +9,7 @@ import {
 } from "@mito/contract/errors"
 import { ada } from "@/test/api"
 import { fakeProfile, operatorRow } from "@/test/profile"
+import { expectToastLasts } from "@/test/toast"
 import { renderSettings } from "./page"
 
 // Il dialog "Disattiva" della pagina del membro: impatto, errori, successo e
@@ -122,6 +123,22 @@ describe("il dialog Disattiva", () => {
     ).toBeInTheDocument()
     expect(router.state.location.pathname).toBe("/dashboard/settings/team")
   })
+
+  it(
+    "il toast della disattivazione dura 4 s (AC13)",
+    { timeout: 15_000 },
+    async () => {
+      const { user } = await setup()
+      await openAndPick(user)
+
+      await user.click(confirm())
+
+      const text =
+        "Operatore disattivato: 3 clienti, 2 contatti, 1 pratica passati a Luca Bianchi"
+      await screen.findByText(text)
+      await expectToastLasts(text, 4000)
+    }
+  )
 
   it("se il backend non risponde mostra l'errore e il dialog si chiude con Esc", async () => {
     const { user, backend } = await setup()

@@ -160,3 +160,9 @@
 - [Suite date shift, edge-bound mutants](feedback_suite_date_shift_and_edge_bound_mutants.md) — offset Date in copy setup + install log; UTC today/periodBounds call-site mutants survive
 - [JS px query vs rem breakpoint](feedback_js_media_query_vs_rem_breakpoint.md) — inline html font-size is vacuous; CDP Page.setFontSizes; stale DOM after fast presses
 - [Capped chart note and jump probes](feedback_capped_chart_note_and_jump_probes.md) — notes/legend in fixed box; class mutants; legend wrap; init-script fetch delay; half-revert mutant
+- [UI library swap spec checks](feedback_ui_library_swap_spec_checks.md) — "tests keep assertions" false (Radix nodes/classes); DismissableLayer.Branch; Escape/hotkey loss
+- [Library swap round 2](feedback_library_swap_spec_round2_checks.md) — unmount timer cuts exit anim; global Esc; vacuous status negatives; twin titles; other specs ACs
+- [Library swap plan checks](feedback_library_swap_plan_checks.md) — dual-mount harness: section+aria-label is a region; delayed dismiss vacuity; jsdom CSS; ESLint override
+- [Sonner browser probes](sonner-browser-probe-pitfalls.md) — expand the stack and use duration Infinity before clicking toasts; else false negatives
+- [Third-party CSS motion checks](feedback_third_party_css_motion_checks.md) — read the injected CSS and the JS that sets its attributes; check reduced-motion selector reach and unmount timers
+- [Toast duration mutants, real-clock flake](feedback_toast_duration_mutants_and_realclock.md) — per-site duration mutants; shownAt after findByText flakes

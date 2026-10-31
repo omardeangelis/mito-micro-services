@@ -18,7 +18,6 @@ import {
   type AnalysisScope,
 } from "@/api/analytics"
 import { useCurrentUser } from "@/api/me"
-import { toast } from "@/components/ui/use-toast"
 import { fakeAnalisi } from "@/test/analisi"
 import {
   ada,
@@ -27,6 +26,7 @@ import {
   renderWithApi,
   signedInAs,
 } from "@/test/api"
+import { shownToasts, sleep } from "@/test/toast"
 
 const october: AnalysisQuery = {
   from: "2026-10-01",
@@ -75,20 +75,6 @@ function SeriesOf({ query }: { query: AnalysisQuery }) {
   return <p>finestra dal {series.data.window.from}</p>
 }
 
-/**
- * How many toasts have been shown since now, read without a mock: `toast`
- * gives each call the next id, and the list shows only one at a time. Each
- * reading is itself a call, left out of the next count
- */
-function countToasts() {
-  const first = Number(toast({ title: "sonda" }).id)
-  let probes = 0
-  return () => {
-    const id = Number(toast({ title: "sonda" }).id)
-    return id - first - 1 - probes++
-  }
-}
-
 describe("the queries of the analysis page (D10)", () => {
   it("a failed chart stays in its own state: no error of the route, no toast (AC20, AC21)", async () => {
     renderWithApi(inRoute(<Series />), {
@@ -98,11 +84,11 @@ describe("the queries of the analysis page (D10)", () => {
 
     expect(await screen.findByText(/errore del grafico/)).toBeInTheDocument()
     expect(screen.queryByText("errore della rotta")).not.toBeInTheDocument()
-    expect(screen.queryByRole("status")).not.toBeInTheDocument()
+    await sleep(250)
+    expect(shownToasts()).toHaveLength(0)
   })
 
   it("two charts of different windows that fail with the expired session show one toast (AC23)", async () => {
-    const toastsSince = countToasts()
     renderWithApi(
       inRoute(
         <>
@@ -118,7 +104,8 @@ describe("the queries of the analysis page (D10)", () => {
         screen.getAllByText("errore del grafico: Unauthorized")
       ).toHaveLength(2)
     )
-    expect(toastsSince()).toBe(1)
+    await sleep(250)
+    expect(shownToasts()).toHaveLength(1)
   })
 
   it("the session toast is armed again by any query that succeeds (AC23)", async () => {
@@ -134,7 +121,6 @@ describe("the queries of the analysis page (D10)", () => {
         })
       })
     )
-    const toastsSince = countToasts()
     const windowFrom = (from: string) => ({ ...october, from })
     const { rerender } = renderWithApi(
       <SeriesOf query={windowFrom("2026-10-02")} />,
@@ -146,7 +132,8 @@ describe("the queries of the analysis page (D10)", () => {
     expect(
       await screen.findByText("errore del grafico: Unauthorized")
     ).toBeVisible()
-    expect(toastsSince()).toBe(1)
+    await sleep(250)
+    expect(shownToasts()).toHaveLength(1)
 
     // The user signs in again: a query succeeds
     session.expired = false
@@ -159,7 +146,8 @@ describe("the queries of the analysis page (D10)", () => {
     expect(
       await screen.findByText("errore del grafico: Unauthorized")
     ).toBeVisible()
-    expect(toastsSince()).toBe(2)
+    await sleep(250)
+    expect(shownToasts()).toHaveLength(2)
   })
 })
 
@@ -216,7 +204,8 @@ describe("the data of the analysis page", () => {
     expect(await screen.findByText("chiamate: errore")).toBeVisible()
     expect(await screen.findByText("sedi: 9")).toBeVisible()
     expect(screen.queryByText("errore della rotta")).not.toBeInTheDocument()
-    expect(screen.queryByRole("status")).not.toBeInTheDocument()
+    await sleep(250)
+    expect(shownToasts()).toHaveLength(0)
   })
 
   it("an admin-only chart answered NotAdmin: the user is read again and the admin's queries are gone (AC23)", async () => {

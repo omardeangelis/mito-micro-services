@@ -1,9 +1,8 @@
-import { act, render, screen } from "@testing-library/react"
+import { render, screen } from "@testing-library/react"
 import { describe, expect, it } from "vitest"
+import { globalsSonnerRules } from "@/test/toast"
 import { Alert, AlertDescription, AlertTitle } from "../alert"
 import { Avatar, AvatarFallback } from "../avatar"
-import { Toaster } from "../toaster"
-import { toast } from "../use-toast"
 
 // Avvisi, toast e avatar della spec design-system-web (AC18, AC19, appendice B)
 const has = (el: Element | null, ...expected: string[]) =>
@@ -42,37 +41,56 @@ describe("Alert", () => {
   })
 })
 
+// The toasts are Sonner's (spec toast-sonner, AC4): their colours are Sonner's
+// variables, set from the tokens in an unlayered block of globals.css. jsdom
+// doesn't load it, so the block is read as text; the computed colours, the
+// radius and the shadow of Sonner (AC7) are read in the browser
 describe("toast", () => {
-  const show = (variant: "default" | "success" | "destructive" | "info") => {
-    render(<Toaster />)
-    act(() => {
-      toast({ title: `Toast ${variant}`, variant })
-    })
-    return screen.getByText(`Toast ${variant}`).closest("li")
+  const colorsOf = (type: string | null) => {
+    const rules = globalsSonnerRules.filter(({ selector }) =>
+      type === null
+        ? !selector.includes("data-type")
+        : selector.endsWith(`[data-type="${type}"]`)
+    )
+    return Object.fromEntries(
+      rules.flatMap(({ declarations }) =>
+        [...declarations].filter(([name]) => name.startsWith("--normal-"))
+      )
+    )
   }
 
   it.each([
     ["success", "success-soft"],
-    ["destructive", "destructive-soft"],
+    ["error", "destructive-soft"],
     ["info", "primary-soft"],
-  ] as const)("la variante %s usa la terna %s", (variant, soft) => {
-    has(
-      show(variant),
-      `bg-${soft}`,
-      `border-${soft}-border`,
-      `text-${soft}-foreground`
-    )
+  ] as const)("il tipo %s usa la terna %s", (type, soft) => {
+    expect(colorsOf(type)).toEqual({
+      "--normal-bg": `var(--color-${soft})`,
+      "--normal-border": `var(--color-${soft}-border)`,
+      "--normal-text": `var(--color-${soft}-foreground)`,
+    })
   })
 
-  it("il neutro è su card con bordo border, ombra pop e raggio 12 px", () => {
-    has(
-      show("default"),
-      "bg-card",
-      "border-border",
-      "text-foreground",
-      "shadow-pop",
-      "rounded-sheet"
+  it("il neutro è su card con bordo border e testo foreground", () => {
+    expect(colorsOf(null)).toEqual({
+      "--normal-bg": "var(--color-card)",
+      "--normal-border": "var(--color-border)",
+      "--normal-text": "var(--color-foreground)",
+    })
+  })
+
+  // The colour gate takes every custom property of globals.css for a token
+  // definition: the variables of Sonner are checked here instead
+  it("ogni variabile di colore di Sonner viene da un token", () => {
+    const values = globalsSonnerRules.flatMap(({ declarations }) =>
+      [...declarations]
+        .filter(([name]) =>
+          /^--(normal|success|error|info|warning)-/.test(name)
+        )
+        .map(([, value]) => value)
     )
+    expect(values).not.toHaveLength(0)
+    for (const value of values) expect(value).toMatch(/^var\(--color-[\w-]+\)$/)
   })
 })
 

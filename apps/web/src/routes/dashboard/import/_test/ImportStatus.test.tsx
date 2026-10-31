@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query"
-import { act, screen } from "@testing-library/react"
+import { act, screen, within } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { customerKeys } from "@/api/customer"
 import { useImportList } from "@/api/import"
@@ -79,36 +79,33 @@ describe("ImportStatusProvider", () => {
     expect(backend.asked("active")).toBe(3)
   })
 
-  it("un lettore di schermo sente l'avviso in italiano, con le parole separate (AC40, AC41)", async () => {
-    // Radix writes the announcement a frame after the toast, and takes it
-    // away a second later
-    vi.useRealTimers()
-    vi.useFakeTimers({
-      toFake: [
-        "setTimeout",
-        "clearTimeout",
-        "setInterval",
-        "clearInterval",
-        "Date",
-        "requestAnimationFrame",
-        "cancelAnimationFrame",
-      ],
-    })
+  it("un lettore di schermo sente l'avviso nella regione educata «Notifiche (F8)», e dopo 10 s non c'è più (AC13, AC30, AC32)", async () => {
     const backend = fakeImport({ active: importRun() })
     renderStatus(backend)
     await wait(0)
 
     backend.state.active = completedRun
     await wait(3100)
-    // The two frames after the toast
-    await wait(50)
 
-    expect(screen.getByRole("status").textContent).toBe(
-      "Notifica Import completato wave_ottobre.xlsx: 40 clienti nuovi e 12.000 aggiornati, 50 pratiche nuove e 67 aggiornate, 90 legami nuovi"
-    )
-    expect(screen.getByRole("region").getAttribute("aria-label")).toMatch(
-      /^Notifiche \(/
-    )
+    const region = screen.getByRole("region", { name: "Notifiche (F8)" })
+    expect(region).toHaveAttribute("aria-live", "polite")
+    expect(within(region).getByText("Import completato")).toBeInTheDocument()
+    expect(
+      within(region).getByText(
+        "wave_ottobre.xlsx: 40 clienti nuovi e 12.000 aggiornati, 50 pratiche nuove e 67 aggiornate, 90 legami nuovi"
+      )
+    ).toBeInTheDocument()
+
+    // Still there just before its 10 s, gone after them and Sonner's 200 ms
+    // exit (D13: the node shown is the one not removed)
+    await wait(9500)
+    expect(
+      within(region)
+        .getByText("Import completato")
+        .closest("[data-sonner-toast]")
+    ).toHaveAttribute("data-removed", "false")
+    await wait(500 + 250)
+    expect(within(region).queryByText("Import completato")).toBeNull()
   })
 
   it("dice perché un import è fallito, senza rileggere quello che non ha scritto (AC29)", async () => {
@@ -154,7 +151,8 @@ describe("ImportStatusProvider", () => {
 
     backend.state.active = completedRun
     act(() => started(completedRun.id))
-    await wait(0)
+    // Sonner adds the toast after a `setTimeout(0)` of its own
+    await wait(10)
 
     expect(screen.getByText("Import completato")).toBeTruthy()
     expect(fileReads).toBe(files + 1)
@@ -164,6 +162,8 @@ describe("ImportStatusProvider", () => {
     const backend = fakeImport({ active: completedRun })
     renderStatus(backend)
     await wait(0)
+    // Sonner adds a toast after a `setTimeout(0)`: one would be there now (D13)
+    await wait(250)
 
     // Right away: a notice would still be on screen (it lasts 10 s)
     expect(screen.queryByText("Import completato")).toBeNull()

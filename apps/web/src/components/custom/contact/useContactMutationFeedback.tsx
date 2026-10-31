@@ -1,7 +1,6 @@
 import { useCallback } from "react"
 import { useNavigate } from "react-router"
-import { ToastAction } from "@/components/ui/toast"
-import { useToast } from "@/components/ui/use-toast"
+import { toast } from "sonner"
 import { describeApiError, type ApiFailure } from "@/api/errors"
 import { navigateOnPlainClick } from "./navigateOnPlainClick"
 
@@ -60,7 +59,6 @@ export const useContactMutationFeedback = ({
   activeContactHref,
   refresh,
 }: ContactMutationFeedbackOptions) => {
-  const { toast } = useToast()
   const navigate = useNavigate()
 
   const onError = useCallback(
@@ -75,26 +73,24 @@ export const useContactMutationFeedback = ({
         activeContactHref && activeTaskId !== null
           ? activeContactHref(activeTaskId)
           : null
-      // The link prevents the default of its click, which Radix reads as
-      // "keep the toast": the link closes it itself
-      const shown = toast({
-        variant: "destructive",
+      // On a plain click the link closes the toast, so it reads the id of
+      // the call that shows it
+      const id = toast.error("", {
         duration: 8000,
         description: describeRejection(error),
         ...(href !== null
           ? {
               action: (
-                <ToastAction altText="Vai al contatto attivo" asChild>
-                  <a
-                    href={href}
-                    onClick={navigateOnPlainClick((to) => {
-                      shown.dismiss()
-                      void navigate(to, { preventScrollReset: true })
-                    }, href)}
-                  >
-                    Vai al contatto attivo
-                  </a>
-                </ToastAction>
+                <a
+                  href={href}
+                  data-button=""
+                  onClick={navigateOnPlainClick((to) => {
+                    toast.dismiss(id)
+                    void navigate(to, { preventScrollReset: true })
+                  }, href)}
+                >
+                  Vai al contatto attivo
+                </a>
               ),
             }
           : {}),
@@ -102,7 +98,7 @@ export const useContactMutationFeedback = ({
       refresh()
       return null
     },
-    [toast, navigate, activeContactHref, refresh]
+    [navigate, activeContactHref, refresh]
   )
 
   return { onError }

@@ -34,7 +34,7 @@ Recommendation:
 
 Tell the user:
 
-- where the spec was created (and that a companion `FLOW.md` map was written, when the spec came from a prototype reviewed by `ux-advisor`)
+- where the spec was created (and that a companion `FLOW.md` map was written, when the spec came from a prototype reviewed by `ux-advisor`, and a `STATES.md` matrix, when the user approved the prototype's state sweep)
 - how the spec was checked:
   - under `review.mode: total`: that it passed the `adversarial-verifier` quality gate, and any BLOCKER it raised was resolved;
   - under `plan` or `none`: that it was self-checked against the quality bar, and that the verifier pass runs on request

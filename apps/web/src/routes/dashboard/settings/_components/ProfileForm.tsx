@@ -20,7 +20,7 @@ import {
   FormMessage,
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
-import { useToast } from "@/components/ui/use-toast"
+import { toast } from "sonner"
 import { Required, schemaResolver } from "@/lib/form"
 import { useRouter } from "@/lib/navigation"
 
@@ -47,7 +47,6 @@ export const ProfileForm = ({
   const [searchParams] = useSearchParams()
   const isFirstTime = searchParams.get("firstTime") === "true"
   const router = useRouter()
-  const { toast } = useToast()
   // `values`: the form takes the operator again when it changes
   const form = useForm<ProfileValues>({
     values: { name: operator.name ?? "", surname: operator.surname ?? "" },
@@ -67,11 +66,7 @@ export const ProfileForm = ({
       router.push("/dashboard")
       return
     }
-    toast({
-      title: "Profilo aggiornato",
-      variant: "success",
-      duration: 1000,
-    })
+    toast.success("Profilo aggiornato", { duration: 1000 })
   })
 
   const pending = update.isPending

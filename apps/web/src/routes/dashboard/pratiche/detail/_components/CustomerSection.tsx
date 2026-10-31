@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { useToast } from "@/components/ui/use-toast"
+import { toast } from "sonner"
 import { InputWithCopy } from "@/components/custom/input/InputWithCopy"
 import { useUpdateCustomerPreview } from "@/api/pratiche"
 import { schemaResolver } from "@/lib/form"
@@ -64,7 +64,6 @@ export const CustomerSection = (props: Props) => {
     router.push(`/dashboard/customers/${id}`)
   }, [router, id])
 
-  const { toast } = useToast()
   const updatePreview = useUpdateCustomerPreview()
   const pending = updatePreview.isPending
   const onSubmit = form.handleSubmit(async (values) => {
@@ -77,18 +76,12 @@ export const CustomerSection = (props: Props) => {
         },
       })
     } catch (_error) {
-      toast({
-        title: "Errore durante l'aggiornamento del cliente",
-        variant: "destructive",
+      toast.error("Errore durante l'aggiornamento del cliente", {
         duration: 1000,
       })
       return
     }
-    toast({
-      title: "Cliente aggiornato con successo",
-      variant: "success",
-      duration: 1000,
-    })
+    toast.success("Cliente aggiornato con successo", { duration: 1000 })
     // The saved values are the ones of the form now
     form.reset(values)
   })

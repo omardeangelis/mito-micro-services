@@ -109,4 +109,4 @@ This skill does **not** write `<techDebt>/` — that is `docs-maintenance`'s job
 2. Write `REPORT.md` (Stage 4) with its frontmatter and the consolidated findings.
 3. Update `brain/index.md` Reviews section.
 4. Append the `brain/log.md` entry.
-5. Do not touch domain `flows/`/`concepts/` or `<techDebt>/` — those are downstream of `docs-maintenance`.
+5. Do not touch domain `flows/`/`concepts/` or `<techDebt>/` — those are downstream of `docs-maintenance`. `brain/feature-improvement/` is written only at the closeout, for the candidates the user accepted (references/stop-conditions.md).

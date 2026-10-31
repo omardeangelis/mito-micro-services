@@ -1,15 +1,14 @@
 import { Input, type InputProps } from "@/components/ui/input"
-import { useToast } from "@/components/ui/use-toast"
 import { useCopyToClipboard } from "@/lib/hooks/useCopyToClipboard"
 import { CopyIcon } from "lucide-react"
 import React from "react"
+import { toast } from "sonner"
 
 type Props = InputProps & { canCopy?: boolean }
 
 const InputWithCopy = React.forwardRef<HTMLInputElement, Props>(
   ({ className, type, canCopy, ...props }, ref) => {
     const [, copy] = useCopyToClipboard()
-    const { toast } = useToast()
     return (
       <div className="relative flex w-full">
         <Input type={type} className={className} ref={ref} {...props} />
@@ -23,17 +22,11 @@ const InputWithCopy = React.forwardRef<HTMLInputElement, Props>(
               e.stopPropagation()
               copy(props.value?.toString() ?? "")
                 .then(() => {
-                  toast({
-                    variant: "success",
-                    duration: 5000,
-                    title: "Copiato con successo",
-                  })
+                  toast.success("Copiato con successo", { duration: 5000 })
                 })
                 .catch(() => {
-                  toast({
-                    variant: "destructive",
+                  toast.error("Errore", {
                     duration: 5000,
-                    title: "Errore",
                     description: "Azione non supportato dal Browser",
                   })
                 })

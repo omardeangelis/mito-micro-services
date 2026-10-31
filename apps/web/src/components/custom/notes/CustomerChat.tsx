@@ -36,7 +36,7 @@ import { useSavingUntilRefreshed } from "@/components/custom/contact/useSavingUn
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { TrashIcon } from "lucide-react"
-import { useToast } from "@/components/ui/use-toast"
+import { toast } from "sonner"
 import {
   checkUnsentNote,
   openUnsentNote,
@@ -199,7 +199,6 @@ export function CustomerChat({
     )
   }, [limit, setSearchParams])
 
-  const { toast } = useToast()
   // The operator signed in, from the current user: undefined until it loads
   const operatorId = useActor()?.operatorId
   // Only the author of a note deletes it, an administrator too, as the server
@@ -234,13 +233,12 @@ export function CustomerChat({
       stopDeleting(customerId, id)
       // Not on the page of another customer opened in the meantime
       if (!isChatShown(customerId)) return
-      toast({
-        variant: "destructive",
+      toast.error("", {
         duration: 8000,
         description: "Nota non eliminata, riprova",
       })
     },
-    [customerId, toast]
+    [customerId]
   )
 
   useEffect(() => showChat(customerId), [customerId])

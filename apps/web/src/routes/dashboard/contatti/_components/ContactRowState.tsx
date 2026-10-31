@@ -1,5 +1,6 @@
 import * as React from "react"
 import { useNavigate } from "react-router"
+import { toast } from "sonner"
 
 import { TaskStatusBadge } from "@/components/custom/badge/TaskStatusBadge"
 import { AlertCloseConfirmDialog } from "@/components/custom/contact/AlertCloseConfirmDialog"
@@ -12,8 +13,6 @@ import {
 } from "@/components/custom/contact/useContactMutationFeedback"
 import { useRowFocusAfterSave } from "@/components/custom/contact/useRowFocusAfterSave"
 import { useSavingUntilRefreshed } from "@/components/custom/contact/useSavingUntilRefreshed"
-import { ToastAction } from "@/components/ui/toast"
-import { useToast } from "@/components/ui/use-toast"
 import { navigateOnPlainClick } from "@/components/custom/contact/navigateOnPlainClick"
 import { contactEditability } from "@mito/domain/contact/permissions"
 import { type ContactRow, type TaskStatus } from "@mito/contract/task"
@@ -64,7 +63,6 @@ export function ContactRowState({
   nested = false,
 }: Props) {
   const actor = useActor()
-  const { toast } = useToast()
   const rowChanged = useRowChanged()
 
   const cellRef = React.useRef<HTMLDivElement>(null)
@@ -111,35 +109,26 @@ export function ContactRowState({
         (result) => {
           // Before the refresh: the table looks for the row in what it brings
           rowChanged(contact.id, customerName)
-          // The link prevents the default of its click, which Radix reads
-          // as "keep the toast": the link closes it itself
-          const shown = toast({
-            type: "background",
+          // A reopening is a new contact (AC34): the way to it. The link
+          // closes the toast on a plain click, so it reads the id of the
+          // call that shows it
+          const href = result.reopened ? detailHref(result.taskId, state) : null
+          const id = toast("", {
             duration: result.reopened ? 8000 : 5000,
             description: `${customerName}: ${toState}`,
-            // A reopening is a new contact (AC34): the way to it
-            ...(result.reopened
+            ...(href !== null
               ? {
                   action: (
-                    <ToastAction
-                      // Radix keeps it in an attribute, which the Sentry
-                      // Replay does not mask: the name is in the description
-                      altText="Apri il contatto riaperto"
-                      asChild
+                    <a
+                      href={href}
+                      data-button=""
+                      onClick={navigateOnPlainClick((to) => {
+                        toast.dismiss(id)
+                        void navigate(to, { preventScrollReset: true })
+                      }, href)}
                     >
-                      <a
-                        href={detailHref(result.taskId, state)}
-                        onClick={navigateOnPlainClick(
-                          (href) => {
-                            shown.dismiss()
-                            void navigate(href, { preventScrollReset: true })
-                          },
-                          detailHref(result.taskId, state)
-                        )}
-                      >
-                        Apri
-                      </a>
-                    </ToastAction>
+                      Apri
+                    </a>
                   ),
                 }
               : {}),

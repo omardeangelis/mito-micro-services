@@ -50,6 +50,7 @@ function DialogContent({
   children,
   showCloseButton = true,
   onOpenAutoFocus,
+  onInteractOutside,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   showCloseButton?: boolean
@@ -105,6 +106,17 @@ function DialogContent({
             if (document.activeElement !== previouslyFocused) return
           }
           content.focus()
+        }}
+        // MITO: the toasts live outside the overlay; Radix would read a press
+        // on them as outside and close it
+        onInteractOutside={(event) => {
+          const target = event.target
+          if (
+            target instanceof Element &&
+            target.closest("[data-sonner-toaster]")
+          )
+            event.preventDefault()
+          onInteractOutside?.(event)
         }}
         {...props}
       >

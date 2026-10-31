@@ -111,7 +111,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { toast } from "@/components/ui/use-toast"
+import { toast } from "sonner"
 import {
   BadgeDelta,
   BarChart,
@@ -239,7 +239,13 @@ const buttonVariants = [
 const buttonSizes = ["default", "xs", "sm", "lg"] as const
 const iconSizes = ["icon", "icon-xs", "icon-sm", "icon-lg"] as const
 
-const toastVariants = ["default", "success", "info", "destructive"] as const
+// One button per kind of toast; the label keeps the name of the variant
+const toastByVariant = {
+  default: toast,
+  success: toast.success,
+  info: toast.info,
+  destructive: toast.error,
+} as const
 
 const Section = ({
   title,
@@ -311,7 +317,6 @@ const ExampleForm = () => {
 
 export function UiShowcase() {
   const [date, setDate] = useState<Date | undefined>(new Date(2026, 9, 27))
-  // A toast of each variant can be open together; leaving the page restores it
 
   return (
     <main className="space-y-4 p-4">
@@ -629,15 +634,13 @@ export function UiShowcase() {
             <ContextMenuItem>Copia</ContextMenuItem>
           </ContextMenuContent>
         </ContextMenu>
-        {toastVariants.map((variant) => (
+        {Object.entries(toastByVariant).map(([variant, show]) => (
           <Button
             key={variant}
             variant="secondary"
             onClick={() =>
-              toast({
-                title: "Salvato",
+              show("Salvato", {
                 description: "Il cliente è aggiornato",
-                variant,
               })
             }
           >

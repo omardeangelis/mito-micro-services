@@ -98,6 +98,10 @@ FINDINGS:
 WHAT PASSED:
 - <criterion>: <evidence>
 
+IMPROVEMENT CANDIDATES:
+- <feature>: <what it could do better than its spec asks> — <evidence: location/citation>
+- ... (at most 3, or "none")
+
 VERDICT: SHIP | DO NOT SHIP
 RATIONALE: <one-paragraph justification tied to the findings>
 IF DO NOT SHIP: <the single strongest blocking objection, stated plainly>
@@ -107,6 +111,7 @@ IF DO NOT SHIP: <the single strongest blocking objection, stated plainly>
 
 - Any unresolved BLOCKER (or any CONTRADICTED claim that materially affects the artifact) = DO NOT SHIP.
 - For a spec implementation, an unmet `SPEC.md` acceptance criterion is at least a MAJOR, and a BLOCKER when it breaks the stated goal. A `FLOW.md` row with no criterion behind it is never a finding by itself.
+- An improvement candidate is not a finding: it carries no severity and never moves the verdict. A gap against the spec, the plan or the project's standards is a finding, never a candidate.
 - UNSUPPORTED claims in a report are blocking unless the rubric explicitly allows unsourced statements.
 - You may SHIP only after a genuine attempt to break the artifact yielded no blocking failure. If you reach SHIP too easily, re-examine — you may have absorbed a hint.
 - When evidence is insufficient to verify, default to DO NOT SHIP and state exactly what evidence you need. Never approve to be agreeable.

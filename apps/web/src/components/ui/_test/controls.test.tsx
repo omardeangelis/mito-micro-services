@@ -11,7 +11,7 @@ import {
 } from "../accordion"
 import { Button } from "../button"
 import { Tabs, TabsList, TabsTrigger } from "../tabs"
-import { Toast, ToastAction, ToastProvider, ToastViewport } from "../toast"
+import { globalsSonnerRules } from "@/test/toast"
 
 // Checkbox, radio e switch della spec design-system-web (AC12, AC13)
 const has = (el: HTMLElement, ...expected: string[]) =>
@@ -104,27 +104,34 @@ describe("Il focus da tastiera non si anima", () => {
     )
   })
 
-  it("l'azione del toast non anima il contorno", () => {
-    render(
-      <ToastProvider>
-        <Toast open>
-          <ToastAction altText="Apri il contatto">Apri</ToastAction>
-        </Toast>
-        <ToastViewport />
-      </ToastProvider>
+  // The toasts are Sonner's (spec toast-sonner, AC22): their focus is in an
+  // unlayered block of globals.css, which jsdom doesn't load, read as text.
+  // The ring is seen with the keyboard in the browser
+  it.each([
+    ["il toast", /\[data-sonner-toast\]:focus-visible$/],
+    ["«Chiudi» e i collegamenti", /\[data-button\]:focus-visible$/],
+    ["la X", /\[data-close-button\]:focus-visible$/],
+  ])("%s ha il contorno ring 2 px a 2 px, senza transizione", (_, focus) => {
+    const rules = globalsSonnerRules.filter(({ selector }) =>
+      focus.test(selector)
     )
-    const action = screen.getByRole("button", { name: "Apri" })
-    expect(action.className.split(/\s+/)).not.toEqual(
-      expect.arrayContaining([expect.toBeOneOf(animatesOutline)])
+    expect(rules).not.toHaveLength(0)
+    for (const { declarations } of rules) {
+      expect(declarations.get("outline")).toBe("2px solid var(--color-ring)")
+      expect(declarations.get("outline-offset")).toBe("2px")
+      expect(
+        [...declarations.keys()].some((p) => p.includes("transition"))
+      ).toBe(false)
+    }
+  })
+
+  it("«Chiudi», i collegamenti e la X non hanno l'anello grigio di Sonner", () => {
+    const buttons = globalsSonnerRules.filter(({ selector }) =>
+      /\[data-(button|close-button)\]:focus-visible$/.test(selector)
     )
-    has(action, "transition-[color,background-color,border-color]")
-    // Nor in a variant, nor as an arbitrary property
-    const transitions = action.className
-      .split(/\s+/)
-      .filter((c) => c.includes("transition"))
-    expect(transitions).toEqual([
-      "transition-[color,background-color,border-color]",
-    ])
+    expect(buttons).not.toHaveLength(0)
+    for (const { declarations } of buttons)
+      expect(declarations.get("box-shadow")).toBe("none")
   })
 
   it("switch, bottone, tab e accordion non animano il contorno", () => {

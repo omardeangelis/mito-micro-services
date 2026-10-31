@@ -26,7 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { useToast } from "@/components/ui/use-toast"
+import { toast } from "sonner"
 import { useUserPreferenceContext } from "@/store/context/useUserPreferenceContext"
 import { DeactivateOperatorDialog } from "./_components/DeactivateOperatorDialog"
 import {
@@ -142,25 +142,22 @@ const MemberOfTeam = () => {
 const RoleCard = ({ member, role }: { member: Member; role: Role }) => {
   const [chosen, setChosen] = useState<Role>(role)
   const updateRoles = useUpdateOperatorsRole()
-  const { toast } = useToast()
 
   const save = async () => {
     try {
       await updateRoles.mutateAsync([{ id: member.id, role: chosen }])
     } catch (failure) {
-      toast({
-        // The errors of the roles say what to do; the others don't
-        title:
-          isApiFailure(failure) &&
+      // The errors of the roles say what to do; the others don't
+      toast.error(
+        isApiFailure(failure) &&
           (failure._tag === "LastAdmin" || failure._tag === "OperatorNotFound")
-            ? describeApiError(failure)
-            : "Errore durante l'aggiornamento del ruolo",
-        duration: 2000,
-        variant: "destructive",
-      })
+          ? describeApiError(failure)
+          : "Errore durante l'aggiornamento del ruolo",
+        { duration: 2000 }
+      )
       return
     }
-    toast({ title: "Ruolo aggiornato", duration: 2000, variant: "success" })
+    toast.success("Ruolo aggiornato", { duration: 2000 })
   }
 
   const selectId = `role-${member.id}`

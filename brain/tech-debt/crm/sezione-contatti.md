@@ -5,7 +5,7 @@ links:
   - "[[specs/crm/sezione-contatti/SPEC]]"
   - "[[specs/crm/sezione-contatti/IMPLEMENTATION-NOTES]]"
 created: 2026-09-25
-updated: 2026-10-23
+updated: 2026-10-31
 ---
 
 # Tech debt: Sezione Contatti
@@ -221,12 +221,12 @@ Scoperto nella review di PR2 (v7).
 
 Scoperto nel piano (P6, rivisto con `design-engineer` il 2026-10-15), preesistente: sono i primitivi shadcn in `src/components/ui/`, che PR3 non tocca.
 
-- Nessuna variante `motion-reduce` su Dialog, Toast e Sheet: con `prefers-reduced-motion` le transizioni di entrata e uscita restano.
+- Nessuna variante `motion-reduce` su Dialog, Toast e Sheet: con `prefers-reduced-motion` le transizioni di entrata e uscita restano. **Per il Toast chiuso il 2026-10-31 da [[specs/crm/toast-sonner/SPEC]]:** i toast sono di Sonner, che con `prefers-reduced-motion` spegne transizioni e animazioni (AC10). Resta aperto per Dialog e Sheet.
 - Lo stesso per il contenuto di `Select` (`ui/select.tsx:78`) e di `DropdownMenu` (`ui/dropdown-menu.tsx:50,68`): `fade-in-0 zoom-in-95 slide-in-from-*` senza `motion-reduce`. PR3 usa il `Select` per la priorità nella scheda cliente e per l'operatore di destinazione nella modale del passaggio di consegne (review di PR3, v7).
 - I menu di `DropdownMenu` e di `Select` condivisi non impostano `transform-origin` sul lato del trigger: lo `zoom-in` parte dal centro.
 - L'uscita della Dialog dura quanto l'entrata (200 ms): di solito l'uscita è più breve.
 - Sheet a 500 ms `ease-in-out`: lento per un pannello laterale, e la curva non è d'uscita.
-- `transition-all` su Toast e su `.dashabord-container`: anima anche proprietà di layout.
+- `transition-all` su Toast e su `.dashabord-container`: anima anche proprietà di layout. **Per il Toast chiuso il 2026-10-31 da [[specs/crm/toast-sonner/SPEC]]:** il Toast di Radix non c'è più, e sui toast di Sonner non c'è nessun `transition-*` nostro. Resta aperto per `.dashabord-container`.
 
 **Effetto oggi:** solo sul movimento. Il selettore di stato di PR3 apre il suo menu senza animazione (eccezione in `brain/chore/motion.md`); la modale di conferma usa la Dialog com'è, e il selettore della priorità e quello del passaggio di consegne il `Select` com'è.
 
@@ -399,17 +399,17 @@ Scoperto nel passaggio browser di PR3 (T3.14, 2026-10-15), preesistente: la stes
 
 Scoperto nel passaggio UI della review di PR3 (v6, 2026-10-15), preesistente: sono i primitivi in `src/components/ui/`, che PR3 non tocca.
 
-- Il pulsante di chiusura del toast non ha un nome accessibile.
+- ~~Il pulsante di chiusura del toast non ha un nome accessibile.~~ Chiuso il 2026-10-31 da [[specs/crm/toast-sonner/SPEC]]: si chiama «Chiudi notifica» (AC18).
 - A 320 px il pulsante principale del footer della Dialog sta sopra "Annulla" (`flex-col-reverse`).
-- Nel toast `default` e `info` l'anello di focus della "X" e di `ToastAction` è il blu di Tailwind al 50 %, non `--ring`: 1,74:1 sullo sfondo, sotto il 3:1 di WCAG 1.4.11 (review della PR 5 di gestione-operatori, v6, 2026-10-23).
-- `ToastAction` non ha override per la variante `success`: in hover il testo bianco va su `bg-secondary`, 1,07:1. Oggi nessun toast di successo ha un'azione (stessa review).
+- ~~Nel toast `default` e `info` l'anello di focus della "X" e di `ToastAction` è il blu di Tailwind al 50 %, non `--ring`: 1,74:1 sullo sfondo, sotto il 3:1 di WCAG 1.4.11 (review della PR 5 di gestione-operatori, v6, 2026-10-23).~~ Chiuso il 2026-10-31 da [[specs/crm/toast-sonner/SPEC]]: toast, X, «Chiudi» e collegamento hanno il contorno `ring` di 2 px (AC22).
+- ~~`ToastAction` non ha override per la variante `success`: in hover il testo bianco va su `bg-secondary`, 1,07:1. Oggi nessun toast di successo ha un'azione (stessa review).~~ Chiuso il 2026-10-31 da [[specs/crm/toast-sonner/SPEC]]: `ToastAction` non c'è più, i pulsanti dei toast sono di Sonner.
 - In `ExportDialog` le card dei tab "Standard" e "Chiamate" forzano il contenuto a circa 451 px: sotto i 500 px escono dal dialog e il titolo, centrato su quella larghezza, va sotto la "X" (da 280 a 368 px). C'era già prima della PR 5, che l'ha allargato di qualche pixel con il margine di 16 px (stessa review, v5).
 
 **Risolto dalla PR 5 di [[specs/crm/gestione-operatori/PLAN]] (2026-10-23):** il token `--destructive` è il rosso 700 (6,19:1 col testo, era 3,6:1), `--success` il verde 700 (5,34:1, era 2,14:1), `--muted-foreground` il grigio al 40 % (4,91:1 sullo sfondo, era 4,05:1). La "X" della Dialog si chiama "Chiudi", misura 24×24 ed è la prima nell'ordine di tabulazione, senza cambiare il focus iniziale; la Dialog lascia 16 px dai bordi sotto i 640 px e i pulsanti del footer hanno 8 px fra loro.
 
-**Effetto oggi:** chi usa un lettore di schermo sente un pulsante del toast senza nome; chi usa la tastiera vede appena il focus nei toast normali; su un telefono stretto l'export ha le card fuori dal riquadro.
+**Effetto oggi:** (la parte sui toast è chiusa dal 2026-10-31, [[specs/crm/toast-sonner/SPEC]]) su un telefono stretto l'export ha le card fuori dal riquadro.
 
-**Da fare fuori da questa spec:** la stessa passata sui primitivi `ui/` di "Lacune dei primitivi di movimento": `aria-label="Chiudi"` sul pulsante del toast, l'anello di focus del toast su `--ring`, gli override `success` di `ToastAction` quando servirà, le card di `ExportDialog` che vanno a capo (`flex-col sm:flex-row`, `min-w-0`), e l'ordine del footer a 320 px se si decide che il pulsante principale va in fondo.
+**Da fare fuori da questa spec:** la stessa passata sui primitivi `ui/` di "Lacune dei primitivi di movimento": (chiuso per i toast il 2026-10-31: `aria-label` del pulsante, anello di focus su `--ring`, `ToastAction`) le card di `ExportDialog` che vanno a capo (`flex-col sm:flex-row`, `min-w-0`), e l'ordine del footer a 320 px se si decide che il pulsante principale va in fondo.
 
 ## La scheda cliente non regge sotto i 900 px
 

@@ -18,6 +18,7 @@ import {
   type SendAnswer,
   type StartAnswer,
 } from "@/test/customers"
+import { expectToastLasts } from "@/test/toast"
 import { CustomerChat, CustomerNewChat, CustomerNotes } from "../CustomerChat"
 import { CustomerChatSection } from "../CustomerChatSection"
 import { clearUnsentNotes } from "../unsentNote"
@@ -1177,6 +1178,9 @@ describe("CustomerChat, attesa dell'eliminazione", () => {
       await answerDelete(queryClient, 0, reply)
 
       expect(await screen.findAllByText(deleteToast)).not.toHaveLength(0)
+      expect(
+        screen.getAllByText(deleteToast)[0]?.closest("[data-sonner-toast]")
+      ).toHaveAttribute("data-type", "error")
       // Its own toast only: not the text of the error too
       expect(
         screen.queryByText("Solo l'autore della nota può eliminarla")
@@ -1185,6 +1189,24 @@ describe("CustomerChat, attesa dell'eliminazione", () => {
       expect(trash("Seconda nota").querySelector("svg.animate-spin")).toBeNull()
       expect(backend.state.touched).toEqual([])
       expect(status().textContent).toBe("")
+    }
+  )
+
+  it(
+    "'Nota non eliminata, riprova' dura 8 s (AC13)",
+    { timeout: 20_000 },
+    async () => {
+      const { queryClient } = renderChat([
+        note(1, "Prima nota"),
+        note(2, "Seconda nota"),
+      ])
+      const user = userEvent.setup()
+
+      await user.click(trash("Seconda nota"))
+      await answerDelete(queryClient, 0, "down")
+
+      await screen.findByText(deleteToast)
+      await expectToastLasts(deleteToast, 8000)
     }
   )
 
