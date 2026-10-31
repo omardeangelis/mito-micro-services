@@ -60,14 +60,16 @@ done
 # of its own service account, which the backend checks (CRON_OIDC_* in
 # deploy-staging.sh). The service account needs no role: the service is
 # public and the token is the check. No retry: a failed run waits for the next
-# day or a "Force run". Same UTC times as the GitHub crons; the jobs start
+# day or a "Force run". Same UTC times as the GitHub crons, plus the cleanup
+# of the contacts log at 01:17, which no GitHub cron runs; the jobs start
 # paused, and are resumed when staging takes over its crons
 gcloud services enable cloudscheduler.googleapis.com --project=$P
 SCHED=mito-crm-scheduler-staging@$P.iam.gserviceaccount.com
 gcloud iam service-accounts create mito-crm-scheduler-staging --project=$P
 URL=https://mito-crm-staging-869830994359.europe-west3.run.app
 for job in "priority|17 23 * * *" "alert|47 23 * * *" \
-  "update|17 0 * * *" "delete-export|47 0 * * *"; do
+  "update|17 0 * * *" "delete-export|47 0 * * *" \
+  "cleanup-task-event-log|17 1 * * *"; do
   name=${job%%|*}
   gcloud scheduler jobs create http mito-crm-staging-$name --project=$P \
     --location=$R --schedule="${job#*|}" --time-zone=Etc/UTC \

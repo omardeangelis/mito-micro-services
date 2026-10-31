@@ -3,7 +3,7 @@ domain: platform
 title: Backend, DB, storage e cron su GCP
 type: piano
 status: in_progress
-last_updated: 2026-10-27
+last_updated: 2026-10-30
 ---
 
 # Backend, DB, storage e cron su GCP
@@ -78,7 +78,7 @@ browser ──► crm.dbmito.it (Vercel: Next.js, solo frontend)
   - `alert` riprende dentro il backend il ciclo di `alert.js` (chiamate fino a esaurire gli alert, nuovo tentativo sui falliti dopo 10 s);
   - riepilogo su Slack di ogni chiamata, riuscita, fallita o saltata, con soli conteggi (come il `cronReport` di sevedemo); i fallimenti vanno anche su Sentry;
   - i corpi dei job sono in `src/server/services/cron/`, usati anche dalle route di Next finché esistono.
-  - **Orari UTC invariati:** priority 23:17, alert 23:47, customers e practices 00:17, pulizia export 00:47. L'ordine conta: priority va prima di alert.
+  - **Orari UTC invariati:** priority 23:17, alert 23:47, customers e practices 00:17, pulizia export 00:47. In più la pulizia del registro alle 01:17, che nessun cron di GitHub lancia (conservazione 25 mesi, [[specs/crm/pagina-analisi/SPEC]] AC16). L'ordine conta: priority va prima di alert.
   - Cloud Monitoring avvisa su Slack se un job non parte o va in errore.
 - **DB:** `postgres.js` come oggi. Su Cloud Run si collega via socket Unix (`INSTANCE_UNIX_SOCKET`, come sevedemo), in locale tramite Cloud SQL Auth Proxy. Pool fisso per istanza, `min-instances=1`.
 - **Effect:** l'infrastruttura nuova (sessione, storage, verifica OIDC, report dei cron, Slack) è fatta di servizi Effect con un Layer ciascuno. Le route Hono restano async semplici e mappano gli errori in un punto solo.
@@ -134,7 +134,8 @@ Dal 2026-10-27 la prod passa tutta insieme, in una sola finestra serale (R10 di 
 **Prima della finestra:**
 - il redirect Azure di prod per better-auth e la query di controllo degli account sul database di prod (G3 di [[specs/crm/auth-better-auth/PLAN]]);
 - le variabili del servizio Cloud Run di prod e dei progetti Vercel di prod: quello dell'app React e quello dell'app Next. Quelle di better-auth vanno sul servizio Cloud Run e sul progetto dell'app Next, con gli stessi valori: `BETTER_AUTH_SECRET`, un secret nuovo per la prod (almeno 32 caratteri), e `BETTER_AUTH_URL`, il dominio di prod. `AUTH_TEST_LOGIN` in prod non si imposta: con `true` accende il login di prova via email (OQ6 di [[specs/crm/auth-better-auth/SPEC]]);
-- il runbook della finestra con i comandi, provato su staging con i tempi (checklist di S6).
+- il runbook della finestra con i comandi, provato su staging con i tempi (checklist di S6);
+- lo scheduler di prod crea anche il job `cleanup-task-event-log`, alle 01:17 UTC (pulizia del registro, conservazione 25 mesi, [[specs/crm/pagina-analisi/SPEC]] AC16), in pausa come gli altri fino al passo 6.
 
 **La finestra:**
 1. pausa dei cron di GitHub;
@@ -249,6 +250,7 @@ Senza una delle due il backend non manda errori a Sentry. La prova con un errore
   - `db:generate` produce sempre anche `ALTER TABLE customers ... SET DEFAULT '<id casuale>'`, perché lo schema usa `default(nanoid())`. Va tolta a mano, e nello snapshot va lasciato il valore precedente, come nelle migrazioni dal 2026-09;
   - i job di Cloud Scheduler dello staging nascono in pausa (`setup-staging.sh`). I workflow GitHub di staging girano solo a mano, quindi non c'è un secondo scheduler;
   - `cleanupTaskEventLog` ha la route sul backend, ma nessuno scheduler: oggi non lo lancia nessun workflow.
+- **2026-10-30:** la pulizia del registro ha ora un job di Cloud Scheduler, `cleanup-task-event-log` alle 01:17 UTC: in pausa nello staging (`setup-staging.sh`), da accendere in prod nella finestra di R10, con la conservazione di 25 mesi ([[specs/crm/pagina-analisi/SPEC]], AC16).
 - 2026-10-19, B5:
   - PR #24 su `dev`; la migrazione `cron_run` è applicata solo al DB di sviluppo, con un controllo che il progetto Supabase non fosse quello della prod;
   - `mito-crm-staging` gira con l'immagine `mito-api:6c091bc` (revisione `00003`): `/health` 200, i cron rispondono 401 senza un token valido dello Scheduler;

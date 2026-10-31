@@ -26,8 +26,11 @@ links:
   - "[[specs/crm/effect-4/PLAN]]"
   - "[[specs/crm/design-system-web/SPEC]]"
   - "[[specs/crm/design-system-web/PLAN]]"
+  - "[[specs/crm/pagina-analisi/SPEC]]"
+  - "[[specs/crm/pagina-analisi/FLOW]]"
+  - "[[specs/crm/pagina-analisi/PLAN]]"
 created: 2026-09-24
-updated: 2026-10-29
+updated: 2026-10-30
 ---
 
 # CRM — Specs
@@ -51,3 +54,4 @@ Spec page map for the `crm` domain. Entry point for discovery before writing a n
 | [[specs/crm/auth-due-frontend/SPEC\|auth-due-frontend]] | Approved | 2.1.3 di [[chore/fase-2-httpapi]]: lo stesso backend fa login per due frontend (Next e React, in locale, su staging e col Next di rollback) con il `baseURL` dinamico di better-auth; elenco di host esatti, schema dall'indirizzo principale, host non ammesso sull'indirizzo principale. |
 | [[specs/crm/effect-4/SPEC\|effect-4]] | Draft, con [[specs/crm/effect-4/PLAN\|piano]] | Punto 1.1 di [[chore/roadmap-nuovo-stack]]: `effect` 3 → 4 senza cambi di comportamento, vitest 5, test su `@effect/vitest`, poi lo stile di Effect 4 nel codice (servizi con layer statici, `Schema.TaggedError`, `Effect.fn`). Quattro PR verso `dev` |
 | [[specs/crm/design-system-web/SPEC\|design-system-web]] | Draft (piano: [[specs/crm/design-system-web/PLAN\|PLAN]]) | Design system di `apps/web` con la palette Indaco notte scelta nel prototipo Palette MITO (copia in [[specs/crm/design-system-web/prototipo-palette.html\|prototipo-palette.html]]): token in oklch nel solo tema chiaro, nessun colore fuori dai token, un tono per ognuno dei nove stati del contatto, priorità a barre, Geist e densità compatta, barra laterale chiara e foglio a strati. Cambia l'aspetto, non il contenuto: il collaudo di parità resta valido. Solo `apps/web`, Next.js escluso. |
+| [[specs/crm/pagina-analisi/SPEC\|pagina-analisi]] | Implemented, senza commit, con [[specs/crm/pagina-analisi/FLOW\|mappa del flusso]], [[specs/crm/pagina-analisi/PLAN\|piano]] e [[specs/crm/pagina-analisi/REPORT\|revisione]] (SHIP al giro 6); classifiche ai primi 8, legenda e note nel riquadro del grafico (AC19) | Pagina Analisi `/dashboard/analisi` in `apps/web`, dal prototipo vincitore «Esplora · tabella»: sei grafici ognuno con la sua domanda e la forma shadcn adatta, una finestra di dati per tutta la pagina (periodi, date personalizzate, confronto, raggruppamento, nell'indirizzo), la tabella dei dati sempre sotto il grafico con export CSV, Excel e Copia, «Esporta tutto», stati vuoti, di errore e di caricamento per grafico. Registro delle chiamate conservato più a lungo; l'operatore vede le sue chiamate. La home resta com'è. |

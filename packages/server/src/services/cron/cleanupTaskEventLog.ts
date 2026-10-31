@@ -6,7 +6,7 @@ import { LOG_RETENTION_MONTHS as RETENTION_MONTHS } from "@mito/domain/export/pe
 import { type Db, type DbError, query } from "@mito/server/effect/db"
 
 /**
- * The `cleanupTaskEventLog` cron: deletes the event log rows older than three
+ * The `cleanupTaskEventLog` cron: deletes the event log rows older than 25
  * months before `now`. Returns how many it deleted.
  */
 export const cleanupTaskEventLog = Effect.fn("cron.cleanupTaskEventLog")(

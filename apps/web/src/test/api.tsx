@@ -132,6 +132,10 @@ const unservedGroups = Layer.mergeAll(
       .handle("getFinancedAverage", unserved)
       .handle("getFinancedByBranch", unserved)
       .handle("getContactProgress", unserved)
+      .handle("getFinancedSeries", unserved)
+      .handle("getBranchTotals", unserved)
+      .handle("getCallsByOperator", unserved)
+      .handle("getMyCallSeries", unserved)
   ),
   HttpApiBuilder.group(MitoApi, "export", (handlers) =>
     handlers.handle("callStats", unserved)

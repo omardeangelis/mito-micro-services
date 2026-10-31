@@ -5,6 +5,7 @@ import {
   taskEventSource,
   taskStatus,
 } from "@mito/db/schema/index"
+import { LOG_RETENTION_MONTHS } from "@mito/domain/export/period"
 import { addDays, romeDay, romeNoon, romeWallClock, subMonthsDay } from "../day"
 import { type AlertRow, type Dataset, type Day, type TaskRow } from "../types"
 import { generateDataset } from "../generate"
@@ -42,7 +43,7 @@ describe("contacts and alerts at N = 10,000", () => {
 
   registerChecks(() => dataset, 10_000, DAY)
 
-  it("has the AC30 volumes: 5,001 contacts that get priority 1, 1,000 open alerts due on D or before, 1,000 log rows older than 3 months", () => {
+  it("has the AC30 volumes: 5,001 contacts that get priority 1, 1,000 open alerts due on D or before, 1,000 log rows older than the log retention", () => {
     const { priority, openAlerts, log } = classify(dataset, DAY)
     expect(
       priority.filter((each) => each.expected === 1).length
@@ -70,7 +71,7 @@ describe("contacts and alerts at N = 300", () => {
   registerChecks(() => dataset, 300, DAY)
 })
 
-// Month ends, a leap day, the DST changes, and a winter D whose D - 3 months
+// Month ends, a leap day, the DST changes, and a winter D whose D - LOG_RETENTION_MONTHS
 // is in summer time
 describe.each([
   "2026-05-31",
@@ -78,7 +79,7 @@ describe.each([
   "2027-03-01",
   "2026-03-29",
   "2026-10-25",
-  "2026-12-15",
+  "2026-11-15",
 ])("contacts and alerts at N = 300 for D = %s", (day) => {
   let dataset: Dataset
 
@@ -220,7 +221,7 @@ function classify(dataset: Dataset, day: Day) {
     openAlerts.push({ alert, id: matches[0]![0] })
   }
 
-  const cutoff = subMonthsDay(day, 3)
+  const cutoff = subMonthsDay(day, LOG_RETENTION_MONTHS)
   const logDays = dataset.taskEventLog.map((row) => romeDay(row.createdAt!))
   const log = {
     L1: logDays.filter((d) => d < cutoff).length,
@@ -500,7 +501,7 @@ function registerChecks(get: () => Dataset, n: number, day: Day) {
     expect(withNotes.length).toBeGreaterThanOrEqual(0.05 * n)
   })
 
-  it("writes a log of every action and source, coherent with the contacts, within 6 months before D (AC26)", () => {
+  it("writes a log of every action and source, coherent with the contacts, within 6 months before the log retention cutoff (AC26)", () => {
     const { dataset, tasks, alerts } = index()
     const rows = dataset.taskEventLog
     expect(new Set(rows.map((r) => r.action))).toEqual(new Set(taskEventAction))
@@ -509,7 +510,9 @@ function registerChecks(get: () => Dataset, n: number, day: Day) {
     expect(new Set(rows.map((r) => r.source))).toEqual(
       new Set(taskEventSource.filter((s) => s !== "deactivation"))
     )
-    const from = romeNoon(subMonthsDay(day, 6)).getTime()
+    // AC26: D − 31 months, the 6 before the cutoff. A literal, so a longer
+    // history in the generator fails here
+    const from = romeNoon(subMonthsDay(day, LOG_RETENTION_MONTHS + 6)).getTime()
     const lastState = new Map<number, string>()
     const lastOperator = new Map<number, number>()
     const real = (id: number | null | undefined) =>

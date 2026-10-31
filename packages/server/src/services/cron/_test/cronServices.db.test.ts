@@ -82,29 +82,27 @@ afterAll(async () => {
 })
 
 describe("cron services on an injected Db", () => {
-  it.effect(
-    "cleanupTaskEventLog deletes the rows older than three months",
-    () =>
-      Effect.gen(function* () {
-        const old = yield* Effect.promise(() =>
-          eventAt(new Date("2026-07-14T02:59:59.999Z"))
-        )
-        const kept = yield* Effect.promise(() =>
-          eventAt(new Date("2026-07-14T03:00:00.000Z"))
-        )
+  it.effect("cleanupTaskEventLog deletes the rows older than 25 months", () =>
+    Effect.gen(function* () {
+      const old = yield* Effect.promise(() =>
+        eventAt(new Date("2024-09-14T02:59:59.999Z"))
+      )
+      const kept = yield* Effect.promise(() =>
+        eventAt(new Date("2024-09-14T03:00:00.000Z"))
+      )
 
-        const deleted = yield* run(cleanupTaskEventLog(NOW))
+      const deleted = yield* run(cleanupTaskEventLog(NOW))
 
-        expect(deleted).toBe(1)
-        const remaining = yield* Effect.promise(() =>
-          testDb
-            .select({ id: taskEventLog.id })
-            .from(taskEventLog)
-            .orderBy(asc(taskEventLog.id))
-        )
-        expect(remaining.map(({ id }) => id)).toEqual([kept])
-        expect(remaining.map(({ id }) => id)).not.toContain(old)
-      })
+      expect(deleted).toBe(1)
+      const remaining = yield* Effect.promise(() =>
+        testDb
+          .select({ id: taskEventLog.id })
+          .from(taskEventLog)
+          .orderBy(asc(taskEventLog.id))
+      )
+      expect(remaining.map(({ id }) => id)).toEqual([kept])
+      expect(remaining.map(({ id }) => id)).not.toContain(old)
+    })
   )
 })
 

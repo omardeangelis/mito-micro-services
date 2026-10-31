@@ -2,7 +2,7 @@
 // drafts with the day they fall on (an offset from D), then sorted by day and
 // numbered from 1000, so id order is time order, as in an append-only log.
 // Every row is at Rome noon, within the contact's lifetime, never on the day
-// D - 3 months (where `cleanup-task-event-log` would depend on the hour).
+// D - LOG_RETENTION_MONTHS (where `cleanup-task-event-log` would depend on the hour).
 import { taskStatus } from "@mito/db/schema/index"
 import type { TaskEventLogRow } from "../types"
 import type { DayClock } from "./clock"
@@ -39,7 +39,7 @@ export function createLog({
 }: {
   rng: Random
   clock: DayClock
-  /** Offset of the day D - 3 months: no row on it. */
+  /** Offset of the day D - LOG_RETENTION_MONTHS: no row on it. */
   cutoff: number
   /** Operators that act by hand: neither the system nor the empty one. */
   realOperatorIds: readonly number[]

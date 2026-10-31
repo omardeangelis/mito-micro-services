@@ -32,8 +32,8 @@ vi.mock("@sentry/nextjs", async (importOriginal) => ({
 
 /** 05:00 in Italy, when the night's crons have run. */
 const NOW = new Date("2026-10-14T03:00:00.000Z")
-/** Three months before NOW: a row created then is kept, a millisecond before goes. */
-const CUTOFF = new Date("2026-07-14T03:00:00.000Z")
+/** Twenty-five months before NOW: a row created then is kept, a millisecond before goes. */
+const CUTOFF = new Date("2024-09-14T03:00:00.000Z")
 
 const url = "http://localhost/api/cron/cleanupTaskEventLog"
 
@@ -108,10 +108,10 @@ afterEach(() => {
 })
 
 describe("cron cleanupTaskEventLog (comportamento attuale)", () => {
-  it("cancella le righe più vecchie di tre mesi e risponde con quante ne ha cancellate", async () => {
-    await eventAt(new Date("2026-06-14T03:00:00.000Z"))
+  it("cancella le righe più vecchie di 25 mesi e risponde con quante ne ha cancellate", async () => {
+    await eventAt(new Date("2024-08-14T03:00:00.000Z"))
     await eventAt(new Date("2024-01-01T00:00:00.000Z"))
-    const justAfterCutoff = await eventAt(new Date("2026-07-15T03:00:00.000Z"))
+    const justAfterCutoff = await eventAt(new Date("2024-09-15T03:00:00.000Z"))
     const now = await eventAt(NOW)
 
     expect(await runCron()).toEqual({
@@ -122,7 +122,7 @@ describe("cron cleanupTaskEventLog (comportamento attuale)", () => {
     expect(await remainingIds()).toEqual([justAfterCutoff, now])
   })
 
-  it("una riga di esattamente tre mesi non viene cancellata, una di un millisecondo più vecchia sì", async () => {
+  it("una riga di esattamente 25 mesi non viene cancellata, una di un millisecondo più vecchia sì", async () => {
     const atCutoff = await eventAt(CUTOFF)
     await eventAt(new Date(CUTOFF.getTime() - 1))
 
@@ -155,7 +155,7 @@ describe("cron cleanupTaskEventLog (comportamento attuale)", () => {
 
   it("un errore del database non cancella nulla, risponde 200 con il messaggio di errore e lo segnala", async () => {
     vi.spyOn(console, "error").mockImplementation(() => undefined)
-    const old = await eventAt(new Date("2026-01-01T03:00:00.000Z"))
+    const old = await eventAt(new Date("2024-01-01T03:00:00.000Z"))
     const recent = await eventAt(NOW)
     await failDeletesOfEventLog()
 
@@ -173,7 +173,7 @@ describe("cron cleanupTaskEventLog (comportamento attuale)", () => {
 
   it("un errore del database manda a Sentry il DbError con l'errore del driver, senza la query né i suoi parametri", async () => {
     vi.spyOn(console, "error").mockImplementation(() => undefined)
-    await eventAt(new Date("2026-01-01T03:00:00.000Z"))
+    await eventAt(new Date("2024-01-01T03:00:00.000Z"))
     await failDeletesOfEventLog()
 
     await runCron()
@@ -188,7 +188,7 @@ describe("cron cleanupTaskEventLog (comportamento attuale)", () => {
     for (const text of [error.message, (error.cause as Error).message]) {
       expect(text).not.toContain("Failed query")
       // The cutoff, the parameter of the DELETE
-      expect(text).not.toContain("2026-07-14")
+      expect(text).not.toContain("2024-09-14")
     }
   })
 })

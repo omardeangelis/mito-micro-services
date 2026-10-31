@@ -47,6 +47,10 @@ export const routes: RouteObject[] = [
             lazy: () => import("./routes/dashboard/home/HomePage"),
           },
           {
+            path: "analisi",
+            lazy: () => import("./routes/dashboard/analisi/AnalisiPage"),
+          },
+          {
             path: "customers",
             children: [
               {

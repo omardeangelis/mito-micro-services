@@ -2,13 +2,18 @@
 // Pure and seeded: the result depends only on `n` and `day`. Dates are built
 // from day strings and `romeNoon`, never from the process time zone.
 import { blackListStatus, sourceValues } from "@mito/db/schema/index"
+import { LOG_RETENTION_MONTHS } from "@mito/domain/export/period"
 import { createHash } from "node:crypto"
-import { addDays, romeNoon } from "../day"
+import { addDays, romeNoon, subMonthsDay } from "../day"
 import type { CustomerRow, Day } from "../types"
+import { daysBetween } from "./clock"
 import { createFaker, createRandom, range } from "./random"
 import { customerScenarioCounts } from "./scenarios"
 
 export const SEED_FILE_NAME = "seed-locale"
+
+/** Months the oldest customer is older than the log retention. */
+const CUSTOMER_EXTRA_MONTHS = 24
 
 const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 const WORK_FIELDS = ["Commercio", "Industria", "Servizi", "Sanita'", "Edilizia"]
@@ -45,6 +50,12 @@ export function generateCustomers({
   const dayMonthDay = monthDay(day)
   const dayBefore = monthDay(addDays(day, -1))
   const dayAfter = monthDay(addDays(day, 1))
+  // Customers go back past the log retention, so contacts and log rows that
+  // `cleanup-task-event-log` deletes belong to customers that already existed
+  const maxAge = daysBetween(
+    subMonthsDay(day, LOG_RETENTION_MONTHS + CUSTOMER_EXTRA_MONTHS),
+    day
+  )
 
   /** Birth at Rome noon of the given month/day, in a year of 20-80 years ago. */
   const birth = (md: string): { date: Date; year: number } => {
@@ -122,7 +133,7 @@ export function generateCustomers({
           }`
         : `info.${id.toLowerCase()}@aziende.test`
 
-    const createdOffset = rng.int(60, 960)
+    const createdOffset = rng.int(60, maxAge)
     rows.push({
       id,
       fullName,

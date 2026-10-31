@@ -1,6 +1,7 @@
 // @vitest-environment node
 import { beforeAll, describe, expect, it } from "vitest"
 import { SYSTEM_OPERATOR_USER_ID } from "@mito/domain/constants/operator"
+import { LOG_RETENTION_MONTHS } from "@mito/domain/export/period"
 import { addDays, romeDay, romeMidnight, romeNoon, subMonthsDay } from "../day"
 import { type CronName, type Dataset, type Day, type Manifest } from "../types"
 import { generateDataset } from "../generate"
@@ -189,10 +190,10 @@ describe("buildManifest at N = 300", () => {
     )
   })
 
-  it("throws on a log row created on D - 3 months", () => {
+  it("throws on a log row created on D - LOG_RETENTION_MONTHS", () => {
     const broken = copy()
     const row = broken.taskEventLog[0]!
-    row.createdAt = romeNoon(subMonthsDay(DAY, 3))
+    row.createdAt = romeNoon(subMonthsDay(DAY, LOG_RETENTION_MONTHS))
     expect(() => buildManifest(broken, DAY)).toThrow(
       new RegExp(`Riga di log ${row.id}:`)
     )
@@ -200,13 +201,13 @@ describe("buildManifest at N = 300", () => {
 })
 
 // Month ends, a leap day, the day after a February, a DST change, and a
-// winter D whose D - 3 months is in summer time
+// winter D whose D - LOG_RETENTION_MONTHS is in summer time
 describe.each([
   "2026-05-31",
   "2028-02-29",
   "2027-03-01",
   "2026-03-29",
-  "2026-12-15",
+  "2026-11-15",
 ])("buildManifest at N = 300 for D = %s", (day) => {
   let dataset: Dataset
   let manifest: Manifest
@@ -277,7 +278,7 @@ function selectedByRules(dataset: Dataset, day: Day) {
       .map((c) => `customers:${c.id}`),
   ]
 
-  const cutoff = subMonthsDay(day, 3)
+  const cutoff = subMonthsDay(day, LOG_RETENTION_MONTHS)
   const cleanup = dataset.taskEventLog
     .filter((row) => romeDay(row.createdAt!) < cutoff)
     .map((row) => `task_event_log:${row.id}`)
@@ -569,7 +570,7 @@ function registerChecks(
     const createdDay = new Map(
       dataset.taskEventLog.map((row) => [row.id, romeDay(row.createdAt!)])
     )
-    const cutoff = subMonthsDay(day, 3)
+    const cutoff = subMonthsDay(day, LOG_RETENTION_MONTHS)
     const daysOf = (id: string) =>
       new Set(
         scenario(manifest, id).rows.map((row) =>

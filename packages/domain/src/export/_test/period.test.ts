@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 import {
+  callsCompleteSince,
   defaultPeriod,
   exportPeriodInput,
   periodBounds,
@@ -12,9 +13,9 @@ const rome = (iso: string, offset: "+01:00" | "+02:00") =>
   new Date(`${iso}${offset}`)
 
 describe("selectableDays", () => {
-  it("goes from the day after the one 3 months ago to today, in Rome (AC11b)", () => {
+  it("goes from the day after the one 25 months ago to today, in Rome (AC11b, AC17 of pagina-analisi)", () => {
     expect(selectableDays(rome("2026-10-23T12:00:00", "+02:00"))).toEqual({
-      first: "2026-07-24",
+      first: "2024-09-24",
       last: "2026-10-23",
     })
   })
@@ -22,23 +23,37 @@ describe("selectableDays", () => {
   it("uses the Rome day, not the UTC one, just after midnight", () => {
     // 00:30 in Rome is still the 22nd in UTC
     expect(selectableDays(rome("2026-10-23T00:30:00", "+02:00"))).toEqual({
-      first: "2026-07-24",
+      first: "2024-09-24",
       last: "2026-10-23",
     })
   })
 
-  it("3 months before the 31st is the last day of a shorter month", () => {
+  it("25 months before the 31st is the last day of a shorter month", () => {
     expect(selectableDays(rome("2026-05-31T12:00:00", "+02:00"))).toEqual({
-      first: "2026-03-01",
+      first: "2024-05-01",
       last: "2026-05-31",
     })
   })
 
   it("crosses the year", () => {
     expect(selectableDays(rome("2027-01-15T12:00:00", "+01:00"))).toEqual({
-      first: "2026-10-16",
+      first: "2024-12-16",
       last: "2027-01-15",
     })
+  })
+})
+
+describe("callsCompleteSince (AC16 of pagina-analisi)", () => {
+  it("is the day the log started while it is more recent than 25 months ago", () => {
+    expect(callsCompleteSince(rome("2026-10-30T12:00:00", "+01:00"))).toBe(
+      "2026-09-15"
+    )
+  })
+
+  it("is the day after the one 25 months ago once that is more recent", () => {
+    expect(callsCompleteSince(rome("2028-11-10T12:00:00", "+01:00"))).toBe(
+      "2026-10-11"
+    )
   })
 })
 
@@ -76,11 +91,11 @@ describe("exportPeriodInput", () => {
   const parse = (value: unknown) => exportPeriodInput(now).safeParse(value)
 
   it("takes a period inside the selectable days", () => {
-    expect(parse({ from: "2026-07-24", to: "2026-10-23" }).success).toBe(true)
+    expect(parse({ from: "2024-09-24", to: "2026-10-23" }).success).toBe(true)
   })
 
   it.each([
-    ["before the first day", { from: "2026-07-23", to: "2026-08-01" }],
+    ["before the first day", { from: "2024-09-23", to: "2026-08-01" }],
     ["after today", { from: "2026-10-01", to: "2026-10-24" }],
     ["inverted", { from: "2026-10-10", to: "2026-10-01" }],
     ["not a day", { from: "2026-10-1", to: "2026-10-02" }],

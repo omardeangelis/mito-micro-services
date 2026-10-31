@@ -37,7 +37,7 @@ const to = () => screen.getByLabelText<HTMLInputElement>("Al")
 
 describe("AdminExportSection", () => {
   beforeEach(() => {
-    // 23 October 2026, 12:00 in Rome: the selectable days are 24/07–23/10
+    // 23 October 2026, 12:00 in Rome: the selectable days are 24/09/2024–23/10
     vi.useFakeTimers({ toFake: ["Date"] })
     vi.setSystemTime(new Date("2026-10-23T10:00:00Z"))
   })
@@ -52,7 +52,7 @@ describe("AdminExportSection", () => {
 
     expect(from().value).toBe("2026-09-24")
     expect(to().value).toBe("2026-10-23")
-    expect(from().getAttribute("min")).toBe("2026-07-24")
+    expect(from().getAttribute("min")).toBe("2024-09-24")
     expect(to().getAttribute("max")).toBe("2026-10-23")
     await screen.findByText("Chiamate effettuate")
     expect(backend.state.callReads).toEqual([
@@ -103,10 +103,10 @@ describe("AdminExportSection", () => {
     renderSection(backend)
     await screen.findByText("Chiamate effettuate")
 
-    fireEvent.change(from(), { target: { value: "2026-07-01" } })
+    fireEvent.change(from(), { target: { value: "2024-09-01" } })
 
     expect(screen.getByRole("alert").textContent).toBe(
-      "Scegli un periodo tra il 24/07/2026 e il 23/10/2026"
+      "Scegli un periodo tra il 24/09/2024 e il 23/10/2026"
     )
     expect(backend.state.callReads).toHaveLength(1)
   })
