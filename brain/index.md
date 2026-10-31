@@ -3,12 +3,16 @@ domain: _root
 type: index
 links: []
 created: 2026-09-24
-updated: 2026-10-30
+updated: 2026-10-31
 ---
 
 # Brain — Master Map
 
 Entry point of the knowledge base. Links the work areas: chore (informal planning), specs (PM-authored), domains (synthesized by `docs-maintenance`), tech-debt (persistent drift).
+
+## Personas
+
+- [[personas]] — Rosario (proprietario), Admin, Operatore (prima stesura, da rifinire); `paths.personas` punta qui
 
 ## Chore (planning material)
 

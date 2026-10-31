@@ -12,6 +12,10 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 
 <!-- Entries are appended by create-spec (spec creation) and docs-maintenance (ingest). Format:
 
+## [2026-10-31] personas | Prima stesura delle personas
+- [[personas]]: Rosario (proprietario), Admin, Operatore; `paths.personas` in `brain.config.json` punta alla pagina, così `ux-advisor`, `create-spec` e `prototype` la leggono.
+- Rosario entra come `ADMIN`; tutti lavorano solo da PC fisso. Aperto: quanti admin e operatori.
+
 ## [2026-10-30] implement | Pagina Analisi: legenda e note nel riquadro, SHIP
 - Decisione di Omar su AC19: le note stanno nel riquadro del grafico, alto quanto lo scheletro; il quinto giro porta lì anche la legenda, che a 768 px spostava la pagina.
 - Sesto giro di [[specs/crm/pagina-analisi/REPORT]]: SHIP, minori corretti. Spec `implemented`, piano Complete; resta la checklist umana prima del rilascio.
