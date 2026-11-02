@@ -1,6 +1,7 @@
 import { Cause, Clock, Duration, Effect, Result, Schema } from "effect"
 import { type Db } from "@mito/server/effect/db"
 import { ErrorReporter } from "@mito/server/effect/errorReporter"
+import { convertContactStates } from "@mito/server/services/contact/convertStates"
 import { processDueAlerts } from "@mito/server/services/contact/processDueAlerts"
 import { refreshPriorities } from "@mito/server/services/contact/refreshPriorities"
 import { cleanupTaskEventLog } from "@mito/server/services/cron/cleanupTaskEventLog"
@@ -24,6 +25,20 @@ export class AlertsFailed extends Schema.TaggedError<AlertsFailed>()(
 export class AlertsLeft extends Schema.TaggedError<AlertsLeft>()("AlertsLeft", {
   calls: Schema.Number,
 }) {}
+
+/**
+ * The conversion left customers to a next run: some failed, or the budget ran
+ * out. The run fails, so a "Force run" takes them the same day. `counters`
+ * holds what it did convert, which the run records and reports anyway.
+ */
+export class ConversionLeft extends Schema.TaggedError<ConversionLeft>()(
+  "ConversionLeft",
+  {
+    failed: Schema.Number,
+    remaining: Schema.Number,
+    counters: Schema.Record(Schema.String, Schema.Number),
+  }
+) {}
 
 export type CronJob = {
   /**
@@ -128,11 +143,16 @@ export const alertJob = Effect.fn("cron.alertJob")(function* <E, R>(
 // Each call stops taking new alerts after 40 s, as on Vercel
 const ALERT_BUDGET_MS = 40_000
 
+// The conversion stops taking new customers after 20 minutes, inside the 30
+// of the scheduler's attempt deadline and of the service's timeout
+const CONVERSION_BUDGET_MS = 20 * 60_000
+
 /**
  * The jobs Cloud Scheduler starts, by the name in the path
  * (/internal/cron/<name>). The UTC times are the ones of the GitHub crons:
  * priority 23:17, alert 23:47 (after priority), update 00:17, delete-export
- * 00:47.
+ * 00:47. `convert-contact-states` has no time: it is run by hand (D11 of
+ * esiti-richiami-stati).
  */
 export const cronJobs: Record<string, CronJob> = {
   priority: {
@@ -171,6 +191,24 @@ export const cronJobs: Record<string, CronJob> = {
   "delete-export": {
     rerunnable: true,
     run: step("deleteExportFiles", deleteExportFiles),
+  },
+  "convert-contact-states": {
+    // It moves only the contacts still outside the six states (AC32)
+    rerunnable: true,
+    run: Effect.gen(function* () {
+      const counts = yield* convertContactStates({
+        budgetMs: CONVERSION_BUDGET_MS,
+      })
+      if (counts.failed > 0 || counts.remaining > 0) {
+        const { failed, remaining } = counts
+        return yield* new ConversionLeft({
+          failed,
+          remaining,
+          counters: counts,
+        })
+      }
+      return counts
+    }),
   },
   "cleanup-task-event-log": {
     rerunnable: true,

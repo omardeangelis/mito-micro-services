@@ -27,14 +27,14 @@ describe("stateTone", () => {
       nessuno: stateTone("nessuno"),
     }).toEqual({
       chiamare: "blue",
-      followup: "magenta",
+      followup: "blue",
       "non risponde": "orange",
       richiamare: "amber",
       "app.to": "teal",
       caricato: "indigo",
-      erogata: "green",
+      erogata: "indigo",
       "non interessato": "red",
-      nessuno: "neutral",
+      nessuno: "blue",
     })
   })
 })

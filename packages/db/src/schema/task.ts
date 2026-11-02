@@ -26,6 +26,18 @@ export const taskStatus = [
 
 export const taskStatusEnum = pgEnum("task_status", taskStatus)
 
+// Come si è chiuso un alert (alert.resolution), nullo per quelli chiusi prima
+export const alertResolution = [
+  "call",
+  "replaced",
+  "removed",
+  "state_change",
+  "bulk",
+  "system",
+] as const
+
+export const alertResolutionEnum = pgEnum("alert_resolution", alertResolution)
+
 const createTable = pgTableCreator((name) => `mito-deutsche_${name}`)
 
 export const alert = createTable(
@@ -49,6 +61,9 @@ export const alert = createTable(
     // Operatore che ha risolto l'alert: operatore reale per le azioni manuali,
     // operatore di sistema (vedi src/lib/constants/operator.ts) per il cron.
     resolvedBy: integer("resolved_by").references(() => operators.id),
+    // Quando e come si è chiuso: nulli per gli alert chiusi prima
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+    resolution: alertResolutionEnum("resolution"),
   },
   (table) => ({
     taskIdIdx: index("alert_task_id_idx").on(table.taskId),
@@ -69,7 +84,7 @@ export const task = createTable(
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull()
       .$onUpdate(() => new Date()),
-    state: taskStatusEnum("state").default("nessuno"),
+    state: taskStatusEnum("state").default("chiamare"),
     closedAt: timestamp("closed_at", { withTimezone: true }),
     customerId: varchar("customer_id").references(() => customers.id),
     operatorId: integer("operator_id").references(() => operators.id),

@@ -8,8 +8,8 @@ import { createOperator, createTask } from "@/test/factories"
 // - solo i contatti attivi: un contatto non attivo non conta, in nessuno stato;
 // - `done`: gli stati con un esito (`app.to`, `caricato`, `erogata`,
 //   `non interessato`, `richiamare`);
-// - `todo`: gli stati in coda (`chiamare`, `followup`, `non risponde`);
-// - `nessuno` e lo stato vuoto non contano in nessuno dei due;
+// - `todo`: gli stati in coda (`chiamare`, `non risponde`), con `followup`,
+//   `nessuno` e lo stato vuoto, che valgono Da chiamare (esiti-richiami-stati AC6);
 // - nessun filtro di data;
 // - un ADMIN conta tutti i contatti attivi, un OPERATORE solo quelli con il suo operator_id.
 
@@ -55,33 +55,33 @@ describe("analytics.getContactProgress (Contatti con esito)", () => {
   })
 
   describe("con il fixture completo: due operatori e senza operatore", () => {
-    it("un OPERATORE conta solo i suoi contatti attivi: done 5, todo 3", async () => {
+    it("un OPERATORE conta solo i suoi contatti attivi: done 5, todo 5", async () => {
       const { operatorA } = await seedFixture()
       const caller = createTestCaller(operatorA)
 
       expect(await caller.analytics.getContactProgress()).toEqual({
         done: 5,
-        todo: 3,
+        todo: 5,
       })
     })
 
-    it("l'altro OPERATORE conta solo i suoi contatti attivi: done 5, todo 3", async () => {
+    it("l'altro OPERATORE conta solo i suoi contatti attivi: done 5, todo 5", async () => {
       const { operatorB } = await seedFixture()
       const caller = createTestCaller(operatorB)
 
       expect(await caller.analytics.getContactProgress()).toEqual({
         done: 5,
-        todo: 3,
+        todo: 5,
       })
     })
 
-    it("un ADMIN conta tutti i contatti attivi, di ogni operatore e senza operatore: done 15, todo 9", async () => {
+    it("un ADMIN conta tutti i contatti attivi, di ogni operatore e senza operatore: done 15, todo 15", async () => {
       await seedFixture()
       const caller = createTestCaller(await createOperator({ role: "ADMIN" }))
 
       expect(await caller.analytics.getContactProgress()).toEqual({
         done: 15,
-        todo: 9,
+        todo: 15,
       })
     })
 
@@ -99,7 +99,7 @@ describe("analytics.getContactProgress (Contatti con esito)", () => {
   })
 
   describe("quali stati contano", () => {
-    it("un contatto per stato, attivo: done conta gli stati con un esito, todo quelli in coda; nessuno e null non contano in nessuno dei due", async () => {
+    it("un contatto per stato, attivo: done conta gli stati con un esito, todo quelli in coda, nessuno e null compresi", async () => {
       const operator = await createOperator({ role: "OPERATORE" })
       for (const state of STATES) {
         await createTask({ state, isActive: true, operatorId: operator.id })
@@ -108,7 +108,7 @@ describe("analytics.getContactProgress (Contatti con esito)", () => {
 
       expect(await caller.analytics.getContactProgress()).toEqual({
         done: 5,
-        todo: 3,
+        todo: 5,
       })
     })
 
@@ -132,7 +132,7 @@ describe("analytics.getContactProgress (Contatti con esito)", () => {
       })
     })
 
-    it("nessuno e null non contano in done, né in todo", async () => {
+    it("nessuno e null sono fra i da fare, come Da chiamare", async () => {
       const operator = await createOperator({ role: "OPERATORE" })
       await createTask({
         state: "nessuno",
@@ -144,7 +144,7 @@ describe("analytics.getContactProgress (Contatti con esito)", () => {
 
       expect(await caller.analytics.getContactProgress()).toEqual({
         done: 0,
-        todo: 0,
+        todo: 2,
       })
     })
 

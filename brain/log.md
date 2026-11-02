@@ -12,6 +12,18 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 
 <!-- Entries are appended by create-spec (spec creation) and docs-maintenance (ingest). Format:
 
+## [2026-11-02] implement | Esiti, richiami e stati del contatto
+- Implementata: [[specs/crm/esiti-richiami-stati/SPEC]], 20 task su 20, con i 33 criteri soddisfatti; branch `claude/esiti-richiami-stati`
+- Review: [[specs/crm/esiti-richiami-stati/REPORT]], con 13 verificatori. Al primo giro DO NOT SHIP:
+  - riquadro animato con reduced motion;
+  - priorità 120 fino alla notte;
+  - massiva con lo stato libero;
+  - web offline in pausa;
+  - riga bloccata dopo l'esito incerto.
+
+  Corretti con un test ciascuno, poi SHIP. Restano 23 MINOR durevoli per `docs-maintenance` e la checklist umana prima dell'unione e del rilascio
+- Dopo la review, scelte di Omar: Richiamo scaduto nella conversione accettato (AC31 e Decision Log); il dialogo della massiva non chiede più degli alert dei contatti in coda; il conteggio delle chiamate senza operatore va fra i compiti prima della finestra in [[chore/migrazione-gcp]]
+
 ## [2026-11-02] plan | Esiti, richiami e stati del contatto
 - Created plan: [[specs/crm/esiti-richiami-stati/PLAN]]: 20 task in 10 onde, una PR verso `dev`, ogni task con `tsc` verde su tutti i pacchetti
 - Decisioni tecniche D1–D18; D1 (prima la PR di `claude/personas` in `dev`, poi il branch) aspetta la conferma di Omar

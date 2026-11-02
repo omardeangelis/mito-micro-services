@@ -114,6 +114,54 @@ export class OperatorNotFound extends Schema.TaggedError<OperatorNotFound>()(
   {}
 ) {}
 
+/**
+ * The alert the user was working is already closed by a call (AC13 case 5):
+ * `by` is who registered it, `at` when.
+ */
+export class CallAlreadyWorked extends Schema.TaggedError<CallAlreadyWorked>()(
+  "CallAlreadyWorked",
+  { by: Schema.String, at: Schema.instanceOf(Date) }
+) {}
+
+/** The contact's state doesn't take calls (AC12, AC13 case 6). */
+export class CallNotAllowed extends Schema.TaggedError<CallNotAllowed>()(
+  "CallNotAllowed",
+  { state: Schema.NullOr(TaskStatus) }
+) {}
+
+/** The message of a Richiamare is over 500 characters (AC13 case 9). */
+export class MessageTooLong extends Schema.TaggedError<MessageTooLong>()(
+  "MessageTooLong",
+  {}
+) {}
+
+/** The request id of a call is another user's, or another contact's (D5). */
+export class RequestIdConflict extends Schema.TaggedError<RequestIdConflict>()(
+  "RequestIdConflict",
+  {}
+) {}
+
+/**
+ * The alert of «Togli il richiamo» is no longer open, or no longer the one
+ * linked to the contact (AC22): nothing changes.
+ */
+export class CallbackChanged extends Schema.TaggedError<CallbackChanged>()(
+  "CallbackChanged",
+  {}
+) {}
+
+/**
+ * The errors of «Registra chiamata» and «Togli il richiamo» besides the
+ * contact ones. Only `HttpApi` has the endpoints (D3), so they have no tRPC
+ * code.
+ */
+export type CallError =
+  | CallAlreadyWorked
+  | CallNotAllowed
+  | MessageTooLong
+  | RequestIdConflict
+  | CallbackChanged
+
 export type ContactError =
   | ContactNotFound
   | ContactSuperseded

@@ -4,7 +4,7 @@ domain: crm
 
 # Guida per gli operatori: Assegnazione Massiva e Alert (richiami programmati)
 
-> Questa guida spiega come funziona oggi l'**Assegnazione Massiva** (quella che si fa selezionando tanti clienti insieme), la sezione **Contatti** (la lista delle persone da richiamare, con il loro dettaglio) e come si gestiscono gli **Alert** (i richiami programmati).
+> Questa guida spiega come funziona oggi l'**Assegnazione Massiva** (quella che si fa selezionando tanti clienti insieme), la sezione **Contatti** (la lista delle persone da richiamare, con il loro dettaglio), i **sei stati** di un contatto, come si **registra una chiamata** e come si gestiscono gli **Alert** (i richiami programmati).
 >
 
 ---
@@ -14,6 +14,26 @@ domain: crm
 - Se un cliente ha un **richiamo programmato ancora aperto** (un alert), il sistema **non lo tocca mai di nascosto**. Se un'operazione massiva rischia di cancellarlo, il programma **si ferma e chiede conferma a voi**, cliente per cliente.
 - Se non confermate nulla, il cliente viene semplicemente **spostato a un altro operatore**: stato e richiamo restano identici a prima.
 - Niente viene più cancellato per sempre. Un alert "chiuso" finisce in una sezione chiamata **Storico**, dove resta visibile per sempre.
+- Un richiamo **scaduto non sparisce e non si chiude da solo**: resta aperto finché qualcuno non registra una chiamata o lo toglie. Il contatto, però, torna **"Da chiamare"** (sezione 5).
+
+---
+
+## 1 bis. I sei stati di un contatto
+
+Ogni contatto ha uno di questi sei stati, sempre con questo nome e questo colore:
+
+| Stato | Colore | Significa |
+|---|---|---|
+| **Da chiamare** | blu | Ancora da chiamare (anche un richiamo scaduto, o un contatto riaperto o appena assegnato). |
+| **Non risponde** | arancio | Il cliente non ha risposto all'ultima chiamata. |
+| **Richiamo** (con il giorno, per esempio "Richiamo · 12/11") | ambra | C'è un richiamo programmato per quel giorno. |
+| **Appuntamento** | teal | Appuntamento fissato. |
+| **Pratica caricata** | indaco | La pratica è stata caricata. |
+| **Non interessato** | rosso | Il cliente non è interessato. |
+
+Gli stati "followup", "erogata" e "nessuno" non esistono più: i contatti che li avevano sono stati portati a **Da chiamare** (followup, nessuno) e a **Pratica caricata** (erogata). Un contatto è in **Richiamo** solo se ha un richiamo programmato ancora da venire.
+
+**Da fare e fatti.** I contatti **Da chiamare** e **Non risponde** sono quelli ancora da lavorare; **Richiamo, Appuntamento, Pratica caricata e Non interessato** sono quelli già lavorati. Nella lista ordinata per priorità vengono prima i contatti con un richiamo scaduto o di oggi, poi gli altri Da chiamare, poi i Non risponde, infine i già lavorati.
 
 ---
 
@@ -34,21 +54,21 @@ Il resto di questa sezione riguarda **"Crea/assegna contatti"**, che è l'opzion
 
 ## 3. "Crea/assegna contatti": cosa succede ai clienti selezionati
 
-Dopo aver scelto "Crea/assegna contatti", selezionate l'operatore a cui assegnare i clienti e lo stato del nuovo contatto (es. "chiamare"). A questo punto il sistema guarda **come si trova oggi ogni singolo cliente** e si comporta in modo diverso. Ecco tutti i casi possibili:
+Dopo aver scelto "Crea/assegna contatti", selezionate l'operatore a cui assegnare i clienti: i contatti nuovi nascono sempre **Da chiamare**. A questo punto il sistema guarda **come si trova oggi ogni singolo cliente** e si comporta in modo diverso. Ecco tutti i casi possibili:
 
 ### Caso 1 — Cliente nuovo, mai contattato prima
-Il sistema crea il primo contatto per questo cliente, con lo stato scelto, e lo assegna all'operatore scelto. Niente di strano: è la normale apertura di un nuovo cliente.
+Il sistema crea il primo contatto per questo cliente, **Da chiamare**, e lo assegna all'operatore scelto. Niente di strano: è la normale apertura di un nuovo cliente.
 
-### Caso 2 — Cliente già "da chiamare" o in "followup" (cioè non ha ancora avuto un esito)
-Il cliente viene **solo riassegnato** al nuovo operatore. Non viene creato nessun contatto doppio, non cambia stato: semplicemente passa di mano.
+### Caso 2 — Cliente già "Da chiamare" o "Non risponde" (cioè ancora da lavorare)
+Il cliente viene **solo riassegnato** al nuovo operatore. Non viene creato nessun contatto doppio e lo stato **resta com'è** (Da chiamare resta Da chiamare, Non risponde resta Non risponde): semplicemente passa di mano. Se il contatto ha un richiamo **scaduto o di oggi** ancora aperto, il richiamo resta aperto e passa al nuovo operatore insieme al contatto.
 
-### Caso 3 — Cliente con un esito già dato (es. "non interessato", "app.to", "caricato", "erogata") e **senza** nessun richiamo programmato attivo
-Il sistema crea un **nuovo contatto** con lo stato scelto nel form e assegna il cliente al nuovo operatore. Il vecchio esito non viene perso (resta nello storico), ma **lo stato del cliente cambia** a quello che avete scelto.
+### Caso 3 — Cliente già lavorato (Appuntamento, Pratica caricata, Non interessato) o senza contatto attivo
+Il sistema crea un **nuovo contatto Da chiamare** e assegna il cliente al nuovo operatore. Il vecchio contatto non viene perso (resta tra i contatti precedenti), ma **il cliente torna da chiamare**.
 
-> ⚠️ **Attenzione:** questo è l'unico caso in cui un'assegnazione massiva "Crea/assegna contatti" può davvero cambiare lo stato di un cliente che aveva già un esito. Se non volete che questo succeda per qualcuno di questi clienti, usate invece "Assegna Clienti", che non cambia mai lo stato.
+> ⚠️ **Attenzione:** è il caso in cui un'assegnazione massiva "Crea/assegna contatti" cambia lo stato di un cliente che aveva già un esito. Se non volete che questo succeda per qualcuno di questi clienti, usate invece "Assegna Clienti", che non cambia mai lo stato.
 
-### Caso 4 — Cliente con un richiamo programmato attivo (un alert non ancora scaduto né risolto)
-Questo è il caso più importante, ed è quello per cui è stato cambiato il programma. Se tra i clienti selezionati ce ne sono alcuni con un richiamo ancora attivo, **prima di procedere il sistema vi mostra un riquadro di avviso** con l'elenco di questi clienti, la data del loro richiamo e l'eventuale nota.
+### Caso 4 — Cliente in "Richiamo", con un richiamo programmato ancora da venire
+Questo è il caso più importante. Se tra i clienti selezionati ce ne sono alcuni con un richiamo **futuro** (nello stato Richiamo), **prima di procedere il sistema vi mostra un riquadro di avviso** con l'elenco di questi clienti, la data del loro richiamo e l'eventuale nota. Il riquadro riguarda **solo i richiami futuri**: un richiamo scaduto o di oggi non chiede conferma, perché quel contatto è già Da chiamare (caso 2).
 
 Per ciascuno di questi clienti potete scegliere, con una casella da spuntare ("Risolvi alert"):
 
@@ -58,7 +78,7 @@ Per ciascuno di questi clienti potete scegliere, con una casella da spuntare ("R
 - **Casella spuntata:**
   State confermando che va bene chiudere il vecchio richiamo. Il sistema:
   1. chiude il richiamo programmato (che finisce nello Storico, non viene cancellato);
-  2. crea un nuovo contatto con lo stato scelto nel form;
+  2. crea un nuovo contatto **Da chiamare**;
   3. assegna il cliente al nuovo operatore.
 
 **Quando spuntare la casella?** Solo se sapete con certezza che quel richiamo non serve più (es. è un duplicato, oppure il cliente è già stato gestito altrove). Nel dubbio, **lasciatela vuota**: il cliente verrà comunque riassegnato, e chi se ne occuperà dopo potrà comunque vedere il richiamo programmato e decidere.
@@ -73,7 +93,7 @@ A fine operazione il programma mostra un riepilogo con:
 
 ## 4. "Assegna Clienti": la versione semplice
 
-Con questa modalità non c'è nessun caso speciale da considerare: **qualunque sia lo stato del contatto del cliente, qualunque richiamo abbia attivo, lo stato e il richiamo restano come sono.** Non viene creato nessun contatto e non viene chiuso nessun alert.
+Con questa modalità non c'è nessun caso speciale da considerare: **qualunque sia lo stato del contatto del cliente, qualunque richiamo abbia aperto (anche scaduto), lo stato e il richiamo restano come sono.** Non viene creato nessun contatto e non viene chiuso nessun alert.
 
 Il programma sposta al nuovo operatore **il cliente e il suo contatto attivo**, insieme e in qualunque stato (anche con un richiamo aperto: il richiamo resta dov'è). Tre cose da sapere:
 
@@ -87,22 +107,47 @@ Per questo è l'opzione consigliata quando l'obiettivo è solo "spostare" dei cl
 
 ## 5. Gli Alert (richiami programmati) in Contatti
 
-Il posto dove si gestisce un richiamo è il **dettaglio del contatto** (lo spiega la sezione 6). Lì trovate due riquadri, uno sotto l'altro.
+Il posto dove si gestisce un richiamo è il **dettaglio del contatto** (lo spiega la sezione 6). Lì trovate «Registra chiamata», il riquadro del richiamo e lo Storico.
 
-### "Prossimo alert"
-È il richiamo programmato in corso, se c'è: si vede la **scadenza** e l'eventuale **messaggio**. Da qui potete:
+### «Registra chiamata»
+Nel dettaglio di un contatto (e nella cella dello stato della lista) trovate **quattro esiti**, come nella home dell'operatore: **Non risponde**, **Richiamare**, **Appuntamento**, **Non interessato**. Ogni pressione è **una chiamata registrata**, anche se l'esito è uguale al precedente: due "Non risponde" di fila sono due chiamate. Il contatto resta **lo stesso**, con lo stesso operatore: nessun esito ne crea uno nuovo.
 
-- **Chiuderlo con la "X"**: il richiamo non viene cancellato, passa nello **Storico** con il vostro nome. Dopo la chiusura il cursore va al pulsante "Imposta richiamo", così potete subito programmarne un altro.
-- **Programmare un nuovo richiamo con "Imposta richiamo"**: scegliete la data (**da domani in poi**: oggi e i giorni passati non si possono scegliere) e, se volete, scrivete un messaggio. Il contatto passa a **"richiamare"** e il richiamo compare come "Prossimo alert".
-  - "Imposta richiamo" c'è solo quando il contatto ha già un **esito** (app.to, caricato, erogata, non interessato, richiamare) oppure è "nessuno". Sui contatti ancora "da chiamare" (chiamare, followup) non c'è.
-  - Se c'era già un richiamo aperto, il modulo scrive **"Sostituisce il richiamo del …"** con il suo messaggio: confermare il modulo basta, il vecchio richiamo passa nello Storico. Non viene chiesta una seconda conferma.
-  - Se mentre compilate un collega ha già impostato un altro richiamo, il richiamo **non viene salvato**: il modulo resta aperto con i vostri dati, vi mostra il richiamo che c'è adesso, e potete salvare lo stesso (sostituirete quello).
+| Esito | Il contatto diventa | Il richiamo aperto |
+|---|---|---|
+| Non risponde | **Non risponde** (se il richiamo è ancora da venire resta **Richiamo**) | Non lo tocca |
+| Richiamare | **Richiamo** con il giorno scelto | Si chiude, e se ne apre uno nuovo con il giorno e il messaggio scelti |
+| Appuntamento | **Appuntamento** | Si chiude |
+| Non interessato | **Non interessato** | Si chiude |
 
-### Cambiare lo stato con un richiamo aperto
-Se il contatto ha un richiamo aperto e ne cambiate lo **stato**, compare una finestra con la data e il messaggio del richiamo ("Cambiando lo stato, il richiamo del … verrà chiuso e spostato nello Storico"). **Annulla** (o Esc) non cambia niente; **Cambia stato** chiude il richiamo e cambia lo stato. Succede uguale dalla lista e dal dettaglio.
+- **Richiamare** apre un riquadro con il calendario (**da domani in poi**: oggi e i giorni passati non si possono scegliere) e un messaggio facoltativo. Se c'era già un richiamo futuro, il riquadro dice **"Sostituisce il richiamo del …"** e salvare è la conferma. Il modulo "Imposta richiamo" di una volta non c'è più: un richiamo si imposta solo così.
+- **Appuntamento** e **Non interessato**, se il contatto ha un richiamo **futuro**, chiedono prima conferma, mostrando giorno e messaggio del richiamo ("verrà chiuso e spostato nello Storico"). **Annulla** non cambia niente. Un richiamo scaduto o di oggi si chiude con l'esito, senza conferma.
+- **Non risponde** non chiede mai conferma, perché non tocca il richiamo.
+- Le chiamate si registrano solo su contatti **Da chiamare, Non risponde o Richiamo**. Con Appuntamento, Pratica caricata o Non interessato il dettaglio dice di riportare prima il contatto a **Da chiamare** (dal selettore dello stato).
+- Se un collega ha già lavorato lo stesso richiamo mentre voi stavate per registrare, il programma non scrive niente e dice **"Già lavorato da <nome> alle HH:mm"**, mostrando il contatto com'è adesso.
+- Se la rete cade e il programma non sa se la chiamata è stata registrata, lo dice ("Non sappiamo se la chiamata è stata registrata. Controlla lo Storico: se non c'è, registrala di nuovo.") e ricarica il contatto.
+- Le **chiamate** che compaiono nell'esportazione, in Analisi e nelle home sono queste. Non sono chiamate l'assegnazione massiva, il passaggio notturno, «Togli il richiamo» e il selettore dello stato. Per questo, da quando c'è «Registra chiamata», **le chiamate e i tassi risultano più alti di prima**: due "Non risponde" di fila, che prima contavano una chiamata, ora ne contano due.
+
+### "Prossimo alert" e «Togli il richiamo»
+Il riquadro **"Prossimo alert"** mostra il richiamo aperto: la **scadenza** e il **messaggio**. Un richiamo scaduto resta qui, segnato **"Scaduto"**, finché qualcuno non lo lavora.
+
+La **"X"** non chiude più il richiamo da sola: apre **«Togli il richiamo»**, che mostra giorno e messaggio e chiede **che stato avrà il contatto**. Le cinque scelte sono **Da chiamare, Non risponde, Appuntamento, Pratica caricata, Non interessato**; all'inizio non ce n'è nessuna scelta e finché non scegliete non potete confermare. Richiamo non c'è tra le scelte, perché togliere il richiamo è proprio il contrario.
+- Confermando, il richiamo passa nello **Storico** con il vostro nome e il contatto prende lo stato scelto, anche se è lo stesso di prima. Il contatto resta **lo stesso**, con lo stesso operatore.
+- **Annulla** (o Esc) non cambia niente.
+- Serve per i casi in cui non c'è una chiamata da registrare, per esempio il cliente ha richiamato lui. **Non è una chiamata**: non conta nelle chiamate e non cambia "Contattato il".
+- Se nel frattempo il richiamo è stato chiuso da un collega, non cambia niente e vedete il contatto com'è adesso.
+
+### Il richiamo scaduto, il passaggio notturno
+Nella notte che apre il giorno di scadenza, il controllo notturno porta il contatto da **Richiamo** a **Da chiamare**. **Il richiamo resta aperto**, con il suo giorno e il suo messaggio, e lo vedete come "Scaduto" nel "Prossimo alert" e nella lista (con "Con alert" lo trovate ancora). Non nasce un contatto nuovo e il passaggio non è una chiamata. Se una notte viene saltata, la successiva recupera tutti i richiami scaduti. Un richiamo non scade mai davvero: si chiude solo con una chiamata (Richiamare, Appuntamento, Non interessato), con «Togli il richiamo», con "Pratica caricata" dal selettore, o con un'assegnazione massiva confermata. **"Non risponde" non lo chiude.**
+
+### Il selettore dello stato
+Il selettore (nel dettaglio e nella cella della lista) non serve più per registrare un esito: offre solo due cambi che **non sono chiamate**:
+- **Pratica caricata**, da qualunque stato. Se c'è un richiamo futuro compare la finestra di conferma ("Cambiando lo stato, il richiamo del … verrà chiuso e spostato nello Storico"); **Annulla** non cambia niente.
+- **Da chiamare**, da Appuntamento, Pratica caricata o Non interessato: è una **riapertura**, il contatto vecchio diventa "Concluso" e ne nasce uno nuovo Da chiamare.
+
+Gli altri stati (Non risponde, Richiamo, Appuntamento, Non interessato) si ottengono solo registrando una chiamata o con «Togli il richiamo».
 
 ### "Storico"
-È l'elenco di tutti i richiami chiusi nel tempo **per questo cliente** (dalla "X", da un cambio di stato, da un nuovo "Imposta richiamo", da un'assegnazione massiva con la casella spuntata, o perché sono scaduti). Per ognuno si vede la **data di scadenza**, il **messaggio**, e **chi lo ha chiuso e quando**. Se vedete **"Chiuso dal sistema"** (o "Operatore di Sistema") nessun operatore l'ha chiuso a mano: è scaduto da solo ed è stato chiuso dal controllo notturno. Non è un errore.
+È l'elenco di tutti i richiami chiusi nel tempo **per questo cliente** (da una chiamata, da «Togli il richiamo», da "Pratica caricata", da un'assegnazione massiva con la casella spuntata). Lo Storico mostra anche **ogni chiamata registrata**, comprese le ripetizioni dello stesso esito, con l'esito, chi e quando (e per Richiamare il giorno). Per ogni richiamo si vede la **data di scadenza**, il **messaggio**, e **chi lo ha chiuso e quando**. Se vedete **"Chiuso dal sistema"** nessun operatore l'ha chiuso a mano: è stato chiuso dalla conversione agli stati nuovi (erano richiami rimasti senza contatto). Non è un errore: un richiamo scaduto non lo chiude più il controllo notturno.
 
 > In pratica: **lo Storico è la memoria del cliente.** Se un cliente chiama e dice "avevo un richiamo per il 10 del mese, che fine ha fatto?", basta aprire il suo contatto e guardare lo Storico.
 
@@ -125,25 +170,25 @@ La **scheda cliente** mostra un riepilogo del contatto attivo, in sola lettura: 
 - **Cerca cliente**: cognome, nome, codice fiscale, partita IVA o telefono, anche in parte.
 - **Operatore** (anche più d'uno, e "Non assegnato"), **Stato**, **Priorità** (bassa, media, alta, urgente), e l'**intervallo di date** (dal/al) su "Contattato il", "Prossimo alert" o "Creato". "Dal" non può venire dopo "al".
 - **"Solo i miei"**: i contatti che potete lavorare, cioè quelli assegnati a voi **e** quelli di un collega il cui cliente è assegnato a voi. È spento di default: un link mostra a tutti la stessa vista.
-- **"Filtri Avanzati"** raccoglie il resto: l'intervallo di date, **"Con alert"** (solo i contatti con un richiamo aperto) e **"Contatti chiusi"**. Il numero sul pulsante dice quanti sono attivi. Il menu delle colonne è l'icona in fondo alla barra.
+- **"Filtri Avanzati"** raccoglie il resto: l'intervallo di date, **"Con alert"** (solo i contatti con un richiamo aperto, anche scaduto) e **"Contatti chiusi"**. Il numero sul pulsante dice quanti sono attivi. Il menu delle colonne è l'icona in fondo alla barra.
 - **"Contatti chiusi"**: mostra, sotto il contatto attivo di ogni cliente, quelli non più attivi (sostituiti da una riapertura, un followup o un'assegnazione massiva). Sono righe rientrate: stare sotto dice già che sono conclusi. Non si modificano nella riga e si aprono in sola lettura. Aprendo un contatto, i "Contatti precedenti" del cliente sono sempre sotto lo Storico degli alert.
 - Si **ordina** cliccando le intestazioni (priorità, contattato il, prossimo alert, creato, aggiornato, cliente). Cambiare un filtro o l'ordine riporta alla prima pagina.
 - Filtri, ordine e pagina stanno **nell'indirizzo della pagina**: copiandolo e mandandolo a un collega, vede la stessa vista. Un pezzo dell'indirizzo che non si capisce viene ignorato, e i controlli mostrano solo i filtri applicati davvero.
 - Se non c'è nessun risultato, la pagina elenca i filtri attivi e offre **"Azzera filtri"**. Con il solo "Solo i miei" dice "Non hai contatti assegnati".
 - Da **Clienti**, nel menu della riga, **"Vedi contatti"** apre Contatti sul cliente scelto, con tutti i suoi contatti (anche i precedenti), dal più recente. Il cliente compare come un'etichetta con la ✕ per toglierlo.
 
-### Cambiare lo stato nella riga
-Cliccate lo stato del contatto e scegliete quello nuovo. Subito dopo compare una conferma con il **nome del cliente** e il nuovo stato. Due cose da sapere:
-- se la riga **non rispetta più i filtri** (per esempio filtravate "chiamare" e ora è "app.to"), **esce dall'elenco**: lo sentirete dire anche dal lettore di schermo, e il cursore passa alla riga successiva;
-- se passate da un esito a **"chiamare"** (riapertura), il contatto vecchio diventa "Concluso" e ne nasce uno **nuovo**: la conferma ha il pulsante **"Apri"** per andare subito al nuovo.
+### Cambiare lo stato e registrare una chiamata nella riga
+Cliccate lo stato del contatto: il menu offre i quattro esiti di «Registra chiamata» (sezione 5) e i due cambi del selettore (Pratica caricata, Da chiamare). Chi lavora dalla lista registra le chiamate senza aprire il contatto. Subito dopo compare una conferma con il **nome del cliente** e il nuovo stato. Due cose da sapere:
+- se la riga **non rispetta più i filtri** (per esempio filtravate "Da chiamare" e ora è "Appuntamento"), **esce dall'elenco**: lo sentirete dire anche dal lettore di schermo, e il cursore passa alla riga successiva;
+- se passate da un esito a **"Da chiamare"** (riapertura), il contatto vecchio diventa "Concluso" e ne nasce uno **nuovo**: la conferma ha il pulsante **"Apri"** per andare subito al nuovo.
 
 ### Chi può modificare cosa
-**Tutti vedono tutti i contatti.** Potete **modificarne** (stato, priorità, richiamo, chiusura del richiamo) solo quelli **assegnati a voi**, oppure quelli di un collega **il cui cliente è assegnato a voi**. Per gli altri la riga mostra il motivo: **"Assegnato a <Nome Cognome>"** oppure **"Non assegnato"**. L'amministratore modifica tutto, e solo lui può **cambiare l'operatore** di un contatto. Un contatto **"Superato"** non si modifica per nessuno: il programma lo rifiuta anche se lo provate da un'altra scheda.
+**Tutti vedono tutti i contatti.** Potete **modificarne** (registrare chiamate, stato, priorità, richiamo) solo quelli **assegnati a voi**, oppure quelli di un collega **il cui cliente è assegnato a voi**. Per gli altri la riga mostra il motivo: **"Assegnato a <Nome Cognome>"** oppure **"Non assegnato"**. L'amministratore modifica tutto, e solo lui può **cambiare l'operatore** di un contatto. Un contatto **"Superato"** non si modifica per nessuno: il programma lo rifiuta anche se lo provate da un'altra scheda.
 
 ### Il dettaglio del contatto
-Si apre **cliccando una riga** (o con **"Apri contatto"** nel menu della riga: serve per chi usa la tastiera) o da un link diretto. Mostra gli stessi dati della riga, il pulsante **"Apri scheda cliente"**, il "Prossimo alert", lo Storico e le note.
+Si apre **cliccando una riga** (o con **"Apri contatto"** nel menu della riga: serve per chi usa la tastiera) o da un link diretto. Mostra gli stessi dati della riga, il pulsante **"Apri scheda cliente"**, il "Prossimo alert", «Registra chiamata», lo Storico e le note.
 - **Chiuderlo** (con la X, Esc o un clic fuori) vi riporta alla lista **con gli stessi filtri, lo stesso ordine e la stessa pagina** di prima.
-- **Stato**: si cambia da lì, con le stesse regole della lista. Se riaprite un contatto, il dettaglio mostra subito quello **nuovo** con un avviso ("Contatto riaperto. Il precedente resta tra i contatti precedenti"), e il tasto "Indietro" del browser **non** vi riporta al contatto vecchio.
+- **Registra chiamata** e **stato**: si lavorano da lì, con le stesse regole della lista. Se riaprite un contatto, il dettaglio mostra subito quello **nuovo** con un avviso ("Contatto riaperto. Il precedente resta tra i contatti precedenti"), e il tasto "Indietro" del browser **non** vi riporta al contatto vecchio.
 - **Priorità**: scegliete **Bassa, Media, Alta o Urgente** e la priorità diventa **"Manuale"**: il calcolo notturno non la cambia più. Con **"Automatica"** la restituite al calcolo notturno, che la ricalcola alla sua prossima esecuzione (vedrete "Automatica" subito, il numero cambia dopo la notte).
 - **Operatore** (solo amministratori): cambia l'operatore del contatto **e** quello del cliente, e la colonna Operatore di Clienti coincide.
 - **Contatto concluso**: si apre in sola lettura con un avviso e il pulsante **"Vai al contatto attivo"** del cliente, se c'è.
@@ -158,7 +203,7 @@ Nel dettaglio trovate la **chat del cliente**, la stessa della sua scheda: una n
 ## 7. Domande frequenti
 
 **Ho cliccato la "X" su un alert per sbaglio, l'ho perso per sempre?**
-No. Non si cancella più nulla: lo trovate subito sotto, nella sezione "Storico" della scheda del cliente, con scritto che l'avete risolto voi e a che ora.
+No. La "X" apre solo «Togli il richiamo» e non cambia niente finché non scegliete uno stato e confermate. Anche dopo la conferma non si cancella nulla: il richiamo è nello "Storico" del contatto, con scritto che l'avete tolto voi e a che ora.
 
 **Se faccio un'assegnazione massiva su un grande gruppo di clienti, rischio di rovinare il lavoro fatto da un collega su qualcuno di loro?**
 No, a meno che non lo confermiate voi stessi. Se un cliente ha un richiamo ancora attivo, il programma ve lo segnala sempre prima e non lo tocca finché non spuntate la casella apposita.
@@ -166,17 +211,23 @@ No, a meno che non lo confermiate voi stessi. Se un cliente ha un richiamo ancor
 **Qual è la differenza pratica tra "Crea/assegna contatti" e "Assegna Clienti"?**
 "Crea/assegna contatti" può creare un nuovo contatto e quindi cambiare lo stato di un cliente. "Assegna Clienti" non crea contatti e non cambia mai stato o richiami: sposta il cliente e il suo contatto attivo al nuovo operatore, e con loro le chiamate già registrate. Se il dubbio è sullo stato dei clienti, usate "Assegna Clienti".
 
-**Perché alcuni clienti, dopo un "Crea/assegna contatti", non hanno cambiato stato anche se l'ho scelto nel form?**
-Perché erano già "da chiamare" o "in followup" (cioè non avevano ancora un esito), oppure avevano un richiamo attivo che non avete confermato di chiudere. In questi casi il sistema cambia solo l'operatore, di proposito, per non buttare via lavoro già fatto. Con "Assegna Clienti" lo stato non cambia mai.
+**Perché alcuni clienti, dopo un "Crea/assegna contatti", non hanno cambiato stato?**
+Perché erano già "Da chiamare" o "Non risponde" (cioè ancora da lavorare), oppure avevano un richiamo attivo che non avete confermato di chiudere. In questi casi il sistema cambia solo l'operatore, di proposito, per non buttare via lavoro già fatto. Con "Assegna Clienti" lo stato non cambia mai.
 
 **Cosa significa "Operatore di Sistema" che vedo in qualche riga dello Storico?**
-Significa che quel richiamo è scaduto da solo (nessuno lo ha chiuso a mano) ed è stato chiuso automaticamente dal controllo notturno del programma.
+Significa che nessun operatore ha chiuso quel richiamo: lo ha chiuso il programma durante la conversione agli stati nuovi, perché era rimasto senza contatto. Un richiamo scaduto, invece, **non** lo chiude il controllo notturno: resta aperto finché qualcuno lo lavora.
 
-**Posso ancora creare un alert/richiamo su un cliente che devo ancora chiamare per la prima volta?**
-No: si possono impostare richiami solo su clienti che hanno già un esito (non su quelli ancora "da chiamare" o "in followup"). Se provate, il programma vi avvisa con il messaggio "Solo i clienti che non sono da chiamare possono avere alert."
+**Come imposto un richiamo?**
+Dal dettaglio del contatto (o dalla cella dello stato nella lista), con «Registra chiamata» e **"Richiamare"**: scegliete il giorno e, se volete, il messaggio. Si può fare sui contatti Da chiamare, Non risponde e Richiamo; con Appuntamento, Pratica caricata o Non interessato riportate prima il contatto a "Da chiamare".
+
+**Il richiamo è scaduto ma il contatto risulta "Da chiamare". È un errore?**
+No: è voluto. Nella notte della scadenza il contatto passa da Richiamo a Da chiamare e il richiamo resta aperto, segnato "Scaduto", finché qualcuno registra una chiamata o lo toglie con «Togli il richiamo». Un "Non risponde" non lo chiude.
+
+**Perché da quando c'è «Registra chiamata» le chiamate e i tassi sono più alti?**
+Perché ogni pressione di un esito è una chiamata: due "Non risponde" di fila, che prima contavano una chiamata, ora ne contano due. Il confronto con i mesi scorsi va fatto tenendone conto.
 
 **Dove trovo i contatti che devo chiamare oggi?**
-In **Contatti**, accendendo **"Solo i miei"** e **"Con alert"** e ordinando per "Prossimo alert": quelli con **"Oggi"** o **"Scaduto"** sono da richiamare. Potete copiare l'indirizzo e salvarlo tra i preferiti: è la vostra vista.
+In **Contatti**, accendendo **"Solo i miei"** e **"Con alert"** e ordinando per "Prossimo alert": quelli con **"Oggi"** o **"Scaduto"** sono da richiamare (un richiamo scaduto resta in lista finché non lo lavorate). Potete copiare l'indirizzo e salvarlo tra i preferiti: è la vostra vista.
 
 **Perché non posso impostare un richiamo per oggi?**
 Il richiamo si imposta **da domani in poi**. Se provate a mandarlo per oggi, anche da fuori dall'interfaccia, il programma lo rifiuta con "Il richiamo si imposta da domani".

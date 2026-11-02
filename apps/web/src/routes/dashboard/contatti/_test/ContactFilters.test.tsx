@@ -44,7 +44,7 @@ describe("la barra dei filtri", () => {
     const { user, navigations } = await renderBar({ ...defaultState, page: 3 })
 
     await user.click(screen.getByRole("button", { name: "Stato" }))
-    await user.click(screen.getByRole("checkbox", { name: "richiamare" }))
+    await user.click(screen.getByRole("checkbox", { name: "Richiamo" }))
 
     // The click shows at once, before the list answers
     expect(
@@ -57,12 +57,12 @@ describe("la barra dei filtri", () => {
     expect(navigations).toHaveLength(1)
   })
 
-  it("offre tutti gli stati", async () => {
+  it("offre i sei stati, con le etichette", async () => {
     const { user } = await renderBar()
 
     await user.click(screen.getByRole("button", { name: "Stato" }))
 
-    expect(screen.getAllByRole("checkbox")).toHaveLength(9)
+    expect(screen.getAllByRole("checkbox")).toHaveLength(6)
   })
 
   it("filtra per operatore, con 'Non assegnato' fra le voci", async () => {

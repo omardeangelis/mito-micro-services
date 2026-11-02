@@ -1,12 +1,14 @@
 import { Effect } from "effect"
 import { and, desc, eq } from "drizzle-orm"
 import { bandValue } from "@mito/domain/contact/priority"
+import { toContactState } from "@mito/domain/contact/status"
 import { type Task } from "@mito/domain/schemas"
 import { customers } from "@mito/db/schema/customers"
-import { alert, task } from "@mito/db/schema/task"
+import { task } from "@mito/db/schema/task"
 import { taskEventLog } from "@mito/db/schema/taskEventLog"
 import { lockCustomer, query, transaction } from "../../effect/db"
 import { replaceActiveContact } from "./activeContact"
+import { resolveOpenAlert } from "./alert"
 import { findWorkingOperator } from "./operator"
 
 type LogRow = typeof taskEventLog.$inferInsert
@@ -113,17 +115,15 @@ const assignCustomer = Effect.fnUntraced(function* ({
   // 2. Open alert whose closing the actor confirmed, or
   // 3. a contact with an outcome and no alert: a new contact that keeps
   //    "Contattato il"
+  // Da chiamare and Non risponde (and the old `followup` and `nessuno`) are
+  // in the queue: only the operator changes and the open alert stays (AC25).
+  const current = toContactState(customerTask.state)
+  const inQueue = current === "chiamare" || current === "non risponde"
   const alertId =
-    resolveAlert && customerTask.alertId ? customerTask.alertId : null
-  if (
-    alertId !== null ||
-    (customerTask.state !== "chiamare" &&
-      customerTask.state !== "followup" &&
-      // Non distruggere chi ha un alert pendente (callback pianificato): per
-      // questi clienti riassegniamo solo l'operatore, preservando task e alert.
-      // La rimozione avviene solo su conferma esplicita.
-      !customerTask.alertId)
-  ) {
+    !inQueue && resolveAlert && customerTask.alertId
+      ? customerTask.alertId
+      : null
+  if (!inQueue && (alertId !== null || !customerTask.alertId)) {
     if (alertId !== null) {
       yield* query((client) =>
         client
@@ -146,34 +146,24 @@ const assignCustomer = Effect.fnUntraced(function* ({
     if (alertId !== null) {
       // Risolto in modo NON distruttivo: isResolved=true, record conservato,
       // il cron non lo riattiva
-      yield* query((client) =>
-        client
-          .update(alert)
-          .set({ isResolved: true, resolvedBy: actorOperatorId })
-          .where(eq(alert.id, alertId))
-      )
+      yield* resolveOpenAlert({
+        customerId,
+        taskId: customerTask.id,
+        alertId,
+        actorOperatorId,
+        source: "bulk",
+        resolution: "bulk",
+      })
     }
     yield* setCustomerOperator
     yield* insertLogRows([
-      ...(alertId !== null
-        ? [
-            {
-              customerId,
-              taskId: customerTask.id,
-              alertId,
-              actorOperatorId,
-              action: "alert_resolved",
-              source: "bulk",
-            } as const,
-          ]
-        : []),
       ...stateChange(created.id, customerTask.state),
       ...operatorReassign(created.id, customerTask.operatorId),
     ])
     return
   }
 
-  // 4. `chiamare` or `followup`, or an alert not confirmed: reassign only
+  // 4. In the queue, or an alert not confirmed: reassign only
   yield* query((client) =>
     client.update(task).set({ operatorId }).where(eq(task.id, customerTask.id))
   )

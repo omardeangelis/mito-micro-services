@@ -106,8 +106,8 @@ const unservedGroups = Layer.mergeAll(
       .handle("changeState", unserved)
       .handle("setPriority", unserved)
       .handle("reassign", unserved)
-      .handle("setCallback", unserved)
-      .handle("resolveAlert", unserved)
+      .handle("registerCall", unserved)
+      .handle("removeCallback", unserved)
       .handle("bulkHandleTask", unserved)
   ),
   HttpApiBuilder.group(MitoApi, "pratiche", (handlers) =>

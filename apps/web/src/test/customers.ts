@@ -161,6 +161,8 @@ export const contactDetailOf = (
   },
   alert: null,
   history: [],
+  closures: [],
+  calls: [],
   customerContacts: [],
   activeTaskId: null,
   editability: { kind: "editable" },
@@ -558,8 +560,8 @@ export function fakeCustomers(
         .handle("changeState", unserved)
         .handle("setPriority", unserved)
         .handle("reassign", unserved)
-        .handle("setCallback", unserved)
-        .handle("resolveAlert", unserved)
+        .handle("registerCall", unserved)
+        .handle("removeCallback", unserved)
         .handle("bulkHandleTask", ({ payload }) =>
           waitGate(payload.customerIds).pipe(
             Effect.andThen(

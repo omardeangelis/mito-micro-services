@@ -127,6 +127,27 @@ Un progetto a sé (`~/Desktop/lavoro/gcs-storage-kit`), da copiare in ogni proge
 
 K, T, B1 e W1 partono subito e in parallelo. B2 aspetta solo S1. PR7 parte dopo W1, e prima di B6.
 
+#### Staging: la conversione degli stati dei contatti (esiti-richiami-stati)
+
+Il job `convert-contact-states` porta i contatti ai sei stati ([[specs/crm/esiti-richiami-stati/SPEC]], AC31; D11 e A4 del piano). Non ha un orario: `apps/api/gcp/setup-staging.sh` lo descrive con un orario segnaposto (1 gennaio) e lo mette in pausa, e si lancia a mano. Su staging lo crea e lo lancia Omar, dopo un giro di prova sulla copia dei dati. Il progetto è `mito-crm` e la regione `europe-west3`, come nello script:
+
+```sh
+# crea il job (se lo script non l'ha già fatto), poi lo mette in pausa
+gcloud scheduler jobs create http mito-crm-staging-convert-contact-states \
+  --project=mito-crm --location=europe-west3 --schedule="0 0 1 1 *" --time-zone=Etc/UTC \
+  --uri=<URL del backend di staging>/internal/cron/convert-contact-states --http-method=POST \
+  --oidc-service-account-email=<service account dello scheduler> --oidc-token-audience=<URL del backend di staging> \
+  --attempt-deadline=30m --max-retry-attempts=0
+gcloud scheduler jobs pause mito-crm-staging-convert-contact-states --project=mito-crm --location=europe-west3
+
+# lancio a mano
+gcloud scheduler jobs run mito-crm-staging-convert-contact-states --project=mito-crm --location=europe-west3
+```
+
+`<URL del backend di staging>` e il service account sono quelli di `setup-staging.sh` (`$URL`, `$SCHED`): meglio eseguire lo script, che li ha già. Il job risponde con i conteggi di quanto ha convertito (risposta della chiamata, da cercare nei log di Cloud Run).
+- Il job **fallisce con `ConversionLeft`** se, dopo il giro, ci sono righe non convertite o rimaste da lavorare (`failed` o `remaining` maggiori di zero nell'errore): si guarda cosa resta, si corregge e si rilancia. Anche un giro fallito registra i conteggi di quanto ha convertito, in `cron_run.counters` e nel riepilogo su Slack. Il totale di un rilascio è quindi la somma dei giri del giorno.
+- Si può **rilanciare con `run` anche lo stesso giorno UTC**: la guardia `cron_run` salta un secondo giro riuscito dello stesso giorno, ma il job è `rerunnable` e un giro fallito non la consuma. La conversione è idempotente (AC32): un secondo giro su dati già convertiti non cambia niente.
+
 ### Fase P — prod
 
 Dal 2026-10-27 la prod passa tutta insieme, in una sola finestra serale (R10 di [[chore/roadmap-nuovo-stack]]). Fino ad allora questo piano la accendeva un passo per notte: tRPC, REST, auth, storage, cron, DB.
@@ -135,6 +156,15 @@ Dal 2026-10-27 la prod passa tutta insieme, in una sola finestra serale (R10 di 
 - il redirect Azure di prod per better-auth e la query di controllo degli account sul database di prod (G3 di [[specs/crm/auth-better-auth/PLAN]]);
 - le variabili del servizio Cloud Run di prod e dei progetti Vercel di prod: quello dell'app React e quello dell'app Next. Quelle di better-auth vanno sul servizio Cloud Run e sul progetto dell'app Next, con gli stessi valori: `BETTER_AUTH_SECRET`, un secret nuovo per la prod (almeno 32 caratteri), e `BETTER_AUTH_URL`, il dominio di prod. `AUTH_TEST_LOGIN` in prod non si imposta: con `true` accende il login di prova via email (OQ6 di [[specs/crm/auth-better-auth/SPEC]]);
 - il runbook della finestra con i comandi, provato su staging con i tempi (checklist di S6);
+- **l'avviso a Rosario** (OQ5 di [[specs/crm/esiti-richiami-stati/SPEC]]), da parte di Omar: con la spec esiti-richiami-stati le chiamate dell'export e i tassi di risposta e di appuntamento **salgono**, perché ogni «Registra chiamata» è una chiamata. Esempio da dargli: due «Non risponde» di fila oggi sono una chiamata, da ora sono due; e i tassi senza chiamate non si mostrano più come 0%. Il confronto con i mesi scorsi va fatto tenendone conto;
+- **il conteggio delle chiamate senza operatore** (MINOR v8 di [[specs/crm/esiti-richiami-stati/REPORT]]), sulla copia dei dati di produzione (S5): le righe del registro con un operatore nullo o cancellato si vedono nello Storico ma non contano nell'export e in Analisi. Se sono zero il rilievo si chiude, altrimenti Omar decide prima del rilascio:
+
+  ```sql
+  SELECT count(*) FROM "mito-deutsche_task_event_log" l
+  LEFT JOIN "mito-deutsche_operator" o ON o.id = l.actor_operator_id
+  WHERE l.action IN ('state_change', 'call') AND o.id IS NULL;
+  ```
+- lo scheduler di prod crea anche il job `convert-contact-states`, in pausa per sempre e da lanciare a mano (qui sotto, passo 4 bis), come su staging;
 - lo scheduler di prod crea anche il job `cleanup-task-event-log`, alle 01:17 UTC (pulizia del registro, conservazione 25 mesi, [[specs/crm/pagina-analisi/SPEC]] AC16), in pausa come gli altri fino al passo 6.
 
 **La finestra:**
@@ -142,6 +172,7 @@ Dal 2026-10-27 la prod passa tutta insieme, in una sola finestra serale (R10 di 
 2. Supabase in sola lettura, connessioni chiuse; dump → restore su Cloud SQL di prod → verifica identica (DB: dettagli, sotto);
 3. le migrazioni di `dev` non ancora in prod, su Cloud SQL, comprese quelle di better-auth;
 4. merge `dev` → `main` e deploy: il backend di prod su Cloud SQL, GCS e better-auth; l'app React sul dominio, con le rewrite verso il backend; l'app Next deployata con `BACKEND_URL` verso lo stesso backend, come rollback del solo frontend;
+4 bis. **solo se il rilascio porta la spec esiti-richiami-stati** (nell'ordine): le migrazioni (comprese `app_milestone` e la riga `calls_registry`, che fissa l'entrata in uso, D12) sono già state applicate al passo 3; **deploy** del passo 4; **lancio di `convert-contact-states`** (`gcloud scheduler jobs run` sul job di prod); **controllo dei conteggi** che il job restituisce o registra in `cron_run.counters`, sommati se i giri sono più di uno (alert orfani chiusi, in produzione 5 il 2026-11-01; contatti portati in Richiamo, Da chiamare, Non risponde, Pratica caricata; in produzione 64 in Richiamo e 7.240 in Non risponde) e assenza di `ConversionLeft`; solo dopo, lo smoke test. Se il job fallisce con `ConversionLeft` si corregge e si rilancia, anche lo stesso giorno;
 5. smoke test da ADMIN e da OPERATORE, poi go/no-go;
 6. Cloud Scheduler acceso e cron di GitHub spenti, lo stesso giorno: mai due scheduler insieme.
 

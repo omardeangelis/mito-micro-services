@@ -3,11 +3,17 @@ import { Hono } from "hono"
 import { type Db } from "@mito/server/effect/db"
 import { ErrorReporter } from "@mito/server/effect/errorReporter"
 import { CronAuth } from "./auth"
-import { type CronJob, cronJobs, utcDay } from "./jobs"
+import { ConversionLeft, type CronJob, cronJobs, utcDay } from "./jobs"
 import { finishRun, startRun } from "./registry"
 import { CronReport } from "./report"
 
 class UnknownJob extends Schema.TaggedError<UnknownJob>()("UnknownJob", {}) {}
+
+/** The counts a job's failure carries, as `ConversionLeft` does. */
+const countersOf = (cause: Cause.Cause<unknown>) => {
+  const error = Option.getOrUndefined(Cause.findErrorOption(cause))
+  return error instanceof ConversionLeft ? error.counters : undefined
+}
 
 export type CronContext = CronAuth | CronReport | Db | ErrorReporter
 
@@ -55,12 +61,14 @@ const runCron = Effect.fnUntraced(function* (
   }
   yield* Effect.logError(`Cron ${name} failed`, Cause.pretty(exit.cause))
   yield* (yield* ErrorReporter).report(exit.cause, { cron: name })
-  yield* finishRun(runId, "failed", null)
+  // A job that stops partway (ConversionLeft) still says what it did
+  const counters = countersOf(exit.cause)
+  yield* finishRun(runId, "failed", counters ?? null)
   yield* report.send({
     job: name,
     status: "failed",
     durationMs,
-    counters: {},
+    counters: counters ?? {},
   })
   return { status: 500 as const, body: { job: name, error: "failed" } }
 })

@@ -8,6 +8,8 @@
 // - "completezza" (D14): a dataset row that changed or disappeared must be
 //   `selected: true` in some scenario, and a row that is not in the dataset
 //   must be one the `alert` scenarios create.
+// - "stati" (esiti-richiami-stati AC3): no contact is left in `followup`,
+//   `erogata`, `nessuno` or without a state, before or after the runs.
 // - "volumi" (AC30), only at N = 10,000: the volumes of `priority` in the
 //   database and the job counters recorded in `manifest.runs`.
 //
@@ -17,6 +19,7 @@ import { getTableColumns } from "drizzle-orm"
 import type { PgTable } from "drizzle-orm/pg-core"
 import {
   alert,
+  appMilestone,
   chat,
   customers,
   customerToPratica,
@@ -62,7 +65,7 @@ export type ScenarioFailure = {
 
 export type ScenarioResult = {
   id: string
-  cron: CronName | "completezza" | "volumi"
+  cron: CronName | "completezza" | "stati" | "volumi"
   passed: boolean
   failures: ScenarioFailure[]
 }
@@ -121,6 +124,12 @@ const TABLES: readonly TableSpec[] = [
   spec("alert", alert, "alerts"),
   spec("task", task, "tasks"),
   spec("task_event_log", taskEventLog, "taskEventLog"),
+  spec(
+    "app_milestone",
+    appMilestone,
+    "appMilestones",
+    (row) => row.name as string
+  ),
 ]
 
 const TABLE_BY_NAME = new Map(TABLES.map((each) => [each.name, each]))
@@ -203,6 +212,19 @@ export async function verifyManifest(
     failures: completeness,
   })
 
+  const legacy = legacyStateFailures(
+    [...context.tasks().values()].map((row) => ({
+      id: row.id as number,
+      state: (row.state ?? null) as string | null,
+    }))
+  )
+  results.push({
+    id: "stati",
+    cron: "stati",
+    passed: legacy.length === 0,
+    failures: legacy,
+  })
+
   if (manifest.n === VOLUME_N) {
     const volumes = context.checkVolumes()
     results.push({
@@ -213,6 +235,32 @@ export async function verifyManifest(
     })
   }
   return results
+}
+
+/** The values `task.state` no longer takes (AC3): the old ones, or none. */
+const LEGACY_STATES: ReadonlySet<string | null> = new Set([
+  "followup",
+  "erogata",
+  "nessuno",
+  null,
+])
+
+/**
+ * The contacts whose state is not one of the six (esiti-richiami-stati AC1,
+ * AC3), one failure each. Pure: `verifyManifest` calls it on the tasks it read.
+ */
+export function legacyStateFailures(
+  tasks: readonly { id: number; state: string | null }[]
+): ScenarioFailure[] {
+  return tasks
+    .filter((each) => LEGACY_STATES.has(each.state))
+    .map((each) => ({
+      table: "task",
+      key: each.id,
+      column: "state",
+      expected: "uno dei sei stati",
+      found: each.state,
+    }))
 }
 
 /** The results as lines: "P1 passato", or "P1 fallito" and one per failure. */
@@ -299,6 +347,11 @@ class Context {
 
   private rows(name: string) {
     return this.snapshot.get(name)!
+  }
+
+  /** Every contact of the database, by `String(id)`. */
+  tasks() {
+    return this.rows("task")
   }
 
   // -------------------------------------------------------------------------

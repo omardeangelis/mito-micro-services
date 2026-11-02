@@ -1,6 +1,7 @@
 import { afterEach, beforeAll, beforeEach, vi } from "vitest"
 import { describe, expect, it } from "@effect/vitest"
 import { Cause, Effect, Exit } from "effect"
+import { TestClock } from "effect/testing"
 import { eq } from "drizzle-orm"
 import { type TaskStatus } from "@mito/domain/schemas"
 import { messages } from "@mito/db/schema/chat"
@@ -9,6 +10,8 @@ import { chatToOperator } from "@mito/db/schema/relations/chatToOperator"
 import { task } from "@mito/db/schema/task"
 import { query, transaction } from "../../../effect/db"
 import { processDueAlerts } from "../processDueAlerts"
+import { registerCall } from "../registerCall"
+import { removeCallback } from "../removeCallback"
 import { deactivateOperator } from "../../operator/deactivate"
 import { createTestCaller } from "@/test/caller"
 import {
@@ -106,31 +109,33 @@ describe("regola dei lock: task.changeState", () => {
 
     await createTestCaller(operator).task.changeState({
       taskId: contact.id,
-      toState: "nessuno",
+      toState: "caricato",
       source: "list",
       confirmedAlertId: null,
     })
 
     expect(await tasksOf(customer.id)).toMatchObject([
-      { id: contact.id, state: "nessuno" },
+      { id: contact.id, state: "caricato" },
     ])
   })
 
-  it("passare a un esito prende il lock del cliente", async () => {
+  it("Pratica caricata con un alert scaduto lo chiude senza conferma e prende il lock del cliente", async () => {
     const operator = await createOperator()
-    const { customer, contact } = await seedContact(operator, "chiamare")
+    const { customer, contact } = await seedContact(operator, "richiamare")
+    const open = await createAlert({ taskId: contact.id, deadline })
     await assertCustomerLockedOnWrite()
 
     await createTestCaller(operator).task.changeState({
       taskId: contact.id,
-      toState: "app.to",
+      toState: "caricato",
       source: "list",
       confirmedAlertId: null,
     })
 
-    const [after] = await tasksOf(customer.id)
-    expect(after).toMatchObject({ id: contact.id, state: "app.to" })
-    expect(after!.closedAt).not.toBeNull()
+    expect(await logOf(customer.id)).toMatchObject([
+      { action: "alert_resolved", alertId: open.id },
+      { action: "state_change", toState: "caricato" },
+    ])
   })
 
   it("la riapertura prende il lock del cliente", async () => {
@@ -154,19 +159,22 @@ describe("regola dei lock: task.changeState", () => {
   it("chiudere l'alert confermato prende il lock del cliente", async () => {
     const operator = await createOperator()
     const { customer, contact } = await seedContact(operator, "richiamare")
-    const open = await createAlert({ taskId: contact.id, deadline })
+    const open = await createAlert({
+      taskId: contact.id,
+      deadline: inTwoDays(),
+    })
     await assertCustomerLockedOnWrite()
 
     await createTestCaller(operator).task.changeState({
       taskId: contact.id,
-      toState: "app.to",
+      toState: "caricato",
       source: "list",
       confirmedAlertId: open.id,
     })
 
     expect(await logOf(customer.id)).toMatchObject([
       { action: "alert_resolved", alertId: open.id },
-      { action: "state_change", toState: "app.to" },
+      { action: "state_change", toState: "caricato" },
     ])
   })
 })
@@ -460,7 +468,7 @@ describe("regola dei lock: il cron degli alert (processDueAlerts)", () => {
     })
 
   it.effect(
-    "un alert che scade oggi crea il followup e prende il lock del cliente",
+    "un alert che scade oggi porta il contatto a Da chiamare e prende il lock del cliente",
     () =>
       Effect.gen(function* () {
         const { customer } = yield* Effect.promise(() =>
@@ -471,12 +479,12 @@ describe("regola dei lock: il cron degli alert (processDueAlerts)", () => {
 
         expect(
           yield* Effect.promise(() => activeTasksOf(customer.id))
-        ).toMatchObject([{ state: "followup" }])
+        ).toMatchObject([{ state: "chiamare" }])
       })
   )
 
   it.effect(
-    "un alert di un altro giorno si chiude soltanto e prende il lock del cliente",
+    "un alert di un altro giorno porta il contatto a Da chiamare, con l'alert aperto, e prende il lock del cliente",
     () =>
       Effect.gen(function* () {
         const { customer, open } = yield* Effect.promise(() =>
@@ -485,8 +493,11 @@ describe("regola dei lock: il cron degli alert (processDueAlerts)", () => {
         yield* Effect.promise(() => assertCustomerLockedOnWrite())
         expect(yield* run()).toMatchObject({ processed: 1, failed: 0 })
 
+        expect(
+          yield* Effect.promise(() => activeTasksOf(customer.id))
+        ).toMatchObject([{ state: "chiamare", alertId: open.id }])
         expect(yield* Effect.promise(() => logOf(customer.id))).toMatchObject([
-          { action: "alert_resolved", alertId: open.id },
+          { action: "state_change", source: "cron_alert", toState: "chiamare" },
         ])
       })
   )
@@ -783,5 +794,72 @@ describe("regola dei lock: deactivateOperator", () => {
           { source: "deactivation", taskId: null, toOperatorId: target.id },
         ])
       })
+  )
+})
+
+describe("regola dei lock: registerCall", () => {
+  it.effect(
+    "Richiamare che chiude l'alert aperto prende il lock del cliente",
+    () =>
+      Effect.gen(function* () {
+        // The real time: the alert of `deadline` is expired, the callback
+        // in two days is after today
+        yield* TestClock.setTime(Date.now())
+        const operator = yield* Effect.promise(() => createOperator())
+        const { customer, contact } = yield* Effect.promise(() =>
+          seedContact(operator, "richiamare")
+        )
+        const open = yield* Effect.promise(() =>
+          createAlert({ taskId: contact.id, deadline })
+        )
+        yield* Effect.promise(() => assertCustomerLockedOnWrite())
+
+        const exit = yield* registerCall({
+          taskId: contact.id,
+          actor: { operatorId: operator.id, role: "OPERATORE" },
+          requestId: crypto.randomUUID(),
+          source: "detail",
+          outcome: "richiamare",
+          callback: {
+            day: inTwoDays().toISOString().slice(0, 10),
+            message: null,
+          },
+        }).pipe(provideServer, Effect.exit)
+
+        if (Exit.isFailure(exit)) throw new Error(Cause.pretty(exit.cause))
+        expect(yield* Effect.promise(() => logOf(customer.id))).toMatchObject([
+          { action: "alert_resolved", alertId: open.id },
+          { action: "call", outcome: "richiamare" },
+        ])
+      })
+  )
+})
+
+describe("regola dei lock: removeCallback", () => {
+  it.effect("Togli il richiamo prende il lock del cliente", () =>
+    Effect.gen(function* () {
+      yield* TestClock.setTime(Date.now())
+      const operator = yield* Effect.promise(() => createOperator())
+      const { customer, contact } = yield* Effect.promise(() =>
+        seedContact(operator, "richiamare")
+      )
+      const open = yield* Effect.promise(() =>
+        createAlert({ taskId: contact.id, deadline })
+      )
+      yield* Effect.promise(() => assertCustomerLockedOnWrite())
+
+      const exit = yield* removeCallback({
+        taskId: contact.id,
+        alertId: open.id,
+        state: "app.to",
+        actor: { operatorId: operator.id, role: "OPERATORE" },
+      }).pipe(provideServer, Effect.exit)
+
+      if (Exit.isFailure(exit)) throw new Error(Cause.pretty(exit.cause))
+      expect(yield* Effect.promise(() => logOf(customer.id))).toMatchObject([
+        { action: "alert_resolved", alertId: open.id },
+        { action: "state_change", toState: "app.to" },
+      ])
+    })
   )
 })

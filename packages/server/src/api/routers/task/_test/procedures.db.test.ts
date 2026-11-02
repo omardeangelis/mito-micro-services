@@ -96,7 +96,7 @@ const PROCEDURES = {
     call: (c, f) =>
       c.task.changeState({
         taskId: f.taskId,
-        toState: "non interessato",
+        toState: "caricato",
         source: "list",
         confirmedAlertId: f.alertId,
       }),

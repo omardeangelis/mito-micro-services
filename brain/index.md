@@ -75,7 +75,7 @@ Migrated from `docs/` on 2026-09-24. Source material for future `create-spec` ru
 | crm | [[specs/crm/toast-sonner/SPEC]] | Implemented (T11 aperto) |
 | crm | [[specs/crm/home-operatore/SPEC]] | Draft (mappa: [[specs/crm/home-operatore/FLOW]]) |
 | crm | [[specs/crm/home-admin/SPEC]] | Draft (mappa: [[specs/crm/home-admin/FLOW]]) |
-| crm | [[specs/crm/esiti-richiami-stati/SPEC]] | Draft |
+| crm | [[specs/crm/esiti-richiami-stati/SPEC]] | Implemented sul branch `claude/esiti-richiami-stati`, PR verso `dev` da aprire (piano: [[specs/crm/esiti-richiami-stati/PLAN]], review: [[specs/crm/esiti-richiami-stati/REPORT]]) |
 
 - [[specs/crm/crm-specs|crm-specs]] — CRM spec page map
 
@@ -92,6 +92,7 @@ Migrated from `docs/` on 2026-09-24. Source material for future `create-spec` ru
 
 > `adversarial-review` writes SHIP/DO-NOT-SHIP reports here. Standalone reviews land under `review/<slug>/`; spec-implementation reviews live inside the spec folder (`specs/<domain>/<spec>/REPORT.md`).
 
+- [[specs/crm/esiti-richiami-stati/REPORT|crm/esiti-richiami-stati]] — spec · ship dopo le correzioni (13 verificatori; al primo giro 1 BLOCKER e 4 MAJOR, corretti con un test ciascuno; checklist umana prima dell'unione e del rilascio) · critical · 2026-11-02
 - [[specs/crm/toast-sonner/REPORT|crm/toast-sonner]] — spec · ship (secondo giro; checklist umana e T11 prima dell'unione) · critical · 2026-10-31
 - [[specs/crm/pagina-analisi/REPORT|crm/pagina-analisi]] — spec · ship (giro 6; checklist umana prima del rilascio) · critical · 2026-10-30
 - [[specs/crm/design-system-web/REPORT|crm/design-system-web]] — spec · do-not-ship (giro 3: solo il gate dei colori, corretto senza un controllo indipendente) · critical · 2026-10-29

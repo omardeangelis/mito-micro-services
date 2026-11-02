@@ -19,6 +19,15 @@ beforeAll(async () => {
   await testClient.exec(
     `ALTER TABLE "mito-deutsche_user" ADD COLUMN "disabled_at" timestamp with time zone, ADD COLUMN "disabled_by" integer`
   )
+  // Same for the registry of the calls: the code of today writes the columns
+  // of the log and of the alerts that come with a later migration (T2), and
+  // only they are added here
+  await testClient.exec(`
+    CREATE TYPE "public"."call_origin" AS ENUM('alert', 'list');
+    CREATE TYPE "public"."alert_resolution" AS ENUM('call', 'replaced', 'removed', 'state_change', 'bulk', 'system');
+    ALTER TABLE "mito-deutsche_task_event_log" ADD COLUMN "outcome" "task_status", ADD COLUMN "origin" "call_origin", ADD COLUMN "request_id" uuid;
+    ALTER TABLE "mito-deutsche_alert" ADD COLUMN "resolved_at" timestamp with time zone, ADD COLUMN "resolution" "alert_resolution"
+  `)
 })
 
 beforeEach(async () => {

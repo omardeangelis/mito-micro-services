@@ -7,17 +7,21 @@ import {
 } from "@tanstack/react-query"
 import { useCallback } from "react"
 import { Effect, Schema } from "effect"
+import { HttpClientError } from "effect/http"
+import { type ApiError, isApiError } from "@mito/contract/errors"
 import {
   type BulkHandleTask,
   ContactsQuery,
   type PriorityBand,
+  type RegisterCall,
+  type RegisteredCall,
   type TaskStatus,
 } from "@mito/contract/task"
 import { type GetContactsInput } from "@mito/domain/contact/listInput"
 import { useRun } from "./ApiProvider"
 import { allBatches, customerKeys } from "./customer"
 import { routeErrorWhenEmpty } from "./queryClient"
-import { ApiClient, type Run } from "./runtime"
+import { ApiClient, ApiUnavailable, type Run } from "./runtime"
 
 /** The keys of the group `task`: `[group, endpoint, input]` (H12) */
 export const taskKeys = {
@@ -154,58 +158,137 @@ export const useReassign = () => {
   })
 }
 
+/** The whole send of a «Registra chiamata», for the uncertain outcome (AC15, A3) */
+export const REGISTER_CALL_TIMEOUT_MS = 15_000
+
 /**
- * A callback on a contact (`POST /task/:id/callback`), which replaces the
- * open alert the form showed. The caller shows a rejection itself
+ * One press of an outcome: the input without `requestId`, which
+ * `useRegisterCall` creates at each `mutate`
  */
-export const useSetCallback = () => {
+export type RegisterCallInput = (RegisterCall extends infer T
+  ? T extends unknown
+    ? Omit<T, "requestId">
+    : never
+  : never) & { taskId: number }
+
+/**
+ * What `useRegisterCall` resolves with: the mutation never rejects, so
+ * `isError` is never true and no toast shows. The caller reads `data.kind`:
+ * - `registered`: saved, with what it leaves on the contact;
+ * - `rejected`: the server refused and wrote nothing, `error` has the data
+ *   of the text (`describeApiError`);
+ * - `refused`: a 4xx the endpoint doesn't declare (a payload an older server
+ *   can't read): the server wrote nothing, said with `CALL_REFUSED`;
+ * - `uncertain`: no answer we can trust (network, 5xx, body that doesn't
+ *   read, 15 seconds): the call may or may not be saved (AC15)
+ */
+export type RegisterCallResult =
+  | { kind: "registered"; registered: RegisteredCall }
+  | { kind: "rejected"; error: ApiError }
+  | { kind: "refused" }
+  | { kind: "uncertain" }
+
+/** The text of a `refused` call */
+export const CALL_REFUSED =
+  "Il server ha rifiutato la richiesta: la chiamata non è registrata. Ricarica la pagina e riprova."
+
+/** A response with a 4xx status: the server answered and wrote nothing */
+const isClientError = (error: unknown) => {
+  if (!(error instanceof ApiUnavailable)) return false
+  const { cause } = error
+  if (!(cause instanceof HttpClientError.HttpClientError)) return false
+  const status = cause.response?.status
+  return status !== undefined && status >= 400 && status < 500
+}
+
+/**
+ * «Registra chiamata» (`POST /task/:id/call`). A new `requestId` at every
+ * `mutate` (a new press is a new call, AC11), a single attempt (no retry:
+ * only the server dedupes a repeat), and 15 seconds for the whole send (A3).
+ * No toast, and it doesn't use `useContactMutationFeedback`: an uncertain
+ * outcome has its own text (AC15). The state, the alert and the Storico of
+ * the contact are read again as the call ends, whatever the outcome; the
+ * pending state ends with the response, not with that read (AC33)
+ */
+export const useRegisterCall = () => {
   const run = useRun()
+  const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({
+    mutationFn: async ({
       taskId,
-      ...payload
-    }: {
-      taskId: number
-      deadline: Date
-      message: string | null
-      replacesAlertId: number | null
-    }) =>
-      run(
-        Effect.gen(function* () {
-          const client = yield* ApiClient
-          return yield* client.task.setCallback({
-            params: { id: taskId },
-            payload,
-          })
-        })
-      ),
+      ...press
+    }: RegisterCallInput): Promise<RegisterCallResult> => {
+      const payload = {
+        ...press,
+        requestId: crypto.randomUUID(),
+      } as RegisterCall
+      // `AbortSignal.timeout` isn't driven by fake timers, which the tests use
+      const controller = new AbortController()
+      const timer = setTimeout(
+        () => controller.abort(),
+        REGISTER_CALL_TIMEOUT_MS
+      )
+      try {
+        const registered = await run(
+          Effect.gen(function* () {
+            const client = yield* ApiClient
+            return yield* client.task.registerCall({
+              params: { id: taskId },
+              payload,
+            })
+          }),
+          controller.signal
+        )
+        return { kind: "registered", registered }
+      } catch (error) {
+        // A declared error is an answer of the server; anything else is not
+        if (isApiError(error)) return { kind: "rejected", error }
+        if (isClientError(error)) return { kind: "refused" }
+        return { kind: "uncertain" }
+      } finally {
+        clearTimeout(timer)
+      }
+    },
+    retry: 0,
+    // Offline it is sent all the same and fails at once as uncertain: the
+    // default pauses it and sends it when the network is back, a resend the
+    // user never pressed (AC15, D5)
+    networkMode: "always",
     meta: { toastErrors: false },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: taskKeys.all })
+      void queryClient.invalidateQueries({ queryKey: customerKeys.all })
+    },
   })
 }
 
 /**
- * Closes an open alert (`DELETE /task/alerts/:id`). The caller shows a
- * rejection itself
+ * «Togli il richiamo» (`POST /task/alerts/:id/remove`): closes the alert and
+ * sets the state the user chose. The caller shows a rejection itself and
+ * reads the page again
  */
-export const useResolveAlert = () => {
+export const useRemoveCallback = () => {
   const run = useRun()
   return useMutation({
     mutationFn: ({
       alertId,
-      source,
+      ...payload
     }: {
       alertId: number
-      source: "list" | "detail"
+      taskId: number
+      state: TaskStatus
     }) =>
       run(
         Effect.gen(function* () {
           const client = yield* ApiClient
-          return yield* client.task.resolveAlert({
+          return yield* client.task.removeCallback({
             params: { id: alertId },
-            query: { source },
+            payload,
           })
         })
       ),
+    // Offline it fails at once instead of waiting paused for the network
+    networkMode: "always",
     meta: { toastErrors: false },
   })
 }

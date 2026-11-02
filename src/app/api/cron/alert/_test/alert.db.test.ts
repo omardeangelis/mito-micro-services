@@ -93,100 +93,68 @@ async function seedContactWithAlert(deadline: Date) {
   }
 }
 
-describe("cron alert (comportamento attuale)", () => {
-  it("un alert che scade oggi produce un followup attivo per l'operatore del cliente e disattiva la task precedente", async () => {
-    const { system, customerOperator, customer, previous, alert, closedAt } =
-      await seedContactWithAlert(new Date("2026-09-25T08:00:00.000Z"))
-
-    const body = await runCron()
-
-    expect(body).toMatchObject({ message: "Cron job ran" })
-
+describe("cron alert (AC19, AC20)", () => {
+  const expectWorked = async (
+    seeded: Awaited<ReturnType<typeof seedContactWithAlert>>
+  ) => {
+    const {
+      system,
+      customerOperator,
+      taskOperator,
+      customer,
+      previous,
+      alert,
+      closedAt,
+    } = seeded
     const caller = createTestCaller(customerOperator)
     const [active] = await caller.task.getActiveTask({ id: customer.id })
+    // Same contact, only the state moves: the rest is as the operator left it
     expect(active).toMatchObject({
-      state: "followup",
+      id: previous.id,
+      state: "chiamare",
       isActive: true,
-      operatorId: customerOperator.id,
+      operatorId: taskOperator.id,
       closedAt,
-      priority: 150,
-      customPriority: false,
-      alertId: null,
+      priority: 40,
+      customPriority: true,
+      alertId: alert.id,
     })
-    expect(active!.id).not.toBe(previous.id)
+    expect(await tasksOf(customer.id)).toHaveLength(1)
 
-    const rows = await tasksOf(customer.id)
-    expect(rows).toHaveLength(2)
-    expect(rows.find((row) => row.id === previous.id)).toMatchObject({
-      isActive: false,
-      state: "richiamare",
-    })
-
-    const alerts = await caller.task.getCustomerAlerts({ id: customer.id })
-    expect(alerts).toEqual([
-      expect.objectContaining({
-        id: alert.id,
-        isResolved: true,
-        resolvedByName: system.name,
-      }),
+    expect(await caller.task.getCustomerAlerts({ id: customer.id })).toEqual([
+      expect.objectContaining({ id: alert.id, isResolved: false }),
     ])
 
     expect(await logOf(customer.id)).toEqual([
-      expect.objectContaining({
-        action: "alert_resolved",
-        source: "cron_alert",
-        taskId: previous.id,
-        alertId: alert.id,
-        actorOperatorId: system.id,
-      }),
       expect.objectContaining({
         action: "state_change",
         source: "cron_alert",
         taskId: previous.id,
-        alertId: null,
         actorOperatorId: system.id,
         fromState: "richiamare",
-        toState: "followup",
+        toState: "chiamare",
       }),
     ])
+  }
+
+  it("un alert che scade oggi porta il contatto a Da chiamare, con l'alert aperto e nessun contatto nuovo", async () => {
+    const seeded = await seedContactWithAlert(
+      new Date("2026-09-25T08:00:00.000Z")
+    )
+
+    expect(await runCron()).toMatchObject({ message: "Cron job ran" })
+
+    await expectWorked(seeded)
   })
 
-  it("un alert scaduto in un giorno precedente viene risolto e staccato dalla task, senza nuove task", async () => {
-    const { system, customerOperator, customer, previous, alert } =
-      await seedContactWithAlert(new Date("2026-09-23T08:00:00.000Z"))
+  it("un alert scaduto in un giorno precedente fa lo stesso lavoro", async () => {
+    const seeded = await seedContactWithAlert(
+      new Date("2026-09-23T08:00:00.000Z")
+    )
 
-    const body = await runCron()
+    expect(await runCron()).toMatchObject({ message: "Cron job ran" })
 
-    expect(body).toMatchObject({ message: "Cron job ran" })
-
-    const caller = createTestCaller(customerOperator)
-    const [active] = await caller.task.getActiveTask({ id: customer.id })
-    expect(active).toMatchObject({
-      id: previous.id,
-      state: "richiamare",
-      isActive: true,
-      alertId: null,
-    })
-    expect(await tasksOf(customer.id)).toHaveLength(1)
-
-    const alerts = await caller.task.getCustomerAlerts({ id: customer.id })
-    expect(alerts).toEqual([
-      expect.objectContaining({
-        id: alert.id,
-        isResolved: true,
-        resolvedByName: system.name,
-      }),
-    ])
-
-    expect(await logOf(customer.id)).toEqual([
-      expect.objectContaining({
-        action: "alert_resolved",
-        source: "cron_alert",
-        taskId: previous.id,
-        alertId: alert.id,
-        actorOperatorId: system.id,
-      }),
-    ])
+    await expectWorked(seeded)
   })
 
   it("un alert futuro non cambia nulla", async () => {
@@ -227,7 +195,7 @@ describe("cron alert: ogni alert in una transazione sua", () => {
       .spyOn(console, "error")
       .mockImplementation(() => undefined)
     await createSystemOperator()
-    // First, so today's loop would stop on it before the other alert
+    // First, so the loop would stop on it before the other alert
     const orphan = await createTask({ customerId: null, state: "richiamare" })
     const orphanAlert = await createAlert({
       taskId: orphan.id,
@@ -258,7 +226,7 @@ describe("cron alert: ogni alert in una transazione sua", () => {
     const [active] = await createTestCaller(operator).task.getActiveTask({
       id: customer.id,
     })
-    expect(active).toMatchObject({ state: "followup" })
+    expect(active).toMatchObject({ state: "chiamare" })
     expect(reportedErrors).toHaveLength(1)
     expect(causeTag(reportedErrors[0]!.cause)).toBe("CustomerMissing")
     expect(reportedErrors[0]!.data).toMatchObject({
@@ -271,7 +239,7 @@ describe("cron alert: ogni alert in una transazione sua", () => {
     )
   })
 
-  it("se una scrittura fallisce non restano né il followup né la task precedente disattivata", async () => {
+  it("se una scrittura fallisce non resta né il cambio di stato né la riga del log", async () => {
     vi.spyOn(console, "error").mockImplementation(() => undefined)
     const { customerOperator, customer, previous, alert } =
       await seedContactWithAlert(new Date("2026-09-25T08:00:00.000Z"))
@@ -292,8 +260,8 @@ describe("cron alert: ogni alert in una transazione sua", () => {
     expect(await logOf(customer.id)).toEqual([])
   })
 
-  it("un alert aperto su una task non attiva lascia al cliente un solo contatto attivo: il followup", async () => {
-    const { customer, previous } = await seedContactWithAlert(
+  it("un alert aperto su una task non attiva non cambia nulla: il contatto attivo del cliente resta com'è", async () => {
+    const { customer, previous, alert } = await seedContactWithAlert(
       new Date("2026-09-25T08:00:00.000Z")
     )
     await testDb
@@ -305,11 +273,18 @@ describe("cron alert: ogni alert in una transazione sua", () => {
       state: "app.to",
     })
 
-    await runCron()
+    expect(await runCron()).toMatchObject({ message: "No alerts to process" })
 
-    const active = await activeTasksOf(customer.id)
-    expect(active).toEqual([expect.objectContaining({ state: "followup" })])
-    expect(active[0]!.id).not.toBe(current.id)
+    expect(await activeTasksOf(customer.id)).toEqual([
+      expect.objectContaining({ id: current.id, state: "app.to" }),
+    ])
+    expect(await tasksOf(customer.id)).toHaveLength(2)
+    const [open] = await testDb
+      .select()
+      .from(alerts)
+      .where(eq(alerts.id, alert.id))
+    expect(open).toMatchObject({ isResolved: false })
+    expect(await logOf(customer.id)).toEqual([])
   })
 
   it("se l'intera esecuzione fallisce risponde come oggi e lo segnala una volta", async () => {
@@ -363,7 +338,7 @@ describe("cron alert: ogni alert in una transazione sua", () => {
     ])
   })
 
-  it("un alert che un'altra esecuzione risolve dopo la lettura dell'elenco è contato fra gli skipped e non scrive nulla", async () => {
+  it("un alert che un'altra esecuzione risolve dopo la lettura dell'elenco è contato fra gli skipped e lascia il contatto in Richiamo", async () => {
     const { customer } = await seedContactWithAlert(
       new Date("2026-09-25T08:00:00.000Z")
     )
@@ -391,89 +366,16 @@ describe("cron alert: ogni alert in una transazione sua", () => {
       skipped: 1,
       failed: 0,
     })
-    const written = await Promise.all(
-      [customer.id, other.id].map(async (id) => ({
-        tasks: (await tasksOf(id)).length,
-        log: (await logOf(id)).length,
-      }))
-    )
-    expect(written).toEqual(
-      expect.arrayContaining([
-        { tasks: 2, log: 2 },
-        { tasks: 1, log: 0 },
-      ])
-    )
-  })
-
-  it("un alert di un giorno precedente che un'altra esecuzione risolve dopo la lettura dell'elenco è contato fra gli skipped e lascia la task com'era", async () => {
-    const { customer } = await seedContactWithAlert(
-      new Date("2026-09-23T08:00:00.000Z")
-    )
-    const other = await createCustomer()
-    const otherTask = await createTask({
-      customerId: other.id,
-      state: "richiamare",
-    })
-    await createAlert({
-      taskId: otherTask.id,
-      deadline: new Date("2026-09-23T08:00:00.000Z"),
-    })
-    // While the first alert is written, an overlapping run resolves the other
-    await afterNextWriteTo(
-      taskEventLog,
-      "INSERT",
-      `UPDATE "${getTableName(alerts)}" SET is_resolved = true WHERE is_resolved = false`
-    )
-
-    const body = await runCron()
-
-    expect(body).toMatchObject({
-      found: 2,
-      processed: 1,
-      skipped: 1,
-      failed: 0,
-    })
     const outcome = await Promise.all(
       [customer.id, other.id].map(async (id) => {
         const [row] = await tasksOf(id)
-        return { linked: row!.alertId !== null, log: (await logOf(id)).length }
+        return { state: row!.state, log: (await logOf(id)).length }
       })
     )
     expect(outcome).toEqual(
       expect.arrayContaining([
-        { linked: false, log: 1 },
-        { linked: true, log: 0 },
-      ])
-    )
-  })
-
-  it("un alert di un giorno precedente stacca dalla task solo sé stesso, non un alert agganciato nel frattempo", async () => {
-    const { customerOperator, customer, previous, alert } =
-      await seedContactWithAlert(new Date("2026-09-23T08:00:00.000Z"))
-    // An operator schedules a new callback on the same task
-    // while the cron resolves the due alert
-    await afterNextWriteTo(
-      alerts,
-      "UPDATE",
-      `WITH created AS (
-        INSERT INTO "${getTableName(alerts)}" (task_id, deadline)
-        VALUES (${previous.id}, '2026-10-01T08:00:00Z') RETURNING id
-      )
-      UPDATE "${getTableName(task)}" SET alert_id = (SELECT id FROM created)
-      WHERE id = ${previous.id}`
-    )
-
-    await runCron()
-
-    const caller = createTestCaller(customerOperator)
-    const [active] = await caller.task.getActiveTask({ id: customer.id })
-    expect(active).toMatchObject({ id: previous.id, isActive: true })
-    expect(active!.alertId).not.toBeNull()
-    expect(active!.alertId).not.toBe(alert.id)
-    expect(await caller.task.getCustomerAlerts({ id: customer.id })).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ id: alert.id, isResolved: true }),
-        expect.objectContaining({ id: active!.alertId, isResolved: false }),
+        { state: "chiamare", log: 1 },
+        { state: "richiamare", log: 0 },
       ])
     )
   })

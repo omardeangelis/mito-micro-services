@@ -1,5 +1,5 @@
 import { Clock, Effect, Schema } from "effect"
-import { and, asc, desc, eq, sql } from "drizzle-orm"
+import { and, asc, eq, exists, sql } from "drizzle-orm"
 import { SYSTEM_OPERATOR_USER_ID } from "@mito/domain/constants/operator"
 import { type Alert, type Task } from "@mito/domain/schemas"
 import { operators } from "@mito/db/schema/operators"
@@ -15,7 +15,7 @@ import {
   type Tx,
 } from "../../effect/db"
 import { type ErrorReporter, forEachIsolated } from "../../effect/errorReporter"
-import { replaceActiveContact } from "./activeContact"
+import { touchCustomer } from "./guard"
 
 /** The synthetic operator the cron acts as is missing from `operators`. */
 export class SystemOperatorMissing extends Schema.TaggedError<SystemOperatorMissing>()(
@@ -48,94 +48,70 @@ function italianDay(date: Date) {
 const deadlineDay = sql`DATE(${alerts.deadline} AT TIME ZONE 'Europe/Rome')`
 
 /**
- * Resolves one alert. Due today, the customer gets a `followup` contact for
- * its operator; due on an earlier day, the alert is only resolved. An alert
- * already resolved (by an overlapping run) is skipped.
+ * Moves one contact from `richiamare` to `chiamare` (AC19). The alert stays
+ * open, nothing else is written but the log row of the change, which is not a
+ * call. The state is read again under the customer's lock: a contact that is
+ * no longer an active `richiamare` on this open alert (changed, replaced,
+ * alert closed, or already worked by an overlapping run) is skipped.
  */
 const processAlert = Effect.fnUntraced(function* (
-  { task, alert }: DueAlert,
-  today: string,
+  { task: contact, alert }: DueAlert,
   systemOperatorId: number
 ): Effect.fn.Return<
   "processed" | "skipped",
   DbError | CustomerMissing,
   Db | Tx
 > {
-  const customer = yield* lockCustomer(task.customerId)
-  // Resolves the alert only if still open: an overlapping run may have
-  // resolved it since the list was read
-  const resolved = yield* query((client) =>
+  const customer = yield* lockCustomer(contact.customerId)
+  const moved = yield* query((client) =>
     client
-      .update(alerts)
-      .set({ isResolved: true, resolvedBy: systemOperatorId })
-      .where(and(eq(alerts.id, alert.id), eq(alerts.isResolved, false)))
-      .returning({ id: alerts.id })
+      .update(tasks)
+      .set({ state: "chiamare" })
+      .where(
+        and(
+          eq(tasks.id, contact.id),
+          eq(tasks.state, "richiamare"),
+          eq(tasks.isActive, true),
+          eq(tasks.alertId, alert.id),
+          // An overlapping run may have closed the alert since the list was read
+          exists(
+            client
+              .select({ id: alerts.id })
+              .from(alerts)
+              .where(and(eq(alerts.id, alert.id), eq(alerts.isResolved, false)))
+          )
+        )
+      )
+      .returning({ id: tasks.id })
   )
-  if (resolved.length === 0) return "skipped"
+  if (moved.length === 0) return "skipped"
 
-  const alertResolvedLog = {
-    customerId: customer.id,
-    taskId: task.id,
-    alertId: alert.id,
-    actorOperatorId: systemOperatorId,
-    action: "alert_resolved",
-    source: "cron_alert",
-  } as const
-
-  if (italianDay(alert.deadline) === today) {
-    // La nuova task attiva non deve nascere agganciata all'alert che stiamo
-    // risolvendo: l'alert è risolto, quindi il contatto non ha più un alert
-    // aperto e l'alert vive solo nello Storico, collegato (via alert.taskId)
-    // alla vecchia task.
-    yield* replaceActiveContact({
-      customer,
-      values: {
-        state: "followup",
-        closedAt: task.closedAt,
-        operatorId: customer.operatorId,
-        alertId: null,
-        priority: 150,
-        customPriority: false,
-      },
+  yield* query((client) =>
+    client.insert(taskEventLog).values({
+      customerId: customer.id,
+      taskId: contact.id,
+      actorOperatorId: systemOperatorId,
+      action: "state_change",
+      source: "cron_alert",
+      fromState: "richiamare",
+      toState: "chiamare",
     })
-    yield* query((client) =>
-      client.insert(taskEventLog).values([
-        alertResolvedLog,
-        {
-          customerId: customer.id,
-          taskId: task.id,
-          actorOperatorId: systemOperatorId,
-          action: "state_change",
-          source: "cron_alert",
-          fromState: task.state,
-          toState: "followup",
-        },
-      ])
-    )
-  } else {
-    // Only if the task still points at this alert: a writer may have linked
-    // a new one since the list was read
-    yield* query((client) =>
-      client
-        .update(tasks)
-        .set({ alertId: null })
-        .where(and(eq(tasks.id, task.id), eq(tasks.alertId, alert.id)))
-    )
-    yield* query((client) =>
-      client.insert(taskEventLog).values(alertResolvedLog)
-    )
-  }
+  )
+  yield* touchCustomer(customer)
   return "processed"
 })
 
 /**
- * The alert cron: resolves the open alerts due today or earlier, each in its
- * own transaction. An alert that fails is counted in `failed`, logged and
- * reported, and the others go on.
+ * The alert cron (AC19, AC20): for the open alerts due today or earlier on an
+ * active contact in `richiamare`, moves the contact to `chiamare`, each in its
+ * own transaction. The alerts stay open. Other states and inactive contacts
+ * are not touched, and a contact already moved is no longer `richiamare`, so a
+ * second run finds nothing to do. An alert that fails is counted in `failed`,
+ * logged and reported, and the others go on.
  *
  * Once `budgetMs` has passed since the start it takes no new alert, but always
- * takes the first: the ones left are counted in `remaining` and stay open for
- * the next call.
+ * takes the first: the ones left are counted in `remaining`, their contacts
+ * stay in `richiamare` and the next call takes them.
  */
 export const processDueAlerts = Effect.fn("contact.processDueAlerts")(
   function* (
@@ -172,20 +148,19 @@ export const processDueAlerts = Effect.fn("contact.processDueAlerts")(
           and(
             eq(alerts.isResolved, false),
             eq(alerts.taskId, tasks.id),
-            sql`${alerts.id} IS NOT NULL`,
+            eq(tasks.isActive, true),
+            eq(tasks.state, "richiamare"),
             sql`${deadlineDay} <= ${today}`
           )
         )
-        // Today's first: taken on a later day, an alert counts as earlier-day
-        // and gets no followup
-        .orderBy(desc(alerts.deadline), asc(alerts.id))
+        .orderBy(asc(alerts.id))
     )
     const { succeeded, failed } = yield* forEachIsolated(
       rows,
       Effect.fnUntraced(function* (row: DueAlert, index: number) {
         const elapsed = (yield* Clock.currentTimeMillis) - start
         if (index > 0 && elapsed >= budgetMs) return "remaining" as const
-        return yield* transaction(processAlert(row, today, systemOperator.id))
+        return yield* transaction(processAlert(row, systemOperator.id))
       }),
       ({ task, alert }) => ({ alertId: alert.id, customerId: task.customerId })
     )

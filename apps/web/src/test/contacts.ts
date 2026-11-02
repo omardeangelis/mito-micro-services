@@ -1,14 +1,19 @@
 import { Effect, Layer } from "effect"
-import { HttpApiBuilder } from "effect/http-api"
+import { HttpApiBuilder, HttpApiError } from "effect/http-api"
 import { MitoApi } from "@mito/contract/api"
 import {
   AlertConfirmationRequired,
-  type AlertNotFound,
+  type CallAlreadyWorked,
+  type CallbackChanged,
+  type CallNotAllowed,
   type ContactForbidden,
   ContactNotFound,
   ContactSuperseded,
   type DeadlineInPast,
+  type MessageTooLong,
   type OperatorNotFound,
+  type RequestIdConflict,
+  type TransitionRejected,
 } from "@mito/contract/errors"
 import { type Customer } from "@mito/contract/customer"
 import { type OperatorWithRole as OperatorWithRoleSchema } from "@mito/contract/me"
@@ -18,6 +23,8 @@ import {
   type ContactsPage,
   type ContactsQuery,
   type PriorityBand,
+  type RegisterCall,
+  type RegisteredCall,
   type TaskStatus,
 } from "@mito/contract/task"
 import { ada, type FakeHandlers, type GroupService } from "./api"
@@ -87,6 +94,8 @@ export const contactDetail = (
     customer: row.customer,
     alert: null,
     history: [],
+    closures: [],
+    calls: [],
     customerContacts: [],
     activeTaskId: null,
     editability: { kind: "editable" },
@@ -115,22 +124,36 @@ export type ChangeAnswer =
   | "alert"
   | "down"
 
-/** An open alert, as the detail and a confirmation name it */
-type OpenAlert = { id: number; deadline: Date; message: string | null }
-
-/** How the backend answers a write of the detail: saved by default */
-export type WriteAnswer<E> = { saved: true } | { rejected: E } | "down"
+/**
+ * How the backend answers a write of the detail: saved by default. "down" is
+ * a 500; "badRequest" a 400 the endpoint doesn't declare (an older server)
+ */
+export type WriteAnswer<E> =
+  { saved: true } | { rejected: E } | "down" | "badRequest"
 
 /** What the detail sent, as the backend received it */
 export type PriorityChange = { taskId: number; priority: PriorityBand | "auto" }
 export type Reassign = { taskId: number; operatorId: number }
-export type CallbackSet = {
+export type CallRegistered = RegisterCall & { taskId: number }
+
+/** «Togli il richiamo» as the page sent it, as the backend received it */
+export type CallbackRemoved = {
+  alertId: number
   taskId: number
-  deadline: Date
-  message?: string | null | undefined
-  replacesAlertId: number | null
+  state: TaskStatus
 }
-export type AlertResolve = { alertId: number; source: "list" | "detail" }
+
+/** The rejections of «Registra chiamata» a test can give */
+export type CallRejection =
+  | ContactForbidden
+  | ContactSuperseded
+  | CallAlreadyWorked
+  | CallNotAllowed
+  | AlertConfirmationRequired
+  | DeadlineInPast
+  | MessageTooLong
+  | RequestIdConflict
+  | ContactNotFound
 
 const bandValues = { low: 20, medium: 60, high: 100, urgent: 120 } as const
 
@@ -190,19 +213,21 @@ export function fakeContacts(
     > => ({
       saved: true,
     }),
-    callbacks: [] as CallbackSet[],
-    /** `{ alert }`: another alert is open than the form said */
-    callbackAnswer: (
-      _change: CallbackSet
-    ):
-      | WriteAnswer<ContactForbidden | ContactSuperseded | DeadlineInPast>
-      | { alert: OpenAlert } => ({ saved: true }),
-    resolves: [] as AlertResolve[],
-    resolveAnswer: (
-      _change: AlertResolve
-    ): WriteAnswer<ContactForbidden | ContactSuperseded | AlertNotFound> => ({
+    calls: [] as CallRegistered[],
+    callAnswer: (_call: CallRegistered): WriteAnswer<CallRejection> => ({
       saved: true,
     }),
+    /** The response of each request id, so a repeat gets the same one */
+    registered: new Map<string, RegisteredCall>(),
+    removals: [] as CallbackRemoved[],
+    removeAnswer: (
+      _removal: CallbackRemoved
+    ): WriteAnswer<
+      | ContactForbidden
+      | ContactSuperseded
+      | CallbackChanged
+      | TransitionRejected
+    > => ({ saved: true }),
   }
 
   /** The detail of `id` changed by `change`, when the backend has it */
@@ -226,6 +251,9 @@ export function fakeContacts(
           record()
           const result = answer()
           if (result === "down") return Effect.die("backend down")
+          if (result === "badRequest") {
+            return Effect.die(HttpApiError.BadRequest.singleton)
+          }
           if ("rejected" in result) return Effect.fail(result.rejected)
           return Effect.sync(save)
         })
@@ -436,54 +464,132 @@ export function fakeContacts(
             }
           )
         })
-        .handle("setCallback", ({ params, payload }) => {
-          const change = { taskId: params.id, ...payload }
-          let alert: OpenAlert | undefined
+        .handle("registerCall", ({ params, payload }) => {
+          const call = { taskId: params.id, ...payload }
+          const repeated = state.registered.get(payload.requestId)
+          if (repeated) return Effect.succeed(repeated)
           return write(
-            () => state.callbacks.push(change),
-            () => {
-              const answer = state.callbackAnswer(change)
-              if (answer !== "down" && "alert" in answer) {
-                alert = answer.alert
-                return { saved: true }
+            () => state.calls.push(call),
+            () => state.callAnswer(call),
+            (): RegisteredCall => {
+              const current =
+                state.details[params.id]?.alert ??
+                state.rows.find(({ id }) => id === params.id)?.alert ??
+                null
+              const alert =
+                payload.outcome === "richiamare"
+                  ? {
+                      id: 900 + state.calls.length,
+                      deadline: new Date(`${payload.callback.day}T00:00:00`),
+                      day: payload.callback.day,
+                      // Empty or blank is no message, as on the server
+                      message: payload.callback.message?.trim()
+                        ? payload.callback.message.trim()
+                        : null,
+                    }
+                  : payload.outcome === "non risponde" && current
+                    ? {
+                        ...current,
+                        day: current.deadline.toISOString().slice(0, 10),
+                      }
+                    : null
+              const futureAlert =
+                alert !== null &&
+                alert.day > new Date().toISOString().slice(0, 10)
+              const toState: TaskStatus =
+                payload.outcome === "non risponde" && futureAlert
+                  ? "richiamare"
+                  : payload.outcome
+              const at = new Date()
+              const openAlert = alert && {
+                id: alert.id,
+                deadline: alert.deadline,
+                message: alert.message,
               }
-              return answer
-            },
-            () => {
-              if (alert) return alert
-              const id = 900 + state.callbacks.length
+              state.rows = state.rows.map((row) =>
+                row.id === params.id
+                  ? { ...row, state: toState, closedAt: at, alert: openAlert }
+                  : row
+              )
+              // The call on top of the Storico, and the alert it closed or
+              // replaced in it, closed by Ada with the call (AC16, AC23)
+              const closed = payload.outcome === "non risponde" ? null : current
               updateDetail(params.id, (detail) => ({
                 ...detail,
-                contact: { ...detail.contact, state: "richiamare" },
-                alert: {
-                  id,
-                  deadline: payload.deadline,
-                  message: payload.message ?? null,
-                },
+                contact: { ...detail.contact, state: toState, closedAt: at },
+                alert: openAlert,
+                calls: [
+                  {
+                    id: 700 + state.calls.length,
+                    outcome: payload.outcome,
+                    at,
+                    operatorName: ada.name,
+                    operatorSurname: ada.surname,
+                    callbackDeadline:
+                      payload.outcome === "richiamare"
+                        ? (alert?.deadline ?? null)
+                        : null,
+                  },
+                  ...detail.calls,
+                ],
+                ...(closed
+                  ? {
+                      history: [
+                        {
+                          id: closed.id,
+                          deadline: closed.deadline,
+                          message: closed.message,
+                          updatedAt: at,
+                          resolvedByName: ada.name,
+                          resolvedBySurname: ada.surname,
+                        },
+                        ...detail.history,
+                      ],
+                      closures: [
+                        {
+                          alertId: closed.id,
+                          closedAt: at,
+                          resolution: "call" as const,
+                        },
+                        ...detail.closures,
+                      ],
+                    }
+                  : {}),
               }))
-              return id
+              const registered: RegisteredCall = {
+                taskId: params.id,
+                state: toState,
+                alert,
+                call: {
+                  id: 700 + state.calls.length,
+                  outcome: payload.outcome,
+                  origin: "list",
+                  at,
+                  by: `${ada.name} ${ada.surname}`,
+                },
+              }
+              state.registered.set(payload.requestId, registered)
+              return registered
             }
-          ).pipe(
-            Effect.flatMap((saved) =>
-              typeof saved === "number"
-                ? Effect.succeed({ alertId: saved })
-                : Effect.fail(new AlertConfirmationRequired({ alert: saved }))
-            )
           )
         })
-        .handle("resolveAlert", ({ params, query }) => {
-          const change = { alertId: params.id, source: query.source }
+        .handle("removeCallback", ({ params, payload }) => {
+          const removal = { alertId: params.id, ...payload }
           return write(
-            () => state.resolves.push(change),
-            () => state.resolveAnswer(change),
+            () => state.removals.push(removal),
+            () => state.removeAnswer(removal),
             () => {
-              const id = Object.values(state.details).find(
-                (detail) => detail.alert?.id === params.id
-              )?.contact.id
-              if (id !== undefined) {
-                updateDetail(id, (detail) => ({ ...detail, alert: null }))
-              }
-              return { resolved: id !== undefined }
+              state.rows = state.rows.map((row) =>
+                row.id === payload.taskId
+                  ? { ...row, state: payload.state, alert: null }
+                  : row
+              )
+              updateDetail(payload.taskId, (detail) => ({
+                ...detail,
+                contact: { ...detail.contact, state: payload.state },
+                alert: null,
+              }))
+              return { taskId: payload.taskId, state: payload.state }
             }
           )
         })

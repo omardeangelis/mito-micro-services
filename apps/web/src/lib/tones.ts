@@ -1,6 +1,7 @@
 import { type BlackListStatus } from "@mito/contract/customer"
 import { type ImportStatus as ImportStatusSchema } from "@mito/contract/import"
 import { type ProductMapType } from "@mito/domain/constants/productMap"
+import { toContactState, type ContactState } from "@mito/domain/contact/status"
 import { type TaskStatus } from "@mito/domain/schemas"
 
 // The tones of the color meanings (spec design-system-web, appendix B): each
@@ -46,21 +47,21 @@ export const toneDot: Record<Tone, string> = {
   neutral: "bg-tag-neutral-dot",
 }
 
-const stateTones: Record<TaskStatus, Tone> = {
+const stateTones: Record<ContactState, Tone> = {
   chiamare: "blue",
-  followup: "magenta",
   "non risponde": "orange",
   richiamare: "amber",
   "app.to": "teal",
   caricato: "indigo",
-  erogata: "green",
   "non interessato": "red",
-  nessuno: "neutral",
 }
 
-/** The tone of a contact's state; a null state is `nessuno` */
+/**
+ * The tone of a contact's state (AC1). A legacy value has the tone of its new
+ * state (AC30): `followup` and `nessuno` are blue, `erogata` indigo.
+ */
 export const stateTone = (state: TaskStatus | null): Tone =>
-  state === null ? "neutral" : stateTones[state]
+  state === null ? "neutral" : stateTones[toContactState(state)]
 
 const productTones: Record<ProductMapType, Tone> = {
   Personale: "green",

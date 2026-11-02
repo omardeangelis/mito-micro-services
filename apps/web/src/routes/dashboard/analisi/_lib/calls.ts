@@ -1,4 +1,8 @@
 import type { Role } from "@mito/contract/schemas"
+import {
+  answerRateOrNull,
+  appointmentRateOrNull,
+} from "@mito/domain/export/calls"
 import type {
   Compare,
   DayRange,
@@ -12,7 +16,6 @@ import {
   type Kpi,
   NO_DATA_COMPARISON,
   percentChange,
-  ratio,
   type Status,
   widen,
 } from "./results"
@@ -90,7 +93,13 @@ export function callsKpi(
   answered: number,
   comparisonCalls: number | null
 ): Kpi {
-  const answeredShare = ratio(answered, calls)
+  // Without calls the rate of answers has no value, not 0% (AC27)
+  const answeredShare = answerRateOrNull({
+    calls,
+    answered,
+    appointments: 0,
+    noAnswer: calls - answered,
+  })
   const unit = calls === 1 ? "chiamata" : "chiamate"
   return {
     value: calls,
@@ -99,7 +108,7 @@ export function callsKpi(
     caption:
       answeredShare === null
         ? unit
-        : `${unit} · ${Math.round(answeredShare)}% con risposta`,
+        : `${unit} · ${Math.round(answeredShare * 100)}% con risposta`,
     delta:
       comparisonCalls === null ? null : percentChange(calls, comparisonCalls),
   }
@@ -115,12 +124,17 @@ export function rateKpi(
   answered: number,
   comparison: { appointments: number; answered: number } | null
 ): Kpi {
-  const rate = ratio(appointments, answered)
+  // Without answers the rate has no value, not 0% (AC27)
+  const rateOf = (part: { appointments: number; answered: number }) => {
+    const share = appointmentRateOrNull({ ...part, calls: 0, noAnswer: 0 })
+    return share === null ? null : share * 100
+  }
+  const rate = rateOf({ appointments, answered })
   const delta = (): Delta | null => {
     if (comparison === null) return null
     // Without answers in the window the empty state explains it: no note (AC12, AC19)
     if (rate === null) return null
-    const comparisonRate = ratio(comparison.appointments, comparison.answered)
+    const comparisonRate = rateOf(comparison)
     // 0% is a value: only a rate that can't be computed has no variation (AC12)
     if (comparisonRate === null) {
       return { kind: "none", note: NO_DATA_COMPARISON }

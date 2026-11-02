@@ -3,19 +3,27 @@
 // numbered from 1000, so id order is time order, as in an append-only log.
 // Every row is at Rome noon, within the contact's lifetime, never on the day
 // D - LOG_RETENTION_MONTHS (where `cleanup-task-event-log` would depend on the hour).
-import { taskStatus } from "@mito/db/schema/index"
+//
+// Only the six states of esiti-richiami-stati. A call is a `call` row from the
+// instant `calls_registry` on (generate/milestones.ts); before it, a call is a
+// `state_change` row from the dettaglio or the lista (AC28).
+import type { taskStatus } from "@mito/db/schema/index"
+import { contactStates } from "@mito/domain/contact/status"
 import type { TaskEventLogRow } from "../types"
 import type { DayClock } from "./clock"
 import { SYSTEM_OPERATOR_ID } from "./operators"
-import type { Random } from "./random"
+import { range, type Random } from "./random"
 
 export type TaskStatus = (typeof taskStatus)[number]
 type Source = TaskEventLogRow["source"]
 
 export const LOG_ID_START = 1000
 
-/** The first rows of each action cycle these sources, so all of them appear. */
-const STATE_SOURCES: readonly Source[] = ["detail", "list", "bulk"]
+/**
+ * The first rows of each action cycle these sources, so all of them appear. A
+ * change of state is never `bulk` (the bulk assignment writes no state, AC25).
+ */
+const STATE_SOURCES: readonly Source[] = ["detail", "list"]
 const REASSIGN_SOURCES: readonly Source[] = [
   "detail",
   "list",
@@ -61,7 +69,15 @@ export function createLog({
   }
 
   const otherState = (state: TaskStatus) =>
-    rng.pick(taskStatus.filter((each) => each !== state))
+    rng.pick(contactStates.filter((each) => each !== state))
+  /** A version-4 uuid from the seeded generator (the `request_id` of a call). */
+  const uuid = () => {
+    const part = (length: number) =>
+      range(length)
+        .map(() => rng.int(0, 15).toString(16))
+        .join("")
+    return `${part(8)}-${part(4)}-4${part(3)}-${rng.pick(["8", "9", "a", "b"])}${part(3)}-${part(12)}`
+  }
   const otherOperator = (operatorId: number) =>
     rng.pick(realOperatorIds.filter((id) => id !== operatorId))
 
@@ -116,9 +132,8 @@ export function createLog({
         stateRows < STATE_SOURCES.length
           ? STATE_SOURCES[stateRows]!
           : rng.weighted<Source>([
-              ["detail", 50],
-              ["list", 30],
-              ["bulk", 20],
+              ["detail", 60],
+              ["list", 40],
             ])
       stateRows++
       push({
@@ -126,10 +141,7 @@ export function createLog({
         offset,
         customerId,
         taskId,
-        actorOperatorId:
-          source === "bulk"
-            ? rng.pick(adminIds)
-            : (operatorId ?? rng.pick(realOperatorIds)),
+        actorOperatorId: operatorId ?? rng.pick(adminIds),
         action: "state_change",
         source,
         fromState: states[k]!,
@@ -179,19 +191,24 @@ export function createLog({
     })
   }
 
-  /** An operator closes the alert by changing the contact's state. */
+  /**
+   * An operator closes the alert: with a call, with the selector or with
+   * «Togli il richiamo» (`source`: the page they did it from).
+   */
   const alertResolved = ({
     customerId,
     taskId,
     alertId,
     actorOperatorId,
     offset,
+    source = "detail",
   }: {
     customerId: string
     taskId: number
     alertId: number
     actorOperatorId: number
     offset: number
+    source?: "detail" | "list"
   }) => {
     if (offset === cutoff) return
     push({
@@ -202,38 +219,81 @@ export function createLog({
       alertId,
       actorOperatorId,
       action: "alert_resolved",
-      source: "detail",
+      source,
     })
   }
 
   /**
-   * The two rows of a past run of the `alert` cron on an alert due that day:
-   * the alert resolved, and the old contact's state change to `followup`.
+   * The row of the nightly pass on an alert due that day (AC19): the contact
+   * goes from Richiamo to Da chiamare, the alert stays open. Not a call.
    */
-  const cronAlert = ({
+  const nightlyPass = ({
     customerId,
     taskId,
-    alertId,
-    fromState,
     offset,
   }: {
     customerId: string
     taskId: number
-    alertId: number
-    fromState: TaskStatus
     offset: number
   }) => {
     if (offset === cutoff) return
-    const cron = {
+    push({
       ...empty,
       offset,
       customerId,
       taskId,
       actorOperatorId: SYSTEM_OPERATOR_ID,
       source: "cron_alert",
-    } as const
-    push({ ...cron, action: "alert_resolved", alertId })
-    push({ ...cron, action: "state_change", fromState, toState: "followup" })
+      action: "state_change",
+      fromState: "richiamare",
+      toState: "chiamare",
+    })
+  }
+
+  /**
+   * A registered call (AC9): `alertId` is the open alert after it, the new one
+   * of a Richiamare or the one a Non risponde kept. The caller says which
+   * `origin` it has (AC10) and which states it moves between.
+   */
+  const call = ({
+    customerId,
+    taskId,
+    alertId,
+    actorOperatorId,
+    source,
+    outcome,
+    origin,
+    fromState,
+    toState,
+    offset,
+  }: {
+    customerId: string
+    taskId: number
+    alertId: number | null
+    actorOperatorId: number
+    source: "detail" | "list"
+    outcome: NonNullable<TaskEventLogRow["outcome"]>
+    origin: "alert" | "list"
+    fromState: TaskStatus
+    toState: TaskStatus
+    offset: number
+  }) => {
+    if (offset === cutoff) return
+    push({
+      ...empty,
+      offset,
+      customerId,
+      taskId,
+      alertId,
+      actorOperatorId,
+      action: "call",
+      source,
+      fromState,
+      toState,
+      outcome,
+      origin,
+      requestId: uuid(),
+    })
   }
 
   /** The rows, oldest first, numbered from 1000. */
@@ -252,7 +312,8 @@ export function createLog({
     stateChain,
     reassign,
     alertResolved,
-    cronAlert,
+    nightlyPass,
+    call,
     rows,
   }
 }

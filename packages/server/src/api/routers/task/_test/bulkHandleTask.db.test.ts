@@ -350,7 +350,83 @@ describe("task.bulkHandleTask (comportamento attuale)", () => {
     ])
   })
 
-  it("caso 3: con lo stesso stato già in corso non scrive state_change, solo operator_reassign", async () => {
+  it("caso 4: un contatto in non risponde viene solo riassegnato e tiene la stessa task", async () => {
+    const { admin, previousOperator, nextOperator, customer, caller } =
+      await seed()
+    const previous = await createTask({
+      customerId: customer.id,
+      operatorId: previousOperator.id,
+      state: "non risponde",
+      closedAt: CLOSED_AT,
+    })
+
+    await caller.task.bulkHandleTask({
+      operatorId: nextOperator.id,
+      customerIds: [customer.id],
+      state: "chiamare",
+    })
+
+    const [active] = await caller.task.getActiveTask({ id: customer.id })
+    expect(active).toMatchObject({
+      id: previous.id,
+      state: "non risponde",
+      operatorId: nextOperator.id,
+      closedAt: CLOSED_AT,
+    })
+    expect(await tasksOf(customer.id)).toHaveLength(1)
+    expect(await logOf(customer.id)).toEqual([
+      expect.objectContaining({
+        action: "operator_reassign",
+        source: "bulk",
+        taskId: previous.id,
+        actorOperatorId: admin.id,
+        fromOperatorId: previousOperator.id,
+        toOperatorId: nextOperator.id,
+      }),
+    ])
+  })
+
+  it("caso 4: un non risponde con un alert scaduto tiene task, stato e alert, anche con l'alert confermato", async () => {
+    const { previousOperator, nextOperator, customer, caller } = await seed()
+    const previous = await createTask({
+      customerId: customer.id,
+      operatorId: previousOperator.id,
+      state: "non risponde",
+      closedAt: CLOSED_AT,
+    })
+    const alert = await createAlert({
+      taskId: previous.id,
+      deadline: new Date("2026-10-01T08:00:00.000Z"),
+    })
+
+    await caller.task.bulkHandleTask({
+      operatorId: nextOperator.id,
+      customerIds: [customer.id],
+      state: "chiamare",
+      resolveAlertCustomerIds: [customer.id],
+    })
+
+    const [active] = await caller.task.getActiveTask({ id: customer.id })
+    expect(active).toMatchObject({
+      id: previous.id,
+      state: "non risponde",
+      operatorId: nextOperator.id,
+      alertId: alert.id,
+    })
+    expect(await tasksOf(customer.id)).toHaveLength(1)
+    expect(await caller.task.getCustomerAlerts({ id: customer.id })).toEqual([
+      expect.objectContaining({ id: alert.id, isResolved: false }),
+    ])
+    expect(await logOf(customer.id)).toEqual([
+      expect.objectContaining({
+        action: "operator_reassign",
+        taskId: previous.id,
+        toOperatorId: nextOperator.id,
+      }),
+    ])
+  })
+
+  it("crea solo contatti in Da chiamare: un altro stato è rifiutato e non cambia niente (AC25)", async () => {
     const { previousOperator, nextOperator, customer, caller } = await seed()
     const previous = await createTask({
       customerId: customer.id,
@@ -359,26 +435,21 @@ describe("task.bulkHandleTask (comportamento attuale)", () => {
       closedAt: CLOSED_AT,
     })
 
-    await caller.task.bulkHandleTask({
-      operatorId: nextOperator.id,
-      customerIds: [customer.id],
-      state: "app.to",
-    })
+    await expect(
+      caller.task.bulkHandleTask({
+        operatorId: nextOperator.id,
+        customerIds: [customer.id],
+        state: "app.to" as never,
+      })
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" })
 
     const [active] = await caller.task.getActiveTask({ id: customer.id })
     expect(active).toMatchObject({
+      id: previous.id,
       state: "app.to",
-      operatorId: nextOperator.id,
+      operatorId: previousOperator.id,
     })
-    expect(active!.id).not.toBe(previous.id)
-    expect(await logOf(customer.id)).toEqual([
-      expect.objectContaining({
-        action: "operator_reassign",
-        taskId: active!.id,
-        fromOperatorId: previousOperator.id,
-        toOperatorId: nextOperator.id,
-      }),
-    ])
+    expect(await logOf(customer.id)).toEqual([])
   })
 
   it("caso 3: con lo stesso operatore non scrive operator_reassign, solo state_change", async () => {

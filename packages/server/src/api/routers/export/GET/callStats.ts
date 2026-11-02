@@ -1,4 +1,5 @@
 import { exportPeriodInput, periodBounds } from "@mito/domain/export/period"
+import { Effect } from "effect"
 import { runTrpc } from "../../../../effect/trpc"
 import { callStats as callStatsOf } from "../../../../services/export/callStats"
 import { adminProcedure } from "../../../trpc"
@@ -10,4 +11,11 @@ import { adminProcedure } from "../../../trpc"
  */
 export const callStats = adminProcedure
   .input((raw) => exportPeriodInput(new Date()).parse(raw))
-  .query(({ input }) => runTrpc(callStatsOf(periodBounds(input))))
+  .query(({ input }) =>
+    // Without `calls_registry` the call is a defect: logged, a 500
+    runTrpc(
+      callStatsOf(periodBounds(input)).pipe(
+        Effect.catchTag("CallsRegistryMissing", (error) => Effect.die(error))
+      )
+    )
+  )

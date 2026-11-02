@@ -1,4 +1,5 @@
 import { readContactError } from "@mito/domain/contact/errors"
+import { stateLabel } from "@mito/domain/contact/status"
 
 /** What the user reads when the error is not a contact error (network, server). */
 const GENERIC_MESSAGE = "Modifica non salvata, riprova"
@@ -26,9 +27,9 @@ export const describeContactError = (error: unknown): string => {
     case "CONTACT_ALREADY_ACTIVE":
       return "Questo cliente ha già un contatto attivo"
     case "CONTACT_TRANSITION_REJECTED":
-      return `Non si può passare da ${contactError.payload.from ?? "nessuno"} a ${contactError.payload.to}`
+      return `Non si può passare da ${stateLabel(contactError.payload.from)} a ${stateLabel(contactError.payload.to)}`
     case "CALLBACK_NOT_ALLOWED":
-      return `Non si può impostare un richiamo con lo stato ${contactError.payload.state ?? "nessuno"}`
+      return `Non si può impostare un richiamo con lo stato ${stateLabel(contactError.payload.state)}`
     case "DEADLINE_IN_PAST":
       return "Il richiamo si imposta da domani"
     case "CUSTOMER_ASSIGNMENT_FORBIDDEN":

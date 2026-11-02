@@ -91,10 +91,24 @@ export async function queryReadOnly(sql: string) {
   return results.map(({ rows }) => rows as Record<string, unknown>[])
 }
 
+const APP_MILESTONE_TABLE = "mito-deutsche_app_milestone"
+
 /** Where `failNextInsertInto` (src/test/failpoint.ts) keeps its objects. */
 export const FAILPOINT_SCHEMA = "test_failpoints"
 
-/** Removes the failpoints and empties every table of the `public` schema. */
+/**
+ * The instant `calls_registry` has after a reset: far in the future, so the
+ * rows written before it count with the old rule (`state_change` of the
+ * selector), and the `call` rows count whatever the instant. The tests of the
+ * instant set their own.
+ */
+export const CALLS_REGISTRY_TEST_AT = "9999-12-31T00:00:00Z"
+
+/**
+ * Removes the failpoints and empties every table of the `public` schema, then
+ * writes the `calls_registry` row of `app_milestone` that the migration wrote
+ * with the time of its run.
+ */
 export async function resetDb() {
   // CASCADE drops the triggers that call the failpoint functions
   await testClient.exec(`DROP SCHEMA IF EXISTS ${FAILPOINT_SCHEMA} CASCADE`)
@@ -106,6 +120,11 @@ export async function resetDb() {
   await testClient.exec(
     `TRUNCATE ${tables.join(", ")} RESTART IDENTITY CASCADE`
   )
+  if (rows.some(({ tablename }) => tablename === APP_MILESTONE_TABLE)) {
+    await testClient.exec(
+      `INSERT INTO "public"."${APP_MILESTONE_TABLE}" (name, at) VALUES ('calls_registry', '${CALLS_REGISTRY_TEST_AT}')`
+    )
+  }
 }
 
 // Inactive task rows and the event log are what the calls export reads: no

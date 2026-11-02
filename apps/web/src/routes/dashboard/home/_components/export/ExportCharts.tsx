@@ -1,7 +1,7 @@
 import { BarChart, Card } from "@/components/charts"
 import {
-  appointmentRate,
-  rankByAppointmentRate,
+  appointmentRateOrNull,
+  rankByAppointmentRateOrNull,
   type OperatorCalls,
 } from "@mito/domain/export/calls"
 
@@ -20,7 +20,10 @@ const percent = new Intl.NumberFormat("it-IT", {
   maximumFractionDigits: 1,
 })
 
-/** Answered and not answered calls per operator, and the ranking by appointment rate (AC17, AC18). */
+/**
+ * Answered and not answered calls per operator, and the ranking by appointment
+ * rate (AC17, AC18): without answered calls there is no rate, «—», not 0% (AC27).
+ */
 export function ExportCharts({ rows }: { rows: readonly OperatorCalls[] }) {
   return (
     <div className="grid gap-4 lg:grid-cols-2">
@@ -43,18 +46,20 @@ export function ExportCharts({ rows }: { rows: readonly OperatorCalls[] }) {
           Appuntamenti fissati sulle risposte
         </h3>
         <ol className="mt-4 space-y-3" aria-label="Classifica appuntamenti">
-          {rankByAppointmentRate(rows).map((row) => {
-            const rate = appointmentRate(row)
+          {rankByAppointmentRateOrNull(rows).map((row) => {
+            const rate = appointmentRateOrNull(row)
             return (
               <li key={row.operatorId} className="space-y-1">
                 <div className="flex justify-between text-sm">
                   <span>{operatorName(row)}</span>
-                  <span className="tabular-nums">{percent.format(rate)}</span>
+                  <span className="tabular-nums">
+                    {rate === null ? "—" : percent.format(rate)}
+                  </span>
                 </div>
                 <div className="h-2 rounded bg-muted">
                   <div
                     className="bg-tag-teal-dot h-2 rounded"
-                    style={{ width: `${rate * 100}%` }}
+                    style={{ width: `${(rate ?? 0) * 100}%` }}
                   />
                 </div>
               </li>

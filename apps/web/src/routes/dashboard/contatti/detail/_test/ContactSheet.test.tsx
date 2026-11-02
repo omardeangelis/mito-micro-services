@@ -257,7 +257,9 @@ describe("il guscio del dettaglio: cambia contatto senza chiudersi", () => {
     await user.click(
       document.querySelector<HTMLElement>("[data-contact-state-trigger]")!
     )
-    await user.click(screen.getByRole("menuitemradio", { name: "chiamare" }))
+    await user.click(
+      screen.getAllByRole("menuitemradio", { name: "Da chiamare" })[0]!
+    )
 
     await waitFor(() => expect(currentHref()).toBe(detailPath(202, DA)))
     expect(sheetStatus().textContent).toBe(
@@ -266,7 +268,7 @@ describe("il guscio del dettaglio: cambia contatto senza chiudersi", () => {
     // The new contact takes the focus; then the sheet closes as ever, once
     await waitFor(() =>
       expect(document.activeElement?.getAttribute("aria-label")).toBe(
-        "chiamare, cambia stato"
+        "Da chiamare, cambia stato"
       )
     )
     await user.keyboard("{Escape}")

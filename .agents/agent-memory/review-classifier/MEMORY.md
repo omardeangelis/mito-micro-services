@@ -1,0 +1,1 @@
+- [Idempotency charter from spec](feedback_idempotency_charter_from_spec.md) — read spec ACs for the client retry/request-id contract; don't assume reuse-on-retry

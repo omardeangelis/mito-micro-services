@@ -3,8 +3,9 @@ import { HttpApiEndpoint, HttpApiGroup } from "effect/http-api"
 import { BlackListStatus, Count, RowOperator, Text } from "./customer"
 import {
   AlertConfirmationRequired,
-  AlertNotFound,
-  CallbackNotAllowed,
+  CallAlreadyWorked,
+  CallbackChanged,
+  CallNotAllowed,
   ContactAlreadyActive,
   ContactForbidden,
   ContactNotFound,
@@ -13,7 +14,9 @@ import {
   CustomerNotFound,
   CustomerUnassigned,
   DeadlineInPast,
+  MessageTooLong,
   OperatorNotFound,
+  RequestIdConflict,
   TransitionRejected,
 } from "./errors"
 import { AdminOnly, Authenticated } from "./middleware"
@@ -261,6 +264,38 @@ export const ContactDetail = Schema.Struct({
       resolvedBySurname: Text,
     })
   ),
+  // How each alert of `history` was closed, by id: «Chiuso da … il …», or
+  // «Chiuso dal sistema» for "system"; closedAt is resolved_at, or updated_at
+  // for the alerts closed before it was written
+  closures: Schema.Array(
+    Schema.Struct({
+      alertId: Schema.Number,
+      closedAt: Schema.Date,
+      resolution: Schema.NullOr(
+        Schema.Literals([
+          "call",
+          "replaced",
+          "removed",
+          "state_change",
+          "bulk",
+          "system",
+        ])
+      ),
+    })
+  ),
+  // The calls of the customer, newest first: the outcome is the one of the
+  // row, or the state the old row went to (the web labels both)
+  calls: Schema.Array(
+    Schema.Struct({
+      id: Schema.Number,
+      outcome: Schema.NullOr(TaskStatus),
+      at: Schema.Date,
+      operatorName: Text,
+      operatorSurname: Text,
+      // The day of the new alert, only for Richiamare
+      callbackDeadline: Schema.NullOr(Schema.Date),
+    })
+  ),
   customerContacts: Schema.Array(
     Schema.Struct({
       id: Schema.Number,
@@ -278,17 +313,88 @@ export const ContactDetail = Schema.Struct({
 export type ContactDetail = typeof ContactDetail.Type
 
 /**
- * "Assegnazione massiva" with a call (`bulkHandleTask`): without `state` the
- * contacts go to `chiamare`; the alert is closed only for the customers in
+ * "Assegnazione massiva" with a call (`bulkHandleTask`): the contacts it
+ * creates are always in `chiamare` (esiti-richiami-stati AC25), so `state`
+ * accepts only that; the alert is closed only for the customers in
  * `resolveAlertCustomerIds`, the ones the admin confirmed
  */
 export const BulkHandleTask = Schema.Struct({
   operatorId: Schema.Number,
   customerIds: Schema.Array(Schema.String),
-  state: Schema.optional(TaskStatus),
+  state: Schema.optional(Schema.Literal("chiamare")),
   resolveAlertCustomerIds: Schema.optional(Schema.Array(Schema.String)),
 })
 export type BulkHandleTask = typeof BulkHandleTask.Type
+
+/** The four outcomes of «Registra chiamata», as `callOutcomes` of @mito/domain. */
+export const CallOutcome = Schema.Literals([
+  "non risponde",
+  "richiamare",
+  "app.to",
+  "non interessato",
+])
+export type CallOutcome = typeof CallOutcome.Type
+
+/** What every press of an outcome sends (esiti-richiami-stati D5, D6). */
+const CallPress = {
+  // A new UUID for each press: the same one again is the same request (AC11)
+  requestId: Schema.String.check(Schema.isUUID()),
+  source: ContactSource,
+  // The open alert the user sees, if any (AC13 case 5)
+  workingAlertId: Schema.optional(IntegerValue),
+  // The future alert the user confirmed to close, if any (AC14)
+  confirmedAlertId: Schema.optional(IntegerValue),
+}
+
+/**
+ * A press of «Registra chiamata»: Richiamare carries the day and the message
+ * of the callback, the other outcomes none. The server trims the message and
+ * checks its 500 characters and the day in the order of AC13: the schema only
+ * caps them
+ */
+export const RegisterCall = Schema.Union([
+  Schema.Struct({
+    ...CallPress,
+    outcome: Schema.Literal("richiamare"),
+    callback: Schema.Struct({
+      day: Day,
+      message: Schema.optional(
+        Schema.NullOr(Schema.String.check(Schema.isMaxLength(5000), hasNoNul))
+      ),
+    }),
+  }),
+  Schema.Struct({
+    ...CallPress,
+    outcome: Schema.Literals(["non risponde", "app.to", "non interessato"]),
+  }),
+])
+export type RegisterCall = typeof RegisterCall.Type
+
+/**
+ * A registered call and what it leaves on the contact, for the detail and the
+ * list without a reload (AC16): the state, the open alert (`day` is its Rome
+ * day) and the call
+ */
+export const RegisteredCall = Schema.Struct({
+  taskId: Schema.Number,
+  state: TaskStatus,
+  alert: Schema.NullOr(
+    Schema.Struct({
+      id: Schema.Number,
+      deadline: Schema.Date,
+      day: Schema.String,
+      message: Text,
+    })
+  ),
+  call: Schema.Struct({
+    id: Schema.Number,
+    outcome: CallOutcome,
+    origin: Schema.Literals(["alert", "list"]),
+    at: Schema.Date,
+    by: Schema.String,
+  }),
+})
+export type RegisteredCall = typeof RegisteredCall.Type
 
 /**
  * The group `task` (3.1 and 3.2 of brain/chore/migrazione-frontend-react.md):
@@ -305,14 +411,16 @@ export type BulkHandleTask = typeof BulkHandleTask.Type
  * | changeState                  | POST /task/:id/state               |
  * | setPriority                  | POST /task/:id/priority            |
  * | reassign (admin)             | POST /task/:id/reassign            |
- * | setCallback                  | POST /task/:id/callback            |
- * | resolveAlert                 | DELETE /task/alerts/:id?source=    |
+ * | registerCall                 | POST /task/:id/call                |
+ * | removeCallback               | POST /task/alerts/:id/remove       |
  * | bulkHandleTask (admin)       | POST /task/bulk-assign             |
  *
  * `getCustomersWithActiveAlerts` and `getContacts` are reads by POST: the ids
  * of a selection, or the filters, could make the URL too long. The `id` of
  * `/task/by-customer/:id` is a customer's, that of `/task/:id` a contact's,
- * that of `/task/alerts/:id` an alert's
+ * that of `/task/alerts/:id` an alert's. `registerCall` and `removeCallback`
+ * have no procedure: only `HttpApi` has them (D3 of esiti-richiami-stati). The
+ * procedure `resolveAlert` stays for the Next.js app (D18), not in `HttpApi`
  */
 export class TaskGroup extends HttpApiGroup.make("task")
   .add(
@@ -424,41 +532,35 @@ export class TaskGroup extends HttpApiGroup.make("task")
     }).middleware(AdminOnly)
   )
   .add(
-    HttpApiEndpoint.post("setCallback", "/task/:id/callback", {
+    HttpApiEndpoint.post("registerCall", "/task/:id/call", {
       params: { id: IntegerId },
-      payload: Schema.Struct({
-        deadline: Schema.Date,
-        // Trimmed by the server; empty is no message
-        message: Schema.optional(
-          Schema.NullOr(
-            Schema.String.pipe(
-              Schema.decode(SchemaTransformation.trim())
-            ).check(Schema.isMaxLength(500))
-          )
-        ),
-        // The open alert the form showed as replaced, or null
-        replacesAlertId: Schema.NullOr(IntegerValue),
-      }),
-      success: Schema.Struct({ alertId: Schema.Number }),
+      payload: RegisterCall,
+      success: RegisteredCall,
+      // In the order of AC13; the session is the middleware's
       error: [
-        CallbackNotAllowed,
-        DeadlineInPast,
-        AlertConfirmationRequired,
         ContactNotFound,
         ContactSuperseded,
         ContactForbidden,
+        CallAlreadyWorked,
+        CallNotAllowed,
+        AlertConfirmationRequired,
+        DeadlineInPast,
+        MessageTooLong,
+        RequestIdConflict,
         CustomerMissing,
       ],
     })
   )
   .add(
-    HttpApiEndpoint.delete("resolveAlert", "/task/alerts/:id", {
+    HttpApiEndpoint.post("removeCallback", "/task/alerts/:id/remove", {
       params: { id: IntegerId },
-      query: { source: ContactSource },
-      // An alert already closed is `resolved: false`, not an error (F14)
-      success: Schema.Struct({ resolved: Schema.Boolean }),
+      // `taskId`: the contact the alert is shown on; `state`: the one the
+      // user chose (AC22), never Richiamo: the server rejects it
+      payload: Schema.Struct({ taskId: IntegerValue, state: TaskStatus }),
+      success: Schema.Struct({ taskId: Schema.Number, state: TaskStatus }),
       error: [
-        AlertNotFound,
+        TransitionRejected,
+        CallbackChanged,
         ContactNotFound,
         ContactSuperseded,
         ContactForbidden,

@@ -53,7 +53,7 @@ describe("describeContactError, one message per code", () => {
         code: "CONTACT_TRANSITION_REJECTED",
         payload: { from: "chiamare", to: "followup" },
       },
-      "Non si può passare da chiamare a followup",
+      "Non si può passare da Da chiamare a Da chiamare",
     ],
     [
       "CONTACT_TRANSITION_REJECTED without a starting state",
@@ -61,12 +61,12 @@ describe("describeContactError, one message per code", () => {
         code: "CONTACT_TRANSITION_REJECTED",
         payload: { from: null, to: "followup" },
       },
-      "Non si può passare da nessuno a followup",
+      "Non si può passare da Da chiamare a Da chiamare",
     ],
     [
       "CALLBACK_NOT_ALLOWED",
       { code: "CALLBACK_NOT_ALLOWED", payload: { state: "followup" } },
-      "Non si può impostare un richiamo con lo stato followup",
+      "Non si può impostare un richiamo con lo stato Da chiamare",
     ],
     [
       "DEADLINE_IN_PAST",

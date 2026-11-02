@@ -176,3 +176,4 @@
 - [Tracking default, reload window](feedback_tracking_default_and_reload_window.md) — untouched fields that follow a moving bound; reload during an in-flight write
 - [State invariant matrix](feedback_state_invariant_matrix.md) — for state-machine specs: action x state matrix, "doesn't close" lists, rejection precedence, conversion replay
 - [Embedded conversion, cutover](feedback_plan_embedded_conversion_and_cutover.md) — conversion in nightly job vs its ACs; manual-job cutover window
+- [TanStack offline pause](feedback_tanstack_offline_paused_mutation.md) — networkMode online pauses offline, auto-sends on reconnect

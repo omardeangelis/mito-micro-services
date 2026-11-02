@@ -18,13 +18,17 @@ type Props = {
   taskId: number
   /** The saved state: the control shows it until the new one is on screen */
   state: TaskStatus | null
+  /** The day of the open alert (`YYYY-MM-DD`), shown by a Richiamo */
+  alertDay?: string | null
   /** The `da` parameter of the address: the list state to carry along */
   da: string | undefined
 }
 
 /**
  * The state of the contact in the detail (AC30–AC40): the same select and wait
- * as the list row (`ContactRowState`), with the source `detail`.
+ * as the list row (`ContactRowState`), with the source `detail`. The select
+ * offers only Pratica caricata and Da chiamare (esiti-richiami-stati AC17):
+ * the other states are set by a call or by «Togli il richiamo».
  *
  * - The saved value is always on screen; the wait is the spinner of the
  *   selector, from the call until the new value is rendered. A second change is
@@ -44,7 +48,7 @@ type Props = {
  * - A rejection (AC49, AC52) is a toast, said also inside the sheet, and the
  *   refresh that brings the control back to the saved value.
  */
-export function ContactStateControl({ taskId, state, da }: Props) {
+export function ContactStateControl({ taskId, state, alertDay, da }: Props) {
   const navigate = useNavigate()
   const sheet = useContactSheet()
   const triggerRef = React.useRef<HTMLButtonElement>(null)
@@ -163,6 +167,7 @@ export function ContactStateControl({ taskId, state, da }: Props) {
     <>
       <ContactStateSelect
         value={state}
+        alertDay={alertDay}
         pending={busy}
         triggerRef={triggerRef}
         onChange={(toState) => {

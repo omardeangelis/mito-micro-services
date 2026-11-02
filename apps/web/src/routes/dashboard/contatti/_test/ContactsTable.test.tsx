@@ -95,7 +95,7 @@ describe("la tabella dei contatti", () => {
     ).toBe("/dashboard/customers/c1")
     expect(row.getByText("333 1234567")).toBeTruthy()
     expect(row.getByText("RSSMRA80A01H501U")).toBeTruthy()
-    expect(row.getByText("chiamare")).toBeTruthy()
+    expect(row.getByText("Da chiamare")).toBeTruthy()
     expect(row.getByText("Giulia Bianchi")).toBeTruthy()
     expect(row.getByText("3/10/2026")).toBeTruthy()
     expect(row.getByText("1/10/2026")).toBeTruthy()
@@ -353,8 +353,8 @@ describe("la tabella dei contatti", () => {
         true,
         true,
       ])
-      expect(within(rows[1]!).getByText("erogata")).toBeTruthy()
-      expect(within(rows[2]!).getByText("non interessato")).toBeTruthy()
+      expect(within(rows[1]!).getByText("Pratica caricata")).toBeTruthy()
+      expect(within(rows[2]!).getByText("Non interessato")).toBeTruthy()
     })
 
     it("il cliente è un link solo sulla riga attiva; la sotto-riga lo nomina per chi usa un lettore di schermo", async () => {

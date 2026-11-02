@@ -15,7 +15,7 @@ updated: 2026-11-02
 # Plan: Esiti, richiami e stati del contatto
 
 **Spec:** [[specs/crm/esiti-richiami-stati/SPEC]], 2026-11-02: 33 criteri, nessuna domanda aperta (OQ1–OQ5 con i default, OQ6 e OQ7 decise da Omar).
-**Status:** Planned, in attesa della conferma di D1 (base del branch).
+**Status:** Complete. D1 confermata: la PR di `claude/personas` (#147) è unita in `dev` e il branch `claude/esiti-richiami-stati` parte da lì.
 - **Verifica del piano:** tre giri di `adversarial-verifier`. Il terzo ha lasciato un solo major, corretto come il revisore indicava («basta per SHIP»), senza un quarto giro (§15).
 
 **Generato:** 2026-11-02 con `create-plan`.
@@ -56,7 +56,7 @@ Rilevata il 2026-11-02 sul codice, in sola lettura. I riferimenti precisi sono n
   - nella lista: `ContactRowState.tsx`, la cella dello stato con selettore e conferma;
   - etichette e colori: `TaskStatusBadge.tsx` mostra il valore grezzo, i colori sono in `lib/tones.ts`, il filtro in `ContactFilters.tsx`;
   - il modulo dati è `src/api/task.ts`, i testi d'errore `describeContactError.ts` e `src/api/errors.ts`.
-- **Il prototipo da riusare** è `apps/web/src/prototypes/home-operatore/shared.tsx`. Esporta `OutcomeButtons`, con dentro il riquadro «Richiamare», più `StateBadge` e `stateLabels`. È nei commit di `claude/personas` non ancora su `dev` (D1).
+- **Il prototipo da riusare** è `apps/web/src/prototypes/home-operatore/shared.tsx`. Esporta `OutcomeButtons`, con dentro il riquadro «Richiamare», più `StateBadge` e `stateLabels`. È su `dev` dalla PR #147 (D1).
 - **Nessun meccanismo contro gli invii ripetuti** in server, contratto e web.
 
 ## 2. Problema
@@ -108,7 +108,7 @@ Tutte nel Decision Log di [[specs/crm/esiti-richiami-stati/SPEC]]; il piano non 
 
 | # | Decisione | Motivo |
 |---|---|---|
-| D1 | **Base del branch (da confermare):** prima si apre e si unisce una PR di `claude/personas` verso `dev`, con i 3 commit non ancora pubblicati (prototipi delle home, spec delle home, questa spec). Poi il branch `claude/esiti-richiami-stati` nasce da `dev`. | Il dettaglio riusa `OutcomeButtons` del prototipo, che su `dev` non c'è. Partire da `claude/personas` porterebbe nella PR i prototipi e tre spec non legate al codice. I prototipi sono rotte solo di sviluppo e non cambiano il prodotto. |
+| D1 | **Base del branch (confermata il 2026-11-02, PR #147 unita):** prima si apre e si unisce una PR di `claude/personas` verso `dev`, con i 3 commit non ancora pubblicati (prototipi delle home, spec delle home, questa spec). Poi il branch `claude/esiti-richiami-stati` nasce da `dev`. | Il dettaglio riusa `OutcomeButtons` del prototipo, che su `dev` non c'è. Partire da `claude/personas` porterebbe nella PR i prototipi e tre spec non legate al codice. I prototipi sono rotte solo di sviluppo e non cambiano il prodotto. |
 | D2 | **Una PR verso `dev`.** Ogni task finisce con `tsc` verde su tutti i pacchetti e con i test del suo pacchetto verdi. Le aggiunte vengono prima delle rimozioni: un endpoint si toglie nel task che ne toglie l'ultimo chiamante. | Così il branch non resta mai rotto fra un'onda e l'altra, e `dev` non riceve un backend ristretto senza il suo dettaglio. |
 | D3 | **Solo `HttpApi`.** Nessuna procedura tRPC nuova, e quelle di oggi non si adattano. I servizi condivisi cambiano, quindi su sviluppo e staging l'app Next.js può rifiutare cambi che prima accettava. | Constraint della spec, e decisione «Next deprecato» del 2026-10-30, che qui prevale sulla regola di AGENTS.md (un'operazione nuova va in tutti e due i posti). |
 | D4 | **Migrazione delle colonne, solo aggiunte**, in `packages/db/src/schema/{taskEventLog,task}.ts`:<br>• `task_event_action` + `call`;<br>• `task_event_log.outcome` (`task_status`, nullo fuori da `call`), `task_event_log.origin` (enum nuovo `call_origin`: `alert`, `list`) e `task_event_log.request_id` (`uuid`, indice unico parziale `WHERE request_id IS NOT NULL`);<br>• `alert.resolved_at` (`timestamptz`) e `alert.resolution` (enum nuovo `alert_resolution`: `call`, `replaced`, `removed`, `state_change`, `bulk`, `system`), nulli per gli alert chiusi prima. `replaced` vale per un alert sostituito da `setCallback` di oggi, senza chiamata, così non fa scattare il caso 5 di AC13;<br>• `task.state` con default `chiamare`.<br>Nessun vincolo CHECK che usi `call` nella stessa migrazione: un valore di enum nuovo non si usa nella transazione che lo aggiunge.<br>Si seguono le regole di AGENTS.md: `pnpm db:generate` senza `NODE_ENV`, la riga `customers.id SET DEFAULT` tolta, journal controllato, rigenerazione se `dev` ha migrazioni nuove all'unione. | Per Richiamare l'alert nuovo è `task_event_log.alert_id`, da cui si leggono giorno e messaggio. Lo stato dopo (`to_state`) non basta come esito: Non risponde su un Richiamo lascia `richiamare` (AC8). `resolution` e `resolved_at` dicono chi e quando per il caso 5 di AC13. |
@@ -224,9 +224,9 @@ Ogni task comincia dal test di `tdd_target`, rosso, e finisce con `tsc` verde su
 - **location**: `brain/specs/crm/esiti-richiami-stati/{SPEC,PLAN}.md`
 - **description**: Omar approva spec e piano. La PR di `claude/personas` è unita in `dev` (D1). `implement-spec` porta la spec a `status: approved` e crea `claude/esiti-richiami-stati` da `dev` aggiornato.
 - **validation**: frontmatter `approved`; `apps/web/src/prototypes/home-operatore/shared.tsx` presente sul branch.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-11-02: PR #147 unita, branch da dev, spec approved.
+- **files edited/created**: SPEC.md, PLAN.md
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -245,9 +245,9 @@ Ogni task comincia dal test di `tdd_target`, rosso, e finisce con `tsc` verde su
   - `selectorTargets(state)` (AC17) e `removeCallbackTargets` (AC22);
   - `needsConfirmation(alert, today)`, vera solo per un alert futuro (AC14).
 - **validation**: test di tabella su ogni combinazione esito × stato × alert (futuro, di oggi, scaduto, assente); `pnpm run test --run packages/domain`.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-11-02, sonnet: RED (import mancante) → verde; 1105 test del dominio verdi. Revisione: tabelle conformi ad AC4/6/8/12/14/17/22/30, funzioni vecchie intatte.
+- **files edited/created**: packages/domain/src/contact/{status,outcome}.ts, _test/{outcome,states}.test.ts
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -272,9 +272,9 @@ Ogni task comincia dal test di `tdd_target`, rosso, e finisce con `tsc` verde su
   - che dopo `resetDb` la riga `calls_registry` ci sia.
 
   Più `tsc --noEmit`.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-11-02, sonnet: RED 6/6 → verde. Correzione chiesta in revisione: 5 test di migrazioni vecchie leggevano lo schema attuale, ora usano tabelle legacy (src/test/legacy.ts), asserzioni invariate; migrazione rinominata calls_registry. db:check OK, 451 test db verdi.
+- **files edited/created**: packages/db/src/schema/{task,taskEventLog,appMilestone,index}.ts, migrations 20261102144804_calls_registry + 20261102144816_calls_registry_milestone, src/test/{db,pg,legacy}.ts, src/test/_test/callsRegistry.db.test.ts, 5 test di migrazione in src/server/db
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -290,9 +290,9 @@ Ogni task comincia dal test di `tdd_target`, rosso, e finisce con `tsc` verde su
   - **Chiamanti di oggi:** passano il valore che corrisponde, cioè `replaced` per `setCallback`, `state_change` per il cambio di stato, `removed` per la «X», `bulk` e `system`. `bulkHandleTask` e `processDueAlerts`, che oggi chiudono gli alert da soli, ci passano con la loro sorgente e il loro attore, così le righe del registro restano identiche. Il comportamento di tutti resta com'è.
   - **Test:** `resolved_at` viene dal `Clock`, quindi i test che leggono lo Storico (T11) fissano l'ora con `TestClock.setTime`.
 - **validation**: i test di oggi restano verdi, comprese le righe del registro di `bulkHandleTask` e `processDueAlerts`; un test per ogni chiamante legge `resolution` e `resolved_at`.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-11-02, haiku: RED 5/5 → verde, 133 test di chiusura verdi. resolveOpenAlert prende id e resolution; bulk e cron ci passano. Differenze accettate: bulk non scrive alert_resolved se l'alert collegato era già chiuso; il cron stacca alert_id dal contatto vecchio (T7 lo riscrive). Fix a parte: bulkHandleTask.legacy.db.test aggiunge le colonne nuove nel suo beforeAll.
+- **files edited/created**: packages/server/src/services/contact/{alert,setCallback,changeState,resolveAlert,bulkHandleTask,processDueAlerts}.ts, _test/alertResolution.db.test.ts, api/routers/task/_test/bulkHandleTask.legacy.db.test.ts
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -321,9 +321,9 @@ Ogni task comincia dal test di `tdd_target`, rosso, e finisce con `tsc` verde su
   - lo stesso `requestId` da un altro utente: `RequestIdConflict`;
   - due pressioni diverse: due righe;
   - `tsc` su tutti i pacchetti.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-11-02, modello dell'orchestratore: RED (modulo mancante) → 21+3 test verdi; togliendo il caso 5 fallisce solo il suo test. Ordine AC13 come D8. Deviazioni accettate: payload come unione (Richiamare richiede callback), alert_id anche sulle righe Non risponde (l'alert lasciato aperto, serve alla ripetizione: chi legge il giorno del Richiamare guarda outcome), errori del servizio in CallError fuori da ContactError (niente codici tRPC), caso in lockRule.db.test. Gate: db 589, web 1764, tsc, web:build, api:build verdi.
+- **files edited/created**: packages/contract/src/{task,errors}.ts, packages/server/src/services/contact/{registerCall,errors}.ts, http/task.ts, apps/web/src/api/errors.ts, apps/web/src/test/{api.tsx,contacts.ts,customers.ts}, _test/registerCall.db.test.ts (servizio e http), _test/lockRule.db.test.ts
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -346,9 +346,9 @@ Ogni task comincia dal test di `tdd_target`, rosso, e finisce con `tsc` verde su
   - un alert già chiuso: `CallbackChanged`, niente cambia;
   - «Pratica caricata» con un alert scaduto (si chiude senza conferma) e con uno futuro (`AlertConfirmationRequired`);
   - `richiamare` dal selettore: `TransitionRejected`.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-11-02, sonnet: RED (modulo mancante, 10/14 selettore) → verde. Correzione in revisione: lo stesso stato resta un no-op (sezione-contatti AC40 non è superato), test originali ripristinati. Test riscritti come rifiuti o come caricato per i cambi non più del selettore; «Da chiamare» non tocca più closed_at. db 718, tsc verdi.
+- **files edited/created**: packages/contract/src/{task,errors}.ts, services/contact/{removeCallback,changeState,errors}.ts, http/task.ts, apps/web/src/api/errors.ts, apps/web/src/test/{api.tsx,contacts.ts,customers.ts}, test: removeCallback (servizio e http), changeState{,.selector}, lockRule, operatorRule, alertResolution, http contacts, procedures
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -375,9 +375,9 @@ Ogni task comincia dal test di `tdd_target`, rosso, e finisce con `tsc` verde su
   - un secondo giro non cambia nulla;
   - un giro dopo l'inserimento di un `followup` cambia solo quello;
   - con un `registerCall` in parallelo sullo stesso cliente, vince la chiamata.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-11-02, modello dell'orchestratore: RED (stub a zero) → 12 test db + 1 pg (call in parallelo vince) verdi. Orfani chiusi senza riga nel registro (AC32): resolveOpenAlert accetta source null. Budget di 20 minuti e ConversionLeft se resta lavoro, per rilanciare lo stesso giorno. Job in pausa in setup-staging.sh. api:build e api:smoke verdi.
+- **files edited/created**: packages/server/src/services/contact/{convertStates,alert}.ts, _test/convertStates.{db,pg}.test.ts, apps/api/src/cron/jobs.ts, apps/api/gcp/setup-staging.sh
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -394,9 +394,9 @@ Ogni task comincia dal test di `tdd_target`, rosso, e finisce con `tsc` verde su
   - Restano come sono un `non risponde` con un alert di oggi, un `app.to`, e un contatto non attivo con un alert aperto.
   - Due giri di fila danno lo stesso risultato.
   - Un giro che finisce il tempo lascia il resto al giro seguente.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-11-02, sonnet: RED 16/20 → verde. D10 con UPDATE condizionato (richiamare, attivo, alert_id, alert ancora aperto), touchCustomer come changeState. Riscritti ad AC19 su richiesta del supervisore: alertResolution, lockRule (2), operatorRule, e il test della rotta cron di Next (src/app/api/cron/alert), codice della rotta invariato. 95 test verdi.
+- **files edited/created**: packages/server/src/services/contact/processDueAlerts.ts, _test/{processDueAlerts,alertResolution,lockRule,operatorRule}.db.test.ts, src/app/api/cron/alert/_test/alert.db.test.ts
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -417,9 +417,9 @@ Ogni task comincia dal test di `tdd_target`, rosso, e finisce con `tsc` verde su
   - I test di oggi restano verdi, tranne quelli su `followup`, `nessuno` e `non risponde`, riscritti secondo AC25.
   - Un Non risponde con un alert scaduto tiene lo stesso `task.id`, lo stesso stato e lo stesso alert, con l'operatore nuovo.
   - `getCustomersWithActiveAlerts`, che alimenta il dialogo `CustomerBulkDialog`, non restituisce un cliente con un alert scaduto (test HTTP sul server). Il dialogo non cambia.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-11-02, sonnet: RED 3 → verde, 643 test verdi. Da chiamare e Non risponde (e valori vecchi) cambiano solo operatore; activeAlertsOf solo alert futuri (fine del giorno di Roma). Fuori lista: queries.db.test fissa la data (scadenze di ottobre diventate passate).
+- **files edited/created**: packages/server/src/services/contact/{bulkHandleTask,queries}.ts, _test/{bulkHandleTask,queries}.db.test.ts, http/_test/operatorTask.db.test.ts
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -441,9 +441,9 @@ Ogni task comincia dal test di `tdd_target`, rosso, e finisce con `tsc` verde su
   - `callStats` e `getCallsByOperator` danno gli stessi numeri.
   - `ExportCharts` senza risposte non mostra «0%».
   - La prova di carico `callStats.perf.pg.test.ts` resta nel limite.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-11-02, sonnet: RED server 5/5 e web 2/12 → verde. Predicato unico isCallIn con calls_registry, CallsRegistryMissing → 500 (unexpectedAs500 e catchTag nella procedura tRPC). Aspettative cambiate per AC6/AC27: export «—» senza risposte, todo con nessuno/null (servizio; il test della procedura tRPC l'ha corretto il supervisore). Prova di carico pg non eseguita: nessun Postgres pg libero.
+- **files edited/created**: packages/server/src/services/export/callStats.ts, services/analytics/{calls,contactProgress}.ts, http/unexpected.ts, api/routers/export/GET/callStats.ts, packages/domain/src/export/calls.ts, apps/web analisi/_lib/calls.ts + home/_components/export/ExportCharts.tsx, test relativi
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -462,9 +462,9 @@ Ogni task comincia dal test di `tdd_target`, rosso, e finisce con `tsc` verde su
   - Un contatto con un alert scaduto viene prima di un Da chiamare senza alert, e scende appena il suo alert si chiude.
   - Una priorità manuale tiene il suo posto.
   - «Con alert» trova l'alert scaduto.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-11-02, sonnet: RED 6/9 → verde. Chiave D13 in SQL, filtro sui sei stati con i valori vecchi mappati (lo schema accetta ancora i vecchi per Next, nota del supervisore). Setup dei test vecchi con customPriority esplicita; AC24 già vero, confermato da test.
+- **files edited/created**: packages/server/src/services/contact/getContacts.ts, packages/domain/src/contact/listInput.ts (commento), _test/getContacts{,.order}.db.test.ts
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -484,9 +484,9 @@ Ogni task comincia dal test di `tdd_target`, rosso, e finisce con `tsc` verde su
   - Un cliente con due Non risponde, un Richiamare e uno `state_change` vecchio dà quattro chiamate, dalla più recente.
   - Un orfano chiuso dalla conversione esce «dal sistema».
   - `tsc` su tutti i pacchetti.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-11-02, sonnet: RED 3/3 → verde, db 1353 verdi. ContactDetail.calls (predicato D14, giorno solo per richiamare) e ContactDetail.closures (alertId, closedAt, resolution) accanto a history, per non toccare i toEqual esistenti; il web unisce per alertId. CallsRegistryMissing → 500 anche nella procedura tRPC GET. Fixture del test Next con i campi vuoti.
+- **files edited/created**: packages/contract/src/task.ts, services/contact/getContactById.ts, _test/getContactById.calls.db.test.ts, api/routers/task/GET/index.ts, apps/web/src/test/{contacts,customers}.ts, src/app/.../ContactDetailContent.test.tsx
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -502,9 +502,9 @@ Ogni task comincia dal test di `tdd_target`, rosso, e finisce con `tsc` verde su
   - Per ogni componente della `location`, un test di rendering con `app.to` e con un valore vecchio mostra l'etichetta, mai il valore.
   - Il filtro ha sei voci.
   - `colors.test.ts` è verde.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-11-02, haiku: RED → verde, 1764 test web verdi. Etichette ovunque, toni vecchi tolti. Fuori lista: ContactRowState e ContactStateControl (giorno del Richiamo). Il selettore mostra etichette doppie per i valori vecchi finché T16 non lo restringe.
+- **files edited/created**: TaskStatusBadge, tones, ContactFilters, ContactStateSelect, describeContactError, ContactDetailHeader, CustomerContactSummary, CustomerHandoverDialog, CustomersPraticaSection, ContactRowState, ContactStateControl + test
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -525,9 +525,9 @@ Ogni task comincia dal test di `tdd_target`, rosso, e finisce con `tsc` verde su
   - un `ApiUnavailable` dà «incerto» senza un secondo invio, e a schermo non c'è nessun altro testo d'errore;
   - un handler che non risponde dà «incerto» dopo 15 secondi (`vi.useFakeTimers`);
   - i testi d'errore usano le etichette.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-11-02, sonnet: RED 1+7 → verde, web 1775 verdi. useRegisterCall non rifiuta mai: data = registered | rejected(error) | uncertain; retry 0, toastErrors false, requestId a ogni mutate, timeout 15 s con AbortController (AbortSignal.timeout non è pilotabile dai fake timer). useRemoveCallback come gli hook vicini. Testi di TransitionRejected e CallbackNotAllowed con le etichette.
+- **files edited/created**: apps/web/src/api/{task,errors}.ts, apps/web/src/api/_test/{registerCall.test.tsx,errors.test.ts}
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -549,9 +549,9 @@ Ogni task comincia dal test di `tdd_target`, rosso, e finisce con `tsc` verde su
   - `pnpm web:build` e `pnpm web:lint` passano.
   - Le rotte dei due prototipi si aprono uguali (browser, scenario `tipica`).
   - Test del componente: senza giorno il salvataggio dice «Scegli il giorno» ed è disattivato.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-11-02, sonnet: RED → verde. CallOutcomes(customer, now, onOutcome, pending, replacesAlertDay, error) e StateBadge in components/custom/contact/call; la conferma la decide il genitore. Prototipi importano da lì. Verifica nel browser dei prototipi: da fare insieme a T15.
+- **files edited/created**: apps/web/src/components/custom/contact/call/{CallOutcomes,StateBadge}.tsx, _test/CallOutcomes.test.tsx, prototypes/home-operatore/{shared,VariantLavora}.tsx
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -578,9 +578,9 @@ Ogni task comincia dal test di `tdd_target`, rosso, e finisce con `tsc` verde su
   - uno stato che non ammette chiamate.
 
   Nel browser, su `mito_local`: un Non risponde e un Richiamare su un contatto del seed aggiornano stato, alert e Storico senza ricaricare. `tsc` su tutti i pacchetti dopo l'uscita di `setCallback`.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-11-02, modello dell'orchestratore: RED → verde; web 1794 verdi, db http 174 verdi. setCallback fuori da HttpApi (tRPC resta per Next). Due giri di correzione su CallOutcomes chiesti in revisione, perché AC7 richiama home-operatore AC18–21 e AC45–47: riquadro aperto fino alla risposta, riga AC18, limite 500 con nota, dialogo con nome e fuoco su domani, calendario sul mese della bozza. AC45 (misure a 1024–1920) resta per la prova nel browser.
+- **files edited/created**: ContactCallSection.tsx (nuovo), ContactDetailContent, ContactAlertSection, CallOutcomes(+test), ContactCallbackForm (tolto), api/task.ts, test/{contacts,api,customers}, ContactPage/ContactAlertCloseButton test, contract/task.ts, http/task.ts, http/_test/contacts.db.test.ts, prototypes/home-operatore/VariantLavora.tsx
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -601,9 +601,9 @@ Ogni task comincia dal test di `tdd_target`, rosso, e finisce con `tsc` verde su
   - con `CallbackChanged` mostra il contatto ricaricato.
 
   Nel browser: «Togli il richiamo» con Appuntamento su un Richiamo del seed.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-11-02, sonnet: RED 1+14+14 → verde, web 1810 verdi (un'esecuzione sotto carico con un fallimento non diagnosticato, due riesecuzioni verdi), db http 174, tsc verdi. Selettore su selectorTargets (etichette doppie sparite), «X» → dialogo «Togli il richiamo» con 5 scelte e Conferma disattivato, CallbackChanged ricarica. resolveAlert fuori da HttpApi. Prova nel browser: con le altre.
+- **files edited/created**: ContactStateSelect, ContactAlertCloseButton, ContactAlertSection, ContactStateControl (commento), api/task.ts, contract/task.ts, http/task.ts, test/{contacts,customers,api}, test di ContactAlertCloseButton/ContactStateSelect/ContactStateControl/ContactRowState/ContactsTable.rowState/ContactPage, http/_test/contacts.db.test.ts
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -627,9 +627,9 @@ Ogni task comincia dal test di `tdd_target`, rosso, e finisce con `tsc` verde su
   - Richiamare apre il riquadro con la riga «Sostituisce».
 
   Nel browser: una riga del seed a 1280 px.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-11-02, sonnet: RED 14/16 → verde, web 1826 verdi. Esiti nel menu del selettore della cella (gruppo «Registra chiamata»), perché la cella è larga 160 px; Richiamare apre CallbackPanel (estratto da CallOutcomes) ancorato alla cella. Prova nel browser a 1280×800 sul seed: Non risponde dalla riga (source list, origin alert, closed_at), Richiamare dalla riga con il riquadro a 8 px dal bordo, fuoco su domani.
+- **files edited/created**: ContactRowState.tsx, ContactStateSelect.tsx (onOutcome), call/CallOutcomes.tsx (CallbackPanel), _test/ContactRowState.calls.test.tsx
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -642,9 +642,9 @@ Ogni task comincia dal test di `tdd_target`, rosso, e finisce con `tsc` verde su
 - **location**: `apps/web/src/routes/dashboard/contatti/_components/ContactColumns.tsx`, `_test/`
 - **description**: «Prossimo alert» mostra l'alert aperto scaduto con «Scaduto» finché non si chiude. «Contattato il» si aggiorna dopo ogni chiamata registrata, Non risponde compreso.
 - **validation**: la riga di un contatto con un alert scaduto da 2 giorni mostra «Scaduto». Dopo un Non risponde, «Contattato il» della riga è di oggi. Prova nel browser sul seed.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-11-02, haiku: nessun codice nuovo, la lista mostrava già «Scaduto» e closedAt. RED ottenuto rompendo apposta la colonna e poi ripristinandola; i due test restano come guardia di AC24 e AC29.
+- **files edited/created**: apps/web/src/routes/dashboard/contatti/_test/ContactColumns.dates.test.tsx
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -662,15 +662,15 @@ Ogni task comincia dal test di `tdd_target`, rosso, e finisce con `tsc` verde su
 
   `seed:local:verify` controlla che non resti nessun valore vecchio.
 - **validation**: `pnpm seed:local` e poi `pnpm seed:local:verify` su un `mito_local` vuoto e migrato.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-11-02, escalation haiku → sonnet: il primo worker si è fermato perché il seed modellava ancora il cron vecchio (followup) nel manifesto, fuori dai file del task. Secondo worker con src/server/db/seeds/local/** autorizzato: RED 3/3 → verde, unit 364 e pg 37 verdi (N=10.000 compreso). Sei stati, passaggio notturno nuovo, righe call dopo calls_registry (il seed scrive la propria riga app_milestone a D-60 perché svuota le tabelle), verify con il controllo stati. seed:local reale: con le prove nel browser.
+- **files edited/created**: src/server/db/seeds/local/{generate/{contacts,log,scenarios,milestones},manifest,verify,types,write,generate}.ts e _test/{sixStates,contacts,manifest,verify.pg,write.pg}
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
 - **tdd_target**: `pnpm seed:local:verify` fallisce se un contatto è in `followup`, `erogata` o `nessuno`, e passa dopo il seed nuovo.
 - **review_mode**: cli
-- **complexity**: low
+- **complexity**: medium (rialzata in esecuzione)
 
 ### T20: Chiusura: documenti, staging, rilascio, gate
 - **depends_on**: [T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19]
@@ -683,9 +683,9 @@ Ogni task comincia dal test di `tdd_target`, rosso, e finisce con `tsc` verde su
   - **Staging:** Omar riceve i comandi `gcloud scheduler jobs create http … convert-contact-states`, `… pause` e `… run`.
   - **Revisione:** gate di CI, poi `adversarial-review` (`review.mode: total`).
 - **validation**: gate di CI verdi; `REPORT.md` della revisione SHIP.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: guida, TD13, rilascio e comandi di staging in `d86035e0`. `adversarial-review` con 13 verificatori: DO NOT SHIP al primo giro (1 BLOCKER, 4 MAJOR), corretti con un test ciascuno, poi SHIP. Gate locali verdi; la CI gira sulla PR.
+- **files edited/created**: `brain/chore/crm/guida-assegnazione-massiva-e-alert.md`, `brain/chore/roadmap-nuovo-stack.md`, `brain/chore/migrazione-gcp.md`, `RUBRIC.md`, `REPORT.md`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a

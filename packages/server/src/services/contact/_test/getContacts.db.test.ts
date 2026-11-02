@@ -18,10 +18,19 @@ beforeEach(async () => {
   await resetDb()
 })
 
-/** An active contact of its own customer, with `values` on the task. */
+/**
+ * An active contact of its own customer, with `values` on the task. A
+ * priority given here is a manual one (`customPriority`): the list then sorts
+ * by that stored value. The order by state and alert (AC5) is in
+ * `getContacts.order.db.test.ts`.
+ */
 const seedContact = async (values: Parameters<typeof createTask>[0] = {}) => {
   const customer = await createCustomer()
-  return createTask({ customerId: customer.id, ...values })
+  return createTask({
+    customerId: customer.id,
+    ...("priority" in values ? { customPriority: true } : {}),
+    ...values,
+  })
 }
 
 /** The ids of the contacts, in the order of the list. */
@@ -162,11 +171,19 @@ describe("task.getContacts", () => {
       const high = await createCustomer()
       const low = await createCustomer()
       const left = await createCustomer()
-      await createTask({ customerId: high.id, priority: 120 })
+      await createTask({
+        customerId: high.id,
+        priority: 120,
+        customPriority: true,
+      })
       const ofHigh = await createTask({ customerId: high.id, isActive: false })
       // 19 more in between: `low` is the 21st, on the second page
       for (let i = 0; i < 19; i++) await seedContact({ priority: 60 })
-      await createTask({ customerId: low.id, priority: 20 })
+      await createTask({
+        customerId: low.id,
+        priority: 20,
+        customPriority: true,
+      })
       await createTask({ customerId: low.id, isActive: false })
       // A customer whose only contact is a previous one has no row to hang from
       await createTask({ customerId: left.id, isActive: false })
@@ -267,30 +284,30 @@ describe("task.getContacts", () => {
       await seedContact({ state: "followup", priority: 10 })
 
       const result = await createTestCaller(operator).task.getContacts({
-        states: ["richiamare", "erogata"],
+        states: ["richiamare", "caricato"],
       })
 
       expect(idsOf(result)).toEqual([callBack.id, paid.id])
       expect(result.total).toBe(2)
     })
 
-    it("states counts a contact with no state as nessuno", async () => {
+    it("states counts a contact with no state, nessuno or followup as Da chiamare (AC2)", async () => {
       const operator = await createOperator()
       const none = await seedContact({ state: "nessuno", priority: 30 })
       const noState = await seedContact({ state: null, priority: 20 })
-      await seedContact({ state: "chiamare", priority: 10 })
+      const chiamare = await seedContact({ state: "chiamare", priority: 10 })
+      await seedContact({ state: "richiamare", priority: 5 })
       const caller = createTestCaller(operator)
 
-      const result = await caller.task.getContacts({ states: ["nessuno"] })
-      const others = await caller.task.getContacts({ states: ["chiamare"] })
+      const result = await caller.task.getContacts({ states: ["chiamare"] })
 
-      expect(idsOf(result)).toEqual([none.id, noState.id])
+      expect(idsOf(result)).toEqual([none.id, noState.id, chiamare.id])
       expect(result.contacts.map((contact) => contact.state)).toEqual([
         "nessuno",
         null,
+        "chiamare",
       ])
-      expect(result.total).toBe(2)
-      expect(others.total).toBe(1)
+      expect(result.total).toBe(3)
     })
 
     it("priorities keeps the contacts in any of the chosen bands", async () => {
@@ -318,11 +335,20 @@ describe("task.getContacts", () => {
       const bianchi = await createCustomer({ surname: "Bianchi" })
       const rossi = await createCustomer({ surname: "Rossi" })
       const rossini = await createCustomer({ surname: "Rossini" })
-      await createTask({ customerId: bianchi.id, priority: 90 })
-      const ofRossi = await createTask({ customerId: rossi.id, priority: 60 })
+      await createTask({
+        customerId: bianchi.id,
+        priority: 90,
+        customPriority: true,
+      })
+      const ofRossi = await createTask({
+        customerId: rossi.id,
+        priority: 60,
+        customPriority: true,
+      })
       const ofRossini = await createTask({
         customerId: rossini.id,
         priority: 30,
+        customPriority: true,
       })
 
       const result = await createTestCaller(operator).task.getContacts({
@@ -664,7 +690,11 @@ describe("task.getContacts", () => {
           const customer = await createCustomer({
             operatorId: customerOperatorId,
           })
-          return createTask({ customerId: customer.id, ...values })
+          return createTask({
+            customerId: customer.id,
+            customPriority: true,
+            ...values,
+          })
         }
         return {
           me,
@@ -946,7 +976,7 @@ describe("task.getContacts", () => {
       const withEveryFilter: GetContactsInput = {
         includeInactive: true,
         operatorIds: [anna.id, 0],
-        states: ["chiamare", "nessuno"],
+        states: ["chiamare", "caricato"],
         priorities: ["low", "urgent"],
         customerQuery: "verdi",
         dateField: "nextAlert",
@@ -961,7 +991,7 @@ describe("task.getContacts", () => {
         { operatorIds: [0] },
         { operatorIds: [luigi.id, 0] },
         { onlyMe: true },
-        { states: ["chiamare", "nessuno"] },
+        { states: ["chiamare", "caricato"] },
         { priorities: ["low", "urgent"] },
         { customerQuery: "verdi" },
         { from: "2026-03-03", to: "2026-03-07" },
@@ -1270,13 +1300,11 @@ describe("task.getContacts", () => {
         priorities: ["low", "medium", "high", "urgent"],
         states: [
           "chiamare",
-          "non interessato",
+          "non risponde",
+          "richiamare",
           "app.to",
           "caricato",
-          "richiamare",
-          "erogata",
-          "nessuno",
-          "followup",
+          "non interessato",
         ],
         operatorIds: [operator.id, ...otherOperatorIds],
       })

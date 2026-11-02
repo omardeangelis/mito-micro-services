@@ -1,10 +1,7 @@
 // @vitest-environment node
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest"
-import {
-  taskEventAction,
-  taskEventSource,
-  taskStatus,
-} from "@mito/db/schema/index"
+import { taskEventAction, taskEventSource } from "@mito/db/schema/index"
+import { contactStates } from "@mito/domain/contact/status"
 import { LOG_RETENTION_MONTHS } from "@mito/domain/export/period"
 import { addDays, romeDay, romeNoon, romeWallClock, subMonthsDay } from "../day"
 import { type AlertRow, type Dataset, type Day, type TaskRow } from "../types"
@@ -24,7 +21,7 @@ describe("contacts and alerts at N = 10,000", () => {
     dataset = generateDataset({ n: 10_000, day: DAY })
   }, 120_000)
 
-  it("links every open alert both ways to the active `richiamare` contact of its customer, one per customer (AC24)", () => {
+  it("links every open alert both ways to the active contact of its customer, one per customer, in Richiamo, Da chiamare or Non risponde (AC4, AC24)", () => {
     const open = dataset.alerts.filter((alert) => !alert.isResolved)
     expect(open.length).toBeGreaterThan(0)
 
@@ -35,7 +32,7 @@ describe("contacts and alerts at N = 10,000", () => {
       expect(task, `alert ${alert.id}`).toBeDefined()
       expect(task!.alertId).toBe(alert.id)
       expect(task!.isActive).toBe(true)
-      expect(task!.state).toBe("richiamare")
+      expect(["richiamare", "chiamare", "non risponde"]).toContain(task!.state)
       expect(customersWithOpenAlert.has(task!.customerId!)).toBe(false)
       customersWithOpenAlert.add(task!.customerId!)
     }
@@ -43,13 +40,16 @@ describe("contacts and alerts at N = 10,000", () => {
 
   registerChecks(() => dataset, 10_000, DAY)
 
-  it("has the AC30 volumes: 5,001 contacts that get priority 1, 1,000 open alerts due on D or before, 1,000 log rows older than the log retention", () => {
+  it("has the AC30 volumes: 5,001 contacts that get the same priority, 1,000 open alerts the cron works, 1,000 log rows older than the log retention", () => {
     const { priority, openAlerts, log } = classify(dataset, DAY)
+    // `priority` writes them with one UPDATE per value and 5,000 ids
+    const byExpected = new Map<number, number>()
+    for (const { expected } of priority) {
+      byExpected.set(expected, (byExpected.get(expected) ?? 0) + 1)
+    }
+    expect(Math.max(...byExpected.values())).toBeGreaterThanOrEqual(5_001)
     expect(
-      priority.filter((each) => each.expected === 1).length
-    ).toBeGreaterThanOrEqual(5_001)
-    expect(
-      openAlerts.filter((each) => ["A1", "A2", "A3"].includes(each.id)).length
+      openAlerts.filter((each) => ["A1", "A3"].includes(each.id)).length
     ).toBeGreaterThanOrEqual(1_000)
     expect(log.L1).toBeGreaterThanOrEqual(1_000)
   })
@@ -123,12 +123,11 @@ describe("contacts determinism (AC5)", () => {
 type PriorityMatch = { task: TaskRow; id: string; expected: number }
 type AlertMatch = { alert: AlertRow; id: string }
 
-const P4_STATES = ["app.to", "caricato", "erogata", "nessuno"]
+const P4_STATES = ["app.to", "caricato"]
 
 function classify(dataset: Dataset, day: Day) {
   const tasks = new Map(dataset.tasks.map((task) => [task.id, task]))
   const alerts = new Map(dataset.alerts.map((alert) => [alert.id, alert]))
-  const customers = new Map(dataset.customers.map((c) => [c.id, c]))
   const due = (alert: AlertRow) => romeDay(alert.deadline)
 
   const priority: PriorityMatch[] = []
@@ -168,11 +167,9 @@ function classify(dataset: Dataset, day: Day) {
       ["P10", s === "non interessato" && p === 120, 10],
       ["P4", P4_STATES.includes(s ?? ""), 1],
       ["P13", s === "non risponde", 100],
-      ["P5", s === "followup" && p === 150, 1],
+      // AC4: a Richiamo has an open alert and a call
       ["P6", s === "richiamare" && closed && past, 50],
       ["P7", s === "richiamare" && closed && future, 30],
-      ["P11", s === "richiamare" && !closed && open === undefined, 0],
-      ["P12", s === "richiamare" && !closed && past, 20],
     ]
     const matches = candidates.filter(([, ok]) => ok)
     if (matches.length !== 1) {
@@ -200,18 +197,17 @@ function classify(dataset: Dataset, day: Day) {
       continue
     }
     const linked =
-      task !== undefined &&
-      task.alertId === alert.id &&
-      task.isActive === true &&
-      task.state === "richiamare"
-    const customer = task ? customers.get(task.customerId!) : undefined
-    const closed = task?.closedAt != null
+      task !== undefined && task.alertId === alert.id && task.isActive === true
+    const richiamo = linked && task.state === "richiamare"
+    // Da chiamare and Non risponde keep the alert, due on D or before
+    const kept =
+      linked && ["chiamare", "non risponde"].includes(task.state ?? "")
     const d = due(alert)
     const candidates: Array<[string, boolean]> = [
-      ["A1", linked && d === day && closed && customer?.operatorId != null],
-      ["A2", linked && d === day && closed && customer?.operatorId == null],
-      ["A3", linked && d < day],
-      ["A4", linked && d > day && closed],
+      ["A1", richiamo && d === day],
+      ["A3", richiamo && d < day],
+      ["A4", richiamo && d > day],
+      ["A7", kept && d <= day],
     ]
     const matches = candidates.filter(([, ok]) => ok)
     if (matches.length !== 1) {
@@ -307,7 +303,7 @@ function registerChecks(get: () => Dataset, n: number, day: Day) {
       atNoon(t.updatedAt, `task ${t.id} updatedAt`)
       expect(t.closedAt === null || t.closedAt instanceof Date).toBe(true)
       if (t.closedAt) atNoon(t.closedAt, `task ${t.id} closedAt`)
-      expect(taskStatus).toContain(t.state)
+      expect(contactStates).toContain(t.state)
       expect(typeof t.priority).toBe("number")
       expect(typeof t.customPriority).toBe("boolean")
       expect(t.alertId === null || typeof t.alertId === "number").toBe(true)
@@ -324,6 +320,7 @@ function registerChecks(get: () => Dataset, n: number, day: Day) {
         0, 0, 0, 0,
       ])
       expect(typeof a.isResolved).toBe("boolean")
+      if (a.resolvedAt) atNoon(a.resolvedAt, `alert ${a.id} resolvedAt`)
     }
     for (const c of chats) atNoon(c.createdAt, `chat ${c.id}`)
     for (const m of messages) {
@@ -398,13 +395,16 @@ function registerChecks(get: () => Dataset, n: number, day: Day) {
     expect(n - tasksByCustomer.size).toBeGreaterThanOrEqual(0.1 * n)
   })
 
-  it("has every task_status among the active contacts (AC21)", () => {
+  it("has the six states among the active contacts, and no other (AC21, esiti-richiami-stati AC1)", () => {
     const active = get().tasks.filter((t) => t.isActive)
-    for (const state of taskStatus) {
+    for (const state of contactStates) {
       expect(
         active.filter((t) => t.state === state).length,
         state
       ).toBeGreaterThanOrEqual(atLeast(20))
+    }
+    for (const t of get().tasks) {
+      expect(contactStates, `task ${t.id}`).toContain(t.state)
     }
   })
 
@@ -444,7 +444,7 @@ function registerChecks(get: () => Dataset, n: number, day: Day) {
     expect(reopened).toBeGreaterThanOrEqual(1)
   })
 
-  it("links every alert both ways, open ones only on active `richiamare` contacts, one per customer, resolved ones on past contacts (AC24)", () => {
+  it("links every alert both ways, open ones only on active contacts, one per customer, resolved ones on past contacts (AC24)", () => {
     const { dataset, tasks, alerts } = index()
     const openByCustomer = new Set<string>()
     for (const alert of dataset.alerts) {
@@ -458,7 +458,6 @@ function registerChecks(get: () => Dataset, n: number, day: Day) {
       }
       expect(alert.resolvedBy).toBeNull()
       expect(task!.isActive).toBe(true)
-      expect(task!.state).toBe("richiamare")
       expect(openByCustomer.has(task!.customerId!)).toBe(false)
       openByCustomer.add(task!.customerId!)
     }
@@ -473,6 +472,48 @@ function registerChecks(get: () => Dataset, n: number, day: Day) {
     const resolved = dataset.alerts.filter((a) => a.isResolved)
     expect(resolved.some((a) => a.resolvedBy === SYSTEM_OPERATOR_ID)).toBe(true)
     expect(resolved.some((a) => a.resolvedBy !== SYSTEM_OPERATOR_ID)).toBe(true)
+  })
+
+  it("keeps an open alert on an active contact only as AC4 allows: Richiamo has one, Da chiamare and Non risponde keep an expired one, the final states have none", () => {
+    const { dataset, tasks, alerts } = index()
+    const notWorked: string[] = []
+    for (const task of dataset.tasks.filter((t) => t.isActive)) {
+      const alert = task.alertId == null ? undefined : alerts.get(task.alertId)
+      const due = alert && !alert.isResolved ? romeDay(alert.deadline) : null
+      if (task.state === "richiamare") {
+        // The future alert; or one due on D or before that the nightly pass
+        // has not worked yet (AC4): the cron of the seed is what works it
+        expect(due, `task ${task.id}`).not.toBeNull()
+        if (due! <= day) notWorked.push(`task ${task.id}`)
+      } else if (task.state === "chiamare" || task.state === "non risponde") {
+        // Never a future alert: it would be a Richiamo (AC4)
+        if (due !== null) expect(due <= day, `task ${task.id}`).toBe(true)
+      } else {
+        expect(due, `task ${task.id}`).toBeNull()
+      }
+    }
+    expect(notWorked.length).toBeGreaterThan(0)
+    // Every worked alert has the log row of the nightly pass, on its day
+    const workedByPass = new Set(
+      dataset.taskEventLog
+        .filter((row) => row.source === "cron_alert")
+        .map((row) => row.taskId)
+    )
+    for (const taskId of workedByPass) {
+      const task = tasks.get(taskId!)!
+      expect(task.isActive, `task ${taskId}`).toBe(true)
+      expect(["chiamare", "non risponde"]).toContain(task.state)
+    }
+    // An open alert of Da chiamare or Non risponde is a worked one, or a Non
+    // risponde that kept it: both are expired
+    const expiredKept = dataset.tasks.filter(
+      (t) =>
+        t.isActive &&
+        ["chiamare", "non risponde"].includes(t.state ?? "") &&
+        t.alertId != null
+    )
+    expect(expiredKept.some((t) => t.state === "chiamare")).toBe(true)
+    expect(expiredKept.some((t) => t.state === "non risponde")).toBe(true)
   })
 
   it("puts chats only on customers, one each, 5% of them with 1-4 notes (AC25)", () => {
@@ -513,8 +554,15 @@ function registerChecks(get: () => Dataset, n: number, day: Day) {
     // AC26: D − 31 months, the 6 before the cutoff. A literal, so a longer
     // history in the generator fails here
     const from = romeNoon(subMonthsDay(day, LOG_RETENTION_MONTHS + 6)).getTime()
+    // The instant `calls_registry`: `call` rows after it, the old calls before
+    const [milestone] = dataset.appMilestones
+    expect(milestone?.name).toBe("calls_registry")
+    const registryAt = milestone!.at.getTime()
     const lastState = new Map<number, string>()
     const lastOperator = new Map<number, number>()
+    /** The open alert of each contact, as the rows so far leave it. */
+    const openAlert = new Map<number, AlertRow | null>()
+    const requestIds = new Set<string>()
     const real = (id: number | null | undefined) =>
       id != null && id !== SYSTEM_OPERATOR_ID && id !== EMPTY_OPERATOR_ID
     let previous = -Infinity
@@ -531,14 +579,42 @@ function registerChecks(get: () => Dataset, n: number, day: Day) {
       } else {
         expect(real(row.actorOperatorId), `log ${row.id}`).toBe(true)
       }
+      if (row.action !== "call") {
+        // Only a `call` row has an outcome, an origin and a request
+        expect(row.outcome ?? null).toBeNull()
+        expect(row.origin ?? null).toBeNull()
+        expect(row.requestId ?? null).toBeNull()
+      }
       if (row.action === "state_change") {
         expect(row.fromState).not.toBeNull()
         expect(row.toState).not.toBeNull()
         expect(row.fromState).not.toBe(row.toState)
         expect(row.fromOperatorId ?? null).toBeNull()
         expect(row.toOperatorId ?? null).toBeNull()
-        if (row.source !== "cron_alert") {
-          lastState.set(task!.id, row.toState!)
+        // The rows of a contact follow one another
+        if (lastState.has(task!.id)) {
+          expect(row.fromState, `log ${row.id}`).toBe(lastState.get(task!.id))
+        }
+        lastState.set(task!.id, row.toState!)
+        if (row.source === "cron_alert") {
+          // The nightly pass (AC19): Richiamo to Da chiamare, the alert still
+          // open and due on that day or before. Not a call, no alert_resolved
+          expect(row.fromState).toBe("richiamare")
+          expect(row.toState).toBe("chiamare")
+          const alert = alerts.get(task!.alertId!)
+          expect(alert, `log ${row.id}`).toBeDefined()
+          expect(alert!.isResolved).toBe(false)
+          expect(
+            romeDay(alert!.deadline) <= romeDay(row.createdAt!),
+            `log ${row.id}`
+          ).toBe(true)
+        } else if (at >= registryAt) {
+          // After `calls_registry` a change of state is no longer a call: the
+          // selector to Pratica caricata, or «Togli il richiamo»
+          expect(
+            row.toState === "caricato" || row.fromState === "richiamare",
+            `log ${row.id}`
+          ).toBe(true)
         }
       } else if (row.action === "operator_reassign") {
         expect(real(row.fromOperatorId)).toBe(true)
@@ -549,20 +625,185 @@ function registerChecks(get: () => Dataset, n: number, day: Day) {
           expect(row.actorOperatorId).toBe(row.toOperatorId)
         }
         lastOperator.set(task!.id, row.toOperatorId!)
-      } else {
+      } else if (row.action === "alert_resolved") {
         const alert = alerts.get(row.alertId!)
         expect(alert, `log ${row.id}`).toBeDefined()
         expect(alert!.taskId).toBe(task!.id)
         expect(alert!.isResolved).toBe(true)
         expect(alert!.resolvedBy).toBe(row.actorOperatorId)
+        // The call that closes it comes right after, as the service writes
+        // them: the alert is still the one it found (AC10)
+      } else {
+        // A call (AC8-AC10): registered after `calls_registry`, one of the
+        // four outcomes, with its origin, its request and the alert it leaves
+        expect(at, `log ${row.id}`).toBeGreaterThan(registryAt)
+        expect(["detail", "list"]).toContain(row.source)
+        expect(
+          ["non risponde", "richiamare", "app.to", "non interessato"],
+          `log ${row.id}`
+        ).toContain(row.outcome)
+        expect(["alert", "list"]).toContain(row.origin)
+        expect(row.requestId).toMatch(
+          /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
+        )
+        expect(requestIds.has(row.requestId!), `log ${row.id}`).toBe(false)
+        requestIds.add(row.requestId!)
+        expect(contactStates).toContain(row.fromState)
+        expect(contactStates).toContain(row.toState)
+        expect(row.fromOperatorId ?? null).toBeNull()
+        expect(row.toOperatorId ?? null).toBeNull()
+        // A contact with no row yet starts in Da chiamare
+        expect(row.fromState, `log ${row.id}`).toBe(
+          lastState.get(task!.id) ?? "chiamare"
+        )
+        lastState.set(task!.id, row.toState!)
+
+        const before = openAlert.get(task!.id) ?? null
+        const callDay = romeDay(row.createdAt!)
+        // AC10: from an alert when the open one is due today or before
+        expect(row.origin, `log ${row.id}`).toBe(
+          before && romeDay(before.deadline) <= callDay ? "alert" : "list"
+        )
+        if (row.outcome === "richiamare") {
+          // The new alert, in the future, on this contact
+          const created = alerts.get(row.alertId!)
+          expect(created, `log ${row.id}`).toBeDefined()
+          expect(created!.taskId).toBe(task!.id)
+          expect(romeDay(created!.deadline) > callDay, `log ${row.id}`).toBe(
+            true
+          )
+          expect(created!.createdAt!.getTime()).toBe(at)
+          expect(row.toState).toBe("richiamare")
+          expect(before).toBeNull()
+          openAlert.set(task!.id, created!)
+        } else if (row.outcome === "non risponde") {
+          // The open alert stays; with a future one the contact stays in
+          // Richiamo, otherwise it is in Non risponde
+          expect(row.alertId ?? null, `log ${row.id}`).toBe(before?.id ?? null)
+          expect(row.toState).toBe(
+            before && romeDay(before.deadline) > callDay
+              ? "richiamare"
+              : "non risponde"
+          )
+        } else {
+          // Appuntamento or Non interessato: closes the alert, which says so
+          expect(row.alertId ?? null).toBeNull()
+          expect(row.toState).toBe(row.outcome)
+          if (before) {
+            expect(before.resolution, `log ${row.id}`).toBe("call")
+            expect(before.resolvedBy).toBe(row.actorOperatorId)
+            expect(before.resolvedAt!.getTime()).toBe(at)
+          }
+          openAlert.set(task!.id, null)
+        }
       }
     }
-    // The latest manual change of a contact is where the contact stands
+    // The latest change of state of a contact, a call or the nightly pass,
+    // is where the contact stands
     for (const [taskId, state] of lastState) {
       expect(tasks.get(taskId)!.state, `task ${taskId}`).toBe(state)
     }
     for (const [taskId, operatorId] of lastOperator) {
       expect(tasks.get(taskId)!.operatorId, `task ${taskId}`).toBe(operatorId)
+    }
+    // «Contattato il» is the time of the last call, Non risponde included
+    // (AC29); the open alert of a contact with calls is the one they left
+    const lastCall = new Map<number, number>()
+    for (const row of rows) {
+      if (row.action === "call")
+        lastCall.set(row.taskId!, row.createdAt!.getTime())
+    }
+    for (const [taskId, at] of lastCall) {
+      expect(tasks.get(taskId)!.closedAt!.getTime(), `task ${taskId}`).toBe(at)
+    }
+  })
+
+  it("closes an alert with the date and the way, only from `calls_registry` on (esiti-richiami-stati AC23)", () => {
+    const { dataset } = index()
+    const registryAt = dataset.appMilestones[0]!.at.getTime()
+    const logged = new Set(
+      dataset.taskEventLog
+        .filter((row) => row.action === "alert_resolved")
+        .map((row) => row.alertId)
+    )
+    const ways = new Set<string>()
+    for (const alert of dataset.alerts) {
+      if (!alert.isResolved) {
+        expect(alert.resolvedAt ?? null, `alert ${alert.id}`).toBeNull()
+        expect(alert.resolution ?? null, `alert ${alert.id}`).toBeNull()
+        continue
+      }
+      if (alert.resolution == null) {
+        // Closed before: neither the date nor the way
+        expect(alert.resolvedAt ?? null, `alert ${alert.id}`).toBeNull()
+        expect(logged.has(alert.id), `alert ${alert.id}`).toBe(true)
+        continue
+      }
+      ways.add(alert.resolution)
+      expect(alert.resolvedAt, `alert ${alert.id}`).toBeInstanceOf(Date)
+      expect(alert.resolvedAt!.getTime()).toBeGreaterThan(registryAt)
+      // The conversion closes an orphan "dal sistema", with no row (AC32)
+      expect(alert.resolvedBy === SYSTEM_OPERATOR_ID).toBe(
+        alert.resolution === "system"
+      )
+      expect(logged.has(alert.id), `alert ${alert.id}`).toBe(
+        alert.resolution !== "system"
+      )
+    }
+    expect(ways).toEqual(new Set(["call", "state_change", "removed", "system"]))
+  })
+
+  it("has calls with repeated outcomes, kept alerts and origins from the alert and from the list (AC8-AC10)", () => {
+    const { dataset, alerts } = index()
+    const calls = dataset.taskEventLog.filter((row) => row.action === "call")
+    expect(calls.length).toBeGreaterThan(0)
+    expect(new Set(calls.map((row) => row.outcome))).toEqual(
+      new Set(["non risponde", "richiamare", "app.to", "non interessato"])
+    )
+    expect(new Set(calls.map((row) => row.origin))).toEqual(
+      new Set(["alert", "list"])
+    )
+    // Two Non risponde in a row on the same contact are two calls
+    const byTask = new Map<number, string[]>()
+    for (const row of calls) {
+      byTask.set(row.taskId!, [
+        ...(byTask.get(row.taskId!) ?? []),
+        row.outcome!,
+      ])
+    }
+    expect(
+      [...byTask.values()].some((outcomes) =>
+        outcomes.some(
+          (outcome, k) =>
+            outcome === "non risponde" && outcomes[k + 1] === "non risponde"
+        )
+      )
+    ).toBe(true)
+    // A Non risponde that keeps an expired alert: the contact is in Non
+    // risponde, the alert open and still its
+    expect(
+      calls.some((row) => {
+        const alert = row.alertId == null ? undefined : alerts.get(row.alertId)
+        return (
+          row.outcome === "non risponde" &&
+          row.toState === "non risponde" &&
+          row.origin === "alert" &&
+          alert !== undefined &&
+          alert.isResolved === false
+        )
+      })
+    ).toBe(true)
+    // A Non risponde with a future alert leaves the contact in Richiamo
+    if (big) {
+      expect(
+        calls.some(
+          (row) =>
+            row.outcome === "non risponde" &&
+            row.fromState === "richiamare" &&
+            row.toState === "richiamare" &&
+            row.origin === "list"
+        )
+      ).toBe(true)
     }
   })
 
@@ -572,7 +813,8 @@ function registerChecks(get: () => Dataset, n: number, day: Day) {
     for (const { task, id, expected } of priority) {
       expect(task.priority, `task ${task.id} (${id})`).not.toBe(expected)
     }
-    // P2 and P8 have no alert, so `alert` never writes them (D13)
+    // P2 and P8 have no alert, and are not in Richiamo, so `alert` never
+    // writes them (D13)
     for (const { task, id } of notSelected) {
       if (id === "P8") {
         expect([20, 60, 100, 120]).toContain(task.priority)
@@ -589,25 +831,22 @@ function registerChecks(get: () => Dataset, n: number, day: Day) {
       "P2",
       "P3",
       "P4",
-      "P5",
       "P6",
       "P7",
       "P8",
       "P9",
       "P10",
-      "P11",
-      "P12",
       "P13",
     ]) {
       expect(ids, id).toContain(id)
     }
   })
 
-  it("puts every alert in exactly one of A1-A5 (D10)", () => {
+  it("puts every alert in exactly one of A1, A3-A5 and A7 (D10)", () => {
     const { openAlerts, resolved, unmatchedAlerts } = classify(get(), day)
     expect(unmatchedAlerts).toEqual([])
     const ids = new Set([...openAlerts, ...resolved].map((m) => m.id))
-    for (const id of ["A1", "A2", "A3", "A4", "A5"]) {
+    for (const id of ["A1", "A3", "A4", "A5", "A7"]) {
       expect(ids, id).toContain(id)
     }
   })
@@ -633,23 +872,38 @@ function registerChecks(get: () => Dataset, n: number, day: Day) {
     const p9 = notSelected.filter((m) => m.id === "P9")
     expect(p9.some((m) => m.task.state === "chiamare")).toBe(true)
     expect(p9.some((m) => m.task.state === "richiamare")).toBe(true)
-    // A3 on a P6 and on a P12 contact, one due on D - 1; A4 one due on D + 1
+    // A1 on D, A3 the catch-up of a skipped night (D - 1 among them), A4 one
+    // due on D + 1; A7 on a Da chiamare and on a Non risponde, with the
+    // priority of P1 and P13
     const taskOf = new Map(dataset.tasks.map((t) => [t.id, t]))
-    const a3 = openAlerts.filter((m) => m.id === "A3")
-    expect(a3.some((m) => taskOf.get(m.alert.taskId)!.closedAt != null)).toBe(
-      true
-    )
-    expect(a3.some((m) => taskOf.get(m.alert.taskId)!.closedAt == null)).toBe(
-      true
-    )
-    expect(a3.some((m) => romeDay(m.alert.deadline) === addDays(day, -1))).toBe(
-      true
-    )
+    const withAlert = (id: string) =>
+      openAlerts
+        .filter((m) => m.id === id)
+        .map((m) => taskOf.get(m.alert.taskId)!)
+    expect(openAlerts.some((m) => m.id === "A1")).toBe(true)
+    expect(
+      openAlerts.some(
+        (m) => m.id === "A3" && romeDay(m.alert.deadline) === addDays(day, -1)
+      )
+    ).toBe(true)
     expect(
       openAlerts.some(
         (m) => m.id === "A4" && romeDay(m.alert.deadline) === addDays(day, 1)
       )
     ).toBe(true)
+    expect(withAlert("A7").some((t) => t.state === "chiamare")).toBe(true)
+    expect(withAlert("A7").some((t) => t.state === "non risponde")).toBe(true)
+    for (const [id, state] of [
+      ["P1", "chiamare"],
+      ["P13", "non risponde"],
+    ] as const) {
+      expect(
+        priority.some(
+          (m) => m.id === id && m.task.state === state && m.task.alertId != null
+        ),
+        `${id} with an open alert`
+      ).toBe(true)
+    }
     expect(
       resolved.some((m) => m.alert.resolvedBy === SYSTEM_OPERATOR_ID)
     ).toBe(true)

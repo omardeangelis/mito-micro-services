@@ -6,6 +6,7 @@
 import { generateChats } from "./generate/chats"
 import { generateContacts } from "./generate/contacts"
 import { generateCustomers } from "./generate/customers"
+import { generateMilestones } from "./generate/milestones"
 import { buildLinks } from "./generate/links"
 import {
   assignCustomers,
@@ -57,5 +58,6 @@ export function generateDataset({ n, day }: { n: number; day: Day }): Dataset {
     alerts,
     tasks,
     taskEventLog,
+    appMilestones: generateMilestones(day),
   }
 }

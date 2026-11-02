@@ -1,7 +1,7 @@
 ---
 domain: crm
 type: spec
-status: draft
+status: implemented
 links:
   - "[[chore/crm/design-home-e-richiami]]"
   - "[[personas]]"
@@ -239,7 +239,7 @@ I giorni sono giorni di Roma. «Oggi» va dalla mezzanotte di Roma ad adesso. Og
 
   **Secondo passo, sui contatti.** Riguarda i contatti con un valore vecchio (`followup`, `erogata`, `nessuno`, stato vuoto) e i contatti attivi fuori da AC4. Per ognuno vale la prima regola che lo riguarda:
   1. un contatto attivo con un alert aperto futuro va in Richiamo, qualunque sia il suo stato (in produzione 64 alert su `erogata`, `nessuno` e `non interessato`);
-  2. un contatto attivo con un alert aperto scaduto o di oggi va in Da chiamare, se non è in Non risponde; l'alert resta aperto;
+  2. un contatto attivo con un alert aperto scaduto o di oggi va in Da chiamare, se non è in Non risponde; l'alert resta aperto. Vale anche per un Richiamo che il passaggio notturno non ha ancora lavorato: lo stato finale è quello del passaggio, senza la sua riga nello Storico (AC32);
   3. un contatto attivo in `richiamare` senza alert aperto va in Non risponde (7.240);
   4. `followup`, `nessuno` e lo stato vuoto vanno in Da chiamare;
   5. `erogata` va in Pratica caricata.
@@ -345,3 +345,5 @@ Owner di tutte: Omar.
 | I rifiuti di «Registra chiamata» hanno un ordine, e «già lavorato» viene prima dello stato e della conferma. | Chi arriva secondo su un alert trova sempre anche un altro rifiuto: lo stato finale scelto dal collega, o il suo richiamo nuovo. home-operatore OQ12 ha bisogno che vinca «già lavorato», così la riga si chiude invece di dare un errore. |
 | La «X» apre «Togli il richiamo», che chiede il nuovo stato senza sceglierlo in partenza, e non conta come chiamata. | Scelta di Omar (2026-11-02, OQ6): «Rimuovere un richiamo chiede di segnare esplicitamente il nuovo stato. Magari mi ha chiamato lui e voglio spegnere alert e assegnare un nuovo stato.» Una chiamata ricevuta ha sempre risposta: contarla alzerebbe il tasso di risposta, che misura le chiamate fatte. |
 | «Contattato il» è l'ora dell'ultima chiamata, Non risponde compreso. | Scelta di Omar (2026-11-02, OQ7): «se non mi ha risposto io l'ho contattato». |
+| La regola 2 della conversione porta a Da chiamare anche un Richiamo con l'alert scaduto o di oggi che il passaggio notturno non ha ancora lavorato, senza riga nello Storico. | Scelta di Omar (2026-11-02), dopo la review: la conversione gira una volta al rilascio, la sera prima in produzione gira ancora il cron vecchio, e lo stato finale è quello del passaggio notturno. Si perde solo la riga del passaggio nello Storico. |
+| Il dialogo della massiva chiede di chiudere gli alert futuri solo dei contatti fuori dalla coda. | Scelta di Omar (2026-11-02), dopo la review: Da chiamare e Non risponde tengono l'alert (AC25), quindi la domanda su di loro era inutile. |
