@@ -84,11 +84,7 @@ type Press = CallInput extends infer Input
   : never
 
 /** A press of an outcome by `operator`: a new request id each time. */
-const press = (
-  operator: Operator,
-  input: Press,
-  role: Role = "OPERATORE"
-) =>
+const press = (operator: Operator, input: Press, role: Role = "OPERATORE") =>
   registerCall({
     requestId: crypto.randomUUID(),
     source: "detail",
@@ -479,7 +475,9 @@ describe("registerCall: rifiuti nell'ordine di AC13", () => {
           })
         )
 
-        expect(error).toEqual(new ContactSuperseded({ activeTaskId: active.id }))
+        expect(error).toEqual(
+          new ContactSuperseded({ activeTaskId: active.id })
+        )
         expect(yield* snapshot(customer.id)).toEqual(before)
       })
   )
@@ -695,32 +693,30 @@ describe("registerCall: rifiuti nell'ordine di AC13", () => {
       })
   )
 
-  it.effect(
-    "caso 9: un messaggio oltre 500 caratteri; 500 passano",
-    () =>
-      Effect.gen(function* () {
-        yield* TestClock.setTime(NOW.getTime())
-        const operator = yield* given(() => createOperator())
-        const { customer, contact } = yield* contactOf(operator)
-        const before = yield* snapshot(customer.id)
+  it.effect("caso 9: un messaggio oltre 500 caratteri; 500 passano", () =>
+    Effect.gen(function* () {
+      yield* TestClock.setTime(NOW.getTime())
+      const operator = yield* given(() => createOperator())
+      const { customer, contact } = yield* contactOf(operator)
+      const before = yield* snapshot(customer.id)
 
-        const error = yield* Effect.flip(
-          press(operator, {
-            taskId: contact.id,
-            outcome: "richiamare",
-            callback: { day: "2026-11-03", message: "x".repeat(501) },
-          })
-        )
-        expect(error).toEqual(new MessageTooLong())
-        expect(yield* snapshot(customer.id)).toEqual(before)
-
-        const saved = yield* press(operator, {
+      const error = yield* Effect.flip(
+        press(operator, {
           taskId: contact.id,
           outcome: "richiamare",
-          callback: { day: "2026-11-03", message: "x".repeat(500) },
+          callback: { day: "2026-11-03", message: "x".repeat(501) },
         })
-        expect(saved.alert?.message).toHaveLength(500)
+      )
+      expect(error).toEqual(new MessageTooLong())
+      expect(yield* snapshot(customer.id)).toEqual(before)
+
+      const saved = yield* press(operator, {
+        taskId: contact.id,
+        outcome: "richiamare",
+        callback: { day: "2026-11-03", message: "x".repeat(500) },
       })
+      expect(saved.alert?.message).toHaveLength(500)
+    })
   )
 })
 

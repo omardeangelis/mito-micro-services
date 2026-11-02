@@ -155,7 +155,10 @@ export const registerCall = Effect.fn("contact.registerCall")(function* (
       const from = contact.task.state
       const now = new Date(yield* Clock.currentTimeMillis)
       const today = romeDay(now)
-      const open = openAlert && { ...openAlert, day: romeDay(openAlert.deadline) }
+      const open = openAlert && {
+        ...openAlert,
+        day: romeDay(openAlert.deadline),
+      }
 
       if (input.workingAlertId !== undefined) {
         yield* rejectWorkedAlert(taskId, input.workingAlertId)

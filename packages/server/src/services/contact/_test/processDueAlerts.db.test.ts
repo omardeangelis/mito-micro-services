@@ -362,9 +362,8 @@ describe("processDueAlerts: un contatto cambiato prima del lock si salta", () =>
     ])
     expect(yield* given(() => logOf(seeded))).toEqual([])
     const rows = yield* given(() => alertsOf(seeded))
-    expect(rows).toEqual(
+    expect(rows.map(({ id: _id, ...row }) => row)).toEqual(
       alertsResolved.map((isResolved) => ({
-        id: expect.any(Number),
         isResolved,
         resolvedBy: null,
         resolvedAt: null,
