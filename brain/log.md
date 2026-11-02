@@ -22,6 +22,7 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
   - riga bloccata dopo l'esito incerto.
 
   Corretti con un test ciascuno, poi SHIP. Restano 23 MINOR durevoli per `docs-maintenance` e la checklist umana prima dell'unione e del rilascio
+- Dopo la review, scelte di Omar: Richiamo scaduto nella conversione accettato (AC31 e Decision Log); il dialogo della massiva non chiede più degli alert dei contatti in coda; il conteggio delle chiamate senza operatore va fra i compiti prima della finestra in [[chore/migrazione-gcp]]
 
 ## [2026-11-02] plan | Esiti, richiami e stati del contatto
 - Created plan: [[specs/crm/esiti-richiami-stati/PLAN]]: 20 task in 10 onde, una PR verso `dev`, ogni task con `tsc` verde su tutti i pacchetti

@@ -103,7 +103,7 @@ describe("task.getCustomersWithActiveAlerts", () => {
     const taskUno = await createTask({
       customerId: uno.id,
       operatorId: operator.id,
-      state: "chiamare",
+      state: "app.to",
     })
     const alertUno = await createAlert({
       taskId: taskUno.id,
@@ -127,6 +127,7 @@ describe("task.getCustomersWithActiveAlerts", () => {
     const taskTre = await createTask({
       customerId: tre.id,
       operatorId: operator.id,
+      state: "richiamare",
     })
     await createAlert({
       taskId: taskTre.id,
@@ -139,6 +140,7 @@ describe("task.getCustomersWithActiveAlerts", () => {
     const taskQuattro = await createTask({
       customerId: quattro.id,
       operatorId: operator.id,
+      state: "richiamare",
       isActive: false,
     })
     await createAlert({
@@ -153,7 +155,7 @@ describe("task.getCustomersWithActiveAlerts", () => {
     const taskCinque = await createTask({
       customerId: cinque.id,
       operatorId: operator.id,
-      state: "followup",
+      state: "richiamare",
     })
     await createAlert({
       taskId: taskCinque.id,
@@ -170,6 +172,7 @@ describe("task.getCustomersWithActiveAlerts", () => {
     const taskSei = await createTask({
       customerId: sei.id,
       operatorId: operator.id,
+      state: "richiamare",
     })
     await createAlert({
       taskId: taskSei.id,
@@ -191,7 +194,7 @@ describe("task.getCustomersWithActiveAlerts", () => {
         alertId: alertCinque.id,
         deadline: DEADLINE_CINQUE,
         message: "Collegato alla task",
-        state: "followup",
+        state: "richiamare",
       },
       {
         customerId: "cliente-due",
@@ -209,7 +212,7 @@ describe("task.getCustomersWithActiveAlerts", () => {
         alertId: alertUno.id,
         deadline: DEADLINE_UNO,
         message: "Richiamare dopo le dieci",
-        state: "chiamare",
+        state: "app.to",
       },
     ])
   })
@@ -221,12 +224,14 @@ describe("task.getCustomersWithActiveAlerts", () => {
     const taskStorica = await createTask({
       customerId: storico.id,
       operatorId: operator.id,
+      state: "richiamare",
       isActive: false,
     })
     await createAlert({ taskId: taskStorica.id, deadline: DEADLINE_UNO })
     const taskAttiva = await createTask({
       customerId: attivo.id,
       operatorId: operator.id,
+      state: "richiamare",
     })
     const alertAttivo = await createAlert({
       taskId: taskAttiva.id,
@@ -243,6 +248,46 @@ describe("task.getCustomersWithActiveAlerts", () => {
       expect.objectContaining({
         customerId: attivo.id,
         alertId: alertAttivo.id,
+      }),
+    ])
+  })
+
+  it("non restituisce gli alert dei contatti in coda, che la massiva non chiude", async () => {
+    const operator = await createOperator()
+    // I vecchi `followup` e `nessuno` sono Da chiamare (AC30)
+    const states = ["chiamare", "non risponde", "followup", "nessuno"] as const
+    const customerIds: string[] = []
+    for (const [i, state] of states.entries()) {
+      const customer = await createCustomer({ id: `cliente-coda-${i}` })
+      const task = await createTask({
+        customerId: customer.id,
+        operatorId: operator.id,
+        state,
+      })
+      await createAlert({ taskId: task.id, deadline: DEADLINE_DUE })
+      customerIds.push(customer.id)
+    }
+    const richiamo = await createCustomer({ id: "cliente-richiamo" })
+    const taskRichiamo = await createTask({
+      customerId: richiamo.id,
+      operatorId: operator.id,
+      state: "richiamare",
+    })
+    const alertRichiamo = await createAlert({
+      taskId: taskRichiamo.id,
+      deadline: DEADLINE_DUE,
+    })
+
+    const result = await createTestCaller(
+      operator
+    ).task.getCustomersWithActiveAlerts({
+      customerIds: [...customerIds, richiamo.id],
+    })
+
+    expect(result).toEqual([
+      expect.objectContaining({
+        customerId: richiamo.id,
+        alertId: alertRichiamo.id,
       }),
     ])
   })

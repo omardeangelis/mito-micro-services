@@ -157,6 +157,13 @@ Dal 2026-10-27 la prod passa tutta insieme, in una sola finestra serale (R10 di 
 - le variabili del servizio Cloud Run di prod e dei progetti Vercel di prod: quello dell'app React e quello dell'app Next. Quelle di better-auth vanno sul servizio Cloud Run e sul progetto dell'app Next, con gli stessi valori: `BETTER_AUTH_SECRET`, un secret nuovo per la prod (almeno 32 caratteri), e `BETTER_AUTH_URL`, il dominio di prod. `AUTH_TEST_LOGIN` in prod non si imposta: con `true` accende il login di prova via email (OQ6 di [[specs/crm/auth-better-auth/SPEC]]);
 - il runbook della finestra con i comandi, provato su staging con i tempi (checklist di S6);
 - **l'avviso a Rosario** (OQ5 di [[specs/crm/esiti-richiami-stati/SPEC]]), da parte di Omar: con la spec esiti-richiami-stati le chiamate dell'export e i tassi di risposta e di appuntamento **salgono**, perché ogni «Registra chiamata» è una chiamata. Esempio da dargli: due «Non risponde» di fila oggi sono una chiamata, da ora sono due; e i tassi senza chiamate non si mostrano più come 0%. Il confronto con i mesi scorsi va fatto tenendone conto;
+- **il conteggio delle chiamate senza operatore** (MINOR v8 di [[specs/crm/esiti-richiami-stati/REPORT]]), sulla copia dei dati di produzione (S5): le righe del registro con un operatore nullo o cancellato si vedono nello Storico ma non contano nell'export e in Analisi. Se sono zero il rilievo si chiude, altrimenti Omar decide prima del rilascio:
+
+  ```sql
+  SELECT count(*) FROM "mito-deutsche_task_event_log" l
+  LEFT JOIN "mito-deutsche_operator" o ON o.id = l.actor_operator_id
+  WHERE l.action IN ('state_change', 'call') AND o.id IS NULL;
+  ```
 - lo scheduler di prod crea anche il job `convert-contact-states`, in pausa per sempre e da lanciare a mano (qui sotto, passo 4 bis), come su staging;
 - lo scheduler di prod crea anche il job `cleanup-task-event-log`, alle 01:17 UTC (pulizia del registro, conservazione 25 mesi, [[specs/crm/pagina-analisi/SPEC]] AC16), in pausa come gli altri fino al passo 6.
 

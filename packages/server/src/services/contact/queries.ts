@@ -1,5 +1,10 @@
 import { Clock, Effect } from "effect"
 import { and, desc, eq, gte, inArray, sql } from "drizzle-orm"
+import {
+  type ContactState,
+  queueStates,
+  toContactState,
+} from "@mito/domain/contact/status"
 import { romeDayBounds } from "@mito/domain/contact/time"
 import { customers } from "@mito/db/schema/customers"
 import { alert, task } from "@mito/db/schema/task"
@@ -63,8 +68,9 @@ type ActiveAlertRow = Awaited<ReturnType<typeof activeAlertsOf>>[number]
  * Of the given customers, only those with a future open alert (a planned
  * callback not yet resolved, from tomorrow in Europe/Rome) on their active
  * task, one row per such alert, by deadline: the ones the bulk assignment
- * really closes (AC25). An alert of today or expired stays open. An empty
- * list yields no rows, without a query.
+ * really closes (AC25). An alert of today or expired stays open, and so does
+ * the alert of a contact in Da chiamare or Non risponde, which only changes
+ * operator. An empty list yields no rows, without a query.
  */
 export const listCustomersWithActiveAlerts = Effect.fnUntraced(function* (
   customerIds: string[]
@@ -72,10 +78,14 @@ export const listCustomersWithActiveAlerts = Effect.fnUntraced(function* (
   if (customerIds.length === 0) return []
   const now = yield* Clock.currentTimeMillis
   const firstFutureInstant = romeDayBounds(new Date(now)).end
-  return yield* query((client) =>
+  const rows = yield* query((client) =>
     activeAlertsOf(client, customerIds, firstFutureInstant)
   )
+  return rows.filter((row) => !isQueueState(toContactState(row.state)))
 })
+
+const isQueueState = (state: ContactState) =>
+  (queueStates as readonly ContactState[]).includes(state)
 
 /**
  * The full Storico of a customer, open and closed alerts of all its tasks:
