@@ -468,7 +468,7 @@ describe("regola dei lock: il cron degli alert (processDueAlerts)", () => {
     })
 
   it.effect(
-    "un alert che scade oggi crea il followup e prende il lock del cliente",
+    "un alert che scade oggi porta il contatto a Da chiamare e prende il lock del cliente",
     () =>
       Effect.gen(function* () {
         const { customer } = yield* Effect.promise(() =>
@@ -479,12 +479,12 @@ describe("regola dei lock: il cron degli alert (processDueAlerts)", () => {
 
         expect(
           yield* Effect.promise(() => activeTasksOf(customer.id))
-        ).toMatchObject([{ state: "followup" }])
+        ).toMatchObject([{ state: "chiamare" }])
       })
   )
 
   it.effect(
-    "un alert di un altro giorno si chiude soltanto e prende il lock del cliente",
+    "un alert di un altro giorno porta il contatto a Da chiamare, con l'alert aperto, e prende il lock del cliente",
     () =>
       Effect.gen(function* () {
         const { customer, open } = yield* Effect.promise(() =>
@@ -493,8 +493,11 @@ describe("regola dei lock: il cron degli alert (processDueAlerts)", () => {
         yield* Effect.promise(() => assertCustomerLockedOnWrite())
         expect(yield* run()).toMatchObject({ processed: 1, failed: 0 })
 
+        expect(
+          yield* Effect.promise(() => activeTasksOf(customer.id))
+        ).toMatchObject([{ state: "chiamare", alertId: open.id }])
         expect(yield* Effect.promise(() => logOf(customer.id))).toMatchObject([
-          { action: "alert_resolved", alertId: open.id },
+          { action: "state_change", source: "cron_alert", toState: "chiamare" },
         ])
       })
   )

@@ -87,144 +87,155 @@ describe("chiusura dell'alert: resolution e resolved_at", () => {
     })
   )
 
-  it.effect("setCallback che sostituisce l'alert scrive resolution = replaced", () =>
-    Effect.gen(function* () {
-      yield* TestClock.setTime(CLOSED_AT.getTime())
-      const operator = yield* Effect.promise(() => createOperator())
-      const customer = yield* Effect.promise(() =>
-        createCustomer({ operatorId: operator.id })
-      )
-      const contact = yield* Effect.promise(() =>
-        createTask({
-          customerId: customer.id,
-          operatorId: operator.id,
-          state: "richiamare",
-        })
-      )
-      const replaced = yield* Effect.promise(() =>
-        createAlert({ taskId: contact.id, deadline: FAR_FUTURE })
-      )
+  it.effect(
+    "setCallback che sostituisce l'alert scrive resolution = replaced",
+    () =>
+      Effect.gen(function* () {
+        yield* TestClock.setTime(CLOSED_AT.getTime())
+        const operator = yield* Effect.promise(() => createOperator())
+        const customer = yield* Effect.promise(() =>
+          createCustomer({ operatorId: operator.id })
+        )
+        const contact = yield* Effect.promise(() =>
+          createTask({
+            customerId: customer.id,
+            operatorId: operator.id,
+            state: "richiamare",
+          })
+        )
+        const replaced = yield* Effect.promise(() =>
+          createAlert({ taskId: contact.id, deadline: FAR_FUTURE })
+        )
 
-      yield* setCallback({
-        taskId: contact.id,
-        deadline: FAR_FUTURE,
-        message: null,
-        replacesAlertId: replaced.id,
-        actor: actorOf(operator),
-      }).pipe(provideServer)
-
-      expect(yield* Effect.promise(() => closingOf(replaced.id))).toMatchObject({
-        isResolved: true,
-        resolvedAt: CLOSED_AT,
-        resolution: "replaced",
-      })
-    })
-  )
-
-  it.effect("changeState che chiude l'alert confermato scrive resolution = state_change", () =>
-    Effect.gen(function* () {
-      yield* TestClock.setTime(CLOSED_AT.getTime())
-      const operator = yield* Effect.promise(() => createOperator())
-      const customer = yield* Effect.promise(() =>
-        createCustomer({ operatorId: operator.id })
-      )
-      const contact = yield* Effect.promise(() =>
-        createTask({
-          customerId: customer.id,
-          operatorId: operator.id,
-          state: "richiamare",
-        })
-      )
-      const open = yield* Effect.promise(() =>
-        createAlert({ taskId: contact.id, deadline: FAR_FUTURE })
-      )
-
-      yield* changeState({
-        taskId: contact.id,
-        toState: "caricato",
-        source: "detail",
-        confirmedAlertId: open.id,
-        actor: actorOf(operator),
-      }).pipe(provideServer)
-
-      expect(yield* Effect.promise(() => closingOf(open.id))).toMatchObject({
-        isResolved: true,
-        resolvedAt: CLOSED_AT,
-        resolution: "state_change",
-      })
-    })
-  )
-
-  it.effect("l'assegnazione massiva che chiude l'alert scrive resolution = bulk e la sua riga di log", () =>
-    Effect.gen(function* () {
-      yield* TestClock.setTime(CLOSED_AT.getTime())
-      const operator = yield* Effect.promise(() => createOperator())
-      const target = yield* Effect.promise(() => createOperator())
-      const customer = yield* Effect.promise(() =>
-        createCustomer({ operatorId: operator.id })
-      )
-      const contact = yield* Effect.promise(() =>
-        createTask({
-          customerId: customer.id,
-          operatorId: operator.id,
-          state: "richiamare",
-        })
-      )
-      const open = yield* Effect.promise(() =>
-        createAlert({ taskId: contact.id, deadline: FAR_FUTURE })
-      )
-
-      yield* bulkHandleTask({
-        operatorId: target.id,
-        customerIds: [customer.id],
-        state: "chiamare",
-        resolveAlertCustomerIds: [customer.id],
-        actorOperatorId: operator.id,
-      }).pipe(provideServer)
-
-      expect(yield* Effect.promise(() => closingOf(open.id))).toMatchObject({
-        isResolved: true,
-        resolvedBy: operator.id,
-        resolvedAt: CLOSED_AT,
-        resolution: "bulk",
-      })
-      expect(yield* Effect.promise(() => logOf(customer.id))).toContainEqual(
-        expect.objectContaining({
-          action: "alert_resolved",
-          source: "bulk",
-          alertId: open.id,
+        yield* setCallback({
           taskId: contact.id,
-          actorOperatorId: operator.id,
+          deadline: FAR_FUTURE,
+          message: null,
+          replacesAlertId: replaced.id,
+          actor: actorOf(operator),
+        }).pipe(provideServer)
+
+        expect(
+          yield* Effect.promise(() => closingOf(replaced.id))
+        ).toMatchObject({
+          isResolved: true,
+          resolvedAt: CLOSED_AT,
+          resolution: "replaced",
         })
-      )
-    })
+      })
   )
 
-  it.effect("il passaggio notturno che chiude l'alert scaduto scrive resolution = system", () =>
-    Effect.gen(function* () {
-      yield* TestClock.setTime(CLOSED_AT.getTime())
-      const operator = yield* Effect.promise(() => createOperator())
-      const customer = yield* Effect.promise(() =>
-        createCustomer({ operatorId: operator.id })
-      )
-      const contact = yield* Effect.promise(() =>
-        createTask({
-          customerId: customer.id,
-          operatorId: operator.id,
-          state: "richiamare",
+  it.effect(
+    "changeState che chiude l'alert confermato scrive resolution = state_change",
+    () =>
+      Effect.gen(function* () {
+        yield* TestClock.setTime(CLOSED_AT.getTime())
+        const operator = yield* Effect.promise(() => createOperator())
+        const customer = yield* Effect.promise(() =>
+          createCustomer({ operatorId: operator.id })
+        )
+        const contact = yield* Effect.promise(() =>
+          createTask({
+            customerId: customer.id,
+            operatorId: operator.id,
+            state: "richiamare",
+          })
+        )
+        const open = yield* Effect.promise(() =>
+          createAlert({ taskId: contact.id, deadline: FAR_FUTURE })
+        )
+
+        yield* changeState({
+          taskId: contact.id,
+          toState: "caricato",
+          source: "detail",
+          confirmedAlertId: open.id,
+          actor: actorOf(operator),
+        }).pipe(provideServer)
+
+        expect(yield* Effect.promise(() => closingOf(open.id))).toMatchObject({
+          isResolved: true,
+          resolvedAt: CLOSED_AT,
+          resolution: "state_change",
         })
-      )
-      const due = yield* Effect.promise(() =>
-        createAlert({ taskId: contact.id, deadline: EARLIER_DAY })
-      )
-
-      yield* processDueAlerts(NOW, { budgetMs: 60_000 }).pipe(provideServer)
-
-      expect(yield* Effect.promise(() => closingOf(due.id))).toMatchObject({
-        isResolved: true,
-        resolvedAt: CLOSED_AT,
-        resolution: "system",
       })
-    })
+  )
+
+  it.effect(
+    "l'assegnazione massiva che chiude l'alert scrive resolution = bulk e la sua riga di log",
+    () =>
+      Effect.gen(function* () {
+        yield* TestClock.setTime(CLOSED_AT.getTime())
+        const operator = yield* Effect.promise(() => createOperator())
+        const target = yield* Effect.promise(() => createOperator())
+        const customer = yield* Effect.promise(() =>
+          createCustomer({ operatorId: operator.id })
+        )
+        const contact = yield* Effect.promise(() =>
+          createTask({
+            customerId: customer.id,
+            operatorId: operator.id,
+            state: "richiamare",
+          })
+        )
+        const open = yield* Effect.promise(() =>
+          createAlert({ taskId: contact.id, deadline: FAR_FUTURE })
+        )
+
+        yield* bulkHandleTask({
+          operatorId: target.id,
+          customerIds: [customer.id],
+          state: "chiamare",
+          resolveAlertCustomerIds: [customer.id],
+          actorOperatorId: operator.id,
+        }).pipe(provideServer)
+
+        expect(yield* Effect.promise(() => closingOf(open.id))).toMatchObject({
+          isResolved: true,
+          resolvedBy: operator.id,
+          resolvedAt: CLOSED_AT,
+          resolution: "bulk",
+        })
+        expect(yield* Effect.promise(() => logOf(customer.id))).toContainEqual(
+          expect.objectContaining({
+            action: "alert_resolved",
+            source: "bulk",
+            alertId: open.id,
+            taskId: contact.id,
+            actorOperatorId: operator.id,
+          })
+        )
+      })
+  )
+
+  it.effect(
+    "il passaggio notturno non chiude l'alert scaduto: resolution e resolved_at restano nulli (AC19)",
+    () =>
+      Effect.gen(function* () {
+        yield* TestClock.setTime(CLOSED_AT.getTime())
+        const operator = yield* Effect.promise(() => createOperator())
+        const customer = yield* Effect.promise(() =>
+          createCustomer({ operatorId: operator.id })
+        )
+        const contact = yield* Effect.promise(() =>
+          createTask({
+            customerId: customer.id,
+            operatorId: operator.id,
+            state: "richiamare",
+          })
+        )
+        const due = yield* Effect.promise(() =>
+          createAlert({ taskId: contact.id, deadline: EARLIER_DAY })
+        )
+
+        yield* processDueAlerts(NOW, { budgetMs: 60_000 }).pipe(provideServer)
+
+        expect(yield* Effect.promise(() => closingOf(due.id))).toMatchObject({
+          isResolved: false,
+          resolvedBy: null,
+          resolvedAt: null,
+          resolution: null,
+        })
+      })
   )
 })

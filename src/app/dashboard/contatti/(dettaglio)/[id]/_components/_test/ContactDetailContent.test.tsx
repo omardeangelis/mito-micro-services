@@ -123,6 +123,8 @@ const dataOf = (
       resolvedBySurname: "Verdi",
     },
   ],
+  closures: [],
+  calls: [],
   customerContacts: [],
   activeTaskId: null,
   editability: { kind: "editable" },

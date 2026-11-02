@@ -56,7 +56,7 @@ afterEach(() => {
 // Traccia (D29): per ogni scrittore che cambia l'operatore di una task già
 // esistente il test controlla la riga `operator_reassign` con il suo `task_id`,
 // `from_operator_id` (anche nullo) e `to_operator_id`. Le task create
-// (createContact, riaperture, followup del cron) non hanno un "prima".
+// (createContact, riaperture) non hanno un "prima".
 
 const deadline = new Date("2026-10-20T22:00:00Z")
 
@@ -523,7 +523,7 @@ describe("regola «stesso operatore»: il cron degli alert (processDueAlerts)", 
   const NOW = new Date("2026-09-25T06:00:00.000Z")
 
   it.effect(
-    "un alert che scade oggi crea il followup dell'operatore del cliente",
+    "un alert che scade oggi porta il contatto a Da chiamare, con l'operatore del cliente",
     () =>
       Effect.gen(function* () {
         yield* Effect.promise(() => createSystemOperator())
@@ -550,7 +550,7 @@ describe("regola «stesso operatore»: il cron degli alert (processDueAlerts)", 
           expectAligned(customer.id)
         )
         expect(active).toMatchObject([
-          { state: "followup", operatorId: operator.id },
+          { state: "chiamare", operatorId: operator.id },
         ])
       })
   )

@@ -161,6 +161,8 @@ export const contactDetailOf = (
   },
   alert: null,
   history: [],
+  closures: [],
+  calls: [],
   customerContacts: [],
   activeTaskId: null,
   editability: { kind: "editable" },

@@ -394,9 +394,9 @@ Ogni task comincia dal test di `tdd_target`, rosso, e finisce con `tsc` verde su
   - Restano come sono un `non risponde` con un alert di oggi, un `app.to`, e un contatto non attivo con un alert aperto.
   - Due giri di fila danno lo stesso risultato.
   - Un giro che finisce il tempo lascia il resto al giro seguente.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-11-02, sonnet: RED 16/20 → verde. D10 con UPDATE condizionato (richiamare, attivo, alert_id, alert ancora aperto), touchCustomer come changeState. Riscritti ad AC19 su richiesta del supervisore: alertResolution, lockRule (2), operatorRule, e il test della rotta cron di Next (src/app/api/cron/alert), codice della rotta invariato. 95 test verdi.
+- **files edited/created**: packages/server/src/services/contact/processDueAlerts.ts, _test/{processDueAlerts,alertResolution,lockRule,operatorRule}.db.test.ts, src/app/api/cron/alert/_test/alert.db.test.ts
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -484,9 +484,9 @@ Ogni task comincia dal test di `tdd_target`, rosso, e finisce con `tsc` verde su
   - Un cliente con due Non risponde, un Richiamare e uno `state_change` vecchio dà quattro chiamate, dalla più recente.
   - Un orfano chiuso dalla conversione esce «dal sistema».
   - `tsc` su tutti i pacchetti.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-11-02, sonnet: RED 3/3 → verde, db 1353 verdi. ContactDetail.calls (predicato D14, giorno solo per richiamare) e ContactDetail.closures (alertId, closedAt, resolution) accanto a history, per non toccare i toEqual esistenti; il web unisce per alertId. CallsRegistryMissing → 500 anche nella procedura tRPC GET. Fixture del test Next con i campi vuoti.
+- **files edited/created**: packages/contract/src/task.ts, services/contact/getContactById.ts, _test/getContactById.calls.db.test.ts, api/routers/task/GET/index.ts, apps/web/src/test/{contacts,customers}.ts, src/app/.../ContactDetailContent.test.tsx
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a

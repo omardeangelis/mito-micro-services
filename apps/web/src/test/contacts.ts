@@ -93,6 +93,8 @@ export const contactDetail = (
     customer: row.customer,
     alert: null,
     history: [],
+    closures: [],
+    calls: [],
     customerContacts: [],
     activeTaskId: null,
     editability: { kind: "editable" },

@@ -266,6 +266,38 @@ export const ContactDetail = Schema.Struct({
       resolvedBySurname: Text,
     })
   ),
+  // How each alert of `history` was closed, by id: «Chiuso da … il …», or
+  // «Chiuso dal sistema» for "system"; closedAt is resolved_at, or updated_at
+  // for the alerts closed before it was written
+  closures: Schema.Array(
+    Schema.Struct({
+      alertId: Schema.Number,
+      closedAt: Schema.Date,
+      resolution: Schema.NullOr(
+        Schema.Literals([
+          "call",
+          "replaced",
+          "removed",
+          "state_change",
+          "bulk",
+          "system",
+        ])
+      ),
+    })
+  ),
+  // The calls of the customer, newest first: the outcome is the one of the
+  // row, or the state the old row went to (the web labels both)
+  calls: Schema.Array(
+    Schema.Struct({
+      id: Schema.Number,
+      outcome: Schema.NullOr(TaskStatus),
+      at: Schema.Date,
+      operatorName: Text,
+      operatorSurname: Text,
+      // The day of the new alert, only for Richiamare
+      callbackDeadline: Schema.NullOr(Schema.Date),
+    })
+  ),
   customerContacts: Schema.Array(
     Schema.Struct({
       id: Schema.Number,

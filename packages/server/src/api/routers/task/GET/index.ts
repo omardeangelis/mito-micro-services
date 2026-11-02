@@ -1,3 +1,4 @@
+import { Effect } from "effect"
 import { operatorProcedure } from "../../../trpc"
 import { selectCustomerSchema } from "@mito/domain/schemas"
 import { z } from "zod"
@@ -56,7 +57,14 @@ export const getContactById = operatorProcedure
   .input(z.object({ id: z.string() }))
   .query(({ ctx, input }) =>
     runTrpc(
-      getContactByIdService({ id: input.id, actor: actorOf(ctx.operator) }),
+      // Without `calls_registry` the Storico can't tell the calls (D14): a
+      // defect, logged, a 500
+      getContactByIdService({
+        id: input.id,
+        actor: actorOf(ctx.operator),
+      }).pipe(
+        Effect.catchTag("CallsRegistryMissing", (error) => Effect.die(error))
+      ),
       contactErrorToTrpc
     )
   )

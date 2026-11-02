@@ -1,9 +1,12 @@
 import { beforeAll, beforeEach } from "vitest"
 import { describe, expect, it } from "@effect/vitest"
 import { Effect } from "effect"
+import { asc, eq } from "drizzle-orm"
+import { type TaskStatus } from "@mito/domain/schemas"
+import { alert, task } from "@mito/db/schema/task"
+import { taskEventLog } from "@mito/db/schema/taskEventLog"
 import { processDueAlerts } from "../processDueAlerts"
-import { migrateUpTo, resetDb } from "@/test/db"
-import { createTestCaller } from "@/test/caller"
+import { migrateUpTo, resetDb, testDb } from "@/test/db"
 import { provideServer } from "@/test/effect"
 import {
   createAlert,
@@ -14,7 +17,10 @@ import {
 } from "@/test/factories"
 
 const NOW = new Date("2026-09-25T06:00:00.000Z")
+const TODAY = new Date("2026-09-25T08:00:00.000Z")
 const EARLIER_DAY = new Date("2026-09-20T08:00:00.000Z")
+const THREE_DAYS_AGO = new Date("2026-09-22T08:00:00.000Z")
+const TOMORROW = new Date("2026-09-26T08:00:00.000Z")
 
 const run = (budgetMs: number, now = NOW) =>
   Effect.gen(function* () {
@@ -26,23 +32,81 @@ const run = (budgetMs: number, now = NOW) =>
     return exit.value
   })
 
-async function seedAlert(deadline: Date) {
+async function seedAlert(
+  deadline: Date,
+  {
+    state = "richiamare",
+    isActive = true,
+  }: {
+    state?: TaskStatus
+    isActive?: boolean
+  } = {}
+) {
   const operator = await createOperator()
   const customer = await createCustomer({ operatorId: operator.id })
-  const previous = await createTask({
+  const contact = await createTask({
     customerId: customer.id,
     operatorId: operator.id,
-    state: "richiamare",
+    state,
+    isActive,
   })
-  const alert = await createAlert({ taskId: previous.id, deadline })
-  return { operator, customer, alert }
+  const alert = await createAlert({ taskId: contact.id, deadline })
+  return { operator, customer, contact, alert }
 }
 
-const alertsOf = ({
-  operator,
-  customer,
-}: Awaited<ReturnType<typeof seedAlert>>) =>
-  createTestCaller(operator).task.getCustomerAlerts({ id: customer.id })
+type Seeded = Awaited<ReturnType<typeof seedAlert>>
+
+const contactsOf = ({ customer }: Seeded) =>
+  testDb
+    .select({ id: task.id, state: task.state, isActive: task.isActive })
+    .from(task)
+    .where(eq(task.customerId, customer.id))
+    .orderBy(asc(task.id))
+
+const alertOf = async ({ alert: seeded }: Seeded) => {
+  const [row] = await testDb.select().from(alert).where(eq(alert.id, seeded.id))
+  return row
+}
+
+const logOf = ({ customer }: Seeded) =>
+  testDb
+    .select()
+    .from(taskEventLog)
+    .where(eq(taskEventLog.customerId, customer.id))
+    .orderBy(asc(taskEventLog.id))
+
+/** The contact is `chiamare`, with its alert open: no other contact, no close. */
+const expectWorked = async (seeded: Seeded) => {
+  expect(await contactsOf(seeded)).toEqual([
+    { id: seeded.contact.id, state: "chiamare", isActive: true },
+  ])
+  expect(await alertOf(seeded)).toMatchObject({
+    id: seeded.alert.id,
+    isResolved: false,
+  })
+  expect(await logOf(seeded)).toMatchObject([
+    {
+      action: "state_change",
+      source: "cron_alert",
+      taskId: seeded.contact.id,
+      fromState: "richiamare",
+      toState: "chiamare",
+    },
+  ])
+}
+
+/** Nothing written for the customer: the contact as seeded, the alert open. */
+const expectUntouched = async (seeded: Seeded, state: TaskStatus) => {
+  expect(await contactsOf(seeded)).toEqual([
+    {
+      id: seeded.contact.id,
+      state,
+      isActive: seeded.contact.isActive,
+    },
+  ])
+  expect(await alertOf(seeded)).toMatchObject({ isResolved: false })
+  expect(await logOf(seeded)).toEqual([])
+}
 
 beforeAll(async () => {
   await migrateUpTo()
@@ -53,14 +117,114 @@ beforeEach(async () => {
   await createSystemOperator()
 })
 
+const given = <A>(setup: () => Promise<A>) => Effect.promise(setup)
+
+// AC19, AC20: the pass moves the contact, it does not close the alert
+describe("processDueAlerts: Richiamo diventa Da chiamare", () => {
+  it.effect(
+    "un alert di oggi porta il contatto a Da chiamare, con l'alert aperto e nessun contatto nuovo",
+    () =>
+      Effect.gen(function* () {
+        const seeded = yield* given(() => seedAlert(TODAY))
+        expect(yield* run(60_000)).toEqual({
+          found: 1,
+          processed: 1,
+          skipped: 0,
+          failed: 0,
+          remaining: 0,
+        })
+
+        yield* given(() => expectWorked(seeded))
+      })
+  )
+
+  it.effect(
+    "un alert scaduto da 3 giorni, dopo notti saltate, fa lo stesso lavoro",
+    () =>
+      Effect.gen(function* () {
+        const seeded = yield* given(() => seedAlert(THREE_DAYS_AGO))
+        expect(yield* run(60_000)).toMatchObject({ found: 1, processed: 1 })
+
+        yield* given(() => expectWorked(seeded))
+      })
+  )
+
+  it.effect("un alert di domani non si tocca", () =>
+    Effect.gen(function* () {
+      const seeded = yield* given(() => seedAlert(TOMORROW))
+      expect(yield* run(60_000)).toMatchObject({ found: 0, processed: 0 })
+
+      yield* given(() => expectUntouched(seeded, "richiamare"))
+    })
+  )
+
+  it.effect.each([
+    ["non risponde", "non risponde"],
+    ["app.to", "app.to"],
+  ] as const)("un contatto %s con un alert di oggi resta com'è", ([_, state]) =>
+    Effect.gen(function* () {
+      const seeded = yield* given(() => seedAlert(TODAY, { state }))
+      expect(yield* run(60_000)).toMatchObject({ found: 0, processed: 0 })
+
+      yield* given(() => expectUntouched(seeded, state))
+    })
+  )
+
+  it.effect("un contatto non attivo con un alert aperto non cambia", () =>
+    Effect.gen(function* () {
+      const seeded = yield* given(() => seedAlert(TODAY, { isActive: false }))
+      expect(yield* run(60_000)).toMatchObject({ found: 0, processed: 0 })
+
+      yield* given(() => expectUntouched(seeded, "richiamare"))
+    })
+  )
+
+  it.effect("due giri di fila danno lo stesso risultato del primo", () =>
+    Effect.gen(function* () {
+      const seeded = yield* given(() => seedAlert(TODAY))
+      expect(yield* run(60_000)).toMatchObject({ found: 1, processed: 1 })
+      expect(yield* run(60_000)).toEqual({
+        found: 0,
+        processed: 0,
+        skipped: 0,
+        failed: 0,
+        remaining: 0,
+      })
+
+      yield* given(() => expectWorked(seeded))
+    })
+  )
+
+  it.effect(
+    "un contatto che dopo il primo giro ha cambiato stato non torna a Da chiamare",
+    () =>
+      Effect.gen(function* () {
+        const seeded = yield* given(() => seedAlert(TODAY))
+        yield* run(60_000)
+        yield* given(() =>
+          testDb
+            .update(task)
+            .set({ state: "non risponde" })
+            .where(eq(task.id, seeded.contact.id))
+        )
+        expect(yield* run(60_000)).toMatchObject({ found: 0, processed: 0 })
+
+        expect(yield* given(() => contactsOf(seeded))).toEqual([
+          { id: seeded.contact.id, state: "non risponde", isActive: true },
+        ])
+        expect(yield* given(() => logOf(seeded))).toHaveLength(1)
+      })
+  )
+})
+
 describe("processDueAlerts a tempo", () => {
   // The budget is measured on the real clock: under TestClock no time passes
   it.live(
-    "a tempo esaurito elabora solo il primo alert: gli altri restano aperti e li prende la chiamata dopo",
+    "a tempo esaurito elabora solo il primo alert: l'altro resta in Richiamo e lo prende la chiamata dopo",
     () =>
       Effect.gen(function* () {
-        const first = yield* Effect.promise(() => seedAlert(EARLIER_DAY))
-        const second = yield* Effect.promise(() => seedAlert(EARLIER_DAY))
+        const first = yield* given(() => seedAlert(EARLIER_DAY))
+        const second = yield* given(() => seedAlert(EARLIER_DAY))
         expect(yield* run(0)).toEqual({
           found: 2,
           processed: 1,
@@ -68,6 +232,9 @@ describe("processDueAlerts a tempo", () => {
           failed: 0,
           remaining: 1,
         })
+        expect(yield* given(() => contactsOf(second))).toMatchObject([
+          { state: "richiamare" },
+        ])
         expect(yield* run(0)).toEqual({
           found: 1,
           processed: 1,
@@ -76,33 +243,8 @@ describe("processDueAlerts a tempo", () => {
           remaining: 0,
         })
         for (const seeded of [first, second]) {
-          expect(yield* Effect.promise(() => alertsOf(seeded))).toEqual([
-            expect.objectContaining({ id: seeded.alert.id, isResolved: true }),
-          ])
+          yield* given(() => expectWorked(seeded))
         }
-      })
-  )
-
-  it.live(
-    "prende prima gli alert che scadono oggi, gli unici che creano il followup",
-    () =>
-      Effect.gen(function* () {
-        // Created first: in table order it would be taken first
-        const earlier = yield* Effect.promise(() => seedAlert(EARLIER_DAY))
-        const today = yield* Effect.promise(() =>
-          seedAlert(new Date("2026-09-25T08:00:00.000Z"))
-        )
-        expect(yield* run(0)).toMatchObject({ processed: 1, remaining: 1 })
-
-        const [active] = yield* Effect.promise(() =>
-          createTestCaller(today.operator).task.getActiveTask({
-            id: today.customer.id,
-          })
-        )
-        expect(active).toMatchObject({ state: "followup" })
-        expect(yield* Effect.promise(() => alertsOf(earlier))).toEqual([
-          expect.objectContaining({ id: earlier.alert.id, isResolved: false }),
-        ])
       })
   )
 })
@@ -112,16 +254,6 @@ describe("processDueAlerts a tempo", () => {
 // past midnight in Italy all year, when the UTC day is still the one before
 describe("processDueAlerts: il giorno è quello italiano", () => {
   const BUDGET_MS = 60_000
-
-  const stateOf = async ({
-    operator,
-    customer,
-  }: Awaited<ReturnType<typeof seedAlert>>) => {
-    const [active] = await createTestCaller(operator).task.getActiveTask({
-      id: customer.id,
-    })
-    return active?.state
-  }
 
   it.effect.each([
     ["in ora legale", "2026-10-11T22:00:00.000Z", "2026-10-11T23:47:00.000Z"],
@@ -146,46 +278,28 @@ describe("processDueAlerts: il giorno è quello italiano", () => {
       "2026-10-11T22:00:00.000Z",
       "2026-10-12T08:00:00.000Z",
     ],
-  ])(
-    "un alert che scade oggi crea il followup %s",
-    ([_, deadline = "", now = ""]) =>
-      Effect.gen(function* () {
-        const seeded = yield* Effect.promise(() =>
-          seedAlert(new Date(deadline))
-        )
-        expect(yield* run(BUDGET_MS, new Date(now))).toMatchObject({
-          found: 1,
-          processed: 1,
-        })
-
-        expect(yield* Effect.promise(() => stateOf(seeded))).toBe("followup")
-      })
-  )
-
-  it.effect.each([
-    ["in ora legale", "2026-10-10T22:00:00.000Z", "2026-10-11T23:47:00.000Z"],
-    ["in ora solare", "2026-11-08T23:00:00.000Z", "2026-11-09T23:47:00.000Z"],
+    // Expired days ago: the same work (AC20)
     [
-      "lanciato a mano di giorno",
+      "in ora legale, scaduto ieri",
       "2026-10-10T22:00:00.000Z",
-      "2026-10-12T08:00:00.000Z",
+      "2026-10-11T23:47:00.000Z",
+    ],
+    [
+      "in ora solare, scaduto ieri",
+      "2026-11-08T23:00:00.000Z",
+      "2026-11-09T23:47:00.000Z",
     ],
   ])(
-    "un alert scaduto ieri si chiude senza followup %s",
+    "un alert che scade oggi o prima porta il contatto a Da chiamare %s",
     ([_, deadline = "", now = ""]) =>
       Effect.gen(function* () {
-        const seeded = yield* Effect.promise(() =>
-          seedAlert(new Date(deadline))
-        )
+        const seeded = yield* given(() => seedAlert(new Date(deadline)))
         expect(yield* run(BUDGET_MS, new Date(now))).toMatchObject({
           found: 1,
           processed: 1,
         })
 
-        expect(yield* Effect.promise(() => stateOf(seeded))).toBe("richiamare")
-        expect(yield* Effect.promise(() => alertsOf(seeded))).toEqual([
-          expect.objectContaining({ id: seeded.alert.id, isResolved: true }),
-        ])
+        yield* given(() => expectWorked(seeded))
       })
   )
 
@@ -200,18 +314,13 @@ describe("processDueAlerts: il giorno è quello italiano", () => {
       "2026-11-09T22:47:00.000Z",
     ],
   ])(
-    "un alert che scade domani resta aperto %s",
+    "un alert che scade domani lascia il contatto in Richiamo %s",
     ([_, deadline = "", now = ""]) =>
       Effect.gen(function* () {
-        const seeded = yield* Effect.promise(() =>
-          seedAlert(new Date(deadline))
-        )
+        const seeded = yield* given(() => seedAlert(new Date(deadline)))
         expect(yield* run(BUDGET_MS, new Date(now))).toMatchObject({ found: 0 })
 
-        expect(yield* Effect.promise(() => stateOf(seeded))).toBe("richiamare")
-        expect(yield* Effect.promise(() => alertsOf(seeded))).toEqual([
-          expect.objectContaining({ id: seeded.alert.id, isResolved: false }),
-        ])
+        yield* given(() => expectUntouched(seeded, "richiamare"))
       })
   )
 })
