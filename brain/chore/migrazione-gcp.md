@@ -145,7 +145,7 @@ gcloud scheduler jobs run mito-crm-staging-convert-contact-states --project=mito
 ```
 
 `<URL del backend di staging>` e il service account sono quelli di `setup-staging.sh` (`$URL`, `$SCHED`): meglio eseguire lo script, che li ha già. Il job risponde con i conteggi di quanto ha convertito (risposta della chiamata, da cercare nei log di Cloud Run).
-- Il job **fallisce con `ConversionLeft`** se, dopo il giro, ci sono righe non convertite o rimaste da lavorare (`failed` o `remaining` maggiori di zero nell'errore): si guarda cosa resta, si corregge e si rilancia.
+- Il job **fallisce con `ConversionLeft`** se, dopo il giro, ci sono righe non convertite o rimaste da lavorare (`failed` o `remaining` maggiori di zero nell'errore): si guarda cosa resta, si corregge e si rilancia. Anche un giro fallito registra i conteggi di quanto ha convertito, in `cron_run.counters` e nel riepilogo su Slack. Il totale di un rilascio è quindi la somma dei giri del giorno.
 - Si può **rilanciare con `run` anche lo stesso giorno UTC**: la guardia `cron_run` salta un secondo giro riuscito dello stesso giorno, ma il job è `rerunnable` e un giro fallito non la consuma. La conversione è idempotente (AC32): un secondo giro su dati già convertiti non cambia niente.
 
 ### Fase P — prod
@@ -165,7 +165,7 @@ Dal 2026-10-27 la prod passa tutta insieme, in una sola finestra serale (R10 di 
 2. Supabase in sola lettura, connessioni chiuse; dump → restore su Cloud SQL di prod → verifica identica (DB: dettagli, sotto);
 3. le migrazioni di `dev` non ancora in prod, su Cloud SQL, comprese quelle di better-auth;
 4. merge `dev` → `main` e deploy: il backend di prod su Cloud SQL, GCS e better-auth; l'app React sul dominio, con le rewrite verso il backend; l'app Next deployata con `BACKEND_URL` verso lo stesso backend, come rollback del solo frontend;
-4 bis. **solo se il rilascio porta la spec esiti-richiami-stati** (nell'ordine): le migrazioni (comprese `app_milestone` e la riga `calls_registry`, che fissa l'entrata in uso, D12) sono già state applicate al passo 3; **deploy** del passo 4; **lancio di `convert-contact-states`** (`gcloud scheduler jobs run` sul job di prod); **controllo dei conteggi** che il job restituisce (alert orfani chiusi, in produzione 5 il 2026-11-01; contatti portati in Richiamo, Da chiamare, Non risponde, Pratica caricata; in produzione 64 in Richiamo e 7.240 in Non risponde) e assenza di `ConversionLeft`; solo dopo, lo smoke test. Se il job fallisce con `ConversionLeft` si corregge e si rilancia, anche lo stesso giorno;
+4 bis. **solo se il rilascio porta la spec esiti-richiami-stati** (nell'ordine): le migrazioni (comprese `app_milestone` e la riga `calls_registry`, che fissa l'entrata in uso, D12) sono già state applicate al passo 3; **deploy** del passo 4; **lancio di `convert-contact-states`** (`gcloud scheduler jobs run` sul job di prod); **controllo dei conteggi** che il job restituisce o registra in `cron_run.counters`, sommati se i giri sono più di uno (alert orfani chiusi, in produzione 5 il 2026-11-01; contatti portati in Richiamo, Da chiamare, Non risponde, Pratica caricata; in produzione 64 in Richiamo e 7.240 in Non risponde) e assenza di `ConversionLeft`; solo dopo, lo smoke test. Se il job fallisce con `ConversionLeft` si corregge e si rilancia, anche lo stesso giorno;
 5. smoke test da ADMIN e da OPERATORE, poi go/no-go;
 6. Cloud Scheduler acceso e cron di GitHub spenti, lo stesso giorno: mai due scheduler insieme.
 

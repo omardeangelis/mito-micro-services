@@ -20,7 +20,11 @@ import {
 import { romeDay } from "@mito/domain/contact/time"
 import type { ContactDetail } from "@mito/contract/task"
 import { describeApiError } from "@/api/errors"
-import { type RegisterCallInput, useRegisterCall } from "@/api/task"
+import {
+  CALL_REFUSED,
+  type RegisterCallInput,
+  useRegisterCall,
+} from "@/api/task"
 import { useContactSheet } from "./ContactSheet"
 
 /** The text of an outcome nobody can tell (AC15) */
@@ -140,10 +144,11 @@ export function ContactCallSection({ data }: { data: ContactDetail }) {
         setCurrent(null)
         return
       }
-      if (result.kind === "uncertain") {
-        sheet.announceAlert(UNCERTAIN)
-        if (press.outcome === "richiamare") setPanelError(UNCERTAIN)
-        else setNotice(UNCERTAIN)
+      if (result.kind === "uncertain" || result.kind === "refused") {
+        const text = result.kind === "uncertain" ? UNCERTAIN : CALL_REFUSED
+        sheet.announceAlert(text)
+        if (press.outcome === "richiamare") setPanelError(text)
+        else setNotice(text)
         return
       }
       const { error } = result

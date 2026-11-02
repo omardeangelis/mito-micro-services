@@ -1,13 +1,15 @@
 import { beforeAll, beforeEach } from "vitest"
 import { describe, expect, it } from "@effect/vitest"
 import { Effect } from "effect"
-import { asc, eq } from "drizzle-orm"
+import { asc, eq, getTableName } from "drizzle-orm"
 import { type TaskStatus } from "@mito/domain/schemas"
+import { customers } from "@mito/db/schema/customers"
 import { alert, task } from "@mito/db/schema/task"
 import { taskEventLog } from "@mito/db/schema/taskEventLog"
 import { processDueAlerts } from "../processDueAlerts"
 import { migrateUpTo, resetDb, testDb } from "@/test/db"
 import { provideServer } from "@/test/effect"
+import { beforeNextLockOf } from "@/test/failpoint"
 import {
   createAlert,
   createCustomer,
@@ -322,5 +324,140 @@ describe("processDueAlerts: il giorno è quello italiano", () => {
 
         yield* given(() => expectUntouched(seeded, "richiamare"))
       })
+  )
+})
+
+// What another writer commits after the pass read its list and before it
+// takes the customer's lock: the update under the lock reads the contact again
+// and skips it, whatever changed
+describe("processDueAlerts: un contatto cambiato prima del lock si salta", () => {
+  const TASK = `"${getTableName(task)}"`
+  const ALERT = `"${getTableName(alert)}"`
+
+  const linkNewAlert = ({ contact }: Seeded) =>
+    `INSERT INTO ${ALERT} (task_id, deadline) VALUES (${contact.id}, '${TOMORROW.toISOString()}');
+     UPDATE ${TASK} SET alert_id = (SELECT max(id) FROM ${ALERT}) WHERE id = ${contact.id}`
+
+  const alertsOf = ({ contact }: Seeded) =>
+    testDb
+      .select({
+        id: alert.id,
+        isResolved: alert.isResolved,
+        resolvedBy: alert.resolvedBy,
+        resolvedAt: alert.resolvedAt,
+        resolution: alert.resolution,
+      })
+      .from(alert)
+      .where(eq(alert.taskId, contact.id))
+      .orderBy(asc(alert.id))
+
+  /** Skipped: counted as such, no log row, no alert closed by the pass. */
+  const expectSkipped = function* (
+    seeded: Seeded,
+    contact: { state: TaskStatus; isActive: boolean },
+    alertsResolved: boolean[]
+  ) {
+    expect(yield* given(() => contactsOf(seeded))).toEqual([
+      { id: seeded.contact.id, ...contact },
+    ])
+    expect(yield* given(() => logOf(seeded))).toEqual([])
+    const rows = yield* given(() => alertsOf(seeded))
+    expect(rows).toEqual(
+      alertsResolved.map((isResolved) => ({
+        id: expect.any(Number),
+        isResolved,
+        resolvedBy: null,
+        resolvedAt: null,
+        resolution: null,
+      }))
+    )
+    expect(rows[0]?.id).toBe(seeded.alert.id)
+  }
+
+  const skipped = {
+    found: 1,
+    processed: 0,
+    skipped: 1,
+    failed: 0,
+    remaining: 0,
+  }
+
+  it.effect("un contatto passato a Non risponde resta Non risponde", () =>
+    Effect.gen(function* () {
+      const seeded = yield* given(() => seedAlert(TODAY))
+      beforeNextLockOf(
+        customers,
+        `UPDATE ${TASK} SET state = 'non risponde' WHERE id = ${seeded.contact.id}`
+      )
+      expect(yield* run(60_000)).toEqual(skipped)
+
+      yield* expectSkipped(seeded, { state: "non risponde", isActive: true }, [
+        false,
+      ])
+    })
+  )
+
+  it.effect("un contatto con l'alert chiuso resta in Richiamo", () =>
+    Effect.gen(function* () {
+      const seeded = yield* given(() => seedAlert(TODAY))
+      beforeNextLockOf(
+        customers,
+        `UPDATE ${ALERT} SET is_resolved = true WHERE id = ${seeded.alert.id}`
+      )
+      expect(yield* run(60_000)).toEqual(skipped)
+
+      yield* expectSkipped(seeded, { state: "richiamare", isActive: true }, [
+        true,
+      ])
+    })
+  )
+
+  it.effect(
+    "un contatto con un alert nuovo al posto di quello chiuso resta in Richiamo",
+    () =>
+      Effect.gen(function* () {
+        const seeded = yield* given(() => seedAlert(TODAY))
+        beforeNextLockOf(
+          customers,
+          `UPDATE ${ALERT} SET is_resolved = true WHERE id = ${seeded.alert.id};
+           ${linkNewAlert(seeded)}`
+        )
+        expect(yield* run(60_000)).toEqual(skipped)
+
+        yield* expectSkipped(seeded, { state: "richiamare", isActive: true }, [
+          true,
+          false,
+        ])
+      })
+  )
+
+  it.effect(
+    "un contatto legato a un alert nuovo, con il vecchio ancora aperto, resta in Richiamo",
+    () =>
+      Effect.gen(function* () {
+        const seeded = yield* given(() => seedAlert(TODAY))
+        beforeNextLockOf(customers, linkNewAlert(seeded))
+        expect(yield* run(60_000)).toEqual(skipped)
+
+        yield* expectSkipped(seeded, { state: "richiamare", isActive: true }, [
+          false,
+          false,
+        ])
+      })
+  )
+
+  it.effect("un contatto disattivato resta in Richiamo, non attivo", () =>
+    Effect.gen(function* () {
+      const seeded = yield* given(() => seedAlert(TODAY))
+      beforeNextLockOf(
+        customers,
+        `UPDATE ${TASK} SET is_active = false WHERE id = ${seeded.contact.id}`
+      )
+      expect(yield* run(60_000)).toEqual(skipped)
+
+      yield* expectSkipped(seeded, { state: "richiamare", isActive: false }, [
+        false,
+      ])
+    })
   )
 })

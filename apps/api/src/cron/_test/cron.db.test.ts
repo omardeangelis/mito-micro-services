@@ -15,6 +15,7 @@ import {
 import { customers } from "@mito/db/schema/customers"
 import { cronRun } from "@mito/db/schema/cronRun"
 import { practices } from "@mito/db/schema/pratiche"
+import { task } from "@mito/db/schema/task"
 import { taskEventLog } from "@mito/db/schema/taskEventLog"
 import { serverLayer } from "@mito/server/effect/server"
 import { failureTag, provideServer } from "@/test/effect"
@@ -27,7 +28,13 @@ import {
 } from "@/test/db"
 import { reportedErrors } from "@/test/errorReporter"
 import { failNextUpdateOf } from "@/test/failpoint"
-import { createCustomer, createPractice } from "@/test/factories"
+import {
+  createCustomer,
+  createOperator,
+  createPractice,
+  createSystemOperator,
+  createTask,
+} from "@/test/factories"
 import { CronAuth } from "../auth"
 import { alertJob, type CronJob, cronJobs } from "../jobs"
 import { CronReport, type CronOutcome, formatReport } from "../report"
@@ -371,6 +378,118 @@ describe("cron del backend: una volta al giorno", () => {
       ratePagate: 13,
       debitoResiduo: 8810,
     })
+  })
+})
+
+describe("cron del backend: convert-contact-states", () => {
+  /** A contact in `state`, not active, on a new customer. */
+  const contactIn = async (state: "followup" | "erogata") => {
+    const operator = await createOperator()
+    const customer = await createCustomer({ operatorId: operator.id })
+    return createTask({
+      customerId: customer.id,
+      operatorId: operator.id,
+      state,
+      isActive: false,
+    })
+  }
+
+  const stateOf = async (id: number) => {
+    const [row] = await testDb
+      .select({ state: task.state })
+      .from(task)
+      .where(eq(task.id, id))
+    return row?.state
+  }
+
+  const counts = {
+    orphanAlerts: 0,
+    futureAlert: 0,
+    dueAlert: 0,
+    noAlert: 0,
+    legacyToCall: 0,
+    legacyErogata: 0,
+    failed: 0,
+    remaining: 0,
+  }
+
+  beforeEach(async () => {
+    await createSystemOperator()
+  })
+
+  it("converte i contatti, risponde con i conteggi e li registra", async () => {
+    const followup = await contactIn("followup")
+    const erogata = await contactIn("erogata")
+    const counters = { ...counts, legacyToCall: 1, legacyErogata: 1 }
+
+    expect(await asScheduler("convert-contact-states")).toEqual({
+      status: 200,
+      body: { job: "convert-contact-states", counters },
+    })
+    expect(await stateOf(followup.id)).toBe("chiamare")
+    expect(await stateOf(erogata.id)).toBe("caricato")
+    expect(await runsInRegistry()).toEqual([
+      {
+        job: "convert-contact-states",
+        runDay: "2026-10-14",
+        status: "succeeded",
+        counters,
+      },
+    ])
+    expect(reports).toEqual([
+      {
+        job: "convert-contact-states",
+        status: "succeeded",
+        durationMs: 0,
+        counters,
+      },
+    ])
+  })
+
+  it("un run che lascia un cliente risponde 500, va su Sentry e registra quello che ha convertito; lo stesso giorno gira di nuovo e converte il resto", async () => {
+    const followup = await contactIn("followup")
+    const erogata = await contactIn("erogata")
+    await failNextUpdateOf(task, { id: followup.id })
+    const partial = { ...counts, legacyErogata: 1, failed: 1 }
+
+    expect(await asScheduler("convert-contact-states")).toEqual({
+      status: 500,
+      body: { job: "convert-contact-states", error: "failed" },
+    })
+    expect(await stateOf(followup.id)).toBe("followup")
+    expect(await stateOf(erogata.id)).toBe("caricato")
+    // The customer that failed, from the conversion, then the run
+    expect(reportedErrors.map(({ data }) => data)).toEqual([
+      { customerId: followup.customerId },
+      { cron: "convert-contact-states" },
+    ])
+    expect(await runsInRegistry()).toEqual([
+      {
+        job: "convert-contact-states",
+        runDay: "2026-10-14",
+        status: "failed",
+        counters: partial,
+      },
+    ])
+    expect(reports).toEqual([
+      {
+        job: "convert-contact-states",
+        status: "failed",
+        durationMs: 0,
+        counters: partial,
+      },
+    ])
+
+    // A "Force run" the same UTC day
+    const rest = { ...counts, legacyToCall: 1 }
+    expect(await asScheduler("convert-contact-states")).toEqual({
+      status: 200,
+      body: { job: "convert-contact-states", counters: rest },
+    })
+    expect(await stateOf(followup.id)).toBe("chiamare")
+    expect(await runsInRegistry()).toEqual([
+      expect.objectContaining({ status: "succeeded", counters: rest }),
+    ])
   })
 })
 

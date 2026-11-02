@@ -40,6 +40,15 @@ describe.skipIf(!hasTestDatabase || !process.env.PERF)(
                (ARRAY['app.to', 'non risponde', 'richiamare', 'caricato'])[1 + g % 4]::task_status,
                now() - (g % 90) * interval '1 day' - (g % 1440) * interval '1 minute'
         FROM generate_series(1, ${ROWS}) AS g`
+      // Both rules of the predicate (AC28 of esiti-richiami-stati): the
+      // registry starts halfway, and the rows after it are calls
+      await pgClient`
+        UPDATE "mito-deutsche_app_milestone"
+        SET at = now() - interval '45 days' WHERE name = 'calls_registry'`
+      await pgClient`
+        UPDATE "mito-deutsche_task_event_log"
+        SET action = 'call', outcome = to_state
+        WHERE created_at >= now() - interval '45 days' AND source <> 'bulk'`
       await pgClient`ANALYZE "mito-deutsche_task_event_log"`
     }, 120_000)
 

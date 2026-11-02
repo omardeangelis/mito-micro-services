@@ -7,6 +7,7 @@ import {
 } from "@tanstack/react-query"
 import { useCallback } from "react"
 import { Effect, Schema } from "effect"
+import { HttpClientError } from "effect/http"
 import { type ApiError, isApiError } from "@mito/contract/errors"
 import {
   type BulkHandleTask,
@@ -20,7 +21,7 @@ import { type GetContactsInput } from "@mito/domain/contact/listInput"
 import { useRun } from "./ApiProvider"
 import { allBatches, customerKeys } from "./customer"
 import { routeErrorWhenEmpty } from "./queryClient"
-import { ApiClient, type Run } from "./runtime"
+import { ApiClient, ApiUnavailable, type Run } from "./runtime"
 
 /** The keys of the group `task`: `[group, endpoint, input]` (H12) */
 export const taskKeys = {
@@ -176,13 +177,29 @@ export type RegisterCallInput = (RegisterCall extends infer T
  * - `registered`: saved, with what it leaves on the contact;
  * - `rejected`: the server refused and wrote nothing, `error` has the data
  *   of the text (`describeApiError`);
+ * - `refused`: a 4xx the endpoint doesn't declare (a payload an older server
+ *   can't read): the server wrote nothing, said with `CALL_REFUSED`;
  * - `uncertain`: no answer we can trust (network, 5xx, body that doesn't
  *   read, 15 seconds): the call may or may not be saved (AC15)
  */
 export type RegisterCallResult =
   | { kind: "registered"; registered: RegisteredCall }
   | { kind: "rejected"; error: ApiError }
+  | { kind: "refused" }
   | { kind: "uncertain" }
+
+/** The text of a `refused` call */
+export const CALL_REFUSED =
+  "Il server ha rifiutato la richiesta: la chiamata non è registrata. Ricarica la pagina e riprova."
+
+/** A response with a 4xx status: the server answered and wrote nothing */
+const isClientError = (error: unknown) => {
+  if (!(error instanceof ApiUnavailable)) return false
+  const { cause } = error
+  if (!(cause instanceof HttpClientError.HttpClientError)) return false
+  const status = cause.response?.status
+  return status !== undefined && status >= 400 && status < 500
+}
 
 /**
  * «Registra chiamata» (`POST /task/:id/call`). A new `requestId` at every
@@ -226,6 +243,7 @@ export const useRegisterCall = () => {
       } catch (error) {
         // A declared error is an answer of the server; anything else is not
         if (isApiError(error)) return { kind: "rejected", error }
+        if (isClientError(error)) return { kind: "refused" }
         return { kind: "uncertain" }
       } finally {
         clearTimeout(timer)

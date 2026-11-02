@@ -218,6 +218,8 @@ describe("durante l'invio (AC33)", () => {
     )
     await user.click(trigger())
     expect(screen.queryByRole("menuitem")).toBeNull()
+    // The cell says it, for every outcome, not only the panel of Richiamare
+    expect(trigger().textContent).toContain("Registro…")
 
     open()
     await waitFor(() =>
@@ -312,6 +314,21 @@ describe("i rifiuti e l'esito incerto (AC13, AC15)", () => {
     await press(user, "Non risponde")
 
     await screen.findByText(UNCERTAIN)
+    await waitFor(() =>
+      expect(trigger().getAttribute("aria-busy")).toBe("false")
+    )
+  })
+
+  it("un 400 che l'endpoint non dichiara dice che la chiamata non è registrata e sblocca la riga", async () => {
+    const { user, backend } = await setup()
+    backend.state.callAnswer = () => "badRequest"
+
+    await press(user, "Non risponde")
+
+    await screen.findByText(
+      "Il server ha rifiutato la richiesta: la chiamata non è registrata. Ricarica la pagina e riprova."
+    )
+    expect(screen.queryByText(UNCERTAIN)).toBeNull()
     await waitFor(() =>
       expect(trigger().getAttribute("aria-busy")).toBe("false")
     )

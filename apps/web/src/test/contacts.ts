@@ -1,5 +1,5 @@
 import { Effect, Layer } from "effect"
-import { HttpApiBuilder } from "effect/http-api"
+import { HttpApiBuilder, HttpApiError } from "effect/http-api"
 import { MitoApi } from "@mito/contract/api"
 import {
   AlertConfirmationRequired,
@@ -124,8 +124,12 @@ export type ChangeAnswer =
   | "alert"
   | "down"
 
-/** How the backend answers a write of the detail: saved by default */
-export type WriteAnswer<E> = { saved: true } | { rejected: E } | "down"
+/**
+ * How the backend answers a write of the detail: saved by default. "down" is
+ * a 500; "badRequest" a 400 the endpoint doesn't declare (an older server)
+ */
+export type WriteAnswer<E> =
+  { saved: true } | { rejected: E } | "down" | "badRequest"
 
 /** What the detail sent, as the backend received it */
 export type PriorityChange = { taskId: number; priority: PriorityBand | "auto" }
@@ -247,6 +251,9 @@ export function fakeContacts(
           record()
           const result = answer()
           if (result === "down") return Effect.die("backend down")
+          if (result === "badRequest") {
+            return Effect.die(HttpApiError.BadRequest.singleton)
+          }
           if ("rejected" in result) return Effect.fail(result.rejected)
           return Effect.sync(save)
         })

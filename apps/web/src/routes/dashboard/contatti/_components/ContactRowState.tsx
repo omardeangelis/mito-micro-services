@@ -30,6 +30,7 @@ import { romeDay } from "@mito/domain/contact/time"
 import { type ContactRow, type TaskStatus } from "@mito/contract/task"
 import { type ApiFailure, describeApiError } from "@/api/errors"
 import {
+  CALL_REFUSED,
   type RegisterCallInput,
   useChangeState,
   useRegisterCall,
@@ -192,12 +193,13 @@ export function ContactRowState({
         finishAfterRefresh()
         return
       }
-      if (result.kind === "uncertain") {
-        // Not said as «not registered»: the contact is read again (AC15, the
-        // `onSettled` of `useRegisterCall`), but the lock ends now, with the
-        // outcome, not when that read answers (AC33)
-        toast.error("", { duration: 8000, description: UNCERTAIN })
-        if (press.outcome === "richiamare") setPanelError(UNCERTAIN)
+      if (result.kind === "uncertain" || result.kind === "refused") {
+        // An uncertain one is not said as «not registered»: the contact is
+        // read again (AC15, the `onSettled` of `useRegisterCall`), but the
+        // lock ends now, with the outcome, not when that read answers (AC33)
+        const text = result.kind === "uncertain" ? UNCERTAIN : CALL_REFUSED
+        toast.error("", { duration: 8000, description: text })
+        if (press.outcome === "richiamare") setPanelError(text)
         fail()
         settle()
         return
@@ -348,6 +350,8 @@ export function ContactRowState({
         value={contact.state}
         alertDay={alertDay}
         pending={pending}
+        // A call says it in the cell itself, whatever the outcome (AC33)
+        pendingText={sendingOutcome === null ? undefined : "Registro…"}
         triggerRef={triggerRef}
         describedBy={describedBy}
         onChange={(toState) => {

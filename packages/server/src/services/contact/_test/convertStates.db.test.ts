@@ -11,7 +11,12 @@ import { taskEventLog } from "@mito/db/schema/taskEventLog"
 import { convertContactStates } from "../convertStates"
 import { migrateUpTo, resetDb, testDb } from "@/test/db"
 import { failureTag, provideServer } from "@/test/effect"
-import { beforeNextLockOf } from "@/test/failpoint"
+import { reportedErrors } from "@/test/errorReporter"
+import {
+  afterNextWriteTo,
+  beforeNextLockOf,
+  failNextUpdateOf,
+} from "@/test/failpoint"
 import {
   createAlert,
   createCustomer,
@@ -32,10 +37,10 @@ const LONG_AGO = new Date("2026-01-01T00:00:00.000Z")
 
 const given = <A>(setup: () => Promise<A>) => Effect.promise(setup)
 
-/** A run of the conversion at NOW, with time to spare. */
-const convert = () =>
+/** A run of the conversion at `at` (NOW), with time to spare. */
+const convert = (at: Date = NOW) =>
   Effect.gen(function* () {
-    yield* TestClock.setTime(NOW.getTime())
+    yield* TestClock.setTime(at.getTime())
     const exit = yield* convertContactStates({ budgetMs: 60_000 }).pipe(
       provideServer,
       Effect.exit
@@ -332,6 +337,66 @@ describe("convertContactStates: le regole del secondo passo (AC31)", () => {
         })
       })
   )
+
+  it.effect(
+    "il giorno è quello di Roma: alle 00:30 a Roma (23:30 UTC) un alert di oggi a Roma è scaduto o di oggi, uno di domani a Roma è futuro",
+    () =>
+      Effect.gen(function* () {
+        const operator = yield* given(() => createOperator())
+        // 00:30 of 3 November in Rome, still 2 November in UTC
+        const lateNight = new Date("2026-11-02T23:30:00.000Z")
+        // 00:10 of 3 November in Rome (today), 2 November in UTC
+        const todayInRome = yield* contactOf(operator, "nessuno", {
+          alertAt: new Date("2026-11-02T23:10:00.000Z"),
+        })
+        // 00:15 of 4 November in Rome (tomorrow), 3 November in UTC
+        const tomorrowInRome = yield* contactOf(operator, "nessuno", {
+          alertAt: new Date("2026-11-03T23:15:00.000Z"),
+        })
+
+        expect(yield* convert(lateNight)).toEqual({
+          ...nothing,
+          futureAlert: 1,
+          dueAlert: 1,
+        })
+        expect(yield* taskRow(todayInRome.contact.id)).toMatchObject({
+          state: "chiamare",
+        })
+        expect(yield* taskRow(tomorrowInRome.contact.id)).toMatchObject({
+          state: "richiamare",
+        })
+      })
+  )
+
+  it.effect(
+    "un alert aperto di un altro contatto, a cui punta alert_id, non è l'alert aperto del contatto",
+    () =>
+      Effect.gen(function* () {
+        const operator = yield* given(() => createOperator())
+        // The alert is open, future and the alert of its own active contact
+        const owner = yield* contactOf(operator, "richiamare", {
+          alertAt: FUTURE,
+        })
+        const { contact } = yield* contactOf(operator, "richiamare")
+        yield* given(() =>
+          testDb
+            .update(task)
+            .set({ alertId: owner.open!.id })
+            .where(eq(task.id, contact.id))
+        )
+
+        expect(yield* convert()).toEqual({ ...nothing, noAlert: 1 })
+        expect(yield* taskRow(contact.id)).toMatchObject({
+          state: "non risponde",
+        })
+        expect(yield* taskRow(owner.contact.id)).toMatchObject({
+          state: "richiamare",
+        })
+        expect(yield* alertRow(owner.open!.id)).toMatchObject({
+          isResolved: false,
+        })
+      })
+  )
 })
 
 describe("convertContactStates: gli alert orfani (AC31 primo passo, AC23)", () => {
@@ -397,6 +462,35 @@ describe("convertContactStates: gli alert orfani (AC31 primo passo, AC23)", () =
         expect(yield* taskRow(contact.id)).toMatchObject({
           state: "richiamare",
           alertId: linked!.id,
+        })
+      })
+  )
+
+  it.effect(
+    "lascia aperto un alert orfano il cui contatto torna attivo mentre la conversione aspetta il lock",
+    () =>
+      Effect.gen(function* () {
+        const operator = yield* given(() => createOperator())
+        const { contact, open } = yield* contactOf(operator, "richiamare", {
+          alertAt: FUTURE,
+          isActive: false,
+        })
+        // A colleague reopens the contact, committed after the conversion
+        // read the orphans and before it got the customer's lock
+        beforeNextLockOf(
+          customers,
+          `UPDATE "mito-deutsche_task" SET is_active = true WHERE id = ${contact.id}`
+        )
+
+        expect(yield* convert()).toEqual(nothing)
+        expect(yield* alertRow(open!.id)).toMatchObject({
+          isResolved: false,
+          resolution: null,
+        })
+        expect(yield* taskRow(contact.id)).toMatchObject({
+          state: "richiamare",
+          isActive: true,
+          alertId: open!.id,
         })
       })
   )
@@ -467,6 +561,74 @@ describe("convertContactStates: concorrenza e lock (AC32)", () => {
           legacyErogata: 1,
         })
       })
+  )
+
+  it.effect(
+    "ogni UPDATE ricontrolla la regola: un contatto cambiato dopo la lettura sotto il lock resta com'è",
+    () =>
+      Effect.gen(function* () {
+        const operator = yield* given(() => createOperator())
+        const { customer, contact: followup } = yield* contactOf(
+          operator,
+          "followup",
+          { isActive: false }
+        )
+        const erogata = yield* given(() =>
+          createTask({
+            customerId: customer.id,
+            operatorId: operator.id,
+            state: "erogata",
+            isActive: false,
+          })
+        )
+        // Both contacts are read under the lock; the first UPDATE (rule 4)
+        // runs this, so the one of rule 5 finds the contact no longer erogata
+        yield* given(() =>
+          afterNextWriteTo(
+            task,
+            "UPDATE",
+            `UPDATE "mito-deutsche_task" SET state = 'app.to' WHERE id = ${erogata.id}`
+          )
+        )
+
+        expect(yield* convert()).toEqual({ ...nothing, legacyToCall: 1 })
+        expect(yield* taskRow(followup.id)).toMatchObject({
+          state: "chiamare",
+        })
+        expect(yield* taskRow(erogata.id)).toMatchObject({ state: "app.to" })
+      })
+  )
+})
+
+describe("convertContactStates: un cliente che fallisce", () => {
+  it.effect("conta il cliente fallito, lo riporta e converte gli altri", () =>
+    Effect.gen(function* () {
+      const operator = yield* given(() => createOperator())
+      // Three customers, taken in the order of their ids
+      const followup = yield* contactOf(operator, "followup")
+      const broken = yield* contactOf(operator, "followup")
+      const erogata = yield* contactOf(operator, "erogata")
+      yield* given(() => failNextUpdateOf(task, { id: broken.contact.id }))
+
+      expect(yield* convert()).toEqual({
+        ...nothing,
+        legacyToCall: 1,
+        legacyErogata: 1,
+        failed: 1,
+      })
+      expect(yield* taskRow(followup.contact.id)).toMatchObject({
+        state: "chiamare",
+      })
+      expect(yield* taskRow(broken.contact.id)).toMatchObject({
+        state: "followup",
+      })
+      expect(yield* taskRow(erogata.contact.id)).toMatchObject({
+        state: "caricato",
+      })
+      expect(reportedErrors.map(({ data }) => data)).toEqual([
+        { customerId: broken.customer.id },
+      ])
+    })
   )
 })
 

@@ -96,6 +96,18 @@ describe("useRegisterCall", () => {
     expect(backend.state.calls).toHaveLength(1)
   })
 
+  it("un 400 che l'endpoint non dichiara è un rifiuto, non un esito incerto", async () => {
+    const { backend, user } = setup()
+    backend.state.callAnswer = () => "badRequest"
+    await screen.findByText("state: chiamare")
+
+    await user.click(screen.getByRole("button", { name: "Appuntamento" }))
+
+    await screen.findByText("kind: refused")
+    expect(screen.getByText("pending: false")).toBeTruthy()
+    expect(backend.state.calls).toHaveLength(1)
+  })
+
   it("nessun altro testo d'errore a schermo: né toast né errore della mutation (AC15)", async () => {
     const { backend, user } = setup()
     backend.state.callAnswer = () => "down"

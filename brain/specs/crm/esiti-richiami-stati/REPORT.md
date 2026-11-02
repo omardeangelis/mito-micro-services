@@ -50,21 +50,21 @@ Al primo giro il verdetto era **DO NOT SHIP**: 1 BLOCKER (v13) e 4 MAJOR (v6, v7
 | MAJOR | v6 — macchina degli stati | `packages/contract/src/task.ts` (`BulkHandleTask.state`) | L'assegnazione massiva via `HttpApi` scriveva qualsiasi stato del payload, compresi `followup` e un `richiamare` senza alert (AC3, AC25). | **Corretto:** `Schema.Literal("chiamare")` nel contratto, `z.literal("chiamare")` in tRPC e nell'azione Next. Un test HTTP nuovo e un test tRPC riscritto controllano che un altro stato sia rifiutato e che non si scriva niente. | no |
 | MAJOR | v9 — dati del web | `apps/web/src/api/task.ts` (`useRegisterCall`, `useRemoveCallback`) | Offline, TanStack metteva in pausa la mutation: restava «Registro…» senza il testo di AC15, e la mutation partiva da sola al ritorno della rete (AC15, D5). | **Corretto:** `networkMode: "always"`. Test con `onlineManager.setOnline(false)`: c'è l'esito incerto e nessun invio dopo `setOnline(true)`. | no |
 | MAJOR | v9 — dati del web | `apps/web/src/routes/dashboard/contatti/_components/ContactRowState.tsx` | Dopo un esito incerto la riga restava bloccata finché la lista non si rileggeva, cioè a lungo o per sempre se il backend non risponde (AC33). | **Corretto:** `fail(); settle()` sblocca subito. La rilettura la fa `onSettled` della mutation. Test con la lista che non risponde mai. Era rosso prima. | no |
-| MINOR | v2 — conversione | `apps/api/src/cron/jobs.ts:193-201` | Un giro parziale (`ConversionLeft`) perde i conteggi di quello che ha convertito. Il controllo del rilascio in `migrazione-gcp.md` li confronta con quelli attesi. | Mettere i conteggi in `ConversionLeft` o scriverli nel log prima di fallire. **Da fare prima del rilascio in produzione.** | yes |
-| MINOR | v2 — conversione | `convertStates.ts:63,110,153,195` | I test non uccidono i mutanti su ricontrollo della regola nell'UPDATE, giorno di Roma e ricontrollo dell'orfano sotto il lock. | Test con failpoint e un caso alle 23:30Z. | yes |
+| MINOR | v2 — conversione | `apps/api/src/cron/jobs.ts:193-201` | Un giro parziale (`ConversionLeft`) perde i conteggi di quello che ha convertito. Il controllo del rilascio in `migrazione-gcp.md` li confronta con quelli attesi. | Mettere i conteggi in `ConversionLeft` o scriverli nel log prima di fallire. | no: **corretto** dopo la review (vedi sotto) |
+| MINOR | v2 — conversione | `convertStates.ts:63,110,153,195` | I test non uccidono i mutanti su ricontrollo della regola nell'UPDATE, giorno di Roma e ricontrollo dell'orfano sotto il lock. | Test con failpoint e un caso alle 23:30Z. | no: **corretto** dopo la review |
 | MINOR | v2 — conversione | `convertStates.ts:72-74` | La regola 2 porta a Da chiamare un `richiamare` attivo con alert di oggi o scaduto, senza riga nel registro. AC4 lo lascerebbe al passaggio notturno. È un'ambiguità della spec. | Escludere `richiamare` dalla regola 2, o scrivere la scelta nella spec. | yes |
-| MINOR | v2 — conversione | `apps/api/src/cron/_test` | Nessun test copre il job `convert-contact-states` (`ConversionLeft`, `rerunnable`) o un cliente che fallisce. | Un caso in `cron.db.test.ts`. | yes |
+| MINOR | v2 — conversione | `apps/api/src/cron/_test` | Nessun test copre il job `convert-contact-states` (`ConversionLeft`, `rerunnable`) o un cliente che fallisce. | Un caso in `cron.db.test.ts`. | no: **corretto** dopo la review |
 | MINOR | v1 — migrazioni | `apps/api/gcp/deploy-staging.sh` | Se il deploy fallisce dopo le migrazioni, `calls_registry` è già scritto e la revisione vecchia non conta più le chiamate fino al deploy seguente. | Una riga nelle note di rilascio: rifare il deploy, o ripristinare il backup. | yes |
-| MINOR | v3 — passaggio notturno | `processDueAlerts.ts:72-83` | I quattro controlli dell'UPDATE condizionale si possono togliere senza che un test fallisca. Il codice è giusto: una prova esterna con `beforeNextLockOf` li uccide tutti. | Aggiungere i cinque casi `beforeNextLockOf` a `processDueAlerts.db.test.ts`. | yes |
-| MINOR | v4 — registerCall | `registerCall.ts:134-151` | Nessun test `.pg` con due invii concorrenti dello stesso `requestId`. | Un `*.pg.test.ts` che ferma la prima transazione dopo il lock. | yes |
+| MINOR | v3 — passaggio notturno | `processDueAlerts.ts:72-83` | I quattro controlli dell'UPDATE condizionale si possono togliere senza che un test fallisca. Il codice è giusto: una prova esterna con `beforeNextLockOf` li uccide tutti. | Aggiungere i cinque casi `beforeNextLockOf` a `processDueAlerts.db.test.ts`. | no: **corretto** dopo la review |
+| MINOR | v4 — registerCall | `registerCall.ts:134-151` | Nessun test `.pg` con due invii concorrenti dello stesso `requestId`. | Un `*.pg.test.ts` che ferma la prima transazione dopo il lock. | no: **corretto** dopo la review |
 | MINOR | v4 — registerCall | `registerCall.ts:89-91` | La ripetizione di un invio rifiutato si ricontrolla sul contatto com'è adesso, quindi non è sempre «la stessa risposta del primo arrivo» (AC11). | Scriverlo nel commento o accettarlo. Il web non ripete (AC15). | yes |
-| MINOR | v6 — macchina degli stati | `bulkHandleTask.ts:122-126` | La massiva chiude l'alert confermato anche se nel frattempo è diventato di oggi (conferma la sera, invio dopo mezzanotte). | Chiudere solo se l'alert è ancora futuro, o confermare gli id degli alert. | yes |
+| MINOR | v6 — macchina degli stati | `bulkHandleTask.ts:122-126` | La massiva chiude l'alert confermato anche se nel frattempo è diventato di oggi (conferma la sera, invio dopo mezzanotte). | Chiudere solo se l'alert è ancora futuro, o confermare gli id degli alert. | no: accettato da Omar (2026-11-02): di notte nessuno lavora |
 | MINOR | v6 — macchina degli stati | `changeState.ts:77` | Un valore vecchio salvato, mandato come lo stato che mostra (`erogata` → `caricato`), è rifiutato invece di essere un no-op. La UI non può farlo e la conversione toglie quei valori. | Confrontare `toContactState(from)`. | yes |
 | MINOR | v6 — macchina degli stati | `queries.ts:69-78` | Il dialogo della massiva chiede conferma anche per contatti in coda con alert futuro, e il server poi la ignora. Succede solo con dati fuori da AC4. | Filtrare anche per stato. | yes |
 | MINOR | v8 — conteggi | `callStats.ts` (`innerJoin(operators)`) | Una chiamata con l'attore nullo o mancante non conta nell'export e in Analisi, ma si vede nello Storico. È preesistente. | Controllare che in prod non ci siano righe così. | yes |
-| MINOR | v8 — conteggi | `callStats.perf.pg.test.ts` | La prova di carico di T9 non è stata fatta, quindi il costo dell'`OR` di `isCallIn` non è misurato. | Farla prima del rilascio. | yes |
-| MINOR | v9, v11 — dati e interazioni | `ContactStateSelect.tsx`, `ContactRowState.tsx` | Nella lista, per Non risponde, Appuntamento e Non interessato non compare il testo «Registro…», solo lo spinner sul trigger. Il blocco funziona. | Scegliere se basta lo spinner (e scriverlo) o aggiungere il testo. | yes |
-| MINOR | v9 — dati del web | `task.ts:227-229` | Un 4xx non dichiarato (per esempio un errore di schema con un server vecchio) diventa «esito incerto». | Trattare ogni 4xx come rifiuto generico, o scrivere la scelta. | yes |
+| MINOR | v8 — conteggi | `callStats.perf.pg.test.ts` | La prova di carico di T9 non è stata fatta, quindi il costo dell'`OR` di `isCallIn` non è misurato. | Farla prima del rilascio. | no: **fatta** dopo la review, 25,6 ms |
+| MINOR | v9, v11 — dati e interazioni | `ContactStateSelect.tsx`, `ContactRowState.tsx` | Nella lista, per Non risponde, Appuntamento e Non interessato non compare il testo «Registro…», solo lo spinner sul trigger. Il blocco funziona. | Scegliere se basta lo spinner (e scriverlo) o aggiungere il testo. | no: **corretto** dopo la review |
+| MINOR | v9 — dati del web | `task.ts:227-229` | Un 4xx non dichiarato (per esempio un errore di schema con un server vecchio) diventa «esito incerto». | Trattare ogni 4xx come rifiuto generico, o scrivere la scelta. | no: **corretto** dopo la review |
 | MINOR | v11 — interazioni | `ContactCallSection.tsx:108`, `ContactRowState.tsx` | Dopo un rifiuto del caso 7, «Sostituisce il richiamo del …» può mostrare per un giro l'alert vecchio. Il server si corregge. | Azzerare `current` quando cambia l'alert. | yes |
 | MINOR | v11 — interazioni | `apps/web/src/test/contacts.ts` | I falsi di `changeState` e `removeCallback` non seguono il server: alert, `selectorTargets`, no-op, storico delle chiusure. | Allineare i falsi. | yes |
 | MINOR | v12 — UI | `ContactCallSection.tsx:33` | Nel dettaglio gli esiti e il riquadro dicono «Nome Cognome», mentre l'intestazione e la lista dicono «Cognome Nome». | Usare `customerNameOf`. | yes |
@@ -124,7 +124,7 @@ Al primo giro il verdetto era **DO NOT SHIP**: 1 BLOCKER (v13) e 4 MAJOR (v6, v7
    - il risultato non deve dare `ConversionLeft`;
    - un secondo lancio deve dare tutti zeri.
 4. **Prova nel browser su staging:** una chiamata per ogni esito dal dettaglio e dalla lista; Storico e «Contattato il»; «Togli il richiamo»; l'ordine della lista dopo un Appuntamento (sotto i Non risponde).
-5. **Prima del rilascio in produzione:** i conteggi del giro parziale (v2 MINOR); la prova di carico `callStats.perf.pg.test.ts` (v8); l'avviso a Rosario che chiamate e tassi salgono (OQ5).
+5. **Prima del rilascio in produzione:** l'avviso a Rosario che chiamate e tassi salgono (OQ5). I conteggi del giro parziale e la prova di carico sono chiusi (sotto).
 6. **Approvazione dell'unione:** Omar.
 
 ## Acceptance criteria check (case B)
@@ -165,11 +165,24 @@ Al primo giro il verdetto era **DO NOT SHIP**: 1 BLOCKER (v13) e 4 MAJOR (v6, v7
 | AC32 | Met | v2. |
 | AC33 | Met | v9 dopo la correzione della riga; v11. Nella lista c'è lo spinner, senza il testo «Registro…», per tre esiti: MINOR. |
 
+## Dopo la review (2026-11-02)
+
+Su richiesta di Omar, dopo il verdetto, sono stati chiusi altri rilievi. Ogni test nuovo fallisce sul mutante o sulla versione senza correzione che il verificatore aveva indicato. I gate sono verdi: unit e db 5179, pg 118, web 1832, i build di web e api.
+
+- **Conteggi della conversione (v2):** `ConversionLeft` porta `counters`, e un giro fallito li registra in `cron_run.counters` e nel riepilogo (`apps/api/src/cron/routes.ts`). Il runbook in [[chore/migrazione-gcp]] dice di sommarli fra i giri.
+- **Test della conversione (v2):** ricontrollo della regola nell'UPDATE, giorno di Roma alle 23:30Z, alert orfano il cui contatto torna attivo prima del lock, alert di un altro contatto, un cliente fallito che non ferma gli altri. Nel cron ci sono anche il job riuscito e quello parziale, con i conteggi registrati e il rilancio dello stesso giorno. Il caso `remaining > 0` attraverso la route non è provato, perché il budget non si può pilotare da lì.
+- **Corse nel passaggio notturno (v3):** cinque casi `beforeNextLockOf`. Ognuna delle quattro condizioni dell'UPDATE ha un test che fallisce se si toglie.
+- **Doppio invio concorrente (v4):** `registerCall.pg.test.ts`, due invii con lo stesso `requestId` in coda sul lock del cliente. Fallisce se si toglie il lock o se si sposta la ricerca prima del lock.
+- **Prova di carico (v8):** `callStats.perf.pg.test.ts` ora copre tutti e due i rami di `isCallIn`, con la pietra miliare a metà periodo. Su 100.000 righe la mediana è 25,6 ms, contro un limite di 500.
+- **«Registro…» nella lista (v9, v11):** la cella dice «Registro…» al posto dello stato durante l'invio, per ogni esito.
+- **4xx non dichiarato (v9):** diventa `refused` e dice «Il server ha rifiutato la richiesta: la chiamata non è registrata. Ricarica la pagina e riprova.», sia nel dettaglio sia nella lista. Non è più un esito incerto.
+- **Massiva a mezzanotte (v6):** accettata. Di notte nessuno lavora, quindi conferma e invio non si dividono a cavallo del giorno.
+
 ## Feature-improvement candidates
 
 None.
 
 ## Notes for docs-maintenance
 
-- Durable findings to fold into `brain/tech-debt/crm/esiti-richiami-stati.md`: tutte le righe MINOR con «Durable? yes». Per prime i conteggi del giro parziale e la prova di carico, che vanno fatti prima della produzione.
+- Durable findings to fold into `brain/tech-debt/crm/esiti-richiami-stati.md`: le righe MINOR con «Durable? yes». Quelle corrette o accettate dopo la review dicono «no».
 - Domain pages that should backlink this review: le pagine di flusso e di concetto di `crm` su stati, chiamate e alert, quando la spec viene ingerita.

@@ -28,11 +28,16 @@ export class AlertsLeft extends Schema.TaggedError<AlertsLeft>()("AlertsLeft", {
 
 /**
  * The conversion left customers to a next run: some failed, or the budget ran
- * out. The run fails, so a "Force run" takes them the same day.
+ * out. The run fails, so a "Force run" takes them the same day. `counters`
+ * holds what it did convert, which the run records and reports anyway.
  */
 export class ConversionLeft extends Schema.TaggedError<ConversionLeft>()(
   "ConversionLeft",
-  { failed: Schema.Number, remaining: Schema.Number }
+  {
+    failed: Schema.Number,
+    remaining: Schema.Number,
+    counters: Schema.Record(Schema.String, Schema.Number),
+  }
 ) {}
 
 export type CronJob = {
@@ -196,7 +201,11 @@ export const cronJobs: Record<string, CronJob> = {
       })
       if (counts.failed > 0 || counts.remaining > 0) {
         const { failed, remaining } = counts
-        return yield* new ConversionLeft({ failed, remaining })
+        return yield* new ConversionLeft({
+          failed,
+          remaining,
+          counters: counts,
+        })
       }
       return counts
     }),

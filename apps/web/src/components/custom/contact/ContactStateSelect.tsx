@@ -20,6 +20,8 @@ type ContactStateSelectProps = {
   onChange: (state: ContactState) => void
   /** A change is being saved: the trigger stays focusable but opens nothing. */
   pending?: boolean
+  /** Shown in the trigger in place of the state while `pending` («Registro…») */
+  pendingText?: string
   triggerRef?: React.Ref<HTMLButtonElement>
   /**
    * The id of an element that says what the selector is about, such as the
@@ -51,6 +53,7 @@ export function ContactStateSelect({
   alertDay = null,
   onChange,
   pending = false,
+  pendingText,
   triggerRef,
   describedBy,
   onOutcome,
@@ -86,7 +89,11 @@ export function ContactStateSelect({
           data-contact-state-trigger=""
           className="w-40 justify-between px-3"
         >
-          <TaskStatusBadge status={value ?? "nessuno"} alertDay={alertDay} />
+          {pending && pendingText ? (
+            <span className="text-sm text-muted-foreground">{pendingText}</span>
+          ) : (
+            <TaskStatusBadge status={value ?? "nessuno"} alertDay={alertDay} />
+          )}
           {pending ? (
             <LoadingSpinner className="h-4 w-4 shrink-0 motion-reduce:animate-none" />
           ) : (

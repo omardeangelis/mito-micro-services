@@ -44,6 +44,14 @@ updated: 2026-11-02
   - **web offline:** `networkMode: "always"` su `useRegisterCall` e `useRemoveCallback` (AC15, D5);
   - **riga della lista:** sbloccata subito dopo l'esito incerto (AC33);
   - **riquadro Richiamare:** senza animazione con reduced motion.
+- Dopo la review, su richiesta di Omar:
+  - i conteggi di un giro parziale della conversione sono registrati;
+  - ci sono i test mancanti di conversione, passaggio notturno e doppio invio concorrente, e ognuno uccide il suo mutante;
+  - la prova di carico dà una mediana di 25,6 ms;
+  - la lista dice «Registro…» per ogni esito;
+  - un 4xx non dichiarato è un rifiuto.
+
+  Omar ha accettato la massiva a cavallo della mezzanotte, perché di notte nessuno lavora. Dettagli in [[specs/crm/esiti-richiami-stati/REPORT]] → Dopo la review.
 
 ## Sanity Checks
 
@@ -53,6 +61,7 @@ updated: 2026-11-02
 | `pnpm run test --run --project db` | 1839 passati | |
 | `pnpm web:test` | 1830 passati, 125 file | |
 | `pnpm web:lint`, `pnpm web:build` | OK | |
+| Dopo la review: `pnpm run test --run`, `--project pg` (Postgres 15 temporaneo), `pnpm web:test`, `web:lint`, `web:build`, `api:build` | 5179, 118, 1832 passati; lint e build OK | prova di carico con `PERF=1`: mediana 25,6 ms |
 | `pnpm exec tsc --noEmit` | 0 errori nei sorgenti | gli errori rimasti vengono da una `.next` locale vecchia, ignorata da git |
 | `next lint` | non eseguito qui | conflitto del plugin `prettier` fra due `.eslintrc.cjs` (il worktree è dentro il repo); ESLint con `--no-eslintrc -c .eslintrc.cjs` sui file cambiati è pulito; vale la CI |
 
@@ -65,7 +74,7 @@ updated: 2026-11-02
 ## Remaining Work
 
 - La checklist umana di [[specs/crm/esiti-richiami-stati/REPORT]]: gate di CI; migrazioni contro `dev` all'unione; staging (migrazioni, `convert-contact-states`, prova nel browser); approvazione di Omar.
-- Prima del rilascio in produzione: i conteggi del giro parziale della conversione, la prova di carico `callStats.perf.pg.test.ts` e l'avviso a Rosario.
+- Prima del rilascio in produzione: l'avviso a Rosario.
 - I MINOR durevoli della review entrano nel debito con `docs-maintenance`.
 
 ## Note per la PR
