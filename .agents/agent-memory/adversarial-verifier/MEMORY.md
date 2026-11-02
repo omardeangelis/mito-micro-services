@@ -174,3 +174,5 @@
 - [Status-keyed errors, table widths](feedback_status_keyed_errors_and_sibling_table_width.md) — errors routed by HTTP status vs contract errors; action column of every table at min width
 - [Async focus, sticky messages](feedback_async_focus_and_sticky_message_probes.md) — async focus vs focus-trapping popovers; failure texts vs foreign rereads; locale digits
 - [Tracking default, reload window](feedback_tracking_default_and_reload_window.md) — untouched fields that follow a moving bound; reload during an in-flight write
+- [State invariant matrix](feedback_state_invariant_matrix.md) — for state-machine specs: action x state matrix, "doesn't close" lists, rejection precedence, conversion replay
+- [Embedded conversion, cutover](feedback_plan_embedded_conversion_and_cutover.md) — conversion in nightly job vs its ACs; manual-job cutover window

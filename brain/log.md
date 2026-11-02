@@ -12,6 +12,22 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 
 <!-- Entries are appended by create-spec (spec creation) and docs-maintenance (ingest). Format:
 
+## [2026-11-02] plan | Esiti, richiami e stati del contatto
+- Created plan: [[specs/crm/esiti-richiami-stati/PLAN]]: 20 task in 10 onde, una PR verso `dev`, ogni task con `tsc` verde su tutti i pacchetti
+- Decisioni tecniche D1–D18; D1 (prima la PR di `claude/personas` in `dev`, poi il branch) aspetta la conferma di Omar
+- Scelte chiave: `registerCall` e `removeCallback` solo `HttpApi`; un `requestId` per pressione senza ritentativi nel browser; entrata in uso scritta da una migrazione (`calls_registry`); conversione come job lanciato a mano, fuori dal passaggio notturno; le funzioni vecchie del dominio restano per Next
+- Verifica: tre giri, DO NOT SHIP → correzioni (contratto spezzato per task, Next che compila, reset dei test) → ultimo major corretto come indicato dal revisore
+
+## [2026-11-02] spec | Esiti, richiami e stati del contatto
+- Created spec: [[specs/crm/esiti-richiami-stati/SPEC]] (33 AC, 7 domande aperte con default), D1 + D2 + D6 di [[chore/crm/design-home-e-richiami]], prerequisito di [[specs/crm/home-operatore/SPEC]] e [[specs/crm/home-admin/SPEC]]
+- Domain: crm
+- Status: Draft
+- Sei stati con etichette italiane, «Registra chiamata» con quattro esiti e rifiuti in ordine (prima «già lavorato»), l'alert scaduto aperto finché non si lavora, il selettore ridotto a «Pratica caricata» (che chiude l'alert) e alla riapertura, l'assegnazione massiva senza `followup`, chiamate e tassi uguali ovunque, conversione in due passi (prima gli alert orfani, poi i contatti) che si può rilanciare
+- Scelta di Omar: il dettaglio e la lista riusano i pulsanti della home dell'operatore, senza prototipo; l'import resta in home-admin. Nessuna revisione UX o UI, nessun `FLOW.md`
+- Verifica: tre passaggi, l'ultimo SHIP. Il primo ha trovato «Pratica caricata» che lasciava l'alert aperto, i rifiuti senza ordine e la conversione che saltava dei contatti
+- Scelte di Omar su OQ6 e OQ7: la «X» apre «Togli il richiamo», che chiede il nuovo stato esplicitamente e non è una chiamata; «Contattato il» è l'ora dell'ultima chiamata, Non risponde compreso. Verifica mirata: SHIP
+- Domande 1–5 chiuse con i default (Omar, «Sì, i default»); la 5 (dire a Rosario che i numeri salgono) resta un compito prima del rilascio
+
 ## [2026-11-02] spec | Home: revisioni ux-advisor e ui-reviewer integrate
 - [[specs/crm/home-operatore/SPEC]]: da 40 a 52 AC, nuovo [[specs/crm/home-operatore/FLOW]]. Prima, cinque modifiche al prototipo «Lavora da qui», approvate da Omar: la riga lavorata resta al suo posto chiusa (il doppio clic registrava l'esito sul cliente seguente), la bozza di «Richiamare» resta, il riquadro si apre a sinistra, il link «Vedi le chiamate», le colonne con il telefono sotto il nome (Cliente era larga 0 px a 1024). Verifica: quattro passaggi, l'ultimo SHIP
 - [[specs/crm/home-admin/SPEC]]: da 36 a 50 AC, nuovo [[specs/crm/home-admin/FLOW]], prototipo «Wave in testa» non modificato. «Assegna» da una riga del team parte con «Quanti» vuoto, esito incerto con un solo messaggio e la stessa conferma contata una volta, contrasto della barra, colonna «Assegna» fissa. Verifica: sei passaggi, l'ultimo SHIP

@@ -75,6 +75,7 @@ Migrated from `docs/` on 2026-09-24. Source material for future `create-spec` ru
 | crm | [[specs/crm/toast-sonner/SPEC]] | Implemented (T11 aperto) |
 | crm | [[specs/crm/home-operatore/SPEC]] | Draft (mappa: [[specs/crm/home-operatore/FLOW]]) |
 | crm | [[specs/crm/home-admin/SPEC]] | Draft (mappa: [[specs/crm/home-admin/FLOW]]) |
+| crm | [[specs/crm/esiti-richiami-stati/SPEC]] | Draft |
 
 - [[specs/crm/crm-specs|crm-specs]] — CRM spec page map
 
