@@ -185,7 +185,9 @@ export function CallbackPanel({
         side="left"
         align="center"
         collisionPadding={8}
-        className="w-auto p-3"
+        // With reduced motion it appears and goes at once: no fade, zoom or
+        // slide of the popover
+        className="w-auto p-3 motion-reduce:data-[state=closed]:animate-none motion-reduce:data-[state=open]:animate-none"
         ref={contentRef}
         // A dialog named by its title (AC46 of home-operatore)
         aria-labelledby={titleId}

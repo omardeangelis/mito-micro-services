@@ -38,6 +38,18 @@ describe("CallOutcomes", () => {
     expect(screen.getByText("Sostituisce il richiamo del 14/11")).toBeTruthy()
   })
 
+  it("con reduced motion il riquadro appare e sparisce senza animazione", async () => {
+    render(
+      <CallOutcomes customer="Mario Rossi" now={now} onOutcome={vi.fn()} />
+    )
+
+    await openPanel()
+
+    const panel = screen.getByRole("dialog").getAttribute("class")
+    expect(panel).toContain("motion-reduce:data-[state=open]:animate-none")
+    expect(panel).toContain("motion-reduce:data-[state=closed]:animate-none")
+  })
+
   it("senza alert da sostituire non mostra la riga", async () => {
     render(
       <CallOutcomes customer="Mario Rossi" now={now} onOutcome={vi.fn()} />

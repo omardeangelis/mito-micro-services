@@ -108,6 +108,34 @@ describe("getContacts: order by priority (AC5, D13)", () => {
       })
   )
 
+  it.effect(
+    "the rest stays under Non risponde with the 120 a state change wrote",
+    () =>
+      Effect.gen(function* () {
+        const noReply = yield* Effect.promise(() =>
+          seed({ state: "non risponde", priority: 1 })
+        )
+        // createContact, changeState and the bulk write the key of Da chiamare;
+        // only the nightly refresh lowers it
+        const appointment = yield* Effect.promise(() =>
+          seed({ state: "app.to", priority: 120 })
+        )
+        const callback = yield* Effect.promise(() =>
+          seed({ state: "richiamare", priority: 120 })
+        )
+        yield* Effect.promise(() =>
+          createAlert({ taskId: callback.id, deadline: TOMORROW })
+        )
+
+        const result = yield* list()
+
+        expect(ids(result)[0]).toBe(noReply.id)
+        expect(ids(result).slice(1).sort()).toEqual(
+          [appointment.id, callback.id].sort()
+        )
+      })
+  )
+
   it.effect("drops out of the first group as soon as its alert closes", () =>
     Effect.gen(function* () {
       const call = yield* Effect.promise(() =>

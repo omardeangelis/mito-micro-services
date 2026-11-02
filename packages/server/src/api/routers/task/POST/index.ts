@@ -1,5 +1,4 @@
 import { adminProcedure, operatorProcedure } from "../../../trpc"
-import { taskStatus } from "@mito/db/schema/task"
 import { z } from "zod"
 import { runTrpc } from "../../../../effect/trpc"
 import { actorOf } from "../../../../services/contact/actor"
@@ -53,7 +52,8 @@ export const setCallback = operatorProcedure
 const bulkHandleTaskSchema = z.object({
   operatorId: z.number(),
   customerIds: z.array(z.string()),
-  state: z.enum(taskStatus).default("chiamare"),
+  // Always Da chiamare (esiti-richiami-stati AC25)
+  state: z.literal("chiamare").default("chiamare"),
   resolveAlertCustomerIds: z.array(z.string()).optional().default([]),
 })
 

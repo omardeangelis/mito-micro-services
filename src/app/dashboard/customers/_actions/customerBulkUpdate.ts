@@ -1,5 +1,4 @@
 "use server"
-import { taskStatus } from "@mito/db/schema/task"
 import { api } from "@/trpc/server"
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
@@ -9,7 +8,8 @@ const bulkAssignCustomersSchema = z
     operatorId: z.string().optional(),
     customerIds: z.string(),
     type: z.enum(["chiamate", "clienti"]).default("chiamate"),
-    callType: z.enum(taskStatus).optional(),
+    // The bulk creates only Da chiamare contacts (esiti-richiami-stati AC25)
+    callType: z.literal("chiamare").optional(),
     // CSV dei clienti per cui l'operatore ha confermato la rimozione dell'alert.
     resolveAlertCustomerIds: z.string().optional(),
   })

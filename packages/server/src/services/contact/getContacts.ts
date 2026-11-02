@@ -181,15 +181,16 @@ const buildContactsWhere = (
  * A manual priority keeps its value. The others take the key of their band:
  * an open alert due today or earlier 130, Da chiamare 120 (`followup`,
  * `nessuno` and no state included, AC31), Non risponde 100, and the stored
- * value for the rest, which stays under 100. `alertEnd` is the end of today
- * in Rome.
+ * value for the rest, capped at 99: a state change writes the key of Da
+ * chiamare (120) and only the nightly refresh lowers it. `alertEnd` is the
+ * end of today in Rome.
  */
 const sortPriority = (alertEnd: Date) => sql`CASE
   WHEN COALESCE(${task.customPriority}, false) THEN ${task.priority}
   WHEN ${alert.id} IS NOT NULL AND ${alert.deadline} < ${alertEnd.toISOString()}::timestamptz THEN 130
   WHEN ${task.state} IS NULL OR ${task.state} IN ('chiamare', 'followup', 'nessuno') THEN 120
   WHEN ${task.state} = 'non risponde' THEN 100
-  ELSE ${task.priority}
+  ELSE LEAST(${task.priority}, 99)
 END`
 
 /**

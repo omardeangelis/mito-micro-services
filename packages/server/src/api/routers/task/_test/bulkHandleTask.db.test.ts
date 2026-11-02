@@ -426,7 +426,7 @@ describe("task.bulkHandleTask (comportamento attuale)", () => {
     ])
   })
 
-  it("caso 3: con lo stesso stato già in corso non scrive state_change, solo operator_reassign", async () => {
+  it("crea solo contatti in Da chiamare: un altro stato è rifiutato e non cambia niente (AC25)", async () => {
     const { previousOperator, nextOperator, customer, caller } = await seed()
     const previous = await createTask({
       customerId: customer.id,
@@ -435,26 +435,21 @@ describe("task.bulkHandleTask (comportamento attuale)", () => {
       closedAt: CLOSED_AT,
     })
 
-    await caller.task.bulkHandleTask({
-      operatorId: nextOperator.id,
-      customerIds: [customer.id],
-      state: "app.to",
-    })
+    await expect(
+      caller.task.bulkHandleTask({
+        operatorId: nextOperator.id,
+        customerIds: [customer.id],
+        state: "app.to" as never,
+      })
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" })
 
     const [active] = await caller.task.getActiveTask({ id: customer.id })
     expect(active).toMatchObject({
+      id: previous.id,
       state: "app.to",
-      operatorId: nextOperator.id,
+      operatorId: previousOperator.id,
     })
-    expect(active!.id).not.toBe(previous.id)
-    expect(await logOf(customer.id)).toEqual([
-      expect.objectContaining({
-        action: "operator_reassign",
-        taskId: active!.id,
-        fromOperatorId: previousOperator.id,
-        toOperatorId: nextOperator.id,
-      }),
-    ])
+    expect(await logOf(customer.id)).toEqual([])
   })
 
   it("caso 3: con lo stesso operatore non scrive operator_reassign, solo state_change", async () => {

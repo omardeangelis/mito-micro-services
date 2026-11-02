@@ -193,11 +193,13 @@ export function ContactRowState({
         return
       }
       if (result.kind === "uncertain") {
-        // Not said as «not registered»: the contact is read again (AC15)
+        // Not said as «not registered»: the contact is read again (AC15, the
+        // `onSettled` of `useRegisterCall`), but the lock ends now, with the
+        // outcome, not when that read answers (AC33)
         toast.error("", { duration: 8000, description: UNCERTAIN })
         if (press.outcome === "richiamare") setPanelError(UNCERTAIN)
-        refresh()
-        awaitRefresh()
+        fail()
+        settle()
         return
       }
       const { error } = result

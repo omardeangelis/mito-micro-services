@@ -232,6 +232,10 @@ export const useRegisterCall = () => {
       }
     },
     retry: 0,
+    // Offline it is sent all the same and fails at once as uncertain: the
+    // default pauses it and sends it when the network is back, a resend the
+    // user never pressed (AC15, D5)
+    networkMode: "always",
     meta: { toastErrors: false },
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: taskKeys.all })
@@ -265,6 +269,8 @@ export const useRemoveCallback = () => {
           })
         })
       ),
+    // Offline it fails at once instead of waiting paused for the network
+    networkMode: "always",
     meta: { toastErrors: false },
   })
 }

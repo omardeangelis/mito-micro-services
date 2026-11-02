@@ -317,6 +317,24 @@ describe("i rifiuti e l'esito incerto (AC13, AC15)", () => {
     )
   })
 
+  it("dopo l'esito incerto il blocco finisce subito, anche se la lista non si rilegge", async () => {
+    const { user, backend } = await setup()
+    backend.state.callAnswer = () => "down"
+    // The list never answers again
+    backend.state.listGate = new Promise<void>(() => undefined)
+
+    await press(user, "Non risponde")
+
+    await screen.findByText(UNCERTAIN)
+    await waitFor(() =>
+      expect(trigger().getAttribute("aria-busy")).toBe("false")
+    )
+    await user.click(trigger())
+    expect(
+      await screen.findByRole("menuitem", { name: "Non risponde" })
+    ).toBeTruthy()
+  })
+
   it("per Richiamare un rifiuto lascia il riquadro aperto con la bozza e il motivo", async () => {
     const { user, backend } = await setup()
     backend.state.callAnswer = () => "down"

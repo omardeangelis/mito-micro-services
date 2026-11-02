@@ -1,5 +1,6 @@
 import { act, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
+import { onlineManager } from "@tanstack/react-query"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { CallAlreadyWorked } from "@mito/contract/errors"
 import { type TaskStatus } from "@mito/contract/task"
@@ -62,9 +63,25 @@ const setup = () => {
 
 afterEach(() => {
   vi.useRealTimers()
+  onlineManager.setOnline(true)
 })
 
 describe("useRegisterCall", () => {
+  it("offline manda lo stesso e dà subito l'esito, senza rimandarlo quando la rete torna (AC15, D5)", async () => {
+    const { backend, user } = setup()
+    backend.state.callAnswer = () => "down"
+    await screen.findByText("state: chiamare")
+    act(() => onlineManager.setOnline(false))
+
+    await user.click(screen.getByRole("button", { name: "Appuntamento" }))
+
+    await screen.findByText("kind: uncertain")
+    expect(screen.getByText("pending: false")).toBeTruthy()
+    act(() => onlineManager.setOnline(true))
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    expect(backend.state.calls).toHaveLength(1)
+  })
+
   it("un ApiUnavailable dà l'esito incerto, con un solo invio arrivato all'handler (AC15)", async () => {
     const { backend, user } = setup()
     backend.state.callAnswer = () => "down"
@@ -184,6 +201,20 @@ function Removal({ state }: { state: TaskStatus }) {
 }
 
 describe("useRemoveCallback", () => {
+  it("offline manda lo stesso, senza fermarsi ad aspettare la rete", async () => {
+    const backend = fakeContacts()
+    renderWithApi(<Removal state="non interessato" />, {
+      handlers: backend.handlers,
+      auth: signedInAs(ada),
+    })
+    act(() => onlineManager.setOnline(false))
+
+    await userEvent.setup().click(screen.getByRole("button", { name: "Togli" }))
+
+    await screen.findByText("data: 101:non interessato")
+    expect(backend.state.removals).toHaveLength(1)
+  })
+
   it("manda l'alert, il contatto e lo stato scelto", async () => {
     const backend = fakeContacts()
     renderWithApi(<Removal state="non interessato" />, {

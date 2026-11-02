@@ -313,14 +313,15 @@ export const ContactDetail = Schema.Struct({
 export type ContactDetail = typeof ContactDetail.Type
 
 /**
- * "Assegnazione massiva" with a call (`bulkHandleTask`): without `state` the
- * contacts go to `chiamare`; the alert is closed only for the customers in
+ * "Assegnazione massiva" with a call (`bulkHandleTask`): the contacts it
+ * creates are always in `chiamare` (esiti-richiami-stati AC25), so `state`
+ * accepts only that; the alert is closed only for the customers in
  * `resolveAlertCustomerIds`, the ones the admin confirmed
  */
 export const BulkHandleTask = Schema.Struct({
   operatorId: Schema.Number,
   customerIds: Schema.Array(Schema.String),
-  state: Schema.optional(TaskStatus),
+  state: Schema.optional(Schema.Literal("chiamare")),
   resolveAlertCustomerIds: Schema.optional(Schema.Array(Schema.String)),
 })
 export type BulkHandleTask = typeof BulkHandleTask.Type

@@ -288,4 +288,25 @@ describe("POST /api/v1/task/bulk-assign", () => {
       assert.isFalse(isApiError(error))
     })
   )
+
+  it.effect("crea solo contatti in Da chiamare: un altro stato non passa (AC25)", () =>
+    Effect.gen(function* () {
+      const admin = yield* given(() => createOperator({ role: "ADMIN" }))
+      const customer = yield* given(() => createCustomer())
+      const api = yield* clientAs(admin.userId)
+
+      const error = yield* Effect.flip(
+        api.task.bulkHandleTask({
+          payload: {
+            operatorId: admin.id,
+            customerIds: [customer.id],
+            state: "app.to" as never,
+          },
+        })
+      )
+
+      assert.isFalse(isApiError(error))
+      assert.isUndefined(yield* activeContactOf(customer.id))
+    })
+  )
 })
