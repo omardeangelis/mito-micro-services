@@ -15,7 +15,7 @@ updated: 2026-11-02
 # Plan: Esiti, richiami e stati del contatto
 
 **Spec:** [[specs/crm/esiti-richiami-stati/SPEC]], 2026-11-02: 33 criteri, nessuna domanda aperta (OQ1–OQ5 con i default, OQ6 e OQ7 decise da Omar).
-**Status:** Planned, in attesa della conferma di D1 (base del branch).
+**Status:** Planned. D1 confermata: la PR di `claude/personas` (#147) è unita in `dev` e il branch `claude/esiti-richiami-stati` parte da lì.
 - **Verifica del piano:** tre giri di `adversarial-verifier`. Il terzo ha lasciato un solo major, corretto come il revisore indicava («basta per SHIP»), senza un quarto giro (§15).
 
 **Generato:** 2026-11-02 con `create-plan`.
@@ -56,7 +56,7 @@ Rilevata il 2026-11-02 sul codice, in sola lettura. I riferimenti precisi sono n
   - nella lista: `ContactRowState.tsx`, la cella dello stato con selettore e conferma;
   - etichette e colori: `TaskStatusBadge.tsx` mostra il valore grezzo, i colori sono in `lib/tones.ts`, il filtro in `ContactFilters.tsx`;
   - il modulo dati è `src/api/task.ts`, i testi d'errore `describeContactError.ts` e `src/api/errors.ts`.
-- **Il prototipo da riusare** è `apps/web/src/prototypes/home-operatore/shared.tsx`. Esporta `OutcomeButtons`, con dentro il riquadro «Richiamare», più `StateBadge` e `stateLabels`. È nei commit di `claude/personas` non ancora su `dev` (D1).
+- **Il prototipo da riusare** è `apps/web/src/prototypes/home-operatore/shared.tsx`. Esporta `OutcomeButtons`, con dentro il riquadro «Richiamare», più `StateBadge` e `stateLabels`. È su `dev` dalla PR #147 (D1).
 - **Nessun meccanismo contro gli invii ripetuti** in server, contratto e web.
 
 ## 2. Problema
@@ -108,7 +108,7 @@ Tutte nel Decision Log di [[specs/crm/esiti-richiami-stati/SPEC]]; il piano non 
 
 | # | Decisione | Motivo |
 |---|---|---|
-| D1 | **Base del branch (da confermare):** prima si apre e si unisce una PR di `claude/personas` verso `dev`, con i 3 commit non ancora pubblicati (prototipi delle home, spec delle home, questa spec). Poi il branch `claude/esiti-richiami-stati` nasce da `dev`. | Il dettaglio riusa `OutcomeButtons` del prototipo, che su `dev` non c'è. Partire da `claude/personas` porterebbe nella PR i prototipi e tre spec non legate al codice. I prototipi sono rotte solo di sviluppo e non cambiano il prodotto. |
+| D1 | **Base del branch (confermata il 2026-11-02, PR #147 unita):** prima si apre e si unisce una PR di `claude/personas` verso `dev`, con i 3 commit non ancora pubblicati (prototipi delle home, spec delle home, questa spec). Poi il branch `claude/esiti-richiami-stati` nasce da `dev`. | Il dettaglio riusa `OutcomeButtons` del prototipo, che su `dev` non c'è. Partire da `claude/personas` porterebbe nella PR i prototipi e tre spec non legate al codice. I prototipi sono rotte solo di sviluppo e non cambiano il prodotto. |
 | D2 | **Una PR verso `dev`.** Ogni task finisce con `tsc` verde su tutti i pacchetti e con i test del suo pacchetto verdi. Le aggiunte vengono prima delle rimozioni: un endpoint si toglie nel task che ne toglie l'ultimo chiamante. | Così il branch non resta mai rotto fra un'onda e l'altra, e `dev` non riceve un backend ristretto senza il suo dettaglio. |
 | D3 | **Solo `HttpApi`.** Nessuna procedura tRPC nuova, e quelle di oggi non si adattano. I servizi condivisi cambiano, quindi su sviluppo e staging l'app Next.js può rifiutare cambi che prima accettava. | Constraint della spec, e decisione «Next deprecato» del 2026-10-30, che qui prevale sulla regola di AGENTS.md (un'operazione nuova va in tutti e due i posti). |
 | D4 | **Migrazione delle colonne, solo aggiunte**, in `packages/db/src/schema/{taskEventLog,task}.ts`:<br>• `task_event_action` + `call`;<br>• `task_event_log.outcome` (`task_status`, nullo fuori da `call`), `task_event_log.origin` (enum nuovo `call_origin`: `alert`, `list`) e `task_event_log.request_id` (`uuid`, indice unico parziale `WHERE request_id IS NOT NULL`);<br>• `alert.resolved_at` (`timestamptz`) e `alert.resolution` (enum nuovo `alert_resolution`: `call`, `replaced`, `removed`, `state_change`, `bulk`, `system`), nulli per gli alert chiusi prima. `replaced` vale per un alert sostituito da `setCallback` di oggi, senza chiamata, così non fa scattare il caso 5 di AC13;<br>• `task.state` con default `chiamare`.<br>Nessun vincolo CHECK che usi `call` nella stessa migrazione: un valore di enum nuovo non si usa nella transazione che lo aggiunge.<br>Si seguono le regole di AGENTS.md: `pnpm db:generate` senza `NODE_ENV`, la riga `customers.id SET DEFAULT` tolta, journal controllato, rigenerazione se `dev` ha migrazioni nuove all'unione. | Per Richiamare l'alert nuovo è `task_event_log.alert_id`, da cui si leggono giorno e messaggio. Lo stato dopo (`to_state`) non basta come esito: Non risponde su un Richiamo lascia `richiamare` (AC8). `resolution` e `resolved_at` dicono chi e quando per il caso 5 di AC13. |
