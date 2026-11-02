@@ -49,3 +49,8 @@ updated: 2026-11-02
 
 ## Remaining Work
 
+
+## Note per la PR
+
+- Se all'unione in `dev` si rigenera la migrazione, ricreare anche quella personalizzata `calls_registry` con `pnpm db:generate --custom` (D12).
+- Rilascio in produzione: avviso a Rosario (OQ5: chiamate e tassi salgono, due «Non risponde» di fila sono due chiamate), migrazioni, deploy, lancio di `convert-contact-states`, controllo dei conteggi (nessun `ConversionLeft`), smoke test. Dettagli in [[chore/migrazione-gcp]].
