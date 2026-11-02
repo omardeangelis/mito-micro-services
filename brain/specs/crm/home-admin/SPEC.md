@@ -88,7 +88,7 @@ Tutti lavorano da PC fisso.
 - l'«Avanzamento contatti» di tutta la coda (`analytics.getContactProgress`) lascia il posto all'avanzamento per import;
 - gli «Arretrati del team» non sono una sezione a sé, ma una colonna e un dettaglio di «Dettaglio giornaliero».
 
-**Revisioni del prototipo** (2026-11-01, salvate accanto al prototipo in `UX-REVIEW.md` e `UI-REVIEW.md`; il prototipo non è stato modificato):
+**Revisioni del prototipo** (2026-11-01, salvate accanto a questa spec in `UX-REVIEW.md` e `UI-REVIEW.md`; il prototipo non è stato modificato):
 - `ux-advisor`: verdetto «proceed with decisions». Due decisioni P1 sull'assegnazione (l'esito incerto, i valori di partenza da una riga del team) e quattro P2. Mappa del flusso in [[specs/crm/home-admin/FLOW|FLOW.md]].
 - `ui-reviewer`: verdetto «si procede con decisioni», misurato in Chromium 149 da 1024 a 1920 px di larghezza e da 768 a 1080 px di altezza, anche con il testo a 1,25×. Tre decisioni P1 (due contrasti, il toast sopra il fuoco) e quattro P2 di layout.
 

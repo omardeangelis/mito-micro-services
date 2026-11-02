@@ -83,7 +83,7 @@ Tre situazioni delle persone cambiano qualcosa qui:
 
 La forma è quella del prototipo vincitore **«Lavora da qui»**: `apps/web/src/prototypes/home-operatore/` (`Harness.tsx`, `VariantLavora.tsx`, `shared.tsx`, `day.ts`, `fixtures.ts`), rotta di sviluppo `/dashboard/prototypes/home-operatore`, con la barra degli scenari `?s=` (`tipica`, `piena`, `inizio`, `niente`, `nuovo`, `caricamento`, `errore`) per gli stati di [[chore/crm/design-home-e-richiami|design-home-e-richiami]] §7. Layout, sezioni, stati e testi del prototipo sono decisioni di questa spec; dove la spec cambia un testo, il Decision Log lo dice. La reference di dominio è [[chore/crm/design-home-e-richiami|design-home-e-richiami]] (D1–D6 del 2026-11-01, §3, §5, §6, §7).
 
-**Revisioni del vincitore (2026-11-01).** `ux-advisor`: verdetto *iterate*, tre modifiche al prototipo e sei decisioni. `ui-reviewer`: verdetto *iterate*, misurato su Chromium 149 da 1024 a 1920 px con il carattere al 100% e al 125%, in tutti e 7 gli scenari. Le revisioni sono `UX-REVIEW.md` e `UI-REVIEW.md` accanto al prototipo; le loro decisioni sono i criteri qui sotto, e [[specs/crm/home-operatore/FLOW|FLOW.md]] è la mappa del flusso.
+**Revisioni del vincitore (2026-11-01).** `ux-advisor`: verdetto *iterate*, tre modifiche al prototipo e sei decisioni. `ui-reviewer`: verdetto *iterate*, misurato su Chromium 149 da 1024 a 1920 px con il carattere al 100% e al 125%, in tutti e 7 gli scenari. Le revisioni sono `UX-REVIEW.md` e `UI-REVIEW.md` accanto a questa spec; le loro decisioni sono i criteri qui sotto, e [[specs/crm/home-operatore/FLOW|FLOW.md]] è la mappa del flusso.
 
 **Prerequisito.** La spec si scrive ora e si implementa **dopo** la spec «Esiti, richiami e stati del contatto» (D1 + D2 + D6 del design, §10 punto 2), sui dati veri. Da quella spec la home prende, senza definirli:
 
@@ -244,7 +244,7 @@ La forma è quella del prototipo vincitore **«Lavora da qui»**: `apps/web/src/
 
 ## Technical Notes
 
-- Le revisioni, con le loro evidenze, sono `apps/web/src/prototypes/home-operatore/UX-REVIEW.md` e `UI-REVIEW.md`, e si cancellano con il prototipo (AC40). La revisione UI ha misurato solo Chromium: Firefox e Safari desktop non sono provati.
+- Le revisioni, con le loro evidenze, sono `UX-REVIEW.md` e `UI-REVIEW.md` accanto a questa spec: stanno fuori da `apps/web/src`, il cui gate dei colori accetta solo `.ts`, `.tsx` e `.css`. La revisione UI ha misurato solo Chromium: Firefox e Safari desktop non sono provati.
 - La home di oggi (`apps/web/src/routes/dashboard/home/HomePage.tsx`) usa hook con `routeErrorWhenEmpty`: il primo errore porta alla pagina d'errore della rotta. AC37–AC39 chiedono il contrario, come `AdminExportSection`.
 - **Esito incerto.** In `apps/web/src/api/runtime.ts` rete assente, risposte 5xx e un corpo che non si decodifica diventano tutti `ApiUnavailable`: è il caso di AC48. Il client non ha oggi un limite di tempo: i 15 secondi di AC48 sono nuovi.
 - **Un solo avviso.** `apps/web/src/api/queryClient.ts` mostra `toast.error(describeApiError(error))` per ogni scrittura e ogni lettura fallite (`MutationCache` e `QueryCache`), salvo `meta.toastErrors: false`: ne hanno bisogno la registrazione della home, come l'assegnazione di home-admin, e le letture delle quattro parti (AC27, AC37, AC48).
