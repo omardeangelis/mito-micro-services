@@ -4,7 +4,9 @@ import { BlackListStatus, Count, RowOperator, Text } from "./customer"
 import {
   AlertConfirmationRequired,
   AlertNotFound,
+  CallAlreadyWorked,
   CallbackNotAllowed,
+  CallNotAllowed,
   ContactAlreadyActive,
   ContactForbidden,
   ContactNotFound,
@@ -13,7 +15,9 @@ import {
   CustomerNotFound,
   CustomerUnassigned,
   DeadlineInPast,
+  MessageTooLong,
   OperatorNotFound,
+  RequestIdConflict,
   TransitionRejected,
 } from "./errors"
 import { AdminOnly, Authenticated } from "./middleware"
@@ -290,6 +294,76 @@ export const BulkHandleTask = Schema.Struct({
 })
 export type BulkHandleTask = typeof BulkHandleTask.Type
 
+/** The four outcomes of «Registra chiamata», as `callOutcomes` of @mito/domain. */
+export const CallOutcome = Schema.Literals([
+  "non risponde",
+  "richiamare",
+  "app.to",
+  "non interessato",
+])
+export type CallOutcome = typeof CallOutcome.Type
+
+/** What every press of an outcome sends (esiti-richiami-stati D5, D6). */
+const CallPress = {
+  // A new UUID for each press: the same one again is the same request (AC11)
+  requestId: Schema.String.check(Schema.isUUID()),
+  source: ContactSource,
+  // The open alert the user sees, if any (AC13 case 5)
+  workingAlertId: Schema.optional(IntegerValue),
+  // The future alert the user confirmed to close, if any (AC14)
+  confirmedAlertId: Schema.optional(IntegerValue),
+}
+
+/**
+ * A press of «Registra chiamata»: Richiamare carries the day and the message
+ * of the callback, the other outcomes none. The server trims the message and
+ * checks its 500 characters and the day in the order of AC13: the schema only
+ * caps them
+ */
+export const RegisterCall = Schema.Union([
+  Schema.Struct({
+    ...CallPress,
+    outcome: Schema.Literal("richiamare"),
+    callback: Schema.Struct({
+      day: Day,
+      message: Schema.optional(
+        Schema.NullOr(Schema.String.check(Schema.isMaxLength(5000), hasNoNul))
+      ),
+    }),
+  }),
+  Schema.Struct({
+    ...CallPress,
+    outcome: Schema.Literals(["non risponde", "app.to", "non interessato"]),
+  }),
+])
+export type RegisterCall = typeof RegisterCall.Type
+
+/**
+ * A registered call and what it leaves on the contact, for the detail and the
+ * list without a reload (AC16): the state, the open alert (`day` is its Rome
+ * day) and the call
+ */
+export const RegisteredCall = Schema.Struct({
+  taskId: Schema.Number,
+  state: TaskStatus,
+  alert: Schema.NullOr(
+    Schema.Struct({
+      id: Schema.Number,
+      deadline: Schema.Date,
+      day: Schema.String,
+      message: Text,
+    })
+  ),
+  call: Schema.Struct({
+    id: Schema.Number,
+    outcome: CallOutcome,
+    origin: Schema.Literals(["alert", "list"]),
+    at: Schema.Date,
+    by: Schema.String,
+  }),
+})
+export type RegisteredCall = typeof RegisteredCall.Type
+
 /**
  * The group `task` (3.1 and 3.2 of brain/chore/migrazione-frontend-react.md):
  * the procedures of the tRPC router `task`, each with its name (H8).
@@ -306,13 +380,15 @@ export type BulkHandleTask = typeof BulkHandleTask.Type
  * | setPriority                  | POST /task/:id/priority            |
  * | reassign (admin)             | POST /task/:id/reassign            |
  * | setCallback                  | POST /task/:id/callback            |
+ * | registerCall                 | POST /task/:id/call                |
  * | resolveAlert                 | DELETE /task/alerts/:id?source=    |
  * | bulkHandleTask (admin)       | POST /task/bulk-assign             |
  *
  * `getCustomersWithActiveAlerts` and `getContacts` are reads by POST: the ids
  * of a selection, or the filters, could make the URL too long. The `id` of
  * `/task/by-customer/:id` is a customer's, that of `/task/:id` a contact's,
- * that of `/task/alerts/:id` an alert's
+ * that of `/task/alerts/:id` an alert's. `registerCall` has no procedure:
+ * only `HttpApi` has it (D3 of esiti-richiami-stati)
  */
 export class TaskGroup extends HttpApiGroup.make("task")
   .add(
@@ -447,6 +523,26 @@ export class TaskGroup extends HttpApiGroup.make("task")
         ContactNotFound,
         ContactSuperseded,
         ContactForbidden,
+        CustomerMissing,
+      ],
+    })
+  )
+  .add(
+    HttpApiEndpoint.post("registerCall", "/task/:id/call", {
+      params: { id: IntegerId },
+      payload: RegisterCall,
+      success: RegisteredCall,
+      // In the order of AC13; the session is the middleware's
+      error: [
+        ContactNotFound,
+        ContactSuperseded,
+        ContactForbidden,
+        CallAlreadyWorked,
+        CallNotAllowed,
+        AlertConfirmationRequired,
+        DeadlineInPast,
+        MessageTooLong,
+        RequestIdConflict,
         CustomerMissing,
       ],
     })

@@ -321,9 +321,9 @@ Ogni task comincia dal test di `tdd_target`, rosso, e finisce con `tsc` verde su
   - lo stesso `requestId` da un altro utente: `RequestIdConflict`;
   - due pressioni diverse: due righe;
   - `tsc` su tutti i pacchetti.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-11-02, modello dell'orchestratore: RED (modulo mancante) → 21+3 test verdi; togliendo il caso 5 fallisce solo il suo test. Ordine AC13 come D8. Deviazioni accettate: payload come unione (Richiamare richiede callback), alert_id anche sulle righe Non risponde (l'alert lasciato aperto, serve alla ripetizione: chi legge il giorno del Richiamare guarda outcome), errori del servizio in CallError fuori da ContactError (niente codici tRPC), caso in lockRule.db.test. Gate: db 589, web 1764, tsc, web:build, api:build verdi.
+- **files edited/created**: packages/contract/src/{task,errors}.ts, packages/server/src/services/contact/{registerCall,errors}.ts, http/task.ts, apps/web/src/api/errors.ts, apps/web/src/test/{api.tsx,contacts.ts,customers.ts}, _test/registerCall.db.test.ts (servizio e http), _test/lockRule.db.test.ts
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -417,9 +417,9 @@ Ogni task comincia dal test di `tdd_target`, rosso, e finisce con `tsc` verde su
   - I test di oggi restano verdi, tranne quelli su `followup`, `nessuno` e `non risponde`, riscritti secondo AC25.
   - Un Non risponde con un alert scaduto tiene lo stesso `task.id`, lo stesso stato e lo stesso alert, con l'operatore nuovo.
   - `getCustomersWithActiveAlerts`, che alimenta il dialogo `CustomerBulkDialog`, non restituisce un cliente con un alert scaduto (test HTTP sul server). Il dialogo non cambia.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-11-02, sonnet: RED 3 → verde, 643 test verdi. Da chiamare e Non risponde (e valori vecchi) cambiano solo operatore; activeAlertsOf solo alert futuri (fine del giorno di Roma). Fuori lista: queries.db.test fissa la data (scadenze di ottobre diventate passate).
+- **files edited/created**: packages/server/src/services/contact/{bulkHandleTask,queries}.ts, _test/{bulkHandleTask,queries}.db.test.ts, http/_test/operatorTask.db.test.ts
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a

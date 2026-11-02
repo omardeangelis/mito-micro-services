@@ -9,7 +9,7 @@ import { type ErrorReporter } from "../effect/errorReporter"
 import { bulkHandleTask } from "../services/contact/bulkHandleTask"
 import { changeState } from "../services/contact/changeState"
 import { createContact } from "../services/contact/createContact"
-import { type ContactError } from "../services/contact/errors"
+import { type CallError, type ContactError } from "../services/contact/errors"
 import { getContactById } from "../services/contact/getContactById"
 import { getContacts } from "../services/contact/getContacts"
 import {
@@ -18,13 +18,14 @@ import {
   listCustomersWithActiveAlerts,
 } from "../services/contact/queries"
 import { reassign } from "../services/contact/reassign"
+import { registerCall } from "../services/contact/registerCall"
 import { resolveAlert } from "../services/contact/resolveAlert"
 import { setCallback } from "../services/contact/setCallback"
 import { setPriority } from "../services/contact/setPriority"
 import { unexpectedAs500 } from "./unexpected"
 
 /** An expected failure of the contact services. */
-type ServiceError = ContactError | CustomerMissing
+type ServiceError = ContactError | CallError | CustomerMissing
 
 /**
  * The error of the contract for each error of the contact services: the same
@@ -42,6 +43,10 @@ const apiErrorOf = {
   AlertNotFound: () => new Api.AlertNotFound(),
   CallbackNotAllowed: ({ state }) => new Api.CallbackNotAllowed({ state }),
   DeadlineInPast: () => new Api.DeadlineInPast(),
+  CallAlreadyWorked: ({ by, at }) => new Api.CallAlreadyWorked({ by, at }),
+  CallNotAllowed: ({ state }) => new Api.CallNotAllowed({ state }),
+  MessageTooLong: () => new Api.MessageTooLong(),
+  RequestIdConflict: () => new Api.RequestIdConflict(),
   CustomerNotFound: () => new Api.CustomerNotFound(),
   CustomerUnassigned: () => new Api.CustomerUnassigned(),
   ContactAlreadyActive: ({ activeTaskId }) =>
@@ -188,6 +193,16 @@ export const taskLayer = HttpApiBuilder.group(MitoApi, "task", (handlers) =>
             replacesAlertId: payload.replacesAlertId,
             actor,
           }).pipe(asApiErrors, unexpectedAs500("setCallback"))
+        }).pipe(Effect.provide(services))
+      )
+      .handle("registerCall", ({ params, payload }) =>
+        Effect.gen(function* () {
+          const { actor } = yield* CurrentUser
+          return yield* registerCall({
+            taskId: params.id,
+            ...payload,
+            actor,
+          }).pipe(asApiErrors, unexpectedAs500("registerCall"))
         }).pipe(Effect.provide(services))
       )
       .handle("resolveAlert", ({ params, query }) =>

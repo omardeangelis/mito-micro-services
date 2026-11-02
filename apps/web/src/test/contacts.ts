@@ -4,6 +4,8 @@ import { MitoApi } from "@mito/contract/api"
 import {
   AlertConfirmationRequired,
   type AlertNotFound,
+  type CallAlreadyWorked,
+  type CallNotAllowed,
   type ContactForbidden,
   ContactNotFound,
   ContactSuperseded,
@@ -18,6 +20,8 @@ import {
   type ContactsPage,
   type ContactsQuery,
   type PriorityBand,
+  type RegisterCall,
+  type RegisteredCall,
   type TaskStatus,
 } from "@mito/contract/task"
 import { ada, type FakeHandlers, type GroupService } from "./api"
@@ -131,6 +135,16 @@ export type CallbackSet = {
   replacesAlertId: number | null
 }
 export type AlertResolve = { alertId: number; source: "list" | "detail" }
+export type CallRegistered = RegisterCall & { taskId: number }
+
+/** The rejections of «Registra chiamata» a test can give */
+export type CallRejection =
+  | ContactForbidden
+  | ContactSuperseded
+  | CallAlreadyWorked
+  | CallNotAllowed
+  | AlertConfirmationRequired
+  | DeadlineInPast
 
 const bandValues = { low: 20, medium: 60, high: 100, urgent: 120 } as const
 
@@ -197,6 +211,12 @@ export function fakeContacts(
     ):
       | WriteAnswer<ContactForbidden | ContactSuperseded | DeadlineInPast>
       | { alert: OpenAlert } => ({ saved: true }),
+    calls: [] as CallRegistered[],
+    callAnswer: (_call: CallRegistered): WriteAnswer<CallRejection> => ({
+      saved: true,
+    }),
+    /** The response of each request id, so a repeat gets the same one */
+    registered: new Map<string, RegisteredCall>(),
     resolves: [] as AlertResolve[],
     resolveAnswer: (
       _change: AlertResolve
@@ -469,6 +489,75 @@ export function fakeContacts(
                 ? Effect.succeed({ alertId: saved })
                 : Effect.fail(new AlertConfirmationRequired({ alert: saved }))
             )
+          )
+        })
+        .handle("registerCall", ({ params, payload }) => {
+          const call = { taskId: params.id, ...payload }
+          const repeated = state.registered.get(payload.requestId)
+          if (repeated) return Effect.succeed(repeated)
+          return write(
+            () => state.calls.push(call),
+            () => state.callAnswer(call),
+            (): RegisteredCall => {
+              const current =
+                state.details[params.id]?.alert ??
+                state.rows.find(({ id }) => id === params.id)?.alert ??
+                null
+              const alert =
+                payload.outcome === "richiamare"
+                  ? {
+                      id: 900 + state.calls.length,
+                      deadline: new Date(`${payload.callback.day}T00:00:00`),
+                      day: payload.callback.day,
+                      // Empty or blank is no message, as on the server
+                      message: payload.callback.message?.trim()
+                        ? payload.callback.message.trim()
+                        : null,
+                    }
+                  : payload.outcome === "non risponde" && current
+                    ? {
+                        ...current,
+                        day: current.deadline.toISOString().slice(0, 10),
+                      }
+                    : null
+              const futureAlert =
+                alert !== null &&
+                alert.day > new Date().toISOString().slice(0, 10)
+              const toState: TaskStatus =
+                payload.outcome === "non risponde" && futureAlert
+                  ? "richiamare"
+                  : payload.outcome
+              const at = new Date()
+              const openAlert = alert && {
+                id: alert.id,
+                deadline: alert.deadline,
+                message: alert.message,
+              }
+              state.rows = state.rows.map((row) =>
+                row.id === params.id
+                  ? { ...row, state: toState, closedAt: at, alert: openAlert }
+                  : row
+              )
+              updateDetail(params.id, (detail) => ({
+                ...detail,
+                contact: { ...detail.contact, state: toState, closedAt: at },
+                alert: openAlert,
+              }))
+              const registered: RegisteredCall = {
+                taskId: params.id,
+                state: toState,
+                alert,
+                call: {
+                  id: 700 + state.calls.length,
+                  outcome: payload.outcome,
+                  origin: "list",
+                  at,
+                  by: `${ada.name} ${ada.surname}`,
+                },
+              }
+              state.registered.set(payload.requestId, registered)
+              return registered
+            }
           )
         })
         .handle("resolveAlert", ({ params, query }) => {

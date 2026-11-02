@@ -559,6 +559,7 @@ export function fakeCustomers(
         .handle("setPriority", unserved)
         .handle("reassign", unserved)
         .handle("setCallback", unserved)
+        .handle("registerCall", unserved)
         .handle("resolveAlert", unserved)
         .handle("bulkHandleTask", ({ payload }) =>
           waitGate(payload.customerIds).pipe(

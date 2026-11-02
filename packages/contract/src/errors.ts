@@ -189,6 +189,40 @@ export class DeadlineInPast extends Schema.TaggedError<DeadlineInPast>()(
   { httpApiStatus: 400 }
 ) {}
 
+/**
+ * The alert the user was working is already closed by a call (AC13 case 5 of
+ * esiti-richiami-stati): `by` is who registered it, `at` when (HTTP 409)
+ */
+export class CallAlreadyWorked extends Schema.TaggedError<CallAlreadyWorked>()(
+  "CallAlreadyWorked",
+  { by: Schema.String, at: Schema.Date },
+  { httpApiStatus: 409 }
+) {}
+
+/** The contact's state doesn't take calls (AC12, AC13 case 6; HTTP 400). */
+export class CallNotAllowed extends Schema.TaggedError<CallNotAllowed>()(
+  "CallNotAllowed",
+  { state: Schema.NullOr(TaskStatus) },
+  { httpApiStatus: 400 }
+) {}
+
+/** The message of a Richiamare is over 500 characters (AC13 case 9; HTTP 400). */
+export class MessageTooLong extends Schema.TaggedError<MessageTooLong>()(
+  "MessageTooLong",
+  {},
+  { httpApiStatus: 400 }
+) {}
+
+/**
+ * The request id of a call is already another user's or another contact's
+ * (D5 of esiti-richiami-stati; HTTP 409)
+ */
+export class RequestIdConflict extends Schema.TaggedError<RequestIdConflict>()(
+  "RequestIdConflict",
+  {},
+  { httpApiStatus: 409 }
+) {}
+
 /** The practice doesn't exist (tRPC NOT_FOUND, `PRACTICE_NOT_FOUND`). */
 export class PracticeNotFound extends Schema.TaggedError<PracticeNotFound>()(
   "PracticeNotFound",
@@ -366,6 +400,10 @@ const apiErrors = [
   AlertNotFound,
   CallbackNotAllowed,
   DeadlineInPast,
+  CallAlreadyWorked,
+  CallNotAllowed,
+  MessageTooLong,
+  RequestIdConflict,
   PracticeNotFound,
   PracticeExists,
   CustomerExists,

@@ -1,6 +1,7 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, Layer } from "effect"
 import { HttpApiTest } from "effect/http-api"
+import { TestClock } from "effect/testing"
 import { beforeAll, beforeEach } from "vitest"
 import { and, eq } from "drizzle-orm"
 import { MitoApi } from "@mito/contract/api"
@@ -138,6 +139,41 @@ describe("POST /api/v1/task/active-alerts", () => {
       ])
       assert.deepStrictEqual(none, [])
     })
+  )
+})
+
+describe("POST /api/v1/task/active-alerts, alert scaduti", () => {
+  it.effect(
+    "non dà il cliente con un alert scaduto o di oggi, sì quello futuro",
+    () =>
+      Effect.gen(function* () {
+        yield* TestClock.setTime(new Date("2026-11-10T10:00:00.000Z").getTime())
+        const operator = yield* given(() => createOperator())
+        const alertAt = (deadline: string) =>
+          Effect.gen(function* () {
+            const customer = yield* given(() => createCustomer())
+            const contact = yield* given(() =>
+              createTask({ customerId: customer.id, state: "richiamare" })
+            )
+            yield* given(() =>
+              createAlert({ taskId: contact.id, deadline: new Date(deadline) })
+            )
+            return customer
+          })
+        const expired = yield* alertAt("2026-11-02T09:00:00.000Z")
+        const today = yield* alertAt("2026-11-10T15:00:00.000Z")
+        const future = yield* alertAt("2026-11-11T09:00:00.000Z")
+        const api = yield* clientAs(operator.userId)
+
+        const alerts = yield* api.task.getCustomersWithActiveAlerts({
+          payload: { customerIds: [expired.id, today.id, future.id] },
+        })
+
+        assert.deepStrictEqual(
+          alerts.map(({ customerId }) => customerId),
+          [future.id]
+        )
+      })
   )
 })
 

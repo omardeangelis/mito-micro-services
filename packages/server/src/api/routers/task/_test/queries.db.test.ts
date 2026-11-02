@@ -1,4 +1,12 @@
-import { beforeAll, beforeEach, describe, expect, it } from "vitest"
+import {
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest"
 import { createTestCaller } from "@/test/caller"
 import { migrateUpTo, resetDb } from "@/test/db"
 import {
@@ -27,7 +35,21 @@ beforeEach(async () => {
   await resetDb()
 })
 
+// Il dialogo dell'assegnazione massiva elenca solo gli alert futuri (AC25):
+// "oggi" sta prima delle scadenze di questi test.
+const pinToday = () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"] })
+    vi.setSystemTime(new Date("2026-09-20T09:00:00.000Z"))
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+}
+
 describe("task.getCustomersWithActiveAlerts", () => {
+  pinToday()
+
   it("con customerIds vuoto restituisce una lista vuota, anche se ci sono alert aperti", async () => {
     const operator = await createOperator()
     const customer = await createCustomer({ id: "cliente-uno" })
@@ -262,6 +284,8 @@ describe("task.getCustomersWithActiveAlerts", () => {
 })
 
 describe("task.getCustomersWithActiveAlerts: ordine", () => {
+  pinToday()
+
   it("restituisce gli alert per scadenza, la più vicina per prima, qualunque sia l'ordine dei clienti", async () => {
     const operator = await createOperator()
     const deadlines = [DEADLINE_CINQUE, DEADLINE_UNO, DEADLINE_DUE]

@@ -1,6 +1,7 @@
 import { afterEach, beforeAll, beforeEach, vi } from "vitest"
 import { describe, expect, it } from "@effect/vitest"
 import { Cause, Effect, Exit } from "effect"
+import { TestClock } from "effect/testing"
 import { eq } from "drizzle-orm"
 import { type TaskStatus } from "@mito/domain/schemas"
 import { messages } from "@mito/db/schema/chat"
@@ -9,6 +10,7 @@ import { chatToOperator } from "@mito/db/schema/relations/chatToOperator"
 import { task } from "@mito/db/schema/task"
 import { query, transaction } from "../../../effect/db"
 import { processDueAlerts } from "../processDueAlerts"
+import { registerCall } from "../registerCall"
 import { deactivateOperator } from "../../operator/deactivate"
 import { createTestCaller } from "@/test/caller"
 import {
@@ -781,6 +783,44 @@ describe("regola dei lock: deactivateOperator", () => {
         ).toMatchObject([{ id: colleagueContact.id, operatorId: colleague.id }])
         expect(yield* Effect.promise(() => logOf(bare.id))).toMatchObject([
           { source: "deactivation", taskId: null, toOperatorId: target.id },
+        ])
+      })
+  )
+})
+
+describe("regola dei lock: registerCall", () => {
+  it.effect(
+    "Richiamare che chiude l'alert aperto prende il lock del cliente",
+    () =>
+      Effect.gen(function* () {
+        // The real time: the alert of `deadline` is expired, the callback
+        // in two days is after today
+        yield* TestClock.setTime(Date.now())
+        const operator = yield* Effect.promise(() => createOperator())
+        const { customer, contact } = yield* Effect.promise(() =>
+          seedContact(operator, "richiamare")
+        )
+        const open = yield* Effect.promise(() =>
+          createAlert({ taskId: contact.id, deadline })
+        )
+        yield* Effect.promise(() => assertCustomerLockedOnWrite())
+
+        const exit = yield* registerCall({
+          taskId: contact.id,
+          actor: { operatorId: operator.id, role: "OPERATORE" },
+          requestId: crypto.randomUUID(),
+          source: "detail",
+          outcome: "richiamare",
+          callback: {
+            day: inTwoDays().toISOString().slice(0, 10),
+            message: null,
+          },
+        }).pipe(provideServer, Effect.exit)
+
+        if (Exit.isFailure(exit)) throw new Error(Cause.pretty(exit.cause))
+        expect(yield* Effect.promise(() => logOf(customer.id))).toMatchObject([
+          { action: "alert_resolved", alertId: open.id },
+          { action: "call", outcome: "richiamare" },
         ])
       })
   )

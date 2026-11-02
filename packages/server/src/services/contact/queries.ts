@@ -1,5 +1,6 @@
-import { Effect } from "effect"
-import { and, desc, eq, inArray, sql } from "drizzle-orm"
+import { Clock, Effect } from "effect"
+import { and, desc, eq, gte, inArray, sql } from "drizzle-orm"
+import { romeDayBounds } from "@mito/domain/contact/time"
 import { customers } from "@mito/db/schema/customers"
 import { alert, task } from "@mito/db/schema/task"
 import { type Db, type DbClient, type DbError, query } from "../../effect/db"
@@ -28,7 +29,11 @@ export const getActiveTask = (customerId: string) =>
       .limit(1)
   )
 
-const activeAlertsOf = (client: DbClient, customerIds: string[]) =>
+const activeAlertsOf = (
+  client: DbClient,
+  customerIds: string[],
+  firstFutureInstant: Date
+) =>
   client
     .select({
       customerId: task.customerId,
@@ -46,6 +51,7 @@ const activeAlertsOf = (client: DbClient, customerIds: string[]) =>
       and(
         inArray(task.customerId, customerIds),
         eq(alert.isResolved, false),
+        gte(alert.deadline, firstFutureInstant),
         eq(task.isActive, true)
       )
     )
@@ -54,16 +60,22 @@ const activeAlertsOf = (client: DbClient, customerIds: string[]) =>
 type ActiveAlertRow = Awaited<ReturnType<typeof activeAlertsOf>>[number]
 
 /**
- * Of the given customers, only those with an open alert (a planned callback
- * not yet resolved) on their active task, one row per such alert, by
- * deadline. An empty list yields no rows, without a query.
+ * Of the given customers, only those with a future open alert (a planned
+ * callback not yet resolved, from tomorrow in Europe/Rome) on their active
+ * task, one row per such alert, by deadline: the ones the bulk assignment
+ * really closes (AC25). An alert of today or expired stays open. An empty
+ * list yields no rows, without a query.
  */
-export const listCustomersWithActiveAlerts = (
+export const listCustomersWithActiveAlerts = Effect.fnUntraced(function* (
   customerIds: string[]
-): Effect.Effect<ActiveAlertRow[], DbError, Db> =>
-  customerIds.length === 0
-    ? Effect.succeed([])
-    : query((client) => activeAlertsOf(client, customerIds))
+): Effect.fn.Return<ActiveAlertRow[], DbError, Db> {
+  if (customerIds.length === 0) return []
+  const now = yield* Clock.currentTimeMillis
+  const firstFutureInstant = romeDayBounds(new Date(now)).end
+  return yield* query((client) =>
+    activeAlertsOf(client, customerIds, firstFutureInstant)
+  )
+})
 
 /**
  * The full Storico of a customer, open and closed alerts of all its tasks:

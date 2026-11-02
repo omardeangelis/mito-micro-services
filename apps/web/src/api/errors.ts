@@ -1,4 +1,5 @@
 import { isApiError } from "@mito/contract/errors"
+import { stateLabel } from "@mito/domain/contact/status"
 import { ApiUnavailable, type ApiFailure } from "./runtime"
 
 /** What a call to the backend fails with, for the code out of `src/api` */
@@ -7,6 +8,14 @@ export type { ApiFailure }
 /** A failure of a call to the backend, not of the app (a chunk, a bug) */
 export const isApiFailure = (error: unknown): error is ApiFailure =>
   isApiError(error) || error instanceof ApiUnavailable
+
+/** An hour as `HH:mm` in Rome, where the users work */
+const romeTime = new Intl.DateTimeFormat("it-IT", {
+  timeZone: "Europe/Rome",
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+})
 
 /**
  * The text the user reads for a failed call (F8, H13), as
@@ -58,6 +67,14 @@ export const describeApiError = (error: ApiFailure): string => {
       return `Non si può impostare un richiamo con lo stato ${error.state ?? "nessuno"}`
     case "DeadlineInPast":
       return "Il richiamo si imposta da domani"
+    case "CallAlreadyWorked":
+      return `Già lavorato da ${error.by} alle ${romeTime.format(error.at)}`
+    case "CallNotAllowed":
+      return `Con lo stato ${stateLabel(error.state)} non si registrano chiamate: riporta il contatto a Da chiamare per richiamarlo.`
+    case "MessageTooLong":
+      return "Il messaggio supera i 500 caratteri"
+    case "RequestIdConflict":
+      return "La registrazione non è andata a buon fine: premi di nuovo l'esito"
     case "PracticeNotFound":
       return "Pratica non trovata"
     case "PracticeExists":
