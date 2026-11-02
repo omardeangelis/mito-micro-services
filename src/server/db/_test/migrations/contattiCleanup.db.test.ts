@@ -1,7 +1,6 @@
 import { beforeAll, describe, expect, it } from "vitest"
 import { asc } from "drizzle-orm"
-import { alert, task } from "@mito/db/schema/task"
-import { taskEventLog } from "@mito/db/schema/taskEventLog"
+import { task } from "@mito/db/schema/task"
 import {
   activeTasksOf,
   CONTATTI_SCHEMA_TAG,
@@ -10,12 +9,16 @@ import {
   testDb,
 } from "@/test/db"
 import {
-  createAlert,
   createCustomer,
   createOperator,
   createSystemOperator,
   createTask,
 } from "@/test/factories"
+import {
+  createLegacyAlert,
+  legacyAlert,
+  legacyTaskEventLog,
+} from "@/test/legacy"
 import { runCleanupPreview } from "../../scripts/_test/runCleanupPreview"
 
 // The PR2 migrations on a database already in use, as `db:migrate:prod` will
@@ -104,27 +107,27 @@ async function seedDirtyData() {
   // Before the migration
   const lastWeek = at("03")
   const alerts = {
-    onDeactivated: await createAlert({
+    onDeactivated: await createLegacyAlert({
       taskId: updatedLater.id,
       deadline: at("20"),
       updatedAt: lastWeek,
     }),
-    onSurvivor: await createAlert({
+    onSurvivor: await createLegacyAlert({
       taskId: createdLater.id,
       deadline: at("21"),
       updatedAt: lastWeek,
     }),
-    onActive: await createAlert({
+    onActive: await createLegacyAlert({
       taskId: cleanActive.id,
       deadline: at("22"),
       updatedAt: lastWeek,
     }),
-    onInactive: await createAlert({
+    onInactive: await createLegacyAlert({
       taskId: cleanInactive.id,
       deadline: at("10"),
       updatedAt: lastWeek,
     }),
-    alreadyResolved: await createAlert({
+    alreadyResolved: await createLegacyAlert({
       taskId: cleanInactive.id,
       deadline: at("11"),
       isResolved: true,
@@ -132,14 +135,14 @@ async function seedDirtyData() {
       updatedAt: lastWeek,
     }),
     // The alert cron fails on it at every run (review of PR1, F6)
-    onOrphan: await createAlert({
+    onOrphan: await createLegacyAlert({
       taskId: orphan.id,
       deadline: at("12"),
       updatedAt: lastWeek,
     }),
   }
 
-  await testDb.insert(taskEventLog).values([
+  await testDb.insert(legacyTaskEventLog).values([
     {
       customerId: duplicated.id,
       taskId: updatedLater.id,
@@ -183,9 +186,10 @@ async function seedDirtyData() {
 }
 
 const allTasks = () => testDb.select().from(task).orderBy(asc(task.id))
-const allAlerts = () => testDb.select().from(alert).orderBy(asc(alert.id))
+const allAlerts = () =>
+  testDb.select().from(legacyAlert).orderBy(asc(legacyAlert.id))
 const allEvents = () =>
-  testDb.select().from(taskEventLog).orderBy(asc(taskEventLog.id))
+  testDb.select().from(legacyTaskEventLog).orderBy(asc(legacyTaskEventLog.id))
 
 let seed: Awaited<ReturnType<typeof seedDirtyData>>
 /** What the preview listed right before the migration. */

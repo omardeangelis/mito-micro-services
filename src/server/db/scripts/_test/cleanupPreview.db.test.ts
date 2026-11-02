@@ -1,11 +1,7 @@
 import { beforeAll, beforeEach, describe, expect, it } from "vitest"
 import { LEGACY_SCHEMA_TAG, migrateUpTo, resetDb } from "@/test/db"
-import {
-  createAlert,
-  createCustomer,
-  createOperator,
-  createTask,
-} from "@/test/factories"
+import { createCustomer, createOperator, createTask } from "@/test/factories"
+import { createLegacyAlert } from "@/test/legacy"
 import { runCleanupPreview } from "./runCleanupPreview"
 
 // The lists saved right before the PR2 migration, as its trace. The data they
@@ -108,30 +104,30 @@ describe("contatti-cleanup-preview.sql", () => {
       customerId: duplicated.id,
       updatedAt: at("02"),
     })
-    const onDeactivated = await createAlert({
+    const onDeactivated = await createLegacyAlert({
       taskId: deactivated.id,
       deadline: at("20"),
       message: "richiamare dopo le 18",
     })
-    await createAlert({ taskId: survivor.id, deadline: at("21") })
+    await createLegacyAlert({ taskId: survivor.id, deadline: at("21") })
     const customer = await createCustomer()
     await createTask({ customerId: customer.id })
     const inactive = await createTask({
       customerId: customer.id,
       isActive: false,
     })
-    const onInactive = await createAlert({
+    const onInactive = await createLegacyAlert({
       taskId: inactive.id,
       deadline: at("10"),
     })
-    await createAlert({
+    await createLegacyAlert({
       taskId: inactive.id,
       deadline: at("11"),
       isResolved: true,
     })
     // Also active: the cron fails on it at every run (review of PR1, F6)
     const orphan = await createTask({ customerId: null })
-    const onOrphan = await createAlert({
+    const onOrphan = await createLegacyAlert({
       taskId: orphan.id,
       deadline: at("12"),
     })

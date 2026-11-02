@@ -1,7 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, it } from "vitest"
 import { asc } from "drizzle-orm"
 import { task } from "@mito/db/schema/task"
-import { taskEventLog } from "@mito/db/schema/taskEventLog"
 import {
   BEFORE_REALIGN_SCHEMA_TAG,
   driverFailure,
@@ -12,6 +11,7 @@ import {
   testDb,
 } from "@/test/db"
 import { createCustomer, createOperator, createTask } from "@/test/factories"
+import { legacyTaskEventLog } from "@/test/legacy"
 
 // The realignment writes one row of the log per contact it moves, as the
 // system operator, which G1 creates in production. Without it the rows would
@@ -75,7 +75,7 @@ describe("contatti_contact_realign senza operatore di sistema", () => {
     expect(await testDb.select().from(task).orderBy(asc(task.id))).toEqual(
       tasksBefore
     )
-    expect(await testDb.select().from(taskEventLog)).toEqual([])
+    expect(await testDb.select().from(legacyTaskEventLog)).toEqual([])
     // The migrator runs every pending migration in one transaction: none of
     // the three is recorded, `cron_run` is not created and the indexes stay
     expect(await appliedMigrations()).toBe(migrationsBefore)
@@ -116,6 +116,6 @@ describe("contatti_contact_realign senza operatore di sistema", () => {
 
     expect(await appliedMigrations()).toBe(migrationsBefore + 3)
     expect(await batchState()).toEqual({ cronRunTable: true, indexes: [] })
-    expect(await testDb.select().from(taskEventLog)).toEqual([])
+    expect(await testDb.select().from(legacyTaskEventLog)).toEqual([])
   })
 })

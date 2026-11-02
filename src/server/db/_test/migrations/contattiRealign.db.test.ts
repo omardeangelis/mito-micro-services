@@ -4,7 +4,6 @@ import { beforeAll, describe, expect, it } from "vitest"
 import { asc } from "drizzle-orm"
 import { customers } from "@mito/db/schema/customers"
 import { task } from "@mito/db/schema/task"
-import { taskEventLog } from "@mito/db/schema/taskEventLog"
 import {
   BEFORE_REALIGN_SCHEMA_TAG,
   migrateUpTo,
@@ -19,6 +18,7 @@ import {
   createSystemOperator,
   createTask,
 } from "@/test/factories"
+import { legacyTaskEventLog } from "@/test/legacy"
 
 // The PR6 realignment (T6.9) on a database already in use, as the release
 // session will leave it: migrated up to the last migration production has
@@ -128,7 +128,7 @@ async function seedMisaligned() {
     ...dates,
   })
 
-  await testDb.insert(taskEventLog).values({
+  await testDb.insert(legacyTaskEventLog).values({
     customerId: aligned.id,
     taskId: alignedTask.id,
     actorOperatorId: anna.id,
@@ -161,7 +161,7 @@ const allTasks = () => testDb.select().from(task).orderBy(asc(task.id))
 const allCustomers = () =>
   testDb.select().from(customers).orderBy(asc(customers.id))
 const allEvents = () =>
-  testDb.select().from(taskEventLog).orderBy(asc(taskEventLog.id))
+  testDb.select().from(legacyTaskEventLog).orderBy(asc(legacyTaskEventLog.id))
 
 /**
  * The task rows as the database holds them, to the microsecond: Drizzle reads

@@ -143,7 +143,12 @@ export async function dropTestDatabase() {
   created = false
 }
 
-/** Empties every table of the `public` schema. */
+/**
+ * Empties every table of the `public` schema, then writes the
+ * `calls_registry` row of `app_milestone` at 9999-12-31: the rows written
+ * before it count with the old rule, and the `call` rows count whatever the
+ * instant (the same as `resetDb` of src/test/db.ts).
+ */
 export async function resetDb() {
   const tables = await pgClient<{ tablename: string }[]>`
     SELECT tablename FROM pg_tables WHERE schemaname = 'public'`
@@ -151,6 +156,13 @@ export async function resetDb() {
   await pgClient.unsafe(
     `TRUNCATE ${tables.map(({ tablename }) => `"public"."${tablename}"`).join(", ")} RESTART IDENTITY CASCADE`
   )
+  if (
+    tables.some(({ tablename }) => tablename === "mito-deutsche_app_milestone")
+  ) {
+    await pgClient.unsafe(
+      `INSERT INTO "public"."mito-deutsche_app_milestone" (name, at) VALUES ('calls_registry', '9999-12-31T00:00:00Z')`
+    )
+  }
 }
 
 /** The customer's active tasks, oldest first. */

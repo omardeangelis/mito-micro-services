@@ -224,9 +224,9 @@ Ogni task comincia dal test di `tdd_target`, rosso, e finisce con `tsc` verde su
 - **location**: `brain/specs/crm/esiti-richiami-stati/{SPEC,PLAN}.md`
 - **description**: Omar approva spec e piano. La PR di `claude/personas` è unita in `dev` (D1). `implement-spec` porta la spec a `status: approved` e crea `claude/esiti-richiami-stati` da `dev` aggiornato.
 - **validation**: frontmatter `approved`; `apps/web/src/prototypes/home-operatore/shared.tsx` presente sul branch.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-11-02: PR #147 unita, branch da dev, spec approved.
+- **files edited/created**: SPEC.md, PLAN.md
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -245,9 +245,9 @@ Ogni task comincia dal test di `tdd_target`, rosso, e finisce con `tsc` verde su
   - `selectorTargets(state)` (AC17) e `removeCallbackTargets` (AC22);
   - `needsConfirmation(alert, today)`, vera solo per un alert futuro (AC14).
 - **validation**: test di tabella su ogni combinazione esito × stato × alert (futuro, di oggi, scaduto, assente); `pnpm run test --run packages/domain`.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-11-02, sonnet: RED (import mancante) → verde; 1105 test del dominio verdi. Revisione: tabelle conformi ad AC4/6/8/12/14/17/22/30, funzioni vecchie intatte.
+- **files edited/created**: packages/domain/src/contact/{status,outcome}.ts, _test/{outcome,states}.test.ts
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -272,9 +272,9 @@ Ogni task comincia dal test di `tdd_target`, rosso, e finisce con `tsc` verde su
   - che dopo `resetDb` la riga `calls_registry` ci sia.
 
   Più `tsc --noEmit`.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-11-02, sonnet: RED 6/6 → verde. Correzione chiesta in revisione: 5 test di migrazioni vecchie leggevano lo schema attuale, ora usano tabelle legacy (src/test/legacy.ts), asserzioni invariate; migrazione rinominata calls_registry. db:check OK, 451 test db verdi.
+- **files edited/created**: packages/db/src/schema/{task,taskEventLog,appMilestone,index}.ts, migrations 20261102144804_calls_registry + 20261102144816_calls_registry_milestone, src/test/{db,pg,legacy}.ts, src/test/_test/callsRegistry.db.test.ts, 5 test di migrazione in src/server/db
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a

@@ -1,6 +1,5 @@
 import { beforeAll, describe, expect, it } from "vitest"
 import { eq } from "drizzle-orm"
-import { alert } from "@mito/db/schema/task"
 import {
   activeTasksOf,
   LEGACY_SCHEMA_TAG,
@@ -8,7 +7,8 @@ import {
   testClient,
   testDb,
 } from "@/test/db"
-import { createAlert, createCustomer, createTask } from "@/test/factories"
+import { createCustomer, createTask } from "@/test/factories"
+import { createLegacyAlert, legacyAlert } from "@/test/legacy"
 
 // The cleanup closes alerts as resolved by the system operator, which G1
 // creates in production. Without it they would be closed by nobody.
@@ -33,7 +33,7 @@ describe("contatti_cleanup senza operatore di sistema", () => {
       customerId: customer.id,
       isActive: false,
     })
-    const open = await createAlert({
+    const open = await createLegacyAlert({
       taskId: inactive.id,
       deadline: new Date("2026-09-20T09:00:00.000Z"),
     })
@@ -42,7 +42,10 @@ describe("contatti_cleanup senza operatore di sistema", () => {
     await expect(migrateUpTo()).rejects.toThrow(/system operator/)
 
     expect(await activeTasksOf(customer.id)).toHaveLength(2)
-    const [row] = await testDb.select().from(alert).where(eq(alert.id, open.id))
+    const [row] = await testDb
+      .select()
+      .from(legacyAlert)
+      .where(eq(legacyAlert.id, open.id))
     expect(row).toMatchObject({ isResolved: false, resolvedBy: null })
     // The migrator runs every pending migration in one transaction: none of
     // PR2's is recorded
