@@ -20,6 +20,21 @@ const devRoutes: RouteObject[] = import.meta.env.DEV
     ]
   : []
 
+// The prototypes of the `prototype` skill, inside the dashboard's shell and
+// out of the production bundle as above; deleted when the feature lands
+const prototypeRoutes: RouteObject[] = import.meta.env.DEV
+  ? [
+      {
+        path: "prototypes/home-operatore",
+        lazy: () => import("./prototypes/home-operatore/Harness"),
+      },
+      {
+        path: "prototypes/home-admin",
+        lazy: () => import("./prototypes/home-admin/Harness"),
+      },
+    ]
+  : []
+
 // The routes of §5 of brain/chore/migrazione-frontend-react.md. Each page is
 // a module of its own (`lazy`, which takes its `Component`), so the bundle
 // of a page loads when the page opens
@@ -137,6 +152,7 @@ export const routes: RouteObject[] = [
               },
             ],
           },
+          ...prototypeRoutes,
         ],
       },
       ...devRoutes,
