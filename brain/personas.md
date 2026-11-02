@@ -1,9 +1,9 @@
 ---
 domain: _root
 type: personas
-links: [domains/crm/concepts/import]
+links: [domains/crm/concepts/import, chore/crm/design-home-e-richiami]
 created: 2026-10-31
-updated: 2026-10-31
+updated: 2026-11-01
 ---
 
 # Personas
@@ -30,6 +30,6 @@ Di solito carica tre tipi di file ([[domains/crm/concepts/import|import]]):
 
 Non è abituato a usare un CRM. Ogni giorno fa le chiamate che gli sono assegnate, ne segna l'esito, aggiorna se serve le informazioni del cliente e imposta alert e richiami. Nel gestionale è il ruolo `OPERATORE`.
 
-## Domande aperte
+## Quanti sono
 
-- Quanti admin e quanti operatori ci sono?
+In produzione il 2026-11-01: 15 utenti `OPERATORE` (13 hanno chiamato negli ultimi 30 giorni) e 8 utenti `ADMIN`, compresi eventuali account tecnici. Un operatore ha in media circa 2.850 contatti da chiamare, una decina di richiami al giorno e fa circa 23 chiamate al giorno ([[chore/crm/design-home-e-richiami|design-home-e-richiami]] §6).
