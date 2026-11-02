@@ -161,11 +161,12 @@ describe("ExportCharts", () => {
     ).toEqual([{ Operatore: "Rossi Anna", Risposte: 3, "Non risposte": 2 }])
   })
 
-  it("classifica per appuntamenti sulle risposte, con 0% per chi non ha risposte (AC18)", () => {
+  it("classifica per appuntamenti sulle risposte, e chi non ha risposte non ha tasso, non 0% (AC18, AC27)", () => {
     render(
       <ExportCharts
         rows={[
           row("Neri", { calls: 3, noAnswer: 3 }),
+          row("Verdi", { calls: 2, answered: 2 }),
           row("Bianchi", { calls: 4, answered: 4, appointments: 1 }),
           row("Rossi", { calls: 2, answered: 2, appointments: 1 }),
         ]}
@@ -177,7 +178,20 @@ describe("ExportCharts", () => {
     )
       .getAllByRole("listitem")
       .map((item) => item.textContent?.replace(/\s+/g, " "))
-    expect(items).toEqual(["Rossi Anna50%", "Bianchi Anna25%", "Neri Anna0%"])
+    // 0% is a value (answers, no appointment); no answers is «—», after every rate
+    expect(items).toEqual([
+      "Rossi Anna50%",
+      "Bianchi Anna25%",
+      "Verdi Anna0%",
+      "Neri Anna—",
+    ])
+  })
+
+  it("senza risposte non mostra «0%»", () => {
+    render(<ExportCharts rows={[row("Neri", { calls: 3, noAnswer: 3 })]} />)
+
+    expect(screen.queryByText(/0\s?%/)).toBeNull()
+    expect(screen.getByText("—")).toBeTruthy()
   })
 })
 

@@ -2,7 +2,10 @@ import { describe, expect, it } from "vitest"
 import { taskStatus } from "@mito/db/schema/task"
 import type { TaskStatus } from "../../schemas"
 import {
+  answerRateOrNull,
   appointmentRate,
+  appointmentRateOrNull,
+  rankByAppointmentRateOrNull,
   isCall,
   rankByAppointmentRate,
   sortByCalls,
@@ -108,5 +111,53 @@ describe("totalsOf", () => {
         row("Verdi", { calls: 1, answered: 0, appointments: 0, noAnswer: 1 }),
       ])
     ).toEqual({ calls: 4, answered: 2, appointments: 1, noAnswer: 2 })
+  })
+})
+
+describe("rates without a value (esiti-richiami-stati AC27)", () => {
+  const totals = (calls: number, answered: number, appointments: number) => ({
+    calls,
+    answered,
+    appointments,
+    noAnswer: calls - answered,
+  })
+
+  it("gives no answer rate without calls, and 0 with calls nobody answered", () => {
+    expect(answerRateOrNull(totals(0, 0, 0))).toBeNull()
+    expect(answerRateOrNull(totals(4, 0, 0))).toBe(0)
+    expect(answerRateOrNull(totals(4, 3, 0))).toBe(0.75)
+  })
+
+  it("gives no appointment rate without answered calls, and 0 with answers but no appointments", () => {
+    expect(appointmentRateOrNull(totals(3, 0, 0))).toBeNull()
+    expect(appointmentRateOrNull(totals(3, 2, 0))).toBe(0)
+    expect(appointmentRateOrNull(totals(4, 4, 1))).toBe(0.25)
+    // The old function stays as it was, for the Next.js app (D18)
+    expect(appointmentRate(totals(3, 0, 0))).toBe(0)
+  })
+
+  it("ranks who has no rate after every rate, 0% included", () => {
+    const row = (
+      operatorId: number,
+      surname: string,
+      answered: number,
+      appointments: number
+    ): OperatorCalls => ({
+      operatorId,
+      name: "Anna",
+      surname,
+      calls: answered + 1,
+      answered,
+      appointments,
+      noAnswer: 1,
+    })
+
+    expect(
+      rankByAppointmentRateOrNull([
+        row(1, "Aaa", 0, 0),
+        row(2, "Bbb", 4, 0),
+        row(3, "Ccc", 4, 2),
+      ]).map((r) => r.surname)
+    ).toEqual(["Ccc", "Bbb", "Aaa"])
   })
 })

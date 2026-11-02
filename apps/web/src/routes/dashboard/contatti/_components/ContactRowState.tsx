@@ -15,6 +15,8 @@ import { useRowFocusAfterSave } from "@/components/custom/contact/useRowFocusAft
 import { useSavingUntilRefreshed } from "@/components/custom/contact/useSavingUntilRefreshed"
 import { navigateOnPlainClick } from "@/components/custom/contact/navigateOnPlainClick"
 import { contactEditability } from "@mito/domain/contact/permissions"
+import { stateLabel } from "@mito/domain/contact/status"
+import { romeDay } from "@mito/domain/contact/time"
 import { type ContactRow, type TaskStatus } from "@mito/contract/task"
 import { type ApiFailure } from "@/api/errors"
 import { useChangeState } from "@/api/task"
@@ -88,6 +90,8 @@ export function ContactRowState({
   } | null>(null)
 
   const customerName = customerNameOf(contact.customer)
+  // The day of the open alert: a Richiamo shows it (AC1)
+  const alertDay = contact.alert ? romeDay(contact.alert.deadline) : null
 
   const submitState = (
     toState: TaskStatus,
@@ -115,7 +119,7 @@ export function ContactRowState({
           const href = result.reopened ? detailHref(result.taskId, state) : null
           const id = toast("", {
             duration: result.reopened ? 8000 : 5000,
-            description: `${customerName}: ${toState}`,
+            description: `${customerName}: ${stateLabel(toState)}`,
             ...(href !== null
               ? {
                   action: (
@@ -162,13 +166,28 @@ export function ContactRowState({
 
   const content = () => {
     if (editability === null) {
-      return <TaskStatusBadge status={contact.state ?? "nessuno"} />
+      return (
+        <TaskStatusBadge
+          status={contact.state ?? "nessuno"}
+          alertDay={alertDay}
+        />
+      )
     }
-    if (nested) return <TaskStatusBadge status={contact.state ?? "nessuno"} />
+    if (nested) {
+      return (
+        <TaskStatusBadge
+          status={contact.state ?? "nessuno"}
+          alertDay={alertDay}
+        />
+      )
+    }
     if (editability.kind !== "editable") {
       return (
         <div className="flex flex-col items-center gap-1">
-          <TaskStatusBadge status={contact.state ?? "nessuno"} />
+          <TaskStatusBadge
+            status={contact.state ?? "nessuno"}
+            alertDay={alertDay}
+          />
           <ReadOnlyReason editability={editability} />
         </div>
       )
@@ -178,6 +197,7 @@ export function ContactRowState({
       <>
         <ContactStateSelect
           value={contact.state}
+          alertDay={alertDay}
           pending={pending}
           triggerRef={triggerRef}
           describedBy={describedBy}

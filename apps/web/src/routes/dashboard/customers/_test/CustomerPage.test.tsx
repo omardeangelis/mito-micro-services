@@ -416,7 +416,7 @@ describe("CustomerPage, l'operatore del cliente", () => {
     const dialog = await screen.findByRole("dialog", {
       name: "Passaggio di consegne",
     })
-    expect(dialog).toHaveTextContent("Anche il contatto attivo (chiamare")
+    expect(dialog).toHaveTextContent("Anche il contatto attivo (Da chiamare")
     await user.click(
       within(dialog).getByRole("combobox", { name: "Nuovo operatore" })
     )

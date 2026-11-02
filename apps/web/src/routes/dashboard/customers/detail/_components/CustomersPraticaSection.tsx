@@ -1,6 +1,7 @@
 import { Skeleton } from "@/components/ui/skeleton"
 import { useCustomerPractices } from "@/api/customer"
 import { type TaskStatus } from "@mito/contract/task"
+import { toContactState } from "@mito/domain/contact/status"
 import { CustomerPraticaTable } from "./CustomerPraticaTable"
 
 import { CreatePraticaTooltipButton } from "./CreatePraticaButton"
@@ -14,8 +15,11 @@ type CustomerPraticaSectionProps = {
 export function CustomerPraticaSection(props: CustomerPraticaSectionProps) {
   const { id } = props
   const { data: pratica } = useCustomerPractices(id)
+  // A legacy `erogata` is Pratica caricata (AC30)
   const canAddPractice =
-    props.activeTaskState === "caricato" || props.activeTaskState === "erogata"
+    props.activeTaskState !== null &&
+    props.activeTaskState !== undefined &&
+    toContactState(props.activeTaskState) === "caricato"
   if (pratica === undefined)
     return <Skeleton className="h-56 w-full rounded-md" />
   if (pratica.length === 0)

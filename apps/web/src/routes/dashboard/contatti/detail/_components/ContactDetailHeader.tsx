@@ -10,6 +10,7 @@ import {
   type OperatorRef,
 } from "@mito/domain/contact/permissions"
 import { formatDateAsDMY } from "@mito/client/format"
+import { romeDay } from "@mito/domain/contact/time"
 import type { ContactDetail } from "@mito/contract/task"
 import { ContactOperatorControl } from "./ContactOperatorControl"
 import { ContactPriorityControl } from "./ContactPriorityControl"
@@ -55,6 +56,8 @@ export function ContactDetailHeader({
 }) {
   const { contact, customer, editability } = data
   const { blackListStatus } = customer
+  // The day of the open alert: a Richiamo shows it (AC1)
+  const alertDay = data.alert ? romeDay(data.alert.deadline) : null
 
   return (
     <div className="rounded-card flex flex-col gap-4 border border-border bg-card p-4 shadow-card">
@@ -96,11 +99,15 @@ export function ContactDetailHeader({
             <ContactStateControl
               taskId={contact.id}
               state={contact.state}
+              alertDay={alertDay}
               da={da}
             />
           ) : (
             <>
-              <TaskStatusBadge status={contact.state ?? "nessuno"} />
+              <TaskStatusBadge
+                status={contact.state ?? "nessuno"}
+                alertDay={alertDay}
+              />
               <ReadOnlyFocusFlag />
             </>
           )}

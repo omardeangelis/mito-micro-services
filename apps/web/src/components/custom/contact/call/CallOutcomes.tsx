@@ -1,0 +1,191 @@
+import * as React from "react"
+import { addDays, format, startOfDay } from "date-fns"
+import { it } from "date-fns/locale"
+import { CalendarClock } from "lucide-react"
+import { callOutcomes, type CallOutcome } from "@mito/domain/contact/outcome"
+import { stateLabel } from "@mito/domain/contact/status"
+import { Button } from "@/components/ui/button"
+import { Calendar } from "@/components/ui/calendar"
+import { Input } from "@/components/ui/input"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+
+/** What the user chose: the outcome, and for Richiamare its day and message. */
+export type OnOutcome = (
+  outcome: CallOutcome,
+  callbackOn: Date | undefined,
+  message: string | undefined
+) => void
+
+/** «gg/mm» of a `YYYY-MM-DD` day. */
+const dayMonth = (day: string) => {
+  const [, month = "", date = ""] = day.split("-")
+  return `${date}/${month}`
+}
+
+/**
+ * The four outcomes of «Registra chiamata»: in a row when the nearest
+ * `@container` is at least 63rem wide, 2×2 below. «Richiamare» opens the panel
+ * with the calendar and the message. The parent owns what an outcome does,
+ * including a confirmation before closing a future alert: it decides in
+ * `onOutcome`.
+ */
+export function CallOutcomes({
+  customer,
+  now,
+  onOutcome,
+  pending = null,
+  replacesAlertDay,
+  error,
+}: {
+  customer: string
+  now: Date
+  onOutcome: OnOutcome
+  /** The outcome being registered: «Registro…» on its button, all disabled */
+  pending?: CallOutcome | null | undefined
+  /** The day (`YYYY-MM-DD`) of the open alert Richiamare would replace */
+  replacesAlertDay?: string | null | undefined
+  /** Shown under the calendar; opens the panel */
+  error?: string | null | undefined
+}) {
+  const busy = pending !== null
+  // The button says the state the outcome leads to, except Richiamare (the
+  // state is «Richiamo»)
+  const labelOf = (outcome: CallOutcome) =>
+    pending === outcome ? "Registro…" : stateLabel(outcome)
+  return (
+    <div
+      className="@min-[63rem]:flex @min-[63rem]:items-center grid grid-cols-2 gap-1.5"
+      role="group"
+      aria-label={`Esito della chiamata a ${customer}`}
+    >
+      {callOutcomes.map((outcome) =>
+        outcome === "richiamare" ? (
+          <CallbackButton
+            key={outcome}
+            customer={customer}
+            now={now}
+            pending={pending === outcome}
+            disabled={busy}
+            replacesAlertDay={replacesAlertDay}
+            error={error}
+            onSave={(day, message) => onOutcome(outcome, day, message)}
+          />
+        ) : (
+          <Button
+            key={outcome}
+            size="sm"
+            variant="secondary"
+            disabled={busy}
+            onClick={() => onOutcome(outcome, undefined, undefined)}
+          >
+            {labelOf(outcome)}
+          </Button>
+        )
+      )}
+    </div>
+  )
+}
+
+function CallbackButton({
+  customer,
+  now,
+  pending,
+  disabled,
+  replacesAlertDay,
+  error,
+  onSave,
+}: {
+  customer: string
+  now: Date
+  pending: boolean
+  disabled: boolean
+  replacesAlertDay: string | null | undefined
+  error: string | null | undefined
+  onSave: (day: Date, message: string | undefined) => void
+}) {
+  const [open, setOpen] = React.useState(false)
+  // The draft outlives a close (a click outside, Esc): it is lost only when
+  // the component unmounts, or saved, which closes the panel
+  const [day, setDay] = React.useState<Date | undefined>()
+  const [message, setMessage] = React.useState("")
+  // After a save the parent moves the focus, not the popover
+  const saved = React.useRef(false)
+  const tomorrow = addDays(startOfDay(now), 1)
+  // A failed save brings the panel back, with the draft
+  React.useEffect(() => {
+    if (error) setOpen(true)
+  }, [error])
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button size="sm" variant="secondary" disabled={disabled}>
+          <CalendarClock aria-hidden />
+          {pending ? "Registro…" : "Richiamare"}
+        </Button>
+      </PopoverTrigger>
+      {/* To the left of the button: Radix then slides it up or down to stay
+          in the window, so "Salva" is never below the bottom edge */}
+      <PopoverContent
+        side="left"
+        align="center"
+        collisionPadding={8}
+        className="w-auto p-3"
+        onCloseAutoFocus={(event) => {
+          if (saved.current) event.preventDefault()
+          saved.current = false
+        }}
+      >
+        <form
+          className="flex flex-col gap-3"
+          onSubmit={(event) => {
+            event.preventDefault()
+            if (!day) return
+            saved.current = true
+            setOpen(false)
+            onSave(day, message.trim() === "" ? undefined : message.trim())
+          }}
+        >
+          <div>
+            <p className="font-label text-sm">Richiamare {customer}</p>
+            {replacesAlertDay ? (
+              <p className="text-xs text-muted-foreground">
+                Sostituisce il richiamo del {dayMonth(replacesAlertDay)}
+              </p>
+            ) : null}
+          </div>
+          <Calendar
+            mode="single"
+            locale={it}
+            weekStartsOn={1}
+            fixedWeeks
+            defaultMonth={tomorrow}
+            selected={day}
+            onSelect={setDay}
+            disabled={{ before: tomorrow }}
+            className="p-0"
+          />
+          {error ? (
+            <p role="alert" className="text-destructive-text text-sm">
+              {error}
+            </p>
+          ) : null}
+          <Input
+            placeholder="Messaggio (facoltativo)"
+            aria-label="Messaggio"
+            value={message}
+            onChange={(event) => setMessage(event.target.value)}
+          />
+          <Button type="submit" disabled={!day}>
+            {day
+              ? `Salva richiamo del ${format(day, "dd/MM")}`
+              : "Scegli il giorno"}
+          </Button>
+        </form>
+      </PopoverContent>
+    </Popover>
+  )
+}

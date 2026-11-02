@@ -46,15 +46,14 @@ describe("ContactStateSelect", () => {
 
     await user.click(trigger())
 
-    expect(optionNames()).not.toContain("chiamare")
     expect(optionNames()).toEqual([
-      "non interessato",
-      "app.to",
-      "caricato",
-      "richiamare",
-      "non risponde",
-      "erogata",
-      "nessuno",
+      "Non interessato",
+      "Appuntamento",
+      "Pratica caricata",
+      "Richiamo",
+      "Non risponde",
+      "Pratica caricata",
+      "Da chiamare",
     ])
   })
 
@@ -64,8 +63,8 @@ describe("ContactStateSelect", () => {
 
     await user.click(trigger())
 
-    expect(optionNames()).not.toContain("richiamare")
-    expect(optionNames()).toContain("chiamare")
+    expect(optionNames()).not.toContain("Richiamo")
+    expect(optionNames()).toContain("Da chiamare")
   })
 
   it("un contatto senza stato conta come nessuno: nessuno non è un'opzione", async () => {
@@ -82,7 +81,9 @@ describe("ContactStateSelect", () => {
     const { onChange } = renderSelect({ value: "chiamare" })
     await user.click(trigger())
 
-    await user.click(screen.getByRole("menuitemradio", { name: "erogata" }))
+    await user.click(
+      screen.getAllByRole("menuitemradio", { name: "Pratica caricata" }).at(-1)!
+    )
 
     expect(onChange).toHaveBeenCalledTimes(1)
     expect(onChange).toHaveBeenCalledWith("erogata")
@@ -108,20 +109,22 @@ describe("ContactStateSelect", () => {
     const { onChange, rerender } = renderSelect({ value: "chiamare" })
     await user.click(trigger())
 
-    await user.click(screen.getByRole("menuitemradio", { name: "erogata" }))
+    await user.click(
+      screen.getAllByRole("menuitemradio", { name: "Pratica caricata" }).at(-1)!
+    )
 
     expect(onChange).toHaveBeenCalledWith("erogata")
-    expect(trigger().textContent).toBe("chiamare")
+    expect(trigger().textContent).toBe("Da chiamare")
     rerender(<ContactStateSelect value="chiamare" onChange={onChange} />)
-    expect(trigger().textContent).toBe("chiamare")
+    expect(trigger().textContent).toBe("Da chiamare")
     rerender(<ContactStateSelect value="erogata" onChange={onChange} />)
-    expect(trigger().textContent).toBe("erogata")
+    expect(trigger().textContent).toBe("Pratica caricata")
   })
 
   it("il trigger mostra nessuno quando il valore è null", () => {
     renderSelect({ value: null })
 
-    expect(trigger().textContent).toBe("nessuno")
+    expect(trigger().textContent).toBe("Da chiamare")
   })
 
   it("il trigger ha larghezza fissa w-40, anche in attesa", () => {
@@ -178,13 +181,13 @@ describe("ContactStateSelect", () => {
       <ContactStateSelect value="app.to" onChange={vi.fn()} />
     )
     expect(
-      screen.getByRole("button", { name: "app.to, cambia stato" })
+      screen.getByRole("button", { name: "Appuntamento, cambia stato" })
     ).not.toBeNull()
     unmount()
 
     render(<ContactStateSelect value={null} onChange={vi.fn()} />)
     expect(
-      screen.getByRole("button", { name: "nessuno, cambia stato" })
+      screen.getByRole("button", { name: "Da chiamare, cambia stato" })
     ).not.toBeNull()
   })
 
@@ -290,11 +293,13 @@ describe("ContactStateSelect", () => {
       render(<Parent />)
 
       await user.click(trigger())
-      await user.click(screen.getByRole("menuitemradio", { name: "app.to" }))
+      await user.click(
+        screen.getByRole("menuitemradio", { name: "Appuntamento" })
+      )
       expect(menu()).toBeNull()
       act(() => finish?.())
 
-      expect(trigger().textContent).toBe("app.to")
+      expect(trigger().textContent).toBe("Appuntamento")
       expect(menu()).toBeNull()
     })
   })

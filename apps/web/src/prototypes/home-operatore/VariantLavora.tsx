@@ -11,6 +11,8 @@
 import * as React from "react"
 import { format } from "date-fns"
 import { Check } from "lucide-react"
+import { CallOutcomes } from "@/components/custom/contact/call/CallOutcomes"
+import { StateBadge } from "@/components/custom/contact/call/StateBadge"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { type Callback, type Scenario } from "./fixtures"
@@ -21,11 +23,9 @@ import {
   DiaryTable,
   DueMarker,
   ListLink,
-  OutcomeButtons,
   PageTitle,
   RowsSkeleton,
   SectionBody,
-  StateBadge,
   myDayText,
   stateLabels,
   number,
@@ -344,7 +344,13 @@ function Row({
               the row keeps its height and nothing moves under the pointer */}
           <div className="grid">
             <div className={cn("[grid-area:1/1]", row.done && "invisible")}>
-              <OutcomeButtons row={row} now={now} onRegister={onRegister} />
+              <CallOutcomes
+                customer={row.customer}
+                now={now}
+                onOutcome={(outcome, day, message) =>
+                  onRegister(row, outcome, day, message)
+                }
+              />
             </div>
             {row.done ? (
               <p className="flex items-center gap-1.5 self-center text-muted-foreground [grid-area:1/1]">

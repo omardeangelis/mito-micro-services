@@ -78,7 +78,7 @@ describe("contactProgress: la coda attuale", () => {
   )
 
   it.effect(
-    "dei contatti attivi, `done` conta gli stati con un esito e `todo` quelli in coda; `nessuno` e lo stato vuoto in nessuno dei due",
+    "dei contatti attivi, `done` conta i fatti e `todo` i da fare (AC6); `followup`, `nessuno` e lo stato vuoto sono Da chiamare, `erogata` è Pratica caricata",
     () =>
       Effect.gen(function* () {
         const operator = yield* Effect.promise(() =>
@@ -91,10 +91,10 @@ describe("contactProgress: la coda attuale", () => {
         }
 
         // done: app.to, caricato, erogata, non interessato, richiamare;
-        // todo: chiamare, followup, non risponde
+        // todo: chiamare, followup, non risponde, nessuno, lo stato vuoto
         expect(yield* progressOf(actorOf(operator))).toEqual({
           done: 5,
-          todo: 3,
+          todo: 5,
         })
       })
   )
@@ -155,14 +155,17 @@ describe("contactProgress: la coda attuale", () => {
         yield* Effect.promise(() => seedContacts(operatorB.id))
         yield* Effect.promise(() => seedContacts(null))
 
-        expect(yield* progressOf(actorOf(admin))).toEqual({ done: 15, todo: 9 })
+        expect(yield* progressOf(actorOf(admin))).toEqual({
+          done: 15,
+          todo: 15,
+        })
         expect(yield* progressOf(actorOf(operatorA))).toEqual({
           done: 5,
-          todo: 3,
+          todo: 5,
         })
         expect(yield* progressOf(actorOf(operatorB))).toEqual({
           done: 5,
-          todo: 3,
+          todo: 5,
         })
       })
   )

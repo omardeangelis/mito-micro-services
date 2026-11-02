@@ -1,30 +1,19 @@
-// The pieces of "Lavora da qui": labels and tones of the six states (D6), the
-// Oggi/Scaduto markers of the Contatti list, the outcome buttons of
-// "Registra chiamata", the diary table, the per-section loading and error, and
-// the fake navigation. Prototype only: nothing imports it outside
+// The pieces of "Lavora da qui": labels of the six states (D6), the
+// Oggi/Scaduto markers of the Contatti list, the diary table, the per-section
+// loading and error, and the fake navigation. Prototype only: nothing imports it outside
 // src/prototypes.
 
 import * as React from "react"
-import { addDays, format, isSameDay, startOfDay, subDays } from "date-fns"
-import { it } from "date-fns/locale"
-import { AlertTriangle, CalendarClock, Clock, RotateCw } from "lucide-react"
+import { format, isSameDay, subDays } from "date-fns"
+import { AlertTriangle, Clock, RotateCw } from "lucide-react"
 import { toast } from "sonner"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Calendar } from "@/components/ui/calendar"
-import { Input } from "@/components/ui/input"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover"
 import { Skeleton } from "@/components/ui/skeleton"
-import { type Tone } from "@/lib/tones"
+import { StateBadge } from "@/components/custom/contact/call/StateBadge"
 import { cn } from "@/lib/utils"
 import {
   type Callback,
   type Entry,
-  type Outcome,
   type SectionId,
   type State,
 } from "./fixtures"
@@ -36,31 +25,6 @@ export const stateLabels: Record<State, string> = {
   "app.to": "Appuntamento",
   caricato: "Pratica caricata",
   "non interessato": "Non interessato",
-}
-
-const stateTones: Record<State, Tone> = {
-  chiamare: "blue",
-  "non risponde": "orange",
-  richiamare: "amber",
-  "app.to": "teal",
-  caricato: "indigo",
-  "non interessato": "red",
-}
-
-export function StateBadge({
-  state,
-  callbackOn,
-}: {
-  state: State
-  callbackOn?: Date | undefined
-}) {
-  return (
-    <Badge tone={stateTones[state]}>
-      {state === "richiamare" && callbackOn
-        ? `Richiamo · ${format(callbackOn, "dd/MM")}`
-        : stateLabels[state]}
-    </Badge>
-  )
 }
 
 /** The marker of the Prossimo alert column: "Scaduto" in red, "Oggi" in amber */
@@ -173,146 +137,17 @@ export function ListLink({
   )
 }
 
-// ---- Registra chiamata (§5) ----
-
-type OnRegister = (
-  row: Callback,
-  outcome: Outcome,
-  callbackOn?: Date,
-  message?: string
-) => void
-
-/**
- * The four outcomes: in a row when the nearest `@container` (the section of
- * the callbacks) is at least 63rem wide, 2×2 below
- */
-export function OutcomeButtons({
-  row,
-  now,
-  onRegister,
-}: {
-  row: Callback
-  now: Date
-  onRegister: OnRegister
-}) {
-  return (
-    <div
-      className="@min-[63rem]:flex @min-[63rem]:items-center grid grid-cols-2 gap-1.5"
-      role="group"
-      aria-label={`Esito della chiamata a ${row.customer}`}
-    >
-      <Button
-        size="sm"
-        variant="secondary"
-        onClick={() => onRegister(row, "non risponde")}
-      >
-        Non risponde
-      </Button>
-      <CallbackButton
-        row={row}
-        now={now}
-        onSave={(day, msg) => onRegister(row, "richiamare", day, msg)}
-      />
-      <Button
-        size="sm"
-        variant="secondary"
-        onClick={() => onRegister(row, "app.to")}
-      >
-        Appuntamento
-      </Button>
-      <Button
-        size="sm"
-        variant="secondary"
-        onClick={() => onRegister(row, "non interessato")}
-      >
-        Non interessato
-      </Button>
-    </div>
-  )
-}
-
-function CallbackButton({
-  row,
-  now,
-  onSave,
-}: {
-  row: Callback
-  now: Date
-  onSave: (day: Date, message: string | undefined) => void
-}) {
-  const [open, setOpen] = React.useState(false)
-  // The draft outlives a close (a click outside, Esc): it is lost only when
-  // the home unmounts, or saved, which closes the row and its buttons
-  const [day, setDay] = React.useState<Date | undefined>()
-  const [message, setMessage] = React.useState("")
-  // After a save the row closes: the variant moves the focus, not the popover
-  const saved = React.useRef(false)
-  const tomorrow = addDays(startOfDay(now), 1)
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button size="sm" variant="secondary">
-          <CalendarClock aria-hidden />
-          Richiamare
-        </Button>
-      </PopoverTrigger>
-      {/* To the left of the button: Radix then slides it up or down to stay
-          in the window, so "Salva" is never below the bottom edge */}
-      <PopoverContent
-        side="left"
-        align="center"
-        collisionPadding={8}
-        className="w-auto p-3"
-        onCloseAutoFocus={(event) => {
-          if (saved.current) event.preventDefault()
-          saved.current = false
-        }}
-      >
-        <form
-          className="flex flex-col gap-3"
-          onSubmit={(event) => {
-            event.preventDefault()
-            if (!day) return
-            saved.current = true
-            setOpen(false)
-            onSave(day, message.trim() === "" ? undefined : message.trim())
-          }}
-        >
-          <p className="font-label text-sm">Richiamare {row.customer}</p>
-          <Calendar
-            mode="single"
-            locale={it}
-            weekStartsOn={1}
-            fixedWeeks
-            defaultMonth={tomorrow}
-            selected={day}
-            onSelect={setDay}
-            disabled={{ before: tomorrow }}
-            className="p-0"
-          />
-          <Input
-            placeholder="Messaggio (facoltativo)"
-            aria-label="Messaggio"
-            value={message}
-            onChange={(event) => setMessage(event.target.value)}
-          />
-          <Button type="submit" disabled={!day}>
-            {day
-              ? `Salva richiamo del ${format(day, "dd/MM")}`
-              : "Scegli il giorno"}
-          </Button>
-        </form>
-      </PopoverContent>
-    </Popover>
-  )
-}
-
 // ---- The diary of today's calls (D2) ----
 
 export const timeText = (at: Date) => format(at, "HH:mm")
 
 export function EntryBadge({ entry }: { entry: Entry }) {
-  return <StateBadge state={entry.outcome} callbackOn={entry.callbackOn} />
+  return (
+    <StateBadge
+      state={entry.outcome}
+      alertDay={entry.callbackOn && format(entry.callbackOn, "yyyy-MM-dd")}
+    />
+  )
 }
 
 /** Where the call came from; not "Richiamo", which is also an outcome */

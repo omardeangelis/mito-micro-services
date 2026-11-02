@@ -10,6 +10,7 @@ import { TaskStatusBadge } from "@/components/custom/badge/TaskStatusBadge"
 import { buttonVariants } from "@/components/ui/button"
 import { operatorDisplayName } from "@mito/domain/contact/permissions"
 import { bandOf } from "@mito/domain/contact/priority"
+import { romeDay } from "@mito/domain/contact/time"
 import { formatDateAsDMY } from "@mito/client/format"
 import { type ContactDetail } from "@mito/contract/task"
 
@@ -46,6 +47,8 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
 export const CustomerContactSummary = (props: CustomerContactSummaryProps) => {
   const { contact, alert } = props
   const priority = contact.priority ?? 0
+  // The day of the open alert: a Richiamo shows it (AC1)
+  const alertDay = alert ? romeDay(alert.deadline) : null
 
   return (
     <div className="rounded-card mt-8 border border-border bg-card p-4">
@@ -61,7 +64,10 @@ export const CustomerContactSummary = (props: CustomerContactSummaryProps) => {
       </div>
       <dl className="grid grid-cols-2 items-start gap-4 lg:grid-cols-4">
         <Field label="Stato">
-          <TaskStatusBadge status={contact.state ?? "nessuno"} />
+          <TaskStatusBadge
+            status={contact.state ?? "nessuno"}
+            alertDay={alertDay}
+          />
         </Field>
         <Field label="Operatore">
           {contact.operator === null ? (

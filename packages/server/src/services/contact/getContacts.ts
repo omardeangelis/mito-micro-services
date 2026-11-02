@@ -1,4 +1,4 @@
-import { Effect } from "effect"
+import { Clock, Effect } from "effect"
 import {
   and,
   asc,
@@ -19,6 +19,11 @@ import {
 import { type ContactsFilters } from "@mito/domain/contact/listInput"
 import { type Actor } from "@mito/domain/contact/permissions"
 import { bandRange } from "@mito/domain/contact/priority"
+import {
+  allStates,
+  type ContactState,
+  toContactState,
+} from "@mito/domain/contact/status"
 import { romeDayBounds } from "@mito/domain/contact/time"
 import { type TaskStatus } from "@mito/domain/schemas"
 import { customers, type blackListStatus } from "@mito/db/schema/customers"
@@ -85,8 +90,19 @@ export const openAlertOf = and(
   eq(alert.isResolved, false)
 )
 
-// A NULL state is `nessuno` (the column default) to the filter too
-const stateOfFilter = sql`COALESCE(${task.state}, 'nessuno')`
+/**
+ * The stored values a state of the filter stands for (AC2): Da chiamare also
+ * finds `followup`, `nessuno` and no state, Pratica caricata also `erogata`
+ * (`toContactState`, AC30).
+ */
+const matchesState = (picked: TaskStatus): SQL | undefined => {
+  const state: ContactState = toContactState(picked)
+  const stored = allStates.filter((value) => toContactState(value) === state)
+  return or(
+    inArray(task.state, stored),
+    state === "chiamare" ? isNull(task.state) : undefined
+  )
+}
 
 // The badge shows a NULL priority as "bassa" (AC12), so the filter does too
 const priorityOfBadge = sql<number>`COALESCE(${task.priority}, 0)`
@@ -143,7 +159,7 @@ const buildContactsWhere = (
         )
       : undefined,
     filters.states.length > 0
-      ? inArray(stateOfFilter, filters.states)
+      ? or(...filters.states.map(matchesState))
       : undefined,
     or(
       ...filters.priorities.map((band) => {
@@ -161,11 +177,30 @@ const buildContactsWhere = (
 }
 
 /**
+ * The priority the list sorts by (AC5, D13), computed when the list is read.
+ * A manual priority keeps its value. The others take the key of their band:
+ * an open alert due today or earlier 130, Da chiamare 120 (`followup`,
+ * `nessuno` and no state included, AC31), Non risponde 100, and the stored
+ * value for the rest, which stays under 100. `alertEnd` is the end of today
+ * in Rome.
+ */
+const sortPriority = (alertEnd: Date) => sql`CASE
+  WHEN COALESCE(${task.customPriority}, false) THEN ${task.priority}
+  WHEN ${alert.id} IS NOT NULL AND ${alert.deadline} < ${alertEnd} THEN 130
+  WHEN ${task.state} IS NULL OR ${task.state} IN ('chiamare', 'followup', 'nessuno') THEN 120
+  WHEN ${task.state} = 'non risponde' THEN 100
+  ELSE ${task.priority}
+END`
+
+/**
  * The order of the list (AC13): the contacts with no value in the column go
  * last in both directions, and the task id settles ties so a page never
  * repeats a row (AC15).
  */
-const buildContactsOrder = (filters: ContactsFilters): SQL[] => {
+const buildContactsOrder = (
+  filters: ContactsFilters,
+  alertEnd: Date
+): SQL[] => {
   const ascending = filters.sortedBy === "asc"
   const nullsLast = (column: SQLWrapper) =>
     ascending ? sql`${column} ASC NULLS LAST` : sql`${column} DESC NULLS LAST`
@@ -174,7 +209,7 @@ const buildContactsOrder = (filters: ContactsFilters): SQL[] => {
       ? [customers.surname, customers.name]
       : [
           {
-            priority: task.priority,
+            priority: sortPriority(alertEnd),
             closedAt: task.closedAt,
             nextAlert: alert.deadline,
             createdAt: task.createdAt,
@@ -266,14 +301,16 @@ const previousContactsOf = (
  * The contacts that satisfy the filters (AC10), ordered, one page of them,
  * with the exact total of the whole result (AC14).
  */
-export const getContacts = ({
+export const getContacts = Effect.fn("contact.getContacts")(function* ({
   actor,
   ...filters
-}: ContactsFilters & { actor: Actor }): Effect.Effect<
+}: ContactsFilters & { actor: Actor }): Effect.fn.Return<
   GetContactsResult,
   DbError,
   Db
-> => {
+> {
+  const now = yield* Clock.currentTimeMillis
+  const alertEnd = romeDayBounds(new Date(now)).end
   const where = buildContactsWhere(filters, actor)
   const contacts = query((client) =>
     client
@@ -283,7 +320,7 @@ export const getContacts = ({
       .leftJoin(operators, eq(operators.id, task.operatorId))
       .leftJoin(alert, openAlertOf)
       .where(where)
-      .orderBy(...buildContactsOrder(filters))
+      .orderBy(...buildContactsOrder(filters, alertEnd))
       .limit(filters.perPage)
       .offset((filters.page - 1) * filters.perPage)
   )
@@ -298,7 +335,7 @@ export const getContacts = ({
       .where(where)
   ).pipe(Effect.map(([row]) => row?.total ?? 0))
 
-  return Effect.all(
+  return yield* Effect.all(
     {
       contacts,
       total,
@@ -315,4 +352,4 @@ export const getContacts = ({
       ).pipe(Effect.map((previous) => ({ ...page, previous })))
     )
   )
-}
+})

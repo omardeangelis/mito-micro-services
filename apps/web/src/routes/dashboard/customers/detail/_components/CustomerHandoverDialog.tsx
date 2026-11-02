@@ -21,13 +21,15 @@ import {
 import { LoadingSpinner } from "@/components/custom/loading-spinner"
 import { SYSTEM_OPERATOR_USER_ID } from "@mito/domain/constants/operator"
 import { operatorDisplayName } from "@mito/domain/contact/permissions"
+import { stateLabel } from "@mito/domain/contact/status"
+import { type TaskStatus } from "@mito/domain/schemas"
 import { type Operator } from "@mito/contract/schemas"
 import { formatDeadline } from "@mito/client/format"
 import { useHandover } from "@/api/customer"
 
 /** What the modal says about the customer's active contact. */
 export type HandoverActiveContact = {
-  state: string | null
+  state: TaskStatus | null
   /** The contact's operator; null when the contact has none. */
   operatorId: number | null
   /** The contact's open alert; null when there is none. */
@@ -165,7 +167,7 @@ export function CustomerHandoverDialog({
               </p>
               {activeContact ? (
                 <p>
-                  Anche il contatto attivo ({activeContact.state ?? "nessuno"},{" "}
+                  Anche il contatto attivo ({stateLabel(activeContact.state)},{" "}
                   {activeContact.alert
                     ? `prossimo alert ${formatDeadline(activeContact.alert.deadline) ?? ""}, `
                     : ""}

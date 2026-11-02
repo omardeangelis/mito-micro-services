@@ -3,10 +3,11 @@ import { and, desc, eq } from "drizzle-orm"
 import { bandValue } from "@mito/domain/contact/priority"
 import { type Task } from "@mito/domain/schemas"
 import { customers } from "@mito/db/schema/customers"
-import { alert, task } from "@mito/db/schema/task"
+import { task } from "@mito/db/schema/task"
 import { taskEventLog } from "@mito/db/schema/taskEventLog"
 import { lockCustomer, query, transaction } from "../../effect/db"
 import { replaceActiveContact } from "./activeContact"
+import { resolveOpenAlert } from "./alert"
 import { findWorkingOperator } from "./operator"
 
 type LogRow = typeof taskEventLog.$inferInsert
@@ -146,27 +147,17 @@ const assignCustomer = Effect.fnUntraced(function* ({
     if (alertId !== null) {
       // Risolto in modo NON distruttivo: isResolved=true, record conservato,
       // il cron non lo riattiva
-      yield* query((client) =>
-        client
-          .update(alert)
-          .set({ isResolved: true, resolvedBy: actorOperatorId })
-          .where(eq(alert.id, alertId))
-      )
+      yield* resolveOpenAlert({
+        customerId,
+        taskId: customerTask.id,
+        alertId,
+        actorOperatorId,
+        source: "bulk",
+        resolution: "bulk",
+      })
     }
     yield* setCustomerOperator
     yield* insertLogRows([
-      ...(alertId !== null
-        ? [
-            {
-              customerId,
-              taskId: customerTask.id,
-              alertId,
-              actorOperatorId,
-              action: "alert_resolved",
-              source: "bulk",
-            } as const,
-          ]
-        : []),
       ...stateChange(created.id, customerTask.state),
       ...operatorReassign(created.id, customerTask.operatorId),
     ])

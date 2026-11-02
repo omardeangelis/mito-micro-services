@@ -82,10 +82,12 @@ export const setCallback = ({
 
       if (openAlert) {
         yield* resolveOpenAlert({
-          contact,
+          customerId: customer.id,
+          taskId,
           alertId: openAlert.id,
-          actor,
+          actorOperatorId: actor.operatorId,
           source: "detail",
+          resolution: "replaced",
         })
       }
 

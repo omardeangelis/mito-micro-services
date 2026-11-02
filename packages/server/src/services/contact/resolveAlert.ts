@@ -52,6 +52,13 @@ export const resolveAlert = ({
       if (!target) return yield* new AlertNotFound()
 
       const contact = yield* loadEditableContact(target.taskId, actor)
-      return yield* resolveOpenAlert({ contact, alertId, actor, source })
+      return yield* resolveOpenAlert({
+        customerId: contact.customer.id,
+        taskId: contact.task.id,
+        alertId,
+        actorOperatorId: actor.operatorId,
+        source,
+        resolution: "removed",
+      })
     })
   )

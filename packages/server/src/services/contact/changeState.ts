@@ -82,10 +82,12 @@ export const changeState = ({
 
       if (plan.resolveAlert) {
         yield* resolveOpenAlert({
-          contact,
+          customerId: customer.id,
+          taskId,
           alertId: openAlert!.id,
-          actor,
+          actorOperatorId: actor.operatorId,
           source,
+          resolution: "state_change",
         })
       }
 

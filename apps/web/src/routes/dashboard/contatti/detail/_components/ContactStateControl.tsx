@@ -18,6 +18,8 @@ type Props = {
   taskId: number
   /** The saved state: the control shows it until the new one is on screen */
   state: TaskStatus | null
+  /** The day of the open alert (`YYYY-MM-DD`), shown by a Richiamo */
+  alertDay?: string | null
   /** The `da` parameter of the address: the list state to carry along */
   da: string | undefined
 }
@@ -44,7 +46,7 @@ type Props = {
  * - A rejection (AC49, AC52) is a toast, said also inside the sheet, and the
  *   refresh that brings the control back to the saved value.
  */
-export function ContactStateControl({ taskId, state, da }: Props) {
+export function ContactStateControl({ taskId, state, alertDay, da }: Props) {
   const navigate = useNavigate()
   const sheet = useContactSheet()
   const triggerRef = React.useRef<HTMLButtonElement>(null)
@@ -163,6 +165,7 @@ export function ContactStateControl({ taskId, state, da }: Props) {
     <>
       <ContactStateSelect
         value={state}
+        alertDay={alertDay}
         pending={busy}
         triggerRef={triggerRef}
         onChange={(toState) => {

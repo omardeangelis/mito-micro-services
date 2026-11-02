@@ -6,7 +6,12 @@ import type { DayRange } from "@mito/domain/analytics/window"
 import type { Actor } from "@mito/domain/contact/permissions"
 import { periodBounds } from "@mito/domain/export/period"
 import { query } from "../../effect/db"
-import { callStats, isCallIn } from "../export/callStats"
+import {
+  callResult,
+  callsRegistryAt,
+  callStats,
+  isCallIn,
+} from "../export/callStats"
 import { romeDayOf } from "../../shared/sql"
 import { withComparison, type AnalysisRange } from "./range"
 
@@ -51,18 +56,19 @@ const callDaysOf = Effect.fnUntraced(function* (
   range: DayRange,
   operatorId: number
 ) {
+  const registryAt = yield* callsRegistryAt()
   const rows = yield* query((client) =>
     client
       .select({
         day: callDay,
         calls: sql<number>`count(*)::int`,
-        appointments: sql<number>`(count(*) filter (where ${taskEventLog.toState} = ${appointmentState}))::int`,
-        noAnswer: sql<number>`(count(*) filter (where ${taskEventLog.toState} = ${noAnswerState}))::int`,
+        appointments: sql<number>`(count(*) filter (where ${callResult} = ${appointmentState}))::int`,
+        noAnswer: sql<number>`(count(*) filter (where ${callResult} = ${noAnswerState}))::int`,
       })
       .from(taskEventLog)
       .where(
         and(
-          isCallIn(periodBounds(range)),
+          isCallIn(periodBounds(range), registryAt),
           eq(taskEventLog.actorOperatorId, operatorId)
         )
       )

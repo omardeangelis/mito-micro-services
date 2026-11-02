@@ -71,6 +71,8 @@ export const getContactsInput = z.object({
   // The signed-in operator's contacts and those of their customers (D8): the
   // client never sends an id
   onlyMe: z.boolean().default(false),
+  // Any stored value is accepted (the Next.js app still sends the old ones);
+  // the list matches each by the state it stands for (esiti-richiami-stati AC2)
   states: z.array(z.enum(allStates)).max(allStates.length).default([]),
   priorities: z
     .array(z.enum(priorityBands))

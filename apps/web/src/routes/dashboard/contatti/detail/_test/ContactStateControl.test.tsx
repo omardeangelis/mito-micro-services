@@ -2,6 +2,7 @@ import { screen, waitFor, within } from "@testing-library/react"
 import { beforeEach, describe, expect, it } from "vitest"
 import { ContactForbidden } from "@mito/contract/errors"
 import { type TaskStatus } from "@mito/contract/task"
+import { stateLabel } from "@mito/domain/contact/status"
 import { contactDetail, superseded } from "@/test/contacts"
 import { detailHrefFromDa } from "../../_lib/detailHrefFromDa"
 import { currentHref } from "../../_test/page"
@@ -28,12 +29,26 @@ const trigger = () =>
 const setup = (state: TaskStatus | null = "app.to") =>
   openDetail([contactDetail({ contact: { state } })])
 
+/**
+ * The menu option of `state`. A legacy value shares its label with the new
+ * state (`erogata` with `caricato`, `nessuno` with `chiamare`) and comes after
+ * it in the menu
+ */
+const optionOf = (state: TaskStatus) => {
+  const options = screen.getAllByRole("menuitemradio", {
+    name: stateLabel(state),
+  })
+  return state === "chiamare" || state === "caricato" || state === "app.to"
+    ? options[0]!
+    : options.at(-1)!
+}
+
 const choose = async (
   user: Awaited<ReturnType<typeof setup>>["user"],
-  state: string
+  state: TaskStatus
 ) => {
   await user.click(trigger())
-  await user.click(screen.getByRole("menuitemradio", { name: state }))
+  await user.click(optionOf(state))
 }
 
 /** The address goes back to `href` on "Indietro"? It is in the history */
@@ -54,7 +69,9 @@ describe("il selettore dello stato nel dettaglio (AC30, AC39, AC40)", () => {
     await waitFor(() =>
       expect(trigger().getAttribute("aria-disabled")).toBe("true")
     )
-    expect(trigger().getAttribute("aria-label")).toBe("app.to, cambia stato")
+    expect(trigger().getAttribute("aria-label")).toBe(
+      "Appuntamento, cambia stato"
+    )
     open()
     await waitFor(() =>
       expect(backend.state.changes).toEqual([
@@ -67,7 +84,9 @@ describe("il selettore dello stato nel dettaglio (AC30, AC39, AC40)", () => {
       ])
     )
     await waitFor(() =>
-      expect(trigger().getAttribute("aria-label")).toBe("erogata, cambia stato")
+      expect(trigger().getAttribute("aria-label")).toBe(
+        "Pratica caricata, cambia stato"
+      )
     )
     await waitFor(() =>
       expect(trigger().getAttribute("aria-disabled")).toBe("false")
@@ -82,7 +101,9 @@ describe("il selettore dello stato nel dettaglio (AC30, AC39, AC40)", () => {
 
     await user.click(trigger())
 
-    expect(screen.queryByRole("menuitemradio", { name: "app.to" })).toBeNull()
+    expect(
+      screen.queryByRole("menuitemradio", { name: "Appuntamento" })
+    ).toBeNull()
     expect(backend.state.changes).toHaveLength(0)
   })
 
@@ -92,7 +113,9 @@ describe("il selettore dello stato nel dettaglio (AC30, AC39, AC40)", () => {
     await choose(user, "erogata")
 
     await waitFor(() =>
-      expect(trigger().getAttribute("aria-label")).toBe("erogata, cambia stato")
+      expect(trigger().getAttribute("aria-label")).toBe(
+        "Pratica caricata, cambia stato"
+      )
     )
     expect(backend.state.detailReads.length).toBeGreaterThan(1)
   })
@@ -130,7 +153,7 @@ describe("la riapertura (AC34, AC35, A12)", () => {
 
     await waitFor(() =>
       expect(trigger().getAttribute("aria-label")).toBe(
-        "chiamare, cambia stato"
+        "Da chiamare, cambia stato"
       )
     )
     await waitFor(() => expect(document.activeElement).toBe(trigger()))
@@ -148,13 +171,13 @@ describe("la riapertura (AC34, AC35, A12)", () => {
     await waitFor(() => expect(currentHref()).toBe(detailHrefFromDa(202, DA)))
 
     expect(trigger().getAttribute("aria-label")).toBe(
-      "non interessato, cambia stato"
+      "Non interessato, cambia stato"
     )
     expect(trigger().getAttribute("aria-disabled")).toBe("true")
     open()
     await waitFor(() =>
       expect(trigger().getAttribute("aria-label")).toBe(
-        "chiamare, cambia stato"
+        "Da chiamare, cambia stato"
       )
     )
   })
@@ -251,7 +274,7 @@ describe("con un alert aperto (AC36, AC37)", () => {
     expect(backend.state.changes).toHaveLength(1)
     await waitFor(() => expect(document.activeElement).toBe(trigger()))
     expect(trigger().getAttribute("aria-label")).toBe(
-      "richiamare, cambia stato"
+      "Richiamo · 21/10, cambia stato"
     )
     // Only the confirmation closed: the sheet stays
     expect(sheet()).toBeTruthy()
@@ -283,7 +306,9 @@ describe("con un alert aperto (AC36, AC37)", () => {
     )
 
     await waitFor(() =>
-      expect(trigger().getAttribute("aria-label")).toBe("erogata, cambia stato")
+      expect(trigger().getAttribute("aria-label")).toBe(
+        "Pratica caricata, cambia stato"
+      )
     )
     expect(backend.state.changes[1]).toEqual({
       taskId: 101,
@@ -316,7 +341,9 @@ describe("quando il server rifiuta (AC49, AC52)", () => {
     await waitFor(() =>
       expect(trigger().getAttribute("aria-disabled")).toBe("false")
     )
-    expect(trigger().getAttribute("aria-label")).toBe("app.to, cambia stato")
+    expect(trigger().getAttribute("aria-label")).toBe(
+      "Appuntamento, cambia stato"
+    )
     expect(currentHref()).toBe(detailPath(101, DA))
   })
 
@@ -340,7 +367,7 @@ describe("quando il server rifiuta (AC49, AC52)", () => {
     await waitFor(() => expect(currentHref()).toBe(detailHrefFromDa(303, DA)))
     await waitFor(() =>
       expect(trigger().getAttribute("aria-label")).toBe(
-        "chiamare, cambia stato"
+        "Da chiamare, cambia stato"
       )
     )
   })
@@ -358,7 +385,9 @@ describe("quando il server rifiuta (AC49, AC52)", () => {
     await waitFor(() =>
       expect(trigger().getAttribute("aria-disabled")).toBe("false")
     )
-    expect(trigger().getAttribute("aria-label")).toBe("app.to, cambia stato")
+    expect(trigger().getAttribute("aria-label")).toBe(
+      "Appuntamento, cambia stato"
+    )
   })
 })
 

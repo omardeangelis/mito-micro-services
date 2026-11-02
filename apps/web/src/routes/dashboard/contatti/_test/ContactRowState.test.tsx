@@ -2,8 +2,9 @@ import { screen, waitFor, within } from "@testing-library/react"
 import { describe, expect, it } from "vitest"
 import { ContactForbidden } from "@mito/contract/errors"
 import { type Role } from "@mito/contract/schemas"
-import { type ContactRow } from "@mito/contract/task"
+import { type ContactRow, type TaskStatus } from "@mito/contract/task"
 import { defaultState, detailHref } from "@mito/client/contact/searchParams"
+import { stateLabel } from "@mito/domain/contact/status"
 import {
   contactCustomer,
   contactRow,
@@ -42,12 +43,26 @@ const holdChanges = (backend: ReturnType<typeof fakeContacts>) => {
 const trigger = () =>
   document.querySelector<HTMLButtonElement>("[data-contact-state-trigger]")
 
+/**
+ * The menu option of `state`. A legacy value shares its label with the new
+ * state (`erogata` with `caricato`, `nessuno` with `chiamare`) and comes after
+ * it in the menu
+ */
+const optionOf = (state: TaskStatus) => {
+  const options = screen.getAllByRole("menuitemradio", {
+    name: stateLabel(state),
+  })
+  return state === "chiamare" || state === "caricato" || state === "app.to"
+    ? options[0]!
+    : options.at(-1)!
+}
+
 const choose = async (
   user: Awaited<ReturnType<typeof setup>>["user"],
-  state: string
+  state: TaskStatus
 ) => {
   await user.click(trigger()!)
-  await user.click(screen.getByRole("menuitemradio", { name: state }))
+  await user.click(optionOf(state))
 }
 
 /**
@@ -73,7 +88,9 @@ describe("la cella dello stato nella riga: chi può modificare (AC9, AC49, AC51)
     await setup()
 
     expect(trigger()).not.toBeNull()
-    expect(trigger()!.getAttribute("aria-label")).toBe("chiamare, cambia stato")
+    expect(trigger()!.getAttribute("aria-label")).toBe(
+      "Da chiamare, cambia stato"
+    )
     expect(trigger()!.getAttribute("aria-describedby")).toBe(
       "contact-customer-101"
     )
@@ -106,7 +123,7 @@ describe("la cella dello stato nella riga: chi può modificare (AC9, AC49, AC51)
     )
 
     expect(trigger()).toBeNull()
-    expect(within(stateCell()).getByText("chiamare")).toBeTruthy()
+    expect(within(stateCell()).getByText("Da chiamare")).toBeTruthy()
     expect(screen.getByText("Assegnato a Giulia Bianchi")).toBeTruthy()
   })
 
@@ -127,14 +144,14 @@ describe("la cella dello stato nella riga: chi può modificare (AC9, AC49, AC51)
 
     expect(trigger()).toBeNull()
     expect(within(stateCell()).getByText("Concluso")).toBeTruthy()
-    expect(within(stateCell()).getByText("chiamare")).toBeTruthy()
+    expect(within(stateCell()).getByText("Da chiamare")).toBeTruthy()
   })
 
   it("finché non si sa chi è l'utente mostra solo lo stato", async () => {
     await setup(contactRow(), null)
 
     expect(trigger()).toBeNull()
-    expect(within(stateCell()).getByText("chiamare")).toBeTruthy()
+    expect(within(stateCell()).getByText("Da chiamare")).toBeTruthy()
   })
 
   it("la cella ha la larghezza fissa w-40 con il selettore", async () => {
@@ -147,7 +164,7 @@ describe("la cella dello stato nella riga: chi può modificare (AC9, AC49, AC51)
     await setup(contactRow({ isActive: false }))
 
     expect(
-      within(stateCell()).getByText("chiamare").closest("div.w-40")
+      within(stateCell()).getByText("Da chiamare").closest("div.w-40")
     ).not.toBeNull()
   })
 })
@@ -162,7 +179,9 @@ describe("il cambio di stato nella riga (AC9, AC31, A9)", () => {
     await waitFor(() =>
       expect(trigger()!.getAttribute("aria-disabled")).toBe("true")
     )
-    expect(trigger()!.getAttribute("aria-label")).toBe("chiamare, cambia stato")
+    expect(trigger()!.getAttribute("aria-label")).toBe(
+      "Da chiamare, cambia stato"
+    )
     open()
     await waitFor(() =>
       expect(backend.state.changes).toEqual([
@@ -175,7 +194,9 @@ describe("il cambio di stato nella riga (AC9, AC31, A9)", () => {
       ])
     )
     await waitFor(() =>
-      expect(trigger()!.getAttribute("aria-label")).toBe("app.to, cambia stato")
+      expect(trigger()!.getAttribute("aria-label")).toBe(
+        "Appuntamento, cambia stato"
+      )
     )
     await waitFor(() =>
       expect(trigger()!.getAttribute("aria-disabled")).toBe("false")
@@ -188,7 +209,7 @@ describe("il cambio di stato nella riga (AC9, AC31, A9)", () => {
 
     await choose(user, "app.to")
 
-    expect(await screen.findByText("Rossi Mario: app.to")).toBeTruthy()
+    expect(await screen.findByText("Rossi Mario: Appuntamento")).toBeTruthy()
     await waitFor(() => expect(backend.state.queries.length).toBe(read + 1))
   })
 
@@ -200,7 +221,7 @@ describe("il cambio di stato nella riga (AC9, AC31, A9)", () => {
 
     await choose(user, "chiamare")
 
-    expect(await screen.findByText("Rossi Mario: chiamare")).toBeTruthy()
+    expect(await screen.findByText("Rossi Mario: Da chiamare")).toBeTruthy()
     const open = screen.getByRole("link", { name: "Apri" })
     await pointerReaches(open)
     expect(open.getAttribute("href")).toBe(detailHref(202, defaultState))
@@ -209,7 +230,7 @@ describe("il cambio di stato nella riga (AC9, AC31, A9)", () => {
     expect(currentHref()).toBe(detailHref(202, defaultState))
     // The toast goes with the link, as with the `Link` of Next.js
     await waitFor(() =>
-      expect(screen.queryByText("Rossi Mario: chiamare")).toBeNull()
+      expect(screen.queryByText("Rossi Mario: Da chiamare")).toBeNull()
     )
   })
 
@@ -221,7 +242,7 @@ describe("il cambio di stato nella riga (AC9, AC31, A9)", () => {
 
     await choose(user, "chiamare")
 
-    const text = await screen.findByText("Rossi Mario: chiamare")
+    const text = await screen.findByText("Rossi Mario: Da chiamare")
     const open = screen.getByRole("link", { name: "Apri" })
     await pointerReaches(open)
     await user.keyboard("{Control>}")
@@ -243,7 +264,10 @@ describe("il cambio di stato nella riga (AC9, AC31, A9)", () => {
 
     await user.click(trigger()!)
 
-    expect(screen.queryByRole("menuitemradio", { name: "chiamare" })).toBeNull()
+    // Only `nessuno` is left under its label, the current state is not
+    expect(
+      screen.getAllByRole("menuitemradio", { name: "Da chiamare" })
+    ).toHaveLength(1)
     expect(backend.state.changes).toHaveLength(0)
   })
 })
@@ -277,7 +301,7 @@ describe("con un alert aperto (AC36, AC37)", () => {
     expect(backend.state.changes).toHaveLength(1)
     expect(document.activeElement).toBe(trigger())
     expect(trigger()!.getAttribute("aria-label")).toBe(
-      "richiamare, cambia stato"
+      "Richiamo · 21/10, cambia stato"
     )
   })
 
@@ -291,7 +315,9 @@ describe("con un alert aperto (AC36, AC37)", () => {
       await screen.findByRole("button", { name: "Cambia stato" })
     )
 
-    expect(await screen.findByText("Rossi Mario: erogata")).toBeTruthy()
+    expect(
+      await screen.findByText("Rossi Mario: Pratica caricata")
+    ).toBeTruthy()
     expect(backend.state.changes[1]).toEqual({
       taskId: 101,
       toState: "erogata",
@@ -316,12 +342,14 @@ describe("quando il server rifiuta (AC49, AC52)", () => {
         "Non puoi modificare questo contatto: è assegnato a Giulia Bianchi"
       )
     ).toBeTruthy()
-    expect(screen.queryByText("Rossi Mario: app.to")).toBeNull()
+    expect(screen.queryByText("Rossi Mario: Appuntamento")).toBeNull()
     await waitFor(() => expect(backend.state.queries.length).toBe(read + 1))
     await waitFor(() =>
       expect(trigger()!.getAttribute("aria-disabled")).not.toBe("true")
     )
-    expect(trigger()!.getAttribute("aria-label")).toBe("chiamare, cambia stato")
+    expect(trigger()!.getAttribute("aria-label")).toBe(
+      "Da chiamare, cambia stato"
+    )
   })
 
   it("contatto sostituito nel frattempo: il toast offre il contatto attivo", async () => {
@@ -375,8 +403,8 @@ describe("quando il server rifiuta (AC49, AC52)", () => {
 
       await choose(user, "chiamare")
 
-      await screen.findByText("Rossi Mario: chiamare")
-      await expectToastLasts("Rossi Mario: chiamare", 8000)
+      await screen.findByText("Rossi Mario: Da chiamare")
+      await expectToastLasts("Rossi Mario: Da chiamare", 8000)
     }
   )
 
@@ -392,7 +420,9 @@ describe("quando il server rifiuta (AC49, AC52)", () => {
     await waitFor(() =>
       expect(trigger()!.getAttribute("aria-disabled")).not.toBe("true")
     )
-    expect(trigger()!.getAttribute("aria-label")).toBe("chiamare, cambia stato")
+    expect(trigger()!.getAttribute("aria-label")).toBe(
+      "Da chiamare, cambia stato"
+    )
   })
 
   it("se la lista non c'è più durante il salvataggio, il rifiuto mostra comunque il toast", async () => {

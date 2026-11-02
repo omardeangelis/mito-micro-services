@@ -4,12 +4,14 @@ import { ChevronDown } from "lucide-react"
 import { TaskStatusBadge } from "@/components/custom/badge/TaskStatusBadge"
 import { LoadingSpinner } from "@/components/custom/loading-spinner"
 import { Button } from "@/components/ui/button"
-import { selectableStates } from "@mito/domain/contact/status"
+import { selectableStates, stateLabel } from "@mito/domain/contact/status"
 import { type TaskStatus } from "@mito/domain/schemas"
 
 type ContactStateSelectProps = {
   /** The saved state, `null` for a contact that has none (shown as `nessuno`). */
   value: TaskStatus | null
+  /** The day of the open alert (`YYYY-MM-DD`), shown by a Richiamo */
+  alertDay?: string | null
   onChange: (state: TaskStatus) => void
   /** A change is being saved: the trigger stays focusable but opens nothing. */
   pending?: boolean
@@ -33,6 +35,7 @@ type ContactStateSelectProps = {
  */
 export function ContactStateSelect({
   value,
+  alertDay = null,
   onChange,
   pending = false,
   triggerRef,
@@ -57,7 +60,7 @@ export function ContactStateSelect({
           variant="ghost"
           // The name starts with the visible value (2.5.3) and says what the
           // button does, so a screen reader announces both
-          aria-label={`${value ?? "nessuno"}, cambia stato`}
+          aria-label={`${stateLabel(value, alertDay)}, cambia stato`}
           aria-describedby={describedBy}
           aria-busy={pending}
           aria-disabled={pending}
@@ -66,7 +69,7 @@ export function ContactStateSelect({
           data-contact-state-trigger=""
           className="w-40 justify-between px-3"
         >
-          <TaskStatusBadge status={value ?? "nessuno"} />
+          <TaskStatusBadge status={value ?? "nessuno"} alertDay={alertDay} />
           {pending ? (
             <LoadingSpinner className="h-4 w-4 shrink-0 motion-reduce:animate-none" />
           ) : (

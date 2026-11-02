@@ -42,7 +42,7 @@ describe("CustomerContactSummary", () => {
   it("mostra stato, operatore, priorità e prossimo alert del contatto", () => {
     show()
 
-    expect(screen.getByText("richiamare")).not.toBeNull()
+    expect(screen.getByText("Richiamo · 05/11")).not.toBeNull()
     expect(screen.getByText("Giulia Bianchi")).not.toBeNull()
     // La priorità si dice anche a parole: il badge è solo un'icona
     expect(screen.getByText("Urgente")).not.toBeNull()
@@ -73,7 +73,7 @@ describe("CustomerContactSummary", () => {
     show({ contact: { ...contact, priority: null, state: null } })
 
     expect(screen.getByText("Bassa")).not.toBeNull()
-    expect(screen.getByText("nessuno")).not.toBeNull()
+    expect(screen.getByText("Da chiamare")).not.toBeNull()
   })
 
   it("'Gestisci contatto' apre il dettaglio con la lista filtrata sul cliente (D28)", () => {

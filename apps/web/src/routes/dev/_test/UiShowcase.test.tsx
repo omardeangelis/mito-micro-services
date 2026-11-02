@@ -128,22 +128,22 @@ describe("UiShowcase", () => {
     for (const tone of tones) {
       expect(container.querySelector(`.bg-tag-${tone}-bg`)).not.toBeNull()
     }
-    for (const label of [
-      "chiamare",
-      "followup",
-      "non risponde",
-      "richiamare",
-      "app.to",
-      "caricato",
-      "erogata",
-      "non interessato",
-      "nessuno",
-      "In corso",
-      "Completato",
-      "Fallito",
-      "Interrotto",
-    ]) {
-      expect(screen.getAllByText(label, { exact: true }).length).toBe(1)
+    // Gli stati con la loro etichetta: i valori vecchi hanno quella del loro
+    // stato nuovo, così Da chiamare (chiamare, followup, nessuno) e Pratica
+    // caricata (caricato, erogata) compaiono più di una volta
+    for (const [label, count] of [
+      ["Da chiamare", 3],
+      ["Non risponde", 1],
+      ["Richiamo", 1],
+      ["Appuntamento", 1],
+      ["Pratica caricata", 2],
+      ["Non interessato", 1],
+      ["In corso", 1],
+      ["Completato", 1],
+      ["Fallito", 1],
+      ["Interrotto", 1],
+    ] as const) {
+      expect(screen.getAllByText(label, { exact: true }).length).toBe(count)
     }
     // La blacklist è un'icona, col tono nel suo riempimento
     for (const tone of ["red", "amber", "green"]) {

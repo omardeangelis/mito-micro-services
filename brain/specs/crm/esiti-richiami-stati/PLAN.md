@@ -290,9 +290,9 @@ Ogni task comincia dal test di `tdd_target`, rosso, e finisce con `tsc` verde su
   - **Chiamanti di oggi:** passano il valore che corrisponde, cioè `replaced` per `setCallback`, `state_change` per il cambio di stato, `removed` per la «X», `bulk` e `system`. `bulkHandleTask` e `processDueAlerts`, che oggi chiudono gli alert da soli, ci passano con la loro sorgente e il loro attore, così le righe del registro restano identiche. Il comportamento di tutti resta com'è.
   - **Test:** `resolved_at` viene dal `Clock`, quindi i test che leggono lo Storico (T11) fissano l'ora con `TestClock.setTime`.
 - **validation**: i test di oggi restano verdi, comprese le righe del registro di `bulkHandleTask` e `processDueAlerts`; un test per ogni chiamante legge `resolution` e `resolved_at`.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-11-02, haiku: RED 5/5 → verde, 133 test di chiusura verdi. resolveOpenAlert prende id e resolution; bulk e cron ci passano. Differenze accettate: bulk non scrive alert_resolved se l'alert collegato era già chiuso; il cron stacca alert_id dal contatto vecchio (T7 lo riscrive). Fix a parte: bulkHandleTask.legacy.db.test aggiunge le colonne nuove nel suo beforeAll.
+- **files edited/created**: packages/server/src/services/contact/{alert,setCallback,changeState,resolveAlert,bulkHandleTask,processDueAlerts}.ts, _test/alertResolution.db.test.ts, api/routers/task/_test/bulkHandleTask.legacy.db.test.ts
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -441,9 +441,9 @@ Ogni task comincia dal test di `tdd_target`, rosso, e finisce con `tsc` verde su
   - `callStats` e `getCallsByOperator` danno gli stessi numeri.
   - `ExportCharts` senza risposte non mostra «0%».
   - La prova di carico `callStats.perf.pg.test.ts` resta nel limite.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-11-02, sonnet: RED server 5/5 e web 2/12 → verde. Predicato unico isCallIn con calls_registry, CallsRegistryMissing → 500 (unexpectedAs500 e catchTag nella procedura tRPC). Aspettative cambiate per AC6/AC27: export «—» senza risposte, todo con nessuno/null (servizio; il test della procedura tRPC l'ha corretto il supervisore). Prova di carico pg non eseguita: nessun Postgres pg libero.
+- **files edited/created**: packages/server/src/services/export/callStats.ts, services/analytics/{calls,contactProgress}.ts, http/unexpected.ts, api/routers/export/GET/callStats.ts, packages/domain/src/export/calls.ts, apps/web analisi/_lib/calls.ts + home/_components/export/ExportCharts.tsx, test relativi
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -462,9 +462,9 @@ Ogni task comincia dal test di `tdd_target`, rosso, e finisce con `tsc` verde su
   - Un contatto con un alert scaduto viene prima di un Da chiamare senza alert, e scende appena il suo alert si chiude.
   - Una priorità manuale tiene il suo posto.
   - «Con alert» trova l'alert scaduto.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-11-02, sonnet: RED 6/9 → verde. Chiave D13 in SQL, filtro sui sei stati con i valori vecchi mappati (lo schema accetta ancora i vecchi per Next, nota del supervisore). Setup dei test vecchi con customPriority esplicita; AC24 già vero, confermato da test.
+- **files edited/created**: packages/server/src/services/contact/getContacts.ts, packages/domain/src/contact/listInput.ts (commento), _test/getContacts{,.order}.db.test.ts
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -502,9 +502,9 @@ Ogni task comincia dal test di `tdd_target`, rosso, e finisce con `tsc` verde su
   - Per ogni componente della `location`, un test di rendering con `app.to` e con un valore vecchio mostra l'etichetta, mai il valore.
   - Il filtro ha sei voci.
   - `colors.test.ts` è verde.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-11-02, haiku: RED → verde, 1764 test web verdi. Etichette ovunque, toni vecchi tolti. Fuori lista: ContactRowState e ContactStateControl (giorno del Richiamo). Il selettore mostra etichette doppie per i valori vecchi finché T16 non lo restringe.
+- **files edited/created**: TaskStatusBadge, tones, ContactFilters, ContactStateSelect, describeContactError, ContactDetailHeader, CustomerContactSummary, CustomerHandoverDialog, CustomersPraticaSection, ContactRowState, ContactStateControl + test
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -549,9 +549,9 @@ Ogni task comincia dal test di `tdd_target`, rosso, e finisce con `tsc` verde su
   - `pnpm web:build` e `pnpm web:lint` passano.
   - Le rotte dei due prototipi si aprono uguali (browser, scenario `tipica`).
   - Test del componente: senza giorno il salvataggio dice «Scegli il giorno» ed è disattivato.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-11-02, sonnet: RED → verde. CallOutcomes(customer, now, onOutcome, pending, replacesAlertDay, error) e StateBadge in components/custom/contact/call; la conferma la decide il genitore. Prototipi importano da lì. Verifica nel browser dei prototipi: da fare insieme a T15.
+- **files edited/created**: apps/web/src/components/custom/contact/call/{CallOutcomes,StateBadge}.tsx, _test/CallOutcomes.test.tsx, prototypes/home-operatore/{shared,VariantLavora}.tsx
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a

@@ -16,6 +16,7 @@ import {
 } from "../../effect/db"
 import { type ErrorReporter, forEachIsolated } from "../../effect/errorReporter"
 import { replaceActiveContact } from "./activeContact"
+import { resolveOpenAlert } from "./alert"
 
 /** The synthetic operator the cron acts as is missing from `operators`. */
 export class SystemOperatorMissing extends Schema.TaggedError<SystemOperatorMissing>()(
@@ -62,25 +63,17 @@ const processAlert = Effect.fnUntraced(function* (
   Db | Tx
 > {
   const customer = yield* lockCustomer(task.customerId)
-  // Resolves the alert only if still open: an overlapping run may have
-  // resolved it since the list was read
-  const resolved = yield* query((client) =>
-    client
-      .update(alerts)
-      .set({ isResolved: true, resolvedBy: systemOperatorId })
-      .where(and(eq(alerts.id, alert.id), eq(alerts.isResolved, false)))
-      .returning({ id: alerts.id })
-  )
-  if (resolved.length === 0) return "skipped"
-
-  const alertResolvedLog = {
+  // Closes the alert only if still open: an overlapping run may have closed
+  // it since the list was read
+  const { resolved } = yield* resolveOpenAlert({
     customerId: customer.id,
     taskId: task.id,
     alertId: alert.id,
     actorOperatorId: systemOperatorId,
-    action: "alert_resolved",
     source: "cron_alert",
-  } as const
+    resolution: "system",
+  })
+  if (!resolved) return "skipped"
 
   if (italianDay(alert.deadline) === today) {
     // La nuova task attiva non deve nascere agganciata all'alert che stiamo
@@ -99,30 +92,15 @@ const processAlert = Effect.fnUntraced(function* (
       },
     })
     yield* query((client) =>
-      client.insert(taskEventLog).values([
-        alertResolvedLog,
-        {
-          customerId: customer.id,
-          taskId: task.id,
-          actorOperatorId: systemOperatorId,
-          action: "state_change",
-          source: "cron_alert",
-          fromState: task.state,
-          toState: "followup",
-        },
-      ])
-    )
-  } else {
-    // Only if the task still points at this alert: a writer may have linked
-    // a new one since the list was read
-    yield* query((client) =>
-      client
-        .update(tasks)
-        .set({ alertId: null })
-        .where(and(eq(tasks.id, task.id), eq(tasks.alertId, alert.id)))
-    )
-    yield* query((client) =>
-      client.insert(taskEventLog).values(alertResolvedLog)
+      client.insert(taskEventLog).values({
+        customerId: customer.id,
+        taskId: task.id,
+        actorOperatorId: systemOperatorId,
+        action: "state_change",
+        source: "cron_alert",
+        fromState: task.state,
+        toState: "followup",
+      })
     )
   }
   return "processed"

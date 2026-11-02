@@ -16,7 +16,7 @@ import {
   type OperatorRef,
 } from "@mito/domain/contact/permissions"
 import { priorityBands } from "@mito/domain/contact/priority"
-import { allStates } from "@mito/domain/contact/status"
+import { contactStates, stateLabel } from "@mito/domain/contact/status"
 import { type CustomerFilter } from "@mito/contract/task"
 import { cn } from "@/lib/utils"
 import { priorityLabels } from "../_lib/priorityLabels"
@@ -33,7 +33,11 @@ const UNASSIGNED = 0
 /** The longest search text the server takes: a longer one filters nothing */
 const SEARCH_MAX_LENGTH = 100
 
-const stateOptions = allStates.map((state) => ({ value: state, label: state }))
+// The six states, labelled; the value is the one the server filters by
+const stateOptions = contactStates.map((state) => ({
+  value: state,
+  label: stateLabel(state),
+}))
 
 const priorityOptions = priorityBands.map((band) => ({
   value: band,

@@ -69,6 +69,36 @@ export const sortByCalls = (rows: readonly OperatorCalls[]): OperatorCalls[] =>
 export const appointmentRate = (row: CallTotals): number =>
   row.answered === 0 ? 0 : row.appointments / row.answered
 
+/**
+ * Answered calls over calls, as a fraction; `null` without calls: no value,
+ * not 0% (esiti-richiami-stati AC27).
+ */
+export const answerRateOrNull = (row: CallTotals): number | null =>
+  row.calls === 0 ? null : row.answered / row.calls
+
+/**
+ * Appointments over answered calls, as a fraction; `null` without answered
+ * calls: no value, not 0% (esiti-richiami-stati AC27). `appointmentRate` stays
+ * for the Next.js app (D18).
+ */
+export const appointmentRateOrNull = (row: CallTotals): number | null =>
+  row.answered === 0 ? null : row.appointments / row.answered
+
+/**
+ * The ranking by appointment rate, then by surname and name: who has no rate
+ * (no answered calls) comes after every rate, 0% included (AC27).
+ */
+export const rankByAppointmentRateOrNull = (
+  rows: readonly OperatorCalls[]
+): OperatorCalls[] =>
+  [...rows].sort((a, b) => {
+    const rateA = appointmentRateOrNull(a)
+    const rateB = appointmentRateOrNull(b)
+    if (rateA === null && rateB !== null) return 1
+    if (rateA !== null && rateB === null) return -1
+    return (rateB ?? 0) - (rateA ?? 0) || byName(a, b)
+  })
+
 /** The ranking of the operators by appointment rate, then by surname and name (AC18). */
 export const rankByAppointmentRate = (
   rows: readonly OperatorCalls[]

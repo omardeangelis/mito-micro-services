@@ -303,11 +303,11 @@ describe("i contatti precedenti del cliente (AC80)", () => {
     const section = screen.getByRole("region", { name: "Contatti precedenti" })
     const items = within(section).getAllByRole("listitem")
     expect(items).toHaveLength(2)
-    expect(within(items[0]!).getByText("erogata")).toBeTruthy()
+    expect(within(items[0]!).getByText("Pratica caricata")).toBeTruthy()
     expect(within(items[0]!).getByText("Anna Verdi")).toBeTruthy()
     expect(within(items[0]!).getByText(/26\/9\/2026/)).toBeTruthy()
     expect(within(items[0]!).getByText(/20\/9\/2026/)).toBeTruthy()
-    expect(within(items[1]!).getByText("non interessato")).toBeTruthy()
+    expect(within(items[1]!).getByText("Non interessato")).toBeTruthy()
     expect(within(items[1]!).getByText("Non assegnato")).toBeTruthy()
   })
 
@@ -380,7 +380,7 @@ describe("i contatti precedenti del cliente (AC80)", () => {
         document
           .querySelector("[data-contact-state-trigger]")
           ?.getAttribute("aria-label")
-      ).toBe("erogata, cambia stato")
+      ).toBe("Pratica caricata, cambia stato")
     )
     expect(document.activeElement).toBe(
       document.querySelector("[data-contact-state-trigger]")
