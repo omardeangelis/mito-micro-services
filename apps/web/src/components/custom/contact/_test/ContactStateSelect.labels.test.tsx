@@ -40,13 +40,13 @@ describe("ContactStateSelect, le etichette", () => {
 
   it("le voci del menu si leggono con le etichette", async () => {
     const user = userEvent.setup()
-    render(<ContactStateSelect value="chiamare" onChange={vi.fn()} />)
+    render(<ContactStateSelect value="app.to" onChange={vi.fn()} />)
 
     await user.click(screen.getByRole("button", { name: /cambia stato$/ }))
 
     expect(
-      screen.getByRole("menuitemradio", { name: "Appuntamento" })
+      screen.getByRole("menuitemradio", { name: "Pratica caricata" })
     ).toBeTruthy()
-    expect(screen.queryByRole("menuitemradio", { name: "app.to" })).toBeNull()
+    expect(screen.queryByRole("menuitemradio", { name: "caricato" })).toBeNull()
   })
 })

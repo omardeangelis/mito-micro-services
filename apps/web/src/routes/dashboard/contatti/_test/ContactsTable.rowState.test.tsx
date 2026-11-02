@@ -79,7 +79,9 @@ const changeRow = async (
   index: number
 ) => {
   await user.click(triggers()[index]!)
-  await user.click(screen.getByRole("menuitemradio", { name: "Appuntamento" }))
+  await user.click(
+    screen.getByRole("menuitemradio", { name: "Pratica caricata" })
+  )
 }
 
 beforeEach(() => {
@@ -195,7 +197,7 @@ describe("una riga che resta nell'elenco", () => {
 
     await changeRow(user, 1)
 
-    await screen.findByText("Beta Test: Appuntamento")
+    await screen.findByText("Beta Test: Pratica caricata")
     await waitFor(() =>
       expect(triggers()[1]!.getAttribute("aria-disabled")).not.toBe("true")
     )

@@ -20,6 +20,9 @@ export type OnOutcome = (
   message: string | undefined
 ) => void
 
+/** The longest message of a callback (AC47 of home-operatore) */
+const MESSAGE_MAX = 500
+
 /** «gg/mm» of a `YYYY-MM-DD` day. */
 const dayMonth = (day: string) => {
   const [, month = "", date = ""] = day.split("-")
@@ -112,19 +115,47 @@ function CallbackButton({
   // the component unmounts, or saved, which closes the panel
   const [day, setDay] = React.useState<Date | undefined>()
   const [message, setMessage] = React.useState("")
-  // After a save the parent moves the focus, not the popover
+  // After a successful save the parent moves the focus, not the popover
   const saved = React.useRef(false)
+  // A save of this panel is waiting for its answer
+  const saving = React.useRef(false)
   const tomorrow = addDays(startOfDay(now), 1)
+  const titleId = React.useId()
+  const contentRef = React.useRef<HTMLDivElement>(null)
+  // The panel stays open while it saves (AC20 of home-operatore). With the
+  // answer it closes, and the draft is no longer needed; a rejection or an
+  // uncertain outcome (`error`) keeps it open with the draft
+  React.useEffect(() => {
+    if (pending) {
+      saving.current = true
+      return
+    }
+    if (!saving.current) return
+    saving.current = false
+    if (error) return
+    saved.current = true
+    setOpen(false)
+    setDay(undefined)
+    setMessage("")
+  }, [pending, error])
   // A failed save brings the panel back, with the draft
   React.useEffect(() => {
     if (error) setOpen(true)
   }, [error])
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover
+      open={open}
+      onOpenChange={(next) => {
+        // Esc, a click outside and the focus going out don't close it while
+        // it saves (AC20)
+        if (!next && pending) return
+        setOpen(next)
+      }}
+    >
       <PopoverTrigger asChild>
         <Button size="sm" variant="secondary" disabled={disabled}>
           <CalendarClock aria-hidden />
-          {pending ? "Registro…" : "Richiamare"}
+          Richiamare
         </Button>
       </PopoverTrigger>
       {/* To the left of the button: Radix then slides it up or down to stay
@@ -134,6 +165,17 @@ function CallbackButton({
         align="center"
         collisionPadding={8}
         className="w-auto p-3"
+        ref={contentRef}
+        // A dialog named by its title (AC46 of home-operatore)
+        aria-labelledby={titleId}
+        // The focus goes to the day of the draft, or to tomorrow (AC46)
+        onOpenAutoFocus={(event) => {
+          event.preventDefault()
+          const target = (day ?? tomorrow).toLocaleDateString()
+          contentRef.current
+            ?.querySelector<HTMLButtonElement>(`[data-day="${target}"]`)
+            ?.focus()
+        }}
         onCloseAutoFocus={(event) => {
           if (saved.current) event.preventDefault()
           saved.current = false
@@ -143,14 +185,18 @@ function CallbackButton({
           className="flex flex-col gap-3"
           onSubmit={(event) => {
             event.preventDefault()
-            if (!day) return
-            saved.current = true
-            setOpen(false)
+            if (!day || pending) return
             onSave(day, message.trim() === "" ? undefined : message.trim())
           }}
         >
           <div>
-            <p className="font-label text-sm">Richiamare {customer}</p>
+            <p id={titleId} className="font-label text-sm">
+              Richiamare {customer}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Ha risposto e vuole essere richiamato. Se non ha risposto, usa Non
+              risponde.
+            </p>
             {replacesAlertDay ? (
               <p className="text-xs text-muted-foreground">
                 Sostituisce il richiamo del {dayMonth(replacesAlertDay)}
@@ -162,7 +208,8 @@ function CallbackButton({
             locale={it}
             weekStartsOn={1}
             fixedWeeks
-            defaultMonth={tomorrow}
+            // On the month of the draft's day, if any (AC21 of home-operatore)
+            defaultMonth={day ?? tomorrow}
             selected={day}
             onSelect={setDay}
             disabled={{ before: tomorrow }}
@@ -173,16 +220,28 @@ function CallbackButton({
               {error}
             </p>
           ) : null}
-          <Input
-            placeholder="Messaggio (facoltativo)"
-            aria-label="Messaggio"
-            value={message}
-            onChange={(event) => setMessage(event.target.value)}
-          />
-          <Button type="submit" disabled={!day}>
-            {day
-              ? `Salva richiamo del ${format(day, "dd/MM")}`
-              : "Scegli il giorno"}
+          <div className="flex flex-col gap-1">
+            <Input
+              placeholder="Messaggio (facoltativo)"
+              aria-label="Messaggio"
+              maxLength={MESSAGE_MAX}
+              value={message}
+              onChange={(event) =>
+                setMessage(event.target.value.slice(0, MESSAGE_MAX))
+              }
+            />
+            {message.length >= MESSAGE_MAX ? (
+              <p className="text-xs text-muted-foreground">
+                Massimo 500 caratteri
+              </p>
+            ) : null}
+          </div>
+          <Button type="submit" disabled={!day || pending}>
+            {pending
+              ? "Registro…"
+              : day
+                ? `Salva richiamo del ${format(day, "dd/MM")}`
+                : "Scegli il giorno"}
           </Button>
         </form>
       </PopoverContent>

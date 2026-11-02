@@ -43,19 +43,9 @@ const holdChanges = (backend: ReturnType<typeof fakeContacts>) => {
 const trigger = () =>
   document.querySelector<HTMLButtonElement>("[data-contact-state-trigger]")
 
-/**
- * The menu option of `state`. A legacy value shares its label with the new
- * state (`erogata` with `caricato`, `nessuno` with `chiamare`) and comes after
- * it in the menu
- */
-const optionOf = (state: TaskStatus) => {
-  const options = screen.getAllByRole("menuitemradio", {
-    name: stateLabel(state),
-  })
-  return state === "chiamare" || state === "caricato" || state === "app.to"
-    ? options[0]!
-    : options.at(-1)!
-}
+/** The menu option of `state`: the selector offers each state once (AC17) */
+const optionOf = (state: TaskStatus) =>
+  screen.getByRole("menuitemradio", { name: stateLabel(state) })
 
 const choose = async (
   user: Awaited<ReturnType<typeof setup>>["user"],
@@ -174,7 +164,7 @@ describe("il cambio di stato nella riga (AC9, AC31, A9)", () => {
     const { user, backend } = await setup()
     const open = holdChanges(backend)
 
-    await choose(user, "app.to")
+    await choose(user, "caricato")
 
     await waitFor(() =>
       expect(trigger()!.getAttribute("aria-disabled")).toBe("true")
@@ -187,7 +177,7 @@ describe("il cambio di stato nella riga (AC9, AC31, A9)", () => {
       expect(backend.state.changes).toEqual([
         {
           taskId: 101,
-          toState: "app.to",
+          toState: "caricato",
           source: "list",
           confirmedAlertId: null,
         },
@@ -195,7 +185,7 @@ describe("il cambio di stato nella riga (AC9, AC31, A9)", () => {
     )
     await waitFor(() =>
       expect(trigger()!.getAttribute("aria-label")).toBe(
-        "Appuntamento, cambia stato"
+        "Pratica caricata, cambia stato"
       )
     )
     await waitFor(() =>
@@ -207,9 +197,11 @@ describe("il cambio di stato nella riga (AC9, AC31, A9)", () => {
     const { user, backend } = await setup()
     const read = backend.state.queries.length
 
-    await choose(user, "app.to")
+    await choose(user, "caricato")
 
-    expect(await screen.findByText("Rossi Mario: Appuntamento")).toBeTruthy()
+    expect(
+      await screen.findByText("Rossi Mario: Pratica caricata")
+    ).toBeTruthy()
     await waitFor(() => expect(backend.state.queries.length).toBe(read + 1))
   })
 
@@ -264,10 +256,13 @@ describe("il cambio di stato nella riga (AC9, AC31, A9)", () => {
 
     await user.click(trigger()!)
 
-    // Only `nessuno` is left under its label, the current state is not
+    // The current state is not offered, nor is a call state (AC17)
     expect(
-      screen.getAllByRole("menuitemradio", { name: "Da chiamare" })
-    ).toHaveLength(1)
+      screen.queryByRole("menuitemradio", { name: "Da chiamare" })
+    ).toBeNull()
+    expect(
+      screen.getAllByRole("menuitemradio").map((option) => option.textContent)
+    ).toEqual(["Pratica caricata"])
     expect(backend.state.changes).toHaveLength(0)
   })
 })
@@ -285,7 +280,7 @@ describe("con un alert aperto (AC36, AC37)", () => {
     backend.state.changeAnswer = ({ confirmedAlertId }) =>
       confirmedAlertId === null ? "alert" : { saved: true }
 
-    await choose(user, "erogata")
+    await choose(user, "caricato")
 
     const dialog = await screen.findByRole("dialog", {
       name: "Chiudere il richiamo?",
@@ -310,7 +305,7 @@ describe("con un alert aperto (AC36, AC37)", () => {
     backend.state.changeAnswer = ({ confirmedAlertId }) =>
       confirmedAlertId === null ? "alert" : { saved: true }
 
-    await choose(user, "erogata")
+    await choose(user, "caricato")
     await user.click(
       await screen.findByRole("button", { name: "Cambia stato" })
     )
@@ -320,7 +315,7 @@ describe("con un alert aperto (AC36, AC37)", () => {
     ).toBeTruthy()
     expect(backend.state.changes[1]).toEqual({
       taskId: 101,
-      toState: "erogata",
+      toState: "caricato",
       source: "list",
       confirmedAlertId: 5,
     })
@@ -335,14 +330,14 @@ describe("quando il server rifiuta (AC49, AC52)", () => {
     })
     const read = backend.state.queries.length
 
-    await choose(user, "app.to")
+    await choose(user, "caricato")
 
     expect(
       await screen.findByText(
         "Non puoi modificare questo contatto: è assegnato a Giulia Bianchi"
       )
     ).toBeTruthy()
-    expect(screen.queryByText("Rossi Mario: Appuntamento")).toBeNull()
+    expect(screen.queryByText("Rossi Mario: Pratica caricata")).toBeNull()
     await waitFor(() => expect(backend.state.queries.length).toBe(read + 1))
     await waitFor(() =>
       expect(trigger()!.getAttribute("aria-disabled")).not.toBe("true")
@@ -356,7 +351,7 @@ describe("quando il server rifiuta (AC49, AC52)", () => {
     const { user, backend } = await setup()
     backend.state.changeAnswer = () => ({ rejected: superseded(303) })
 
-    await choose(user, "app.to")
+    await choose(user, "caricato")
 
     expect(
       await screen.findByText(
@@ -384,7 +379,7 @@ describe("quando il server rifiuta (AC49, AC52)", () => {
       const { user, backend } = await setup()
       backend.state.changeAnswer = () => ({ rejected: superseded(303) })
 
-      await choose(user, "app.to")
+      await choose(user, "caricato")
 
       const text = "Questo contatto è stato sostituito da uno più recente"
       await screen.findByText(text)
@@ -412,7 +407,7 @@ describe("quando il server rifiuta (AC49, AC52)", () => {
     const { user, backend } = await setup()
     backend.state.changeAnswer = () => "down"
 
-    await choose(user, "app.to")
+    await choose(user, "caricato")
 
     expect(
       await screen.findByText("Modifica non salvata, riprova")
@@ -431,7 +426,7 @@ describe("quando il server rifiuta (AC49, AC52)", () => {
       rejected: new ContactForbidden({ assignee: null }),
     })
     const open = holdChanges(backend)
-    await choose(user, "app.to")
+    await choose(user, "caricato")
 
     await router.navigate("/altrove")
     expect(await screen.findByText("altra pagina")).toBeTruthy()

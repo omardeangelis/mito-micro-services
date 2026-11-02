@@ -157,35 +157,6 @@ export const useReassign = () => {
   })
 }
 
-/**
- * A callback on a contact (`POST /task/:id/callback`), which replaces the
- * open alert the form showed. The caller shows a rejection itself
- */
-export const useSetCallback = () => {
-  const run = useRun()
-  return useMutation({
-    mutationFn: ({
-      taskId,
-      ...payload
-    }: {
-      taskId: number
-      deadline: Date
-      message: string | null
-      replacesAlertId: number | null
-    }) =>
-      run(
-        Effect.gen(function* () {
-          const client = yield* ApiClient
-          return yield* client.task.setCallback({
-            params: { id: taskId },
-            payload,
-          })
-        })
-      ),
-    meta: { toastErrors: false },
-  })
-}
-
 /** The whole send of a «Registra chiamata», for the uncertain outcome (AC15, A3) */
 export const REGISTER_CALL_TIMEOUT_MS = 15_000
 
@@ -291,33 +262,6 @@ export const useRemoveCallback = () => {
           return yield* client.task.removeCallback({
             params: { id: alertId },
             payload,
-          })
-        })
-      ),
-    meta: { toastErrors: false },
-  })
-}
-
-/**
- * Closes an open alert (`DELETE /task/alerts/:id`). The caller shows a
- * rejection itself
- */
-export const useResolveAlert = () => {
-  const run = useRun()
-  return useMutation({
-    mutationFn: ({
-      alertId,
-      source,
-    }: {
-      alertId: number
-      source: "list" | "detail"
-    }) =>
-      run(
-        Effect.gen(function* () {
-          const client = yield* ApiClient
-          return yield* client.task.resolveAlert({
-            params: { id: alertId },
-            query: { source },
           })
         })
       ),

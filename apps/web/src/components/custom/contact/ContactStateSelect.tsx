@@ -4,7 +4,11 @@ import { ChevronDown } from "lucide-react"
 import { TaskStatusBadge } from "@/components/custom/badge/TaskStatusBadge"
 import { LoadingSpinner } from "@/components/custom/loading-spinner"
 import { Button } from "@/components/ui/button"
-import { selectableStates, stateLabel } from "@mito/domain/contact/status"
+import {
+  type ContactState,
+  selectorTargets,
+  stateLabel,
+} from "@mito/domain/contact/status"
 import { type TaskStatus } from "@mito/domain/schemas"
 
 type ContactStateSelectProps = {
@@ -12,7 +16,7 @@ type ContactStateSelectProps = {
   value: TaskStatus | null
   /** The day of the open alert (`YYYY-MM-DD`), shown by a Richiamo */
   alertDay?: string | null
-  onChange: (state: TaskStatus) => void
+  onChange: (state: ContactState) => void
   /** A change is being saved: the trigger stays focusable but opens nothing. */
   pending?: boolean
   triggerRef?: React.Ref<HTMLButtonElement>
@@ -24,10 +28,12 @@ type ContactStateSelectProps = {
 }
 
 /**
- * Picks the state of a contact (AC30, AC40): the options are the states a
- * person may set by hand from `value`, the current one left out. It shows the
- * saved value it receives and never a chosen one (the parent re-renders with
- * the saved value once the server answers).
+ * Picks the state of a contact (esiti-richiami-stati AC17): the options are
+ * the changes that are not a call, `selectorTargets` of `value`: Pratica
+ * caricata, and Da chiamare from a state without an open alert that ends the
+ * work. Each is offered once, also for a stored value the new states replaced
+ * (AC30). It shows the saved value it receives and never a chosen one (the
+ * parent re-renders with the saved value once the server answers).
  *
  * The menu opens and closes with no animation: it is the most used action and
  * it opens from the keyboard. That is why `Content` comes from the Radix
@@ -91,10 +97,10 @@ export function ContactStateSelect({
               // with `pending` the menu already reads closed and Radix calls
               // no `onOpenChange`, so it would open again when the wait ends
               setOpen(false)
-              onChange(state as TaskStatus)
+              onChange(state as ContactState)
             }}
           >
-            {selectableStates(value).map((state) => (
+            {selectorTargets(value).map((state) => (
               <DropdownMenuPrimitive.RadioItem
                 key={state}
                 value={state}

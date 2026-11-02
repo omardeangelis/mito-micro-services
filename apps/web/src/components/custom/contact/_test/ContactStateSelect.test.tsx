@@ -23,48 +23,51 @@ function renderSelect(
 }
 
 describe("ContactStateSelect", () => {
-  it("followup non è mai tra le opzioni", async () => {
+  // The selector offers only the changes that are not a call (AC17), each
+  // state once, also for the stored values the new states replaced (AC30)
+  it.each([
+    ["chiamare", ["Pratica caricata"]],
+    ["non risponde", ["Pratica caricata"]],
+    ["richiamare", ["Pratica caricata"]],
+    ["app.to", ["Da chiamare", "Pratica caricata"]],
+    ["caricato", ["Da chiamare"]],
+    ["non interessato", ["Da chiamare", "Pratica caricata"]],
+    ["erogata", ["Da chiamare"]],
+    ["followup", ["Pratica caricata"]],
+    ["nessuno", ["Pratica caricata"]],
+    [null, ["Pratica caricata"]],
+  ] as const)(
+    "da %s offre %j, ognuno una volta sola",
+    async (value, expected) => {
+      const user = userEvent.setup()
+      renderSelect({ value })
+
+      await user.click(trigger())
+
+      expect(optionNames()).toEqual(expected)
+    }
+  )
+
+  it("non offre mai Richiamo, Non risponde, Appuntamento e Non interessato come cambio di stato (AC17)", async () => {
     const user = userEvent.setup()
     const states: (TaskStatus | null)[] = [
       null,
-      "nessuno",
       "chiamare",
+      "non risponde",
       "richiamare",
-      "followup",
+      "app.to",
+      "caricato",
+      "non interessato",
     ]
     for (const value of states) {
       const { unmount } = renderSelect({ value })
       await user.click(trigger())
-      expect(optionNames()).not.toContain("followup")
+      expect(optionNames()).not.toContain("Richiamo")
+      expect(optionNames()).not.toContain("Non risponde")
+      expect(optionNames()).not.toContain("Appuntamento")
+      expect(optionNames()).not.toContain("Non interessato")
       unmount()
     }
-  })
-
-  it("da followup non c'è chiamare", async () => {
-    const user = userEvent.setup()
-    renderSelect({ value: "followup" })
-
-    await user.click(trigger())
-
-    expect(optionNames()).toEqual([
-      "Non interessato",
-      "Appuntamento",
-      "Pratica caricata",
-      "Richiamo",
-      "Non risponde",
-      "Pratica caricata",
-      "Da chiamare",
-    ])
-  })
-
-  it("lo stato attuale non è tra le opzioni", async () => {
-    const user = userEvent.setup()
-    renderSelect({ value: "richiamare" })
-
-    await user.click(trigger())
-
-    expect(optionNames()).not.toContain("Richiamo")
-    expect(optionNames()).toContain("Da chiamare")
   })
 
   it("un contatto senza stato conta come nessuno: nessuno non è un'opzione", async () => {
@@ -82,25 +85,25 @@ describe("ContactStateSelect", () => {
     await user.click(trigger())
 
     await user.click(
-      screen.getAllByRole("menuitemradio", { name: "Pratica caricata" }).at(-1)!
+      screen.getByRole("menuitemradio", { name: "Pratica caricata" })
     )
 
     expect(onChange).toHaveBeenCalledTimes(1)
-    expect(onChange).toHaveBeenCalledWith("erogata")
+    expect(onChange).toHaveBeenCalledWith("caricato")
     expect(menu()).toBeNull()
     expect(document.activeElement).toBe(trigger())
   })
 
   it("le opzioni si raggiungono e si scelgono da tastiera", async () => {
     const user = userEvent.setup()
-    const { onChange } = renderSelect({ value: "chiamare" })
+    const { onChange } = renderSelect({ value: "app.to" })
     trigger().focus()
 
     await user.keyboard("{ArrowDown}")
     expect(menu()).not.toBeNull()
     await user.keyboard("{ArrowDown}{Enter}")
 
-    expect(onChange).toHaveBeenCalledWith("app.to")
+    expect(onChange).toHaveBeenCalledWith("caricato")
     expect(document.activeElement).toBe(trigger())
   })
 
@@ -110,14 +113,14 @@ describe("ContactStateSelect", () => {
     await user.click(trigger())
 
     await user.click(
-      screen.getAllByRole("menuitemradio", { name: "Pratica caricata" }).at(-1)!
+      screen.getByRole("menuitemradio", { name: "Pratica caricata" })
     )
 
-    expect(onChange).toHaveBeenCalledWith("erogata")
+    expect(onChange).toHaveBeenCalledWith("caricato")
     expect(trigger().textContent).toBe("Da chiamare")
     rerender(<ContactStateSelect value="chiamare" onChange={onChange} />)
     expect(trigger().textContent).toBe("Da chiamare")
-    rerender(<ContactStateSelect value="erogata" onChange={onChange} />)
+    rerender(<ContactStateSelect value="caricato" onChange={onChange} />)
     expect(trigger().textContent).toBe("Pratica caricata")
   })
 
@@ -276,10 +279,10 @@ describe("ContactStateSelect", () => {
       // onChange, and the saved value arrives when it ends
       let finish: (() => void) | undefined
       function Parent() {
-        const [value, setValue] = React.useState<TaskStatus>("chiamare")
+        const [value, setValue] = React.useState<TaskStatus>("app.to")
         const [pending, setPending] = React.useState(false)
         finish = () => {
-          setValue("app.to")
+          setValue("caricato")
           setPending(false)
         }
         return (
@@ -294,12 +297,12 @@ describe("ContactStateSelect", () => {
 
       await user.click(trigger())
       await user.click(
-        screen.getByRole("menuitemradio", { name: "Appuntamento" })
+        screen.getByRole("menuitemradio", { name: "Pratica caricata" })
       )
       expect(menu()).toBeNull()
       act(() => finish?.())
 
-      expect(trigger().textContent).toBe("Appuntamento")
+      expect(trigger().textContent).toBe("Pratica caricata")
       expect(menu()).toBeNull()
     })
   })

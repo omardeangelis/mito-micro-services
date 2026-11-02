@@ -1,13 +1,14 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, Layer } from "effect"
+import { TestClock } from "effect/testing"
 import { HttpApiTest } from "effect/http-api"
 import { beforeAll, beforeEach } from "vitest"
 import { eq } from "drizzle-orm"
 import { MitoApi } from "@mito/contract/api"
 import {
   AlertConfirmationRequired,
-  AlertNotFound,
-  CallbackNotAllowed,
+  CallbackChanged,
+  CallNotAllowed,
   ContactForbidden,
   ContactNotFound,
   ContactSuperseded,
@@ -19,6 +20,7 @@ import {
 } from "@mito/contract/errors"
 import { inMemoryPlatform } from "@mito/contract/testing"
 import { getContactsInput } from "@mito/domain/contact/listInput"
+import { romeDay } from "@mito/domain/contact/time"
 import { type TaskStatus } from "@mito/domain/schemas"
 import { alert, task } from "@mito/db/schema/task"
 import { migrateUpTo, resetDb, testDb } from "@/test/db"
@@ -353,34 +355,36 @@ describe("POST /api/v1/task/:id/reassign", () => {
   )
 })
 
-describe("POST /api/v1/task/:id/callback", () => {
+describe("POST /api/v1/task/:id/call, Richiamare", () => {
   it.effect(
     "crea il richiamo con il messaggio senza spazi intorno, e uno vuoto è nessun messaggio",
     () =>
       Effect.gen(function* () {
+        // The day is compared with the Clock's
+        yield* TestClock.setTime(Date.now())
         const operator = yield* given(() => createOperator())
-        const first = yield* contactOf(operator.id, "app.to")
-        const second = yield* contactOf(operator.id, "app.to")
+        const first = yield* contactOf(operator.id, "chiamare")
+        const second = yield* contactOf(operator.id, "chiamare")
         const api = yield* clientAs(operator.userId)
-        const deadline = inDays(3)
+        const day = romeDay(inDays(3))
+        const callback = (id: number, message: string) =>
+          api.task.registerCall({
+            params: { id },
+            payload: {
+              outcome: "richiamare",
+              requestId: crypto.randomUUID(),
+              source: "detail",
+              callback: { day, message },
+            },
+          })
 
-        const withMessage = yield* api.task.setCallback({
-          params: { id: first.contact.id },
-          payload: {
-            deadline,
-            message: "  Dopo le 9  ",
-            replacesAlertId: null,
-          },
-        })
-        const empty = yield* api.task.setCallback({
-          params: { id: second.contact.id },
-          payload: { deadline, message: "   ", replacesAlertId: null },
-        })
+        const withMessage = yield* callback(first.contact.id, "  Dopo le 9  ")
+        const empty = yield* callback(second.contact.id, "   ")
 
-        const saved = yield* alertRow(withMessage.alertId)
+        const saved = yield* alertRow(withMessage.alert!.id)
         assert.strictEqual(saved?.message, "Dopo le 9")
-        assert.strictEqual(saved?.deadline.getTime(), deadline.getTime())
-        assert.isNull((yield* alertRow(empty.alertId))?.message)
+        assert.strictEqual(romeDay(saved!.deadline), day)
+        assert.isNull((yield* alertRow(empty.alert!.id))?.message)
         assert.strictEqual(
           (yield* taskRow(first.contact.id))?.state,
           "richiamare"
@@ -390,68 +394,81 @@ describe("POST /api/v1/task/:id/callback", () => {
 
   it.effect("dà gli errori del servizio nelle classi del contratto", () =>
     Effect.gen(function* () {
+      yield* TestClock.setTime(Date.now())
       const operator = yield* given(() => createOperator())
       const open = yield* contactOf(operator.id, "chiamare")
       const done = yield* contactOf(operator.id, "app.to")
       const api = yield* clientAs(operator.userId)
-      const callback = (id: number, deadline: Date) =>
+      const callback = (id: number, on: Date) =>
         Effect.flip(
-          api.task.setCallback({
+          api.task.registerCall({
             params: { id },
-            payload: { deadline, replacesAlertId: null },
+            payload: {
+              outcome: "richiamare",
+              requestId: crypto.randomUUID(),
+              source: "detail",
+              callback: { day: romeDay(on) },
+            },
           })
         )
 
       assert.deepStrictEqual(
-        yield* callback(open.contact.id, inDays(3)),
-        new CallbackNotAllowed({ state: "chiamare" })
+        yield* callback(done.contact.id, inDays(3)),
+        new CallNotAllowed({ state: "app.to" })
       )
       assert.deepStrictEqual(
-        yield* callback(done.contact.id, inDays(-1)),
+        yield* callback(open.contact.id, inDays(-1)),
         new DeadlineInPast()
       )
     })
   )
 })
 
-describe("DELETE /api/v1/task/alerts/:id", () => {
-  it.effect("chiude l'alert aperto; uno già chiuso è resolved false", () =>
+describe("POST /api/v1/task/alerts/:id/remove", () => {
+  it.effect(
+    "chiude l'alert aperto e dà lo stato scelto allo stesso contatto; uno già chiuso è CallbackChanged",
+    () =>
+      Effect.gen(function* () {
+        yield* TestClock.setTime(Date.now())
+        const operator = yield* given(() => createOperator())
+        const { contact } = yield* contactOf(operator.id, "richiamare")
+        const open = yield* given(() =>
+          createAlert({ taskId: contact.id, deadline: inDays(3) })
+        )
+        const api = yield* clientAs(operator.userId)
+        const remove = () =>
+          api.task.removeCallback({
+            params: { id: open.id },
+            payload: { taskId: contact.id, state: "non risponde" },
+          })
+
+        const first = yield* remove()
+        const again = yield* Effect.flip(remove())
+
+        assert.deepStrictEqual(first, {
+          taskId: contact.id,
+          state: "non risponde",
+        })
+        assert.instanceOf(again, CallbackChanged)
+        assert.isTrue((yield* alertRow(open.id))?.isResolved)
+        assert.strictEqual((yield* taskRow(contact.id))?.state, "non risponde")
+      })
+  )
+
+  it.effect("un alert che non esiste è CallbackChanged", () =>
     Effect.gen(function* () {
       const operator = yield* given(() => createOperator())
       const { contact } = yield* contactOf(operator.id, "richiamare")
-      const open = yield* given(() =>
-        createAlert({ taskId: contact.id, deadline: inDays(3) })
-      )
-      const api = yield* clientAs(operator.userId)
-
-      const first = yield* api.task.resolveAlert({
-        params: { id: open.id },
-        query: { source: "list" },
-      })
-      const again = yield* api.task.resolveAlert({
-        params: { id: open.id },
-        query: { source: "list" },
-      })
-
-      assert.deepStrictEqual(first, { resolved: true })
-      assert.deepStrictEqual(again, { resolved: false })
-      assert.isTrue((yield* alertRow(open.id))?.isResolved)
-    })
-  )
-
-  it.effect("un alert che non esiste è AlertNotFound", () =>
-    Effect.gen(function* () {
-      const operator = yield* given(() => createOperator())
       const api = yield* clientAs(operator.userId)
 
       const error = yield* Effect.flip(
-        api.task.resolveAlert({
+        api.task.removeCallback({
           params: { id: 999_999 },
-          query: { source: "detail" },
+          payload: { taskId: contact.id, state: "app.to" },
         })
       )
 
-      assert.instanceOf(error, AlertNotFound)
+      assert.instanceOf(error, CallbackChanged)
     })
   )
 })

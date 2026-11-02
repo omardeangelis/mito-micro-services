@@ -578,9 +578,9 @@ Ogni task comincia dal test di `tdd_target`, rosso, e finisce con `tsc` verde su
   - uno stato che non ammette chiamate.
 
   Nel browser, su `mito_local`: un Non risponde e un Richiamare su un contatto del seed aggiornano stato, alert e Storico senza ricaricare. `tsc` su tutti i pacchetti dopo l'uscita di `setCallback`.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-11-02, modello dell'orchestratore: RED → verde; web 1794 verdi, db http 174 verdi. setCallback fuori da HttpApi (tRPC resta per Next). Due giri di correzione su CallOutcomes chiesti in revisione, perché AC7 richiama home-operatore AC18–21 e AC45–47: riquadro aperto fino alla risposta, riga AC18, limite 500 con nota, dialogo con nome e fuoco su domani, calendario sul mese della bozza. AC45 (misure a 1024–1920) resta per la prova nel browser.
+- **files edited/created**: ContactCallSection.tsx (nuovo), ContactDetailContent, ContactAlertSection, CallOutcomes(+test), ContactCallbackForm (tolto), api/task.ts, test/{contacts,api,customers}, ContactPage/ContactAlertCloseButton test, contract/task.ts, http/task.ts, http/_test/contacts.db.test.ts, prototypes/home-operatore/VariantLavora.tsx
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -601,9 +601,9 @@ Ogni task comincia dal test di `tdd_target`, rosso, e finisce con `tsc` verde su
   - con `CallbackChanged` mostra il contatto ricaricato.
 
   Nel browser: «Togli il richiamo» con Appuntamento su un Richiamo del seed.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-11-02, sonnet: RED 1+14+14 → verde, web 1810 verdi (un'esecuzione sotto carico con un fallimento non diagnosticato, due riesecuzioni verdi), db http 174, tsc verdi. Selettore su selectorTargets (etichette doppie sparite), «X» → dialogo «Togli il richiamo» con 5 scelte e Conferma disattivato, CallbackChanged ricarica. resolveAlert fuori da HttpApi. Prova nel browser: con le altre.
+- **files edited/created**: ContactStateSelect, ContactAlertCloseButton, ContactAlertSection, ContactStateControl (commento), api/task.ts, contract/task.ts, http/task.ts, test/{contacts,customers,api}, test di ContactAlertCloseButton/ContactStateSelect/ContactStateControl/ContactRowState/ContactsTable.rowState/ContactPage, http/_test/contacts.db.test.ts
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -642,9 +642,9 @@ Ogni task comincia dal test di `tdd_target`, rosso, e finisce con `tsc` verde su
 - **location**: `apps/web/src/routes/dashboard/contatti/_components/ContactColumns.tsx`, `_test/`
 - **description**: «Prossimo alert» mostra l'alert aperto scaduto con «Scaduto» finché non si chiude. «Contattato il» si aggiorna dopo ogni chiamata registrata, Non risponde compreso.
 - **validation**: la riga di un contatto con un alert scaduto da 2 giorni mostra «Scaduto». Dopo un Non risponde, «Contattato il» della riga è di oggi. Prova nel browser sul seed.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-11-02, haiku: nessun codice nuovo, la lista mostrava già «Scaduto» e closedAt. RED ottenuto rompendo apposta la colonna e poi ripristinandola; i due test restano come guardia di AC24 e AC29.
+- **files edited/created**: apps/web/src/routes/dashboard/contatti/_test/ContactColumns.dates.test.tsx
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a

@@ -142,7 +142,7 @@ describe("il contenuto del dettaglio (AC24, AC28)", () => {
     const history = screen.getByRole("region", { name: "Storico" })
     expect(within(history).getByText("Prima chiamata")).toBeTruthy()
     expect(
-      within(history).getByText("Chiuso da Anna Verdi il 26/9/2026")
+      within(history).getByText("Chiuso da Anna Verdi il 26/09 alle 11:30")
     ).toBeTruthy()
   })
 
@@ -162,17 +162,17 @@ describe("il contenuto del dettaglio (AC24, AC28)", () => {
 
     expect(
       within(screen.getByRole("region", { name: "Storico" })).getByText(
-        "Chiuso dal sistema il 26/9/2026"
+        "Chiuso dal sistema il 26/09 alle 11:30"
       )
     ).toBeTruthy()
   })
 
-  it("senza alert chiusi lo Storico lo dice", async () => {
-    await openDetail([dataOf({ history: [] })])
+  it("senza chiamate né alert chiusi lo Storico lo dice", async () => {
+    await openDetail([dataOf({ history: [], calls: [] })])
 
     expect(
       within(screen.getByRole("region", { name: "Storico" })).getByText(
-        "Nessun alert chiuso"
+        "Nessuna chiamata e nessun alert chiuso"
       )
     ).toBeTruthy()
   })
@@ -201,10 +201,10 @@ describe("il contatto in sola lettura (AC27, AC51)", () => {
       screen.queryByRole("button", { name: /, cambia priorità$/ })
     ).toBeNull()
     expect(
-      screen.queryByRole("button", { name: "Imposta richiamo" })
+      screen.queryByRole("region", { name: "Registra chiamata" })
     ).toBeNull()
     expect(
-      screen.queryByRole("button", { name: "Chiudi il richiamo" })
+      screen.queryByRole("button", { name: "Togli il richiamo" })
     ).toBeNull()
   })
 
@@ -228,7 +228,7 @@ describe("il contatto in sola lettura (AC27, AC51)", () => {
       screen.getByRole("button", { name: "Manuale, cambia priorità" })
     ).toBeTruthy()
     expect(
-      screen.getByRole("button", { name: "Chiudi il richiamo" })
+      screen.getByRole("button", { name: "Togli il richiamo" })
     ).toBeTruthy()
   })
 

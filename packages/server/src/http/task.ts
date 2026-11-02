@@ -20,8 +20,6 @@ import {
 import { reassign } from "../services/contact/reassign"
 import { registerCall } from "../services/contact/registerCall"
 import { removeCallback } from "../services/contact/removeCallback"
-import { resolveAlert } from "../services/contact/resolveAlert"
-import { setCallback } from "../services/contact/setCallback"
 import { setPriority } from "../services/contact/setPriority"
 import { unexpectedAs500 } from "./unexpected"
 
@@ -184,19 +182,6 @@ export const taskLayer = HttpApiBuilder.group(MitoApi, "task", (handlers) =>
           }).pipe(asApiErrors, unexpectedAs500("reassign"))
         }).pipe(Effect.provide(services))
       )
-      .handle("setCallback", ({ params, payload }) =>
-        Effect.gen(function* () {
-          const { actor } = yield* CurrentUser
-          return yield* setCallback({
-            taskId: params.id,
-            deadline: payload.deadline,
-            // An empty message is no message, as in the procedure
-            message: payload.message?.length ? payload.message : null,
-            replacesAlertId: payload.replacesAlertId,
-            actor,
-          }).pipe(asApiErrors, unexpectedAs500("setCallback"))
-        }).pipe(Effect.provide(services))
-      )
       .handle("registerCall", ({ params, payload }) =>
         Effect.gen(function* () {
           const { actor } = yield* CurrentUser
@@ -216,16 +201,6 @@ export const taskLayer = HttpApiBuilder.group(MitoApi, "task", (handlers) =>
             state: payload.state,
             actor,
           }).pipe(asApiErrors, unexpectedAs500("removeCallback"))
-        }).pipe(Effect.provide(services))
-      )
-      .handle("resolveAlert", ({ params, query }) =>
-        Effect.gen(function* () {
-          const { actor } = yield* CurrentUser
-          return yield* resolveAlert({
-            alertId: params.id,
-            actor,
-            source: query.source,
-          }).pipe(asApiErrors, unexpectedAs500("resolveAlert"))
         }).pipe(Effect.provide(services))
       )
       .handle("bulkHandleTask", ({ payload }) =>

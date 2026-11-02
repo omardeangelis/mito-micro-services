@@ -3,7 +3,6 @@ import { HttpApiBuilder } from "effect/http-api"
 import { MitoApi } from "@mito/contract/api"
 import {
   AlertConfirmationRequired,
-  type AlertNotFound,
   type CallAlreadyWorked,
   type CallbackChanged,
   type CallNotAllowed,
@@ -11,7 +10,9 @@ import {
   ContactNotFound,
   ContactSuperseded,
   type DeadlineInPast,
+  type MessageTooLong,
   type OperatorNotFound,
+  type RequestIdConflict,
   type TransitionRejected,
 } from "@mito/contract/errors"
 import { type Customer } from "@mito/contract/customer"
@@ -123,22 +124,12 @@ export type ChangeAnswer =
   | "alert"
   | "down"
 
-/** An open alert, as the detail and a confirmation name it */
-type OpenAlert = { id: number; deadline: Date; message: string | null }
-
 /** How the backend answers a write of the detail: saved by default */
 export type WriteAnswer<E> = { saved: true } | { rejected: E } | "down"
 
 /** What the detail sent, as the backend received it */
 export type PriorityChange = { taskId: number; priority: PriorityBand | "auto" }
 export type Reassign = { taskId: number; operatorId: number }
-export type CallbackSet = {
-  taskId: number
-  deadline: Date
-  message?: string | null | undefined
-  replacesAlertId: number | null
-}
-export type AlertResolve = { alertId: number; source: "list" | "detail" }
 export type CallRegistered = RegisterCall & { taskId: number }
 
 /** «Togli il richiamo» as the page sent it, as the backend received it */
@@ -156,6 +147,9 @@ export type CallRejection =
   | CallNotAllowed
   | AlertConfirmationRequired
   | DeadlineInPast
+  | MessageTooLong
+  | RequestIdConflict
+  | ContactNotFound
 
 const bandValues = { low: 20, medium: 60, high: 100, urgent: 120 } as const
 
@@ -215,13 +209,6 @@ export function fakeContacts(
     > => ({
       saved: true,
     }),
-    callbacks: [] as CallbackSet[],
-    /** `{ alert }`: another alert is open than the form said */
-    callbackAnswer: (
-      _change: CallbackSet
-    ):
-      | WriteAnswer<ContactForbidden | ContactSuperseded | DeadlineInPast>
-      | { alert: OpenAlert } => ({ saved: true }),
     calls: [] as CallRegistered[],
     callAnswer: (_call: CallRegistered): WriteAnswer<CallRejection> => ({
       saved: true,
@@ -237,12 +224,6 @@ export function fakeContacts(
       | CallbackChanged
       | TransitionRejected
     > => ({ saved: true }),
-    resolves: [] as AlertResolve[],
-    resolveAnswer: (
-      _change: AlertResolve
-    ): WriteAnswer<ContactForbidden | ContactSuperseded | AlertNotFound> => ({
-      saved: true,
-    }),
   }
 
   /** The detail of `id` changed by `change`, when the backend has it */
@@ -476,41 +457,6 @@ export function fakeContacts(
             }
           )
         })
-        .handle("setCallback", ({ params, payload }) => {
-          const change = { taskId: params.id, ...payload }
-          let alert: OpenAlert | undefined
-          return write(
-            () => state.callbacks.push(change),
-            () => {
-              const answer = state.callbackAnswer(change)
-              if (answer !== "down" && "alert" in answer) {
-                alert = answer.alert
-                return { saved: true }
-              }
-              return answer
-            },
-            () => {
-              if (alert) return alert
-              const id = 900 + state.callbacks.length
-              updateDetail(params.id, (detail) => ({
-                ...detail,
-                contact: { ...detail.contact, state: "richiamare" },
-                alert: {
-                  id,
-                  deadline: payload.deadline,
-                  message: payload.message ?? null,
-                },
-              }))
-              return id
-            }
-          ).pipe(
-            Effect.flatMap((saved) =>
-              typeof saved === "number"
-                ? Effect.succeed({ alertId: saved })
-                : Effect.fail(new AlertConfirmationRequired({ alert: saved }))
-            )
-          )
-        })
         .handle("registerCall", ({ params, payload }) => {
           const call = { taskId: params.id, ...payload }
           const repeated = state.registered.get(payload.requestId)
@@ -558,10 +504,50 @@ export function fakeContacts(
                   ? { ...row, state: toState, closedAt: at, alert: openAlert }
                   : row
               )
+              // The call on top of the Storico, and the alert it closed or
+              // replaced in it, closed by Ada with the call (AC16, AC23)
+              const closed = payload.outcome === "non risponde" ? null : current
               updateDetail(params.id, (detail) => ({
                 ...detail,
                 contact: { ...detail.contact, state: toState, closedAt: at },
                 alert: openAlert,
+                calls: [
+                  {
+                    id: 700 + state.calls.length,
+                    outcome: payload.outcome,
+                    at,
+                    operatorName: ada.name,
+                    operatorSurname: ada.surname,
+                    callbackDeadline:
+                      payload.outcome === "richiamare"
+                        ? (alert?.deadline ?? null)
+                        : null,
+                  },
+                  ...detail.calls,
+                ],
+                ...(closed
+                  ? {
+                      history: [
+                        {
+                          id: closed.id,
+                          deadline: closed.deadline,
+                          message: closed.message,
+                          updatedAt: at,
+                          resolvedByName: ada.name,
+                          resolvedBySurname: ada.surname,
+                        },
+                        ...detail.history,
+                      ],
+                      closures: [
+                        {
+                          alertId: closed.id,
+                          closedAt: at,
+                          resolution: "call" as const,
+                        },
+                        ...detail.closures,
+                      ],
+                    }
+                  : {}),
               }))
               const registered: RegisteredCall = {
                 taskId: params.id,
@@ -597,22 +583,6 @@ export function fakeContacts(
                 alert: null,
               }))
               return { taskId: payload.taskId, state: payload.state }
-            }
-          )
-        })
-        .handle("resolveAlert", ({ params, query }) => {
-          const change = { alertId: params.id, source: query.source }
-          return write(
-            () => state.resolves.push(change),
-            () => state.resolveAnswer(change),
-            () => {
-              const id = Object.values(state.details).find(
-                (detail) => detail.alert?.id === params.id
-              )?.contact.id
-              if (id !== undefined) {
-                updateDetail(id, (detail) => ({ ...detail, alert: null }))
-              }
-              return { resolved: id !== undefined }
             }
           )
         })

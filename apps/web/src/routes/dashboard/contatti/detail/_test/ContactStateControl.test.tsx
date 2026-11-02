@@ -29,19 +29,9 @@ const trigger = () =>
 const setup = (state: TaskStatus | null = "app.to") =>
   openDetail([contactDetail({ contact: { state } })])
 
-/**
- * The menu option of `state`. A legacy value shares its label with the new
- * state (`erogata` with `caricato`, `nessuno` with `chiamare`) and comes after
- * it in the menu
- */
-const optionOf = (state: TaskStatus) => {
-  const options = screen.getAllByRole("menuitemradio", {
-    name: stateLabel(state),
-  })
-  return state === "chiamare" || state === "caricato" || state === "app.to"
-    ? options[0]!
-    : options.at(-1)!
-}
+/** The menu option of `state`: the selector offers each state once (AC17) */
+const optionOf = (state: TaskStatus) =>
+  screen.getByRole("menuitemradio", { name: stateLabel(state) })
 
 const choose = async (
   user: Awaited<ReturnType<typeof setup>>["user"],
@@ -63,7 +53,7 @@ describe("il selettore dello stato nel dettaglio (AC30, AC39, AC40)", () => {
     const { user, backend } = await setup("app.to")
     const open = holdChanges(backend)
 
-    await choose(user, "erogata")
+    await choose(user, "caricato")
 
     // The saved value stays, the wait is shown, a second change is not sent
     await waitFor(() =>
@@ -77,7 +67,7 @@ describe("il selettore dello stato nel dettaglio (AC30, AC39, AC40)", () => {
       expect(backend.state.changes).toEqual([
         {
           taskId: 101,
-          toState: "erogata",
+          toState: "caricato",
           source: "detail",
           confirmedAlertId: null,
         },
@@ -97,12 +87,12 @@ describe("il selettore dello stato nel dettaglio (AC30, AC39, AC40)", () => {
   })
 
   it("non offre lo stato attuale: riselezionarlo non chiama il server (AC40)", async () => {
-    const { user, backend } = await setup("app.to")
+    const { user, backend } = await setup("caricato")
 
     await user.click(trigger())
 
     expect(
-      screen.queryByRole("menuitemradio", { name: "Appuntamento" })
+      screen.queryByRole("menuitemradio", { name: "Pratica caricata" })
     ).toBeNull()
     expect(backend.state.changes).toHaveLength(0)
   })
@@ -110,7 +100,7 @@ describe("il selettore dello stato nel dettaglio (AC30, AC39, AC40)", () => {
   it("salvato, la lista dietro la finestra è letta di nuovo", async () => {
     const { user, backend } = await setup("app.to")
 
-    await choose(user, "erogata")
+    await choose(user, "caricato")
 
     await waitFor(() =>
       expect(trigger().getAttribute("aria-label")).toBe(
@@ -248,7 +238,7 @@ describe("con un alert aperto (AC36, AC37)", () => {
   it("chiede la conferma con la data e il messaggio, senza toast e senza annunci", async () => {
     const { user } = await withAlert()
 
-    await choose(user, "erogata")
+    await choose(user, "caricato")
 
     const dialog = await screen.findByRole("dialog", {
       name: "Chiudere il richiamo?",
@@ -262,7 +252,7 @@ describe("con un alert aperto (AC36, AC37)", () => {
 
   it("Annulla non cambia niente e riporta il focus sul selettore", async () => {
     const { user, backend } = await withAlert()
-    await choose(user, "erogata")
+    await choose(user, "caricato")
 
     await user.click(await screen.findByRole("button", { name: "Annulla" }))
 
@@ -282,7 +272,7 @@ describe("con un alert aperto (AC36, AC37)", () => {
 
   it("Esc annulla allo stesso modo, e la finestra resta", async () => {
     const { user, backend } = await withAlert()
-    await choose(user, "erogata")
+    await choose(user, "caricato")
     await screen.findByRole("dialog", { name: "Chiudere il richiamo?" })
 
     await user.keyboard("{Escape}")
@@ -299,7 +289,7 @@ describe("con un alert aperto (AC36, AC37)", () => {
 
   it("'Cambia stato' rimanda il cambio confermando l'alert", async () => {
     const { user, backend } = await withAlert()
-    await choose(user, "erogata")
+    await choose(user, "caricato")
 
     await user.click(
       await screen.findByRole("button", { name: "Cambia stato" })
@@ -312,7 +302,7 @@ describe("con un alert aperto (AC36, AC37)", () => {
     )
     expect(backend.state.changes[1]).toEqual({
       taskId: 101,
-      toState: "erogata",
+      toState: "caricato",
       source: "detail",
       confirmedAlertId: 5,
     })
@@ -331,7 +321,7 @@ describe("quando il server rifiuta (AC49, AC52)", () => {
       rejected: new ContactForbidden({ assignee: "Giulia Bianchi" }),
     })
 
-    await choose(user, "erogata")
+    await choose(user, "caricato")
 
     const reason =
       "Non puoi modificare questo contatto: è assegnato a Giulia Bianchi"
@@ -354,7 +344,7 @@ describe("quando il server rifiuta (AC49, AC52)", () => {
     ])
     backend.state.changeAnswer = () => ({ rejected: superseded(303) })
 
-    await choose(user, "erogata")
+    await choose(user, "caricato")
 
     await waitFor(() =>
       expect(lastAlert()).toBe(
@@ -376,7 +366,7 @@ describe("quando il server rifiuta (AC49, AC52)", () => {
     const { user, backend } = await setup("app.to")
     backend.state.changeAnswer = () => "down"
 
-    await choose(user, "erogata")
+    await choose(user, "caricato")
 
     await waitFor(() =>
       expect(lastAlert()).toBe("Modifica non salvata, riprova")

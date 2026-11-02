@@ -3,10 +3,8 @@ import { HttpApiEndpoint, HttpApiGroup } from "effect/http-api"
 import { BlackListStatus, Count, RowOperator, Text } from "./customer"
 import {
   AlertConfirmationRequired,
-  AlertNotFound,
   CallAlreadyWorked,
   CallbackChanged,
-  CallbackNotAllowed,
   CallNotAllowed,
   ContactAlreadyActive,
   ContactForbidden,
@@ -412,17 +410,16 @@ export type RegisteredCall = typeof RegisteredCall.Type
  * | changeState                  | POST /task/:id/state               |
  * | setPriority                  | POST /task/:id/priority            |
  * | reassign (admin)             | POST /task/:id/reassign            |
- * | setCallback                  | POST /task/:id/callback            |
  * | registerCall                 | POST /task/:id/call                |
  * | removeCallback               | POST /task/alerts/:id/remove       |
- * | resolveAlert                 | DELETE /task/alerts/:id?source=    |
  * | bulkHandleTask (admin)       | POST /task/bulk-assign             |
  *
  * `getCustomersWithActiveAlerts` and `getContacts` are reads by POST: the ids
  * of a selection, or the filters, could make the URL too long. The `id` of
  * `/task/by-customer/:id` is a customer's, that of `/task/:id` a contact's,
  * that of `/task/alerts/:id` an alert's. `registerCall` and `removeCallback`
- * have no procedure: only `HttpApi` has them (D3 of esiti-richiami-stati)
+ * have no procedure: only `HttpApi` has them (D3 of esiti-richiami-stati). The
+ * procedure `resolveAlert` stays for the Next.js app (D18), not in `HttpApi`
  */
 export class TaskGroup extends HttpApiGroup.make("task")
   .add(
@@ -534,34 +531,6 @@ export class TaskGroup extends HttpApiGroup.make("task")
     }).middleware(AdminOnly)
   )
   .add(
-    HttpApiEndpoint.post("setCallback", "/task/:id/callback", {
-      params: { id: IntegerId },
-      payload: Schema.Struct({
-        deadline: Schema.Date,
-        // Trimmed by the server; empty is no message
-        message: Schema.optional(
-          Schema.NullOr(
-            Schema.String.pipe(
-              Schema.decode(SchemaTransformation.trim())
-            ).check(Schema.isMaxLength(500))
-          )
-        ),
-        // The open alert the form showed as replaced, or null
-        replacesAlertId: Schema.NullOr(IntegerValue),
-      }),
-      success: Schema.Struct({ alertId: Schema.Number }),
-      error: [
-        CallbackNotAllowed,
-        DeadlineInPast,
-        AlertConfirmationRequired,
-        ContactNotFound,
-        ContactSuperseded,
-        ContactForbidden,
-        CustomerMissing,
-      ],
-    })
-  )
-  .add(
     HttpApiEndpoint.post("registerCall", "/task/:id/call", {
       params: { id: IntegerId },
       payload: RegisterCall,
@@ -591,21 +560,6 @@ export class TaskGroup extends HttpApiGroup.make("task")
       error: [
         TransitionRejected,
         CallbackChanged,
-        ContactNotFound,
-        ContactSuperseded,
-        ContactForbidden,
-        CustomerMissing,
-      ],
-    })
-  )
-  .add(
-    HttpApiEndpoint.delete("resolveAlert", "/task/alerts/:id", {
-      params: { id: IntegerId },
-      query: { source: ContactSource },
-      // An alert already closed is `resolved: false`, not an error (F14)
-      success: Schema.Struct({ resolved: Schema.Boolean }),
-      error: [
-        AlertNotFound,
         ContactNotFound,
         ContactSuperseded,
         ContactForbidden,

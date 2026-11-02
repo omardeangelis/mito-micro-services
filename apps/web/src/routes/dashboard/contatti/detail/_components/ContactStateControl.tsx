@@ -26,7 +26,9 @@ type Props = {
 
 /**
  * The state of the contact in the detail (AC30–AC40): the same select and wait
- * as the list row (`ContactRowState`), with the source `detail`.
+ * as the list row (`ContactRowState`), with the source `detail`. The select
+ * offers only Pratica caricata and Da chiamare (esiti-richiami-stati AC17):
+ * the other states are set by a call or by «Togli il richiamo».
  *
  * - The saved value is always on screen; the wait is the spinner of the
  *   selector, from the call until the new value is rendered. A second change is

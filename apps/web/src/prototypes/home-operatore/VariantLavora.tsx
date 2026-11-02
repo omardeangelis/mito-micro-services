@@ -344,7 +344,10 @@ function Row({
               the row keeps its height and nothing moves under the pointer */}
           <div className="grid">
             <div className={cn("[grid-area:1/1]", row.done && "invisible")}>
+              {/* The prototype saves at once, with no pending answer: the
+                  closed row remounts the outcomes, which closes the panel */}
               <CallOutcomes
+                key={row.done ? "done" : "open"}
                 customer={row.customer}
                 now={now}
                 onOutcome={(outcome, day, message) =>
