@@ -18,6 +18,7 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 - Comune alle due: l'esito incerto non dice mai «non registrata» e lo stesso invio ripetuto non conta due volte; OQ14 (posizione degli avvisi) aperta per [[specs/crm/design-system-web/SPEC]], con default in alto a destra, insieme al contrasto del ToggleGroup e al Select
 - Revisioni salvate accanto ai prototipi (`UX-REVIEW.md`, `UI-REVIEW.md`). Prossimo passo: `create-plan`, dopo la spec «Esiti, richiami e stati del contatto»
 - Scelte di Omar sulle decisioni prese dagli agenti: esito incerto in **versione semplice** nelle due home (conta una volta solo lo stesso invio ripetuto; il raro doppio dopo una scrittura in ritardo è accettato), 15 secondi di attesa massima per una chiamata, barra «Avanzamento» con il separatore di 2 px, colonna «Assegna» fissa, testi nuovi approvati
+- Home admin: «fermo» si conta su 7 **giorni lavorati** (giorni in cui almeno una persona del team ha chiamato), non di calendario. Dopo una chiusura dell'azienda nessuno risulta fermo; chi è in ferie mentre il team lavora sì, fino alla prima chiamata
 
 ## [2026-11-01] spec | Home: chiuse le domande aperte
 - [[specs/crm/home-admin/SPEC]]: tutte le 13 chiuse. Il team diventa «Dettaglio giornaliero» con i gruppi «Operatori» e «Admin», e anche gli admin ricevono contatti; l'export «Chiamate per operatore» resta in home (AC36); ogni import tiene l'elenco dei suoi clienti
