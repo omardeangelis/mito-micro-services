@@ -1,7 +1,7 @@
 ---
 domain: crm
 type: spec
-status: approved
+status: implemented
 links:
   - "[[chore/crm/design-home-e-richiami]]"
   - "[[personas]]"

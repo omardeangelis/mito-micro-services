@@ -15,7 +15,7 @@ updated: 2026-11-02
 # Plan: Esiti, richiami e stati del contatto
 
 **Spec:** [[specs/crm/esiti-richiami-stati/SPEC]], 2026-11-02: 33 criteri, nessuna domanda aperta (OQ1–OQ5 con i default, OQ6 e OQ7 decise da Omar).
-**Status:** Planned. D1 confermata: la PR di `claude/personas` (#147) è unita in `dev` e il branch `claude/esiti-richiami-stati` parte da lì.
+**Status:** Complete. D1 confermata: la PR di `claude/personas` (#147) è unita in `dev` e il branch `claude/esiti-richiami-stati` parte da lì.
 - **Verifica del piano:** tre giri di `adversarial-verifier`. Il terzo ha lasciato un solo major, corretto come il revisore indicava («basta per SHIP»), senza un quarto giro (§15).
 
 **Generato:** 2026-11-02 con `create-plan`.
@@ -683,9 +683,9 @@ Ogni task comincia dal test di `tdd_target`, rosso, e finisce con `tsc` verde su
   - **Staging:** Omar riceve i comandi `gcloud scheduler jobs create http … convert-contact-states`, `… pause` e `… run`.
   - **Revisione:** gate di CI, poi `adversarial-review` (`review.mode: total`).
 - **validation**: gate di CI verdi; `REPORT.md` della revisione SHIP.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: guida, TD13, rilascio e comandi di staging in `d86035e0`. `adversarial-review` con 13 verificatori: DO NOT SHIP al primo giro (1 BLOCKER, 4 MAJOR), corretti con un test ciascuno, poi SHIP. Gate locali verdi; la CI gira sulla PR.
+- **files edited/created**: `brain/chore/crm/guida-assegnazione-massiva-e-alert.md`, `brain/chore/roadmap-nuovo-stack.md`, `brain/chore/migrazione-gcp.md`, `RUBRIC.md`, `REPORT.md`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
