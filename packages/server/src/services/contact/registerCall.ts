@@ -200,6 +200,7 @@ export const registerCall = Effect.fn("contact.registerCall")(function* (
           actorOperatorId: actor.operatorId,
           source,
           resolution: "call",
+          at: now,
         })
       }
       let alertId = effect.alert === "keep" ? (open?.id ?? null) : null

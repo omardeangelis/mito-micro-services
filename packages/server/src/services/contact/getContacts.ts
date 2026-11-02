@@ -186,7 +186,7 @@ const buildContactsWhere = (
  */
 const sortPriority = (alertEnd: Date) => sql`CASE
   WHEN COALESCE(${task.customPriority}, false) THEN ${task.priority}
-  WHEN ${alert.id} IS NOT NULL AND ${alert.deadline} < ${alertEnd} THEN 130
+  WHEN ${alert.id} IS NOT NULL AND ${alert.deadline} < ${alertEnd.toISOString()}::timestamptz THEN 130
   WHEN ${task.state} IS NULL OR ${task.state} IN ('chiamare', 'followup', 'nessuno') THEN 120
   WHEN ${task.state} = 'non risponde' THEN 100
   ELSE ${task.priority}

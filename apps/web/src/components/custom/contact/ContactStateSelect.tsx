@@ -4,6 +4,7 @@ import { ChevronDown } from "lucide-react"
 import { TaskStatusBadge } from "@/components/custom/badge/TaskStatusBadge"
 import { LoadingSpinner } from "@/components/custom/loading-spinner"
 import { Button } from "@/components/ui/button"
+import { callOutcomes, type CallOutcome } from "@mito/domain/contact/outcome"
 import {
   type ContactState,
   selectorTargets,
@@ -25,6 +26,12 @@ type ContactStateSelectProps = {
    * customer of a table row: the trigger is described by it.
    */
   describedBy?: string
+  /**
+   * The four outcomes of «Registra chiamata» (AC18), after the state changes:
+   * given only for a contact a call can be registered on. Choosing one calls
+   * this; «Richiamare» leaves the focus to the panel the caller opens
+   */
+  onOutcome?: (outcome: CallOutcome) => void
 }
 
 /**
@@ -46,8 +53,12 @@ export function ContactStateSelect({
   pending = false,
   triggerRef,
   describedBy,
+  onOutcome,
 }: ContactStateSelectProps) {
   const [open, setOpen] = React.useState(false)
+  // The menu closes on «Richiamare» and the panel opens: the focus must not
+  // go back to the trigger, which would dismiss the panel
+  const keepFocus = React.useRef(false)
 
   return (
     <DropdownMenuPrimitive.Root
@@ -90,6 +101,11 @@ export function ContactStateSelect({
           // The look of the shared content, none of its animate-*, fade-*,
           // zoom-* and slide-* classes
           className="shadow-pop z-50 min-w-[var(--radix-dropdown-menu-trigger-width)] overflow-hidden rounded-md border border-border bg-card p-1 text-foreground"
+          onCloseAutoFocus={(event) => {
+            if (!keepFocus.current) return
+            keepFocus.current = false
+            event.preventDefault()
+          }}
         >
           <DropdownMenuPrimitive.RadioGroup
             onValueChange={(state) => {
@@ -110,6 +126,31 @@ export function ContactStateSelect({
               </DropdownMenuPrimitive.RadioItem>
             ))}
           </DropdownMenuPrimitive.RadioGroup>
+          {onOutcome ? (
+            <DropdownMenuPrimitive.Group>
+              {selectorTargets(value).length > 0 ? (
+                <DropdownMenuPrimitive.Separator className="my-1 h-px bg-border" />
+              ) : null}
+              <DropdownMenuPrimitive.Label className="px-2 py-1 text-xs text-muted-foreground">
+                Registra chiamata
+              </DropdownMenuPrimitive.Label>
+              {callOutcomes.map((outcome) => (
+                <DropdownMenuPrimitive.Item
+                  key={outcome}
+                  className="relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm focus:bg-accent focus:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring data-[disabled]:pointer-events-none data-[disabled]:opacity-50"
+                  onSelect={() => {
+                    keepFocus.current = outcome === "richiamare"
+                    setOpen(false)
+                    onOutcome(outcome)
+                  }}
+                >
+                  {outcome === "richiamare"
+                    ? "Richiamare"
+                    : stateLabel(outcome)}
+                </DropdownMenuPrimitive.Item>
+              ))}
+            </DropdownMenuPrimitive.Group>
+          ) : null}
         </DropdownMenuPrimitive.Content>
       </DropdownMenuPrimitive.Portal>
     </DropdownMenuPrimitive.Root>

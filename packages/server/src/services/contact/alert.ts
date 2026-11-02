@@ -20,8 +20,8 @@ export type AlertResolution = (typeof alertResolution)[number]
  * - Already closed: writes nothing, no `resolved_by`, date or log (F14).
  * - Detaches it from the task only if the task still points at it: never an
  *   alert linked since (R7, as the cron does).
- * - Sets `resolved_by` to the actor, `resolved_at` to the clock's instant and
- *   `resolution` to how it closed.
+ * - Sets `resolved_by` to the actor, `resolved_at` to `at` (the clock's instant
+ *   when absent) and `resolution` to how it closed.
  * - Writes one `alert_resolved` row with `source`. With `source: null`, the
  *   conversion of the states (`convertStates.ts`), it writes none: the
  *   conversion writes nothing in the log (esiti-richiami-stati AC32), and the
@@ -34,6 +34,9 @@ export const resolveOpenAlert = Effect.fn("contact.resolveOpenAlert")(
       alertId: number
       actorOperatorId: number
       resolution: AlertResolution
+      // The instant of the action that closes it, when it has one: a call and
+      // its closing share it, so the Storico shows the call first (AC16)
+      at?: Date
     } & (
       | { customerId: string; source: AlertCloseSource }
       | { customerId: string | null; source: null }
@@ -42,7 +45,7 @@ export const resolveOpenAlert = Effect.fn("contact.resolveOpenAlert")(
     const { taskId, alertId, actorOperatorId, resolution } = closing
     // Outside a transaction the three writes would commit apart
     yield* Tx
-    const resolvedAt = new Date(yield* Clock.currentTimeMillis)
+    const resolvedAt = closing.at ?? new Date(yield* Clock.currentTimeMillis)
     const closed = yield* query((client) =>
       client
         .update(alert)

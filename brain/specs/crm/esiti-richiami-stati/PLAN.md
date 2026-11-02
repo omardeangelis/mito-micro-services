@@ -627,9 +627,9 @@ Ogni task comincia dal test di `tdd_target`, rosso, e finisce con `tsc` verde su
   - Richiamare apre il riquadro con la riga «Sostituisce».
 
   Nel browser: una riga del seed a 1280 px.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-11-02, sonnet: RED 14/16 → verde, web 1826 verdi. Esiti nel menu del selettore della cella (gruppo «Registra chiamata»), perché la cella è larga 160 px; Richiamare apre CallbackPanel (estratto da CallOutcomes) ancorato alla cella. Prova nel browser a 1280×800 sul seed: Non risponde dalla riga (source list, origin alert, closed_at), Richiamare dalla riga con il riquadro a 8 px dal bordo, fuoco su domani.
+- **files edited/created**: ContactRowState.tsx, ContactStateSelect.tsx (onOutcome), call/CallOutcomes.tsx (CallbackPanel), _test/ContactRowState.calls.test.tsx
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a

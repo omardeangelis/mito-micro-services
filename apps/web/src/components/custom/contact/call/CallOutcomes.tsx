@@ -9,6 +9,7 @@ import { Calendar } from "@/components/ui/calendar"
 import { Input } from "@/components/ui/input"
 import {
   Popover,
+  PopoverAnchor,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
@@ -67,7 +68,7 @@ export function CallOutcomes({
     >
       {callOutcomes.map((outcome) =>
         outcome === "richiamare" ? (
-          <CallbackButton
+          <CallbackPanel
             key={outcome}
             customer={customer}
             now={now}
@@ -93,7 +94,13 @@ export function CallOutcomes({
   )
 }
 
-function CallbackButton({
+/**
+ * The panel of «Richiamare»: the calendar, the message and the save. By
+ * default it is a «Richiamare» button with its popover. With `children` it
+ * is anchored to them and opened from outside (`open`, `onOpenChange`): the
+ * state cell of the list opens it from its menu.
+ */
+export function CallbackPanel({
   customer,
   now,
   pending,
@@ -101,6 +108,9 @@ function CallbackButton({
   replacesAlertDay,
   error,
   onSave,
+  open: controlledOpen,
+  onOpenChange,
+  children,
 }: {
   customer: string
   now: Date
@@ -109,8 +119,15 @@ function CallbackButton({
   replacesAlertDay: string | null | undefined
   error: string | null | undefined
   onSave: (day: Date, message: string | undefined) => void
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+  /** Anchors the panel to them, in place of the «Richiamare» button */
+  children?: React.ReactNode
 }) {
-  const [open, setOpen] = React.useState(false)
+  const [ownOpen, setOwnOpen] = React.useState(false)
+  const open = controlledOpen ?? ownOpen
+  const setOpen = onOpenChange ?? setOwnOpen
+
   // The draft outlives a close (a click outside, Esc): it is lost only when
   // the component unmounts, or saved, which closes the panel
   const [day, setDay] = React.useState<Date | undefined>()
@@ -137,11 +154,11 @@ function CallbackButton({
     setOpen(false)
     setDay(undefined)
     setMessage("")
-  }, [pending, error])
+  }, [pending, error, setOpen])
   // A failed save brings the panel back, with the draft
   React.useEffect(() => {
     if (error) setOpen(true)
-  }, [error])
+  }, [error, setOpen])
   return (
     <Popover
       open={open}
@@ -152,12 +169,16 @@ function CallbackButton({
         setOpen(next)
       }}
     >
-      <PopoverTrigger asChild>
-        <Button size="sm" variant="secondary" disabled={disabled}>
-          <CalendarClock aria-hidden />
-          Richiamare
-        </Button>
-      </PopoverTrigger>
+      {children ? (
+        <PopoverAnchor asChild>{children}</PopoverAnchor>
+      ) : (
+        <PopoverTrigger asChild>
+          <Button size="sm" variant="secondary" disabled={disabled}>
+            <CalendarClock aria-hidden />
+            Richiamare
+          </Button>
+        </PopoverTrigger>
+      )}
       {/* To the left of the button: Radix then slides it up or down to stay
           in the window, so "Salva" is never below the bottom edge */}
       <PopoverContent
