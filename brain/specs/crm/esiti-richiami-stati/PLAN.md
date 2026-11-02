@@ -525,9 +525,9 @@ Ogni task comincia dal test di `tdd_target`, rosso, e finisce con `tsc` verde su
   - un `ApiUnavailable` dà «incerto» senza un secondo invio, e a schermo non c'è nessun altro testo d'errore;
   - un handler che non risponde dà «incerto» dopo 15 secondi (`vi.useFakeTimers`);
   - i testi d'errore usano le etichette.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-11-02, sonnet: RED 1+7 → verde, web 1775 verdi. useRegisterCall non rifiuta mai: data = registered | rejected(error) | uncertain; retry 0, toastErrors false, requestId a ogni mutate, timeout 15 s con AbortController (AbortSignal.timeout non è pilotabile dai fake timer). useRemoveCallback come gli hook vicini. Testi di TransitionRejected e CallbackNotAllowed con le etichette.
+- **files edited/created**: apps/web/src/api/{task,errors}.ts, apps/web/src/api/_test/{registerCall.test.tsx,errors.test.ts}
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
