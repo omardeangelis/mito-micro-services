@@ -3,7 +3,7 @@ domain: _root
 type: index
 links: []
 created: 2026-09-24
-updated: 2026-10-31
+updated: 2026-11-02
 ---
 
 # Brain — Master Map
@@ -25,6 +25,7 @@ Migrated from `docs/` on 2026-09-24. Source material for future `create-spec` ru
 - [[chore/crm/analisi-import-xml-v2|analisi-import-xml-v2]] — XML v2.0 import analysis (draft, partly superseded by the design above)
 - [[chore/crm/report-frontend-riorganizzazione|report-frontend-riorganizzazione]] — frontend reorganization report (draft)
 - [[chore/crm/guida-assegnazione-massiva-e-alert|guida-assegnazione-massiva-e-alert]] — operator guide: Assegnazione Massiva and Alert
+- [[chore/crm/design-home-e-richiami|design-home-e-richiami]] — work home for operator and admin, alert lifecycle, every call logged, six contact states (decisions of 2026-11-01)
 
 ### Platform migration (`chore/migration/`)
 
@@ -72,6 +73,9 @@ Migrated from `docs/` on 2026-09-24. Source material for future `create-spec` ru
 | crm | [[specs/crm/design-system-web/SPEC]] | Implemented (piano: [[specs/crm/design-system-web/PLAN]]; revisione: [[specs/crm/design-system-web/REPORT]]) |
 | crm | [[specs/crm/pagina-analisi/SPEC]] | Implemented nel worktree, senza commit; classifiche ai primi 8, legenda e note nel riquadro del grafico (AC19) (mappa: [[specs/crm/pagina-analisi/FLOW]]; piano: [[specs/crm/pagina-analisi/PLAN]]; revisione: [[specs/crm/pagina-analisi/REPORT]]) |
 | crm | [[specs/crm/toast-sonner/SPEC]] | Implemented (T11 aperto) |
+| crm | [[specs/crm/home-operatore/SPEC]] | Draft (mappa: [[specs/crm/home-operatore/FLOW]]) |
+| crm | [[specs/crm/home-admin/SPEC]] | Draft (mappa: [[specs/crm/home-admin/FLOW]]) |
+| crm | [[specs/crm/esiti-richiami-stati/SPEC]] | Draft |
 
 - [[specs/crm/crm-specs|crm-specs]] — CRM spec page map
 

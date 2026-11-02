@@ -9,6 +9,8 @@ scope: "modello dati lavorazioni, relazione task↔pratiche, identità della lav
 
 # Lavorazioni coesistenti e struttura verticale
 
+> [!note] 2026-11-01: Prestiti e Cessioni (`task.kind`) non è in programma. L'identità stabile (§7, E5) si fa da sola e il conteggio con l'azione `contact` (§8.3) entra nella spec dei richiami: vedi [[chore/crm/design-home-e-richiami|design-home-e-richiami]] D2, D3.
+
 **Decisione presa**: un cliente può avere contemporaneamente una lavorazione prestito e una cessione. Questo documento definisce il modello dati conseguente, l'inventario dei punti di codice da cambiare, la struttura frontend a verticali e la stima aggiornata.
 
 | § | Contenuto |

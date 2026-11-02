@@ -3,7 +3,7 @@ domain: _root
 type: index
 links: []
 created: 2026-09-24
-updated: 2026-10-31
+updated: 2026-11-02
 ---
 
 # Brain — Log
@@ -11,6 +11,50 @@ updated: 2026-10-31
 Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest when over.
 
 <!-- Entries are appended by create-spec (spec creation) and docs-maintenance (ingest). Format:
+
+## [2026-11-02] plan | Esiti, richiami e stati del contatto
+- Created plan: [[specs/crm/esiti-richiami-stati/PLAN]]: 20 task in 10 onde, una PR verso `dev`, ogni task con `tsc` verde su tutti i pacchetti
+- Decisioni tecniche D1–D18; D1 (prima la PR di `claude/personas` in `dev`, poi il branch) aspetta la conferma di Omar
+- Scelte chiave: `registerCall` e `removeCallback` solo `HttpApi`; un `requestId` per pressione senza ritentativi nel browser; entrata in uso scritta da una migrazione (`calls_registry`); conversione come job lanciato a mano, fuori dal passaggio notturno; le funzioni vecchie del dominio restano per Next
+- Verifica: tre giri, DO NOT SHIP → correzioni (contratto spezzato per task, Next che compila, reset dei test) → ultimo major corretto come indicato dal revisore
+
+## [2026-11-02] spec | Esiti, richiami e stati del contatto
+- Created spec: [[specs/crm/esiti-richiami-stati/SPEC]] (33 AC, 7 domande aperte con default), D1 + D2 + D6 di [[chore/crm/design-home-e-richiami]], prerequisito di [[specs/crm/home-operatore/SPEC]] e [[specs/crm/home-admin/SPEC]]
+- Domain: crm
+- Status: Draft
+- Sei stati con etichette italiane, «Registra chiamata» con quattro esiti e rifiuti in ordine (prima «già lavorato»), l'alert scaduto aperto finché non si lavora, il selettore ridotto a «Pratica caricata» (che chiude l'alert) e alla riapertura, l'assegnazione massiva senza `followup`, chiamate e tassi uguali ovunque, conversione in due passi (prima gli alert orfani, poi i contatti) che si può rilanciare
+- Scelta di Omar: il dettaglio e la lista riusano i pulsanti della home dell'operatore, senza prototipo; l'import resta in home-admin. Nessuna revisione UX o UI, nessun `FLOW.md`
+- Verifica: tre passaggi, l'ultimo SHIP. Il primo ha trovato «Pratica caricata» che lasciava l'alert aperto, i rifiuti senza ordine e la conversione che saltava dei contatti
+- Scelte di Omar su OQ6 e OQ7: la «X» apre «Togli il richiamo», che chiede il nuovo stato esplicitamente e non è una chiamata; «Contattato il» è l'ora dell'ultima chiamata, Non risponde compreso. Verifica mirata: SHIP
+- Domande 1–5 chiuse con i default (Omar, «Sì, i default»); la 5 (dire a Rosario che i numeri salgono) resta un compito prima del rilascio
+
+## [2026-11-02] spec | Home: revisioni ux-advisor e ui-reviewer integrate
+- [[specs/crm/home-operatore/SPEC]]: da 40 a 52 AC, nuovo [[specs/crm/home-operatore/FLOW]]. Prima, cinque modifiche al prototipo «Lavora da qui», approvate da Omar: la riga lavorata resta al suo posto chiusa (il doppio clic registrava l'esito sul cliente seguente), la bozza di «Richiamare» resta, il riquadro si apre a sinistra, il link «Vedi le chiamate», le colonne con il telefono sotto il nome (Cliente era larga 0 px a 1024). Verifica: quattro passaggi, l'ultimo SHIP
+- [[specs/crm/home-admin/SPEC]]: da 36 a 50 AC, nuovo [[specs/crm/home-admin/FLOW]], prototipo «Wave in testa» non modificato. «Assegna» da una riga del team parte con «Quanti» vuoto, esito incerto con un solo messaggio e la stessa conferma contata una volta, contrasto della barra, colonna «Assegna» fissa. Verifica: sei passaggi, l'ultimo SHIP
+- Comune alle due: l'esito incerto non dice mai «non registrata» e lo stesso invio ripetuto non conta due volte; OQ14 (posizione degli avvisi) aperta per [[specs/crm/design-system-web/SPEC]], con default in alto a destra, insieme al contrasto del ToggleGroup e al Select
+- Revisioni salvate accanto ai prototipi (`UX-REVIEW.md`, `UI-REVIEW.md`). Prossimo passo: `create-plan`, dopo la spec «Esiti, richiami e stati del contatto»
+- Scelte di Omar sulle decisioni prese dagli agenti: esito incerto in **versione semplice** nelle due home (conta una volta solo lo stesso invio ripetuto; il raro doppio dopo una scrittura in ritardo è accettato), 15 secondi di attesa massima per una chiamata, barra «Avanzamento» con il separatore di 2 px, colonna «Assegna» fissa, testi nuovi approvati
+- Home admin: «fermo» si conta su 7 **giorni lavorati** (giorni in cui almeno una persona del team ha chiamato), non di calendario. Dopo una chiusura dell'azienda nessuno risulta fermo; chi è in ferie mentre il team lavora sì, fino alla prima chiamata
+
+## [2026-11-01] spec | Home: chiuse le domande aperte
+- [[specs/crm/home-admin/SPEC]]: tutte le 13 chiuse. Il team diventa «Dettaglio giornaliero» con i gruppi «Operatori» e «Admin», e anche gli admin ricevono contatti; l'export «Chiamate per operatore» resta in home (AC36); ogni import tiene l'elenco dei suoi clienti
+- [[specs/crm/home-operatore/SPEC]]: tutte le 11 chiuse, con i default
+- Tasso di appuntamento sulle risposte ovunque: corretto D6 in [[chore/crm/design-home-e-richiami]]
+- Prossimo passo: la revisione di `ux-advisor` e `ui-reviewer` sui due prototipi, prima di `create-plan`
+
+## [2026-11-01] spec | Home dell'admin («Wave in testa»)
+- Created spec: [[specs/crm/home-admin/SPEC]]
+- Domain: crm
+- Status: Draft
+- Dal prototipo vincitore `apps/web/src/prototypes/home-admin/`. Decisioni di Omar: spec separata da quella dell'operatore, si implementa dopo «Esiti, richiami e stati del contatto», «Secondo il ritmo» come divisione di partenza, gli ultimi 4 import Wave (Promozioni comprese)
+- Verifica: tre passaggi dell'`adversarial-verifier`, tutti DO NOT SHIP. Corretti 2 blocker (le parti dell'import, le regole di «Pareggia i carichi») e i major, fra cui le parti contro OQ13, i quattro casi di AC25 e una sola regola per «Pareggia». 13 domande aperte per Omar
+
+## [2026-11-01] spec | Home dell'operatore («Lavora da qui»)
+- Created spec: [[specs/crm/home-operatore/SPEC]]
+- Domain: crm
+- Status: Draft
+- Dal prototipo vincitore `apps/web/src/prototypes/home-operatore/`. Si implementa dopo «Esiti, richiami e stati del contatto»; l'admin apre la stessa vista dei suoi richiami da «Lavorali» della sua home
+- Verifica: SHIP dell'`adversarial-verifier` dopo 5 major corretti. 11 domande aperte per Omar
 
 ## [2026-10-31] personas | Prima stesura delle personas
 - [[personas]]: Rosario (proprietario), Admin, Operatore; `paths.personas` in `brain.config.json` punta alla pagina, così `ux-advisor`, `create-spec` e `prototype` la leggono.

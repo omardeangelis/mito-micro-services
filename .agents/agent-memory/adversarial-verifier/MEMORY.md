@@ -166,3 +166,13 @@
 - [Sonner browser probes](sonner-browser-probe-pitfalls.md) — expand the stack and use duration Infinity before clicking toasts; else false negatives
 - [Third-party CSS motion checks](feedback_third_party_css_motion_checks.md) — read the injected CSS and the JS that sets its attributes; check reduced-motion selector reach and unmount timers
 - [Toast duration mutants, real-clock flake](feedback_toast_duration_mutants_and_realclock.md) — per-site duration mutants; shownAt after findByText flakes
+- [Prototype spec gate checks](feedback_prototype_spec_gate_checks.md) — sibling prototypes importing a deleted folder; "same order as X"; copy diffs; counts after an action
+- [Spec partition and prototype checks](feedback_spec_partition_and_prototype_checks.md) — partition labels vs every writer; run the prototype algorithm against property ACs
+- [Review fold feasibility](feedback_review_fold_feasibility_checks.md) — UI-review criteria that cannot hold: segment contrast, toast vs focus, skeleton height
+- [Retry, timeout, global toast](feedback_retry_timeout_and_global_toast_checks.md) — idempotency vs repetition, late answers, the app's global error toast, reloads that move rows
+- [Created-first order, uncertain reread](feedback_created_first_order_and_uncertain_reread.md) — CURRENT_TIMESTAMP ties in one transaction; reread before a late commit
+- [Status-keyed errors, table widths](feedback_status_keyed_errors_and_sibling_table_width.md) — errors routed by HTTP status vs contract errors; action column of every table at min width
+- [Async focus, sticky messages](feedback_async_focus_and_sticky_message_probes.md) — async focus vs focus-trapping popovers; failure texts vs foreign rereads; locale digits
+- [Tracking default, reload window](feedback_tracking_default_and_reload_window.md) — untouched fields that follow a moving bound; reload during an in-flight write
+- [State invariant matrix](feedback_state_invariant_matrix.md) — for state-machine specs: action x state matrix, "doesn't close" lists, rejection precedence, conversion replay
+- [Embedded conversion, cutover](feedback_plan_embedded_conversion_and_cutover.md) — conversion in nightly job vs its ACs; manual-job cutover window
