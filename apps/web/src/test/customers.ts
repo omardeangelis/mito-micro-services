@@ -560,6 +560,7 @@ export function fakeCustomers(
         .handle("reassign", unserved)
         .handle("setCallback", unserved)
         .handle("registerCall", unserved)
+        .handle("removeCallback", unserved)
         .handle("resolveAlert", unserved)
         .handle("bulkHandleTask", ({ payload }) =>
           waitGate(payload.customerIds).pipe(

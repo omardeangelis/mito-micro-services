@@ -19,6 +19,7 @@ import {
 } from "../services/contact/queries"
 import { reassign } from "../services/contact/reassign"
 import { registerCall } from "../services/contact/registerCall"
+import { removeCallback } from "../services/contact/removeCallback"
 import { resolveAlert } from "../services/contact/resolveAlert"
 import { setCallback } from "../services/contact/setCallback"
 import { setPriority } from "../services/contact/setPriority"
@@ -47,6 +48,7 @@ const apiErrorOf = {
   CallNotAllowed: ({ state }) => new Api.CallNotAllowed({ state }),
   MessageTooLong: () => new Api.MessageTooLong(),
   RequestIdConflict: () => new Api.RequestIdConflict(),
+  CallbackChanged: () => new Api.CallbackChanged(),
   CustomerNotFound: () => new Api.CustomerNotFound(),
   CustomerUnassigned: () => new Api.CustomerUnassigned(),
   ContactAlreadyActive: ({ activeTaskId }) =>
@@ -203,6 +205,17 @@ export const taskLayer = HttpApiBuilder.group(MitoApi, "task", (handlers) =>
             ...payload,
             actor,
           }).pipe(asApiErrors, unexpectedAs500("registerCall"))
+        }).pipe(Effect.provide(services))
+      )
+      .handle("removeCallback", ({ params, payload }) =>
+        Effect.gen(function* () {
+          const { actor } = yield* CurrentUser
+          return yield* removeCallback({
+            alertId: params.id,
+            taskId: payload.taskId,
+            state: payload.state,
+            actor,
+          }).pipe(asApiErrors, unexpectedAs500("removeCallback"))
         }).pipe(Effect.provide(services))
       )
       .handle("resolveAlert", ({ params, query }) =>

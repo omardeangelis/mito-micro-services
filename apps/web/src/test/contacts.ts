@@ -5,12 +5,14 @@ import {
   AlertConfirmationRequired,
   type AlertNotFound,
   type CallAlreadyWorked,
+  type CallbackChanged,
   type CallNotAllowed,
   type ContactForbidden,
   ContactNotFound,
   ContactSuperseded,
   type DeadlineInPast,
   type OperatorNotFound,
+  type TransitionRejected,
 } from "@mito/contract/errors"
 import { type Customer } from "@mito/contract/customer"
 import { type OperatorWithRole as OperatorWithRoleSchema } from "@mito/contract/me"
@@ -137,6 +139,13 @@ export type CallbackSet = {
 export type AlertResolve = { alertId: number; source: "list" | "detail" }
 export type CallRegistered = RegisterCall & { taskId: number }
 
+/** «Togli il richiamo» as the page sent it, as the backend received it */
+export type CallbackRemoved = {
+  alertId: number
+  taskId: number
+  state: TaskStatus
+}
+
 /** The rejections of «Registra chiamata» a test can give */
 export type CallRejection =
   | ContactForbidden
@@ -217,6 +226,15 @@ export function fakeContacts(
     }),
     /** The response of each request id, so a repeat gets the same one */
     registered: new Map<string, RegisteredCall>(),
+    removals: [] as CallbackRemoved[],
+    removeAnswer: (
+      _removal: CallbackRemoved
+    ): WriteAnswer<
+      | ContactForbidden
+      | ContactSuperseded
+      | CallbackChanged
+      | TransitionRejected
+    > => ({ saved: true }),
     resolves: [] as AlertResolve[],
     resolveAnswer: (
       _change: AlertResolve
@@ -557,6 +575,26 @@ export function fakeContacts(
               }
               state.registered.set(payload.requestId, registered)
               return registered
+            }
+          )
+        })
+        .handle("removeCallback", ({ params, payload }) => {
+          const removal = { alertId: params.id, ...payload }
+          return write(
+            () => state.removals.push(removal),
+            () => state.removeAnswer(removal),
+            () => {
+              state.rows = state.rows.map((row) =>
+                row.id === payload.taskId
+                  ? { ...row, state: payload.state, alert: null }
+                  : row
+              )
+              updateDetail(payload.taskId, (detail) => ({
+                ...detail,
+                contact: { ...detail.contact, state: payload.state },
+                alert: null,
+              }))
+              return { taskId: payload.taskId, state: payload.state }
             }
           )
         })

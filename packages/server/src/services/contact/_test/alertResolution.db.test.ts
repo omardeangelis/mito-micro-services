@@ -141,7 +141,7 @@ describe("chiusura dell'alert: resolution e resolved_at", () => {
 
       yield* changeState({
         taskId: contact.id,
-        toState: "app.to",
+        toState: "caricato",
         source: "detail",
         confirmedAlertId: open.id,
         actor: actorOf(operator),

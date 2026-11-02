@@ -223,6 +223,16 @@ export class RequestIdConflict extends Schema.TaggedError<RequestIdConflict>()(
   { httpApiStatus: 409 }
 ) {}
 
+/**
+ * The alert of «Togli il richiamo» is no longer open, or no longer the one
+ * linked to the contact (AC22 of esiti-richiami-stati; HTTP 409)
+ */
+export class CallbackChanged extends Schema.TaggedError<CallbackChanged>()(
+  "CallbackChanged",
+  {},
+  { httpApiStatus: 409 }
+) {}
+
 /** The practice doesn't exist (tRPC NOT_FOUND, `PRACTICE_NOT_FOUND`). */
 export class PracticeNotFound extends Schema.TaggedError<PracticeNotFound>()(
   "PracticeNotFound",
@@ -404,6 +414,7 @@ const apiErrors = [
   CallNotAllowed,
   MessageTooLong,
   RequestIdConflict,
+  CallbackChanged,
   PracticeNotFound,
   PracticeExists,
   CustomerExists,

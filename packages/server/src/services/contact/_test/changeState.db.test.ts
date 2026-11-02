@@ -43,7 +43,7 @@ afterEach(() => {
 })
 
 describe("task.changeState", () => {
-  it("passare da chiamare ad app.to valorizza 'Contattato il', scrive una riga state_change e non cambia l'operatore", async () => {
+  it("passare da chiamare a Pratica caricata non valorizza 'Contattato il' (AC29), scrive una riga state_change e non cambia l'operatore", async () => {
     const operator = await createOperator()
     const customer = await createCustomer({ operatorId: operator.id })
     const contact = await createTask({
@@ -51,37 +51,39 @@ describe("task.changeState", () => {
       operatorId: operator.id,
       state: "chiamare",
     })
-    const before = new Date()
 
     await createTestCaller(operator).task.changeState({
       taskId: contact.id,
-      toState: "app.to",
+      toState: "caricato",
       source: "list",
       confirmedAlertId: null,
     })
 
-    const [after] = await tasksOf(customer.id)
-    expect(after).toMatchObject({
-      id: contact.id,
-      state: "app.to",
-      operatorId: operator.id,
-      isActive: true,
-    })
-    expect(after!.closedAt!.getTime()).toBeGreaterThanOrEqual(before.getTime())
+    expect(await tasksOf(customer.id)).toMatchObject([
+      {
+        id: contact.id,
+        state: "caricato",
+        operatorId: operator.id,
+        isActive: true,
+        closedAt: null,
+      },
+    ])
     expect(await logOf(customer.id)).toMatchObject([
       {
         action: "state_change",
         source: "list",
         taskId: contact.id,
         fromState: "chiamare",
-        toState: "app.to",
+        toState: "caricato",
         actorOperatorId: operator.id,
       },
     ])
   })
 })
 
+// An expired alert closes with no confirmation, a future one needs it (AC14)
 const deadline = new Date("2026-10-20T22:00:00Z")
+const futureDeadline = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000)
 const longAgo = new Date("2026-01-01T00:00:00Z")
 
 /** A customer of `customerOperatorId` with an active contact in `state`. */
@@ -138,8 +140,20 @@ describe("task.changeState: transizioni", () => {
     ["followup", "chiamare"],
     ["non risponde", "chiamare"],
     ["non risponde", "followup"],
+    // The outcomes are calls (AC17): `registerCall`, never the selector
+    ["chiamare", "app.to"],
+    ["chiamare", "non interessato"],
+    ["chiamare", "non risponde"],
+    ["chiamare", "richiamare"],
+    ["richiamare", "non risponde"],
+    ["richiamare", "chiamare"],
+    ["non risponde", "app.to"],
+    ["app.to", "non interessato"],
+    ["app.to", "erogata"],
+    ["nessuno", "app.to"],
+    ["chiamare", "nessuno"],
   ] as const)(
-    "rifiuta il passaggio da %s a %s con CONTACT_TRANSITION_REJECTED e non modifica nulla (AC30)",
+    "rifiuta il passaggio da %s a %s con CONTACT_TRANSITION_REJECTED e non modifica nulla (AC17, AC30)",
     async (from, to) => {
       const operator = await createOperator()
       const { customer, contact } = await seedContact({
@@ -166,111 +180,50 @@ describe("task.changeState: transizioni", () => {
     }
   )
 
-  it("passare da followup a un esito valorizza 'Contattato il' con la data del cambio (AC31)", async () => {
+  it.each(["chiamare", "richiamare"] as const)(
+    "riselezionare lo stato attuale (%s) non scrive nulla (AC40)",
+    async (state) => {
+      const operator = await createOperator()
+      const { customer, contact } = await seedContact({
+        state,
+        customerOperatorId: operator.id,
+        closedAt: state === "richiamare" ? longAgo : null,
+      })
+      const before = await snapshot(customer.id)
+
+      await expect(
+        createTestCaller(operator).task.changeState({
+          taskId: contact.id,
+          toState: state,
+          source: "list",
+          confirmedAlertId: null,
+        })
+      ).resolves.toEqual({ taskId: contact.id, reopened: false })
+
+      expect(await snapshot(customer.id)).toEqual(before)
+    }
+  )
+
+  it("riselezionare lo stato attuale con un alert aperto non chiede conferma e non scrive nulla (AC40)", async () => {
     const operator = await createOperator()
     const { customer, contact } = await seedContact({
-      state: "followup",
-      customerOperatorId: operator.id,
-    })
-    const before = new Date()
-
-    await expect(
-      createTestCaller(operator).task.changeState({
-        taskId: contact.id,
-        toState: "caricato",
-        source: "detail",
-        confirmedAlertId: null,
-      })
-    ).resolves.toEqual({ taskId: contact.id, reopened: false })
-
-    const [after] = await tasksOf(customer.id)
-    expect(after).toMatchObject({ id: contact.id, state: "caricato" })
-    expect(after!.closedAt!.getTime()).toBeGreaterThanOrEqual(before.getTime())
-    expect(after!.closedAt!.getTime()).toBeLessThanOrEqual(Date.now())
-  })
-
-  it("passare da chiamare a non risponde lascia il contatto in coda: niente 'Contattato il', stessa priorità, una state_change", async () => {
-    const operator = await createOperator()
-    const customer = await createCustomer({ operatorId: operator.id })
-    const contact = await createTask({
-      customerId: customer.id,
-      operatorId: operator.id,
-      state: "chiamare",
-      priority: 120,
-    })
-
-    await expect(
-      createTestCaller(operator).task.changeState({
-        taskId: contact.id,
-        toState: "non risponde",
-        source: "list",
-        confirmedAlertId: null,
-      })
-    ).resolves.toEqual({ taskId: contact.id, reopened: false })
-
-    expect(await tasksOf(customer.id)).toMatchObject([
-      {
-        id: contact.id,
-        state: "non risponde",
-        closedAt: null,
-        priority: 120,
-        isActive: true,
-      },
-    ])
-    expect(await logOf(customer.id)).toMatchObject([
-      {
-        action: "state_change",
-        taskId: contact.id,
-        fromState: "chiamare",
-        toState: "non risponde",
-        actorOperatorId: operator.id,
-      },
-    ])
-  })
-
-  it("passare da richiamare a non risponde lascia 'Contattato il' com'è", async () => {
-    const operator = await createOperator()
-    const customer = await createCustomer({ operatorId: operator.id })
-    const calledAt = new Date("2026-10-01T08:00:00.000Z")
-    const contact = await createTask({
-      customerId: customer.id,
-      operatorId: operator.id,
       state: "richiamare",
-      closedAt: calledAt,
-    })
-
-    await createTestCaller(operator).task.changeState({
-      taskId: contact.id,
-      toState: "non risponde",
-      source: "list",
-      confirmedAlertId: null,
-    })
-
-    expect(await tasksOf(customer.id)).toMatchObject([
-      { id: contact.id, state: "non risponde", closedAt: calledAt },
-    ])
-  })
-
-  it("passare da non risponde a un esito valorizza 'Contattato il' (AC31)", async () => {
-    const operator = await createOperator()
-    const { customer, contact } = await seedContact({
-      state: "non risponde",
       customerOperatorId: operator.id,
     })
+    await createAlert({ taskId: contact.id, deadline })
+    const before = await snapshot(customer.id)
 
     await createTestCaller(operator).task.changeState({
       taskId: contact.id,
-      toState: "app.to",
+      toState: "richiamare",
       source: "detail",
       confirmedAlertId: null,
     })
 
-    const [after] = await tasksOf(customer.id)
-    expect(after).toMatchObject({ id: contact.id, state: "app.to" })
-    expect(after!.closedAt).not.toBeNull()
+    expect(await snapshot(customer.id)).toEqual(before)
   })
 
-  it("un contatto senza stato passa ad app.to e scrive una state_change con fromState null", async () => {
+  it("passare da un contatto senza stato a Pratica caricata scrive una state_change con fromState null", async () => {
     const operator = await createOperator()
     const customer = await createCustomer({ operatorId: operator.id })
     const contact = await createTask({
@@ -282,14 +235,14 @@ describe("task.changeState: transizioni", () => {
     await expect(
       createTestCaller(operator).task.changeState({
         taskId: contact.id,
-        toState: "app.to",
+        toState: "caricato",
         source: "detail",
         confirmedAlertId: null,
       })
     ).resolves.toEqual({ taskId: contact.id, reopened: false })
 
     expect(await tasksOf(customer.id)).toMatchObject([
-      { id: contact.id, state: "app.to", isActive: true },
+      { id: contact.id, state: "caricato", isActive: true },
     ])
     expect(await logOf(customer.id)).toMatchObject([
       {
@@ -297,46 +250,22 @@ describe("task.changeState: transizioni", () => {
         source: "detail",
         taskId: contact.id,
         fromState: null,
-        toState: "app.to",
+        toState: "caricato",
         actorOperatorId: operator.id,
       },
     ])
   })
 
-  it("passare da un esito a un altro cambia lo stato e lascia 'Contattato il' com'è (AC32)", async () => {
-    const operator = await createOperator()
-    const contactedAt = new Date("2026-09-01T10:00:00Z")
-    const { customer, contact } = await seedContact({
-      state: "app.to",
-      customerOperatorId: operator.id,
-      closedAt: contactedAt,
-    })
-
-    await createTestCaller(operator).task.changeState({
-      taskId: contact.id,
-      toState: "erogata",
-      source: "list",
-      confirmedAlertId: null,
-    })
-
-    expect(await tasksOf(customer.id)).toMatchObject([
-      {
-        id: contact.id,
-        state: "erogata",
-        closedAt: contactedAt,
-        isActive: true,
-      },
-    ])
-  })
-
   it.each([
-    ["nessuno", "app.to"],
-    ["app.to", "nessuno"],
-    ["nessuno", "chiamare"],
-    ["chiamare", "nessuno"],
+    "nessuno",
+    "chiamare",
+    "followup",
+    "non risponde",
+    "app.to",
+    "non interessato",
   ] as const)(
-    "passare da %s a %s cambia solo lo stato: 'Contattato il' resta e non nasce un contatto (AC33)",
-    async (from, to) => {
+    "passare da %s a Pratica caricata cambia solo lo stato: 'Contattato il' resta e non nasce un contatto (AC29)",
+    async (from) => {
       const operator = await createOperator()
       const contactedAt = new Date("2026-09-01T10:00:00Z")
       const { customer, contact } = await seedContact({
@@ -348,7 +277,7 @@ describe("task.changeState: transizioni", () => {
       await expect(
         createTestCaller(operator).task.changeState({
           taskId: contact.id,
-          toState: to,
+          toState: "caricato",
           source: "list",
           confirmedAlertId: null,
         })
@@ -357,14 +286,14 @@ describe("task.changeState: transizioni", () => {
       expect(await tasksOf(customer.id)).toMatchObject([
         {
           id: contact.id,
-          state: to,
+          state: "caricato",
           closedAt: contactedAt,
           isActive: true,
           operatorId: operator.id,
         },
       ])
       expect(await logOf(customer.id)).toMatchObject([
-        { action: "state_change", fromState: from, toState: to },
+        { action: "state_change", fromState: from, toState: "caricato" },
       ])
     }
   )
@@ -473,7 +402,7 @@ describe("task.changeState: transizioni", () => {
 
       await createTestCaller(operator).task.changeState({
         taskId: contact.id,
-        toState: "non interessato",
+        toState: "caricato",
         source,
         confirmedAlertId: null,
       })
@@ -484,55 +413,12 @@ describe("task.changeState: transizioni", () => {
           source,
           taskId: contact.id,
           fromState: "chiamare",
-          toState: "non interessato",
+          toState: "caricato",
           actorOperatorId: operator.id,
         },
       ])
     }
   )
-
-  it.each(["chiamare", "richiamare"] as const)(
-    "riselezionare lo stato attuale (%s) non scrive nulla (AC40)",
-    async (state) => {
-      const operator = await createOperator()
-      const { customer, contact } = await seedContact({
-        state,
-        customerOperatorId: operator.id,
-        closedAt: state === "richiamare" ? longAgo : null,
-      })
-      const before = await snapshot(customer.id)
-
-      await expect(
-        createTestCaller(operator).task.changeState({
-          taskId: contact.id,
-          toState: state,
-          source: "list",
-          confirmedAlertId: null,
-        })
-      ).resolves.toEqual({ taskId: contact.id, reopened: false })
-
-      expect(await snapshot(customer.id)).toEqual(before)
-    }
-  )
-
-  it("riselezionare lo stato attuale con un alert aperto non chiede conferma e non scrive nulla (AC40)", async () => {
-    const operator = await createOperator()
-    const { customer, contact } = await seedContact({
-      state: "richiamare",
-      customerOperatorId: operator.id,
-    })
-    await createAlert({ taskId: contact.id, deadline })
-    const before = await snapshot(customer.id)
-
-    await createTestCaller(operator).task.changeState({
-      taskId: contact.id,
-      toState: "richiamare",
-      source: "detail",
-      confirmedAlertId: null,
-    })
-
-    expect(await snapshot(customer.id)).toEqual(before)
-  })
 
   it("il cambio non tocca l'operatore del contatto né quello del cliente, né la priorità (AC41, D2, D3)", async () => {
     const me = await createOperator()
@@ -545,7 +431,7 @@ describe("task.changeState: transizioni", () => {
 
     await createTestCaller(me).task.changeState({
       taskId: contact.id,
-      toState: "app.to",
+      toState: "caricato",
       source: "list",
       confirmedAlertId: null,
     })
@@ -553,7 +439,7 @@ describe("task.changeState: transizioni", () => {
     expect(await tasksOf(customer.id)).toMatchObject([
       {
         id: contact.id,
-        state: "app.to",
+        state: "caricato",
         operatorId: colleague.id,
         priority: 77,
         customPriority: true,
@@ -575,7 +461,7 @@ describe("task.changeState: transizioni", () => {
 
     await createTestCaller(operator).task.changeState({
       taskId: contact.id,
-      toState: "richiamare",
+      toState: "caricato",
       source: "list",
       confirmedAlertId: null,
     })
@@ -595,14 +481,14 @@ describe("task.changeState: alert aperto", () => {
     })
     const open = await createAlert({
       taskId: contact.id,
-      deadline,
+      deadline: futureDeadline,
       message: "Richiamare dopo le 18",
     })
     const caller = createTestCaller(operator)
 
     await caller.task.changeState({
       taskId: contact.id,
-      toState: "app.to",
+      toState: "caricato",
       source: "list",
       confirmedAlertId: open.id,
     })
@@ -618,7 +504,7 @@ describe("task.changeState: alert aperto", () => {
       },
     ])
     expect(await tasksOf(customer.id)).toMatchObject([
-      { id: contact.id, state: "app.to", alertId: null },
+      { id: contact.id, state: "caricato", alertId: null },
     ])
     expect(await logOf(customer.id)).toMatchObject([
       {
@@ -632,7 +518,7 @@ describe("task.changeState: alert aperto", () => {
         action: "state_change",
         taskId: contact.id,
         fromState: "richiamare",
-        toState: "app.to",
+        toState: "caricato",
         source: "list",
         actorOperatorId: operator.id,
       },
@@ -641,12 +527,16 @@ describe("task.changeState: alert aperto", () => {
 
   it("confermando l'alert su una riapertura, l'alert si chiude sul contatto precedente e il nuovo nasce senza alert (AC34, AC36)", async () => {
     const operator = await createOperator()
+    // Not a state the selector reopens from with an alert (AC4), only a legacy one
     const { customer, contact } = await seedContact({
-      state: "richiamare",
+      state: "app.to",
       customerOperatorId: operator.id,
       closedAt: longAgo,
     })
-    const open = await createAlert({ taskId: contact.id, deadline })
+    const open = await createAlert({
+      taskId: contact.id,
+      deadline: futureDeadline,
+    })
 
     const result = await createTestCaller(operator).task.changeState({
       taskId: contact.id,
@@ -685,7 +575,7 @@ describe("task.changeState: alert aperto", () => {
       })
       const current = await createAlert({
         taskId: contact.id,
-        deadline: new Date("2026-11-02T08:30:00Z"),
+        deadline: futureDeadline,
         message: "Impostato da un collega",
       })
       const before = await snapshot(customer.id)
@@ -693,7 +583,7 @@ describe("task.changeState: alert aperto", () => {
       const error = await failure(
         createTestCaller(operator).task.changeState({
           taskId: contact.id,
-          toState: "app.to",
+          toState: "caricato",
           source: "detail",
           confirmedAlertId: confirmation === "senza conferma" ? null : seen.id,
         })
@@ -717,10 +607,10 @@ describe("task.changeState: alert aperto", () => {
 
 describe("task.changeState: tutto o niente (AC39)", () => {
   it.each([
-    ["chiamare", "app.to", "log"],
-    ["richiamare", "chiamare", "log"],
-    ["chiamare", "app.to", "cliente"],
-    ["richiamare", "chiamare", "cliente"],
+    ["richiamare", "caricato", "log"],
+    ["app.to", "chiamare", "log"],
+    ["richiamare", "caricato", "cliente"],
+    ["app.to", "chiamare", "cliente"],
   ] as const)(
     "da %s a %s con l'alert confermato, se fallisce la scrittura (%s) non cambia nulla",
     async (from, to, failing) => {
@@ -728,9 +618,12 @@ describe("task.changeState: tutto o niente (AC39)", () => {
       const { customer, contact } = await seedContact({
         state: from,
         customerOperatorId: operator.id,
-        closedAt: from === "richiamare" ? longAgo : null,
+        closedAt: longAgo,
       })
-      const open = await createAlert({ taskId: contact.id, deadline })
+      const open = await createAlert({
+        taskId: contact.id,
+        deadline: futureDeadline,
+      })
       const before = await snapshot(customer.id)
       if (failing === "log") {
         await failNextInsertInto(taskEventLog, { action: "state_change" })
@@ -776,7 +669,7 @@ describe("task.changeState: permessi", () => {
     const error = await failure(
       createTestCaller(operator).task.changeState({
         taskId: contact.id,
-        toState: "app.to",
+        toState: "caricato",
         source: "detail",
         confirmedAlertId: null,
       })
@@ -804,7 +697,7 @@ describe("task.changeState: permessi", () => {
     const error = await failure(
       createTestCaller(stranger).task.changeState({
         taskId: contact.id,
-        toState: "app.to",
+        toState: "caricato",
         source: "list",
         confirmedAlertId: null,
       })
@@ -829,13 +722,13 @@ describe("task.changeState: permessi", () => {
 
     await createTestCaller(me).task.changeState({
       taskId: contact.id,
-      toState: "app.to",
+      toState: "caricato",
       source: "list",
       confirmedAlertId: null,
     })
 
     expect(await tasksOf(customer.id)).toMatchObject([
-      { id: contact.id, state: "app.to", operatorId: me.id },
+      { id: contact.id, state: "caricato", operatorId: me.id },
     ])
   })
 
@@ -850,13 +743,13 @@ describe("task.changeState: permessi", () => {
 
     await createTestCaller(me).task.changeState({
       taskId: contact.id,
-      toState: "richiamare",
+      toState: "caricato",
       source: "detail",
       confirmedAlertId: null,
     })
 
     expect(await tasksOf(customer.id)).toMatchObject([
-      { id: contact.id, state: "richiamare", operatorId: colleague.id },
+      { id: contact.id, state: "caricato", operatorId: colleague.id },
     ])
   })
 
@@ -870,13 +763,13 @@ describe("task.changeState: permessi", () => {
 
     await createTestCaller(admin).task.changeState({
       taskId: contact.id,
-      toState: "erogata",
+      toState: "caricato",
       source: "list",
       confirmedAlertId: null,
     })
 
     expect(await tasksOf(customer.id)).toMatchObject([
-      { id: contact.id, state: "erogata", operatorId: owner.id },
+      { id: contact.id, state: "caricato", operatorId: owner.id },
     ])
     expect(await logOf(customer.id)).toMatchObject([
       { action: "state_change", actorOperatorId: admin.id },

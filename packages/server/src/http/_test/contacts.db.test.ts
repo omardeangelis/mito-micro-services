@@ -172,11 +172,15 @@ describe("POST /api/v1/task/:id/state", () => {
 
       const changed = yield* api.task.changeState({
         params: { id: contact.id },
-        payload: { toState: "app.to", source: "list", confirmedAlertId: null },
+        payload: {
+          toState: "caricato",
+          source: "list",
+          confirmedAlertId: null,
+        },
       })
 
       assert.deepStrictEqual(changed, { taskId: contact.id, reopened: false })
-      assert.strictEqual((yield* taskRow(contact.id))?.state, "app.to")
+      assert.strictEqual((yield* taskRow(contact.id))?.state, "caricato")
     })
   )
 
@@ -189,7 +193,7 @@ describe("POST /api/v1/task/:id/state", () => {
       const open = yield* given(() =>
         createAlert({
           taskId: withAlert.contact.id,
-          deadline: new Date("2026-11-02T09:00:00.000Z"),
+          deadline: new Date("2099-01-01T09:00:00.000Z"),
           message: "Dopo le 9",
         })
       )
@@ -203,7 +207,7 @@ describe("POST /api/v1/task/:id/state", () => {
       const change = (
         userId: string,
         id: number,
-        toState: TaskStatus = "app.to"
+        toState: TaskStatus = "caricato"
       ) =>
         Effect.flip(
           clientAs(userId).pipe(
@@ -225,7 +229,7 @@ describe("POST /api/v1/task/:id/state", () => {
         new AlertConfirmationRequired({
           alert: {
             id: open.id,
-            deadline: new Date("2026-11-02T09:00:00.000Z"),
+            deadline: new Date("2099-01-01T09:00:00.000Z"),
             message: "Dopo le 9",
           },
         })

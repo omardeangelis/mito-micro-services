@@ -346,9 +346,9 @@ Ogni task comincia dal test di `tdd_target`, rosso, e finisce con `tsc` verde su
   - un alert già chiuso: `CallbackChanged`, niente cambia;
   - «Pratica caricata» con un alert scaduto (si chiude senza conferma) e con uno futuro (`AlertConfirmationRequired`);
   - `richiamare` dal selettore: `TransitionRejected`.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-11-02, sonnet: RED (modulo mancante, 10/14 selettore) → verde. Correzione in revisione: lo stesso stato resta un no-op (sezione-contatti AC40 non è superato), test originali ripristinati. Test riscritti come rifiuti o come caricato per i cambi non più del selettore; «Da chiamare» non tocca più closed_at. db 718, tsc verdi.
+- **files edited/created**: packages/contract/src/{task,errors}.ts, services/contact/{removeCallback,changeState,errors}.ts, http/task.ts, apps/web/src/api/errors.ts, apps/web/src/test/{api.tsx,contacts.ts,customers.ts}, test: removeCallback (servizio e http), changeState{,.selector}, lockRule, operatorRule, alertResolution, http contacts, procedures
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -375,9 +375,9 @@ Ogni task comincia dal test di `tdd_target`, rosso, e finisce con `tsc` verde su
   - un secondo giro non cambia nulla;
   - un giro dopo l'inserimento di un `followup` cambia solo quello;
   - con un `registerCall` in parallelo sullo stesso cliente, vince la chiamata.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-11-02, modello dell'orchestratore: RED (stub a zero) → 12 test db + 1 pg (call in parallelo vince) verdi. Orfani chiusi senza riga nel registro (AC32): resolveOpenAlert accetta source null. Budget di 20 minuti e ConversionLeft se resta lavoro, per rilanciare lo stesso giorno. Job in pausa in setup-staging.sh. api:build e api:smoke verdi.
+- **files edited/created**: packages/server/src/services/contact/{convertStates,alert}.ts, _test/convertStates.{db,pg}.test.ts, apps/api/src/cron/jobs.ts, apps/api/gcp/setup-staging.sh
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a

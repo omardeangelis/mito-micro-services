@@ -5,6 +5,7 @@ import {
   AlertConfirmationRequired,
   AlertNotFound,
   CallAlreadyWorked,
+  CallbackChanged,
   CallbackNotAllowed,
   CallNotAllowed,
   ContactAlreadyActive,
@@ -381,14 +382,15 @@ export type RegisteredCall = typeof RegisteredCall.Type
  * | reassign (admin)             | POST /task/:id/reassign            |
  * | setCallback                  | POST /task/:id/callback            |
  * | registerCall                 | POST /task/:id/call                |
+ * | removeCallback               | POST /task/alerts/:id/remove       |
  * | resolveAlert                 | DELETE /task/alerts/:id?source=    |
  * | bulkHandleTask (admin)       | POST /task/bulk-assign             |
  *
  * `getCustomersWithActiveAlerts` and `getContacts` are reads by POST: the ids
  * of a selection, or the filters, could make the URL too long. The `id` of
  * `/task/by-customer/:id` is a customer's, that of `/task/:id` a contact's,
- * that of `/task/alerts/:id` an alert's. `registerCall` has no procedure:
- * only `HttpApi` has it (D3 of esiti-richiami-stati)
+ * that of `/task/alerts/:id` an alert's. `registerCall` and `removeCallback`
+ * have no procedure: only `HttpApi` has them (D3 of esiti-richiami-stati)
  */
 export class TaskGroup extends HttpApiGroup.make("task")
   .add(
@@ -543,6 +545,23 @@ export class TaskGroup extends HttpApiGroup.make("task")
         DeadlineInPast,
         MessageTooLong,
         RequestIdConflict,
+        CustomerMissing,
+      ],
+    })
+  )
+  .add(
+    HttpApiEndpoint.post("removeCallback", "/task/alerts/:id/remove", {
+      params: { id: IntegerId },
+      // `taskId`: the contact the alert is shown on; `state`: the one the
+      // user chose (AC22), never Richiamo: the server rejects it
+      payload: Schema.Struct({ taskId: IntegerValue, state: TaskStatus }),
+      success: Schema.Struct({ taskId: Schema.Number, state: TaskStatus }),
+      error: [
+        TransitionRejected,
+        CallbackChanged,
+        ContactNotFound,
+        ContactSuperseded,
+        ContactForbidden,
         CustomerMissing,
       ],
     })

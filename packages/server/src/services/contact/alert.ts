@@ -22,24 +22,24 @@ export type AlertResolution = (typeof alertResolution)[number]
  *   alert linked since (R7, as the cron does).
  * - Sets `resolved_by` to the actor, `resolved_at` to the clock's instant and
  *   `resolution` to how it closed.
- * - Writes one `alert_resolved` row with `source`.
+ * - Writes one `alert_resolved` row with `source`. With `source: null`, the
+ *   conversion of the states (`convertStates.ts`), it writes none: the
+ *   conversion writes nothing in the log (esiti-richiami-stati AC32), and the
+ *   Storico shows the closing from the alert row (AC23).
  */
 export const resolveOpenAlert = Effect.fn("contact.resolveOpenAlert")(
-  function* ({
-    customerId,
-    taskId,
-    alertId,
-    actorOperatorId,
-    source,
-    resolution,
-  }: {
-    customerId: string
-    taskId: number
-    alertId: number
-    actorOperatorId: number
-    source: AlertCloseSource
-    resolution: AlertResolution
-  }): Effect.fn.Return<{ resolved: boolean }, DbError, Db | Tx> {
+  function* (
+    closing: {
+      taskId: number
+      alertId: number
+      actorOperatorId: number
+      resolution: AlertResolution
+    } & (
+      | { customerId: string; source: AlertCloseSource }
+      | { customerId: string | null; source: null }
+    )
+  ): Effect.fn.Return<{ resolved: boolean }, DbError, Db | Tx> {
+    const { taskId, alertId, actorOperatorId, resolution } = closing
     // Outside a transaction the three writes would commit apart
     yield* Tx
     const resolvedAt = new Date(yield* Clock.currentTimeMillis)
@@ -71,6 +71,8 @@ export const resolveOpenAlert = Effect.fn("contact.resolveOpenAlert")(
         .set({ alertId: null })
         .where(and(eq(task.id, taskId), eq(task.alertId, alertId)))
     )
+    if (closing.source === null) return { resolved: true }
+    const { customerId, source } = closing
     yield* query((client) =>
       client.insert(taskEventLog).values({
         customerId,

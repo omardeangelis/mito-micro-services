@@ -75,6 +75,8 @@ export const describeApiError = (error: ApiFailure): string => {
       return "Il messaggio supera i 500 caratteri"
     case "RequestIdConflict":
       return "La registrazione non è andata a buon fine: premi di nuovo l'esito"
+    case "CallbackChanged":
+      return "Il richiamo è cambiato nel frattempo: controlla il contatto"
     case "PracticeNotFound":
       return "Pratica non trovata"
     case "PracticeExists":

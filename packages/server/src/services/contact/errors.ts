@@ -142,14 +142,25 @@ export class RequestIdConflict extends Schema.TaggedError<RequestIdConflict>()(
 ) {}
 
 /**
- * The errors of «Registra chiamata» besides the contact ones. Only
- * `HttpApi` has the endpoint (D3), so they have no tRPC code.
+ * The alert of «Togli il richiamo» is no longer open, or no longer the one
+ * linked to the contact (AC22): nothing changes.
+ */
+export class CallbackChanged extends Schema.TaggedError<CallbackChanged>()(
+  "CallbackChanged",
+  {}
+) {}
+
+/**
+ * The errors of «Registra chiamata» and «Togli il richiamo» besides the
+ * contact ones. Only `HttpApi` has the endpoints (D3), so they have no tRPC
+ * code.
  */
 export type CallError =
   | CallAlreadyWorked
   | CallNotAllowed
   | MessageTooLong
   | RequestIdConflict
+  | CallbackChanged
 
 export type ContactError =
   | ContactNotFound

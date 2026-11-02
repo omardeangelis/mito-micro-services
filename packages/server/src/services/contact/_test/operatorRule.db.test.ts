@@ -187,8 +187,8 @@ describe("regola «stesso operatore», controllo negativo", () => {
 
 describe("regola «stesso operatore»: task.changeState", () => {
   it.each([
-    ["un cambio di stato sullo stesso contatto", "chiamare", "nessuno"],
-    ["passare a un esito", "chiamare", "app.to"],
+    ["un cambio di stato sullo stesso contatto", "chiamare", "caricato"],
+    ["Pratica caricata da Non risponde", "non risponde", "caricato"],
   ] as const)(
     "%s lascia cliente e contatto allineati",
     async (_name, from, to) => {

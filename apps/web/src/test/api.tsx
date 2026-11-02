@@ -108,6 +108,7 @@ const unservedGroups = Layer.mergeAll(
       .handle("reassign", unserved)
       .handle("setCallback", unserved)
       .handle("registerCall", unserved)
+      .handle("removeCallback", unserved)
       .handle("resolveAlert", unserved)
       .handle("bulkHandleTask", unserved)
   ),

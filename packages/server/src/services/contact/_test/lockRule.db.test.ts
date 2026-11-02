@@ -11,6 +11,7 @@ import { task } from "@mito/db/schema/task"
 import { query, transaction } from "../../../effect/db"
 import { processDueAlerts } from "../processDueAlerts"
 import { registerCall } from "../registerCall"
+import { removeCallback } from "../removeCallback"
 import { deactivateOperator } from "../../operator/deactivate"
 import { createTestCaller } from "@/test/caller"
 import {
@@ -108,31 +109,33 @@ describe("regola dei lock: task.changeState", () => {
 
     await createTestCaller(operator).task.changeState({
       taskId: contact.id,
-      toState: "nessuno",
+      toState: "caricato",
       source: "list",
       confirmedAlertId: null,
     })
 
     expect(await tasksOf(customer.id)).toMatchObject([
-      { id: contact.id, state: "nessuno" },
+      { id: contact.id, state: "caricato" },
     ])
   })
 
-  it("passare a un esito prende il lock del cliente", async () => {
+  it("Pratica caricata con un alert scaduto lo chiude senza conferma e prende il lock del cliente", async () => {
     const operator = await createOperator()
-    const { customer, contact } = await seedContact(operator, "chiamare")
+    const { customer, contact } = await seedContact(operator, "richiamare")
+    const open = await createAlert({ taskId: contact.id, deadline })
     await assertCustomerLockedOnWrite()
 
     await createTestCaller(operator).task.changeState({
       taskId: contact.id,
-      toState: "app.to",
+      toState: "caricato",
       source: "list",
       confirmedAlertId: null,
     })
 
-    const [after] = await tasksOf(customer.id)
-    expect(after).toMatchObject({ id: contact.id, state: "app.to" })
-    expect(after!.closedAt).not.toBeNull()
+    expect(await logOf(customer.id)).toMatchObject([
+      { action: "alert_resolved", alertId: open.id },
+      { action: "state_change", toState: "caricato" },
+    ])
   })
 
   it("la riapertura prende il lock del cliente", async () => {
@@ -156,19 +159,22 @@ describe("regola dei lock: task.changeState", () => {
   it("chiudere l'alert confermato prende il lock del cliente", async () => {
     const operator = await createOperator()
     const { customer, contact } = await seedContact(operator, "richiamare")
-    const open = await createAlert({ taskId: contact.id, deadline })
+    const open = await createAlert({
+      taskId: contact.id,
+      deadline: inTwoDays(),
+    })
     await assertCustomerLockedOnWrite()
 
     await createTestCaller(operator).task.changeState({
       taskId: contact.id,
-      toState: "app.to",
+      toState: "caricato",
       source: "list",
       confirmedAlertId: open.id,
     })
 
     expect(await logOf(customer.id)).toMatchObject([
       { action: "alert_resolved", alertId: open.id },
-      { action: "state_change", toState: "app.to" },
+      { action: "state_change", toState: "caricato" },
     ])
   })
 })
@@ -823,5 +829,34 @@ describe("regola dei lock: registerCall", () => {
           { action: "call", outcome: "richiamare" },
         ])
       })
+  )
+})
+
+describe("regola dei lock: removeCallback", () => {
+  it.effect("Togli il richiamo prende il lock del cliente", () =>
+    Effect.gen(function* () {
+      yield* TestClock.setTime(Date.now())
+      const operator = yield* Effect.promise(() => createOperator())
+      const { customer, contact } = yield* Effect.promise(() =>
+        seedContact(operator, "richiamare")
+      )
+      const open = yield* Effect.promise(() =>
+        createAlert({ taskId: contact.id, deadline })
+      )
+      yield* Effect.promise(() => assertCustomerLockedOnWrite())
+
+      const exit = yield* removeCallback({
+        taskId: contact.id,
+        alertId: open.id,
+        state: "app.to",
+        actor: { operatorId: operator.id, role: "OPERATORE" },
+      }).pipe(provideServer, Effect.exit)
+
+      if (Exit.isFailure(exit)) throw new Error(Cause.pretty(exit.cause))
+      expect(yield* Effect.promise(() => logOf(customer.id))).toMatchObject([
+        { action: "alert_resolved", alertId: open.id },
+        { action: "state_change", toState: "app.to" },
+      ])
+    })
   )
 })

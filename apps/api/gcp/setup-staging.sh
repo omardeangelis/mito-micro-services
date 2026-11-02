@@ -78,6 +78,17 @@ for job in "priority|17 23 * * *" "alert|47 23 * * *" \
     --attempt-deadline=30m --max-retry-attempts=0
   gcloud scheduler jobs pause mito-crm-staging-$name --project=$P --location=$R
 done
+# The conversion of the contacts to the six states (esiti-richiami-stati D11)
+# has no time: its schedule (1 January) is a placeholder, the job stays
+# paused for good and runs by hand with "Force run", on staging after a trial
+# run (A4). It can run again (AC32), once per UTC day unless the run failed
+gcloud scheduler jobs create http mito-crm-staging-convert-contact-states \
+  --project=$P --location=$R --schedule="0 0 1 1 *" --time-zone=Etc/UTC \
+  --uri=$URL/internal/cron/convert-contact-states --http-method=POST \
+  --oidc-service-account-email=$SCHED --oidc-token-audience=$URL \
+  --attempt-deadline=30m --max-retry-attempts=0
+gcloud scheduler jobs pause mito-crm-staging-convert-contact-states \
+  --project=$P --location=$R
 
 # The database (B6): Cloud SQL Enterprise, Postgres 15 as Supabase. Shared core
 # (db-g1-small) for staging, zonal: HA only in prod. Backups at 03:00 UTC, after
