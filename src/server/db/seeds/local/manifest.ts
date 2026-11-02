@@ -1,5 +1,7 @@
 // The manifest of the expected cron outcomes (spec "Scenari dei cron", D10,
-// D13, D15). Pure: the result depends only on the dataset and D.
+// D13, D15), on the six states and the alert that stays open of
+// esiti-richiami-stati (AC4, AC19-AC21). Pure: the result depends only on the
+// dataset and D.
 //
 // It is an independent oracle: the selection rules and the outcomes come from
 // the scenario tables of the spec, never from the cron code (no import of the
@@ -42,21 +44,18 @@ export const SCENARIO_CRONS = {
   P2: "priority",
   P3: "priority",
   P4: "priority",
-  P5: "priority",
   P6: "priority",
   P7: "priority",
   P8: "priority",
   P9: "priority",
   P10: "priority",
-  P11: "priority",
-  P12: "priority",
   P13: "priority",
   A1: "alert",
-  A2: "alert",
   A3: "alert",
   A4: "alert",
   A5: "alert",
   A6: "alert",
+  A7: "alert",
   U1: "update",
   U2: "update",
   U3: "update",
@@ -254,12 +253,7 @@ function openAlertOf(
 // ---------------------------------------------------------------------------
 // `priority`: active, custom_priority = false, not `chiamare` at 120.
 
-const P4_STATES: ReadonlySet<string> = new Set([
-  "app.to",
-  "caricato",
-  "erogata",
-  "nessuno",
-])
+const P4_STATES: ReadonlySet<string> = new Set(["app.to", "caricato"])
 
 function addPriorityScenarios(context: Context, dataset: Dataset) {
   const { day, dayOf } = context
@@ -268,7 +262,7 @@ function addPriorityScenarios(context: Context, dataset: Dataset) {
   for (const task of dataset.tasks) {
     const label = `Contatto ${task.id}`
     // The values the database stores when the seed leaves a column out
-    const state = task.state ?? "nessuno"
+    const state = task.state ?? "chiamare"
     const priority = task.priority ?? 0
     const customPriority = task.customPriority ?? false
     const unchanged = (id: ScenarioId) =>
@@ -302,16 +296,12 @@ function addPriorityScenarios(context: Context, dataset: Dataset) {
       }
       if (P4_STATES.has(state)) return ["P4", 1]
       if (state === "non risponde") return ["P13", 100]
-      if (state === "followup" && priority === 150) return ["P5", 1]
       if (state === "richiamare") {
+        // AC4: a Richiamo has an open alert, and a call (closed_at)
         const linked = openAlertOf(task, alerts)
-        const closed = task.closedAt != null
-        if (linked.kind === "open") {
-          const due = dayOf(linked.alert.deadline)
-          if (closed) return due <= day ? ["P6", 50] : ["P7", 30]
-          if (due <= day) return ["P12", 20]
+        if (linked.kind === "open" && task.closedAt != null) {
+          return dayOf(linked.alert.deadline) <= day ? ["P6", 50] : ["P7", 30]
         }
-        if (linked.kind === "none" && !closed) return ["P11", 0]
       }
       throw new Error(
         `${label}: selezionato da \`priority\` (attivo, stato "${state}", ` +
@@ -333,12 +323,13 @@ function addPriorityScenarios(context: Context, dataset: Dataset) {
 }
 
 // ---------------------------------------------------------------------------
-// `alert`: open, linked both ways, Rome deadline on D or before.
+// `alert`: open, linked both ways, Rome deadline on D or before, on an active
+// contact in `richiamare` (AC19, AC20): the contact goes to `chiamare` and the
+// alert stays open. The other states and the future alerts are left alone.
 
 function addAlertScenarios(context: Context, dataset: Dataset) {
   const { day, dayOf } = context
   const tasks = new Map(dataset.tasks.map((task) => [task.id, task]))
-  const customers = new Map(dataset.customers.map((c) => [c.id, c]))
   const system = dataset.operators.find(
     (operator) => operator.userId === SYSTEM_OPERATOR_USER_ID
   )
@@ -347,6 +338,13 @@ function addAlertScenarios(context: Context, dataset: Dataset) {
       `Manca l'operatore di sistema (userId "${SYSTEM_OPERATOR_USER_ID}"): ` +
         `il cron \`alert\` fallirebbe con SystemOperatorMissing (A6)`
     )
+  }
+  /** The alert as the seed has it: open, with no closing. */
+  const stillOpen: Expected = {
+    isResolved: false,
+    resolvedBy: null,
+    resolvedAt: null,
+    resolution: null,
   }
 
   for (const alert of dataset.alerts) {
@@ -371,8 +369,16 @@ function addAlertScenarios(context: Context, dataset: Dataset) {
           `attivo; nessuno scenario A lo descrive (D10)`
       )
     }
+    const state = task.state ?? "chiamare"
 
     if (due > day) {
+      // AC4: a future alert is the Richiamo's
+      if (state !== "richiamare") {
+        throw new Error(
+          `${label}: futuro sul contatto ${task.id} in stato "${state}", ` +
+            `che non e' Richiamo: nessuno scenario A lo descrive (AC4, D10)`
+        )
+      }
       context.add("A4", "alert", alert.id, false, {
         isResolved: false,
         resolvedBy: null,
@@ -384,79 +390,51 @@ function addAlertScenarios(context: Context, dataset: Dataset) {
       continue
     }
 
-    const resolvedLog: Expected = {
-      action: "alert_resolved",
-      source: "cron_alert",
-      actorOperatorId: system.id,
-      taskId: task.id,
-      alertId: alert.id,
-    }
-    const resolvedAlert: Expected = { isResolved: true, resolvedBy: system.id }
-
-    if (due === day) {
-      if (task.state !== "richiamare" || task.closedAt == null) {
+    if (state !== "richiamare") {
+      // Worked by an earlier pass, or never in Richiamo: Da chiamare and Non
+      // risponde keep the alert open and the cron leaves them as they are
+      if (state !== "chiamare" && state !== "non risponde") {
         throw new Error(
-          `${label}: scade in D sul contatto ${task.id} (stato ` +
-            `"${task.state ?? "nessuno"}", closedAt ` +
-            `${task.closedAt ? "valorizzato" : "vuoto"}): A1 e A2 vogliono ` +
-            `un contatto \`richiamare\` con closedAt (D10)`
+          `${label}: scaduto sul contatto ${task.id} in stato "${state}": ` +
+            `solo Richiamo, Da chiamare e Non risponde tengono un alert ` +
+            `aperto (AC4, D10)`
         )
       }
-      const customer =
-        task.customerId == null ? undefined : customers.get(task.customerId)
-      if (!customer) {
-        throw new Error(
-          `${label}: il contatto ${task.id} non ha un cliente del dataset`
-        )
-      }
-      const id: ScenarioId = customer.operatorId != null ? "A1" : "A2"
-      context.add(id, "alert", alert.id, true, resolvedAlert)
-      context.add(id, "task", task.id, true, {
-        isActive: false,
-        newActiveContact: {
-          state: "followup",
-          priority: 150,
-          customPriority: false,
-          operatorId: customer.operatorId ?? null,
-          closedAt: iso(task.closedAt, `Contatto ${task.id}, closedAt`),
-          alertId: null,
-        },
-        newLog: [
-          resolvedLog,
-          {
-            action: "state_change",
-            source: "cron_alert",
-            actorOperatorId: system.id,
-            taskId: task.id,
-            fromState: "richiamare",
-            toState: "followup",
-          },
-        ],
-      })
-      context.writes("alert", "task", task.id, [
-        "isActive",
-        "updatedAt",
-        "newActiveContact",
-        "newLog",
-      ])
-    } else {
-      context.add("A3", "alert", alert.id, true, resolvedAlert)
-      context.add("A3", "task", task.id, true, {
+      context.add("A7", "alert", alert.id, false, stillOpen)
+      context.add("A7", "task", task.id, false, {
+        state,
+        alertId: alert.id,
         isActive: true,
-        alertId: null,
-        newLog: [resolvedLog],
       })
-      context.writes("alert", "task", task.id, [
-        "alertId",
-        "updatedAt",
-        "newLog",
-      ])
+      continue
     }
-    context.writes("alert", "alert", alert.id, [
-      "isResolved",
-      "resolvedBy",
-      "updatedAt",
-    ])
+
+    const customerId = task.customerId
+    if (customerId == null) {
+      throw new Error(`${label}: il contatto ${task.id} non ha un cliente`)
+    }
+    const id: ScenarioId = due === day ? "A1" : "A3"
+    // The alert stays open; nothing else is written but the log row of the
+    // change, which is not a call, and the customer's updated_at (D15)
+    context.add(id, "alert", alert.id, true, stillOpen)
+    context.add(id, "task", task.id, true, {
+      state: "chiamare",
+      alertId: alert.id,
+      isActive: true,
+      newLog: [
+        {
+          action: "state_change",
+          source: "cron_alert",
+          actorOperatorId: system.id,
+          taskId: task.id,
+          fromState: "richiamare",
+          toState: "chiamare",
+        },
+      ],
+    })
+    context.add(id, "customers", customerId, true, {})
+    context.writes("alert", "task", task.id, ["state", "updatedAt", "newLog"])
+    context.writes("alert", "customers", customerId, ["updatedAt"])
   }
 
   context.add("A6", "runs", "alert", true, { outcome: "succeeded" })

@@ -6,6 +6,7 @@ import { getTableColumns, getTableName, sql, type Table } from "drizzle-orm"
 import { driverError } from "@mito/db/driverError"
 import {
   alert,
+  appMilestone,
   chat,
   customers,
   customerToPratica,
@@ -150,6 +151,15 @@ export async function writeDataset(
         chunkSize(taskEventLog)
       )) {
         await tx.insert(taskEventLog).overridingSystemValue().values(rows)
+      }
+
+      // No foreign keys: the migration's `calls_registry` is gone with the
+      // TRUNCATE, so the seed writes its own (generate/milestones.ts)
+      for (const rows of chunks(
+        dataset.appMilestones,
+        chunkSize(appMilestone)
+      )) {
+        await tx.insert(appMilestone).values(rows)
       }
 
       // The explicit ids did not advance the sequences: a later insert

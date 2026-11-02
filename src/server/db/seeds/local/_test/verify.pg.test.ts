@@ -58,15 +58,16 @@ describe.skipIf(!hasTestDatabase)("verifyManifest", () => {
     expect(results.map((result) => result.id)).toEqual([
       ...manifest.scenarios.map((scenario) => scenario.id),
       "completezza",
+      "stati",
     ])
     const failing = [
-      ...["P1", "P3", "P4", "P5", "P6", "P7", "P10", "P11", "P12", "P13"],
-      ...["A1", "A2", "A3", "A6", "U1", "U2", "U4", "U5", "U6", "U8", "U9"],
+      ...["P1", "P3", "P4", "P6", "P7", "P10", "P13"],
+      ...["A1", "A3", "A6", "U1", "U2", "U4", "U5", "U6", "U8", "U9"],
       "L1",
     ]
     const passing = [
       ...["P2", "P8", "P9", "U3", "U7a", "U7b", "U10a", "U10b", "U10c"],
-      ...["U11", "A4", "A5", "L2", "completezza"],
+      ...["U11", "A4", "A5", "A7", "L2", "completezza", "stati"],
     ]
     expect(failing.length + passing.length).toBe(results.length)
     for (const id of failing) {
@@ -199,122 +200,141 @@ describe.skipIf(!hasTestDatabase)("verifyManifest", () => {
     expect(completeness.failures).toHaveLength(2)
   }, 120_000)
 
-  it("passes the rows of an A3 alert resolved as the cron would, and completeness accepts its log row", async () => {
-    const { dataset, manifest } = await seedDatabase(pgDb, { n: 300, day: DAY })
-    const a3 = scenarioOf(manifest, "A3")
-    const alertRows = a3.rows.filter((row) => row.table === "alert")
-    const alertId = Number(alertRows[0]!.key)
-    const contact = dataset.tasks.find((each) => each.alertId === alertId)!
-    expect(
-      a3.rows.some((row) => row.table === "task" && row.key === contact.id)
-    ).toBe(true)
+  /** What the `alert` cron writes on a contact in Richiamo whose alert is due. */
+  async function workAlert(
+    dataset: Dataset,
+    contact: Dataset["tasks"][number],
+    extraLog = 0
+  ) {
     const system = systemOperatorId(dataset)
-
-    await pgDb
-      .update(alert)
-      .set({ isResolved: true, resolvedBy: system })
-      .where(eq(alert.id, alertId))
     await pgDb
       .update(task)
-      .set({ alertId: null })
+      .set({ state: "chiamare" })
       .where(eq(task.id, contact.id))
-    await pgDb.insert(taskEventLog).values({
-      customerId: contact.customerId!,
-      taskId: contact.id,
-      alertId,
-      actorOperatorId: system,
-      action: "alert_resolved",
-      source: "cron_alert",
-    })
+    await pgDb
+      .update(customers)
+      .set({ updatedAt: new Date() })
+      .where(eq(customers.id, contact.customerId!))
+    await pgDb.insert(taskEventLog).values(
+      Array.from({ length: 1 + extraLog }, () => ({
+        customerId: contact.customerId!,
+        taskId: contact.id,
+        actorOperatorId: system,
+        action: "state_change" as const,
+        source: "cron_alert" as const,
+        fromState: "richiamare" as const,
+        toState: "chiamare" as const,
+      }))
+    )
+  }
 
-    const results = await verifyManifest(pgDb, manifest, dataset)
+  it.each(["A3", "A1"])(
+    "passes the rows of an %s contact moved to Da chiamare as the cron would, the alert open, and completeness accepts its log row and its customer",
+    async (id) => {
+      const { dataset, manifest } = await seedDatabase(pgDb, {
+        n: 300,
+        day: DAY,
+      })
+      const rows = scenarioOf(manifest, id).rows
+      const alertRows = rows.filter((row) => row.table === "alert")
+      const alertId = Number(alertRows[0]!.key)
+      const contact = dataset.tasks.find((each) => each.alertId === alertId)!
+      expect(
+        rows.some((row) => row.table === "task" && row.key === contact.id)
+      ).toBe(true)
 
-    const failures = byId(results, "A3").failures
-    expect(
-      failures.filter(
-        (f) =>
-          (f.table === "alert" && f.key === alertId) ||
-          (f.table === "task" && f.key === contact.id)
-      )
-    ).toEqual([])
-    // The other A3 alerts are still open
-    if (alertRows.length > 1) expect(byId(results, "A3").passed).toBe(false)
-    expect(byId(results, "completezza").failures).toEqual([])
-  }, 120_000)
+      await workAlert(dataset, contact)
 
-  it("passes the rows of an A1 alert resolved as the cron would, with the new active contact and its 2 log rows", async () => {
+      const results = await verifyManifest(pgDb, manifest, dataset)
+
+      expect(
+        byId(results, id).failures.filter(
+          (f) =>
+            (f.table === "alert" && f.key === alertId) ||
+            (f.table === "task" && f.key === contact.id)
+        )
+      ).toEqual([])
+      // The other alerts of the scenario are not worked yet
+      if (alertRows.length > 1) expect(byId(results, id).passed).toBe(false)
+      expect(byId(results, "completezza").failures).toEqual([])
+
+      // A second row on the contact is neither expected nor allowed
+      await workAlert(dataset, contact)
+      const again = await verifyManifest(pgDb, manifest, dataset)
+      expect(
+        byId(again, id).failures.filter(
+          (f) => f.table === "task" && f.key === contact.id
+        )
+      ).toMatchObject([{ column: "newLog" }])
+      expect(byId(again, "completezza").failures).toMatchObject([
+        { table: "task_event_log", expected: "nessuna riga nuova" },
+      ])
+    },
+    120_000
+  )
+
+  it("fails A1 when the cron closes the alert or leaves the contact in Richiamo", async () => {
     const { dataset, manifest } = await seedDatabase(pgDb, { n: 300, day: DAY })
     const a1 = scenarioOf(manifest, "A1")
     const alertId = Number(a1.rows.find((row) => row.table === "alert")!.key)
-    const old = dataset.tasks.find((each) => each.alertId === alertId)!
-    const customer = dataset.customers.find((c) => c.id === old.customerId)!
-    const system = systemOperatorId(dataset)
+    const contact = dataset.tasks.find((each) => each.alertId === alertId)!
 
+    // The old cron: the alert resolved, the contact replaced
     await pgDb
       .update(alert)
-      .set({ isResolved: true, resolvedBy: system })
+      .set({ isResolved: true, resolvedBy: systemOperatorId(dataset) })
       .where(eq(alert.id, alertId))
-    await pgDb.update(task).set({ isActive: false }).where(eq(task.id, old.id))
-    await pgDb.insert(task).values({
-      customerId: customer.id,
-      isActive: true,
-      state: "followup",
-      priority: 150,
-      customPriority: false,
-      operatorId: customer.operatorId,
-      closedAt: old.closedAt,
-      alertId: null,
-    })
-    await pgDb.insert(taskEventLog).values([
-      {
-        customerId: customer.id,
-        taskId: old.id,
-        alertId,
-        actorOperatorId: system,
-        action: "alert_resolved",
-        source: "cron_alert",
-      },
-      {
-        customerId: customer.id,
-        taskId: old.id,
-        actorOperatorId: system,
-        action: "state_change",
-        source: "cron_alert",
-        fromState: "richiamare",
-        toState: "followup",
-      },
-    ])
 
     const results = await verifyManifest(pgDb, manifest, dataset)
 
+    const failures = byId(results, "A1").failures
     expect(
-      byId(results, "A1").failures.filter(
-        (f) =>
-          (f.table === "alert" && f.key === alertId) ||
-          (f.table === "task" && f.key === old.id)
-      )
-    ).toEqual([])
-    expect(byId(results, "completezza").failures).toEqual([])
+      failures.filter((f) => f.table === "alert" && f.key === alertId)
+    ).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ column: "isResolved", expected: false }),
+      ])
+    )
+    // The contact is still in Richiamo
+    expect(failures).toContainEqual(
+      expect.objectContaining({
+        table: "task",
+        key: contact.id,
+        column: "state",
+        expected: "chiamare",
+        found: "richiamare",
+      })
+    )
+  }, 120_000)
 
-    // A second state_change on the old contact is neither expected nor allowed
-    await pgDb.insert(taskEventLog).values({
-      customerId: customer.id,
-      taskId: old.id,
-      actorOperatorId: system,
-      action: "state_change",
-      source: "cron_alert",
-      fromState: "richiamare",
-      toState: "followup",
-    })
-    const again = await verifyManifest(pgDb, manifest, dataset)
+  it("fails `stati` on a contact left in `followup`, `erogata`, `nessuno` or without state, citing it, before and after the runs (AC3)", async () => {
+    const { dataset, manifest } = await seedDatabase(pgDb, { n: 300, day: DAY })
     expect(
-      byId(again, "A1").failures.filter(
-        (f) => f.table === "task" && f.key === old.id
-      )
-    ).toMatchObject([{ column: "newLog" }])
-    expect(byId(again, "completezza").failures).toMatchObject([
-      { table: "task_event_log", expected: "nessuna riga nuova" },
-    ])
+      byId(await verifyManifest(pgDb, manifest, dataset), "stati")
+    ).toEqual({ id: "stati", cron: "stati", passed: true, failures: [] })
+
+    const [a, b, c] = dataset.tasks.filter((each) => each.isActive)
+    await pgDb.update(task).set({ state: "followup" }).where(eq(task.id, a!.id))
+    await pgDb.update(task).set({ state: "erogata" }).where(eq(task.id, b!.id))
+    await pgDb.update(task).set({ state: "nessuno" }).where(eq(task.id, c!.id))
+
+    const stati = byId(await verifyManifest(pgDb, manifest, dataset), "stati")
+
+    expect(stati.passed).toBe(false)
+    expect(stati.failures).toEqual(
+      expect.arrayContaining([
+        {
+          table: "task",
+          key: a!.id,
+          column: "state",
+          expected: "uno dei sei stati",
+          found: "followup",
+        },
+        expect.objectContaining({ key: b!.id, found: "erogata" }),
+        expect.objectContaining({ key: c!.id, found: "nessuno" }),
+      ])
+    )
+    expect(stati.failures).toHaveLength(3)
   }, 120_000)
 
   it("checks the volumes only at N = 10,000, against the database and the job counters", async () => {

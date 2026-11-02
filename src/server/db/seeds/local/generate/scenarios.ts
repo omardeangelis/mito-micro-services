@@ -40,24 +40,32 @@ export function customerScenarioCounts(n: number) {
 
 /**
  * Active contacts of each `priority` / `alert` scenario that is not the filler
- * (P4 takes every active contact left). A3 alternates P6 (with `closed_at`) and
- * P12 (without); P8 cycles the four manual priorities, so it is a multiple of 4.
- * Full counts are those of N = 10,000 (AC30: A1 + A2 + A3 >= 1,000 open alerts
- * due on D or before; P4 + P5 well over 5,001 contacts that get priority 1).
+ * (P4 takes every active contact left, in Appuntamento or Pratica caricata).
+ * - P1X and P13X are a Da chiamare and a Non risponde that keep an open alert
+ *   due on D or before (esiti-richiami-stati AC19, AC21): the `priority` cron
+ *   treats them as P1 and P13, the `alert` cron leaves them alone (A7).
+ * - A1 and A3 are the Richiamo whose alert falls due on D or before: the
+ *   `alert` cron moves them to Da chiamare, the alert stays open (A3 is the
+ *   catch-up of a skipped night, AC20). A4 is the Richiamo with a future alert.
+ * - P5 (`followup` of the old cron), A2 (the customer without operator, whose
+ *   new contact the old cron created) and P11, P12 (a Richiamo without alert, or
+ *   without call) are gone: no contact is in those shapes any more.
+ * P8 cycles the four manual priorities, so it is a multiple of 4.
+ * Full counts are those of N = 10,000 (AC30: A1 + A3 >= 1,000 open alerts due
+ * on D or before; P4 well over 5,001 contacts that get priority 1).
  */
 export function contactScenarioCounts(n: number) {
   return {
     P1: scaled(250, 2, n),
+    P1X: scaled(150, 2, n),
     P2: scaled(120, 2, n),
     P3: scaled(150, 2, n),
     P10: scaled(40, 1, n),
     P13: scaled(100, 2, n),
-    P5: scaled(250, 2, n),
+    P13X: scaled(100, 2, n),
     A1: scaled(350, 2, n),
-    A2: scaled(40, 1, n),
     A3: scaled(760, 2, n),
-    A4: scaled(150, 2, n),
-    P11: scaled(150, 2, n),
+    A4: scaled(300, 2, n),
     P8: 4 * scaled(20, 1, n),
   }
 }

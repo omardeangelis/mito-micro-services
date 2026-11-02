@@ -67,7 +67,7 @@ describe("buildManifest at N = 10,000", () => {
     }
     expect(Math.max(...byPriority.values())).toBeGreaterThanOrEqual(5_001)
 
-    const openDue = ["A1", "A2", "A3"].flatMap((id) =>
+    const openDue = ["A1", "A3"].flatMap((id) =>
       scenario(manifest, id).rows.filter((row) => row.table === "alert")
     )
     expect(openDue.length).toBeGreaterThanOrEqual(1_000)
@@ -97,8 +97,8 @@ describe("buildManifest at N = 300", () => {
 
   it("throws when a cron writes a column another cron declares on the same row (D13)", () => {
     // A P8 contact (custom priority, declared unchanged with its updated_at)
-    // gets an open alert due yesterday: `alert` resolves it as A3 and the
-    // database rewrites the contact's updated_at
+    // goes to Richiamo with an open alert due yesterday: `alert` moves it to
+    // Da chiamare, and the database rewrites the contact's updated_at
     const broken = copy()
     const p8 = broken.tasks.find(
       (task) => task.isActive && task.customPriority && task.alertId == null
@@ -116,25 +116,72 @@ describe("buildManifest at N = 300", () => {
       resolvedBy: null,
     })
     p8.alertId = alertId
+    p8.state = "richiamare"
     expect(() => buildManifest(broken, DAY)).toThrow(
       new RegExp(`task ${p8.id}.*P8.*updatedAt.*\`alert\`.*D13`)
     )
   })
 
   it("throws on a selected contact whose shape no P scenario describes (D10)", () => {
-    // A `richiamare` with closed_at and without an alert (it would be 30)
+    // A contact in `followup`, a value no code writes any more (AC3)
     const broken = copy()
-    const p11 = broken.tasks.find(
+    const p4 = broken.tasks.find(
       (task) =>
         task.isActive &&
         task.customPriority === false &&
-        task.state === "richiamare" &&
-        task.closedAt == null &&
-        task.alertId == null
+        task.state === "app.to"
     )!
-    p11.closedAt = romeNoon(addDays(DAY, -2))
+    p4.state = "followup"
     expect(() => buildManifest(broken, DAY)).toThrow(
-      new RegExp(`Contatto ${p11.id}.*D10`)
+      new RegExp(`Contatto ${p4.id}.*followup.*D10`)
+    )
+  })
+
+  it("throws on a Richiamo without an open alert (AC4, D10)", () => {
+    const broken = copy()
+    const a4 = broken.tasks.find(
+      (task) =>
+        task.isActive &&
+        task.state === "richiamare" &&
+        task.alertId != null &&
+        broken.alerts.some(
+          (alert) =>
+            alert.id === task.alertId &&
+            !alert.isResolved &&
+            romeDay(alert.deadline) > DAY
+        )
+    )!
+    a4.alertId = null
+    expect(() => buildManifest(broken, DAY)).toThrow(
+      new RegExp(`Contatto ${a4.id}.*richiamare.*D10`)
+    )
+  })
+
+  it("throws on a future alert on a contact that is not in Richiamo, or an expired one on a final state (AC4, D10)", () => {
+    const future = copy()
+    const taskOf = new Map(future.tasks.map((t) => [t.id, t]))
+    const a4 = future.alerts.find(
+      (alert) =>
+        !alert.isResolved &&
+        romeDay(alert.deadline) > DAY &&
+        taskOf.get(alert.taskId)!.state === "richiamare"
+    )!
+    taskOf.get(a4.taskId)!.state = "non risponde"
+    expect(() => buildManifest(future, DAY)).toThrow(
+      new RegExp(`Alert ${a4.id}: futuro.*AC4`)
+    )
+
+    const expired = copy()
+    const byId = new Map(expired.tasks.map((t) => [t.id, t]))
+    const a7 = expired.alerts.find(
+      (alert) =>
+        !alert.isResolved &&
+        romeDay(alert.deadline) <= DAY &&
+        byId.get(alert.taskId)!.state === "chiamare"
+    )!
+    byId.get(a7.taskId)!.state = "app.to"
+    expect(() => buildManifest(expired, DAY)).toThrow(
+      new RegExp(`Alert ${a7.id}: scaduto.*AC4`)
     )
   })
 
@@ -153,18 +200,18 @@ describe("buildManifest at N = 300", () => {
     )
   })
 
-  it("throws on an open alert due on D on a contact without closed_at", () => {
+  it("throws on a Richiamo with an alert due on D or before and no call (closed_at)", () => {
     const broken = copy()
     const tasks = new Map(broken.tasks.map((t) => [t.id, t]))
     const a3 = broken.alerts.find(
       (alert) =>
         !alert.isResolved &&
         romeDay(alert.deadline) < DAY &&
-        tasks.get(alert.taskId)!.closedAt == null
+        tasks.get(alert.taskId)!.state === "richiamare"
     )!
-    a3.deadline = romeMidnight(DAY)
+    tasks.get(a3.taskId)!.closedAt = null
     expect(() => buildManifest(broken, DAY)).toThrow(
-      new RegExp(`Alert ${a3.id}: scade in D`)
+      new RegExp(`Contatto ${a3.taskId}.*D10`)
     )
   })
 
@@ -223,8 +270,8 @@ describe.each([
 // ---------------------------------------------------------------------------
 
 const SCENARIO_IDS = [
-  ...["P1", "P2", "P3", "P4", "P5", "P6", "P7", "P8", "P9", "P10", "P11"],
-  ...["P12", "P13", "A1", "A2", "A3", "A4", "A5", "A6"],
+  ...["P1", "P2", "P3", "P4", "P6", "P7", "P8", "P9", "P10", "P13"],
+  ...["A1", "A3", "A4", "A5", "A6", "A7"],
   ...["U1", "U2", "U3", "U4", "U5", "U6", "U7a", "U7b", "U11"],
   ...["U8", "U9", "U10a", "U10b", "U10c", "L1", "L2"],
 ]
@@ -250,15 +297,21 @@ function selectedByRules(dataset: Dataset, day: Day) {
     )
     .map((task) => `task:${task.id}`)
 
+  // The alert cron works the open alerts due on D or before of an active
+  // contact in `richiamare`: the alert, the contact and, for its updated_at,
+  // the customer
   const alert: string[] = []
   for (const each of dataset.alerts) {
     const task = tasks.get(each.taskId)
     if (
       !each.isResolved &&
       task?.alertId === each.id &&
+      task.isActive &&
+      task.state === "richiamare" &&
       romeDay(each.deadline) <= day
     ) {
       alert.push(`alert:${each.id}`, `task:${task.id}`)
+      alert.push(`customers:${task.customerId}`)
     }
   }
 
@@ -327,14 +380,33 @@ function registerChecks(
     }
   }, 30_000)
 
-  it("marks alert and contact of A1-A3 as selected, of A4 as not selected, and A6 as the alert run that succeeds", () => {
-    const { manifest } = get()
-    for (const id of ["A1", "A2", "A3", "A4"]) {
+  it("marks alert, contact and customer of A1 and A3 as selected, A4 and A7 as not selected, and A6 as the alert run that succeeds", () => {
+    const { dataset, manifest } = get()
+    const tasks = new Map(dataset.tasks.map((t) => [t.id, t]))
+    for (const id of ["A1", "A3", "A4", "A7"]) {
       const rows = scenario(manifest, id).rows
       const alerts = rows.filter((row) => row.table === "alert")
-      const tasks = rows.filter((row) => row.table === "task")
-      expect(alerts.length, id).toBe(tasks.length)
-      for (const row of rows) expect(row.selected, id).toBe(id !== "A4")
+      const contacts = rows.filter((row) => row.table === "task")
+      const customers = rows.filter((row) => row.table === "customers")
+      expect(alerts.length, id).toBe(contacts.length)
+      expect(customers.length, id).toBe(
+        id === "A1" || id === "A3" ? contacts.length : 0
+      )
+      for (const row of rows) {
+        expect(row.selected, id).toBe(id === "A1" || id === "A3")
+      }
+    }
+    // The alert stays open, and Da chiamare and Non risponde keep theirs
+    for (const id of ["A1", "A3", "A7"]) {
+      for (const row of scenario(manifest, id).rows) {
+        if (row.table !== "alert") continue
+        expect(row.expected).toEqual({
+          isResolved: false,
+          resolvedBy: null,
+          resolvedAt: null,
+          resolution: null,
+        })
+      }
     }
     for (const row of scenario(manifest, "A4").rows) {
       expect(row.expected).toEqual(
@@ -342,6 +414,14 @@ function registerChecks(
           ? { isResolved: false, resolvedBy: null }
           : { alertId: expect.any(Number) as number, isActive: true }
       )
+    }
+    for (const row of scenario(manifest, "A7").rows) {
+      if (row.table !== "task") continue
+      expect(row.expected).toEqual({
+        state: tasks.get(Number(row.key))!.state,
+        alertId: expect.any(Number) as number,
+        isActive: true,
+      })
     }
     for (const row of scenario(manifest, "A5").rows) {
       expect(row).toMatchObject({
@@ -375,12 +455,9 @@ function registerChecks(
       P1: 120,
       P3: 10,
       P4: 1,
-      P5: 1,
       P6: 50,
       P7: 30,
       P10: 10,
-      P11: 0,
-      P12: 20,
       P13: 100,
     }
     for (const [id, priority] of Object.entries(priorities)) {
@@ -389,57 +466,32 @@ function registerChecks(
       }
     }
 
-    const resolvedLog = (
-      taskId: number,
-      alertId: number | null | undefined
-    ) => ({
-      action: "alert_resolved",
-      source: "cron_alert",
-      actorOperatorId: system,
-      taskId,
-      alertId,
-    })
-    for (const id of ["A1", "A2", "A3"]) {
-      for (const row of only(id, "alert")) {
-        expect(row.expected).toEqual({ isResolved: true, resolvedBy: system })
-      }
-    }
-    for (const id of ["A1", "A2"]) {
+    // The nightly pass (AC19): the contact goes to Da chiamare with the log
+    // row of the change, the alert stays open, nothing else is written
+    for (const id of ["A1", "A3"]) {
       for (const row of only(id, "task")) {
         const task = tasks.get(Number(row.key))!
-        const customer = customers.get(task.customerId!)!
-        expect(id === "A1").toBe(customer.operatorId != null)
+        expect(task.state).toBe("richiamare")
         expect(row.expected).toEqual({
-          isActive: false,
-          newActiveContact: {
-            state: "followup",
-            priority: 150,
-            customPriority: false,
-            operatorId: customer.operatorId ?? null,
-            closedAt: task.closedAt!.toISOString(),
-            alertId: null,
-          },
+          state: "chiamare",
+          alertId: task.alertId,
+          isActive: true,
           newLog: [
-            resolvedLog(task.id, task.alertId),
             {
               action: "state_change",
               source: "cron_alert",
               actorOperatorId: system,
               taskId: task.id,
               fromState: "richiamare",
-              toState: "followup",
+              toState: "chiamare",
             },
           ],
         })
       }
-    }
-    for (const row of only("A3", "task")) {
-      const task = tasks.get(Number(row.key))!
-      expect(row.expected).toEqual({
-        isActive: true,
-        alertId: null,
-        newLog: [resolvedLog(task.id, task.alertId)],
-      })
+      for (const row of only(id, "customers")) {
+        // Only the customer's updated_at changes, which no scenario states
+        expect(row.expected).toEqual({})
+      }
     }
 
     const debt = (value: string | null | undefined) =>
@@ -533,7 +585,7 @@ function registerChecks(
         .rows.filter((row) => row.table === "task")
         .map((row) => tasks.get(Number(row.key))!)
 
-    for (const state of ["app.to", "caricato", "erogata", "nessuno"]) {
+    for (const state of ["app.to", "caricato"]) {
       expect(
         taskRows("P4").some((t) => t.state === state),
         `P4 ${state}`

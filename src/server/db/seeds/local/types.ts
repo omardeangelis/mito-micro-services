@@ -3,6 +3,7 @@
 import type { InferInsertModel, Table } from "drizzle-orm"
 import type {
   alert,
+  appMilestone,
   chat,
   customers,
   customerToPratica,
@@ -37,6 +38,7 @@ export type CustomerToPraticaRow = Row<typeof customerToPratica>
 export type AlertRow = WithId<Row<typeof alert>, number>
 export type TaskRow = WithId<Row<typeof task>, number>
 export type TaskEventLogRow = WithId<Row<typeof taskEventLog>, number>
+export type AppMilestoneRow = Row<typeof appMilestone>
 
 /** Righe per tabella, con id espliciti, nell'ordine in cui si scrivono. */
 export type Dataset = {
@@ -51,6 +53,8 @@ export type Dataset = {
   alerts: AlertRow[]
   tasks: TaskRow[]
   taskEventLog: TaskEventLogRow[]
+  /** `calls_registry`: the migration writes it, the seed empties the table. */
+  appMilestones: AppMilestoneRow[]
 }
 
 export type JsonValue =

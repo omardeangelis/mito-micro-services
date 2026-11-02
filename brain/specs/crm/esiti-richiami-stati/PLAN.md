@@ -662,15 +662,15 @@ Ogni task comincia dal test di `tdd_target`, rosso, e finisce con `tsc` verde su
 
   `seed:local:verify` controlla che non resti nessun valore vecchio.
 - **validation**: `pnpm seed:local` e poi `pnpm seed:local:verify` su un `mito_local` vuoto e migrato.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-11-02, escalation haiku → sonnet: il primo worker si è fermato perché il seed modellava ancora il cron vecchio (followup) nel manifesto, fuori dai file del task. Secondo worker con src/server/db/seeds/local/** autorizzato: RED 3/3 → verde, unit 364 e pg 37 verdi (N=10.000 compreso). Sei stati, passaggio notturno nuovo, righe call dopo calls_registry (il seed scrive la propria riga app_milestone a D-60 perché svuota le tabelle), verify con il controllo stati. seed:local reale: con le prove nel browser.
+- **files edited/created**: src/server/db/seeds/local/{generate/{contacts,log,scenarios,milestones},manifest,verify,types,write,generate}.ts e _test/{sixStates,contacts,manifest,verify.pg,write.pg}
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
 - **tdd_target**: `pnpm seed:local:verify` fallisce se un contatto è in `followup`, `erogata` o `nessuno`, e passa dopo il seed nuovo.
 - **review_mode**: cli
-- **complexity**: low
+- **complexity**: medium (rialzata in esecuzione)
 
 ### T20: Chiusura: documenti, staging, rilascio, gate
 - **depends_on**: [T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19]

@@ -29,6 +29,7 @@ const TABLES: Record<keyof Dataset, string> = {
   alerts: "mito-deutsche_alert",
   tasks: "mito-deutsche_task",
   taskEventLog: "mito-deutsche_task_event_log",
+  appMilestones: "mito-deutsche_app_milestone",
 }
 
 async function count(table: string) {
