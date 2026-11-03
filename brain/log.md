@@ -12,6 +12,22 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 
 <!-- Entries are appended by create-spec (spec creation) and docs-maintenance (ingest). Format:
 
+## [2026-11-03] plan | Import e assegnazione della Wave
+- Created plan: [[specs/crm/assegnazione-wave/PLAN]]: 22 task in 11 onde, una PR verso `dev`
+- Decisioni di Omar: la pagina esce da sola, senza home-admin, con la modalità «riga del team» sull'indirizzo (D1); l'ordine della coda nel servizio condiviso, che nessun Next in prod eseguirà (D2)
+- Scelte chiave: traccia `import_run_customer` scritta dall'import e ricostruita per le Wave vecchie; cinque endpoint nel gruppo `import`, solo `HttpApi`; assegnazione e spostamento in una transazione su un insieme con `retryOnDeadlock`, idempotenti con `wave_operation`; candidati dello spostamento come istantanea; divisioni e giorni in `@mito/domain`; `xs` a 24 px
+- Verifica: tre giri, DO NOT SHIP → correzioni (controllo di `move` con `is_active`, lock di tutti i Senza operatore, istantanea dei candidati, ciclo fra i task della pagina, falsi del web, pagina rimontata cambiando Wave) → ultimo major corretto come indicato dal revisore
+
+## [2026-11-03] spec | Import e assegnazione della Wave
+- Created spec: [[specs/crm/assegnazione-wave/SPEC]]
+- Flow: [[specs/crm/assegnazione-wave/FLOW]]
+- Domain: crm
+- Status: Draft
+- Dal prototipo `apps/web/src/prototypes/import-wave/` (Schede + Anello doppio), con le revisioni ux-advisor e ui-reviewer; decisioni di Omar: passo dei richiami tolto, nessun tipo Wave/Promozione, «Proroga» dopo uno spostamento su una Wave scaduta; la scadenza proposta resta oggi + 30, perché «data_scadenza» del file riguarda la pratica e l'import non l'ha mai letta
+- Evolutiva accettata: [[feature-improvement/crm/assegnazione-wave]] (scadenza dei clienti presa da «data_scadenza» del file)
+- Aggiornate [[specs/crm/home-admin/SPEC]] e [[specs/crm/home-admin/FLOW]]: il riquadro «Assegna», le parti di una Wave e OQ2, OQ3, OQ10, OQ12 passano alla spec nuova, le decisioni sul riquadro sono segnate come superate; «fermo» diventa «inattivo»
+- Controllo di qualità `adversarial-verifier`: due giri DO NOT SHIP, bloccanti e maggiori corretti
+
 ## [2026-11-03] chore | Import e assegnazione della Wave
 - Nuova nota: [[chore/crm/design-import-e-assegnazione-wave]], brief di `/prototype` per il flusso dalla fine di un import Wave all'assegnazione, e base della spec che lo seguirà
 - Decisioni di Omar: assegnazione e traccia dei clienti per import escono da [[specs/crm/home-admin/SPEC]] verso una spec nuova; nella vista per operatore si riassegnano Da chiamare e Non risponde; scadenza della Wave obbligatoria, da oggi + 30 giorni; «oggi» dell'operatore da esplorare come quota giornaliera o slot settimanali; prima il prototipo, poi i file veri per «Codice/Descrizione Iniziativa», poi la spec

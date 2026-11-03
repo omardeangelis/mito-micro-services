@@ -32,6 +32,10 @@ const prototypeRoutes: RouteObject[] = import.meta.env.DEV
         path: "prototypes/home-admin",
         lazy: () => import("./prototypes/home-admin/Harness"),
       },
+      {
+        path: "prototypes/import-wave",
+        lazy: () => import("./prototypes/import-wave/Harness"),
+      },
     ]
   : []
 
