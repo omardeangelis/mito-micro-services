@@ -12,6 +12,11 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 
 <!-- Entries are appended by create-spec (spec creation) and docs-maintenance (ingest). Format:
 
+## [2026-11-03] chore | Import e assegnazione della Wave
+- Nuova nota: [[chore/crm/design-import-e-assegnazione-wave]], brief di `/prototype` per il flusso dalla fine di un import Wave all'assegnazione, e base della spec che lo seguirà
+- Decisioni di Omar: assegnazione e traccia dei clienti per import escono da [[specs/crm/home-admin/SPEC]] verso una spec nuova; nella vista per operatore si riassegnano Da chiamare e Non risponde; scadenza della Wave obbligatoria, da oggi + 30 giorni; «oggi» dell'operatore da esplorare come quota giornaliera o slot settimanali; prima il prototipo, poi i file veri per «Codice/Descrizione Iniziativa», poi la spec
+- Evolutiva accettata: [[feature-improvement/crm/_unscoped]] (liste promozionali generate dalla piattaforma)
+
 ## [2026-11-02] implement | Esiti, richiami e stati del contatto
 - Implementata: [[specs/crm/esiti-richiami-stati/SPEC]], 20 task su 20, con i 33 criteri soddisfatti; branch `claude/esiti-richiami-stati`
 - Review: [[specs/crm/esiti-richiami-stati/REPORT]], con 13 verificatori. Al primo giro DO NOT SHIP:
