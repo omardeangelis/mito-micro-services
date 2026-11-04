@@ -12,6 +12,7 @@ import {
   assignCustomers,
   generateUsersAndOperators,
 } from "./generate/operators"
+import { generateWaves } from "./generate/waves"
 import { generatePractices, generateProducts } from "./generate/practices"
 import type { CustomerToPraticaRow, Dataset, Day } from "./types"
 
@@ -40,6 +41,14 @@ export function generateDataset({ n, day }: { n: number; day: Day }): Dataset {
     customers,
     operators,
   })
+  // The Waves also add the calls of the last 30 days to the log
+  const waves = generateWaves({
+    day,
+    customers,
+    operators,
+    tasks,
+    taskEventLog,
+  })
   const customerToPratica: CustomerToPraticaRow[] = links.map((link) => ({
     customerId: customers[link.customerIndex]!.id,
     praticaId: practices[link.practiceIndex]!.praticaId,
@@ -57,7 +66,9 @@ export function generateDataset({ n, day }: { n: number; day: Day }): Dataset {
     customerToPratica,
     alerts,
     tasks,
-    taskEventLog,
+    taskEventLog: waves.taskEventLog,
+    importRuns: waves.importRuns,
+    importRunCustomers: waves.importRunCustomers,
     appMilestones: generateMilestones(day),
   }
 }

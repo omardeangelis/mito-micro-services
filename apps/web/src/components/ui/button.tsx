@@ -25,14 +25,14 @@ const buttonVariants = cva(
         // MITO: a button that looks disabled and still takes the focus
         disabled: "cursor-not-allowed bg-muted text-subtle hover:bg-muted",
       },
-      // Appendix C: 30 px normal, 26 small, 22 extra small, 34 large
+      // Appendix C: 30 px normal, 26 small, 24 extra small, 34 large
       size: {
         default: "h-7.5 px-3 py-2 has-[>svg]:px-2.5",
-        xs: "h-5.5 gap-1 px-2 text-xs has-[>svg]:px-1.5 [&_svg:not([class*='size-'])]:size-3",
+        xs: "h-6 gap-1 px-2 text-xs has-[>svg]:px-1.5 [&_svg:not([class*='size-'])]:size-3",
         sm: "h-6.5 gap-1.5 px-2.5 has-[>svg]:px-2",
         lg: "h-8.5 px-4 has-[>svg]:px-3.5",
         icon: "size-7.5",
-        "icon-xs": "size-5.5 [&_svg:not([class*='size-'])]:size-3",
+        "icon-xs": "size-6 [&_svg:not([class*='size-'])]:size-3",
         "icon-sm": "size-6.5",
         "icon-lg": "size-8.5",
       },

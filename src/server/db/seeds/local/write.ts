@@ -10,6 +10,8 @@ import {
   chat,
   customers,
   customerToPratica,
+  importRun,
+  importRunCustomer,
   messages,
   operators,
   practices,
@@ -45,6 +47,7 @@ const IDENTITY_TABLES = [
   alert,
   task,
   taskEventLog,
+  importRun,
 ] as const
 
 /** Rows per INSERT that keep a statement under the bind parameter limit. */
@@ -151,6 +154,16 @@ export async function writeDataset(
         chunkSize(taskEventLog)
       )) {
         await tx.insert(taskEventLog).overridingSystemValue().values(rows)
+      }
+
+      for (const rows of chunks(dataset.importRuns, chunkSize(importRun))) {
+        await tx.insert(importRun).overridingSystemValue().values(rows)
+      }
+      for (const rows of chunks(
+        dataset.importRunCustomers,
+        chunkSize(importRunCustomer)
+      )) {
+        await tx.insert(importRunCustomer).values(rows)
       }
 
       // No foreign keys: the migration's `calls_registry` is gone with the

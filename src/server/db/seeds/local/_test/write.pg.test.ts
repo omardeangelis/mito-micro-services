@@ -29,6 +29,8 @@ const TABLES: Record<keyof Dataset, string> = {
   alerts: "mito-deutsche_alert",
   tasks: "mito-deutsche_task",
   taskEventLog: "mito-deutsche_task_event_log",
+  importRuns: "mito-deutsche_import_run",
+  importRunCustomers: "mito-deutsche_import_run_customer",
   appMilestones: "mito-deutsche_app_milestone",
 }
 

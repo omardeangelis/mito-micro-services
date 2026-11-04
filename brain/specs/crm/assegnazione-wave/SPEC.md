@@ -1,7 +1,7 @@
 ---
 domain: crm
 type: spec
-status: draft
+status: implemented
 links:
   - "[[specs/crm/assegnazione-wave/FLOW]]"
   - "[[specs/crm/assegnazione-wave/PLAN]]"
@@ -17,7 +17,7 @@ links:
   - "[[domains/crm/concepts/import]]"
   - "[[personas]]"
 created: 2026-11-03
-updated: 2026-11-03
+updated: 2026-11-04
 ---
 
 # Spec: Import e assegnazione della Wave
@@ -136,13 +136,13 @@ I giorni sono giorni di Roma. «In ordine di nome» vuol dire nome e cognome com
 ### Accesso ed entrate
 
 - **AC1.** La pagina `/dashboard/import/:id` esiste per ogni Wave. Solo un admin abilitato ne legge i dati e ne esegue le azioni.
-  - Un `OPERATORE` che apre l'indirizzo ha la pagina di accesso negato dell'app, e i comandi di questa pagina non gli rispondono (rifiuti di AC16).
+  - Un `OPERATORE` che apre l'indirizzo ha la pagina di accesso negato dell'app (la pagina «non trovato», come le altre pagine solo admin di `apps/web`: A2 del piano, approvata da Omar il 2026-11-04), e i comandi di questa pagina non gli rispondono (rifiuti di AC16).
   - Un import Standard, un import non completato o un id che non esiste mostrano la pagina «non trovato» dell'app.
 - **AC2.** Si arriva alla pagina da quattro punti:
   - **il toast di fine import** di una Wave ha il comando «Assegna», che per i 10 s del toast apre la pagina della Wave appena importata;
   - **ogni riga di una Wave nello storico** degli import apre la sua pagina;
-  - **«Assegna» di una riga di «Ultimi import»** in home-admin apre la pagina di quella Wave;
-  - **«Assegna» di una riga del team** in home-admin apre la pagina di una Wave scelta così: fra le Wave elencate in «Ultimi import» che hanno clienti senza operatore, quella che ne ha di più; a pari numero, la più recente. Quando nessuna di quelle Wave ha clienti senza operatore, il pulsante della riga è disattivato in home-admin. Una Wave senza scadenza apre il flusso al primo passo; una con la scadenza apre il passo «Assegna» da solo (AC10). Nel passo «Assegna» la persona della riga è l'unica scelta, anche se è inattiva o è un admin, ed è nella lista anche se non è fra le persone mostrate, e «Quanti» è vuoto, con «Quanti contatti a <nome proprio>? Al massimo <max>.» in grigio.
+  - **«Assegna» di una riga di «Ultimi import»** in home-admin (consegnato dall'implementazione di home-admin, D1 del piano) apre la pagina di quella Wave;
+  - **«Assegna» di una riga del team** in home-admin (il pulsante lo consegna l'implementazione di home-admin, D1 del piano; la pagina accetta qui la modalità «riga del team» dall'indirizzo, `?per=<operatorId>`) apre la pagina di una Wave scelta così: fra le Wave elencate in «Ultimi import» che hanno clienti senza operatore, quella che ne ha di più; a pari numero, la più recente. Quando nessuna di quelle Wave ha clienti senza operatore, il pulsante della riga è disattivato in home-admin. Una Wave senza scadenza apre il flusso al primo passo; una con la scadenza apre il passo «Assegna» da solo (AC10). Nel passo «Assegna» la persona della riga è l'unica scelta, anche se è inattiva o è un admin, ed è nella lista anche se non è fra le persone mostrate, e «Quanti» è vuoto, con «Quanti contatti a <nome proprio>? Al massimo <max>.» in grigio.
 - **AC3.** Che cosa mostra la pagina all'apertura:
   - una Wave senza scadenza salvata apre il flusso dopo l'import al primo passo;
   - una Wave con la scadenza, o senza scadenza ma lasciata con «Annulla» (AC9), apre la panoramica (AC19).
@@ -416,7 +416,7 @@ I giorni sono giorni di Roma. «In ordine di nome» vuol dire nome e cognome com
 - **Volumi di produzione**: 15 operatori, una mediana di 2.854 contatti da fare e un massimo di 7.730. Wave da 6.380 a 9.100 clienti nelle fixture, 388 righe nel file vero. Un'assegnazione o uno spostamento possono muovere qualche migliaio di contatti in una volta.
 - **Invarianti dell'assegnazione** del contratto del dominio: un utente disattivato non è mai una destinazione. Dopo l'operazione il cliente e il suo contatto attivo hanno lo stesso operatore.
 - **L'import non assegna.** Continua a non scrivere operatori, contatti e chat. Guadagna solo la traccia dei clienti (AC29). Assegnare è un'azione esplicita dell'admin su questa pagina. La riga «Does Not Own» del contratto va precisata all'ingest.
-- **home-admin cambia insieme a questa spec**, nello stesso change:
+- **home-admin cambia insieme a questa spec**, nello stesso rilascio in prod (D1 del piano: la pagina della Wave esce prima, da sola; i punti qui sotto li consegna l'implementazione di home-admin):
   - i suoi «Assegna» aprono questa pagina (AC2); il pulsante della riga di un import è disattivato quando quella Wave non ha clienti senza operatore, quello di una riga del team quando nessuna Wave elencata ne ha;
   - il riquadro «Assegna contatti» (AC14–AC26, AC41–AC44 e le righe di AC45, AC49 e AC50 sul riquadro) non c'è più;
   - le parti di un import Wave sono definite qui; «fermo» diventa «inattivo»;

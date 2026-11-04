@@ -141,6 +141,13 @@
       "when": 1793630896761,
       "tag": "20261102144816_calls_registry_milestone",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1793812780863,
+      "tag": "20261104171940_wave_assignment_trace",
+      "breakpoints": true
     }
   ]
 }

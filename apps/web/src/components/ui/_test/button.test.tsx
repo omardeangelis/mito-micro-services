@@ -78,7 +78,7 @@ describe("Button", () => {
 
   it.each([
     ["sm", 26],
-    ["xs", 22],
+    ["xs", 24],
     ["lg", 34],
   ] as const)("la taglia %s è alta %d px", (taglia, px) => {
     render(<Button size={taglia}>{taglia}</Button>)
@@ -88,7 +88,7 @@ describe("Button", () => {
   it.each([
     ["icon", 30],
     ["icon-sm", 26],
-    ["icon-xs", 22],
+    ["icon-xs", 24],
     ["icon-lg", 34],
   ] as const)("il bottone-icona %s è un quadrato di %d px", (taglia, px) => {
     render(<Button size={taglia} aria-label={taglia} />)

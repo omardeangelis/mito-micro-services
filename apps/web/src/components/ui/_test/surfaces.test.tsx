@@ -202,7 +202,7 @@ describe("Calendar", () => {
   // Le classi della cella del giorno di ottobre e del suo bottone, insieme
   const day = (n: number) =>
     screen.getByRole("button", {
-      name: new RegExp(`October ${n}(st|nd|rd|th)`),
+      name: new RegExp(`\\b${n} ottobre 2026`),
     })
 
   it("il giorno scelto è primary; oggi è muted con testo foreground a 600", () => {

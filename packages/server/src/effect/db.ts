@@ -195,6 +195,13 @@ export type LockedCustomer = {
  * `FOR NO KEY UPDATE`), doesn't conflict with `FOR KEY SHARE`, and would let a
  * writer through on the row as it was before the deactivation.
  *
+ * «Assegna» of a Wave (`import/wave/assignWave`, D11 of assegnazione-wave)
+ * locks many customers in one transaction, in this order: its `import_run`
+ * row `FOR KEY SHARE`; the receivers' users in order of `users.id`, with the
+ * clause of `findWorkingOperator`, in one statement; every customer of the
+ * Wave without an operator, `FOR UPDATE` in order of id, in one statement;
+ * their active contacts, in order of id. It doesn't call this per customer.
+ *
  * Customers first, then practices: a transaction that writes several
  * practices locks them in order of `pratica_id` before it writes them, after
  * its customers. The import locks its customers and then its practices; the

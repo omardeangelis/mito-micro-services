@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { Link } from "react-router"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -9,6 +10,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { type ImportSummary } from "@mito/contract/import"
 import { HISTORY_PAGE_SIZE } from "@mito/domain/import/payload"
 import { useImportList } from "@/api/import"
 import { importTone } from "@/lib/tones"
@@ -18,7 +20,25 @@ import {
   formatLabels,
   startedAt,
   statusLabels,
+  wavePageHref,
 } from "./format"
+
+/**
+ * The file name of a row. A completed Wave opens its page (AC2): the name is
+ * the link, reached with Tab; any other row shows the plain name.
+ */
+function FileName({ run }: { run: ImportSummary }) {
+  const page = wavePageHref(run)
+  if (page === null) return run.fileName
+  return (
+    <Link
+      to={page}
+      className="rounded-control -my-1 block max-w-full truncate leading-6 text-primary underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring"
+    >
+      {run.fileName}
+    </Link>
+  )
+}
 
 /** The imports from the latest, 20 a page (AC28–AC30). */
 export function ImportHistory() {
@@ -64,7 +84,7 @@ export function ImportHistory() {
               </TableCell>
               <TableCell>{run.startedBy}</TableCell>
               <TableCell className="max-w-48 truncate" title={run.fileName}>
-                {run.fileName}
+                <FileName run={run} />
               </TableCell>
               <TableCell>{formatLabels[run.format]}</TableCell>
               <TableCell>

@@ -18,7 +18,7 @@ updated: 2026-11-03
 # Plan: Import e assegnazione della Wave
 
 **Spec:** [[specs/crm/assegnazione-wave/SPEC]], 2026-11-03, draft. 37 criteri (AC1–AC29, AC31–AC38). Delle domande aperte, OQ4 spetta a design-system-web e OQ13 resta aperta con il suo default (Definizioni, «Nome della Wave»), che il piano usa.
-**Status:** Planned.
+**Status:** Complete (implement-spec, 2026-11-04; revisione in [[specs/crm/assegnazione-wave/REPORT]]).
 - **Verifica del piano:** tre giri di `adversarial-verifier`, tutti DO NOT SHIP: il primo con 1 BLOCKER e 5 MAJOR, il secondo con 3 MAJOR, il terzo con 1 MAJOR (la pagina che non si rimontava cambiando Wave), che il revisore stesso chiudeva «con poche righe in T10 e T12». Tutti corretti come indicato, insieme ai minori, senza un quarto giro (§15).
 **Generato:** 2026-11-03 con `create-plan`.
 - **Grill:** due domande a Omar, D1 e D2. Le decisioni tecniche D3–D20 Omar le rivede insieme al piano.
@@ -242,9 +242,9 @@ Ogni task comincia dal test di `tdd_target`, rosso. Finisce con i gate del §5 v
   - committa il lavoro di design non ancora committato: spec, FLOW, piano, home-admin, feature-improvement e prototipo. Ne restano fuori la cartella `apps/web/src/prototypes/import-wave/.claude/` e `.claude/launch.json`;
   - lavora su questo branch, `claude/import-spec-client-assignment-2a98fe`, perché de2dca40 è solo qui, dopo avervi unito `dev` aggiornato.
 - **validation**: frontmatter `approved`; Constraints allineate a D1; `git status` pulito tranne i file locali esclusi; `dev` unito senza conflitti nelle migrazioni.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-11-04. Omar approva («implementa la spec dell'import della wave»). Il lavoro di design era già committato (f1537266, bc8a1853); `origin/dev` non ha commit nuovi. Spec `approved`, Constraints e AC2 annotati con D1.
+- **files edited/created**: `SPEC.md`, `PLAN.md`, `IMPLEMENTATION-NOTES.md`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -271,9 +271,9 @@ Ogni task comincia dal test di `tdd_target`, rosso. Finisce con i gate del §5 v
     - `daysSince(day, today)`: giorni di calendario, per AC21 e per «inattivo da».
   - `parseCount(text, max)`: AC13, con «1.500» = 1500, «1.5» e «15.00» non interi; vuoto o fuori da 1…max → errore.
 - **validation**: test del dominio verdi, con i casi di AC11 (somma uguale a «Quanti» in ogni divisione, resti in ordine di nome), AC13 (stringhe), AC20 (partenza della proroga) e AC6 («Fine mese» l'ultimo giorno disattivata).
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-11-04, worker sonnet. RED 13/13, poi 49 test verdi. In revisione: `levelUp` aveva un campo `total` in ingresso; tolto, i resti vanno in ordine di nome a chi arriva al livello (tutti con lo stesso «Totale»), come il prototipo.
+- **files edited/created**: `packages/domain/src/wave/{split,days,count}.ts`, `_test/{split,days,count}.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -290,9 +290,9 @@ Ogni task comincia dal test di `tdd_target`, rosso. Finisce con i gate del §5 v
   - un import Standard non ha traccia;
   - un file con lo stesso nome importato il mese prima (`1026_WAVE_NOV.xlsx`) non entra nella traccia della run di novembre;
   - il journal rispetta l'ordine di `when` e la catena dei `prevId`.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-11-04, worker sonnet. RED 5/5 (tabella assente), poi 6/6. Migrazione `20261104171940_wave_assignment_trace` con `pnpm db:generate --name`, senza la riga del default di `customers.id`; `kind` è l'enum `wave_operation_kind`. Journal: idx 20, `when` crescente, `prevId` giusto.
+- **files edited/created**: `packages/db/src/schema/{importRun,task,index,waveOperation}.ts`, `packages/db/migrations/20261104171940_wave_assignment_trace.sql`, `meta/20261104171940_snapshot.json`, `meta/_journal.json`, `packages/server/src/services/import/_test/trace.migration.db.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -314,9 +314,9 @@ Ogni task comincia dal test di `tdd_target`, rosso. Finisce con i gate del §5 v
   - un import Standard non scrive traccia;
   - un import fallito a metà non scrive traccia;
   - i test esistenti dell'import restano verdi con le stesse asserzioni.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-11-04, worker sonnet. RED 3/4, poi verdi; test dell'import 109 verdi. Gli id vengono da una funzione nuova `applyImportWithIds`; `applyImport` resta con il suo ritorno, così le asserzioni esistenti non cambiano.
+- **files edited/created**: `packages/server/src/services/import/{apply,run}.ts`, `_test/run.db.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -329,9 +329,9 @@ Ogni task comincia dal test di `tdd_target`, rosso. Finisce con i gate del §5 v
 - **location**: `packages/contract/src/{import,errors}.ts`, `packages/contract/src/_test/`, `apps/web/src/api/errors.ts` (`describeApiError`), `packages/server/src/http/import.ts` (handler che muoiono con un difetto finché T5–T8 non arrivano), `apps/web/src/test/api.tsx` e `apps/web/src/test/import.ts` (i cinque endpoint come `unserved`, perché `HttpApiBuilder.group` compila solo con tutti gli handler)
 - **description**: Gli schemi di risposta e di richiesta di D5 e D10, e gli errori `WaveNotFound`, `DeadlineInvalid`, `NumbersChanged`, `NothingToMove` con `httpApiStatus`. Le date dei giorni sono stringhe `YYYY-MM-DD` di Roma. Gli endpoint hanno `AdminOnly`. Gli handler restano provvisori, con `Effect.die`, finché non arrivano i servizi. Nei due gruppi `import` in memoria del web (`api.tsx:143-150` e `fakeImport` di `import.ts:93-94`) i cinque endpoint entrano come `unserved`, così `pnpm web:build` resta verde. T10 li sostituisce con i falsi veri.
 - **validation**: test di contratto: una risposta `wave` di esempio passa lo schema; un `assign` senza `requestId` è rifiutato; i quattro errori hanno lo status giusto; `describeApiError` copre i tag nuovi (`tsc`).
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-11-04, worker sonnet. RED 7/7, poi contratto 13/13; `tsc`, `web:lint`, `web:build`, `api:build` verdi. Aggiunto il massimo 200 anche a `contacts` di `move`.
+- **files edited/created**: `packages/contract/src/{import,errors}.ts`, `_test/wave.test.ts`, `apps/web/src/api/errors.ts`, `packages/server/src/http/import.ts`, `apps/web/src/test/{api.tsx,import.ts}`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -366,9 +366,9 @@ Ogni task comincia dal test di `tdd_target`, rosso. Finisce con i gate del §5 v
   - **Rifiuti:** run Standard, `running` e inesistente → `WaveNotFound`;
   - **HTTP:** un `OPERATORE` riceve `NotAdmin`;
   - **Tempo:** `read.perf.pg.test.ts` con una Wave di 9.000 clienti e 15 operatori annota il tempo della lettura in `IMPLEMENTATION-NOTES.md`, come `import.perf.pg.test.ts`.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-11-04, worker sul modello dell'orchestratore. RED (modulo assente), poi 13 test del servizio e i casi HTTP verdi; `tsc` e `api:build` verdi. Lettura di una Wave di 9.000 clienti con 15 operatori su Postgres locale: mediana 67 ms (64, 67, 75). La lettura sono più istruzioni READ COMMITTED, non un'unica istantanea (vedi IMPLEMENTATION-NOTES).
+- **files edited/created**: `packages/server/src/services/import/wave/{read,parts,team}.ts`, `_test/read.db.test.ts`, `_test/read.perf.pg.test.ts`, `packages/server/src/http/import.ts`, `http/_test/import.db.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -392,9 +392,9 @@ Ogni task comincia dal test di `tdd_target`, rosso. Finisce con i gate del §5 v
   - proroga su una Wave senza scadenza → `DeadlineInvalid`;
   - proroga ripetuta con il giorno già salvato → riuscita senza scrivere;
   - `OPERATORE` → `NotAdmin` (HTTP).
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-11-04, worker haiku. RED (modulo assente), poi 8 test del servizio e il caso `NotAdmin` HTTP verdi; `tsc` e `api:build` verdi.
+- **files edited/created**: `packages/server/src/services/import/wave/{deadline,errors}.ts`, `_test/deadline.db.test.ts`, `packages/server/src/http/import.ts`, `http/_test/import.db.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -427,9 +427,9 @@ Ogni task comincia dal test di `tdd_target`, rosso. Finisce con i gate del §5 v
   - **Concorrenza:** `.pg.test.ts` con due conferme concorrenti con lo stesso id; un `createContact` concorrente sullo stesso cliente bloccato da `holdCustomerLock` e `waitUntilBlocked`.
   - **Regole:** `lockRule` e `operatorRule` estesi e verdi;
   - **Tempo:** `assign.perf.pg.test.ts` con 5.000 clienti da assegnare a 15 persone annota il tempo in `IMPLEMENTATION-NOTES.md` e resta sotto i 60 s di D17.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-11-04, worker sul modello dell'orchestratore. RED, poi 12 test del servizio, 4 di concorrenza su Postgres (stesso id concorrente, 23505 vero con `repeatOnDuplicate`, cliente assegnato nel frattempo, `createContact` in coda) e i casi HTTP verdi; `lockRule` e `operatorRule` estesi (togliendo il `FOR UPDATE` dei clienti il test della regola fallisce). 5.000 clienti a 15 persone in 621 ms. Quote non valide (anche un ricevente ripetuto) → `NumbersChanged`; il limite dei 60 s è l'errore `WaveTimedOut`, che l'handler rende un 500.
+- **files edited/created**: `packages/server/src/services/import/wave/{assign,operation,errors}.ts`, `_test/assign.{db,pg,perf.pg}.test.ts`, `packages/server/src/http/import.ts`, `http/_test/import.db.test.ts`, `services/contact/_test/{lockRule,operatorRule}.db.test.ts`, `packages/server/src/effect/db.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -467,9 +467,9 @@ Ogni task comincia dal test di `tdd_target`, rosso. Finisce con i gate del §5 v
   - **Concorrenza** (`move.pg.test.ts`): un `changeState` che riapre un contatto tiene il lock del cliente (`holdCustomerLock`); `move` aspetta (`waitUntilBlocked`), poi rilegge e salta quel contatto;
   - **Regole:** `lockRule` e `operatorRule` estesi;
   - **Tempo:** `move.perf.pg.test.ts` con 5.000 contatti da 3 persone a 12 annota il tempo in `IMPLEMENTATION-NOTES.md` e resta sotto i 60 s di D17.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-11-04, worker sul modello dell'orchestratore. RED (tdd_target), poi 15 test del servizio, i casi HTTP, `lockRule` e `operatorRule` estesi; test del server 2080 verdi. 5.000 contatti da 3 persone a 12 in 303 ms (senza saltati). Il test `pg` simula la riapertura da Non risponde come `replaceActiveContact`, perché nessuno scrittore di oggi la offre (`selectorTargets`). `assign.ts` esporta i suoi aiuti (`timeLeft`, `byName`, `jsonIds`) per `move`.
+- **files edited/created**: `packages/server/src/services/import/wave/{move,errors,team,assign}.ts`, `_test/move.{db,pg,perf.pg}.test.ts`, `packages/server/src/http/import.ts`, `http/_test/import.db.test.ts`, `services/contact/_test/{lockRule,operatorRule}.db.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -491,9 +491,9 @@ Ogni task comincia dal test di `tdd_target`, rosso. Finisce con i gate del §5 v
   - una priorità manuale 120 senza Wave aperta va dopo i Da chiamare di una Wave aperta; fra le righe 120 senza Wave il pareggio resta per `task.id`, come oggi;
   - il piano della query (`EXPLAIN ANALYZE` su `mito_local` con il seed locale, prima e dopo) annotato in `IMPLEMENTATION-NOTES.md`;
   - i test d'ordine esistenti verdi con le stesse asserzioni.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-11-04, worker sonnet. RED 6 su 20, poi 508 test dei contatti verdi, asserzioni esistenti invariate. Sottoquery correlata invece di `LEFT JOIN LATERAL` (D15 ammette entrambe). `EXPLAIN ANALYZE` rinviato a T21, su `mito_local`.
+- **files edited/created**: `packages/server/src/services/contact/getContacts.ts`, `_test/getContacts.order.db.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -513,9 +513,9 @@ Ogni task comincia dal test di `tdd_target`, rosso. Finisce con i gate del §5 v
   - una mutazione riuscita rilegge `wave`;
   - con `ApiUnavailable` nessun toast globale, né per una mutazione né per una lettura `wave` fallita;
   - un esito arrivato dopo lo smontaggio della pagina chiama la callback dell'hook.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-11-04, worker sonnet. RED 8/8, poi verdi; web 1843/1843, lint e build verdi. D18 verificato nel sorgente di `@tanstack/query-core`: `Mutation.execute` chiama le callback delle opzioni senza osservatori, quelle di `mutate()` passano dal `MutationObserver` e si perdono allo smontaggio. `onSuccess` aspetta la rilettura di `wave` prima della callback della pagina. Sessione e permesso nei test passano da `auth` di `renderWithApi`, non da bandiere del falso.
+- **files edited/created**: `apps/web/src/api/import.ts`, `apps/web/src/test/import.ts`, `apps/web/src/api/_test/import.test.tsx`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -536,9 +536,9 @@ Ogni task comincia dal test di `tdd_target`, rosso. Finisce con i gate del §5 v
   - l'icona della casella è `aria-hidden`;
   - i test esistenti di `ui` e di `RangePicker` verdi, con le due asserzioni di `button.test.tsx` a 24;
   - controllo nel browser della vetrina del design system e dei calendari che diventano italiani con la settimana da lunedì: `components/custom/date-picker/index.tsx` (usato da `NewPraticaForm`, `CustomerForm`, `NewCustomerForm`), `TimeFrameSelector` della home e `RangePicker`.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-11-04, worker haiku. RED (calendario e `aria-hidden`), poi verdi. In revisione due test fuori dall'elenco cercavano le etichette inglesi del calendario: allineati all'italiano (`surfaces.test.tsx` «15 ottobre 2026», `window.more.test.tsx` con la `i`). Il controllo nel browser della vetrina e dei calendari passa a T21. Appendice C di design-system-web portata a 24 px insieme alle due righe del Decision Log.
+- **files edited/created**: `apps/web/src/components/ui/{button,calendar,checkbox,radio-group}.tsx`, `_test/{button,calendar,controls,surfaces}.test.tsx`, `routes/dashboard/analisi/_components/RangePicker.tsx`, `routes/dashboard/analisi/_test/window.more.test.tsx`, `brain/specs/crm/design-system-web/SPEC.md`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -578,9 +578,9 @@ Ogni task comincia dal test di `tdd_target`, rosso. Finisce con i gate del §5 v
   - `_lib/mode.ts`: `?per` con la scadenza → modalità «Assegna i restanti», senza scadenza → flusso al primo passo (test della funzione; la pagina lo prova T14);
   - una ricarica dopo «Annulla» riparte dal primo passo (AC3);
   - test dei plurali di AC36.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-11-04, worker sul modello dell'orchestratore. RED (modulo assente), poi 35 test nuovi verdi, ripetuti tre volte; web 1878/1878, lint e build verdi. La schermata di fine è una modalità della pagina (`done`), così fuoco e scorrimento stanno in un posto solo. «Annulla» nel titolo del flusso solo dal secondo passo, perché sul primo c'è nel piede. Un flusso di un passo solo nasconde la fila dei passi. Lo scorrimento in cima non si prova in jsdom: passa a T21.
+- **files edited/created**: `apps/web/src/router.tsx`, `apps/web/src/routes/dashboard/import/wave/{WavePage,WaveHeader,Flow,DeadlineField,DoneScreen}.tsx`, `wave/_lib/{text,mode}.ts`, `wave/_test/{page.tsx,WavePage.test.tsx,Flow.test.tsx,DeadlineField.test.tsx,DoneScreen.test.tsx,mode.test.ts,text.test.ts}`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -610,9 +610,9 @@ Ogni task comincia dal test di `tdd_target`, rosso. Finisce con i gate del §5 v
   - nota della Wave ricostruita;
   - `?per` su una Wave senza scadenza: «Avanti» porta ad «Assegna» con quella persona sola scelta (AC2);
   - nel browser: anello e colonne a 1024, 1280 e 1536 px.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-11-04, worker sonnet. RED (`findByText(«Nessun cliente da assegnare.»)` fallito sul segnaposto), poi verdi; web 1936/1936, lint e build verdi. Due test di `Flow.test.tsx` adattati perché «Avanti» ora salva: `findBy` dopo il clic, e l'asserzione «Scadenza da confermare» dopo «Indietro»/«Annulla» spostata in `arrivals.test.tsx`, dove «Annulla» parte dal primo passo senza salvare. Un esito incerto del salvataggio non rilegge la Wave (AC16 non lo chiede per la scadenza). Il controllo nel browser a 1024, 1280 e 1536 px passa a T21.
+- **files edited/created**: `apps/web/src/routes/dashboard/import/wave/{Arrivals,Distribution,WavePage,Extend}.tsx`, `wave/_lib/errors.ts`, `_test/{arrivals,Flow}.test.tsx`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -645,9 +645,9 @@ Ogni task comincia dal test di `tdd_target`, rosso. Finisce con i gate del §5 v
   - lettore di schermo: la riga si legge «Attive 2, Assegnate +342, Totale 344, Al giorno 16»;
   - cambiare divisione non sposta le righe;
   - nel browser: anello del fuoco intero durante lo scorrimento, 24×24 px.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-11-04, worker sul modello dell'orchestratore. RED (tdd_target), poi 16 test nuovi; web 1901/1901, lint e build verdi. La riga non è un `<label>`: è un `<tr>` che sceglie al clic, con la casella che ferma il proprio clic (un `<label>` dentro una tabella vera rompeva la semantica o sceglieva due volte). Ogni valore ha il nome della colonna come testo nascosto, sopra i `th scope=col`. Margine di scorrimento di 2,25rem in alto per l'intestazione fissa. Le prove nel browser (anello del fuoco durante lo scorrimento, 24×24 px) passano a T21.
+- **files edited/created**: `apps/web/src/routes/dashboard/import/wave/split/{SplitStep,StrategyField,CountField,PeopleTable,SplitSummary}.tsx`, `split/_lib/preview.ts`, `split/_test/{harness.tsx,SplitStep.test.tsx,assignPage.test.tsx}`, `wave/WavePage.tsx`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -674,9 +674,9 @@ Ogni task comincia dal test di `tdd_target`, rosso. Finisce con i gate del §5 v
   - dopo `NumbersChanged` con un massimo riletto più basso, «Quanti» non toccato mostra il nuovo massimo;
   - un esito incerto seguito da una conferma della stessa anteprima riusa il `requestId`; una conferma di un'anteprima diversa ne usa uno nuovo;
   - D9: con `?per`, dopo una conferma riuscita l'indirizzo non ha più `per` e «Assegna i restanti» sceglie gli `OPERATORE` attivi; lo stesso dopo «Annulla» e «Vai alla Wave»;
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-11-04, worker sul modello dell'orchestratore. RED (il riepilogo diceva ancora l'anteprima), poi 22 test nuovi; web 1958/1958, lint e build verdi. Un messaggio di esito resta finché l'admin non cambia una scelta (divisione, persone, «Quanti» scritto), non finché cambia l'anteprima: la rilettura cambia l'anteprima subito dopo il messaggio. I messaggi di sessione e permesso restano finché il passo è aperto. Wave scaduta: il testo di fine comincia con «La Wave è scaduta il <giorno>.» al posto di «Scadenza <giorno>.». «Restano <N>» viene dalla Wave riletta, o da `remaining` se la rilettura fallisce. `useConfirmOutcome` è condiviso con T18.
+- **files edited/created**: `apps/web/src/routes/dashboard/import/wave/{AssignConfirm,WavePage}.tsx`, `split/{SplitSummary,SplitStep}.tsx`, `_test/assign.test.tsx`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -703,9 +703,9 @@ Ogni task comincia dal test di `tdd_target`, rosso. Finisce con i gate del §5 v
   - Wave scaduta ieri → «Scaduta ieri con N contatti ancora da fare presso K operatori…»;
   - «Assegna» del riquadro apre «Assegna i restanti» su una Wave con la scadenza e il flusso al primo passo su una Wave da confermare;
   - «Riassegna…», «Riassegna» e «Sposta» ci sono. Dove portano lo prova T17, che costruisce la riassegnazione.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-11-04, worker sonnet. Il worker non ha eseguito il test rosso prima del codice; in revisione l'orchestratore ha tolto l'avviso dalla panoramica e i tre test dell'avviso sono falliti, poi verdi con il codice ripristinato. 18 test nuovi; web 1919/1919, lint e build verdi. «Prima era» usa la scadenza che la pagina aveva alla conferma. `<Extend id wave/>` ha riquadro, mutazione e toast suoi, così le schermate di fine lo mettono accanto a «Vai alla Wave».
+- **files edited/created**: `apps/web/src/routes/dashboard/import/wave/{Extend,PartsBar,WhoHasWork,ExpiredBanner,Overview,WavePage}.tsx`, `_test/{overview.test.tsx,page.tsx}`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -741,9 +741,9 @@ Ogni task comincia dal test di `tdd_target`, rosso. Finisce con i gate del §5 v
   - i numeri del passo 2 sono quelli dei candidati anche quando `wave` ne dice altri;
   - «A chi» → «200 da spostare da Carla e Dario»;
   - candidati senza contatti del tipo scelto per le persone scelte → in «A chi» il riepilogo dice «Niente da spostare: chi hai scelto non ha più contatti di questo tipo» (le riletture che lo producono sono di T18).
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-11-04, worker sul modello dell'orchestratore. RED (regione «Quanti contatti» assente), poi 24 test nuovi; web 1982/1982, lint e build verdi. I candidati sono un'istantanea nello stato del componente: una rilettura tiene i numeri di prima finché arriva, e una risposta superata si ignora. Le righe di «Da chi» seguono lo schema di `PeopleTable` (riga che sceglie al clic, anello con `has-[:focus-visible]`). Decisi dove la spec tace: «Scegli gli inattivi» aggiunge gli inattivi a chi è già scelto e compare solo se ce ne sono; «—» per «Da spostare» a 0; nella riga «<N> da spostare da <nomi>» i nomi di chi cede davvero.
+- **files edited/created**: `apps/web/src/routes/dashboard/import/wave/move/{MoveFlow,FromStep,WhichStep}.tsx`, `move/_lib/selection.ts`, `move/_test/{MoveFlow.test.tsx,selection.test.ts}`, `wave/WavePage.tsx`, `wave/_lib/text.ts`, `split/PeopleTable.tsx`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -769,9 +769,9 @@ Ogni task comincia dal test di `tdd_target`, rosso. Finisce con i gate del §5 v
   - i nomi propri con nome e cognome a pari nome;
   - un test per riga della tabella di AC16, con «Solo un admin può spostare contatti.»;
   - pagina lasciata durante la conferma → «Spostati <N> contatti della <nome>», il toast dell'esito incerto e «La <nome> non è cambiata.», un test ciascuno.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-11-04, worker sonnet. RED (nessuna schermata di fine al clic), poi 20 test nuovi; web 1999/1999, lint e build verdi. Ogni rilettura rilegge `wave` e `moveCandidates` insieme e ricalcola i «Da spostare»; la conferma dopo manda gli id riletti con un `requestId` nuovo. «Spostamento in corso…» non è nella spec: preso per analogia con «Assegnazione in corso…». Tolto il test segnaposto di `MoveFlow.test.tsx` sul punto di aggancio, ora coperto dalle chiamate vere in `confirm.test.tsx`. `fakeImport` ha `state.moveResult` per fissare la risposta di `move`.
+- **files edited/created**: `apps/web/src/routes/dashboard/import/wave/move/{MoveConfirm,MoveFlow}.tsx`, `wave/{WavePage,AssignConfirm}.tsx`, `move/_test/{confirm,MoveFlow}.test.tsx`, `apps/web/src/test/import.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -793,9 +793,9 @@ Ogni task comincia dal test di `tdd_target`, rosso. Finisce con i gate del §5 v
   - la riga di una Wave completata apre la pagina;
   - la riga di uno Standard non è un collegamento;
   - `expectToastLasts` 10 s.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-11-04, worker haiku. RED 3 test, poi 84 test dell'import verdi. `wavePageHref(run, from?)` in `format.ts` dà il collegamento per il toast e per lo storico (servirà anche a home-admin). Il toast tiene i 10 s; l'harness monta `ImportStatusProvider` dentro il router, come `DashboardShell`.
+- **files edited/created**: `apps/web/src/routes/dashboard/import/ImportStatus.tsx`, `_components/{ImportHistory.tsx,format.ts}`, `_test/{page.tsx,ImportStatus.test.tsx,ImportPage.test.tsx}`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -814,9 +814,9 @@ Ogni task comincia dal test di `tdd_target`, rosso. Finisce con i gate del §5 v
 
   Una Wave ricostruita, con `created` NULL. Le chiamate (`task_event_log` `action = 'call'`) dei 30 giorni prima producono ritmi diversi e almeno un inattivo, con 7 giorni lavorati dopo la sua ultima chiamata. Ci sono anche un admin e un `OPERATORE` per l'accesso. Il seeder non entra in nessun file dell'app (ESLint).
 - **validation**: `pnpm db:local:up`, `pnpm db:local:migrate`, il seed locale; poi le quattro pagine si aprono in `pnpm web:dev` con gli stati attesi.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-11-04, worker sonnet. Cinque Wave (id 1000 ricostruita, 1001 scaduta, 1002 assegnata, 1003 promo, 1004 nuova), inattiva Romana Penzo (operatore 1006). Nessuna riga `call` nuova: `contacts.test.ts` vuole le chiamate coerenti con la catena degli stati, quindi il seed riattribuisce chiamate esistenti. Test del seed verdi (382); i `*.pg.test.ts` saltati senza database di test. L'apertura delle pagine su `mito_local` passa a T21.
+- **files edited/created**: `src/server/db/seeds/local/generate/waves.ts`, `generate.ts`, `types.ts`, `write.ts`, `verify.ts`, `_test/waves.test.ts`, `_test/write.pg.test.ts`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -837,9 +837,9 @@ Ogni task comincia dal test di `tdd_target`, rosso. Finisce con i gate del §5 v
 
   Poi la lista dei quattro controlli NVDA e VoiceOver delle Constraints, che restano da fare a mano a Omar prima del rilascio.
 - **validation**: schermate per larghezza in `IMPLEMENTATION-NOTES.md`, nessun difetto aperto o ognuno con un task di correzione; checklist manuale scritta.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-11-04, worker sonnet con `agent-browser` su `mito_local` (API sulla 4010, web sulla 5173, login rapido del seed). Nessuno scorrimento orizzontale da 1024 a 1920 px e a 1,25×; fuoco, scorrimento in cima, calendari italiani, nessuna animazione propria verificati. Quattro difetti corretti dopo il controllo da un worker, con test rossi e poi verdi: collegamento «Import» del percorso e collegamenti dello storico sotto i 24 px; opzioni del passo 2 della riassegnazione con etichetta di 19 px e nota che non sceglieva; testo «scaduta» della schermata di fine che restava dopo una proroga. Risultati, `EXPLAIN ANALYZE` e la lista dei controlli a mano in IMPLEMENTATION-NOTES.
+- **files edited/created**: `apps/web/src/routes/dashboard/import/wave/{WaveHeader,AssignConfirm}.tsx`, `wave/_lib/mode.ts`, `wave/move/{WhichStep,MoveConfirm}.tsx`, `_components/ImportHistory.tsx`, `wave/move/_test/{MoveFlow,confirm}.test.tsx`, `wave/_test/assign.test.tsx`, `IMPLEMENTATION-NOTES.md`
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a
@@ -857,9 +857,9 @@ Ogni task comincia dal test di `tdd_target`, rosso. Finisce con i gate del §5 v
 - **validation**:
   - `git grep "prototypes/import-wave"` vuoto fuori da `brain/`;
   - `pnpm web:build` e `pnpm web:test` verdi.
-- **status**: Planned
-- **log**:
-- **files edited/created**:
+- **status**: Done
+- **log**: 2026-11-04, orchestratore. Cancellata la cartella `apps/web/src/prototypes/import-wave/` e la sua voce in `prototypeRoutes`; `git grep "prototypes/import-wave"` vuoto fuori da `brain/`; web 2002/2002 e build verdi.
+- **files edited/created**: `apps/web/src/router.tsx`, `apps/web/src/prototypes/import-wave/` (cancellata)
 - **backlog_item_id**: n/a
 - **backlog_item_url**: n/a
 - **relation_mode**: n/a

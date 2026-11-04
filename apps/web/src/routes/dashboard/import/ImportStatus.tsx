@@ -8,9 +8,11 @@ import {
   useRef,
 } from "react"
 import { toast } from "sonner"
+import { useNavigate } from "react-router"
+import { navigateOnPlainClick } from "@/components/custom/contact/navigateOnPlainClick"
 import { useActiveImport, useInvalidateImports } from "@/api/import"
 import { useUserPreferenceContext } from "@/store/context/useUserPreferenceContext"
-import { endingNotice } from "./_components/format"
+import { endingNotice, wavePageHref } from "./_components/format"
 
 // The end of an import, in any page of the dashboard (T19, D15), as
 // `ImportStatusProvider` of the Next.js app: while the admin's latest import
@@ -27,6 +29,8 @@ const ImportStatusContext = createContext<{
 export function ImportStatusProvider({ children }: PropsWithChildren) {
   const isAdmin = useUserPreferenceContext((state) => state.role) === "ADMIN"
   const invalidate = useInvalidateImports()
+  // The toast is outside the routes: its «Assegna» navigates with this router
+  const navigate = useNavigate()
   const { data } = useActiveImport(isAdmin)
   // The import being followed: the one seen running, or the one just started
   const watched = useRef<number | undefined>(undefined)
@@ -43,13 +47,34 @@ export function ImportStatusProvider({ children }: PropsWithChildren) {
     if (notice) {
       const { title, description, variant } = notice
       const show = variant === "success" ? toast.success : toast.error
-      show(title, { description, duration: 10_000 })
+      // A completed Wave: «Assegna» opens its page for the 10 s of the toast (AC2)
+      const href = wavePageHref(data, "import")
+      const id = show(title, {
+        description,
+        duration: 10_000,
+        ...(href !== null
+          ? {
+              action: (
+                <a
+                  href={href}
+                  data-button=""
+                  onClick={navigateOnPlainClick((to) => {
+                    toast.dismiss(id)
+                    void navigate(to, { preventScrollReset: true })
+                  }, href)}
+                >
+                  Assegna
+                </a>
+              ),
+            }
+          : {}),
+      })
     }
     void invalidate.lists()
     // Only a completed import wrote something: customers, practices, the
     // home and the "File" filter
     if (data.status === "completed") void invalidate.written()
-  }, [data, invalidate])
+  }, [data, invalidate, navigate])
 
   const watch = useCallback(
     (runId: number) => {

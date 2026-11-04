@@ -22,8 +22,14 @@ function Checkbox({
         data-slot="checkbox-indicator"
         className="group grid place-content-center text-current transition-none"
       >
-        <CheckIcon className="size-3 group-data-[state=indeterminate]:hidden" />
-        <MinusIcon className="hidden size-3 group-data-[state=indeterminate]:block" />
+        <CheckIcon
+          aria-hidden="true"
+          className="size-3 group-data-[state=indeterminate]:hidden"
+        />
+        <MinusIcon
+          aria-hidden="true"
+          className="hidden size-3 group-data-[state=indeterminate]:block"
+        />
       </CheckboxPrimitive.Indicator>
     </CheckboxPrimitive.Root>
   )

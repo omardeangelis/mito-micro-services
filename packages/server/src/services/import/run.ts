@@ -1,12 +1,16 @@
 import { and, eq, inArray, isNull, lt } from "drizzle-orm"
 import { Cause, Clock, Effect, Exit, Option } from "effect"
-import { importRun, importUpload } from "@mito/db/schema/importRun"
+import {
+  importRun,
+  importRunCustomer,
+  importUpload,
+} from "@mito/db/schema/importRun"
 import { operators } from "@mito/db/schema/operators"
 import { users } from "@mito/db/schema/users"
 import { classifyRows } from "@mito/domain/import/classify"
 import { DbError, query, retryOnDeadlock, transaction } from "../../effect/db"
 import { adminName, timeInRome } from "./admin"
-import { applyImport } from "./apply"
+import { applyImportWithIds } from "./apply"
 import { ImportConfig } from "./config"
 import {
   ImportAlreadyRunning,
@@ -401,7 +405,7 @@ export type RunOutcome = "completed" | "failed" | "interrupted" | "skipped"
 export const executeImport = Effect.fn("import.executeImport")(function* (
   runId: number
 ) {
-  const { timeoutMs } = yield* ImportConfig
+  const { timeoutMs, batchSize } = yield* ImportConfig
   const now = new Date(yield* Clock.currentTimeMillis)
   const [claimed] = yield* query((client) =>
     client
@@ -446,7 +450,7 @@ export const executeImport = Effect.fn("import.executeImport")(function* (
             })
           }
           const { rows } = yield* loadUpload(upload.id)
-          const counts = yield* applyImport({
+          const { counts, createdIds, updatedIds } = yield* applyImportWithIds({
             format: run.format,
             fileName: run.fileName,
             rows,
@@ -454,6 +458,29 @@ export const executeImport = Effect.fn("import.executeImport")(function* (
             now,
             deadline: run.startedAt.getTime() + timeoutMs,
           })
+          // The customers of a Wave, for its assignment; first the created, so
+          // an id in both lists stays created (assegnazione-wave, AC29)
+          if (run.format === "wave") {
+            const traced = [
+              ...createdIds.map((customerId) => ({
+                customerId,
+                created: true,
+              })),
+              ...updatedIds.map((customerId) => ({
+                customerId,
+                created: false,
+              })),
+            ]
+            for (let start = 0; start < traced.length; start += batchSize) {
+              const batch = traced.slice(start, start + batchSize)
+              yield* query((client) =>
+                client
+                  .insert(importRunCustomer)
+                  .values(batch.map((item) => ({ runId, ...item })))
+                  .onConflictDoNothing()
+              )
+            }
+          }
           const finishedAt = new Date(yield* Clock.currentTimeMillis)
           yield* query((client) =>
             client

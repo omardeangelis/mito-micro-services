@@ -115,6 +115,14 @@ export const describeApiError = (error: ApiFailure): string => {
       return "Non puoi disattivare te stesso"
     case "LastAdmin":
       return "Deve restare almeno un admin"
+    case "WaveNotFound":
+      return "Wave non trovata"
+    case "DeadlineInvalid":
+      return "La scadenza non è un giorno valido per questa Wave"
+    case "NumbersChanged":
+      return "I numeri della Wave sono cambiati: ricontrolla"
+    case "NothingToMove":
+      return "Non c'è nessun contatto da spostare"
     case "ApiUnavailable":
       return "Il servizio non risponde, riprova tra poco"
     default: {

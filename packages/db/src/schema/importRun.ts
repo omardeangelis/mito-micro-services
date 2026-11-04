@@ -1,6 +1,8 @@
 import { sql } from "drizzle-orm"
 import {
+  boolean,
   customType,
+  date,
   index,
   integer,
   pgEnum,
@@ -11,6 +13,7 @@ import {
   uuid,
   varchar,
 } from "drizzle-orm/pg-core"
+import { customers } from "./customers"
 import { users } from "./users"
 
 const createTable = pgTableCreator((name) => `mito-deutsche_${name}`)
@@ -55,12 +58,37 @@ export const importRun = createTable(
     practicesCreated: integer("practices_created"),
     practicesUpdated: integer("practices_updated"),
     linksCreated: integer("links_created"),
+    // The date the Wave's operators have to work it by, set by the admin
+    // (spec assegnazione-wave, D3); NULL for the ones without one
+    deadline: date("deadline"),
   },
   (table) => ({
     oneRunning: uniqueIndex("import_run_one_running")
       .on(table.status)
       .where(sql`${table.status} = 'running'`),
     startedAt: index("import_run_started_at").on(table.startedAt.desc()),
+  })
+)
+
+// The clients a Wave import wrote, one row per run and client (spec
+// assegnazione-wave, AC29, D3): `created` is true for a client the import
+// created, false for one it updated, NULL for one rebuilt from `file_name`
+export const importRunCustomer = createTable(
+  "import_run_customer",
+  {
+    runId: integer("run_id")
+      .notNull()
+      .references(() => importRun.id),
+    customerId: varchar("customer_id")
+      .notNull()
+      .references(() => customers.id),
+    created: boolean("created"),
+  },
+  (table) => ({
+    pk: primaryKey({ columns: [table.runId, table.customerId] }),
+    customerIdx: index("import_run_customer_customer_id_idx").on(
+      table.customerId
+    ),
   })
 )
 

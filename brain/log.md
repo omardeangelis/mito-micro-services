@@ -3,7 +3,7 @@ domain: _root
 type: index
 links: []
 created: 2026-09-24
-updated: 2026-11-02
+updated: 2026-11-04
 ---
 
 # Brain — Log
@@ -11,6 +11,12 @@ updated: 2026-11-02
 Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest when over.
 
 <!-- Entries are appended by create-spec (spec creation) and docs-maintenance (ingest). Format:
+
+## [2026-11-04] implement | Import e assegnazione della Wave
+- Implemented: [[specs/crm/assegnazione-wave/SPEC]], 22 task del [[specs/crm/assegnazione-wave/PLAN]] in onde parallele con worker supervisionati; note in [[specs/crm/assegnazione-wave/IMPLEMENTATION-NOTES]]
+- Consegnati: traccia `import_run_customer` con la ricostruzione di D14, `wave_operation` per l'idempotenza, cinque endpoint del gruppo `import`, pagina `/dashboard/import/:id` con flusso, panoramica, riassegnazione e «Proroga», ordine della coda per scadenza; prototipo `import-wave` tolto
+- Revisione: [[specs/crm/assegnazione-wave/REPORT]], 10 verificatori, DO NOT SHIP per 4 MAJOR → corretti; seconda verifica su tre punti → chiusi; ship dopo le correzioni
+- Tech debt: [[tech-debt/crm/assegnazione-wave]]
 
 ## [2026-11-03] plan | Import e assegnazione della Wave
 - Created plan: [[specs/crm/assegnazione-wave/PLAN]]: 22 task in 11 onde, una PR verso `dev`

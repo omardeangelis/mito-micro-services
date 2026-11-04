@@ -180,3 +180,7 @@
 - [Snapshot move, fixture names](feedback_snapshot_move_and_fixture_name_checks.md) — recheck needs is_active; refresh snapshot on reread; fixture vs normalizer
 - [Plan component owner, band ties](feedback_plan_component_owner_and_band_ties.md) — shared UI made by later task; loading on wrong step; manual priority ties
 - [Spec-from-prototype checks](spec-from-prototype-checks.md) — placeholders without a data source, default vs range, abort-vs-skip races, moved ACs, one label used for two counts, unfaked new writes
+- [Correlated subplan volume](feedback_correlated_subplan_volume_probe.md) — check SubPlan loops; temp-table volume probe in rolled-back tx
+- [Retry-after-uncertain before value](feedback_retry_after_uncertain_before_value.md) — click-time ref overwritten by reread; same-task double click
+- [SQL mirror of JS fuzz](feedback_sql_js_mirror_fuzz.md) — PGlite diff vs real TS helper; imul LCG; hex-dump (NBSP/BOM look ASCII)
+- [UI pass: row click, tab walk](feedback_ui_pass_probe_traps_wave.md) — hit-area vacuous on tr onClick; inline-flex link in truncate cell clips ring

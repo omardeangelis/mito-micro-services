@@ -42,6 +42,20 @@ const integer = new Intl.NumberFormat("it-IT")
 export const count = (value: number | null) =>
   value === null ? "—" : integer.format(value)
 
+/**
+ * The Wave page of an import, when it is a completed Wave (AC2): the toast's
+ * «Assegna» and the history's row link there. `from` marks the way it's
+ * reached ("import": the toast of the end of the import). Anything else has
+ * no page: `null`.
+ */
+export function wavePageHref(
+  run: Pick<ImportSummary, "id" | "format" | "status">,
+  from?: "import"
+) {
+  if (run.format !== "wave" || run.status !== "completed") return null
+  return `/dashboard/import/${run.id}${from ? `?da=${from}` : ""}`
+}
+
 /** The notice of an import's end, in any page (AC21): the counts, or why not. */
 export function endingNotice(run: ImportSummary) {
   switch (run.status) {

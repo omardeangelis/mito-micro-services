@@ -1,7 +1,6 @@
 import { CalendarIcon } from "lucide-react"
 import { useState } from "react"
 import { type DateRange } from "react-day-picker"
-import { it } from "react-day-picker/locale"
 import { formatRange } from "@mito/domain/analytics/buckets"
 import {
   daysIn,
@@ -92,8 +91,6 @@ function RangeCalendar({
     <>
       <Calendar
         mode="range"
-        locale={it}
-        weekStartsOn={1}
         numberOfMonths={2}
         // The months before the end of the window: the end and the month
         // that leads to it

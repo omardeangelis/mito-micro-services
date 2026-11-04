@@ -147,6 +147,11 @@ const unservedGroups = Layer.mergeAll(
       .handle("start", unserved)
       .handle("active", unserved)
       .handle("list", unserved)
+      .handle("wave", unserved)
+      .handle("setDeadline", unserved)
+      .handle("assign", unserved)
+      .handle("moveCandidates", unserved)
+      .handle("move", unserved)
   )
 )
 
