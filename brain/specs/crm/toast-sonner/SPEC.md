@@ -9,7 +9,7 @@ links:
   - "[[chore/motion-stack]]"
   - "[[chore/migrazione-frontend-react]]"
 created: 2026-10-31
-updated: 2026-10-31
+updated: 2026-11-04
 ---
 
 # Spec: Toast di `apps/web` con Sonner
@@ -81,7 +81,7 @@ Questa spec allarga, per i soli toast, l'eccezione di Omar del 2026-10-29 sul de
 - **AC5.** Un toast di successo, di errore o informativo mostra l'icona del suo tipo, quella di Sonner, nel colore `-soft-foreground` del suo tipo; il neutro non ha icona.
 - **AC6.** Il testo del toast, pulsanti compresi, è in Geist e a 13 px; il titolo, quando c'è, ha peso 600.
 - **AC7.** Il toast ha il raggio di 8 px e l'ombra `0px 4px 12px rgba(0, 0, 0, 0.1)` di Sonner.
-- **AC8.** Dai 1024 px in su i toast stanno in basso a destra e sono larghi 356 px.
+- **AC8.** Dai 1024 px in su i toast stanno in basso a destra e sono larghi 356 px. _(Nota 2026-11-04: la posizione è in discussione; vedi OQ5 di [[specs/crm/design-system-web/SPEC]].)_
 - **AC9.** Un toast entra con l'animazione di Sonner, spostamento e dissolvenza in 400 ms, ed esce con la sua animazione di uscita, senza modifiche.
 - **AC10.** Con `prefers-reduced-motion` i toast compaiono e spariscono senza transizioni né animazioni.
 - **AC11.** Se arriva un toast mentre un altro è ancora aperto, il precedente resta nella pila, dietro il nuovo; con il puntatore sopra la pila i toast si aprono uno sopra l'altro e ognuno si legge per intero.

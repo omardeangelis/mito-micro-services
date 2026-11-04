@@ -8,8 +8,11 @@ links:
   - "[[specs/crm/analytics-effect/SPEC]]"
   - "[[domains/crm/concepts/stato-del-contatto]]"
   - "[[domains/crm/concepts/preferenze-di-layout]]"
+  - "[[specs/crm/home-admin/SPEC]]"
+  - "[[specs/crm/home-operatore/SPEC]]"
+  - "[[specs/crm/toast-sonner/SPEC]]"
 created: 2026-10-29
-updated: 2026-10-31
+updated: 2026-11-04
 ---
 
 # Spec: Design system di `apps/web` con la palette Indaco notte
@@ -152,7 +155,7 @@ I valori sono nelle appendici A, B e C. La spec cambia l'aspetto delle pagine, n
   - **Numeri:** a cifre tabellari.
 - **AC15.** Tab e toggle group:
   - **Binario:** fondo `muted`, bordo `border`.
-  - **Voce scelta:** fondo `card`, testo `foreground`, `shadow-xs` e contorno `border`.
+  - **Voce scelta:** fondo `card`, testo `foreground`, `shadow-xs` e contorno `border`. _(Nota 2026-11-04: nel toggle group non arriva a 3:1 e va riscritta; vedi OQ4.)_
   - **Altre voci:** testo `muted-foreground`.
 - **AC16.** I badge di stato, prodotto, import, ruolo e blacklist hanno fondo `tag-<tone>-bg`, bordo di 1 px `tag-<tone>-border` e testo `tag-<tone>-text`. Il tono è quello dell'appendice B.
 - **AC17.** La priorità è una scala di quattro barre al posto delle frecce di oggi. Vale ovunque compare `PriorityBadge`: lista e dettaglio di Contatti, riepilogo nella scheda cliente.
@@ -246,6 +249,8 @@ I valori sono nelle appendici A, B e C. La spec cambia l'aspetto delle pagine, n
 | 1 | La spec è un'eccezione a tre regole del piano frontend: R6 ("lo status quo" in prod), F2 (shadcn "con il tema di oggi", decisione di Leonardo) e F3 (le modifiche a una pagina già portata si fanno nelle due app). **Default:** le tre regole valgono per comportamento e contenuto, non per l'aspetto, quindi l'eccezione vale solo per colori, carattere e misure. **Rischio:** nel collaudo Leonardo confronta con Next in produzione, e le pagine avranno un aspetto diverso; la checklist però non controlla i colori | Constraints, collaudo di parità | Omar | Closed (2026-10-29): vale il default, deciso da Omar; non serve l'approvazione di Leonardo |
 | 2 | Due bordi stanno sotto il 3:1 che WCAG 1.4.11 chiede per riconoscere un controllo: il bordo dei campi (`input`, 1,53:1 su `card`) e il binario dello switch spento (`switch-off`, 1,64:1). **Raccomandazione:** il bordo dei campi resta com'è, perché ogni campo ha un'etichetta visibile e il focus è a 4,8:1. Lo switch spento passa a `control` (`#808080`, 3,95:1), perché il suo stato si legge solo dal binario e dalla posizione del pomello. **Costo:** gli switch spenti diventano più scuri che nel prototipo | AC4, AC12, appendice A | Omar | Closed (2026-10-29): la raccomandazione, vista in [confronto-indaco-notte.html](confronto-indaco-notte.html) |
 | 3 | Non c'è una pagina delle persone (`paths.personas` è `null`). **Default:** OPERATORE e ADMIN, su desktop, con l'OPERATORE nella coda di Contatti per tutta la giornata | Context | Omar | Open |
+| 4 | La voce scelta del toggle group (AC15) non si distingue dalle altre con 3:1: il suo fondo `card` misura 1,08 contro il binario `muted`, e il testo 2,81 contro quello delle altre voci, con lo stesso peso. AC48 di [[specs/crm/home-admin/SPEC\|home-admin]] chiede almeno 3:1 fra il fondo o il bordo della voce scelta e il binario. `primary-soft` non basta (circa 1,05 contro `muted`). **Default:** bordo di 2 px `primary`, che è il token dei controlli accesi (8,9:1 contro `muted`), con fondo `card` e testo `foreground`. In alternativa bordo `control` (3,7:1). La correzione cambia ogni pagina che usa il componente, quindi AC15 va riscritto qui | AC15, AC48 di [[specs/crm/home-admin/SPEC\|home-admin]] | Omar | Open |
+| 5 | Dove compaiono i toast, e come lasciano liberi i comandi? Oggi in basso a destra in tutta l'app, larghi 356 px (AC8 di [[specs/crm/toast-sonner/SPEC\|toast-sonner]]), dove coprono i comandi delle ultime righe. AC45 di [[specs/crm/home-admin/SPEC\|home-admin]] e AC49 di [[specs/crm/home-operatore/SPEC\|home-operatore]] chiedono lo stesso criterio: un toast non copre il comando con il fuoco né i pulsanti visibili delle righe, da 1024 a 1920 px di larghezza e da 768 a 1080 di altezza. **Default per la posizione:** in alto a destra in tutta l'app. Nessuna posizione fissa basta da sola: con la pagina scorsa, in alto a destra il toast sta sopra le prime righe a schermo. La decisione deve dire anche come il toast lascia liberi i comandi, e cambia AC8 di [[specs/crm/toast-sonner/SPEC\|toast-sonner]] | AC45 di [[specs/crm/home-admin/SPEC\|home-admin]], AC49 di [[specs/crm/home-operatore/SPEC\|home-operatore]], OQ14 delle due home | Omar | Open |
 
 ---
 

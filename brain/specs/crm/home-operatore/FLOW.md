@@ -4,8 +4,9 @@ type: flow
 links:
   - "[[specs/crm/home-operatore/SPEC]]"
   - "[[personas]]"
+  - "[[specs/crm/assegnazione-wave/SPEC]]"
 created: 2026-11-01
-updated: 2026-11-02
+updated: 2026-11-04
 ---
 
 # Flow map: Home dell'operatore — «Lavora da qui»
@@ -52,6 +53,7 @@ L'operatore apre la home la mattina, registra l'esito di ogni richiamo scaduto o
 | Esiti e «Salva richiamo» | l'utente lascia la home durante la registrazione | AC52 |
 | Esiti | l'utente lavora un'altra riga mentre la prima registra | AC23, AC26 |
 | Esiti e «Salva richiamo» | rifiutata (contatto passato a un altro, sostituito, richiamo da confermare, stato che non lo ammette) | AC27 |
+| Esiti e «Salva richiamo» | alert già lavorato: la riga si chiude con «Già lavorato da <nome> alle HH:mm» | AC27 |
 | «Salva richiamo» | giorno già passato | AC27 |
 | Esiti e «Salva richiamo» | sessione scaduta | AC27 |
 | «Salva richiamo» | messaggio oltre 500 caratteri | AC47 |
@@ -63,7 +65,7 @@ L'operatore apre la home la mattina, registra l'esito di ogni richiamo scaduto o
 | Righe chiuse | nuovo caricamento della home (escono) o ricarica della sezione (restano) | AC23 |
 | Righe aperte | non più dell'utente alla ricarica della sezione: si chiudono al loro posto | AC23, AC27 |
 | Quattro parti | ritorno alla scheda del browser | AC36 |
-| Righe a schermo | lavorate da un collega nel frattempo | AC27, open question 12 |
+| Righe a schermo | lavorate da un collega nel frattempo | AC27 |
 | Richiami da fare | vuoto, con o senza contatti da chiamare | AC24 |
 | Fatti oggi | vuoto | AC34 |
 | Fatti oggi | più di 8 chiamate | AC33 |
@@ -82,8 +84,9 @@ L'operatore apre la home la mattina, registra l'esito di ogni richiamo scaduto o
 - Manual checks still needed (VoiceOver + Chrome, Constraints della spec): Invio su «Appuntamento» della seconda riga e passaggio del fuoco alla riga seguente; apertura di «Richiamare»; «Riprova» con i richiami in errore.
 
 ## Persona dependencies
-- L'Admin assegna contatti a metà giornata: una riga già a schermo dell'operatore può non essere più sua, e la registrazione è rifiutata con il nome del nuovo operatore e il link al contatto (AC27).
-- Lo stesso alert nella home dell'assegnatario e del titolare del cliente: la seconda registrazione (open question 12).
+- L'Admin assegna o sposta contatti a metà giornata, anche dalla pagina della Wave: una riga già a schermo dell'operatore può non essere più sua, e la registrazione è rifiutata con il nome del nuovo operatore e il link al contatto (AC27).
+- Lo stesso alert nella home dell'assegnatario e del titolare del cliente: la seconda registrazione si chiude come già lavorata (AC27).
+- I contatti di una Wave arrivano nel numero «Da chiamare» e nell'ordine della lista; l'«oggi» con le Wave è fuori (AC9; Non-Goals di SPEC.md; [[specs/crm/assegnazione-wave/SPEC|assegnazione-wave]]).
 - Una chiamata registrata dal dettaglio del contatto compare in «Fatti oggi» al ritorno (AC28, AC36).
 - Alert aperti dopo la scadenza, registro delle chiamate, sei stati, rifiuti di «Registra chiamata» e lo stesso invio contato una volta: spec «Esiti, richiami e stati del contatto» (Prerequisito della spec, open question 13).
 - «Apri la lista» apre la lista Contatti con «Solo i miei», Da chiamare e Non risponde, e il totale coincide (AC10).
