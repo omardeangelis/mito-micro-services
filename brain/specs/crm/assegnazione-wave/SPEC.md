@@ -71,7 +71,7 @@ Tutti lavorano da PC fisso.
 - La reference di design è [[chore/crm/design-import-e-assegnazione-wave]] (decisioni del 2026-11-03, §2 e §3).
 - Il file Wave vero (`Wave-load.xlsx`, 388 righe) ha la colonna «data_scadenza», ma l'import non l'ha mai letta: è solo una colonna obbligatoria per riconoscere il formato, e per Omar riguarda la pratica, non la Wave. Le colonne «Codice Iniziativa» e «Descrizione Iniziativa» cambiano da cliente a cliente: dicono il suo datore di lavoro, non se il file è una Wave o una Promozione.
 
-**Revisioni del prototipo** del 2026-11-03, salvate accanto al prototipo in `UX-REVIEW.md` e `UI-REVIEW.md`:
+**Revisioni del prototipo** del 2026-11-03, salvate accanto a questa spec in `UX-REVIEW.md` e `UI-REVIEW.md` (fuori da `apps/web/src`, il cui gate dei colori accetta solo `.ts`, `.tsx` e `.css`):
 - `ux-advisor`: verdetto «proceed with decisions». Due P0, il flusso che non si chiude con 0 da assegnare e tre Invio che assegnano senza vedere i passi, e quattro P1. Mappa del flusso in [[specs/crm/assegnazione-wave/FLOW|FLOW.md]].
 - `ui-reviewer`: verdetto «proceed with decisions», misurato in Chromium 149 da 1024 a 1536 px, a 1× e 1,25×. Il P0 e due P1 riguardavano il passo «Gestione alert e ricontatti», che Omar ha poi tolto. Restano due P1, i numeri senza intestazione e l'ambra come solo segnale, e sei P2.
 

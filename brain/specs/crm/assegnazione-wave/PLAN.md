@@ -852,8 +852,7 @@ Ogni task comincia dal test di `tdd_target`, rosso. Finisce con i gate del §5 v
 - **depends_on**: [T21]
 - **location**: `apps/web/src/prototypes/import-wave/`, `apps/web/src/router.tsx`
 - **description**:
-  - Si cancellano la cartella `import-wave` (compresa `.claude/` al suo interno) e la sua voce in `prototypeRoutes`.
-  - `UX-REVIEW.md` e `UI-REVIEW.md` sono citati dalla spec: prima si spostano in `brain/specs/crm/assegnazione-wave/` e si aggiornano i rimandi della spec.
+  - Si cancellano la cartella `import-wave` e la sua voce in `prototypeRoutes`. `UX-REVIEW.md` e `UI-REVIEW.md` sono già accanto alla spec.
   - I prototipi `home-admin` e `home-operatore` restano: lo dice AC35 di home-admin.
 - **validation**:
   - `git grep "prototypes/import-wave"` vuoto fuori da `brain/`;
