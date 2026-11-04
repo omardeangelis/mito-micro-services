@@ -7,14 +7,15 @@ import { TestClock } from "effect/testing"
 import { customers } from "@mito/db/schema/customers"
 import {
   importRun,
+  importRunCustomer,
   importUpload,
   importUploadPart,
 } from "@mito/db/schema/importRun"
 import { practices } from "@mito/db/schema/pratiche"
 import { type Cells } from "@mito/domain/import/classify"
-import { waveColumns } from "@mito/domain/import/formats"
+import { standardColumns, waveColumns } from "@mito/domain/import/formats"
 import { toFileBody } from "@mito/domain/import/payload"
-import { waveCells } from "@mito/domain/import/_test/cells"
+import { standardCells, waveCells } from "@mito/domain/import/_test/cells"
 import { Db } from "../../../effect/db"
 import { ImportConfig, type ImportSettings, importSettings } from "../config"
 import { ImportQueueFailed } from "../errors"
@@ -616,6 +617,112 @@ describe("esecuzione dalla coda", () => {
         expect(yield* Effect.promise(() => customerCodes())).toEqual([])
         expect(yield* Effect.promise(() => uploads())).toEqual([])
       })
+  )
+})
+
+describe("traccia dei clienti della Wave (assegnazione-wave, AC29)", () => {
+  const trace = () =>
+    testDb
+      .select({
+        runId: importRunCustomer.runId,
+        tempID: customers.tempID,
+        created: importRunCustomer.created,
+      })
+      .from(importRunCustomer)
+      .innerJoin(customers, eq(customers.id, importRunCustomer.customerId))
+      .orderBy(asc(importRunCustomer.runId), asc(customers.tempID))
+
+  const startedWith = (rows: Cells[]) =>
+    Effect.gen(function* () {
+      const admin = yield* Effect.promise(() => createUser({ role: "ADMIN" }))
+      const uploadId = yield* uploadOf(admin.id, rows)
+      return value(
+        yield* run(
+          startImport({ uploadId, expected: [2, 3], startedBy: admin.id })
+        )
+      ).runId
+    })
+
+  it.effect(
+    "un import Wave con un cliente nuovo e uno esistente: created vero per il primo, falso per il secondo",
+    () =>
+      Effect.gen(function* () {
+        yield* Effect.promise(() =>
+          createCustomer({ tempID: "1", fiscalCode: CF_A })
+        )
+        const runId = yield* startedWith(twoRows)
+
+        expect(value(yield* run(executeImport(runId)))).toBe("completed")
+
+        expect(yield* Effect.promise(() => trace())).toEqual([
+          { runId, tempID: "1", created: false },
+          { runId, tempID: "2", created: true },
+        ])
+      })
+  )
+
+  it.effect(
+    "un secondo import sugli stessi clienti lascia le righe del primo e aggiunge le sue con created falso",
+    () =>
+      Effect.gen(function* () {
+        const first = yield* startedWith(twoRows)
+        value(yield* run(executeImport(first)))
+        const second = yield* startedWith(twoRows)
+
+        expect(value(yield* run(executeImport(second)))).toBe("completed")
+
+        expect(yield* Effect.promise(() => trace())).toEqual([
+          { runId: first, tempID: "1", created: true },
+          { runId: first, tempID: "2", created: true },
+          { runId: second, tempID: "1", created: false },
+          { runId: second, tempID: "2", created: false },
+        ])
+      })
+  )
+
+  it.effect("un import Standard non scrive traccia", () =>
+    Effect.gen(function* () {
+      const admin = yield* Effect.promise(() => createUser({ role: "ADMIN" }))
+      const uploadId = value(
+        yield* run(
+          createUpload({
+            createdBy: admin.id,
+            fileName: FILE_NAME,
+            format: "standard",
+            parts: 1,
+            data: gzipSync(
+              JSON.stringify(
+                toFileBody(standardColumns, [
+                  { row: 2, cells: standardCells() },
+                ])
+              )
+            ),
+          })
+        )
+      )
+      const { runId } = value(
+        yield* run(
+          startImport({ uploadId, expected: [2], startedBy: admin.id })
+        )
+      )
+
+      expect(value(yield* run(executeImport(runId)))).toBe("completed")
+
+      expect(yield* Effect.promise(() => customerCodes())).toEqual(["5001"])
+      expect(yield* Effect.promise(() => trace())).toEqual([])
+    })
+  )
+
+  it.effect("un import fallito a metà non scrive traccia", () =>
+    Effect.gen(function* () {
+      const runId = yield* startedWith(twoRows)
+      yield* Effect.promise(() => failNextInsertInto(importRunCustomer))
+
+      expect(value(yield* run(executeImport(runId)))).toBe("failed")
+
+      expect(yield* Effect.promise(() => customerCodes())).toEqual([])
+      expect(yield* Effect.promise(() => trace())).toEqual([])
+    })
   )
 })
 

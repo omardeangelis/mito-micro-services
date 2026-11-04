@@ -23,6 +23,8 @@ import {
   chat,
   customers,
   customerToPratica,
+  importRun,
+  importRunCustomer,
   messages,
   operators,
   practices,
@@ -124,6 +126,13 @@ const TABLES: readonly TableSpec[] = [
   spec("alert", alert, "alerts"),
   spec("task", task, "tasks"),
   spec("task_event_log", taskEventLog, "taskEventLog"),
+  spec("import_run", importRun, "importRuns"),
+  spec(
+    "import_run_customer",
+    importRunCustomer,
+    "importRunCustomers",
+    (row) => `${String(row.runId)}|${String(row.customerId)}`
+  ),
   spec(
     "app_milestone",
     appMilestone,

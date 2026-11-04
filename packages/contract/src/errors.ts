@@ -390,6 +390,41 @@ export class LastAdmin extends Schema.TaggedError<LastAdmin>()(
   { httpApiStatus: 400 }
 ) {}
 
+/** The import doesn't exist or isn't a completed Wave (D5 of assegnazione-wave; HTTP 404). */
+export class WaveNotFound extends Schema.TaggedError<WaveNotFound>()(
+  "WaveNotFound",
+  {},
+  { httpApiStatus: 404 }
+) {}
+
+/**
+ * The deadline isn't a day the Wave takes: not after today for a
+ * confirmation, not after the current deadline for an extension (AC7, AC20;
+ * HTTP 400)
+ */
+export class DeadlineInvalid extends Schema.TaggedError<DeadlineInvalid>()(
+  "DeadlineInvalid",
+  {},
+  { httpApiStatus: 400 }
+) {}
+
+/**
+ * The numbers the admin saw are no longer the Wave's, so what the preview
+ * showed can't be done as it was (AC16; HTTP 409)
+ */
+export class NumbersChanged extends Schema.TaggedError<NumbersChanged>()(
+  "NumbersChanged",
+  {},
+  { httpApiStatus: 409 }
+) {}
+
+/** No contact is left to move after the checks of D13 (AC26; HTTP 409). */
+export class NothingToMove extends Schema.TaggedError<NothingToMove>()(
+  "NothingToMove",
+  {},
+  { httpApiStatus: 409 }
+) {}
+
 const apiErrors = [
   Unauthorized,
   NotAnOperator,
@@ -434,6 +469,10 @@ const apiErrors = [
   OperatorIsAdmin,
   CannotDeactivateSelf,
   LastAdmin,
+  WaveNotFound,
+  DeadlineInvalid,
+  NumbersChanged,
+  NothingToMove,
 ] as const
 
 /** An error some endpoint declares. */

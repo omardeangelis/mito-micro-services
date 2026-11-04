@@ -102,6 +102,11 @@ export const task = createTable(
       .on(table.customerId)
       .where(sql`is_active`),
     customerIdIdx: index("task_customer_id_idx").on(table.customerId),
+    // The active contacts of an operator: the Wave's overview and queue
+    // (spec assegnazione-wave, D3)
+    operatorActiveIdx: index("task_operator_id_active_idx")
+      .on(table.operatorId)
+      .where(sql`is_active`),
   })
 )
 

@@ -8,13 +8,37 @@ import {
 import {
   DayPicker,
   getDefaultClassNames,
+  labelDayButton,
   type DayButton,
+  type Labels,
 } from "react-day-picker"
+import { it } from "react-day-picker/locale"
 
 import { Button, buttonVariants } from "@/components/ui/button"
 
 export type CalendarProps = React.ComponentProps<typeof DayPicker> & {
   buttonVariant?: React.ComponentProps<typeof Button>["variant"]
+}
+
+// MITO: the labels of the calendar are in Italian (AC33). A caller can pass its
+// own `labels` or `locale`, which win over these
+const italianLabels: Partial<Labels> = {
+  labelNav: () => "Navigazione dei mesi",
+  labelPrevious: () => "Mese precedente",
+  labelNext: () => "Mese successivo",
+  labelMonthDropdown: () => "Mese",
+  labelYearDropdown: () => "Anno",
+  // The day as the library names it in the locale, with «oggi» and
+  // «selezionato» said in Italian
+  labelDayButton: (date, modifiers, options, dateLib) => {
+    const day = labelDayButton(
+      date,
+      { ...modifiers, today: false, selected: false },
+      options,
+      dateLib
+    )
+    return `${modifiers.today ? "Oggi, " : ""}${day}${modifiers.selected ? ", selezionato" : ""}`
+  },
 }
 
 function Calendar({
@@ -25,6 +49,9 @@ function Calendar({
   buttonVariant = "ghost",
   formatters,
   components,
+  locale = it,
+  weekStartsOn = 1,
+  labels,
   ...props
 }: React.ComponentProps<typeof DayPicker> & {
   buttonVariant?: React.ComponentProps<typeof Button>["variant"]
@@ -41,9 +68,12 @@ function Calendar({
         className
       )}
       captionLayout={captionLayout}
+      locale={locale}
+      weekStartsOn={weekStartsOn}
+      labels={{ ...italianLabels, ...labels }}
       formatters={{
         formatMonthDropdown: (date) =>
-          date.toLocaleString("default", { month: "short" }),
+          date.toLocaleString(locale.code ?? "it", { month: "short" }),
         ...formatters,
       }}
       classNames={{

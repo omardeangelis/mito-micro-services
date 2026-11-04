@@ -43,7 +43,7 @@
 - [UI pass driver artifacts](feedback_ui_pass_driver_artifacts.md) — set viewport fires no resize (false stale popovers)
 - [Removed params, focus handoff, gates](feedback_removed_params_focus_handoff_gates.md) — URL writer vs reader names
 - [Probe the engine before calling a test vacuous](lesson_probe-engine-before-calling-a-test-vacuous.md) — 20-line PGlite probe settles
-- [Stale text after a ledger change](lesson_stale-text-after-ledger-change.md) — where plans keep old wording: Done tasks, headers, AC tables
+- [Stale text after a ledger change](lesson_stale-text-after-ledger-change.md) — plans and moved spec parts: Done tasks, Non-Goals, sibling FLOW.md
 - [Migration high-water mark and partial merges](lesson_migration-high-water-mark-and-partial-merges.md) — check limited-merge options against the
 - [Real migrate CLI probe](feedback_real_migrate_cli_probe.md) — run drizzle-kit migrate itself on template-cloned DBs; 0.31 swallows errors
 - [zsh/rg quoting](env_zsh-rg-quoting.md) — quote globs, use rg -g
@@ -177,3 +177,10 @@
 - [State invariant matrix](feedback_state_invariant_matrix.md) — for state-machine specs: action x state matrix, "doesn't close" lists, rejection precedence, conversion replay
 - [Embedded conversion, cutover](feedback_plan_embedded_conversion_and_cutover.md) — conversion in nightly job vs its ACs; manual-job cutover window
 - [TanStack offline pause](feedback_tanstack_offline_paused_mutation.md) — networkMode online pauses offline, auto-sends on reconnect
+- [Snapshot move, fixture names](feedback_snapshot_move_and_fixture_name_checks.md) — recheck needs is_active; refresh snapshot on reread; fixture vs normalizer
+- [Plan component owner, band ties](feedback_plan_component_owner_and_band_ties.md) — shared UI made by later task; loading on wrong step; manual priority ties
+- [Spec-from-prototype checks](spec-from-prototype-checks.md) — placeholders without a data source, default vs range, abort-vs-skip races, moved ACs, one label used for two counts, unfaked new writes
+- [Correlated subplan volume](feedback_correlated_subplan_volume_probe.md) — check SubPlan loops; temp-table volume probe in rolled-back tx
+- [Retry-after-uncertain before value](feedback_retry_after_uncertain_before_value.md) — click-time ref overwritten by reread; same-task double click
+- [SQL mirror of JS fuzz](feedback_sql_js_mirror_fuzz.md) — PGlite diff vs real TS helper; imul LCG; hex-dump (NBSP/BOM look ASCII)
+- [UI pass: row click, tab walk](feedback_ui_pass_probe_traps_wave.md) — hit-area vacuous on tr onClick; inline-flex link in truncate cell clips ring

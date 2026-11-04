@@ -11,12 +11,18 @@ import {
 } from "@mito/domain/import/payload"
 import { type Db, type DbError } from "../effect/db"
 import { type ErrorReporter } from "../effect/errorReporter"
+import { type CallsRegistryMissing } from "../services/export/callStats"
 import { type ImportError } from "../services/import/errors"
 import { activeImport, listImports } from "../services/import/history"
 import { importLayer } from "../services/import/live"
 import { lookupExisting } from "../services/import/lookup"
 import { startImport } from "../services/import/run"
 import { beginUpload, saveUploadPart } from "../services/import/upload"
+import { assignWave } from "../services/import/wave/assign"
+import { setDeadline } from "../services/import/wave/deadline"
+import { move, moveCandidates } from "../services/import/wave/move"
+import { type WaveError } from "../services/import/wave/errors"
+import { readWave } from "../services/import/wave/read"
 import { unexpectedAs500 } from "./unexpected"
 
 /** The input of `list`, as the procedure's */
@@ -38,8 +44,8 @@ const parsed = <T>(schema: z.ZodType<T>, input: unknown) =>
         )
   })
 
-/** What `toApiErrors` maps: the import's errors and its own input check */
-type ImportFailure = ImportError | Api.ImportInputInvalid
+/** What `toApiErrors` maps: the import's errors, the Wave's and its own input check */
+type ImportFailure = ImportError | WaveError | Api.ImportInputInvalid
 
 /** The error of the contract with the tag of `E` */
 type ApiErrorOf<E> = E extends { readonly _tag: infer Tag }
@@ -70,26 +76,37 @@ const apiErrors: {
     }),
   ImportUnavailable: () => new Api.ImportUnavailable(),
   ImportQueueFailed: () => new Api.ImportQueueFailed(),
+  WaveNotFound: () => new Api.WaveNotFound(),
+  DeadlineInvalid: () => new Api.DeadlineInvalid(),
+  NumbersChanged: () => new Api.NumbersChanged(),
+  NothingToMove: () => new Api.NothingToMove(),
+  RequestIdConflict: () => new Api.RequestIdConflict(),
 }
 
 /** `error` as the contract's, by its tag */
 const apiError = (error: ImportFailure) =>
   (apiErrors[error._tag] as (error: ImportFailure) => Api.ApiError)(error)
 
+/** What `toApiErrors` leaves to `unexpectedAs500`: a 500 */
+type Unexpected = DbError | CallsRegistryMissing
+
 /**
  * The failures of an import's program as those of the contract, tag by tag,
- * so each endpoint declares only its own; `DbError` stays
+ * so each endpoint declares only its own; `DbError` and
+ * `CallsRegistryMissing` stay
  */
-const toApiErrors = <A, E extends ImportFailure | DbError, R>(
+const toApiErrors = <A, E extends ImportFailure | Unexpected, R>(
   program: Effect.Effect<A, E, R>
 ) =>
   program.pipe(
     Effect.mapError((error) =>
-      error._tag === "DbError" ? error : apiError(error)
+      error._tag === "DbError" || error._tag === "CallsRegistryMissing"
+        ? error
+        : apiError(error)
     )
   ) as Effect.Effect<
     A,
-    ApiErrorOf<Exclude<E, DbError>> | Extract<E, DbError>,
+    ApiErrorOf<Exclude<E, Unexpected>> | Extract<E, Unexpected>,
     R
   >
 
@@ -176,6 +193,64 @@ export const importGroupLayer = HttpApiBuilder.group(
             Effect.flatMap(({ page }) => listImports(page)),
             Effect.provide(importLayer),
             unexpectedAs500("list"),
+            Effect.provide(services)
+          )
+        )
+        .handle("wave", ({ params }) =>
+          readWave(params.id).pipe(
+            toApiErrors,
+            unexpectedAs500("wave"),
+            Effect.provide(services)
+          )
+        )
+        .handle("setDeadline", ({ params, payload }) =>
+          setDeadline(params.id, payload).pipe(
+            toApiErrors,
+            unexpectedAs500("setDeadline"),
+            Effect.provide(services)
+          )
+        )
+        .handle("assign", ({ params, payload }) =>
+          Effect.gen(function* () {
+            const { actor } = yield* CurrentUser
+            return yield* assignWave({
+              runId: params.id,
+              requestId: payload.requestId,
+              actorOperatorId: actor.operatorId,
+              receivers: payload.receivers,
+            })
+          }).pipe(
+            // Past its 60 s (D17): a 500, the uncertain outcome of the web
+            Effect.catchTag("WaveTimedOut", (error) => Effect.die(error)),
+            toApiErrors,
+            unexpectedAs500("assign"),
+            Effect.provide(services)
+          )
+        )
+        .handle("moveCandidates", ({ params, payload }) =>
+          moveCandidates(params.id, payload.from).pipe(
+            toApiErrors,
+            unexpectedAs500("moveCandidates"),
+            Effect.provide(services)
+          )
+        )
+        .handle("move", ({ params, payload }) =>
+          Effect.gen(function* () {
+            const { actor } = yield* CurrentUser
+            return yield* move({
+              runId: params.id,
+              requestId: payload.requestId,
+              actorOperatorId: actor.operatorId,
+              which: payload.which,
+              strategy: payload.strategy,
+              contacts: payload.contacts,
+              receivers: payload.receivers,
+            })
+          }).pipe(
+            // Past its 60 s (D17): a 500, the uncertain outcome of the web
+            Effect.catchTag("WaveTimedOut", (error) => Effect.die(error)),
+            toApiErrors,
+            unexpectedAs500("move"),
             Effect.provide(services)
           )
         )

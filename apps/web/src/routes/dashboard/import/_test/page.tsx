@@ -1,5 +1,5 @@
 import { type ReactNode } from "react"
-import { createMemoryRouter, RouterProvider } from "react-router"
+import { createMemoryRouter, Outlet, RouterProvider } from "react-router"
 import { onTestFinished, vi } from "vitest"
 import { type ImportReader } from "@mito/client/import/readImportFile"
 import { type Role } from "@mito/contract/schemas"
@@ -45,12 +45,23 @@ export function renderImport(
       opened.push(file)
       return reader
     })
+  // As the shell: the notice of an import's end sits in the layout of
+  // /dashboard, inside the router, so the toast's link can navigate. The Wave
+  // page stands for `/dashboard/import/:id`
   const router = createMemoryRouter(
     [
       {
-        path: "/dashboard/import",
+        path: "/dashboard",
         errorElement: <p>errore della rotta</p>,
-        element: options.ui ?? <ImportPage />,
+        element: (
+          <ImportStatusProvider>
+            <Outlet />
+          </ImportStatusProvider>
+        ),
+        children: [
+          { path: "import", element: options.ui ?? <ImportPage /> },
+          { path: "import/:id", element: <p>pagina della Wave</p> },
+        ],
       },
     ],
     { initialEntries: ["/dashboard/import"] }
@@ -64,9 +75,7 @@ export function renderImport(
     ...renderWithApi(
       <UserPreferenceContext value={store}>
         <OpenImportFile value={open}>
-          <ImportStatusProvider>
-            <RouterProvider router={router} />
-          </ImportStatusProvider>
+          <RouterProvider router={router} />
         </OpenImportFile>
       </UserPreferenceContext>,
       { handlers: backend.handlers, auth: signedInAs(ada, role ?? "ADMIN") }

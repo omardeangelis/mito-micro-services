@@ -119,7 +119,16 @@ export const routes: RouteObject[] = [
           },
           {
             path: "import",
-            lazy: () => import("./routes/dashboard/import/ImportPage"),
+            children: [
+              {
+                index: true,
+                lazy: () => import("./routes/dashboard/import/ImportPage"),
+              },
+              {
+                path: ":id",
+                lazy: () => import("./routes/dashboard/import/wave/WavePage"),
+              },
+            ],
           },
           {
             // Where the server sends a new user, and the old tabs

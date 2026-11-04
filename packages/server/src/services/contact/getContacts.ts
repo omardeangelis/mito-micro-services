@@ -24,9 +24,10 @@ import {
   type ContactState,
   toContactState,
 } from "@mito/domain/contact/status"
-import { romeDayBounds } from "@mito/domain/contact/time"
+import { romeDay as romeDayOf, romeDayBounds } from "@mito/domain/contact/time"
 import { type TaskStatus } from "@mito/domain/schemas"
 import { customers, type blackListStatus } from "@mito/db/schema/customers"
+import { importRun, importRunCustomer } from "@mito/db/schema/importRun"
 import { operators } from "@mito/db/schema/operators"
 import { alert, task } from "@mito/db/schema/task"
 import { type Db, type DbError, query } from "../../effect/db"
@@ -194,13 +195,37 @@ const sortPriority = (alertEnd: Date) => sql`CASE
 END`
 
 /**
+ * The second key of the priority order (AC28, D15): the nearest deadline among
+ * the open Waves of the contact's customer (`deadline` today in Rome or later),
+ * only for a Da chiamare or Non risponde without manual priority; NULL for the
+ * others, and for a customer in no open Wave. `today` is the Rome day. Inside
+ * the 130 group (alert due) the contacts still in a queue state sort by this
+ * key too: it depends on the state, not on the priority value.
+ */
+const waveDeadline = (today: string) => sql`CASE
+  WHEN NOT COALESCE(${task.customPriority}, false)
+    AND (${task.state} IS NULL OR ${task.state} IN ('chiamare', 'followup', 'nessuno', 'non risponde'))
+  THEN (
+    SELECT MIN(${importRun.deadline})
+    FROM ${importRunCustomer}
+    INNER JOIN ${importRun} ON ${importRun.id} = ${importRunCustomer.runId}
+    WHERE ${importRunCustomer.customerId} = ${customers.id}
+      AND ${importRun.deadline} >= ${today}::date
+  )
+END`
+
+/**
  * The order of the list (AC13): the contacts with no value in the column go
  * last in both directions, and the task id settles ties so a page never
- * repeats a row (AC15).
+ * repeats a row (AC15). By priority the deadline of the open Waves follows the
+ * priority, reversed against `sortedBy` so the nearest comes first in `desc`:
+ * NULLS LAST in `desc` and NULLS FIRST in `asc`, which makes `asc` the exact
+ * reverse of `desc` (AC28).
  */
 const buildContactsOrder = (
   filters: ContactsFilters,
-  alertEnd: Date
+  alertEnd: Date,
+  today: string
 ): SQL[] => {
   const ascending = filters.sortedBy === "asc"
   const nullsLast = (column: SQLWrapper) =>
@@ -217,7 +242,19 @@ const buildContactsOrder = (
             updatedAt: task.updatedAt,
           }[filters.orderBy],
         ]
-  return [...columns.map(nullsLast), ascending ? asc(task.id) : desc(task.id)]
+  const deadlineKey =
+    filters.orderBy === "priority"
+      ? [
+          ascending
+            ? sql`${waveDeadline(today)} DESC NULLS FIRST`
+            : sql`${waveDeadline(today)} ASC NULLS LAST`,
+        ]
+      : []
+  return [
+    ...columns.map(nullsLast),
+    ...deadlineKey,
+    ascending ? asc(task.id) : desc(task.id),
+  ]
 }
 
 /** The customer the list is filtered on, or null without a filter. */
@@ -312,6 +349,7 @@ export const getContacts = Effect.fn("contact.getContacts")(function* ({
 > {
   const now = yield* Clock.currentTimeMillis
   const alertEnd = romeDayBounds(new Date(now)).end
+  const today = romeDayOf(new Date(now))
   const where = buildContactsWhere(filters, actor)
   const contacts = query((client) =>
     client
@@ -321,7 +359,7 @@ export const getContacts = Effect.fn("contact.getContacts")(function* ({
       .leftJoin(operators, eq(operators.id, task.operatorId))
       .leftJoin(alert, openAlertOf)
       .where(where)
-      .orderBy(...buildContactsOrder(filters, alertEnd))
+      .orderBy(...buildContactsOrder(filters, alertEnd, today))
       .limit(filters.perPage)
       .offset((filters.page - 1) * filters.perPage)
   )

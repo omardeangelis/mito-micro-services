@@ -271,6 +271,8 @@ I valori sono nelle appendici A, B e C. La spec cambia l'aspetto delle pagine, n
 | Geist al posto di Inter, densità compatta | Sono le scelte del preset: più righe di coda nella stessa schermata |
 | Barra laterale aperta a 228 px come nel prototipo, chiusa a 64 px come oggi | Le icone ci stanno già |
 | Valori in oklch | È il formato del prototipo e di Tailwind 4 |
+| Bottoni `xs` e `icon-xs` a 24 px, non 22 (appendice C) | Il bersaglio di 24 × 24 px di [[specs/crm/assegnazione-wave/SPEC]] (AC34) non si raggiunge a 22 px |
+| Calendario in italiano e settimana dal lunedì di default; i chiamanti possono cambiarli | Etichette dei controlli e dei giorni in italiano e settimana che inizia di lunedì ([[specs/crm/assegnazione-wave/SPEC]], AC33) |
 
 ---
 
@@ -388,7 +390,7 @@ Ogni tono ha `tag-<tone>-bg`, `tag-<tone>-border`, `tag-<tone>-text` (con il suo
 
 | Elemento | Misura |
 |---|---|
-| Altezza di bottoni, campi, select e trigger | taglia normale 30 px, `sm` 26 px, `xs` 22 px, `lg` 34 px; i bottoni-icona sono quadrati dello stesso lato |
+| Altezza di bottoni, campi, select e trigger | taglia normale 30 px, `sm` 26 px, `xs` 24 px, `lg` 34 px; i bottoni-icona sono quadrati dello stesso lato |
 
 **Raggi**
 

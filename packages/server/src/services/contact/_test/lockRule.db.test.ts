@@ -6,6 +6,7 @@ import { eq } from "drizzle-orm"
 import { type TaskStatus } from "@mito/domain/schemas"
 import { messages } from "@mito/db/schema/chat"
 import { customers } from "@mito/db/schema/customers"
+import { importRun, importRunCustomer } from "@mito/db/schema/importRun"
 import { chatToOperator } from "@mito/db/schema/relations/chatToOperator"
 import { task } from "@mito/db/schema/task"
 import { query, transaction } from "../../../effect/db"
@@ -13,6 +14,8 @@ import { processDueAlerts } from "../processDueAlerts"
 import { registerCall } from "../registerCall"
 import { removeCallback } from "../removeCallback"
 import { deactivateOperator } from "../../operator/deactivate"
+import { assignWave } from "../../import/wave/assign"
+import { move } from "../../import/wave/move"
 import { createTestCaller } from "@/test/caller"
 import {
   activeTasksOf,
@@ -861,5 +864,141 @@ describe("regola dei lock: removeCallback", () => {
         { action: "state_change", toState: "app.to" },
       ])
     })
+  )
+})
+
+/** A completed Wave of `admin` with `customerIds` in its trace */
+const insertWave = async (admin: { userId: string }, customerIds: string[]) => {
+  const [run] = await testDb
+    .insert(importRun)
+    .values({
+      startedBy: admin.userId,
+      fileName: "1026_WAVE_NOV.xlsx",
+      format: "wave",
+      status: "completed",
+      rowsTotal: customerIds.length,
+      rowsDiscarded: 0,
+    })
+    .returning()
+  await testDb.insert(importRunCustomer).values(
+    customerIds.map((customerId) => ({
+      runId: run!.id,
+      customerId,
+      created: true,
+    }))
+  )
+  return run!
+}
+
+// «Assegna» of a Wave locks the receivers' users, then every customer of the
+// Wave without an operator, then their active contacts (D11 of
+// assegnazione-wave)
+describe("regola dei lock: assignWave", () => {
+  it.effect(
+    "un cliente senza contatto e uno con un contatto attivo senza operatore: prende il lock di ogni cliente",
+    () =>
+      Effect.gen(function* () {
+        const admin = yield* Effect.promise(() =>
+          createOperator({ role: "ADMIN" })
+        )
+        const ada = yield* Effect.promise(() => createOperator())
+        const colleague = yield* Effect.promise(() => createOperator())
+        const bare = yield* Effect.promise(() =>
+          createCustomer({ operatorId: null })
+        )
+        const orphan = yield* Effect.promise(() =>
+          createCustomer({ operatorId: colleague.id })
+        )
+        const orphanContact = yield* Effect.promise(() =>
+          createTask({
+            customerId: orphan.id,
+            operatorId: null,
+            state: "non risponde",
+          })
+        )
+        const ofColleague = yield* Effect.promise(() => seedContact(colleague))
+        const run = yield* Effect.promise(() =>
+          insertWave(admin, [bare.id, orphan.id, ofColleague.customer.id])
+        )
+        yield* Effect.promise(() => assertCustomerLockedOnWrite())
+
+        const exit = yield* assignWave({
+          runId: run.id,
+          requestId: crypto.randomUUID(),
+          actorOperatorId: admin.id,
+          receivers: [{ operatorId: ada.id, count: 2 }],
+        }).pipe(provideServer, Effect.exit)
+
+        if (Exit.isFailure(exit)) throw new Error(Cause.pretty(exit.cause))
+        expect(
+          yield* Effect.promise(() => activeTasksOf(bare.id))
+        ).toMatchObject([{ operatorId: ada.id, state: "chiamare" }])
+        expect(yield* Effect.promise(() => tasksOf(orphan.id))).toMatchObject([
+          { id: orphanContact.id, operatorId: ada.id, state: "non risponde" },
+        ])
+        expect(
+          yield* Effect.promise(() => tasksOf(ofColleague.customer.id))
+        ).toMatchObject([
+          { id: ofColleague.contact.id, operatorId: colleague.id },
+        ])
+      })
+  )
+})
+
+// «Sposta» of a Wave locks the givers' and receivers' users, then the
+// customers of the chosen contacts, then their active contacts (D11 of
+// assegnazione-wave)
+describe("regola dei lock: move della Wave", () => {
+  it.effect(
+    "due contatti di un collega, uno con un alert: prende il lock di ogni cliente",
+    () =>
+      Effect.gen(function* () {
+        const admin = yield* Effect.promise(() =>
+          createOperator({ role: "ADMIN" })
+        )
+        const ada = yield* Effect.promise(() => createOperator())
+        const colleague = yield* Effect.promise(() => createOperator())
+        const toCall = yield* Effect.promise(() => seedContact(colleague))
+        const noAnswer = yield* Effect.promise(() =>
+          seedContact(colleague, "non risponde")
+        )
+        const open = yield* Effect.promise(() =>
+          createAlert({ taskId: noAnswer.contact.id, deadline })
+        )
+        const run = yield* Effect.promise(() =>
+          insertWave(admin, [toCall.customer.id, noAnswer.customer.id])
+        )
+        yield* Effect.promise(() => assertCustomerLockedOnWrite())
+
+        const exit = yield* move({
+          runId: run.id,
+          requestId: crypto.randomUUID(),
+          actorOperatorId: admin.id,
+          which: "both",
+          strategy: "equal",
+          contacts: [
+            {
+              fromOperatorId: colleague.id,
+              taskIds: [toCall.contact.id, noAnswer.contact.id],
+            },
+          ],
+          receivers: [{ operatorId: ada.id, count: 2 }],
+        }).pipe(provideServer, Effect.exit)
+
+        if (Exit.isFailure(exit)) throw new Error(Cause.pretty(exit.cause))
+        expect(
+          yield* Effect.promise(() => tasksOf(toCall.customer.id))
+        ).toMatchObject([{ id: toCall.contact.id, operatorId: ada.id }])
+        expect(
+          yield* Effect.promise(() => tasksOf(noAnswer.customer.id))
+        ).toMatchObject([
+          {
+            id: noAnswer.contact.id,
+            operatorId: ada.id,
+            state: "non risponde",
+            alertId: open.id,
+          },
+        ])
+      })
   )
 })

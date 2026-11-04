@@ -159,9 +159,9 @@ describe("the calendar, more (AC9, AC42)", () => {
     const pick = (name: RegExp) =>
       user.click(within(dialog).getByRole("button", { name }))
     // From September-October 2026 to September-October 2025, and back
-    await months(/mese precedente/, 12)
+    await months(/mese precedente/i, 12)
     await pick(/\b30 ottobre 2025/)
-    await months(/mese successivo/, 12)
+    await months(/mese successivo/i, 12)
 
     // 30 October 2025 – 30 October 2026 are 366 days
     await pick(/\b30 ottobre 2026/)
@@ -173,9 +173,9 @@ describe("the calendar, more (AC9, AC42)", () => {
     ).toBeEnabled()
 
     // From the day before, the same end is the 367th day
-    await months(/mese precedente/, 12)
+    await months(/mese precedente/i, 12)
     await pick(/\b29 ottobre 2025/)
-    await months(/mese successivo/, 12)
+    await months(/mese successivo/i, 12)
     expect(
       within(dialog).getByRole("button", { name: /\b30 ottobre 2026/ })
     ).toBeDisabled()

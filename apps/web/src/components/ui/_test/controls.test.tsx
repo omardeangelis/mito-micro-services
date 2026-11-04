@@ -43,6 +43,27 @@ describe("Checkbox", () => {
   })
 })
 
+describe("Le icone di checkbox e radio sono nascoste ai lettori di schermo", () => {
+  it("lo spunta e il trattino della checkbox hanno aria-hidden", () => {
+    render(<Checkbox aria-label="Seleziona" defaultChecked />)
+    const icons = screen
+      .getByRole("checkbox", { name: "Seleziona" })
+      .querySelectorAll("svg")
+    expect(icons.length).toBeGreaterThan(0)
+    icons.forEach((icon) => expect(icon).toHaveAttribute("aria-hidden", "true"))
+  })
+
+  it("il pallino della radio ha aria-hidden", () => {
+    render(
+      <RadioGroup defaultValue="a">
+        <RadioGroupItem value="a" aria-label="Uno" />
+      </RadioGroup>
+    )
+    const dot = screen.getByRole("radio", { name: "Uno" }).querySelector("svg")
+    expect(dot).toHaveAttribute("aria-hidden", "true")
+  })
+})
+
 describe("RadioGroupItem", () => {
   it("è rotondo, di 16 px, bordo control; scelto ha bordo e pallino primary", () => {
     render(

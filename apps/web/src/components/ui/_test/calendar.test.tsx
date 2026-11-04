@@ -28,11 +28,26 @@ describe("Calendar", () => {
 
     expect(screen.getByRole("grid")).toBeInTheDocument()
     // The day is a button inside its cell, named by its whole date
-    await user.click(screen.getByRole("button", { name: /October 15th, 2026/ }))
+    await user.click(screen.getByRole("button", { name: /15 ottobre 2026/ }))
 
     expect(
       screen.getByRole("status", { name: "Data scelta" })
     ).toHaveTextContent("15")
+  })
+
+  it("senza locale è in italiano: etichette dei controlli e settimana dal lunedì", () => {
+    render(<Calendar mode="single" defaultMonth={new Date(2026, 9, 1)} />)
+
+    expect(
+      screen.getByRole("button", { name: "Mese precedente" })
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole("button", { name: "Mese successivo" })
+    ).toBeInTheDocument()
+    // The weekday headers are hidden from the accessible tree: first one is Monday
+    expect(
+      screen.getAllByRole("columnheader", { hidden: true })[0]
+    ).toHaveAttribute("aria-label", "lunedì")
   })
 
   it("con captionLayout dropdown mostra mese e anno da scegliere", () => {

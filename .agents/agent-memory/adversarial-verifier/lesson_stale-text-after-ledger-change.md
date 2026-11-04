@@ -11,4 +11,6 @@ After a decision changes a gate or a sequence (e.g. "G4a closes after the deploy
 
 **How to apply:** after reading the gate cells, grep the whole plan for the old phrase (`prima del deploy`, `Stato: da fare`, `solo dopo G`, `SHIP` next to a report that says DO NOT SHIP) and for every number/label that has two homes (complexity in wave section vs task block, "0 su (a) e (b)" in the gate vs the task step). Also check whether a "salvo eccezioni" clause present in one place is missing in the others.
 
+Specs too: when a decision or a part moves out of one spec into another, the Context bullets of the new spec ("scadenza proposta dal file") and, in the source spec, the Non-Goals, Constraints, the Definizioni body (header renamed, body still old term), OQ cross-refs, untouched ACs that still mention the moved part (AC30 rules for a removed dialog) and the sibling `FLOW.md` (often never edited) keep the old wording. Grep the old term and every moved AC id in SPEC and FLOW of both specs.
+
 Also: before accepting "helper X does not do Y", grep its call sites for optional parameters (a `selectedTable` argument already whitelisted column names for one page and was not mentioned).

@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query"
-import { act, screen, within } from "@testing-library/react"
+import { act, fireEvent, screen, within } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { customerKeys } from "@/api/customer"
 import { useImportList } from "@/api/import"
@@ -192,5 +192,66 @@ describe("ImportStatusProvider", () => {
     await wait(30_000)
 
     expect(backend.asked("active")).toBe(0)
+  })
+
+  it("alla fine di una Wave il toast ha «Assegna», che apre la sua pagina dal passo «da import» (AC2)", async () => {
+    const backend = fakeImport({ active: importRun() })
+    const { router } = renderStatus(backend)
+    await wait(0)
+
+    backend.state.active = completedRun
+    await wait(3100)
+
+    const notice = screen.getByRole("region", { name: "Notifiche (F8)" })
+    fireEvent.click(within(notice).getByRole("link", { name: "Assegna" }))
+    await wait(0)
+
+    expect(router.state.location.pathname).toBe("/dashboard/import/7")
+    expect(router.state.location.search).toBe("?da=import")
+    expect(screen.getByText("pagina della Wave")).toBeTruthy()
+  })
+
+  it("il toast con «Assegna» dura 10 s come gli altri (AC2)", async () => {
+    const backend = fakeImport({ active: importRun() })
+    renderStatus(backend)
+    await wait(0)
+
+    backend.state.active = completedRun
+    await wait(3100)
+    expect(screen.getByRole("link", { name: "Assegna" })).toBeTruthy()
+
+    await wait(9500)
+    expect(
+      screen.getByText("Import completato").closest("[data-sonner-toast]")
+    ).toHaveAttribute("data-removed", "false")
+    await wait(500 + 250)
+    expect(screen.queryByText("Import completato")).toBeNull()
+  })
+
+  it("il toast di un import Standard completato non ha «Assegna» (AC2)", async () => {
+    const backend = fakeImport({ active: importRun() })
+    renderStatus(backend)
+    await wait(0)
+
+    backend.state.active = { ...completedRun, format: "standard" }
+    await wait(3100)
+
+    expect(screen.getByText("Import completato")).toBeTruthy()
+    expect(screen.queryByRole("link", { name: "Assegna" })).toBeNull()
+  })
+
+  it("un import fallito non ha «Assegna» (AC2)", async () => {
+    const backend = fakeImport({ active: importRun() })
+    renderStatus(backend)
+    await wait(0)
+
+    backend.state.active = importRun({
+      status: "failed",
+      failureReason: "Errore del database (codice 40001)",
+    })
+    await wait(3500)
+
+    expect(screen.getByText("Import fallito")).toBeTruthy()
+    expect(screen.queryByRole("link", { name: "Assegna" })).toBeNull()
   })
 })

@@ -4,9 +4,12 @@ import { Cause, Effect, Exit } from "effect"
 import { eq } from "drizzle-orm"
 import { type TaskStatus } from "@mito/domain/schemas"
 import { customers } from "@mito/db/schema/customers"
+import { importRun, importRunCustomer } from "@mito/db/schema/importRun"
 import { task } from "@mito/db/schema/task"
 import { processDueAlerts } from "../processDueAlerts"
 import { deactivateOperator } from "../../operator/deactivate"
+import { assignWave } from "../../import/wave/assign"
+import { move } from "../../import/wave/move"
 import { createTestCaller } from "@/test/caller"
 import {
   activeTasksOf,
@@ -616,6 +619,155 @@ describe("regola «stesso operatore»: deactivateOperator", () => {
         expect(
           yield* Effect.promise(() => logOf(ofTarget.customer.id))
         ).toEqual([])
+      })
+  )
+})
+
+/** A completed Wave of `admin` with `customerIds` in its trace */
+const insertWave = async (admin: { userId: string }, customerIds: string[]) => {
+  const [run] = await testDb
+    .insert(importRun)
+    .values({
+      startedBy: admin.userId,
+      fileName: "1026_WAVE_NOV.xlsx",
+      format: "wave",
+      status: "completed",
+      rowsTotal: customerIds.length,
+      rowsDiscarded: 0,
+    })
+    .returning()
+  await testDb.insert(importRunCustomer).values(
+    customerIds.map((customerId) => ({
+      runId: run!.id,
+      customerId,
+      created: true,
+    }))
+  )
+  return run!
+}
+
+describe("regola «stesso operatore»: assignWave", () => {
+  it.effect(
+    "i clienti senza operatore passano a chi riceve con i loro contatti, nuovi o presi senza operatore, con le righe dei contatti",
+    () =>
+      Effect.gen(function* () {
+        const admin = yield* Effect.promise(() =>
+          createOperator({ role: "ADMIN" })
+        )
+        const ada = yield* Effect.promise(() => createOperator())
+        const colleague = yield* Effect.promise(() => createOperator())
+        const bare = yield* Effect.promise(() =>
+          createCustomer({ operatorId: null })
+        )
+        // A customer of a colleague with an active contact without operator
+        const orphan = yield* Effect.promise(() =>
+          createCustomer({ operatorId: colleague.id })
+        )
+        const orphanContact = yield* Effect.promise(() =>
+          createTask({ customerId: orphan.id, operatorId: null })
+        )
+        // Both without an operator: aligned
+        const unowned = yield* Effect.promise(() => seedContact(null))
+        const run = yield* Effect.promise(() =>
+          insertWave(admin, [bare.id, orphan.id, unowned.customer.id])
+        )
+        yield* Effect.promise(() => assertContactOperatorMatchesCustomer())
+
+        const exit = yield* assignWave({
+          runId: run.id,
+          requestId: crypto.randomUUID(),
+          actorOperatorId: admin.id,
+          receivers: [{ operatorId: ada.id, count: 3 }],
+        }).pipe(provideServer, Effect.exit)
+
+        if (Exit.isFailure(exit)) throw new Error(Cause.pretty(exit.cause))
+        for (const id of [bare.id, orphan.id, unowned.customer.id]) {
+          const { customer, active } = yield* Effect.promise(() =>
+            expectAligned(id)
+          )
+          expect(customer.operatorId).toBe(ada.id)
+          expect(active).toHaveLength(1)
+        }
+        for (const [customerId, taskId] of [
+          [orphan.id, orphanContact.id],
+          [unowned.customer.id, unowned.contact.id],
+        ] as const) {
+          expect(yield* Effect.promise(() => reassignRows(customerId))).toEqual(
+            expect.arrayContaining([
+              expect.objectContaining({
+                taskId,
+                source: "bulk",
+                fromOperatorId: null,
+                toOperatorId: ada.id,
+              }),
+            ])
+          )
+        }
+      })
+  )
+})
+
+describe("regola «stesso operatore»: move della Wave", () => {
+  it.effect(
+    "i contatti scelti passano a chi riceve con i loro clienti, con le righe dei contatti",
+    () =>
+      Effect.gen(function* () {
+        const admin = yield* Effect.promise(() =>
+          createOperator({ role: "ADMIN" })
+        )
+        const ada = yield* Effect.promise(() => createOperator())
+        const colleague = yield* Effect.promise(() => createOperator())
+        const seeded = yield* Effect.promise(async () => [
+          await seedContact(colleague),
+          await seedContact(colleague, "non risponde"),
+        ])
+        const run = yield* Effect.promise(() =>
+          insertWave(
+            admin,
+            seeded.map((s) => s.customer.id)
+          )
+        )
+        yield* Effect.promise(() => assertContactOperatorMatchesCustomer())
+
+        const exit = yield* move({
+          runId: run.id,
+          requestId: crypto.randomUUID(),
+          actorOperatorId: admin.id,
+          which: "both",
+          strategy: "equal",
+          contacts: [
+            {
+              fromOperatorId: colleague.id,
+              taskIds: seeded.map((s) => s.contact.id),
+            },
+          ],
+          receivers: [{ operatorId: ada.id, count: 2 }],
+        }).pipe(provideServer, Effect.exit)
+
+        if (Exit.isFailure(exit)) throw new Error(Cause.pretty(exit.cause))
+        for (const { customer, contact } of seeded) {
+          const aligned = yield* Effect.promise(() =>
+            expectAligned(customer.id)
+          )
+          expect(aligned.customer.operatorId).toBe(ada.id)
+          expect(aligned.active).toMatchObject([{ id: contact.id }])
+          expect(
+            yield* Effect.promise(() => reassignRows(customer.id))
+          ).toEqual([
+            expect.objectContaining({
+              taskId: null,
+              source: "bulk",
+              fromOperatorId: colleague.id,
+              toOperatorId: ada.id,
+            }),
+            expect.objectContaining({
+              taskId: contact.id,
+              source: "bulk",
+              fromOperatorId: colleague.id,
+              toOperatorId: ada.id,
+            }),
+          ])
+        }
       })
   )
 })

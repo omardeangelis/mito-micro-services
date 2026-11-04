@@ -86,7 +86,7 @@ describe("definizione degli indici di PR2", () => {
 
   // The list above looks the names up one by one: an index added to `task` by
   // a later migration would go unseen without this
-  it("lascia su task solo la chiave primaria e i due indici dei clienti", async () => {
+  it("lascia su task la chiave primaria, i due indici dei clienti e quello dei contatti attivi per operatore", async () => {
     const { rows } = await testClient.query<{ indexname: string }>(
       `SELECT indexname FROM pg_indexes
        WHERE tablename = 'mito-deutsche_task'
@@ -97,6 +97,8 @@ describe("definizione degli indici di PR2", () => {
       "mito-deutsche_task_pkey",
       "task_customer_active_uidx",
       "task_customer_id_idx",
+      // The active contacts of an operator (assegnazione-wave, D3)
+      "task_operator_id_active_idx",
     ])
   })
 })

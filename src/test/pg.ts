@@ -240,6 +240,39 @@ export async function holdPracticeLock(praticaId: string) {
 }
 
 /**
+ * Disables the user from a transaction of the test, on a connection of its
+ * own, after locking its row `FOR UPDATE` as a deactivation does: a call that
+ * locks the same user waits until `release`, then reads it disabled.
+ */
+export async function holdUserDisabling(userId: string) {
+  const client = connect(testDatabaseName, 1)
+  const db = drizzle(client, { schema })
+  try {
+    await client`BEGIN`
+    const [user] = await db
+      .select({ id: schema.users.id })
+      .from(schema.users)
+      .where(eq(schema.users.id, userId))
+      .for("update")
+    if (!user) throw new Error(`No user ${userId} to lock`)
+    await db
+      .update(schema.users)
+      .set({ disabledAt: new Date() })
+      .where(eq(schema.users.id, userId))
+  } catch (error) {
+    await client.end()
+    throw error
+  }
+  return {
+    /** Commits the test's transaction, which frees the lock. */
+    release: async () => {
+      await client`COMMIT`
+      await client.end()
+    },
+  }
+}
+
+/**
  * Waits until `n` backends of the test database wait for a lock, so the calls
  * a test started are queued behind `holdCustomerLock`. Fails after `timeoutMs`.
  */
