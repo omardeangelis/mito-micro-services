@@ -81,7 +81,7 @@ Questa spec allarga, per i soli toast, l'eccezione di Omar del 2026-10-29 sul de
 - **AC5.** Un toast di successo, di errore o informativo mostra l'icona del suo tipo, quella di Sonner, nel colore `-soft-foreground` del suo tipo; il neutro non ha icona.
 - **AC6.** Il testo del toast, pulsanti compresi, è in Geist e a 13 px; il titolo, quando c'è, ha peso 600.
 - **AC7.** Il toast ha il raggio di 8 px e l'ombra `0px 4px 12px rgba(0, 0, 0, 0.1)` di Sonner.
-- **AC8.** Dai 1024 px in su i toast stanno in basso a destra e sono larghi 356 px. _(Nota 2026-11-04: la posizione è in discussione; vedi OQ5 di [[specs/crm/design-system-web/SPEC]].)_
+- **AC8.** Dai 1024 px in su i toast stanno in basso a destra e sono larghi 356 px.
 - **AC9.** Un toast entra con l'animazione di Sonner, spostamento e dissolvenza in 400 ms, ed esce con la sua animazione di uscita, senza modifiche.
 - **AC10.** Con `prefers-reduced-motion` i toast compaiono e spariscono senza transizioni né animazioni.
 - **AC11.** Se arriva un toast mentre un altro è ancora aperto, il precedente resta nella pila, dietro il nuovo; con il puntatore sopra la pila i toast si aprono uno sopra l'altro e ognuno si legge per intero.
@@ -206,5 +206,6 @@ Questa spec allarga, per i soli toast, l'eccezione di Omar del 2026-10-29 sul de
 | Tastiera, pausa e focus sono quelli di Sonner: Esc chiude la pila, il tempo si ferma con il puntatore, dopo F8 o con la scheda nascosta, il focus va dove lo mette Sonner; F8 resta con l'opzione `hotkey` | Omar, 2026-10-31: nessun gestore scritto da noi sopra Sonner per rifare il comportamento di Radix («Non fare questa cosa», poi «Sì, allinea a Sonner»). I difetti che ne vengono sono scritti in Technical Notes |
 | AC34 e AC35 restano, anche se Sonner da solo non li garantisce | Omar, 2026-10-31 («Sì, AC34 resta»; per il collegamento «Sheet aperta fino alla navigazione»). Non rifanno un comportamento di Radix: senza, con una Sheet o una Dialog aperta, i pulsanti e il collegamento di un toast non rispondono o chiudono la Sheet perdendone lo stato. È l'unica eccezione alla regola qui sopra, e vale per tutta la lista dei toast |
 | Un Ctrl/Cmd-clic sul collegamento non chiude il toast | Omar, 2026-10-31: «Il toast resta aperto». Chiuderlo chiederebbe un gestore nostro che rifà `ToastClose` di Radix |
+| La posizione resta in basso a destra | Omar, 2026-11-04 (OQ5 di [[specs/crm/design-system-web/SPEC\|design-system-web]]). Un toast può coprire i comandi sotto di lui mentre è a schermo: è un limite accettato |
 | Vaul fuori da questa spec | Il layout telefono è rinviato; l'ultima versione è di dicembre 2024 |
 | L'app Next.js alla radice resta fuori | La sostituisce `apps/web`; decisione di Omar del 2026-10-30 |

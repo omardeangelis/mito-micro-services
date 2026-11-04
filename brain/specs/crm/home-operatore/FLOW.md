@@ -61,7 +61,6 @@ L'operatore apre la home la mattina, registra l'esito di ogni richiamo scaduto o
 | Riquadro «Richiamare» | chiuso senza salvare, poi riaperto | AC21 |
 | Riquadro «Richiamare» | Esc o clic fuori durante il salvataggio | AC20 |
 | Riquadro «Richiamare» | aperto vicino al bordo della finestra | AC45 |
-| Avviso | sopra gli esiti delle righe | AC49, open question 14 |
 | Righe chiuse | nuovo caricamento della home (escono) o ricarica della sezione (restano) | AC23 |
 | Righe aperte | non più dell'utente alla ricarica della sezione: si chiudono al loro posto | AC23, AC27 |
 | Quattro parti | ritorno alla scheda del browser | AC36 |

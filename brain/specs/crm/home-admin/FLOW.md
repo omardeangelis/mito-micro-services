@@ -46,7 +46,6 @@ Segmenti da [[personas]]. Tutti su PC fisso, da 1024 a 1920 px (Constraints di S
 | «Assegna» | apre la pagina della Wave, dalla riga di un import o del team | AC13 |
 | «Apri» | Wave senza clienti senza operatore: apre la sua pagina | AC13 |
 | «Assegna» del team | disattivato: «Ultimi import» non caricato o in errore, nessuna Wave elencata con clienti senza operatore | AC13 |
-| Toast | sopra il comando a fuoco o un pulsante «Assegna» o «Apri» | AC45, open question 14 |
 | Ogni parte | caricamento | AC30, AC47 |
 | Ogni parte | errore, con «Riprova» | AC30, AC49 |
 | Ogni parte | ritorno da un'altra pagina, per esempio dopo un'assegnazione | AC30 |
@@ -59,7 +58,6 @@ Segmenti da [[personas]]. Tutti su PC fisso, da 1024 a 1920 px (Constraints di S
 | Numeri di oggi | prima della prima chiamata o risposta | AC6 |
 
 ## Accessibility
-- Il toast non copre il comando a fuoco né i pulsanti «Assegna» e «Apri» (AC45).
 - Il fuoco dopo «Riprova» va sul titolo della sezione (AC49).
 - Nomi dei pulsanti «Assegna» e «Apri», dei dettagli, dei gruppi e della barra di avanzamento (AC31).
 - Controllo manuale ancora da fare, con NVDA e VoiceOver: cosa si sente dopo «Riprova» (Constraints di SPEC.md; AC49).
@@ -69,5 +67,5 @@ Segmenti da [[personas]]. Tutti su PC fisso, da 1024 a 1920 px (Constraints di S
 - «Lavorali» apre `/dashboard/lavoro`, la vista che crea [[specs/crm/home-operatore/SPEC|home-operatore]]: questa home non esce prima di quella rotta (AC6; Constraints di SPEC.md).
 - Chiamate, tassi e arretrati vengono dal registro delle chiamate e dagli alert della spec «Esiti, richiami e stati del contatto», che va prima (AC6, AC7, AC28, AC29).
 - «Ultimi import» legge la traccia dei clienti di ogni import, di [[specs/crm/assegnazione-wave/SPEC|assegnazione-wave]] (AC9, AC10; Constraints di SPEC.md).
-- La voce scelta del ToggleGroup si corregge in [[specs/crm/design-system-web/SPEC|design-system-web]] prima di questa home (AC48).
-- La posizione dei toast si decide nel design system (AC45, open question 14).
+- La voce scelta del ToggleGroup è corretta in [[specs/crm/design-system-web/SPEC|design-system-web]] (AC48).
+- I toast restano in basso a destra e possono coprire i comandi delle righe più basse mentre sono a schermo (open question 14).

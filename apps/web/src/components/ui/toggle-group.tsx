@@ -77,8 +77,10 @@ function ToggleGroupItem({
         toggleVariants({ variant: "default", size: itemSize }),
         itemHeights[itemSize],
         "w-auto min-w-0 shrink-0 px-3 focus-visible:z-10",
-        // The chosen item of AC15: card, foreground, shadow-xs, border
-        "data-[state=on]:shadow-xs text-muted-foreground data-[state=on]:border-border data-[state=on]:bg-card data-[state=on]:text-foreground",
+        // The chosen item of AC15: card, foreground, shadow-xs and a 2 px
+        // primary border. Every item has the 2 px, transparent when off, so
+        // choosing one doesn't move the others
+        "data-[state=on]:shadow-xs border-2 text-muted-foreground data-[state=on]:border-primary data-[state=on]:bg-card data-[state=on]:text-foreground",
         className
       )}
       {...props}
