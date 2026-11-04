@@ -145,7 +145,7 @@ export function generateWaves({
   const withoutOperator = customers.filter((customer) => {
     if (customer.operatorId != null) return false
     const active = activeByCustomer.get(customer.id)
-    return active === undefined || active.operatorId == null
+    return active?.operatorId == null
   })
   const withOperator = customers.filter(
     (customer) => customer.operatorId != null
@@ -302,8 +302,7 @@ function reassignCalls({
   clock: ReturnType<typeof createDayClock>
   taskEventLog: readonly TaskEventLogRow[]
 }): TaskEventLogRow[] {
-  const offsetOf = (row: TaskEventLogRow) =>
-    clock.offsetOf(row.createdAt as Date)
+  const offsetOf = (row: TaskEventLogRow) => clock.offsetOf(row.createdAt!)
   const rows = taskEventLog.map((row) =>
     row.action === "call" &&
     row.actorOperatorId === INACTIVE_OPERATOR_ID &&

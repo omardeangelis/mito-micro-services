@@ -117,7 +117,7 @@ describe.each([300, 10_000])("the Waves at N = %i", (n) => {
     const callsByOperator = new Map<number, Map<number, number>>()
     const teamDays = new Set<number>()
     for (const row of calls) {
-      const offset = clock.offsetOf(row.createdAt as Date)
+      const offset = clock.offsetOf(row.createdAt!)
       if (offset < 1 || offset > 30) continue
       teamDays.add(offset)
       const days =
@@ -148,8 +148,8 @@ describe.each([300, 10_000])("the Waves at N = %i", (n) => {
     log.forEach((row, k) => {
       expect(row.id).toBe(1000 + k)
       if (k > 0) {
-        expect((row.createdAt as Date).getTime()).toBeGreaterThanOrEqual(
-          (log[k - 1]!.createdAt as Date).getTime()
+        expect(row.createdAt!.getTime()).toBeGreaterThanOrEqual(
+          log[k - 1]!.createdAt!.getTime()
         )
       }
     })
