@@ -184,3 +184,9 @@
 - [Retry-after-uncertain before value](feedback_retry_after_uncertain_before_value.md) — click-time ref overwritten by reread; same-task double click
 - [SQL mirror of JS fuzz](feedback_sql_js_mirror_fuzz.md) — PGlite diff vs real TS helper; imul LCG; hex-dump (NBSP/BOM look ASCII)
 - [UI pass: row click, tab walk](feedback_ui_pass_probe_traps_wave.md) — hit-area vacuous on tr onClick; inline-flex link in truncate cell clips ring
+- [Terminal state, gate coupling](feedback_terminal_state_and_gate_coupling.md) — local queue checks: terminal fallback, edge-triggered settle, idle gate
+- [Queue model exploration](feedback_queue_model_exploration.md) — literal random model + negative control; second-press server answer; absolute setState in effect
+- [Real stored-shape fixtures](feedback_real_stored_shape_fixtures.md) — fixtures at 09:00Z hide UTC-day mutants; per-consumer window mutant on shared predicates
+- [Client queue probe traps](feedback_client_queue_probe_traps.md) — sticky gate flags; gcTime 0 survives same-commit swap; retryDelay 0 in tests; NOOP mutant
+- [UI pass: hold requests, oklch](feedback_ui_pass_hold_requests_init_script.md) — --init-script fetch hold on 2nd session; QueryClient setState; canvas contrast
+- [Toast silencing siblings](feedback_toast_silencing_sibling_queries.md) — enumerate all invalidated active queries; cancel kills retry announce; arm64 runner

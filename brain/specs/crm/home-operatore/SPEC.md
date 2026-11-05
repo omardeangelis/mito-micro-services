@@ -1,7 +1,7 @@
 ---
 domain: crm
 type: spec
-status: draft
+status: approved
 links:
   - "[[chore/crm/design-home-e-richiami]]"
   - "[[personas]]"
@@ -13,11 +13,14 @@ links:
   - "[[specs/crm/toast-sonner/SPEC]]"
   - "[[specs/crm/home-admin/SPEC]]"
   - "[[specs/crm/home-operatore/FLOW]]"
+  - "[[specs/crm/home-operatore/PLAN]]"
+  - "[[specs/crm/home-operatore/IMPLEMENTATION-NOTES]]"
+  - "[[specs/crm/home-operatore/REPORT]]"
   - "[[specs/crm/esiti-richiami-stati/SPEC]]"
   - "[[specs/crm/assegnazione-wave/SPEC]]"
   - "[[chore/crm/design-import-e-assegnazione-wave]]"
 created: 2026-11-01
-updated: 2026-11-04
+updated: 2026-11-05
 ---
 
 # Spec: Home dell'operatore — «Lavora da qui»
@@ -164,7 +167,7 @@ La forma è quella del prototipo vincitore **«Lavora da qui»**: `apps/web/src/
   - i conteggi della testata (AC13) e del gruppo (AC12) scendono di uno subito;
   - se il fuoco è ancora sul controllo premuto (o nel suo riquadro «Richiamare»), va al link del cliente della prima riga aperta sotto; se non ce n'è, dell'ultima riga aperta sopra; se non ce n'è nessuna, al link del cliente della riga stessa. Se nel frattempo l'utente ha portato il fuoco altrove (per esempio su un'altra riga), il fuoco resta dove l'ha messo.
 
-  Le righe chiuse escono dalla tabella solo al prossimo caricamento della home: aprendo la pagina, ricaricandola, o tornandoci da un'altra pagina dell'app (AC36). Quando invece la sezione ricarica i dati senza che la home si carichi di nuovo (dopo un rifiuto, AC27; dopo un esito incerto, AC48; tornando alla scheda del browser, AC36), nessuna riga sparisce e nessuna si sposta: le righe chiuse in questa visita restano al loro posto, chiuse; una riga aperta che non è più fra i richiami dell'utente (alert chiuso altrove, contatto passato a un altro) si chiude al suo posto, con l'icona di spunta e «Non è più fra i tuoi richiami» al posto degli esiti, e smette di contare. Una riga con una propria registrazione in corso non si chiude per una ricarica: aspetta la risposta e si chiude come dicono AC23, AC27 o AC48. Una riga con un esito incerto la cui chiamata è in «Fatti oggi» ricaricato si chiude con il proprio esito (AC48), non con «Non è più fra i tuoi richiami». Ogni riga scende dai conteggi una volta sola. La ricarica non mostra lo scheletro (AC38) e tiene le intestazioni dei gruppi, con «· 0» se vuoti; le righe nuove arrivano al prossimo caricamento della home. Una registrazione riuscita non ricarica le righe. Con tutte le righe chiuse la tabella resta com'è; lo stato vuoto di AC24 compare al caricamento seguente.
+  Le righe chiuse escono dalla tabella solo al prossimo caricamento della home: aprendo la pagina, ricaricandola, o tornandoci da un'altra pagina dell'app (AC36). Il dettaglio di un contatto aperto dalla home non è un'altra pagina: la home resta sotto (AC53). Quando invece la sezione ricarica i dati senza che la home si carichi di nuovo (dopo un rifiuto, AC27; dopo un esito incerto, AC48; tornando alla scheda del browser, AC36; chiudendo il dettaglio di un contatto, AC53), nessuna riga sparisce e nessuna si sposta: le righe chiuse in questa visita restano al loro posto, chiuse; una riga aperta che non è più fra i richiami dell'utente (alert chiuso altrove, contatto passato a un altro) si chiude al suo posto, con l'icona di spunta e «Non è più fra i tuoi richiami» al posto degli esiti, e smette di contare. Una riga con una propria registrazione in corso non si chiude per una ricarica: aspetta la risposta e si chiude come dicono AC23, AC27 o AC48. Una riga con un esito incerto la cui chiamata è in «Fatti oggi» ricaricato si chiude con il proprio esito (AC48), non con «Non è più fra i tuoi richiami». Ogni riga scende dai conteggi una volta sola. La ricarica non mostra lo scheletro (AC38) e tiene le intestazioni dei gruppi, con «· 0» se vuoti; le righe nuove arrivano al prossimo caricamento della home. Una registrazione riuscita non ricarica le righe. Con tutte le righe chiuse la tabella resta com'è; lo stato vuoto di AC24 compare al caricamento seguente.
 - **AC24** — Senza righe la sezione mostra «Nessun richiamo da fare.» e, sotto:
   - con contatti da chiamare: «Puoi partire dai N contatti da chiamare.» (N con il punto delle migliaia; con uno solo «Puoi partire dal contatto da chiamare.») e il link «Apri la lista» di AC10;
   - con zero contatti da chiamare: «Non hai contatti da chiamare: li assegna un amministratore.» (OQ6);
@@ -215,7 +218,13 @@ La forma è quella del prototipo vincitore **«Lavora da qui»**: `apps/web/src/
 ### Dati sempre aggiornati
 
 - **AC35** — Dopo una chiamata registrata dalla home, senza ricaricare la pagina: la chiamata è in cima a «Fatti oggi», «Il mio oggi» la conta, e «Da chiamare» mostra il numero del momento (per esempio scende di uno dopo un Appuntamento su un contatto che era Da chiamare).
-- **AC36** — Quando l'utente torna alla home da un'altra pagina dell'app (per esempio dal dettaglio del contatto, dove ha registrato una chiamata o chiuso un alert), le quattro parti mostrano i dati del momento: la chiamata è in «Fatti oggi» e in «Il mio oggi», un alert chiuso non è più fra i richiami, «Da chiamare» è aggiornato. Quando l'utente torna alla scheda della home da un'altra scheda del browser (per esempio dopo aver aperto un contatto con Ctrl/Cmd-clic), le quattro parti si aggiornano allo stesso modo, ma senza un nuovo caricamento: una riga il cui alert è stato chiuso altrove si chiude al suo posto invece di uscire (AC23).
+- **AC36** — Quando l'utente torna alla home da un'altra pagina dell'app (per esempio dalla lista Contatti, dove ha registrato una chiamata o chiuso un alert), le quattro parti mostrano i dati del momento: la chiamata è in «Fatti oggi» e in «Il mio oggi», un alert chiuso non è più fra i richiami, «Da chiamare» è aggiornato. Quando l'utente torna alla scheda della home da un'altra scheda del browser (per esempio dopo aver aperto un contatto con Ctrl/Cmd-clic), le quattro parti si aggiornano allo stesso modo, ma senza un nuovo caricamento: una riga il cui alert è stato chiuso altrove si chiude al suo posto invece di uscire (AC23).
+- **AC53** — Il dettaglio di un contatto aperto dalla home con un clic normale (dal nome in «Richiami da fare» o in «Fatti oggi», o dal link di un avviso) si apre sopra la home, che resta sotto così com'è. Chiudendolo con la X, con Esc, con un clic fuori o con l'indietro del browser, l'utente è nel punto di prima:
+  - stessa posizione di scorrimento, e nessuno scheletro;
+  - stesse righe nello stesso ordine, comprese quelle chiuse in questa visita, e stesso stato di «Fatti oggi» (tutte le chiamate o solo le prime 8), con le bozze di «Richiamare» conservate;
+  - il fuoco sul link da cui il dettaglio era stato aperto.
+
+  Alla chiusura le quattro parti si aggiornano come al ritorno alla scheda del browser (AC36): una chiamata registrata nel dettaglio è in «Fatti oggi» e in «Il mio oggi», e una riga il cui alert è stato chiuso lì si chiude al suo posto (AC23). Una registrazione in corso sulla home quando si apre il dettaglio continua, e il suo esito arriva nella riga come sempre. Dentro il dettaglio, passare a un altro contatto (per esempio «Vai al contatto attivo») non lascia la home. L'indirizzo del dettaglio aperto dalla home si può ricaricare: la home si carica di nuovo con il dettaglio aperto sopra. Se il dettaglio non si carica, l'errore resta nel dettaglio e la home sotto non cambia. Con Ctrl/Cmd-clic il contatto si apre in una nuova scheda, come in AC36. Il dettaglio resta quello di Contatti: stesso contenuto, stesso foglio.
 
 ### Caricamento ed errori
 
@@ -262,6 +271,7 @@ La forma è quella del prototipo vincitore **«Lavora da qui»**: `apps/web/src/
 - **Un solo avviso.** `apps/web/src/api/queryClient.ts` mostra `toast.error(describeApiError(error))` per ogni scrittura e ogni lettura fallite (`MutationCache` e `QueryCache`), salvo `meta.toastErrors: false`: ne hanno bisogno la registrazione della home, come le scritture della pagina della Wave, e le letture delle quattro parti (AC27, AC37, AC48).
 - **Rifiuti.** `registerCall` (`packages/contract/src/task.ts`) dichiara `ContactNotFound`, `ContactSuperseded`, `ContactForbidden`, `CallAlreadyWorked`, `CallNotAllowed`, `AlertConfirmationRequired`, `DeadlineInPast`, `MessageTooLong`, `RequestIdConflict` e `CustomerMissing`, che coprono i casi di AC27. `describeApiError` (`apps/web/src/api/errors.ts`) mostra già le etichette degli stati, ma i testi di AC27 sono quelli di questa spec. La home manda l'alert della riga (`workingAlertId`): senza, il caso dell'alert già lavorato non scatta.
 - Il calendario (`apps/web/src/components/ui/calendar.tsx`) ha già le etichette italiane e la settimana dal lunedì, da AC33 di [[specs/crm/assegnazione-wave/SPEC|assegnazione-wave]]: la prima riga di AC51 si verifica, non si costruisce.
+- Il dettaglio del contatto è la rotta `/dashboard/contatti/:id` con un `Sheet`: aprirlo smonta la pagina di partenza, e chiuderlo porta sempre alla lista Contatti (`returnHref`), anche se si veniva da altrove. Per AC53 il foglio deve potersi aprire sopra la home e sapere dove tornare.
 - Il `Toaster` di `apps/web/src/components/ui/sonner.tsx` è `bottom-right` in tutta l'app e resta così (OQ14).
 - Lo stato dell'indirizzo della lista Contatti (`@mito/client/contact/searchParams`) sa già esprimere «Solo i miei» (`miei=1`) e più stati insieme (`stato=`); i valori dei sei stati sono quelli della spec degli esiti.
 - L'ordine di default della lista Contatti è per priorità decrescente, poi, per i contatti ancora in coda senza priorità manuale, per la scadenza più vicina fra le Wave aperte del cliente (AC28 di [[specs/crm/assegnazione-wave/SPEC|assegnazione-wave]]), poi per id del contatto (`packages/server/src/services/contact/getContacts.ts`). Vale anche per OQ4.
@@ -337,4 +347,5 @@ Owner delle voci qui sopra: Omar. Le domande 1–11 sono chiuse. Le 12–17 veng
 | 2026-11-04: nuovo Non-Goal, l'«oggi» con le Wave e l'avviso della Wave scaduta. La home si pianifica senza, e il prototipo arriva dopo | Scelta di Omar sulla nota di design [[chore/crm/design-import-e-assegnazione-wave]] (§4). [[specs/crm/assegnazione-wave/SPEC\|assegnazione-wave]] rinvia i due punti a un prototipo a sé, e la scelta fra quota giornaliera e slot settimanali non è presa |
 | 2026-11-04: OQ12 chiusa: l'alert già lavorato è il terzo caso di AC27, con il testo di [[specs/crm/esiti-richiami-stati/SPEC\|esiti-richiami-stati]] (OQ2 lì) | La spec degli esiti è implementata e dichiara `CallAlreadyWorked` |
 | 2026-11-04: note tecniche allineate al codice di `dev`: ordine della lista Contatti (AC28 di [[specs/crm/assegnazione-wave/SPEC\|assegnazione-wave]]), calendario in italiano, rifiuti di `registerCall`, `requestId`, l'origine della chiamata | Erano scritte prima delle spec degli esiti e della Wave |
+| 2026-11-05: AC53 nuovo: il dettaglio aperto dalla home si apre sopra la home, e chiudendolo si torna nel punto di prima. AC23 e AC36 allineati: il dettaglio non è più «un'altra pagina» | Scelta di Omar sul piano («Devo tornare nel punto di prima»). Con la spec di prima tornare dal dettaglio era un nuovo caricamento: scheletro, posizione persa su una lista fino a 256 righe, e la X portava alla lista Contatti |
 | 2026-11-04: OQ14 chiusa: gli avvisi restano in basso a destra e AC49 è tolto | Scelta di Omar su OQ5 di [[specs/crm/design-system-web/SPEC\|design-system-web]]. Nessuna posizione fissa soddisfa AC49: con gli avvisi dove sono, il criterio non si può rispettare |
