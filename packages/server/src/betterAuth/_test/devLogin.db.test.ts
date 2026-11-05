@@ -12,8 +12,8 @@ import { BASE, testAuth } from "./harness"
 import { migrateUpTo, resetDb } from "@/test/db"
 import { createOperator } from "@/test/factories"
 
-// The quick login of local development: admin or operator in one click, on
-// two fixed accounts (devLogin)
+// The quick login of local development: admin, operator or the operator with
+// the typical day in one click, on three fixed accounts (devLogin)
 
 const signIn = (
   handler: (request: Request) => Promise<Response>,
@@ -57,18 +57,24 @@ afterEach(() => {
 })
 
 describe("accesso rapido di sviluppo", () => {
-  it("entra come admin o come operatore negli account fissi", async () => {
+  it("entra come admin, come operatore o con la giornata tipica negli account fissi", async () => {
     const admin = await createOperator({ role: "ADMIN" })
     const operator = await createOperator()
+    const typical = await createOperator()
     const handler = authHandler(
       testAuth({
-        devAccounts: { admin: admin.userId, operator: operator.userId },
+        devAccounts: {
+          admin: admin.userId,
+          operator: operator.userId,
+          typicalOperator: typical.userId,
+        },
       })
     )
 
     for (const [account, userId] of [
       ["admin", admin.userId],
       ["operator", operator.userId],
+      ["typicalOperator", typical.userId],
     ] as const) {
       const response = await signIn(handler, { account })
       expect(response.status).toBe(200)
@@ -88,7 +94,7 @@ describe("accesso rapido di sviluppo", () => {
     expect(response.headers.getSetCookie()).toEqual([])
   })
 
-  it("accetta solo admin e operator, mai un id scelto dal client", async () => {
+  it("accetta solo i tre account, mai un id scelto dal client", async () => {
     const admin = await createOperator({ role: "ADMIN" })
     const handler = authHandler(
       testAuth({ devAccounts: { admin: admin.userId, operator: "missing" } })

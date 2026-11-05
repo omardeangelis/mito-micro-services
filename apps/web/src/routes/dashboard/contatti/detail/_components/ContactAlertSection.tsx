@@ -130,12 +130,9 @@ function ClosedAlertItem({
  */
 export function ContactAlertSection({
   data,
-  da,
   canEdit = false,
 }: {
   data: ContactDetail
-  /** The `da` parameter of the address: the list state to carry along */
-  da: string | undefined
   canEdit?: boolean
 }) {
   const { alert } = data
@@ -169,11 +166,7 @@ export function ContactAlertSection({
               )}
             </div>
             {canEdit ? (
-              <ContactAlertCloseButton
-                alert={alert}
-                taskId={data.contact.id}
-                da={da}
-              />
+              <ContactAlertCloseButton alert={alert} taskId={data.contact.id} />
             ) : null}
           </div>
         )}

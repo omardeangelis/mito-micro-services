@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query"
 import { useEffect } from "react"
 import { useLocation, useNavigate, useRouteError } from "react-router"
 import { isApiFailure } from "@/api/errors"
+import { forgetFailedQueries } from "@/api/queryClient"
 import { Button } from "@/components/ui/button"
 
 /**
@@ -26,10 +27,7 @@ export function ContactsError() {
 
   useEffect(() => {
     Sentry.captureException(error)
-    queryClient.removeQueries({
-      predicate: (query) =>
-        query.state.status === "error" && query.getObserversCount() === 0,
-    })
+    forgetFailedQueries(queryClient)
   }, [error, queryClient])
 
   const retry = () => {
@@ -44,13 +42,21 @@ export function ContactsError() {
     })
   }
 
+  return <ContactsErrorView onRetry={retry} />
+}
+
+/**
+ * The block of the error: the text and «Riprova». It reads nothing from the
+ * route, so a page that is not a route of the contacts shows it too.
+ */
+export function ContactsErrorView({ onRetry }: { onRetry: () => void }) {
   return (
     <div
       role="alert"
       className="flex w-full flex-col items-center gap-3 px-4 py-10 text-center"
     >
       <p className="font-medium">Non è stato possibile caricare i contatti</p>
-      <Button type="button" variant="outline" onClick={retry}>
+      <Button type="button" variant="outline" onClick={onRetry}>
         Riprova
       </Button>
     </div>

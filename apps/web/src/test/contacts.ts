@@ -14,6 +14,7 @@ import {
   type OperatorNotFound,
   type RequestIdConflict,
   type TransitionRejected,
+  Unauthorized,
 } from "@mito/contract/errors"
 import { type Customer } from "@mito/contract/customer"
 import { type OperatorWithRole as OperatorWithRoleSchema } from "@mito/contract/me"
@@ -199,6 +200,10 @@ export function fakeContacts(
     detailGate: undefined as Promise<void> | undefined,
     /** The details don't answer: a 500 */
     failingDetail: false,
+    /** The customers don't answer: a 500 */
+    failingCustomer: false,
+    /** The details and the customers answer that the session expired */
+    sessionExpired: false,
     /** Until it resolves, the writes of the detail other than the state wait */
     writeGate: undefined as Promise<void> | undefined,
     priorities: [] as PriorityChange[],
@@ -268,62 +273,234 @@ export function fakeContacts(
       customerFilter: null,
     }
 
+  const operatorGroup = HttpApiBuilder.group(MitoApi, "operator", (handlers) =>
+    handlers
+      .handle("getAllUniqueOperators", () =>
+        Effect.suspend(() =>
+          state.failingOperators
+            ? Effect.die("backend down")
+            : Effect.succeed(state.operators)
+        )
+      )
+      .handle("getOperatorById", unserved)
+      .handle("updateOperatorsRole", unserved)
+      .handle("getDeactivationImpact", unserved)
+      .handle("getOperatorsForDeactivation", unserved)
+      .handle("getTeam", unserved)
+      .handle("deactivate", unserved)
+  )
+
+  // The customer of a detail, for its notes: a customer with no chat
+  const customerGroup = HttpApiBuilder.group(MitoApi, "customer", (handlers) =>
+    handlers
+      .handle("getAllCustomers", unserved)
+      .handle("getCustomersByFiscalCodeOrVatCode", unserved)
+      .handle("getAllCustomerForPratica", unserved)
+      .handle("getCustomerUnderReview", unserved)
+      .handle("getAllAvailableComune", unserved)
+      .handle("getAllAvaliableSede", unserved)
+      .handle("getAllAvailableAmbito", unserved)
+      .handle("getAllAvailableJobs", unserved)
+      .handle("getAllFileName", unserved)
+      .handle("getCustomerById", ({ params }) =>
+        Effect.suspend(() => {
+          if (state.sessionExpired) return Effect.fail(new Unauthorized())
+          if (state.failingCustomer) return Effect.die("backend down")
+          const detail = Object.values(state.details).find(
+            ({ customer }) => customer.id === params.id
+          )
+          const customer: Customer | null = detail
+            ? customerOf({
+                id: detail.customer.id,
+                name: detail.customer.name,
+                surname: detail.customer.surname,
+                operatorId: detail.customer.operatorId,
+                chatId: null,
+              })
+            : null
+          return Effect.succeed(customer)
+        })
+      )
+      .handle("getAllPraticaByCustomer", unserved)
+      .handle("insertCustomer", unserved)
+      .handle("updateCustomerFromDashboard", unserved)
+      .handle("handleCustomerBlackList", unserved)
+      .handle("handover", unserved)
+      .handle("assignToYourself", unserved)
+      .handle("updateLastEdit", unserved)
+      .handle("bulkUpdateCustomers", unserved)
+  )
+
+  const getContactById = ({
+    params,
+  }: {
+    readonly params: { readonly id: string }
+  }) =>
+    Effect.sync(() => state.detailReads.push(params.id)).pipe(
+      Effect.andThen(
+        Effect.promise(() => state.detailGate ?? Promise.resolve())
+      ),
+      Effect.andThen(
+        Effect.suspend(
+          (): Effect.Effect<ContactDetail, ContactNotFound | Unauthorized> => {
+            if (state.sessionExpired) return Effect.fail(new Unauthorized())
+            if (state.failingDetail) return Effect.die("backend down")
+            const detail = state.details[Number(params.id)]
+            return detail
+              ? Effect.succeed(detail)
+              : Effect.fail(new ContactNotFound())
+          }
+        )
+      )
+    )
+
+  const registerCall = ({
+    params,
+    payload,
+  }: {
+    readonly params: { readonly id: number }
+    readonly payload: RegisterCall
+  }) => {
+    const call = { taskId: params.id, ...payload }
+    const repeated = state.registered.get(payload.requestId)
+    if (repeated) return Effect.succeed(repeated)
+    return write(
+      () => state.calls.push(call),
+      () => state.callAnswer(call),
+      (): RegisteredCall => {
+        const current =
+          state.details[params.id]?.alert ??
+          state.rows.find(({ id }) => id === params.id)?.alert ??
+          null
+        const alert =
+          payload.outcome === "richiamare"
+            ? {
+                id: 900 + state.calls.length,
+                deadline: new Date(`${payload.callback.day}T00:00:00`),
+                day: payload.callback.day,
+                // Empty or blank is no message, as on the server
+                message: payload.callback.message?.trim()
+                  ? payload.callback.message.trim()
+                  : null,
+              }
+            : payload.outcome === "non risponde" && current
+              ? {
+                  ...current,
+                  day: current.deadline.toISOString().slice(0, 10),
+                }
+              : null
+        const futureAlert =
+          alert !== null && alert.day > new Date().toISOString().slice(0, 10)
+        const toState: TaskStatus =
+          payload.outcome === "non risponde" && futureAlert
+            ? "richiamare"
+            : payload.outcome
+        const at = new Date()
+        const openAlert = alert && {
+          id: alert.id,
+          deadline: alert.deadline,
+          message: alert.message,
+        }
+        state.rows = state.rows.map((row) =>
+          row.id === params.id
+            ? { ...row, state: toState, closedAt: at, alert: openAlert }
+            : row
+        )
+        // The call on top of the Storico, and the alert it closed or
+        // replaced in it, closed by Ada with the call (AC16, AC23)
+        const closed = payload.outcome === "non risponde" ? null : current
+        updateDetail(params.id, (detail) => ({
+          ...detail,
+          contact: { ...detail.contact, state: toState, closedAt: at },
+          alert: openAlert,
+          calls: [
+            {
+              id: 700 + state.calls.length,
+              outcome: payload.outcome,
+              at,
+              operatorName: ada.name,
+              operatorSurname: ada.surname,
+              callbackDeadline:
+                payload.outcome === "richiamare"
+                  ? (alert?.deadline ?? null)
+                  : null,
+            },
+            ...detail.calls,
+          ],
+          ...(closed
+            ? {
+                history: [
+                  {
+                    id: closed.id,
+                    deadline: closed.deadline,
+                    message: closed.message,
+                    updatedAt: at,
+                    resolvedByName: ada.name,
+                    resolvedBySurname: ada.surname,
+                  },
+                  ...detail.history,
+                ],
+                closures: [
+                  {
+                    alertId: closed.id,
+                    closedAt: at,
+                    resolution: "call" as const,
+                  },
+                  ...detail.closures,
+                ],
+              }
+            : {}),
+        }))
+        const registered: RegisteredCall = {
+          taskId: params.id,
+          state: toState,
+          alert,
+          call: {
+            id: 700 + state.calls.length,
+            outcome: payload.outcome,
+            origin: "list",
+            at,
+            by: `${ada.name} ${ada.surname}`,
+          },
+        }
+        state.registered.set(payload.requestId, registered)
+        return registered
+      }
+    )
+  }
+
+  const removeCallback = ({
+    params,
+    payload,
+  }: {
+    readonly params: { readonly id: number }
+    readonly payload: Omit<CallbackRemoved, "alertId">
+  }) => {
+    const removal = { alertId: params.id, ...payload }
+    return write(
+      () => state.removals.push(removal),
+      () => state.removeAnswer(removal),
+      () => {
+        state.rows = state.rows.map((row) =>
+          row.id === payload.taskId
+            ? { ...row, state: payload.state, alert: null }
+            : row
+        )
+        updateDetail(payload.taskId, (detail) => ({
+          ...detail,
+          contact: { ...detail.contact, state: payload.state },
+          alert: null,
+        }))
+        return { taskId: payload.taskId, state: payload.state }
+      }
+    )
+  }
+
   const handlers: FakeHandlers<
     GroupService<"task"> | GroupService<"operator"> | GroupService<"customer">
   > = Layer.mergeAll(
-    HttpApiBuilder.group(MitoApi, "operator", (handlers) =>
-      handlers
-        .handle("getAllUniqueOperators", () =>
-          Effect.suspend(() =>
-            state.failingOperators
-              ? Effect.die("backend down")
-              : Effect.succeed(state.operators)
-          )
-        )
-        .handle("getOperatorById", unserved)
-        .handle("updateOperatorsRole", unserved)
-        .handle("getDeactivationImpact", unserved)
-        .handle("getOperatorsForDeactivation", unserved)
-        .handle("getTeam", unserved)
-        .handle("deactivate", unserved)
-    ),
-    // The customer of a detail, for its notes: a customer with no chat
-    HttpApiBuilder.group(MitoApi, "customer", (handlers) =>
-      handlers
-        .handle("getAllCustomers", unserved)
-        .handle("getCustomersByFiscalCodeOrVatCode", unserved)
-        .handle("getAllCustomerForPratica", unserved)
-        .handle("getCustomerUnderReview", unserved)
-        .handle("getAllAvailableComune", unserved)
-        .handle("getAllAvaliableSede", unserved)
-        .handle("getAllAvailableAmbito", unserved)
-        .handle("getAllAvailableJobs", unserved)
-        .handle("getAllFileName", unserved)
-        .handle("getCustomerById", ({ params }) =>
-          Effect.sync((): Customer | null => {
-            const detail = Object.values(state.details).find(
-              ({ customer }) => customer.id === params.id
-            )
-            return detail
-              ? customerOf({
-                  id: detail.customer.id,
-                  name: detail.customer.name,
-                  surname: detail.customer.surname,
-                  operatorId: detail.customer.operatorId,
-                  chatId: null,
-                })
-              : null
-          })
-        )
-        .handle("getAllPraticaByCustomer", unserved)
-        .handle("insertCustomer", unserved)
-        .handle("updateCustomerFromDashboard", unserved)
-        .handle("handleCustomerBlackList", unserved)
-        .handle("handover", unserved)
-        .handle("assignToYourself", unserved)
-        .handle("updateLastEdit", unserved)
-        .handle("bulkUpdateCustomers", unserved)
-    ),
+    operatorGroup,
+    customerGroup,
     HttpApiBuilder.group(MitoApi, "task", (handlers) =>
       handlers
         .handle("getCustomersWithActiveAlerts", unserved)
@@ -343,22 +520,7 @@ export function fakeContacts(
             )
           )
         )
-        .handle("getContactById", ({ params }) =>
-          Effect.sync(() => state.detailReads.push(params.id)).pipe(
-            Effect.andThen(
-              Effect.promise(() => state.detailGate ?? Promise.resolve())
-            ),
-            Effect.andThen(
-              Effect.suspend(() => {
-                if (state.failingDetail) return Effect.die("backend down")
-                const detail = state.details[Number(params.id)]
-                return detail
-                  ? Effect.succeed(detail)
-                  : Effect.fail(new ContactNotFound())
-              })
-            )
-          )
-        )
+        .handle("getContactById", getContactById)
         .handle("createContact", unserved)
         .handle("changeState", ({ params, payload }) =>
           Effect.promise(() => state.changeGate ?? Promise.resolve()).pipe(
@@ -464,140 +626,19 @@ export function fakeContacts(
             }
           )
         })
-        .handle("registerCall", ({ params, payload }) => {
-          const call = { taskId: params.id, ...payload }
-          const repeated = state.registered.get(payload.requestId)
-          if (repeated) return Effect.succeed(repeated)
-          return write(
-            () => state.calls.push(call),
-            () => state.callAnswer(call),
-            (): RegisteredCall => {
-              const current =
-                state.details[params.id]?.alert ??
-                state.rows.find(({ id }) => id === params.id)?.alert ??
-                null
-              const alert =
-                payload.outcome === "richiamare"
-                  ? {
-                      id: 900 + state.calls.length,
-                      deadline: new Date(`${payload.callback.day}T00:00:00`),
-                      day: payload.callback.day,
-                      // Empty or blank is no message, as on the server
-                      message: payload.callback.message?.trim()
-                        ? payload.callback.message.trim()
-                        : null,
-                    }
-                  : payload.outcome === "non risponde" && current
-                    ? {
-                        ...current,
-                        day: current.deadline.toISOString().slice(0, 10),
-                      }
-                    : null
-              const futureAlert =
-                alert !== null &&
-                alert.day > new Date().toISOString().slice(0, 10)
-              const toState: TaskStatus =
-                payload.outcome === "non risponde" && futureAlert
-                  ? "richiamare"
-                  : payload.outcome
-              const at = new Date()
-              const openAlert = alert && {
-                id: alert.id,
-                deadline: alert.deadline,
-                message: alert.message,
-              }
-              state.rows = state.rows.map((row) =>
-                row.id === params.id
-                  ? { ...row, state: toState, closedAt: at, alert: openAlert }
-                  : row
-              )
-              // The call on top of the Storico, and the alert it closed or
-              // replaced in it, closed by Ada with the call (AC16, AC23)
-              const closed = payload.outcome === "non risponde" ? null : current
-              updateDetail(params.id, (detail) => ({
-                ...detail,
-                contact: { ...detail.contact, state: toState, closedAt: at },
-                alert: openAlert,
-                calls: [
-                  {
-                    id: 700 + state.calls.length,
-                    outcome: payload.outcome,
-                    at,
-                    operatorName: ada.name,
-                    operatorSurname: ada.surname,
-                    callbackDeadline:
-                      payload.outcome === "richiamare"
-                        ? (alert?.deadline ?? null)
-                        : null,
-                  },
-                  ...detail.calls,
-                ],
-                ...(closed
-                  ? {
-                      history: [
-                        {
-                          id: closed.id,
-                          deadline: closed.deadline,
-                          message: closed.message,
-                          updatedAt: at,
-                          resolvedByName: ada.name,
-                          resolvedBySurname: ada.surname,
-                        },
-                        ...detail.history,
-                      ],
-                      closures: [
-                        {
-                          alertId: closed.id,
-                          closedAt: at,
-                          resolution: "call" as const,
-                        },
-                        ...detail.closures,
-                      ],
-                    }
-                  : {}),
-              }))
-              const registered: RegisteredCall = {
-                taskId: params.id,
-                state: toState,
-                alert,
-                call: {
-                  id: 700 + state.calls.length,
-                  outcome: payload.outcome,
-                  origin: "list",
-                  at,
-                  by: `${ada.name} ${ada.surname}`,
-                },
-              }
-              state.registered.set(payload.requestId, registered)
-              return registered
-            }
-          )
-        })
-        .handle("removeCallback", ({ params, payload }) => {
-          const removal = { alertId: params.id, ...payload }
-          return write(
-            () => state.removals.push(removal),
-            () => state.removeAnswer(removal),
-            () => {
-              state.rows = state.rows.map((row) =>
-                row.id === payload.taskId
-                  ? { ...row, state: payload.state, alert: null }
-                  : row
-              )
-              updateDetail(payload.taskId, (detail) => ({
-                ...detail,
-                contact: { ...detail.contact, state: payload.state },
-                alert: null,
-              }))
-              return { taskId: payload.taskId, state: payload.state }
-            }
-          )
-        })
+        .handle("registerCall", registerCall)
+        .handle("removeCallback", removeCallback)
         .handle("bulkHandleTask", unserved)
     )
   )
 
-  return { state, handlers }
+  return {
+    state,
+    handlers,
+    /** The pieces another fake composes, when it holds the group `task` too */
+    groups: { operator: operatorGroup, customer: customerGroup },
+    endpoints: { getContactById, registerCall, removeCallback },
+  }
 }
 
 /** The rejection of a contact superseded by `activeTaskId` */

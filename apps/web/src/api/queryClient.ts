@@ -73,3 +73,14 @@ export const routeErrorWhenEmpty = {
   throwOnError: (_error: unknown, query: { state: { data: unknown } }) =>
     query.state.data === undefined,
 } as const
+
+/**
+ * Forgets the queries that failed and that no page shows any more: TanStack
+ * Query doesn't ask again on mount a query that threw to a boundary, so the
+ * page would find the error in the cache
+ */
+export const forgetFailedQueries = (queryClient: QueryClient) =>
+  queryClient.removeQueries({
+    predicate: (query) =>
+      query.state.status === "error" && query.getObserversCount() === 0,
+  })

@@ -25,10 +25,6 @@ const devRoutes: RouteObject[] = import.meta.env.DEV
 const prototypeRoutes: RouteObject[] = import.meta.env.DEV
   ? [
       {
-        path: "prototypes/home-operatore",
-        lazy: () => import("./prototypes/home-operatore/Harness"),
-      },
-      {
         path: "prototypes/home-admin",
         lazy: () => import("./prototypes/home-admin/Harness"),
       },
@@ -60,6 +56,12 @@ export const routes: RouteObject[] = [
           {
             index: true,
             lazy: () => import("./routes/dashboard/home/HomePage"),
+          },
+          {
+            // The view of the operators under its own address, for the admins
+            // too; no item in the sidebar
+            path: "lavoro",
+            lazy: () => import("./routes/dashboard/lavoro/LavoroPage"),
           },
           {
             path: "analisi",

@@ -1,22 +1,19 @@
 import { Link } from "react-router"
 import { buttonVariants } from "@/components/ui/button"
-import { detailHrefFromDa } from "../../_lib/detailHrefFromDa"
 import { useContactSheet } from "./ContactSheet"
 
 type Props = {
   /** The active contact of the same customer, if there is one */
   activeTaskId: number | null
-  /** The `da` parameter of the address: the list state to carry along */
-  da: string | undefined
 }
 
 /**
  * Why a contact that is no longer the active one can't be edited (AC27), with
  * the way to the active one of the customer when it exists. The link keeps the
- * list state (`da`), so closing the sheet still leads to the same view.
+ * list state, so closing the sheet still leads to the same view.
  */
-export function ContactSupersededBanner({ activeTaskId, da }: Props) {
-  const { focusStateTriggerOnNextMount } = useContactSheet()
+export function ContactSupersededBanner({ activeTaskId }: Props) {
+  const { focusStateTriggerOnNextMount, detailHref } = useContactSheet()
 
   return (
     <div
@@ -32,7 +29,7 @@ export function ContactSupersededBanner({ activeTaskId, da }: Props) {
       </div>
       {activeTaskId === null ? null : (
         <Link
-          to={detailHrefFromDa(activeTaskId, da)}
+          to={detailHref(activeTaskId)}
           preventScrollReset
           className={buttonVariants({ variant: "outline", size: "sm" })}
           onClick={(event) => {

@@ -31,6 +31,14 @@ export const currentUserOptions = (run: Run) =>
 
 export const useCurrentUser = () => useQuery(currentUserOptions(useRun()))
 
+/**
+ * The current user, without reading it again as the page mounts: with a failed
+ * `GET /me` that read would put the query back to pending, and every page that
+ * opens would ask again what the return to the tab asks anyway
+ */
+export const useKnownCurrentUser = () =>
+  useQuery({ ...currentUserOptions(useRun()), retryOnMount: false })
+
 /** The own name and surname (`PATCH /me`): then the current user is read again */
 export const useUpdateOperatorInfo = () => {
   const run = useRun()

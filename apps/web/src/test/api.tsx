@@ -43,6 +43,7 @@ type ApiGroups =
   | GroupService<"analytics">
   | GroupService<"export">
   | GroupService<"import">
+  | GroupService<"home">
 
 /**
  * The handlers of some groups of the contract, written with
@@ -152,6 +153,13 @@ const unservedGroups = Layer.mergeAll(
       .handle("assign", unserved)
       .handle("moveCandidates", unserved)
       .handle("move", unserved)
+  ),
+  HttpApiBuilder.group(MitoApi, "home", (handlers) =>
+    handlers
+      .handle("getMyCallbacks", unserved)
+      .handle("getMyCalls", unserved)
+      .handle("getMyDay", unserved)
+      .handle("getMyToCall", unserved)
   )
 )
 
@@ -209,6 +217,8 @@ export function fakeMe(initial: {
     reads: 0,
     // A backend that doesn't answer: `GET /me` dies, a 500
     failing: false,
+    // Until it resolves, `GET /me` waits
+    gate: undefined as Promise<void> | undefined,
     ...initial,
   }
   const handlers: FakeHandlers<GroupService<"me">> = HttpApiBuilder.group(
@@ -219,14 +229,20 @@ export function fakeMe(initial: {
         .handle("getCurrentUser", () =>
           Effect.suspend(() => {
             state.reads++
-            if (state.failing) return Effect.die("backend down")
-            return Effect.succeed({
-              role: state.role,
-              operatorId: state.operator.id,
-              operator: state.operator,
-              preferences: state.preferences,
-            })
-          })
+            return Effect.promise(() => state.gate ?? Promise.resolve())
+          }).pipe(
+            Effect.andThen(
+              Effect.suspend(() => {
+                if (state.failing) return Effect.die("backend down")
+                return Effect.succeed({
+                  role: state.role,
+                  operatorId: state.operator.id,
+                  operator: state.operator,
+                  preferences: state.preferences,
+                })
+              })
+            )
+          )
         )
         .handle("updateOperatorInfo", ({ payload }) =>
           Effect.sync(() => {

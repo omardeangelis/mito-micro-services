@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from "vitest"
 import { type ContactDetail } from "@mito/contract/task"
 import { OperatorNotFound } from "@mito/contract/errors"
 import { operatorKeys } from "@/api/operator"
+import { taskKeys } from "@/api/task"
 import { contactDetail, contactRow, fakeContacts } from "@/test/contacts"
 import { currentHref, renderContacts } from "../../_test/page"
 import { DA, detailPath, findContent, openDetail, sheet } from "./detail"
@@ -448,6 +449,22 @@ describe("quando il dettaglio non si legge", () => {
     await user.click(screen.getByRole("button", { name: "Riprova" }))
 
     await findContent()
+    expect(screen.getByRole("heading", { name: "Rossi Mario" })).toBeTruthy()
+  })
+
+  it("un aggiornamento fallito lascia il contatto a schermo, con l'avviso", async () => {
+    const backend = fakeContacts({ details: { 101: contactDetail() } })
+    const { queryClient } = renderContacts(detailPath(101), backend, {
+      detail: true,
+    })
+    await findContent()
+
+    backend.state.failingDetail = true
+    await act(() => queryClient.invalidateQueries({ queryKey: taskKeys.all }))
+
+    expect(
+      await screen.findByText("Il servizio non risponde, riprova tra poco")
+    ).toBeTruthy()
     expect(screen.getByRole("heading", { name: "Rossi Mario" })).toBeTruthy()
   })
 

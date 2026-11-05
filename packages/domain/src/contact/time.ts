@@ -25,6 +25,9 @@ function romeWallClock(instant: Date) {
 /** The Rome calendar day of an instant, as `YYYY-MM-DD`. */
 export const romeDay = (instant: Date) => romeWallClock(instant).day
 
+/** The Rome time of an instant, as `HH:mm`. */
+export const romeTime = (instant: Date) => romeWallClock(instant).time
+
 /** True when the Rome day of `date` is strictly before the Rome day of `now`. */
 export const isPastDay = (date: Date, now: Date): boolean =>
   romeDay(date) < romeDay(now)

@@ -96,6 +96,40 @@ describe("UserPreferenceProvider, chi è l'utente", () => {
     expect(await screen.findByText("ADMIN 1000")).toBeInTheDocument()
   })
 
+  it("con `/me` in errore i figli restano anche se il provider si ridisegna mentre lo rilegge", async () => {
+    const backend = fakeMe({})
+    backend.state.failing = true
+    // A new element each time: the same one wouldn't draw the provider again
+    const ui = () => (
+      <UserPreferenceProvider>
+        <Actor />
+      </UserPreferenceProvider>
+    )
+    const { queryClient, rerender } = renderWithApi(ui(), {
+      handlers: backend.handlers,
+      auth: backend.auth,
+    })
+    const actor = await screen.findByText("nessuno")
+    const reads = backend.state.reads
+
+    let release: () => void = () => undefined
+    backend.state.failing = false
+    backend.state.gate = new Promise((resolve) => {
+      release = resolve
+    })
+    act(() => {
+      void queryClient.refetchQueries({ type: "active" })
+    })
+    await waitFor(() => expect(backend.state.reads).toBe(reads + 1))
+    // The effect of the read in course has run: a new draw reads what it wrote
+    rerender(ui())
+
+    expect(actor.isConnected).toBe(true)
+
+    release()
+    expect(await screen.findByText(`OPERATORE ${ada.id}`)).toBe(actor)
+  })
+
   it("tiene nei cookie le preferenze delle tabelle, non chi è l'utente", async () => {
     mount(fakeMe({ role: "ADMIN", preferences: server }), <Actor />)
     await screen.findByText(`ADMIN ${ada.id}`)

@@ -18,7 +18,6 @@ import {
 } from "@mito/domain/contact/permissions"
 import { type ApiFailure } from "@/api/errors"
 import { useReassign } from "@/api/task"
-import { detailHrefFromDa } from "../../_lib/detailHrefFromDa"
 import { useContactSheet } from "./ContactSheet"
 
 type Props = {
@@ -27,8 +26,6 @@ type Props = {
   operatorId: number | null
   /** Who the contact can be given to */
   operators: readonly OperatorRef[]
-  /** The `da` parameter of the address: the list state to carry along */
-  da: string | undefined
 }
 
 /**
@@ -49,17 +46,13 @@ export function ContactOperatorControl({
   taskId,
   operatorId,
   operators,
-  da,
 }: Props) {
   const sheet = useContactSheet()
 
   // From the call until the refreshed page is rendered
   const { pending, start, awaitRefresh, finishAfterRefresh, refresh } =
     useSavingUntilRefreshed()
-  const activeContactHref = React.useCallback(
-    (activeTaskId: number) => detailHrefFromDa(activeTaskId, da),
-    [da]
-  )
+  const activeContactHref = sheet.detailHref
   const { onError } = useContactMutationFeedback({ refresh, activeContactHref })
   const reassign = useReassign()
 

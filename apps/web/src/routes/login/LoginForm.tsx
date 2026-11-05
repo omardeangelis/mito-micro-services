@@ -4,13 +4,14 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { authClient } from "@/lib/authClient"
 
-type DevAccount = "admin" | "operator"
+type DevAccount = "admin" | "operator" | "typicalOperator"
 
 /**
  * "Accedi con Microsoft"; with `testLogin` the email of the test login
  * (AUTH_TEST_LOGIN, spec auth-better-auth OQ6); with `devLogin` the quick
- * login of local development, as admin or operator on the two accounts of
- * the seed. Where each login ends the server decides (D15).
+ * login of local development, as admin, operator or the operator with the
+ * typical day, on the three accounts of the seed. Where each login ends the
+ * server decides (D15).
  */
 export function LoginForm({
   testLogin,
@@ -96,6 +97,14 @@ export function LoginForm({
               onClick={() => signInAs("operator")}
             >
               {"Entra come operatore"}
+            </Button>
+            <Button
+              variant="outline"
+              size="lg"
+              className="col-span-2"
+              onClick={() => signInAs("typicalOperator")}
+            >
+              {"Entra con la giornata tipica"}
             </Button>
           </div>
         </>
