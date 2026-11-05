@@ -5,6 +5,7 @@ import {
   CallOutcomes,
   type OnOutcome,
 } from "@/components/custom/contact/call/CallOutcomes"
+import { customerNameOf } from "@/components/custom/contact/call/customerName"
 import { focusIsLost } from "@/components/custom/contact/focus"
 import { type PendingAlert } from "@/components/custom/contact/useContactMutationFeedback"
 import { useRefreshAfterSave } from "@/components/custom/contact/useRefreshAfterSave"
@@ -32,13 +33,6 @@ const UNCERTAIN =
   "Non sappiamo se la chiamata è stata registrata. Controlla lo Storico: se non c'è, registrala di nuovo."
 
 const cardClass = "rounded-card border border-border bg-card p-4 shadow-card"
-
-/** "Nome Cognome", the parts that exist: the name the outcomes speak of */
-const customerNameOf = (customer: ContactDetail["customer"]) =>
-  [customer.name, customer.surname]
-    .map((part) => part?.trim() ?? "")
-    .filter((part) => part !== "")
-    .join(" ") || "Cliente senza nome"
 
 /** A press of an outcome, before the confirmation of a future alert */
 type Press = {

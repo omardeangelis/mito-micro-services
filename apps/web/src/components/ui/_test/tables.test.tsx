@@ -139,10 +139,13 @@ describe("ToggleGroup", () => {
     has(
       item,
       "text-muted-foreground",
+      "border-2",
+      "data-[state=on]:border-primary",
       "data-[state=on]:bg-card",
       "data-[state=on]:text-foreground",
       "data-[state=on]:shadow-xs"
     )
+    expect(item).not.toHaveClass("data-[state=on]:border-border")
     focusRing(item)
   })
 })

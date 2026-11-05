@@ -350,6 +350,12 @@ describe.skipIf(!hasTestDatabase)("verifyManifest", () => {
       withoutRuns.failures.map((f) => `${f.table} ${f.key} ${f.column ?? ""}`)
     ).toEqual([
       "task priority ",
+      // 300 customers don't hold the days of the two home operators
+      "giornata operatore 1003 scaduti",
+      "giornata operatore 1003 di oggi",
+      "giornata operatore 1003 chiamate",
+      "giornata operatore 1026 richiami",
+      "giornata operatore 1026 chiamate",
       "runs alert counters.processed",
       "runs update counters.practices",
       "runs update counters.customers",
@@ -381,6 +387,11 @@ describe.skipIf(!hasTestDatabase)("verifyManifest", () => {
     // 300 customers never reach 5,001 contacts; a failed run doesn't count
     expect(withRuns.failures.map((f) => `${f.table} ${f.key}`)).toEqual([
       "task priority",
+      "giornata operatore 1003",
+      "giornata operatore 1003",
+      "giornata operatore 1003",
+      "giornata operatore 1026",
+      "giornata operatore 1026",
       "runs cleanup-task-event-log",
     ])
   }, 120_000)

@@ -71,6 +71,9 @@ describe("LoginForm", () => {
     expect(
       screen.queryByRole("button", { name: "Entra come operatore" })
     ).toBeNull()
+    expect(
+      screen.queryByRole("button", { name: "Entra con la giornata tipica" })
+    ).toBeNull()
   })
 
   it("l'accesso rapido entra come admin o come operatore e va alla dashboard", async () => {
@@ -94,6 +97,25 @@ describe("LoginForm", () => {
       "/sign-in/dev-account",
       { method: "POST", body: { account: "operator" } }
     )
+    expect(assign).toHaveBeenCalledWith("/dashboard")
+    vi.unstubAllGlobals()
+  })
+
+  it("l'accesso rapido entra con la giornata tipica", async () => {
+    const assign = vi.fn()
+    vi.stubGlobal("location", { ...window.location, assign })
+    render(<LoginForm testLogin devLogin />)
+
+    await userEvent
+      .setup()
+      .click(
+        screen.getByRole("button", { name: "Entra con la giornata tipica" })
+      )
+
+    expect(authClient.$fetch).toHaveBeenCalledWith("/sign-in/dev-account", {
+      method: "POST",
+      body: { account: "typicalOperator" },
+    })
     expect(assign).toHaveBeenCalledWith("/dashboard")
     vi.unstubAllGlobals()
   })

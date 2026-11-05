@@ -129,7 +129,7 @@ const customerContains = (text: string) => {
 const romeDay = (day: string) => romeDayBounds(new Date(`${day}T12:00:00Z`))
 
 /** The `where` of the list: one condition per filter, all in AND. */
-const buildContactsWhere = (
+export const buildContactsWhere = (
   filters: ContactsFilters,
   actor: Actor
 ): SQL | undefined => {
@@ -222,7 +222,7 @@ END`
  * NULLS LAST in `desc` and NULLS FIRST in `asc`, which makes `asc` the exact
  * reverse of `desc` (AC28).
  */
-const buildContactsOrder = (
+export const buildContactsOrder = (
   filters: ContactsFilters,
   alertEnd: Date,
   today: string

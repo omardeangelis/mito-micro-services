@@ -29,6 +29,7 @@ describe("authConfigFrom", () => {
     expect(authConfigFrom(on).devAccounts).toEqual({
       admin: "seed-user-01",
       operator: "seed-user-04",
+      typicalOperator: "seed-user-27",
     })
     // Staging: test login on, but NODE_ENV=production on Cloud Run
     for (const vars of [

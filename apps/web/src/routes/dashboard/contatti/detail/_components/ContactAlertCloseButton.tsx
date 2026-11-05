@@ -26,7 +26,6 @@ import {
 } from "@mito/domain/contact/status"
 import { type ApiFailure } from "@/api/errors"
 import { useRemoveCallback } from "@/api/task"
-import { detailHrefFromDa } from "../../_lib/detailHrefFromDa"
 import { useContactSheet } from "./ContactSheet"
 
 type Props = {
@@ -34,8 +33,6 @@ type Props = {
   alert: { id: number; deadline: Date; message: string | null }
   /** The contact the alert is shown on */
   taskId: number
-  /** The `da` parameter of the address: the list state to carry along */
-  da: string | undefined
 }
 
 /**
@@ -73,7 +70,7 @@ const focusAfterClosing = () => {
  * is still here) or when the button unmounts. The cleanup of a passive effect
  * runs after React removed the button, so `focusIsLost()` is true.
  */
-export function ContactAlertCloseButton({ alert, taskId, da }: Props) {
+export function ContactAlertCloseButton({ alert, taskId }: Props) {
   const sheet = useContactSheet()
   const buttonRef = React.useRef<HTMLButtonElement>(null)
   const choiceId = React.useId()
@@ -94,10 +91,7 @@ export function ContactAlertCloseButton({ alert, taskId, da }: Props) {
   // From the call until the refreshed page is rendered
   const { pending, start, awaitRefresh, finishAfterRefresh, refresh } =
     useSavingUntilRefreshed(moveFocus)
-  const activeContactHref = React.useCallback(
-    (activeTaskId: number) => detailHrefFromDa(activeTaskId, da),
-    [da]
-  )
+  const activeContactHref = sheet.detailHref
   const { onError } = useContactMutationFeedback({ refresh, activeContactHref })
   const removeCallback = useRemoveCallback()
 

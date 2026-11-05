@@ -45,12 +45,9 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
  */
 export function ContactDetailHeader({
   data,
-  da,
   operators,
 }: {
   data: ContactDetail
-  /** The `da` parameter of the address: the list state to carry along */
-  da: string | undefined
   /** Who the contact can be given to: sent only when the user may reassign */
   operators?: readonly OperatorRef[]
 }) {
@@ -100,7 +97,6 @@ export function ContactDetailHeader({
               taskId={contact.id}
               state={contact.state}
               alertDay={alertDay}
-              da={da}
             />
           ) : (
             <>
@@ -118,7 +114,6 @@ export function ContactDetailHeader({
               taskId={contact.id}
               priority={contact.priority}
               customPriority={contact.customPriority}
-              da={da}
             />
           ) : (
             <>
@@ -135,7 +130,6 @@ export function ContactDetailHeader({
               taskId={contact.id}
               operatorId={contact.operator?.id ?? null}
               operators={operators}
-              da={da}
             />
           ) : contact.operator === null ? (
             <span className="text-muted-foreground">Non assegnato</span>

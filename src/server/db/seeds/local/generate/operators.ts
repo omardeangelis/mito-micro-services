@@ -38,6 +38,14 @@ const SMALL_COUNT = 5
 export const HEAVY_OPERATOR_ID = FIRST_OPERATOR_ID + ADMIN_COUNT
 export const EMPTY_OPERATOR_ID =
   FIRST_OPERATOR_ID + ADMIN_COUNT + OPERATORE_COUNT - 1
+/**
+ * The two operators to try the operator's home with (spec home-operatore, T14):
+ * the heaviest OPERATORE has the full day, the last small one the typical day.
+ * `generate/homeDay.ts` gives them the volumes.
+ */
+export const FULL_DAY_OPERATOR_ID = HEAVY_OPERATOR_ID
+export const TYPICAL_DAY_OPERATOR_ID =
+  FIRST_OPERATOR_ID + ADMIN_COUNT + 1 + MEDIUM_COUNT + SMALL_COUNT - 1
 export const SYSTEM_OPERATOR_ID =
   FIRST_OPERATOR_ID + ADMIN_COUNT + OPERATORE_COUNT
 export const SYSTEM_OPERATOR_NAME = "Sistema"

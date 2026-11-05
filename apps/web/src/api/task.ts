@@ -20,6 +20,7 @@ import {
 import { type GetContactsInput } from "@mito/domain/contact/listInput"
 import { useRun } from "./ApiProvider"
 import { allBatches, customerKeys } from "./customer"
+import { refreshToday } from "./home"
 import { routeErrorWhenEmpty } from "./queryClient"
 import { ApiClient, ApiUnavailable, type Run } from "./runtime"
 
@@ -180,13 +181,14 @@ export type RegisterCallInput = (RegisterCall extends infer T
  * - `refused`: a 4xx the endpoint doesn't declare (a payload an older server
  *   can't read): the server wrote nothing, said with `CALL_REFUSED`;
  * - `uncertain`: no answer we can trust (network, 5xx, body that doesn't
- *   read, 15 seconds): the call may or may not be saved (AC15)
+ *   read, 15 seconds): the call may or may not be saved (AC15). It has the
+ *   `requestId` that was sent
  */
 export type RegisterCallResult =
   | { kind: "registered"; registered: RegisteredCall }
   | { kind: "rejected"; error: ApiError }
   | { kind: "refused" }
-  | { kind: "uncertain" }
+  | { kind: "uncertain"; requestId: string }
 
 /** The text of a `refused` call */
 export const CALL_REFUSED =
@@ -208,9 +210,16 @@ const isClientError = (error: unknown) => {
  * No toast, and it doesn't use `useContactMutationFeedback`: an uncertain
  * outcome has its own text (AC15). The state, the alert and the Storico of
  * the contact are read again as the call ends, whatever the outcome; the
- * pending state ends with the response, not with that read (AC33)
+ * pending state ends with the response, not with that read (AC33).
+ *
+ * With `quietFailure`, for a page that says itself what went wrong, a call
+ * that wasn't registered only marks them as old: while the service is down or
+ * the session expired a read on screen would add its toast to that notice
+ * (AC48 of home-operatore). They are read at the next opening or focus
  */
-export const useRegisterCall = () => {
+export const useRegisterCall = ({
+  quietFailure = false,
+}: { quietFailure?: boolean } = {}) => {
   const run = useRun()
   const queryClient = useQueryClient()
   return useMutation({
@@ -218,10 +227,8 @@ export const useRegisterCall = () => {
       taskId,
       ...press
     }: RegisterCallInput): Promise<RegisterCallResult> => {
-      const payload = {
-        ...press,
-        requestId: crypto.randomUUID(),
-      } as RegisterCall
+      const requestId = crypto.randomUUID()
+      const payload = { ...press, requestId } as RegisterCall
       // `AbortSignal.timeout` isn't driven by fake timers, which the tests use
       const controller = new AbortController()
       const timer = setTimeout(
@@ -244,7 +251,7 @@ export const useRegisterCall = () => {
         // A declared error is an answer of the server; anything else is not
         if (isApiError(error)) return { kind: "rejected", error }
         if (isClientError(error)) return { kind: "refused" }
-        return { kind: "uncertain" }
+        return { kind: "uncertain", requestId }
       } finally {
         clearTimeout(timer)
       }
@@ -255,9 +262,19 @@ export const useRegisterCall = () => {
     // user never pressed (AC15, D5)
     networkMode: "always",
     meta: { toastErrors: false },
-    onSettled: () => {
-      void queryClient.invalidateQueries({ queryKey: taskKeys.all })
-      void queryClient.invalidateQueries({ queryKey: customerKeys.all })
+    onSettled: (result) => {
+      const refetchType =
+        quietFailure && result?.kind !== "registered" ? "none" : "active"
+      void queryClient.invalidateQueries({
+        queryKey: taskKeys.all,
+        refetchType,
+      })
+      void queryClient.invalidateQueries({
+        queryKey: customerKeys.all,
+        refetchType,
+      })
+      // The parts of today, not the rows of the home (AC23, AC35)
+      void refreshToday(queryClient)
     },
   })
 }

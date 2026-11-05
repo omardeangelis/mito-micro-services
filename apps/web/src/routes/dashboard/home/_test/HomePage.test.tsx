@@ -4,12 +4,14 @@ import { describe, expect, it } from "vitest"
 import { formatBigNumberWithCurrency } from "@mito/client/format"
 import { fakeHome } from "@/test/home"
 import { practiceRow } from "@/test/pratiche"
+import { AdminHome } from "../AdminHome"
 import { renderHome } from "./page"
 
-// The home of the dashboard on a backend in memory: the time frame of the
-// address, the cards of each role, the link to the import and the practices
-// updated last, as the tests of `dashboard/page.tsx`, `DataSection`,
-// `ImportLink` and `CallsSection` of the Next.js app
+// The home of the admins on a backend in memory: the time frame of the
+// address, the cards, the link to the import and the practices updated last,
+// as the tests of `dashboard/page.tsx`, `DataSection`, `ImportLink` and
+// `CallsSection` of the Next.js app. An operator's `/dashboard` is the view of
+// `lavoro`, whose tests are there
 
 /** The titles of the cards, in their order */
 const cardTitles = () =>
@@ -37,10 +39,10 @@ describe("HomePage, il periodo dell'indirizzo (AC11)", () => {
     ["/dashboard?tf=365d", "365d"],
   ])("%s: le card e il selettore usano %s", async (path, timeframe) => {
     const backend = fakeHome()
-    renderHome(path, backend)
+    renderHome(path, backend, { role: "ADMIN" })
     await showCards()
 
-    expect(backend.state.totalReads).toEqual([timeframe])
+    expect(backend.state.branchReads).toEqual([timeframe])
     expect(backend.state.averageReads).toEqual([timeframe])
     expect(selector()).toBe(timeframe)
   })
@@ -48,7 +50,7 @@ describe("HomePage, il periodo dell'indirizzo (AC11)", () => {
   it("scegliere un periodo lo scrive nell'indirizzo e rilegge le card", async () => {
     const user = userEvent.setup()
     const backend = fakeHome()
-    renderHome("/dashboard", backend)
+    renderHome("/dashboard", backend, { role: "ADMIN" })
     await showCards()
 
     await user.click(screen.getByRole("combobox"))
@@ -57,7 +59,7 @@ describe("HomePage, il periodo dell'indirizzo (AC11)", () => {
     await waitFor(() =>
       expect(new URLSearchParams(window.location.search).get("tf")).toBe("90d")
     )
-    await waitFor(() => expect(backend.state.totalReads).toContain("90d"))
+    await waitFor(() => expect(backend.state.branchReads).toContain("90d"))
     expect(backend.state.averageReads).toContain("90d")
     await waitFor(() => expect(selector()).toBe("90d"))
   })
@@ -93,7 +95,9 @@ describe("HomePage, il periodo dell'indirizzo (AC11)", () => {
 
   it("con indietro torna al periodo di prima", async () => {
     const backend = fakeHome()
-    const { router } = renderHome("/dashboard?tf=90d", backend)
+    const { router } = renderHome("/dashboard?tf=90d", backend, {
+      role: "ADMIN",
+    })
     await showCards()
 
     await act(() => router.navigate("/dashboard?tf=365d"))
@@ -101,7 +105,7 @@ describe("HomePage, il periodo dell'indirizzo (AC11)", () => {
     await act(() => router.navigate(-1))
 
     await waitFor(() => expect(selector()).toBe("90d"))
-    expect(backend.state.totalReads.at(-1)).toBe("90d")
+    expect(backend.state.branchReads.at(-1)).toBe("90d")
   })
 })
 
@@ -145,10 +149,12 @@ describe("HomePage, le card dell'admin", () => {
   })
 })
 
-describe("HomePage, le card dell'operatore", () => {
+// `HomePage` no longer gets an operator here: `DataSection` still has the
+// branch, until home-admin takes it away
+describe("AdminHome, le card dell'operatore", () => {
   it('le intestazioni delle card sono, in ordine, "Finanziato totale", "Contatti con esito" e "Finanziato medio per pratica"', async () => {
     const backend = fakeHome()
-    renderHome("/dashboard", backend)
+    renderHome("/dashboard", backend, { page: <AdminHome /> })
     await showCards()
 
     expect(cardTitles()).toEqual([
@@ -161,7 +167,7 @@ describe("HomePage, le card dell'operatore", () => {
   })
 
   it("le due card degli importi mostrano le date delle finestre della risposta", async () => {
-    renderHome("/dashboard", fakeHome())
+    renderHome("/dashboard", fakeHome(), { page: <AdminHome /> })
     await showCards()
 
     expect(dates()).toEqual([
@@ -173,17 +179,23 @@ describe("HomePage, le card dell'operatore", () => {
       "12/03/2026",
     ])
   })
+})
 
-  it("se non si sa chi è l'utente, perché `/me` è fallito, mostra l'errore della rotta", async () => {
-    renderHome("/dashboard", fakeHome(), { role: undefined })
+describe("HomePage, gli errori", () => {
+  it("se non si sa chi è l'utente, perché `/me` è fallito, mostra la vista di `lavoro` e non l'errore della rotta (D14)", async () => {
+    const backend = fakeHome()
+    renderHome("/dashboard", backend, { role: undefined })
 
-    expect(await screen.findByText("errore della rotta")).toBeTruthy()
+    expect(await screen.findByText("Il mio oggi")).toBeTruthy()
+    expect(screen.queryByText("errore della rotta")).toBeNull()
+    expect(screen.queryByText("Analisi Andamento")).toBeNull()
+    expect(backend.state.averageReads).toEqual([])
   })
 
   it("se le card non arrivano mostra l'errore della rotta", async () => {
     const backend = fakeHome()
     backend.state.failingCards = true
-    renderHome("/dashboard", backend)
+    renderHome("/dashboard", backend, { role: "ADMIN" })
 
     expect(await screen.findByText("errore della rotta")).toBeTruthy()
   })
@@ -193,7 +205,7 @@ describe("HomePage, Nuovo import e chiamate (AC1, AC6, AC28)", () => {
   it("un operatore non vede né il link all'import né le chiamate", async () => {
     const backend = fakeHome()
     renderHome("/dashboard", backend)
-    await showCards()
+    await screen.findByText("Il mio oggi")
 
     expect(screen.queryByRole("link", { name: "Nuovo import" })).toBeNull()
     expect(screen.queryByText("Chiamate per operatore")).toBeNull()
@@ -219,7 +231,7 @@ describe("HomePage, ultime pratiche aggiornate", () => {
     const backend = fakeHome({
       rows: [practiceRow(), practiceRow({ id: 1002, praticaId: "PR-2026-2" })],
     })
-    renderHome("/dashboard", backend)
+    renderHome("/dashboard", backend, { role: "ADMIN" })
 
     expect(await screen.findByText("PR-2026-2")).toBeTruthy()
     expect(backend.state.searches).toEqual([
@@ -237,7 +249,8 @@ describe("HomePage, ultime pratiche aggiornate", () => {
     const user = userEvent.setup()
     renderHome(
       "/dashboard",
-      fakeHome({ rows: [practiceRow({ praticaId: "AB/1 ?x" })] })
+      fakeHome({ rows: [practiceRow({ praticaId: "AB/1 ?x" })] }),
+      { role: "ADMIN" }
     )
 
     await user.click(await screen.findByText("AB/1 ?x"))
@@ -247,7 +260,7 @@ describe("HomePage, ultime pratiche aggiornate", () => {
   })
 
   it("senza pratiche dice 'No results.'", async () => {
-    renderHome("/dashboard", fakeHome({ rows: [] }))
+    renderHome("/dashboard", fakeHome({ rows: [] }), { role: "ADMIN" })
 
     expect(await screen.findByText("No results.")).toBeTruthy()
   })

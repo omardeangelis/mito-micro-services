@@ -11,7 +11,6 @@ import { useSavingUntilRefreshed } from "@/components/custom/contact/useSavingUn
 import { type TaskStatus } from "@mito/domain/schemas"
 import { type ApiFailure } from "@/api/errors"
 import { useChangeState } from "@/api/task"
-import { detailHrefFromDa } from "../../_lib/detailHrefFromDa"
 import { useContactSheet } from "./ContactSheet"
 
 type Props = {
@@ -20,8 +19,6 @@ type Props = {
   state: TaskStatus | null
   /** The day of the open alert (`YYYY-MM-DD`), shown by a Richiamo */
   alertDay?: string | null
-  /** The `da` parameter of the address: the list state to carry along */
-  da: string | undefined
 }
 
 /**
@@ -48,7 +45,7 @@ type Props = {
  * - A rejection (AC49, AC52) is a toast, said also inside the sheet, and the
  *   refresh that brings the control back to the saved value.
  */
-export function ContactStateControl({ taskId, state, alertDay, da }: Props) {
+export function ContactStateControl({ taskId, state, alertDay }: Props) {
   const navigate = useNavigate()
   const sheet = useContactSheet()
   const triggerRef = React.useRef<HTMLButtonElement>(null)
@@ -74,10 +71,7 @@ export function ContactStateControl({ taskId, state, alertDay, da }: Props) {
     return () => sheet.setReopening(false)
   }, [navigating, sheet])
 
-  const activeContactHref = React.useCallback(
-    (activeTaskId: number) => detailHrefFromDa(activeTaskId, da),
-    [da]
-  )
+  const activeContactHref = sheet.detailHref
   const { onError } = useContactMutationFeedback({ refresh, activeContactHref })
   const changeState = useChangeState()
 
@@ -135,7 +129,7 @@ export function ContactStateControl({ taskId, state, alertDay, da }: Props) {
           refresh()
           // The data router answers with a promise, the end of the navigation
           void Promise.resolve(
-            navigate(detailHrefFromDa(result.taskId, da), {
+            navigate(sheet.detailHref(result.taskId), {
               replace: true,
               preventScrollReset: true,
             })

@@ -9,7 +9,7 @@ links:
   - "[[chore/motion-stack]]"
   - "[[chore/migrazione-frontend-react]]"
 created: 2026-10-31
-updated: 2026-10-31
+updated: 2026-11-04
 ---
 
 # Spec: Toast di `apps/web` con Sonner
@@ -206,5 +206,6 @@ Questa spec allarga, per i soli toast, l'eccezione di Omar del 2026-10-29 sul de
 | Tastiera, pausa e focus sono quelli di Sonner: Esc chiude la pila, il tempo si ferma con il puntatore, dopo F8 o con la scheda nascosta, il focus va dove lo mette Sonner; F8 resta con l'opzione `hotkey` | Omar, 2026-10-31: nessun gestore scritto da noi sopra Sonner per rifare il comportamento di Radix («Non fare questa cosa», poi «Sì, allinea a Sonner»). I difetti che ne vengono sono scritti in Technical Notes |
 | AC34 e AC35 restano, anche se Sonner da solo non li garantisce | Omar, 2026-10-31 («Sì, AC34 resta»; per il collegamento «Sheet aperta fino alla navigazione»). Non rifanno un comportamento di Radix: senza, con una Sheet o una Dialog aperta, i pulsanti e il collegamento di un toast non rispondono o chiudono la Sheet perdendone lo stato. È l'unica eccezione alla regola qui sopra, e vale per tutta la lista dei toast |
 | Un Ctrl/Cmd-clic sul collegamento non chiude il toast | Omar, 2026-10-31: «Il toast resta aperto». Chiuderlo chiederebbe un gestore nostro che rifà `ToastClose` di Radix |
+| La posizione resta in basso a destra | Omar, 2026-11-04 (OQ5 di [[specs/crm/design-system-web/SPEC\|design-system-web]]). Un toast può coprire i comandi sotto di lui mentre è a schermo: è un limite accettato |
 | Vaul fuori da questa spec | Il layout telefono è rinviato; l'ultima versione è di dicembre 2024 |
 | L'app Next.js alla radice resta fuori | La sostituisce `apps/web`; decisione di Omar del 2026-10-30 |

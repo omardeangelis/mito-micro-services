@@ -19,7 +19,7 @@ links:
   - "[[specs/crm/toast-sonner/SPEC]]"
   - "[[tech-debt/crm/sezione-contatti]]"
 created: 2026-11-01
-updated: 2026-11-03
+updated: 2026-11-04
 ---
 
 # Spec: Home dell'admin
@@ -69,15 +69,25 @@ updated: 2026-11-03
 > - Le decisioni P1 e P2 della revisione UI diventano criteri; per la colonna «Assegna» di «Dettaglio giornaliero» si sceglie un default e se ne scrive il motivo. Il riquadro ha un piede fisso con «Quanti», riepilogo e conferma.
 > - «Lavorali» porta a `/dashboard/lavoro` di home-operatore: questa home non esce prima di quella rotta. I lotti in parallelo dell'assegnazione massiva di Clienti restano fuori, come seguito annotato.
 
+> [Decisioni sulla revisione dopo l'implementazione di `assegnazione-wave`, 2026-11-04]
+> - «Assegna» disattivato: «Sì», con il default: la colonna resta, con «Assegna» quando la Wave ha clienti senza operatore e «Apri» quando non ne ha.
+> - «<N> da fare» in AC12: rifiutata, «scrivi <N> da chiamare».
+> - Le altre correzioni della revisione: «Sì».
+
+> [Decisioni su OQ4 e OQ5 di `design-system-web`, 2026-11-04]
+> - «q4 va bene e il toast teniamol in basso a destra dove è sempre stato»
+
 ---
 
 ## Context
 
 > **2026-11-03.** Il riquadro «Assegna contatti» (AC14–AC26, AC41–AC44), le parti di un import Wave e OQ2, OQ3, OQ10, OQ12 sono passati (OQ1, OQ11 e OQ13 valgono per le due spec) alla spec [[specs/crm/assegnazione-wave/SPEC|assegnazione-wave]], che dà a ogni Wave una pagina con il flusso guidato. I pulsanti «Assegna» di questa home aprono quella pagina (AC13). «Operatore fermo» si chiama ora «inattivo».
+>
+> **2026-11-04.** [[specs/crm/assegnazione-wave/SPEC|assegnazione-wave]] e la spec degli esiti sono implementate e in `dev`. Dalla riga di un import si arriva sempre alla pagina della Wave: con «Assegna» se ha clienti senza operatore, con «Apri» se non ne ha (AC13).
 
 La home `/dashboard` di `apps/web` oggi mostra le card di «Analisi Andamento» e le ultime pratiche aggiornate, e agli admin l'export chiamate «Chiamate per operatore» con il periodo «Dal/Al». Per un admin non dice com'è andata la giornata, chi è indietro, quanto delle ultime Wave è stato lavorato, né quali clienti non hanno ancora un operatore. Per assegnarli oggi l'admin deve selezionarli in Clienti e usare l'assegnazione massiva ([[chore/crm/guida-assegnazione-massiva-e-alert|guida]] §2–§4), senza vedere i carichi degli operatori.
 
-Questa spec fa della home dell'admin la pagina da cui parte la giornata. In alto ci sono il saluto, quattro azioni rapide e quattro numeri di oggi. Sotto viene «Ultimi import», con l'avanzamento delle ultime quattro Wave e il comando «Assegna». Poi c'è «Dettaglio giornaliero», una persona per riga, in due gruppi che si aprono e chiudono: gli operatori e gli admin. In fondo resta l'export «Chiamate per operatore» di oggi.
+Questa spec fa della home dell'admin la pagina da cui parte la giornata. In alto ci sono il saluto, quattro azioni rapide e quattro numeri di oggi. Sotto viene «Ultimi import», con l'avanzamento delle ultime quattro Wave e il comando che apre la pagina di ognuna. Poi c'è «Dettaglio giornaliero», una persona per riga, in due gruppi che si aprono e chiudono: gli operatori e gli admin. In fondo resta l'export «Chiamate per operatore» di oggi.
 
 Per chi è ([[personas]]):
 
@@ -113,13 +123,12 @@ I giorni sono giorni di Roma. «Oggi» va dalla mezzanotte di Roma ad adesso. «
 - **Tasso di risposta**: le chiamate con esito diverso da `non risponde`, sul totale delle chiamate.
 - **Tasso di appuntamento**: le chiamate con esito `app.to`, sulle risposte (le chiamate con esito diverso da `non risponde`). È la stessa logica di Analisi e dell'export chiamate; D6 del design è corretto di conseguenza (OQ7).
 - **Team**: gli utenti `OPERATORE` e `ADMIN` non disattivati, con la loro riga operatore (OQ6). Gli **operatori** del team sono gli `OPERATORE`, gli **admin** del team sono gli `ADMIN`. Dove la spec dice «operatore del team» vale per tutti e due i ruoli.
-- **Da chiamare** di un operatore: i suoi contatti attivi in `chiamare` o `non risponde`, di qualunque provenienza.
+- **Da chiamare** di un operatore: i suoi contatti attivi in `chiamare` o `non risponde`, di qualunque provenienza. La pagina della Wave chiama lo stesso numero «Attive» su tutte le Wave e «da fare» dentro una Wave, e lì «da chiamare» è solo una delle due parti.
 - **Mai chiamati** di un operatore: i suoi contatti attivi in `chiamare` il cui cliente non ha nessuna chiamata registrata, su nessun contatto, e non ha alert aperti. Il conto è sul cliente perché fino a D3 un contatto cambia identità quando si riapre. Per le chiamate fatte prima dell'inizio del registro vale OQ13.
 - **Contatti di un operatore**, per i numeri del team (da chiamare, mai chiamati, arretrati): i contatti attivi assegnati a lui. Per «I tuoi richiami» (AC6) valgono invece i contatti dell'utente come li conta [[specs/crm/home-operatore/SPEC|home-operatore]] (il filtro «Solo i miei» di Contatti), così il numero è lo stesso che l'admin trova aprendo «Lavorali».
 - **Arretrati** di un operatore: gli alert aperti dei suoi contatti con scadenza prima di oggi (D1).
 - **Giorno lavorato**: un giorno prima di oggi in cui almeno una persona del team ha registrato una chiamata. I giorni di chiusura, i festivi e i fine settimana senza chiamate non sono giorni lavorati.
-- **Operatore inattivo** (prima «fermo»): un operatore del team che non ha chiamato in almeno 7 giorni lavorati dopo il giorno della sua ultima chiamata (OQ5 per chi non ha mai chiamato). Chi è in ferie mentre il team lavora diventa inattivo; dopo una chiusura di tutta l'azienda nessuno lo è per quei giorni. Torna attivo con la prima chiamata. **Operatore attivo**: un operatore del team che non è inattivo.
-- **Ritmo** di un operatore: le sue chiamate dei 30 giorni prima di oggi (oggi escluso), divise per i giorni in cui ne ha registrata almeno una (OQ4). Si mostra arrotondato all'intero.
+- **Operatore inattivo** (prima «fermo»): un operatore del team che non ha chiamato in almeno 7 giorni lavorati dopo il giorno della sua ultima chiamata (OQ5 per chi non ha mai chiamato). Chi è in ferie mentre il team lavora diventa inattivo; dopo una chiusura di tutta l'azienda nessuno lo è per quei giorni. Torna attivo con la prima chiamata.
 - **Import Wave**: un import completato in formato Wave. Sono compresi i file Promozioni, che hanno lo stesso formato. Un import Standard (pratiche erogate) non porta lavoro da assegnare e non compare.
 - **Clienti di un import Wave**: i clienti che quell'import ha creato o aggiornato. Le righe scartate non contano. Un cliente presente in più import Wave conta in ognuno (OQ1).
 - **Le parti di un import Wave** (Senza operatore, Mai chiamati, Chiamati, senza esito, Lavorati, e i clienti con operatore senza contatto) sono definite in [[specs/crm/assegnazione-wave/SPEC|assegnazione-wave]] (Definizioni).
@@ -132,8 +141,8 @@ I giorni sono giorni di Roma. «Oggi» va dalla mezzanotte di Roma ad adesso. «
 - **D1, D2 e D6** (alert aperti fino a quando sono lavorati, «Registra chiamata», sei stati): sono della spec «Esiti, richiami e stati del contatto».
 - **Un'entità Wave** con nome, numero o campagna propri: una Wave resta un import (OQ1, OQ2).
 - **Cambiare l'assegnazione massiva di Clienti**: i suoi quattro casi restano come sono. La home non assegna.
-- **Assegnare e spostare contatti dalla home**: i pulsanti «Assegna» aprono la pagina della Wave (AC13), dove l'assegnazione e lo spostamento dei contatti, compresi i Non risponde, sono di [[specs/crm/assegnazione-wave/SPEC|assegnazione-wave]].
-- **Aggiornamento in tempo reale**: la pagina mostra i dati di quando è stata caricata, di un «Riprova» o di dopo un'assegnazione.
+- **Assegnare e spostare contatti dalla home**: i pulsanti «Assegna» e «Apri» aprono la pagina della Wave (AC13), dove l'assegnazione e lo spostamento dei contatti, compresi i Non risponde, sono di [[specs/crm/assegnazione-wave/SPEC|assegnazione-wave]].
+- **Aggiornamento in tempo reale**: la pagina mostra i dati di quando è stata caricata o di un «Riprova» (AC30).
 - **L'app Next.js e tRPC**: la home esiste solo in `apps/web`, con i suoi dati solo su `HttpApi`.
 - **Il layout per telefono e il tema scuro.**
 - **L'orario sull'alert e l'identità stabile del contatto** (D3): fuori, come nel design.
@@ -197,12 +206,12 @@ AC37–AC50 vengono dalle revisioni del prototipo (2026-11-01) e stanno in fondo
 
   | Colonna | Contenuto |
   |---|---|
-  | «Wave» | Il nome della Wave, come lo definisce [[specs/crm/assegnazione-wave/SPEC|assegnazione-wave]] (Definizioni). Sotto: «importata oggi», «importata ieri» o «importata <N> giorni fa», dal giorno di fine dell'import, poi « · scade <giorno>», « · scaduta · <N> da fare» in rosso, o « · scadenza da confermare» in ambra ([[specs/crm/assegnazione-wave/SPEC|assegnazione-wave]]) |
+  | «Wave» | Il nome della Wave, come lo definisce [[specs/crm/assegnazione-wave/SPEC|assegnazione-wave]] (Definizioni). Sotto: «importata oggi», «importata ieri» o «importata <N> giorni fa», dal giorno in cui l'import è partito, poi « · scade <giorno>», « · scaduta · <N> da fare» in rosso, o « · scadenza da confermare» in ambra ([[specs/crm/assegnazione-wave/SPEC|assegnazione-wave]]) |
   | «Clienti» | I clienti dell'import |
   | «Senza operatore» | Il numero, in ambra; «Nessuno» quando è 0 |
   | «Mai chiamati» | Il numero |
   | «Avanzamento» | Una barra divisa nelle quattro parti (Lavorati, Chiamati senza esito, Mai chiamati, Senza operatore, in quest'ordine e nei colori della legenda), su una base che vale «Clienti». Poi «<N> lavorati · <P%>», con la percentuale di «Clienti» arrotondata per difetto all'intero |
-  | (senza titolo visibile) | Il pulsante «Assegna» (AC13) |
+  | (senza titolo visibile) | Il pulsante «Assegna» o «Apri» (AC13) |
 
   - Le quattro parti della barra, più i clienti con operatore senza contatto (la parte vuota della barra), sommano a «Clienti».
   - Un import con 0 clienti ha la barra vuota e «Nessun cliente» al posto di «<N> lavorati · <P%>».
@@ -219,12 +228,11 @@ AC37–AC50 vengono dalle revisioni del prototipo (2026-11-01) e stanno in fondo
   - «<M> mai chiamati», in ambra se l'operatore è inattivo e M > 0.
 
   Prima vengono gli operatori inattivi, poi gli altri, e in ogni gruppo prima chi ha più mai chiamati, poi per nome. Senza nessun operatore c'è «Nessuno ha ancora contatti di questa Wave.».
-- **AC13.** Ogni riga di «Ultimi import» e ogni riga di «Dettaglio giornaliero» ha un pulsante «Assegna», che apre la pagina della Wave di [[specs/crm/assegnazione-wave/SPEC|assegnazione-wave]] (AC2 lì): dalla riga di un import la sua Wave; dalla riga del team la Wave scelta con la regola di quella spec, con la sola persona della riga scelta. È disattivato:
-  - finché una delle due sezioni, «Ultimi import» o «Dettaglio giornaliero», non ha i suoi dati a schermo (primo caricamento, caricamento dopo un «Riprova», errore). Durante una rilettura che tiene i dati di prima (AC30) resta com'era;
-  - in una riga di import, quando quell'import non ha clienti senza operatore;
-  - in una riga del team, quando nessun import elencato ha clienti senza operatore.
+- **AC13.** Ogni riga di «Ultimi import» ha un pulsante che apre la pagina della sua Wave ([[specs/crm/assegnazione-wave/SPEC|assegnazione-wave]], AC2 lì): «Assegna» quando quell'import ha clienti senza operatore, «Apri» quando non ne ha. Così dalla home si arriva sempre alla proroga e alla riassegnazione di una Wave scaduta o con i contatti presso un inattivo. Il pulsante non dipende da «Dettaglio giornaliero».
 
-  Quando il motivo è l'errore di «Dettaglio giornaliero», la testata di «Ultimi import» lo dice (AC40).
+  Ogni riga di «Dettaglio giornaliero» ha un pulsante «Assegna», che apre la Wave scelta con la regola di quella spec, con la sola persona della riga scelta. È disattivato:
+  - finché «Ultimi import» non ha i suoi dati a schermo (primo caricamento, caricamento dopo un «Riprova», errore). Durante una rilettura che tiene i dati di prima (AC30) resta com'era;
+  - quando nessun import elencato ha clienti senza operatore.
 - **AC37.** La barra «Avanzamento» e la sua legenda si leggono a vista, perché «Chiamati, senza esito» non ha una colonna e si vede solo lì. Su ogni riga di «Ultimi import», da 1024 a 1920 px, qualunque parte valga 0:
   - ogni parte sopra 0 ha un segmento largo almeno 2 px, anche con 1 cliente su 9.100;
   - fra due segmenti vicini c'è sempre un separatore di 2 px del colore della card;
@@ -234,16 +242,13 @@ AC37–AC50 vengono dalle revisioni del prototipo (2026-11-01) e stanno in fondo
   Oggi i segmenti vicini, senza separatore, misurano da 1,49 a 2,9 fra loro e contro la traccia, e i pallini 2,34 e 1,56. Le quattro parti si distinguono fra loro per il colore, per la legenda e per il testo dell'indicatore (AC31), non per un contrasto di 3:1 fra due segmenti.
 - **AC38.** Nel dettaglio di un import (AC12), da 1024 a 1920 px, il nome di un operatore fino a 18 caratteri si legge intero («Valentina Nappi» oggi finisce con i puntini, perché la colonna del nome è larga 91 px da 1024 a 1217 px). Il nome ha una larghezza minima di 10rem, e quando il dettaglio è largo meno di 60rem le righe stanno in una sola colonna.
 - **AC39.** Aprire il dettaglio di un import non fa saltare la riga cliccata. Da 1024 a 1920 px, con il dettaglio di un import aperto, un clic sul nome di un'altra riga lascia quel nome entro 1 px dalla posizione di prima nella finestra (oggi, a 1440×900, salta di 291 px). Fa eccezione solo la pagina scorsa meno dell'altezza del dettaglio che si chiude sopra: allora la pagina torna in cima, e il nome si sposta solo della parte che lo scorrimento non può compensare. Resta aperto un dettaglio alla volta (AC11).
-- **AC40.** Quando «Dettaglio giornaliero» è in errore e «Ultimi import» è caricato con almeno un import, nella testata di «Ultimi import», al posto della riga di riepilogo (AC9), c'è «Per assegnare servono anche i numeri del team.» con un «Riprova» che ricarica «Dettaglio giornaliero».
-  - A 1280×800 la riga e il suo «Riprova» si vedono senza scorrere la pagina.
-  - Dopo un «Riprova» riuscito torna la riga di riepilogo e gli «Assegna» che AC13 non disattiva per altri motivi sono attivi.
-  - Mentre «Dettaglio giornaliero» si ricarica la riga resta, e se il «Riprova» fallisce la riga resta.
+- **AC40.** Tolto il 2026-11-04. La riga «Per assegnare servono anche i numeri del team.» serviva al riquadro «Assegna», che usava quei numeri: la pagina della Wave legge i suoi (AC13).
 
 ### Assegna
 
 Il riquadro «Assegna contatti» non c'è più: l'assegnazione e i suoi esiti sono in [[specs/crm/assegnazione-wave/SPEC|assegnazione-wave]]. AC14–AC26 e AC41–AC44 sono passati lì.
 
-- **AC45.** Su Chromium, nella home, da 1024 a 1920 px di larghezza e da 768 a 1080 px di altezza, un toast non copre, neanche in parte, né il comando su cui è il fuoco quando il toast compare o che riceve il fuoco mentre il toast è a schermo, né i pulsanti «Assegna» delle righe (AC13) visibili nella finestra in quel momento, per tutta la durata del toast. Vale con il pulsante della riga nei 120 px più bassi della finestra e nei 120 px più alti, con la pagina in cima e scorsa (stesso criterio di AC49 di [[specs/crm/home-operatore/SPEC|home-operatore]]). Oggi, a 1440×900, «Assegna dalla Wave 13» in basso è coperto del tutto per 5 s. Dove sta il toast, e come soddisfa questo criterio, è OQ14.
+- **AC45.** Tolto il 2026-11-04. I toast restano in basso a destra in tutta l'app (OQ14): mentre sono a schermo possono coprire il comando con il fuoco e i pulsanti delle righe più basse, e il toast di fine import dura 10 s.
 
 ### Dettaglio giornaliero
 
@@ -277,7 +282,7 @@ Il riquadro «Assegna contatti» non c'è più: l'assegnazione e i suoi esiti so
     Oltre 6 c'è «Vedi tutti i <N> in Contatti». Il link apre Contatti filtrata su quell'operatore, con «Prossimo alert» fino a ieri, dal più vecchio. Senza arretrati c'è «Nessun richiamo scaduto.».
 
   Ogni cliente apre il dettaglio del suo contatto (`/dashboard/contatti/:id`).
-- **AC46.** In «Dettaglio giornaliero» e in «Ultimi import» la colonna «Assegna» resta fissa sul bordo destro del riquadro della tabella, e le altre colonne le scorrono sotto. Con la barra laterale aperta o chiusa, da 1024 a 1920 px, ogni pulsante «Assegna» delle due tabelle si vede intero, con la tabella scorsa o no (oggi, in «Dettaglio giornaliero», la colonna è nascosta da 1024 a 1300 px e tagliata da 1301 a 1390 px; in «Ultimi import», con la min-w di 62rem, è fuori dalla vista a 1024 px). Sotto la larghezza minima scorre solo la tabella, non la pagina (AC33).
+- **AC46.** In «Dettaglio giornaliero» e in «Ultimi import» la colonna «Assegna» resta fissa sul bordo destro del riquadro della tabella, e le altre colonne le scorrono sotto. Con la barra laterale aperta o chiusa, da 1024 a 1920 px, ogni pulsante «Assegna» o «Apri» delle due tabelle si vede intero, con la tabella scorsa o no (oggi, in «Dettaglio giornaliero», la colonna è nascosta da 1024 a 1300 px e tagliata da 1301 a 1390 px; in «Ultimi import», con la min-w di 62rem, è fuori dalla vista a 1024 px). Sotto la larghezza minima scorre solo la tabella, non la pagina (AC33).
 
 ### Stati, accessibilità, movimento
 
@@ -296,12 +301,12 @@ Il riquadro «Assegna contatti» non c'è più: l'assegnazione e i suoi esiti so
 
   I riepiloghi accanto ai titoli compaiono solo a dati caricati.
 
-  Lo scheletro è solo del primo caricamento e di un «Riprova». Una rilettura tiene i dati di prima finché arrivano i nuovi, e se fallisce la parte mostra il suo errore. Tornare sulla scheda del browser o tornare in rete non rilegge niente. Una parte che fallisce mostra solo il suo messaggio, senza il toast d'errore dell'app.
+  Lo scheletro è solo del primo caricamento e di un «Riprova». Una rilettura tiene i dati di prima finché arrivano i nuovi, e se fallisce la parte mostra il suo errore. Tornando alla home da un'altra pagina dell'app, per esempio dopo un'assegnazione nella pagina della Wave, le quattro parti rileggono: i dati di prima, se ci sono, restano a schermo finché arrivano i numeri del momento. Tornare sulla scheda del browser o tornare in rete non rilegge niente. Una parte che fallisce mostra solo il suo messaggio, senza il toast d'errore dell'app.
 - **AC31.** Accessibilità:
   - i nomi che aprono un dettaglio e le intestazioni dei gruppi «Operatori» e «Admin» sono pulsanti, che dicono se sono aperti e che cosa controllano;
   - la barra di avanzamento è un indicatore con il nome «Avanzamento della <nome>» e il testo «<L> lavorati, <C> chiamati senza esito, <M> mai chiamati, <S> senza operatore, su <N> clienti», così ogni parte si legge anche senza vederla;
-  - «Assegna» ha il nome accessibile «Assegna dalla <nome>» nella riga di import e «Assegna contatti a <nome>» nella riga del team;
-  - le intestazioni delle colonne senza titolo visibile dicono «Assegna» ai lettori di schermo;
+  - «Assegna» ha il nome accessibile «Assegna dalla <nome>» nella riga di import e «Assegna contatti a <nome>» nella riga del team; «Apri» ha il nome «Apri la <nome>»;
+  - le intestazioni delle colonne senza titolo visibile dicono ai lettori di schermo «Azione» in «Ultimi import» e «Assegna» in «Dettaglio giornaliero»;
   - il gruppo «Ordina per» ha il suo nome;
   - ogni comando ha un indicatore di focus visibile, e tutto si usa da tastiera.
 - **AC32.** La pagina non ha animazioni. Aprire e chiudere un dettaglio, ordinare, caricare e aggiornare i numeri sono istantanei: anche la freccia del dettaglio ruota senza transizione. Le transizioni dei componenti del design system (riquadro, toast) e la pulsazione dei loro scheletri, compresi quelli dell'export (AC36), restano le loro.
@@ -310,9 +315,9 @@ Il riquadro «Assegna contatti» non c'è più: l'assegnazione e i suoi esiti so
 - **AC35.** Quando la home arriva, il suo prototipo (`apps/web/src/prototypes/home-admin/` e la rotta `/dashboard/prototypes/home-admin`) non esiste più, e nessun file fuori da `src/prototypes` lo importa.
 - **AC36.** In fondo alla pagina, dopo «Dettaglio giornaliero», resta l'export «Chiamate per operatore» della home di oggi: periodo «Dal/Al», indicatori, grafici e file Excel, con il comportamento, i testi e gli stati di caricamento e di errore di [[specs/crm/export-chiamate/SPEC|export-chiamate]], senza cambiamenti (OQ9).
 - **AC47.** Lo scheletro di «Ultimi import» tiene il posto di 4 righe e del dettaglio del più recente aperto. Il dato di riferimento è quello di produzione: 4 import Wave e un dettaglio con 15 operatori. A 1440×900, quando «Dettaglio giornaliero» arriva prima di «Ultimi import», l'arrivo di quegli import sposta «Dettaglio giornaliero» al massimo di 8 px (oggi lo scheletro è alto 195 px, la sezione caricata 612 px, e il team scende di 417 px).
-- **AC48.** In «Ordina per», da 1024 a 1920 px, la voce scelta si distingue dalle altre con almeno 3:1, misurato fra il fondo o il bordo della voce scelta e il fondo del gruppo su cui stanno le voci non scelte (oggi lo sfondo della voce scelta misura 1,08 contro il gruppo, e il suo testo 2,81 contro quello delle altre voci, con lo stesso peso). È il ToggleGroup del design system: la correzione è un prerequisito (Constraints).
+- **AC48.** In «Ordina per», da 1024 a 1920 px, la voce scelta si distingue dalle altre con almeno 3:1, misurato fra il fondo o il bordo della voce scelta e il fondo del gruppo su cui stanno le voci non scelte (prima del bordo di 2 px `primary`, lo sfondo della voce scelta misurava 1,08 contro il gruppo, e il suo testo 2,81 contro quello delle altre voci, con lo stesso peso). È il ToggleGroup del design system, già corretto (Constraints).
 - **AC49.** Correzioni di accessibilità del compito. Dove una revisione UX e una UI hanno trovato lo stesso difetto, la riga dice la conseguenza per la persona e la causa misurata:
-  - **Dopo «Riprova»** (ogni parte in errore, AC30, e la riga di AC40): quando i dati arrivano, il fuoco va sul titolo della sezione in cui era il «Riprova» («Ultimi import», «Dettaglio giornaliero») o sull'etichetta della sua cella dei numeri di oggi. Se il nuovo caricamento fallisce, il fuoco torna sul «Riprova». Il fuoco si sposta solo se nel frattempo è rimasto su quel «Riprova» o sul corpo della pagina. Oggi il fuoco finisce sul corpo della pagina.
+  - **Dopo «Riprova»** (ogni parte in errore, AC30): quando i dati arrivano, il fuoco va sul titolo della sezione in cui era il «Riprova» («Ultimi import», «Dettaglio giornaliero») o sull'etichetta della sua cella dei numeri di oggi. Se il nuovo caricamento fallisce, il fuoco torna sul «Riprova». Il fuoco si sposta solo se nel frattempo è rimasto su quel «Riprova» o sul corpo della pagina. Oggi il fuoco finisce sul corpo della pagina.
 - **AC50.** Correzioni meccaniche, da 1024 a 1920 px:
   - **Colonna «Wave» di «Ultimi import»:** un nome di file lungo, anche senza spazi, finisce con i puntini e non invade «Clienti» (oggi un nome di 64 caratteri la invade da 1024 a 1520 px); «importata <N> giorni fa» sta su una riga (oggi va su due da 1024 a 1217 px).
   - **Titoli del dettaglio di una persona:** «Chiamate di oggi» e «Arretrati» sono titoli di un livello sotto quello dei gruppi «Operatori» e «Admin» (oggi hanno lo stesso livello).
@@ -325,15 +330,13 @@ Il riquadro «Assegna contatti» non c'è più: l'assegnazione e i suoi esiti so
 
 - **Dopo la spec degli esiti, sui dati veri** (D1, D2, D6). Prima di quella spec i numeri di chiamate, tassi e arretrati non hanno senso: le chiamate dal registro sono sottostimate, e gli alert scaduti si chiudono di notte.
 - **Solo `apps/web` e `HttpApi`/Effect.** tRPC e Next.js restano come sono, e la home di Next non cambia. Le operazioni nuove seguono L3 di [[chore/migrazione-effect]].
-- **Volumi di produzione** (design §6): 15 operatori, una mediana di 2.854 contatti da chiamare e un massimo di 7.730. Le fixture del prototipo danno agli import Wave da 6.380 a 9.100 clienti, una stima da verificare sui dati veri. Un'assegnazione può spostare qualche migliaio di contatti in una volta.
+- **Volumi di produzione** (design §6): 15 operatori, una mediana di 2.854 contatti da chiamare e un massimo di 7.730. Le fixture del prototipo danno agli import Wave da 6.380 a 9.100 clienti, una stima da verificare sui dati veri.
 - **I due prototipi dipendono l'uno dall'altro.** Il prototipo di questa home importa `shared.tsx` e `fixtures.ts` di `apps/web/src/prototypes/home-operatore/`. Quella cartella si toglie insieme a questa, o dopo che questa non ne importa più nulla, e mai lasciando `pnpm web:build` rotto (AC40 di [[specs/crm/home-operatore/SPEC|home-operatore]]).
-- **La traccia dei clienti di ogni import** (quali ha creato o aggiornato), da cui leggono «Ultimi import» e il suo dettaglio, è di [[specs/crm/assegnazione-wave/SPEC|assegnazione-wave]] (AC29). L'import resta com'è per operatore, contatti e chat.
-- **Componenti, token e colori** di [[specs/crm/design-system-web/SPEC|design-system-web]]. Ambra per i segnali da guardare, rosso per arretrati e scaduti, verde per chi riceve. Testi in italiano.
-- **Prerequisiti nel design system** ([[specs/crm/design-system-web/SPEC|design-system-web]], implementata: va rivista prima che questa home esca). Le correzioni cambiano tutte le pagine che usano quei componenti, perciò si fanno lì:
-  - **la voce scelta del ToggleGroup**, che oggi non si distingue dalle altre con 3:1. AC15 di quella spec la definisce ancora con fondo `card` e testo `foreground`, e va riscritto. AC48 la verifica qui;
-  - **la posizione dei toast e il modo in cui lasciano liberi i comandi** (OQ14), che cambia AC8 di [[specs/crm/toast-sonner/SPEC|toast-sonner]], anche essa implementata. Nessuna posizione fissa basta da sola, quindi la decisione dice anche come il toast lascia liberi i pulsanti «Assegna» e il comando con il fuoco. AC45 la verifica qui, con lo stesso criterio di AC49 di [[specs/crm/home-operatore/SPEC|home-operatore]].
-
-  Queste due voci vanno registrate in design-system-web, che oggi non le ha, prima di `create-plan` di questa home.
+- **La traccia dei clienti di ogni import** (quali ha creato o aggiornato), da cui leggono «Ultimi import» e il suo dettaglio, è di [[specs/crm/assegnazione-wave/SPEC|assegnazione-wave]] (AC29), già in `dev`. L'import resta com'è per operatore, contatti e chat.
+- **Al rilascio «Ultimi import» è vuoto.** Le Wave caricate in prod prima del rilascio non hanno una riga `import_run`, e Omar ha deciso di non ricostruirle (2026-11-04, [[tech-debt/crm/assegnazione-wave]]). Fino alla prima Wave importata dopo il rilascio la home mostra «Nessun import Wave completato.» (AC8) e gli «Assegna» del team sono disattivati (AC13).
+- **Componenti, token e colori** di [[specs/crm/design-system-web/SPEC|design-system-web]]. Ambra per i segnali da guardare, rosso per arretrati e scaduti. Testi in italiano.
+- **ToggleGroup del design system** ([[specs/crm/design-system-web/SPEC|design-system-web]], implementata): **la voce scelta del ToggleGroup**, che oggi non si distingue dalle altre con 3:1. AC15 di quella spec è riscritto con il bordo di 2 px `primary` (OQ4 lì, chiusa il 2026-11-04) e `toggle-group.tsx` è corretto: misurato 8,86:1 contro il binario. AC48 la verifica qui.
+- **I toast restano in basso a destra** (AC8 di [[specs/crm/toast-sonner/SPEC|toast-sonner]], OQ14). Mentre sono a schermo possono coprire i comandi delle righe più basse: è un limite accettato il 2026-11-04.
 - **Dopo la rotta di «Lavorali».** «Lavorali» (AC6) porta a `/dashboard/lavoro`, che crea [[specs/crm/home-operatore/SPEC|home-operatore]] (AC4 lì) e che il router di `apps/web` oggi non ha. Questa home non esce prima di quella rotta.
 - **Verificato a mano con NVDA e VoiceOver** (dalla revisione UX), sulla home vera:
   - con una parte in errore, dopo «Riprova»: quando arrivano i numeri si sente il titolo della sezione su cui va il fuoco (AC49).
@@ -351,25 +354,28 @@ Il riquadro «Assegna contatti» non c'è più: l'assegnazione e i suoi esiti so
   - `practices.file_name` (con `is_wave`) lo riscrive l'import che aggiorna la pratica;
   - entrambi hanno il nome trasformato da `parseFileName` (trattini in `_`, prefisso `MMYY_` del mese di Roma), non quello di `import_run.file_name`.
 
-  Per questo serve una traccia che duri: quali clienti ha creato o aggiornato ogni import (AC29 di [[specs/crm/assegnazione-wave/SPEC|assegnazione-wave]]). Le quattro parti (Senza operatore, Mai chiamati, Chiamati senza esito, Lavorati) e i numeri per operatore e import sono letture nuove.
+  Per questo c'è la traccia `import_run_customer`: quali clienti ha creato o aggiornato ogni import (AC29 di [[specs/crm/assegnazione-wave/SPEC|assegnazione-wave]]).
 - **Dati che esistono:**
   - `export.callStats` (solo admin) dà le chiamate, le risposte e gli appuntamenti per operatore in un periodo;
-  - Contatti filtra già per operatore e per «Prossimo alert» con intervallo di date (`dateField = nextAlert`, ordine `alert`), che è il link di AC29.
+  - Contatti filtra già per operatore e per «Prossimo alert» con intervallo di date (`dateField = nextAlert`, ordine `alert`), che è il link di AC29;
+  - `waveParts` e `waveTeam` (`packages/server/src/services/import/wave/`) danno le parti di una Wave e, per ogni persona, `inactiveDays` e il suo da fare nella Wave (`waveTodo`, con Da chiamare e Non risponde separati). `GET /import/:id/wave` li dà per una Wave alla volta;
+  - `import_run.deadline` e lo stato della Wave (`open`, `expired`, `unconfirmed`) danno la scadenza di AC10;
+  - `wavePageHref` (`apps/web/src/routes/dashboard/import/_components/format.ts`) dà l'indirizzo della pagina. La riga del team apre `?per=<operatorId>`: i dati di «Dettaglio giornaliero» devono portare l'`operatorId`.
 - **Dati nuovi:**
   - i richiami dell'admin, come li legge [[specs/crm/home-operatore/SPEC|home-operatore]] per l'utente collegato (dopo D1);
   - gli arretrati di ogni operatore del team, solo per gli admin, con richieste diverse da quelle della home dell'operatore, che restano limitate all'utente collegato (AC2 lì);
   - le chiamate di oggi di un operatore, con esito e messaggio (dopo D2);
-  - l'ultima chiamata e il ritmo di ogni operatore;
-  - le quattro parti per import e i numeri per import e operatore.
+  - l'ultima chiamata di ogni operatore;
+  - gli ultimi 4 import Wave con le loro parti e la scadenza in una sola lettura, i clienti distinti fra quegli import (AC9) e i mai chiamati per persona in una Wave (AC12), che `waveTeam` non dà.
+- **Riletture (AC30):** `staleTime` è 0, quindi tornando alla home le query rileggono da sole. Hanno spenti `refetchOnWindowFocus` e `refetchOnReconnect`. Il loro gruppo va aggiunto a `writtenGroups` di `apps/web/src/api/import.ts`, perché la fine di un import rilegga anche la home aperta.
 - **Misure del prototipo:** le tabelle scorrono sotto 62rem («Ultimi import») e 70rem («Dettaglio giornaliero») (AC33), e la colonna «Assegna» delle due tabelle resta fissa a destra (AC46).
 - **Correzioni proposte dalla revisione UI**, per `create-plan` (il criterio resta quello della spec):
-  - AC37: quattro colori nuovi per i segmenti e i pallini (`parts.tsx:744-747`, `:783-786` del prototipo) e un separatore bianco di 2 px;
+  - AC37: quattro colori nuovi per i segmenti e i pallini (`parts.tsx:744-747`, `:783-786` del prototipo) e un separatore bianco di 2 px, in un solo componente con `PartsBar` della pagina della Wave: oggi non ha né il separatore né il segmento minimo, e scrive «Chiamati senza esito» senza la virgola di AC19 di [[specs/crm/assegnazione-wave/SPEC|assegnazione-wave]];
   - AC38: `minmax(10rem,1fr)` per il nome e una container query per la colonna unica;
   - AC39: correggere lo scorrimento all'apertura del dettaglio;
-  - AC45: la posizione del `Toaster` (`apps/web/src/components/ui/sonner.tsx`, oggi `bottom-right`, fissata da AC8 di [[specs/crm/toast-sonner/SPEC|toast-sonner]]), OQ14;
   - AC46: colonna sticky a destra nelle due tabelle, con le min-w di 62rem e 70rem;
   - AC47: uno scheletro con l'altezza della sezione, oppure una `min-height`;
-  - AC48: nella variante del ToggleGroup (`toggle-group.tsx:81`) la revisione proponeva sfondo `primary-soft` e testo `primary-soft-foreground`, oppure un bordo di 2 px. Con i valori di `apps/web/src/styles/globals.css` la prima non arriva a 3:1 (circa 1,05 contro il binario `muted`): resta il bordo, o un fondo più scuro, da scegliere in design-system-web;
+  - AC48: la variante del ToggleGroup (`toggle-group.tsx`) ha il bordo di 2 px `primary` deciso in [[specs/crm/design-system-web/SPEC|design-system-web]] (OQ4 lì). `primary-soft` non basta: circa 1,05 contro il binario `muted`;
   - AC49: il fuoco sul titolo dopo «Riprova»;
   - AC50: `truncate` e `min-w-0` sul nome del file e `whitespace-nowrap` sulla riga sotto; `h4` per i titoli del dettaglio; lo scheletro con l'altezza di riga di `text-lg`.
 - **Cosa finge il prototipo:**
@@ -380,20 +386,20 @@ Il riquadro «Assegna contatti» non c'è più: l'assegnazione e i suoi esiti so
   - l'operatore che non ha mai chiamato;
   - la sovrapposizione dei clienti fra import.
 
-  La barra degli scenari e la fascia «Prototipo · dati finti» non fanno parte della home.
+  La barra degli scenari, la fascia «Prototipo · dati finti», il riquadro «Assegna contatti» (`assign.tsx`, scenario `assegnato`) e i testi con «fermo» non fanno parte della home.
 
 ---
 
 ## Open Questions
 
-Owner di tutte: Omar. OQ14 è una decisione della spec [[specs/crm/design-system-web/SPEC|design-system-web]], perché cambia tutte le pagine: si prende lì.
+Owner di tutte: Omar. OQ14 si è chiusa in [[specs/crm/design-system-web/SPEC|design-system-web]] (OQ5 lì), perché cambia tutte le pagine.
 
 | # | Domanda | Default raccomandato | Perché | Riguarda | Stato |
 |---|---|---|---|---|---|
 | 1 | Un cliente presente in più import Wave conta in ognuno, o solo nel più recente? | In ognuno. La riga di riepilogo conta i clienti distinti (AC9). | «Clienti» resta il numero di clienti che l'import ha creato o aggiornato, e non cambia quando arriva una Wave nuova. L'alternativa toglie clienti alle Wave vecchie a ogni import. | Definizioni, AC9, AC10 | Chiusa: default; vale anche per [[specs/crm/assegnazione-wave/SPEC\|assegnazione-wave]] |
-| 2 | Come si sa quali clienti ha portato un import, e cosa vale per gli import completati prima del rilascio? | Da questa spec in poi, ogni import tiene la lista dei clienti che ha creato o aggiornato. Per gli import Wave già completati, la lista si ricostruisce una volta da `practices.file_name` con `is_wave`, confrontato con il nome trasformato dell'import. Quello che non si ricostruisce resta fuori. | Senza una traccia, «Ultimi import» non ha numeri veri: `customers.file_name` lo riscrive anche l'import Standard. La ricostruzione dalle pratiche è la migliore approssimazione disponibile per le 4 Wave mostrate al rilascio. | Definizioni, AC8–AC12 | Spostata in [[specs/crm/assegnazione-wave/SPEC\|assegnazione-wave]] |
+| 2 | Come si sa quali clienti ha portato un import, e cosa vale per gli import completati prima del rilascio? | Da questa spec in poi, ogni import tiene la lista dei clienti che ha creato o aggiornato. Per gli import Wave già completati, la lista si ricostruisce una volta da `practices.file_name` con `is_wave`, confrontato con il nome trasformato dell'import. Quello che non si ricostruisce resta fuori. | Senza una traccia, «Ultimi import» non ha numeri veri: `customers.file_name` lo riscrive anche l'import Standard. La ricostruzione dalle pratiche è la migliore approssimazione disponibile per le 4 Wave mostrate al rilascio. | Definizioni, AC8–AC12 | Spostata in [[specs/crm/assegnazione-wave/SPEC\|assegnazione-wave]]. Le Wave già in prod non si ricostruiscono (Omar, 2026-11-04; Constraints) |
 | 3 | Quando «Quanti» è meno del massimo, quali clienti senza operatore e quali mai chiamati vanno per primi? | Prima i clienti creati per primi nel CRM. Per i mai chiamati, prima i contatti creati per primi di ogni operatore che li cede. | L'ordine è stabile e ripetibile, e nessuno ha indicato una priorità fra i clienti di una Wave. Il file non dice chi va chiamato prima. | AC22, AC23 | Spostata in [[specs/crm/assegnazione-wave/SPEC\|assegnazione-wave]] |
-| 4 | Il ritmo divide per i giorni in cui l'operatore ha chiamato, o per i giorni lavorativi del calendario? | Per i giorni con almeno una chiamata negli ultimi 30 giorni. | Misura la velocità, non la presenza. Un operatore tornato dalle ferie non riceve meno di quanto riesce a fare. | Definizioni, AC28; AC11 di [[specs/crm/assegnazione-wave/SPEC\|assegnazione-wave]] | Chiusa: default |
+| 4 | Il ritmo divide per i giorni in cui l'operatore ha chiamato, o per i giorni lavorativi del calendario? | Per i giorni con almeno una chiamata negli ultimi 30 giorni. | Misura la velocità, non la presenza. Un operatore tornato dalle ferie non riceve meno di quanto riesce a fare. | AC11 di [[specs/crm/assegnazione-wave/SPEC\|assegnazione-wave]] | Spostata in [[specs/crm/assegnazione-wave/SPEC\|assegnazione-wave]] |
 | 5 | Un operatore che non ha mai chiamato (nuovo) è inattivo? | No. La sua colonna «Ultima chiamata» dice «Nessuna oggi». Come riceve contatti lo dice [[specs/crm/assegnazione-wave/SPEC\|assegnazione-wave]]. | È da formare, non da sorvegliare. | Definizioni, AC28 | Chiusa: default |
 | 6 | Il team comprende gli admin che chiamano? | No: solo gli `OPERATORE` non disattivati. «Chiamate oggi» e i tassi contano lo stesso insieme. | Gli 8 `ADMIN` comprendono account tecnici, e le chiamate degli admin sono secondarie. Così la somma della tabella è uguale al numero in alto (AC7). Le chiamate degli admin restano in Analisi. | Definizioni, AC6, AC7, AC27 | Chiusa: anche gli admin, in un gruppo a sé (AC27) |
 | 7 | Il tasso di appuntamento è sulle chiamate (D6) o sulle risposte, come nel grafico di Analisi con lo stesso nome? | Sulle chiamate, come D6. La spec degli esiti allinea Analisi, oppure ne cambia il titolo. | D6 è la decisione più recente. Due numeri con lo stesso nome e conti diversi confondono Rosario. | Definizioni, AC6 | Chiusa: sulle risposte, ovunque |
@@ -403,7 +409,7 @@ Owner di tutte: Omar. OQ14 è una decisione della spec [[specs/crm/design-system
 | 11 | Che cosa fa la home dei clienti di un import che hanno un operatore ma nessun contatto attivo (per esempio dopo «Assegna a te»)? | Non sono in nessuna delle quattro parti: sono la parte vuota della barra (AC10). L'assegnazione della home non li tocca. | Un operatore li ha presi con un'azione esplicita: toglierglieli con il caso 1 sarebbe un effetto collaterale. Il caso è raro, e una quinta parte nella legenda appesantirebbe la riga. | Definizioni, AC10 | Chiusa: default; vale anche per [[specs/crm/assegnazione-wave/SPEC\|assegnazione-wave]] |
 | 12 | I mai chiamati di un `ADMIN`, o di un contatto senza operatore, si possono togliere dalla home? | No. Si contano in «Mai chiamati» e nel dettaglio («· <M> mai chiamati fuori dal team», AC12), ma restano dove sono. Si spostano da Clienti. | L'anteprima Ora / Cambia / Dopo mostra solo il team. Togliere contatti a chi non vi compare muoverebbe lavoro che l'admin non vede. | Definizioni, AC12, AC16 | Spostata in [[specs/crm/assegnazione-wave/SPEC\|assegnazione-wave]] |
 | 13 | Un cliente lavorato prima dell'inizio del registro delle chiamate (prima del 15/09/2026, o dei contatti `followup` e `nessuno` che D6 porta in `chiamare`) è «mai chiamato»? | No. Non è mai chiamato neanche il cliente che ha un «Contattato il» su un qualunque suo contatto, o un contatto chiuso con un esito. | Il registro non vede quelle chiamate. Contati come mai chiamati, quei clienti si sposterebbero con «Assegnati e mai chiamati», contro il Non-Goal sui contatti già chiamati. | Definizioni, AC12, AC28 | Chiusa: default; vale anche per [[specs/crm/assegnazione-wave/SPEC\|assegnazione-wave]] |
-| 14 | Posizione degli avvisi: dove compaiono i toast (Sonner), e come soddisfano AC45? Oggi in basso a destra in tutta l'app, larghi 356 px ([[specs/crm/toast-sonner/SPEC\|toast-sonner]] AC8, implementata), dove coprono il pulsante «Assegna» su cui torna il fuoco. | **Toaster in alto a destra in tutta l'app** (`apps/web/src/components/ui/sonner.tsx`, oggi `bottom-right`). Cambia AC8 di toast-sonner. Oltre alla posizione, `design-system-web` deve dire come il toast lascia liberi i pulsanti «Assegna» e il comando con il fuoco. | Una posizione sola per tutte le pagine, decisa nel design system, non in una pagina. Nessuna posizione fissa soddisfa da sola AC45 in ogni punto della pagina: la home non ha una barra in alto, e con la pagina scorsa in alto a destra il toast sta sopra la colonna «Assegna» delle prime righe a schermo (quella di «Dettaglio giornaliero» è fissa a destra, AC46); in basso a destra copre quella delle ultime. AC45 vale qualunque sia la scelta, come AC49 di [[specs/crm/home-operatore/SPEC\|home-operatore]]. | AC26, AC44, AC45 | Aperta (owner: [[specs/crm/design-system-web/SPEC\|design-system-web]]) |
+| 14 | Posizione degli avvisi: dove compaiono i toast (Sonner), e come soddisfano AC45? Oggi in basso a destra in tutta l'app, larghi 356 px ([[specs/crm/toast-sonner/SPEC\|toast-sonner]] AC8, implementata), dove coprono i pulsanti delle ultime righe. Senza il riquadro, il toast di questa home è soprattutto quello di fine import, che dura 10 s. | **Toaster in alto a destra in tutta l'app** (`apps/web/src/components/ui/sonner.tsx`, oggi `bottom-right`). Cambia AC8 di toast-sonner. Oltre alla posizione, `design-system-web` deve dire come il toast lascia liberi i pulsanti «Assegna» e il comando con il fuoco. | Una posizione sola per tutte le pagine, decisa nel design system, non in una pagina. Nessuna posizione fissa soddisfa da sola AC45 in ogni punto della pagina: la home non ha una barra in alto, e con la pagina scorsa in alto a destra il toast sta sopra la colonna «Assegna» delle prime righe a schermo (quella di «Dettaglio giornaliero» è fissa a destra, AC46); in basso a destra copre quella delle ultime. AC45 vale qualunque sia la scelta, come AC49 di [[specs/crm/home-operatore/SPEC\|home-operatore]]. | AC45 | Chiusa (2026-11-04, OQ5 di [[specs/crm/design-system-web/SPEC\|design-system-web]]): i toast restano in basso a destra, AC45 è tolto |
 
 ---
 
@@ -453,10 +459,10 @@ Owner di tutte: Omar. OQ14 è una decisione della spec [[specs/crm/design-system
 | **Superata il 2026-11-03**, vale [[specs/crm/assegnazione-wave/SPEC\|assegnazione-wave]]: Da una riga del team «Quanti» parte vuoto, con il riepilogo grigio «Quanti contatti a <nome proprio>? Al massimo <max>.», preceduto da «<nome proprio> è fermo da <N> giorni. » per chi è fermo (AC15, AC20). Il grigio vale finché nessun campo è cambiato; dopo, «Quanti» vuoto dà «Da 1 a <max>» in rosso | Decisione 2 UX: in due clic tutta la Wave andava a una persona sola, anche ferma o account tecnico. Legare il grigio al primo cambio di un campo tiene il nome del messaggio uguale alla persona scelta |
 | **Superata il 2026-11-03**, vale [[specs/crm/assegnazione-wave/SPEC\|assegnazione-wave]]: In AC18 «non scelti all'apertura» vale per l'apertura da una riga di import; da una riga del team è scelta la persona della riga anche se è ferma o admin | La revisione UX: AC15 e AC18 si leggevano come due regole opposte |
 | **Superata il 2026-11-03**, vale [[specs/crm/assegnazione-wave/SPEC\|assegnazione-wave]]: Un clic fuori non chiude un riquadro cambiato; c'è «Annulla» (AC42) | Decisione 3 UX: per chi usa il mouse il clic fuori era l'unico modo di chiudere, e perdeva le scelte |
-| «Per assegnare servono anche i numeri del team.» con «Riprova» nella testata di «Ultimi import» (AC40) | Decisione 4 UX: con il team in errore gli «Assegna» erano disattivati e il motivo stava sotto la piega |
+| **Superata il 2026-11-04** (AC40 tolto): «Per assegnare servono anche i numeri del team.» con «Riprova» nella testata di «Ultimi import» (AC40) | Decisione 4 UX: con il team in errore gli «Assegna» erano disattivati e il motivo stava sotto la piega |
 | **Superata il 2026-11-03**, vale [[specs/crm/assegnazione-wave/SPEC\|assegnazione-wave]]: Lasciare la home durante l'invio non chiede conferma; l'esito arriva come toast sulla pagina in cui l'admin si trova (AC44). Testi nuovi: «Non sappiamo se l'assegnazione della <nome> è andata a buon fine: controlla i numeri nella home.» e «I contatti della <nome> non sono stati assegnati.» | Decisione 5 UX. I testi dell'errore nel riquadro parlano dei «numeri qui sotto», che su un'altra pagina non ci sono: servono testi per il toast |
 | «Chiamate oggi» dice «<N> · <K> su <M> hanno chiamato» (AC6) | Decisione 6 UX: «su <M> operatori» con gli admin dentro M faceva leggere a Rosario operatori fermi che non ci sono |
-| Il toast non copre il comando a fuoco né i pulsanti «Assegna» (AC45); la posizione è OQ14, del design system | Decisione 3 UI: il toast in basso a destra copriva per 5 s il pulsante su cui torna il fuoco |
+| **Superata il 2026-11-04** (OQ14 chiusa): Il toast non copre il comando a fuoco né i pulsanti «Assegna» (AC45); la posizione è OQ14, del design system | Decisione 3 UI: il toast in basso a destra copriva per 5 s il pulsante su cui torna il fuoco |
 | La voce scelta del ToggleGroup si corregge in [[specs/crm/design-system-web/SPEC\|design-system-web]], come prerequisito; qui resta AC48 | Decisione 2 e domanda 2 della revisione UI: la correzione cambia tutte le pagine |
 | Barra di avanzamento a 3:1 con un separatore di 2 px (AC37) | Decisione 1 UI (WCAG 1.4.11): «Chiamati, senza esito» si vede solo nella barra |
 | Colonna «Assegna» di «Dettaglio giornaliero» fissa a destra, non la tabella a 63rem (AC46) | Decisione 4 UI. La colonna fissa tiene «Assegna» intero da 1024 px, dove la tabella scorre comunque, e lascia alle sette colonne di dati la loro larghezza, senza mandare a capo «Ultima chiamata» e «Da chiamare». Con 63rem «Assegna» sarebbe intero solo da 1280 px |
@@ -488,5 +494,13 @@ Owner di tutte: Omar. OQ14 è una decisione della spec [[specs/crm/design-system
 | **Superata il 2026-11-03**, vale [[specs/crm/assegnazione-wave/SPEC\|assegnazione-wave]]: Testo nuovo «Nessun mai chiamato del team nella Wave» (AC20) | Dopo una rilettura i mai chiamati del team possono andare a 0, e «gli scelti hanno tutti i mai chiamati» sarebbe falso |
 | AC47 si misura sul dato di produzione: 4 import Wave e un dettaglio con 15 operatori | L'altezza della sezione dipende dalle righe del dettaglio: un criterio senza un dato di riferimento non si verifica |
 | **Superata il 2026-11-03**, vale [[specs/crm/assegnazione-wave/SPEC\|assegnazione-wave]]: Il Select è un prerequisito nel design system come il ToggleGroup (Constraints) | Tutte e due le correzioni cambiano ogni pagina che usa il componente |
-| OQ14 cita AC8 di [[specs/crm/toast-sonner/SPEC\|toast-sonner]] e chiede a design-system-web, oltre alla posizione, come il toast lascia liberi i comandi; AC45 ha lo stesso criterio di AC49 di [[specs/crm/home-operatore/SPEC\|home-operatore]], compreso il comando che riceve il fuoco mentre il toast è a schermo | La posizione dei toast è decisa lì, ed è implementata; nessuna posizione fissa soddisfa il criterio in ogni punto della pagina. Scelta trasversale di Omar: un solo criterio per design-system-web nelle due home |
+| **Superata il 2026-11-04** (OQ14 chiusa): OQ14 cita AC8 di [[specs/crm/toast-sonner/SPEC\|toast-sonner]] e chiede a design-system-web, oltre alla posizione, come il toast lascia liberi i comandi; AC45 ha lo stesso criterio di AC49 di [[specs/crm/home-operatore/SPEC\|home-operatore]], compreso il comando che riceve il fuoco mentre il toast è a schermo | La posizione dei toast è decisa lì, ed è implementata; nessuna posizione fissa soddisfa il criterio in ogni punto della pagina. Scelta trasversale di Omar: un solo criterio per design-system-web nelle due home |
 | 2026-11-03: tolto «· <M> mai chiamati fuori dal team» dal dettaglio di un import (AC12) | Un utente disattivato non ha contatti, perché la disattivazione li sposta; un contatto attivo senza operatore è fra i Senza operatore di [[specs/crm/assegnazione-wave/SPEC\|assegnazione-wave]] (Omar) |
+| 2026-11-04: la riga di un import senza clienti senza operatore ha «Apri» invece di un «Assegna» disattivato (AC13, AC31, AC46); cambiano con lei AC2 e le Constraints di [[specs/crm/assegnazione-wave/SPEC\|assegnazione-wave]] | Scelta di Omar. Proroga e riassegnazione stanno solo nella pagina della Wave: con il pulsante spento, una Wave scaduta o con i contatti presso un inattivo si raggiungeva solo dallo storico degli import |
+| 2026-11-04: tolti AC40 e il legame di AC13 con «Dettaglio giornaliero»: il pulsante di un import dipende solo dalla sua riga, «Assegna» del team solo da «Ultimi import» | Il legame serviva al riquadro «Assegna», che usava i numeri del team. La pagina della Wave legge i suoi: «Per assegnare servono anche i numeri del team.» sarebbe falso |
+| 2026-11-04: in AC12 e in «Dettaglio giornaliero» resta «da chiamare», che qui comprende i Non risponde; AC10 tiene «scaduta · <N> da fare», che viene da [[specs/crm/assegnazione-wave/SPEC\|assegnazione-wave]] | Scelta di Omar: proposta «<N> da fare» in AC12, rifiutata. La pagina della Wave separa «da chiamare» e «non risponde» e chiama «da fare» la somma: la differenza è scritta nelle Definizioni |
+| 2026-11-04: tornando alla home da un'altra pagina le parti rileggono (AC30); il Non-Goal sul tempo reale non cita più l'assegnazione | L'assegnazione non avviene più qui: senza questa frase, dopo la pagina della Wave la spec non diceva quali numeri mostrare |
+| 2026-11-04: «importata» si conta dall'inizio dell'import (AC10), come «Importata» della pagina della Wave; l'ordine di AC8 resta per ora di fine | La stessa Wave non deve dire due giorni diversi nelle due pagine |
+| 2026-11-04: tolti Ritmo, «Operatore attivo», il verde di chi riceve e la frase sui volumi di un'assegnazione; ~~AC45 resta, con OQ14 riscritta~~ (AC45 tolto, ultima riga) | Servivano solo al riquadro. AC45 resta perché il toast di fine import dura 10 s e il criterio è lo stesso di AC49 di [[specs/crm/home-operatore/SPEC\|home-operatore]] |
+| 2026-11-04: al rilascio «Ultimi import» è vuoto (Constraints); la barra di AC37 è un solo componente con quella della pagina della Wave (Technical Notes) | Omar ha deciso di non ricostruire le Wave passate. Due barre diverse per la stessa Wave si contraddirebbero nei colori |
+| 2026-11-04: OQ14 chiusa: i toast restano in basso a destra e AC45 è tolto; il bordo di 2 px `primary` del ToggleGroup entra in AC15 di [[specs/crm/design-system-web/SPEC\|design-system-web]] | Scelta di Omar su OQ4 e OQ5 di quella spec. Nessuna posizione fissa soddisfa AC45: con i toast dove sono, il criterio non si può rispettare |

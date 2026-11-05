@@ -16,7 +16,6 @@ import {
 } from "@mito/domain/contact/priority"
 import { type ApiFailure } from "@/api/errors"
 import { useSetPriority } from "@/api/task"
-import { detailHrefFromDa } from "../../_lib/detailHrefFromDa"
 import { priorityLabels } from "../../_lib/priorityLabels"
 import { useContactSheet } from "./ContactSheet"
 
@@ -26,8 +25,6 @@ type Props = {
   priority: number | null
   /** `true` when set by hand; otherwise the `priority` cron owns it */
   customPriority: boolean | null
-  /** The `da` parameter of the address: the list state to carry along */
-  da: string | undefined
 }
 
 /** A band set by hand, or `auto`: back to the `priority` cron */
@@ -59,17 +56,13 @@ export function ContactPriorityControl({
   taskId,
   priority,
   customPriority,
-  da,
 }: Props) {
   const sheet = useContactSheet()
 
   // From the call until the refreshed page is rendered
   const { pending, start, awaitRefresh, finishAfterRefresh, refresh } =
     useSavingUntilRefreshed()
-  const activeContactHref = React.useCallback(
-    (activeTaskId: number) => detailHrefFromDa(activeTaskId, da),
-    [da]
-  )
+  const activeContactHref = sheet.detailHref
   const { onError } = useContactMutationFeedback({ refresh, activeContactHref })
   const setPriority = useSetPriority()
 

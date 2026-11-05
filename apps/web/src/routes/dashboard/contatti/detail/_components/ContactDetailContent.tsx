@@ -8,8 +8,6 @@ import { ContactSupersededBanner } from "./ContactSupersededBanner"
 
 type Props = {
   data: ContactDetail
-  /** The `da` parameter of the address: the list state to go back to */
-  da: string | undefined
   /** Who the contact can be given to: sent only when the user may reassign */
   operators?: readonly OperatorRef[]
 }
@@ -23,19 +21,19 @@ type Props = {
  * (esiti-richiami-stati AC7); the operator is one for the admin only (AC47).
  * Last, the other contacts of the customer, always (AC80).
  */
-export function ContactDetailContent({ data, da, operators }: Props) {
+export function ContactDetailContent({ data, operators }: Props) {
   const editable = data.editability.kind === "editable"
   return (
     <div className="flex flex-col gap-4">
       {data.editability.kind === "superseded" ? (
-        <ContactSupersededBanner activeTaskId={data.activeTaskId} da={da} />
+        <ContactSupersededBanner activeTaskId={data.activeTaskId} />
       ) : null}
-      <ContactDetailHeader data={data} da={da} operators={operators} />
+      <ContactDetailHeader data={data} operators={operators} />
       {editable && data.contact.isActive ? (
         <ContactCallSection data={data} />
       ) : null}
-      <ContactAlertSection data={data} da={da} canEdit={editable} />
-      <ContactHistorySection contacts={data.customerContacts} da={da} />
+      <ContactAlertSection data={data} canEdit={editable} />
+      <ContactHistorySection contacts={data.customerContacts} />
     </div>
   )
 }

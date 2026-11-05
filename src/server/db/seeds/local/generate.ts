@@ -12,6 +12,7 @@ import {
   assignCustomers,
   generateUsersAndOperators,
 } from "./generate/operators"
+import { shapeOperatorDay } from "./generate/homeDay"
 import { generateWaves } from "./generate/waves"
 import { generatePractices, generateProducts } from "./generate/practices"
 import type { CustomerToPraticaRow, Dataset, Day } from "./types"
@@ -49,6 +50,15 @@ export function generateDataset({ n, day }: { n: number; day: Day }): Dataset {
     tasks,
     taskEventLog,
   })
+  // The two operators to try the home with get their volumes (T14)
+  const shaped = shapeOperatorDay({
+    day,
+    operators,
+    customers,
+    alerts,
+    tasks,
+    taskEventLog: waves.taskEventLog,
+  })
   const customerToPratica: CustomerToPraticaRow[] = links.map((link) => ({
     customerId: customers[link.customerIndex]!.id,
     praticaId: practices[link.practiceIndex]!.praticaId,
@@ -61,12 +71,12 @@ export function generateDataset({ n, day }: { n: number; day: Day }): Dataset {
     operators,
     chats,
     messages,
-    customers,
+    customers: shaped.customers,
     practices,
     customerToPratica,
-    alerts,
-    tasks,
-    taskEventLog: waves.taskEventLog,
+    alerts: shaped.alerts,
+    tasks: shaped.tasks,
+    taskEventLog: shaped.taskEventLog,
     importRuns: waves.importRuns,
     importRunCustomers: waves.importRunCustomers,
     appMilestones: generateMilestones(day),

@@ -4,7 +4,7 @@ type: flow
 links:
   - "[[specs/crm/assegnazione-wave/SPEC]]"
 created: 2026-11-03
-updated: 2026-11-03
+updated: 2026-11-04
 ingested: false
 last_ingested: null
 ---
@@ -28,7 +28,7 @@ L'admin conferma la scadenza di una Wave appena importata e ne divide i clienti 
 ## Entry points
 - Toast di fine import di una Wave, comando «Assegna», per 10 s (AC2).
 - Riga di una Wave nello storico degli import (AC2).
-- «Assegna» di una riga di «Ultimi import» o di una riga del team in home-admin (AC2).
+- «Assegna» o «Apri» di una riga di «Ultimi import», o «Assegna» di una riga del team, in home-admin (AC2).
 - Wave senza scadenza → flusso al primo passo; con scadenza → panoramica (AC3).
 
 ## Happy path
@@ -79,5 +79,5 @@ Riassegnazione: «Riassegna…» → «Da chi» (inattivi scelti) → «Quali e 
 ## Persona dependencies
 - L'import tiene la traccia dei clienti, che la pagina legge (AC29).
 - L'operatore trova i contatti assegnati in Da chiamare, ordinati per scadenza della Wave (AC17, AC28).
-- home-admin apre questa pagina dai suoi «Assegna» (AC2).
+- home-admin apre questa pagina dai suoi «Assegna» e «Apri» (AC2).
 - Fino all'«oggi» con le Wave, i testi di fine non promettono la home (AC17).

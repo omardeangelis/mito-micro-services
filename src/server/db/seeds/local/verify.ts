@@ -15,6 +15,12 @@
 //
 // Every table is read once, whole, inside one read-only transaction: the
 // completeness check needs every row anyway, and the snapshot is consistent.
+import { romeDay } from "./day"
+import { FULL_DAY, TYPICAL_DAY } from "./generate/homeDay"
+import {
+  FULL_DAY_OPERATOR_ID,
+  TYPICAL_DAY_OPERATOR_ID,
+} from "./generate/operators"
 import { getTableColumns } from "drizzle-orm"
 import type { PgTable } from "drizzle-orm/pg-core"
 import {
@@ -244,6 +250,116 @@ export async function verifyManifest(
     })
   }
   return results
+}
+
+type DayRows = readonly Record<string, unknown>[]
+
+/**
+ * The days of the two operators the home is tried with (home-operatore T14),
+ * after the cron: the full-day one has at least `FULL_DAY` overdue and due
+ * today open alerts on its active contacts and at least `FULL_DAY.calls` calls
+ * on D; the typical one has `TYPICAL_DAY.calls` calls on D and 8 to 15 open
+ * alerts due by D. «Its contacts» are the active ones with `task.operatorId` or
+ * `customers.operatorId` set to it. Pure: the rows are those of the database.
+ */
+export function operatorDayFailures({
+  day,
+  tasks,
+  alerts,
+  customers,
+  log,
+}: {
+  day: string
+  tasks: DayRows
+  alerts: DayRows
+  customers: DayRows
+  log: DayRows
+}): ScenarioFailure[] {
+  const alertById = new Map(alerts.map((row) => [row.id, row]))
+  const operatorOfCustomer = new Map(
+    customers.map((row) => [row.id, row.operatorId])
+  )
+  const alertsOf = (operatorId: number) => {
+    let overdue = 0
+    let today = 0
+    for (const row of tasks) {
+      if (row.isActive !== true) continue
+      if (
+        row.operatorId !== operatorId &&
+        operatorOfCustomer.get(row.customerId) !== operatorId
+      ) {
+        continue
+      }
+      const open = alertById.get(row.alertId)
+      if (!open || open.isResolved === true) continue
+      const dueDay = romeDay(open.deadline as Date)
+      if (dueDay < day) overdue++
+      else if (dueDay === day) today++
+    }
+    return { overdue, today }
+  }
+  const callsOf = (operatorId: number) =>
+    log.filter(
+      (row) =>
+        row.action === "call" &&
+        row.actorOperatorId === operatorId &&
+        romeDay(row.createdAt as Date) === day
+    ).length
+
+  const failures: ScenarioFailure[] = []
+  const expect = (
+    key: string,
+    column: string,
+    expected: string,
+    found: number,
+    ok: boolean
+  ) => {
+    if (!ok) failures.push({ table: "giornata", key, column, expected, found })
+  }
+  const full = alertsOf(FULL_DAY_OPERATOR_ID)
+  const fullKey = `operatore ${FULL_DAY_OPERATOR_ID}`
+  expect(
+    fullKey,
+    "scaduti",
+    `almeno ${FULL_DAY.overdue}`,
+    full.overdue,
+    full.overdue >= FULL_DAY.overdue
+  )
+  expect(
+    fullKey,
+    "di oggi",
+    `almeno ${FULL_DAY.today}`,
+    full.today,
+    full.today >= FULL_DAY.today
+  )
+  const fullCalls = callsOf(FULL_DAY_OPERATOR_ID)
+  expect(
+    fullKey,
+    "chiamate",
+    `almeno ${FULL_DAY.calls}`,
+    fullCalls,
+    fullCalls >= FULL_DAY.calls
+  )
+
+  const typical = alertsOf(TYPICAL_DAY_OPERATOR_ID)
+  const typicalKey = `operatore ${TYPICAL_DAY_OPERATOR_ID}`
+  const richiami = typical.overdue + typical.today
+  expect(
+    typicalKey,
+    "richiami",
+    "da 8 a 15",
+    richiami,
+    richiami >= 8 && richiami <= 15
+  )
+  const typicalCalls = callsOf(TYPICAL_DAY_OPERATOR_ID)
+  expect(
+    typicalKey,
+    "chiamate",
+    `${TYPICAL_DAY.calls}`,
+    typicalCalls,
+    typicalCalls === TYPICAL_DAY.calls
+  )
+  return failures
 }
 
 /** The values `task.state` no longer takes (AC3): the old ones, or none. */
@@ -627,6 +743,16 @@ class Context {
         found: most,
       })
     }
+
+    failures.push(
+      ...operatorDayFailures({
+        day: this.manifest.day,
+        tasks: [...this.rows("task").values()],
+        alerts: [...this.rows("alert").values()],
+        customers: [...this.rows("customers").values()],
+        log: [...this.rows("task_event_log").values()],
+      })
+    )
 
     for (const [job, counter, min] of MIN_COUNTERS) {
       const run = this.manifest.runs

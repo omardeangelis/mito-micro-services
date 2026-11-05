@@ -5,13 +5,10 @@ import { TaskStatusBadge } from "@/components/custom/badge/TaskStatusBadge"
 import { operatorDisplayName } from "@mito/domain/contact/permissions"
 import { formatDateAsDMY } from "@mito/client/format"
 import type { ContactDetail } from "@mito/contract/task"
-import { detailHrefFromDa } from "../../_lib/detailHrefFromDa"
 import { useContactSheet } from "./ContactSheet"
 
 type Props = {
   contacts: ContactDetail["customerContacts"]
-  /** The `da` parameter of the address: the list state to carry along */
-  da: string | undefined
 }
 
 /**
@@ -20,9 +17,9 @@ type Props = {
  * operator reading a contact wants to know what came before it. The active
  * contact, when this one is concluded, is marked "Attivo".
  */
-export function ContactHistorySection({ contacts, da }: Props) {
+export function ContactHistorySection({ contacts }: Props) {
   const headingId = useId()
-  const { focusStateTriggerOnNextMount } = useContactSheet()
+  const { focusStateTriggerOnNextMount, detailHref } = useContactSheet()
 
   return (
     <section
@@ -41,7 +38,7 @@ export function ContactHistorySection({ contacts, da }: Props) {
           {contacts.map((contact) => (
             <li key={contact.id}>
               <Link
-                to={detailHrefFromDa(contact.id, da)}
+                to={detailHref(contact.id)}
                 preventScrollReset
                 className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-md border px-3 py-2 text-sm hover:bg-accent"
                 onClick={(event) => {

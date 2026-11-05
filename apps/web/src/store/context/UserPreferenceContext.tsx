@@ -36,8 +36,10 @@ export const UserPreferenceContext =
  *   once (H4);
  * - role and operator come from the current user, never from the browser:
  *   another sign-in in the same browser would leave its own behind.
- * While the current user loads the skeleton shows; if it fails the children
- * render without a role, so the admin-only items stay hidden
+ * During the first load of the current user the skeleton shows; if it fails the
+ * children render without a role, so the admin-only items stay hidden. A later
+ * read of a failed user, as on the return to the tab, is back to loading, and
+ * the children stay: the skeleton would unmount the page the user is on
  */
 export function UserPreferenceProvider({ children }: PropsWithChildren) {
   const { data, isLoading } = useCurrentUser()
@@ -63,7 +65,7 @@ export function UserPreferenceProvider({ children }: PropsWithChildren) {
   // that are subscribed, so it waits for the effect
   if (data && !childrenMounted.current) copyOnce(data.preferences)
   useEffect(() => {
-    childrenMounted.current = !isLoading
+    if (!isLoading) childrenMounted.current = true
     if (data) copyOnce(data.preferences)
   }, [data, isLoading, copyOnce])
   const role = data?.role
@@ -71,7 +73,7 @@ export function UserPreferenceProvider({ children }: PropsWithChildren) {
   useEffect(() => {
     store.setState({ role, operatorId })
   }, [store, role, operatorId])
-  if (isLoading) return <AppLoading />
+  if (isLoading && !childrenMounted.current) return <AppLoading />
   return (
     <UserPreferenceContext.Provider value={store}>
       {children}

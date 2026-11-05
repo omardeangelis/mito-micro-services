@@ -532,3 +532,6 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 ## [2026-10-31] review | Toast di `apps/web` con Sonner
 - Review: [[specs/crm/toast-sonner/REPORT]] ([[specs/crm/toast-sonner/RUBRIC]]): DO NOT SHIP, critical, 8 passaggi. Blocker: l'apertura della pila con F8 anima senza una decisione in [[chore/motion]]. Major: le durate di 8 s senza test; `@radix-ui/react-toast` fuori dal divieto ESLint
 - Secondo giro: corretti il blocker e i due major, più il buco del gate dei colori sulle variabili di Sonner; v1, v7 e v8 rilanciati, ship. Resta per Omar la copertura delle durate chiamata per chiamata
+
+## [2026-11-05] review | Home dell'operatore
+- Review: [[specs/crm/home-operatore/REPORT]] ([[specs/crm/home-operatore/RUBRIC]]): critical, 5 passaggi, DO NOT SHIP con sei MAJOR. Secondo giro su un MAJOR. Corretti tutti, l'ultimo senza terzo giro. Restano i controlli VoiceOver di Omar

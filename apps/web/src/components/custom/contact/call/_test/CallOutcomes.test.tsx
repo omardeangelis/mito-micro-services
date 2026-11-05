@@ -290,3 +290,249 @@ describe("il riquadro come dialogo (home-operatore AC21, AC45, AC46)", () => {
     ).toBeTruthy()
   })
 })
+
+describe("CallOutcomes nella home", () => {
+  it("con `askDayOnEnter`, Invio nel campo «Messaggio» senza giorno porta il fuoco su domani e dice «Scegli prima il giorno»", async () => {
+    render(
+      <CallOutcomes
+        customer="Mario Rossi"
+        now={now}
+        askDayOnEnter
+        onOutcome={vi.fn()}
+      />
+    )
+    const user = await openPanel()
+
+    await user.click(screen.getByRole("textbox", { name: "Messaggio" }))
+    await user.keyboard("{Enter}")
+
+    expect(screen.getByRole("alert").textContent).toBe("Scegli prima il giorno")
+    await waitFor(() =>
+      expect((document.activeElement as HTMLElement).dataset.day).toBe(
+        new Date("2026-11-03T10:00:00").toLocaleDateString()
+      )
+    )
+  })
+
+  it("con `keepPressedFocus` il premuto tiene il fuoco, è aria-disabled e un clic non registra di nuovo", async () => {
+    const user = userEvent.setup()
+    const onOutcome = vi.fn()
+    const view = render(
+      <CallOutcomes
+        customer="Mario Rossi"
+        now={now}
+        keepPressedFocus
+        onOutcome={onOutcome}
+      />
+    )
+    await user.click(screen.getByRole("button", { name: "Appuntamento" }))
+    expect(onOutcome).toHaveBeenCalledTimes(1)
+
+    view.rerender(
+      <CallOutcomes
+        customer="Mario Rossi"
+        now={now}
+        keepPressedFocus
+        pending="app.to"
+        onOutcome={onOutcome}
+      />
+    )
+
+    const pressed = screen.getByRole<HTMLButtonElement>("button", {
+      name: "Registro…",
+    })
+    expect(document.activeElement).toBe(pressed)
+    expect(pressed.getAttribute("aria-disabled")).toBe("true")
+    expect(pressed.disabled).toBe(false)
+    expect(
+      screen.getByRole<HTMLButtonElement>("button", { name: "Non interessato" })
+        .disabled
+    ).toBe(true)
+    await user.click(pressed)
+    expect(onOutcome).toHaveBeenCalledTimes(1)
+  })
+
+  it("senza `keepPressedFocus` tutti gli esiti sono disattivati", () => {
+    render(
+      <CallOutcomes
+        customer="Mario Rossi"
+        now={now}
+        pending="app.to"
+        onOutcome={vi.fn()}
+      />
+    )
+
+    const pressed = screen.getByRole<HTMLButtonElement>("button", {
+      name: "Registro…",
+    })
+    expect(pressed.disabled).toBe(true)
+    expect(pressed.getAttribute("aria-disabled")).toBeNull()
+  })
+
+  it("con `failed` il riquadro resta aperto con giorno e messaggio, senza avviso", async () => {
+    const onOutcome = vi.fn()
+    const props = { customer: "Mario Rossi", now, onOutcome }
+    const view = render(<CallOutcomes {...props} failed />)
+    const user = await openPanel()
+    await user.click(dayButton(6))
+    await user.type(
+      screen.getByRole("textbox", { name: "Messaggio" }),
+      "La mia bozza"
+    )
+    await user.click(
+      screen.getByRole("button", { name: "Salva richiamo del 06/11" })
+    )
+
+    view.rerender(<CallOutcomes {...props} failed pending="richiamare" />)
+    view.rerender(<CallOutcomes {...props} failed pending={null} />)
+
+    expect(
+      screen.getByRole<HTMLInputElement>("textbox", { name: "Messaggio" }).value
+    ).toBe("La mia bozza")
+    expect(
+      screen.getByRole("button", { name: "Salva richiamo del 06/11" })
+    ).toBeTruthy()
+    expect(screen.queryByRole("alert")).toBeNull()
+  })
+
+  it("con `keepPressedFocus` il salvataggio in corso è aria-disabled e non registra di nuovo", async () => {
+    const onOutcome = vi.fn()
+    const props = {
+      customer: "Mario Rossi",
+      now,
+      onOutcome,
+      keepPressedFocus: true,
+    }
+    const view = render(<CallOutcomes {...props} />)
+    const user = await openPanel()
+    await user.click(dayButton(6))
+    await user.click(
+      screen.getByRole("button", { name: "Salva richiamo del 06/11" })
+    )
+    view.rerender(<CallOutcomes {...props} pending="richiamare" />)
+
+    const saving = screen
+      .getAllByRole<HTMLButtonElement>("button", { name: "Registro…" })
+      .find((button) => button.closest("form") !== null)!
+    expect(saving.getAttribute("aria-disabled")).toBe("true")
+    await user.click(saving)
+    expect(onOutcome).toHaveBeenCalledTimes(1)
+  })
+
+  it("`controlId` marca il gruppo e il riquadro", async () => {
+    render(
+      <CallOutcomes
+        customer="Mario Rossi"
+        now={now}
+        controlId="riga-1"
+        onOutcome={vi.fn()}
+      />
+    )
+    await openPanel()
+
+    expect(screen.getByRole("group").getAttribute("data-call-control")).toBe(
+      "riga-1"
+    )
+    expect(screen.getByRole("dialog").getAttribute("data-call-control")).toBe(
+      "riga-1"
+    )
+  })
+
+  it("con `askDayOnEnter`, anche su un altro mese, Invio riporta il fuoco su domani e il testo sparisce scegliendo un giorno", async () => {
+    render(
+      <CallOutcomes
+        customer="Mario Rossi"
+        now={now}
+        askDayOnEnter
+        onOutcome={vi.fn()}
+      />
+    )
+    const user = await openPanel()
+    await user.click(screen.getByRole("button", { name: /next|successiv/i }))
+    expect(screen.getByRole("grid").getAttribute("aria-label")).toMatch(
+      /dicembre 2026/i
+    )
+
+    await user.click(screen.getByRole("textbox", { name: "Messaggio" }))
+    await user.keyboard("{Enter}")
+
+    expect(screen.getByRole("alert").textContent).toBe("Scegli prima il giorno")
+    expect(screen.getByRole("grid").getAttribute("aria-label")).toMatch(
+      /novembre 2026/i
+    )
+    await waitFor(() => expect(document.activeElement).toBe(dayButton(3)))
+    await user.click(dayButton(6))
+    expect(screen.queryByRole("alert")).toBeNull()
+  })
+
+  it("con `askDayOnEnter` e un giorno scelto, Invio salva", async () => {
+    const onOutcome = vi.fn()
+    render(
+      <CallOutcomes
+        customer="Mario Rossi"
+        now={now}
+        askDayOnEnter
+        onOutcome={onOutcome}
+      />
+    )
+    const user = await openPanel()
+    await user.click(dayButton(6))
+    await user.type(screen.getByRole("textbox", { name: "Messaggio" }), "Ciao")
+
+    await user.keyboard("{Enter}")
+
+    expect(onOutcome).toHaveBeenCalledWith(
+      "richiamare",
+      expect.any(Date),
+      "Ciao"
+    )
+    expect(screen.queryByRole("alert")).toBeNull()
+  })
+
+  it("senza `askDayOnEnter`, Invio senza giorno non fa nulla", async () => {
+    const onOutcome = vi.fn()
+    render(
+      <CallOutcomes customer="Mario Rossi" now={now} onOutcome={onOutcome} />
+    )
+    const user = await openPanel()
+    await user.click(screen.getByRole("textbox", { name: "Messaggio" }))
+
+    await user.keyboard("{Enter}")
+
+    expect(screen.queryByRole("alert")).toBeNull()
+    expect(onOutcome).not.toHaveBeenCalled()
+    expect(document.activeElement).toBe(
+      screen.getByRole("textbox", { name: "Messaggio" })
+    )
+  })
+
+  it("con `askDayOnEnter`, cambiato mese, Esc e riapertura: senza bozza il calendario è su domani, con una bozza sul suo giorno", async () => {
+    render(
+      <CallOutcomes
+        customer="Mario Rossi"
+        now={now}
+        askDayOnEnter
+        onOutcome={vi.fn()}
+      />
+    )
+    const user = await openPanel()
+    await user.click(screen.getByRole("button", { name: /next|successiv/i }))
+    await user.keyboard("{Escape}")
+    await user.click(screen.getByRole("button", { name: "Richiamare" }))
+
+    expect(screen.getByRole("grid").getAttribute("aria-label")).toMatch(
+      /novembre 2026/i
+    )
+    await waitFor(() => expect(document.activeElement).toBe(dayButton(3)))
+
+    await user.click(screen.getByRole("button", { name: /next|successiv/i }))
+    await user.click(dayButton(10))
+    await user.keyboard("{Escape}")
+    await user.click(screen.getByRole("button", { name: "Richiamare" }))
+
+    expect(screen.getByRole("grid").getAttribute("aria-label")).toMatch(
+      /dicembre 2026/i
+    )
+    await waitFor(() => expect(document.activeElement).toBe(dayButton(10)))
+  })
+})

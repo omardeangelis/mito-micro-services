@@ -60,7 +60,11 @@ const heading = () => screen.findByRole("heading", { level: 1 })
  * the page and its charts, in a cold test run
  */
 const home = () =>
-  screen.findByRole("heading", { name: "Analisi Andamento" }, { timeout: 5000 })
+  screen.findByRole(
+    "heading",
+    { name: /^(Analisi Andamento|Buongiorno, Ada)$/ },
+    { timeout: 5000 }
+  )
 
 afterEach(() => {
   backend = fakeMe({})

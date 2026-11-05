@@ -58,5 +58,6 @@ describe("clientBundleLeaks", () => {
 describe("il bundle del browser", () => {
   it("non contiene moduli di packages/server", async () => {
     expect(await clientBundleLeaks("src")).toEqual([])
-  })
+    // esbuild bundles the whole app: on a CI runner it takes over 5 seconds
+  }, 60_000)
 })

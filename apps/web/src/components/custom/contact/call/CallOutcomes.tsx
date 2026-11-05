@@ -44,6 +44,10 @@ export function CallOutcomes({
   pending = null,
   replacesAlertDay,
   error,
+  keepPressedFocus,
+  failed,
+  controlId,
+  askDayOnEnter,
 }: {
   customer: string
   now: Date
@@ -54,6 +58,16 @@ export function CallOutcomes({
   replacesAlertDay?: string | null | undefined
   /** Shown under the calendar; opens the panel */
   error?: string | null | undefined
+  /** The pressed button is `aria-disabled`, not `disabled`: it keeps the
+   * focus while it registers */
+  keepPressedFocus?: boolean | undefined
+  /** The registration ended badly: the panel stays open with its draft,
+   * without text */
+  failed?: boolean | undefined
+  /** Written as `data-call-control` on the group and on the panel */
+  controlId?: string | undefined
+  /** Enter in the message with no day asks for the day */
+  askDayOnEnter?: boolean | undefined
 }) {
   const busy = pending !== null
   // The button says the state the outcome leads to, except Richiamare (the
@@ -61,10 +75,14 @@ export function CallOutcomes({
   const labelOf = (outcome: CallOutcome) =>
     pending === outcome ? "Registro…" : stateLabel(outcome)
   return (
+    // `data-sentry-element`: without it the name of the customer ends up in the
+    // breadcrumbs of Sentry and in Replay
     <div
       className="@min-[63rem]:flex @min-[63rem]:items-center grid grid-cols-2 gap-1.5"
       role="group"
       aria-label={`Esito della chiamata a ${customer}`}
+      data-call-control={controlId}
+      data-sentry-element="call-outcomes"
     >
       {callOutcomes.map((outcome) =>
         outcome === "richiamare" ? (
@@ -76,6 +94,10 @@ export function CallOutcomes({
             disabled={busy}
             replacesAlertDay={replacesAlertDay}
             error={error}
+            keepPressedFocus={keepPressedFocus}
+            failed={failed}
+            controlId={controlId}
+            askDayOnEnter={askDayOnEnter}
             onSave={(day, message) => onOutcome(outcome, day, message)}
           />
         ) : (
@@ -83,8 +105,15 @@ export function CallOutcomes({
             key={outcome}
             size="sm"
             variant="secondary"
-            disabled={busy}
-            onClick={() => onOutcome(outcome, undefined, undefined)}
+            disabled={busy && !(keepPressedFocus && pending === outcome)}
+            aria-disabled={
+              keepPressedFocus && pending === outcome ? true : undefined
+            }
+            className="aria-disabled:opacity-50"
+            onClick={() => {
+              if (busy) return
+              onOutcome(outcome, undefined, undefined)
+            }}
           >
             {labelOf(outcome)}
           </Button>
@@ -107,6 +136,10 @@ export function CallbackPanel({
   disabled,
   replacesAlertDay,
   error,
+  keepPressedFocus,
+  failed,
+  controlId,
+  askDayOnEnter,
   onSave,
   open: controlledOpen,
   onOpenChange,
@@ -118,6 +151,10 @@ export function CallbackPanel({
   disabled: boolean
   replacesAlertDay: string | null | undefined
   error: string | null | undefined
+  keepPressedFocus?: boolean | undefined
+  failed?: boolean | undefined
+  controlId?: string | undefined
+  askDayOnEnter?: boolean | undefined
   onSave: (day: Date, message: string | undefined) => void
   open?: boolean
   onOpenChange?: (open: boolean) => void
@@ -139,6 +176,21 @@ export function CallbackPanel({
   const tomorrow = addDays(startOfDay(now), 1)
   const titleId = React.useId()
   const contentRef = React.useRef<HTMLDivElement>(null)
+  // Enter with no day (`askDayOnEnter`): the text under the calendar, and a
+  // new `key` that takes the calendar back to tomorrow's month
+  const [dayAsked, setDayAsked] = React.useState(false)
+  const [calendarKey, setCalendarKey] = React.useState(0)
+  const [focusDayRequest, setFocusDayRequest] = React.useState(0)
+  // After the commit the calendar has remounted and tomorrow's button exists
+  React.useEffect(() => {
+    if (focusDayRequest === 0) return
+    contentRef.current
+      ?.querySelector<HTMLButtonElement>(
+        `[data-day="${tomorrow.toLocaleDateString()}"]`
+      )
+      ?.focus()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusDayRequest])
   // The panel stays open while it saves (AC20 of home-operatore). With the
   // answer it closes, and the draft is no longer needed; a rejection or an
   // uncertain outcome (`error`) keeps it open with the draft
@@ -149,12 +201,13 @@ export function CallbackPanel({
     }
     if (!saving.current) return
     saving.current = false
-    if (error) return
+    if (error || failed) return
     saved.current = true
     setOpen(false)
     setDay(undefined)
     setMessage("")
-  }, [pending, error, setOpen])
+    setDayAsked(false)
+  }, [pending, error, failed, setOpen])
   // A failed save brings the panel back, with the draft
   React.useEffect(() => {
     if (error) setOpen(true)
@@ -166,6 +219,7 @@ export function CallbackPanel({
         // Esc, a click outside and the focus going out don't close it while
         // it saves (AC20)
         if (!next && pending) return
+        if (!next) setDayAsked(false)
         setOpen(next)
       }}
     >
@@ -189,6 +243,7 @@ export function CallbackPanel({
         // slide of the popover
         className="w-auto p-3 motion-reduce:data-[state=closed]:animate-none motion-reduce:data-[state=open]:animate-none"
         ref={contentRef}
+        data-call-control={controlId}
         // A dialog named by its title (AC46 of home-operatore)
         aria-labelledby={titleId}
         // The focus goes to the day of the draft, or to tomorrow (AC46)
@@ -227,6 +282,7 @@ export function CallbackPanel({
             ) : null}
           </div>
           <Calendar
+            key={calendarKey}
             mode="single"
             locale={it}
             weekStartsOn={1}
@@ -234,10 +290,18 @@ export function CallbackPanel({
             // On the month of the draft's day, if any (AC21 of home-operatore)
             defaultMonth={day ?? tomorrow}
             selected={day}
-            onSelect={setDay}
+            onSelect={(next) => {
+              setDay(next)
+              if (next) setDayAsked(false)
+            }}
             disabled={{ before: tomorrow }}
             className="p-0"
           />
+          {dayAsked && !day ? (
+            <p role="alert" className="text-destructive-text text-sm">
+              Scegli prima il giorno
+            </p>
+          ) : null}
           {error ? (
             <p role="alert" className="text-destructive-text text-sm">
               {error}
@@ -252,6 +316,19 @@ export function CallbackPanel({
               onChange={(event) =>
                 setMessage(event.target.value.slice(0, MESSAGE_MAX))
               }
+              onKeyDown={(event) => {
+                if (
+                  !askDayOnEnter ||
+                  event.key !== "Enter" ||
+                  event.nativeEvent.isComposing ||
+                  day
+                )
+                  return
+                event.preventDefault()
+                setDayAsked(true)
+                setCalendarKey((key) => key + 1)
+                setFocusDayRequest((request) => request + 1)
+              }}
             />
             {message.length >= MESSAGE_MAX ? (
               <p className="text-xs text-muted-foreground">
@@ -259,7 +336,12 @@ export function CallbackPanel({
               </p>
             ) : null}
           </div>
-          <Button type="submit" disabled={!day || pending}>
+          <Button
+            type="submit"
+            disabled={!day || (pending && !keepPressedFocus)}
+            aria-disabled={pending && keepPressedFocus ? true : undefined}
+            className="aria-disabled:opacity-50"
+          >
             {pending
               ? "Registro…"
               : day

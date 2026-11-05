@@ -141,7 +141,7 @@ I giorni sono giorni di Roma. «In ordine di nome» vuol dire nome e cognome com
 - **AC2.** Si arriva alla pagina da quattro punti:
   - **il toast di fine import** di una Wave ha il comando «Assegna», che per i 10 s del toast apre la pagina della Wave appena importata;
   - **ogni riga di una Wave nello storico** degli import apre la sua pagina;
-  - **«Assegna» di una riga di «Ultimi import»** in home-admin (consegnato dall'implementazione di home-admin, D1 del piano) apre la pagina di quella Wave;
+  - **«Assegna» o «Apri» di una riga di «Ultimi import»** in home-admin (consegnato dall'implementazione di home-admin, D1 del piano) apre la pagina di quella Wave;
   - **«Assegna» di una riga del team** in home-admin (il pulsante lo consegna l'implementazione di home-admin, D1 del piano; la pagina accetta qui la modalità «riga del team» dall'indirizzo, `?per=<operatorId>`) apre la pagina di una Wave scelta così: fra le Wave elencate in «Ultimi import» che hanno clienti senza operatore, quella che ne ha di più; a pari numero, la più recente. Quando nessuna di quelle Wave ha clienti senza operatore, il pulsante della riga è disattivato in home-admin. Una Wave senza scadenza apre il flusso al primo passo; una con la scadenza apre il passo «Assegna» da solo (AC10). Nel passo «Assegna» la persona della riga è l'unica scelta, anche se è inattiva o è un admin, ed è nella lista anche se non è fra le persone mostrate, e «Quanti» è vuoto, con «Quanti contatti a <nome proprio>? Al massimo <max>.» in grigio.
 - **AC3.** Che cosa mostra la pagina all'apertura:
   - una Wave senza scadenza salvata apre il flusso dopo l'import al primo passo;
@@ -417,7 +417,7 @@ I giorni sono giorni di Roma. «In ordine di nome» vuol dire nome e cognome com
 - **Invarianti dell'assegnazione** del contratto del dominio: un utente disattivato non è mai una destinazione. Dopo l'operazione il cliente e il suo contatto attivo hanno lo stesso operatore.
 - **L'import non assegna.** Continua a non scrivere operatori, contatti e chat. Guadagna solo la traccia dei clienti (AC29). Assegnare è un'azione esplicita dell'admin su questa pagina. La riga «Does Not Own» del contratto va precisata all'ingest.
 - **home-admin cambia insieme a questa spec**, nello stesso rilascio in prod (D1 del piano: la pagina della Wave esce prima, da sola; i punti qui sotto li consegna l'implementazione di home-admin):
-  - i suoi «Assegna» aprono questa pagina (AC2); il pulsante della riga di un import è disattivato quando quella Wave non ha clienti senza operatore, quello di una riga del team quando nessuna Wave elencata ne ha;
+  - i suoi «Assegna» e «Apri» aprono questa pagina (AC2): la riga di un import ha «Assegna» quando quella Wave ha clienti senza operatore e «Apri» quando non ne ha; il pulsante di una riga del team è disattivato quando nessuna Wave elencata ne ha;
   - il riquadro «Assegna contatti» (AC14–AC26, AC41–AC44 e le righe di AC45, AC49 e AC50 sul riquadro) non c'è più;
   - le parti di un import Wave sono definite qui; «fermo» diventa «inattivo»;
   - «Ultimi import» mostra la scadenza di ogni Wave, e «scaduta · <N> da fare» in rosso per una Wave scaduta.
@@ -506,3 +506,4 @@ Owner di tutte: Omar.
 | In uno spostamento i contatti cambiati si saltano e il resto si sposta, ridiviso fra chi riceve | Revisione UX D5; il controllo di qualità segnalava che annullare tutto e saltare erano due regole in conflitto |
 | Anche i Non risponde di una Wave aperta passano davanti, nel loro gruppo, dalla scadenza più vicina | La frase di Omar «le chiamate con una scadenza avranno priorità» e §3 della nota di design, che dà l'urgenza a Da chiamare e Non risponde |
 | I testi di fine dicono «Li trovano in Da chiamare», non la home | Revisione UX: l'«oggi» dell'operatore non conosce ancora le Wave (Non-Goal) |
+| Da home-admin si arriva sempre alla pagina: la riga di un import senza clienti senza operatore ha «Apri» (AC2, Constraints) | Omar, 2026-11-04. Proroga e riassegnazione stanno solo qui: con il pulsante spento una Wave scaduta si raggiungeva solo dallo storico |
