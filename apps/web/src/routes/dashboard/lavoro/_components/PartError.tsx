@@ -1,6 +1,6 @@
 import { type UseQueryResult } from "@tanstack/react-query"
 import { RotateCw } from "lucide-react"
-import { type ReactNode, type RefObject } from "react"
+import { type ReactNode, type Ref, type RefObject } from "react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { useRetry } from "../_hooks/useLavoroAnnounce"
@@ -8,18 +8,21 @@ import { useRetry } from "../_hooks/useLavoroAnnounce"
 /**
  * The error of a part of the home, «Non è stato possibile caricare <what>.»
  * with «Riprova», announced: in place of the content when the first load
- * failed; a line over the content, with `above`, when an update did
+ * failed; a line over the content, with `above`, when an update did.
+ * `retryRef` is the ref of the button
  */
 export function PartError({
   what,
   onRetry,
   above = false,
   inset = false,
+  retryRef,
 }: {
   what: string
   onRetry: () => void
   above?: boolean
   inset?: boolean
+  retryRef?: Ref<HTMLButtonElement>
 }) {
   const alert = (
     <div
@@ -37,7 +40,7 @@ export function PartError({
       )}
     >
       <span>Non è stato possibile caricare {what}.</span>
-      <Button size="sm" variant="secondary" onClick={onRetry}>
+      <Button ref={retryRef} size="sm" variant="secondary" onClick={onRetry}>
         <RotateCw aria-hidden />
         Riprova
       </Button>

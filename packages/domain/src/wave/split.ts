@@ -12,7 +12,7 @@ type Named = { readonly userId: string; readonly name: string }
 const sum = (xs: readonly number[]) => xs.reduce((s, x) => s + x, 0)
 
 /** Italian alphabetical order of the name, ties by user id (Definizioni) */
-const byName = (a: Named, b: Named) =>
+export const byName = (a: Named, b: Named) =>
   a.name.localeCompare(b.name, "it") ||
   (a.userId < b.userId ? -1 : a.userId > b.userId ? 1 : 0)
 

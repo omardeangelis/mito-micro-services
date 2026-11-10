@@ -286,9 +286,17 @@ function registerChecks(get: () => Dataset, n: number, day: Day) {
     sequential(taskEventLog, 1000)
   })
 
-  it("values every timestamp: deadlines at Rome midnight, the rest at Rome noon of a day not after D (AC5)", () => {
+  it("values every timestamp: deadlines at Rome midnight, the rest at Rome noon of a day not after D, but the calls of D and D-1 at their hour (AC5)", () => {
     const { tasks, alerts, chats, messages, taskEventLog } = get()
     const end = romeNoon(day).getTime()
+    // The calls of D and of the day before keep their hour, and so does the
+    // closing of the contact they close (andamenti-chiamate, T13)
+    const hourDays = new Set([day, addDays(day, -1)])
+    const atHour = (row: (typeof taskEventLog)[number]) =>
+      row.action === "call" && hourDays.has(romeDay(row.createdAt!))
+    const callInstants = new Set(
+      taskEventLog.filter(atHour).map((row) => row.createdAt!.getTime())
+    )
     const atNoon = (value: unknown, label: string) => {
       expect(value, label).toBeInstanceOf(Date)
       const ms = (value as Date).getTime()
@@ -302,7 +310,8 @@ function registerChecks(get: () => Dataset, n: number, day: Day) {
       atNoon(t.createdAt, `task ${t.id} createdAt`)
       atNoon(t.updatedAt, `task ${t.id} updatedAt`)
       expect(t.closedAt === null || t.closedAt instanceof Date).toBe(true)
-      if (t.closedAt) atNoon(t.closedAt, `task ${t.id} closedAt`)
+      if (t.closedAt && !callInstants.has(t.closedAt.getTime()))
+        atNoon(t.closedAt, `task ${t.id} closedAt`)
       expect(contactStates).toContain(t.state)
       expect(typeof t.priority).toBe("number")
       expect(typeof t.customPriority).toBe("boolean")
@@ -327,7 +336,10 @@ function registerChecks(get: () => Dataset, n: number, day: Day) {
       atNoon(m.sendDate, `message ${m.id} sendDate`)
       if (m.notifyDate) atNoon(m.notifyDate, `message ${m.id} notifyDate`)
     }
-    for (const row of taskEventLog) atNoon(row.createdAt, `log ${row.id}`)
+    for (const row of taskEventLog) {
+      if (atHour(row)) continue
+      atNoon(row.createdAt, `log ${row.id}`)
+    }
   })
 
   it("loads the operators as AC18 asks", () => {

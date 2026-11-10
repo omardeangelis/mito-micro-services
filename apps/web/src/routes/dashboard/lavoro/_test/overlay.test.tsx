@@ -2,7 +2,11 @@ import { act, fireEvent, screen, waitFor, within } from "@testing-library/react"
 import { type UserEvent } from "@testing-library/user-event"
 import { addDays, startOfDay } from "date-fns"
 import { describe, expect, it } from "vitest"
-import { ContactForbidden, Unauthorized } from "@mito/contract/errors"
+import {
+  ContactForbidden,
+  ContactSuperseded,
+  Unauthorized,
+} from "@mito/contract/errors"
 import { type MyCallback } from "@mito/contract/home"
 import { contactDetail } from "@/test/contacts"
 import { fakeLavoro, myCall, myCallback } from "@/test/lavoro"
@@ -612,6 +616,42 @@ describe("il dettaglio sopra la home", () => {
     await screen.findByRole("heading", { name: "Rossi Mario" })
     expect(router.state.location.pathname).toBe("/dashboard")
     expect(router.state.location.search).toBe("?contatto=101")
+  })
+
+  it("aperto da un avviso, alla chiusura il fuoco torna sulla riga della chiamata rifiutata (AC53)", async () => {
+    const page = await renderRows("/dashboard", [{}, {}])
+    page.backend.failWith(
+      "registerCall",
+      new ContactForbidden({ assignee: "Bruno Neri" })
+    )
+
+    await page.user.click(outcome(2, "Appuntamento"))
+    await page.user.click(
+      await screen.findByRole("link", { name: "Apri il contatto" })
+    )
+    await screen.findByRole("heading", { name: "Rossi Mario" })
+    await closeWithEsc(page)
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull())
+    await waitFor(() => expect(document.activeElement).toBe(linkOf(2)))
+  })
+
+  it("con il contatto attuale dell'avviso, il fuoco torna comunque sulla riga rifiutata (AC53)", async () => {
+    const page = await renderRows("/dashboard", [{}, {}])
+    page.backend.failWith(
+      "registerCall",
+      new ContactSuperseded({ activeTaskId: 102 })
+    )
+
+    await page.user.click(outcome(1, "Appuntamento"))
+    await page.user.click(
+      await screen.findByRole("link", { name: "Apri il contatto attuale" })
+    )
+    await screen.findByRole("heading", { name: "Rossi Mario" })
+    expect(page.router.state.location.search).toBe("?contatto=102")
+    await closeWithEsc(page)
+
+    await waitFor(() => expect(document.activeElement).toBe(linkOf(1)))
   })
 
   it("a home smontata «Apri il contatto» va all'indirizzo vero", async () => {

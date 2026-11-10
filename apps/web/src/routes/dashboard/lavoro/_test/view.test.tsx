@@ -1,6 +1,5 @@
 import { act, screen, waitFor, within } from "@testing-library/react"
 import { describe, expect, it } from "vitest"
-import { fakeHome } from "@/test/home"
 import { fakeLavoro, myCallback } from "@/test/lavoro"
 import { renderLavoro } from "./page"
 
@@ -22,8 +21,7 @@ describe("la vista dell'operatore", () => {
   ])(
     "un OPERATORE su %s vede la vista, senza «Analisi Andamento» né il periodo",
     async (path) => {
-      const home = fakeHome()
-      renderLavoro(path, fakeLavoro(), { alsoServe: home.handlers })
+      renderLavoro(path, fakeLavoro())
 
       expect(await screen.findByText("Il mio oggi")).toBeTruthy()
       expect(screen.getByText("Da chiamare")).toBeTruthy()
@@ -33,7 +31,6 @@ describe("la vista dell'operatore", () => {
       expect(screen.queryByText("Ultime Pratiche Aggiornate")).toBeNull()
       expect(screen.queryByText("Chiamate per operatore")).toBeNull()
       expect(screen.queryByRole("combobox")).toBeNull()
-      expect(home.state.averageReads).toEqual([])
     }
   )
 
@@ -52,11 +49,11 @@ describe("la vista dell'operatore", () => {
     const backend = fakeLavoro({ role: "ADMIN" })
     renderLavoro("/dashboard", backend, {
       role: "ADMIN",
-      alsoServe: fakeHome().handlers,
     })
 
-    expect(await screen.findByText("Analisi Andamento")).toBeTruthy()
-    expect(await screen.findByText("Contatti con esito")).toBeTruthy()
+    expect(
+      await screen.findByRole("navigation", { name: "Azioni rapide" })
+    ).toBeTruthy()
     expect(screen.queryByText("Il mio oggi")).toBeNull()
     expect(backend.state.reads.getMyDay).toBe(0)
     expect(backend.state.reads.getMyToCall).toBe(0)
@@ -105,13 +102,14 @@ describe("la vista dell'operatore", () => {
     renderLavoro("/dashboard", backend, {
       role: undefined,
       realProvider: true,
-      alsoServe: fakeHome().handlers,
     })
 
-    expect(await screen.findByText("Analisi Andamento")).toBeTruthy()
+    expect(
+      await screen.findByRole("navigation", { name: "Azioni rapide" })
+    ).toBeTruthy()
     expect(screen.queryByText("Il mio oggi")).toBeNull()
     expect(backend.state.reads.getMyDay).toBe(0)
-    expect(backend.state.reads.getMyCallbacks).toBe(0)
+    expect(backend.state.reads.getMyCalls).toBe(0)
   })
 
   it("con `/me` che si riprende per un ADMIN la vista lascia il posto alla sua home", async () => {
@@ -120,7 +118,6 @@ describe("la vista dell'operatore", () => {
     renderLavoro("/dashboard", backend, {
       role: undefined,
       realProvider: true,
-      alsoServe: fakeHome().handlers,
     })
     await screen.findByText("3")
 
@@ -129,7 +126,9 @@ describe("la vista dell'operatore", () => {
       document.dispatchEvent(new Event("visibilitychange", { bubbles: true }))
     })
 
-    expect(await screen.findByText("Analisi Andamento")).toBeTruthy()
+    expect(
+      await screen.findByRole("navigation", { name: "Azioni rapide" })
+    ).toBeTruthy()
     expect(screen.queryByText("Il mio oggi")).toBeNull()
   })
 

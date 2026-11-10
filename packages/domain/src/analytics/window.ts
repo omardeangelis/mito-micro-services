@@ -15,7 +15,7 @@ import {
 export type DayRange = { from: string; to: string }
 
 /** The ready-made windows. */
-export const PRESETS = ["7d", "30d", "90d", "ytd", "12m"] as const
+export const PRESETS = ["today", "7d", "30d", "90d", "ytd", "12m"] as const
 export type Preset = (typeof PRESETS)[number]
 
 /** The ready-made windows plus the dates picked by hand. */
@@ -27,11 +27,14 @@ export const COMPARES = ["previous", "last-year", "none"] as const
 export type Compare = (typeof COMPARES)[number]
 
 /** The "group by" choices: `auto` lets the window decide. */
-export const GROUPS = ["auto", "day", "week", "month"] as const
+export const GROUPS = ["auto", "day", "week", "month", "hour"] as const
 export type Group = (typeof GROUPS)[number]
 
 /** The buckets a series can really be cut in. */
-export type Bucketing = "day" | "week" | "month"
+export type Bucketing = "day" | "week" | "month" | "hour"
+
+/** The buckets that cut whole calendar days: everything but the hours of "today". */
+export type DayBucketing = Exclude<Bucketing, "hour">
 
 /** The longest window, in days. */
 export const MAX_WINDOW_DAYS = 366
@@ -50,6 +53,8 @@ export const daysIn = (window: DayRange) =>
 /** The window a ready-made choice covers at `today` (AC9). */
 export function presetRange(preset: Preset, today: string): DayRange {
   switch (preset) {
+    case "today":
+      return { from: today, to: today }
     case "7d":
       return { from: addDays(today, -6), to: today }
     case "30d":
@@ -113,11 +118,16 @@ export function comparisonOf(
 }
 
 /** The bucket "automatic" picks: by day up to 14 days, by week up to 120, then by month (AC13). */
-export const autoGroup = (days: number): Bucketing =>
+export const autoGroup = (days: number): DayBucketing =>
   days <= 14 ? "day" : days <= 120 ? "week" : "month"
 
-/** The choices a window of `days` days allows: by day up to 120, by week from 14, by month from 60 (AC13). */
-export function allowedGroups(days: number): Group[] {
+/**
+ * The choices a window of `days` days allows: by day up to 120, by week from
+ * 14, by month from 60 (AC13). With "today" only by hour (AC19); `hour` is
+ * never allowed for another range.
+ */
+export function allowedGroups(days: number, range?: Range): Group[] {
+  if (range === "today") return ["hour"]
   const groups: Group[] = ["auto"]
   if (days <= 120) groups.push("day")
   if (days >= 14) groups.push("week")
@@ -125,19 +135,42 @@ export function allowedGroups(days: number): Group[] {
   return groups
 }
 
-/** The choice itself, or "auto" when a window change made it not allowed (AC13). */
-export const effectiveGroup = (choice: Group, days: number): Group =>
-  allowedGroups(days).includes(choice) ? choice : "auto"
+/** The choice itself, or "auto" when a window change made it not allowed (AC13); "hour" for "today". */
+export const effectiveGroup = (
+  choice: Group,
+  days: number,
+  range?: Range
+): Group =>
+  range === "today"
+    ? "hour"
+    : allowedGroups(days).includes(choice)
+      ? choice
+      : "auto"
 
-/** The bucket a series is cut in for `choice` on a window of `days` days. */
-export function resolveGroup(choice: Group, days: number): Bucketing {
-  const group = effectiveGroup(choice, days)
+/**
+ * The bucket a series is cut in for `choice` on a window of `days` days. Only
+ * with `range` "today" can it be "hour": without a range it is a day bucket.
+ */
+export function resolveGroup(choice: Group, days: number): DayBucketing
+export function resolveGroup(
+  choice: Group,
+  days: number,
+  range?: Range
+): Bucketing
+export function resolveGroup(
+  choice: Group,
+  days: number,
+  range?: Range
+): Bucketing {
+  const group = effectiveGroup(choice, days, range)
   return group === "auto" ? autoGroup(days) : group
 }
 
 /** The wider ready-made window an empty state offers (AC15); `null` when there is none. */
 export function widenAction(range: Range): Preset | null {
   switch (range) {
+    case "today":
+      return "7d"
     case "7d":
     case "custom":
       return "30d"

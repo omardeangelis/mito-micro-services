@@ -1,6 +1,10 @@
 import type { BranchTotals, CallsByOperator } from "@mito/contract/analytics"
 import { formatRange } from "@mito/domain/analytics/buckets"
+import { totalsOf } from "@mito/domain/export/calls"
 import {
+  BEFORE_EIGHT_NOTE,
+  BEFORE_EIGHT_STATUS,
+  beforeEight,
   callNotes,
   callsEmptyStatus,
   callsKpi,
@@ -20,11 +24,15 @@ import {
   type Column,
   counted,
   formatCount,
+  LEAP_DAY_DELTA,
+  leapDayGap,
   percentChange,
   ratio,
   type Status,
   sum,
+  type Total,
   widen,
+  withGap,
 } from "./results"
 
 /**
@@ -194,18 +202,111 @@ const adminNotes = (
     ...extra
   )
 
+type OperatorRow = CallsByOperator["rows"][number]
+
+/**
+ * The rows the admin's rankings count, and the totals they are compared with:
+ * the answer's, or before 08 with «Oggi» yesterday's 11–19, compared with
+ * nothing, with the note above the chart (AC21, AC24, D1). `status` is the
+ * empty state before 08 without yesterday's hours, or null.
+ */
+function adminRows(data: CallsByOperator): {
+  rows: readonly OperatorRow[]
+  comparisonTotals: CallsByOperator["comparisonTotals"]
+  status: Status | null
+  lead: { lead?: string }
+} {
+  switch (beforeEight(data)) {
+    case "yesterday":
+      return {
+        rows: data.comparisonRows ?? [],
+        comparisonTotals: null,
+        status: null,
+        lead: { lead: BEFORE_EIGHT_NOTE },
+      }
+    case "empty":
+      return {
+        rows: [],
+        comparisonTotals: null,
+        status: BEFORE_EIGHT_STATUS,
+        lead: {},
+      }
+    case null:
+      return {
+        rows: data.rows,
+        comparisonTotals: data.comparisonTotals,
+        status: null,
+        lead: {},
+      }
+  }
+}
+
+/** The «Totale» row: the sums, and the rate of the sums (AC15). */
+const totalsRow = (rows: readonly OperatorRow[]): Cell[] => {
+  const total = totalsOf(rows)
+  return [
+    "Totale",
+    total.calls,
+    total.answered,
+    total.noAnswer,
+    total.appointments,
+    ratio(total.answered, total.calls),
+  ]
+}
+
+/** The four totals of the window above the chart, each with its variation (AC13, AC14). */
+const callTotals = (
+  rows: readonly OperatorRow[],
+  before: CallsByOperator["comparisonTotals"],
+  gap: boolean
+): Total[] => {
+  const now = totalsOf(rows)
+  const delta = (current: number, comparison: number | undefined) =>
+    gap
+      ? LEAP_DAY_DELTA
+      : before === null || comparison === undefined
+        ? null
+        : percentChange(current, comparison)
+  return [
+    {
+      label: "Chiamate",
+      value: now.calls,
+      delta: delta(now.calls, before?.calls),
+    },
+    {
+      label: "Risposte",
+      value: now.answered,
+      delta: delta(now.answered, before?.answered),
+    },
+    {
+      label: "Non risposte",
+      value: now.noAnswer,
+      delta: delta(
+        now.noAnswer,
+        before === null ? undefined : before.calls - before.answered
+      ),
+    },
+    {
+      label: "Appuntamenti",
+      value: now.appointments,
+      delta: delta(now.appointments, before?.appointments),
+    },
+  ]
+}
+
 /** The admin's «Risposte per operatore», a ranking (AC3, AC12, AC16, AC19). */
 export function adminCallsResult(
   input: TrendInput<CallsByOperator>
 ): ChartResult<OperatorCallsPoint> {
-  const { data } = input
-  const rows = [...data.rows].sort(
+  const shown = adminRows(input.data)
+  const rows = [...shown.rows].sort(
     (a, b) =>
       b.calls - a.calls || operatorName(a).localeCompare(operatorName(b), "it")
   )
   const calls = sum(rows, (r) => r.calls)
   const answered = sum(rows, (r) => r.answered)
-  const status: Status = callsEmpty(input, calls) ?? { kind: "ready" }
+  const status: Status = shown.status ??
+    callsEmpty(input, calls) ?? { kind: "ready" }
 
   const columns: Column[] = [
     { header: "Operatore", format: "text" },
@@ -221,7 +322,10 @@ export function adminCallsResult(
     title: CHART_TITLES.calls,
     question: CHART_QUESTIONS.calls,
     status,
-    kpi: callsKpi(calls, answered, data.comparisonTotals?.calls ?? null),
+    kpi: withGap(
+      leapDayGap(input, input.data.comparison),
+      callsKpi(calls, answered, shown.comparisonTotals?.calls ?? null)
+    ),
     points: rows.slice(0, MAX_BARS).map((r) => ({
       name: operatorName(r),
       fullName: operatorName(r),
@@ -230,20 +334,31 @@ export function adminCallsResult(
     })),
     table: {
       columns,
-      rows: rows.map((r): Cell[] => [
-        operatorName(r),
-        r.calls,
-        r.answered,
-        r.noAnswer,
-        r.appointments,
-        ratio(r.answered, r.calls),
-      ]),
+      rows: [
+        ...rows.map((r): Cell[] => [
+          operatorName(r),
+          r.calls,
+          r.answered,
+          r.noAnswer,
+          r.appointments,
+          ratio(r.answered, r.calls),
+        ]),
+        // Last, whatever the order; not a bar (AC15). None without rows
+        ...(rows.length === 0 ? [] : [totalsRow(rows)]),
+      ],
+      totalRow: rows.length > 0,
     },
     notes: adminNotes(
       input,
       ...barNotes(status, ...firstBarsNote(rows.length))
     ),
     scope: null,
+    totals: callTotals(
+      rows,
+      shown.comparisonTotals,
+      leapDayGap(input, input.data.comparison)
+    ),
+    ...shown.lead,
   }
 }
 
@@ -251,8 +366,8 @@ export function adminCallsResult(
 export function adminAppointmentsResult(
   input: TrendInput<CallsByOperator>
 ): ChartResult<OperatorRatePoint> {
-  const { data } = input
-  const rows = data.rows
+  const shown = adminRows(input.data)
+  const rows = shown.rows
     .map((r) => ({
       name: operatorName(r),
       answered: r.answered,
@@ -273,6 +388,7 @@ export function adminAppointmentsResult(
   const appointments = sum(rows, (r) => r.appointments)
 
   const status: Status =
+    shown.status ??
     callsEmpty(input, calls) ??
     (answered === 0 ? noAnswersStatus(input.range) : { kind: "ready" })
 
@@ -289,7 +405,10 @@ export function adminAppointmentsResult(
     title: CHART_TITLES.appointments,
     question: CHART_QUESTIONS.appointments,
     status,
-    kpi: rateKpi(appointments, answered, data.comparisonTotals),
+    kpi: withGap(
+      leapDayGap(input, input.data.comparison),
+      rateKpi(appointments, answered, shown.comparisonTotals)
+    ),
     points: rows.slice(0, MAX_BARS).map((r) => ({
       name: r.name,
       fullName: r.name,
@@ -315,6 +434,7 @@ export function adminAppointmentsResult(
       )
     ),
     scope: null,
+    ...shown.lead,
   }
 }
 

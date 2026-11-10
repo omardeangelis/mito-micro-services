@@ -190,3 +190,6 @@
 - [Client queue probe traps](feedback_client_queue_probe_traps.md) — sticky gate flags; gcTime 0 survives same-commit swap; retryDelay 0 in tests; NOOP mutant
 - [UI pass: hold requests, oklch](feedback_ui_pass_hold_requests_init_script.md) — --init-script fetch hold on 2nd session; QueryClient setState; canvas contrast
 - [Toast silencing siblings](feedback_toast_silencing_sibling_queries.md) — enumerate all invalidated active queries; cancel kills retry announce; arm64 runner
+- [Shared query retry, table probes](feedback_plan_shared_query_retry_and_table_probes.md) — retry flag owner, late observer refetch, table-fixed, anchoring with reused nodes
+- [Oracle fuzz, registry call sites](feedback_oracle_fuzz_and_registry_callsites.md) — print branch counters; harness registry 9999 hides registryAt mutants
+- [Scrolled focus, null-text links](feedback_ui_pass_scrolled_focus_and_null_text_links.md) — Tab into a part-visible control; 0x0 links from null names; sticky corner

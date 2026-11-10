@@ -1,55 +1,56 @@
-import { useMemo } from "react"
-import { parseTimeFrame } from "@mito/domain/constants/timeframes"
-import { TimeFrameSelector } from "@/components/custom/date-picker"
-import { useSearchParams } from "@/lib/navigation"
-import { DataSection } from "./_components/DataSection"
-import { CallsSection } from "./_components/export/CallsSection"
-import { ImportLink } from "./_components/ImportLink"
-import { LastUpdatedSection } from "./_components/LastUpdatedSection"
+import {
+  useAdminCallbacks,
+  useLatestWaves,
+  useRefreshAdminHome,
+  useTeamDay,
+  useTeamDetail,
+} from "@/api/home"
+import { useKnownCurrentUser } from "@/api/me"
+import { ContactOverlay } from "../contatti/detail/ContactOverlay"
+import { greeting, longDay } from "../lavoro/_lib/format"
+import { LatestWaves } from "./_components/LatestWaves"
+import { QuickActions } from "./_components/QuickActions"
+import { TeamDetail } from "./_components/TeamDetail"
+import { TodayStrip } from "./_components/TodayStrip"
+import { CallTrend } from "./_components/trend/CallTrend"
 
 /**
- * The home of the admins, as `dashboard/page.tsx` of the Next.js app: the
- * cards of the time frame of the address (`?tf=`, read once for the cards and
- * the selector, AC11), the calls of each operator and the practices updated
- * last
+ * The home of the admins: the day of the team, the last imports and the trend
+ * of the calls. The four reads of the day are here and only here: with
+ * `staleTime` 0 every observer mounted later would read again; the trend reads
+ * its own period in `CallTrend`, its only observer. It scrolls on its own, as
+ * `lavoro`, not as `.dashabord-container`, so the page never scrolls sideways
+ * (D8)
  */
 export function AdminHome() {
-  const searchParams = useSearchParams()
-  const timeframe = useMemo(() => {
-    // A repeated `tf` is a list, which `parseTimeFrame` doesn't take
-    const values = searchParams.getAll("tf")
-    return parseTimeFrame(values.length > 1 ? values : values[0])
-  }, [searchParams])
-
+  const { data } = useKnownCurrentUser()
+  const day = useTeamDay()
+  const callbacks = useAdminCallbacks()
+  const waves = useLatestWaves()
+  const team = useTeamDetail()
+  // Stable: the overlay's effect depends on it
+  const refresh = useRefreshAdminHome()
   return (
-    <section className="dashabord-container">
-      <div className="dashabord-layout">
-        <div className="relative h-[inherit]">
-          <div className="dashboard-content">
-            <div className="flex items-center justify-end gap-4">
-              <ImportLink />
+    <div data-admin-scroll className="relative h-full overflow-y-auto">
+      <ContactOverlay onClose={refresh}>
+        <div className="flex flex-col gap-6 p-4 pb-12">
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <h1 className="font-heading text-title">
+                {greeting(data?.operator.name)}
+              </h1>
+              <p className="mt-0.5 text-sm text-muted-foreground">
+                {longDay(new Date())}
+              </p>
             </div>
-            <div className="mt-8">
-              <div className="flex flex-wrap items-center gap-4">
-                <h2 className="font-heading text-title">Analisi Andamento</h2>
-                <TimeFrameSelector timeframe={timeframe} />
-              </div>
-              <div className="mt-4">
-                <DataSection timeframe={timeframe} />
-              </div>
-            </div>
-            <CallsSection />
-            <div className="mt-8">
-              <h2 className="font-heading text-title">
-                Ultime Pratiche Aggiornate
-              </h2>
-              <div className="mt-4">
-                <LastUpdatedSection />
-              </div>
-            </div>
+            <QuickActions />
           </div>
+          <TodayStrip day={day} callbacks={callbacks} />
+          <LatestWaves waves={waves} />
+          <TeamDetail team={team} waves={waves} />
+          <CallTrend />
         </div>
-      </div>
-    </section>
+      </ContactOverlay>
+    </div>
   )
 }

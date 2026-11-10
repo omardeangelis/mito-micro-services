@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo } from "react"
 import { useLocation, useNavigate } from "react-router"
+import { type HourWindow } from "@mito/contract/analytics"
 import { type Role } from "@mito/contract/schemas"
 import { type DayRange } from "@mito/domain/analytics/window"
 import { romeDay } from "@mito/domain/contact/time"
@@ -65,8 +66,17 @@ type Shape = Drawn["shape"]
 /** The result `shape` draws */
 type ResultOf<S extends Shape> = Extract<Drawn, { shape: S }>["result"]
 
-/** The window an answer is for, and the one it is compared with (AC30) */
-type Answered = { window: DayRange; comparison: DayRange | null }
+/**
+ * The window an answer is for, and the one it is compared with (AC30); with
+ * «Oggi» the hours of the call answers too, null for the others (D10 of
+ * andamenti-chiamate)
+ */
+type Answered = {
+  window: DayRange
+  comparison: DayRange | null
+  hours?: readonly HourWindow[] | null
+  comparisonHours?: readonly HourWindow[] | null
+}
 
 /**
  * What a chart of the page shows: loading until the data of the chosen window
@@ -126,9 +136,16 @@ function useStableQuery<D>(query: Query<D>): Query<D> {
   return useMemo(() => ({ data, error, refetch }), [data, error, refetch])
 }
 
-const ownWindow = ({ window, comparison }: Answered): Answered => ({
+const ownWindow = ({
   window,
   comparison,
+  hours,
+  comparisonHours,
+}: Answered): Answered => ({
+  window,
+  comparison,
+  hours: hours ?? null,
+  comparisonHours: comparisonHours ?? null,
 })
 
 /**
@@ -214,6 +231,8 @@ export function useAnalisi() {
     from: state?.window.from ?? today,
     to: state?.window.to ?? today,
     compare: state?.compare ?? "none",
+    // «Oggi»: the server decides the day and the hours itself (AC18)
+    ...(state?.range === "today" ? { range: "today" as const } : {}),
   }
   const financed = useFinancedSeries(query, scope)
   const branches = useBranchTotals(query, scope)

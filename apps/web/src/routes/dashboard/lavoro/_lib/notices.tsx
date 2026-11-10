@@ -8,11 +8,12 @@ import { type CallRejection, type RejectionLink, workedText } from "./rejection"
 /**
  * What a notice can do: leave for an address, or open a contact over the home,
  * which says `false` when the home is gone. The notice outlives the home, so
- * that is asked at the click (AC52, AC53)
+ * that is asked at the click (AC52, AC53). `alertId` is the row the notice
+ * speaks of: the focus goes back there, even when the contact is another one
  */
 export type NoticeLinks = {
   navigate: NavigateFunction
-  openHere: (taskId: number) => boolean
+  openHere: (taskId: number, alertId: number) => boolean
 }
 
 /**
@@ -22,11 +23,11 @@ export type NoticeLinks = {
  */
 const contactLink = (
   { label, taskId }: RejectionLink,
-  rowTaskId: number,
+  row: QueueRow,
   { navigate, openHere }: NoticeLinks,
   dismiss: () => void
 ) => {
-  const contactId = taskId ?? rowTaskId
+  const contactId = taskId ?? row.taskId
   const href = `/dashboard/contatti/${contactId}`
   return (
     <a
@@ -34,7 +35,7 @@ const contactLink = (
       data-button=""
       onClick={navigateOnPlainClick((to) => {
         dismiss()
-        if (!openHere(contactId))
+        if (!openHere(contactId, row.alertId))
           void navigate(to, { preventScrollReset: true })
       }, href)}
     >
@@ -48,7 +49,7 @@ const showError = (
   title: string,
   description: string | undefined,
   link: RejectionLink | null,
-  taskId: number,
+  row: QueueRow,
   links: NoticeLinks
 ) => {
   const id = toast.error(title, {
@@ -57,7 +58,7 @@ const showError = (
     ...(link === null
       ? {}
       : {
-          action: contactLink(link, taskId, links, () => toast.dismiss(id)),
+          action: contactLink(link, row, links, () => toast.dismiss(id)),
         }),
   })
 }
@@ -75,7 +76,7 @@ export const showRejection = (
   switch (rejection.kind) {
     case "toast": {
       const { title, description, link } = rejection
-      showError(title, description, link, row.taskId, links)
+      showError(title, description, link, row, links)
       return
     }
     case "session":
@@ -95,7 +96,7 @@ export const showRejection = (
         `Richiamo per ${customerNameOf(row)} non salvato: il giorno è già passato`,
         undefined,
         { label: "Apri il contatto" },
-        row.taskId,
+        row,
         links
       )
       return

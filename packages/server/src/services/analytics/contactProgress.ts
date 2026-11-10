@@ -9,7 +9,6 @@ import {
   toContactState,
   type ContactState,
 } from "@mito/domain/contact/status"
-import { type TaskStatus } from "@mito/domain/schemas"
 import { query } from "../../effect/db"
 
 /**

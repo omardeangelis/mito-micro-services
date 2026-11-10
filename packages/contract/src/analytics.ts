@@ -47,16 +47,21 @@ const Day = Schema.String.check(Schema.isPattern(/^\d{4}-\d{2}-\d{2}$/))
 export const Compare = Schema.Literals(["previous", "last-year", "none"])
 export type Compare = typeof Compare.Type
 
-/** The query of the analysis page: the window of two days and its comparison */
+/**
+ * The query of the analysis page: the window of two days and its comparison.
+ * With `range=today` the server decides the day and the hours from its clock,
+ * and `from` and `to` don't count (AC18)
+ */
 export const AnalysisQuery = Schema.Struct({
   from: Day,
   to: Day,
   compare: Compare,
+  range: Schema.optional(Schema.Literal("today")),
 })
 export type AnalysisQuery = typeof AnalysisQuery.Type
 
 /** A span of two days in Rome, both included */
-const DayRange = Schema.Struct({ from: Day, to: Day })
+export const DayRange = Schema.Struct({ from: Day, to: Day })
 
 /** The fields every analysis answer shares: its window and its comparison */
 const AnalysisWindow = {
@@ -105,10 +110,33 @@ const OperatorCallsRow = Schema.Struct({
   appointments: Schema.Number,
 })
 
-/** The calls by operator of the window, with the totals of the comparison */
+/** One hour of «Oggi», `[start, end)`: the one in progress ends at now (AC20) */
+export const HourWindow = Schema.Struct({
+  start: Schema.Date,
+  end: Schema.Date,
+  inProgress: Schema.Boolean,
+})
+export type HourWindow = typeof HourWindow.Type
+
+/**
+ * The hours of «Oggi» and those they are compared with; `null` without
+ * `range=today`, `comparisonHours` also with no comparison (AC20, AC24)
+ */
+const HoursFields = {
+  hours: Schema.NullOr(Schema.Array(HourWindow)),
+  comparisonHours: Schema.NullOr(Schema.Array(HourWindow)),
+}
+
+/**
+ * The calls by operator of the window, with the totals of the comparison; with
+ * `range=today` only the calls in the hours, and the rows of the comparison
+ * hours too (`null` otherwise)
+ */
 export const CallsByOperator = Schema.Struct({
   ...AnalysisWindow,
+  ...HoursFields,
   rows: Schema.Array(OperatorCallsRow),
+  comparisonRows: Schema.NullOr(Schema.Array(OperatorCallsRow)),
   comparisonTotals: Schema.NullOr(
     Schema.Struct({
       calls: Schema.Number,
@@ -120,7 +148,7 @@ export const CallsByOperator = Schema.Struct({
 export type CallsByOperator = typeof CallsByOperator.Type
 
 /** The calls of the operator on one day */
-const CallDay = Schema.Struct({
+export const CallDay = Schema.Struct({
   day: Day,
   calls: Schema.Number,
   answered: Schema.Number,
@@ -128,9 +156,25 @@ const CallDay = Schema.Struct({
   appointments: Schema.Number,
 })
 
-/** The calls of the signed-in operator in the window and in its comparison, day by day */
+/** The calls of the operator in one hour of «Oggi» */
+export const CallHour = Schema.Struct({
+  ...HourWindow.fields,
+  calls: Schema.Number,
+  answered: Schema.Number,
+  noAnswer: Schema.Number,
+  appointments: Schema.Number,
+})
+export type CallHour = typeof CallHour.Type
+
+/**
+ * The calls of the signed-in operator in the window and in its comparison,
+ * day by day; with `range=today` hour by hour instead (`days` empty), `null`
+ * hours otherwise (AC21)
+ */
 export const MyCallSeries = Schema.Struct({
   ...AnalysisWindow,
+  hours: Schema.NullOr(Schema.Array(CallHour)),
+  comparisonHours: Schema.NullOr(Schema.Array(CallHour)),
   days: Schema.Array(CallDay),
   comparisonDays: Schema.Array(CallDay),
 })

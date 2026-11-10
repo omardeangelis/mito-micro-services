@@ -5,7 +5,9 @@ import {
   type DayRange,
   type Compare,
   type Group,
+  type Range,
 } from "@mito/domain/analytics/window"
+import { type HourWindow } from "@mito/contract/analytics"
 import { useCurrentUser } from "@/api/me"
 import { toast } from "sonner"
 import { DASH } from "../_lib/results"
@@ -19,6 +21,8 @@ import { type ChartView } from "./useAnalisi"
 
 /** What the page says about the files its charts write (AC30) */
 export type ExportPage = {
+  /** The period of the page: «Oggi» names the files with one day (AC25 of andamenti-chiamate) */
+  range?: Range
   /** The comparison of the page: in the query key, so it matches the data that arrived */
   compare: Compare
   /** The grouping of the page, resolved for each chart in time */
@@ -44,17 +48,36 @@ export function useDataOf(role: Role | undefined): string {
 /** The header of a file of `view`: its window is the answer's, not the controls' (AC30) */
 export function contextOf(
   view: ChartView,
-  answer: { window: DayRange; comparison: DayRange | null },
+  answer: {
+    window: DayRange
+    comparison: DayRange | null
+    hours?: readonly HourWindow[] | null
+    comparisonHours?: readonly HourWindow[] | null
+  },
   page: ExportPage,
   extractedAt: Date
 ): ExportContext {
+  const today = page.range === "today"
+  const hours = answer.hours ?? null
+  // With «Oggi» only the call series are by hour: the financed has the day alone (AC22)
+  const grouped = view.inTime && (!today || hours !== null)
   return {
     window: answer.window,
     comparison: answer.comparison,
     compare: page.compare,
-    group: view.inTime ? resolveGroup(page.group, daysIn(answer.window)) : null,
+    group: grouped
+      ? resolveGroup(page.group, daysIn(answer.window), page.range)
+      : null,
     dataOf: page.dataOf,
     extractedAt,
+    ...(today
+      ? {
+          today: {
+            hours,
+            comparisonHours: answer.comparisonHours ?? null,
+          },
+        }
+      : {}),
   }
 }
 

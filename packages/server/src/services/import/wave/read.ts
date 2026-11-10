@@ -20,6 +20,8 @@ import { type WaveTeamMember, waveTeam } from "./team"
 // at the Clock's instant, in the day of Rome. The web computes previews and
 // texts only from this
 
+export type WaveStatus = "open" | "expired" | "unconfirmed"
+
 export type WaveRead = WaveParts & {
   /** The file name without its extension (Definizioni, OQ13) */
   readonly name: string
@@ -27,7 +29,7 @@ export type WaveRead = WaveParts & {
   readonly importedAt: Date
   readonly today: Day
   readonly deadline: Day | null
-  readonly status: "open" | "expired" | "unconfirmed"
+  readonly status: WaveStatus
   readonly workdaysLeft: number | null
   readonly daysSinceDeadline: number | null
   readonly toAssign: number
@@ -35,7 +37,11 @@ export type WaveRead = WaveParts & {
 }
 
 /** The name of a Wave: its file without the extension */
-const waveName = (fileName: string) => fileName.replace(/\.[^.]*$/, "")
+export const waveName = (fileName: string) => fileName.replace(/\.[^.]*$/, "")
+
+/** Open through the deadline day, expired after it, unconfirmed without one */
+export const waveStatus = (deadline: Day | null, today: Day): WaveStatus =>
+  deadline === null ? "unconfirmed" : deadline >= today ? "open" : "expired"
 
 /** Reads the completed Wave `runId`, or `WaveNotFound` */
 export const readWave = Effect.fn("import.readWave")(function* (
@@ -75,9 +81,7 @@ export const readWave = Effect.fn("import.readWave")(function* (
   )
 
   const deadline = run.deadline
-  // Open through the deadline day, expired after it, unconfirmed without one
-  const status =
-    deadline === null ? "unconfirmed" : deadline >= today ? "open" : "expired"
+  const status = waveStatus(deadline, today)
 
   return {
     name: waveName(run.fileName),

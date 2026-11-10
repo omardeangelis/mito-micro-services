@@ -15,7 +15,12 @@
 // plain OPERATORE, not the inactive one of the Waves. A call passes with the
 // alert it closed (`resolvedBy`) and the `alert_resolved` row beside it, only
 // the actor changes. Pure and seeded.
-import { romeDay } from "../day"
+//
+// `addTeamCalls` (T13) adds the calls of today and of yesterday across the
+// working hours, of the other operators: a call that keeps the contact in its
+// state, with no open alert, so the manifest's scenarios still hold.
+import { romeAt } from "@mito/domain/contact/time"
+import { addDays, romeDay } from "../day"
 import type {
   AlertRow,
   CustomerRow,
@@ -31,7 +36,8 @@ import {
   SYSTEM_OPERATOR_ID,
   TYPICAL_DAY_OPERATOR_ID,
 } from "./operators"
-import { createRandom } from "./random"
+import { LOG_ID_START } from "./log"
+import { createRandom, range } from "./random"
 import { INACTIVE_OPERATOR_ID } from "./waves"
 
 /** The volumes of the full day (spec Volumi: 64 overdue + 192 today, 57 calls). */
@@ -195,5 +201,146 @@ export function shapeOperatorDay({
     alerts: newAlerts,
     tasks: newTasks,
     taskEventLog: newLog,
+  }
+}
+
+/** Calls per Rome hour, on D and on the day before (T13). */
+const TEAM_CALLS_PER_HOUR: ReadonlyArray<
+  readonly [hour: number, calls: number]
+> = [
+  [7, 2],
+  [8, 3],
+  [9, 3],
+  [10, 3],
+  [11, 3],
+  [12, 3],
+  [13, 2],
+  [14, 3],
+  [15, 3],
+  [16, 3],
+  [17, 3],
+  [18, 3],
+  [19, 2],
+  [20, 1],
+]
+
+/** The states a call keeps: the outcome is the state, and no alert is open. */
+const STATE_KEEPING = ["non risponde", "app.to", "non interessato"] as const
+type KeepingState = (typeof STATE_KEEPING)[number]
+const isKeeping = (state: string | null | undefined): state is KeepingState =>
+  (STATE_KEEPING as readonly string[]).includes(state ?? "")
+
+/**
+ * The calls of the team on D and on the day before, across the working hours
+ * (T13). Each one is a `call` row on an active contact of another operator
+ * that has no open alert and is in `non risponde`, `app.to` or
+ * `non interessato`: the outcome is the state, so the contact does not move
+ * and the scenarios of the manifest hold. Only `closedAt` moves to the call,
+ * as AC29 asks. The log is renumbered in time order. Pure and seeded.
+ */
+export function addTeamCalls({
+  day,
+  tasks,
+  alerts,
+  taskEventLog,
+}: Pick<Rows, "tasks" | "alerts" | "taskEventLog"> & { day: Day }): Pick<
+  Rows,
+  "tasks" | "taskEventLog"
+> {
+  const rng = createRandom("home-calls")
+  const alertById = new Map(alerts.map((alert) => [alert.id, alert]))
+  const excluded = new Set<number>([
+    FULL_DAY_OPERATOR_ID,
+    TYPICAL_DAY_OPERATOR_ID,
+    INACTIVE_OPERATOR_ID,
+    EMPTY_OPERATOR_ID,
+    SYSTEM_OPERATOR_ID,
+  ])
+
+  // The last instant and state of each contact in the log
+  const last = new Map<number, { at: number; state: string | null }>()
+  for (const row of taskEventLog) {
+    if (row.taskId == null) continue
+    const at = row.createdAt!.getTime()
+    const prev = last.get(row.taskId)
+    if (prev && at < prev.at) continue
+    const stateRow = row.action === "state_change" || row.action === "call"
+    last.set(row.taskId, {
+      at,
+      state: stateRow ? (row.toState ?? null) : (prev?.state ?? null),
+    })
+  }
+
+  const current = new Map(tasks.map((task) => [task.id, task]))
+  const candidates = tasks.filter((task) => {
+    if (
+      task.isActive !== true ||
+      task.operatorId == null ||
+      excluded.has(task.operatorId) ||
+      task.customerId == null ||
+      !isKeeping(task.state)
+    ) {
+      return false
+    }
+    const alert = task.alertId == null ? undefined : alertById.get(task.alertId)
+    if (alert !== undefined && !alert.isResolved) return false
+    const log = last.get(task.id)
+    return log !== undefined && log.state === task.state
+  })
+
+  const slots: Date[] = []
+  for (const dayOf of [day, addDays(day, -1)]) {
+    for (const [hour, calls] of TEAM_CALLS_PER_HOUR) {
+      for (let k = 0; k < calls; k++) {
+        slots.push(romeAt(dayOf, hour, rng.int(0, 59)))
+      }
+    }
+  }
+  slots.sort((a, b) => a.getTime() - b.getTime())
+
+  /** A version-4 uuid from the seeded generator (the `request_id`). */
+  const uuid = () => {
+    const part = (length: number) =>
+      range(length)
+        .map(() => rng.int(0, 15).toString(16))
+        .join("")
+    return `${part(8)}-${part(4)}-4${part(3)}-${rng.pick(["8", "9", "a", "b"])}${part(3)}-${part(12)}`
+  }
+
+  const calls: TaskEventLogRow[] = []
+  for (const at of slots) {
+    const ms = at.getTime()
+    // In time order: a contact takes a later call only after its last row
+    const pool = candidates.filter((task) => last.get(task.id)!.at < ms)
+    if (pool.length === 0) continue
+    const task = rng.pick(pool)
+    const state = task.state as KeepingState
+    calls.push({
+      id: 0, // numbered below
+      createdAt: at,
+      alertId: null,
+      fromState: state,
+      toState: state,
+      fromOperatorId: null,
+      toOperatorId: null,
+      customerId: task.customerId!,
+      taskId: task.id,
+      actorOperatorId: task.operatorId!,
+      action: "call",
+      source: rng.pick(["detail", "list"] as const),
+      outcome: state,
+      origin: "list",
+      requestId: uuid(),
+    })
+    last.set(task.id, { at: ms, state })
+    current.set(task.id, { ...current.get(task.id)!, closedAt: at })
+  }
+
+  const log = [...taskEventLog, ...calls]
+    .sort((a, b) => a.createdAt!.getTime() - b.createdAt!.getTime())
+    .map((row, k) => ({ ...row, id: LOG_ID_START + k }))
+  return {
+    tasks: tasks.map((task) => current.get(task.id)!),
+    taskEventLog: log,
   }
 }

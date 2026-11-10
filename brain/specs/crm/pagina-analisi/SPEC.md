@@ -142,6 +142,7 @@ La mappa del flusso è [[specs/crm/pagina-analisi/FLOW]].
 ### Finestra di dati
 
 - **AC9.** Una sola finestra vale per tutta la pagina. I giorni sono giorni di calendario di Roma, estremi inclusi; gli esempi sono calcolati il 30/10/2026.
+  - Integrato da [[specs/crm/andamenti-chiamate/SPEC]] (AC18, 2026-11-10): c'è anche il periodo «Oggi», `range=today`.
 
   | Periodo | Esempio | Confronto iniziale |
   |---|---|---|
@@ -163,9 +164,11 @@ La mappa del flusso è [[specs/crm/pagina-analisi/FLOW]].
     - ogni altra finestra si confronta con lo stesso numero di giorni subito prima (01/10 – 30/10 → 01/09 – 30/09);
   - **«Stesso periodo, anno prima»:** le stesse date un anno prima (01/01 – 30/10/2026 → 01/01 – 30/10/2025);
   - **«Nessuno»:** nessuna serie di confronto, nessuna colonna di confronto e nessuna variazione.
+  - Integrato da [[specs/crm/andamenti-chiamate/SPEC]] (AC20, 2026-11-10): con «Oggi» il confronto iniziale è «Periodo precedente», le stesse ore di ieri.
 - **AC11.** Gli intervalli del grafico e della tabella:
   - le settimane iniziano il lunedì e i mesi sono mesi di calendario;
   - il primo e l'ultimo intervallo sono tagliati dai bordi della finestra e lo dicono nel nome («1 – 6 set 2026»).
+  - Integrato da [[specs/crm/andamenti-chiamate/SPEC]] (AC20, AC21, 2026-11-10): con «Oggi» gli intervalli sono le ore; il 29 febbraio non ha confronto con l'anno prima.
 
   Ogni intervallo si confronta con le sue date spostate indietro.
   - **Di quanto si sposta:**
@@ -197,6 +200,7 @@ La mappa del flusso è [[specs/crm/pagina-analisi/FLOW]].
   - «per giorno» solo fino a 120 giorni;
   - «per settimana» solo da 14 giorni;
   - «per mese» solo da 60 giorni.
+  - Integrato da [[specs/crm/andamenti-chiamate/SPEC]] (AC19, 2026-11-10): con «Oggi» l'unico raggruppamento è «per ora».
 
   Se un cambio di finestra rende non ammesso il raggruppamento scelto a mano, torna «automatico».
 - **AC14.** Lo stato della pagina sta nell'indirizzo, aggiornato senza nuove voci nella cronologia.
@@ -209,11 +213,13 @@ La mappa del flusso è [[specs/crm/pagina-analisi/FLOW]].
   - Ricaricando, o aprendo lo stesso indirizzo in un'altra scheda, la pagina è la stessa.
   - Un valore non valido, anche un intervallo fuori dai limiti di AC9, torna al valore iniziale.
   - Se il grafico di `chart` non è visibile per quel ruolo, si apre il primo grafico consentito.
+  - Integrato da [[specs/crm/andamenti-chiamate/SPEC]] (AC18, AC19, 2026-11-10): `range=today` e `group=hour`, che vale solo con «Oggi».
 - **AC15.** L'azione di uno stato vuoto allarga la finestra al periodo successivo e cambia solo le date: confronto e grafico scelto restano.
   - Da 7 giorni o da date personalizzate: «Allarga a 30 giorni».
   - Da 30 giorni: «Allarga a 90 giorni».
   - Da 90 giorni: «Allarga a 12 mesi».
   - Da 12 mesi o dall'anno in corso non c'è azione.
+  - Integrato da [[specs/crm/andamenti-chiamate/SPEC]] (AC24, 2026-11-10): da «Oggi» l'azione è «Allarga a 7 giorni»; prima delle 08 c'è «Vedi ieri», che cambia solo il confronto.
 
 ### Chiamate
 
@@ -246,6 +252,7 @@ La mappa del flusso è [[specs/crm/pagina-analisi/FLOW]].
     - per i grafici nel tempo, «Un solo intervallo» quando la finestra è un solo intervallo, con l'azione «Mostra 7 giorni»;
     - per le sedi, «Una sola sede»;
   - **errore:** AC20.
+  - Integrato da [[specs/crm/andamenti-chiamate/SPEC]] (AC22–AC24, 2026-11-10): con «Oggi» i casi «solo numero» del finanziato e dell'operatore, e lo stato prima delle 08.
 - **AC20.** Quando un grafico non si carica, l'errore dice «Non è stato possibile caricare questo grafico. Gli altri sono aggiornati.», con «Riprova». Se fallisce ancora, il riquadro resta.
 - **AC21.** Con un grafico in errore gli altri restano visibili e utilizzabili. Nessun errore di un grafico porta alla pagina d'errore della rotta.
 - **AC22.** Offline la pagina dice «Sei offline: i grafici si aggiornano quando torna la connessione.»; nessuno scheletro resta senza un messaggio.
@@ -271,10 +278,12 @@ La mappa del flusso è [[specs/crm/pagina-analisi/FLOW]].
   - **nome:** `mito_<grafico>_<da>_<a>.<ext>`, dove `<grafico>` è il titolo in minuscolo con i trattini (`finanziato-totale`, `finanziato-medio-per-pratica`, `finanziato-per-sede`, `contatti-con-esito`, `risposte-per-operatore`, `tasso-di-appuntamento`); per esempio `mito_finanziato-per-sede_2026-10-01_2026-10-30.csv`;
   - **righe:** le stesse della tabella sotto il grafico, nello stesso ordine;
   - finestra e nome del file vengono dai dati arrivati, non dai controlli.
+  - Integrato da [[specs/crm/andamenti-chiamate/SPEC]] (AC25, 2026-11-10): con «Oggi» il nome ha la data una volta, e l'intestazione le ore.
 - **AC31.** Un grafico vuoto o in errore non ha tabella. La riga «Dati del grafico» ne dice il motivo, e i pulsanti sono disabilitati.
 - **AC32.** «Esporta tutto» scarica un solo file, `mito_analisi_<da>_<a>.xlsx`, con un foglio per ogni grafico che ha dati. Il pulsante dice quanti sono, per esempio «Esporta tutto 5/6». Poi, se serve, un toast:
   - se manca un grafico, lo nomina: «Esportati 5 grafici su 6: "Finanziato per sede" non ha dati da esportare.»;
   - se il download non parte: «Excel non scaricato. Riprova.».
+  - Integrato da [[specs/crm/andamenti-chiamate/SPEC]] (AC25, 2026-11-10): con «Oggi» il file è `mito_analisi_<oggi>.xlsx`.
 
 ### Interfaccia e accessibilità
 

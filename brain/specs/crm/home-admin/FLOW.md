@@ -7,7 +7,7 @@ links:
   - "[[specs/crm/home-operatore/SPEC]]"
   - "[[specs/crm/assegnazione-wave/SPEC]]"
 created: 2026-11-01
-updated: 2026-11-04
+updated: 2026-11-05
 ---
 
 # Flow map: Home dell'admin
@@ -56,9 +56,11 @@ Segmenti da [[personas]]. Tutti su PC fisso, da 1024 a 1920 px (Constraints di S
 | Dettaglio di un import | nessuno ha contatti della Wave | AC12 |
 | «I tuoi richiami» | nessuno per oggi | AC6 |
 | Numeri di oggi | prima della prima chiamata o risposta | AC6 |
+| Dettaglio di una persona | clic su un cliente: il dettaglio si apre sopra la home, e chiudendolo l'admin è nel punto di prima | AC29 |
 
 ## Accessibility
 - Il fuoco dopo «Riprova» va sul titolo della sezione (AC49).
+- Chiudendo il dettaglio di un contatto il fuoco torna sul cliente da cui era stato aperto (AC29).
 - Nomi dei pulsanti «Assegna» e «Apri», dei dettagli, dei gruppi e della barra di avanzamento (AC31).
 - Controllo manuale ancora da fare, con NVDA e VoiceOver: cosa si sente dopo «Riprova» (Constraints di SPEC.md; AC49).
 

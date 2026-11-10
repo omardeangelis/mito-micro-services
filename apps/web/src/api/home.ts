@@ -6,6 +6,7 @@ import {
 } from "@tanstack/react-query"
 import { useCallback } from "react"
 import { Effect } from "effect"
+import { type CallTrendPeriod, type MyCallback } from "@mito/contract/home"
 import { useRun } from "./ApiProvider"
 import { ApiClient, type Run } from "./runtime"
 
@@ -135,4 +136,153 @@ export const useRefreshHome = () => {
     [queryClient, refreshRows]
   )
   return { refreshAll, refreshRows }
+}
+
+/**
+ * The keys of the home of the admin, under their own root: the import's
+ * `written()` reads all four again with it, and `getMyCallbacks` has a key
+ * here that `homeKeys` doesn't share, so the two homes never see each other's
+ * cache (AC30, D6)
+ */
+export const adminHomeKeys = {
+  all: ["adminHome"] as const,
+  day: () => [...adminHomeKeys.all, "getTeamDay"] as const,
+  waves: () => [...adminHomeKeys.all, "getLatestWaves"] as const,
+  team: () => [...adminHomeKeys.all, "getTeamDetail"] as const,
+  callbacks: () => [...adminHomeKeys.all, "getMyCallbacks"] as const,
+  callTrend: (period: CallTrendPeriod) =>
+    [...adminHomeKeys.all, "getCallTrend", period] as const,
+}
+
+/** The periods of «Andamento delle chiamate» (`GET /home/call-trend`) */
+export { type CallTrendPeriod }
+
+/**
+ * Each part loads and fails on its own, with no toast. The data of before stay
+ * until the new ones arrive (the default `gcTime`), and neither the window's
+ * focus nor the network coming back reads anything: only a return to the page
+ * does (`staleTime: 0`)
+ */
+const adminPartOptions = {
+  meta: { toastErrors: false },
+  networkMode: "always",
+  refetchOnWindowFocus: false,
+  refetchOnReconnect: false,
+  staleTime: 0,
+} as const
+
+/** The count of the team today (`GET /home/team/day`) */
+const teamDayOptions = (run: Run) =>
+  queryOptions({
+    ...adminPartOptions,
+    queryKey: adminHomeKeys.day(),
+    queryFn: ({ signal }) =>
+      run(
+        Effect.gen(function* () {
+          const client = yield* ApiClient
+          return yield* client.home.getTeamDay()
+        }),
+        signal
+      ),
+  })
+
+/** The last Waves (`GET /home/waves`) */
+const latestWavesOptions = (run: Run) =>
+  queryOptions({
+    ...adminPartOptions,
+    queryKey: adminHomeKeys.waves(),
+    queryFn: ({ signal }) =>
+      run(
+        Effect.gen(function* () {
+          const client = yield* ApiClient
+          return yield* client.home.getLatestWaves()
+        }),
+        signal
+      ),
+  })
+
+/** The daily detail of the team (`GET /home/team`) */
+const teamDetailOptions = (run: Run) =>
+  queryOptions({
+    ...adminPartOptions,
+    queryKey: adminHomeKeys.team(),
+    queryFn: ({ signal }) =>
+      run(
+        Effect.gen(function* () {
+          const client = yield* ApiClient
+          return yield* client.home.getTeamDetail()
+        }),
+        signal
+      ),
+  })
+
+/** The callbacks of the admin (`GET /home/callbacks`), in the admin's cache */
+const adminCallbacksOptions = (run: Run) =>
+  queryOptions({
+    ...adminPartOptions,
+    queryKey: adminHomeKeys.callbacks(),
+    queryFn: ({ signal }) =>
+      run(
+        Effect.gen(function* () {
+          const client = yield* ApiClient
+          return yield* client.home.getMyCallbacks()
+        }),
+        signal
+      ),
+  })
+
+/** The trend of the calls for a period (`GET /home/call-trend`), in the admin's cache */
+const callTrendOptions = (run: Run, period: CallTrendPeriod) =>
+  queryOptions({
+    ...adminPartOptions,
+    queryKey: adminHomeKeys.callTrend(period),
+    queryFn: ({ signal }) =>
+      run(
+        Effect.gen(function* () {
+          const client = yield* ApiClient
+          return yield* client.home.getCallTrend({ query: { period } })
+        }),
+        signal
+      ),
+  })
+
+/** Overdue rows have `daysLate > 0`, today's have 0; a module function, so `select` stays stable */
+const splitCallbacks = (rows: ReadonlyArray<MyCallback>) => ({
+  overdue: rows.filter((row) => row.daysLate > 0),
+  today: rows.filter((row) => row.daysLate === 0),
+})
+
+export const useTeamDay = () => useQuery(teamDayOptions(useRun()))
+export const useLatestWaves = () => useQuery(latestWavesOptions(useRun()))
+export const useTeamDetail = () => useQuery(teamDetailOptions(useRun()))
+export const useAdminCallbacks = () =>
+  useQuery({ ...adminCallbacksOptions(useRun()), select: splitCallbacks })
+/** No `placeholderData`: a period change shows the loading state, never another period's numbers */
+export const useCallTrend = (period: CallTrendPeriod) =>
+  useQuery(callTrendOptions(useRun(), period))
+
+/**
+ * Reads the five parts of the admin's home again. The function is the same
+ * between two renders: an effect can depend on it without starting again
+ */
+export const useRefreshAdminHome = () => {
+  const queryClient = useQueryClient()
+  return useCallback(
+    () => queryClient.invalidateQueries({ queryKey: adminHomeKeys.all }),
+    [queryClient]
+  )
+}
+
+/**
+ * «Riprova» of a part: the query goes back to its initial state, so every
+ * observer of it is pending together and the skeleton comes back, then it
+ * reads again. The function is stable
+ */
+export const useRetryPart = () => {
+  const queryClient = useQueryClient()
+  return useCallback(
+    (queryKey: readonly unknown[]) =>
+      queryClient.resetQueries({ queryKey, exact: true }),
+    [queryClient]
+  )
 }

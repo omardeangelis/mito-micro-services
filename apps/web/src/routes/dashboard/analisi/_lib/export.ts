@@ -1,8 +1,10 @@
 import { formatRange } from "@mito/domain/analytics/buckets"
+import { type HourSlot, hoursSpan } from "@mito/domain/analytics/hours"
 import type {
   Bucketing,
   Compare,
   DayRange,
+  Range,
 } from "@mito/domain/analytics/window"
 import type { WorkBook } from "xlsx"
 import {
@@ -32,12 +34,21 @@ export type ExportContext = {
   /** «tutta la rete» for the admin, the operator's name otherwise (AC30) */
   dataOf: string
   extractedAt: Date
+  /**
+   * Only with «Oggi»: the hours of the answer and of its comparison, `null`
+   * for the charts without hours, the financed ones (AC25 of andamenti-chiamate)
+   */
+  today?: {
+    hours: readonly HourSlot[] | null
+    comparisonHours: readonly HourSlot[] | null
+  }
 }
 
 const GROUP_LABELS: Record<Bucketing, string> = {
   day: "per giorno",
   week: "per settimana",
   month: "per mese",
+  hour: "per ora",
 }
 
 /** «Estratto il»: `DD/MM/YYYY HH:MM` on the clock of Rome, whatever the machine zone. */
@@ -56,12 +67,34 @@ function formatExtractedAt(date: Date): string {
   return `${part("day")}/${part("month")}/${part("year")} ${part("hour")}:${part("minute")}`
 }
 
-/** The «Confronto» line: which period the window is compared with. */
+/** The hours of «Oggi» as a span, «08:00–15:20»; null without any. */
+const spanOf = (hours: readonly HourSlot[] | null) =>
+  hours === null ? null : hoursSpan(hours)
+
+/**
+ * The «Finestra» line: the days of the window; with «Oggi» the hours of the
+ * call charts, «tutto il giorno» for the financed ones (AC25 of
+ * andamenti-chiamate)
+ */
+function windowLabel(context: ExportContext): string {
+  const { today } = context
+  if (today === undefined) return formatRange(context.window)
+  if (today.hours === null) return "Oggi, tutto il giorno"
+  return `Oggi, ${spanOf(today.hours) ?? "prima delle 08:00"}`
+}
+
+/** The «Confronto» line: which period the window is compared with, with its hours on «Oggi». */
 function comparisonLabel(context: ExportContext): string {
-  if (context.compare === "none" || context.comparison === null) {
-    return "Nessuno"
+  if (context.compare === "none") return "Nessuno"
+  // «Oggi» on 29 February: the year before has no such day (AC20)
+  if (context.comparison === null) {
+    return context.compare === "last-year"
+      ? `Stesso periodo, anno prima: ${DASH}`
+      : "Nessuno"
   }
-  const range = formatRange(context.comparison)
+  const hours = spanOf(context.today?.comparisonHours ?? null)
+  const range =
+    formatRange(context.comparison) + (hours === null ? "" : `, ${hours}`)
   return context.compare === "last-year"
     ? `Stesso periodo, anno prima: ${range}`
     : `Periodo precedente: ${range}`
@@ -84,7 +117,7 @@ export function exportHeader(
   if (result.id === "progress") {
     rows.push(["Finestra", "Adesso"])
   } else {
-    rows.push(["Finestra", formatRange(context.window)])
+    rows.push(["Finestra", windowLabel(context)])
     rows.push(["Confronto", comparisonLabel(context)])
     if (context.group !== null) {
       rows.push(["Raggruppamento", GROUP_LABELS[context.group]])
@@ -92,6 +125,7 @@ export function exportHeader(
   }
   rows.push(["Dati di", context.dataOf])
   rows.push(["Estratto il", formatExtractedAt(context.extractedAt)])
+  if (result.lead !== undefined) rows.push(["Nota", result.lead])
   for (const note of result.notes) rows.push(["Nota", note])
   if (result.kpi.delta?.kind === "none") {
     rows.push(["Nota", result.kpi.delta.note])
@@ -109,24 +143,30 @@ const slugOf = (title: string) =>
     .trim()
     .replace(/\s+/g, "-")
 
+/** The days of a file name: one with «Oggi» (AC25 of andamenti-chiamate), both otherwise. */
+const daysOf = (window: DayRange, range?: Range) =>
+  range === "today" ? window.to : `${window.from}_${window.to}`
+
 /**
- * `mito_<chart>_<from>_<to>.<ext>` (AC30); the contacts with an outcome carry
- * only the day of the snapshot, which the page passes as the window (AC7).
+ * `mito_<chart>_<from>_<to>.<ext>` (AC30), `mito_<chart>_<day>.<ext>` with
+ * «Oggi»; the contacts with an outcome carry only the day of the snapshot,
+ * which the page passes as the window (AC7).
  */
 export function fileName(
   chart: ChartId,
   window: DayRange,
-  ext: "csv" | "xlsx"
+  ext: "csv" | "xlsx",
+  range?: Range
 ): string {
   const slug = slugOf(CHART_TITLES[chart])
   return chart === "progress"
     ? `mito_${slug}_${window.to}.${ext}`
-    : `mito_${slug}_${window.from}_${window.to}.${ext}`
+    : `mito_${slug}_${daysOf(window, range)}.${ext}`
 }
 
-/** `mito_analisi_<from>_<to>.xlsx`, the workbook of «Esporta tutto» (AC32). */
-export const allFileName = (window: DayRange) =>
-  `mito_analisi_${window.from}_${window.to}.xlsx`
+/** `mito_analisi_<from>_<to>.xlsx`, the workbook of «Esporta tutto» (AC32); one day with «Oggi». */
+export const allFileName = (window: DayRange, range?: Range) =>
+  `mito_analisi_${daysOf(window, range)}.xlsx`
 
 /**
  * A value of a text file (a branch, an operator, a note) that Excel would read

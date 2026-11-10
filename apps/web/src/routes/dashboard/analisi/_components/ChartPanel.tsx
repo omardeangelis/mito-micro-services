@@ -8,8 +8,8 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
-import { type Preset } from "@mito/domain/analytics/window"
-import { formatDelta, formatKpi } from "../_lib/results"
+import { type Compare, type Preset } from "@mito/domain/analytics/window"
+import { formatCount, formatDelta, formatKpi } from "../_lib/results"
 import { ChartLegend, DrawnChart } from "./charts/DrawnChart"
 import { ChartSkeleton, ErrorBox, SessionBox, StatusBox } from "./ChartState"
 import { DataSection } from "./DataSection"
@@ -74,13 +74,42 @@ function KpiLine({ drawn }: { drawn: Drawn }) {
   )
 }
 
+/** The four totals of the admin's «Risposte per operatore», with their variations (AC13, AC14) */
+function CallTotals({ drawn }: { drawn: Drawn }) {
+  const { totals } = drawn.result
+  if (drawn.shape !== "adminCalls" || totals === undefined) return null
+  return (
+    <dl
+      aria-label="Totali della finestra"
+      className="mt-4 grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4"
+    >
+      {totals.map((total) => (
+        <div key={total.label} className="min-w-0">
+          <dt className="text-xs text-muted-foreground">{total.label}</dt>
+          <dd className="flex flex-wrap items-baseline gap-x-2">
+            <span className="font-heading text-xl tabular-nums">
+              {formatCount(total.value)}
+            </span>
+            {total.delta === null ? null : (
+              <span className="text-sm tabular-nums">
+                {formatDelta(total.delta)}
+              </span>
+            )}
+          </dd>
+        </div>
+      ))}
+    </dl>
+  )
+}
+
 /**
  * The chart chosen (AC2): a `section` with the role of the tab panel, named
  * by the title of the chart, never a second `main` (AC41). Title, question,
  * whose numbers they are (AC6), the number line, the chart and its notes, or
  * the state that takes their place (AC19, AC20, AC23). The title takes the
  * focus by script after «Riprova» and an action of an empty state (AC42);
- * `onRange` widens the window of the page. `controls` are in the heading row:
+ * `onRange` widens the window of the page, `onCompare` changes its comparison
+ * («Vedi ieri», AC24 of andamenti-chiamate). `controls` are in the heading row:
  * «Raggruppa per» of a chart in time (AC13). `page` is what its files say
  * about the page (AC30)
  */
@@ -90,12 +119,14 @@ export function ChartPanel({
   controls,
   page,
   onRange,
+  onCompare,
 }: {
   view: ChartView
   panelId: string
   controls?: ReactNode
   page: ExportPage
   onRange: (range: Preset) => void
+  onCompare?: (compare: Compare) => void
 }) {
   const titleId = `${panelId}-title`
   const titleRef = useRef<HTMLHeadingElement>(null)
@@ -144,6 +175,15 @@ export function ChartPanel({
             <div className="mt-6">
               <KpiLine drawn={state} />
             </div>
+            {state.result.status.kind === "ready" ? (
+              <CallTotals drawn={state} />
+            ) : null}
+            {/* Before 08 with «Oggi» the bars are yesterday's (AC24 of andamenti-chiamate) */}
+            {state.result.lead === undefined ? null : (
+              <p className="mt-4 text-sm text-muted-foreground">
+                {state.result.lead}
+              </p>
+            )}
             <div
               data-slot="chart-area"
               className={cn("mt-4 flex flex-col", height)}
@@ -173,7 +213,8 @@ export function ChartPanel({
                     <StatusBox
                       status={state.result.status}
                       onAction={(action) => {
-                        onRange(action.range)
+                        if ("range" in action) onRange(action.range)
+                        else onCompare?.(action.compare)
                         focusTitle()
                       }}
                     />

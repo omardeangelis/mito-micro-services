@@ -43,7 +43,7 @@ import {
   describeCallRejection,
   reloadsRows,
 } from "../_lib/rejection"
-import { useOpenContact } from "./useContactOverlay"
+import { useOpenContact } from "../../contatti/detail/useContactOverlay"
 
 /** A press of an outcome on a row: for Richiamare, with its day and message */
 export type Register = (
@@ -136,6 +136,10 @@ const applyAnswer = (
   return queue
 }
 
+/** The name of a row, a link: where the focus lands */
+const callbackLink = (alertId: number | null) =>
+  document.querySelector<HTMLElement>(`[data-callback-link="${alertId}"]`)
+
 /**
  * The rows of «Richiami da fare» of this visit, `null` until they load, and
  * the presses of their outcomes.
@@ -199,9 +203,9 @@ export const useCallbackQueue = () => {
   }, [])
 
   const openHere = useCallback(
-    (taskId: number) => {
+    (taskId: number, alertId: number) => {
       if (!mounted.current) return false
-      openContact(taskId, null)
+      openContact(taskId, callbackLink(alertId))
       return true
     },
     [openContact]
@@ -237,11 +241,7 @@ export const useCallbackQueue = () => {
     const alertId = focusedBeforeWrite.current
     if (queue === null || alertId === null) return
     if (isClosed(before, alertId) || !isClosed(queue, alertId)) return
-    document
-      .querySelector<HTMLElement>(
-        `[data-callback-link="${nextFocus(queue, alertId)}"]`
-      )
-      ?.focus()
+    callbackLink(nextFocus(queue, alertId))?.focus()
   }, [queue])
 
   const register = useCallback<Register>(

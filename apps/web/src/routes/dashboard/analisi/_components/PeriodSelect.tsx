@@ -11,6 +11,7 @@ import { oneOf } from "../_lib/urlState"
 
 /** The names of the ready-made windows in the menu of the periods (AC9) */
 const PRESET_LABELS: Record<Preset, string> = {
+  today: "Oggi",
   "7d": "Gli ultimi 7 giorni",
   "30d": "Gli ultimi 30 giorni",
   "90d": "Gli ultimi 90 giorni",

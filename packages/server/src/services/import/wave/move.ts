@@ -41,7 +41,8 @@ import {
   repeatOnDuplicate,
   storedResult,
 } from "./operation"
-import { isNoAnswer, isToCall, waveTeam } from "./team"
+import { isToCall } from "./parts"
+import { isNoAnswer, waveTeam } from "./team"
 
 // «Sposta» of a Wave (spec assegnazione-wave, AC24, AC26, AC16; D4, D6, D7,
 // D11, D13, D17): the candidates of the givers, then the move of the contacts

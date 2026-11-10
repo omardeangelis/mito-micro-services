@@ -274,6 +274,37 @@ describe("parti: una per riga delle Definizioni", () => {
   )
 
   it.effect(
+    "un «Contattato il» su un contatto chiuso senza esito passa a Chiamati, senza esito (OQ13)",
+    () =>
+      Effect.gen(function* () {
+        const run = yield* given(() => insertRun())
+        const op = yield* given(() => createOperator())
+        const contacted = yield* given(() =>
+          withContact(run.id, op.id, "chiamare")
+        )
+        yield* given(() =>
+          createTask({
+            customerId: contacted.customer.id,
+            operatorId: op.id,
+            state: "followup",
+            isActive: false,
+            closedAt: new Date("2026-10-22T10:00:00.000Z"),
+          })
+        )
+
+        const wave = yield* read(run.id)
+
+        expect(wave.parts).toEqual({
+          unassigned: 0,
+          neverCalled: 0,
+          calledNoOutcome: 1,
+          worked: 0,
+          noContact: 0,
+        })
+      })
+  )
+
+  it.effect(
     "Già assegnati per stato del contatto attivo, e un Nuovo con operatore fra loro",
     () =>
       Effect.gen(function* () {

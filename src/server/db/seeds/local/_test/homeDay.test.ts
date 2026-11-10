@@ -5,6 +5,7 @@ import { operatorDayFailures } from "../verify"
 import { generateDataset } from "../generate"
 import { FULL_DAY, TYPICAL_DAY } from "../generate/homeDay"
 import {
+  ADMIN_COUNT,
   FULL_DAY_OPERATOR_ID,
   HEAVY_OPERATOR_ID,
   TYPICAL_DAY_OPERATOR_ID,
@@ -41,6 +42,21 @@ describe("the day of the two operators of the home (T14) at N = 10,000", () => {
       ).length
     expect(calls(FULL_DAY_OPERATOR_ID)).toBeGreaterThanOrEqual(FULL_DAY.calls)
     expect(calls(TYPICAL_DAY_OPERATOR_ID)).toBe(TYPICAL_DAY.calls)
+  })
+
+  it("gives the team of the admin home people with calls on D, an admin among them, and one with more than 6 overdue", () => {
+    const todayCalls = dataset.taskEventLog.filter(
+      (row) => row.action === "call" && romeDay(row.createdAt!) === DAY
+    )
+    const callers = new Set(todayCalls.map((row) => row.actorOperatorId))
+    expect(callers.size).toBeGreaterThanOrEqual(5)
+    const admins = dataset.operators
+      .slice(0, ADMIN_COUNT)
+      .map((operator) => operator.id)
+    expect(admins.some((id) => callers.has(id))).toBe(true)
+    const outcomes = new Set(todayCalls.map((row) => row.outcome))
+    expect(outcomes.size).toBeGreaterThanOrEqual(3)
+    expect(failures()).toEqual([])
   })
 
   it("makes the check fail when a volume is missing", () => {
@@ -89,5 +105,35 @@ describe("the day of the two operators of the home (T14) at N = 10,000", () => {
         customers.get(task.customerId!)!.operatorId ?? null
       )
     }
+  })
+})
+
+describe("the hours of «Oggi» in the seed (andamenti-chiamate, T13)", () => {
+  let dataset: Dataset
+
+  beforeAll(() => {
+    dataset = generateDataset({ n: 10_000, day: DAY })
+  }, 120_000)
+
+  /** The Rome hour (0–23) of the calls of `day` */
+  const hoursOf = (day: string) =>
+    dataset.taskEventLog
+      .filter((row) => row.action === "call" && romeDay(row.createdAt!) === day)
+      .map((row) =>
+        Number(
+          new Intl.DateTimeFormat("en-GB", {
+            timeZone: "Europe/Rome",
+            hour: "2-digit",
+            hourCycle: "h23",
+          }).format(row.createdAt)
+        )
+      )
+
+  it("has calls of D in at least 6 working hours, one at 07 and one from 19", () => {
+    const hours = hoursOf(DAY)
+    const working = new Set(hours.filter((hour) => hour >= 8 && hour < 19))
+    expect(working.size).toBeGreaterThanOrEqual(6)
+    expect(hours).toContain(7)
+    expect(hours.some((hour) => hour >= 19)).toBe(true)
   })
 })

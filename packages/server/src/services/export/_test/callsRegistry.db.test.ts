@@ -25,6 +25,9 @@ const PERIOD = {
   start: new Date("2026-09-30T22:00:00.000Z"),
   end: new Date("2026-10-02T22:00:00.000Z"),
 }
+/** A range of days, without the hours of «Oggi». */
+const noHours = { hours: null, comparisonHours: null }
+
 const BEFORE = new Date("2026-10-01T08:00:00.000Z")
 const REGISTRY = new Date("2026-10-01T12:00:00.000Z")
 const AFTER = new Date("2026-10-01T16:00:00.000Z")
@@ -190,10 +193,15 @@ describe("chiamate prima e dopo calls_registry", () => {
 
         const stats = yield* run(callStats(PERIOD))
         const analysis = yield* run(
-          callsByOperator({ window, comparison: null })
+          callsByOperator({ ...noHours, window, comparison: null })
         )
         const series = yield* run(
-          myCallSeries({ window, comparison: null, actor: actorOf(anna) })
+          myCallSeries({
+            ...noHours,
+            window,
+            comparison: null,
+            actor: actorOf(anna),
+          })
         )
 
         expect(analysis.rows).toEqual(stats.rows)
@@ -219,6 +227,7 @@ describe("chiamate prima e dopo calls_registry", () => {
         const error = yield* run(callStats(PERIOD)).pipe(Effect.flip)
         const analysisError = yield* run(
           callsByOperator({
+            ...noHours,
             window: { from: "2026-10-01", to: "2026-10-01" },
             comparison: null,
           })

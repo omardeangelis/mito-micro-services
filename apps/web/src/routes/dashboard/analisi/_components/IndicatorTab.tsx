@@ -15,7 +15,11 @@ function sparkValues(state: ChartState): (number | null)[] | null {
     case "average":
       return state.result.points.map((point) => point.current)
     case "myCalls":
-      return state.result.points.map((point) => point.answered + point.noAnswer)
+      return state.result.points.map((point) =>
+        point.answered === null || point.noAnswer === null
+          ? null
+          : point.answered + point.noAnswer
+      )
     case "myAppointments":
       return state.result.points.map((point) => point.rate)
     default:

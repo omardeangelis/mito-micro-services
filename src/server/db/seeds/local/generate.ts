@@ -12,7 +12,7 @@ import {
   assignCustomers,
   generateUsersAndOperators,
 } from "./generate/operators"
-import { shapeOperatorDay } from "./generate/homeDay"
+import { addTeamCalls, shapeOperatorDay } from "./generate/homeDay"
 import { generateWaves } from "./generate/waves"
 import { generatePractices, generateProducts } from "./generate/practices"
 import type { CustomerToPraticaRow, Dataset, Day } from "./types"
@@ -59,6 +59,13 @@ export function generateDataset({ n, day }: { n: number; day: Day }): Dataset {
     tasks,
     taskEventLog: waves.taskEventLog,
   })
+  // The team's calls of D and of yesterday across the hours (T13)
+  const hours = addTeamCalls({
+    day,
+    tasks: shaped.tasks,
+    alerts: shaped.alerts,
+    taskEventLog: shaped.taskEventLog,
+  })
   const customerToPratica: CustomerToPraticaRow[] = links.map((link) => ({
     customerId: customers[link.customerIndex]!.id,
     praticaId: practices[link.practiceIndex]!.praticaId,
@@ -75,8 +82,8 @@ export function generateDataset({ n, day }: { n: number; day: Day }): Dataset {
     practices,
     customerToPratica,
     alerts: shaped.alerts,
-    tasks: shaped.tasks,
-    taskEventLog: shaped.taskEventLog,
+    tasks: hours.tasks,
+    taskEventLog: hours.taskEventLog,
     importRuns: waves.importRuns,
     importRunCustomers: waves.importRunCustomers,
     appMilestones: generateMilestones(day),

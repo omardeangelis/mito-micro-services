@@ -63,12 +63,12 @@ export function MyCallsChart({
           items={(point) => [
             {
               name: "Con risposta",
-              value: count(point.answered),
+              value: point.answered === null ? DASH : count(point.answered),
               color: ANSWERED,
             },
             {
               name: "Senza risposta",
-              value: count(point.noAnswer),
+              value: point.noAnswer === null ? DASH : count(point.noAnswer),
               color: NO_ANSWER,
             },
             ...(compared

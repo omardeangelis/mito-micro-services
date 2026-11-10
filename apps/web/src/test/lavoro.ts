@@ -257,6 +257,10 @@ export function fakeLavoro({
         .handle("getMyToCall", () =>
           read("getMyToCall", () => ({ total: state.toCall }))
         )
+        .handle("getLatestWaves", unserved)
+        .handle("getTeamDay", unserved)
+        .handle("getCallTrend", unserved)
+        .handle("getTeamDetail", unserved)
     ),
     HttpApiBuilder.group(MitoApi, "me", (handlers) =>
       handlers

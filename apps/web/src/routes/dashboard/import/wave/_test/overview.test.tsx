@@ -92,7 +92,7 @@ describe("La panoramica (AC19)", () => {
 
     const bar = await screen.findByRole("img", { name: /Parti della Wave/ })
     expect(bar).toHaveAccessibleName(
-      "Parti della Wave: Lavorati 1, Chiamati senza esito 1, Mai chiamati 3, Senza operatore 4, Con operatore e senza contatto 1"
+      "Parti della Wave: Lavorati 1, Chiamati, senza esito 1, Mai chiamati 3, Senza operatore 4, Con operatore e senza contatto 1"
     )
     const legend = screen.getByRole("list", { name: "Legenda della barra" })
     const items = within(legend)
@@ -100,7 +100,7 @@ describe("La panoramica (AC19)", () => {
       .map((item) => item.textContent)
     expect(items).toEqual([
       "Lavorati1",
-      "Chiamati senza esito1",
+      "Chiamati, senza esito1",
       "Mai chiamati3",
       "Senza operatore4",
     ])

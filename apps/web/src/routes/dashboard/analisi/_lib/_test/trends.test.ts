@@ -170,6 +170,8 @@ const callSeries = (
   days: MyCallSeries["days"],
   comparisonDays: MyCallSeries["comparisonDays"] = []
 ): MyCallSeries => ({
+  hours: null,
+  comparisonHours: null,
   window: october,
   comparison: september,
   days,

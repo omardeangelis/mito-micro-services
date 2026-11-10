@@ -49,7 +49,12 @@ export function DataTable({ table }: { table: Table }) {
           {table.rows.map((row, r) => (
             <TableRow
               key={r}
-              className="border-0 hover:bg-transparent [&:not(:last-child)>td]:border-b [&>td]:border-border"
+              className={cn(
+                "border-0 hover:bg-transparent [&:not(:last-child)>td]:border-b [&>td]:border-border",
+                table.totalRow === true &&
+                  r === table.rows.length - 1 &&
+                  "font-medium [&>td]:border-t"
+              )}
             >
               {row.map((cell, i) => {
                 const format = table.columns[i]?.format ?? "text"

@@ -77,6 +77,13 @@
   --chart-1-soft: oklch(88% 0.052 272);
   --overlay: oklch(20% 0 0 / 32%);
 
+  /* The parts of the bar of the Wave and of the home (AC37): 3:1 at least
+     against the card and against the muted track */
+  --parts-worked: oklch(40% 0.15 272);
+  --parts-called: oklch(60% 0.14 272);
+  --parts-never: oklch(60% 0 0);
+  --parts-unassigned: oklch(62% 0.14 70);
+
   /* The tones of the meanings (appendix B): bg, border, text, dot */
   --tag-blue-bg: oklch(96.5% 0.018 245);
   --tag-blue-border: oklch(89.5% 0.055 245);
@@ -173,6 +180,10 @@
   --color-chart-1: var(--chart-1);
   --color-chart-1-soft: var(--chart-1-soft);
   --color-overlay: var(--overlay);
+  --color-parts-worked: var(--parts-worked);
+  --color-parts-called: var(--parts-called);
+  --color-parts-never: var(--parts-never);
+  --color-parts-unassigned: var(--parts-unassigned);
 
   --color-tag-blue-bg: var(--tag-blue-bg);
   --color-tag-blue-border: var(--tag-blue-border);

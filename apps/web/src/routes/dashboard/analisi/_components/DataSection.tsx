@@ -50,7 +50,7 @@ function FileName({ name }: { name: string }) {
 }
 
 /** The row under «Dati del grafico»: the rows of the file and its name, or why there is no table */
-function RowLine({ view }: { view: ChartView }) {
+function RowLine({ view, page }: { view: ChartView; page: ExportPage }) {
   const { state } = view
   switch (state.kind) {
     case "loading":
@@ -66,7 +66,9 @@ function RowLine({ view }: { view: ChartView }) {
         return (
           <>
             {rows} {rows === 1 ? "riga" : "righe"}, le stesse del file ·{" "}
-            <FileName name={fileName(view.id, state.window, "csv")} />
+            <FileName
+              name={fileName(view.id, state.window, "csv", page.range)}
+            />
           </>
         )
       }
@@ -111,14 +113,14 @@ export function DataSection({
   const onCsv = writeFile(({ header, table, window }) =>
     downloadBlob(
       new Blob([toCsv(header, table)], { type: "text/csv;charset=utf-8" }),
-      fileName(view.id, window, "csv")
+      fileName(view.id, window, "csv", page.range)
     )
   )
 
   const onExcel = writeFile(({ header, table, window }) =>
     downloadWorkbook(
       [{ name: view.title, header, table }],
-      fileName(view.id, window, "xlsx")
+      fileName(view.id, window, "xlsx", page.range)
     )
   )
 
@@ -136,7 +138,7 @@ export function DataSection({
         <div className="min-w-0">
           <h3 className="text-sm font-medium">Dati del grafico</h3>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            <RowLine view={view} />
+            <RowLine view={view} page={page} />
           </p>
         </div>
         <ExportButtons

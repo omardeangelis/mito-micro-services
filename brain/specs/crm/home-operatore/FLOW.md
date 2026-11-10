@@ -82,7 +82,7 @@ L'operatore apre la home la mattina, registra l'esito di ogni richiamo scaduto o
 - Registrare un esito: durante l'attesa il fuoco resta sul pulsante; dopo Non risponde resta lì, dopo gli altri esiti va al cliente della riga aperta seguente (se l'utente non l'ha spostato altrove), dopo un rifiuto o un esito incerto resta sul pulsante, e se la ricarica chiude la riga va come dopo una riga chiusa (AC23, AC26).
 - Riquadro «Richiamare»: dialogo con il nome del titolo, il fuoco entra sul giorno di domani (o della bozza), Esc chiude tranne durante il salvataggio e il fuoco torna su «Richiamare» (AC46).
 - «Vedi le chiamate» porta il fuoco sul titolo «Fatti oggi», saltando le righe dei richiami (AC41).
-- Dettaglio del contatto: chiudendolo il fuoco torna sul link da cui era stato aperto (AC53).
+- Dettaglio del contatto: chiudendolo il fuoco torna sul link da cui era stato aperto, o sul nome della riga se era il link di un avviso (AC53).
 - Annunci: l'avviso di ogni esito (AC25, AC27, AC48), il caricamento (AC38), l'errore (AC39), il ritorno dei dati dopo «Riprova» (AC50).
 - Correzioni per il compito: «Riprova», Invio senza giorno, messaggio dell'alert al fuoco (AC50); calendario in italiano e riquadro d'errore (AC51).
 - Manual checks still needed (VoiceOver + Chrome, Constraints della spec): Invio su «Appuntamento» della seconda riga e passaggio del fuoco alla riga seguente; apertura di «Richiamare»; «Riprova» con i richiami in errore.
