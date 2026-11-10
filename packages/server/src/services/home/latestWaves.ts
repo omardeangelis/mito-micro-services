@@ -6,7 +6,11 @@ import { query } from "../../effect/db"
 import { callsRegistryAt } from "../export/callStats"
 import { classifiedCustomers, partCounts, partOf } from "../import/wave/parts"
 import { waveName, waveStatus } from "../import/wave/read"
-import { teamActivity, teamMembers } from "../import/wave/team"
+import {
+  type TeamActivity,
+  teamActivity,
+  teamMembers,
+} from "../import/wave/team"
 
 /** How many Waves «Ultimi import» lists (AC8) */
 const LATEST = 4
@@ -111,7 +115,7 @@ export const latestWaves = Effect.fn("home.latestWaves")(function* () {
           today,
           registryAt
         )
-      : new Map()
+      : new Map<number, TeamActivity>()
   const memberOf = new Map(members.map((member) => [member.operatorId, member]))
 
   return {

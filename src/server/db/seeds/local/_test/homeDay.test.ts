@@ -125,7 +125,7 @@ describe("the hours of «Oggi» in the seed (andamenti-chiamate, T13)", () => {
             timeZone: "Europe/Rome",
             hour: "2-digit",
             hourCycle: "h23",
-          }).format(row.createdAt!)
+          }).format(row.createdAt)
         )
       )
 
