@@ -43,7 +43,7 @@ import {
   describeCallRejection,
   reloadsRows,
 } from "../_lib/rejection"
-import { useOpenContact } from "./useContactOverlay"
+import { useOpenContact } from "../../contatti/detail/useContactOverlay"
 
 /** A press of an outcome on a row: for Richiamare, with its day and message */
 export type Register = (

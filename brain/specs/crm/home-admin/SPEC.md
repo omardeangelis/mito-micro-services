@@ -1,9 +1,10 @@
 ---
 domain: crm
 type: spec
-status: draft
+status: approved
 links:
   - "[[specs/crm/home-admin/FLOW]]"
+  - "[[specs/crm/home-admin/REPORT]]"
   - "[[specs/crm/assegnazione-wave/SPEC]]"
   - "[[chore/crm/design-home-e-richiami]]"
   - "[[personas]]"
@@ -19,7 +20,7 @@ links:
   - "[[specs/crm/toast-sonner/SPEC]]"
   - "[[tech-debt/crm/sezione-contatti]]"
 created: 2026-11-01
-updated: 2026-11-04
+updated: 2026-11-05
 ---
 
 # Spec: Home dell'admin
@@ -76,6 +77,9 @@ updated: 2026-11-04
 
 > [Decisioni su OQ4 e OQ5 di `design-system-web`, 2026-11-04]
 > - «q4 va bene e il toast teniamol in basso a destra dove è sempre stato»
+
+> [Decisione durante `create-plan`, 2026-11-05]
+> - Come si apre il contatto da «Dettaglio giornaliero»: «Foglio sopra la home»
 
 ---
 
@@ -281,7 +285,7 @@ Il riquadro «Assegna contatti» non c'è più: l'assegnazione e i suoi esiti so
 
     Oltre 6 c'è «Vedi tutti i <N> in Contatti». Il link apre Contatti filtrata su quell'operatore, con «Prossimo alert» fino a ieri, dal più vecchio. Senza arretrati c'è «Nessun richiamo scaduto.».
 
-  Ogni cliente apre il dettaglio del suo contatto (`/dashboard/contatti/:id`).
+  Ogni cliente è un link a `/dashboard/contatti/:id`, che con un clic semplice apre il dettaglio del contatto sopra la home (`?contatto=<id>`), lo stesso foglio di AC53 di [[specs/crm/home-operatore/SPEC|home-operatore]]; con Ctrl/Cmd apre una scheda nuova. Chiuso con la X, Esc, un clic fuori o indietro, l'admin è nel punto di prima, con gli stessi dettagli aperti, il fuoco torna sul cliente e le quattro parti rileggono (AC30).
 - **AC46.** In «Dettaglio giornaliero» e in «Ultimi import» la colonna «Assegna» resta fissa sul bordo destro del riquadro della tabella, e le altre colonne le scorrono sotto. Con la barra laterale aperta o chiusa, da 1024 a 1920 px, ogni pulsante «Assegna» o «Apri» delle due tabelle si vede intero, con la tabella scorsa o no (oggi, in «Dettaglio giornaliero», la colonna è nascosta da 1024 a 1300 px e tagliata da 1301 a 1390 px; in «Ultimi import», con la min-w di 62rem, è fuori dalla vista a 1024 px). Sotto la larghezza minima scorre solo la tabella, non la pagina (AC33).
 
 ### Stati, accessibilità, movimento
@@ -504,3 +508,4 @@ Owner di tutte: Omar. OQ14 si è chiusa in [[specs/crm/design-system-web/SPEC|de
 | 2026-11-04: tolti Ritmo, «Operatore attivo», il verde di chi riceve e la frase sui volumi di un'assegnazione; ~~AC45 resta, con OQ14 riscritta~~ (AC45 tolto, ultima riga) | Servivano solo al riquadro. AC45 resta perché il toast di fine import dura 10 s e il criterio è lo stesso di AC49 di [[specs/crm/home-operatore/SPEC\|home-operatore]] |
 | 2026-11-04: al rilascio «Ultimi import» è vuoto (Constraints); la barra di AC37 è un solo componente con quella della pagina della Wave (Technical Notes) | Omar ha deciso di non ricostruire le Wave passate. Due barre diverse per la stessa Wave si contraddirebbero nei colori |
 | 2026-11-04: OQ14 chiusa: i toast restano in basso a destra e AC45 è tolto; il bordo di 2 px `primary` del ToggleGroup entra in AC15 di [[specs/crm/design-system-web/SPEC\|design-system-web]] | Scelta di Omar su OQ4 e OQ5 di quella spec. Nessuna posizione fissa soddisfa AC45: con i toast dove sono, il criterio non si può rispettare |
+| 2026-11-05: i clienti di «Dettaglio giornaliero» aprono il dettaglio sopra la home (AC29), non la rotta | Scelta di Omar in `create-plan`. Con la rotta la home si smonta, la X porta a Contatti e si perdono scorrimento e dettagli aperti: lo stesso problema risolto da AC53 di [[specs/crm/home-operatore/SPEC\|home-operatore]] |

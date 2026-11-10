@@ -4,8 +4,13 @@ import { onTestFinished } from "vitest"
 import { type Role } from "@mito/contract/schemas"
 import { UserPreferenceContext } from "@/store/context/UserPreferenceContext"
 import { createUserPreferenceStore } from "@/store/userPreferences"
-import { ada, renderWithApi, signedInAs } from "@/test/api"
-import { type fakeHome } from "@/test/home"
+import {
+  ada,
+  type ApiGroups,
+  type FakeHandlers,
+  renderWithApi,
+  signedInAs,
+} from "@/test/api"
 import { Component as HomePage } from "../HomePage"
 
 /**
@@ -16,9 +21,9 @@ import { Component as HomePage } from "../HomePage"
  * know the role, as when `GET /me` failed: the fake backend doesn't serve it.
  * `page` draws something else at `/dashboard`
  */
-export function renderHome(
+export function renderHome<Groups extends ApiGroups>(
   path: string,
-  backend: ReturnType<typeof fakeHome>,
+  backend: { handlers: FakeHandlers<Groups> },
   options: { role?: Role | undefined; page?: ReactNode } = {}
 ) {
   const role = "role" in options ? options.role : "OPERATORE"

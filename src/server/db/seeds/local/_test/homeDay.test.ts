@@ -5,6 +5,7 @@ import { operatorDayFailures } from "../verify"
 import { generateDataset } from "../generate"
 import { FULL_DAY, TYPICAL_DAY } from "../generate/homeDay"
 import {
+  ADMIN_COUNT,
   FULL_DAY_OPERATOR_ID,
   HEAVY_OPERATOR_ID,
   TYPICAL_DAY_OPERATOR_ID,
@@ -41,6 +42,21 @@ describe("the day of the two operators of the home (T14) at N = 10,000", () => {
       ).length
     expect(calls(FULL_DAY_OPERATOR_ID)).toBeGreaterThanOrEqual(FULL_DAY.calls)
     expect(calls(TYPICAL_DAY_OPERATOR_ID)).toBe(TYPICAL_DAY.calls)
+  })
+
+  it("gives the team of the admin home people with calls on D, an admin among them, and one with more than 6 overdue", () => {
+    const todayCalls = dataset.taskEventLog.filter(
+      (row) => row.action === "call" && romeDay(row.createdAt!) === DAY
+    )
+    const callers = new Set(todayCalls.map((row) => row.actorOperatorId))
+    expect(callers.size).toBeGreaterThanOrEqual(5)
+    const admins = dataset.operators
+      .slice(0, ADMIN_COUNT)
+      .map((operator) => operator.id)
+    expect(admins.some((id) => callers.has(id))).toBe(true)
+    const outcomes = new Set(todayCalls.map((row) => row.outcome))
+    expect(outcomes.size).toBeGreaterThanOrEqual(3)
+    expect(failures()).toEqual([])
   })
 
   it("makes the check fail when a volume is missing", () => {

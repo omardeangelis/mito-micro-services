@@ -5,10 +5,17 @@ import { HttpApiTest } from "effect/http-api"
 import { beforeAll, beforeEach } from "vitest"
 import { count } from "drizzle-orm"
 import { MitoApi } from "@mito/contract/api"
-import { Unauthorized } from "@mito/contract/errors"
+import {
+  NotAdmin,
+  NotAnOperator,
+  OperatorDisabled,
+  Unauthorized,
+} from "@mito/contract/errors"
 import { inMemoryPlatform } from "@mito/contract/testing"
 import { appMilestone } from "@mito/db/schema/appMilestone"
+import { importRun, importRunCustomer } from "@mito/db/schema/importRun"
 import { taskEventLog } from "@mito/db/schema/taskEventLog"
+import { getContactsInput } from "@mito/domain/contact/listInput"
 import { migrateUpTo, resetDb, testDb } from "@/test/db"
 import { provideServer } from "@/test/effect"
 import {
@@ -17,7 +24,9 @@ import {
   createOperator,
   createTask,
   createTaskEvent,
+  createUser,
 } from "@/test/factories"
+import { getContacts } from "../../services/contact/getContacts"
 import { CallsRegistryMissing } from "../../services/export/callStats"
 import { apiHandlersLayer } from "../api"
 import { SessionReader } from "../session"
@@ -317,6 +326,341 @@ describe("GET /api/v1/home/to-call", () => {
       const error = yield* api.home.getMyToCall().pipe(Effect.flip)
 
       assert.instanceOf(error, Unauthorized)
+    })
+  )
+})
+
+/** A completed Wave of `admin` that ended at `finishedAt` */
+const waveOf = (
+  admin: { userId: string },
+  fileName: string,
+  finishedAt: Date,
+  values: Partial<typeof importRun.$inferInsert> = {}
+) =>
+  given(async () => {
+    const [run] = await testDb
+      .insert(importRun)
+      .values({
+        startedBy: admin.userId,
+        fileName,
+        format: "wave",
+        status: "completed",
+        rowsTotal: 1,
+        rowsDiscarded: 0,
+        startedAt: new Date(finishedAt.getTime() - 60_000),
+        finishedAt,
+        ...values,
+      })
+      .returning()
+    return run!
+  })
+
+/** Puts `customerId` in the Wave `runId` */
+const inWave = (runId: number, customerId: string) =>
+  given(() =>
+    testDb
+      .insert(importRunCustomer)
+      .values({ runId, customerId, created: true })
+  )
+
+describe("GET /api/v1/home/waves", () => {
+  it.effect(
+    "due Wave che condividono un cliente senza operatore lo contano in ogni riga e una volta nel riepilogo",
+    () =>
+      Effect.gen(function* () {
+        yield* TestClock.setTime(NOW.getTime())
+        const admin = yield* given(() => createOperator({ role: "ADMIN" }))
+        const older = yield* waveOf(
+          admin,
+          "VECCHIA.xlsx",
+          new Date("2026-10-20T10:00:00.000Z"),
+          { deadline: "2026-11-30" }
+        )
+        const newer = yield* waveOf(
+          admin,
+          "NUOVA.xlsx",
+          new Date("2026-10-30T10:00:00.000Z"),
+          { deadline: "2026-11-30" }
+        )
+        const shared = yield* given(() => createCustomer({ operatorId: null }))
+        yield* inWave(older.id, shared.id)
+        yield* inWave(newer.id, shared.id)
+        const api = yield* clientAs(admin.userId)
+
+        const waves = yield* api.home.getLatestWaves()
+
+        assert.deepStrictEqual(
+          waves.rows.map(({ runId, name, customers, parts, status }) => ({
+            runId,
+            name,
+            customers,
+            unassigned: parts.unassigned,
+            status,
+          })),
+          [
+            {
+              runId: newer.id,
+              name: "NUOVA",
+              customers: 1,
+              unassigned: 1,
+              status: "open",
+            },
+            {
+              runId: older.id,
+              name: "VECCHIA",
+              customers: 1,
+              unassigned: 1,
+              status: "open",
+            },
+          ]
+        )
+        assert.strictEqual(waves.unassignedDistinct, 1)
+        assert.strictEqual(waves.neverCalledDistinct, 0)
+      })
+  )
+
+  it.effect("è dell'admin: un operatore è NotAdmin", () =>
+    Effect.gen(function* () {
+      yield* TestClock.setTime(NOW.getTime())
+      const operator = yield* given(() => createOperator())
+      const api = yield* clientAs(operator.userId)
+
+      const error = yield* Effect.flip(api.home.getLatestWaves())
+
+      assert.instanceOf(error, NotAdmin)
+    })
+  )
+
+  it.effect("senza sessione è Unauthorized", () =>
+    Effect.gen(function* () {
+      const api = yield* clientAs(null)
+
+      const error = yield* Effect.flip(api.home.getLatestWaves())
+
+      assert.instanceOf(error, Unauthorized)
+    })
+  )
+
+  it.effect("un admin disattivato è OperatorDisabled", () =>
+    Effect.gen(function* () {
+      const admin = yield* given(() =>
+        createOperator({ role: "ADMIN", disabledAt: NOW })
+      )
+      const api = yield* clientAs(admin.userId)
+
+      const error = yield* Effect.flip(api.home.getLatestWaves())
+
+      assert.instanceOf(error, OperatorDisabled)
+    })
+  )
+
+  it.effect("un utente senza riga operatore è NotAnOperator", () =>
+    Effect.gen(function* () {
+      const user = yield* given(() => createUser({ role: "ADMIN" }))
+      const api = yield* clientAs(user.id)
+
+      const error = yield* Effect.flip(api.home.getLatestWaves())
+
+      assert.instanceOf(error, NotAnOperator)
+    })
+  )
+})
+
+/** A call of `operatorId` at `at`, with `outcome` */
+const callAt = (
+  operatorId: number,
+  at: Date,
+  outcome: "non risponde" | "app.to" | "richiamare" = "non risponde"
+) =>
+  given(() =>
+    createTaskEvent({
+      actorOperatorId: operatorId,
+      action: "call",
+      source: "list",
+      fromState: null,
+      toState: outcome,
+      outcome,
+      origin: "list",
+      createdAt: at,
+    })
+  )
+
+describe("GET /api/v1/home/team/day", () => {
+  it.effect(
+    "conta le chiamate di oggi delle persone del team, non quelle di un disattivato",
+    () =>
+      Effect.gen(function* () {
+        yield* TestClock.setTime(NOW.getTime())
+        const admin = yield* given(() => createOperator({ role: "ADMIN" }))
+        const ada = yield* given(() => createOperator({ name: "Ada" }))
+        yield* given(() => createOperator({ name: "Senza chiamate" }))
+        const gone = yield* given(() => createOperator({ disabledAt: NOW }))
+        const morning = new Date("2026-11-02T08:00:00.000Z")
+        yield* callAt(ada.id, morning, "app.to")
+        yield* callAt(ada.id, morning)
+        yield* callAt(admin.id, morning, "richiamare")
+        yield* callAt(gone.id, morning)
+        const api = yield* clientAs(admin.userId)
+
+        assert.deepStrictEqual(yield* api.home.getTeamDay(), {
+          calls: 3,
+          answered: 2,
+          appointments: 1,
+          called: 2,
+          members: 3,
+        })
+      })
+  )
+
+  it.effect("è dell'admin: un operatore è NotAdmin", () =>
+    Effect.gen(function* () {
+      yield* TestClock.setTime(NOW.getTime())
+      const operator = yield* given(() => createOperator())
+      const api = yield* clientAs(operator.userId)
+
+      const error = yield* Effect.flip(api.home.getTeamDay())
+
+      assert.instanceOf(error, NotAdmin)
+    })
+  )
+})
+
+describe("GET /api/v1/home/team", () => {
+  it.effect(
+    "8 arretrati danno il totale, le prime 6 righe dalla più vecchia e lo stesso totale della lista Contatti",
+    () =>
+      Effect.gen(function* () {
+        yield* TestClock.setTime(NOW.getTime())
+        const admin = yield* given(() => createOperator({ role: "ADMIN" }))
+        const ada = yield* given(() => createOperator({ name: "Ada" }))
+        const colleague = yield* given(() => createOperator({ name: "Bruno" }))
+        // From 8 days ago to yesterday, created newest first
+        const overdue = []
+        for (const daysLate of [1, 2, 3, 4, 5, 6, 7, 8]) {
+          overdue.push({
+            daysLate,
+            ...(yield* callbackOf(
+              ada.id,
+              new Date(NOW.getTime() - daysLate * 86_400_000)
+            )),
+          })
+        }
+        yield* callbackOf(ada.id, NOW)
+        yield* callbackOf(colleague.id, new Date("2026-10-30T09:00:00.000Z"))
+        const api = yield* clientAs(admin.userId)
+
+        const detail = yield* api.home.getTeamDetail()
+
+        assert.strictEqual(detail.today, "2026-11-02")
+        assert.strictEqual(detail.now.getTime(), NOW.getTime())
+        const row = detail.members.find((m) => m.operatorId === ada.id)!
+        assert.strictEqual(row.overdue.total, 8)
+        assert.strictEqual(row.overdue.oldestDays, 8)
+        assert.deepStrictEqual(
+          row.overdue.rows.map(({ taskId, daysLate }) => ({
+            taskId,
+            daysLate,
+          })),
+          [...overdue]
+            .reverse()
+            .slice(0, 6)
+            .map(({ contact, daysLate }) => ({
+              taskId: contact.id,
+              daysLate,
+            }))
+        )
+        const list = yield* getContacts({
+          ...getContactsInput.parse({
+            operatorIds: [ada.id],
+            hasAlert: true,
+            dateField: "nextAlert",
+            to: "2026-11-01",
+          }),
+          actor: { operatorId: admin.id, role: "ADMIN" },
+        }).pipe(provideServer)
+        assert.strictEqual(row.overdue.total, list.total)
+      })
+  )
+
+  it.effect(
+    "lastCallAt, le chiamate di oggi con l'esito, triedAt e le persone di una Wave passano dall'encoder",
+    () =>
+      Effect.gen(function* () {
+        yield* TestClock.setTime(NOW.getTime())
+        const called = new Date("2026-11-02T08:00:00.000Z")
+        const admin = yield* given(() => createOperator({ role: "ADMIN" }))
+        const ada = yield* given(() => createOperator({ name: "Ada" }))
+        const { customer, contact } = yield* callbackOf(
+          ada.id,
+          new Date("2026-10-30T09:00:00.000Z")
+        )
+        yield* given(() =>
+          createTaskEvent({
+            actorOperatorId: ada.id,
+            customerId: customer.id,
+            taskId: contact.id,
+            action: "call",
+            source: "list",
+            fromState: "chiamare",
+            toState: "non risponde",
+            outcome: "non risponde",
+            origin: "list",
+            createdAt: called,
+          })
+        )
+        const run = yield* waveOf(
+          admin,
+          "NOV.xlsx",
+          new Date("2026-10-30T10:00:00.000Z"),
+          { deadline: "2026-11-30" }
+        )
+        yield* inWave(run.id, customer.id)
+        const api = yield* clientAs(admin.userId)
+
+        const detail = yield* api.home.getTeamDetail()
+        const waves = yield* api.home.getLatestWaves()
+
+        const row = detail.members.find((m) => m.operatorId === ada.id)!
+        assert.strictEqual(row.lastCallAt?.getTime(), called.getTime())
+        assert.strictEqual(row.todayCalls.length, 1)
+        assert.strictEqual(row.todayCalls[0]!.at.getTime(), called.getTime())
+        assert.strictEqual(row.todayCalls[0]!.outcome, "non risponde")
+        assert.strictEqual(
+          row.overdue.rows[0]!.triedAt?.getTime(),
+          called.getTime()
+        )
+        assert.deepStrictEqual(
+          waves.rows[0]!.people.map(
+            ({ operatorId, userId, inactiveDays, toCall, neverCalled }) => ({
+              operatorId,
+              userId,
+              inactiveDays,
+              toCall,
+              neverCalled,
+            })
+          ),
+          [
+            {
+              operatorId: ada.id,
+              userId: ada.userId,
+              inactiveDays: null,
+              toCall: 1,
+              neverCalled: 0,
+            },
+          ]
+        )
+      })
+  )
+
+  it.effect("è dell'admin: un operatore è NotAdmin", () =>
+    Effect.gen(function* () {
+      yield* TestClock.setTime(NOW.getTime())
+      const operator = yield* given(() => createOperator())
+      const api = yield* clientAs(operator.userId)
+
+      const error = yield* Effect.flip(api.home.getTeamDetail())
+
+      assert.instanceOf(error, NotAdmin)
     })
   )
 })

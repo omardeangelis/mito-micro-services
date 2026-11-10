@@ -3,7 +3,7 @@ import { type MyCall } from "@mito/contract/home"
 import { romeTime } from "@mito/domain/contact/time"
 import { StateBadge } from "@/components/custom/contact/call/StateBadge"
 import { customerNameOf } from "@/components/custom/contact/call/customerName"
-import { useContactLinkClick } from "../_hooks/useContactOverlay"
+import { useContactLinkClick } from "../../contatti/detail/useContactOverlay"
 
 /** The name of the customer, a link to the contact; an old row has no task */
 function CustomerLink({ call }: { call: MyCall }) {

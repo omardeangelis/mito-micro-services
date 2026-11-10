@@ -33,7 +33,7 @@ export type GroupService<Name extends string> = HttpApiGroup.Service<
 >
 
 /** The groups of the contract */
-type ApiGroups =
+export type ApiGroups =
   | GroupService<"me">
   | GroupService<"customer">
   | GroupService<"operator">
@@ -160,6 +160,9 @@ const unservedGroups = Layer.mergeAll(
       .handle("getMyCalls", unserved)
       .handle("getMyDay", unserved)
       .handle("getMyToCall", unserved)
+      .handle("getLatestWaves", unserved)
+      .handle("getTeamDay", unserved)
+      .handle("getTeamDetail", unserved)
   )
 )
 

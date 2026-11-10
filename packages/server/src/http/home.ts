@@ -4,10 +4,13 @@ import { MitoApi } from "@mito/contract/api"
 import { CurrentUser } from "@mito/contract/middleware"
 import { type Db } from "../effect/db"
 import { type ErrorReporter } from "../effect/errorReporter"
+import { latestWaves } from "../services/home/latestWaves"
 import { listMyCallbacks } from "../services/home/myCallbacks"
 import { listMyCalls } from "../services/home/myCalls"
 import { getMyDay } from "../services/home/myDay"
 import { countMyToCall } from "../services/home/myToCall"
+import { getTeamDay } from "../services/home/teamDay"
+import { getTeamDetail } from "../services/home/teamDetail"
 import { unexpectedAs500 } from "./unexpected"
 
 /** The group `home`: adapters of the services of the home, with no logic of their own */
@@ -46,6 +49,24 @@ export const homeLayer = HttpApiBuilder.group(MitoApi, "home", (handlers) =>
             unexpectedAs500("getMyToCall")
           )
         }).pipe(Effect.provide(services))
+      )
+      .handle("getLatestWaves", () =>
+        latestWaves().pipe(
+          unexpectedAs500("getLatestWaves"),
+          Effect.provide(services)
+        )
+      )
+      .handle("getTeamDay", () =>
+        getTeamDay().pipe(
+          unexpectedAs500("getTeamDay"),
+          Effect.provide(services)
+        )
+      )
+      .handle("getTeamDetail", () =>
+        getTeamDetail().pipe(
+          unexpectedAs500("getTeamDetail"),
+          Effect.provide(services)
+        )
       )
   })
 )

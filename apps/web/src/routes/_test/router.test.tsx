@@ -326,8 +326,9 @@ describe("il menu per ruolo (2.2.2)", () => {
     open("/dashboard")
     await home()
 
-    const nav = screen.getByRole("navigation")
-    expect(within(nav).queryByRole("link", { name: "Import" }) !== null).toBe(
+    // The first one is the menu: the home of an admin has its own further on
+    const [nav] = screen.getAllByRole("navigation")
+    expect(within(nav!).queryByRole("link", { name: "Import" }) !== null).toBe(
       hasImport
     )
   })

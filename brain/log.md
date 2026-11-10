@@ -12,6 +12,11 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 
 <!-- Entries are appended by create-spec (spec creation) and docs-maintenance (ingest). Format:
 
+## [2026-11-05] implement | Home dell'admin
+- Implemented: [[specs/crm/home-admin/SPEC]], G0 e T1–T16 del [[specs/crm/home-admin/PLAN]] con worker supervisionati; note in [[specs/crm/home-admin/IMPLEMENTATION-NOTES]]; debito in [[tech-debt/crm/home-admin]]
+- Review: [[specs/crm/home-admin/REPORT]] ([[specs/crm/home-admin/RUBRIC]]): critical, 11 passaggi, DO NOT SHIP con quattro MAJOR, secondo giro su un rilievo; corretti tutti tranne AC32 sul foglio, che è una decisione di Omar. Restano la checklist e i controlli NVDA e VoiceOver
+- OQ13 corretto anche per la pagina della Wave
+
 ## [2026-11-04] implement | Import e assegnazione della Wave
 - Implemented: [[specs/crm/assegnazione-wave/SPEC]], 22 task del [[specs/crm/assegnazione-wave/PLAN]] in onde parallele con worker supervisionati; note in [[specs/crm/assegnazione-wave/IMPLEMENTATION-NOTES]]
 - Consegnati: traccia `import_run_customer` con la ricostruzione di D14, `wave_operation` per l'idempotenza, cinque endpoint del gruppo `import`, pagina `/dashboard/import/:id` con flusso, panoramica, riassegnazione e «Proroga», ordine della coda per scadenza; prototipo `import-wave` tolto

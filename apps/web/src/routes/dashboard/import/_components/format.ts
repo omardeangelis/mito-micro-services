@@ -49,6 +49,14 @@ export const count = (value: number | null) =>
  * no page: `null`.
  */
 export function wavePageHref(
+  run: Pick<ImportSummary, "id"> & { format: "wave"; status: "completed" },
+  from?: "import"
+): string
+export function wavePageHref(
+  run: Pick<ImportSummary, "id" | "format" | "status">,
+  from?: "import"
+): string | null
+export function wavePageHref(
   run: Pick<ImportSummary, "id" | "format" | "status">,
   from?: "import"
 ) {

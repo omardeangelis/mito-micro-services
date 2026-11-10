@@ -1,11 +1,10 @@
 import { type QueryKey, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Effect } from "effect"
 import { useEffect } from "react"
-import { type AnalysisQuery, type TimeFrame } from "@mito/contract/analytics"
+import { type AnalysisQuery } from "@mito/contract/analytics"
 import { type Role } from "@mito/contract/schemas"
 import { useRun } from "./ApiProvider"
 import { meKeys } from "./me"
-import { routeErrorWhenEmpty } from "./queryClient"
 import { ApiClient, type ApiFailure } from "./runtime"
 
 /**
@@ -21,13 +20,6 @@ const analysisKey = <Endpoint extends string, Input extends object>(
 /** The keys of the group `analytics`: `[group, endpoint, input]` (H12) */
 export const analyticsKeys = {
   all: ["analytics"] as const,
-  financedTotal: (timeFrame: TimeFrame) =>
-    [...analyticsKeys.all, "getFinancedTotal", { timeFrame }] as const,
-  financedAverage: (timeFrame: TimeFrame) =>
-    [...analyticsKeys.all, "getFinancedAverage", { timeFrame }] as const,
-  financedByBranch: (timeFrame: TimeFrame) =>
-    [...analyticsKeys.all, "getFinancedByBranch", { timeFrame }] as const,
-  contactProgress: () => [...analyticsKeys.all, "getContactProgress"] as const,
   // The keys of the analysis page carry who asks (`analysisKey`)
   financedSeries: (query: AnalysisQuery, scope: AnalysisScope | undefined) =>
     analysisKey("getFinancedSeries", { query }, scope),
@@ -37,89 +29,8 @@ export const analyticsKeys = {
     analysisKey("getCallsByOperator", { query }, scope),
   myCallSeries: (query: AnalysisQuery, scope: AnalysisScope | undefined) =>
     analysisKey("getMyCallSeries", { query }, scope),
-  // Not the key of the home's card, whose cache the page leaves alone
   contactProgressNow: (scope: AnalysisScope | undefined) =>
     analysisKey("getContactProgressNow", {}, scope),
-}
-
-// The cards of "Analisi Andamento": the page can't show them without their
-// numbers, so a first failure goes to the error of the route, as a failed
-// server component of the Next.js app (`routeErrorWhenEmpty`). While another
-// time frame loads, the row of cards keeps showing the one before
-// (`DataSection`)
-
-/** The amount financed in the time frame and in the one before it, summed */
-export const useFinancedTotal = (timeFrame: TimeFrame) => {
-  const run = useRun()
-  return useQuery({
-    queryKey: analyticsKeys.financedTotal(timeFrame),
-    queryFn: ({ signal }) =>
-      run(
-        Effect.gen(function* () {
-          const client = yield* ApiClient
-          return yield* client.analytics.getFinancedTotal({
-            query: { timeFrame },
-          })
-        }),
-        signal
-      ),
-    ...routeErrorWhenEmpty,
-  })
-}
-
-/** The amount financed in the time frame and in the one before it, averaged */
-export const useFinancedAverage = (timeFrame: TimeFrame) => {
-  const run = useRun()
-  return useQuery({
-    queryKey: analyticsKeys.financedAverage(timeFrame),
-    queryFn: ({ signal }) =>
-      run(
-        Effect.gen(function* () {
-          const client = yield* ApiClient
-          return yield* client.analytics.getFinancedAverage({
-            query: { timeFrame },
-          })
-        }),
-        signal
-      ),
-    ...routeErrorWhenEmpty,
-  })
-}
-
-/** The amount financed in the time frame by each point of sale: admins only */
-export const useFinancedByBranch = (timeFrame: TimeFrame) => {
-  const run = useRun()
-  return useQuery({
-    queryKey: analyticsKeys.financedByBranch(timeFrame),
-    queryFn: ({ signal }) =>
-      run(
-        Effect.gen(function* () {
-          const client = yield* ApiClient
-          return yield* client.analytics.getFinancedByBranch({
-            query: { timeFrame },
-          })
-        }),
-        signal
-      ),
-    ...routeErrorWhenEmpty,
-  })
-}
-
-/** "Contatti con esito": the active contacts with an outcome, and to call */
-export const useContactProgress = () => {
-  const run = useRun()
-  return useQuery({
-    queryKey: analyticsKeys.contactProgress(),
-    queryFn: ({ signal }) =>
-      run(
-        Effect.gen(function* () {
-          const client = yield* ApiClient
-          return yield* client.analytics.getContactProgress()
-        }),
-        signal
-      ),
-    ...routeErrorWhenEmpty,
-  })
 }
 
 // The charts of the analysis page: each one fails on its own, in its own box,

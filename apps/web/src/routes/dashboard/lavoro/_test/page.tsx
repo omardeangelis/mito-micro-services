@@ -1,5 +1,4 @@
 import userEvent from "@testing-library/user-event"
-import { Layer } from "effect"
 import { createBrowserRouter, RouterProvider } from "react-router"
 import { onTestFinished } from "vitest"
 import { type Role } from "@mito/contract/schemas"
@@ -9,7 +8,6 @@ import {
 } from "@/store/context/UserPreferenceContext"
 import { createUserPreferenceStore } from "@/store/userPreferences"
 import { ada, renderWithApi } from "@/test/api"
-import { type fakeHome } from "@/test/home"
 import { type fakeLavoro } from "@/test/lavoro"
 import { Component as HomePage } from "../../home/HomePage"
 import { Component as LavoroPage } from "../LavoroPage"
@@ -18,8 +16,7 @@ import { Component as LavoroPage } from "../LavoroPage"
  * Renders the view at `path` (`/dashboard` or `/dashboard/lavoro`), on the
  * history of the browser: the other addresses show "altra pagina", an error
  * of a route "errore della rotta". With `role: undefined` the store doesn't
- * know the role, as when `GET /me` failed. `alsoServe` adds the groups of
- * another fake backend, for a page that isn't the view. With `realProvider`
+ * know the role, as when `GET /me` failed. With `realProvider`
  * the role comes from `GET /me` through `UserPreferenceProvider`, as in the app
  */
 export function renderLavoro(
@@ -27,7 +24,6 @@ export function renderLavoro(
   backend: ReturnType<typeof fakeLavoro>,
   options: {
     role?: Role | undefined
-    alsoServe?: ReturnType<typeof fakeHome>["handlers"]
     realProvider?: boolean
   } = {}
 ) {
@@ -63,9 +59,7 @@ export function renderLavoro(
         </UserPreferenceContext>
       ),
       {
-        handlers: options.alsoServe
-          ? Layer.merge(backend.handlers, options.alsoServe)
-          : backend.handlers,
+        handlers: backend.handlers,
         auth: backend.auth,
       }
     ),

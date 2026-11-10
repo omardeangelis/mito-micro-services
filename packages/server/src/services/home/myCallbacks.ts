@@ -1,5 +1,5 @@
 import { Clock, Effect } from "effect"
-import { and, eq, inArray, max, sql } from "drizzle-orm"
+import { and, eq, gte, inArray, max, sql } from "drizzle-orm"
 import { getContactsInput } from "@mito/domain/contact/listInput"
 import { type Actor } from "@mito/domain/contact/permissions"
 import { romeDay, romeDayBounds } from "@mito/domain/contact/time"
@@ -32,33 +32,37 @@ export type MyCallback = {
   triedAt: Date | null
 }
 
-/** The last unanswered call of each customer, by anyone (D5). */
-const lastUnansweredCalls = Effect.fnUntraced(function* (
-  customerIds: readonly string[]
-) {
-  if (customerIds.length === 0) return new Map<string, Date>()
-  const rows = yield* query((client) =>
-    client
-      .select({
-        customerId: taskEventLog.customerId,
-        at: max(taskEventLog.createdAt),
-      })
-      .from(taskEventLog)
-      .where(
-        and(
-          inArray(taskEventLog.customerId, [...customerIds]),
-          eq(taskEventLog.action, "call"),
-          eq(taskEventLog.outcome, "non risponde")
+/**
+ * The last unanswered call of each customer, by anyone (D5), from `since` on
+ * when it is given (spec home-admin, D13).
+ */
+export const lastUnansweredCalls = Effect.fn("home.lastUnansweredCalls")(
+  function* (customerIds: readonly string[], since?: Date) {
+    if (customerIds.length === 0) return new Map<string, Date>()
+    const rows = yield* query((client) =>
+      client
+        .select({
+          customerId: taskEventLog.customerId,
+          at: max(taskEventLog.createdAt),
+        })
+        .from(taskEventLog)
+        .where(
+          and(
+            inArray(taskEventLog.customerId, [...customerIds]),
+            eq(taskEventLog.action, "call"),
+            eq(taskEventLog.outcome, "non risponde"),
+            since === undefined ? undefined : gte(taskEventLog.createdAt, since)
+          )
         )
-      )
-      .groupBy(taskEventLog.customerId)
-  )
-  return new Map(
-    rows.flatMap(({ customerId, at }) =>
-      at === null ? [] : [[customerId, at] as const]
+        .groupBy(taskEventLog.customerId)
     )
-  )
-})
+    return new Map(
+      rows.flatMap(({ customerId, at }) =>
+        at === null ? [] : [[customerId, at] as const]
+      )
+    )
+  }
+)
 
 /**
  * The actor's callbacks: the open alerts due today or earlier on the contacts

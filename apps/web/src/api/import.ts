@@ -132,7 +132,13 @@ export const useImportClient = () => {
 }
 
 /** The groups whose data an import writes */
-const writtenGroups = ["customer", "pratiche", "task", "analytics"] as const
+const writtenGroups = [
+  "customer",
+  "pratiche",
+  "task",
+  "analytics",
+  "adminHome",
+] as const
 
 /** The history and the latest import read again, after a start or an end */
 export const useInvalidateImports = () => {
