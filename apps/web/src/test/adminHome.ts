@@ -2,6 +2,7 @@ import { Effect, Layer } from "effect"
 import { HttpApiBuilder } from "effect/http-api"
 import { MitoApi } from "@mito/contract/api"
 import {
+  type CallTrend,
   type LatestWave,
   type LatestWaves,
   type MyCallback,
@@ -9,6 +10,9 @@ import {
   type TeamDetail,
   type TeamMember,
 } from "@mito/contract/home"
+import { todayHours } from "@mito/domain/analytics/hours"
+import { presetRange } from "@mito/domain/analytics/window"
+import { romeDay } from "@mito/domain/contact/time"
 import { type Role } from "@mito/contract/schemas"
 import { type ContactDetail } from "@mito/contract/task"
 import { ada, type FakeHandlers, type GroupService, signedInAs } from "./api"
@@ -94,9 +98,49 @@ export const teamDetail = (
   ...overrides,
 })
 
+/** The default «Andamento delle chiamate» answer for `period` at `now` */
+export const callTrend = (
+  period: CallTrend["period"],
+  now: Date
+): CallTrend => {
+  const window = presetRange(period, romeDay(now))
+  if (period === "today") {
+    return {
+      period,
+      window,
+      days: [],
+      hours: todayHours(now).map((slot, index) => ({
+        start: slot.start,
+        end: slot.end,
+        inProgress: slot.inProgress,
+        calls: index + 1,
+        answered: index,
+        noAnswer: 1,
+        appointments: index % 2,
+      })),
+    }
+  }
+  return {
+    period,
+    window,
+    days: [window.from, window.to].map((day, index) => ({
+      day,
+      calls: 4 + index,
+      answered: 3,
+      noAnswer: 1 + index,
+      appointments: 1,
+    })),
+    hours: null,
+  }
+}
+
 /** The endpoints a test can hold or make fail */
 export type AdminHomeEndpoint =
-  "getTeamDay" | "getLatestWaves" | "getTeamDetail" | "getMyCallbacks"
+  | "getTeamDay"
+  | "getLatestWaves"
+  | "getTeamDetail"
+  | "getMyCallbacks"
+  | "getCallTrend"
 
 type Hold = { promise: Promise<void>; release: () => void }
 
@@ -112,16 +156,22 @@ export function fakeAdminHome({
   team = teamDetail(),
   callbacks = [],
   role = "ADMIN",
+  now = new Date("2026-11-10T15:20:00+01:00"),
   operatorName = "Ada",
   details = {},
+  trend = callTrend,
 }: {
   day?: TeamDay
   waves?: LatestWaves
   team?: TeamDetail
   callbacks?: MyCallback[]
   role?: Role
+  /** The instant the trend of «Andamento delle chiamate» is read at */
+  now?: Date
   operatorName?: string
   details?: Record<number, ContactDetail>
+  /** The answer of «Andamento delle chiamate», by default `callTrend` */
+  trend?: (period: CallTrend["period"], now: Date) => CallTrend
 } = {}) {
   const operator = { ...ada, name: operatorName }
   const contacts = fakeContacts({ details })
@@ -130,11 +180,14 @@ export function fakeAdminHome({
     waves,
     team,
     callbacks,
+    /** The periods «Andamento delle chiamate» asked, in order */
+    callTrendReads: [] as string[],
     reads: {
       getTeamDay: 0,
       getLatestWaves: 0,
       getTeamDetail: 0,
       getMyCallbacks: 0,
+      getCallTrend: 0,
     },
   }
   const holds = new Map<AdminHomeEndpoint, Hold>()
@@ -165,6 +218,10 @@ export function fakeAdminHome({
           read("getLatestWaves", () => state.waves)
         )
         .handle("getTeamDetail", () => read("getTeamDetail", () => state.team))
+        .handle("getCallTrend", ({ query }) => {
+          state.callTrendReads.push(query.period)
+          return read("getCallTrend", () => trend(query.period, now))
+        })
         .handle("getMyCallbacks", () =>
           read("getMyCallbacks", () => [...state.callbacks])
         )

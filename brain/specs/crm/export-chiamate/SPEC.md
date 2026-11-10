@@ -95,16 +95,23 @@ Il dominio export è anche il pilota della riscrittura del backend in Effect: il
 - AC11. Un cambio fatto il primo o l'ultimo giorno del periodo, a qualunque ora del giorno a Roma, è contato; uno fatto il giorno prima o il giorno dopo no.
 - AC11b. Il primo giorno selezionabile è il giorno dopo quello di 3 mesi fa, l'ultimo è oggi; se inizia prima del 15/09/2026 un avviso dice "Dati completi solo dal 15/09/2026".
 - AC12. Le righe degli operatori sono in ordine di chiamate effettuate decrescenti, a parità per cognome e nome. Una riga finale riporta la somma dei quattro totali su tutti gli operatori.
+  - Superato da [[specs/crm/andamenti-chiamate/SPEC]] per `apps/web` (AC17, 2026-11-10): grafici e file sono quelli di «Risposte per operatore» in Analisi; nella dashboard di Next resta com'è.
 - AC13. Il file scaricato è un foglio Excel con un solo foglio, una riga per operatore più la riga dei totali, e le colonne "Operatore", "Chiamate effettuate", "Risposte", "Appuntamenti fissati", "Non risposte". Il nome del file è `chiamate_<primo giorno>_<ultimo giorno>.xlsx`, con i giorni in formato `AAAA-MM-GG`.
+  - Superato da [[specs/crm/andamenti-chiamate/SPEC]] per `apps/web` (AC17, 2026-11-10): grafici e file sono quelli di «Risposte per operatore» in Analisi; nella dashboard di Next resta com'è.
 - AC14. Un periodo senza chiamate effettuate dà un messaggio "Nessuna chiamata nel periodo" e nessun file.
+  - Superato da [[specs/crm/andamenti-chiamate/SPEC]] per `apps/web` (AC17, 2026-11-10): grafici e file sono quelli di «Risposte per operatore» in Analisi; nella dashboard di Next resta com'è.
 - AC15. L'export "default" (clienti e pratiche) e l'elenco delle chiamate chiuse con le note non sono più disponibili.
 
 ### Grafici
 
 - AC16. Nella dashboard l'admin sceglie un periodo, con le stesse regole di AC11b, che vale sia per i grafici sia per il file; vede quattro indicatori con i totali del periodo.
+  - Superato da [[specs/crm/andamenti-chiamate/SPEC]] per `apps/web` (AC17, 2026-11-10): grafici e file sono quelli di «Risposte per operatore» in Analisi; nella dashboard di Next resta com'è.
 - AC17. L'admin vede un grafico a barre con, per ogni operatore, risposte e non risposte impilate.
+  - Superato da [[specs/crm/andamenti-chiamate/SPEC]] per `apps/web` (AC17, 2026-11-10): grafici e file sono quelli di «Risposte per operatore» in Analisi; nella dashboard di Next resta com'è.
 - AC18. L'admin vede una classifica degli operatori per quota di appuntamenti fissati sulle risposte, in percentuale decrescente, a parità per cognome e nome; un operatore senza risposte compare con 0%.
+  - Superato da [[specs/crm/andamenti-chiamate/SPEC]] per `apps/web` (AC17, 2026-11-10): grafici e file sono quelli di «Risposte per operatore» in Analisi; nella dashboard di Next resta com'è.
 - AC19. Grafici e indicatori mostrano gli stessi numeri del file per lo stesso periodo.
+  - Superato da [[specs/crm/andamenti-chiamate/SPEC]] per `apps/web` (AC17, 2026-11-10): grafici e file sono quelli di «Risposte per operatore» in Analisi; nella dashboard di Next resta com'è.
 - AC20. Un operatore non vede grafici né indicatori dell'export.
 
 ### Prestazioni

@@ -6,7 +6,7 @@ import {
 } from "@tanstack/react-query"
 import { useCallback } from "react"
 import { Effect } from "effect"
-import { type MyCallback } from "@mito/contract/home"
+import { type CallTrendPeriod, type MyCallback } from "@mito/contract/home"
 import { useRun } from "./ApiProvider"
 import { ApiClient, type Run } from "./runtime"
 
@@ -150,7 +150,12 @@ export const adminHomeKeys = {
   waves: () => [...adminHomeKeys.all, "getLatestWaves"] as const,
   team: () => [...adminHomeKeys.all, "getTeamDetail"] as const,
   callbacks: () => [...adminHomeKeys.all, "getMyCallbacks"] as const,
+  callTrend: (period: CallTrendPeriod) =>
+    [...adminHomeKeys.all, "getCallTrend", period] as const,
 }
+
+/** The periods of «Andamento delle chiamate» (`GET /home/call-trend`) */
+export { type CallTrendPeriod }
 
 /**
  * Each part loads and fails on its own, with no toast. The data of before stay
@@ -226,6 +231,21 @@ const adminCallbacksOptions = (run: Run) =>
       ),
   })
 
+/** The trend of the calls for a period (`GET /home/call-trend`), in the admin's cache */
+const callTrendOptions = (run: Run, period: CallTrendPeriod) =>
+  queryOptions({
+    ...adminPartOptions,
+    queryKey: adminHomeKeys.callTrend(period),
+    queryFn: ({ signal }) =>
+      run(
+        Effect.gen(function* () {
+          const client = yield* ApiClient
+          return yield* client.home.getCallTrend({ query: { period } })
+        }),
+        signal
+      ),
+  })
+
 /** Overdue rows have `daysLate > 0`, today's have 0; a module function, so `select` stays stable */
 const splitCallbacks = (rows: ReadonlyArray<MyCallback>) => ({
   overdue: rows.filter((row) => row.daysLate > 0),
@@ -237,9 +257,12 @@ export const useLatestWaves = () => useQuery(latestWavesOptions(useRun()))
 export const useTeamDetail = () => useQuery(teamDetailOptions(useRun()))
 export const useAdminCallbacks = () =>
   useQuery({ ...adminCallbacksOptions(useRun()), select: splitCallbacks })
+/** No `placeholderData`: a period change shows the loading state, never another period's numbers */
+export const useCallTrend = (period: CallTrendPeriod) =>
+  useQuery(callTrendOptions(useRun(), period))
 
 /**
- * Reads the four parts of the admin's home again. The function is the same
+ * Reads the five parts of the admin's home again. The function is the same
  * between two renders: an effect can depend on it without starting again
  */
 export const useRefreshAdminHome = () => {

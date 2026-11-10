@@ -4,6 +4,7 @@ import { MitoApi } from "@mito/contract/api"
 import { CurrentUser } from "@mito/contract/middleware"
 import { type Db } from "../effect/db"
 import { type ErrorReporter } from "../effect/errorReporter"
+import { getCallTrend } from "../services/home/callTrend"
 import { latestWaves } from "../services/home/latestWaves"
 import { listMyCallbacks } from "../services/home/myCallbacks"
 import { listMyCalls } from "../services/home/myCalls"
@@ -59,6 +60,12 @@ export const homeLayer = HttpApiBuilder.group(MitoApi, "home", (handlers) =>
       .handle("getTeamDay", () =>
         getTeamDay().pipe(
           unexpectedAs500("getTeamDay"),
+          Effect.provide(services)
+        )
+      )
+      .handle("getCallTrend", ({ query }) =>
+        getCallTrend(query.period).pipe(
+          unexpectedAs500("getCallTrend"),
           Effect.provide(services)
         )
       )

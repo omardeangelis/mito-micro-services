@@ -178,3 +178,29 @@ describe("widenAction (AC15)", () => {
     expect(widenAction(range)).toBe(next)
   })
 })
+
+describe("today and hour (AC18, AC19, AC20)", () => {
+  it("presetRange today is the single day", () => {
+    expect(presetRange("today", today)).toEqual({ from: today, to: today })
+  })
+
+  it("widens today to 7 days", () => {
+    expect(widenAction("today")).toBe("7d")
+  })
+
+  it("opens compared with the previous period", () => {
+    expect(initialComparison("today")).toBe("previous")
+  })
+
+  it("allows only hour with today", () => {
+    expect(allowedGroups(1, "today")).toEqual(["hour"])
+    expect(effectiveGroup("day", 1, "today")).toBe("hour")
+    expect(resolveGroup("auto", 1, "today")).toBe("hour")
+  })
+
+  it("never allows hour for another period", () => {
+    expect(effectiveGroup("hour", 7, "7d")).toBe("auto")
+    expect(effectiveGroup("hour", 7)).toBe("auto")
+    expect(allowedGroups(7)).not.toContain("hour")
+  })
+})

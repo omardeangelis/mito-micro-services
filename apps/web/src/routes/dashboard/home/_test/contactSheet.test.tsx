@@ -108,7 +108,7 @@ describe("Il contatto sopra la home, altri casi (AC29)", () => {
     expect(window.location.search).toBe("")
   })
 
-  it("alla chiusura le quattro parti rileggono una volta", async () => {
+  it("alla chiusura le cinque parti rileggono una volta", async () => {
     const backend = fakeAdminHome({ team, details })
     renderHome("/dashboard", backend, { role: "ADMIN" })
     const user = await openContact(backend)
@@ -122,6 +122,7 @@ describe("Il contatto sopra la home, altri casi (AC29)", () => {
         getLatestWaves: before.getLatestWaves + 1,
         getTeamDetail: before.getTeamDetail + 1,
         getMyCallbacks: before.getMyCallbacks + 1,
+        getCallTrend: before.getCallTrend + 1,
       })
     )
   })

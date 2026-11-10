@@ -7,7 +7,8 @@ import { longDay } from "../../lavoro/_lib/format"
 import { renderHome } from "./page"
 
 // The page of the admin on a backend in memory (spec home-admin, AC1, AC3–AC5,
-// AC30, AC36, AC49): five blocks, four parts that load and fail on their own
+// AC30, AC49; andamenti-chiamate AC1, AC2): five blocks, parts that load and
+// fail on their own
 
 /** The four parts: the read, how many cells show it, its texts (AC30) */
 const PARTS: ReadonlyArray<{
@@ -79,12 +80,13 @@ describe("AdminHome, la pagina (AC1, AC3, AC4, AC5, AC36)", () => {
       screen.getByRole("heading", { level: 1 }),
       screen.getByRole("navigation", { name: "Azioni rapide" }),
       screen.getByText("Chiamate oggi"),
-      screen.getByText("Tasso di risposta"),
-      screen.getByText("Tasso di appuntamento"),
+      // The strip's: «Andamento delle chiamate» has its own, further down
+      screen.getAllByText("Tasso di risposta")[0]!,
+      screen.getAllByText("Tasso di appuntamento")[0]!,
       screen.getByText("I tuoi richiami"),
       screen.getByRole("region", { name: "Ultimi import" }),
       screen.getByRole("region", { name: "Dettaglio giornaliero" }),
-      screen.getByRole("heading", { name: "Chiamate per operatore" }),
+      screen.getByRole("region", { name: "Andamento delle chiamate" }),
     ]
     blocks.slice(1).forEach((block, i) => {
       expect(
@@ -146,10 +148,12 @@ describe("AdminHome, la pagina (AC1, AC3, AC4, AC5, AC36)", () => {
     for (const link of links) expect(link.querySelector("svg")).not.toBeNull()
   })
 
-  it("l'export delle chiamate c'è, con il suo periodo", async () => {
+  it("l'export «Chiamate per operatore» non c'è più (andamenti-chiamate AC1)", async () => {
     renderHome("/dashboard", fakeAdminHome(), { role: "ADMIN" })
+    await settled()
 
-    expect(await screen.findByText("Nessuna chiamata nel periodo")).toBeTruthy()
+    expect(screen.queryByText("Chiamate per operatore")).toBeNull()
+    expect(screen.queryByRole("button", { name: /Scarica/ })).toBeNull()
   })
 
   it("una home aperta fa una GET per lettura", async () => {
@@ -162,6 +166,7 @@ describe("AdminHome, la pagina (AC1, AC3, AC4, AC5, AC36)", () => {
       getLatestWaves: 1,
       getTeamDetail: 1,
       getMyCallbacks: 1,
+      getCallTrend: 1,
     })
   })
 
@@ -371,7 +376,8 @@ describe("AdminHome, il fuoco quando «Riprova» finisce (AC49)", () => {
     await userEvent.setup().click(retryOf(second!))
 
     await waitFor(() =>
-      expect(screen.getByText("Tasso di risposta")).toHaveFocus()
+      // The strip's, not the chart's of «Andamento delle chiamate»
+      expect(screen.getAllByText("Tasso di risposta")[0]).toHaveFocus()
     )
   })
 })

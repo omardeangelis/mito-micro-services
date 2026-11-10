@@ -1,5 +1,6 @@
 import { Schema } from "effect"
 import { HttpApiEndpoint, HttpApiGroup } from "effect/http-api"
+import { CallDay, CallHour, DayRange } from "./analytics"
 import { Count, Text } from "./customer"
 import { AdminOnly, Authenticated } from "./middleware"
 import { TaskStatus } from "./schemas"
@@ -189,6 +190,24 @@ export const TeamDetail = Schema.Struct({
 })
 export type TeamDetail = typeof TeamDetail.Type
 
+/** The periods of «Andamento delle chiamate» */
+export const CallTrendPeriod = Schema.Literals(["today", "7d", "30d", "90d"])
+export type CallTrendPeriod = typeof CallTrendPeriod.Type
+
+/**
+ * «Andamento delle chiamate»: the calls of the whole team (disabled people
+ * included, as in Analisi) over `window`. With `today` the hours of «Oggi» in
+ * `hours` and no `days`; otherwise one row per Rome day with calls in `days`
+ * and `hours` null.
+ */
+export const CallTrend = Schema.Struct({
+  period: CallTrendPeriod,
+  window: DayRange,
+  days: Schema.Array(CallDay),
+  hours: Schema.NullOr(Schema.Array(CallHour)),
+})
+export type CallTrend = typeof CallTrend.Type
+
 /**
  * The group of the homes (specs `home-operatore`, `home-admin`): it has no
  * router of tRPC. The operator's reads come from `CurrentUser`, the admin's
@@ -228,6 +247,12 @@ export class HomeGroup extends HttpApiGroup.make("home")
   .add(
     HttpApiEndpoint.get("getTeamDetail", "/home/team", {
       success: TeamDetail,
+    }).middleware(AdminOnly)
+  )
+  .add(
+    HttpApiEndpoint.get("getCallTrend", "/home/call-trend", {
+      query: { period: CallTrendPeriod },
+      success: CallTrend,
     }).middleware(AdminOnly)
   )
   .middleware(Authenticated) {}

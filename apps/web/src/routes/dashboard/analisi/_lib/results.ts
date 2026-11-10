@@ -1,4 +1,5 @@
 import {
+  type Compare,
   type Preset,
   type Range,
   widenAction,
@@ -11,8 +12,12 @@ import type { ChartId } from "./charts"
  * `ChartResult`. No React here.
  */
 
-/** The action of an empty or number-only state (AC15, AC19). */
-export type Action = { label: string; range: Preset }
+/**
+ * The action of an empty or number-only state: another window (AC15, AC19),
+ * or, before 08 with «Oggi», another comparison (AC24 of andamenti-chiamate).
+ */
+export type Action =
+  { label: string; range: Preset } | { label: string; compare: Compare }
 
 /** The state of a chart that has its data (AC19); loading and error belong to the page. */
 export type Status =
@@ -28,7 +33,12 @@ export type ColumnFormat = "text" | "euro" | "count" | "percent"
 export type Column = { header: string; format: ColumnFormat }
 
 /** The table under the chart; percent cells hold numbers from 0 to 100. */
-export type Table = { columns: Column[]; rows: Cell[][] }
+export type Table = {
+  columns: Column[]
+  rows: Cell[][]
+  /** The last row is a «Totale»: the page draws it in bold */
+  totalRow?: boolean
+}
 
 /** The variation of the number on the comparison (AC12). */
 export type Delta =
@@ -47,6 +57,14 @@ export type Kpi = {
   delta: Delta | null
 }
 
+/** A total of the window above a chart, with its variation on the comparison (AC13, AC14). */
+export type Total = {
+  label: string
+  value: number
+  /** Null when nothing is compared */
+  delta: Delta | null
+}
+
 export type ChartResult<P> = {
   id: ChartId
   title: string
@@ -59,8 +77,15 @@ export type ChartResult<P> = {
   table: Table
   /** The notes under the chart, also written in the files */
   notes: string[]
+  /**
+   * The note above the chart, also written in the files: before 08 with
+   * «Oggi» the bars are yesterday's (AC24 of andamenti-chiamate)
+   */
+  lead?: string
   /** The line above the chart that says whose numbers they are (AC6); null for all of them */
   scope: string | null
+  /** The totals above the chart; only the admin's «Risposte per operatore» has them */
+  totals?: Total[]
 }
 
 /** The titles of the charts (AC3). */
@@ -129,6 +154,30 @@ export function formatCell(cell: Cell, format: ColumnFormat): string {
   }
 }
 
+/**
+ * «Oggi» on 29 February with «Stesso periodo, anno prima»: the comparison was
+ * asked, but the year before has no such day, so the server answers none. The
+ * comparison column stays with «—», and so does the variation (AC20 of
+ * andamenti-chiamate, as pagina-analisi AC11).
+ */
+export const leapDayGap = (
+  input: { range: Range; compare: Compare },
+  comparison: unknown
+) =>
+  input.range === "today" &&
+  input.compare === "last-year" &&
+  comparison === null
+
+/** The variation of `leapDayGap` */
+export const LEAP_DAY_DELTA: Delta = {
+  kind: "none",
+  note: "Il 29 febbraio non ha lo stesso giorno l'anno prima",
+}
+
+/** `kpi` with the variation of `leapDayGap` when `gap` */
+export const withGap = (gap: boolean, kpi: Kpi): Kpi =>
+  gap ? { ...kpi, delta: LEAP_DAY_DELTA } : kpi
+
 /** The variation as the number shows it: "+4%", "-3,2 punti", «—»; "" with no comparison. */
 export function formatDelta(delta: Delta | null): string {
   if (delta === null) return ""
@@ -167,6 +216,9 @@ export const NO_DATA_COMPARISON =
 export function widen(range: Range): Action | null {
   const next = widenAction(range)
   switch (next) {
+    // From «Oggi» (AC24 of andamenti-chiamate)
+    case "7d":
+      return { label: "Allarga a 7 giorni", range: next }
     case "30d":
       return { label: "Allarga a 30 giorni", range: next }
     case "90d":

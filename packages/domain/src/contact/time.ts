@@ -1,3 +1,5 @@
+import { romeWallToInstant } from "../utils/romeClock"
+
 // Calendar days in Europe/Rome, the time zone the users and the cron work in.
 // Pure: nothing here reads the time zone of the process.
 
@@ -68,4 +70,15 @@ export function romeDayBounds(date: Date): { start: Date; end: Date } {
     .toISOString()
     .slice(0, 10)
   return { start: romeMidnight(day), end: romeMidnight(nextDay) }
+}
+
+/**
+ * The instant of `hour`:`minute` on the Rome calendar day `day`
+ * (`YYYY-MM-DD`), as `romeWallToInstant` reads a wall clock
+ */
+export function romeAt(day: string, hour: number, minute = 0): Date {
+  const { year, month, dayOfMonth } = dayParts(day)
+  return new Date(
+    romeWallToInstant(Date.UTC(year, month - 1, dayOfMonth, hour, minute))
+  )
 }

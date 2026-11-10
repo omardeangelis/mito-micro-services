@@ -42,17 +42,24 @@ export const analyticsKeys = {
 /** Who asks the analysis page: the role and the operator the numbers are for */
 export type AnalysisScope = { role: Role; operatorId: number }
 
-/** One query of the analysis page: `call` under `key`, run only when `enabled` */
+/**
+ * One query of the analysis page: `call` under `key`, run only when `enabled`.
+ * «Oggi» is not read again on a return to the tab, as on the home: its window
+ * moves with the hour, and the page doesn't change by itself
+ * (andamenti-chiamate AC18)
+ */
 const useAnalysis = <A, E>(
   key: QueryKey,
   call: Effect.Effect<A, E, ApiClient>,
-  enabled: boolean
+  enabled: boolean,
+  query?: AnalysisQuery
 ) => {
   const run = useRun()
   return useQuery({
     queryKey: key,
     queryFn: ({ signal }) => run(call, signal),
     enabled,
+    refetchOnWindowFocus: query?.range !== "today",
     meta: { toastErrors: "session" },
   })
 }
@@ -68,7 +75,8 @@ export const useFinancedSeries = (
       const client = yield* ApiClient
       return yield* client.analytics.getFinancedSeries({ query })
     }),
-    scope !== undefined
+    scope !== undefined,
+    query
   )
 
 /** The amount financed by each point of sale in the window: admins only */
@@ -82,7 +90,8 @@ export const useBranchTotals = (
       const client = yield* ApiClient
       return yield* client.analytics.getBranchTotals({ query })
     }),
-    scope?.role === "ADMIN"
+    scope?.role === "ADMIN",
+    query
   )
 
 /** The calls of each operator in the window: admins only */
@@ -96,7 +105,8 @@ export const useCallsByOperator = (
       const client = yield* ApiClient
       return yield* client.analytics.getCallsByOperator({ query })
     }),
-    scope?.role === "ADMIN"
+    scope?.role === "ADMIN",
+    query
   )
 
 /** The own calls day by day in the window: operators only */
@@ -110,7 +120,8 @@ export const useMyCallSeries = (
       const client = yield* ApiClient
       return yield* client.analytics.getMyCallSeries({ query })
     }),
-    scope?.role === "OPERATORE"
+    scope?.role === "OPERATORE",
+    query
   )
 
 /** The active contacts with an outcome, and those to call, as of now */

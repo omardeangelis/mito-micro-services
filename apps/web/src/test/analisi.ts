@@ -3,13 +3,16 @@ import { HttpApiBuilder } from "effect/http-api"
 import {
   type AnalysisQuery,
   type BranchTotals,
+  type CallHour,
   type CallsByOperator,
   type FinancedSeries,
   type MyCallSeries,
 } from "@mito/contract/analytics"
 import { MitoApi } from "@mito/contract/api"
+import { comparisonHours, todayHours } from "@mito/domain/analytics/hours"
 import { comparisonOf } from "@mito/domain/analytics/window"
-import { addDays } from "@mito/domain/utils/calendarDays"
+import { romeDay } from "@mito/domain/contact/time"
+import { addDays, parseDay } from "@mito/domain/utils/calendarDays"
 import { type FakeHandlers, type GroupService } from "./api"
 
 /** A call the test didn't expect: it dies, a 500 */
@@ -145,6 +148,20 @@ export const defaultMyCallComparisonDays: MyCallSeries["comparisonDays"] =
       }
     })
 
+/** The counts of the own calls hour by hour of «Oggi», in order of the slots */
+export const defaultMyCallHours: Array<{
+  calls: number
+  answered: number
+  appointments: number
+}> = Array.from({ length: 11 }, (_, index) => ({
+  calls: 10 + index,
+  answered: 6 + index,
+  appointments: index % 3,
+}))
+
+/** The instant «Oggi» is read at: 10/11/2026 15:20 in Rome */
+export const defaultNow = new Date("2026-11-10T15:20:00+01:00")
+
 /** The contacts with an outcome, and those still to call */
 export const defaultProgress = { done: 120, todo: 80 }
 
@@ -155,20 +172,27 @@ export type AnalisiEndpoint =
 /**
  * A backend in memory for the analysis page: the endpoints of `analytics`
  * the page reads, with what each call asked for. `window` and `comparison`
- * echo the query. The cards of the home are `unserved`
+ * echo the query; with `range=today` they answer as the server does at
+ * `now`: its day, and for the calls its hours and their comparison. The cards
+ * of the home are `unserved`
  */
-export function fakeAnalisi(
-  initial: {
-    financed?: typeof defaultFinancedSeries
-    branchRows?: BranchTotals["rows"]
-    comparisonTotal?: number | null
-    callRows?: CallsByOperator["rows"]
-    comparisonCallTotals?: CallsByOperator["comparisonTotals"]
-    myCallDays?: MyCallSeries["days"]
-    myCallComparisonDays?: MyCallSeries["comparisonDays"]
-    progress?: { done: number; todo: number }
-  } = {}
-) {
+export function fakeAnalisi({
+  now = defaultNow,
+  ...initial
+}: {
+  now?: Date
+  financed?: typeof defaultFinancedSeries
+  branchRows?: BranchTotals["rows"]
+  comparisonTotal?: number | null
+  callRows?: CallsByOperator["rows"]
+  comparisonCallTotals?: CallsByOperator["comparisonTotals"]
+  comparisonCallRows?: CallsByOperator["rows"]
+  myCallDays?: MyCallSeries["days"]
+  myCallComparisonDays?: MyCallSeries["comparisonDays"]
+  myCallHours?: typeof defaultMyCallHours
+  myCallComparisonHours?: typeof defaultMyCallHours
+  progress?: { done: number; todo: number }
+} = {}) {
   const state = {
     financed: initial.financed ?? defaultFinancedSeries,
     branchRows: initial.branchRows ?? defaultBranchRows,
@@ -181,9 +205,13 @@ export function fakeAnalisi(
       initial.comparisonCallTotals === undefined
         ? defaultComparisonCallTotals
         : initial.comparisonCallTotals,
+    // The rows of the comparison hours of «Oggi»: the call rows when none
+    comparisonCallRows: initial.comparisonCallRows,
     myCallDays: initial.myCallDays ?? defaultMyCallDays,
     myCallComparisonDays:
       initial.myCallComparisonDays ?? defaultMyCallComparisonDays,
+    myCallHours: initial.myCallHours ?? defaultMyCallHours,
+    myCallComparisonHours: initial.myCallComparisonHours ?? defaultMyCallHours,
     progress: initial.progress ?? defaultProgress,
     // The query of each read of an endpoint
     financedReads: [] as AnalysisQuery[],
@@ -209,10 +237,109 @@ export function fakeAnalisi(
       )
     )
 
-  /** The window of the query and the one it is compared with */
+  /**
+   * The window of the query and the one it is compared with; with
+   * `range=today` the day of `now`, as the server decides it
+   */
   const windows = (query: AnalysisQuery) => {
+    if (query.range === "today") {
+      const { window, comparison } = today(query)
+      return { window, comparison }
+    }
     const window = { from: query.from, to: query.to }
     return { window, comparison: comparisonOf(window, query.compare) }
+  }
+
+  /** «Oggi» at `now`, as `analysisRange` decides it on the server */
+  const today = (query: AnalysisQuery) => {
+    const day = romeDay(now)
+    const window = { from: day, to: day }
+    const { month, dayOfMonth } = parseDay(day)
+    const leapDay = month === 2 && dayOfMonth === 29
+    const hours = todayHours(now)
+    return {
+      window,
+      comparison:
+        query.compare === "last-year" && leapDay
+          ? null
+          : comparisonOf(window, query.compare),
+      hours,
+      comparisonHours: comparisonHours(hours, query.compare, now),
+    }
+  }
+
+  /** The calls by operator: of the hours of «Oggi» with `range=today` */
+  const callsByOperator = (query: AnalysisQuery): CallsByOperator => {
+    if (query.range !== "today") {
+      return {
+        ...windows(query),
+        hours: null,
+        comparisonHours: null,
+        rows: state.callRows,
+        comparisonRows: null,
+        comparisonTotals:
+          query.compare === "none" ? null : state.comparisonCallTotals,
+      }
+    }
+    const range = today(query)
+    const compared = range.comparisonHours
+    return {
+      ...range,
+      rows: range.hours.length === 0 ? [] : state.callRows,
+      comparisonRows:
+        compared === null
+          ? null
+          : compared.length === 0
+            ? []
+            : (state.comparisonCallRows ?? state.callRows),
+      comparisonTotals: compared === null ? null : state.comparisonCallTotals,
+    }
+  }
+
+  /** The own calls: hour by hour with `range=today`, day by day otherwise */
+  const myCallSeries = (query: AnalysisQuery): MyCallSeries => {
+    if (query.range !== "today") {
+      return {
+        ...windows(query),
+        hours: null,
+        comparisonHours: null,
+        days: state.myCallDays,
+        comparisonDays:
+          query.compare === "none" ? [] : state.myCallComparisonDays,
+      }
+    }
+    const range = today(query)
+    const withCounts = (
+      slots: readonly { start: Date; end: Date; inProgress: boolean }[],
+      counts: typeof defaultMyCallHours
+    ): CallHour[] =>
+      slots.map((slot, index) => {
+        const { calls, answered, appointments } = counts[index] ?? {
+          calls: 0,
+          answered: 0,
+          appointments: 0,
+        }
+        return {
+          start: slot.start,
+          end: slot.end,
+          inProgress: slot.inProgress,
+          calls,
+          answered,
+          noAnswer: calls - answered,
+          appointments,
+        }
+      })
+    return {
+      window: range.window,
+      comparison: range.comparison,
+      hours: withCounts(range.hours, state.myCallHours),
+      comparisonHours:
+        range.comparisonHours === null
+          ? null
+          : withCounts(range.comparisonHours, state.myCallComparisonHours),
+      days: [],
+      comparisonDays: [],
+    }
   }
 
   const handlers: FakeHandlers<GroupService<"analytics">> =
@@ -245,21 +372,11 @@ export function fakeAnalisi(
         })
         .handle("getCallsByOperator", ({ query }) => {
           state.callsReads.push(query)
-          return answer("calls", () => ({
-            ...windows(query),
-            rows: state.callRows,
-            comparisonTotals:
-              query.compare === "none" ? null : state.comparisonCallTotals,
-          }))
+          return answer("calls", () => callsByOperator(query))
         })
         .handle("getMyCallSeries", ({ query }) => {
           state.myCallsReads.push(query)
-          return answer("myCalls", () => ({
-            ...windows(query),
-            days: state.myCallDays,
-            comparisonDays:
-              query.compare === "none" ? [] : state.myCallComparisonDays,
-          }))
+          return answer("myCalls", () => myCallSeries(query))
         })
     )
 

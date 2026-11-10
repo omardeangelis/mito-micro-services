@@ -8,17 +8,19 @@ import {
 import { useKnownCurrentUser } from "@/api/me"
 import { ContactOverlay } from "../contatti/detail/ContactOverlay"
 import { greeting, longDay } from "../lavoro/_lib/format"
-import { CallsSection } from "./_components/export/CallsSection"
 import { LatestWaves } from "./_components/LatestWaves"
 import { QuickActions } from "./_components/QuickActions"
 import { TeamDetail } from "./_components/TeamDetail"
 import { TodayStrip } from "./_components/TodayStrip"
+import { CallTrend } from "./_components/trend/CallTrend"
 
 /**
- * The home of the admins: the day of the team, the last imports and the export
- * of the calls. The four reads are here and only here: with `staleTime` 0 every
- * observer mounted later would read again. It scrolls on its own, as `lavoro`,
- * not as `.dashabord-container`, so the page never scrolls sideways (D8)
+ * The home of the admins: the day of the team, the last imports and the trend
+ * of the calls. The four reads of the day are here and only here: with
+ * `staleTime` 0 every observer mounted later would read again; the trend reads
+ * its own period in `CallTrend`, its only observer. It scrolls on its own, as
+ * `lavoro`, not as `.dashabord-container`, so the page never scrolls sideways
+ * (D8)
  */
 export function AdminHome() {
   const { data } = useKnownCurrentUser()
@@ -46,7 +48,7 @@ export function AdminHome() {
           <TodayStrip day={day} callbacks={callbacks} />
           <LatestWaves waves={waves} />
           <TeamDetail team={team} waves={waves} />
-          <CallsSection />
+          <CallTrend />
         </div>
       </ContactOverlay>
     </div>

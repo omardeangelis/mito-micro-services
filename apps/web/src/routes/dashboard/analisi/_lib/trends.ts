@@ -1,10 +1,16 @@
-import type { FinancedSeries, MyCallSeries } from "@mito/contract/analytics"
+import type {
+  CallHour,
+  FinancedSeries,
+  MyCallSeries,
+} from "@mito/contract/analytics"
 import type { Role } from "@mito/contract/schemas"
 import {
   type Bucket,
   bucketsOf,
   formatRange,
 } from "@mito/domain/analytics/buckets"
+import { type HourSlot, hourLabel } from "@mito/domain/analytics/hours"
+import { romeTime } from "@mito/domain/contact/time"
 import {
   type Compare,
   type DayRange,
@@ -13,6 +19,9 @@ import {
   resolveGroup,
 } from "@mito/domain/analytics/window"
 import {
+  BEFORE_EIGHT_NOTE,
+  BEFORE_EIGHT_STATUS,
+  beforeEight,
   callNotes,
   callsEmptyStatus,
   callsKpi,
@@ -32,11 +41,14 @@ import {
   type Column,
   counted,
   type Delta,
+  LEAP_DAY_DELTA,
+  leapDayGap,
   percentChange,
   ratio,
   type Status,
   sum,
   widen,
+  withGap,
 } from "./results"
 
 /**
@@ -60,8 +72,9 @@ export type TrendPoint = {
 export type CallsPoint = {
   label: string
   longLabel: string
-  answered: number
-  noAnswer: number
+  /** Null before 08 with «Oggi»: no bar of today (AC24 of andamenti-chiamate) */
+  answered: number | null
+  noAnswer: number | null
   comparisonCalls: number | null
 }
 
@@ -104,8 +117,8 @@ const bucketsFor = (
   })
 
 /** The state of a chart with data: number only on a single interval (AC19). */
-const readyOrSingle = (buckets: Bucket[]): Status =>
-  buckets.length < 2
+const readyOrSingle = (intervals: number): Status =>
+  intervals < 2
     ? {
         kind: "kpiOnly",
         title: "Un solo intervallo",
@@ -114,6 +127,17 @@ const readyOrSingle = (buckets: Bucket[]): Status =>
         action: SINGLE_INTERVAL,
       }
     : { kind: "ready" }
+
+/**
+ * «Oggi»: the payout date has no hour, so the financed charts are one number
+ * with no line (AC22).
+ */
+const dayOnlyStatus = (): Status => ({
+  kind: "kpiOnly",
+  title: "Solo il giorno",
+  reason: "Le pratiche hanno solo il giorno di liquidazione",
+  action: null,
+})
 
 /** The rows of an answer by day, so a bucket sums its own days instead of scanning every row. */
 const indexByDay = <T extends { day: string }>(rows: readonly T[]) =>
@@ -202,7 +226,8 @@ export function financedResult(
   input: TrendInput<FinancedSeries>
 ): ChartResult<TrendPoint> {
   const { data, role } = input
-  const compared = data.comparison !== null
+  const gap = leapDayGap(input, data.comparison)
+  const compared = data.comparison !== null || gap
   const rows = financedBuckets(data, input.group, input.compare)
   const practices = sum(data.days, (d) => d.practices)
   const total = sum(data.days, (d) => d.amount)
@@ -215,7 +240,9 @@ export function financedResult(
           reason: `Nel periodo ${formatRange(data.window)} non risulta nessuna pratica liquidata${yourClients(role)}.`,
           action: widen(input.range),
         }
-      : readyOrSingle(rows.map((r) => r.bucket))
+      : input.range === "today"
+        ? dayOnlyStatus()
+        : readyOrSingle(rows.length)
 
   const columns: Column[] = [
     { header: "Periodo", format: "text" },
@@ -236,12 +263,14 @@ export function financedResult(
       format: "euro",
       caption: counted(practices, "pratica liquidata", "pratiche liquidate"),
       // The whole comparison, also the days no bucket is compared with (AC11, AC12)
-      delta: compared
-        ? percentChange(
-            total,
-            sum(data.comparisonDays, (d) => d.amount)
-          )
-        : null,
+      delta: gap
+        ? LEAP_DAY_DELTA
+        : compared
+          ? percentChange(
+              total,
+              sum(data.comparisonDays, (d) => d.amount)
+            )
+          : null,
     },
     points: rows.map((r) => ({
       label: r.bucket.label,
@@ -275,7 +304,8 @@ export function averageResult(
   input: TrendInput<FinancedSeries>
 ): ChartResult<TrendPoint> {
   const { data, role } = input
-  const compared = data.comparison !== null
+  const gap = leapDayGap(input, data.comparison)
+  const compared = data.comparison !== null || gap
   const rows = financedBuckets(data, input.group, input.compare)
   const practices = sum(data.days, (d) => d.practices)
   const mean = meanOf(
@@ -291,12 +321,15 @@ export function averageResult(
           reason: `La media esiste solo con almeno una pratica liquidata: nel periodo ${formatRange(data.window)} non ce n'è nessuna${yourClients(role)}.`,
           action: widen(input.range),
         }
-      : readyOrSingle(rows.map((r) => r.bucket))
+      : input.range === "today"
+        ? dayOnlyStatus()
+        : readyOrSingle(rows.length)
 
   const delta = (): Delta | null => {
     if (!compared) return null
     // Without practices in the window the empty state says it: no note
     if (mean === null) return null
+    if (gap) return LEAP_DAY_DELTA
     const comparisonMean = meanOf(
       sum(data.comparisonDays, (d) => d.amount),
       sum(data.comparisonDays, (d) => d.practices)
@@ -352,23 +385,27 @@ export function averageResult(
 
 // --- The operator's calls (AC16, AC18) -------------------------------------
 
-type CallsBucket = {
-  bucket: Bucket
-  calls: number
-  answered: number
-  noAnswer: number
-  appointments: number
+/** An interval of the operator's call charts: a bucket of days, or an hour of «Oggi». */
+type CallsRow = {
+  label: string
+  longLabel: string
+  /** Null before 08 with «Oggi»: the row is an hour of yesterday (AC24) */
+  calls: number | null
+  answered: number | null
+  noAnswer: number | null
+  appointments: number | null
   comparisonCalls: number | null
   comparisonAnswered: number | null
   comparisonAppointments: number | null
 }
 
 const callsBuckets = memoBuckets(
-  (data: MyCallSeries, group, compare): CallsBucket[] => {
+  (data: MyCallSeries, group, compare): CallsRow[] => {
     const days = indexByDay(data.days)
     const comparisonDays = indexByDay(data.comparisonDays)
     return bucketsFor(data, group, compare).map((bucket) => ({
-      bucket,
+      label: bucket.label,
+      longLabel: bucket.longLabel,
       calls: sumOver(days, bucket.days, (d) => d.calls),
       answered: sumOver(days, bucket.days, (d) => d.answered),
       noAnswer: sumOver(days, bucket.days, (d) => d.noAnswer),
@@ -387,6 +424,101 @@ const callsBuckets = memoBuckets(
     }))
   }
 )
+
+/** The labels of an hour: "15:00" on the axis, "15:00–15:20 (in corso)" in the table (AC7). */
+const hourLabels = (slot: HourSlot) => ({
+  label: romeTime(slot.start),
+  longLabel: hourLabel(slot),
+})
+
+/**
+ * One row per hour of «Oggi», each compared with the hour of the same index
+ * (AC20, AC21). Before 08 the rows are yesterday's hours, with today's values
+ * empty (AC24).
+ */
+function hourRows(
+  hours: readonly CallHour[],
+  comparison: readonly CallHour[] | null
+): CallsRow[] {
+  if (hours.length === 0) {
+    return (comparison ?? []).map((slot) => ({
+      ...hourLabels(slot),
+      calls: null,
+      answered: null,
+      noAnswer: null,
+      appointments: null,
+      comparisonCalls: slot.calls,
+      comparisonAnswered: slot.answered,
+      comparisonAppointments: slot.appointments,
+    }))
+  }
+  return hours.map((slot, index) => {
+    const before = comparison?.[index]
+    return {
+      ...hourLabels(slot),
+      calls: slot.calls,
+      answered: slot.answered,
+      noAnswer: slot.noAnswer,
+      appointments: slot.appointments,
+      comparisonCalls: before?.calls ?? null,
+      comparisonAnswered: before?.answered ?? null,
+      comparisonAppointments: before?.appointments ?? null,
+    }
+  })
+}
+
+/** The intervals of the operator's charts: hours with «Oggi» (AC21), buckets of days otherwise. */
+const callRows = (input: TrendInput<MyCallSeries>): CallsRow[] =>
+  input.data.hours === null
+    ? callsBuckets(input.data, input.group, input.compare)
+    : hourRows(input.data.hours, input.data.comparisonHours)
+
+/**
+ * The counts the number sums: the hours with «Oggi», the days otherwise.
+ * Before 08 with yesterday's hours nothing is compared: today has no hours
+ * (AC24).
+ */
+type Counts = { calls: number; answered: number; appointments: number }
+
+const callCounts = (data: MyCallSeries) => {
+  const own: readonly Counts[] = data.hours ?? data.days
+  const theirs: readonly Counts[] = data.comparisonHours ?? data.comparisonDays
+  const compared = data.comparison !== null && beforeEight(data) === null
+  return {
+    calls: sum(own, (d) => d.calls),
+    answered: sum(own, (d) => d.answered),
+    appointments: sum(own, (d) => d.appointments),
+    comparison: compared
+      ? {
+          calls: sum(theirs, (d) => d.calls),
+          answered: sum(theirs, (d) => d.answered),
+          appointments: sum(theirs, (d) => d.appointments),
+        }
+      : null,
+  }
+}
+
+/**
+ * The state before 08 with «Oggi», or null for the usual one: yesterday's
+ * hours are drawn even without calls (AC24).
+ */
+const beforeEightStatus = (
+  data: MyCallSeries,
+  rows: readonly CallsRow[]
+): Status | null => {
+  switch (beforeEight(data)) {
+    case "yesterday":
+      return readyOrSingle(rows.length)
+    case "empty":
+      return BEFORE_EIGHT_STATUS
+    case null:
+      return null
+  }
+}
+
+/** The note above the chart before 08 with yesterday's hours (AC24). */
+const leadOf = (data: MyCallSeries): { lead?: string } =>
+  beforeEight(data) === "yesterday" ? { lead: BEFORE_EIGHT_NOTE } : {}
 
 /** The empty state of the operator's call charts, or null (AC16, AC19). */
 const callsEmpty = (input: TrendInput<MyCallSeries>, calls: number) =>
@@ -410,15 +542,19 @@ const myCallNotes = (
   ),
 ]
 
+/** `part` per 100 of `whole`, null when either is missing (AC24). */
+const ratioOrNull = (part: number | null, whole: number | null) =>
+  part === null || whole === null ? null : ratio(part, whole)
+
 /** The operator's «Risposte per operatore», in time (AC12, AC16, AC18, AC19). */
 export function myCallsResult(
   input: TrendInput<MyCallSeries>
 ): ChartResult<CallsPoint> {
   const { data } = input
-  const compared = data.comparison !== null
-  const rows = callsBuckets(data, input.group, input.compare)
-  const calls = sum(data.days, (d) => d.calls)
-  const answered = sum(data.days, (d) => d.answered)
+  const gap = leapDayGap(input, data.comparison)
+  const compared = data.comparison !== null || gap
+  const rows = callRows(input)
+  const counts = callCounts(data)
 
   const columns: Column[] = [
     { header: "Periodo", format: "text" },
@@ -437,15 +573,16 @@ export function myCallsResult(
     title: CHART_TITLES.calls,
     question: MY_CALLS_QUESTION,
     status:
-      callsEmpty(input, calls) ?? readyOrSingle(rows.map((r) => r.bucket)),
-    kpi: callsKpi(
-      calls,
-      answered,
-      compared ? sum(data.comparisonDays, (d) => d.calls) : null
+      beforeEightStatus(data, rows) ??
+      callsEmpty(input, counts.calls) ??
+      readyOrSingle(rows.length),
+    kpi: withGap(
+      gap,
+      callsKpi(counts.calls, counts.answered, counts.comparison?.calls ?? null)
     ),
     points: rows.map((r) => ({
-      label: r.bucket.label,
-      longLabel: r.bucket.longLabel,
+      label: r.label,
+      longLabel: r.longLabel,
       answered: r.answered,
       noAnswer: r.noAnswer,
       comparisonCalls: r.comparisonCalls,
@@ -453,17 +590,18 @@ export function myCallsResult(
     table: {
       columns,
       rows: rows.map((r): Cell[] => [
-        r.bucket.longLabel,
+        r.longLabel,
         r.calls,
         r.answered,
         r.noAnswer,
         r.appointments,
-        ratio(r.answered, r.calls),
+        ratioOrNull(r.answered, r.calls),
         ...(compared ? [r.comparisonCalls] : []),
       ]),
     },
     notes: myCallNotes(input),
     scope: null,
+    ...leadOf(data),
   }
 }
 
@@ -472,27 +610,24 @@ export function myAppointmentsResult(
   input: TrendInput<MyCallSeries>
 ): ChartResult<RatePoint> {
   const { data } = input
-  const compared = data.comparison !== null
-  const rows = callsBuckets(data, input.group, input.compare)
-  const calls = sum(data.days, (d) => d.calls)
-  const answered = sum(data.days, (d) => d.answered)
-  const appointments = sum(data.days, (d) => d.appointments)
+  const gap = leapDayGap(input, data.comparison)
+  const compared = data.comparison !== null || gap
+  const rows = callRows(input)
+  const counts = callCounts(data)
 
   const status: Status =
-    callsEmpty(input, calls) ??
-    (answered === 0
+    beforeEightStatus(data, rows) ??
+    callsEmpty(input, counts.calls) ??
+    (counts.answered === 0
       ? noAnswersStatus(input.range)
-      : readyOrSingle(rows.map((r) => r.bucket)))
+      : readyOrSingle(rows.length))
 
   const points = rows.map((r): RatePoint => ({
-    label: r.bucket.label,
-    longLabel: r.bucket.longLabel,
-    rate: ratio(r.appointments, r.answered),
-    comparisonRate:
-      r.comparisonAnswered === null || r.comparisonAppointments === null
-        ? null
-        : ratio(r.comparisonAppointments, r.comparisonAnswered),
-    small: isSmall(r.answered),
+    label: r.label,
+    longLabel: r.longLabel,
+    rate: ratioOrNull(r.appointments, r.answered),
+    comparisonRate: ratioOrNull(r.comparisonAppointments, r.comparisonAnswered),
+    small: isSmall(r.answered ?? 0),
   }))
 
   const notes = myCallNotes(
@@ -516,29 +651,24 @@ export function myAppointmentsResult(
     title: CHART_TITLES.appointments,
     question: MY_APPOINTMENTS_QUESTION,
     status,
-    kpi: rateKpi(
-      appointments,
-      answered,
-      compared
-        ? {
-            appointments: sum(data.comparisonDays, (d) => d.appointments),
-            answered: sum(data.comparisonDays, (d) => d.answered),
-          }
-        : null
+    kpi: withGap(
+      gap,
+      rateKpi(counts.appointments, counts.answered, counts.comparison)
     ),
     points,
     table: {
       columns,
       rows: rows.map((r, i): Cell[] => [
-        r.bucket.longLabel,
+        r.longLabel,
         r.answered,
         r.appointments,
         points[i]?.rate ?? null,
         ...(compared ? [points[i]?.comparisonRate ?? null] : []),
-        smallCell(r.answered),
+        smallCell(r.answered ?? 0),
       ]),
     },
     notes,
     scope: null,
+    ...leadOf(data),
   }
 }

@@ -190,3 +190,32 @@ export function callsEmptyStatus(
   }
   return null
 }
+
+// --- «Oggi» before 08 (AC24 of andamenti-chiamate) ---------------------------
+
+/** The note above a call chart that shows yesterday's hours before 08 (AC24, D1). */
+export const BEFORE_EIGHT_NOTE =
+  "La giornata di lavoro inizia alle 8: vedi le ore di ieri"
+
+/** «Oggi» before 08 with no hours of yesterday: the action compares with yesterday (AC24). */
+export const BEFORE_EIGHT_STATUS: Status = {
+  kind: "empty",
+  title: "Nessuna ora di oggi",
+  reason: "La giornata di lavoro inizia alle 8",
+  action: { label: "Vedi ieri", compare: "previous" },
+}
+
+/**
+ * How a call answer stands before 08 with «Oggi» (AC24): `null` with hours of
+ * today, or for another period (`hours` null); "yesterday" when the
+ * comparison has yesterday's hours; "empty" otherwise.
+ */
+export function beforeEight(answer: {
+  hours: readonly unknown[] | null
+  comparisonHours: readonly unknown[] | null
+}): "yesterday" | "empty" | null {
+  if (answer.hours === null || answer.hours.length > 0) return null
+  return answer.comparisonHours !== null && answer.comparisonHours.length > 0
+    ? "yesterday"
+    : "empty"
+}

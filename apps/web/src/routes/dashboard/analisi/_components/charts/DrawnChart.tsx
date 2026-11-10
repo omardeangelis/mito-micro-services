@@ -100,8 +100,13 @@ const BY_SHAPE: { [S in Shape]: ShapeSpec<S> } = {
  */
 const specOf = (shape: Shape) => BY_SHAPE[shape] as ShapeSpec<Shape>
 
-/** A comparison is chosen: the number has a variation (AC12) */
-const comparedIn = (drawn: Drawn) => drawn.result.kpi.delta !== null
+/**
+ * A comparison is chosen: the number has a variation (AC12), or, before 08
+ * with «Oggi», the chart is the comparison alone, with its note (AC24 of
+ * andamenti-chiamate)
+ */
+const comparedIn = (drawn: Drawn) =>
+  drawn.result.kpi.delta !== null || drawn.result.lead !== undefined
 
 /** The recharts chart of a result, by its shape (AC3, AC18) */
 export function DrawnChart({ drawn }: { drawn: Drawn }) {

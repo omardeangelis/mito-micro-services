@@ -81,6 +81,7 @@ Migrated from `docs/` on 2026-09-24. Source material for future `create-spec` ru
 | crm | [[specs/crm/toast-sonner/SPEC]] | Implemented (T11 aperto) |
 | crm | [[specs/crm/home-operatore/SPEC]] | Draft (mappa: [[specs/crm/home-operatore/FLOW]], piano: [[specs/crm/home-operatore/PLAN]]) |
 | crm | [[specs/crm/home-admin/SPEC]] | Approved, implementata in attesa del controllo con NVDA e VoiceOver (mappa: [[specs/crm/home-admin/FLOW]], piano: [[specs/crm/home-admin/PLAN]]) |
+| crm | [[specs/crm/andamenti-chiamate/SPEC]] | Implemented (review SHIP al giro 2); piano [[specs/crm/andamenti-chiamate/PLAN]] Complete |
 | crm | [[specs/crm/assegnazione-wave/SPEC]] | Implemented (mappa: [[specs/crm/assegnazione-wave/FLOW]], piano: [[specs/crm/assegnazione-wave/PLAN]]) |
 | crm | [[specs/crm/esiti-richiami-stati/SPEC]] | Implemented sul branch `claude/esiti-richiami-stati`, PR verso `dev` da aprire (piano: [[specs/crm/esiti-richiami-stati/PLAN]], review: [[specs/crm/esiti-richiami-stati/REPORT]]) |
 
@@ -91,6 +92,7 @@ Migrated from `docs/` on 2026-09-24. Source material for future `create-spec` ru
 - [[tech-debt/crm/customer-effect]] — router `customer` su Effect (rilievi della review; le stranezze sono in TD8)
 - [[tech-debt/crm/pratiche-effect]] — router `pratiche` e letture di `task` su Effect (bug della UI trovati nella prova e corretti, follow-up; le stranezze di TD9 corrette tranne (k), riaperta per l'import)
 - [[tech-debt/crm/export-chiamate]] — export chiamate (cron UTC/Roma, permessi dello storage, admin senza riga operatore)
+- [[tech-debt/crm/andamenti-chiamate]] — andamenti delle chiamate (endpoint e workbook dell'export chiamate restano per Next)
 - [[tech-debt/crm/design-system-web]] — design system di `apps/web` (limiti del gate dei colori, test dei significati mancanti, focus preesistenti, Firefox e Safari non provati)
 - [[tech-debt/crm/home-admin]] — home dell'admin (endpoint delle card senza client)
 - [[tech-debt/crm/home-operatore]] — home dell'operatore (indice per attore, cronologia del foglio, cache fra le due rotte, `useCurrentUser` nelle altre pagine)
@@ -102,6 +104,7 @@ Migrated from `docs/` on 2026-09-24. Source material for future `create-spec` ru
 
 > `adversarial-review` writes SHIP/DO-NOT-SHIP reports here. Standalone reviews land under `review/<slug>/`; spec-implementation reviews live inside the spec folder (`specs/<domain>/<spec>/REPORT.md`).
 
+- [[specs/crm/andamenti-chiamate/REPORT|crm/andamenti-chiamate]] — spec · ship al giro 2 (9 verificatori, 0 BLOCKER; i 5 MAJOR del giro 1, «—» del 29 febbraio, righe e gruppo dei periodi che traboccano, due movimenti, corretti; checklist umana) · critical · 2026-11-10
 - [[specs/crm/home-admin/REPORT|crm/home-admin]] — spec · ship dopo le correzioni (12 verificatori, 0 BLOCKER; al primo giro 4 MAJOR, al secondo 1, corretto senza terzo giro; checklist umana prima dell'unione) · critical · 2026-11-05
 - [[specs/crm/home-operatore/REPORT|crm/home-operatore]] — spec · ship dopo le correzioni (6 verificatori, 0 BLOCKER; al primo giro 6 MAJOR, al secondo 1 MAJOR, corretto senza terzo giro; checklist umana prima dell'unione e del rilascio) · critical · 2026-11-05
 - [[specs/crm/assegnazione-wave/REPORT|crm/assegnazione-wave]] — spec · ship dopo le correzioni (10 verificatori, 0 BLOCKER; al primo giro 3 passi DO NOT SHIP per un MAJOR ciascuno, poi corretti; seconda verifica DO NOT SHIP su tre punti a metà, chiusi dopo senza terzo giro; checklist umana prima dell'unione e del rilascio) · critical · 2026-11-04

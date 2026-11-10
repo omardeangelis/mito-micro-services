@@ -117,6 +117,9 @@ const calls = (
   comparison: september,
   rows,
   comparisonTotals,
+  hours: null,
+  comparisonHours: null,
+  comparisonRows: null,
 })
 
 describe("adminCallsResult (AC3, AC12)", () => {
@@ -140,6 +143,8 @@ describe("adminCallsResult (AC3, AC12)", () => {
     expect(result.table.rows).toEqual([
       ["Bruno Rossi", 80, 60, 20, 12, 75],
       ["Anna Rossi", 40, 20, 20, 5, 50],
+      // AC15 of andamenti-chiamate: the sums, last
+      ["Totale", 120, 80, 40, 17, (80 / 120) * 100],
     ])
     expect(result.kpi.value).toBe(120)
     expect(result.kpi.delta).toEqual({ kind: "percent", value: 20 })
@@ -227,7 +232,8 @@ describe("the operator rankings draw the first 8 (AC3, AC4, AC19)", () => {
     expect(result.points.map((p) => p.name)).toEqual(
       result.table.rows.slice(0, 8).map((r) => r[0])
     )
-    expect(result.table.rows).toHaveLength(12)
+    // The 12 operators, then «Totale» (AC15 of andamenti-chiamate)
+    expect(result.table.rows).toHaveLength(13)
     expect(result.notes).toContain(MORE)
   })
 

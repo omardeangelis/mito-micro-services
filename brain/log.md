@@ -12,6 +12,25 @@ Append-only ingest/spec log. Newest first. Cap at 50 entries; drop the oldest wh
 
 <!-- Entries are appended by create-spec (spec creation) and docs-maintenance (ingest). Format:
 
+## [2026-11-10] implement | Andamenti delle chiamate
+- Updated: [[specs/crm/andamenti-chiamate/SPEC]] implemented, [[specs/crm/andamenti-chiamate/PLAN]] Complete (T1–T17), [[specs/crm/andamenti-chiamate/IMPLEMENTATION-NOTES]] con l'audit dei criteri; [[specs/crm/andamenti-chiamate/REPORT]] SHIP al giro 2, i cinque MAJOR corretti; [[tech-debt/crm/andamenti-chiamate]] aggiornato (a 375 px restano solo i bersagli)
+
+## [2026-11-10] review | Andamenti delle chiamate
+- Created: [[specs/crm/andamenti-chiamate/RUBRIC]], [[specs/crm/andamenti-chiamate/REPORT]]: DO NOT SHIP, impatto critical, 9 verificatori, 0 BLOCKER, 5 MAJOR (AC20 il 29 febbraio senza «—»; righe della sezione della home che traboccano quando vanno a capo; gruppo dei periodi fuori dalla scheda sotto ~564 px; transizione sulla voce dei periodi; pulse senza variante ridotta); checklist umana
+
+## [2026-11-10] plan | Andamenti delle chiamate
+- Created: [[specs/crm/andamenti-chiamate/PLAN]], G0 e T1–T17 in 11 onde; D1 di Omar (prima delle 08 le classifiche dell'admin mostrano ieri 11–19, AC24 aggiornato); verifica DO NOT SHIP al giro 1 (4 MAJOR), correzioni nel piano
+
+## [2026-11-10] spec | Andamenti delle chiamate: domande chiuse
+- Updated: [[specs/crm/andamenti-chiamate/SPEC]], OQ1–OQ10 chiuse da Omar. Cambiano rispetto ai default: 30 giorni in home per settimana (`group=week`), barre verticali senza prototipo, prima delle 08 «Vedi ieri» attraverso il confronto «Periodo precedente» (AC11, AC24)
+
+## [2026-11-10] spec | Andamenti delle chiamate in home e «Oggi» in Analisi
+- Created spec: [[specs/crm/andamenti-chiamate/SPEC]]
+- Domain: crm
+- Status: Draft
+- Verifica: DO NOT SHIP al primo giro (1 BLOCKER: 30 giorni descritti «come Analisi» ma Analisi li raggruppa per settimana; 7 MAJOR), SHIP al secondo dopo le correzioni
+- Supera o integra home-admin AC1, AC3, AC36; export-chiamate AC12–AC14, AC16–AC19 per `apps/web`; pagina-analisi AC9–AC11, AC13–AC15, AC19, AC30, AC32 (da annotare dopo l'approvazione)
+
 ## [2026-11-05] implement | Home dell'admin
 - Implemented: [[specs/crm/home-admin/SPEC]], G0 e T1–T16 del [[specs/crm/home-admin/PLAN]] con worker supervisionati; note in [[specs/crm/home-admin/IMPLEMENTATION-NOTES]]; debito in [[tech-debt/crm/home-admin]]
 - Review: [[specs/crm/home-admin/REPORT]] ([[specs/crm/home-admin/RUBRIC]]): critical, 11 passaggi, DO NOT SHIP con quattro MAJOR, secondo giro su un rilievo; corretti tutti tranne AC32 sul foglio, che è una decisione di Omar. Restano la checklist e i controlli NVDA e VoiceOver

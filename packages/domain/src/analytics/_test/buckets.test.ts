@@ -6,7 +6,7 @@ import {
   sumDays,
   type Bucket,
 } from "../buckets"
-import type { Bucketing, Compare, DayRange } from "../window"
+import type { Compare, DayBucketing, DayRange } from "../window"
 
 /** The days from `from` to `to`, both included */
 const days = (from: string, to: string) => {
@@ -21,7 +21,7 @@ const days = (from: string, to: string) => {
 
 const buckets = (
   window: DayRange,
-  group: Bucketing,
+  group: DayBucketing,
   compare: Compare,
   comparison: DayRange | null
 ) => bucketsOf({ window, group, compare, comparison })

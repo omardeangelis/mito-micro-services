@@ -162,6 +162,7 @@ const unservedGroups = Layer.mergeAll(
       .handle("getMyToCall", unserved)
       .handle("getLatestWaves", unserved)
       .handle("getTeamDay", unserved)
+      .handle("getCallTrend", unserved)
       .handle("getTeamDetail", unserved)
   )
 )

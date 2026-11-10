@@ -107,3 +107,33 @@ describe("the day of the two operators of the home (T14) at N = 10,000", () => {
     }
   })
 })
+
+describe("the hours of «Oggi» in the seed (andamenti-chiamate, T13)", () => {
+  let dataset: Dataset
+
+  beforeAll(() => {
+    dataset = generateDataset({ n: 10_000, day: DAY })
+  }, 120_000)
+
+  /** The Rome hour (0–23) of the calls of `day` */
+  const hoursOf = (day: string) =>
+    dataset.taskEventLog
+      .filter((row) => row.action === "call" && romeDay(row.createdAt!) === day)
+      .map((row) =>
+        Number(
+          new Intl.DateTimeFormat("en-GB", {
+            timeZone: "Europe/Rome",
+            hour: "2-digit",
+            hourCycle: "h23",
+          }).format(row.createdAt!)
+        )
+      )
+
+  it("has calls of D in at least 6 working hours, one at 07 and one from 19", () => {
+    const hours = hoursOf(DAY)
+    const working = new Set(hours.filter((hour) => hour >= 8 && hour < 19))
+    expect(working.size).toBeGreaterThanOrEqual(6)
+    expect(hours).toContain(7)
+    expect(hours.some((hour) => hour >= 19)).toBe(true)
+  })
+})

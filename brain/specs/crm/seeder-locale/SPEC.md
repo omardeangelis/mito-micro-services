@@ -107,6 +107,7 @@ Il seeder si lancia con una dimensione `N` (numero di clienti): di default è 10
 - **AC3** — Prima di scrivere, il seeder svuota tutte le tabelle di dati di `mito_local`, compresi `alert`, `task_event_log`, `cron_run`, `session`, `account`, `verificationToken` e gli utenti `ADMIN`. Alla fine nel database ci sono solo le righe del seed.
 - **AC4** — Si ferma senza scrivere quando il giorno di Europe/Rome e il giorno UTC sono diversi, cioè fra mezzanotte e l'01:00 o le 02:00 di Roma. Il messaggio spiega che `alert` calcola il giorno in Europe/Rome, mentre `update` lo calcola in UTC sul backend e con l'ora della macchina sulle rotte Next.
 - **AC5** — Due lanci con lo stesso `N` nello stesso giorno D producono le stesse righe, con gli stessi id e gli stessi valori, timestamp compresi.
+  - Integrato da [[specs/crm/andamenti-chiamate/SPEC]] (scelta di Omar, 2026-11-10): le chiamate del team di D e del giorno prima hanno la loro ora, dalle 07 alle 20, e così la chiusura del contatto che chiudono; il resto resta a mezzogiorno di Roma.
 - **AC6** — Con `N` = 10.000, il seeder finisce in meno di 3 minuti su una macchina con almeno 4 core e 16 GB di RAM, con il Postgres di `docker-compose.yml`.
 - **AC7** — `next lint` passa. Il seeder, le corse di AC28 e il comando di verifica non importano `@/lib/global/loadDbEnv`, né direttamente né tramite i moduli che importano. Lo prova un test, o una regola ESLint che li copre senza override (oggi `.eslintrc.cjs` spegne `no-restricted-imports` per `src/server/db/seeds/**` e `src/server/db/scripts/**`).
 

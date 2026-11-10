@@ -1,8 +1,9 @@
-import { screen, waitFor } from "@testing-library/react"
+import { act, screen, waitFor } from "@testing-library/react"
+import { focusManager } from "@tanstack/react-query"
 import { Effect, Layer } from "effect"
 import { HttpApiBuilder } from "effect/http-api"
 import { createBrowserRouter, RouterProvider } from "react-router"
-import { describe, expect, it, onTestFinished } from "vitest"
+import { afterEach, describe, expect, it, onTestFinished } from "vitest"
 import { MitoApi } from "@mito/contract/api"
 import { Unauthorized } from "@mito/contract/errors"
 import { Authenticated, CurrentUser } from "@mito/contract/middleware"
@@ -148,6 +149,45 @@ describe("the queries of the analysis page (D10)", () => {
     ).toBeVisible()
     await sleep(250)
     expect(shownToasts()).toHaveLength(2)
+  })
+})
+
+describe("the focus of the window (andamenti-chiamate AC18)", () => {
+  afterEach(() => focusManager.setFocused(undefined))
+
+  /** The window loses the focus and gets it back, as on a return to the tab */
+  const backToTheTab = async () => {
+    act(() => {
+      focusManager.setFocused(false)
+      focusManager.setFocused(true)
+    })
+    await sleep(100)
+  }
+
+  it("«Oggi» is not read again on a return to the tab", async () => {
+    const backend = fakeAnalisi()
+    renderWithApi(<SeriesOf query={{ ...october, range: "today" }} />, {
+      handlers: backend.handlers,
+      auth: signedInAs(ada, "ADMIN"),
+    })
+    await screen.findByText(/finestra dal/)
+
+    await backToTheTab()
+
+    expect(backend.state.financedReads).toHaveLength(1)
+  })
+
+  it("the other periods still are", async () => {
+    const backend = fakeAnalisi()
+    renderWithApi(<SeriesOf query={october} />, {
+      handlers: backend.handlers,
+      auth: signedInAs(ada, "ADMIN"),
+    })
+    await screen.findByText("finestra dal 2026-10-01")
+
+    await backToTheTab()
+
+    await waitFor(() => expect(backend.state.financedReads).toHaveLength(2))
   })
 })
 

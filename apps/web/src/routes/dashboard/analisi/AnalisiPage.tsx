@@ -1,8 +1,13 @@
 import { useState } from "react"
-import { daysIn, type Group, type Preset } from "@mito/domain/analytics/window"
+import {
+  type Compare,
+  daysIn,
+  type Group,
+  type Preset,
+} from "@mito/domain/analytics/window"
 import { type ChartId } from "./_lib/charts"
 import { CHART_TITLES } from "./_lib/results"
-import { withGroup, withPreset } from "./_lib/urlState"
+import { withCompare, withGroup, withPreset } from "./_lib/urlState"
 import { ChartPanel } from "./_components/ChartPanel"
 import { OfflineNotice } from "./_components/ChartState"
 import { GroupSelect } from "./_components/GroupSelect"
@@ -37,6 +42,12 @@ export function Component() {
     if (state !== undefined) write(withPreset(state, range, today))
   }
 
+  // «Vedi ieri»: only the comparison changes, the period and the chart stay
+  // (AC24 of andamenti-chiamate)
+  const onCompare = (compare: Compare) => {
+    if (state !== undefined) write(withCompare(state, compare))
+  }
+
   const onGroup = (group: Group) => {
     if (state !== undefined) write(withGroup(state, group))
   }
@@ -51,7 +62,12 @@ export function Component() {
   const page: ExportPage | undefined =
     state === undefined
       ? undefined
-      : { compare: state.compare, group: state.group, dataOf }
+      : {
+          range: state.range,
+          compare: state.compare,
+          group: state.group,
+          dataOf,
+        }
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -84,12 +100,14 @@ export function Component() {
                     <GroupSelect
                       group={state.group}
                       days={daysIn(state.window)}
+                      range={state.range}
                       onChange={onGroup}
                     />
                   ) : null
                 }
                 page={page}
                 onRange={onRange}
+                onCompare={onCompare}
               />
             </div>
           </div>

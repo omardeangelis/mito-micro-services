@@ -50,7 +50,7 @@ describe("the menu of the periods (AC9)", () => {
     await waitFor(() => expect(address().get("compare")).toBe("last-year"))
   })
 
-  it("lists the five periods and «Date personalizzate…», which opens the calendar", async () => {
+  it("lists «Oggi» first, the five periods and «Date personalizzate…», which opens the calendar", async () => {
     const user = userEvent.setup()
     renderAnalisi("/dashboard/analisi", fakeAnalisi(), { role: "ADMIN" })
     await calendarButton()
@@ -62,6 +62,7 @@ describe("the menu of the periods (AC9)", () => {
       (option) => option.textContent
     )
     expect(names).toEqual([
+      "Oggi",
       "Gli ultimi 7 giorni",
       "Gli ultimi 30 giorni",
       "Gli ultimi 90 giorni",

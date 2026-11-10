@@ -259,6 +259,7 @@ export function fakeLavoro({
         )
         .handle("getLatestWaves", unserved)
         .handle("getTeamDay", unserved)
+        .handle("getCallTrend", unserved)
         .handle("getTeamDetail", unserved)
     ),
     HttpApiBuilder.group(MitoApi, "me", (handlers) =>

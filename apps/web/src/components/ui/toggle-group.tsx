@@ -6,10 +6,12 @@ import { ToggleGroup as ToggleGroupPrimitive } from "radix-ui"
 import { toggleVariants } from "@/components/ui/toggle"
 
 // MITO: the item gives back the 6 px of the track's border and padding, so
-// the group has the height of a control (appendix C)
+// the group has the height of a control (appendix C). No item is below the
+// 24 px of WCAG 2.5.8, since the items touch: `sm` is as tall as `default`
+// (andamenti-chiamate review), and differs only in the size of `toggleVariants`
 const itemHeights = {
   default: "h-6",
-  sm: "h-5",
+  sm: "h-6",
   lg: "h-7",
 } as const
 

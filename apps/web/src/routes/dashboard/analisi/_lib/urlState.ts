@@ -67,7 +67,8 @@ export function readState(
 
   const group = effectiveGroup(
     oneOf(GROUPS, params.get("group")) ?? "auto",
-    daysIn(window)
+    daysIn(window),
+    range
   )
 
   return { chart, range, window, compare, group }
@@ -101,7 +102,7 @@ export function withPreset(
     ...state,
     range: preset,
     window,
-    group: effectiveGroup(state.group, daysIn(window)),
+    group: effectiveGroup(state.group, daysIn(window), preset),
   }
 }
 
@@ -111,7 +112,7 @@ export function withCustom(state: PageState, window: DayRange): PageState {
     ...state,
     range: "custom",
     window,
-    group: effectiveGroup(state.group, daysIn(window)),
+    group: effectiveGroup(state.group, daysIn(window), "custom"),
   }
 }
 
@@ -122,5 +123,8 @@ export function withCompare(state: PageState, compare: Compare): PageState {
 
 /** The state with another grouping, or "auto" when the window does not allow it (AC13). */
 export function withGroup(state: PageState, group: Group): PageState {
-  return { ...state, group: effectiveGroup(group, daysIn(state.window)) }
+  return {
+    ...state,
+    group: effectiveGroup(group, daysIn(state.window), state.range),
+  }
 }

@@ -7,7 +7,13 @@ import {
   noonOf,
   parseDay,
 } from "../utils/calendarDays"
-import { daysIn, type Bucketing, type Compare, type DayRange } from "./window"
+import {
+  daysIn,
+  type Bucketing,
+  type Compare,
+  type DayBucketing,
+  type DayRange,
+} from "./window"
 
 /**
  * The buckets of the Analysis page's chart and table (AC11): calendar days in
@@ -102,7 +108,7 @@ type Shift = { months: number } | { days: number }
 
 function shiftOf(
   window: DayRange,
-  group: Bucketing,
+  group: DayBucketing,
   compare: Compare,
   comparison: DayRange
 ): Shift {
@@ -147,7 +153,7 @@ function comparisonDaysOf(
  */
 export function bucketsOf(input: {
   window: DayRange
-  group: Bucketing
+  group: DayBucketing
   compare: Compare
   comparison: DayRange | null
 }): Bucket[] {

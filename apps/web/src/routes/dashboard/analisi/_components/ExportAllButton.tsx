@@ -72,7 +72,7 @@ export function ExportAllButton({
     )
     const window =
       windowed?.state.kind === "result" ? windowed.state.window : fallback
-    const done = await downloadWorkbook(sheets, allFileName(window))
+    const done = await downloadWorkbook(sheets, allFileName(window, page.range))
     if (done && summary.toast !== null) toast(summary.toast)
   }
 

@@ -71,6 +71,23 @@ describe("readState (AC14)", () => {
     )
   })
 
+  it("groups «Oggi» by hour whatever the address says, and keeps the range (AC19, AC20)", () => {
+    expect(readState("?range=today&group=day", today, "ADMIN")).toEqual({
+      chart: "financed",
+      range: "today",
+      window: { from: today, to: today },
+      compare: "previous",
+      group: "hour",
+    })
+    expect(writeState(readState("?range=today", today, "ADMIN"))).toBe(
+      "chart=financed&range=today&compare=previous&group=hour"
+    )
+  })
+
+  it("sends the hour back to the initial grouping with another range (AC19)", () => {
+    expect(readState("?range=7d&group=hour", today, "ADMIN").group).toBe("auto")
+  })
+
   it("takes the initial comparison of the window when the address has none (AC9)", () => {
     expect(readState("?range=ytd", today, "ADMIN").compare).toBe("last-year")
     expect(readState("?range=ytd&compare=none", today, "ADMIN").compare).toBe(
@@ -140,5 +157,16 @@ describe("transitions", () => {
 
   it("changes the comparison", () => {
     expect(withCompare(opened, "none").compare).toBe("none")
+  })
+})
+
+describe("withPreset «Oggi» (AC19)", () => {
+  it("groups by hour", () => {
+    const opened = readState("?range=30d&group=week", today, "ADMIN")
+    expect(withPreset(opened, "today", today)).toMatchObject({
+      range: "today",
+      window: { from: today, to: today },
+      group: "hour",
+    })
   })
 })

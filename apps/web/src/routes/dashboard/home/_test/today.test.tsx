@@ -7,9 +7,12 @@ import { renderHome } from "./page"
 
 // The four numbers of today (spec home-admin, AC6, AC7, AC34)
 
-/** The cell of the strip with the label `label` */
+/**
+ * The cell of the strip with the label `label`: the first one, since
+ * «Andamento delle chiamate», further down, has charts with the same titles
+ */
 const cell = async (label: string) =>
-  (await screen.findByText(label)).parentElement!
+  (await screen.findAllByText(label))[0]!.parentElement!
 
 describe("I quattro numeri di oggi", () => {
   it("con 10 chiamate e 0 risposte il tasso di risposta dice 0% e quello di appuntamento aspetta le risposte", async () => {
@@ -174,7 +177,7 @@ describe("I quattro numeri di oggi, caricamento ed errore (AC30, AC49, AC50)", (
     release()
 
     await waitFor(() =>
-      expect(screen.getByText("Tasso di risposta")).toHaveFocus()
+      expect(screen.getAllByText("Tasso di risposta")[0]).toHaveFocus()
     )
   })
 })
